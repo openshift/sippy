@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"regexp"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
@@ -38,16 +39,17 @@ func NewOCPVariantLoader(
 }
 
 type prowJobLastRun struct {
-	JobName  string `bigquery:"prowjob_job_name"`
-	JobRunID string `bigquery:"prowjob_build_id"`
-	URL      string `bigquery:"prowjob_url"`
+	JobName  string              `bigquery:"prowjob_job_name"`
+	JobRunID string              `bigquery:"prowjob_build_id"`
+	URL      bigquery.NullString `bigquery:"prowjob_url"`
 }
 
 // LoadAllJobs queries all known jobs from the gce-devel "jobs" table (actually contains job runs).
 // This effectively is every job that actually ran in the last several years.
-func (v *OCPVariantLoader) LoadAllJobs() error {
+func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 	log := logrus.WithField("func", "LoadAllJobs")
 	log.Info("Loading all known jobs")
+	start := time.Now()
 
 	// TODO: pull presubmits for sippy as well
 
@@ -74,7 +76,9 @@ func (v *OCPVariantLoader) LoadAllJobs() error {
 	query = v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
 		"`ci_analysis_us.jobs` " +
 		`WHERE (prowjob_job_name LIKE 'periodic-%%' OR prowjob_job_name LIKE 'release-%%' OR prowjob_job_name like 'aggregator-%%')
-		GROUP BY prowjob_job_name`)
+		GROUP BY prowjob_job_name
+		LIMIT 100`)
+	// TODO: ^^ remove limit
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		return errors.Wrap(err, "error querying primary list of all jobs")
@@ -94,28 +98,33 @@ func (v *OCPVariantLoader) LoadAllJobs() error {
 			return err
 		}
 		jLog := log.WithField("job", jlr.JobName)
-		variants := v.GetVariantsForJob(jLog, jlr.JobName)
-		jLog.WithField("variants", variants).Debug("calculated variants")
-		path, err := prowloader.GetGCSPathForProwJobURL(jLog, jlr.URL)
-		if err != nil {
-			jLog.WithError(err).WithField("prowJobURL", jlr.URL).Error("error getting GCS path for prow job URL")
-			return err
-		}
-		gcsJobRun := gcs.NewGCSJobRun(v.bkt, path)
-		allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
-		jLog.Infof("Found file path matches: %s", allMatches)
-		/*
+		if jlr.URL.Valid {
+			path, err := prowloader.GetGCSPathForProwJobURL(jLog, jlr.URL.StringVal)
+			if err != nil {
+				jLog.WithError(err).WithField("prowJobURL", jlr.URL).Error("error getting GCS path for prow job URL")
+				return err
+			}
+			gcsJobRun := gcs.NewGCSJobRun(v.bkt, path)
+			allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
 			var clusterMatches []string
 			if len(allMatches) > 0 {
 				clusterMatches = allMatches[0]
 			}
+			jLog.WithField("prowJobURL", jlr.URL.StringVal).Debugf("Found %d cluster-data files: %s", len(clusterMatches), clusterMatches)
 
-			clusterData := pl.getClusterData(ctx, path, clusterMatches)
-		*/
+			if len(clusterMatches) > 0 {
+				clusterData := prowloader.GetClusterData(ctx, v.bkt, path, clusterMatches)
+				jLog.Debugf("loaded cluster data: %+v", clusterData)
+				// TODO: do something with it
+			}
+		}
 
+		variants := v.GetVariantsForJob(jLog, jlr.JobName)
 		count++
+		jLog.WithField("variants", variants).WithField("count", count).Info("calculated variants")
 	}
-	log.WithField("count", count).Info("loaded primary job list")
+	dur := time.Now().Sub(start)
+	log.WithField("count", count).Infof("processed primary job list in %s", dur)
 
 	// TODO: load the current registry job to variant mappings. join and then iterate building out go structure.
 	// keep variants list sorted for comparisons.

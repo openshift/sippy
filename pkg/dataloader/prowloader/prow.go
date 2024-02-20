@@ -376,9 +376,9 @@ func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 	return &url.URL{}
 }
 
-func (pl *ProwLoader) getClusterData(ctx context.Context, path string, matches []string) models.ClusterData {
+func GetClusterData(ctx context.Context, bkt *storage.BucketHandle, path string, matches []string) models.ClusterData {
 	// get the variant cluster data for this job run
-	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
+	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 	cd := models.ClusterData{}
 
 	// return empty struct to pass along
@@ -389,11 +389,11 @@ func (pl *ProwLoader) getClusterData(ctx context.Context, path string, matches [
 
 	bytes, err := gcsJobRun.GetContent(ctx, match)
 	if err != nil {
-		log.WithError(err).Errorf("Failed to get prow job variant data for: %s", match)
+		log.WithError(err).Errorf("Failed to get prow job variant data for: %s, returning empty cluster data and proceeding", match)
 	} else if bytes != nil {
 		err := json.Unmarshal(bytes, &cd)
 		if err != nil {
-			log.WithError(err).Errorf("Failed to unmarshal prow cluster data for: %s", match)
+			log.WithError(err).Errorf("Failed to unmarshal prow cluster data for: %s, returning empty cluster data and proceeding", match)
 		}
 	}
 	return cd
@@ -528,7 +528,7 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 		junitMatches = allMatches[1]
 	}
 
-	clusterData := pl.getClusterData(ctx, path, clusterMatches)
+	clusterData := GetClusterData(ctx, pl.bkt, path, clusterMatches)
 
 	// Lock the whole prow job block to avoid trying to create the pj multiple times concurrently\
 	// (resulting in a DB error)
