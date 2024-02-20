@@ -629,7 +629,7 @@ function TestTable(props) {
               <IconButton
                 target="_blank"
                 href={
-                  'https://search.ci.openshift.org/?search=' +
+                  'https://search.dptools.openshift.org/?search=' +
                   safeEncodeURIComponent(escapeRegex(params.row.name)) +
                   '&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
                 }
