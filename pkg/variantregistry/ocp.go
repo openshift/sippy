@@ -298,7 +298,7 @@ const (
 	VariantScheduler    = "Scheduler"    // realtime / standard
 	VariantSecurityMode = "SecurityMode" // fips / default
 	VariantSuite        = "Suite"        // parallel / serial
-	VariantTopology     = "Topology"     // ha / single-node / compact / external
+	VariantTopology     = "Topology"     // ha / single / compact / external
 	VariantUpgrade      = "Upgrade"
 )
 
@@ -361,7 +361,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName, re
 	// Topology
 	// external == hypershift hosted
 	if singleNodeRegex.MatchString(jobName) {
-		variants[VariantTopology] = "single-node"
+		variants[VariantTopology] = "single" // previously single-node
 	} else if hypershiftRegex.MatchString(jobName) {
 		variants[VariantTopology] = "hypershift" // or should this be external?
 	} else if compactRegex.MatchString(jobName) {
