@@ -113,9 +113,17 @@ func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 			jLog.WithField("prowJobURL", jlr.URL.StringVal).Debugf("Found %d cluster-data files: %s", len(clusterMatches), clusterMatches)
 
 			if len(clusterMatches) > 0 {
-				clusterData := prowloader.GetClusterData(ctx, v.bkt, path, clusterMatches)
-				jLog.Debugf("loaded cluster data: %+v", clusterData)
-				// TODO: do something with it
+				clusterDataBytes, err := prowloader.GetClusterDataBytes(ctx, v.bkt, path, clusterMatches)
+				if err != nil {
+					jLog.WithError(err).Error("unable to read cluster data file, proceeding without")
+				}
+				clusterData, err := prowloader.ParseVariantDataFile(clusterDataBytes)
+				if err != nil {
+					jLog.WithError(err).Error("unable to parse cluster data file, proceeding without")
+				} else {
+					jLog.Debugf("loaded cluster data: %+v", clusterData)
+					// TODO: do something with it
+				}
 			}
 		}
 
@@ -239,14 +247,15 @@ const (
 	VariantInstaller     = "Installer"  // ipi / upi / assisted
 	VariantNetwork       = "Network"
 	VariantNetworkAccess = "NetworkAccess" // disconnected / proxy / standard
-	VariantNetworkStack  = "NetworkStack"  // ipv4 / ipv6 / dual
-	VariantOwner         = "Owner"         // eng / osd
-	VariantPlatform      = "Platform"
-	VariantScheduler     = "Scheduler"    // realtime / standard
-	VariantSecurityMode  = "SecurityMode" // fips / default
-	VariantSuite         = "Suite"        // parallel / serial
-	VariantTopology      = "Topology"     // ha / single-node / compact / external
-	VariantUpgrade       = "Upgrade"
+	// TODO
+	VariantNetworkStack = "NetworkStack" // ipv4 / ipv6 / dual
+	VariantOwner        = "Owner"        // eng / osd
+	VariantPlatform     = "Platform"
+	VariantScheduler    = "Scheduler"    // realtime / standard
+	VariantSecurityMode = "SecurityMode" // fips / default
+	VariantSuite        = "Suite"        // parallel / serial
+	VariantTopology     = "Topology"     // ha / single-node / compact / external
+	VariantUpgrade      = "Upgrade"
 )
 
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName, release string) map[string]string {

@@ -376,27 +376,62 @@ func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 	return &url.URL{}
 }
 
-func GetClusterData(ctx context.Context, bkt *storage.BucketHandle, path string, matches []string) models.ClusterData {
+func GetClusterDataBytes(ctx context.Context, bkt *storage.BucketHandle, path string, matches []string) ([]byte, error) {
 	// get the variant cluster data for this job run
 	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
-	cd := models.ClusterData{}
 
 	// return empty struct to pass along
 	match := findMostRecentDateTimeMatch(matches)
 	if match == "" {
-		return cd
+		return []byte{}, nil
 	}
 
 	bytes, err := gcsJobRun.GetContent(ctx, match)
 	if err != nil {
-		log.WithError(err).Errorf("Failed to get prow job variant data for: %s, returning empty cluster data and proceeding", match)
-	} else if bytes != nil {
-		err := json.Unmarshal(bytes, &cd)
-		if err != nil {
-			log.WithError(err).Errorf("Failed to unmarshal prow cluster data for: %s, returning empty cluster data and proceeding", match)
+		log.WithError(err).Errorf("failed to read cluster-data bytes for: %s", match)
+		return []byte{}, err
+	} else if bytes == nil {
+		log.Warnf("empty cluster-data bytes found for: %s", match)
+		return []byte{}, nil
+	}
+
+	return bytes, nil
+}
+
+func GetClusterData(ctx context.Context, bkt *storage.BucketHandle, path string, matches []string) models.ClusterData {
+	cd := models.ClusterData{}
+	bytes, err := GetClusterDataBytes(ctx, bkt, path, matches)
+	if err != nil {
+		log.WithError(err).Error("failed to get prow job variant data, returning empty cluster data and proceeding")
+		return cd
+	} else if bytes == nil {
+		log.Warnf("empty job variant data file, returning empty cluster data and proceeding")
+		return cd
+	}
+	err = json.Unmarshal(bytes, &cd)
+	if err != nil {
+		log.WithError(err).Error("failed to unmarshal cluster-data bytes, returning empty cluster data")
+		return cd
+	}
+
+	return cd
+}
+
+func ParseVariantDataFile(bytes []byte) (map[string]string, error) {
+	rawJsonMap := make(map[string]interface{})
+	err := json.Unmarshal(bytes, &rawJsonMap)
+	if err != nil {
+		log.WithError(err).Errorf("failed to unmarshal prow cluster data")
+		return map[string]string{}, err
+	}
+	// Convert the raw json map to string->string, discarding anything that doesn't parse to a string.
+	clusterData := map[string]string{}
+	for k, v := range rawJsonMap {
+		if sv, ok := v.(string); ok {
+			clusterData[k] = sv
 		}
 	}
-	return cd
+	return clusterData, nil
 }
 
 func findMostRecentDateTimeMatch(names []string) string {
