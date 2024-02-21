@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change`
+	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
