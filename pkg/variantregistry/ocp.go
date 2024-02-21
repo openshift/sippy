@@ -97,6 +97,7 @@ func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 			log.WithError(err).Error("error parsing prowjob name from bigquery")
 			return err
 		}
+		clusterData := map[string]string{}
 		jLog := log.WithField("job", jlr.JobName)
 		if jlr.URL.Valid {
 			path, err := prowloader.GetGCSPathForProwJobURL(jLog, jlr.URL.StringVal)
@@ -117,7 +118,7 @@ func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 				if err != nil {
 					jLog.WithError(err).Error("unable to read cluster data file, proceeding without")
 				}
-				clusterData, err := prowloader.ParseVariantDataFile(clusterDataBytes)
+				clusterData, err = prowloader.ParseVariantDataFile(clusterDataBytes)
 				if err != nil {
 					jLog.WithError(err).Error("unable to parse cluster data file, proceeding without")
 				} else {
@@ -127,7 +128,7 @@ func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 			}
 		}
 
-		variants := v.GetVariantsForJob(jLog, jlr.JobName)
+		variants := v.CalculateVariantsForJob(jLog, jlr.JobName, clusterData)
 		count++
 		jLog.WithField("variants", variants).WithField("count", count).Info("calculated variants")
 	}
@@ -142,8 +143,51 @@ func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 	return nil
 }
 
-func (v *OCPVariantLoader) GetVariantsForJob(jLog logrus.FieldLogger, jobName string) map[string]string {
+// fileVariantsToIgnore are values in the cluster-data.json that vary by run, and are not consistent for the job itself.
+// These are unsuited for variants.
+var fileVariantsToIgnore = map[string]bool{
+	"CloudRegion":        true,
+	"CloudZone":          true,
+	"MasterNodesUpdated": true,
+}
+
+func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobName string, variantFile map[string]string) map[string]string {
+
+	// Calculate variants based on job name:
 	variants := v.IdentifyVariants(jLog, jobName, "0.0")
+
+	// Carefully merge in the values read from cluster-data.json or any arbitrary variants data file
+	// containing a map. Some properties will be ignored as they are job RUN specific, not job specific.
+	// Others we need to carefully decide who wins in the event is a mismatch.
+	for k, v := range variantFile {
+		if fileVariantsToIgnore[k] {
+			continue
+		}
+		jnv, ok := variants[k]
+		if !ok {
+			// Job name did not return this variant, use the value from the file
+			variants[k] = v
+			continue
+		} else if jnv != v {
+			// Check and log mismatches between what we read from the file vs determined from job name:
+			jLog.WithFields(logrus.Fields{
+				"variant":  k,
+				"fromJob":  jnv,
+				"fromFile": v,
+			}).Warnf("variant mismatch")
+
+			switch k {
+			case VariantArch:
+				// Job name identification wins for arch, heterogenous jobs can show cluster data with
+				// amd64 as it's read from a single node.
+				jLog.Warnf("using %s from job name", k)
+				continue
+			default:
+				jLog.Warnf("using %s from job name", k)
+				variants[k] = v
+			}
+		}
+	}
 
 	return variants
 }
@@ -241,7 +285,7 @@ var (
 
 const (
 	VariantAggregation   = "Aggregation" // aggregated or none
-	VariantArch          = "Arch"
+	VariantArch          = "Architecture"
 	VariantControlPlane  = "ControlPlane"
 	VariantFeatureSet    = "FeatureSet" // techpreview / standard
 	VariantInstaller     = "Installer"  // ipi / upi / assisted
