@@ -180,7 +180,7 @@ export const getColumns = (config, openBugzillaDialog) => {
               target="_blank"
               startIcon={<BugReport />}
               href={
-                'https://search.ci.openshift.org/?search=' +
+                'https://search.dptools.openshift.org/?search=' +
                 safeEncodeURIComponent(escapeRegex(params.row.name)) +
                 '&maxAge=336h&context=1&type=bug&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job'
               }

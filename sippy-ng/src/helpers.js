@@ -93,7 +93,7 @@ export function escapeRegex(str) {
 
 export function searchCI(query) {
   query = safeEncodeURIComponent(escapeRegex(query))
-  return `https://search.ci.openshift.org/?search=${query}&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job`
+  return `https://search.dptools.openshift.org/?search=${query}&maxAge=336h&context=1&type=bug%2Bjunit&name=&excludeName=&maxMatches=5&maxBytes=20971520&groupBy=job`
 }
 
 // A set of functions for getting paths to specific tests and jobs:

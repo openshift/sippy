@@ -139,7 +139,7 @@ func findBugs(isRegex bool, testNames []string) (map[string][]jira.Issue, error)
 	}
 
 	bzQueryStart := time.Now()
-	searchURL := "https://search.ci.openshift.org/v2/search"
+	searchURL := "https://search.dptools.openshift.org/v2/search"
 
 	// Set the timeout to something other than 0, which is the default and means no timeout.
 	// This prevents waiting for too long in case search.ci is responding slower than usual.
