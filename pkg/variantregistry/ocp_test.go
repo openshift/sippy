@@ -38,6 +38,26 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
+			job: "periodic-ci-openshift-release-master-nightly-4.16-e2e-aws-ovn-single-node-serial",
+			variantsFile: map[string]string{
+				"Topology": "single", // should be ignored
+			},
+			expected: map[string]string{
+				VariantArch:          "amd64",
+				VariantInstaller:     "ipi",
+				VariantFeatureSet:    "default",
+				VariantPlatform:      "aws",
+				VariantNetwork:       "ovn",
+				VariantNetworkAccess: "default",
+				VariantOwner:         "eng",
+				VariantScheduler:     "default",
+				VariantTopology:      "single",
+				VariantSecurityMode:  "default",
+				VariantSuite:         "serial",
+				VariantUpgrade:       "none",
+			},
+		},
+		{
 			job: "periodic-ci-openshift-release-master-nightly-4.16-e2e-vsphere-ovn-upi-serial",
 			expected: map[string]string{
 				VariantArch:          "amd64",
