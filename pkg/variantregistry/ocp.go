@@ -183,7 +183,7 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 				jLog.Warnf("using %s from job name", k)
 				continue
 			default:
-				jLog.Warnf("using %s from job name", k)
+				jLog.Warnf("using %s from job run variants file", k)
 				variants[k] = v
 			}
 		}
@@ -286,7 +286,6 @@ var (
 const (
 	VariantAggregation   = "Aggregation" // aggregated or none
 	VariantArch          = "Architecture"
-	VariantControlPlane  = "ControlPlane"
 	VariantFeatureSet    = "FeatureSet" // techpreview / standard
 	VariantInstaller     = "Installer"  // ipi / upi / assisted
 	VariantNetwork       = "Network"
@@ -363,17 +362,13 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName, re
 	if singleNodeRegex.MatchString(jobName) {
 		variants[VariantTopology] = "single" // previously single-node
 	} else if hypershiftRegex.MatchString(jobName) {
-		variants[VariantTopology] = "hypershift" // or should this be external?
+		variants[VariantTopology] = "external"
 	} else if compactRegex.MatchString(jobName) {
 		variants[VariantTopology] = "compact"
+	} else if microshiftRegex.MatchString(jobName) { // No jobs for this in 4.15 - 4.16 that I can see.
+		variants[VariantTopology] = "microshift"
 	} else {
 		variants[VariantTopology] = "ha"
-	}
-
-	if hypershiftRegex.MatchString(jobName) {
-		variants[VariantControlPlane] = "hypershift" // or should this be external?
-	} else if microshiftRegex.MatchString(jobName) {
-		variants[VariantControlPlane] = "microshift" // or should this be external?
 	}
 
 	// TODO: suite may not be the right word here

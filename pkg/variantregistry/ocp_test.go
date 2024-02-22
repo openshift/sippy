@@ -38,6 +38,23 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
+			job: "periodic-ci-openshift-hypershift-release-4.16-periodics-e2e-aws-ovn-conformance",
+			expected: map[string]string{
+				VariantArch:          "amd64",
+				VariantInstaller:     "ipi", // Is this ok for hypershift?
+				VariantFeatureSet:    "default",
+				VariantPlatform:      "aws",
+				VariantNetwork:       "ovn",
+				VariantNetworkAccess: "default",
+				VariantOwner:         "eng",
+				VariantScheduler:     "default",
+				VariantTopology:      "external",
+				VariantSecurityMode:  "default",
+				VariantSuite:         "unknown",
+				VariantUpgrade:       "none",
+			},
+		},
+		{
 			job: "periodic-ci-openshift-release-master-nightly-4.16-e2e-aws-ovn-single-node-serial",
 			variantsFile: map[string]string{
 				"Topology": "single", // should be ignored
