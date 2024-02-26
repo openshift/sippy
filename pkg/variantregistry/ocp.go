@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 	"regexp"
+	"strconv"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -154,7 +155,7 @@ var fileVariantsToIgnore = map[string]bool{
 func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobName string, variantFile map[string]string) map[string]string {
 
 	// Calculate variants based on job name:
-	variants := v.IdentifyVariants(jLog, jobName, "0.0")
+	variants := v.IdentifyVariants(jLog, jobName)
 
 	// Carefully merge in the values read from cluster-data.json or any arbitrary variants data file
 	// containing a map. Some properties will be ignored as they are job RUN specific, not job specific.
@@ -291,17 +292,23 @@ const (
 	VariantNetwork       = "Network"
 	VariantNetworkAccess = "NetworkAccess" // disconnected / proxy / standard
 	// TODO
-	VariantNetworkStack = "NetworkStack" // ipv4 / ipv6 / dual
-	VariantOwner        = "Owner"        // eng / osd
-	VariantPlatform     = "Platform"
-	VariantScheduler    = "Scheduler"    // realtime / standard
-	VariantSecurityMode = "SecurityMode" // fips / default
-	VariantSuite        = "Suite"        // parallel / serial
-	VariantTopology     = "Topology"     // ha / single / compact / external
-	VariantUpgrade      = "Upgrade"
+	VariantNetworkStack     = "NetworkStack" // ipv4 / ipv6 / dual
+	VariantOwner            = "Owner"        // eng / osd
+	VariantPlatform         = "Platform"
+	VariantScheduler        = "Scheduler"    // realtime / standard
+	VariantSecurityMode     = "SecurityMode" // fips / default
+	VariantSuite            = "Suite"        // parallel / serial
+	VariantTopology         = "Topology"     // ha / single / compact / external
+	VariantUpgrade          = "Upgrade"
+	VariantRelease          = "Release"
+	VariantReleaseMinor     = "ReleaseMinor"
+	VariantReleaseMicro     = "ReleaseMicro"
+	VariantFromRelease      = "FromRelease"
+	VariantFromReleaseMinor = "FromReleaseMinor"
+	VariantFromReleaseMicro = "FromReleaseMicro"
 )
 
-func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName, release string) map[string]string {
+func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
 	variants := map[string]string{}
 
 	/*
@@ -333,6 +340,10 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName, re
 		// and sippy will need to know to strip out other variants if it's an aggregated job
 	}
 
+	release, fromRelease := extractReleases(jobName)
+	variants[VariantRelease] = release
+	variants[VariantFromRelease] = fromRelease
+
 	determinePlatform(jLog, variants, jobName)
 
 	arch := determineArchitecture(jobName)
@@ -341,7 +352,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName, re
 	}
 
 	// Network
-	network := determineNetwork(jLog, jobName, release)
+	network := determineNetwork(jLog, jobName, fromRelease)
 	if network != "" {
 		variants[VariantNetwork] = network
 	}
@@ -456,6 +467,34 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 	variants[VariantPlatform] = platform
 }
 
+func extractReleases(jobName string) (release, fromRelease string) {
+	re := regexp.MustCompile(`\d+\.\d+`)
+	matches := re.FindAllString(jobName, -1)
+
+	if len(matches) > 0 {
+		minRelease := matches[0]
+		maxRelease := matches[0]
+
+		for _, match := range matches {
+			matchNum, _ := strconv.ParseFloat(match, 64)
+			minNum, _ := strconv.ParseFloat(minRelease, 64)
+			maxNum, _ := strconv.ParseFloat(maxRelease, 64)
+
+			if matchNum < minNum {
+				minRelease = match
+			}
+
+			if matchNum > maxNum {
+				maxRelease = match
+			}
+		}
+
+		release = maxRelease
+		fromRelease = minRelease
+	}
+
+	return release, fromRelease
+}
 func determineArchitecture(jobName string) string {
 	if arm64Regex.MatchString(jobName) {
 		return "arm64"
