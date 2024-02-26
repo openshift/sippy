@@ -616,7 +616,7 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 		}
 
 		// want empty Name indicating a folder
-		if len(attrs.Name) > 0 {
+		if attrs == nil || len(attrs.Name) > 0 {
 			continue
 		}
 
