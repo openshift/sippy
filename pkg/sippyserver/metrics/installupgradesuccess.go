@@ -17,24 +17,24 @@ import (
 
 var (
 	installSuccessMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_install_success_last",
+		Name: installSuccessMetricName,
 		Help: "Successful install percentage over a period for variants we're interested in, and All.",
-	}, []string{"release", "variant", "period"})
+	}, []string{"release", "variant", "period", "releaseStatus"})
 
 	upgradeSuccessMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_upgrade_success_last",
+		Name: upgradeSuccessMetricName,
 		Help: "Successful upgrade percentage over a period for variants we're interested in, and All.",
-	}, []string{"release", "variant", "period"})
+	}, []string{"release", "variant", "period", "releaseStatus"})
 
 	installSuccessDeltaToPrevWeekMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_install_success_delta_last",
+		Name: installSuccessDeltaToPrevWeekMetricName,
 		Help: "Change in successful install percentage over the last 7 days vs previous 7 days. If positive we're improving.",
-	}, []string{"release", "variant", "period"})
+	}, []string{"release", "variant", "period", "releaseStatus"})
 
 	upgradeSuccessDeltaToPrevWeekMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_upgrade_success_delta_last",
+		Name: upgradeSuccessDeltaToPrevWeekMetricName,
 		Help: "Change in successful upgrade percentage over the last 7 days vs previous 7 days. If positive we're improving.",
-	}, []string{"release", "variant", "period"})
+	}, []string{"release", "variant", "period", "releaseStatus"})
 )
 
 // refreshInstallSuccessMetrics publishes metrics for the install success test for specific variants we care about.
@@ -49,7 +49,8 @@ func refreshUpgradeSuccessMetrics(dbc *db.DB) error {
 		testidentification.UpgradeTestName, upgradeSuccessMetric, upgradeSuccessDeltaToPrevWeekMetric, testidentification.DefaultExcludedVariants)
 }
 
-func refreshTestSuccessMetrics(dbc *db.DB, testName string, successMetric, successDeltaMetric *prometheus.GaugeVec, excludedVariants []string) error {
+func refreshTestSuccessMetrics(dbc *db.DB, testName string, successMetric, successDeltaMetric *prometheus.GaugeVec,
+	excludedVariants []string) error {
 	releases, err := query.ReleasesFromDB(dbc)
 	if err != nil {
 		return err
@@ -70,8 +71,9 @@ func refreshTestSuccessMetrics(dbc *db.DB, testName string, successMetric, succe
 			}
 
 			for variant, testReport := range testVariants {
-				successMetric.WithLabelValues(release.Release, variant, string(reportType)).Set(math.Round(testReport.CurrentPassPercentage*100) / 100)
-				successDeltaMetric.WithLabelValues(release.Release, variant, string(reportType)).Set(
+				releaseStatus := getReleaseStatus(releases, release.Release)
+				successMetric.WithLabelValues(release.Release, variant, string(reportType), releaseStatus).Set(math.Round(testReport.CurrentPassPercentage*100) / 100)
+				successDeltaMetric.WithLabelValues(release.Release, variant, string(reportType), releaseStatus).Set(
 					math.Round((testReport.CurrentPassPercentage-testReport.PreviousPassPercentage)*100) / 100)
 			}
 		}

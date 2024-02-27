@@ -7,6 +7,9 @@ import (
 
 type Release struct {
 	Release string
+	// Status is the release status defined in the BigQuery Releases table. SQL does not have
+	// this field
+	Status string
 }
 
 func ReleasesFromDB(dbClient *db.DB) ([]Release, error) {

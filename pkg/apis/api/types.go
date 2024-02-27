@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"time"
 
+	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -1027,4 +1029,30 @@ type DisruptionReportRow struct {
 	Topology                 string  `json:"topology"`
 	Architecture             string  `json:"architecture"`
 	Relevance                int     `json:"relevance"`
+}
+
+type ReleaseRow struct {
+	// Release contains the X.Y version of the payload, e.g. 4.8
+	Release string `bigquery:"release"`
+
+	// Major contains the major part of the release, e.g. 4
+	Major int `bigquery:"Major"`
+
+	// Minor contains the minor part of the release, e.g. 8
+	Minor int `bigquery:"Minor"`
+
+	// GADate contains GA date for the release, i.e. the -YYYY-MM-DD
+	GADate bigquery.NullDate `bigquery:"GADate"`
+
+	// DevelStartDate contains start date of development of the release, i.e. the -YYYY-MM-DD
+	DevelStartDate civil.Date `bigquery:"DevelStartDate"`
+
+	// Product contains the product for the release, e.g. OCP
+	Product bigquery.NullString `bigquery:"Product"`
+
+	// Patch contains the patch version number of the release, e.g. 1
+	Patch bigquery.NullInt64 `bigquery:"Patch"`
+
+	// ReleaseStatus contains the status of the release, e.g. Full Support
+	ReleaseStatus bigquery.NullString `bigquery:"ReleaseStatus"`
 }
