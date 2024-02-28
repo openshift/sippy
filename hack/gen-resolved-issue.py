@@ -12,14 +12,14 @@ import requests
 # The main test report, taken from top level component readiness by monitoring the dev console in firefox to fetch the API request
 # made to component readiness. We'll parse through everything in this report looking for the specific test we're flagging for mass
 # attribution.
-TEST_REPORT = "https://sippy.dptools.openshift.org/api/component_readiness?baseEndTime=2023-10-31T23:59:59Z&baseRelease=4.14&baseStartTime=2023-10-04T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-02-28T23:59:59Z&sampleRelease=4.15&sampleStartTime=2024-02-22T00:00:00Z"
+TEST_REPORT = "https://sippy.dptools.openshift.org/api/component_readiness?baseEndTime=2023-10-31T23:59:59Z&baseRelease=4.14&baseStartTime=2023-10-04T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-02-28T23:59:59Z&sampleRelease=4.16&sampleStartTime=2024-02-22T00:00:00Z"
 
 # the test we're mass attributing to a known issue.
 TEST_ID = "openshift-tests:c1f54790201ec8f4241eca902f854b79"
 
 # Template for the regression we're ignoring failed job runs for. Update the Description, Jira, and ResolutionDate below.
 REGRESSION_TEMPLATE = '''
-	mustAddResolvedIssue(release415, ResolvedIssue{
+	mustAddResolvedIssue(release416, ResolvedIssue{
 		TestID:   "%s",
 		TestName: "%s",
 		Variant: apitype.ComponentReportColumnIdentification{
