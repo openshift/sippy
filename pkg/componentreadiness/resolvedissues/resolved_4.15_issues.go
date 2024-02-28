@@ -335,32 +335,45 @@ func init() {
 			Upgrade:  "upgrade-micro",
 			Arch:     "amd64",
 			Platform: "aws",
+			Variant:  "standard",
 		},
 		Issue: Issue{
 			IssueType: "Infrastructure",
 			Infrastructure: &InfrastructureIssue{
 				Description:    "Loki outage caused ci logging pods to never go ready and eventually a DaemonSetRolloutStuck alert to fire",
 				JiraURL:        "https://issues.redhat.com/browse/TRT-1537",
-				ResolutionDate: mustTime("2024-02-27T16:00:00Z"), // issue on-going but fix about to merge, adding 2 hours to now
+				ResolutionDate: mustTime("2024-02-28T13:00:00Z"),
 			},
 			PayloadBug: nil,
 		},
 		ImpactedJobRuns: []JobRun{
 			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762311461440327680",
-				StartTime: mustTime("2024-02-27T02:59:33Z"),
-			},
-			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762273129729626112",
-				StartTime: mustTime("2024-02-27T00:27:14Z"),
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762193523458707456",
+				StartTime: mustTime("2024-02-26T19:10:48Z"),
 			},
 			{
 				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762232155330580480",
-				StartTime: mustTime("2024-02-26T21:44:28Z"),
+				StartTime: mustTime("2024-02-26T21:44:20Z"),
 			},
 			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762193523458707456",
-				StartTime: mustTime("2024-02-26T19:10:54Z"),
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762273129729626112",
+				StartTime: mustTime("2024-02-27T00:27:10Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762311461440327680",
+				StartTime: mustTime("2024-02-27T02:59:29Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762653931088908288",
+				StartTime: mustTime("2024-02-28T01:40:20Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762686134980186112",
+				StartTime: mustTime("2024-02-28T03:48:17Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-aws-ovn-upgrade/1762746439181537280",
+				StartTime: mustTime("2024-02-28T07:47:55Z"),
 			},
 		},
 	})
@@ -373,13 +386,14 @@ func init() {
 			Upgrade:  "upgrade-minor",
 			Arch:     "amd64",
 			Platform: "aws",
+			Variant:  "standard",
 		},
 		Issue: Issue{
 			IssueType: "Infrastructure",
 			Infrastructure: &InfrastructureIssue{
 				Description:    "Loki outage caused ci logging pods to never go ready and eventually a DaemonSetRolloutStuck alert to fire",
 				JiraURL:        "https://issues.redhat.com/browse/TRT-1537",
-				ResolutionDate: mustTime("2024-02-27T16:00:00Z"), // issue on-going but fix about to merge, adding 2 hours to now
+				ResolutionDate: mustTime("2024-02-28T13:00:00Z"),
 			},
 			PayloadBug: nil,
 		},
@@ -496,6 +510,66 @@ func init() {
 				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762414007697805312",
 				StartTime: mustTime("2024-02-27T09:46:57Z"),
 			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762631056541880320",
+				StartTime: mustTime("2024-02-28T00:09:26Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762631054864158720",
+				StartTime: mustTime("2024-02-28T00:09:25Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762631049080213504",
+				StartTime: mustTime("2024-02-28T00:09:24Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762631054029492224",
+				StartTime: mustTime("2024-02-28T00:09:25Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762631057384935424",
+				StartTime: mustTime("2024-02-28T00:09:26Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762631055711408128",
+				StartTime: mustTime("2024-02-28T00:09:26Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762631051600990208",
+				StartTime: mustTime("2024-02-28T00:09:25Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762631049919074304",
+				StartTime: mustTime("2024-02-28T00:09:24Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762754477615484928",
+				StartTime: mustTime("2024-02-28T08:19:52Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762754477695176704",
+				StartTime: mustTime("2024-02-28T08:19:52Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762754477925863424",
+				StartTime: mustTime("2024-02-28T08:19:52Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762754477737119744",
+				StartTime: mustTime("2024-02-28T08:19:52Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762754477846171648",
+				StartTime: mustTime("2024-02-28T08:19:52Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762754477649039360",
+				StartTime: mustTime("2024-02-28T08:19:52Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-ovn-upgrade/1762754477883920384",
+				StartTime: mustTime("2024-02-28T08:19:52Z"),
+			},
 		},
 	})
 
@@ -507,13 +581,14 @@ func init() {
 			Upgrade:  "upgrade-micro",
 			Arch:     "amd64",
 			Platform: "aws",
+			Variant:  "standard",
 		},
 		Issue: Issue{
 			IssueType: "Infrastructure",
 			Infrastructure: &InfrastructureIssue{
 				Description:    "Loki outage caused ci logging pods to never go ready and eventually a DaemonSetRolloutStuck alert to fire",
 				JiraURL:        "https://issues.redhat.com/browse/TRT-1537",
-				ResolutionDate: mustTime("2024-02-27T16:00:00Z"), // issue on-going but fix about to merge, adding 2 hours to now
+				ResolutionDate: mustTime("2024-02-28T13:00:00Z"),
 			},
 			PayloadBug: nil,
 		},
@@ -571,11 +646,11 @@ func init() {
 				StartTime: mustTime("2024-02-27T05:54:43Z"),
 			},
 			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762355559312396288",
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762355560168034304",
 				StartTime: mustTime("2024-02-27T05:54:42Z"),
 			},
 			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762355560168034304",
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762355559312396288",
 				StartTime: mustTime("2024-02-27T05:54:42Z"),
 			},
 			{
@@ -586,50 +661,41 @@ func init() {
 				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762355561858338816",
 				StartTime: mustTime("2024-02-27T05:54:42Z"),
 			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762653959853445120",
+				StartTime: mustTime("2024-02-28T01:40:26Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762653961531166720",
+				StartTime: mustTime("2024-02-28T01:40:27Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762653954820280320",
+				StartTime: mustTime("2024-02-28T01:40:25Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762653955654946816",
+				StartTime: mustTime("2024-02-28T01:40:25Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762653958179917824",
+				StartTime: mustTime("2024-02-28T01:40:26Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762653956921626624",
+				StartTime: mustTime("2024-02-28T01:40:26Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762653953142558720",
+				StartTime: mustTime("2024-02-28T01:40:25Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-e2e-aws-sdn-upgrade/1762653960688111616",
+				StartTime: mustTime("2024-02-28T01:40:26Z"),
+			},
 		},
 	})
 
-	mustAddResolvedIssue(release415, ResolvedIssue{
-		TestID:   "openshift-tests:c1f54790201ec8f4241eca902f854b79",
-		TestName: "[sig-instrumentation] Prometheus [apigroup:image.openshift.io] when installed on the cluster shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early][apigroup:config.openshift.io] [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
-		Variant: apitype.ComponentReportColumnIdentification{
-			Network:  "sdn",
-			Upgrade:  "upgrade-minor",
-			Arch:     "amd64",
-			Platform: "aws",
-		},
-		Issue: Issue{
-			IssueType: "Infrastructure",
-			Infrastructure: &InfrastructureIssue{
-				Description:    "Loki outage caused ci logging pods to never go ready and eventually a DaemonSetRolloutStuck alert to fire",
-				JiraURL:        "https://issues.redhat.com/browse/TRT-1537",
-				ResolutionDate: mustTime("2024-02-27T16:00:00Z"), // issue on-going but fix about to merge, adding 2 hours to now
-			},
-			PayloadBug: nil,
-		},
-		ImpactedJobRuns: []JobRun{
-			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-sdn-upgrade/1762167351265988608",
-				StartTime: mustTime("2024-02-26T17:26:50Z"),
-			},
-			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-sdn-upgrade/1762290643264081920",
-				StartTime: mustTime("2024-02-27T01:36:45Z"),
-			},
-			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-aws-sdn-upgrade/1762413986772422656",
-				StartTime: mustTime("2024-02-27T09:46:53Z"),
-			},
-			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-upgrade-from-stable-4.14-e2e-aws-sdn-upgrade/1762193534250651648",
-				StartTime: mustTime("2024-02-26T19:10:51Z"),
-			},
-			{
-				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-nightly-4.15-upgrade-from-stable-4.14-e2e-aws-sdn-upgrade/1762355584499191808",
-				StartTime: mustTime("2024-02-27T05:54:47Z"),
-			},
-		},
-	})
 	mustAddResolvedIssue(release415, ResolvedIssue{
 		TestID:   "openshift-tests:c1f54790201ec8f4241eca902f854b79",
 		TestName: "[sig-instrumentation] Prometheus [apigroup:image.openshift.io] when installed on the cluster shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early][apigroup:config.openshift.io] [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
@@ -638,13 +704,14 @@ func init() {
 			Upgrade:  "upgrade-micro",
 			Arch:     "amd64",
 			Platform: "azure",
+			Variant:  "standard",
 		},
 		Issue: Issue{
 			IssueType: "Infrastructure",
 			Infrastructure: &InfrastructureIssue{
 				Description:    "Loki outage caused ci logging pods to never go ready and eventually a DaemonSetRolloutStuck alert to fire",
 				JiraURL:        "https://issues.redhat.com/browse/TRT-1537",
-				ResolutionDate: mustTime("2024-02-27T16:00:00Z"), // issue on-going but fix about to merge, adding 2 hours to now
+				ResolutionDate: mustTime("2024-02-28T13:00:00Z"),
 			},
 			PayloadBug: nil,
 		},
@@ -709,8 +776,49 @@ func init() {
 				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762355592095076352",
 				StartTime: mustTime("2024-02-27T05:54:49Z"),
 			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653983341547520",
+				StartTime: mustTime("2024-02-28T01:40:31Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653990652219392",
+				StartTime: mustTime("2024-02-28T01:40:34Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653986705379328",
+				StartTime: mustTime("2024-02-28T01:40:32Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653986281754624",
+				StartTime: mustTime("2024-02-28T01:40:32Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653984188796928",
+				StartTime: mustTime("2024-02-28T01:40:32Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653988982886400",
+				StartTime: mustTime("2024-02-28T01:40:33Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653987607154688",
+				StartTime: mustTime("2024-02-28T01:40:33Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653982083256320",
+				StartTime: mustTime("2024-02-28T01:40:31Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653982498492416",
+				StartTime: mustTime("2024-02-28T01:40:31Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-azure-ovn-upgrade/1762653980829159424",
+				StartTime: mustTime("2024-02-28T01:40:31Z"),
+			},
 		},
 	})
+
 	mustAddResolvedIssue(release415, ResolvedIssue{
 		TestID:   "openshift-tests:c1f54790201ec8f4241eca902f854b79",
 		TestName: "[sig-instrumentation] Prometheus [apigroup:image.openshift.io] when installed on the cluster shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early][apigroup:config.openshift.io] [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
@@ -719,13 +827,14 @@ func init() {
 			Upgrade:  "upgrade-minor",
 			Arch:     "amd64",
 			Platform: "azure",
+			Variant:  "standard",
 		},
 		Issue: Issue{
 			IssueType: "Infrastructure",
 			Infrastructure: &InfrastructureIssue{
 				Description:    "Loki outage caused ci logging pods to never go ready and eventually a DaemonSetRolloutStuck alert to fire",
 				JiraURL:        "https://issues.redhat.com/browse/TRT-1537",
-				ResolutionDate: mustTime("2024-02-27T16:00:00Z"), // issue on-going but fix about to merge, adding 2 hours to now
+				ResolutionDate: mustTime("2024-02-28T13:00:00Z"),
 			},
 			PayloadBug: nil,
 		},
@@ -818,6 +927,58 @@ func init() {
 				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762413986889863168",
 				StartTime: mustTime("2024-02-27T09:46:53Z"),
 			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762631059897323520",
+				StartTime: mustTime("2024-02-28T00:09:27Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762631059058462720",
+				StartTime: mustTime("2024-02-28T00:09:26Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762631063261155328",
+				StartTime: mustTime("2024-02-28T00:09:27Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762631064959848448",
+				StartTime: mustTime("2024-02-28T00:09:28Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762631062984331264",
+				StartTime: mustTime("2024-02-28T00:09:27Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762631061575045120",
+				StartTime: mustTime("2024-02-28T00:09:27Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762631066608209920",
+				StartTime: mustTime("2024-02-28T00:09:28Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762754482556375040",
+				StartTime: mustTime("2024-02-28T08:19:53Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762754484250873856",
+				StartTime: mustTime("2024-02-28T08:19:53Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762754483416207360",
+				StartTime: mustTime("2024-02-28T08:19:53Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762754485085540352",
+				StartTime: mustTime("2024-02-28T08:19:54Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762754480882847744",
+				StartTime: mustTime("2024-02-28T08:19:53Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-azure-sdn-upgrade/1762754485941178368",
+				StartTime: mustTime("2024-02-28T08:19:54Z"),
+			},
 		},
 	})
 
@@ -836,7 +997,7 @@ func init() {
 			Infrastructure: &InfrastructureIssue{
 				Description:    "Loki outage caused ci logging pods to never go ready and eventually a DaemonSetRolloutStuck alert to fire",
 				JiraURL:        "https://issues.redhat.com/browse/TRT-1537",
-				ResolutionDate: mustTime("2024-02-27T16:00:00Z"), // issue on-going but fix about to merge, adding 2 hours to now
+				ResolutionDate: mustTime("2024-02-28T13:00:00Z"),
 			},
 			PayloadBug: nil,
 		},
@@ -897,8 +1058,33 @@ func init() {
 				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-ovn-rt-upgrade/1762355609677598720",
 				StartTime: mustTime("2024-02-27T05:54:53Z"),
 			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-ovn-rt-upgrade/1762543262649815040",
+				StartTime: mustTime("2024-02-27T18:20:34Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-ovn-rt-upgrade/1762653936965128192",
+				StartTime: mustTime("2024-02-28T01:40:21Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-ovn-rt-upgrade/1762653940320571392",
+				StartTime: mustTime("2024-02-28T01:40:22Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-ovn-rt-upgrade/1762653941155237888",
+				StartTime: mustTime("2024-02-28T01:40:22Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-ovn-rt-upgrade/1762653939477516288",
+				StartTime: mustTime("2024-02-28T01:40:22Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-ovn-rt-upgrade/1762653936122073088",
+				StartTime: mustTime("2024-02-28T01:40:21Z"),
+			},
 		},
 	})
+
 	mustAddResolvedIssue(release415, ResolvedIssue{
 		TestID:   "openshift-tests:c1f54790201ec8f4241eca902f854b79",
 		TestName: "[sig-instrumentation] Prometheus [apigroup:image.openshift.io] when installed on the cluster shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early][apigroup:config.openshift.io] [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
@@ -907,13 +1093,14 @@ func init() {
 			Upgrade:  "upgrade-micro",
 			Arch:     "amd64",
 			Platform: "gcp",
+			Variant:  "standard",
 		},
 		Issue: Issue{
 			IssueType: "Infrastructure",
 			Infrastructure: &InfrastructureIssue{
 				Description:    "Loki outage caused ci logging pods to never go ready and eventually a DaemonSetRolloutStuck alert to fire",
 				JiraURL:        "https://issues.redhat.com/browse/TRT-1537",
-				ResolutionDate: mustTime("2024-02-27T16:00:00Z"), // issue on-going but fix about to merge, adding 2 hours to now
+				ResolutionDate: mustTime("2024-02-28T13:00:00Z"),
 			},
 			PayloadBug: nil,
 		},
@@ -1030,8 +1217,96 @@ func init() {
 				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762413996826169344",
 				StartTime: mustTime("2024-02-27T09:46:55Z"),
 			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762631044315484160",
+				StartTime: mustTime("2024-02-28T00:09:23Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762631044235792384",
+				StartTime: mustTime("2024-02-28T00:09:23Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762631044198043648",
+				StartTime: mustTime("2024-02-28T00:09:23Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762631044361621504",
+				StartTime: mustTime("2024-02-28T00:09:23Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762631044273541120",
+				StartTime: mustTime("2024-02-28T00:09:23Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762631045720576000",
+				StartTime: mustTime("2024-02-28T00:09:23Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762631046559436800",
+				StartTime: mustTime("2024-02-28T00:09:24Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762754495143481344",
+				StartTime: mustTime("2024-02-28T08:19:55Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762754497249021952",
+				StartTime: mustTime("2024-02-28T08:19:56Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762754489258872832",
+				StartTime: mustTime("2024-02-28T08:19:54Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762754490932400128",
+				StartTime: mustTime("2024-02-28T08:19:55Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762754490089345024",
+				StartTime: mustTime("2024-02-28T08:19:55Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-e2e-gcp-ovn-upgrade/1762754492618510336",
+				StartTime: mustTime("2024-02-28T08:19:55Z"),
+			},
 		},
 	})
+
+	mustAddResolvedIssue(release415, ResolvedIssue{
+		TestID:   "openshift-tests:c1f54790201ec8f4241eca902f854b79",
+		TestName: "[sig-instrumentation] Prometheus [apigroup:image.openshift.io] when installed on the cluster shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early][apigroup:config.openshift.io] [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
+		Variant: apitype.ComponentReportColumnIdentification{
+			Network:  "sdn",
+			Upgrade:  "upgrade-minor",
+			Arch:     "amd64",
+			Platform: "gcp",
+			Variant:  "standard",
+		},
+		Issue: Issue{
+			IssueType: "Infrastructure",
+			Infrastructure: &InfrastructureIssue{
+				Description:    "Loki outage caused ci logging pods to never go ready and eventually a DaemonSetRolloutStuck alert to fire",
+				JiraURL:        "https://issues.redhat.com/browse/TRT-1537",
+				ResolutionDate: mustTime("2024-02-28T13:00:00Z"),
+			},
+			PayloadBug: nil,
+		},
+		ImpactedJobRuns: []JobRun{
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-sdn-upgrade/1762193526713487360",
+				StartTime: mustTime("2024-02-26T19:10:49Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-sdn-upgrade/1762355576106389504",
+				StartTime: mustTime("2024-02-27T05:54:45Z"),
+			},
+			{
+				URL:       "https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-e2e-gcp-sdn-upgrade/1762654029273370624",
+				StartTime: mustTime("2024-02-28T01:40:43Z"),
+			},
+		},
+	})
+
 	mustAddResolvedIssue(release415, ResolvedIssue{
 		TestID:   "openshift-tests:c1f54790201ec8f4241eca902f854b79",
 		TestName: "[sig-instrumentation] Prometheus [apigroup:image.openshift.io] when installed on the cluster shouldn't report any alerts in firing state apart from Watchdog and AlertmanagerReceiversNotConfigured [Early][apigroup:config.openshift.io] [Skipped:Disconnected] [Suite:openshift/conformance/parallel]",
