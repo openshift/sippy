@@ -109,7 +109,6 @@ If you are *not* loading a backup for your data, you will need to initialize and
 
 ```bash
 ./sippy serve \
-  --release 4.11 \
   --log-level=debug \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp
