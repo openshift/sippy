@@ -2,9 +2,8 @@
 
 Running `make` will build an all-in-one binary that contains both the go app and frontend.
 
-To build just the backend, run `mkdir -p sippy-ng/build; touch sippy-ng/build/index.html; go build -mod=vendor .`.
-Note you have to `mkdir sippy-ng/build` and create a file in it first, otherwise you will get an error like
-`main.go:36:12: pattern sippy-ng/build: no matching files found`.
+To build just the backend, run `make sippy` (or `make sippy-daemon` if
+testing the PR commenter).
 
 ## Create PostgreSQL Database
 

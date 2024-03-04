@@ -13,15 +13,15 @@ verify: lint
 
 builddir:
 	mkdir -p sippy-ng/build
-	touch sippy-ng/build/index.html
+	touch sippy-ng/build/index.js
 
 frontend:
 	cd sippy-ng; npm run build
 
-sippy:
+sippy: builddir
 	go build -mod=vendor ./cmd/sippy/...
 
-sippy-daemon:
+sippy-daemon: builddir
 	go build -mod=vendor ./cmd/sippy-daemon/...
 
 test: builddir npm
