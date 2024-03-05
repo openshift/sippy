@@ -46,45 +46,30 @@ type prowJobLastRun struct {
 	URL      bigquery.NullString `bigquery:"prowjob_url"`
 }
 
-// LoadAllJobs queries all known jobs from the gce-devel "jobs" table (actually contains job runs).
+// LoadExpectedJobVariants queries all known jobs from the gce-devel "jobs" table (actually contains job runs).
 // This effectively is every job that actually ran in the last several years.
-func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
-	log := logrus.WithField("func", "LoadAllJobs")
+func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[string]map[string]string, error) {
+	log := logrus.WithField("func", "LoadExpectedJobVariants")
 	log.Info("Loading all known jobs")
 	start := time.Now()
 
 	// TODO: pull presubmits for sippy as well
 
-	// delete everything from the registry for now, we'll rebuild completely until sync logic is implemented.
-	// TODO: Remove this, sync the changes we need to only, otherwise the apps will be working incorrectly while this process runs
-	query := v.BigQueryClient.Query(`DELETE FROM openshift-ci-data-analysis.sippy.JobVariants WHERE true`)
-	_, err := query.Read(context.TODO())
-	if err != nil {
-		log.WithError(err).Error("error clearing current registry job variants")
-		return errors.Wrap(err, "error clearing current registry job variants")
-	}
-	log.Warn("deleted all current job variants in the registry")
-	query = v.BigQueryClient.Query(`DELETE FROM openshift-ci-data-analysis.sippy.Jobs WHERE true`)
-	_, err = query.Read(context.TODO())
-	if err != nil {
-		log.WithError(err).Error("error clearing current registry jobs")
-		return errors.Wrap(err, "error clearing current registry jobs")
-	}
-	log.Warn("deleted all current jobs in the registry")
-
 	// For the primary list of all job names, we will query everything that's run in the last 3 months:
 	// TODO: for component readiness queries to work in the past, we may need far more than jobs that ran in 3 months
 	// since start of 4.14 perhaps?
-	query = v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
+	query := v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
 		"`ci_analysis_us.jobs` " +
 		`WHERE (prowjob_job_name LIKE 'periodic-%%' OR prowjob_job_name LIKE 'release-%%' OR prowjob_job_name like 'aggregator-%%')
 		GROUP BY prowjob_job_name
-		LIMIT 100`)
+		LIMIT 20`)
 	// TODO: ^^ remove limit
 	it, err := query.Read(context.TODO())
 	if err != nil {
-		return errors.Wrap(err, "error querying primary list of all jobs")
+		return nil, errors.Wrap(err, "error querying primary list of all jobs")
 	}
+
+	expectedVariants := map[string]map[string]string{}
 
 	// Using a set since sometimes bigquery has multiple copies of the same prow job
 	//prowJobs := map[string]bool{}
@@ -97,7 +82,7 @@ func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 		}
 		if err != nil {
 			log.WithError(err).Error("error parsing prowjob name from bigquery")
-			return err
+			return nil, err
 		}
 		clusterData := map[string]string{}
 		jLog := log.WithField("job", jlr.JobName)
@@ -105,7 +90,7 @@ func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 			path, err := prowloader.GetGCSPathForProwJobURL(jLog, jlr.URL.StringVal)
 			if err != nil {
 				jLog.WithError(err).WithField("prowJobURL", jlr.URL).Error("error getting GCS path for prow job URL")
-				return err
+				return nil, err
 			}
 			gcsJobRun := gcs.NewGCSJobRun(v.bkt, path)
 			allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
@@ -133,6 +118,7 @@ func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 		variants := v.CalculateVariantsForJob(jLog, jlr.JobName, clusterData)
 		count++
 		jLog.WithField("variants", variants).WithField("count", count).Info("calculated variants")
+		expectedVariants[jlr.JobName] = variants
 	}
 	dur := time.Now().Sub(start)
 	log.WithField("count", count).Infof("processed primary job list in %s", dur)
@@ -142,7 +128,7 @@ func (v *OCPVariantLoader) LoadAllJobs(ctx context.Context) error {
 
 	// build out a data structure mapping job name to variant key/value pairs:
 
-	return nil
+	return expectedVariants, nil
 }
 
 // fileVariantsToIgnore are values in the cluster-data.json that vary by run, and are not consistent for the job itself.

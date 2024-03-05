@@ -337,9 +337,15 @@ func (o *Options) Run() error { //nolint:gocyclo
 		)
 
 		jvs := variantregistry.NewOCPVariantLoader(bigQueryClient, gcsClient, o.GoogleStorageBucket)
-		err = jvs.LoadAllJobs(context.TODO())
+		expectedVariants, err := jvs.LoadExpectedJobVariants(context.TODO())
 		if err != nil {
-			log.WithError(err).Fatal("Error syncing job variants to bigquery")
+			log.WithError(err).Fatal("error loading expected job variants")
+		}
+		log.WithField("jobs", len(expectedVariants)).Info("calculated expected variants")
+
+		err = variantregistry.SyncJobVariants(bigQueryClient, expectedVariants)
+		if err != nil {
+			log.WithError(err).Fatal("error syncing expected job variants")
 		}
 	}
 
