@@ -6,20 +6,20 @@ import (
 	"github.com/openshift/sippy/pkg/testidentification"
 )
 
-type kubeSyntheticManager struct{}
+type emptySyntheticManager struct{}
 
 func NewEmptySyntheticTestManager() SyntheticTestManager {
-	return kubeSyntheticManager{}
+	return emptySyntheticManager{}
 }
 
-func (k kubeSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.RawJobRunResult) *junit.TestSuite {
-	jrr.OverallResult = kubeJobRunStatus(jrr)
+func (k emptySyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.RawJobRunResult) *junit.TestSuite {
+	jrr.OverallResult = emptyJobRunStatus(jrr)
 	return &junit.TestSuite{
 		Name: testidentification.SippySuiteName,
 	}
 }
 
-func kubeJobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.JobOverallResult {
+func emptyJobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.JobOverallResult {
 	if result.Succeeded {
 		return sippyprocessingv1.JobSucceeded
 	}

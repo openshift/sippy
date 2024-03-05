@@ -2,9 +2,8 @@
 
 Running `make` will build an all-in-one binary that contains both the go app and frontend.
 
-To build just the backend, run `mkdir -p sippy-ng/build; touch sippy-ng/build/index.html; go build -mod=vendor .`.
-Note you have to `mkdir sippy-ng/build` and create a file in it first, otherwise you will get an error like
-`main.go:36:12: pattern sippy-ng/build: no matching files found`.
+To build just the backend, run `make sippy` (or `make sippy-daemon` if
+testing the PR commenter).
 
 ## Create PostgreSQL Database
 
@@ -14,8 +13,11 @@ Launch postgresql:
 podman run --name sippy-postgres -e POSTGRES_PASSWORD=password -p 5432:5432 -d quay.io/enterprisedb/postgresql
 ```
 
-Sippy will manage it's own schema on startup via gorm automigrations and some custom code for managing materialized view
-definitions and functions.
+Migrate the database with sippy:
+
+```
+./sippy migrate
+```
 
 ## Populating Data
 
@@ -56,10 +58,8 @@ Additionally, you need a configuration file that maps job names to releases. One
 available [here](config/README.md).
 
 ```bash
-./sippy --load-database \
-  --init-database \
-  --load-prow=true \
-  --load-testgrid=false \
+./sippy load \
+  --loader prow
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
@@ -75,11 +75,9 @@ unauthenticated requests, limited to 60 an hour. If you don't need this in devel
 or [configure GitHub in your gitconfig](https://stackoverflow.com/questions/8505335/hiding-github-token-in-gitconfig).
 
 ```bash
-./sippy --load-database \
-  --init-database \
-  --load-prow=true \
-  --load-github=true \
-  --load-testgrid=false \
+./sippy load \
+  --loader prow
+  --loader github
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
@@ -93,10 +91,8 @@ Sippy retrieves release-related data from release controllers. In order to fetch
 releases and architectures like this:
 
 ```
-./sippy --load-database \
-  --init-database \
-  --load-prow=false \
-  --load-testgrid=false \
+./sippy load \
+  --loader releases
   --arch amd64 \
   --arch arm64 \
   --release 4.12 \
@@ -112,9 +108,7 @@ releases and architectures like this:
 If you are *not* loading a backup for your data, you will need to initialize and/or update the database schema. This step is done automatically when fetching data from testgrid or prow, but may not have run if you start the server before doing so.
 
 ```bash
-./sippy --server \
-  --release 4.11 \
-  --init-database \
+./sippy serve \
   --log-level=debug \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp
@@ -158,12 +152,9 @@ Additionally, you will need a GITHUB_TOKEN environment variable to be configured
 the comment processing as described in [From GitHub](DEVELOPMENT.md) also within this document
 
 ```
-./sippy --init-database \
+./sippy-daemon \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json \
-  --mode=ocp \
-  --config ./config/openshift.yaml \
-  --daemon-server \
   --comment-processing \
   --include-repo-commenting=origin
 ```
