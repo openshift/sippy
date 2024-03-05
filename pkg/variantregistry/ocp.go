@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -302,10 +303,10 @@ const (
 	VariantUpgrade          = "Upgrade"
 	VariantRelease          = "Release"
 	VariantReleaseMinor     = "ReleaseMinor"
-	VariantReleaseMicro     = "ReleaseMicro"
+	VariantReleaseMajor     = "ReleaseMajor"
 	VariantFromRelease      = "FromRelease"
 	VariantFromReleaseMinor = "FromReleaseMinor"
-	VariantFromReleaseMicro = "FromReleaseMicro"
+	VariantFromReleaseMajor = "FromReleaseMajor"
 )
 
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
@@ -343,6 +344,16 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	release, fromRelease := extractReleases(jobName)
 	variants[VariantRelease] = release
 	variants[VariantFromRelease] = fromRelease
+	if release != "" {
+		majMin := strings.Split(release, ".")
+		variants[VariantReleaseMajor] = majMin[0]
+		variants[VariantReleaseMinor] = majMin[1]
+	}
+	if fromRelease != "" {
+		majMin := strings.Split(fromRelease, ".")
+		variants[VariantFromReleaseMajor] = majMin[0]
+		variants[VariantFromReleaseMinor] = majMin[1]
+	}
 
 	determinePlatform(jLog, variants, jobName)
 
