@@ -62,9 +62,9 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 	query := v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
 		"`openshift-gce-devel.ci_analysis_us.jobs` " +
 		`WHERE (prowjob_job_name LIKE 'periodic-%%' OR prowjob_job_name LIKE 'release-%%' OR prowjob_job_name like 'aggregator-%%')
-		GROUP BY prowjob_job_name
-		LIMIT 20`)
-	// TODO: ^^ remove limit
+		AND prowjob_job_name LIKE '%4.16%'
+		GROUP BY prowjob_job_name`)
+	// TODO: ^^ remove 4.16
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying primary list of all jobs")

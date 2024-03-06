@@ -157,12 +157,12 @@ func LoadCurrentJobVariants(bqClient *bigquery.Client) (map[string]map[string]st
 }
 
 type jobVariant struct {
-	JobName      string `bigquery:"JobName" json:"JobName"`
-	VariantName  string `bigquery:"VariantName" json:"VariantName"`
-	VariantValue string `bigquery:"VariantValue" json:"VariantValue"`
+	JobName      string `bigquery:"JobName"`
+	VariantName  string `bigquery:"VariantName"`
+	VariantValue string `bigquery:"VariantValue"`
 }
 
-// bulkInsertVariants inserts a new job variant in the registry.
+// bulkInsertVariants inserts all new job variants in batches.
 func bulkInsertVariants(bqClient *bigquery.Client, inserts []jobVariant) error {
 	var batchSize = 500
 
