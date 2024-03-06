@@ -30,29 +30,31 @@ func SyncJobVariants(bqClient *bigquery.Client, expectedVariants map[string]map[
 	}
 	log.Infof("loaded %d current jobs with variants", len(currentVariants))
 
-	syncErrs := []error{}
-	inserts, updates, deletes := compareVariants(expectedVariants, currentVariants)
+	inserts, updates, deletes, deleteJobs := compareVariants(expectedVariants, currentVariants)
 
 	err = bulkInsertVariants(bqClient, inserts)
 	if err != nil {
-		syncErrs = append(syncErrs, err)
+		log.WithError(err).Error("error syncing job variants to bigquery")
 	}
 
 	for _, jv := range updates {
 		err = updateVariant(bqClient, jv)
 		if err != nil {
-			syncErrs = append(syncErrs, err)
+			log.WithError(err).Error("error syncing job variants to bigquery")
 		}
 	}
 	for _, jv := range deletes {
 		err = deleteVariant(bqClient, jv)
 		if err != nil {
-			syncErrs = append(syncErrs, err)
+			log.WithError(err).Error("error syncing job variants to bigquery")
 		}
 	}
 
-	for _, se := range syncErrs {
-		log.WithError(se).Error("error syncing job variants to bigquery")
+	for _, job := range deleteJobs {
+		err = deleteJob(bqClient, job)
+		if err != nil {
+			log.WithError(err).Error("error syncing job variants to bigquery")
+		}
 	}
 
 	return nil
@@ -60,10 +62,11 @@ func SyncJobVariants(bqClient *bigquery.Client, expectedVariants map[string]map[
 
 // compareVariants compares the list of variants vs expected and returns the variants to be inserted, deleted, and updated.
 // Broken out for unit testing purposes.
-func compareVariants(expectedVariants, currentVariants map[string]map[string]string) (insertVariants, updateVariants, deleteVariants []jobVariant) {
+func compareVariants(expectedVariants, currentVariants map[string]map[string]string) (insertVariants, updateVariants, deleteVariants []jobVariant, deleteJobs []string) {
 	insertVariants = []jobVariant{}
 	updateVariants = []jobVariant{}
 	deleteVariants = []jobVariant{}
+	deleteJobs = []string{}
 
 	for expectedJob, expectedVariants := range expectedVariants {
 		if _, ok := currentVariants[expectedJob]; !ok {
@@ -112,19 +115,13 @@ func compareVariants(expectedVariants, currentVariants map[string]map[string]str
 	}
 
 	// Look for any jobs that should be removed:
-	for currJobName, currJobVariants := range currentVariants {
+	for currJobName := range currentVariants {
 		if _, ok := expectedVariants[currJobName]; !ok {
-			for k, v := range currJobVariants {
-				deleteVariants = append(deleteVariants, jobVariant{
-					JobName:      currJobName,
-					VariantName:  k,
-					VariantValue: v,
-				})
-			}
+			deleteJobs = append(deleteJobs, currJobName)
 		}
 	}
 
-	return insertVariants, updateVariants, deleteVariants
+	return insertVariants, updateVariants, deleteVariants, deleteJobs
 }
 
 func LoadCurrentJobVariants(bqClient *bigquery.Client) (map[string]map[string]string, error) {
@@ -205,6 +202,19 @@ func deleteVariant(bqClient *bigquery.Client, jv jobVariant) error {
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
 		return errors.Wrapf(err, "error deleting variant: %s", queryStr)
+	}
+	return nil
+}
+
+// deleteJob deletes all variants for a given job in the registry.
+func deleteJob(bqClient *bigquery.Client, job string) error {
+	queryStr := fmt.Sprintf("DELETE FROM `openshift-ci-data-analysis.sippy.JobVariants` WHERE JobName = '%s'",
+		job)
+	log.Info(queryStr)
+	insertQuery := bqClient.Query(queryStr)
+	_, err := insertQuery.Read(context.TODO())
+	if err != nil {
+		return errors.Wrapf(err, "error deleting job: %s", queryStr)
 	}
 	return nil
 }
