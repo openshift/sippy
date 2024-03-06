@@ -23,17 +23,17 @@ type Syncer struct{}
 // job to variants, and then use this generic reconcile logic to get it into bigquery.
 func SyncJobVariants(bqClient *bigquery.Client, expectedVariants map[string]map[string]string) error {
 
+	// delete everything from the registry for now, we'll rebuild completely until sync logic is implemented.
+	// TODO: Remove this, sync the changes we need to only, otherwise the apps will be working incorrectly while this process runs
 	/*
-		// delete everything from the registry for now, we'll rebuild completely until sync logic is implemented.
-		// TODO: Remove this, sync the changes we need to only, otherwise the apps will be working incorrectly while this process runs
-		query := bqClient.Query(`DELETE FROM openshift-ci-data-analysis.sippy.JobVariants WHERE true`)
+		query := bqClient.Query(`DELETE FROM sippy.JobVariants WHERE true`)
 		_, err := query.Read(context.TODO())
 		if err != nil {
 			log.WithError(err).Error("error clearing current registry job variants")
 			return errors.Wrap(err, "error clearing current registry job variants")
 		}
 		log.Warn("deleted all current job variants in the registry")
-		query = bqClient.Query(`DELETE FROM openshift-ci-data-analysis.sippy.Jobs WHERE true`)
+		query = bqClient.Query(`DELETE FROM sippy.Jobs WHERE true`)
 		_, err = query.Read(context.TODO())
 		if err != nil {
 			log.WithError(err).Error("error clearing current registry jobs")
@@ -52,12 +52,12 @@ func SyncJobVariants(bqClient *bigquery.Client, expectedVariants map[string]map[
 
 	syncErrs := []error{}
 	inserts, updates, deletes := compareVariants(expectedVariants, currentVariants)
-	for _, jv := range inserts {
-		err = insertVariant(bqClient, jv)
-		if err != nil {
-			syncErrs = append(syncErrs, err)
-		}
+
+	err = bulkInsertVariants(bqClient, inserts)
+	if err != nil {
+		syncErrs = append(syncErrs, err)
 	}
+
 	for _, jv := range updates {
 		err = updateVariant(bqClient, jv)
 		if err != nil {
@@ -177,9 +177,9 @@ func LoadCurrentJobVariants(bqClient *bigquery.Client) (map[string]map[string]st
 }
 
 type jobVariant struct {
-	JobName      string `bigquery:"JobName"`
-	VariantName  string `bigquery:"VariantName"`
-	VariantValue string `bigquery:"VariantValue"`
+	JobName      string `bigquery:"JobName" json:"JobName"`
+	VariantName  string `bigquery:"VariantName" json:"VariantName"`
+	VariantValue string `bigquery:"VariantValue" json:"VariantValue"`
 }
 
 // insertVariant inserts a new job variant in the registry.
@@ -194,6 +194,81 @@ func insertVariant(bqClient *bigquery.Client, jv jobVariant) error {
 	}
 	return nil
 }
+
+// bulkInsertVariants inserts a new job variant in the registry.
+func bulkInsertVariants(bqClient *bigquery.Client, inserts []jobVariant) error {
+	var batchSize = 500
+
+	table := bqClient.Dataset("sippy").Table("JobVariants")
+	inserter := table.Inserter()
+	for i := 0; i < len(inserts); i += batchSize {
+		end := i + batchSize
+		if end > len(inserts) {
+			end = len(inserts)
+		}
+
+		if err := inserter.Put(context.TODO(), inserts[i:end]); err != nil {
+			return err
+		}
+		log.Infof("added %d new job variant rows", end-i)
+	}
+
+	return nil
+}
+
+//reader, writer := io.Pipe()
+//err := myXLS.Write(writer)
+
+// Write the variant registry inserts to a file. We could use an io.Pipe for reader/writer here and do it
+// all in memory, but temp file is probably a little safer.
+// TODO: pass in a filename, use this as the hook for external users to specify their variants with whatever
+// program they want, then run the sippy cli to sync it. This however would be the overall source of truth,
+// not a bulk insert like we need here, so perhaps this stays.
+/*
+	file, err := os.CreateTemp("variants", "inserts-")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer os.Remove(file.Name())
+	   f, err := os.Open("/tmp/tempfile.json") // TODO
+	   if err != nil {
+	           return err
+	   }
+	encoder := json.NewEncoder(file)
+	for _, jv := range inserts {
+	encoder.Encode(jv)
+	}
+	file.Close()
+
+	source := bigquery.NewReaderSource(reader)
+	source.AutoDetect = true // Allow BigQuery to determine schema.
+	//source.SkipLeadingRows = 1 // CSV has a single header line.
+
+	source.SourceFormat = bigquery.JSON
+	source.Schema = bigquery.Schema{
+		{Name: "JobName", Type: bigquery.StringFieldType},
+		{Name: "VariantName", Type: bigquery.StringFieldType},
+		{Name: "VariantValue", Type: bigquery.StringFieldType},
+	}
+	//loader := client.Dataset(datasetID).Table(tableID).LoaderFrom(gcsRef)
+
+	loader := bqClient.Dataset("sippy").Table("JobVariants").LoaderFrom(source)
+	loader.WriteDisposition = bigquery.WriteAppend
+
+	job, err := loader.Run(context.TODO())
+	if err != nil {
+		return err
+	}
+	status, err := job.Wait(context.TODO())
+	if err != nil {
+		return err
+	}
+	if err := status.Err(); err != nil {
+		return err
+	}
+	return nil
+}
+*/
 
 // updateVariant updates a job variant in the registry.
 func updateVariant(bqClient *bigquery.Client, jv jobVariant) error {

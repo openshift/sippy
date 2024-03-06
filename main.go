@@ -325,7 +325,7 @@ func (o *Options) Run() error { //nolint:gocyclo
 	log.SetLevel(level)
 
 	if o.SyncJobVariants {
-		bigQueryClient, err := bigquery.NewClient(context.TODO(), "openshift-gce-devel",
+		bigQueryClient, err := bigquery.NewClient(context.TODO(), "openshift-ci-data-analysis",
 			option.WithCredentialsFile(o.GoogleServiceAccountCredentialFile))
 		if err != nil {
 			log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents syncing job variant registry to bigquery")
