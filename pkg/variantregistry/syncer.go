@@ -50,7 +50,7 @@ func SyncJobVariants(bqClient *bigquery.Client, expectedVariants map[string]map[
 	// This loop is called for variants being removed from a job that is still in the system.
 	log.Infof("deleting %d job variants", len(deletes))
 	for i, jv := range deletes {
-		uLog := log.WithField("progress", fmt.Sprintf("%d/%d", i+1, len(updates)))
+		uLog := log.WithField("progress", fmt.Sprintf("%d/%d", i+1, len(deletes)))
 		err = deleteVariant(uLog, bqClient, jv)
 		if err != nil {
 			log.WithError(err).Error("error syncing job variants to bigquery")
