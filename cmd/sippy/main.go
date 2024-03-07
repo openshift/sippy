@@ -14,16 +14,17 @@ var rootCmd = &cobra.Command{
 	Long: `Sippy reports on job and test statistics, sliced by various filters
 including name, suite, or NURP+ variants (network, upgrade, release,
 platform, etc).`,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		level, err := log.ParseLevel(logLevel)
+		if err != nil {
+			log.WithError(err).Fatal("cannot parse log-level")
+		}
+		log.SetLevel(level)
+		log.Debug("debug logging enabled")
+	},
 }
 
 func main() {
-	// Set log level
-	level, err := log.ParseLevel(logLevel)
-	if err != nil {
-		log.WithError(err).Fatal("cannot parse log-level")
-	}
-	log.SetLevel(level)
-	log.Debug("debug logging enabled")
 
 	// Add some millisecond precision to log timestamps, useful for debugging performance.
 	formatter := new(log.TextFormatter)
@@ -44,7 +45,7 @@ func main() {
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
 		"Log level (trace,debug,info,warn,error) (default info)")
 
-	err = rootCmd.Execute()
+	err := rootCmd.Execute()
 	if err != nil {
 		log.WithError(err).Fatal("could not execute root command")
 	}
