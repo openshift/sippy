@@ -60,7 +60,10 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 	// TODO: unfortunate use of another project here
 	query := v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
 		"`openshift-gce-devel.ci_analysis_us.jobs` " +
-		`WHERE (prowjob_job_name LIKE 'periodic-%%' OR prowjob_job_name LIKE 'release-%%' OR prowjob_job_name like 'aggregator-%%')
+		`WHERE (prowjob_job_name LIKE 'periodic-ci-openshift-%%' 
+			OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%' 
+			OR prowjob_job_name LIKE 'release-%%' 
+			OR prowjob_job_name like 'aggregator-%%')
 		AND prowjob_job_name LIKE '%4.16%'
 		GROUP BY prowjob_job_name`)
 	// TODO: ^^ remove 4.16
@@ -179,7 +182,9 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 }
 
 var (
-	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
+	aggregatedRegex = regexp.MustCompile(`(?i)aggregator-`)
+	// We're not sure what these aggregator jobs are but they exist as of right now:
+	aggregatorRegex = regexp.MustCompile(`(?i)aggregator-`)
 	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
 	arm64Regex      = regexp.MustCompile(`(?i)-arm64`)
 	assistedRegex   = regexp.MustCompile(`(?i)-assisted`)
@@ -244,9 +249,9 @@ const (
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
 	variants := map[string]string{}
 
-	if aggregatedRegex.MatchString(jobName) {
+	if aggregatedRegex.MatchString(jobName) || aggregatorRegex.MatchString(jobName) {
 		variants[VariantAggregation] = "aggregated"
-	}
+	} // TODO: should non-aggregated jobs have an Aggregation variant at all? Most of the below are always present on all jobs
 
 	release, fromRelease := extractReleases(jobName)
 	variants[VariantRelease] = release
