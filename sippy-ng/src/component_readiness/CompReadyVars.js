@@ -281,22 +281,6 @@ export const CompReadyVarsProvider = ({ children }) => {
         'Ignore Disruption': defaultIgnoreDisruptionParam,
       },
     },
-    Strict: {
-      config: {
-        help: 'Default view except Pity and MinFail set to 0',
-        'Group By': defaultGroupByCheckedItems,
-        'Exclude Arches': defaultExcludeArchesCheckedItems,
-        'Exclude Networks': defaultExcludeNetworksCheckedItems,
-        'Exclude Clouds': defaultExcludeCloudsCheckedItems,
-        'Exclude Upgrades': defaultExcludeUpgradesCheckedItems,
-        'Exclude Variants': defaultExcludeVariantsCheckedItems,
-        Confidence: defaultConfidenceParam,
-        Pity: 0,
-        'Min Fail': 0,
-        'Ignore Missing': defaultIgnoreMissingParam,
-        'Ignore Disruption': defaultIgnoreDisruptionParam,
-      },
-    },
     UpgradeVariants: {
       config: {
         help: 'Default view but groups by upgrades and variants',
