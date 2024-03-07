@@ -38,6 +38,7 @@ func main() {
 		NewSnapshotCommand(),
 		NewRefreshCommand(),
 		NewLoadOCPJobVariantsCommand(),
+		NewSyncJobVariantsCommand(),
 	)
 
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",

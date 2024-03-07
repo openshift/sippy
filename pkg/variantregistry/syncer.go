@@ -32,26 +32,36 @@ func SyncJobVariants(bqClient *bigquery.Client, expectedVariants map[string]map[
 
 	inserts, updates, deletes, deleteJobs := compareVariants(expectedVariants, currentVariants)
 
+	log.Infof("inserting %d new job variants", len(inserts))
 	err = bulkInsertVariants(bqClient, inserts)
 	if err != nil {
 		log.WithError(err).Error("error syncing job variants to bigquery")
 	}
 
-	for _, jv := range updates {
-		err = updateVariant(bqClient, jv)
-		if err != nil {
-			log.WithError(err).Error("error syncing job variants to bigquery")
-		}
-	}
-	for _, jv := range deletes {
-		err = deleteVariant(bqClient, jv)
+	log.Infof("updating %d job variants", len(updates))
+	for i, jv := range updates {
+		uLog := log.WithField("progress", fmt.Sprintf("%d/%d", i+1, len(updates)))
+		err = updateVariant(uLog, bqClient, jv)
 		if err != nil {
 			log.WithError(err).Error("error syncing job variants to bigquery")
 		}
 	}
 
-	for _, job := range deleteJobs {
-		err = deleteJob(bqClient, job)
+	// Delete jobs entirely, much faster than one variant at a time when jobs have been removed.
+	// This should be relatively rare and would require the job to not have run for weeks/months.
+	log.Infof("deleting %d job variants", len(deletes))
+	for i, jv := range deletes {
+		uLog := log.WithField("progress", fmt.Sprintf("%d/%d", i+1, len(updates)))
+		err = deleteVariant(uLog, bqClient, jv)
+		if err != nil {
+			log.WithError(err).Error("error syncing job variants to bigquery")
+		}
+	}
+
+	log.Infof("deleting %d jobs", len(deleteJobs))
+	for i, job := range deleteJobs {
+		uLog := log.WithField("progress", fmt.Sprintf("%d/%d", i+1, len(updates)))
+		err = deleteJob(uLog, bqClient, job)
 		if err != nil {
 			log.WithError(err).Error("error syncing job variants to bigquery")
 		}
@@ -181,40 +191,40 @@ func bulkInsertVariants(bqClient *bigquery.Client, inserts []jobVariant) error {
 }
 
 // updateVariant updates a job variant in the registry.
-func updateVariant(bqClient *bigquery.Client, jv jobVariant) error {
+func updateVariant(logger log.FieldLogger, bqClient *bigquery.Client, jv jobVariant) error {
 	queryStr := fmt.Sprintf("UPDATE `openshift-ci-data-analysis.sippy.JobVariants` SET VariantValue = '%s' WHERE JobName = '%s' and VariantName = '%s'",
 		jv.VariantValue, jv.JobName, jv.VariantName)
-	log.Info(queryStr)
 	insertQuery := bqClient.Query(queryStr)
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
-		return errors.Wrapf(err, "error updating varia%s", queryStr)
+		return errors.Wrapf(err, "error updating variants: %s", queryStr)
 	}
+	logger.Infof("successful query: %s", queryStr)
 	return nil
 }
 
 // deleteVariant deletes a job variant in the registry.
-func deleteVariant(bqClient *bigquery.Client, jv jobVariant) error {
+func deleteVariant(logger log.FieldLogger, bqClient *bigquery.Client, jv jobVariant) error {
 	queryStr := fmt.Sprintf("DELETE FROM `openshift-ci-data-analysis.sippy.JobVariants` WHERE JobName = '%s' and VariantName = '%s' and VariantValue = '%s'",
 		jv.JobName, jv.VariantName, jv.VariantValue)
-	log.Info(queryStr)
 	insertQuery := bqClient.Query(queryStr)
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
 		return errors.Wrapf(err, "error deleting variant: %s", queryStr)
 	}
+	logger.Infof("successful query: %s", queryStr)
 	return nil
 }
 
 // deleteJob deletes all variants for a given job in the registry.
-func deleteJob(bqClient *bigquery.Client, job string) error {
+func deleteJob(logger log.FieldLogger, bqClient *bigquery.Client, job string) error {
 	queryStr := fmt.Sprintf("DELETE FROM `openshift-ci-data-analysis.sippy.JobVariants` WHERE JobName = '%s'",
 		job)
-	log.Info(queryStr)
 	insertQuery := bqClient.Query(queryStr)
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
 		return errors.Wrapf(err, "error deleting job: %s", queryStr)
 	}
+	logger.Infof("successful query: %s", queryStr)
 	return nil
 }

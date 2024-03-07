@@ -81,13 +81,6 @@ func NewLoadOCPJobVariantsCommand() *cobra.Command {
 				return err
 			}
 
-			// TODO: write job variants to a file for use with the sync command
-			/*
-				err = variantregistry.SyncJobVariants(bigQueryClient, expectedVariants)
-				if err != nil {
-					log.WithError(err).Fatal("error syncing expected job variants")
-				}
-			*/
 			log.Infof("Expected OCP job variants written to: %s", f.OutputFile)
 
 			return nil
