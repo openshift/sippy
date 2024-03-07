@@ -12,9 +12,10 @@ func TestCompareVariants(t *testing.T) {
 		currentVariants  map[string]map[string]string
 		expectedVariants map[string]map[string]string
 
-		expectedInserts []jobVariant
-		expectedUpdates []jobVariant
-		expectedDeletes []jobVariant
+		expectedInserts    []jobVariant
+		expectedUpdates    []jobVariant
+		expectedDeletes    []jobVariant
+		expectedDeleteJobs []string
 	}{
 		{
 			name:            "initial population",
@@ -37,8 +38,9 @@ func TestCompareVariants(t *testing.T) {
 					VariantValue: "2",
 				},
 			},
-			expectedUpdates: []jobVariant{},
-			expectedDeletes: []jobVariant{},
+			expectedUpdates:    []jobVariant{},
+			expectedDeletes:    []jobVariant{},
+			expectedDeleteJobs: []string{},
 		},
 		{
 			name: "variants changed for existing job",
@@ -77,6 +79,7 @@ func TestCompareVariants(t *testing.T) {
 					VariantValue: "4",
 				},
 			},
+			expectedDeleteJobs: []string{},
 		},
 		{
 			name: "job removed",
@@ -86,29 +89,20 @@ func TestCompareVariants(t *testing.T) {
 					"b": "2",
 				},
 			},
-			expectedVariants: map[string]map[string]string{},
-			expectedInserts:  []jobVariant{},
-			expectedUpdates:  []jobVariant{},
-			expectedDeletes: []jobVariant{
-				{
-					JobName:      "job1",
-					VariantName:  "a",
-					VariantValue: "1",
-				},
-				{
-					JobName:      "job1",
-					VariantName:  "b",
-					VariantValue: "2",
-				},
-			},
+			expectedVariants:   map[string]map[string]string{},
+			expectedInserts:    []jobVariant{},
+			expectedUpdates:    []jobVariant{},
+			expectedDeletes:    []jobVariant{},
+			expectedDeleteJobs: []string{"job1"},
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			inserts, updates, deletes := compareVariants(test.expectedVariants, test.currentVariants)
+			inserts, updates, deletes, deleteJobs := compareVariants(test.expectedVariants, test.currentVariants)
 			assert.ElementsMatch(t, test.expectedInserts, inserts, "mismatched inserts")
 			assert.ElementsMatch(t, test.expectedUpdates, updates, "mismatched updates")
 			assert.ElementsMatch(t, test.expectedDeletes, deletes, "mismatched deletes")
+			assert.ElementsMatch(t, test.expectedDeleteJobs, deleteJobs, "mismatched delete jobs")
 		})
 	}
 }

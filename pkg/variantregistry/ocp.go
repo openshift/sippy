@@ -14,7 +14,6 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/testidentification"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -72,8 +71,6 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 
 	expectedVariants := map[string]map[string]string{}
 
-	// Using a set since sometimes bigquery has multiple copies of the same prow job
-	//prowJobs := map[string]bool{}
 	count := 0
 	for {
 		jlr := prowJobLastRun{}
@@ -123,11 +120,6 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 	}
 	dur := time.Now().Sub(start)
 	log.WithField("count", count).Infof("processed primary job list in %s", dur)
-
-	// TODO: load the current registry job to variant mappings. join and then iterate building out go structure.
-	// keep variants list sorted for comparisons.
-
-	// build out a data structure mapping job name to variant key/value pairs:
 
 	return expectedVariants, nil
 }
@@ -187,8 +179,6 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 }
 
 var (
-	// variant regexes - when adding a new one, please update both allOpenshiftVariants,
-	// and allPlatforms as appropriate.
 	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
 	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
 	arm64Regex      = regexp.MustCompile(`(?i)-arm64`)
@@ -225,56 +215,6 @@ var (
 	upgradeRegex      = regexp.MustCompile(`(?i)-upgrade`)
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex = regexp.MustCompile(`(?i)-vsphere`)
-
-	allOpenshiftVariants = sets.NewString(
-		"alibaba",
-		"amd64",
-		"arm64",
-		"assisted",
-		"aws",
-		"azure",
-		"compact",
-		"etcd-scaling",
-		"fips",
-		"gcp",
-		"ha",
-		"hypershift",
-		"heterogeneous",
-		"libvirt",
-		"metal",
-		"microshift",
-		"never-stable",
-		"openstack",
-		"osd",
-		"ovirt",
-		"ovn",
-		"ppc64le",
-		"promote",
-		"proxy",
-		"realtime",
-		"s390x",
-		"sdn",
-		"serial",
-		"single-node",
-		"techpreview",
-		"upgrade",
-		"upgrade-micro",
-		"upgrade-minor",
-		"vsphere",
-	)
-
-	allPlatforms = sets.NewString(
-		"alibaba",
-		"aws",
-		"azure",
-		"gcp",
-		"libvirt",
-		"metal-assisted",
-		"metal",
-		"openstack",
-		"ovirt",
-		"vsphere",
-	)
 )
 
 const (
@@ -304,33 +244,8 @@ const (
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
 	variants := map[string]string{}
 
-	/*
-		defer func() {
-			for _, variant := range variants {
-				if !allOpenshiftVariants.Has(variant) {
-					panic(fmt.Sprintf("coding error: missing variant: %q", variant))
-				}
-			}
-		}()
-
-	*/
-
-	// No promote jobs in sippy db since 4.12, lets drop this variant.
-	/*
-		if promoteRegex.MatchString(jobName) {
-			variants = append(variants, "promote")
-			return variants
-		}
-	*/
-
-	// If a job is an aggregation, it should only be bucketed in
-	// `aggregated`. Pushing it into other variants causes unwanted
-	// hysteresis for test and job pass rates. The jobs that compose
-	// an aggregated job are already in Sippy.
 	if aggregatedRegex.MatchString(jobName) {
 		variants[VariantAggregation] = "aggregated"
-		// TODO: sippy would stop here, but for the registry we probably want to keep processing,
-		// and sippy will need to know to strip out other variants if it's an aggregated job
 	}
 
 	release, fromRelease := extractReleases(jobName)
@@ -372,7 +287,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	}
 
 	// Topology
-	// external == hypershift hosted
+	// external == hypershift hosted control plane
 	if singleNodeRegex.MatchString(jobName) {
 		variants[VariantTopology] = "single" // previously single-node
 	} else if hypershiftRegex.MatchString(jobName) {

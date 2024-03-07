@@ -23,7 +23,7 @@ type Syncer struct{}
 // job to variants, and then use this generic reconcile logic to get it into bigquery.
 func SyncJobVariants(bqClient *bigquery.Client, expectedVariants map[string]map[string]string) error {
 
-	currentVariants, err := LoadCurrentJobVariants(bqClient)
+	currentVariants, err := loadCurrentJobVariants(bqClient)
 	if err != nil {
 		log.WithError(err).Error("error loading current job variants")
 		return errors.Wrap(err, "error loading current job variants")
@@ -135,8 +135,7 @@ func compareVariants(expectedVariants, currentVariants map[string]map[string]str
 	return insertVariants, updateVariants, deleteVariants, deleteJobs
 }
 
-func LoadCurrentJobVariants(bqClient *bigquery.Client) (map[string]map[string]string, error) {
-	// There is technically a Jobs table, however it's just a name right now, so little point in joining on it.
+func loadCurrentJobVariants(bqClient *bigquery.Client) (map[string]map[string]string, error) {
 	query := bqClient.Query(`SELECT * FROM openshift-ci-data-analysis.sippy.JobVariants ORDER BY JobName, VariantName`)
 	it, err := query.Read(context.TODO())
 	if err != nil {
