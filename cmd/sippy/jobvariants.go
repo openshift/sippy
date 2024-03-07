@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -18,6 +20,7 @@ import (
 type LoadJobVariantsFlags struct {
 	BigQueryFlags    *flags.BigQueryFlags
 	GoogleCloudFlags *flags.GoogleCloudFlags
+	OutputFile       string
 }
 
 func NewLoadJobVariantsFlags() *LoadJobVariantsFlags {
@@ -30,6 +33,7 @@ func NewLoadJobVariantsFlags() *LoadJobVariantsFlags {
 func (f *LoadJobVariantsFlags) BindFlags(fs *pflag.FlagSet) {
 	f.BigQueryFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
+	fs.StringVar(&f.OutputFile, "o", "ocp-expected-job-variants.json", "Output json file for job variant data")
 }
 
 func NewLoadOCPJobVariantsCommand() *cobra.Command {
@@ -58,9 +62,24 @@ func NewLoadOCPJobVariantsCommand() *cobra.Command {
 				f.GoogleCloudFlags.StorageBucket)
 			expectedVariants, err := jvs.LoadExpectedJobVariants(context.TODO())
 			if err != nil {
-				log.WithError(err).Fatal("error loading expected job variants")
+				return err
 			}
 			log.WithField("jobs", len(expectedVariants)).Info("calculated expected variants")
+			jsonData, err := json.MarshalIndent(expectedVariants, "", "  ")
+			if err != nil {
+				return err
+			}
+
+			file, err := os.Create(f.OutputFile)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			_, err = file.Write(jsonData)
+			if err != nil {
+				return err
+			}
 
 			// TODO: write job variants to a file for use with the sync command
 			/*
@@ -69,6 +88,7 @@ func NewLoadOCPJobVariantsCommand() *cobra.Command {
 					log.WithError(err).Fatal("error syncing expected job variants")
 				}
 			*/
+			log.Infof("Expected OCP job variants written to: %s", f.OutputFile)
 
 			return nil
 		},
