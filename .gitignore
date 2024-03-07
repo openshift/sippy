@@ -1,5 +1,6 @@
 report.sh
 /sippy
+/sippy-daemon
 /data
 .vscode/
 .idea/
