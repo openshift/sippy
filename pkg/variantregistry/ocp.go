@@ -50,7 +50,7 @@ type prowJobLastRun struct {
 // This effectively is every job that actually ran in the last several years.
 func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[string]map[string]string, error) {
 	log := logrus.WithField("func", "LoadExpectedJobVariants")
-	log.Info("Loading all known jobs")
+	log.Info("loading all known jobs from bigquery for variant classification")
 	start := time.Now()
 
 	// TODO: pull presubmits for sippy as well
@@ -158,21 +158,26 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 			variants[k] = v
 			continue
 		} else if jnv != v {
+			if v == "" {
+				// If the cluster data file returned an empty value for a variant we calculated from the job
+				// name, we just use the job name version. (i.e. FromRelease)
+				continue
+			}
 			// Check and log mismatches between what we read from the file vs determined from job name:
-			jLog.WithFields(logrus.Fields{
+			jLog = jLog.WithFields(logrus.Fields{
 				"variant":  k,
 				"fromJob":  jnv,
 				"fromFile": v,
-			}).Warnf("variant mismatch")
+			})
 
 			switch k {
 			case VariantArch:
 				// Job name identification wins for arch, heterogenous jobs can show cluster data with
 				// amd64 as it's read from a single node.
-				jLog.Warnf("using %s from job name", k)
+				jLog.Infof("variant mismatch: using %s from job name", k)
 				continue
 			default:
-				jLog.Warnf("using %s from job run variants file", k)
+				jLog.Infof("variant mismatch: using %s from job run variants file", k)
 				variants[k] = v
 			}
 		}

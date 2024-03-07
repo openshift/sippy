@@ -47,8 +47,7 @@ func SyncJobVariants(bqClient *bigquery.Client, expectedVariants map[string]map[
 		}
 	}
 
-	// Delete jobs entirely, much faster than one variant at a time when jobs have been removed.
-	// This should be relatively rare and would require the job to not have run for weeks/months.
+	// This loop is called for variants being removed from a job that is still in the system.
 	log.Infof("deleting %d job variants", len(deletes))
 	for i, jv := range deletes {
 		uLog := log.WithField("progress", fmt.Sprintf("%d/%d", i+1, len(updates)))
@@ -58,6 +57,8 @@ func SyncJobVariants(bqClient *bigquery.Client, expectedVariants map[string]map[
 		}
 	}
 
+	// Delete jobs entirely, much faster than one variant at a time when jobs have been removed.
+	// This should be relatively rare and would require the job to not have run for weeks/months.
 	log.Infof("deleting %d jobs", len(deleteJobs))
 	for i, job := range deleteJobs {
 		uLog := log.WithField("progress", fmt.Sprintf("%d/%d", i+1, len(updates)))
