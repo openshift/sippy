@@ -24,7 +24,7 @@ export default function SavedViews(props) {
 
   const setViewParam = props.setViewParam
   const views = props.views
-  const maxSavedViewLength = 15
+  const maxSavedViewLength = 100
   const setViews = props.setViews
 
   setViewParam(buttonName)
@@ -123,7 +123,7 @@ export default function SavedViews(props) {
         onClick={handleClick}
       >
         <Tooltip title={views[buttonName].config.help}>
-          <Typography variant="h8">View: {buttonName}</Typography>
+          <Typography variant="h6">View: {buttonName}</Typography>
         </Tooltip>
       </Button>
       <Menu
@@ -175,14 +175,14 @@ export default function SavedViews(props) {
         startIcon={<Save />}
         onClick={handleOpenSaveDialog}
       >
-        Save Current View
+        <Typography variant="h6">Save Current View</Typography>
       </Button>
 
       <Dialog open={saveDialogIsOpen} onClose={handleCloseSaveDialog}>
         <DialogTitle>Save Current View</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Name for new view (max {maxSavedViewLength} characters)
+            Enter name for new view (views are saved to browser local storage)
           </DialogContentText>
           <TextField
             autoFocus

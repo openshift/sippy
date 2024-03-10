@@ -358,6 +358,8 @@ export const CompReadyVarsProvider = ({ children }) => {
   }
 
   // Save user views to browser local storage; if empty, we're saving {}.
+  // You can view the storage by "inspecting the page" (F12 on some browsers), and
+  // going to the Application tab.
   const saveViewsToLocal = (views) => {
     const viewsToSave = Object.entries(views).reduce((acc, [key, value]) => {
       if (value.config.class === 'user') {
