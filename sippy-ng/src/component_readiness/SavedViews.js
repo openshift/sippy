@@ -9,6 +9,7 @@ import {
   MenuItem,
   TextField,
   Tooltip,
+  Typography,
 } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Save, ViewCarousel } from '@mui/icons-material'
@@ -122,7 +123,7 @@ export default function SavedViews(props) {
         onClick={handleClick}
       >
         <Tooltip title={views[buttonName].config.help}>
-          View: {buttonName}
+          <Typography variant="h8">View: {buttonName}</Typography>
         </Tooltip>
       </Button>
       <Menu
@@ -144,7 +145,9 @@ export default function SavedViews(props) {
               handleClose()
             }}
           >
-            <Tooltip title={v.config.help}>{e}</Tooltip>
+            <Tooltip title={v.config.help}>
+              <Typography variant="h8">{e}</Typography>
+            </Tooltip>
             {/* only user created views can be deleted */}
             {v.config.class && v.config.class == 'user' ? (
               <IconButton

@@ -132,7 +132,7 @@ export default function CompReadyMainInputs(props) {
           views={views}
           setViews={varsContext.setViews}
           applyView={applyView}
-          viewParam={viewParam}
+          viewParam={viewParam == undefined ? 'Default' : viewParam}
           setViewParam={setViewParam}
         />
         <CheckBoxList
