@@ -141,7 +141,12 @@ func NewLoadCommand() *cobra.Command {
 
 				// Bug Loader
 				if l == "bugs" {
-					loaders = append(loaders, bugloader.New(dbc))
+					// Get a bigquery client
+					bqc, err := f.BigQueryFlags.GetBigQueryClient(context.Background(), nil, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+					if err != nil {
+						return errors.WithMessage(err, "could not get bigquery client: %+v")
+					}
+					loaders = append(loaders, bugloader.New(dbc, bqc))
 				}
 			}
 
