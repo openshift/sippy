@@ -251,7 +251,9 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 
 	if aggregatedRegex.MatchString(jobName) || aggregatorRegex.MatchString(jobName) {
 		variants[VariantAggregation] = "aggregated"
-	} // TODO: should non-aggregated jobs have an Aggregation variant at all? Most of the below are always present on all jobs
+	} else {
+		variants[VariantAggregation] = "none"
+	}
 
 	release, fromRelease := extractReleases(jobName)
 	variants[VariantRelease] = release
