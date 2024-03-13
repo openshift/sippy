@@ -206,6 +206,8 @@ var (
 	osdRegex       = regexp.MustCompile(`(?i)-osd`)
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn`)
+	ipv6Regex      = regexp.MustCompile(`(?i)-ipv6`)
+	dualStackRegex = regexp.MustCompile(`(?i)-dualstack`)
 	// proxy jobs do not have a trailing -version segment
 	ppc64leRegex      = regexp.MustCompile(`(?i)-ppc64le`)
 	promoteRegex      = regexp.MustCompile(`(?i)^promote-`)
@@ -223,15 +225,14 @@ var (
 )
 
 const (
-	VariantAggregation   = "Aggregation" // aggregated or none
-	VariantArch          = "Architecture"
-	VariantFeatureSet    = "FeatureSet" // techpreview / standard
-	VariantInstaller     = "Installer"  // ipi / upi / assisted
-	VariantNetwork       = "Network"
-	VariantNetworkAccess = "NetworkAccess" // disconnected / proxy / standard
-	// TODO
-	VariantNetworkStack     = "NetworkStack" // ipv4 / ipv6 / dual
-	VariantOwner            = "Owner"        // eng / osd
+	VariantAggregation      = "Aggregation" // aggregated or none
+	VariantArch             = "Architecture"
+	VariantFeatureSet       = "FeatureSet" // techpreview / standard
+	VariantInstaller        = "Installer"  // ipi / upi / assisted
+	VariantNetwork          = "Network"
+	VariantNetworkAccess    = "NetworkAccess" // disconnected / proxy / standard
+	VariantNetworkStack     = "NetworkStack"  // ipv4 / ipv6 / dual
+	VariantOwner            = "Owner"         // eng / osd
 	VariantPlatform         = "Platform"
 	VariantScheduler        = "Scheduler"    // realtime / standard
 	VariantSecurityMode     = "SecurityMode" // fips / default
@@ -305,6 +306,14 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantTopology] = "microshift"
 	} else {
 		variants[VariantTopology] = "ha"
+	}
+
+	if dualStackRegex.MatchString(jobName) {
+		variants[VariantNetworkStack] = "dual" // previously single-node
+	} else if ipv6Regex.MatchString(jobName) {
+		variants[VariantNetworkStack] = "ipv6" // previously single-node
+	} else {
+		variants[VariantNetworkStack] = "ipv4" // previously single-node
 	}
 
 	// TODO: suite may not be the right word here
