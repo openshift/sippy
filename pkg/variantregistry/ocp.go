@@ -60,11 +60,11 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 	// TODO: unfortunate use of another project here
 	query := v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
 		"`openshift-gce-devel.ci_analysis_us.jobs` " +
-		`WHERE (prowjob_job_name LIKE 'periodic-ci-openshift-%%' 
-			OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%' 
+		`WHERE (prowjob_job_name LIKE 'periodic-ci-openshift-%%4.16%%' 
+			OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%4.16%%' 
 			OR prowjob_job_name LIKE 'release-%%' 
-			OR prowjob_job_name like 'aggregator-%%')
-		AND prowjob_job_name LIKE '%4.16%'
+			OR prowjob_job_name like 'aggregator-%%4.16%%')
+		OR prowjob_job_name LIKE 'pull-ci-openshift-%%'
 		GROUP BY prowjob_job_name`)
 	// TODO: ^^ remove 4.16
 	it, err := query.Read(context.TODO())
@@ -316,6 +316,8 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 
 	if assistedRegex.MatchString(jobName) {
 		variants[VariantInstaller] = "assisted"
+	} else if hypershiftRegex.MatchString(jobName) {
+		variants[VariantInstaller] = "hypershift"
 	} else if upiRegex.MatchString(jobName) {
 		variants[VariantInstaller] = "upi"
 	} else {

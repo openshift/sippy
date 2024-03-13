@@ -53,7 +53,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantFromReleaseMajor: "4",
 				VariantFromReleaseMinor: "16",
 				VariantArch:             "amd64",
-				VariantInstaller:        "ipi", // Is this ok for hypershift?
+				VariantInstaller:        "hypershift", // hypershift uses it's own installer
 				VariantFeatureSet:       "default",
 				VariantPlatform:         "aws",
 				VariantNetwork:          "ovn",
