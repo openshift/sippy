@@ -50,8 +50,7 @@ const (
 )
 
 const (
-	releasePresubmits = "Presubmits"
-	releaseStatusEOL  = "End of life"
+	releaseStatusEOL = "End of life"
 )
 
 var (
@@ -113,22 +112,6 @@ var (
 	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "releaseStatus"})
 )
 
-// getReleases gets all the releases defined in the BQ Releases table if bqc is defined.
-// Otherwise, it falls back to get it from sippy DB
-func getReleases(dbc *db.DB, bqc *bqclient.Client) ([]query.Release, error) {
-	if bqc != nil {
-		releases, err := api.GetReleasesFromBigQuery(bqc)
-		if err != nil {
-			log.WithError(err).Error("error getting releases from bigquery")
-			return releases, err
-		}
-		// Add special release Presubmits for prow jobs
-		releases = append(releases, query.Release{Release: releasePresubmits})
-		return releases, nil
-	}
-	return query.ReleasesFromDB(dbc)
-}
-
 func getReleaseStatus(releases []query.Release, release string) string {
 	releaseStatus := releaseStatusEOL
 	for _, r := range releases {
@@ -145,7 +128,7 @@ func getReleaseStatus(releases []query.Release, release string) string {
 func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time, cacheOptions cache.RequestOptions) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
-	releases, err := getReleases(dbc, bqc)
+	releases, err := api.GetReleases(dbc, bqc)
 	if err != nil {
 		return err
 	}
