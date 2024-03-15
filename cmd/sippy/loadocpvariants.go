@@ -18,10 +18,11 @@ import (
 )
 
 type LoadVariantsFlags struct {
-	BigQueryFlags    *flags.BigQueryFlags
-	GoogleCloudFlags *flags.GoogleCloudFlags
-	OutputFile       string
-	Mode             string
+	BigQueryFlags     *flags.BigQueryFlags
+	GoogleCloudFlags  *flags.GoogleCloudFlags
+	OutputFile        string
+	Mode              string
+	BigqueryJobsTable string
 }
 
 func NewLoadVariantsFlags() *LoadVariantsFlags {
@@ -36,6 +37,7 @@ func (f *LoadVariantsFlags) BindFlags(fs *pflag.FlagSet) {
 	f.GoogleCloudFlags.BindFlags(fs)
 	fs.StringVar(&f.OutputFile, "o", "ocp-expected-job-variants.json", "Output json file for job variant data")
 	fs.StringVar(&f.Mode, "mode", "ocp", "Implementation of job variant loader")
+	fs.StringVar(&f.BigqueryJobsTable, "bigquery-jobs-table", "jobs", "Jobs table to load job names from")
 }
 
 func NewLoadJobVariantsCommand() *cobra.Command {
@@ -65,7 +67,9 @@ func NewLoadJobVariantsCommand() *cobra.Command {
 			switch f.Mode {
 			case "ocp":
 
-				jvs := variantregistry.NewOCPVariantLoader(bigQueryClient, gcsClient,
+				jvs := variantregistry.NewOCPVariantLoader(bigQueryClient, f.BigQueryFlags.BigQueryProject,
+					f.BigQueryFlags.BigQueryDataset, f.BigqueryJobsTable,
+					gcsClient,
 					f.GoogleCloudFlags.StorageBucket)
 				expectedVariants, err := jvs.LoadExpectedJobVariants(context.TODO())
 				if err != nil {

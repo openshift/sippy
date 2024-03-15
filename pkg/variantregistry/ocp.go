@@ -3,6 +3,7 @@ package variantregistry
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -21,20 +22,29 @@ import (
 
 // OCPVariantLoader generates a mapping of job names to their variant map for all known jobs.
 type OCPVariantLoader struct {
-	BigQueryClient *bigquery.Client
-	VariantManager testidentification.VariantManager
-	bkt            *storage.BucketHandle
+	BigQueryClient  *bigquery.Client
+	VariantManager  testidentification.VariantManager
+	bkt             *storage.BucketHandle
+	bigQueryProject string
+	bigQueryDataSet string
+	bigQueryTable   string
 }
 
 func NewOCPVariantLoader(
 	bigQueryClient *bigquery.Client,
+	bigQueryProject string,
+	bigQueryDataSet string,
+	bigQueryTable string,
 	gcsClient *storage.Client,
 	gcsBucket string) *OCPVariantLoader {
 
 	bkt := gcsClient.Bucket(gcsBucket)
 	return &OCPVariantLoader{
-		BigQueryClient: bigQueryClient,
-		bkt:            bkt,
+		BigQueryClient:  bigQueryClient,
+		bkt:             bkt,
+		bigQueryProject: bigQueryProject,
+		bigQueryDataSet: bigQueryDataSet,
+		bigQueryTable:   bigQueryTable,
 	}
 
 }
@@ -59,8 +69,8 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 	// since start of 4.14 perhaps?
 	// TODO: unfortunate use of another project here
 	query := v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
-		"`openshift-gce-devel.ci_analysis_us.jobs` " +
-		`WHERE (prowjob_job_name LIKE 'periodic-ci-openshift-%%4.16%%' 
+		fmt.Sprintf("%s.%s.%s", v.bigQueryProject, v.bigQueryDataSet, v.bigQueryTable) +
+		` WHERE (prowjob_job_name LIKE 'periodic-ci-openshift-%%4.16%%' 
 			OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%4.16%%' 
 			OR prowjob_job_name LIKE 'release-%%' 
 			OR prowjob_job_name like 'aggregator-%%4.16%%')
