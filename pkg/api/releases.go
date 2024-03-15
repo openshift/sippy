@@ -502,7 +502,12 @@ func GetReleasesFromBigQuery(client *bqcachedclient.Client) ([]query.Release, er
 			log.WithError(err).Error("error parsing release row from bigquery")
 			return releases, err
 		}
-		releases = append(releases, query.Release{Release: r.Release, Status: r.ReleaseStatus.String()})
+		release := query.Release{Release: r.Release, Status: r.ReleaseStatus.String()}
+		if r.GADate.Valid {
+			gaDate := r.GADate.Date.In(time.UTC)
+			release.GADate = &gaDate
+		}
+		releases = append(releases, release)
 	}
 	return releases, nil
 }

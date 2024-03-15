@@ -866,18 +866,21 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	response := apitype.Releases{
 		GADates: releaseloader.GADateMap,
 	}
-	releases, err := query.ReleasesFromDB(s.db)
+	releases, err := api.GetReleases(s.db, s.bigQueryClient)
 	if err != nil {
-		log.WithError(err).Error("error querying releases from db")
+		log.WithError(err).Error("error querying releases")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
 			"code":    http.StatusInternalServerError,
-			"message": "error querying releases from db",
+			"message": "error querying releases",
 		})
 		return
 	}
 
 	for _, release := range releases {
 		response.Releases = append(response.Releases, release.Release)
+		if release.GADate != nil {
+			response.GADates[release.Release] = *release.GADate
+		}
 	}
 
 	type LastUpdated struct {
