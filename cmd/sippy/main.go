@@ -38,7 +38,7 @@ func main() {
 		NewLoadCommand(),
 		NewSnapshotCommand(),
 		NewRefreshCommand(),
-		NewLoadOCPJobVariantsCommand(),
+		NewLoadJobVariantsCommand(),
 		NewSyncJobVariantsCommand(),
 	)
 
