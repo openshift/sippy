@@ -31,15 +31,38 @@ const (
 	blockerScoreToAlertOn = 70
 )
 
+const (
+	jobPassRatioMetricName                  = "sippy_job_pass_ratio" // #nosec G101
+	disruptionVsPrevGAMetricName            = "sippy_disruption_vs_prev_ga"
+	payloadHoursSinceLastAcceptedMetricName = "sippy_payloads_hours_since_last_accepted"
+	payloadConsecutiveRejectionsMetricName  = "sippy_payloads_consecutively_rejected"
+	payloadPossibleTestBlockersMetricName   = "sippy_payloads_possible_test_blockers"
+	installSuccessMetricName                = "sippy_install_success_last"
+	upgradeSuccessMetricName                = "sippy_upgrade_success_last"
+	installSuccessDeltaToPrevWeekMetricName = "sippy_install_success_delta_last"
+	upgradeSuccessDeltaToPrevWeekMetricName = "sippy_upgrade_success_delta_last"
+	payloadHoursSinceLastOSUpgradeName      = "sippy_payloads_hours_since_last_os_upgrade"
+)
+
+const (
+	silencedTrue  = "true"
+	silencedFalse = "false"
+)
+
+const (
+	releasePresubmits = "Presubmits"
+	releaseStatusEOL  = "End of life"
+)
+
 var (
 	buildClusterHealthMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_build_cluster_pass_ratio",
 		Help: "Ratio of passed job runs for a build cluster in a period (2 day, 7 day, etc)",
 	}, []string{"cluster", "period"})
 	jobPassRatioMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_job_pass_ratio",
+		Name: jobPassRatioMetricName,
 		Help: "Ratio of passed job runs for the given job in a period (2 day, 7 day, etc)",
-	}, []string{"release", "period", "name", "silenced"})
+	}, []string{"release", "period", "name", "silenced", "releaseStatus"})
 	infraSuccessMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_infra_success_ratio",
 		Help: "Ratio of successful infrastructure in a period (2 day, 7 day, etc)",
@@ -47,23 +70,23 @@ var (
 	releaseWarningsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_release_warnings",
 		Help: "Number of current warnings for a release, see overview page in UI for details",
-	}, []string{"release"})
+	}, []string{"release", "releaseStatus"})
 	payloadConsecutiveRejectionsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_payloads_consecutively_rejected",
+		Name: payloadConsecutiveRejectionsMetricName,
 		Help: "Number of consecutive rejected payloads in each release, stream and arch combo. Will be 0 if most recent payload accepted.",
-	}, []string{"release", "stream", "architecture"})
+	}, []string{"release", "stream", "architecture", "releaseStatus"})
 	payloadHoursSinceLastAcceptedMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_payloads_hours_since_last_accepted",
+		Name: payloadHoursSinceLastAcceptedMetricName,
 		Help: "Number of hours since last accepted payload in each release, stream and arch combo.",
-	}, []string{"release", "stream", "architecture"})
+	}, []string{"release", "stream", "architecture", "releaseStatus"})
 	payloadHoursSinceLastOSUpgrade = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_payloads_hours_since_last_os_upgrade",
+		Name: payloadHoursSinceLastOSUpgradeName,
 		Help: "Number of hours since last OS upgrade.",
-	}, []string{"release", "stream", "architecture"})
+	}, []string{"release", "stream", "architecture", "releaseStatus"})
 	payloadPossibleTestBlockersMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_payloads_possible_test_blockers",
+		Name: payloadPossibleTestBlockersMetricName,
 		Help: "Number of possible test blockers identified for a given payload stream.",
-	}, []string{"release", "stream", "architecture"})
+	}, []string{"release", "stream", "architecture", "releaseStatus"})
 	hoursSinceLastUpdate = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_hours_since_last_update",
 		Help: "Number of hours since Sippy last successfully fetched new data.",
@@ -73,33 +96,59 @@ var (
 		Help: "Regression score for components",
 	}, []string{"component", "network", "arch", "platform"})
 	disruptionVsPrevGAMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_disruption_vs_prev_ga",
+		Name: disruptionVsPrevGAMetricName,
 		Help: "Delta of percentiles now vs the 30 days prior to previous release GA date",
-	}, []string{"delta", "release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
+	}, []string{"delta", "release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "releaseStatus"})
 	disruptionVsPrevGARelevanceMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_disruption_vs_prev_ga_relevance",
 		Help: "Rating of how relevant we feel our data is for regression detection.",
-	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
+	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "releaseStatus"})
 	disruptionVsTwoWeeksAgo = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_disruption_vs_two_weeks_ago",
 		Help: "Delta of percentiles now vs two weeks ago for a given release",
-	}, []string{"delta", "release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
+	}, []string{"delta", "release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "releaseStatus"})
 	disruptionVsTwoWeeksAgoRelevanceMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_disruption_vs_two_weeks_ago_relevance",
 		Help: "Rating of how relevant we feel our data is for regression detection.",
-	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture"})
+	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "releaseStatus"})
 )
+
+// getReleases gets all the releases defined in the BQ Releases table if bqc is defined.
+// Otherwise, it falls back to get it from sippy DB
+func getReleases(dbc *db.DB, bqc *bqclient.Client) ([]query.Release, error) {
+	if bqc != nil {
+		releases, err := api.GetReleasesFromBigQuery(bqc)
+		if err != nil {
+			log.WithError(err).Error("error getting releases from bigquery")
+			return releases, err
+		}
+		// Add special release Presubmits for prow jobs
+		releases = append(releases, query.Release{Release: releasePresubmits})
+		return releases, nil
+	}
+	return query.ReleasesFromDB(dbc)
+}
+
+func getReleaseStatus(releases []query.Release, release string) string {
+	releaseStatus := releaseStatusEOL
+	for _, r := range releases {
+		if r.Release == release && len(r.Status) != 0 {
+			releaseStatus = r.Status
+			break
+		}
+	}
+	return releaseStatus
+}
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
 func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time, cacheOptions cache.RequestOptions) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
-	releases, err := query.ReleasesFromDB(dbc)
+	releases, err := getReleases(dbc, bqc)
 	if err != nil {
 		return err
 	}
-
 	promReportTypes := buildPromReportTypes(releases)
 	if err != nil {
 		return err
@@ -122,14 +171,15 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 			return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
 		}
 		for _, jobResult := range jobsResult {
-			silenced := "false"
+			silenced := silencedFalse
 			if jobResult.CurrentRuns == 0 {
-				silenced = "true"
+				silenced = silencedTrue
 			}
 			if jobResult.OpenBugs > 0 {
-				silenced = "true"
+				silenced = silencedTrue
 			}
-			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name, silenced).Set(jobResult.CurrentPassPercentage / 100)
+			releaseStatus := getReleaseStatus(releases, pType.release)
+			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name, silenced, releaseStatus).Set(jobResult.CurrentPassPercentage / 100)
 		}
 	}
 
@@ -137,7 +187,8 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 	// tell you x warnings are present and link you to the overview in the alert.
 	for _, release := range releases {
 		releaseWarnings := api.ScanForReleaseWarnings(dbc, release.Release, reportEnd)
-		releaseWarningsMetric.WithLabelValues(release.Release).Set(float64(len(releaseWarnings)))
+		releaseStatus := getReleaseStatus(releases, release.Release)
+		releaseWarningsMetric.WithLabelValues(release.Release, releaseStatus).Set(float64(len(releaseWarnings)))
 	}
 
 	if err := refreshBuildClusterMetrics(dbc, reportEnd); err != nil {
@@ -151,7 +202,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
 
-		if err := refreshDisruptionMetrics(bqc); err != nil {
+		if err := refreshDisruptionMetrics(bqc, releases); err != nil {
 			log.WithError(err).Error("error refreshing disruption metrics")
 		}
 
@@ -328,7 +379,7 @@ func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time) {
 			if rhr.LastPhase == apitype.PayloadRejected {
 				count = rhr.Count
 			}
-			payloadConsecutiveRejectionsMetric.WithLabelValues(r.Release, rhr.Stream, rhr.Architecture).Set(float64(count))
+			payloadConsecutiveRejectionsMetric.WithLabelValues(r.Release, rhr.Stream, rhr.Architecture, getReleaseStatus(releases, r.Release)).Set(float64(count))
 
 			// Piggy back the results here to use the list of arch+streams:
 			if rhr.LastPhase == apitype.PayloadRejected {
@@ -344,7 +395,8 @@ func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time) {
 						blockersFound++
 					}
 				}
-				payloadPossibleTestBlockersMetric.WithLabelValues(r.Release, rhr.Stream, rhr.Architecture).
+				payloadPossibleTestBlockersMetric.WithLabelValues(r.Release, rhr.Stream, rhr.Architecture,
+					getReleaseStatus(releases, r.Release)).
 					Set(float64(blockersFound))
 			}
 		}
@@ -357,7 +409,8 @@ func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time) {
 
 		for _, archStream := range lastAcceptedReleaseTags {
 			sinceLastAccepted := time.Since(archStream.ReleaseTime)
-			payloadHoursSinceLastAcceptedMetric.WithLabelValues(r.Release, archStream.Stream, archStream.Architecture).Set(sinceLastAccepted.Hours())
+			payloadHoursSinceLastAcceptedMetric.WithLabelValues(r.Release, archStream.Stream, archStream.Architecture,
+				getReleaseStatus(releases, r.Release)).Set(sinceLastAccepted.Hours())
 		}
 
 		lastOSUpgradeTags, err := query.GetLastOSUpgradeByArchitectureAndStream(dbc.DB, r.Release)
@@ -367,7 +420,7 @@ func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time) {
 		}
 		for _, archStream := range lastOSUpgradeTags {
 			sinceLastOS := time.Since(archStream.ReleaseTime)
-			payloadHoursSinceLastOSUpgrade.WithLabelValues(r.Release, archStream.Stream, archStream.Architecture).Set(sinceLastOS.Hours())
+			payloadHoursSinceLastOSUpgrade.WithLabelValues(r.Release, archStream.Stream, archStream.Architecture, getReleaseStatus(releases, r.Release)).Set(sinceLastOS.Hours())
 		}
 
 	}
@@ -376,7 +429,7 @@ func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time) {
 // refreshDisruptionMetrics queries our BigQuery views for current release vs two weeks ago, and previous release GA.
 // Metrics are published for the delta for each NURP which can then be alerted on if certain thresholds are exceeded.
 // The previous GA view should have its release and GA date updated on each release GA.
-func refreshDisruptionMetrics(client *bqclient.Client) error {
+func refreshDisruptionMetrics(client *bqclient.Client, releases []query.Release) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating disruption metrics as we don't have a bigquery client")
 		return nil
@@ -393,21 +446,22 @@ func refreshDisruptionMetrics(client *bqclient.Client) error {
 	}
 
 	for _, row := range disruptionReport.Rows {
+		releaseStatus := getReleaseStatus(releases, row.Release)
 		disruptionVsPrevGAMetric.WithLabelValues("P50",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P50))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.P50))
 		disruptionVsPrevGAMetric.WithLabelValues("P75",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P75))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.P75))
 		disruptionVsPrevGAMetric.WithLabelValues("P95",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P95))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.P95))
 		disruptionVsPrevGAMetric.WithLabelValues("PercentageAboveZero",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.PercentageAboveZeroDelta))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.PercentageAboveZeroDelta))
 		disruptionVsPrevGARelevanceMetric.WithLabelValues(
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.Relevance))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.Relevance))
 	}
 
 	disruptionReport, err = api.GetDisruptionVsTwoWeeksAgoReportFromBigQuery(client)
@@ -416,21 +470,22 @@ func refreshDisruptionMetrics(client *bqclient.Client) error {
 	}
 
 	for _, row := range disruptionReport.Rows {
+		releaseStatus := getReleaseStatus(releases, row.Release)
 		disruptionVsTwoWeeksAgo.WithLabelValues("P50",
 			row.Release, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P50))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.P50))
 		disruptionVsTwoWeeksAgo.WithLabelValues("P75",
 			row.Release, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P75))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.P75))
 		disruptionVsTwoWeeksAgo.WithLabelValues("P95",
 			row.Release, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.P95))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.P95))
 		disruptionVsTwoWeeksAgo.WithLabelValues("PercentageAboveZero",
 			row.Release, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.PercentageAboveZeroDelta))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.PercentageAboveZeroDelta))
 		disruptionVsTwoWeeksAgoRelevanceMetric.WithLabelValues(
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture).Set(float64(row.Relevance))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.Relevance))
 	}
 
 	return nil
