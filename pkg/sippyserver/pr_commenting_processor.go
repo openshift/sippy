@@ -615,8 +615,13 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(prRoot string, dryrun bool) (bo
 			break
 		}
 
+		if err != nil {
+			log.WithError(err).Warningf("gcs bucket iterator returned error")
+			continue
+		}
+
 		// want empty Name indicating a folder
-		if len(attrs.Name) > 0 {
+		if attrs == nil || len(attrs.Name) > 0 {
 			continue
 		}
 
