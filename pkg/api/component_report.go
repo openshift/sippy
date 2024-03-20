@@ -1230,6 +1230,15 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 			} else {
 				status = apitype.NotSignificant
 			}
+
+			switch {
+			case samplePassPercentage < 0.95:
+				status = apitype.ExtremeRegression
+			case samplePassPercentage < 0.99:
+				status = apitype.SignificantRegression
+			default:
+				status = apitype.NotSignificant
+			}
 		}
 	}
 	return status, fischerExact
