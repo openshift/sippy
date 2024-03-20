@@ -225,7 +225,11 @@ func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmp
 
 func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
 	if s.db == nil {
-		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		capabilities := make([]string, 0)
+		if s.mode == ModeOpenShift {
+			capabilities = append(capabilities, "openshift_releases")
+		}
+		api.RespondWithJSON(http.StatusOK, w, capabilities)
 		return
 	}
 
@@ -949,7 +953,12 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
 	if s.db == nil {
-		api.RespondWithJSON(404, w, map[string]string{"message": "missing postgres connection required for this endpoint"})
+		response := apitype.Releases{
+			GADates: releaseloader.GADateMap,
+		}
+		response.Releases = []string{"4.13", "4.14", "4.15", "4.16"}
+		response.LastUpdated = time.Now()
+		api.RespondWithJSON(http.StatusOK, w, response)
 		return
 	}
 
