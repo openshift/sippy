@@ -25,6 +25,7 @@ type Message struct {
 type EventInterval struct {
 	Condition
 
+	Display           bool    `json:"display"`
 	Source            string  `json:"tempSource,omitempty"`
 	StructuredLocator Locator `json:"tempStructuredLocator"`
 	StructuredMessage Message `json:"tempStructuredMessage"`
