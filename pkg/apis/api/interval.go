@@ -39,5 +39,6 @@ type EventInterval struct {
 }
 
 type EventIntervalList struct {
-	Items []EventInterval `json:"items"`
+	Items                  []EventInterval `json:"items"`
+	IntervalFilesAvailable []string        `json:"intervalFilesAvailable"`
 }
