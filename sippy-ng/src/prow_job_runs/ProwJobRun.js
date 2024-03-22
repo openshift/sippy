@@ -383,7 +383,6 @@ function mutateIntervals(eventIntervals) {
 
     // Categorizing the events once on page load will save time on filtering later
     eventInterval.categories = {}
-    let categorized = false
     eventInterval.categories.operator_unavailable =
       isOperatorAvailable(eventInterval)
     eventInterval.categories.operator_progressing =
@@ -406,6 +405,12 @@ function mutateIntervals(eventIntervals) {
       isEtcdLeadershipAndNotEmpty(eventInterval)
     eventInterval.categories.cloud_metrics = isCloudMetrics(eventInterval)
     eventInterval.categories.uncategorized = !_.some(eventInterval.categories) // will save time later during filtering and re-rendering since we don't render any uncategorized events
+
+    // Calculate the string representation of the message (tooltip) and locator once on load:
+    eventInterval.displayMessage = defaultToolTip(eventInterval)
+    eventInterval.displayLocator = buildLocatorDisplayString(
+      eventInterval.tempStructuredLocator
+    )
   })
 }
 
@@ -715,17 +720,9 @@ function isAlert(eventInterval) {
 function interestingEvents(item) {
   if (item.tempStructuredMessage.annotations['pathological'] === 'true') {
     if (item.tempStructuredMessage.annotations['interesting'] === 'true') {
-      return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
-        ` (pathological known)`,
-        'PathologicalKnown',
-      ]
+      return [item.displayLocator, ` (pathological known)`, 'PathologicalKnown']
     } else {
-      return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
-        ` (pathological new)`,
-        'PathologicalNew',
-      ]
+      return [item.displayLocator, ` (pathological new)`, 'PathologicalNew']
     }
   }
   // TODO: hack that can likely be removed when we get to structured intervals for these
@@ -734,42 +731,22 @@ function interestingEvents(item) {
     item.tempStructuredMessage.annotations['interesting'] === 'true' &&
     item.tempStructuredMessage.humanMessage.includes('pod sandbox')
   ) {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      ` (pod sandbox)`,
-      'PodSandbox',
-    ]
+    return [item.displayLocator, ` (pod sandbox)`, 'PodSandbox']
   }
 
   if (item.message.includes('interesting/true')) {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      ` (interesting event)`,
-      'InterestingEvent',
-    ]
+    return [item.displayLocator, ` (interesting event)`, 'InterestingEvent']
   }
 }
 
 function podLogs(item) {
   if (item.level == 'Warning') {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      ` (pod log)`,
-      'PodLogWarning',
-    ]
+    return [item.displayLocator, ` (pod log)`, 'PodLogWarning']
   }
   if (item.level == 'Error') {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      ` (pod log)`,
-      'PodLogError',
-    ]
+    return [item.displayLocator, ` (pod log)`, 'PodLogError']
   }
-  return [
-    buildLocatorDisplayString(item.tempStructuredLocator),
-    ` (pod log)`,
-    'PodLogInfo',
-  ]
+  return [item.displayLocator, ` (pod log)`, 'PodLogInfo']
 }
 
 const reReason = new RegExp('(^| )reason/([^ ]+)')
@@ -778,70 +755,46 @@ function podStateValue(item) {
 
   if (m && isPodLifecycle(item)) {
     if (m[2] == 'Created') {
-      return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
-        ` (pod lifecycle)`,
-        'PodCreated',
-      ]
+      return [item.displayLocator, ` (pod lifecycle)`, 'PodCreated']
     }
     if (m[2] == 'Scheduled') {
-      return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
-        ` (pod lifecycle)`,
-        'PodScheduled',
-      ]
+      return [item.displayLocator, ` (pod lifecycle)`, 'PodScheduled']
     }
     if (m[2] == 'GracefulDelete') {
-      return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
-        ` (pod lifecycle)`,
-        'PodTerminating',
-      ]
+      return [item.displayLocator, ` (pod lifecycle)`, 'PodTerminating']
     }
   }
   if (m && isContainerLifecycle(item)) {
     if (m[2] == 'ContainerWait') {
-      return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
-        ` (container lifecycle)`,
-        'ContainerWait',
-      ]
+      return [item.displayLocator, ` (container lifecycle)`, 'ContainerWait']
     }
     if (m[2] == 'ContainerStart') {
-      return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
-        ` (container lifecycle)`,
-        'ContainerStart',
-      ]
+      return [item.displayLocator, ` (container lifecycle)`, 'ContainerStart']
     }
   }
   if (m && isContainerReadiness(item)) {
     if (m[2] == 'NotReady') {
       return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
+        item.displayLocator,
         ` (container readiness)`,
         'ContainerNotReady',
       ]
     }
     if (m[2] == 'Ready') {
-      return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
-        ` (container readiness)`,
-        'ContainerReady',
-      ]
+      return [item.displayLocator, ` (container readiness)`, 'ContainerReady']
     }
   }
   if (m && isKubeletReadinessCheck(item)) {
     if (m[2] == 'ReadinessFailed') {
       return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
+        item.displayLocator,
         ` (kubelet container readiness)`,
         'ContainerReadinessFailed',
       ]
     }
     if (m[2] == 'ReadinessErrored') {
       return [
-        buildLocatorDisplayString(item.tempStructuredLocator),
+        item.displayLocator,
         ` (kubelet container readiness)`,
         'ContainerReadinessErrored',
       ]
@@ -849,13 +802,13 @@ function podStateValue(item) {
   }
   if (m && isKubeletStartupProbeFailure(item)) {
     return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
+      item.displayLocator,
       ` (kubelet container startupProbe)`,
       'StartupProbeFailed',
     ]
   }
 
-  return [buildLocatorDisplayString(item.tempStructuredLocator), '', 'Unknown']
+  return [item.displayLocator, '', 'Unknown']
 }
 
 const rePhase = new RegExp('(^| )phase/([^ ]+)')
@@ -865,18 +818,10 @@ function nodeStateValue(item) {
     roles = item.tempStructuredMessage.annotations.roles
   }
   if (item.tempStructuredMessage.reason === 'NotReady') {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      ` (${roles})`,
-      'NodeNotReady',
-    ]
+    return [item.displayLocator, ` (${roles})`, 'NodeNotReady']
   }
   let m = item.tempStructuredMessage.annotations.phase
-  return [
-    buildLocatorDisplayString(item.tempStructuredLocator),
-    ` (${roles})`,
-    m,
-  ]
+  return [item.displayLocator, ` (${roles})`, m]
 }
 
 function etcdLeadershipLogsValue(item) {
@@ -913,69 +858,37 @@ function isEtcdLeadershipAndNotEmpty(item) {
 }
 
 function cloudMetricsValue(item) {
-  return [
-    buildLocatorDisplayString(item.tempStructuredLocator),
-    '',
-    'CloudMetric',
-  ]
+  return [item.displayLocator, '', 'CloudMetric']
 }
 
 function alertSeverity(item) {
   // the other types can be pending, so check pending first
   if (item.tempStructuredMessage.annotations['alertstate'] === 'pending') {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      '',
-      'AlertPending',
-    ]
+    return [item.displayLocator, '', 'AlertPending']
   }
 
   if (item.tempStructuredMessage.annotations['severity'] === 'info') {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      '',
-      'AlertInfo',
-    ]
+    return [item.displayLocator, '', 'AlertInfo']
   }
   if (item.tempStructuredMessage.annotations['severity'] === 'warning') {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      '',
-      'AlertWarning',
-    ]
+    return [item.displayLocator, '', 'AlertWarning']
   }
   if (item.tempStructuredMessage.annotations['severity'] === 'critical') {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      '',
-      'AlertCritical',
-    ]
+    return [item.displayLocator, '', 'AlertCritical']
   }
 
   // color as critical if nothing matches so that we notice that something has gone wrong
-  return [
-    buildLocatorDisplayString(item.tempStructuredLocator),
-    '',
-    'AlertCritical',
-  ]
+  return [item.displayLocator, '', 'AlertCritical']
 }
 
 function apiserverDisruptionValue(item) {
   // TODO: isolate DNS error into CIClusterDisruption
-  return [
-    buildLocatorDisplayString(item.tempStructuredLocator),
-    '',
-    'Disruption',
-  ]
+  return [item.displayLocator, '', 'Disruption']
 }
 
 function apiserverShutdownValue(item) {
   // TODO: isolate DNS error into CIClusterDisruption
-  return [
-    buildLocatorDisplayString(item.tempStructuredLocator),
-    '',
-    'GracefulShutdownInterval',
-  ]
+  return [item.displayLocator, '', 'GracefulShutdownInterval']
 }
 
 function disruptionValue(item) {
@@ -986,26 +899,14 @@ function disruptionValue(item) {
     'likely a problem in cluster running tests'
   )
   if (ciClusterDisruption != -1) {
-    return [
-      buildLocatorDisplayString(item.tempStructuredLocator),
-      '',
-      'CIClusterDisruption',
-    ]
+    return [item.displayLocator, '', 'CIClusterDisruption']
   }
-  return [
-    buildLocatorDisplayString(item.tempStructuredLocator),
-    '',
-    'Disruption',
-  ]
+  return [item.displayLocator, '', 'Disruption']
 }
 
 function apiserverShutdownEventsValue(item) {
   // TODO: isolate DNS error into CIClusterDisruption
-  return [
-    buildLocatorDisplayString(item.tempStructuredLocator),
-    '',
-    'GracefulShutdownWindow',
-  ]
+  return [item.displayLocator, '', 'GracefulShutdownWindow']
 }
 
 function getDurationString(durationSeconds) {
@@ -1166,7 +1067,7 @@ function createTimelineData(
     ranges.push({
       timeRange: [startDate, endDate],
       val: val,
-      labelVal: defaultToolTip(item),
+      labelVal: item.displayMessage,
     })
   })
   for (const label in data) {
