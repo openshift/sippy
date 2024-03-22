@@ -48,7 +48,17 @@ export default function ProwJobRun(props) {
   }
 
   const [allIntervalFiles, setAllIntervalFiles] = useState([])
-  const [intervalFile = props.intervalFile, setIntervalFile] = useState([])
+  const [intervalFile = props.intervalFile, setIntervalFile] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('intervalFile')) {
+      console.log(
+        'returning intervalFile from URL search params: ' +
+          params.get('intervalFile')
+      )
+      return params.get('intervalFile')
+    }
+    return ''
+  })
 
   const [filterText, setFilterText] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -108,6 +118,8 @@ export default function ProwJobRun(props) {
               'setting interval file to first intervals filename: ' +
                 json.items[0].filename
             )
+            // TODO: Causes a duplicate API request when we set this. Look into useRef and only calling
+            // fetchData in useEffect if we've made it through an initial page load?
             setIntervalFile(json.items[0].filename)
           }
         } else {
@@ -133,7 +145,7 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [intervalFile])
 
   useEffect(() => {
     updateFiltering()
@@ -232,10 +244,6 @@ export default function ProwJobRun(props) {
   const handleIntervalFileChange = (event) => {
     console.log('new interval file selected: ' + event.target.value)
     setIntervalFile(event.target.value)
-    // Explicit fetchData rather than useEffect here to prevent the initial double load when no
-    // filename is specified, which will be the typical entry point to this page. See comment above
-    // on setIntervalFile call in fetchData.
-    fetchData()
   }
 
   const handleFilterChange = (event) => {
@@ -248,40 +256,46 @@ export default function ProwJobRun(props) {
         Loaded {eventIntervals.length} intervals from GCS, filtered down to{' '}
         {filteredIntervals.length}.
       </p>
-      Categories:
-      <ButtonGroup size="small" aria-label="Categories">
-        {Object.keys(allCategories).map((key) => (
-          <Button
-            key={key}
-            onClick={() => handleCategoryClick(key)}
-            variant={categories.includes(key) ? 'contained' : 'outlined'}
-          >
-            {allCategories[key]}
-          </Button>
-        ))}
-      </ButtonGroup>
-      Files:
-      <Select
-        labelId="interval-file-label"
-        id="interval-file"
-        value={intervalFile}
-        label="Interval File"
-        onChange={handleIntervalFileChange}
-      >
-        {allIntervalFiles.map((iFile) => (
-          <MenuItem key={iFile} value={iFile}>
-            {iFile}
-          </MenuItem>
-        ))}
-      </Select>
-      <TextField
-        id="filter"
-        label="Regex Filter"
-        variant="outlined"
-        onChange={handleFilterChange}
-        defaultValue={filterText}
-      />
-      <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
+      <div>
+        Categories:
+        <ButtonGroup size="small" aria-label="Categories">
+          {Object.keys(allCategories).map((key) => (
+            <Button
+              key={key}
+              onClick={() => handleCategoryClick(key)}
+              variant={categories.includes(key) ? 'contained' : 'outlined'}
+            >
+              {allCategories[key]}
+            </Button>
+          ))}
+        </ButtonGroup>
+      </div>
+      <div>
+        Files:
+        <Select
+          labelId="interval-file-label"
+          id="interval-file"
+          value={intervalFile}
+          label="Interval File"
+          onChange={handleIntervalFileChange}
+        >
+          {allIntervalFiles.map((iFile) => (
+            <MenuItem key={iFile} value={iFile}>
+              {iFile}
+            </MenuItem>
+          ))}
+        </Select>
+        <TextField
+          id="filter"
+          label="Regex Filter"
+          variant="outlined"
+          onChange={handleFilterChange}
+          defaultValue={filterText}
+        />
+      </div>
+      <div>
+        <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
+      </div>
     </Fragment>
   )
 }
