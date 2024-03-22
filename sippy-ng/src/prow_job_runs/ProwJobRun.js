@@ -104,7 +104,6 @@ export default function ProwJobRun(props) {
           // a list of all available file names. In the UI if we don't yet have one, populate the select with the value
           // we received.
           // TODO: this is triggering a re-request now with the filename set, ultimately getting the same data.
-          // We're using a redis cache but still should not be happening and will slow down the UI.
           if (intervalFile == '') {
             console.log(
               'setting interval file to first intervals filename: ' +
@@ -246,36 +245,32 @@ export default function ProwJobRun(props) {
         Loaded {eventIntervals.length} intervals from GCS, filtered down to{' '}
         {filteredIntervals.length}.
       </p>
-      <p>
-        Categories:
-        <ButtonGroup size="small" aria-label="Categories">
-          {Object.keys(allCategories).map((key) => (
-            <Button
-              key={key}
-              onClick={() => handleCategoryClick(key)}
-              variant={categories.includes(key) ? 'contained' : 'outlined'}
-            >
-              {allCategories[key]}
-            </Button>
-          ))}
-        </ButtonGroup>
-      </p>
-      <p>
-        Files: {intervalFile}
-        <Select
-          labelId="interval-file-label"
-          id="interval-file"
-          value={intervalFile}
-          label="Interval File"
-          onChange={handleIntervalFileChange}
-        >
-          {allIntervalFiles.map((iFile) => (
-            <MenuItem key={iFile} value={iFile}>
-              {iFile}
-            </MenuItem>
-          ))}
-        </Select>
-      </p>
+      Categories:
+      <ButtonGroup size="small" aria-label="Categories">
+        {Object.keys(allCategories).map((key) => (
+          <Button
+            key={key}
+            onClick={() => handleCategoryClick(key)}
+            variant={categories.includes(key) ? 'contained' : 'outlined'}
+          >
+            {allCategories[key]}
+          </Button>
+        ))}
+      </ButtonGroup>
+      Files:
+      <Select
+        labelId="interval-file-label"
+        id="interval-file"
+        value={intervalFile}
+        label="Interval File"
+        onChange={handleIntervalFileChange}
+      >
+        {allIntervalFiles.map((iFile) => (
+          <MenuItem key={iFile} value={iFile}>
+            {iFile}
+          </MenuItem>
+        ))}
+      </Select>
       <p>
         <TextField
           id="filter"
