@@ -103,7 +103,6 @@ export default function ProwJobRun(props) {
           // files are available. The server makes a best guess and returns the intervals for that file, as well as
           // a list of all available file names. In the UI if we don't yet have one, populate the select with the value
           // we received.
-          // TODO: this is triggering a re-request now with the filename set, ultimately getting the same data.
           if (intervalFile == '') {
             console.log(
               'setting interval file to first intervals filename: ' +
@@ -134,7 +133,7 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     fetchData()
-  }, [intervalFile])
+  }, [])
 
   useEffect(() => {
     updateFiltering()
@@ -233,6 +232,10 @@ export default function ProwJobRun(props) {
   const handleIntervalFileChange = (event) => {
     console.log('new interval file selected: ' + event.target.value)
     setIntervalFile(event.target.value)
+    // Explicit fetchData rather than useEffect here to prevent the initial double load when no
+    // filename is specified, which will be the typical entry point to this page. See comment above
+    // on setIntervalFile call in fetchData.
+    fetchData()
   }
 
   const handleFilterChange = (event) => {
@@ -271,15 +274,13 @@ export default function ProwJobRun(props) {
           </MenuItem>
         ))}
       </Select>
-      <p>
-        <TextField
-          id="filter"
-          label="Regex Filter"
-          variant="outlined"
-          onChange={handleFilterChange}
-          defaultValue={filterText}
-        />
-      </p>
+      <TextField
+        id="filter"
+        label="Regex Filter"
+        variant="outlined"
+        onChange={handleFilterChange}
+        defaultValue={filterText}
+      />
       <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
     </Fragment>
   )
