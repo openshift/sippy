@@ -124,7 +124,7 @@ export default function TimelineChart({
         .maxLineHeight(30)
         .maxHeight(20000)
         .onSegmentClick(segmentClickedFunc)
-      //.zColorScale(ordinalScale) // seems to enable the use of our own colors
+        .zColorScale(ordinalScale) // seems to enable the use of our own colors
       if (eventIntervals.length > 0) {
         chart.zoomX([
           new Date(eventIntervals[0].from),
