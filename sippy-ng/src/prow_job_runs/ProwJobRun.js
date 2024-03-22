@@ -250,6 +250,12 @@ export default function ProwJobRun(props) {
     setFilterText(event.target.value)
   }
 
+  // handleSegmentClicked is called whenever an individual interval in the chart is clicked.
+  // Used to display details on the interval and locator in a way that a user can copy if needed.
+  function handleSegmentClicked(segment) {
+    console.log(JSON.stringify(segment, null, 2))
+  }
+
   return (
     <Fragment>
       <p>
@@ -294,7 +300,11 @@ export default function ProwJobRun(props) {
         />
       </div>
       <div>
-        <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
+        <TimelineChart
+          data={chartData}
+          eventIntervals={filteredIntervals}
+          segmentClickedFunc={handleSegmentClicked}
+        />
       </div>
     </Fragment>
   )
