@@ -61,7 +61,7 @@ export default function ProwJobRun(props) {
   const fetchData = () => {
     let queryString = ''
     console.log(
-      'We got the prow job run id of ' +
+      'fetching new data: jobRun=' +
         props.jobRunID +
         ', jobName=' +
         props.jobName +
@@ -97,11 +97,20 @@ export default function ProwJobRun(props) {
           setEventIntervals(tmpIntervals)
 
           let intervalFilesAvailable = json.intervalFilesAvailable
-          console.log('available interval files = ' + intervalFilesAvailable)
           intervalFilesAvailable.sort()
           setAllIntervalFiles(intervalFilesAvailable)
+          // This is a little tricky, we do a query first without specifying a filename, as we don't know what
+          // files are available. The server makes a best guess and returns the intervals for that file, as well as
+          // a list of all available file names. In the UI if we don't yet have one, populate the select with the value
+          // we received.
+          // TODO: this is triggering a re-request now with the filename set, ultimately getting the same data.
+          // We're using a redis cache but still should not be happening and will slow down the UI.
           if (intervalFile == '') {
-            setIntervalFile(json.items[0].intervalFilename)
+            console.log(
+              'setting interval file to first intervals filename: ' +
+                json.items[0].filename
+            )
+            setIntervalFile(json.items[0].filename)
           }
         } else {
           setEventIntervals([])
@@ -154,7 +163,6 @@ export default function ProwJobRun(props) {
       },
       { categories, intervalFile, filterText }
     )
-    console.log('queryString = ' + stringify(queryString))
 
     history.replace({
       search: stringify(queryString),
@@ -253,11 +261,11 @@ export default function ProwJobRun(props) {
         </ButtonGroup>
       </p>
       <p>
-        Files:
+        Files: {intervalFile}
         <Select
-          labelId="demo-simple-select-label"
-          id="all-interval-files"
-          value={eventIntervals[0].file}
+          labelId="interval-file-label"
+          id="interval-file"
+          value={intervalFile}
           label="Interval File"
           onChange={handleIntervalFileChange}
         >
