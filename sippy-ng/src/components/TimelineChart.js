@@ -117,9 +117,9 @@ export default function TimelineChart({ eventIntervals, data }) {
         .enableOverview(false)
         .leftMargin(150)
         .rightMargin(750)
-        .maxLineHeight(20)
-        .maxHeight(10000)
-        .zColorScale(ordinalScale)
+        .maxLineHeight(30)
+        .maxHeight(20000)
+      //.zColorScale(ordinalScale) // seems to enable the use of our own colors
       if (eventIntervals.length > 0) {
         chart.zoomX([
           new Date(eventIntervals[0].from),
