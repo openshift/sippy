@@ -12,7 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api"
 )
 
-func KeyFor(testID string, variant api.ComponentReportColumnIdentification) TriagedIssueKey {
+func KeyForTriagedIssue(testID string, variant api.ComponentReportColumnIdentification) TriagedIssueKey {
 	return TriagedIssueKey{
 		testID: testID,
 		variant: api.ComponentReportColumnIdentification{
@@ -43,8 +43,8 @@ func NewTriagedIncidentsForRelease(release Release) TriagedIncidentsForRelease {
 
 type TriagedIncidentIssue struct {
 	Type           string                 `bigquery:"type"`
-	Description    string                 `bigquery:"description"`
-	URL            string                 `bigquery:"url"`
+	Description    bigquery.NullString    `bigquery:"description"`
+	URL            bigquery.NullString    `bigquery:"url"`
 	StartDate      time.Time              `bigquery:"start_date"`
 	ResolutionDate bigquery.NullTimestamp `bigquery:"resolution_date"`
 }
@@ -54,13 +54,21 @@ type TriagedIncidentAttribution struct {
 	UpdateTime time.Time `bigquery:"update_time"`
 }
 
+type TriagedVariant struct {
+	Network  bigquery.NullString `bigquery:"network"`
+	Upgrade  bigquery.NullString `bigquery:"upgrade"`
+	Arch     bigquery.NullString `bigquery:"arch"`
+	Platform bigquery.NullString `bigquery:"platform"`
+	Variant  bigquery.NullString `bigquery:"variant"`
+}
+
 type TriagedIncident struct {
-	Release      string    `bigquery:"release"`
-	TestID       string    `bigquery:"test_id"`
-	TestName     string    `bigquery:"test_name"`
-	IncidentID   string    `bigquery:"incident_id"`
-	ModifiedTime time.Time `bigquery:"modified_time"`
-	Variant      api.ComponentReportColumnIdentification
+	Release      string                       `bigquery:"release"`
+	TestID       string                       `bigquery:"test_id"`
+	TestName     string                       `bigquery:"test_name"`
+	IncidentID   string                       `bigquery:"incident_id"`
+	ModifiedTime time.Time                    `bigquery:"modified_time"`
+	Variant      TriagedVariant               `bigquery:"variant"`
 	Issue        TriagedIncidentIssue         `bigquery:"issue"`
 	JobRuns      []JobRun                     `bigquery:"job_runs"`
 	Attributions []TriagedIncidentAttribution `bigquery:"attributions"`
@@ -166,8 +174,8 @@ var (
 )
 
 type resolvedIssueKey struct {
-	testID  string
-	variant api.ComponentReportColumnIdentification
+	TestID  string                                  `json:"test_id"`
+	Variant api.ComponentReportColumnIdentification `json:"variant"`
 }
 
 // implement encoding.TextMarshaler for json map key marshalling support
@@ -270,8 +278,8 @@ func (r *resolvedIssueForRelease) addResolvedIssue(in ResolvedIssue) error {
 
 func keyFor(testID string, variant api.ComponentReportColumnIdentification) resolvedIssueKey {
 	return resolvedIssueKey{
-		testID: testID,
-		variant: api.ComponentReportColumnIdentification{
+		TestID: testID,
+		Variant: api.ComponentReportColumnIdentification{
 			Network:  variant.Network,
 			Upgrade:  variant.Upgrade,
 			Arch:     variant.Arch,

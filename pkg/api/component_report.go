@@ -202,7 +202,7 @@ type componentReportGenerator struct {
 	cacheOption      cache.RequestOptions
 	BaseRelease      apitype.ComponentReportRequestReleaseOptions
 	SampleRelease    apitype.ComponentReportRequestReleaseOptions
-	triagedIssues    *resolvedissues.TriagedIncidentsForRelease `json:"-"`
+	triagedIssues    *resolvedissues.TriagedIncidentsForRelease
 	apitype.ComponentReportRequestTestIdentificationOptions
 	apitype.ComponentReportRequestVariantOptions
 	apitype.ComponentReportRequestExcludeOptions
@@ -1096,7 +1096,7 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 	}
 }
 
-func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(testID apitype.ComponentReportTestIdentification) ([]resolvedissues.TriagedIncident, int, []error) {
+func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(testID apitype.ComponentReportTestIdentification) (int, []error) {
 	generator := triagedIncidentsGenerator{
 		GeneratorVersion: 1,
 		GeneratorType:    TriagedIncidents,
@@ -1112,13 +1112,13 @@ func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(testID apitype.C
 		releaseTriagedIncidents, errs := getDataFromCacheOrGenerate[resolvedissues.TriagedIncidentsForRelease](generator.client.Cache, generator.cacheOption, generator, generator.generateTriagedIssuesFor, resolvedissues.TriagedIncidentsForRelease{})
 
 		if len(errs) > 0 {
-			return nil, 0, errs
+			return 0, errs
 		}
 		c.triagedIssues = &releaseTriagedIncidents
 	}
-	triagedIncidents, impactedRuns := triagedIssuesFor(c.triagedIssues, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
+	impactedRuns := triagedIssuesFor(c.triagedIssues, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
 
-	return triagedIncidents, impactedRuns, nil
+	return impactedRuns, nil
 }
 
 type triagedIncidentsGenerator struct {
@@ -1143,14 +1143,14 @@ func (r *triagedIncidentsGenerator) generateTriagedIssuesFor() (resolvedissues.T
 
 	for _, incident := range incidents {
 		variant := apitype.ComponentReportColumnIdentification{
-			Network:  incident.Variant.Network,
-			Upgrade:  incident.Variant.Upgrade,
-			Arch:     incident.Variant.Arch,
-			Platform: incident.Variant.Platform,
-			Variant:  incident.Variant.Variant,
+			Network:  incident.Variant.Network.StringVal,
+			Upgrade:  incident.Variant.Upgrade.StringVal,
+			Arch:     incident.Variant.Arch.StringVal,
+			Platform: incident.Variant.Platform.StringVal,
+			Variant:  incident.Variant.Variant.StringVal,
 		}
 
-		k := resolvedissues.KeyFor(incident.TestID, variant)
+		k := resolvedissues.KeyForTriagedIssue(incident.TestID, variant)
 		triagedIncidents.TriagedIncidents[k] = append(triagedIncidents.TriagedIncidents[k], incident)
 	}
 
@@ -1159,18 +1159,12 @@ func (r *triagedIncidentsGenerator) generateTriagedIssuesFor() (resolvedissues.T
 	return triagedIncidents, nil
 }
 
-func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForRelease, variant apitype.ComponentReportColumnIdentification, testID string, startTime, endTime time.Time) ([]resolvedissues.TriagedIncident, int) {
+func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForRelease, variant apitype.ComponentReportColumnIdentification, testID string, startTime, endTime time.Time) int {
 	if releaseIncidents == nil {
-		return nil, 0
+		return 0
 	}
 
-	// Temporary for testing, do not merge
-	//
-	// if true {
-	// 	return nil, 0
-	// }
-
-	inKey := resolvedissues.KeyFor(testID, variant)
+	inKey := resolvedissues.KeyForTriagedIssue(testID, variant)
 
 	triagedIncidents := releaseIncidents.TriagedIncidents[inKey]
 
@@ -1189,7 +1183,7 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 		}
 	}
 
-	return triagedIncidents, numJobRunsToSuppress
+	return numJobRunsToSuppress
 }
 
 func (r *triagedIncidentsGenerator) queryTriagedIssues() ([]resolvedissues.TriagedIncident, []error) {
@@ -1251,17 +1245,17 @@ func (r *triagedIncidentsGenerator) fetchTriagedIssues(query *bigquery.Query) ([
 	return incidents, errs
 }
 
-func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentReportTestIdentification) ([]resolvedissues.TriagedIncident, int) {
-	triagedIncidents, impactedRuns, errs := c.getTriagedIssuesFromBigQuery(testID)
+func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentReportTestIdentification) int {
+	impactedRuns, errs := c.getTriagedIssuesFromBigQuery(testID)
 
 	if errs != nil {
 		for _, err := range errs {
 			log.WithError(err).Error("error getting triaged issues component from bigquery")
 		}
-		return nil, 0
+		return 0
 	}
 
-	return triagedIncidents, impactedRuns
+	return impactedRuns
 }
 
 func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
@@ -1304,7 +1298,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 			reportStatus = apitype.MissingSample
 		} else {
 			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
-			_, resolvedIssueCompensation := c.triagedIncidentsFor(testID)
+			resolvedIssueCompensation := c.triagedIncidentsFor(testID)
 			// if we need to fall back
 			// _, resolvedIssueCompensation := resolvedissues.ResolvedIssuesFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
 			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
@@ -1457,7 +1451,9 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		},
 	}
 	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ComponentReportColumnIdentification, c.TestID)
-	_, resolvedIssueCompensation := c.triagedIncidentsFor(result.ComponentReportTestIdentification)
+	resolvedIssueCompensation := c.triagedIncidentsFor(result.ComponentReportTestIdentification)
+	// if we need to fall back
+	// _, resolvedIssueCompensation := resolvedissues.ResolvedIssuesFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
 
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
