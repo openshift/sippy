@@ -24,6 +24,16 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
+// move this out
+const TriagedIncidentsProjectID = "openshift-ci-data-analysis"
+const TriagedIncidentsDataSetID = "fsbabcock_test"
+const TriagedIncidentsTableID = "api_resolved_incidents"
+
+// long term moves to
+// const TriagedIncidentsProjectID="openshift-gce-devel"
+// const TriagedIncidentsDataSetID="ci_analysis_us"
+// const TriagedIncidentsTableID="triaged_incidents"
+
 const (
 	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
 
@@ -62,6 +72,19 @@ const (
 			AND skipped = false
 		)
 		SELECT * FROM deduped_testcases WHERE row_num = 1`
+)
+
+type GeneratorType string
+
+var (
+	ComponentReport        GeneratorType = "ComponentReport"
+	SampleTestStatus       GeneratorType = "SampleTestStatus"
+	BaseTestStatus         GeneratorType = "BaseTestStatus"
+	SampleJobRunTestStatus GeneratorType = "SampleJobRunTestStatus"
+	BaseJobRunTestStatus   GeneratorType = "BaseJobRunTestStatus"
+	TriagedIncidents       GeneratorType = "TriagedIncidents"
+	TestDetailsReport      GeneratorType = "TestDetailsReport"
+	TestVariants           GeneratorType = "TestVariants"
 )
 
 var (
@@ -104,12 +127,16 @@ func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
 func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client, gcsBucket string) (apitype.ComponentReportTestVariants, []error) {
 	generator := componentReportGenerator{
 		GeneratorVersion: 1,
+		GeneratorType:    TestVariants,
 		client:           client,
 		gcsBucket:        gcsBucket,
 	}
 
 	return getDataFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, cache.RequestOptions{}, "component_readiness_variants", generator.GenerateVariants, apitype.ComponentReportTestVariants{})
 }
+
+// TODO: tie in the last modified time from the triaged incidents table
+// to expire the report cache when a change is detected
 
 func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
@@ -121,18 +148,20 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 ) (apitype.ComponentReport, []error) {
 	generator := componentReportGenerator{
 		GeneratorVersion: 1,
+		GeneratorType:    ComponentReport,
 		client:           client,
 		gcsBucket:        gcsBucket,
 		cacheOption:      cacheOption,
 		BaseRelease:      baseRelease,
 		SampleRelease:    sampleRelease,
+		triagedIssues:    nil,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
 		ComponentReportRequestVariantOptions:            variantOption,
 		ComponentReportRequestExcludeOptions:            excludeOption,
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return generator.GenerateReport()
+	return getDataFromCacheOrGenerate[apitype.ComponentReport](generator.client.Cache, generator.cacheOption, generator, generator.GenerateReport, apitype.ComponentReport{})
 }
 
 func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
@@ -144,6 +173,7 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 	cacheOption cache.RequestOptions) (apitype.ComponentReportTestDetails, []error) {
 	generator := componentReportGenerator{
 		GeneratorVersion: 1,
+		GeneratorType:    TestDetailsReport,
 		client:           client,
 		gcsBucket:        gcsBucket,
 		cacheOption:      cacheOption,
@@ -155,7 +185,7 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return generator.GenerateTestDetailsReport()
+	return getDataFromCacheOrGenerate[apitype.ComponentReportTestDetails](generator.client.Cache, generator.cacheOption, generator, generator.GenerateTestDetailsReport, apitype.ComponentReportTestDetails{})
 }
 
 // componentReportGenerator contains the information needed to generate a CR report. Do
@@ -166,11 +196,13 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 // cached changes in a way that will no longer be compatible with any prior cached version.
 type componentReportGenerator struct {
 	GeneratorVersion int
+	GeneratorType    GeneratorType
 	client           *bqcachedclient.Client
 	gcsBucket        string
 	cacheOption      cache.RequestOptions
 	BaseRelease      apitype.ComponentReportRequestReleaseOptions
 	SampleRelease    apitype.ComponentReportRequestReleaseOptions
+	triagedIssues    *resolvedissues.TriagedIncidentsForRelease `json:"-"`
 	apitype.ComponentReportRequestTestIdentificationOptions
 	apitype.ComponentReportRequestVariantOptions
 	apitype.ComponentReportRequestExcludeOptions
@@ -201,12 +233,15 @@ func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTe
 }
 
 func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []error) {
-	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, c.cacheOption, c, c.GenerateComponentReportTestStatus, apitype.ComponentReportTestStatus{})
+	before := time.Now()
+	componentReportTestStatus, errs := c.GenerateComponentReportTestStatus()
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
 	report := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus)
 	report.GeneratedAt = componentReportTestStatus.GeneratedAt
+	log.Infof("GenerateReport completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
+
 	return report, nil
 }
 
@@ -231,7 +266,7 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 		c.Variant == "" {
 		return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all parameters have to be defined for test details: test_id, platform, network, upgrade, arch, variant")}
 	}
-	componentJobRunTestReportStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](c.client.Cache, c.cacheOption, c, c.GenerateJobRunTestReportStatus, apitype.ComponentJobRunTestReportStatus{})
+	componentJobRunTestReportStatus, errs := c.GenerateJobRunTestReportStatus()
 	if len(errs) > 0 {
 		return apitype.ComponentReportTestDetails{}, errs
 	}
@@ -252,11 +287,7 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (apitype.Com
 	return componentJobRunTestReportStatus, nil
 }
 
-func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
-	apitype.ComponentJobRunTestReportStatus,
-	[]error,
-) {
-	errs := []error{}
+func (c *componentReportGenerator) getCommonJobRunTestStatusQuery() (string, string, []bigquery.QueryParameter) {
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
 						FROM %s.component_mapping cm
@@ -324,55 +355,140 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 		},
 	}
 
-	baseString := queryString + ` AND branch = @BaseRelease`
-	baseQuery := c.client.BQ.Query(baseString + groupString)
+	return queryString, groupString, commonParams
+}
 
-	baseQuery.Parameters = append(baseQuery.Parameters, commonParams...)
+type baseJobRunTestStatusGenerator struct {
+	GeneratorVersion         int
+	GeneratorType            GeneratorType
+	CommonQuery              string                    `json:"-"`
+	GroupByQuery             string                    `json:"-"`
+	QueryParameters          []bigquery.QueryParameter `json:"-"`
+	cacheOption              cache.RequestOptions
+	ComponentReportGenerator *componentReportGenerator
+}
+
+func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
+	groupByQuery string,
+	queryParameters []bigquery.QueryParameter) (map[string][]apitype.ComponentJobRunTestStatusRow, []error) {
+	generator := baseJobRunTestStatusGenerator{
+		GeneratorVersion: 1,
+		GeneratorType:    BaseJobRunTestStatus,
+		CommonQuery:      commonQuery,
+		GroupByQuery:     groupByQuery,
+		QueryParameters:  queryParameters,
+		cacheOption: cache.RequestOptions{
+			ForceRefresh: c.cacheOption.ForceRefresh,
+			// increase the time that base query is cached since it shouldn't be changing?
+			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
+		},
+		ComponentReportGenerator: c,
+	}
+
+	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](generator.ComponentReportGenerator.client.Cache, generator.cacheOption, generator, generator.queryTestStatus, apitype.ComponentJobRunTestReportStatus{})
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return componentReportTestStatus.BaseStatus, nil
+}
+
+func (b *baseJobRunTestStatusGenerator) queryTestStatus() (apitype.ComponentJobRunTestReportStatus, []error) {
+	baseString := b.CommonQuery + ` AND branch = @BaseRelease`
+	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + b.GroupByQuery)
+
+	baseQuery.Parameters = append(baseQuery.Parameters, b.QueryParameters...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.BaseRelease.Start,
+			Value: b.ComponentReportGenerator.BaseRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.BaseRelease.End,
+			Value: b.ComponentReportGenerator.BaseRelease.End,
 		},
 		{
 			Name:  "BaseRelease",
-			Value: c.BaseRelease.Release,
+			Value: b.ComponentReportGenerator.BaseRelease.Release,
 		},
 	}...)
 
+	baseStatus, errs := b.ComponentReportGenerator.fetchJobRunTestStatus(baseQuery)
+	return apitype.ComponentJobRunTestReportStatus{BaseStatus: baseStatus}, errs
+}
+
+type sampleJobRunTestQueryGenerator struct {
+	GeneratorVersion         int
+	GeneratorType            GeneratorType
+	CommonQuery              string                    `json:"-"`
+	GroupByQuery             string                    `json:"-"`
+	QueryParameters          []bigquery.QueryParameter `json:"-"`
+	ComponentReportGenerator *componentReportGenerator
+}
+
+func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
+	groupByQuery string,
+	queryParameters []bigquery.QueryParameter) (map[string][]apitype.ComponentJobRunTestStatusRow, []error) {
+	generator := sampleJobRunTestQueryGenerator{
+		GeneratorVersion:         1,
+		GeneratorType:            SampleJobRunTestStatus,
+		CommonQuery:              commonQuery,
+		GroupByQuery:             groupByQuery,
+		QueryParameters:          queryParameters,
+		ComponentReportGenerator: c,
+	}
+
+	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](c.client.Cache, c.cacheOption, generator, generator.queryTestStatus, apitype.ComponentJobRunTestReportStatus{})
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return componentReportTestStatus.SampleStatus, nil
+}
+
+func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJobRunTestReportStatus, []error) {
+	sampleString := s.CommonQuery + ` AND branch = @SampleRelease`
+	sampleQuery := s.ComponentReportGenerator.client.BQ.Query(sampleString + s.GroupByQuery)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, s.QueryParameters...)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+		{
+			Name:  "From",
+			Value: s.ComponentReportGenerator.SampleRelease.Start,
+		},
+		{
+			Name:  "To",
+			Value: s.ComponentReportGenerator.SampleRelease.End,
+		},
+		{
+			Name:  "SampleRelease",
+			Value: s.ComponentReportGenerator.SampleRelease.Release,
+		},
+	}...)
+
+	sampleStatus, errs := s.ComponentReportGenerator.fetchJobRunTestStatus(sampleQuery)
+
+	return apitype.ComponentJobRunTestReportStatus{SampleStatus: sampleStatus}, errs
+}
+
+func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.ComponentJobRunTestReportStatus, []error) {
+	errs := []error{}
+
+	queryString, groupString, commonParams := c.getCommonTestStatusQuery()
 	var baseStatus, sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		baseStatus, baseErrs = c.fetchJobRunTestStatus(baseQuery)
+		baseStatus, baseErrs = c.getBaseJobRunTestStatus(queryString, groupString, commonParams)
 	}()
 
-	sampleString := queryString + ` AND branch = @SampleRelease`
-	sampleQuery := c.client.BQ.Query(sampleString + groupString)
-	sampleQuery.Parameters = append(sampleQuery.Parameters, commonParams...)
-	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
-		{
-			Name:  "From",
-			Value: c.SampleRelease.Start,
-		},
-		{
-			Name:  "To",
-			Value: c.SampleRelease.End,
-		},
-		{
-			Name:  "SampleRelease",
-			Value: c.SampleRelease.Release,
-		},
-	}...)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sampleStatus, sampleErrs = c.fetchJobRunTestStatus(sampleQuery)
+		sampleStatus, sampleErrs = c.getSampleJobRunTestStatus(queryString, groupString, commonParams)
 	}()
 	wg.Wait()
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
@@ -383,11 +499,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (
 	return apitype.ComponentJobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
-func (c *componentReportGenerator) getTestStatusFromBigQuery() (
-	apitype.ComponentReportTestStatus,
-	[]error,
-) {
-	errs := []error{}
+func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, []bigquery.QueryParameter) {
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
 						FROM %s.component_mapping cm
@@ -519,24 +631,150 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		}
 	}
 
-	baseString := queryString + ` AND branch = @BaseRelease`
-	baseQuery := c.client.BQ.Query(baseString + groupString)
+	return queryString, groupString, commonParams
 
-	baseQuery.Parameters = append(baseQuery.Parameters, commonParams...)
+}
+
+type baseQueryGenerator struct {
+	GeneratorVersion int
+	GeneratorType    GeneratorType
+	client           *bqcachedclient.Client
+	cacheOption      cache.RequestOptions
+	BaseRelease      apitype.ComponentReportRequestReleaseOptions
+	CommonQuery      string                    `json:"-"`
+	GroupByQuery     string                    `json:"-"`
+	QueryParameters  []bigquery.QueryParameter `json:"-"`
+}
+
+func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
+	groupByQuery string,
+	queryParameters []bigquery.QueryParameter) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
+	generator := baseQueryGenerator{
+		GeneratorVersion: 1,
+		GeneratorType:    BaseTestStatus,
+		client:           c.client,
+		cacheOption: cache.RequestOptions{
+			ForceRefresh: c.cacheOption.ForceRefresh,
+			// increase the time that base query is cached for since it shouldn't be changing?
+			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
+		},
+		BaseRelease:     c.BaseRelease,
+		CommonQuery:     commonQuery,
+		GroupByQuery:    groupByQuery,
+		QueryParameters: queryParameters,
+	}
+
+	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, generator.cacheOption, generator, generator.queryTestStatus, apitype.ComponentReportTestStatus{})
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return componentReportTestStatus.BaseStatus, nil
+}
+
+func (b *baseQueryGenerator) queryTestStatus() (apitype.ComponentReportTestStatus, []error) {
+	before := time.Now()
+	errs := []error{}
+	baseString := b.CommonQuery + ` AND branch = @BaseRelease`
+	baseQuery := b.client.BQ.Query(baseString + b.GroupByQuery)
+
+	baseQuery.Parameters = append(baseQuery.Parameters, b.QueryParameters...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: c.BaseRelease.Start,
+			Value: b.BaseRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: c.BaseRelease.End,
+			Value: b.BaseRelease.End,
 		},
 		{
 			Name:  "BaseRelease",
-			Value: c.BaseRelease.Release,
+			Value: b.BaseRelease.Release,
 		},
 	}...)
+
+	baseStatus, baseErrs := fetchTestStatus(baseQuery)
+
+	if len(baseErrs) != 0 {
+		errs = append(errs, baseErrs...)
+	}
+
+	log.Infof("Base QueryTestStatus completed in %s with %d base results from db", time.Since(before), len(baseStatus))
+
+	return apitype.ComponentReportTestStatus{BaseStatus: baseStatus}, errs
+}
+
+type sampleQueryGenerator struct {
+	GeneratorVersion int
+	GeneratorType    GeneratorType
+	client           *bqcachedclient.Client
+	SampleRelease    apitype.ComponentReportRequestReleaseOptions
+	CommonQuery      string                    `json:"-"`
+	GroupByQuery     string                    `json:"-"`
+	QueryParameters  []bigquery.QueryParameter `json:"-"`
+}
+
+func (c *componentReportGenerator) getSampleQueryStatus(
+	commonQuery string,
+	groupByQuery string,
+	queryParameters []bigquery.QueryParameter) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
+	generator := sampleQueryGenerator{
+		GeneratorVersion: 1,
+		GeneratorType:    SampleTestStatus,
+		client:           c.client,
+		SampleRelease:    c.SampleRelease,
+		CommonQuery:      commonQuery,
+		GroupByQuery:     groupByQuery,
+		QueryParameters:  queryParameters,
+	}
+
+	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, c.cacheOption, generator, generator.queryTestStatus, apitype.ComponentReportTestStatus{})
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return componentReportTestStatus.SampleStatus, nil
+}
+
+func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestStatus, []error) {
+	before := time.Now()
+	errs := []error{}
+	sampleString := s.CommonQuery + ` AND branch = @SampleRelease`
+	sampleQuery := s.client.BQ.Query(sampleString + s.GroupByQuery)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, s.QueryParameters...)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+		{
+			Name:  "From",
+			Value: s.SampleRelease.Start,
+		},
+		{
+			Name:  "To",
+			Value: s.SampleRelease.End,
+		},
+		{
+			Name:  "SampleRelease",
+			Value: s.SampleRelease.Release,
+		},
+	}...)
+
+	sampleStatus, sampleErrs := fetchTestStatus(sampleQuery)
+
+	if len(sampleErrs) != 0 {
+		errs = append(errs, sampleErrs...)
+	}
+
+	log.Infof("Sample QueryTestStatus completed in %s with %d sample results db", time.Since(before), len(sampleStatus))
+
+	return apitype.ComponentReportTestStatus{SampleStatus: sampleStatus}, errs
+}
+
+func (c *componentReportGenerator) getTestStatusFromBigQuery() (apitype.ComponentReportTestStatus, []error) {
+	before := time.Now()
+	errs := []error{}
+	queryString, groupString, commonParams := c.getCommonTestStatusQuery()
 
 	var baseStatus, sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus
 	var baseErrs, sampleErrs []error
@@ -544,36 +782,20 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		baseStatus, baseErrs = c.fetchTestStatus(baseQuery)
+		baseStatus, baseErrs = c.getBaseQueryStatus(queryString, groupString, commonParams)
 	}()
 
-	sampleString := queryString + ` AND branch = @SampleRelease`
-	sampleQuery := c.client.BQ.Query(sampleString + groupString)
-	sampleQuery.Parameters = append(sampleQuery.Parameters, commonParams...)
-	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
-		{
-			Name:  "From",
-			Value: c.SampleRelease.Start,
-		},
-		{
-			Name:  "To",
-			Value: c.SampleRelease.End,
-		},
-		{
-			Name:  "SampleRelease",
-			Value: c.SampleRelease.Release,
-		},
-	}...)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sampleStatus, sampleErrs = c.fetchTestStatus(sampleQuery)
+		sampleStatus, sampleErrs = c.getSampleQueryStatus(queryString, groupString, commonParams)
 	}()
 	wg.Wait()
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
 		errs = append(errs, baseErrs...)
 		errs = append(errs, sampleErrs...)
 	}
+	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
 	return apitype.ComponentReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
@@ -680,7 +902,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 	return rows, columns
 }
 
-func (c *componentReportGenerator) fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
+func fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
 	errs := []error{}
 	status := map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{}
 	log.Infof("Fetching test status with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
@@ -874,6 +1096,174 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 	}
 }
 
+func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(testID apitype.ComponentReportTestIdentification) ([]resolvedissues.TriagedIncident, int, []error) {
+	generator := triagedIncidentsGenerator{
+		GeneratorVersion: 1,
+		GeneratorType:    TriagedIncidents,
+		client:           c.client,
+		cacheOption:      c.cacheOption,
+		SampleRelease:    c.SampleRelease,
+	}
+
+	// we want to fetch this once per generator instance which should be once per UI load
+	// this is the full list from the cache if available that will be subset to specific test
+	// in triagedIssuesFor
+	if c.triagedIssues == nil {
+		releaseTriagedIncidents, errs := getDataFromCacheOrGenerate[resolvedissues.TriagedIncidentsForRelease](generator.client.Cache, generator.cacheOption, generator, generator.generateTriagedIssuesFor, resolvedissues.TriagedIncidentsForRelease{})
+
+		if len(errs) > 0 {
+			return nil, 0, errs
+		}
+		c.triagedIssues = &releaseTriagedIncidents
+	}
+	triagedIncidents, impactedRuns := triagedIssuesFor(c.triagedIssues, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
+
+	return triagedIncidents, impactedRuns, nil
+}
+
+type triagedIncidentsGenerator struct {
+	GeneratorVersion int
+	GeneratorType    GeneratorType
+	client           *bqcachedclient.Client
+	cacheOption      cache.RequestOptions
+	SampleRelease    apitype.ComponentReportRequestReleaseOptions
+}
+
+func (r *triagedIncidentsGenerator) generateTriagedIssuesFor() (resolvedissues.TriagedIncidentsForRelease, []error) {
+	before := time.Now()
+	incidents, errs := r.queryTriagedIssues()
+
+	log.Infof("generateTriagedIssuesFor query completed in %s with %d incidents from db", time.Since(before), len(incidents))
+
+	if len(errs) > 0 {
+		return resolvedissues.TriagedIncidentsForRelease{}, errs
+	}
+
+	triagedIncidents := resolvedissues.NewTriagedIncidentsForRelease(resolvedissues.Release(r.SampleRelease.Release))
+
+	for _, incident := range incidents {
+		variant := apitype.ComponentReportColumnIdentification{
+			Network:  incident.Variant.Network,
+			Upgrade:  incident.Variant.Upgrade,
+			Arch:     incident.Variant.Arch,
+			Platform: incident.Variant.Platform,
+			Variant:  incident.Variant.Variant,
+		}
+
+		k := resolvedissues.KeyFor(incident.TestID, variant)
+		triagedIncidents.TriagedIncidents[k] = append(triagedIncidents.TriagedIncidents[k], incident)
+	}
+
+	log.Infof("generateTriagedIssuesFor completed in %s with %d incidents from db", time.Since(before), len(incidents))
+
+	return triagedIncidents, nil
+}
+
+func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForRelease, variant apitype.ComponentReportColumnIdentification, testID string, startTime, endTime time.Time) ([]resolvedissues.TriagedIncident, int) {
+	if releaseIncidents == nil {
+		return nil, 0
+	}
+
+	// Temporary for testing, do not merge
+	//
+	// if true {
+	// 	return nil, 0
+	// }
+
+	inKey := resolvedissues.KeyFor(testID, variant)
+
+	triagedIncidents := releaseIncidents.TriagedIncidents[inKey]
+
+	impactedJobRuns := sets.NewString() // because multiple issues could impact the same job run, be sure to count each job run only once
+	numJobRunsToSuppress := 0
+	for _, triagedIncident := range triagedIncidents {
+		for _, impactedJobRun := range triagedIncident.JobRuns {
+			if impactedJobRuns.Has(impactedJobRun.URL) {
+				continue
+			}
+			impactedJobRuns.Insert(impactedJobRun.URL)
+
+			if impactedJobRun.StartTime.After(startTime) && impactedJobRun.StartTime.Before(endTime) {
+				numJobRunsToSuppress++
+			}
+		}
+	}
+
+	return triagedIncidents, numJobRunsToSuppress
+}
+
+func (r *triagedIncidentsGenerator) queryTriagedIssues() ([]resolvedissues.TriagedIncident, []error) {
+	// Look for issue.start_date < TIMESTAMP(@TO) AND
+	// (issue.resolution_date IS NULL OR issue.resolution_date >= TIMESTAMP(@FROM))
+	// we could add a range for modified_time if we want to leverage the partitions
+	// presume modification would be within 6 months of start / end
+	// shouldn't be so many of these that would query too much data
+	queryString := fmt.Sprintf("SELECT * FROM %s.%s.%s WHERE release = @SampleRelease AND issue.start_date <= TIMESTAMP(@TO) AND (issue.resolution_date IS NULL OR issue.resolution_date >= TIMESTAMP(@FROM))", TriagedIncidentsProjectID, TriagedIncidentsDataSetID, TriagedIncidentsTableID)
+
+	params := make([]bigquery.QueryParameter, 0)
+
+	params = append(params, []bigquery.QueryParameter{
+		{
+			Name:  "From",
+			Value: r.SampleRelease.Start,
+		},
+		{
+			Name:  "To",
+			Value: r.SampleRelease.End,
+		},
+		{
+			Name:  "SampleRelease",
+			Value: r.SampleRelease.Release,
+		},
+	}...)
+
+	sampleQuery := r.client.BQ.Query(queryString)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, params...)
+
+	return r.fetchTriagedIssues(sampleQuery)
+}
+
+func (r *triagedIncidentsGenerator) fetchTriagedIssues(query *bigquery.Query) ([]resolvedissues.TriagedIncident, []error) {
+	errs := make([]error, 0)
+	incidents := make([]resolvedissues.TriagedIncident, 0)
+	log.Infof("Fetching triaged incidents with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
+
+	it, err := query.Read(context.TODO())
+	if err != nil {
+		log.WithError(err).Error("error querying triaged incidents from bigquery")
+		errs = append(errs, err)
+		return incidents, errs
+	}
+
+	for {
+		var triagedIncident resolvedissues.TriagedIncident
+		err := it.Next(&triagedIncident)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing triaged incident from bigquery")
+			errs = append(errs, errors.Wrap(err, "error parsing triaged incident from bigquery"))
+			continue
+		}
+		incidents = append(incidents, triagedIncident)
+	}
+	return incidents, errs
+}
+
+func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentReportTestIdentification) ([]resolvedissues.TriagedIncident, int) {
+	triagedIncidents, impactedRuns, errs := c.getTriagedIssuesFromBigQuery(testID)
+
+	if errs != nil {
+		for _, err := range errs {
+			log.WithError(err).Error("error getting triaged issues component from bigquery")
+		}
+		return nil, 0
+	}
+
+	return triagedIncidents, impactedRuns
+}
+
 func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
 	sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus) apitype.ComponentReport {
 	report := apitype.ComponentReport{
@@ -914,7 +1304,9 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 			reportStatus = apitype.MissingSample
 		} else {
 			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
-			_, resolvedIssueCompensation := resolvedissues.ResolvedIssuesFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
+			_, resolvedIssueCompensation := c.triagedIncidentsFor(testID)
+			// if we need to fall back
+			// _, resolvedIssueCompensation := resolvedissues.ResolvedIssuesFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
 			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
 		}
 		delete(sampleStatus, testIdentification)
@@ -1065,7 +1457,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		},
 	}
 	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ComponentReportColumnIdentification, c.TestID)
-	_, resolvedIssueCompensation := resolvedissues.ResolvedIssuesFor(c.SampleRelease.Release, result.ComponentReportColumnIdentification, c.TestID, c.SampleRelease.Start, c.SampleRelease.End)
+	_, resolvedIssueCompensation := c.triagedIncidentsFor(result.ComponentReportTestIdentification)
 
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
