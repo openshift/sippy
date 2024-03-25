@@ -37,6 +37,7 @@ func main() {
 		NewLoadCommand(),
 		NewSnapshotCommand(),
 		NewRefreshCommand(),
+		NewComponentReadinessCommand(),
 	)
 
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
