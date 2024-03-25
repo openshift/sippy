@@ -64,15 +64,6 @@ TABLE_ID="api_resolved_incidents"
 TABLE_KEY=f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
 
 
-OUTPUT_FILE = "resolved_issues.txt"
-
-# The template for each entry in ImpactedJobRuns above. You shouldn't need to modify this.
-JOB_TEMPLATE = '''			{
-				URL:       "%s",
-				StartTime: mustTime("%s"),
-			},
-'''
-
 #https://sippy.dptools.openshift.org/api/component_readiness/test_details?baseEndTime=2023-10-31T23:59:59Z&baseRelease=4.14&baseStartTime=2023-10-04T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-02-27T23:59:59Z&sampleRelease=4.15&sampleStartTime=2024-02-21T00:00:00Z&component=Monitoring&capability=Other&testId=openshift-tests-upgrade:c1f54790201ec8f4241eca902f854b79&environment=ovn%20upgrade-minor%20amd64%20metal-ipi%20standard&network=ovn&upgrade=upgrade-minor&arch=amd64&platform=metal-ipi&variant=standard
 
 def hack_for_rfc_3339(inputTime):
@@ -274,9 +265,6 @@ def write_incident_record (release, test_id, test_name, network, upgrade, arch, 
         if len(issue_description) > 0 :
             q += f", issue.description='{issue_description}'"
 
-        if len(issue_resolution_date) > 0 :
-            q += f", issue.resolution_date=TIMESTAMP('{issue_resolution_date}')"
-
         if len(issue_type) > 0:
             q += f", issue.type='{issue_type}'"
 
@@ -322,7 +310,6 @@ def write_incident_record (release, test_id, test_name, network, upgrade, arch, 
 
 
     rows = [row]
-    # print(rows)
         
     table_ref = client.dataset(DATASET_ID).table(TABLE_ID)
     table = client.get_table(table_ref)
@@ -367,7 +354,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print("\n\nTestID: " + args.test_id)
-    print("\nURL: " + args.test_report_url)
+    print("\nTestReport URL: " + args.test_report_url)
     print("\nIssue Type: " + args.issue_type)
     print("\nTest Release: " + args.test_release)
     
@@ -437,8 +424,6 @@ if __name__ == '__main__':
                 if json_data is None:
                     print("Error: no json data returned from %s" % test_details_url)
 
-                golang_job_list = ''
-
                 for job in json_data["job_stats"]:
                     if not 'sample_job_run_stats' in job:
                         continue
@@ -461,20 +446,10 @@ if __name__ == '__main__':
                         start_time = prow_job_json["status"]["startTime"]
                         print("    Prow job start time: %s" % start_time)
 
-                        golang_job_list += JOB_TEMPLATE % (prow_url, start_time)
                         job_runs.append({"URL": prow_url, "StartTime": start_time})
-
-
-                # all_resolved_issues += REGRESSION_TEMPLATE % (args.test_id, test_name, network, upgrade, arch, platform, variant, job_runs)
 
                 # write the record to bigquery
                 write_incident_record(args.test_release, args.test_id, test_name, network, upgrade, arch, platform, variant, job_runs, args.issue_type, issue_url, description, modified_time, target_modified_time)
-
-    # f = open(OUTPUT_FILE, "w")
-    # f.write(all_resolved_issues)
-    # f.close()
-    # print("Go code written to %s, open this file and copy/paste it's contents into the appropriate file in component readiness. (i.e. resolve_4.15_issues.go)" % OUTPUT_FILE)
-
 
 
 
