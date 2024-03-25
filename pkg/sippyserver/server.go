@@ -925,6 +925,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 
 		response.LastUpdated = lastUpdated.Max
 	}
+
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
@@ -1521,7 +1522,7 @@ func (s *Server) Serve() {
 		{
 			EndpointPath: "/api/releases",
 			Description:  "Reports on releases",
-			Capabilities: []string{LocalDBCapability},
+			Capabilities: []string{},
 			HandlerFunc:  s.jsonReleasesReportFromDB,
 		},
 		{
@@ -1557,7 +1558,6 @@ func (s *Server) Serve() {
 		{
 			EndpointPath: "/api/report_date",
 			Description:  "Displays report date",
-			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.printReportDate,
 		},
 		{
