@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/pkg/errors"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -15,8 +17,8 @@ var (
 	defaultCacheDuration = 8 * time.Hour
 )
 
-// getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
-func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
+// getDataFromCacheOrGenerate attempts to find a cached record otherwise generates new data.
+func getDataFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
 	// If someone is giving us an uncacheable cacheKey, we should panic so it gets detected in testing
 	if isStructWithNoPublicFields(cacheKey) {
 		panic(fmt.Sprintf("you cannot use struct %s with no exported fields as a cache key", reflect.TypeOf(cacheKey)))
@@ -40,7 +42,7 @@ func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.Reque
 				}).Debugf("cache hit")
 				var cr T
 				if err := json.Unmarshal(res, &cr); err != nil {
-					return defaultVal, []error{err}
+					return defaultVal, []error{errors.WithMessagef(err, "failed to unmarshal cached item.  cacheKey=%+v", cacheKey)}
 				}
 				return cr, nil
 			}
