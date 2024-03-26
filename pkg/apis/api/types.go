@@ -2,6 +2,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -819,23 +820,40 @@ type ComponentReportRequestAdvancedOptions struct {
 }
 
 type ComponentTestStatus struct {
-	TestName     string
-	TestSuite    string
-	Component    string
-	Capabilities []string
-	Variants     []string
-	TotalCount   int
-	SuccessCount int
-	FlakeCount   int
+	TestName     string   `json:"test_name"`
+	TestSuite    string   `json:"test_suite"`
+	Component    string   `json:"component"`
+	Capabilities []string `json:"capabilities"`
+	Variants     []string `json:"variants"`
+	TotalCount   int      `json:"total_count"`
+	SuccessCount int      `json:"success_count"`
+	FlakeCount   int      `json:"flake_count"`
+}
+
+type ComponentReportTestStatus struct {
+	BaseStatus   map[ComponentTestIdentification]ComponentTestStatus `json:"base_status"`
+	SampleStatus map[ComponentTestIdentification]ComponentTestStatus `json:"sample_status"`
+	GeneratedAt  *time.Time                                          `json:"generated_at"`
 }
 
 type ComponentTestIdentification struct {
-	TestID       string
-	Network      string
-	Upgrade      string
-	Arch         string
-	Platform     string
-	FlatVariants string
+	TestID       string `json:"test_id"`
+	Network      string `json:"network"`
+	Upgrade      string `json:"upgrade"`
+	Arch         string `json:"arch"`
+	Platform     string `json:"platform"`
+	FlatVariants string `json:"flat_variants"`
+}
+
+// implement encoding.TextMarshaler for json map key marshalling support
+func (s ComponentTestIdentification) MarshalText() (text []byte, err error) {
+	type t ComponentTestIdentification
+	return json.Marshal(t(s))
+}
+
+func (s *ComponentTestIdentification) UnmarshalText(text []byte) error {
+	type t ComponentTestIdentification
+	return json.Unmarshal(text, (*t)(s))
 }
 
 type ComponentTestStatusRow struct {
@@ -969,6 +987,12 @@ type ComponentJobRunTestStatusRow struct {
 	FlakeCount      int      `bigquery:"flake_count"`
 	JiraComponent   string   `bigquery:"jira_component"`
 	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
+}
+
+type ComponentJobRunTestReportStatus struct {
+	BaseStatus   map[string][]ComponentJobRunTestStatusRow `json:"base_status"`
+	SampleStatus map[string][]ComponentJobRunTestStatusRow `json:"sample_status"`
+	GeneratedAt  *time.Time                                `json:"generated_at"`
 }
 
 const (
