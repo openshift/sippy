@@ -1,0 +1,30 @@
+ <svg
+      xmlns="http://www.w3.org/2000/svg"
+      data-name="Layer 1"
+      version="1.1"
+      viewBox="0 0 64 64"
+    >
+      <path fill="#19f401" fillOpacity="1" d="M-.03-.03H64V64H-.03z"></path>
+      <path stroke="#000" strokeWidth="0.5" d="M21.33 0L21.33 64"></path>
+      <path stroke="#000" strokeWidth="0.5" d="M42.66 0L42.66 64"></path>
+      <path stroke="#000" strokeWidth="0.5" d="M0 21.33L64 21.33"></path>
+      <path stroke="#000" strokeWidth="0.5" d="M0 42.66L64 42.66"></path>
+      <circle
+        cx="49.242"
+        cy="15.41"
+        r="14"
+        fill="red"
+        strokeWidth="1.4"
+      ></circle>
+      <path
+        fill="#fff"
+        stroke="#fff"
+        strokeWidth="1.4"
+        d="M47.842 18.21L47.842 11.21"
+      ></path>
+      <path
+        stroke="#fff"
+        strokeWidth="1.4"
+        d="M47.842 18.21L54.842 18.21"
+      ></path>
+</svg>
