@@ -886,19 +886,22 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	type LastUpdated struct {
 		Max time.Time
 	}
-	var lastUpdated LastUpdated
-	// Assume our last update is the last time we inserted a prow job run.
-	res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
-	if res.Error != nil {
-		log.WithError(res.Error).Error("error querying last updated from db")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying last updated from db",
-		})
-		return
-	}
 
-	response.LastUpdated = lastUpdated.Max
+	if s.db != nil {
+		var lastUpdated LastUpdated
+		// Assume our last update is the last time we inserted a prow job run.
+		res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
+		if res.Error != nil {
+			log.WithError(res.Error).Error("error querying last updated from db")
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+				"code":    http.StatusInternalServerError,
+				"message": "error querying last updated from db",
+			})
+			return
+		}
+
+		response.LastUpdated = lastUpdated.Max
+	}
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
