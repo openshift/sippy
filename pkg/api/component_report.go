@@ -361,9 +361,9 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery() (string, str
 type baseJobRunTestStatusGenerator struct {
 	GeneratorVersion         int
 	GeneratorType            GeneratorType
-	CommonQuery              string                    `json:"-"`
-	GroupByQuery             string                    `json:"-"`
-	QueryParameters          []bigquery.QueryParameter `json:"-"`
+	commonQuery              string
+	groupByQuery             string
+	queryParameters          []bigquery.QueryParameter
 	cacheOption              cache.RequestOptions
 	ComponentReportGenerator *componentReportGenerator
 }
@@ -374,9 +374,9 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 	generator := baseJobRunTestStatusGenerator{
 		GeneratorVersion: 1,
 		GeneratorType:    BaseJobRunTestStatus,
-		CommonQuery:      commonQuery,
-		GroupByQuery:     groupByQuery,
-		QueryParameters:  queryParameters,
+		commonQuery:      commonQuery,
+		groupByQuery:     groupByQuery,
+		queryParameters:  queryParameters,
 		cacheOption: cache.RequestOptions{
 			ForceRefresh: c.cacheOption.ForceRefresh,
 			// increase the time that base query is cached since it shouldn't be changing?
@@ -395,10 +395,10 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 }
 
 func (b *baseJobRunTestStatusGenerator) queryTestStatus() (apitype.ComponentJobRunTestReportStatus, []error) {
-	baseString := b.CommonQuery + ` AND branch = @BaseRelease`
-	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + b.GroupByQuery)
+	baseString := b.commonQuery + ` AND branch = @BaseRelease`
+	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + b.groupByQuery)
 
-	baseQuery.Parameters = append(baseQuery.Parameters, b.QueryParameters...)
+	baseQuery.Parameters = append(baseQuery.Parameters, b.queryParameters...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
@@ -421,9 +421,9 @@ func (b *baseJobRunTestStatusGenerator) queryTestStatus() (apitype.ComponentJobR
 type sampleJobRunTestQueryGenerator struct {
 	GeneratorVersion         int
 	GeneratorType            GeneratorType
-	CommonQuery              string                    `json:"-"`
-	GroupByQuery             string                    `json:"-"`
-	QueryParameters          []bigquery.QueryParameter `json:"-"`
+	commonQuery              string
+	groupByQuery             string
+	queryParameters          []bigquery.QueryParameter
 	ComponentReportGenerator *componentReportGenerator
 }
 
@@ -433,9 +433,9 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 	generator := sampleJobRunTestQueryGenerator{
 		GeneratorVersion:         1,
 		GeneratorType:            SampleJobRunTestStatus,
-		CommonQuery:              commonQuery,
-		GroupByQuery:             groupByQuery,
-		QueryParameters:          queryParameters,
+		commonQuery:              commonQuery,
+		groupByQuery:             groupByQuery,
+		queryParameters:          queryParameters,
 		ComponentReportGenerator: c,
 	}
 
@@ -449,9 +449,9 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 }
 
 func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJobRunTestReportStatus, []error) {
-	sampleString := s.CommonQuery + ` AND branch = @SampleRelease`
-	sampleQuery := s.ComponentReportGenerator.client.BQ.Query(sampleString + s.GroupByQuery)
-	sampleQuery.Parameters = append(sampleQuery.Parameters, s.QueryParameters...)
+	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
+	sampleQuery := s.ComponentReportGenerator.client.BQ.Query(sampleString + s.groupByQuery)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
@@ -641,9 +641,9 @@ type baseQueryGenerator struct {
 	client           *bqcachedclient.Client
 	cacheOption      cache.RequestOptions
 	BaseRelease      apitype.ComponentReportRequestReleaseOptions
-	CommonQuery      string                    `json:"-"`
-	GroupByQuery     string                    `json:"-"`
-	QueryParameters  []bigquery.QueryParameter `json:"-"`
+	commonQuery      string
+	groupByQuery     string
+	queryParameters  []bigquery.QueryParameter
 }
 
 func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
@@ -659,9 +659,9 @@ func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
 			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
 		},
 		BaseRelease:     c.BaseRelease,
-		CommonQuery:     commonQuery,
-		GroupByQuery:    groupByQuery,
-		QueryParameters: queryParameters,
+		commonQuery:     commonQuery,
+		groupByQuery:    groupByQuery,
+		queryParameters: queryParameters,
 	}
 
 	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, generator.cacheOption, generator, generator.queryTestStatus, apitype.ComponentReportTestStatus{})
@@ -676,10 +676,10 @@ func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
 func (b *baseQueryGenerator) queryTestStatus() (apitype.ComponentReportTestStatus, []error) {
 	before := time.Now()
 	errs := []error{}
-	baseString := b.CommonQuery + ` AND branch = @BaseRelease`
-	baseQuery := b.client.BQ.Query(baseString + b.GroupByQuery)
+	baseString := b.commonQuery + ` AND branch = @BaseRelease`
+	baseQuery := b.client.BQ.Query(baseString + b.groupByQuery)
 
-	baseQuery.Parameters = append(baseQuery.Parameters, b.QueryParameters...)
+	baseQuery.Parameters = append(baseQuery.Parameters, b.queryParameters...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
@@ -711,9 +711,9 @@ type sampleQueryGenerator struct {
 	GeneratorType    GeneratorType
 	client           *bqcachedclient.Client
 	SampleRelease    apitype.ComponentReportRequestReleaseOptions
-	CommonQuery      string                    `json:"-"`
-	GroupByQuery     string                    `json:"-"`
-	QueryParameters  []bigquery.QueryParameter `json:"-"`
+	commonQuery      string
+	groupByQuery     string
+	queryParameters  []bigquery.QueryParameter
 }
 
 func (c *componentReportGenerator) getSampleQueryStatus(
@@ -725,9 +725,9 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 		GeneratorType:    SampleTestStatus,
 		client:           c.client,
 		SampleRelease:    c.SampleRelease,
-		CommonQuery:      commonQuery,
-		GroupByQuery:     groupByQuery,
-		QueryParameters:  queryParameters,
+		commonQuery:      commonQuery,
+		groupByQuery:     groupByQuery,
+		queryParameters:  queryParameters,
 	}
 
 	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, c.cacheOption, generator, generator.queryTestStatus, apitype.ComponentReportTestStatus{})
@@ -742,9 +742,9 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestStatus, []error) {
 	before := time.Now()
 	errs := []error{}
-	sampleString := s.CommonQuery + ` AND branch = @SampleRelease`
-	sampleQuery := s.client.BQ.Query(sampleString + s.GroupByQuery)
-	sampleQuery.Parameters = append(sampleQuery.Parameters, s.QueryParameters...)
+	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
+	sampleQuery := s.client.BQ.Query(sampleString + s.groupByQuery)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
