@@ -1347,7 +1347,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/tests/durations", s.cached(1*time.Hour, s.jsonTestDurationsFromDB))
 	serveMux.HandleFunc("/api/install", s.cached(1*time.Hour, s.jsonInstallReportFromDB))
 	serveMux.HandleFunc("/api/upgrade", s.cached(1*time.Hour, s.jsonUpgradeReportFromDB))
-	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
+	serveMux.HandleFunc("/api/releases", s.cached(8*time.Hour, s.jsonReleasesReportFromDB))
 	serveMux.HandleFunc("/api/health/build_cluster/analysis", s.jsonBuildClusterHealthAnalysis)
 	serveMux.HandleFunc("/api/health/build_cluster", s.jsonBuildClusterHealth)
 	serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
