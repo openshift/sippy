@@ -8,7 +8,7 @@ import {
   TableRow,
   Typography,
 } from '@mui/material'
-import { safeEncodeURIComponent } from '../helpers'
+import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
@@ -66,7 +66,7 @@ export default function BugTable(props) {
             <TableCell>Status</TableCell>
             <TableCell>Component</TableCell>
             <TableCell>Affects Versions</TableCell>
-            <TableCell>Fix Versions</TableCell>
+            <TableCell>Last Modified</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -81,7 +81,9 @@ export default function BugTable(props) {
               <TableCell>{bug.status}</TableCell>
               <TableCell>{bug.components.join(',')}</TableCell>
               <TableCell>{bug.affects_versions.join(',')}</TableCell>
-              <TableCell>{bug.fix_versions.join(',')}</TableCell>
+              <TableCell>
+                {relativeTime(new Date(bug.last_change_time), new Date())}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

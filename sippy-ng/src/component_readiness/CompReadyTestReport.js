@@ -1,5 +1,12 @@
 import './ComponentReadiness.css'
-import { Box, Grid, Paper, TableContainer, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  Grid,
+  Paper,
+  TableContainer,
+  Typography,
+} from '@mui/material'
 import {
   cancelledDataTable,
   getColumns,
@@ -327,12 +334,21 @@ Flakes: ${stats.flake_count}`
       </div>
       <Grid container>
         <Grid md={12}>
-          <h2>Known Bugs</h2>
+          <h2>Linked Bugs</h2>
           <BugTable testName={testName} />
-          <BugButton
-            testName={testName}
-            jiraComponentID={data.jira_component_id}
-            context={`Component Readiness has found a potential regression in ${testName}.
+          <Box
+            sx={{
+              display: 'flex',
+              marginTop: 2,
+              alignItems: 'center',
+              gap: 2,
+            }}
+          >
+            <BugButton
+              testName={testName}
+              jiraComponentID={data.jira_component_id}
+              labels={['component-regression']}
+              context={`Component Readiness has found a potential regression in ${testName}.
  
 ${probabilityStr(statusStr, data.fisher_exact)}
 ${printStatsText(
@@ -350,7 +366,15 @@ ${printStatsText(
 
 View the test details report at ${document.location.href}
             `}
-          />
+            />
+            <Button
+              variant="contained"
+              color="secondary"
+              href="https://issues.redhat.com/issues/?filter=12432468"
+            >
+              View other open regressions
+            </Button>
+          </Box>
         </Grid>
       </Grid>
 

@@ -9,6 +9,7 @@ import {
 } from '@mui/material'
 import { BooleanParam, useQueryParam } from 'use-query-params'
 import {
+  BugReport,
   Clear,
   GridView,
   HelpCenter,
@@ -24,6 +25,7 @@ import {
   SearchIconWrapper,
   StyledInputBase,
 } from './CompReadyUtils'
+import BugButton from '../bugs/BugButton'
 import ComponentReadinessHelp from './ComponentReadinessHelp'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
@@ -187,6 +189,19 @@ export default function ComponentReadinessToolBar(props) {
             ) : (
               <></>
             )}
+            <Box sx={{ display: { md: 'flex' } }}>
+              <IconButton
+                size="large"
+                aria-label="Show open bugs"
+                color="inherit"
+                href="https://issues.redhat.com/issues/?filter=12432468"
+              >
+                <Tooltip title="Show open bugs">
+                  <BugReport />
+                </Tooltip>
+              </IconButton>
+            </Box>
+
             <Box sx={{ display: { md: 'flex' } }}>
               <IconButton
                 size="large"
