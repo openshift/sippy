@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"time"
 
+	bqclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/query"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -14,6 +17,8 @@ import (
 var (
 	defaultCacheDuration = 8 * time.Hour
 )
+
+const releasePresubmits = "Presubmits"
 
 // getReportFromCacheOrGenerate attempts to find a cached record otherwise generates a new report.
 func getReportFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheKey interface{}, generateFn func() (T, []error), defaultVal T) (T, []error) {
@@ -81,4 +86,20 @@ func isStructWithNoPublicFields(v interface{}) bool {
 		}
 	}
 	return true
+}
+
+// GetReleases gets all the releases defined in the BQ Releases table if bqc is defined.
+// Otherwise, it falls back to get it from sippy DB
+func GetReleases(dbc *db.DB, bqc *bqclient.Client) ([]query.Release, error) {
+	if bqc != nil {
+		releases, err := GetReleasesFromBigQuery(bqc)
+		if err != nil {
+			log.WithError(err).Error("error getting releases from bigquery")
+			return releases, err
+		}
+		// Add special release Presubmits for prow jobs
+		releases = append(releases, query.Release{Release: releasePresubmits})
+		return releases, nil
+	}
+	return query.ReleasesFromDB(dbc)
 }

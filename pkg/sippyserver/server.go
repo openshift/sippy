@@ -866,36 +866,42 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 	response := apitype.Releases{
 		GADates: releaseloader.GADateMap,
 	}
-	releases, err := query.ReleasesFromDB(s.db)
+	releases, err := api.GetReleases(s.db, s.bigQueryClient)
 	if err != nil {
-		log.WithError(err).Error("error querying releases from db")
+		log.WithError(err).Error("error querying releases")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
 			"code":    http.StatusInternalServerError,
-			"message": "error querying releases from db",
+			"message": "error querying releases",
 		})
 		return
 	}
 
 	for _, release := range releases {
 		response.Releases = append(response.Releases, release.Release)
+		if release.GADate != nil {
+			response.GADates[release.Release] = *release.GADate
+		}
 	}
 
 	type LastUpdated struct {
 		Max time.Time
 	}
-	var lastUpdated LastUpdated
-	// Assume our last update is the last time we inserted a prow job run.
-	res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
-	if res.Error != nil {
-		log.WithError(res.Error).Error("error querying last updated from db")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying last updated from db",
-		})
-		return
-	}
 
-	response.LastUpdated = lastUpdated.Max
+	if s.db != nil {
+		var lastUpdated LastUpdated
+		// Assume our last update is the last time we inserted a prow job run.
+		res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
+		if res.Error != nil {
+			log.WithError(res.Error).Error("error querying last updated from db")
+			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+				"code":    http.StatusInternalServerError,
+				"message": "error querying last updated from db",
+			})
+			return
+		}
+
+		response.LastUpdated = lastUpdated.Max
+	}
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
@@ -1344,7 +1350,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/tests/durations", s.cached(1*time.Hour, s.jsonTestDurationsFromDB))
 	serveMux.HandleFunc("/api/install", s.cached(1*time.Hour, s.jsonInstallReportFromDB))
 	serveMux.HandleFunc("/api/upgrade", s.cached(1*time.Hour, s.jsonUpgradeReportFromDB))
-	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
+	serveMux.HandleFunc("/api/releases", s.cached(8*time.Hour, s.jsonReleasesReportFromDB))
 	serveMux.HandleFunc("/api/health/build_cluster/analysis", s.jsonBuildClusterHealthAnalysis)
 	serveMux.HandleFunc("/api/health/build_cluster", s.jsonBuildClusterHealth)
 	serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
