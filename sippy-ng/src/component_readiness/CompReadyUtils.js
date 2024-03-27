@@ -234,6 +234,16 @@ export function getColumns(data) {
   return columnNames
 }
 
+// tableIsEmpty returns true if the table is empty, false otherwise.
+// If the api returns only the 'generated_at' key, conclude the table is empty.
+// If there are no rows, we also conclude the table is empty.
+export function isTableEmpty(json) {
+  return (
+    (Object.keys(json).length === 1 && json.hasOwnProperty('generated_at')) ||
+    json.rows.length === 0
+  )
+}
+
 // The API likes RFC3339 times and the date pickers don't.  So we use this
 // function to convert for when we call the API.
 // 4 digits, followed by a -, followed by 2 digits, and so on all wrapped in

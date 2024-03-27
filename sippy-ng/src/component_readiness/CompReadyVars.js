@@ -95,65 +95,89 @@ export const CompReadyVarsProvider = ({ children }) => {
     sampleEndTimeParam = formatLongDate(initialSampleEndTime, dateEndFormat),
     setSampleEndTimeParam,
   ] = useQueryParam('sampleEndTime', StringParam)
+
+  const defaultGroupByCheckedItems = ['cloud', 'arch', 'network']
   const [
-    groupByCheckedItemsParam = ['cloud', 'arch', 'network'],
+    groupByCheckedItemsParam = defaultGroupByCheckedItems,
     setGroupByCheckedItemsParam,
   ] = useQueryParam('groupBy', ArrayParam)
+
+  const defaultExcludeCloudsCheckedItems = [
+    'openstack',
+    'ibmcloud',
+    'libvirt',
+    'ovirt',
+    'unknown',
+  ]
   const [
-    excludeCloudsCheckedItemsParam = [
-      'openstack',
-      'ibmcloud',
-      'libvirt',
-      'ovirt',
-      'unknown',
-    ],
+    excludeCloudsCheckedItemsParam = defaultExcludeCloudsCheckedItems,
     setExcludeCloudsCheckedItemsParam,
   ] = useQueryParam('excludeClouds', ArrayParam)
+
+  const defaultExcludeArchesCheckedItems = [
+    'arm64',
+    'heterogeneous',
+    'ppc64le',
+    's390x',
+  ]
   const [
-    excludeArchesCheckedItemsParam = [
-      'arm64',
-      'heterogeneous',
-      'ppc64le',
-      's390x',
-    ],
+    excludeArchesCheckedItemsParam = defaultExcludeArchesCheckedItems,
     setExcludeArchesCheckedItemsParam,
   ] = useQueryParam('excludeArches', ArrayParam)
+
+  const defaultExcludeNetworksCheckedItems = []
   const [
-    excludeNetworksCheckedItemsParam = [],
+    excludeNetworksCheckedItemsParam = defaultExcludeNetworksCheckedItems,
     setExcludeNetworksCheckedItemsParam,
   ] = useQueryParam('excludeNetworks', ArrayParam)
+
+  const defaultExcludeUpgradesCheckedItems = []
   const [
-    excludeUpgradesCheckedItemsParam = [],
+    excludeUpgradesCheckedItemsParam = defaultExcludeUpgradesCheckedItems,
     setExcludeUpgradesCheckedItemsParam,
   ] = useQueryParam('excludeUpgrades', ArrayParam)
+
+  const defaultExcludeVariantsCheckedItems = [
+    'hypershift',
+    'osd',
+    'microshift',
+    'techpreview',
+    'single-node',
+    'assisted',
+    'compact',
+  ]
   const [
-    excludeVariantsCheckedItemsParam = [
-      'hypershift',
-      'osd',
-      'microshift',
-      'techpreview',
-      'single-node',
-      'assisted',
-      'compact',
-    ],
+    excludeVariantsCheckedItemsParam = defaultExcludeVariantsCheckedItems,
     setExcludeVariantsCheckedItemsParam,
   ] = useQueryParam('excludeVariants', ArrayParam)
 
-  const [confidenceParam = 95, setConfidenceParam] = useQueryParam(
-    'confidence',
+  const defaultConfidenceParam = 95
+  const [confidenceParam = defaultConfidenceParam, setConfidenceParam] =
+    useQueryParam('confidence', NumberParam)
+
+  const defaultPityParam = 5
+  const [pityParam = defaultPityParam, setPityParam] = useQueryParam(
+    'pity',
     NumberParam
   )
-  const [pityParam = 5, setPityParam] = useQueryParam('pity', NumberParam)
-  const [minFailParam = 3, setMinFailParam] = useQueryParam(
+
+  const defaultMinFailParam = 3
+  const [minFailParam = defaultMinFailParam, setMinFailParam] = useQueryParam(
     'minFail',
     NumberParam
   )
-  const [ignoreMissingParam = false, setIgnoreMissingParam] = useQueryParam(
-    'ignoreMissing',
-    BooleanParam
-  )
-  const [ignoreDisruptionParam = false, setIgnoreDisruptionParam] =
-    useQueryParam('ignoreDisruption', BooleanParam)
+
+  const defaultIgnoreMissingParam = false
+  const [
+    ignoreMissingParam = defaultIgnoreMissingParam,
+    setIgnoreMissingParam,
+  ] = useQueryParam('ignoreMissing', BooleanParam)
+
+  const defaultIgnoreDisruptionParam = false
+  const [
+    ignoreDisruptionParam = defaultIgnoreDisruptionParam,
+    setIgnoreDisruptionParam,
+  ] = useQueryParam('ignoreDisruption', BooleanParam)
 
   // Create the variables to be used for api calls; these are initilized to the
   // value of the variables that got their values from the URL.
@@ -239,6 +263,127 @@ export const CompReadyVarsProvider = ({ children }) => {
   if (capability != capabilityParam) {
     setCapability(capabilityParam)
   }
+
+  const initialViews = {
+    Default: {
+      config: {
+        help: 'The most commonly used view and focuses on amd64',
+        'Group By': defaultGroupByCheckedItems,
+        'Exclude Arches': defaultExcludeArchesCheckedItems,
+        'Exclude Networks': defaultExcludeNetworksCheckedItems,
+        'Exclude Clouds': defaultExcludeCloudsCheckedItems,
+        'Exclude Upgrades': defaultExcludeUpgradesCheckedItems,
+        'Exclude Variants': defaultExcludeVariantsCheckedItems,
+        Confidence: defaultConfidenceParam,
+        Pity: defaultPityParam,
+        'Min Fail': defaultMinFailParam,
+        'Ignore Missing': defaultIgnoreMissingParam,
+        'Ignore Disruption': defaultIgnoreDisruptionParam,
+      },
+    },
+    UpgradeVariants: {
+      config: {
+        help: 'Default view but groups by upgrades and variants',
+        'Group By': ['upgrade', 'variants'],
+        'Exclude Arches': defaultExcludeArchesCheckedItems,
+        'Exclude Networks': defaultExcludeNetworksCheckedItems,
+        'Exclude Clouds': defaultExcludeCloudsCheckedItems,
+        'Exclude Upgrades': defaultExcludeUpgradesCheckedItems,
+        'Exclude Variants': defaultExcludeVariantsCheckedItems,
+        Confidence: defaultConfidenceParam,
+        Pity: defaultPityParam,
+        'Min Fail': defaultMinFailParam,
+        'Ignore Missing': defaultIgnoreMissingParam,
+        'Ignore Disruption': defaultIgnoreDisruptionParam,
+      },
+    },
+    ARM64: {
+      config: {
+        help: 'Default view but only for amd64',
+        'Group By': defaultGroupByCheckedItems,
+        'Exclude Arches': ['amd64', 'ppc64le', 's390x', 'heterogeneous'],
+        'Exclude Networks': defaultExcludeNetworksCheckedItems,
+        'Exclude Clouds': defaultExcludeCloudsCheckedItems,
+        'Exclude Upgrades': defaultExcludeUpgradesCheckedItems,
+        'Exclude Variants': defaultExcludeVariantsCheckedItems,
+        Confidence: defaultConfidenceParam,
+        Pity: defaultPityParam,
+        'Min Fail': defaultMinFailParam,
+        'Ignore Missing': defaultIgnoreMissingParam,
+        'Ignore Disruption': defaultIgnoreDisruptionParam,
+      },
+    },
+    heterogeneous: {
+      config: {
+        help: 'Default view but only for heterogeneous architecture',
+        'Group By': defaultGroupByCheckedItems,
+        'Exclude Arches': ['amd64', 'arm64', 'ppc64le', 's390x'],
+        'Exclude Networks': defaultExcludeNetworksCheckedItems,
+        'Exclude Clouds': defaultExcludeCloudsCheckedItems,
+        'Exclude Upgrades': defaultExcludeUpgradesCheckedItems,
+        'Exclude Variants': defaultExcludeVariantsCheckedItems,
+        Confidence: defaultConfidenceParam,
+        Pity: defaultPityParam,
+        'Min Fail': defaultMinFailParam,
+        'Ignore Missing': defaultIgnoreMissingParam,
+        'Ignore Disruption': defaultIgnoreDisruptionParam,
+      },
+    },
+    AWS_GCP_Azure: {
+      config: {
+        help: 'Default view but only for AWS, GCP, and Azure only',
+        'Group By': defaultGroupByCheckedItems,
+        'Exclude Arches': defaultExcludeArchesCheckedItems,
+        'Exclude Networks': defaultExcludeNetworksCheckedItems,
+        'Exclude Clouds': [
+          'ibmcloud',
+          'libvirt',
+          'metal-assisted',
+          'metal-ipi',
+          'openstack',
+          'ovirt',
+          'unknown',
+          'vsphere',
+          'vsphere-upi',
+        ],
+        'Exclude Upgrades': defaultExcludeUpgradesCheckedItems,
+        'Exclude Variants': defaultExcludeVariantsCheckedItems,
+        Confidence: defaultConfidenceParam,
+        Pity: defaultPityParam,
+        'Min Fail': defaultMinFailParam,
+        'Ignore Missing': defaultIgnoreMissingParam,
+        'Ignore Disruption': defaultIgnoreDisruptionParam,
+      },
+    },
+  }
+
+  // Save user views to browser local storage; if empty, we're saving {}.
+  // You can view the storage by "inspecting the page" (F12 on some browsers), and
+  // going to the Application tab.
+  const saveViewsToLocal = (views) => {
+    const viewsToSave = Object.entries(views).reduce((acc, [key, value]) => {
+      if (value.config.class === 'user') {
+        acc[key] = value
+      }
+      return acc
+    }, {})
+    localStorage.setItem('savedViews', JSON.stringify(viewsToSave))
+  }
+
+  // See if user has saved views.
+  const loadViewsFromBrowser = () => {
+    // If there is data in the local storage and it has keys, then merge it with the
+    // initial views.  Otherwise, just use the initial views.
+    const savedViews = localStorage.getItem('savedViews')
+    if (savedViews && Object.keys(JSON.parse(savedViews)).length > 0) {
+      const mergedViews = { ...initialViews, ...JSON.parse(savedViews) }
+      return mergedViews
+    } else {
+      return initialViews
+    }
+  }
+
+  const [views, setViews] = useState(loadViewsFromBrowser())
 
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
@@ -382,26 +527,37 @@ export const CompReadyVarsProvider = ({ children }) => {
         sampleEndTime,
         setSampleEndTime,
         groupByCheckedItems,
+        defaultGroupByCheckedItems,
         setGroupByCheckedItems,
         excludeUpgradesCheckedItems,
+        defaultExcludeUpgradesCheckedItems,
         setExcludeUpgradesCheckedItems,
         excludeVariantsCheckedItems,
+        defaultExcludeVariantsCheckedItems,
         setExcludeVariantsCheckedItems,
         excludeCloudsCheckedItems,
+        defaultExcludeCloudsCheckedItems,
         setExcludeCloudsCheckedItems,
         excludeArchesCheckedItems,
+        defaultExcludeArchesCheckedItems,
         setExcludeArchesCheckedItems,
         excludeNetworksCheckedItems,
+        defaultExcludeNetworksCheckedItems,
         setExcludeNetworksCheckedItems,
         confidence,
+        defaultConfidenceParam,
         setConfidence,
         pity,
+        defaultPityParam,
         setPity,
         minFail,
+        defaultMinFailParam,
         setMinFail,
         ignoreMissing,
+        defaultIgnoreMissingParam,
         setIgnoreMissing,
         ignoreDisruption,
+        defaultIgnoreDisruptionParam,
         setIgnoreDisruption,
         component,
         setComponentParam,
@@ -410,6 +566,9 @@ export const CompReadyVarsProvider = ({ children }) => {
         environment,
         setEnvironmentParam,
         handleGenerateReport,
+        views,
+        setViews,
+        saveViewsToLocal,
       }}
     >
       {children}

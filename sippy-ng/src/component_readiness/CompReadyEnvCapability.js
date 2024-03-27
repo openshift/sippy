@@ -7,6 +7,7 @@ import {
   getAPIUrl,
   getColumns,
   gotFetchError,
+  isTableEmpty,
   makePageTitle,
   makeRFC3339Time,
   noDataTable,
@@ -87,7 +88,7 @@ export default function CompReadyEnvCapability(props) {
         return data
       })
       .then((json) => {
-        if (Object.keys(json).length === 0 || json.rows.length === 0) {
+        if (isTableEmpty(json)) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
           console.log('got empty page2', json)
