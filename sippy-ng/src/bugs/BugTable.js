@@ -79,8 +79,12 @@ export default function BugTable(props) {
                 <a href={bug.url}>{bug.summary}</a>
               </TableCell>
               <TableCell>{bug.status}</TableCell>
-              <TableCell>{bug.components.join(',')}</TableCell>
-              <TableCell>{bug.affects_versions.join(',')}</TableCell>
+              <TableCell>
+                {bug.components ? bug.components.join(',') : ''}
+              </TableCell>
+              <TableCell>
+                {bug.affects_versions ? bug.affects_versions.join(',') : ''}
+              </TableCell>
               <TableCell>
                 {relativeTime(new Date(bug.last_change_time), new Date())}
               </TableCell>
