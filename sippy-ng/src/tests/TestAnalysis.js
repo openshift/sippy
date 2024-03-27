@@ -256,10 +256,17 @@ export function TestAnalysis(props) {
                 </Tooltip>
               </Typography>
               <BugTable testName={testName} />
-              <BugButton
-                jiraComponentID={test.jira_component_id}
-                testName={testName}
-              />
+              <Box
+                sx={{
+                  display: 'flex',
+                  marginTop: 2,
+                }}
+              >
+                <BugButton
+                  jiraComponentID={test.jira_component_id}
+                  testName={testName}
+                />
+              </Box>
             </Card>
           </Grid>
 
