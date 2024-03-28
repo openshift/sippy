@@ -178,7 +178,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 		log.WithError(err).Error("error refreshing build cluster metrics")
 	}
 
-	refreshPayloadMetrics(dbc, reportEnd)
+	refreshPayloadMetrics(dbc, reportEnd, releases)
 
 	if bqc != nil {
 		if err := refreshComponentReadinessMetrics(bqc, gcsBucket, cacheOptions); err != nil {
@@ -191,10 +191,10 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 
 	}
 
-	if err := refreshInstallSuccessMetrics(dbc); err != nil {
+	if err := refreshInstallSuccessMetrics(dbc, releases); err != nil {
 		log.WithError(err).Error("error refreshing install success metrics")
 	}
-	if err := refreshUpgradeSuccessMetrics(dbc); err != nil {
+	if err := refreshUpgradeSuccessMetrics(dbc, releases); err != nil {
 		log.WithError(err).Error("error refreshing upgrade success metrics")
 	}
 	if err := refreshInfraMetrics(dbc, variantManager); err != nil {
@@ -344,12 +344,7 @@ func refreshBuildClusterMetrics(dbc *db.DB, reportEnd time.Time) error {
 	return nil
 }
 
-func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time) {
-	releases, err := query.ReleasesFromDB(dbc)
-	if err != nil {
-		log.WithError(err).Error("error querying releases from db")
-		return
-	}
+func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []query.Release) {
 	for _, r := range releases {
 		results, err := api.ReleaseHealthReports(dbc, r.Release, reportEnd)
 		if err != nil {
