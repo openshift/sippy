@@ -38,23 +38,19 @@ var (
 )
 
 // refreshInstallSuccessMetrics publishes metrics for the install success test for specific variants we care about.
-func refreshInstallSuccessMetrics(dbc *db.DB) error {
+func refreshInstallSuccessMetrics(dbc *db.DB, releases []query.Release) error {
 	return refreshTestSuccessMetrics(dbc,
-		testidentification.NewInstallTestName, installSuccessMetric, installSuccessDeltaToPrevWeekMetric, append(testidentification.DefaultExcludedVariants, "upgrade-minor"))
+		testidentification.NewInstallTestName, installSuccessMetric, installSuccessDeltaToPrevWeekMetric, append(testidentification.DefaultExcludedVariants, "upgrade-minor"), releases)
 }
 
 // refreshUpgradeSuccessMetrics publishes metrics for the install success test for specific variants we care about.
-func refreshUpgradeSuccessMetrics(dbc *db.DB) error {
+func refreshUpgradeSuccessMetrics(dbc *db.DB, releases []query.Release) error {
 	return refreshTestSuccessMetrics(dbc,
-		testidentification.UpgradeTestName, upgradeSuccessMetric, upgradeSuccessDeltaToPrevWeekMetric, testidentification.DefaultExcludedVariants)
+		testidentification.UpgradeTestName, upgradeSuccessMetric, upgradeSuccessDeltaToPrevWeekMetric, testidentification.DefaultExcludedVariants, releases)
 }
 
 func refreshTestSuccessMetrics(dbc *db.DB, testName string, successMetric, successDeltaMetric *prometheus.GaugeVec,
-	excludedVariants []string) error {
-	releases, err := query.ReleasesFromDB(dbc)
-	if err != nil {
-		return err
-	}
+	excludedVariants []string, releases []query.Release) error {
 	for _, release := range releases {
 		for _, reportType := range []v1.ReportType{v1.CurrentReport, v1.TwoDayReport} {
 			_, testToVariantToResults, err := api.VariantTestsReport(dbc, release.Release, reportType,
