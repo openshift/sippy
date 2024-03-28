@@ -19,6 +19,7 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
+	"github.com/openshift/sippy/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -94,6 +95,14 @@ var (
 		Name: "sippy_component_readiness",
 		Help: "Regression score for components",
 	}, []string{"component", "network", "arch", "platform"})
+	componentReadinessUniqueRegressionsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_component_readiness_unique_regressions",
+		Help: "Number of unique tests regressed per component",
+	}, []string{"component"})
+	componentReadinessTotalRegressionsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_component_readiness_total_regressions",
+		Help: "Number of regressions per component, includes tests multiple times when regressed on multiple NURP's",
+	}, []string{"component"})
 	disruptionVsPrevGAMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: disruptionVsPrevGAMetricName,
 		Help: "Delta of percentiles now vs the 30 days prior to previous release GA date",
@@ -305,9 +314,20 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string,
 	}
 
 	for _, row := range rows.Rows {
+		totalRegressedTestsByComponent := 0
+		uniqueRegressedTestsByComponent := sets.NewString()
 		for _, col := range row.Columns {
+			// Calculate total number of regressions by component, this can include a test multiple times
+			// if it's regressed in multiple NURP's.
+			totalRegressedTestsByComponent += len(col.RegressedTests)
+			// Calculate total number of unique tests that are regressed by component
+			for _, regressedTest := range col.RegressedTests {
+				uniqueRegressedTestsByComponent.Insert(regressedTest.TestID)
+			}
 			componentReadinessMetric.WithLabelValues(row.Component, col.Network, col.Arch, col.Platform).Set(float64(col.Status))
 		}
+		componentReadinessTotalRegressionsMetric.WithLabelValues(row.Component).Set(float64(totalRegressedTestsByComponent))
+		componentReadinessUniqueRegressionsMetric.WithLabelValues(row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
 	}
 
 	return nil
