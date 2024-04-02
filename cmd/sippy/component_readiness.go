@@ -16,11 +16,13 @@ import (
 	"gopkg.in/yaml.v3"
 
 	resources "github.com/openshift/sippy"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/sippyserver"
+	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 )
 
 type ComponentReadinessFlags struct {
@@ -161,14 +163,46 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		4*time.Hour,
 	)
 
-	// Serve our metrics endpoint for prometheus to scrape
-	go func() {
-		http.Handle("/metrics", promhttp.Handler())
-		err := http.ListenAndServe(f.MetricsAddr, nil) //nolint
+	if f.MetricsAddr != "" {
+		// Do an immediate metrics update
+		err = metrics.RefreshMetricsDB(nil,
+			bigQueryClient,
+			f.GoogleCloudFlags.StorageBucket,
+			nil,
+			time.Time{},
+			cache.RequestOptions{CRTimeRoundingFactor: defaultCRTimeRoundingFactor})
 		if err != nil {
-			panic(err)
+			log.WithError(err).Error("error refreshing metrics")
 		}
-	}()
+
+		// Refresh our metrics every 5 minutes:
+		ticker := time.NewTicker(5 * time.Minute)
+		quit := make(chan struct{})
+		go func() {
+			for {
+				select {
+				case <-ticker.C:
+					log.Info("tick")
+					err := metrics.RefreshMetricsDB(nil, bigQueryClient, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: defaultCRTimeRoundingFactor})
+					if err != nil {
+						log.WithError(err).Error("error refreshing metrics")
+					}
+				case <-quit:
+					ticker.Stop()
+					return
+				}
+			}
+		}()
+
+		// Serve our metrics endpoint for prometheus to scrape
+		go func() {
+			http.Handle("/metrics", promhttp.Handler())
+			err := http.ListenAndServe(f.MetricsAddr, nil) //nolint
+			if err != nil {
+				panic(err)
+			}
+		}()
+	}
 
 	server.Serve()
 	return nil
