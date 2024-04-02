@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strconv"
+	"time"
 
+	bqgo "cloud.google.com/go/bigquery"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -37,7 +40,7 @@ SELECT
   t.issue.id AS jira_id,
   t.summary as summary,
   j.name AS link_name,
-  t.last_changed_time as last_change_time,
+  t.last_changed_time as last_changed_time,
   t.status.name as status,
   ARRAY(SELECT name FROM UNNEST(affects_versions)) as affects_versions,
   ARRAY(SELECT name FROM UNNEST(fix_versions)) as fix_versions,
@@ -51,6 +54,21 @@ type BugLoader struct {
 	dbc    *db.DB
 	bqc    *bigquery.Client
 	errors []error
+}
+
+type bigQueryBug struct {
+	ID              uint               `json:"id" bigquery:"id"`
+	Key             string             `json:"key" bigquery:"key"`
+	Status          string             `json:"status" bigquery:"status"`
+	LastChangedTime bqgo.NullTimestamp `json:"last_changed_time" bigquery:"last_changed_time"`
+	Summary         string             `json:"summary" bigquery:"summary"`
+	AffectsVersions []string           `json:"affects_versions" bigquery:"affects_versions"`
+	FixVersions     []string           `json:"fix_versions" bigquery:"fix_versions"`
+	Components      []string           `json:"components" bigquery:"components"`
+	Labels          []string           `json:"labels" bigquery:"labels"`
+	URL             string             `json:"url" bigquery:"url"`
+	JiraID          string             `bigquery:"jira_id"`
+	LinkName        string             `bigquery:"link_name"`
 }
 
 func New(dbc *db.DB, bqc *bigquery.Client) *BugLoader {
@@ -69,6 +87,7 @@ func (bl *BugLoader) Errors() []error {
 }
 
 func (bl *BugLoader) Load() {
+	fmt.Println("HERE")
 	dbExpectedBugs := make([]*models.Bug, 0)
 
 	// Fetch bugs<->test mapping from bigquery
@@ -169,13 +188,8 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		return nil, errors.WithMessage(err, "failed to execute query")
 	}
 
-	type bugWithTest struct {
-		models.Bug
-		JiraID   string `bigquery:"jira_id"`
-		TestName string `bigquery:"link_name"`
-	}
 	for {
-		var bwt bugWithTest
+		var bwt bigQueryBug
 		err := it.Next(&bwt)
 		if errors.Is(err, iterator.Done) {
 			break
@@ -185,7 +199,7 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		}
 
 		// Make sure data in BQ is sane
-		if bwt.JiraID == "" || bwt.TestName == "" {
+		if bwt.JiraID == "" || bwt.LinkName == "" {
 			continue
 		}
 
@@ -193,21 +207,22 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		if err != nil {
 			bl.errors = append(bl.errors, errors.WithMessagef(err, "failed to convert jira id %s", bwt.JiraID))
 			continue
-
 		}
 		bwt.ID = uint(intID)
 
-		if _, ok := testCache[bwt.TestName]; !ok {
+		if _, ok := testCache[bwt.LinkName]; !ok {
 			// This is probably common since we're using ci-test-mapping test names, and sippy may not know all of them
-			log.Debugf("test name was in jira issue but not known by sippy: %s", bwt.TestName)
+			log.Debugf("test name was in jira issue but not known by sippy: %s", bwt.LinkName)
 			continue
 		}
 
+		fmt.Printf("%+v\n", bwt)
+
 		if _, ok := bugs[bwt.ID]; !ok {
-			bugs[bwt.ID] = &bwt.Bug
+			bugs[bwt.ID] = bigQueryBugToModel(bwt)
 		}
 
-		bugs[bwt.ID].Tests = append(bugs[bwt.ID].Tests, *testCache[bwt.TestName])
+		bugs[bwt.ID].Tests = append(bugs[bwt.ID].Tests, *testCache[bwt.LinkName])
 	}
 
 	return bugs, nil
@@ -229,13 +244,8 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 		return nil, errors.WithMessage(err, "failed to execute query")
 	}
 
-	type bugWithJob struct {
-		models.Bug
-		JiraID  string `bigquery:"jira_id"`
-		JobName string `bigquery:"link_name"`
-	}
 	for {
-		var bwj bugWithJob
+		var bwj bigQueryBug
 		err := it.Next(&bwj)
 		if errors.Is(err, iterator.Done) {
 			break
@@ -245,7 +255,7 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 		}
 
 		// Make sure data in BQ is sane
-		if bwj.JiraID == "" || bwj.JobName == "" {
+		if bwj.JiraID == "" || bwj.LinkName == "" {
 			continue
 		}
 
@@ -257,17 +267,17 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 		}
 		bwj.ID = uint(intID)
 
-		if _, ok := jobCache[bwj.JobName]; !ok {
+		if _, ok := jobCache[bwj.LinkName]; !ok {
 			// This is probably common because sippy probably doesn't know about *all* jobs like the BQ table does
-			log.Debugf("job name was in jira issue but not known by sippy: %s", bwj.JobName)
+			log.Debugf("job name was in jira issue but not known by sippy: %s", bwj.LinkName)
 			continue
 		}
 
 		if _, ok := bugs[bwj.ID]; !ok {
-			bugs[bwj.ID] = &bwj.Bug
+			bugs[bwj.ID] = bigQueryBugToModel(bwj)
 		}
 
-		bugs[bwj.ID].Jobs = append(bugs[bwj.ID].Jobs, *jobCache[bwj.JobName])
+		bugs[bwj.ID].Jobs = append(bugs[bwj.ID].Jobs, *jobCache[bwj.LinkName])
 	}
 
 	return bugs, nil
@@ -337,4 +347,24 @@ func updateWatchlist(dbc *db.DB) []error {
 		}
 	}
 	return errs
+}
+
+// ConvertBigQueryBugToModel converts a BigQuery bug representation to the model's Bug struct.
+func bigQueryBugToModel(bqBug bigQueryBug) *models.Bug {
+	lastChange := time.Now()
+	if bqBug.LastChangedTime.Valid {
+		lastChange = bqBug.LastChangedTime.Timestamp
+	}
+	return &models.Bug{
+		ID:              bqBug.ID,
+		Key:             bqBug.Key,
+		Status:          bqBug.Status,
+		LastChangeTime:  lastChange,
+		Summary:         bqBug.Summary,
+		AffectsVersions: pq.StringArray(bqBug.AffectsVersions),
+		FixVersions:     pq.StringArray(bqBug.FixVersions),
+		Components:      pq.StringArray(bqBug.Components),
+		Labels:          pq.StringArray(bqBug.Labels),
+		URL:             bqBug.URL,
+	}
 }
