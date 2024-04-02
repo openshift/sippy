@@ -599,7 +599,7 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 
 		var duration time.Duration
 		if pj.Status.CompletionTime != nil {
-			duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
+			duration = pj.Status.CompletionTime.Sub(*pj.Status.StartTime)
 		}
 
 		err = pl.dbc.DB.WithContext(ctx).Create(&models.ProwJobRun{
@@ -611,7 +611,7 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 			ProwJob:       *dbProwJob,
 			ProwJobID:     dbProwJob.ID,
 			URL:           pj.Status.URL,
-			Timestamp:     pj.Status.StartTime,
+			Timestamp:     *pj.Status.StartTime,
 			OverallResult: overallResult,
 			PullRequests:  pulls,
 			TestFailures:  failures,

@@ -67,7 +67,7 @@ type ProwJobSpec struct {
 }
 
 type ProwJobStatus struct {
-	StartTime        time.Time               `json:"startTime,omitempty"`
+	StartTime        *time.Time              `json:"startTime,omitempty"`
 	PendingTime      *time.Time              `json:"pendingTime,omitempty"`
 	CompletionTime   *time.Time              `json:"completionTime,omitempty"`
 	State            ProwJobState            `json:"state,omitempty"`

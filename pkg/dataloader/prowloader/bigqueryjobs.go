@@ -52,6 +52,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		"FROM `ci_analysis_us.jobs` " +
 		`WHERE TIMESTAMP(prowjob_completion) > @queryFrom
 	       AND prowjob_url IS NOT NULL
+	       AND prowjob_start_ts IS NOT NULL
 	       ORDER BY prowjob_start_ts`)
 	query.Parameters = []bigquery.QueryParameter{
 		{
@@ -105,7 +106,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			},
 			Status: prow.ProwJobStatus{
 				StartTime:      bqjr.StartTime,
-				CompletionTime: &bqjr.CompletionTime,
+				CompletionTime: bqjr.CompletionTime,
 				State:          prow.ProwJobState(bqjr.State),
 				URL:            bqjr.URL,
 				BuildID:        bqjr.BuildID,
@@ -131,8 +132,8 @@ type bigqueryProwJobRun struct {
 	BuildID        string              `bigquery:"prowjob_build_id"`
 	Type           string              `bigquery:"prowjob_type"`
 	Cluster        string              `bigquery:"prowjob_cluster"`
-	StartTime      time.Time           `bigquery:"prowjob_start_ts"`
-	CompletionTime time.Time           `bigquery:"prowjob_completion_ts"`
+	StartTime      *time.Time          `bigquery:"prowjob_start_ts"`
+	CompletionTime *time.Time          `bigquery:"prowjob_completion_ts"`
 	URL            string              `bigquery:"prowjob_url"`
 	PRSha          bigquery.NullString `bigquery:"pr_sha"`
 	PRAuthor       bigquery.NullString `bigquery:"pr_author"`
