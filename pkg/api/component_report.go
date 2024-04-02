@@ -24,17 +24,9 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-// move this out
-const TriagedIncidentsProjectID = "openshift-ci-data-analysis"
-const TriagedIncidentsDataSetID = "fsbabcock_test"
-const TriagedIncidentsTableID = "api_resolved_incidents_b"
-
-// long term moves to
-// const TriagedIncidentsProjectID="openshift-gce-devel"
-// const TriagedIncidentsDataSetID="ci_analysis_us"
-// const TriagedIncidentsTableID="triaged_incidents"
-
 const (
+	triagedIncidentsTableID = "triaged_incidents"
+
 	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
 
 	// This query de-dupes the test results. There are multiple issues present in
@@ -1153,7 +1145,7 @@ func (t *triagedIncidentsModifiedTimeGenerator) queryTriagedIssuesLastModified()
 	// Look for the most recent modified time after our lastModifiedTime.
 	// Using the partition to limit the query, we don't need the actual most recent modified time just need to know
 	// if it has changed / is greater than our default
-	queryString := fmt.Sprintf("SELECT max(modified_time) as LastModification FROM %s.%s.%s WHERE modified_time > TIMESTAMP(@Last)", TriagedIncidentsProjectID, TriagedIncidentsDataSetID, TriagedIncidentsTableID)
+	queryString := fmt.Sprintf("SELECT max(modified_time) as LastModification FROM %s.%s WHERE modified_time > TIMESTAMP(@Last)", t.client.Dataset, triagedIncidentsTableID)
 
 	params := make([]bigquery.QueryParameter, 0)
 
@@ -1257,7 +1249,7 @@ func (t *triagedIncidentsGenerator) queryTriagedIssues() ([]resolvedissues.Triag
 	// we could add a range for modified_time if we want to leverage the partitions
 	// presume modification would be within 6 months of start / end
 	// shouldn't be so many of these that would query too much data
-	queryString := fmt.Sprintf("SELECT * FROM %s.%s.%s WHERE release = @SampleRelease AND issue.start_date <= TIMESTAMP(@TO) AND (issue.resolution_date IS NULL OR issue.resolution_date >= TIMESTAMP(@FROM))", TriagedIncidentsProjectID, TriagedIncidentsDataSetID, TriagedIncidentsTableID)
+	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE release = @SampleRelease AND issue.start_date <= TIMESTAMP(@TO) AND (issue.resolution_date IS NULL OR issue.resolution_date >= TIMESTAMP(@FROM))", t.client.Dataset, triagedIncidentsTableID)
 
 	params := make([]bigquery.QueryParameter, 0)
 

@@ -34,15 +34,10 @@ from google.cloud.exceptions import NotFound
 # the test we're mass attributing to a known issue.
 # TEST_ID = "openshift-tests:c1f54790201ec8f4241eca902f854b79"
 
-# short term
-PROJECT_ID="openshift-ci-data-analysis"
-DATASET_ID="fsbabcock_test"
-TABLE_ID="api_resolved_incidents_b"
 
-# long term
-# PROJECT_ID="openshift-gce-devel"
-# DATASET_ID="ci_analysis_us"
-# TABLE_ID="triaged_incidents"
+PROJECT_ID="openshift-gce-devel"
+DATASET_ID="ci_analysis_us"
+TABLE_ID="triaged_incidents"
 
 TABLE_KEY=f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
 
