@@ -135,6 +135,20 @@ func (r RiskAnalysisEntryList) Less(i, j int) bool {
 	return r[i].Value.RiskLevel.Level > r[j].Value.RiskLevel.Level
 }
 
+func buildRestrictedUsers(in []string) sets.String {
+	if in == nil || len(in) < 1 {
+		return nil
+	}
+
+	set := sets.NewString()
+
+	for _, l := range in {
+		set.Insert(l)
+	}
+
+	return set
+}
+
 func (wp *WorkProcessor) Run(ctx context.Context) {
 
 	// create a channel with a max buffer of 5 for github updates
