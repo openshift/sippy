@@ -1303,6 +1303,12 @@ func (t *triagedIncidentsGenerator) fetchTriagedIssues(query *bigquery.Query) ([
 }
 
 func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentReportTestIdentification) int {
+
+	// handle test case / missing client
+	if c.client == nil {
+		return 0
+	}
+
 	impactedRuns, errs := c.getTriagedIssuesFromBigQuery(testID)
 
 	if errs != nil {
