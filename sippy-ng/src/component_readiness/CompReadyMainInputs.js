@@ -59,6 +59,7 @@ export default function CompReadyMainInputs(props) {
               varsContext.excludeNetworksCheckedItems,
               varsContext.excludeUpgradesCheckedItems,
               varsContext.excludeVariantsCheckedItems,
+              varsContext.capability,
               varsContext.confidence,
               varsContext.pity,
               varsContext.minFail,

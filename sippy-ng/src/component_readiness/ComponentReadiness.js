@@ -317,6 +317,7 @@ export default function ComponentReadiness(props) {
         varsContext.excludeNetworksCheckedItems,
         varsContext.excludeUpgradesCheckedItems,
         varsContext.excludeVariantsCheckedItems,
+        varsContext.capability,
         varsContext.confidence,
         varsContext.pity,
         varsContext.minFail,
@@ -401,8 +402,13 @@ export default function ComponentReadiness(props) {
     )
   }
 
+  let title = `Component Readiness for ${varsContext.sampleRelease} vs. ${varsContext.baseRelease}`
+  if (varsContext.capability) {
+    title = title + ` for ${varsContext.capability} capability`
+  }
+
   const pageTitle = makePageTitle(
-    `Component Readiness for ${varsContext.sampleRelease} vs. ${varsContext.baseRelease}`,
+    title,
     `page 1`,
     `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
       data && data.rows && data.rows[0] && data.rows[0].columns

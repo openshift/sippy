@@ -292,6 +292,7 @@ export function getUpdatedUrlParts(
   excludeNetworksCheckedItems,
   excludeUpgradesCheckedItems,
   excludeVariantsCheckedItems,
+  capability,
   confidence,
   pity,
   minFail,
@@ -311,6 +312,10 @@ export function getUpdatedUrlParts(
     ignoreDisruption: ignoreDisruption,
     ignoreMissing: ignoreMissing,
     //component: component,
+  }
+
+  if (capability) {
+    valuesMap.capability = capability
   }
 
   const arraysMap = {
