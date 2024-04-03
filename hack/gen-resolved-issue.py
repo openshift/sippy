@@ -15,11 +15,12 @@
 
 import argparse
 from datetime import datetime,timedelta,timezone
+import io
 import json
+import os
 import requests
 import sys
 import uuid
-
 
 # pip install --upgrade google-cloud-bigquery
 from google.cloud import bigquery
@@ -522,11 +523,15 @@ if __name__ == '__main__':
             with open(filename, 'r') as incident_file:
                 triage_data = json.load(incident_file)
         except Exception as e:
-           print(f"Failed to load input file {filename}: {e}")
-           exit()
+            print(f"Failed to load input file {filename}: {e}")
+            exit()
 
     validate_parameters(triage_data, args.issue_type, args.test_id)
     
+    if args.output_type == "DB":
+        if None == os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
+            print("Missing 'GOOGLE_APPLICATION_CREDENTIALS' env variable for DB output")
+            exit()
 
     output_file = ""
     if args.output_file:
