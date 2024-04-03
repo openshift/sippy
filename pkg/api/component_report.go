@@ -446,7 +446,7 @@ func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJob
 func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.ComponentJobRunTestReportStatus, []error) {
 	errs := []error{}
 
-	queryString, groupString, commonParams := c.getCommonTestStatusQuery()
+	queryString, groupString, commonParams := c.getCommonJobRunTestStatusQuery()
 	var baseStatus, sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
