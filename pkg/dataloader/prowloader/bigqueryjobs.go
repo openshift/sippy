@@ -52,7 +52,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		"FROM `ci_analysis_us.jobs` " +
 		`WHERE TIMESTAMP(prowjob_completion) > @queryFrom
 	       AND prowjob_url IS NOT NULL
-	       AND prowjob_start_ts IS NOT NULL
+	       AND prowjob_start IS NOT NULL
 	       ORDER BY prowjob_start_ts`)
 	query.Parameters = []bigquery.QueryParameter{
 		{
@@ -97,6 +97,14 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			log.Warningf("Presubmit job found without matching PR data for: %s", bqjr.JobName)
 		}
 		// Convert to a prow.ProwJob:
+		// If we read in an invalid StartTime, skip this job but put out an error.
+		if !bqjr.StartTime.Valid {
+			log.WithField("job", bqjr.JobName).Error("invalid start time for prowjob")
+
+			// Add a new error to errs that shows the name of the job and that it has an invalid start time.
+			errs = append(errs, errors.Errorf("%s has invalid start time for prowjob", bqjr.JobName))
+			continue
+		}
 		prowJobs[bqjr.BuildID] = prow.ProwJob{
 			Spec: prow.ProwJobSpec{
 				Type:    bqjr.Type,
@@ -105,8 +113,8 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 				Refs:    refs,
 			},
 			Status: prow.ProwJobStatus{
-				StartTime:      bqjr.StartTime,
-				CompletionTime: bqjr.CompletionTime,
+				StartTime:      bqjr.StartTime.Timestamp,
+				CompletionTime: &bqjr.CompletionTime,
 				State:          prow.ProwJobState(bqjr.State),
 				URL:            bqjr.URL,
 				BuildID:        bqjr.BuildID,
@@ -127,17 +135,17 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 // bigqueryProwJobRun is a transient struct for processing results from the bigquery jobs table.
 // Ultimately just used to convert to a prow.ProwJob.
 type bigqueryProwJobRun struct {
-	JobName        string              `bigquery:"prowjob_job_name"`
-	State          string              `bigquery:"prowjob_state"`
-	BuildID        string              `bigquery:"prowjob_build_id"`
-	Type           string              `bigquery:"prowjob_type"`
-	Cluster        string              `bigquery:"prowjob_cluster"`
-	StartTime      *time.Time          `bigquery:"prowjob_start_ts"`
-	CompletionTime *time.Time          `bigquery:"prowjob_completion_ts"`
-	URL            string              `bigquery:"prowjob_url"`
-	PRSha          bigquery.NullString `bigquery:"pr_sha"`
-	PRAuthor       bigquery.NullString `bigquery:"pr_author"`
-	PRNumber       bigquery.NullString `bigquery:"pr_number"`
-	PROrg          bigquery.NullString `bigquery:"org"`
-	PRRepo         bigquery.NullString `bigquery:"repo"`
+	JobName        string                 `bigquery:"prowjob_job_name"`
+	State          string                 `bigquery:"prowjob_state"`
+	BuildID        string                 `bigquery:"prowjob_build_id"`
+	Type           string                 `bigquery:"prowjob_type"`
+	Cluster        string                 `bigquery:"prowjob_cluster"`
+	StartTime      bigquery.NullTimestamp `bigquery:"prowjob_start_ts"`
+	CompletionTime time.Time              `bigquery:"prowjob_completion_ts"`
+	URL            string                 `bigquery:"prowjob_url"`
+	PRSha          bigquery.NullString    `bigquery:"pr_sha"`
+	PRAuthor       bigquery.NullString    `bigquery:"pr_author"`
+	PRNumber       bigquery.NullString    `bigquery:"pr_number"`
+	PROrg          bigquery.NullString    `bigquery:"org"`
+	PRRepo         bigquery.NullString    `bigquery:"repo"`
 }

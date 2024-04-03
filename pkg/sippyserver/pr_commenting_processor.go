@@ -796,7 +796,7 @@ func (aw *AnalysisWorker) buildProwJobMap(prJobRoot string) (map[time.Time]prow.
 		}
 
 		if pj.Status.StartTime.After(mostRecentStartTime) {
-			mostRecentStartTime = *pj.Status.StartTime
+			mostRecentStartTime = pj.Status.StartTime
 		}
 	}
 

@@ -1,6 +1,8 @@
 package prow
 
-import "time"
+import (
+	"time"
+)
 
 // ProwJobState specifies whether the job is running
 type ProwJobState string
@@ -67,7 +69,7 @@ type ProwJobSpec struct {
 }
 
 type ProwJobStatus struct {
-	StartTime        *time.Time              `json:"startTime,omitempty"`
+	StartTime        time.Time               `json:"startTime,omitempty"`
 	PendingTime      *time.Time              `json:"pendingTime,omitempty"`
 	CompletionTime   *time.Time              `json:"completionTime,omitempty"`
 	State            ProwJobState            `json:"state,omitempty"`
