@@ -572,6 +572,29 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
+func (s *Server) jsonComponentTestCapabilitiesFromBigQuery(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "component report API is only available when google-service-account-credential-file is configured",
+		})
+		return
+	}
+	outputs, errs := api.GetComponentTestCapabilitiesFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	if len(errs) > 0 {
+		log.Warningf("%d errors were encountered while querying test capabilities from big query:", len(errs))
+		for _, err := range errs {
+			log.Error(err.Error())
+		}
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": fmt.Sprintf("error querying test capabilities from big query: %v", errs),
+		})
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, outputs)
+}
+
 func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -1362,6 +1385,7 @@ func (s *Server) Serve() {
 	serveMux.HandleFunc("/api/component_readiness", s.jsonComponentReportFromBigQuery)
 	serveMux.HandleFunc("/api/component_readiness/test_details", s.jsonComponentReportTestDetailsFromBigQuery)
 	serveMux.HandleFunc("/api/component_readiness/variants", s.jsonComponentTestVariantsFromBigQuery)
+	serveMux.HandleFunc("/api/component_readiness/capabilities", s.jsonComponentTestCapabilitiesFromBigQuery)
 
 	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
 	if s.db != nil {

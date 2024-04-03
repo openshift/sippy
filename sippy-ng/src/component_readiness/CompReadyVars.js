@@ -26,6 +26,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [excludeArchesList, setExcludeArchesList] = useState([])
   const [excludeUpgradesList, setExcludeUpgradesList] = useState([])
   const [excludeVariantsList, setExcludeVariantsList] = useState([])
+  const [capabilitiesList, setCapabilitiesList] = useState([])
   const [isLoaded, setIsLoaded] = useState(false)
   const [fetchError, setFetchError] = useState('')
 
@@ -267,28 +268,39 @@ export const CompReadyVarsProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    const apiCallStr = getAPIUrl() + '/variants'
-    fetch(apiCallStr)
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.code < 200 || data.code >= 300) {
-          const errorMessage = data.message
-            ? `${data.message}`
-            : 'No error message'
-          throw new Error(`Return code = ${data.code} (${errorMessage})`)
+    const apiUrl = getAPIUrl()
+    Promise.all([
+      fetch(`${apiUrl}/variants`).then((res) => res.json()),
+      fetch(`${apiUrl}/capabilities`).then((res) => res.json()),
+    ])
+      .then(([variantsData, capabilitiesData]) => {
+        if (variantsData.code < 200 || variantsData.code >= 300) {
+          throw new Error(
+            `Return code = ${variantsData.code} (${
+              variantsData.message || 'No error message'
+            })`
+          )
         }
-        setExcludeCloudsList(data.platform)
-        setExcludeArchesList(data.arch)
-        setExcludeNetworksList(data.network)
-        setExcludeUpgradesList(data.upgrade)
-        setExcludeVariantsList(data.variant)
-        setIsLoaded(true)
+
+        if (capabilitiesData.code < 200 || capabilitiesData.code >= 300) {
+          throw new Error(
+            `Return code = ${capabilitiesData.code} (${
+              capabilitiesData.message || 'No error message'
+            })`
+          )
+        }
+
+        setExcludeCloudsList(variantsData.platform)
+        setExcludeArchesList(variantsData.arch)
+        setExcludeNetworksList(variantsData.network)
+        setExcludeUpgradesList(variantsData.upgrade)
+        setExcludeVariantsList(variantsData.variant)
+        setCapabilitiesList(capabilitiesData)
       })
       .catch((error) => {
-        setFetchError(`API call failed: ${apiCallStr}\n${error}`)
+        setFetchError(`API call failed: ${error}`)
       })
       .finally(() => {
-        // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
   }, [])
@@ -368,6 +380,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         excludeArchesList,
         excludeUpgradesList,
         excludeVariantsList,
+        capabilitiesList,
         expandEnvironment,
         baseRelease,
         setBaseReleaseWithDates,
@@ -406,6 +419,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         component,
         setComponentParam,
         capability,
+        setCapability,
         setCapabilityParam,
         environment,
         setEnvironmentParam,

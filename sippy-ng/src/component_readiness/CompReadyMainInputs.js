@@ -9,7 +9,9 @@ import {
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
+import { TextField } from '@mui/material'
 import AdvancedOptions from './AdvancedOptions'
+import Autocomplete from '@mui/lab/Autocomplete'
 import Button from '@mui/material/Button'
 import CheckBoxList from './CheckboxList'
 import PropTypes from 'prop-types'
@@ -138,6 +140,8 @@ export default function CompReadyMainInputs(props) {
         ></CheckBoxList>
         <AdvancedOptions
           headerName="Advanced"
+          capabilities={varsContext.capabilitiesList}
+          setCapability={varsContext.setCapability}
           confidence={varsContext.confidence}
           pity={varsContext.pity}
           minFail={varsContext.minFail}

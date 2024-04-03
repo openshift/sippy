@@ -5,10 +5,12 @@ import {
   AccordionSummary,
   FormControl,
   FormGroup,
+  TextField,
 } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 
+import Autocomplete from '@mui/lab/Autocomplete'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import Slider from '@mui/material/Slider'
@@ -17,12 +19,14 @@ import Typography from '@mui/material/Typography'
 
 export default function AdvancedOptions(props) {
   const {
+    capabilities,
     headerName,
     confidence,
     pity,
     minFail,
     ignoreMissing,
     ignoreDisruption,
+    setCapability,
     setConfidence,
     setPity,
     setMinFail,
@@ -66,6 +70,10 @@ export default function AdvancedOptions(props) {
   }
   const handleChangeIgnoreDisruption = (event, newValue) => {
     setIgnoreDisruption(newValue)
+  }
+
+  const handleCapability = (event, newValue) => {
+    setCapability(newValue)
   }
 
   return (
@@ -123,6 +131,17 @@ export default function AdvancedOptions(props) {
               name="ignoreDisruption"
               color="primary"
             />
+            <p>Filter by capability</p>
+            <Autocomplete
+              options={capabilities}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  onChange={handleCapability}
+                  label="Select capability"
+                />
+              )}
+            />
           </FormGroup>
         </AccordionDetails>
       </Accordion>
@@ -131,6 +150,7 @@ export default function AdvancedOptions(props) {
 }
 
 AdvancedOptions.propTypes = {
+  capabilities: PropTypes.array.isRequired,
   headerName: PropTypes.string.isRequired,
   confidence: PropTypes.number.isRequired,
   pity: PropTypes.number.isRequired,
@@ -138,6 +158,7 @@ AdvancedOptions.propTypes = {
   ignoreMissing: PropTypes.bool.isRequired,
   ignoreDisruption: PropTypes.bool.isRequired,
   setConfidence: PropTypes.func.isRequired,
+  setCapability: PropTypes.func.isRequired,
   setPity: PropTypes.func.isRequired,
   setMinFail: PropTypes.func.isRequired,
   setIgnoreMissing: PropTypes.func.isRequired,

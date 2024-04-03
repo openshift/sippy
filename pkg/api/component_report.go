@@ -101,6 +101,15 @@ func getSingleColumnResultToSlice(query *bigquery.Query) ([]string, error) {
 	return names, nil
 }
 
+func GetComponentTestCapabilitiesFromBigQuery(client *bqcachedclient.Client, gcsBucket string) ([]string, []error) {
+	generator := componentReportGenerator{
+		client:    client,
+		gcsBucket: gcsBucket,
+	}
+
+	return getReportFromCacheOrGenerate[[]string](client.Cache, cache.RequestOptions{}, "component_readiness_capabilities", generator.GenerateCapabilities, []string{})
+}
+
 func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client, gcsBucket string) (apitype.ComponentReportTestVariants, []error) {
 	generator := componentReportGenerator{
 		client:    client,
@@ -169,12 +178,24 @@ type componentReportGenerator struct {
 	apitype.ComponentReportRequestAdvancedOptions
 }
 
+func (c *componentReportGenerator) GenerateCapabilities() ([]string, []error) {
+	errs := []error{}
+	values, err := c.getUniqueColumnValues("component_mapping_latest", "capabilities", true)
+	if err != nil {
+		wrappedErr := errors.Wrapf(err, "couldn't fetch capabilities")
+		log.WithError(wrappedErr).Errorf("error generating variants")
+		errs = append(errs, wrappedErr)
+	}
+
+	return values, errs
+}
+
 func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTestVariants, []error) {
 	errs := []error{}
 	columns := make(map[string][]string)
 
 	for _, column := range []string{"platform", "network", "arch", "upgrade", "variants"} {
-		values, err := c.getUniqueJUnitColumnValues(column, column == "variants")
+		values, err := c.getUniqueColumnValues("junit", column, column == "variants")
 		if err != nil {
 			wrappedErr := errors.Wrapf(err, "couldn't fetch %s", column)
 			log.WithError(wrappedErr).Errorf("error generating variants")
@@ -424,6 +445,13 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Arch",
 			Value: c.Arch,
+		})
+	}
+	if c.Capability != "" {
+		queryString += " AND @Capability in UNNEST(capabilities)"
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "Capability",
+			Value: c.Capability,
 		})
 	}
 	if c.Network != "" {
@@ -1235,28 +1263,35 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 	return status, fischerExact
 }
 
-func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nested bool) ([]string, error) {
+func (c *componentReportGenerator) getUniqueColumnValues(table, field string, nested bool) ([]string, error) {
 	unnest := ""
 	if nested {
 		unnest = fmt.Sprintf(", UNNEST(%s) nested", field)
 		field = "nested"
 	}
 
+	where := ""
+	if table == "junit" {
+		where = `WHERE NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)`
+	}
+
 	queryString := fmt.Sprintf(`SELECT
 						DISTINCT %s as name
 					FROM
-						%s.junit %s
-					WHERE
-						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
+						%s.%s %s
+					%s
 					ORDER BY
-						name`, field, c.client.Dataset, unnest)
+						name`, field, c.client.Dataset, table, unnest, where)
 
 	query := c.client.BQ.Query(queryString)
-	query.Parameters = []bigquery.QueryParameter{
-		{
-			Name:  "IgnoredJobs",
-			Value: ignoredJobsRegexp,
-		},
+
+	if table == "junit" {
+		query.Parameters = []bigquery.QueryParameter{
+			{
+				Name:  "IgnoredJobs",
+				Value: ignoredJobsRegexp,
+			},
+		}
 	}
 
 	return getSingleColumnResultToSlice(query)
