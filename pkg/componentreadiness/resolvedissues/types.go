@@ -1,12 +1,134 @@
 package resolvedissues
 
 import (
+	"encoding/json"
 	"fmt"
+	"sort"
 	"time"
 
-	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/util/sets"
+
+	"cloud.google.com/go/bigquery"
+
+	"github.com/openshift/sippy/pkg/apis/api"
 )
+
+// sync with https://github.com/openshift/sippy/pull/1531/files#diff-3f72919066e1ec3ae4b037dfc91c09ef6d6eac0488762ef35c5a116f73ff1637R237 eventually
+const variantArchitecture = "Architecture"
+const variantNetwork = "Network"
+const variantPlatform = "Platform"
+const variantUpgrade = "Upgrade"
+const variantVariant = "Variant"
+
+var triageMatchVariants = buildTriageMatchVariants([]string{variantArchitecture, variantNetwork, variantPlatform, variantUpgrade, variantVariant})
+
+func buildTriageMatchVariants(in []string) sets.String {
+	if in == nil || len(in) < 1 {
+		return nil
+	}
+
+	set := sets.NewString()
+
+	for _, l := range in {
+		set.Insert(l)
+	}
+
+	return set
+}
+func TransformVariant(variant api.ComponentReportColumnIdentification) []TriagedVariant {
+
+	return []TriagedVariant{{
+		Key:   variantArchitecture,
+		Value: variant.Arch,
+	}, {
+		Key:   variantNetwork,
+		Value: variant.Network,
+	}, {
+		Key:   variantPlatform,
+		Value: variant.Platform,
+	}, {
+		Key:   variantUpgrade,
+		Value: variant.Upgrade,
+	}, {
+		Key:   variantVariant,
+		Value: variant.Variant,
+	}}
+}
+func KeyForTriagedIssue(testID string, variants []TriagedVariant) TriagedIssueKey {
+
+	matchVariants := make([]TriagedVariant, 0)
+	for _, v := range variants {
+		// currently we ignore variants that aren't in api.ComponentReportColumnIdentification
+		if triageMatchVariants.Has(v.Key) {
+			matchVariants = append(matchVariants, v)
+		}
+	}
+
+	sort.Slice(matchVariants,
+		func(a, b int) bool {
+			return matchVariants[a].Key < matchVariants[b].Key
+		})
+
+	vKey := ""
+	for _, v := range matchVariants {
+		if len(vKey) > 0 {
+			vKey += ","
+		}
+		vKey += fmt.Sprintf("%s_%s", v.Key, v.Value)
+	}
+
+	return TriagedIssueKey{
+		testID:   testID,
+		variants: vKey,
+	}
+}
+
+type TriagedIssueKey struct {
+	testID   string
+	variants string
+}
+
+type TriagedIncidentsForRelease struct {
+	Release          Release                               `json:"release"`
+	TriagedIncidents map[TriagedIssueKey][]TriagedIncident `json:"triaged_incidents"`
+}
+
+func NewTriagedIncidentsForRelease(release Release) TriagedIncidentsForRelease {
+	return TriagedIncidentsForRelease{
+		Release:          release,
+		TriagedIncidents: map[TriagedIssueKey][]TriagedIncident{},
+	}
+}
+
+type TriagedIncidentIssue struct {
+	Type           string                 `bigquery:"type"`
+	Description    bigquery.NullString    `bigquery:"description"`
+	URL            bigquery.NullString    `bigquery:"url"`
+	StartDate      time.Time              `bigquery:"start_date"`
+	ResolutionDate bigquery.NullTimestamp `bigquery:"resolution_date"`
+}
+
+type TriagedIncidentAttribution struct {
+	ID         string    `bigquery:"id"`
+	UpdateTime time.Time `bigquery:"update_time"`
+}
+
+type TriagedVariant struct {
+	Key   string `bigquery:"key"`
+	Value string `bigquery:"value"`
+}
+
+type TriagedIncident struct {
+	Release      string                       `bigquery:"release"`
+	TestID       string                       `bigquery:"test_id"`
+	TestName     string                       `bigquery:"test_name"`
+	IncidentID   string                       `bigquery:"incident_id"`
+	ModifiedTime time.Time                    `bigquery:"modified_time"`
+	Variants     []TriagedVariant             `bigquery:"variants"`
+	Issue        TriagedIncidentIssue         `bigquery:"issue"`
+	JobRuns      []JobRun                     `bigquery:"job_runs"`
+	Attributions []TriagedIncidentAttribution `bigquery:"attributions"`
+}
 
 type ResolvedIssue struct {
 	TestID   string
@@ -51,14 +173,14 @@ var (
 )
 
 type JobRun struct {
-	URL       string
-	StartTime time.Time
+	URL       string    `bigquery:"url"`
+	StartTime time.Time `bigquery:"start_time"`
 }
 
 // ResolvedIssuesFor returns the resolved issues for the test in the timeframe. These contain the jobruns that were impacted
 // Additionally, it returns the number of job runs in the window to suppress.
 func ResolvedIssuesFor(releaseString string, variant api.ComponentReportColumnIdentification, testID string, startTime, endTime time.Time) ([]ResolvedIssue, int) {
-	registryForRelease := registry.resolvedIssuesFor(release(releaseString))
+	registryForRelease := registry.resolvedIssuesFor(Release(releaseString))
 	if registryForRelease == nil {
 		return nil, 0
 	}
@@ -84,39 +206,50 @@ func ResolvedIssuesFor(releaseString string, variant api.ComponentReportColumnId
 }
 
 type resolvedIssueRegistry struct {
-	releaseToResolvedIssues map[release]*resolvedIssueForRelease
+	releaseToResolvedIssues map[Release]*resolvedIssueForRelease
 }
 
 var registry = newResolvedIssueRegistry()
 
 func newResolvedIssueRegistry() *resolvedIssueRegistry {
 	return &resolvedIssueRegistry{
-		releaseToResolvedIssues: map[release]*resolvedIssueForRelease{},
+		releaseToResolvedIssues: map[Release]*resolvedIssueForRelease{},
 	}
 }
 
 type resolvedIssueForRelease struct {
-	release        release
+	release        Release
 	resolvedIssues map[resolvedIssueKey][]ResolvedIssue
 }
 
-type release string
+type Release string
 
 var (
-	release415 release = "4.15"
-	release416 release = "4.16"
+	release415 Release = "4.15"
+	release416 Release = "4.16"
 )
 
 type resolvedIssueKey struct {
-	testID  string
-	variant api.ComponentReportColumnIdentification
+	TestID  string                                  `json:"test_id"`
+	Variant api.ComponentReportColumnIdentification `json:"variant"`
 }
 
-func (r *resolvedIssueRegistry) resolvedIssuesFor(release release) *resolvedIssueForRelease {
+// implement encoding.TextMarshaler for json map key marshalling support
+func (s resolvedIssueKey) MarshalText() (text []byte, err error) {
+	type t resolvedIssueKey
+	return json.Marshal(t(s))
+}
+
+func (s *resolvedIssueKey) UnmarshalText(text []byte) error {
+	type t resolvedIssueKey
+	return json.Unmarshal(text, (*t)(s))
+}
+
+func (r *resolvedIssueRegistry) resolvedIssuesFor(release Release) *resolvedIssueForRelease {
 	return r.releaseToResolvedIssues[release]
 }
 
-func newResolvedIssueForRelease(release release) *resolvedIssueForRelease {
+func newResolvedIssueForRelease(release Release) *resolvedIssueForRelease {
 	return &resolvedIssueForRelease{
 		release:        release,
 		resolvedIssues: map[resolvedIssueKey][]ResolvedIssue{},
@@ -201,8 +334,8 @@ func (r *resolvedIssueForRelease) addResolvedIssue(in ResolvedIssue) error {
 
 func keyFor(testID string, variant api.ComponentReportColumnIdentification) resolvedIssueKey {
 	return resolvedIssueKey{
-		testID: testID,
-		variant: api.ComponentReportColumnIdentification{
+		TestID: testID,
+		Variant: api.ComponentReportColumnIdentification{
 			Network:  variant.Network,
 			Upgrade:  variant.Upgrade,
 			Arch:     variant.Arch,
@@ -211,13 +344,13 @@ func keyFor(testID string, variant api.ComponentReportColumnIdentification) reso
 	}
 }
 
-func mustAddResolvedIssue(release release, in ResolvedIssue) {
+func mustAddResolvedIssue(release Release, in ResolvedIssue) {
 	if err := addResolvedIssue(release, in); err != nil {
 		panic(err)
 	}
 }
 
-func addResolvedIssue(release release, in ResolvedIssue) error {
+func addResolvedIssue(release Release, in ResolvedIssue) error {
 	if len(release) == 0 {
 		return fmt.Errorf("release must be specified")
 	}
