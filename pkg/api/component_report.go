@@ -950,6 +950,10 @@ func (c *componentReportGenerator) normalizeProwJobName(prowName string) string 
 	if prev, err := previousRelease(c.SampleRelease.Release); err == nil {
 		name = strings.ReplaceAll(name, prev, "X.X")
 	}
+	name = strings.ReplaceAll(name, "f28", "fXX")
+	name = strings.ReplaceAll(name, "f14", "fXX")
+	name = strings.ReplaceAll(name, "f7", "fXX")
+	name = strings.ReplaceAll(name, "f6", "fXX")
 	return name
 }
 
