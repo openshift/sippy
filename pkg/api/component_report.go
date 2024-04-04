@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -942,14 +943,22 @@ func previousRelease(release string) (string, error) {
 
 func (c *componentReportGenerator) normalizeProwJobName(prowName string) string {
 	name := prowName
-	name = strings.ReplaceAll(name, c.BaseRelease.Release, "X.X")
-	if prev, err := previousRelease(c.BaseRelease.Release); err == nil {
-		name = strings.ReplaceAll(name, prev, "X.X")
+	if c.BaseRelease.Release != "" {
+		name = strings.ReplaceAll(name, c.BaseRelease.Release, "X.X")
+		if prev, err := previousRelease(c.BaseRelease.Release); err == nil {
+			name = strings.ReplaceAll(name, prev, "X.X")
+		}
 	}
-	name = strings.ReplaceAll(name, c.SampleRelease.Release, "X.X")
-	if prev, err := previousRelease(c.SampleRelease.Release); err == nil {
-		name = strings.ReplaceAll(name, prev, "X.X")
+	if c.SampleRelease.Release != "" {
+		name = strings.ReplaceAll(name, c.SampleRelease.Release, "X.X")
+		if prev, err := previousRelease(c.SampleRelease.Release); err == nil {
+			name = strings.ReplaceAll(name, prev, "X.X")
+		}
 	}
+	// Some jobs encode frequency in their name, which can change
+	re := regexp.MustCompile(`-f\d+`)
+	name = re.ReplaceAllString(name, "-fXX")
+
 	return name
 }
 
