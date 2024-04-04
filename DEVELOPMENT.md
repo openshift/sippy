@@ -128,6 +128,10 @@ If you'd like to launch just Component Readiness, you can run:
     --redis-url="redis://192.168.1.215:6379"
 ```
 
+When providing BigQuery credentials, your service account needs access to the project and datasets that are being used.
+The defaults are visible in `--help`. For component readiness, you need to have access to the storage API as well
+with the permission `bigquery.readsessions.create`.
+
 ## Launch Sippy Web UI
 
 If you are developing on the front-end, you may start a development server which will update automatically when you edit

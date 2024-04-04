@@ -1,7 +1,7 @@
 package sippyserver
 
 const (
-	// Whether this instance of sippy is capable of display OpenShift-releated data. This
+	// Whether this instance of sippy is capable of displaying OpenShift-releated data. This
 	// is basically always since we don't have a kube Sippy anymore.
 	OpenshiftCapability = "openshift_releases"
 
