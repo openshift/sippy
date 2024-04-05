@@ -20,7 +20,7 @@ import { makeStyles, styled } from '@mui/styles'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5'
-import { Redirect, Route, Switch } from 'react-router-dom'
+import { Route, Switch } from 'react-router-dom'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
 import Alert from '@mui/material/Alert'
@@ -39,7 +39,7 @@ import PayloadStream from './releases/PayloadStream'
 import PayloadStreams from './releases/PayloadStreams'
 import ProwJobRun from './prow_job_runs/ProwJobRun'
 import PullRequests from './pull_requests/PullRequests'
-import React, { Fragment, useEffect } from 'react'
+import React, { useEffect } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
 import ReleasePayloadDetails from './releases/ReleasePayloadDetails'
 import ReleasePayloads from './releases/ReleasePayloads'
@@ -253,14 +253,6 @@ export default function App(props) {
     setDrawerOpen(true)
   }
 
-  const showWithCapability = (capability, el) => {
-    if (capabilities.includes(capability)) {
-      return el
-    }
-
-    return null
-  }
-
   const handleDrawerClose = () => {
     setDrawerOpen(false)
   }
@@ -324,15 +316,10 @@ export default function App(props) {
                           <Typography variant="h6" className={classes.title}>
                             Sippy
                           </Typography>
-                          {showWithCapability(
-                            'local_db',
-                            <Fragment>
-                              Last updated{' '}
-                              {lastUpdated !== null
-                                ? relativeTime(lastUpdated, startDate)
-                                : 'unknown'}
-                            </Fragment>
-                          )}
+                          Last updated{' '}
+                          {lastUpdated !== null
+                            ? relativeTime(lastUpdated, startDate)
+                            : 'unknown'}
                         </Grid>
                       </Toolbar>
                     </AppBar>
@@ -381,15 +368,9 @@ export default function App(props) {
                       <DrawerHeader />
                       {/* eslint-disable react/prop-types */}
                       <Switch>
-                        {capabilities.includes('local_db') ? (
-                          <Route path="/">{landingPage}</Route>
-                        ) : (
-                          <Redirect
-                            exact
-                            from="/"
-                            to="/component_readiness/main"
-                          />
-                        )}
+                        <Route path="/about">
+                          <p>Hello, world!</p>
+                        </Route>
 
                         <Route
                           path="/release/:release/tags/:tag"
@@ -587,6 +568,8 @@ export default function App(props) {
                             />
                           )}
                         />
+
+                        <Route path="/">{landingPage}</Route>
                       </Switch>
                       {/* eslint-enable react/prop-types */}
                     </Main>
