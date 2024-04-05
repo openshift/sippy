@@ -17,26 +17,21 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
-
-	"github.com/openshift/sippy/pkg/bigquery"
-
-	"github.com/openshift/sippy/pkg/api/jobrunintervals"
-	"github.com/openshift/sippy/pkg/apis/cache"
-	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
-
-	"github.com/openshift/sippy/pkg/db/models"
-
-	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/filter"
-	"github.com/openshift/sippy/pkg/synthetictests"
-	"github.com/openshift/sippy/pkg/util"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/api/jobrunintervals"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
+	"github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
+	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 // Mode defines the server mode of operation, OpenShift or upstream Kubernetes.
@@ -113,6 +108,7 @@ type Server struct {
 	gcsBucket            string
 	cache                cache.Cache
 	crTimeRoundingFactor time.Duration
+	capabilities         []string
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -223,19 +219,46 @@ func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmp
 	log.Infof("Refresh complete")
 }
 
-func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) hasCapabilities(capabilities []string) bool {
+	for _, cap := range capabilities {
+		found := false
+		for _, sCap := range s.capabilities {
+			if cap == sCap {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Server) determineCapabilities() {
 	capabilities := make([]string, 0)
 	if s.mode == ModeOpenShift {
-		capabilities = append(capabilities, "openshift_releases")
+		capabilities = append(capabilities, OpenshiftCapability)
 	}
 
-	if hasBuildCluster, err := query.HasBuildClusterData(s.db); hasBuildCluster {
-		capabilities = append(capabilities, "build_clusters")
-	} else if err != nil {
-		log.WithError(err).Warningf("could not fetch build cluster data")
+	if s.bigQueryClient != nil {
+		capabilities = append(capabilities, ComponentReadinessCapability)
+	}
+	if s.db != nil {
+		capabilities = append(capabilities, LocalDBCapability)
+
+		if hasBuildCluster, err := query.HasBuildClusterData(s.db); hasBuildCluster {
+			capabilities = append(capabilities, BuildClusterCapability)
+		} else if err != nil {
+			log.WithError(err).Warningf("could not fetch build cluster data")
+		}
 	}
 
-	api.RespondWithJSON(http.StatusOK, w, capabilities)
+	s.capabilities = capabilities
+}
+
+func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
+	api.RespondWithJSON(http.StatusOK, w, s.capabilities)
 }
 
 func (s *Server) jsonAutocompleteFromDB(w http.ResponseWriter, req *http.Request) {
@@ -902,6 +925,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request
 
 		response.LastUpdated = lastUpdated.Max
 	}
+
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
@@ -1296,7 +1320,19 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
+func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.ResponseWriter, req *http.Request)) func(http.ResponseWriter, *http.Request) {
+	if s.hasCapabilities(capabilities) {
+		return implFn
+	}
+
+	return func(w http.ResponseWriter, req *http.Request) {
+		api.RespondWithJSON(http.StatusNotImplemented, w, map[string]string{"message": "This Sippy server is not capable of responding to this request."})
+	}
+}
+
 func (s *Server) Serve() {
+	s.determineCapabilities()
+
 	// Use private ServeMux to prevent tests from stomping on http.DefaultServeMux
 	serveMux := http.NewServeMux()
 
@@ -1332,53 +1368,283 @@ func (s *Server) Serve() {
 		http.Redirect(w, req, "/sippy-ng/", 301)
 	})
 
-	serveMux.HandleFunc("/api/autocomplete/", s.jsonAutocompleteFromDB)
-	serveMux.HandleFunc("/api/jobs", s.jsonJobsReportFromDB)
-	serveMux.HandleFunc("/api/jobs/runs", s.jsonJobRunsReportFromDB)
-	serveMux.HandleFunc("/api/jobs/runs/risk_analysis", s.jsonJobRunRiskAnalysis)
-	serveMux.HandleFunc("/api/jobs/runs/intervals", s.cached(4*time.Hour, s.jsonJobRunIntervals))
-	serveMux.HandleFunc("/api/jobs/analysis", s.jsonJobsAnalysisFromDB)
-	serveMux.HandleFunc("/api/jobs/details", s.jsonJobsDetailsReportFromDB)
-	serveMux.HandleFunc("/api/jobs/bugs", s.jsonJobBugsFromDB)
-	serveMux.HandleFunc("/api/pull_requests", s.cached(1*time.Hour, s.jsonPullRequestsReportFromDB))
-	serveMux.HandleFunc("/api/repositories", s.jsonRepositoriesReportFromDB)
-	serveMux.HandleFunc("/api/tests", s.jsonTestsReportFromDB)
-	serveMux.HandleFunc("/api/tests/details", s.cached(1*time.Hour, s.jsonTestDetailsReportFromDB))
-	serveMux.HandleFunc("/api/tests/analysis/overall", s.cached(1*time.Hour, s.jsonTestAnalysisOverallFromDB))
-	serveMux.HandleFunc("/api/tests/analysis/variants", s.cached(1*time.Hour, s.jsonTestAnalysisByVariantFromDB))
-	serveMux.HandleFunc("/api/tests/analysis/jobs", s.cached(1*time.Hour, s.jsonTestAnalysisByJobFromDB))
-	serveMux.HandleFunc("/api/tests/bugs", s.jsonTestBugsFromDB)
-	serveMux.HandleFunc("/api/tests/outputs", s.cached(1*time.Hour, s.jsonTestOutputsFromDB))
-	serveMux.HandleFunc("/api/tests/durations", s.cached(1*time.Hour, s.jsonTestDurationsFromDB))
-	serveMux.HandleFunc("/api/install", s.cached(1*time.Hour, s.jsonInstallReportFromDB))
-	serveMux.HandleFunc("/api/upgrade", s.cached(1*time.Hour, s.jsonUpgradeReportFromDB))
-	serveMux.HandleFunc("/api/releases", s.jsonReleasesReportFromDB)
-	serveMux.HandleFunc("/api/health/build_cluster/analysis", s.jsonBuildClusterHealthAnalysis)
-	serveMux.HandleFunc("/api/health/build_cluster", s.jsonBuildClusterHealth)
-	serveMux.HandleFunc("/api/health", s.jsonHealthReportFromDB)
-	serveMux.HandleFunc("/api/variants", s.jsonVariantsReportFromDB)
-	serveMux.HandleFunc("/api/canary", s.printCanaryReportFromDB)
-	serveMux.HandleFunc("/api/report_date", s.printReportDate)
-	// Note that component readiness is cached, but at the lower layer of report generation so we can use the cached
-	// data in metrics.
-	serveMux.HandleFunc("/api/component_readiness", s.jsonComponentReportFromBigQuery)
-	serveMux.HandleFunc("/api/component_readiness/test_details", s.jsonComponentReportTestDetailsFromBigQuery)
-	serveMux.HandleFunc("/api/component_readiness/variants", s.jsonComponentTestVariantsFromBigQuery)
+	type apiEndpoints struct {
+		EndpointPath string                                       `json:"path"`
+		Description  string                                       `json:"description"`
+		Capabilities []string                                     `json:"required_capabilities"`
+		CacheTime    time.Duration                                `json:"cache_time"`
+		HandlerFunc  func(w http.ResponseWriter, r *http.Request) `json:"-"`
+	}
 
-	serveMux.HandleFunc("/api/capabilities", s.jsonCapabilitiesReport)
-	if s.db != nil {
-		serveMux.HandleFunc("/api/releases/health", s.jsonReleaseHealthReport)
-		serveMux.HandleFunc("/api/releases/tags/events", s.jsonReleaseTagsEvent)
-		serveMux.HandleFunc("/api/releases/tags", s.jsonReleaseTagsReport)
-		serveMux.HandleFunc("/api/releases/pull_requests", s.jsonReleasePullRequestsReport)
-		serveMux.HandleFunc("/api/releases/job_runs", s.jsonListPayloadJobRuns)
-		serveMux.HandleFunc("/api/incidents", s.jsonIncidentEvent)
+	var endpoints []apiEndpoints
+	endpoints = []apiEndpoints{
+		{
+			EndpointPath: "/api",
+			Description:  "API docs",
+			HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
+				var availableEndpoints []apiEndpoints
+				for _, ep := range endpoints {
+					if s.hasCapabilities(ep.Capabilities) {
+						availableEndpoints = append(availableEndpoints, ep)
+					}
+				}
+				api.RespondWithJSON(http.StatusOK, w, availableEndpoints)
+			},
+		},
+		{
+			EndpointPath: "/api/autocomplete",
+			Description:  "Autocompletes queries from database",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonAutocompleteFromDB,
+		},
+		{
+			EndpointPath: "/api/jobs",
+			Description:  "Returns a list of jobs",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonJobsReportFromDB,
+		},
+		{
+			EndpointPath: "/api/jobs/runs",
+			Description:  "Returns a report of job runs",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonJobRunsReportFromDB,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/risk_analysis",
+			Description:  "Analyzes risks of job runs",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonJobRunRiskAnalysis,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/intervals",
+			Description:  "Reports intervals of job runs",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    4 * time.Hour,
+			HandlerFunc:  s.jsonJobRunIntervals,
+		},
+		{
+			EndpointPath: "/api/jobs/analysis",
+			Description:  "Analyzes jobs from the database",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonJobsAnalysisFromDB,
+		},
+		{
+			EndpointPath: "/api/jobs/details",
+			Description:  "Reports details of jobs",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonJobsDetailsReportFromDB,
+		},
+		{
+			EndpointPath: "/api/jobs/bugs",
+			Description:  "Reports bugs related to jobs",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonJobBugsFromDB,
+		},
+		{
+			EndpointPath: "/api/pull_requests",
+			Description:  "Reports on pull requests",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonPullRequestsReportFromDB,
+		},
+		{
+			EndpointPath: "/api/repositories",
+			Description:  "Reports on repositories",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonRepositoriesReportFromDB,
+		},
+		{
+			EndpointPath: "/api/tests",
+			Description:  "Reports on tests",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonTestsReportFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/details",
+			Description:  "Details of tests",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestDetailsReportFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/analysis/overall",
+			Description:  "Overall analysis of tests",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestAnalysisOverallFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/analysis/variants",
+			Description:  "Analysis of test by variants",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestAnalysisByVariantFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/analysis/jobs",
+			Description:  "Analysis of tests by job",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestAnalysisByJobFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/bugs",
+			Description:  "Reports bugs in tests",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonTestBugsFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/outputs",
+			Description:  "Outputs of tests",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestOutputsFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/durations",
+			Description:  "Durations of tests",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestDurationsFromDB,
+		},
+		{
+			EndpointPath: "/api/install",
+			Description:  "Reports on installations",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonInstallReportFromDB,
+		},
+		{
+			EndpointPath: "/api/upgrade",
+			Description:  "Reports on upgrades",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonUpgradeReportFromDB,
+		},
+		{
+			EndpointPath: "/api/releases",
+			Description:  "Reports on releases",
+			Capabilities: []string{},
+			HandlerFunc:  s.jsonReleasesReportFromDB,
+		},
+		{
+			EndpointPath: "/api/health/build_cluster/analysis",
+			Description:  "Analyzes build cluster health",
+			Capabilities: []string{LocalDBCapability, BuildClusterCapability},
+			HandlerFunc:  s.jsonBuildClusterHealthAnalysis,
+		},
+		{
+			EndpointPath: "/api/health/build_cluster",
+			Description:  "Reports health of build cluster",
+			Capabilities: []string{LocalDBCapability, BuildClusterCapability},
+			HandlerFunc:  s.jsonBuildClusterHealth,
+		},
+		{
+			EndpointPath: "/api/health",
+			Description:  "Reports general health from DB",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonHealthReportFromDB,
+		},
+		{
+			EndpointPath: "/api/variants",
+			Description:  "Reports on variants",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonVariantsReportFromDB,
+		},
+		{
+			EndpointPath: "/api/canary",
+			Description:  "Displays canary report from database",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.printCanaryReportFromDB,
+		},
+		{
+			EndpointPath: "/api/report_date",
+			Description:  "Displays report date",
+			HandlerFunc:  s.printReportDate,
+		},
+		{
+			EndpointPath: "/api/component_readiness",
+			Description:  "Reports component readiness from BigQuery",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonComponentReportFromBigQuery,
+		},
+		{
+			EndpointPath: "/api/component_readiness/test_details",
+			Description:  "Reports test details for component readiness from BigQuery",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonComponentReportTestDetailsFromBigQuery,
+		},
+		{
+			EndpointPath: "/api/component_readiness/variants",
+			Description:  "Reports test variants for component readiness from BigQuery",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonComponentTestVariantsFromBigQuery,
+		},
+		{
+			EndpointPath: "/api/capabilities",
+			Description:  "Lists available API capabilities",
+			Capabilities: []string{},
+			HandlerFunc:  s.jsonCapabilitiesReport,
+		},
+		{
+			EndpointPath: "/api/releases/health",
+			Description:  "Reports health of releases",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonReleaseHealthReport,
+		},
+		{
+			EndpointPath: "/api/releases/tags/events",
+			Description:  "Lists events for release tags",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonReleaseTagsEvent,
+		},
+		{
+			EndpointPath: "/api/releases/tags",
+			Description:  "Lists release tags",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonReleaseTagsReport,
+		},
+		{
+			EndpointPath: "/api/releases/pull_requests",
+			Description:  "Reports pull requests for releases",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonReleasePullRequestsReport,
+		},
+		{
+			EndpointPath: "/api/releases/job_runs",
+			Description:  "Lists job runs for releases",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonListPayloadJobRuns,
+		},
+		{
+			EndpointPath: "/api/incidents",
+			Description:  "Reports incident events",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonIncidentEvent,
+		},
+		{
+			EndpointPath: "/api/releases/test_failures",
+			Description:  "Analysis of test failures for releases",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonGetPayloadAnalysis,
+		},
+		{
+			EndpointPath: "/api/payloads/test_failures",
+			Description:  "Analysis of test failures in payloads",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonGetPayloadTestFailures,
+		},
+	}
 
-		serveMux.HandleFunc("/api/releases/test_failures",
-			s.jsonGetPayloadAnalysis)
-
-		serveMux.HandleFunc("/api/payloads/test_failures",
-			s.jsonGetPayloadTestFailures)
+	for _, ep := range endpoints {
+		fn := ep.HandlerFunc
+		if ep.CacheTime > 0 {
+			fn = s.cached(ep.CacheTime, fn)
+		}
+		if len(ep.Capabilities) > 0 {
+			fn = s.requireCapabilities(ep.Capabilities, fn)
+		}
+		serveMux.HandleFunc(ep.EndpointPath, fn)
 	}
 
 	var handler http.Handler = serveMux
@@ -1395,7 +1661,7 @@ func (s *Server) Serve() {
 
 	log.Infof("Serving reports on %s ", s.listenAddr)
 
-	if err := s.httpServer.ListenAndServe(); err != http.ErrServerClosed {
+	if err := s.httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		log.WithError(err).Error("Server exited")
 	}
 }

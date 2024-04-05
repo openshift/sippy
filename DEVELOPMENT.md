@@ -105,14 +105,32 @@ releases and architectures like this:
 
 ## Launch Sippy API
 
-If you are *not* loading a backup for your data, you will need to initialize and/or update the database schema. This step is done automatically when fetching data from testgrid or prow, but may not have run if you start the server before doing so.
+If you are *not* loading a backup for your data, you will need to
+initialize and/or update the database schema:
 
+```bash
+./sippy migrate
+```
+
+Then to launch the API server:
 ```bash
 ./sippy serve \
   --log-level=debug \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp
 ````
+
+If you'd like to launch just Component Readiness, you can run:
+
+```
+./sippy component-readiness
+    --google-service-account-credential-file ~/google-service-account-credential-file.json
+    --redis-url="redis://192.168.1.215:6379"
+```
+
+When providing BigQuery credentials, your service account needs access to the project and datasets that are being used.
+The defaults are visible in `--help`. For component readiness, you need to have access to the storage API as well
+with the permission `bigquery.readsessions.create`.
 
 ## Launch Sippy Web UI
 
