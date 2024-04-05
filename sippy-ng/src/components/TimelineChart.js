@@ -5,7 +5,11 @@ import TimelinesChart from 'timelines-chart'
 
 // TimelineChart is a React component to wrap the plain TimelinesChart we used
 // in origin previously.
-export default function TimelineChart({ eventIntervals, data }) {
+export default function TimelineChart({
+  eventIntervals,
+  data,
+  segmentClickedFunc,
+}) {
   const ref = useRef(null)
   const ordinalScale = d3scale
     .scaleOrdinal()
@@ -117,9 +121,10 @@ export default function TimelineChart({ eventIntervals, data }) {
         .enableOverview(false)
         .leftMargin(150)
         .rightMargin(750)
-        .maxLineHeight(20)
-        .maxHeight(10000)
-        .zColorScale(ordinalScale)
+        .maxLineHeight(30)
+        .maxHeight(20000)
+        .onSegmentClick(segmentClickedFunc)
+        .zColorScale(ordinalScale) // seems to enable the use of our own colors
       if (eventIntervals.length > 0) {
         chart.zoomX([
           new Date(eventIntervals[0].from),
@@ -141,4 +146,5 @@ export default function TimelineChart({ eventIntervals, data }) {
 TimelineChart.propTypes = {
   data: PropTypes.array,
   eventIntervals: PropTypes.array,
+  segmentClickedFunc: PropTypes.func,
 }

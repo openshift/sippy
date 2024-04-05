@@ -1208,6 +1208,8 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	repoInfo := req.URL.Query().Get("repo_info")
 	pullNumber := req.URL.Query().Get("pull_number")
 
+	intervalFile := req.URL.Query().Get("file")
+
 	// Attempt to calculate a GCS path based on a passed in jobName.
 	var gcsPath string
 	if len(jobName) > 0 {
@@ -1228,7 +1230,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		gcsPath = ""
 	}
 	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
-		logger.WithField("func", "JobRunRiskIntervals"))
+		intervalFile, logger.WithField("func", "JobRunIntervals"))
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
