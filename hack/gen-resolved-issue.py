@@ -20,6 +20,7 @@ import json
 import os
 import requests
 import sys
+import time
 import uuid
 
 # pip install --upgrade google-cloud-bigquery
@@ -152,8 +153,9 @@ def match_existing_incident(variants, issue_type, issue_url, existing_results, n
                             found = True
                             break
 
-                    if not found :        
-                        complete_jobs.append({"url": jobRun["URL"], "start_time": hack_for_rfc_3339(jobRun["StartTime"])})
+                    if not found:
+                        st = jobRun["start_time"]         
+                        complete_jobs.append({"url": jobRun["url"], "start_time":  hack_for_rfc_3339(f"{st}")})
 
             return updateIncidentID, complete_jobs, matchedRow["attributions"], matchedRow["modified_time"]
 
@@ -277,7 +279,11 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
             q += f", issue.type='{issue_type}'"
 
         if len(issue_url) > 0:
-            q += f", issue.url='{issue_url}'"    
+            q += f", issue.url='{issue_url}'"  
+
+        if triaged_incident["GroupId"] != None:
+            incident_group_id = triaged_incident["GroupId"]
+            q += f", incident_group_id='{incident_group_id}'"  
         
         q += where
     
@@ -324,6 +330,8 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
                 "attributions": [{"id": client._credentials.service_account_email, "update_time": modified_time}]
                 }
 
+        if triaged_incident["GroupId"] != None:
+            row["incident_group_id"] = triaged_incident["GroupId"]
 
         rows = [row]            
         table_ref = client.dataset(DATASET_ID).table(TABLE_ID)
@@ -454,12 +462,12 @@ def compare_time_is_greater(base, check):
 
 def job_matches(record, prow_url, start_time):
     if record:        
-        if "StartTimeMax" in record:
-            mx = record["StartTimeMax"]
+        if "JobRunStartTimeMax" in record:
+            mx = record["JobRunStartTimeMax"]
             if compare_time_is_greater(mx, start_time):
                 return False
-        if "StartTimeMin" in record:
-            mx = record["StartTimeMin"]
+        if "JobRunStartTimeMin" in record:
+            mx = record["JobRunStartTimeMin"]
             if compare_time_is_greater(start_time, mx):
                 return False
         if "JobRuns" in record:
@@ -492,18 +500,104 @@ def issue_details(record, issue_type, issue_description, issue_url):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser("Generate Incident Regression Records")
-    parser.add_argument("--issue-type", choices=['Infrastructure', 'Product'], help="The type of regression.")
+    # If there is a known incident-group-id specify it here
+    parser.add_argument("--assign-incident-group-id", help="Assign the specified incident-group-id common among records.")
+
+    # Issue description, type and URL
     parser.add_argument("--issue-description", help="A short description of the regression.")
+    parser.add_argument("--issue-type", choices=['Infrastructure', 'Product'], help="The type of regression.")   
     parser.add_argument("--issue-url", help="The URL (JIRA / PR) associated with the regression.")
-    parser.add_argument("--test-id", help="The internal id of the test.")
-    parser.add_argument("--test-report-url", help="The component readiness url for the test regression.", required=True)
-    parser.add_argument("--test-release", help="The release the test is running against.", required=True)
+
+    # If there is a specific time window to consider for JobRunStartTimes specify the min and max and
+    # any runs outside that window will be ignored
+    parser.add_argument("--job-run-start-time-max", help="The latest date time to consider a failed job run for an incident")
+    parser.add_argument("--job-run-start-time-min", help="The latest date time to consider a failed job run for an incident")
+
+    # If the JSON file specified in --input-file is complete and you don't need to use the --test-report-url
+    # to look up JobRuns, etc. set this flag to true
+    parser.add_argument("--load-incidents-from-file", help="Skip test report lookup and persist incidents from the specified input file, only valid with output-type DB", type=bool, default=False)
+    
+    # if you expect an existing incident but that is hasn't been updated within the last two weeks you can specify a target
+    # modified time for the match incident search range to use
     parser.add_argument("--target-modified-time", help="The target date to query for existing record (range: target-2weeks - target).")
-    parser.add_argument("--output-file", help="Write JSON output to the specified file instead of DB.")
+
+    # specify the single test id to match, or use an input file for multiple tests
+    parser.add_argument("--test-id", help="The internal id of the test.")
+    # the release this incident is against
+    parser.add_argument("--test-release", help="The release the test is running against.")
+    # the url from component readiness dev tools network console that contains regression results for the test(s) specified 
+    parser.add_argument("--test-report-url", help="The component readiness url for the test regression.")
+    
+
+    # a JSON structured file, potentially output by this tool, to be used as input for matching tests
+    # creating records
     parser.add_argument("--input-file", help="JSON input file containing test criteria for creating incidents.")
+    # the output file to write JSON output too    
+    parser.add_argument("--output-file", help="Write JSON output to the specified file instead of DB.")
+    # write JSON output or persist to DB    
     parser.add_argument("--output-type", choices=['JSON', 'DB'], help="Write the incident record(s) as JSON or as DB record", default='JSON')
     
     args = parser.parse_args()
+
+    # if we don't have an input file then we must have issue-type, test-id and test-name
+    # if we don't have issue-type or test-id or test-name then they must exist in the input-file
+    triage_data_file = None
+    if args.input_file:
+        filename = args.input_file.strip("'")
+        try:
+            with open(filename, 'r') as incident_file:
+                triage_data_file = json.load(incident_file)
+        except Exception as e:
+            print(f"Failed to load input file {filename}: {e}")
+            exit()
+
+    if triage_data_file != None:
+        if "Arguments" in triage_data_file:
+            arguments = triage_data_file["Arguments"]
+            if "TestRelease" in arguments and len(arguments["TestRelease"]) > 0:
+                args.test_release = arguments["TestRelease"] 
+            if "TestReportURL" in arguments and len(arguments["TestReportURL"]) > 0:
+                args.test_report_url = arguments["TestReportURL"]
+            if "IssueDescription" in arguments and len(arguments["IssueDescription"]) > 0:
+                args.issue_description = arguments["IssueDescription"]
+            if "IssueType" in arguments and len(arguments["IssueType"]) > 0:
+                args.issue_type = arguments["IssueType"]
+            if "IssueURL" in arguments and len(arguments["IssueURL"]) > 0:
+                args.issue_url = arguments["IssueURL"]
+            if "OutputFile" in arguments and len(arguments["OutputFile"]) > 0:
+                args.output_file = arguments["OutputFile"]    
+            if "OutputType" in arguments and len(arguments["OutputType"]) > 0:
+                args.output_type = arguments["OutputType"]
+            if "IncidentGroupId" in arguments and len(arguments["IncidentGroupId"]) > 0:
+                args.assign_incident_group_id = arguments["IncidentGroupId"]
+            if "TargetModifiedTime" in arguments and len(arguments["TargetModifiedTime"]) > 0:
+                args.target_modified_time = arguments["TargetModifiedTime"]
+            if "JobRunStartTimeMax" in arguments and len(arguments["JobRunStartTimeMax"]) > 0:
+                args.job_run_start_time_max = arguments["JobRunStartTimeMax"]   
+            if "JobRunStartTimeMin" in arguments and len(arguments["JobRunStartTimeMin"]) > 0:
+                args.job_run_start_time_min = arguments["JobRunStartTimeMin"]              
+
+    if args.test_report_url == None or len(args.test_report_url) == 0:
+        # if we are loading incidents from a file we don't need the URL
+        if args.load_incidents_from_file == False:
+            print(f"test-report-url is required")
+            exit()
+    if args.test_release == None or len(args.test_release) == 0:
+        print(f"test-release is required")
+        exit()
+
+    triage_data = None
+    if triage_data_file != None and "Tests" in triage_data_file:
+        triage_data = triage_data_file["Tests"]
+
+    validate_parameters(triage_data, args.issue_type, args.test_id)
+
+    # always create and incident id
+    incident_group_id = str(uuid.uuid4())
+
+    # if an incident id was passed in use it
+    if args.assign_incident_group_id:
+        incident_group_id = args.assign_incident_group_id
 
     if args.test_id:
         print("\n\nTestID: " + args.test_id)
@@ -513,20 +607,6 @@ if __name__ == '__main__':
 
     print("\nTestReport URL: " + args.test_report_url)
     print("\nTest Release: " + args.test_release)
-
-    # if we don't have an input file then we must have issue-type, test-id and test-name
-    # if we don't have issue-type or test-id or test-name then they must exist in the input-file
-    triage_data = None
-    if args.input_file:
-        filename = args.input_file.strip("'")
-        try:
-            with open(filename, 'r') as incident_file:
-                triage_data = json.load(incident_file)
-        except Exception as e:
-            print(f"Failed to load input file {filename}: {e}")
-            exit()
-
-    validate_parameters(triage_data, args.issue_type, args.test_id)
     
     if args.output_type == "DB":
         if None == os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
@@ -564,129 +644,167 @@ if __name__ == '__main__':
     print(f"\nTargetModifiedTime: {target_modified_time}")
     
 
-    # Fetch the top level regressed component + tests report:
-    top_lvl_report = fetch_json_data(args.test_report_url)
-    triaged_incidents = []
+    if args.load_incidents_from_file:
+        if args.output_type == 'DB':
+            for triaged_incident in triage_data:
+                 write_incident_record(triaged_incident, modified_time, target_modified_time)
+        else:
+            print("Invalid output type for load-incidents-from-file")
+            exit()
+    else :
+        # Fetch the top level regressed component + tests report:
+        top_lvl_report = fetch_json_data(args.test_report_url)
+        triaged_incidents = []
 
-    for row in top_lvl_report['rows']:
-        for col in row['columns']:
-            if 'regressed_tests' not in col:
-                continue
-            regressed_tests = col['regressed_tests']
-            for rt in regressed_tests:
-
-                # test_ids can span variants
-                # if we input a file we have to check to see if any variants are included with the test_id
-                # and match only them
-
-                # we always pull variants from the test but will match against any json input
-                test_id = rt['test_id']
-
-                variants = []
-                variants.append({"key": "Network", "value": rt['network']})
-                variants.append({"key": "Upgrade", "value": rt['upgrade']})
-                variants.append({"key": "Architecture", "value": rt['arch']})
-                variants.append({"key": "Platform", "value": rt['platform']})
-                # don't see VariantVariant in https://github.com/openshift/sippy/pull/1531/files#diff-3f72919066e1ec3ae4b037dfc91c09ef6d6eac0488762ef35c5a116f73ff1637R237
-                # worth review
-                variants.append({"key": "Variant", "value": rt['variant']})
-
-                # do we have an input file, if so check to see if we have an entry
-                # for this test id
-                # if we do see if we have a variant section
-                # make sure any specified variants match
-                # then check to see if we have specified jobruns
-                # or if we specified JobRunStartRangeBegin / JobRunStartRangeEnd
-                matches, record = test_matches(triage_data, args.test_id, test_id, variants)
-                
-
-                if not matches:
+        for row in top_lvl_report['rows']:
+            for col in row['columns']:
+                if 'regressed_tests' not in col:
                     continue
+                regressed_tests = col['regressed_tests']
+                for rt in regressed_tests:
 
-                # if we have a record use the
-                # issue type, description, url if provided
-                issue_type, issue_description, issue_url = issue_details(record, args.issue_type, description, issue_url)
+                    # test_ids can span variants
+                    # if we input a file we have to check to see if any variants are included with the test_id
+                    # and match only them
 
-                print
-                print("REGRESSION: %s" % rt["test_name"])
-                print
-                component = rt['component']
-                capability = rt['capability']
-                test_name = rt['test_name']
-                
+                    # we always pull variants from the test but will match against any json input
+                    test_id = rt['test_id']
 
-# TODO: These are the url params we need to add onto those in the TEST_REPORT URL when we go to get the test details (job run data):
-# &component=Monitoring&capability=Other&testId=openshift-tests-upgrade:c1f54790201ec8f4241eca902f854b79&environment=ovn%20upgrade-minor%20amd64%20metal-ipi%20standard&network=ovn&upgrade=upgrade-minor&arch=amd64&platform=metal-ipi&variant=standard
+                    variants = []
+                    variants.append({"key": "Network", "value": rt['network']})
+                    variants.append({"key": "Upgrade", "value": rt['upgrade']})
+                    variants.append({"key": "Architecture", "value": rt['arch']})
+                    variants.append({"key": "Platform", "value": rt['platform']})
+                    # don't see VariantVariant in https://github.com/openshift/sippy/pull/1531/files#diff-3f72919066e1ec3ae4b037dfc91c09ef6d6eac0488762ef35c5a116f73ff1637R237
+                    # worth review
+                    variants.append({"key": "Variant", "value": rt['variant']})
 
-                # Build out the url for full test_details api call so we can get the job runs. Adjust the endpoint, re-use the original request params, and add some more that are needed.
-                test_details_url = args.test_report_url.replace('/api/component_readiness?', '/api/component_readiness/test_details?')
-                environment = '%20s'.join([rt['network'], rt['upgrade'],  rt['arch'], rt['platform'], rt['variant']])
-                test_details_url += '&component=%s&capability=%s&testId=%s&environment=%s&network=%s&upgrade=%s&arch=%s&platform=%s&variant=%s' % (component, capability, test_id, environment, rt['network'], rt['upgrade'], rt['arch'], rt['platform'], rt['variant'])
-                print("  Querying test details: %s" % test_details_url)
+                    # do we have an input file, if so check to see if we have an entry
+                    # for this test id
+                    # if we do see if we have a variant section
+                    # make sure any specified variants match
+                    # then check to see if we have specified jobruns
+                    # or if we specified JobRunStartRangeBegin / JobRunStartRangeEnd
+                    matches, record = test_matches(triage_data, args.test_id, test_id, variants)
+                    
+                    # check for JobRunStartTimeMax and min times  
+                    # if the record doesn't have them and we have global setttings
+                    # then use them
+                    if args.job_run_start_time_max != None:
+                        if record == None:
+                            record = {}
+                        if "JobRunStartTimeMax" not in record:
+                            record["JobRunStartTimeMax"] =  args.job_run_start_time_max
 
-                # Call the function to fetch JSON data from the API
-                json_data = fetch_json_data(test_details_url)
+                    if args.job_run_start_time_min != None:
+                        if record == None:
+                            record = {}
+                        if "JobRunStartTimeMin" not in record:
+                            record["JobRunStartTimeMin"] =  args.job_run_start_time_min  
+                    
 
-                if json_data is None:
-                    print("Error: no json data returned from %s" % test_details_url)
-                
-                triaged_incident = {}
-                # test_release can't change since we only input one test_report_url
-                # currently require it as part of input args, though it could also be pulled out of json if provided
-                triaged_incident["Release"] = args.test_release
-                triaged_incident["TestId"] = test_id
-                triaged_incident["TestName"] = test_name
-                issue = {}
-                issue["Type"] = issue_type
-                if len(issue_description) > 0:
-                    issue["Description"] = issue_description
-                if len(issue_url) > 0:
-                    issue["URL"] = issue_url
-                triaged_incident["Issue"] = issue
-                triaged_incident["Variants"] = variants
-                triaged_incident["JobRuns"] = []
-
-                for job in json_data["job_stats"]:
-                    if not 'sample_job_run_stats' in job:
+                    if not matches:
                         continue
-                    for sjr in job["sample_job_run_stats"]:
-                        if sjr["test_stats"]["failure_count"] == 0:
+
+                    # if we have a record use the
+                    # issue type, description, url if provided
+                    issue_type, issue_description, issue_url = issue_details(record, args.issue_type, description, issue_url)
+
+                    print
+                    print("REGRESSION: %s" % rt["test_name"])
+                    print
+                    component = rt['component']
+                    capability = rt['capability']
+                    test_name = rt['test_name']
+                    
+
+    # TODO: These are the url params we need to add onto those in the TEST_REPORT URL when we go to get the test details (job run data):
+    # &component=Monitoring&capability=Other&testId=openshift-tests-upgrade:c1f54790201ec8f4241eca902f854b79&environment=ovn%20upgrade-minor%20amd64%20metal-ipi%20standard&network=ovn&upgrade=upgrade-minor&arch=amd64&platform=metal-ipi&variant=standard
+
+                    # Build out the url for full test_details api call so we can get the job runs. Adjust the endpoint, re-use the original request params, and add some more that are needed.
+                    test_details_url = args.test_report_url.replace('/api/component_readiness?', '/api/component_readiness/test_details?')
+                    environment = '%20s'.join([rt['network'], rt['upgrade'],  rt['arch'], rt['platform'], rt['variant']])
+                    test_details_url += '&component=%s&capability=%s&testId=%s&environment=%s&network=%s&upgrade=%s&arch=%s&platform=%s&variant=%s' % (component, capability, test_id, environment, rt['network'], rt['upgrade'], rt['arch'], rt['platform'], rt['variant'])
+                    print("  Querying test details: %s" % test_details_url)
+
+                    # Call the function to fetch JSON data from the API
+                    json_data = fetch_json_data(test_details_url)
+
+                    # bad response...
+                    if json_data is None:
+                        print("Error: no json data returned from %s" % test_details_url)
+                        # are we hammering the server? slow down for a bit...
+                        time.sleep(10)
+                        continue
+                    
+                    triaged_incident = {}
+                    # test_release can't change since we only input one test_report_url
+                    # currently require it as part of input args, though it could also be pulled out of json if provided
+                    triaged_incident["Release"] = args.test_release
+                    triaged_incident["TestId"] = test_id
+                    triaged_incident["TestName"] = test_name
+                    triaged_incident["GroupId"] = incident_group_id
+                    issue = {}
+                    issue["Type"] = issue_type
+                    if len(issue_description) > 0:
+                        issue["Description"] = issue_description
+                    if len(issue_url) > 0:
+                        issue["URL"] = issue_url
+                    triaged_incident["Issue"] = issue
+                    triaged_incident["Variants"] = variants
+                    triaged_incident["JobRuns"] = []
+
+                    for job in json_data["job_stats"]:
+                        if not 'sample_job_run_stats' in job:
                             continue
-                        prow_url = sjr["job_url"]
-                        print("  Failed job run: %s" % prow_url)
+                        for sjr in job["sample_job_run_stats"]:
+                            if sjr["test_stats"]["failure_count"] == 0:
+                                continue
+                            prow_url = sjr["job_url"]
+                            print("  Failed job run: %s" % prow_url)
 
-                        # TODO: it would be ideal to check the actual test failure output for some search string or regex to make sure it's
-                        # the issue we're mass attributing. This however would require parsing junit XML today.
+                            # TODO: it would be ideal to check the actual test failure output for some search string or regex to make sure it's
+                            # the issue we're mass attributing. This however would require parsing junit XML today.
 
-                        # grab prowjob.json from artifacts with some assumptions about paths:
-                        url_tokens = prow_url.split('/')
-                        job_name, job_run = url_tokens[-2], url_tokens[-1]
-                        artifacts_dir = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/logs/%s/%s/" % (job_name, job_run)
+                            # grab prowjob.json from artifacts with some assumptions about paths:
+                            url_tokens = prow_url.split('/')
+                            job_name, job_run = url_tokens[-2], url_tokens[-1]
+                            artifacts_dir = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/logs/%s/%s/" % (job_name, job_run)
 
-                        # grab prowjob.json for the start time:
-                        prow_job_json = fetch_json_data(artifacts_dir + 'prowjob.json')
-                        start_time = prow_job_json["status"]["startTime"]
-                        print("    Prow job start time: %s" % start_time)
+                            # grab prowjob.json for the start time:
+                            prow_job_json = fetch_json_data(artifacts_dir + 'prowjob.json')
+                            start_time = prow_job_json["status"]["startTime"]
+                            print("    Prow job start time: %s" % start_time)
 
-                        if job_matches(record, prow_url, start_time):
-                            triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time})
+                            if job_matches(record, prow_url, start_time):
+                                triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time})
 
-                
-                if args.output_type == 'JSON':
-                    triaged_incidents.append(triaged_incident)
-                    # add that to a list of incidents that we write in the end
-                else:
-                    # write the record to bigquery
-                    write_incident_record(triaged_incident, modified_time, target_modified_time)
+                    
+                    if args.output_type == 'JSON':
+                        triaged_incidents.append(triaged_incident)
+                        # add that to a list of incidents that we write in the end
+                    else:
+                        # write the record to bigquery
+                        write_incident_record(triaged_incident, modified_time, target_modified_time)
 
     if args.output_type == 'JSON':
+        triage_output = {"Arguments": {"TestRelease": args.test_release, "TestReportURL": args.test_report_url,
+                                    "IssueDescription": description, "IssueType": args.issue_type, 
+                                    "IssueURL": issue_url, "OutputFile": output_file,
+                                    "OutputType": args.output_type, "IncidentGroupId": incident_group_id,
+                                    "TargetModifiedTime": target_modified_time},
+                                    "Tests": triaged_incidents}
+        if  args.job_run_start_time_max != None:
+            triage_output["Arguments"]["JobRunStartTimeMax"] = args.job_run_start_time_max
+        if  args.job_run_start_time_min != None:
+            triage_output["Arguments"]["JobRunStartTimeMin"] = args.job_run_start_time_min
         if len(output_file) > 0:      
             with open(output_file, 'w') as incident_file:
-                json.dump(triaged_incidents, incident_file)
+                json.dump(triage_output, incident_file)
                 print(f"output data to {output_file}")
         else:
             print("Specify --output-type=DB to persist record\n\n")
-            json.dump(triaged_incidents, sys.stdout, indent=4)
+            json.dump(triage_output, sys.stdout, indent=4)
             print("\n\n")
 
 

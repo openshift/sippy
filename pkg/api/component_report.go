@@ -1371,8 +1371,6 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		} else {
 			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
 			resolvedIssueCompensation := c.triagedIncidentsFor(testID)
-			// if we need to fall back
-			// _, resolvedIssueCompensation := resolvedissues.ResolvedIssuesFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
 			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
 		}
 		delete(sampleStatus, testIdentification)
@@ -1524,8 +1522,6 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 	}
 	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ComponentReportColumnIdentification, c.TestID)
 	resolvedIssueCompensation := c.triagedIncidentsFor(result.ComponentReportTestIdentification)
-	// if we need to fall back
-	// _, resolvedIssueCompensation := resolvedissues.ResolvedIssuesFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
 
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
