@@ -37,6 +37,7 @@ export default function CompReadyMainInputs(props) {
   const classes = useStyles(theme)
 
   const varsContext = useContext(CompReadyVarsContext)
+
   return (
     <Fragment>
       <div className="cr-report-button">
@@ -141,6 +142,7 @@ export default function CompReadyMainInputs(props) {
         ></CheckBoxList>
         <AdvancedOptions
           headerName="Advanced"
+          capability={varsContext.capability}
           capabilities={varsContext.capabilitiesList}
           setCapability={varsContext.setCapability}
           confidence={varsContext.confidence}

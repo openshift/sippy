@@ -237,9 +237,6 @@ export const CompReadyVarsProvider = ({ children }) => {
     setEnvironment(environmentParam)
   }
   const [capability, setCapability] = React.useState(capabilityParam)
-  if (capability != capabilityParam) {
-    setCapability(capabilityParam)
-  }
 
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.

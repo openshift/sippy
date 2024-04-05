@@ -292,12 +292,12 @@ export function getUpdatedUrlParts(
   excludeNetworksCheckedItems,
   excludeUpgradesCheckedItems,
   excludeVariantsCheckedItems,
-  capability,
   confidence,
   pity,
   minFail,
   ignoreDisruption,
-  ignoreMissing
+  ignoreMissing,
+  capability
 ) {
   const valuesMap = {
     baseRelease: baseRelease,

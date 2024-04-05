@@ -19,6 +19,7 @@ import Typography from '@mui/material/Typography'
 
 export default function AdvancedOptions(props) {
   const {
+    capability,
     capabilities,
     headerName,
     confidence,
@@ -87,9 +88,7 @@ export default function AdvancedOptions(props) {
           className={classes.summary}
           expandIcon={<ExpandMore />}
         >
-          <Typography className="checkboxlist-label">
-            {props.headerName}
-          </Typography>
+          <Typography className="checkboxlist-label">{headerName}</Typography>
         </AccordionSummary>
         <AccordionDetails>
           <FormGroup>
@@ -134,10 +133,12 @@ export default function AdvancedOptions(props) {
             <p>Filter by capability</p>
             <Autocomplete
               options={capabilities}
+              value={capability}
+              onChange={handleCapability}
               renderInput={(params) => (
                 <TextField
                   {...params}
-                  onChange={handleCapability}
+                  value={capability}
                   label="Select capability"
                 />
               )}
@@ -150,6 +151,7 @@ export default function AdvancedOptions(props) {
 }
 
 AdvancedOptions.propTypes = {
+  capability: PropTypes.string.isRequired,
   capabilities: PropTypes.array.isRequired,
   headerName: PropTypes.string.isRequired,
   confidence: PropTypes.number.isRequired,

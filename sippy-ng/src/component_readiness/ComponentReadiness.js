@@ -317,12 +317,12 @@ export default function ComponentReadiness(props) {
         varsContext.excludeNetworksCheckedItems,
         varsContext.excludeUpgradesCheckedItems,
         varsContext.excludeVariantsCheckedItems,
-        varsContext.capability,
         varsContext.confidence,
         varsContext.pity,
         varsContext.minFail,
         varsContext.ignoreDisruption,
-        varsContext.ignoreMissing
+        varsContext.ignoreMissing,
+        varsContext.capability
       )
     const formattedApiCallStr = makeRFC3339Time(apiCallStr)
     return formattedApiCallStr
