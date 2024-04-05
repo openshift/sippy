@@ -67,16 +67,17 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 	// For the primary list of all job names, we will query everything that's run in the last 3 months:
 	// TODO: for component readiness queries to work in the past, we may need far more than jobs that ran in 3 months
 	// since start of 4.14 perhaps?
-	// TODO: unfortunate use of another project here
 	query := v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
 		fmt.Sprintf("%s.%s.%s", v.bigQueryProject, v.bigQueryDataSet, v.bigQueryTable) +
-		` WHERE (prowjob_job_name LIKE 'periodic-ci-openshift-%%4.16%%' 
-			OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%4.16%%' 
+		` WHERE (prowjob_job_name LIKE 'periodic-ci-openshift-%%' 
+			OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%' 
 			OR prowjob_job_name LIKE 'release-%%' 
-			OR prowjob_job_name like 'aggregator-%%4.16%%')
+			OR prowjob_job_name like 'aggregator-%%')
 		OR prowjob_job_name LIKE 'pull-ci-openshift-%%'
-		GROUP BY prowjob_job_name`)
-	// TODO: ^^ remove 4.16
+		GROUP BY prowjob_job_name
+		ORDER BY prowjob_job_name
+LIMIT 20
+		`)
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying primary list of all jobs")

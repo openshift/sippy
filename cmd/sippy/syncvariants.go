@@ -74,7 +74,9 @@ func NewSyncJobVariantsCommand() *cobra.Command {
 			}
 
 			log.Infof("Loaded expected job variant data from: %s", inputFile)
-			err = variantregistry.SyncJobVariants(bigQueryClient, expectedVariants)
+			syncer := variantregistry.NewSyncer(bigQueryClient, f.BigQueryFlags.BigQueryProject,
+				f.BigQueryFlags.BigQueryDataset, "job_variants")
+			err = syncer.SyncJobVariants(expectedVariants)
 			if err != nil {
 				log.WithError(err).Fatal("error syncing expected job variants")
 			}
