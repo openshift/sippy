@@ -33,7 +33,7 @@ const (
   FROM
     openshift-ci-data-analysis.jira_data.tickets_dedup t
   LEFT JOIN UNNEST(t.comments) AS c
-  WHERE t.summary IS NOT NULL
+  WHERE t.summary IS NOT NULL AND last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)
 )
 SELECT
   t.issue.key as key,
@@ -87,7 +87,6 @@ func (bl *BugLoader) Errors() []error {
 }
 
 func (bl *BugLoader) Load() {
-	fmt.Println("HERE")
 	dbExpectedBugs := make([]*models.Bug, 0)
 
 	// Fetch bugs<->test mapping from bigquery
@@ -215,8 +214,6 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 			log.Debugf("test name was in jira issue but not known by sippy: %s", bwt.LinkName)
 			continue
 		}
-
-		fmt.Printf("%+v\n", bwt)
 
 		if _, ok := bugs[bwt.ID]; !ok {
 			bugs[bwt.ID] = bigQueryBugToModel(bwt)
