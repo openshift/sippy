@@ -141,54 +141,69 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 	if err != nil {
 		return err
 	}
-	promReportTypes := buildPromReportTypes(releases)
-	if err != nil {
-		return err
-	}
 
-	// Get last updated job run
-	var lastUpdated time.Time
-	if r := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated); r.Error != nil {
-		return errors.Wrapf(err, "could not fetch last updated time")
-	}
-	hoursSinceLastUpdate.WithLabelValues().Set(time.Since(lastUpdated).Hours())
-
-	for _, pType := range promReportTypes {
-		// start, boundary and end will just be defaults
-		// the api will decide based on the period
-		// and current day / time
-		jobsResult, err := api.JobReportsFromDB(dbc, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{}, reportEnd)
-
+	// Local DB metrics
+	if dbc != nil {
+		promReportTypes := buildPromReportTypes(releases)
 		if err != nil {
-			return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
+			return err
 		}
-		for _, jobResult := range jobsResult {
-			silenced := silencedFalse
-			if jobResult.CurrentRuns == 0 {
-				silenced = silencedTrue
+
+		// Get last updated job run
+		var lastUpdated time.Time
+		if r := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated); r.Error != nil {
+			return errors.Wrapf(err, "could not fetch last updated time")
+		}
+		hoursSinceLastUpdate.WithLabelValues().Set(time.Since(lastUpdated).Hours())
+
+		for _, pType := range promReportTypes {
+			// start, boundary and end will just be defaults
+			// the api will decide based on the period
+			// and current day / time
+			jobsResult, err := api.JobReportsFromDB(dbc, pType.release, pType.period, nil, time.Time{}, time.Time{}, time.Time{}, reportEnd)
+
+			if err != nil {
+				return errors.Wrapf(err, "error refreshing prom report type %s - %s", pType.period, pType.release)
 			}
-			if jobResult.OpenBugs > 0 {
-				silenced = silencedTrue
+			for _, jobResult := range jobsResult {
+				silenced := silencedFalse
+				if jobResult.CurrentRuns == 0 {
+					silenced = silencedTrue
+				}
+				if jobResult.OpenBugs > 0 {
+					silenced = silencedTrue
+				}
+				releaseStatus := getReleaseStatus(releases, pType.release)
+				jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name, silenced, releaseStatus).Set(jobResult.CurrentPassPercentage / 100)
 			}
-			releaseStatus := getReleaseStatus(releases, pType.release)
-			jobPassRatioMetric.WithLabelValues(pType.release, pType.period, jobResult.Name, silenced, releaseStatus).Set(jobResult.CurrentPassPercentage / 100)
+		}
+
+		// Add a metric for any warnings for each release. We can't convey exact details with prom, but we can
+		// tell you x warnings are present and link you to the overview in the alert.
+		for _, release := range releases {
+			releaseWarnings := api.ScanForReleaseWarnings(dbc, release.Release, reportEnd)
+			releaseStatus := getReleaseStatus(releases, release.Release)
+			releaseWarningsMetric.WithLabelValues(release.Release, releaseStatus).Set(float64(len(releaseWarnings)))
+		}
+
+		if err := refreshBuildClusterMetrics(dbc, reportEnd); err != nil {
+			log.WithError(err).Error("error refreshing build cluster metrics")
+		}
+
+		refreshPayloadMetrics(dbc, reportEnd, releases)
+
+		if err := refreshInstallSuccessMetrics(dbc, releases); err != nil {
+			log.WithError(err).Error("error refreshing install success metrics")
+		}
+		if err := refreshUpgradeSuccessMetrics(dbc, releases); err != nil {
+			log.WithError(err).Error("error refreshing upgrade success metrics")
+		}
+		if err := refreshInfraMetrics(dbc, variantManager); err != nil {
+			log.WithError(err).Error("error refreshing infrastructure success metrics")
 		}
 	}
 
-	// Add a metric for any warnings for each release. We can't convey exact details with prom, but we can
-	// tell you x warnings are present and link you to the overview in the alert.
-	for _, release := range releases {
-		releaseWarnings := api.ScanForReleaseWarnings(dbc, release.Release, reportEnd)
-		releaseStatus := getReleaseStatus(releases, release.Release)
-		releaseWarningsMetric.WithLabelValues(release.Release, releaseStatus).Set(float64(len(releaseWarnings)))
-	}
-
-	if err := refreshBuildClusterMetrics(dbc, reportEnd); err != nil {
-		log.WithError(err).Error("error refreshing build cluster metrics")
-	}
-
-	refreshPayloadMetrics(dbc, reportEnd, releases)
-
+	// BigQuery metrics
 	if bqc != nil {
 		if err := refreshComponentReadinessMetrics(bqc, gcsBucket, cacheOptions); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
@@ -197,18 +212,8 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 		if err := refreshDisruptionMetrics(bqc, releases); err != nil {
 			log.WithError(err).Error("error refreshing disruption metrics")
 		}
-
 	}
 
-	if err := refreshInstallSuccessMetrics(dbc, releases); err != nil {
-		log.WithError(err).Error("error refreshing install success metrics")
-	}
-	if err := refreshUpgradeSuccessMetrics(dbc, releases); err != nil {
-		log.WithError(err).Error("error refreshing upgrade success metrics")
-	}
-	if err := refreshInfraMetrics(dbc, variantManager); err != nil {
-		log.WithError(err).Error("error refreshing infrastructure success metrics")
-	}
 	log.Infof("refresh metrics completed in %s", time.Since(start))
 
 	return nil

@@ -173,233 +173,245 @@ export default function Sidebar(props) {
           }
         }}
       </CapabilitiesContext.Consumer>
-      <Divider />
-      <List
-        subheader={
-          <ListSubheader component="div" id="releases">
-            Releases
-          </ListSubheader>
-        }
-      >
-        {props.releases.map((release, index) => (
-          <Fragment key={'section-release-' + index}>
-            <ListItem
-              key={'item-release-' + index}
-              onClick={() => handleClick(index)}
-            >
-              <StyledListItemButton>
-                {open[index] ? <ExpandLess /> : <ExpandMore />}
-                <ListItemText primary={release} />
-              </StyledListItemButton>
-            </ListItem>
-            <Collapse in={open[index]} timeout="auto" unmountOnExit>
-              <List component="div" disablePadding>
-                <ListItem
-                  key={'release-overview-' + index}
-                  component={Link}
-                  to={'/release/' + release}
-                  className={classes.nested}
+
+      <CapabilitiesContext.Consumer>
+        {(value) => {
+          if (value.includes('local_db')) {
+            return (
+              <Fragment>
+                <Divider />
+                <List
+                  subheader={
+                    <ListSubheader component="div" id="releases">
+                      Releases
+                    </ListSubheader>
+                  }
                 >
-                  <StyledListItemButton>
-                    <ListItemIcon>
-                      <InfoIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Overview" />
-                  </StyledListItemButton>
-                </ListItem>
-                {release !== 'Presubmits' ? (
-                  <CapabilitiesContext.Consumer>
-                    {(value) => {
-                      if (value.includes('openshift_releases')) {
-                        return (
+                  {props.releases.map((release, index) => (
+                    <Fragment key={'section-release-' + index}>
+                      <ListItem
+                        key={'item-release-' + index}
+                        onClick={() => handleClick(index)}
+                      >
+                        <StyledListItemButton>
+                          {open[index] ? <ExpandLess /> : <ExpandMore />}
+                          <ListItemText primary={release} />
+                        </StyledListItemButton>
+                      </ListItem>
+                      <Collapse in={open[index]} timeout="auto" unmountOnExit>
+                        <List component="div" disablePadding>
                           <ListItem
-                            key={'release-tags-' + index}
+                            key={'release-overview-' + index}
                             component={Link}
-                            to={`/release/${release}/streams`}
+                            to={'/release/' + release}
                             className={classes.nested}
                           >
                             <StyledListItemButton>
                               <ListItemIcon>
-                                <FileCopyOutlined />
+                                <InfoIcon />
                               </ListItemIcon>
-                              <ListItemText primary="Payload Streams" />
+                              <ListItemText primary="Overview" />
                             </StyledListItemButton>
                           </ListItem>
-                        )
-                      }
-                    }}
-                  </CapabilitiesContext.Consumer>
-                ) : (
-                  ''
-                )}
-                <ListItem
-                  key={'release-jobs-' + index}
-                  component={Link}
-                  to={withSort(
-                    pathForJobsWithFilter(release, {
-                      items: [BOOKMARKS.RUN_7, ...withoutUnstable()],
-                    }),
-                    'net_improvement',
-                    'asc'
-                  )}
-                  className={classes.nested}
-                >
-                  <StyledListItemButton>
-                    <ListItemIcon>
-                      <ListIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Jobs" />
-                  </StyledListItemButton>
-                </ListItem>
+                          {release !== 'Presubmits' ? (
+                            <CapabilitiesContext.Consumer>
+                              {(value) => {
+                                if (value.includes('openshift_releases')) {
+                                  return (
+                                    <ListItem
+                                      key={'release-tags-' + index}
+                                      component={Link}
+                                      to={`/release/${release}/streams`}
+                                      className={classes.nested}
+                                    >
+                                      <StyledListItemButton>
+                                        <ListItemIcon>
+                                          <FileCopyOutlined />
+                                        </ListItemIcon>
+                                        <ListItemText primary="Payload Streams" />
+                                      </StyledListItemButton>
+                                    </ListItem>
+                                  )
+                                }
+                              }}
+                            </CapabilitiesContext.Consumer>
+                          ) : (
+                            ''
+                          )}
+                          <ListItem
+                            key={'release-jobs-' + index}
+                            component={Link}
+                            to={withSort(
+                              pathForJobsWithFilter(release, {
+                                items: [BOOKMARKS.RUN_7, ...withoutUnstable()],
+                              }),
+                              'net_improvement',
+                              'asc'
+                            )}
+                            className={classes.nested}
+                          >
+                            <StyledListItemButton>
+                              <ListItemIcon>
+                                <ListIcon />
+                              </ListItemIcon>
+                              <ListItemText primary="Jobs" />
+                            </StyledListItemButton>
+                          </ListItem>
 
-                {
-                  // FIXME: Base this on something like a per-release capabilities feature instead.
-                  release === 'Presubmits' ? (
-                    <Fragment>
-                      <ListItem
-                        key={'release-pull-requests-' + index}
-                        component={Link}
-                        to={`/pull_requests/${release}`}
-                        className={classes.nested}
-                      >
-                        <StyledListItemButton>
-                          <ListItemIcon>
-                            <GitHub />
-                          </ListItemIcon>
-                          <ListItemText primary="Pull Requests" />
-                        </StyledListItemButton>
-                      </ListItem>
-                      <ListItem
-                        key={'release-repositories-' + index}
-                        component={Link}
-                        to={`/repositories/${release}`}
-                        className={classes.nested}
-                      >
-                        <StyledListItemButton>
-                          <ListItemIcon>
-                            <Code />
-                          </ListItemIcon>
-                          <ListItemText primary="Repositories" />
-                        </StyledListItemButton>
-                      </ListItem>
+                          {
+                            // FIXME: Base this on something like a per-release capabilities feature instead.
+                            release === 'Presubmits' ? (
+                              <Fragment>
+                                <ListItem
+                                  key={'release-pull-requests-' + index}
+                                  component={Link}
+                                  to={`/pull_requests/${release}`}
+                                  className={classes.nested}
+                                >
+                                  <StyledListItemButton>
+                                    <ListItemIcon>
+                                      <GitHub />
+                                    </ListItemIcon>
+                                    <ListItemText primary="Pull Requests" />
+                                  </StyledListItemButton>
+                                </ListItem>
+                                <ListItem
+                                  key={'release-repositories-' + index}
+                                  component={Link}
+                                  to={`/repositories/${release}`}
+                                  className={classes.nested}
+                                >
+                                  <StyledListItemButton>
+                                    <ListItemIcon>
+                                      <Code />
+                                    </ListItemIcon>
+                                    <ListItemText primary="Repositories" />
+                                  </StyledListItemButton>
+                                </ListItem>
+                              </Fragment>
+                            ) : (
+                              ''
+                            )
+                          }
+
+                          <ListItem
+                            key={'release-tests-' + index}
+                            component={Link}
+                            to={withSort(
+                              pathForTestsWithFilter(release, {
+                                items: [
+                                  BOOKMARKS.RUN_7,
+                                  BOOKMARKS.NO_NEVER_STABLE,
+                                  BOOKMARKS.NO_AGGREGATED,
+                                  BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
+                                  BOOKMARKS.NO_STEP_GRAPH,
+                                  BOOKMARKS.NO_OPENSHIFT_TESTS_SHOULD_WORK,
+                                ],
+                                linkOperator: 'and',
+                              }),
+                              'current_working_percentage',
+                              'asc'
+                            )}
+                            className={classes.nested}
+                          >
+                            <StyledListItemButton>
+                              <ListItemIcon>
+                                <SearchIcon />
+                              </ListItemIcon>
+                              <ListItemText primary="Tests" />
+                            </StyledListItemButton>
+                          </ListItem>
+
+                          <CapabilitiesContext.Consumer>
+                            {(value) => {
+                              if (value.includes('openshift_releases')) {
+                                return (
+                                  <ListItem
+                                    key={'release-upgrade-' + index}
+                                    component={Link}
+                                    to={'/upgrade/' + release}
+                                    className={classes.nested}
+                                  >
+                                    <StyledListItemButton>
+                                      <ListItemIcon>
+                                        <ArrowUpwardIcon />
+                                      </ListItemIcon>
+                                      <ListItemText primary="Upgrade" />
+                                    </StyledListItemButton>
+                                  </ListItem>
+                                )
+                              }
+                            }}
+                          </CapabilitiesContext.Consumer>
+
+                          <CapabilitiesContext.Consumer>
+                            {(value) => {
+                              if (value.includes('openshift_releases')) {
+                                return (
+                                  <ListItem
+                                    key={'release-install-' + index}
+                                    component={Link}
+                                    to={'/install/' + release}
+                                    className={classes.nested}
+                                  >
+                                    <StyledListItemButton>
+                                      <ListItemIcon>
+                                        <ExitToAppIcon />
+                                      </ListItemIcon>
+                                      <ListItemText primary="Install" />
+                                    </StyledListItemButton>
+                                  </ListItem>
+                                )
+                              }
+                            }}
+                          </CapabilitiesContext.Consumer>
+
+                          <CapabilitiesContext.Consumer>
+                            {(value) => {
+                              if (value.includes('openshift_releases')) {
+                                let newInstall = useNewInstallTests(release)
+                                let link
+                                if (newInstall) {
+                                  link = pathForTestByVariant(
+                                    release,
+                                    'install should succeed: infrastructure'
+                                  )
+                                } else {
+                                  link = pathForTestByVariant(
+                                    release,
+                                    '[sig-sippy] infrastructure should work'
+                                  )
+                                }
+
+                                return (
+                                  <ListItem
+                                    key={'release-infrastructure-' + index}
+                                    component={Link}
+                                    to={link}
+                                    className={classes.nested}
+                                  >
+                                    <StyledListItemButton>
+                                      <ListItemIcon>
+                                        <ApartmentIcon />
+                                      </ListItemIcon>
+                                      <ListItemText primary="Infrastructure" />
+                                    </StyledListItemButton>
+                                  </ListItem>
+                                )
+                              }
+                            }}
+                          </CapabilitiesContext.Consumer>
+                        </List>
+                      </Collapse>
                     </Fragment>
-                  ) : (
-                    ''
-                  )
-                }
+                  ))}
+                </List>
+              </Fragment>
+            )
+          }
+        }}
+      </CapabilitiesContext.Consumer>
 
-                <ListItem
-                  key={'release-tests-' + index}
-                  component={Link}
-                  to={withSort(
-                    pathForTestsWithFilter(release, {
-                      items: [
-                        BOOKMARKS.RUN_7,
-                        BOOKMARKS.NO_NEVER_STABLE,
-                        BOOKMARKS.NO_AGGREGATED,
-                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                        BOOKMARKS.NO_STEP_GRAPH,
-                        BOOKMARKS.NO_OPENSHIFT_TESTS_SHOULD_WORK,
-                      ],
-                      linkOperator: 'and',
-                    }),
-                    'current_working_percentage',
-                    'asc'
-                  )}
-                  className={classes.nested}
-                >
-                  <StyledListItemButton>
-                    <ListItemIcon>
-                      <SearchIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Tests" />
-                  </StyledListItemButton>
-                </ListItem>
-
-                <CapabilitiesContext.Consumer>
-                  {(value) => {
-                    if (value.includes('openshift_releases')) {
-                      return (
-                        <ListItem
-                          key={'release-upgrade-' + index}
-                          component={Link}
-                          to={'/upgrade/' + release}
-                          className={classes.nested}
-                        >
-                          <StyledListItemButton>
-                            <ListItemIcon>
-                              <ArrowUpwardIcon />
-                            </ListItemIcon>
-                            <ListItemText primary="Upgrade" />
-                          </StyledListItemButton>
-                        </ListItem>
-                      )
-                    }
-                  }}
-                </CapabilitiesContext.Consumer>
-
-                <CapabilitiesContext.Consumer>
-                  {(value) => {
-                    if (value.includes('openshift_releases')) {
-                      return (
-                        <ListItem
-                          key={'release-install-' + index}
-                          component={Link}
-                          to={'/install/' + release}
-                          className={classes.nested}
-                        >
-                          <StyledListItemButton>
-                            <ListItemIcon>
-                              <ExitToAppIcon />
-                            </ListItemIcon>
-                            <ListItemText primary="Install" />
-                          </StyledListItemButton>
-                        </ListItem>
-                      )
-                    }
-                  }}
-                </CapabilitiesContext.Consumer>
-
-                <CapabilitiesContext.Consumer>
-                  {(value) => {
-                    if (value.includes('openshift_releases')) {
-                      let newInstall = useNewInstallTests(release)
-                      let link
-                      if (newInstall) {
-                        link = pathForTestByVariant(
-                          release,
-                          'install should succeed: infrastructure'
-                        )
-                      } else {
-                        link = pathForTestByVariant(
-                          release,
-                          '[sig-sippy] infrastructure should work'
-                        )
-                      }
-
-                      return (
-                        <ListItem
-                          key={'release-infrastructure-' + index}
-                          component={Link}
-                          to={link}
-                          className={classes.nested}
-                        >
-                          <StyledListItemButton>
-                            <ListItemIcon>
-                              <ApartmentIcon />
-                            </ListItemIcon>
-                            <ListItemText primary="Infrastructure" />
-                          </StyledListItemButton>
-                        </ListItem>
-                      )
-                    }
-                  }}
-                </CapabilitiesContext.Consumer>
-              </List>
-            </Collapse>
-          </Fragment>
-        ))}
-      </List>
       <Divider />
       <List
         subheader={
