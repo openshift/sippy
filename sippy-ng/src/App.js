@@ -381,16 +381,6 @@ export default function App(props) {
                       <DrawerHeader />
                       {/* eslint-disable react/prop-types */}
                       <Switch>
-                        {capabilities.includes('local_db') ? (
-                          <Route path="/">{landingPage}</Route>
-                        ) : (
-                          <Redirect
-                            exact
-                            from="/"
-                            to="/component_readiness/main"
-                          />
-                        )}
-
                         <Route
                           path="/release/:release/tags/:tag"
                           render={(props) => (
@@ -587,6 +577,16 @@ export default function App(props) {
                             />
                           )}
                         />
+
+                        {capabilities.includes('local_db') ? (
+                          <Route path="/">{landingPage}</Route>
+                        ) : (
+                          <Redirect
+                            exact
+                            from="/"
+                            to="/component_readiness/main"
+                          />
+                        )}
                       </Switch>
                       {/* eslint-enable react/prop-types */}
                     </Main>
