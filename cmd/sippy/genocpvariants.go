@@ -35,8 +35,8 @@ func NewLoadVariantsFlags() *LoadVariantsFlags {
 func (f *LoadVariantsFlags) BindFlags(fs *pflag.FlagSet) {
 	f.BigQueryFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
-	fs.StringVar(&f.OutputFile, "o", "ocp-expected-job-variants.json", "Output json file for job variant data")
-	fs.StringVar(&f.Mode, "mode", "ocp", "Implementation of job variant loader")
+	fs.StringVar(&f.OutputFile, "o", "expected-job-variants.json", "Output json file for job variant data")
+	fs.StringVar(&f.Mode, "mode", "ocp", "Implementation of job variant generator")
 	fs.StringVar(&f.BigqueryJobsTable, "bigquery-jobs-table", "jobs", "Jobs table to load job names from")
 }
 
@@ -44,8 +44,8 @@ func NewLoadJobVariantsCommand() *cobra.Command {
 	f := NewLoadVariantsFlags()
 
 	cmd := &cobra.Command{
-		Use:   "load-job-variants",
-		Short: "Load and categorize all known jobs with their desired variants",
+		Use:   "generate-job-variants",
+		Short: "Categorize all known jobs with their appropriate variants",
 		Long:  "This command is somewhat OCP specific and will load all job names that have run in the last several months. The command will load a recent job runs artifacts to search for cluster-data.json, and then try to determine what variants the job should be categorized with based on a combination of the job name, and the contents of cluster-data.json. The resulting desired job variants json file is then written to disk and can be provided as input to the sync-job-variants command.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Cancel syncing after 4 hours
