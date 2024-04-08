@@ -10,30 +10,7 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-// Syncer is responsible for reconciling a given list of all known jobs and their variant key/values map to BigQuery.
-type Syncer struct {
-	bqClient        *bigquery.Client
-	bigQueryProject string
-	bigQueryDataSet string
-	bigQueryTable   string
-}
-
-func NewSyncer(
-	bigQueryClient *bigquery.Client,
-	bigQueryProject string,
-	bigQueryDataSet string,
-	bigQueryTable string,
-) *Syncer {
-
-	return &Syncer{
-		bqClient:        bigQueryClient,
-		bigQueryProject: bigQueryProject,
-		bigQueryDataSet: bigQueryDataSet,
-		bigQueryTable:   bigQueryTable,
-	}
-}
-
-// SyncJobVariants can be used to reconcile expected job variants with whatever is currently in the bigquery
+// JobVariantsLoader can be used to reconcile expected job variants with whatever is currently in the bigquery
 // tables.
 // If a job is missing from the current tables it will be added, of or if missing from expected it will be removed from
 // the current tables.
@@ -41,22 +18,57 @@ func NewSyncer(
 //
 // The expectedVariants passed in is Sippy/Component Readiness deployment specific, users can define how they map
 // job to variants, and then use this generic reconcile logic to get it into bigquery.
-func (s *Syncer) SyncJobVariants(
-	expectedVariants map[string]map[string]string) error {
+type JobVariantsLoader struct {
+	bqClient         *bigquery.Client
+	bigQueryProject  string
+	bigQueryDataSet  string
+	bigQueryTable    string
+	expectedVariants map[string]map[string]string
+	errors           []error
+}
 
+func NewJobVariantsLoader(
+	bigQueryClient *bigquery.Client,
+	bigQueryProject string,
+	bigQueryDataSet string,
+	bigQueryTable string,
+	expectedVariants map[string]map[string]string,
+) *JobVariantsLoader {
+
+	return &JobVariantsLoader{
+		bqClient:         bigQueryClient,
+		bigQueryProject:  bigQueryProject,
+		bigQueryDataSet:  bigQueryDataSet,
+		bigQueryTable:    bigQueryTable,
+		expectedVariants: expectedVariants,
+		errors:           []error{},
+	}
+}
+
+func (s *JobVariantsLoader) Name() string {
+	return "job-variants"
+}
+
+func (s *JobVariantsLoader) Errors() []error {
+	return s.errors
+}
+
+func (s *JobVariantsLoader) Load() {
 	currentVariants, err := s.loadCurrentJobVariants()
 	if err != nil {
 		log.WithError(err).Error("error loading current job variants")
-		return errors.Wrap(err, "error loading current job variants")
+		s.errors = append(s.errors, errors.Wrap(err, "error loading current job variants"))
+		return
 	}
 	log.Infof("loaded %d current jobs with variants", len(currentVariants))
 
-	inserts, updates, deletes, deleteJobs := compareVariants(expectedVariants, currentVariants)
+	inserts, updates, deletes, deleteJobs := compareVariants(s.expectedVariants, currentVariants)
 
 	log.Infof("inserting %d new job variants", len(inserts))
 	err = s.bulkInsertVariants(inserts)
 	if err != nil {
 		log.WithError(err).Error("error syncing job variants to bigquery")
+		s.errors = append(s.errors, err)
 	}
 
 	log.Infof("updating %d job variants", len(updates))
@@ -65,6 +77,7 @@ func (s *Syncer) SyncJobVariants(
 		err = s.updateVariant(uLog, jv)
 		if err != nil {
 			log.WithError(err).Error("error syncing job variants to bigquery")
+			s.errors = append(s.errors, err)
 		}
 	}
 
@@ -75,6 +88,7 @@ func (s *Syncer) SyncJobVariants(
 		err = s.deleteVariant(uLog, jv)
 		if err != nil {
 			log.WithError(err).Error("error syncing job variants to bigquery")
+			s.errors = append(s.errors, err)
 		}
 	}
 
@@ -86,10 +100,9 @@ func (s *Syncer) SyncJobVariants(
 		err = s.deleteJob(uLog, job)
 		if err != nil {
 			log.WithError(err).Error("error syncing job variants to bigquery")
+			s.errors = append(s.errors, err)
 		}
 	}
-
-	return nil
 }
 
 // compareVariants compares the list of variants vs expected and returns the variants to be inserted, deleted, and updated.
@@ -156,7 +169,7 @@ func compareVariants(expectedVariants, currentVariants map[string]map[string]str
 	return insertVariants, updateVariants, deleteVariants, deleteJobs
 }
 
-func (s *Syncer) loadCurrentJobVariants() (map[string]map[string]string, error) {
+func (s *JobVariantsLoader) loadCurrentJobVariants() (map[string]map[string]string, error) {
 	query := s.bqClient.Query(`SELECT * FROM ` +
 		fmt.Sprintf("%s.%s.%s", s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable) +
 		` ORDER BY job_name, variant_name`)
@@ -193,7 +206,7 @@ type jobVariant struct {
 }
 
 // bulkInsertVariants inserts all new job variants in batches.
-func (s *Syncer) bulkInsertVariants(inserts []jobVariant) error {
+func (s *JobVariantsLoader) bulkInsertVariants(inserts []jobVariant) error {
 	var batchSize = 500
 
 	table := s.bqClient.Dataset(s.bigQueryDataSet).Table(s.bigQueryTable)
@@ -214,7 +227,7 @@ func (s *Syncer) bulkInsertVariants(inserts []jobVariant) error {
 }
 
 // updateVariant updates a job variant in the registry.
-func (s *Syncer) updateVariant(logger log.FieldLogger, jv jobVariant) error {
+func (s *JobVariantsLoader) updateVariant(logger log.FieldLogger, jv jobVariant) error {
 	queryStr := fmt.Sprintf("UPDATE `%s.%s.%s` SET variant_value = '%s' WHERE job_name = '%s' and variant_name = '%s'",
 		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, jv.VariantValue, jv.JobName, jv.VariantName)
 	insertQuery := s.bqClient.Query(queryStr)
@@ -227,7 +240,7 @@ func (s *Syncer) updateVariant(logger log.FieldLogger, jv jobVariant) error {
 }
 
 // deleteVariant deletes a job variant in the registry.
-func (s *Syncer) deleteVariant(logger log.FieldLogger, jv jobVariant) error {
+func (s *JobVariantsLoader) deleteVariant(logger log.FieldLogger, jv jobVariant) error {
 	queryStr := fmt.Sprintf("DELETE FROM `%s.%s.%s` WHERE job_name = '%s' and variant_name = '%s' and variant_value = '%s'",
 		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, jv.JobName, jv.VariantName, jv.VariantValue)
 	insertQuery := s.bqClient.Query(queryStr)
@@ -240,7 +253,7 @@ func (s *Syncer) deleteVariant(logger log.FieldLogger, jv jobVariant) error {
 }
 
 // deleteJob deletes all variants for a given job in the registry.
-func (s *Syncer) deleteJob(logger log.FieldLogger, job string) error {
+func (s *JobVariantsLoader) deleteJob(logger log.FieldLogger, job string) error {
 	queryStr := fmt.Sprintf("DELETE FROM `%s.%s.%s` WHERE job_name = '%s'",
 		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, job)
 	insertQuery := s.bqClient.Query(queryStr)
