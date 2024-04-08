@@ -66,7 +66,6 @@ type bigQueryBug struct {
 	FixVersions     []string           `json:"fix_versions" bigquery:"fix_versions"`
 	Components      []string           `json:"components" bigquery:"components"`
 	Labels          []string           `json:"labels" bigquery:"labels"`
-	URL             string             `json:"url" bigquery:"url"`
 	JiraID          string             `bigquery:"jira_id"`
 	LinkName        string             `bigquery:"link_name"`
 }
@@ -362,6 +361,6 @@ func bigQueryBugToModel(bqBug bigQueryBug) *models.Bug {
 		FixVersions:     pq.StringArray(bqBug.FixVersions),
 		Components:      pq.StringArray(bqBug.Components),
 		Labels:          pq.StringArray(bqBug.Labels),
-		URL:             bqBug.URL,
+		URL:             fmt.Sprintf("https://issues.redhat.com/browse/%s", bqBug.Key),
 	}
 }
