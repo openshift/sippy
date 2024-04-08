@@ -91,18 +91,20 @@ func NewLoadCommand() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*4)
 			defer cancel()
 
-			// Get a DB client
-			dbc, err := f.DBFlags.GetDBClient()
-			if err != nil {
-				return errors.WithMessage(err, "could not get db client: %+v")
-			}
-
 			start := time.Now()
 
-			if f.InitDatabase {
-				t := f.DBFlags.GetPinnedTime()
-				if err := dbc.UpdateSchema(t); err != nil {
-					return errors.WithMessage(err, "could not migrate db")
+			// Get a DB client if possible. Some loaders do not need one, so this dbErr may end up non-nil,
+			// each loader block should check if it needs the db connection.
+			var dbErr error
+			dbc, err := f.DBFlags.GetDBClient()
+			if err != nil {
+				dbErr = errors.WithMessage(err, "could not get db client: %+v")
+			} else {
+				if f.InitDatabase {
+					t := f.DBFlags.GetPinnedTime()
+					if err := dbc.UpdateSchema(t); err != nil {
+						dbErr = errors.WithMessage(err, "could not migrate db")
+					}
 				}
 			}
 
@@ -115,11 +117,17 @@ func NewLoadCommand() *cobra.Command {
 			for _, l := range f.Loaders {
 				// Release payload tag loader
 				if l == "releases" {
+					if dbErr != nil {
+						return dbErr
+					}
 					loaders = append(loaders, releaseloader.New(dbc, f.Releases, f.Architectures))
 				}
 
 				// Prow Loader
 				if l == "prow" {
+					if dbErr != nil {
+						return dbErr
+					}
 					prowLoader, err := f.prowLoader(ctx, dbc, config)
 					if err != nil {
 						return err
@@ -129,11 +137,17 @@ func NewLoadCommand() *cobra.Command {
 
 				// JIRA Loader
 				if l == "jira" {
+					if dbErr != nil {
+						return dbErr
+					}
 					loaders = append(loaders, jiraloader.New(dbc))
 				}
 
-				// Load maping for jira components to tests
+				// Load mapping for jira components to tests
 				if l == "test-mapping" {
+					if dbErr != nil {
+						return dbErr
+					}
 					cl, err := testownershiploader.New(ctx,
 						dbc,
 						f.GoogleCloudFlags.ServiceAccountCredentialFile,
@@ -147,6 +161,9 @@ func NewLoadCommand() *cobra.Command {
 
 				// Bug Loader
 				if l == "bugs" {
+					if dbErr != nil {
+						return dbErr
+					}
 					loaders = append(loaders, bugloader.New(dbc))
 				}
 
