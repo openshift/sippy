@@ -610,7 +610,6 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 type baseQueryGenerator struct {
 	client                   *bqcachedclient.Client
 	cacheOption              cache.RequestOptions
-	BaseRelease              apitype.ComponentReportRequestReleaseOptions
 	commonQuery              string
 	groupByQuery             string
 	queryParameters          []bigquery.QueryParameter
@@ -627,7 +626,6 @@ func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
 			// increase the time that base query is cached for since it shouldn't be changing?
 			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
 		},
-		BaseRelease:              c.BaseRelease,
 		commonQuery:              commonQuery,
 		groupByQuery:             groupByQuery,
 		queryParameters:          queryParameters,
@@ -653,15 +651,15 @@ func (b *baseQueryGenerator) queryTestStatus() (apitype.ComponentReportTestStatu
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: b.BaseRelease.Start,
+			Value: b.ComponentReportGenerator.BaseRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: b.BaseRelease.End,
+			Value: b.ComponentReportGenerator.BaseRelease.End,
 		},
 		{
 			Name:  "BaseRelease",
-			Value: b.BaseRelease.Release,
+			Value: b.ComponentReportGenerator.BaseRelease.Release,
 		},
 	}...)
 
@@ -678,7 +676,6 @@ func (b *baseQueryGenerator) queryTestStatus() (apitype.ComponentReportTestStatu
 
 type sampleQueryGenerator struct {
 	client                   *bqcachedclient.Client
-	SampleRelease            apitype.ComponentReportRequestReleaseOptions
 	commonQuery              string
 	groupByQuery             string
 	queryParameters          []bigquery.QueryParameter
@@ -691,7 +688,6 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 	queryParameters []bigquery.QueryParameter) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
 	generator := sampleQueryGenerator{
 		client:                   c.client,
-		SampleRelease:            c.SampleRelease,
 		commonQuery:              commonQuery,
 		groupByQuery:             groupByQuery,
 		queryParameters:          queryParameters,
@@ -716,15 +712,15 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: s.SampleRelease.Start,
+			Value: s.ComponentReportGenerator.SampleRelease.Start,
 		},
 		{
 			Name:  "To",
-			Value: s.SampleRelease.End,
+			Value: s.ComponentReportGenerator.SampleRelease.End,
 		},
 		{
 			Name:  "SampleRelease",
-			Value: s.SampleRelease.Release,
+			Value: s.ComponentReportGenerator.SampleRelease.Release,
 		},
 	}...)
 
