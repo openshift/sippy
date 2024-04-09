@@ -608,12 +608,13 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 }
 
 type baseQueryGenerator struct {
-	client          *bqcachedclient.Client
-	cacheOption     cache.RequestOptions
-	BaseRelease     apitype.ComponentReportRequestReleaseOptions
-	commonQuery     string
-	groupByQuery    string
-	queryParameters []bigquery.QueryParameter
+	client                   *bqcachedclient.Client
+	cacheOption              cache.RequestOptions
+	BaseRelease              apitype.ComponentReportRequestReleaseOptions
+	commonQuery              string
+	groupByQuery             string
+	queryParameters          []bigquery.QueryParameter
+	ComponentReportGenerator *componentReportGenerator
 }
 
 func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
@@ -626,10 +627,11 @@ func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
 			// increase the time that base query is cached for since it shouldn't be changing?
 			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
 		},
-		BaseRelease:     c.BaseRelease,
-		commonQuery:     commonQuery,
-		groupByQuery:    groupByQuery,
-		queryParameters: queryParameters,
+		BaseRelease:              c.BaseRelease,
+		commonQuery:              commonQuery,
+		groupByQuery:             groupByQuery,
+		queryParameters:          queryParameters,
+		ComponentReportGenerator: c,
 	}
 
 	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, generator.cacheOption, GetPrefixedCacheKey("BaseTestStatus~", generator), generator.queryTestStatus, apitype.ComponentReportTestStatus{})
@@ -675,11 +677,12 @@ func (b *baseQueryGenerator) queryTestStatus() (apitype.ComponentReportTestStatu
 }
 
 type sampleQueryGenerator struct {
-	client          *bqcachedclient.Client
-	SampleRelease   apitype.ComponentReportRequestReleaseOptions
-	commonQuery     string
-	groupByQuery    string
-	queryParameters []bigquery.QueryParameter
+	client                   *bqcachedclient.Client
+	SampleRelease            apitype.ComponentReportRequestReleaseOptions
+	commonQuery              string
+	groupByQuery             string
+	queryParameters          []bigquery.QueryParameter
+	ComponentReportGenerator *componentReportGenerator
 }
 
 func (c *componentReportGenerator) getSampleQueryStatus(
@@ -687,11 +690,12 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 	groupByQuery string,
 	queryParameters []bigquery.QueryParameter) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
 	generator := sampleQueryGenerator{
-		client:          c.client,
-		SampleRelease:   c.SampleRelease,
-		commonQuery:     commonQuery,
-		groupByQuery:    groupByQuery,
-		queryParameters: queryParameters,
+		client:                   c.client,
+		SampleRelease:            c.SampleRelease,
+		commonQuery:              commonQuery,
+		groupByQuery:             groupByQuery,
+		queryParameters:          queryParameters,
+		ComponentReportGenerator: c,
 	}
 
 	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, c.cacheOption, GetPrefixedCacheKey("SampleTestStatus~", generator), generator.queryTestStatus, apitype.ComponentReportTestStatus{})
