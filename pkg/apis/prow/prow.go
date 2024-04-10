@@ -1,8 +1,6 @@
 package prow
 
-import (
-	"time"
-)
+import "time"
 
 // ProwJobState specifies whether the job is running
 type ProwJobState string
