@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	gormlogger "gorm.io/gorm/logger"
 
@@ -17,18 +15,18 @@ func init() {
 	cmd := &cobra.Command{
 		Use:   "migrate",
 		Short: "Migrates or initializes the PostgreSQL database to the latest schema.",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			dbc, err := db.New(f.DSN, gormlogger.LogLevel(f.LogLevel))
 			if err != nil {
-				fmt.Printf("could not connect to db: %+v", err)
-				os.Exit(1)
+				return errors.WithMessage(err, "could not connect to db")
 			}
 
 			t := f.GetPinnedTime()
 			if err := dbc.UpdateSchema(t); err != nil {
-				fmt.Printf("could not migrate db: %+v", err)
-				os.Exit(1)
+				return errors.WithMessage(err, "could not migrate db")
 			}
+
+			return nil
 		},
 	}
 

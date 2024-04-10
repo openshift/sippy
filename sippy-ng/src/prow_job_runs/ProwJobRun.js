@@ -5,7 +5,7 @@ import {
   StringParam,
   useQueryParam,
 } from 'use-query-params'
-import { Button, ButtonGroup, TextField } from '@mui/material'
+import { Button, ButtonGroup, MenuItem, Select, TextField } from '@mui/material'
 import { CircularProgress } from '@mui/material'
 import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
@@ -48,10 +48,17 @@ export default function ProwJobRun(props) {
   }
 
   const [allIntervalFiles, setAllIntervalFiles] = useState([])
-  const [intervalFiles = props.intervalFiles, setIntervalFiles] = useQueryParam(
-    'intervalFiles',
-    ArrayParam
-  )
+  const [intervalFile = props.intervalFile, setIntervalFile] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('intervalFile')) {
+      console.log(
+        'returning intervalFile from URL search params: ' +
+          params.get('intervalFile')
+      )
+      return params.get('intervalFile')
+    }
+    return ''
+  })
 
   const [filterText, setFilterText] = useState(() => {
     const params = new URLSearchParams(window.location.search)
@@ -64,14 +71,16 @@ export default function ProwJobRun(props) {
   const fetchData = () => {
     let queryString = ''
     console.log(
-      'We got the prow job run id of ' +
+      'fetching new data: jobRun=' +
         props.jobRunID +
         ', jobName=' +
         props.jobName +
         ', pullNumber=' +
         props.pullNumber +
         ', repoInfo=' +
-        props.repoInfo
+        props.repoInfo +
+        ', intervalFile=' +
+        intervalFile
     )
 
     fetch(
@@ -81,6 +90,7 @@ export default function ProwJobRun(props) {
         (props.jobName ? '&job_name=' + props.jobName : '') +
         (props.repoInfo ? '&repo_info=' + props.repoInfo : '') +
         (props.pullNumber ? '&pull_number=' + props.pullNumber : '') +
+        (intervalFile ? '&file=' + intervalFile : '') +
         queryString
     )
       .then((response) => {
@@ -96,19 +106,21 @@ export default function ProwJobRun(props) {
           mutateIntervals(tmpIntervals)
           setEventIntervals(tmpIntervals)
 
-          let newEventIntervalFiles = []
-          lodash.forEach(tmpIntervals, function (eventInterval) {
-            if (!newEventIntervalFiles.includes(eventInterval.filename)) {
-              newEventIntervalFiles.push(eventInterval.filename)
-            }
-          })
-          console.log('newEventIntervalFiles = ' + newEventIntervalFiles)
-          newEventIntervalFiles.sort()
-          setAllIntervalFiles(newEventIntervalFiles)
-
-          // On initial load, use the first file as the selected interval file:
-          if (intervalFiles.length === 0) {
-            setIntervalFiles([newEventIntervalFiles[0]])
+          let intervalFilesAvailable = json.intervalFilesAvailable
+          intervalFilesAvailable.sort()
+          setAllIntervalFiles(intervalFilesAvailable)
+          // This is a little tricky, we do a query first without specifying a filename, as we don't know what
+          // files are available. The server makes a best guess and returns the intervals for that file, as well as
+          // a list of all available file names. In the UI if we don't yet have one, populate the select with the value
+          // we received.
+          if (intervalFile == '') {
+            console.log(
+              'setting interval file to first intervals filename: ' +
+                json.items[0].filename
+            )
+            // TODO: Causes a duplicate API request when we set this. Look into useRef and only calling
+            // fetchData in useEffect if we've made it through an initial page load?
+            setIntervalFile(json.items[0].filename)
           }
         } else {
           setEventIntervals([])
@@ -133,11 +145,11 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [intervalFile])
 
   useEffect(() => {
     updateFiltering()
-  }, [categories, history, intervalFiles, eventIntervals])
+  }, [categories, history, eventIntervals])
 
   useEffect(() => {
     // Delayed processing of the filter text input to allow the user to finish typing before
@@ -156,12 +168,11 @@ export default function ProwJobRun(props) {
     let queryString = encodeQueryParams(
       {
         categories: ArrayParam,
-        intervalFiles: ArrayParam,
+        intervalFile: StringParam,
         filter: StringParam,
       },
-      { categories, intervalFiles, filterText }
+      { categories, intervalFile, filterText }
     )
-    console.log('queryString = ' + stringify(queryString))
 
     history.replace({
       search: stringify(queryString),
@@ -170,7 +181,6 @@ export default function ProwJobRun(props) {
     let filteredIntervals = filterIntervals(
       eventIntervals,
       categories,
-      intervalFiles,
       filterText
     )
     setFilteredIntervals(filteredIntervals)
@@ -212,9 +222,10 @@ export default function ProwJobRun(props) {
     setCategories(newCategories)
   }
 
-  function handleIntervalFileClick(buttonValue) {
+  /*
+  function handleIntervalFileChange(buttonValue) {
     console.log('got interval file button click: ' + buttonValue)
-    const newSelectedIntervalFiles = [...intervalFiles]
+    const newSelectedIntervalFile = [...intervalFiles]
     const selectedIndex = intervalFiles.indexOf(buttonValue)
 
     if (selectedIndex === -1) {
@@ -229,18 +240,29 @@ export default function ProwJobRun(props) {
     setIntervalFiles(newSelectedIntervalFiles)
   }
 
+   */
+  const handleIntervalFileChange = (event) => {
+    console.log('new interval file selected: ' + event.target.value)
+    setIntervalFile(event.target.value)
+  }
+
   const handleFilterChange = (event) => {
     setFilterText(event.target.value)
   }
 
+  // handleSegmentClicked is called whenever an individual interval in the chart is clicked.
+  // Used to display details on the interval and locator in a way that a user can copy if needed.
+  function handleSegmentClicked(segment) {
+    console.log(JSON.stringify(segment, null, 2))
+  }
+
   return (
-    /* eslint-disable react/prop-types */
     <Fragment>
       <p>
         Loaded {eventIntervals.length} intervals from GCS, filtered down to{' '}
         {filteredIntervals.length}.
       </p>
-      <p>
+      <div>
         Categories:
         <ButtonGroup size="small" aria-label="Categories">
           {Object.keys(allCategories).map((key) => (
@@ -253,24 +275,22 @@ export default function ProwJobRun(props) {
             </Button>
           ))}
         </ButtonGroup>
-      </p>
-      <p>
+      </div>
+      <div>
         Files:
-        <ButtonGroup size="small" aria-label="Categories">
-          {allIntervalFiles.map((intervalFile) => (
-            <Button
-              key={intervalFile}
-              onClick={() => handleIntervalFileClick(intervalFile)}
-              variant={
-                intervalFiles.includes(intervalFile) ? 'contained' : 'outlined'
-              }
-            >
-              {intervalFile}
-            </Button>
+        <Select
+          labelId="interval-file-label"
+          id="interval-file"
+          value={intervalFile}
+          label="Interval File"
+          onChange={handleIntervalFileChange}
+        >
+          {allIntervalFiles.map((iFile) => (
+            <MenuItem key={iFile} value={iFile}>
+              {iFile}
+            </MenuItem>
           ))}
-        </ButtonGroup>
-      </p>
-      <p>
+        </Select>
         <TextField
           id="filter"
           label="Regex Filter"
@@ -278,8 +298,14 @@ export default function ProwJobRun(props) {
           onChange={handleFilterChange}
           defaultValue={filterText}
         />
-      </p>
-      <TimelineChart data={chartData} eventIntervals={filteredIntervals} />
+      </div>
+      <div>
+        <TimelineChart
+          data={chartData}
+          eventIntervals={filteredIntervals}
+          segmentClickedFunc={handleSegmentClicked}
+        />
+      </div>
     </Fragment>
   )
 }
@@ -301,12 +327,12 @@ ProwJobRun.defaultProps = {
     'etcd_leaders',
     'cloud_metrics',
   ],
-  intervalFiles: [],
+  intervalFile: '',
 }
 
 ProwJobRun.propTypes = {
   categories: PropTypes.array,
-  intervalFiles: PropTypes.array,
+  intervalFile: PropTypes.string,
 }
 
 ProwJobRun.propTypes = {
@@ -317,12 +343,7 @@ ProwJobRun.propTypes = {
   filterModel: PropTypes.object,
 }
 
-function filterIntervals(
-  eventIntervals,
-  categories,
-  intervalFiles,
-  filterText
-) {
+function filterIntervals(eventIntervals, categories, filterText) {
   // if none of the filter inputs are set, nothing to filter so don't waste time looping through everything
   //let filteredIntervals = eventIntervals
 
@@ -332,9 +353,6 @@ function filterIntervals(
   }
 
   return _.filter(eventIntervals, function (eventInterval) {
-    if (!intervalFiles.includes(eventInterval.filename)) {
-      return false
-    }
     let shouldInclude = false
     // Go ahead and filter out uncategorized events
     Object.keys(eventInterval.categories).forEach(function (cat) {
@@ -358,20 +376,6 @@ function filterIntervals(
 function mutateIntervals(eventIntervals) {
   // Structure the locator data and then categorize the event
   lodash.forEach(eventIntervals, function (eventInterval) {
-    // break the locator apart into an object for better filtering
-    eventInterval.locatorObj = {}
-    if (eventInterval.locator.startsWith('e2e-test/')) {
-      eventInterval.locatorObj.e2e_test = eventInterval.locator.slice(
-        eventInterval.locator.indexOf('/') + 1
-      )
-    } else {
-      let locatorChunks = eventInterval.locator.split(' ')
-      _.forEach(locatorChunks, function (chunk) {
-        let key = chunk.slice(0, chunk.indexOf('/'))
-        eventInterval.locatorObj[key] = chunk.slice(chunk.indexOf('/') + 1)
-      })
-    }
-
     // TODO Wasn't clear if an event is only supposed to be in one category or if it can show up in multiple, with the existing implementation
     // it can show up more than once if it passes more than one of the category checks. If it is meant to only be one category this
     // could be something simpler like eventInterval.category = "operator-degraded" instead.
@@ -379,7 +383,6 @@ function mutateIntervals(eventIntervals) {
 
     // Categorizing the events once on page load will save time on filtering later
     eventInterval.categories = {}
-    let categorized = false
     eventInterval.categories.operator_unavailable =
       isOperatorAvailable(eventInterval)
     eventInterval.categories.operator_progressing =
@@ -402,6 +405,12 @@ function mutateIntervals(eventIntervals) {
       isEtcdLeadershipAndNotEmpty(eventInterval)
     eventInterval.categories.cloud_metrics = isCloudMetrics(eventInterval)
     eventInterval.categories.uncategorized = !_.some(eventInterval.categories) // will save time later during filtering and re-rendering since we don't render any uncategorized events
+
+    // Calculate the string representation of the message (tooltip) and locator once on load:
+    eventInterval.displayMessage = defaultToolTip(eventInterval)
+    eventInterval.displayLocator = buildLocatorDisplayString(
+      eventInterval.tempStructuredLocator
+    )
   })
 }
 
@@ -547,151 +556,101 @@ function groupIntervals(filteredIntervals) {
 }
 
 function isOperatorAvailable(eventInterval) {
-  if (
-    eventInterval.locator.includes('clusteroperator/') &&
-    eventInterval.message.includes('condition/Available') &&
-    eventInterval.message.includes('status/False')
-  ) {
-    return true
-  }
-  return false
+  return (
+    eventInterval.tempStructuredLocator.type === 'ClusterOperator' &&
+    eventInterval.tempStructuredMessage.annotations['condition'] ===
+      'Available' &&
+    eventInterval.tempStructuredMessage.annotations['status'] === 'False'
+  )
 }
 
 function isOperatorDegraded(eventInterval) {
-  if (
-    eventInterval.locator.includes('clusteroperator/') &&
-    eventInterval.message.includes('condition/Degraded') &&
-    eventInterval.message.includes('status/True')
-  ) {
-    return true
-  }
-  return false
+  return (
+    eventInterval.tempStructuredLocator.type === 'ClusterOperator' &&
+    eventInterval.tempStructuredMessage.annotations['condition'] ===
+      'Degraded' &&
+    eventInterval.tempStructuredMessage.annotations['status'] === 'True'
+  )
 }
 
 function isOperatorProgressing(eventInterval) {
-  if (
-    eventInterval.locator.includes('clusteroperator/') &&
-    eventInterval.message.includes('condition/Progressing') &&
-    eventInterval.message.includes('status/True')
-  ) {
-    return true
-  }
-  return false
+  return (
+    eventInterval.tempStructuredLocator.type === 'ClusterOperator' &&
+    eventInterval.tempStructuredMessage.annotations['condition'] ===
+      'Progressing' &&
+    eventInterval.tempStructuredMessage.annotations['status'] === 'True'
+  )
 }
 
 // When an interval in the openshift-etcd namespace had a reason of LeaderFound, LeaderLost,
 // LeaderElected, or LeaderMissing, tempSource was set to 'EtcdLeadership'.
 function isEtcdLeadership(eventInterval) {
-  if (eventInterval.tempSource == 'EtcdLeadership') {
-    return true
-  }
-  return false
+  return eventInterval.tempSource === 'EtcdLeadership'
 }
 
 function isPodLog(eventInterval) {
-  if (isEtcdLeadership(eventInterval)) {
-    return false
-  }
-  if (eventInterval.locator.includes('src/podLog')) {
+  if (eventInterval.tempSource === 'PodLog') {
     return true
   }
-  return false
+  return eventInterval.tempSource === 'EtcdLog'
 }
 
 function isInterestingOrPathological(eventInterval) {
-  if (
-    eventInterval.message.includes('pathological/true') ||
-    eventInterval.message.includes('interesting/true')
-  ) {
-    return true
-  }
-  return false
+  return (
+    eventInterval.tempSource === 'KubeEvent' &&
+    eventInterval.tempStructuredMessage.annotations['pathological'] === 'true'
+  )
 }
 
 function isPod(eventInterval) {
-  if (isEtcdLeadership(eventInterval)) {
-    return false
-  }
-
-  // this check was added to keep the repeating events out fo the "pods" section
-  const nTimes = new RegExp('\\(\\d+ times\\)')
-  if (eventInterval.message.match(nTimes)) {
-    return false
-  }
-  // this check was added to avoid the events from the "interesting-events" section from being
-  // duplicated in the "pods" section.
-  if (isInterestingOrPathological(eventInterval)) {
-    return false
-  }
-  if (
-    eventInterval.locator.includes('pod/') &&
-    !eventInterval.locator.includes('alert/')
-  ) {
-    return true
-  }
-  return false
+  return eventInterval.tempSource === 'PodState'
 }
 
 function isPodLifecycle(eventInterval) {
-  if (
-    eventInterval.locator.includes('pod/') &&
-    (eventInterval.message.includes('reason/Created') ||
-      eventInterval.message.includes('reason/Scheduled') ||
-      eventInterval.message.includes('reason/GracefulDelete'))
-  ) {
-    return true
-  }
-  return false
+  return (
+    eventInterval.tempSource === 'PodState' &&
+    (eventInterval.tempStructuredMessage.reason === 'Created' ||
+      eventInterval.tempStructuredMessage.reason === 'Scheduled' ||
+      eventInterval.tempStructuredMessage.reason === 'GracefulDelete')
+  )
 }
 
 function isContainerLifecycle(eventInterval) {
-  if (
-    eventInterval.locator.includes('container/') &&
-    (eventInterval.message.includes('reason/ContainerExit') ||
-      eventInterval.message.includes('reason/ContainerStart') ||
-      eventInterval.message.includes('reason/ContainerWait'))
-  ) {
-    return true
-  }
-  return false
+  return (
+    eventInterval.tempSource === 'PodState' &&
+    (eventInterval.tempStructuredMessage.reason === 'ContainerExit' ||
+      eventInterval.tempStructuredMessage.reason === 'ContainerStart' ||
+      eventInterval.tempStructuredMessage.reason === 'ContainerWait')
+  )
 }
 
 function isContainerReadiness(eventInterval) {
-  if (
-    eventInterval.locator.includes('container/') &&
-    (eventInterval.message.includes('reason/Ready') ||
-      eventInterval.message.includes('reason/NotReady'))
-  ) {
-    return true
-  }
-  return false
+  return (
+    eventInterval.tempSource === 'PodState' &&
+    (eventInterval.tempStructuredMessage.reason === 'Ready' ||
+      eventInterval.tempStructuredMessage.reason === 'NotReady')
+  )
 }
 
 function isKubeletReadinessCheck(eventInterval) {
-  if (
-    eventInterval.locator.includes('container/') &&
-    (eventInterval.message.includes('reason/ReadinessFailed') ||
-      eventInterval.message.includes('reason/ReadinessErrored'))
-  ) {
-    return true
-  }
-  return false
+  return (
+    eventInterval.tempSource === 'PodState' &&
+    (eventInterval.tempStructuredMessage.reason === 'ReadinessFailed' ||
+      eventInterval.tempStructuredMessage.reason === 'ReadinessErrored')
+  )
 }
 
 function isKubeletStartupProbeFailure(eventInterval) {
-  if (
-    eventInterval.locator.includes('container/') &&
-    eventInterval.message.includes('reason/StartupProbeFailed')
-  ) {
-    return true
-  }
-  return false
+  return (
+    eventInterval.tempSource === 'PodState' &&
+    eventInterval.tempStructuredMessage.reason === 'StartupProbeFailed'
+  )
 }
 
 function isE2EFailed(eventInterval) {
   if (
-    eventInterval.locator.includes('e2e-test/') &&
-    eventInterval.message.includes('finished As "Failed')
+    eventInterval.tempSource === 'E2ETest' &&
+    eventInterval.tempStructuredMessage.annotations['status'] === 'Failed'
   ) {
     return true
   }
@@ -700,8 +659,8 @@ function isE2EFailed(eventInterval) {
 
 function isE2EFlaked(eventInterval) {
   if (
-    eventInterval.locator.includes('e2e-test/') &&
-    eventInterval.message.includes('finished As "Flaked')
+    eventInterval.tempSource === 'E2ETest' &&
+    eventInterval.tempStructuredMessage.annotations['status'] === 'Flaked'
   ) {
     return true
   }
@@ -710,8 +669,8 @@ function isE2EFlaked(eventInterval) {
 
 function isE2EPassed(eventInterval) {
   if (
-    eventInterval.locator.includes('e2e-test/') &&
-    eventInterval.message.includes('finished As "Passed')
+    eventInterval.tempSource === 'E2ETest' &&
+    eventInterval.tempStructuredMessage.annotations['status'] === 'Passed'
   ) {
     return true
   }
@@ -724,18 +683,22 @@ function isGracefulShutdownActivity(eventInterval) {
 
 function isEndpointConnectivity(eventInterval) {
   if (
-    !eventInterval.message.includes('reason/DisruptionBegan') &&
-    !eventInterval.message.includes('reason/DisruptionSamplerOutageBegan')
+    eventInterval.tempStructuredMessage.reason !== 'DisruptionBegan' &&
+    eventInterval.tempStructuredMessage.reason !==
+      'DisruptionSamplerOutageBegan'
   ) {
     return false
   }
-  if (eventInterval.locator.includes('disruption/')) {
+  if (eventInterval.tempSource === 'Disruption') {
     return true
   }
-  if (eventInterval.locator.includes('ns/e2e-k8s-service-lb-available')) {
+  if (
+    eventInterval.tempStructuredLocator.keys['namespace'] ===
+    'e2e-k8s-service-lb-available'
+  ) {
     return true
   }
-  if (eventInterval.locator.includes(' route/')) {
+  if (eventInterval.tempStructuredLocator.keys.has('route')) {
     return true
   }
 
@@ -743,11 +706,7 @@ function isEndpointConnectivity(eventInterval) {
 }
 
 function isNodeState(eventInterval) {
-  return (
-    eventInterval.tempStructuredLocator.type === 'Node' &&
-    (eventInterval.tempStructuredMessage.reason === 'NodeUpdate' ||
-      eventInterval.tempStructuredMessage.reason === 'NotReady')
-  )
+  return eventInterval.tempSource === 'NodeState'
 }
 
 function isCloudMetrics(eventInterval) {
@@ -755,41 +714,39 @@ function isCloudMetrics(eventInterval) {
 }
 
 function isAlert(eventInterval) {
-  if (eventInterval.locator.includes('alert/')) {
-    return true
-  }
-  return false
+  return eventInterval.tempSource === 'Alert'
 }
 
 function interestingEvents(item) {
-  if (item.message.includes('pathological/true')) {
-    if (item.message.includes('interesting/true')) {
-      return [item.locator, ` (pathological known)`, 'PathologicalKnown']
+  if (item.tempStructuredMessage.annotations['pathological'] === 'true') {
+    if (item.tempStructuredMessage.annotations['interesting'] === 'true') {
+      return [item.displayLocator, ` (pathological known)`, 'PathologicalKnown']
     } else {
-      return [item.locator, ` (pathological new)`, 'PathologicalNew']
+      return [item.displayLocator, ` (pathological new)`, 'PathologicalNew']
     }
   }
   // TODO: hack that can likely be removed when we get to structured intervals for these
+  // Always show pod sandbox events even if they didn't make it to pathological
   if (
-    item.message.includes('interesting/true') &&
-    item.message.includes('pod sandbox')
+    item.tempStructuredMessage.annotations['interesting'] === 'true' &&
+    item.tempStructuredMessage.humanMessage.includes('pod sandbox')
   ) {
-    return [item.locator, ` (pod sandbox)`, 'PodSandbox']
+    return [item.displayLocator, ` (pod sandbox)`, 'PodSandbox']
   }
 
   if (item.message.includes('interesting/true')) {
-    return [item.locator, ` (interesting event)`, 'InterestingEvent']
+    return [item.displayLocator, ` (interesting event)`, 'InterestingEvent']
   }
 }
 
 function podLogs(item) {
   if (item.level == 'Warning') {
-    return [item.locator, ` (pod log)`, 'PodLogWarning']
+    return [item.displayLocator, ` (pod log)`, 'PodLogWarning']
   }
   if (item.level == 'Error') {
-    return [item.locator, ` (pod log)`, 'PodLogError']
+    return [item.displayLocator, ` (pod log)`, 'PodLogError']
   }
-  return [item.locator, ` (pod log)`, 'PodLogInfo']
+  return [item.displayLocator, ` (pod log)`, 'PodLogInfo']
 }
 
 const reReason = new RegExp('(^| )reason/([^ ]+)')
@@ -798,42 +755,46 @@ function podStateValue(item) {
 
   if (m && isPodLifecycle(item)) {
     if (m[2] == 'Created') {
-      return [item.locator, ` (pod lifecycle)`, 'PodCreated']
+      return [item.displayLocator, ` (pod lifecycle)`, 'PodCreated']
     }
     if (m[2] == 'Scheduled') {
-      return [item.locator, ` (pod lifecycle)`, 'PodScheduled']
+      return [item.displayLocator, ` (pod lifecycle)`, 'PodScheduled']
     }
     if (m[2] == 'GracefulDelete') {
-      return [item.locator, ` (pod lifecycle)`, 'PodTerminating']
+      return [item.displayLocator, ` (pod lifecycle)`, 'PodTerminating']
     }
   }
   if (m && isContainerLifecycle(item)) {
     if (m[2] == 'ContainerWait') {
-      return [item.locator, ` (container lifecycle)`, 'ContainerWait']
+      return [item.displayLocator, ` (container lifecycle)`, 'ContainerWait']
     }
     if (m[2] == 'ContainerStart') {
-      return [item.locator, ` (container lifecycle)`, 'ContainerStart']
+      return [item.displayLocator, ` (container lifecycle)`, 'ContainerStart']
     }
   }
   if (m && isContainerReadiness(item)) {
     if (m[2] == 'NotReady') {
-      return [item.locator, ` (container readiness)`, 'ContainerNotReady']
+      return [
+        item.displayLocator,
+        ` (container readiness)`,
+        'ContainerNotReady',
+      ]
     }
     if (m[2] == 'Ready') {
-      return [item.locator, ` (container readiness)`, 'ContainerReady']
+      return [item.displayLocator, ` (container readiness)`, 'ContainerReady']
     }
   }
   if (m && isKubeletReadinessCheck(item)) {
     if (m[2] == 'ReadinessFailed') {
       return [
-        item.locator,
+        item.displayLocator,
         ` (kubelet container readiness)`,
         'ContainerReadinessFailed',
       ]
     }
     if (m[2] == 'ReadinessErrored') {
       return [
-        item.locator,
+        item.displayLocator,
         ` (kubelet container readiness)`,
         'ContainerReadinessErrored',
       ]
@@ -841,13 +802,13 @@ function podStateValue(item) {
   }
   if (m && isKubeletStartupProbeFailure(item)) {
     return [
-      item.locator,
+      item.displayLocator,
       ` (kubelet container startupProbe)`,
       'StartupProbeFailed',
     ]
   }
 
-  return [item.locator, '', 'Unknown']
+  return [item.displayLocator, '', 'Unknown']
 }
 
 const rePhase = new RegExp('(^| )phase/([^ ]+)')
@@ -857,10 +818,10 @@ function nodeStateValue(item) {
     roles = item.tempStructuredMessage.annotations.roles
   }
   if (item.tempStructuredMessage.reason === 'NotReady') {
-    return [item.locator, ` (${roles})`, 'NodeNotReady']
+    return [item.displayLocator, ` (${roles})`, 'NodeNotReady']
   }
   let m = item.tempStructuredMessage.annotations.phase
-  return [item.locator, ` (${roles})`, m]
+  return [item.displayLocator, ` (${roles})`, m]
 }
 
 function etcdLeadershipLogsValue(item) {
@@ -897,41 +858,37 @@ function isEtcdLeadershipAndNotEmpty(item) {
 }
 
 function cloudMetricsValue(item) {
-  return [item.locator, '', 'CloudMetric']
+  return [item.displayLocator, '', 'CloudMetric']
 }
 
 function alertSeverity(item) {
   // the other types can be pending, so check pending first
-  let pendingIndex = item.message.indexOf('pending')
-  if (pendingIndex != -1) {
-    return [item.locator, '', 'AlertPending']
+  if (item.tempStructuredMessage.annotations['alertstate'] === 'pending') {
+    return [item.displayLocator, '', 'AlertPending']
   }
 
-  let infoIndex = item.message.indexOf('info')
-  if (infoIndex != -1) {
-    return [item.locator, '', 'AlertInfo']
+  if (item.tempStructuredMessage.annotations['severity'] === 'info') {
+    return [item.displayLocator, '', 'AlertInfo']
   }
-  let warningIndex = item.message.indexOf('warning')
-  if (warningIndex != -1) {
-    return [item.locator, '', 'AlertWarning']
+  if (item.tempStructuredMessage.annotations['severity'] === 'warning') {
+    return [item.displayLocator, '', 'AlertWarning']
   }
-  let criticalIndex = item.message.indexOf('critical')
-  if (criticalIndex != -1) {
-    return [item.locator, '', 'AlertCritical']
+  if (item.tempStructuredMessage.annotations['severity'] === 'critical') {
+    return [item.displayLocator, '', 'AlertCritical']
   }
 
   // color as critical if nothing matches so that we notice that something has gone wrong
-  return [item.locator, '', 'AlertCritical']
+  return [item.displayLocator, '', 'AlertCritical']
 }
 
 function apiserverDisruptionValue(item) {
   // TODO: isolate DNS error into CIClusterDisruption
-  return [item.locator, '', 'Disruption']
+  return [item.displayLocator, '', 'Disruption']
 }
 
 function apiserverShutdownValue(item) {
   // TODO: isolate DNS error into CIClusterDisruption
-  return [item.locator, '', 'GracefulShutdownInterval']
+  return [item.displayLocator, '', 'GracefulShutdownInterval']
 }
 
 function disruptionValue(item) {
@@ -942,14 +899,14 @@ function disruptionValue(item) {
     'likely a problem in cluster running tests'
   )
   if (ciClusterDisruption != -1) {
-    return [item.locator, '', 'CIClusterDisruption']
+    return [item.displayLocator, '', 'CIClusterDisruption']
   }
-  return [item.locator, '', 'Disruption']
+  return [item.displayLocator, '', 'Disruption']
 }
 
 function apiserverShutdownEventsValue(item) {
   // TODO: isolate DNS error into CIClusterDisruption
-  return [item.locator, '', 'GracefulShutdownWindow']
+  return [item.displayLocator, '', 'GracefulShutdownWindow']
 }
 
 function getDurationString(durationSeconds) {
@@ -964,12 +921,25 @@ function getDurationString(durationSeconds) {
 }
 
 function defaultToolTip(item) {
-  let tt = item.message
-  if ('tempSource' in item) {
-    tt = tt + ' source/' + item.tempSource
+  if (!item.tempStructuredMessage || !item.tempStructuredMessage.annotations) {
+    return ''
   }
+
+  const structuredMessage = item.tempStructuredMessage
+  const annotations = structuredMessage.annotations
+
+  const keyValuePairs = Object.entries(annotations).map(([key, value]) => {
+    return `${key}/${value}`
+  })
+
+  let tt = keyValuePairs.join(' ') + ' ' + structuredMessage.humanMessage
+
+  // TODO: can probably remove this once we're confident all displayed intervals have it set
   if ('display' in item) {
-    tt = tt + ' display/' + item.display
+    tt = 'display/' + item.display + ' ' + tt
+  }
+  if ('tempSource' in item) {
+    tt = 'source/' + item.tempSource + ' ' + tt
   }
   tt =
     tt +
@@ -978,6 +948,70 @@ function defaultToolTip(item) {
       (new Date(item.to).getTime() - new Date(item.from).getTime()) / 1000
     )
   return tt
+}
+
+// Used for the actual locators displayed on the right hand side of the chart. Based on the origin go code that does
+// similar for whenever we serialize a locator to display.
+function buildLocatorDisplayString(i) {
+  let keys = Object.keys(i.keys)
+  keys = sortKeys(keys)
+
+  let annotations = []
+  for (let k of keys) {
+    let v = i.keys[k]
+    if (k === 'LocatorE2ETestKey') {
+      annotations.push(`${k}/${JSON.stringify(v)}`)
+    } else {
+      annotations.push(`${k}/${v}`)
+    }
+  }
+
+  return annotations.join(' ')
+}
+
+function sortKeys(keys) {
+  // Ensure these keys appear in this order. Other keys can be mixed in and will appear at the end in alphabetical order.
+  const orderedKeys = [
+    'namespace',
+    'node',
+    'pod',
+    'uid',
+    'server',
+    'container',
+    'shutdown',
+    'row',
+  ]
+
+  // Create a map to store the indices of keys in the orderedKeys array.
+  // This will allow us to efficiently check if a key is in orderedKeys and find its position.
+  const orderedKeyIndices = {}
+  orderedKeys.forEach((key, index) => {
+    orderedKeyIndices[key] = index
+  })
+
+  // Define a custom sorting function that orders the keys based on the orderedKeys array.
+  keys.sort((a, b) => {
+    // Get the indices of keys a and b in orderedKeys.
+    const indexA = orderedKeyIndices[a]
+    const indexB = orderedKeyIndices[b]
+
+    // If both keys exist in orderedKeys, sort them based on their order.
+    if (indexA !== undefined && indexB !== undefined) {
+      return indexA - indexB
+    }
+
+    // If only one of the keys exists in orderedKeys, move it to the front.
+    if (indexA !== undefined) {
+      return -1
+    } else if (indexB !== undefined) {
+      return 1
+    }
+
+    // If neither key is in orderedKeys, sort alphabetically so we have predictable ordering.
+    return a.localeCompare(b)
+  })
+
+  return keys
 }
 
 function createTimelineData(
@@ -1014,7 +1048,7 @@ function createTimelineData(
     if (!item.to) {
       endDate = latest
     }
-    let label = item.locator
+    let label = buildLocatorDisplayString(item.tempStructuredLocator)
     let sub = ''
     let val = timelineVal
     if (typeof val === 'function') {
@@ -1033,7 +1067,7 @@ function createTimelineData(
     ranges.push({
       timeRange: [startDate, endDate],
       val: val,
-      labelVal: defaultToolTip(item),
+      labelVal: item.displayMessage,
     })
   })
   for (const label in data) {

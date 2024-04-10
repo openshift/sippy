@@ -6,7 +6,6 @@ import React, { useState } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   alignedButton: {
-    marginTop: 25,
     float: 'left',
   },
 }))
@@ -36,25 +35,30 @@ Additional context here:
       url += `&components=${props.jiraComponentID}`
     }
 
+    if (Array.isArray(props.labels) && props.labels.length > 0) {
+      props.labels.forEach((label) => {
+        url += `&labels=${safeEncodeURIComponent(label)}`
+      })
+    }
+
     window.open(url, '_blank')
   }
 
   return (
-    <>
-      <Button
-        variant="contained"
-        color="primary"
-        className={classes.alignedButton}
-        onClick={handleClick}
-      >
-        File a new bug
-      </Button>
-    </>
+    <Button
+      variant="contained"
+      color="primary"
+      className={classes.alignedButton}
+      onClick={handleClick}
+    >
+      File a new bug
+    </Button>
   )
 }
 
 BugButton.propTypes = {
-  jiraComponentID: PropTypes.number,
+  jiraComponentID: PropTypes.string,
   context: PropTypes.string,
+  labels: PropTypes.array,
   testName: PropTypes.string.isRequired,
 }

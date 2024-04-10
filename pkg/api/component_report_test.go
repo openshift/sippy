@@ -1208,3 +1208,44 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		})
 	}
 }
+
+func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
+	tests := []struct {
+		name          string
+		sampleRelease string
+		baseRelease   string
+		jobName       string
+		want          string
+	}{
+		{
+			name:        "base release is removed",
+			baseRelease: "4.16",
+			jobName:     "periodic-ci-openshift-release-master-ci-4.16-e2e-azure-ovn-upgrade",
+			want:        "periodic-ci-openshift-release-master-ci-X.X-e2e-azure-ovn-upgrade",
+		},
+		{
+			name:          "sample release is removed",
+			sampleRelease: "4.16",
+			jobName:       "periodic-ci-openshift-release-master-ci-4.16-e2e-azure-ovn-upgrade",
+			want:          "periodic-ci-openshift-release-master-ci-X.X-e2e-azure-ovn-upgrade",
+		},
+		{
+			name:    "frequency is removed",
+			jobName: "periodic-ci-openshift-release-master-ci-test-job-f27",
+			want:    "periodic-ci-openshift-release-master-ci-test-job-fXX",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &componentReportGenerator{}
+			if tt.baseRelease != "" {
+				c.BaseRelease = apitype.ComponentReportRequestReleaseOptions{Release: tt.baseRelease}
+			}
+			if tt.sampleRelease != "" {
+				c.SampleRelease = apitype.ComponentReportRequestReleaseOptions{Release: tt.sampleRelease}
+			}
+
+			assert.Equalf(t, tt.want, c.normalizeProwJobName(tt.jobName), "normalizeProwJobName(%v)", tt.jobName)
+		})
+	}
+}

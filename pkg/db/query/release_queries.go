@@ -1,12 +1,18 @@
 package query
 
 import (
+	"time"
+
 	"github.com/openshift/sippy/pkg/db"
 	log "github.com/sirupsen/logrus"
 )
 
 type Release struct {
 	Release string
+	// Status is the release status defined in the BigQuery Releases table. SQL does not have
+	// this field
+	Status string
+	GADate *time.Time
 }
 
 func ReleasesFromDB(dbClient *db.DB) ([]Release, error) {

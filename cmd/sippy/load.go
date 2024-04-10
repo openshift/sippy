@@ -115,7 +115,6 @@ func NewLoadCommand() *cobra.Command {
 			}
 
 			for _, l := range f.Loaders {
-				// Release payload tag loader
 				if l == "releases" {
 					if dbErr != nil {
 						return dbErr
@@ -164,7 +163,12 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					loaders = append(loaders, bugloader.New(dbc))
+					// Get a bigquery client
+					bqc, err := f.BigQueryFlags.GetBigQueryClient(context.Background(), nil, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+					if err != nil {
+						return errors.WithMessage(err, "could not get bigquery client")
+					}
+					loaders = append(loaders, bugloader.New(dbc, bqc))
 				}
 
 				// Job Variants Loader

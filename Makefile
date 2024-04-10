@@ -3,7 +3,7 @@ export PATH := ${HOME}/go/bin:/go/bin:${PATH}
 DOCKER := $(or $(DOCKER),podman)
 DEPS = npm go
 CHECK := $(foreach dep,$(DEPS),\
-        $(if $(shell which $(dep)),"$(dep) found",$(error "Missing $(exec) in PATH")))
+        $(if $(shell which $(dep)),"$(dep) found",$(error "Missing $(dep) in PATH")))
 
 all: test build
 
