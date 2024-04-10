@@ -76,7 +76,6 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 		OR prowjob_job_name LIKE 'pull-ci-openshift-%%'
 		GROUP BY prowjob_job_name
 		ORDER BY prowjob_job_name
-LIMIT 20
 		`)
 	it, err := query.Read(context.TODO())
 	if err != nil {
