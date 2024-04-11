@@ -914,7 +914,10 @@ type ComponentReportTestIdentification struct {
 
 type ComponentReportTestSummary struct {
 	ComponentReportTestIdentification
-	Status ComponentReportStatus `json:"status"`
+	Status       ComponentReportStatus `json:"status"`
+	TotalCount   int                   `json:"total_count"`
+	SuccessCount int                   `json:"success_count"`
+	FlakeCount   int                   `json:"flake_count"`
 }
 
 type ComponentReportTestDetails struct {

@@ -136,7 +136,8 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return getDataFromCacheOrGenerate[apitype.ComponentReport](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("ComponentReport~"), generator.GenerateReport, apitype.ComponentReport{})
+	return getDataFromCacheOrGenerate[apitype.ComponentReport](generator.client.Cache, generator.cacheOption,
+		generator.GetComponentReportCacheKey("ComponentReport~"), generator.GenerateReport, apitype.ComponentReport{})
 }
 
 func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
@@ -158,7 +159,9 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return getDataFromCacheOrGenerate[apitype.ComponentReportTestDetails](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("TestDetailsReport~"), generator.GenerateTestDetailsReport, apitype.ComponentReportTestDetails{})
+	return getDataFromCacheOrGenerate[apitype.ComponentReportTestDetails](generator.client.Cache, generator.cacheOption,
+		generator.GetComponentReportCacheKey("TestDetailsReport~"), generator.GenerateTestDetailsReport,
+		apitype.ComponentReportTestDetails{})
 }
 
 // componentReportGenerator contains the information needed to generate a CR report. Do
@@ -1007,7 +1010,9 @@ type cellStatus struct {
 }
 
 func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
-	reportStatus apitype.ComponentReportStatus, existingCellStatus *cellStatus) cellStatus {
+	reportStatus apitype.ComponentReportStatus, sampleStats apitype.ComponentTestStatus,
+	existingCellStatus *cellStatus) cellStatus {
+
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (reportStatus < apitype.NotSignificant && reportStatus < existingCellStatus.status) ||
@@ -1025,6 +1030,9 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, apitype.ComponentReportTestSummary{
 			ComponentReportTestIdentification: testID,
 			Status:                            reportStatus,
+			TotalCount:                        sampleStats.TotalCount,
+			FlakeCount:                        sampleStats.FlakeCount,
+			SuccessCount:                      sampleStats.SuccessCount,
 		})
 	}
 	return newCellStatus
@@ -1034,6 +1042,7 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 	columnIdentifications []apitype.ComponentReportColumnIdentification,
 	testID apitype.ComponentReportTestIdentification,
 	reportStatus apitype.ComponentReportStatus,
+	sampleStats apitype.ComponentTestStatus,
 	status map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]cellStatus,
 	allRows map[apitype.ComponentReportRowIdentification]struct{},
 	allColumns map[apitype.ComponentReportColumnIdentification]struct{}) {
@@ -1056,16 +1065,16 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 		if !ok {
 			row = map[apitype.ComponentReportColumnIdentification]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil)
+				row[columnIdentification] = getNewCellStatus(testID, reportStatus, sampleStats, nil)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil)
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, sampleStats, nil)
 				} else {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, &existing)
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, sampleStats, &existing)
 				}
 			}
 		}
@@ -1334,8 +1343,10 @@ func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentR
 	return impactedRuns
 }
 
-func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
+func (c *componentReportGenerator) generateComponentTestReport(
+	baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
 	sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus) apitype.ComponentReport {
+
 	report := apitype.ComponentReport{
 		Rows: []apitype.ComponentReportRow{},
 	}
@@ -1382,12 +1393,12 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		delete(sampleStatus, testIdentification)
 
 		rowIdentifications, columnIdentifications := c.getRowColumnIdentifications(testIdentification, baseStats)
-		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, sampleStats, aggregatedStatus, allRows, allColumns)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
-		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, sampleStats, aggregatedStatus, allRows, allColumns)
 	}
 
 	// Sort the row identifications
