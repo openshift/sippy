@@ -1014,6 +1014,9 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 	existingCellStatus *cellStatus) cellStatus {
 
 	var newCellStatus cellStatus
+	if testID.TestID == "openshift-tests:2d072fcd3c8d97478028a0a1803d80e8" {
+		log.Info("boo")
+	}
 	if existingCellStatus != nil {
 		if (reportStatus < apitype.NotSignificant && reportStatus < existingCellStatus.status) ||
 			(existingCellStatus.status == apitype.NotSignificant && reportStatus == apitype.SignificantImprovement) {
@@ -1395,10 +1398,42 @@ func (c *componentReportGenerator) generateComponentTestReport(
 		rowIdentifications, columnIdentifications := c.getRowColumnIdentifications(testIdentification, baseStats)
 		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, sampleStats, aggregatedStatus, allRows, allColumns)
 	}
-	// Those sample ones are missing base stats
+
+	// The remaining entries in sampleStatus must have no results in the basis, and are likely new tests:
+	newTests := map[string][]apitype.ComponentTestIdentification{}
 	for testIdentification, sampleStats := range sampleStatus {
+		// Optionally flag as regressions based on pass rate. This is not the default behavior yet but may be in the future.
+		// TODO: make optional?
+		status := apitype.MissingBasis
+		samplePassPercentage := float64(sampleStats.SuccessCount+sampleStats.FlakeCount) / float64(sampleStats.TotalCount)
+		switch {
+		case samplePassPercentage < 0.95:
+			status = apitype.ExtremeRegression
+			if _, ok := newTests[testIdentification.TestID]; !ok {
+				newTests[testIdentification.TestID] = []apitype.ComponentTestIdentification{}
+			}
+			newTests[testIdentification.TestID] = append(newTests[testIdentification.TestID], testIdentification)
+			log.WithField("testID", testIdentification.TestID).Info("new test flagged as extreme regression")
+		case samplePassPercentage < 0.99:
+			status = apitype.SignificantRegression
+			if _, ok := newTests[testIdentification.TestID]; !ok {
+				newTests[testIdentification.TestID] = []apitype.ComponentTestIdentification{}
+			}
+			newTests[testIdentification.TestID] = append(newTests[testIdentification.TestID], testIdentification)
+			log.WithField("testID", testIdentification.TestID).Info("new test flagged as significant regression")
+		default:
+			status = apitype.NotSignificant
+
+		}
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
-		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, sampleStats, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, status, sampleStats, aggregatedStatus, allRows, allColumns)
+	}
+
+	for tid, tids := range newTests {
+		log.Infof(tid)
+		for _, t := range tids {
+			log.Infof("   %+v", t)
+		}
 	}
 
 	// Sort the row identifications
