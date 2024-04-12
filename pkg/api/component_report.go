@@ -1011,12 +1011,9 @@ type cellStatus struct {
 
 func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 	reportStatus apitype.ComponentReportStatus, sampleStats apitype.ComponentTestStatus,
-	existingCellStatus *cellStatus) cellStatus {
+	existingCellStatus *cellStatus, logger log.FieldLogger) cellStatus {
 
 	var newCellStatus cellStatus
-	if testID.TestID == "openshift-tests:2d072fcd3c8d97478028a0a1803d80e8" {
-		log.Info("boo")
-	}
 	if existingCellStatus != nil {
 		if (reportStatus < apitype.NotSignificant && reportStatus < existingCellStatus.status) ||
 			(existingCellStatus.status == apitype.NotSignificant && reportStatus == apitype.SignificantImprovement) {
@@ -1030,6 +1027,7 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 		newCellStatus.status = reportStatus
 	}
 	if reportStatus < apitype.MissingSample {
+		logger.Infof("adding regressed test")
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, apitype.ComponentReportTestSummary{
 			ComponentReportTestIdentification: testID,
 			Status:                            reportStatus,
@@ -1049,6 +1047,7 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 	status map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]cellStatus,
 	allRows map[apitype.ComponentReportRowIdentification]struct{},
 	allColumns map[apitype.ComponentReportColumnIdentification]struct{}) {
+	logger := log.WithField("testID", testID.TestID)
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}
@@ -1068,16 +1067,21 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 		if !ok {
 			row = map[apitype.ComponentReportColumnIdentification]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = getNewCellStatus(testID, reportStatus, sampleStats, nil)
+				logger.Infof("getNewCellStatus for %+v", columnIdentification)
+				logger.Infof("  status rowIdentification %+v", rowIdentification)
+				row[columnIdentification] = getNewCellStatus(testID, reportStatus, sampleStats, nil, logger)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, sampleStats, nil)
+					logger.Infof("getNewCellStatus 2 for %+v", columnIdentification)
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, sampleStats, nil, logger)
 				} else {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, sampleStats, &existing)
+					logger = logger.WithField("columnID", columnIdentification).WithField("row", rowIdentification)
+					logger.Infof("getNewCellStatus 3")
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, sampleStats, &existing, logger)
 				}
 			}
 		}
