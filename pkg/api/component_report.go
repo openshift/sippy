@@ -1017,7 +1017,9 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 	} else {
 		newCellStatus.status = reportStatus
 	}
-	if reportStatus < apitype.MissingSample {
+	// don't show triaged regressions in the regressed tests
+	// need a new UI to show active triaged incidents
+	if reportStatus < apitype.ExtremeTriagedRegression {
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, apitype.ComponentReportTestSummary{
 			ComponentReportTestIdentification: testID,
 			Status:                            reportStatus,
@@ -1452,7 +1454,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 				})
 			}
 			reportRow.Columns = append(reportRow.Columns, reportColumn)
-			if reportColumn.Status <= apitype.SignificantRegression {
+			if reportColumn.Status <= apitype.SignificantTriagedRegression {
 				hasRegression = true
 			}
 		}
@@ -1646,6 +1648,9 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 }
 
 func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) (apitype.ComponentReportStatus, float64) {
+	// preserve the initial sampleTotal so we can check
+	// to see if numberOfIgnoredSampleJobRuns impacts the status
+	initialSampleTotal := sampleTotal
 	adjustedSampleTotal := sampleTotal - numberOfIgnoredSampleJobRuns
 	if adjustedSampleTotal < sampleSuccess {
 		log.Errorf("adjustedSampleTotal is too small: sampleTotal=%d, numberOfIgnoredSampleJobRuns=%d, sampleSuccess=%d", sampleTotal, numberOfIgnoredSampleJobRuns, sampleSuccess)
@@ -1656,7 +1661,8 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 	status := apitype.MissingBasis
 	fischerExact := 0.0
 	if baseTotal != 0 {
-		if sampleTotal == 0 {
+		// if the unadjusted sample was 0 then nothing to do
+		if initialSampleTotal == 0 {
 			if c.IgnoreMissing {
 				status = apitype.NotSignificant
 
@@ -1664,13 +1670,64 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 				status = apitype.MissingSample
 			}
 		} else {
-			if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
-				return apitype.NotSignificant, fischerExact
+			// see if we had a significant regression prior to adjusting
+			basisPassPercentage := float64(baseSuccess+baseFlake) / float64(baseTotal)
+			initialPassPercentage := float64(sampleSuccess+sampleFlake) / float64(initialSampleTotal)
+			effectivePityFactor := c.PityFactor
+
+			wasSignificant := false
+			// only consider wasSignificant if the sampleTotal has been changed and our sample
+			// pass percentage is below the basis
+			if initialSampleTotal > sampleTotal && initialPassPercentage < basisPassPercentage {
+
+				if basisPassPercentage-initialPassPercentage > float64(effectivePityFactor)/100 {
+					_, _, r, _ := fischer.FisherExactTest(initialSampleTotal-sampleSuccess-sampleFlake,
+						sampleSuccess+sampleFlake,
+						baseTotal-baseSuccess-baseFlake,
+						baseSuccess+baseFlake)
+					wasSignificant = r < 1-float64(c.Confidence)/100
+				}
+				// if it was significant without the adjustment use
+				// ExtremeTriagedRegression or SignificantTriagedRegression
+				if wasSignificant {
+					if (basisPassPercentage - initialPassPercentage) > 0.15 {
+						status = apitype.ExtremeTriagedRegression
+					} else {
+						status = apitype.SignificantTriagedRegression
+					}
+				}
 			}
 
-			basisPassPercentage := float64(baseSuccess+baseFlake) / float64(baseTotal)
+			if sampleTotal == 0 {
+				if !wasSignificant {
+					if c.IgnoreMissing {
+						status = apitype.NotSignificant
+
+					} else {
+						status = apitype.MissingSample
+					}
+				}
+
+				return status, fischerExact
+			}
+
+			// if we didn't detect a significant regression prior to adjusting set our default here
+			if !wasSignificant {
+				status = apitype.NotSignificant
+			}
+
+			// now that we know sampleTotal is non zero
 			samplePassPercentage := float64(sampleSuccess+sampleFlake) / float64(sampleTotal)
-			effectivePityFactor := c.PityFactor
+
+			// did we remove enough failures that we are below the MinimumFailure threshold?
+			if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
+				// if we were below the threshold with the initialSampleTotal too then return not significant
+				if c.MinimumFailure != 0 && (initialSampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
+					return apitype.NotSignificant, fischerExact
+				}
+				return status, fischerExact
+			}
+
 			if approvedRegression != nil && approvedRegression.RegressedPassPercentage < int(basisPassPercentage*100) {
 				// product owner chose a required pass percentage, so we all pity to cover that approved pass percent
 				// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
@@ -1702,7 +1759,10 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 			}
 			if significant {
 				if improved {
-					status = apitype.SignificantImprovement
+					// only show improvements if we are not dropping out triaged results
+					if initialSampleTotal == sampleTotal {
+						status = apitype.SignificantImprovement
+					}
 				} else {
 					if (basisPassPercentage - samplePassPercentage) > 0.15 {
 						status = apitype.ExtremeRegression
@@ -1710,8 +1770,6 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 						status = apitype.SignificantRegression
 					}
 				}
-			} else {
-				status = apitype.NotSignificant
 			}
 		}
 	}
