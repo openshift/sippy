@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"time"
 
@@ -54,13 +55,17 @@ func NewLoadJobVariantsCommand() *cobra.Command {
 			bigQueryClient, err := bigquery.NewClient(ctx, f.BigQueryFlags.BigQueryProject,
 				option.WithCredentialsFile(f.GoogleCloudFlags.ServiceAccountCredentialFile))
 			if err != nil {
-				log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
+				log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents generating job variants")
 				return err
 			}
 			gcsClient, err := gcs.NewGCSClient(context.TODO(),
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.GoogleCloudFlags.OAuthClientCredentialFile,
 			)
+			if err != nil {
+				log.WithError(err).Error("CRITICAL error getting GCS client which prevents generating job variants")
+				return err
+			}
 
 			var jsonData []byte
 
@@ -81,7 +86,7 @@ func NewLoadJobVariantsCommand() *cobra.Command {
 					return err
 				}
 			default:
-				log.Fatalf("unknown mode: %s", f.Mode)
+				return fmt.Errorf("unknown mode: %s", f.Mode)
 			}
 
 			file, err := os.Create(f.OutputFile)

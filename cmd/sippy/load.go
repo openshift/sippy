@@ -99,12 +99,10 @@ func NewLoadCommand() *cobra.Command {
 			dbc, err := f.DBFlags.GetDBClient()
 			if err != nil {
 				dbErr = errors.WithMessage(err, "could not get db client: %+v")
-			} else {
-				if f.InitDatabase {
-					t := f.DBFlags.GetPinnedTime()
-					if err := dbc.UpdateSchema(t); err != nil {
-						dbErr = errors.WithMessage(err, "could not migrate db")
-					}
+			} else if f.InitDatabase {
+				t := f.DBFlags.GetPinnedTime()
+				if err := dbc.UpdateSchema(t); err != nil {
+					dbErr = errors.WithMessage(err, "could not migrate db")
 				}
 			}
 

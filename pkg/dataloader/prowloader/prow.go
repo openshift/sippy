@@ -418,15 +418,15 @@ func GetClusterData(ctx context.Context, bkt *storage.BucketHandle, path string,
 }
 
 func ParseVariantDataFile(bytes []byte) (map[string]string, error) {
-	rawJsonMap := make(map[string]interface{})
-	err := json.Unmarshal(bytes, &rawJsonMap)
+	rawJSONMap := make(map[string]interface{})
+	err := json.Unmarshal(bytes, &rawJSONMap)
 	if err != nil {
 		log.WithError(err).Errorf("failed to unmarshal prow cluster data")
 		return map[string]string{}, err
 	}
 	// Convert the raw json map to string->string, discarding anything that doesn't parse to a string.
 	clusterData := map[string]string{}
-	for k, v := range rawJsonMap {
+	for k, v := range rawJSONMap {
 		if sv, ok := v.(string); ok {
 			clusterData[k] = sv
 		}

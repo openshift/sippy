@@ -2,7 +2,6 @@ package variantregistry
 
 import (
 	"context"
-	_ "embed"
 	"fmt"
 	"regexp"
 	"strconv"
@@ -131,7 +130,7 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 		jLog.WithField("variants", variants).WithField("count", count).Info("calculated variants")
 		expectedVariants[jlr.JobName] = variants
 	}
-	dur := time.Now().Sub(start)
+	dur := time.Since(start)
 	log.WithField("count", count).Infof("processed primary job list in %s", dur)
 
 	return expectedVariants, nil
@@ -255,6 +254,7 @@ const (
 	VariantFromRelease      = "FromRelease"
 	VariantFromReleaseMinor = "FromReleaseMinor"
 	VariantFromReleaseMajor = "FromReleaseMajor"
+	VariantDefaultValue     = "default"
 )
 
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
@@ -354,25 +354,25 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	if fipsRegex.MatchString(jobName) {
 		variants[VariantSecurityMode] = "fips"
 	} else {
-		variants[VariantSecurityMode] = "default"
+		variants[VariantSecurityMode] = VariantDefaultValue
 	}
 
 	if techpreview.MatchString(jobName) {
 		variants[VariantFeatureSet] = "techpreview"
 	} else {
-		variants[VariantFeatureSet] = "default"
+		variants[VariantFeatureSet] = VariantDefaultValue
 	}
 
 	if rtRegex.MatchString(jobName) {
 		variants[VariantScheduler] = "realtime"
 	} else {
-		variants[VariantScheduler] = "default"
+		variants[VariantScheduler] = VariantDefaultValue
 	}
 
 	if proxyRegex.MatchString(jobName) {
 		variants[VariantNetworkAccess] = "proxy"
 	} else {
-		variants[VariantNetworkAccess] = "default"
+		variants[VariantNetworkAccess] = VariantDefaultValue
 	}
 
 	if len(variants) == 0 {

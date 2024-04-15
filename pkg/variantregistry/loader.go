@@ -136,14 +136,12 @@ func compareVariants(expectedVariants, currentVariants map[string]map[string]str
 					VariantName:  k,
 					VariantValue: v,
 				})
-			} else {
-				if currVarVal != v {
-					updateVariants = append(updateVariants, jobVariant{
-						JobName:      expectedJob,
-						VariantName:  k,
-						VariantValue: v,
-					})
-				}
+			} else if currVarVal != v {
+				updateVariants = append(updateVariants, jobVariant{
+					JobName:      expectedJob,
+					VariantName:  k,
+					VariantValue: v,
+				})
 			}
 		}
 
