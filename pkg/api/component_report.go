@@ -1346,27 +1346,8 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	allColumns := map[apitype.ComponentReportColumnIdentification]struct{}{}
 	// testID is used to identify the most regressed test. With this, we can
 	// create a shortcut link from any page to go straight to the most regressed test page.
-	var testID apitype.ComponentReportTestIdentification
 	for testIdentification, baseStats := range baseStatus {
-		testID = apitype.ComponentReportTestIdentification{
-			ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
-				Component: baseStats.Component,
-				TestName:  baseStats.TestName,
-				TestSuite: baseStats.TestSuite,
-				TestID:    testIdentification.TestID,
-			},
-			ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
-				Network:  testIdentification.Network,
-				Upgrade:  testIdentification.Upgrade,
-				Arch:     testIdentification.Arch,
-				Platform: testIdentification.Platform,
-				Variant:  testIdentification.FlatVariants,
-			},
-		}
-		// Take the first cap for now. When we reach to a cell with specific capability, we will override the value.
-		if len(baseStats.Capabilities) > 0 {
-			testID.Capability = baseStats.Capabilities[0]
-		}
+		testID := buildTestID(baseStats, testIdentification)
 
 		var reportStatus apitype.ComponentReportStatus
 		sampleStats, ok := sampleStatus[testIdentification]
@@ -1386,6 +1367,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
+		testID := buildTestID(sampleStats, testIdentification)
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
 		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
 	}
@@ -1471,6 +1453,29 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 
 	report.Rows = append(regressionRows, goodRows...)
 	return report
+}
+
+func buildTestID(stats apitype.ComponentTestStatus, testIdentification apitype.ComponentTestIdentification) apitype.ComponentReportTestIdentification {
+	testID := apitype.ComponentReportTestIdentification{
+		ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
+			Component: stats.Component,
+			TestName:  stats.TestName,
+			TestSuite: stats.TestSuite,
+			TestID:    testIdentification.TestID,
+		},
+		ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
+			Network:  testIdentification.Network,
+			Upgrade:  testIdentification.Upgrade,
+			Arch:     testIdentification.Arch,
+			Platform: testIdentification.Platform,
+			Variant:  testIdentification.FlatVariants,
+		},
+	}
+	// Take the first cap for now. When we reach to a cell with specific capability, we will override the value.
+	if len(stats.Capabilities) > 0 {
+		testID.Capability = stats.Capabilities[0]
+	}
+	return testID
 }
 
 func getFailureCount(status apitype.ComponentJobRunTestStatusRow) int {
