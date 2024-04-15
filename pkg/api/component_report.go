@@ -28,7 +28,7 @@ import (
 const (
 	triagedIncidentsTableID = "triaged_incidents"
 
-	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
+	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert|periodic-ci-ComplianceAsCode-|-efs-|-interop-`
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
