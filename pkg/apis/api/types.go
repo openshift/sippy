@@ -824,12 +824,20 @@ type ComponentReportRequestVariantOptions struct {
 	RequestedVariants     map[string]string
 }
 
+// ComponentReportView is a server side construct representing a predefined view over the data.
+// Useful for defining the primary view of what we deem required for considering the release ready.
+type ComponentReportView struct {
+	Name            string                                `json:"name"`
+	VariantOptions  ComponentReportRequestVariantOptions  `json:"variant_options"`
+	AdvancedOptions ComponentReportRequestAdvancedOptions `json:"advance_options"`
+}
+
 type ComponentReportRequestAdvancedOptions struct {
-	MinimumFailure   int
-	Confidence       int
-	PityFactor       int
-	IgnoreMissing    bool
-	IgnoreDisruption bool
+	MinimumFailure   int  `json:"minimum_failure"`
+	Confidence       int  `json:"confidence"`
+	PityFactor       int  `json:"pity_factor"`
+	IgnoreMissing    bool `json:"ignore_missing"`
+	IgnoreDisruption bool `json:"ignore_disruption"`
 }
 
 type ComponentTestStatus struct {

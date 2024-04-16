@@ -60,23 +60,25 @@ func NewServer(
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
+	componentReadinessViews []apitype.ComponentReportView,
 ) *Server {
 
 	server := &Server{
-		mode:                 mode,
-		listenAddr:           listenAddr,
-		syntheticTestManager: syntheticTestManager,
-		variantManager:       variantManager,
-		sippyNG:              sippyNG,
-		static:               static,
-		db:                   dbClient,
-		bigQueryClient:       bigQueryClient,
-		pinnedDateTime:       pinnedDateTime,
-		prowURL:              prowURL,
-		gcsBucket:            gcsBucket,
-		gcsClient:            gcsClient,
-		cache:                cacheClient,
-		crTimeRoundingFactor: crTimeRoundingFactor,
+		mode:                    mode,
+		listenAddr:              listenAddr,
+		syntheticTestManager:    syntheticTestManager,
+		variantManager:          variantManager,
+		sippyNG:                 sippyNG,
+		static:                  static,
+		db:                      dbClient,
+		bigQueryClient:          bigQueryClient,
+		pinnedDateTime:          pinnedDateTime,
+		prowURL:                 prowURL,
+		gcsBucket:               gcsBucket,
+		gcsClient:               gcsClient,
+		cache:                   cacheClient,
+		crTimeRoundingFactor:    crTimeRoundingFactor,
+		componentReadinessViews: componentReadinessViews,
 	}
 
 	if bigQueryClient != nil {
@@ -99,22 +101,23 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 })
 
 type Server struct {
-	mode                 Mode
-	listenAddr           string
-	syntheticTestManager synthetictests.SyntheticTestManager
-	variantManager       testidentification.VariantManager
-	sippyNG              fs.FS
-	static               fs.FS
-	httpServer           *http.Server
-	db                   *db.DB
-	bigQueryClient       *bigquery.Client
-	pinnedDateTime       *time.Time
-	gcsClient            *storage.Client
-	gcsBucket            string
-	prowURL              string
-	cache                cache.Cache
-	crTimeRoundingFactor time.Duration
-	capabilities         []string
+	mode                    Mode
+	listenAddr              string
+	syntheticTestManager    synthetictests.SyntheticTestManager
+	variantManager          testidentification.VariantManager
+	sippyNG                 fs.FS
+	static                  fs.FS
+	httpServer              *http.Server
+	db                      *db.DB
+	bigQueryClient          *bigquery.Client
+	pinnedDateTime          *time.Time
+	gcsClient               *storage.Client
+	gcsBucket               string
+	prowURL                 string
+	cache                   cache.Cache
+	crTimeRoundingFactor    time.Duration
+	capabilities            []string
+	componentReadinessViews []apitype.ComponentReportView
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -649,6 +652,10 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
+}
+
+func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
+	api.RespondWithJSON(http.StatusOK, w, s.componentReadinessViews)
 }
 
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
@@ -1650,6 +1657,12 @@ func (s *Server) Serve() {
 			Description:  "Reports test variants for component readiness from BigQuery",
 			Capabilities: []string{ComponentReadinessCapability},
 			HandlerFunc:  s.jsonComponentTestVariantsFromBigQuery,
+		},
+		{
+			EndpointPath: "/api/component_readiness/views",
+			Description:  "Lists all predefined server-side views over ComponentReadiness data",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonComponentReadinessViews,
 		},
 		{
 			EndpointPath: "/api/capabilities",

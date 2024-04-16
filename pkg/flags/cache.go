@@ -9,8 +9,7 @@ import (
 	"github.com/openshift/sippy/pkg/cache/redis"
 )
 
-// CacheFlags holds caching configuration information for Sippy such as the location
-// of its configuration file.
+// CacheFlags holds caching configuration information for Sippy.
 type CacheFlags struct {
 	RedisURL string
 }
