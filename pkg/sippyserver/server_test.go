@@ -129,11 +129,37 @@ func TestEncodeDefaultHighRisk(t *testing.T) {
 
 func TestParseComponentReportRequest(t *testing.T) {
 
+	views := []apitype.ComponentReportView{
+		{
+			Name: "test view",
+			VariantOptions: apitype.ComponentReportRequestVariantOptions{
+				GroupBy:  "cloud,arch,network",
+				Platform: "",
+				Upgrade:  "",
+				Arch:     "",
+				Network:  "",
+				Variant:  "",
+			},
+			ExcludeOptions: apitype.ComponentReportRequestExcludeOptions{
+				ExcludePlatforms: "openstack,ibmcloud,libvirt,ovirt,unknown",
+				ExcludeArches:    "arm64,heterogeneous,ppc64le,s390x",
+				ExcludeUpgrades:  "",
+				ExcludeVariants:  "hypershift,osd,microshift,techpreview,single-node,assisted,compact",
+			},
+			AdvancedOptions: apitype.ComponentReportRequestAdvancedOptions{
+				MinimumFailure:   3,
+				Confidence:       95,
+				PityFactor:       5,
+				IgnoreMissing:    false,
+				IgnoreDisruption: true,
+			},
+		},
+	}
+
 	tests := []struct {
 		name string
 
 		// inputs
-		views       []apitype.ComponentReportView
 		queryParams map[string]string
 
 		// expected outputs
@@ -204,6 +230,86 @@ func TestParseComponentReportRequest(t *testing.T) {
 				CRTimeRoundingFactor: 4 * time.Hour,
 			},
 		},
+		{
+			name: "view",
+			queryParams: map[string]string{
+				"baseEndTime":     "2024-02-28T23:59:59Z",
+				"baseRelease":     "4.15",
+				"baseStartTime":   "2024-02-01T00:00:00Z",
+				"sampleEndTime":   "2024-04-11T23:59:59Z",
+				"sampleRelease":   "4.16",
+				"sampleStartTime": "2024-04-04T00:00:05Z",
+				"view":            "test view",
+			},
+
+			baseRelease: apitype.ComponentReportRequestReleaseOptions{
+				Release: "4.15",
+				Start:   time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
+				End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
+			},
+			sampleRelease: apitype.ComponentReportRequestReleaseOptions{
+				Release: "4.16",
+				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
+				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
+			},
+			testIDOption: apitype.ComponentReportRequestTestIdentificationOptions{},
+			variantOption: apitype.ComponentReportRequestVariantOptions{
+				GroupBy:  "cloud,arch,network",
+				Platform: "",
+				Upgrade:  "",
+				Arch:     "",
+				Network:  "",
+				Variant:  "",
+			},
+			excludeOption: apitype.ComponentReportRequestExcludeOptions{
+				ExcludePlatforms: "openstack,ibmcloud,libvirt,ovirt,unknown",
+				ExcludeArches:    "arm64,heterogeneous,ppc64le,s390x",
+				ExcludeNetworks:  "",
+				ExcludeUpgrades:  "",
+				ExcludeVariants:  "hypershift,osd,microshift,techpreview,single-node,assisted,compact",
+			},
+			advancedOption: apitype.ComponentReportRequestAdvancedOptions{
+				MinimumFailure:   3,
+				Confidence:       95,
+				PityFactor:       5,
+				IgnoreMissing:    false,
+				IgnoreDisruption: true,
+			},
+			cacheOption: cache.RequestOptions{
+				ForceRefresh:         false,
+				CRTimeRoundingFactor: 4 * time.Hour,
+			},
+		},
+		{
+			name: "view should not be combined with excludeVariants",
+			queryParams: map[string]string{
+				"baseEndTime":     "2024-02-28T23:59:59Z",
+				"baseRelease":     "4.15",
+				"baseStartTime":   "2024-02-01T00:00:00Z",
+				"sampleEndTime":   "2024-04-11T23:59:59Z",
+				"sampleRelease":   "4.16",
+				"sampleStartTime": "2024-04-04T00:00:05Z",
+				"view":            "test view",
+				"excludeVariants": "hypershift,osd,microshift,techpreview,single-node,assisted,compact",
+			},
+
+			errMessage: "params cannot be combined with view",
+		},
+		{
+			name: "view should not be combined with groupBy",
+			queryParams: map[string]string{
+				"baseEndTime":     "2024-02-28T23:59:59Z",
+				"baseRelease":     "4.15",
+				"baseStartTime":   "2024-02-01T00:00:00Z",
+				"sampleEndTime":   "2024-04-11T23:59:59Z",
+				"sampleRelease":   "4.16",
+				"sampleStartTime": "2024-04-04T00:00:05Z",
+				"view":            "test view",
+				"groupBy":         "cloud,arch,network",
+			},
+
+			errMessage: "params cannot be combined with view",
+		},
 	}
 
 	for _, tc := range tests {
@@ -217,19 +323,21 @@ func TestParseComponentReportRequest(t *testing.T) {
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
 			baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err :=
-				parseComponentReportRequest(req, 4*time.Hour)
-			assert.Equal(t, tc.baseRelease, baseRelease)
-			assert.Equal(t, tc.sampleRelease, sampleRelease)
-			assert.Equal(t, tc.testIDOption, testIDOption)
-			assert.Equal(t, tc.variantOption, variantOption)
-			assert.Equal(t, tc.excludeOption, excludeOption)
-			assert.Equal(t, tc.advancedOption, advancedOption)
-			assert.Equal(t, tc.cacheOption, cacheOption)
+				parseComponentReportRequest(views, req, 4*time.Hour)
+
 			if tc.errMessage != "" {
-				assert.Error(t, err)
-				assert.True(t, strings.Contains(err.Error(), tc.errMessage))
+				require.Error(t, err)
+				require.True(t, strings.Contains(err.Error(), tc.errMessage))
+			} else {
+				assert.Equal(t, tc.baseRelease, baseRelease)
+				assert.Equal(t, tc.sampleRelease, sampleRelease)
+				assert.Equal(t, tc.testIDOption, testIDOption)
+				assert.Equal(t, tc.variantOption, variantOption)
+				assert.Equal(t, tc.excludeOption, excludeOption)
+				assert.Equal(t, tc.advancedOption, advancedOption)
+				assert.Equal(t, tc.cacheOption, cacheOption)
+				assert.Equal(t, tc.baseRelease, baseRelease)
 			}
-			assert.Equal(t, tc.baseRelease, baseRelease)
 		})
 	}
 

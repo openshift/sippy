@@ -635,7 +635,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err :=
-		parseComponentReportRequest(req, s.crTimeRoundingFactor)
+		parseComponentReportRequest(s.componentReadinessViews, req, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -679,7 +679,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		return
 	}
 	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err :=
-		parseComponentReportRequest(req, s.crTimeRoundingFactor)
+		parseComponentReportRequest(s.componentReadinessViews, req, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -711,7 +711,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
-func parseComponentReportRequest(req *http.Request, crTimeRoundingFactor time.Duration) (
+func parseComponentReportRequest(views []apitype.ComponentReportView, req *http.Request, crTimeRoundingFactor time.Duration) (
 	baseRelease apitype.ComponentReportRequestReleaseOptions,
 	sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
@@ -720,6 +720,22 @@ func parseComponentReportRequest(req *http.Request, crTimeRoundingFactor time.Du
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
 	cacheOption cache.RequestOptions,
 	err error) {
+
+	// Check if the user specified a view, in which case only some query params can be used.
+	viewRequested := req.URL.Query().Get("view")
+	var view *apitype.ComponentReportView
+	if viewRequested != "" {
+		for i, v := range views {
+			if v.Name == viewRequested {
+				view = &views[i]
+				break
+			}
+		}
+		if view == nil {
+			err = fmt.Errorf("unknown view: %s", viewRequested)
+			return
+		}
+	}
 
 	baseRelease.Release = req.URL.Query().Get("baseRelease")
 	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
@@ -762,78 +778,107 @@ func parseComponentReportRequest(req *http.Request, crTimeRoundingFactor time.Du
 	testIDOption.Capability = req.URL.Query().Get("capability")
 	testIDOption.TestID = req.URL.Query().Get("testId")
 
-	variantOption.GroupBy = req.URL.Query().Get("groupBy")
-	variantOption.Platform = req.URL.Query().Get("platform")
-	variantOption.Upgrade = req.URL.Query().Get("upgrade")
-	variantOption.Arch = req.URL.Query().Get("arch")
-	variantOption.Network = req.URL.Query().Get("network")
-	variantOption.Variant = req.URL.Query().Get("variant")
+	// These should not be combined with a view:
+	if viewRequested != "" {
+		if pErr := anyParamSpecified(req,
+			"groupBy",
+			"platform",
+			"upgrade",
+			"arch",
+			"network",
+			"variant",
+			"excludeClouds",
+			"excludeArches",
+			"excludeNetworks",
+			"excludeVariants",
+			"confidence",
+			"pity",
+			"minFail",
+			"ignoreMissing",
+			"ignoreDisruption",
+		); pErr != nil {
+			err = pErr
+			return
+		}
+		// TODO: set params from view
+		variantOption = view.VariantOptions
+		excludeOption = view.ExcludeOptions
+		advancedOption = view.AdvancedOptions
+	} else {
 
-	excludeOption.ExcludePlatforms = req.URL.Query().Get("excludeClouds")
-	excludeOption.ExcludeArches = req.URL.Query().Get("excludeArches")
-	excludeOption.ExcludeNetworks = req.URL.Query().Get("excludeNetworks")
-	excludeOption.ExcludeUpgrades = req.URL.Query().Get("excludeUpgrades")
-	excludeOption.ExcludeVariants = req.URL.Query().Get("excludeVariants")
+		variantOption.GroupBy = req.URL.Query().Get("groupBy")
+		variantOption.Platform = req.URL.Query().Get("platform")
+		variantOption.Upgrade = req.URL.Query().Get("upgrade")
+		variantOption.Arch = req.URL.Query().Get("arch")
+		variantOption.Network = req.URL.Query().Get("network")
+		variantOption.Variant = req.URL.Query().Get("variant")
 
-	advancedOption.Confidence = 95
-	confidenceStr := req.URL.Query().Get("confidence")
-	if confidenceStr != "" {
-		advancedOption.Confidence, err = strconv.Atoi(confidenceStr)
-		if err != nil {
-			err = fmt.Errorf("confidence is not a number")
-			return
-		}
-		if advancedOption.Confidence < 0 || advancedOption.Confidence > 100 {
-			err = fmt.Errorf("confidence is not in the correct range")
-			return
-		}
-	}
+		excludeOption.ExcludePlatforms = req.URL.Query().Get("excludeClouds")
+		excludeOption.ExcludeArches = req.URL.Query().Get("excludeArches")
+		excludeOption.ExcludeNetworks = req.URL.Query().Get("excludeNetworks")
+		excludeOption.ExcludeUpgrades = req.URL.Query().Get("excludeUpgrades")
+		excludeOption.ExcludeVariants = req.URL.Query().Get("excludeVariants")
 
-	advancedOption.PityFactor = 5
-	pityStr := req.URL.Query().Get("pity")
-	if pityStr != "" {
-		advancedOption.PityFactor, err = strconv.Atoi(pityStr)
-		if err != nil {
-			err = fmt.Errorf("pity factor is not a number")
-			return
+		advancedOption.Confidence = 95
+		confidenceStr := req.URL.Query().Get("confidence")
+		if confidenceStr != "" {
+			advancedOption.Confidence, err = strconv.Atoi(confidenceStr)
+			if err != nil {
+				err = fmt.Errorf("confidence is not a number")
+				return
+			}
+			if advancedOption.Confidence < 0 || advancedOption.Confidence > 100 {
+				err = fmt.Errorf("confidence is not in the correct range")
+				return
+			}
 		}
-		if advancedOption.PityFactor < 0 || advancedOption.PityFactor > 100 {
-			err = fmt.Errorf("pity factor is not in the correct range")
-			return
-		}
-	}
 
-	advancedOption.MinimumFailure = 3
-	minFailStr := req.URL.Query().Get("minFail")
-	if minFailStr != "" {
-		advancedOption.MinimumFailure, err = strconv.Atoi(minFailStr)
-		if err != nil {
-			err = fmt.Errorf("min_fail is not a number")
-			return
+		advancedOption.PityFactor = 5
+		pityStr := req.URL.Query().Get("pity")
+		if pityStr != "" {
+			advancedOption.PityFactor, err = strconv.Atoi(pityStr)
+			if err != nil {
+				err = fmt.Errorf("pity factor is not a number")
+				return
+			}
+			if advancedOption.PityFactor < 0 || advancedOption.PityFactor > 100 {
+				err = fmt.Errorf("pity factor is not in the correct range")
+				return
+			}
 		}
-		if advancedOption.MinimumFailure < 0 {
-			err = fmt.Errorf("min_fail is not in the correct range")
-			return
-		}
-	}
 
-	advancedOption.IgnoreMissing = false
-	ignoreMissingStr := req.URL.Query().Get("ignoreMissing")
-	if ignoreMissingStr != "" {
-		advancedOption.IgnoreMissing, err = strconv.ParseBool(ignoreMissingStr)
-		if err != nil {
-			err = errors.WithMessage(err, "expected boolean for ignore missing")
-			return
+		advancedOption.MinimumFailure = 3
+		minFailStr := req.URL.Query().Get("minFail")
+		if minFailStr != "" {
+			advancedOption.MinimumFailure, err = strconv.Atoi(minFailStr)
+			if err != nil {
+				err = fmt.Errorf("min_fail is not a number")
+				return
+			}
+			if advancedOption.MinimumFailure < 0 {
+				err = fmt.Errorf("min_fail is not in the correct range")
+				return
+			}
 		}
-	}
 
-	advancedOption.IgnoreDisruption = true
-	ignoreDisruptionsStr := req.URL.Query().Get("ignoreDisruption")
-	if ignoreMissingStr != "" {
-		advancedOption.IgnoreDisruption, err = strconv.ParseBool(ignoreDisruptionsStr)
-		if err != nil {
-			err = errors.WithMessage(err, "expected boolean for ignore disruption")
-			return
+		advancedOption.IgnoreMissing = false
+		ignoreMissingStr := req.URL.Query().Get("ignoreMissing")
+		if ignoreMissingStr != "" {
+			advancedOption.IgnoreMissing, err = strconv.ParseBool(ignoreMissingStr)
+			if err != nil {
+				err = errors.WithMessage(err, "expected boolean for ignore missing")
+				return
+			}
+		}
+
+		advancedOption.IgnoreDisruption = true
+		ignoreDisruptionsStr := req.URL.Query().Get("ignoreDisruption")
+		if ignoreMissingStr != "" {
+			advancedOption.IgnoreDisruption, err = strconv.ParseBool(ignoreDisruptionsStr)
+			if err != nil {
+				err = errors.WithMessage(err, "expected boolean for ignore disruption")
+				return
+			}
 		}
 	}
 
@@ -848,6 +893,19 @@ func parseComponentReportRequest(req *http.Request, crTimeRoundingFactor time.Du
 	cacheOption.CRTimeRoundingFactor = crTimeRoundingFactor
 
 	return
+}
+
+func anyParamSpecified(req *http.Request, paramName ...string) error {
+	found := []string{}
+	for _, p := range paramName {
+		if req.URL.Query().Get(p) != "" {
+			found = append(found, p)
+		}
+	}
+	if len(found) > 0 {
+		return fmt.Errorf("params cannot be combined with view: %v", found)
+	}
+	return nil
 }
 
 func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
