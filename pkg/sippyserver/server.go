@@ -1392,7 +1392,7 @@ func (s *Server) Serve() {
 			},
 		},
 		{
-			EndpointPath: "/api/autocomplete",
+			EndpointPath: "/api/autocomplete/",
 			Description:  "Autocompletes queries from database",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonAutocompleteFromDB,
