@@ -1679,13 +1679,8 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 			// only consider wasSignificant if the sampleTotal has been changed and our sample
 			// pass percentage is below the basis
 			if initialSampleTotal > sampleTotal && initialPassPercentage < basisPassPercentage {
-
 				if basisPassPercentage-initialPassPercentage > float64(effectivePityFactor)/100 {
-					_, _, r, _ := fischer.FisherExactTest(initialSampleTotal-sampleSuccess-sampleFlake,
-						sampleSuccess+sampleFlake,
-						baseTotal-baseSuccess-baseFlake,
-						baseSuccess+baseFlake)
-					wasSignificant = r < 1-float64(c.Confidence)/100
+					wasSignificant, _ = c.fischerExactTest(initialSampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
 				}
 				// if it was significant without the adjustment use
 				// ExtremeTriagedRegression or SignificantTriagedRegression
@@ -1707,7 +1702,6 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 						status = apitype.MissingSample
 					}
 				}
-
 				return status, fischerExact
 			}
 
@@ -1728,6 +1722,9 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 				return status, fischerExact
 			}
 
+			// how do approvedRegressions and triagedRegressions interact?  If we triaged a regression we will
+			// show the triagedRegressionIcon even with the lowered effectivePityFactor
+			// do we want that or should we clear the triagedRegression status here?
 			if approvedRegression != nil && approvedRegression.RegressedPassPercentage < int(basisPassPercentage*100) {
 				// product owner chose a required pass percentage, so we all pity to cover that approved pass percent
 				// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
@@ -1743,19 +1740,10 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 			improved := samplePassPercentage >= basisPassPercentage
 
 			if improved {
-				_, _, r, _ := fischer.FisherExactTest(baseTotal-baseSuccess-baseFlake,
-					baseSuccess+baseFlake,
-					sampleTotal-sampleSuccess-sampleFlake,
-					sampleSuccess+sampleFlake)
-				significant = r < 1-float64(c.Confidence)/100
-				fischerExact = r
+				// flip base and sample when improved
+				significant, fischerExact = c.fischerExactTest(baseTotal, baseSuccess, baseFlake, sampleTotal, sampleSuccess, sampleFlake)
 			} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
-				_, _, r, _ := fischer.FisherExactTest(sampleTotal-sampleSuccess-sampleFlake,
-					sampleSuccess+sampleFlake,
-					baseTotal-baseSuccess-baseFlake,
-					baseSuccess+baseFlake)
-				significant = r < 1-float64(c.Confidence)/100
-				fischerExact = r
+				significant, fischerExact = c.fischerExactTest(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
 			}
 			if significant {
 				if improved {
@@ -1774,6 +1762,14 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 		}
 	}
 	return status, fischerExact
+}
+
+func (c *componentReportGenerator) fischerExactTest(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (bool, float64) {
+	_, _, r, _ := fischer.FisherExactTest(sampleTotal-sampleSuccess-sampleFlake,
+		sampleSuccess+sampleFlake,
+		baseTotal-baseSuccess-baseFlake,
+		baseSuccess+baseFlake)
+	return r < 1-float64(c.Confidence)/100, r
 }
 
 func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nested bool) ([]string, error) {
