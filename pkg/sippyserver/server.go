@@ -626,7 +626,16 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
+	if s.bigQueryClient == nil {
+		err := fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err :=
+		parseComponentReportRequest(req, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -661,7 +670,16 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 }
 
 func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
+	if s.bigQueryClient == nil {
+		err := fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err :=
+		parseComponentReportRequest(req, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -693,7 +711,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
-func (s *Server) parseComponentReportRequest(req *http.Request) (
+func parseComponentReportRequest(req *http.Request, crTimeRoundingFactor time.Duration) (
 	baseRelease apitype.ComponentReportRequestReleaseOptions,
 	sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
@@ -703,10 +721,6 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	cacheOption cache.RequestOptions,
 	err error) {
 
-	if s.bigQueryClient == nil {
-		err = fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
-		return
-	}
 	baseRelease.Release = req.URL.Query().Get("baseRelease")
 	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
 	if baseRelease.Release == "" {
@@ -720,25 +734,25 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	}
 
 	timeStr := req.URL.Query().Get("baseStartTime")
-	baseRelease.Start, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
+	baseRelease.Start, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("base start time in wrong format")
 		return
 	}
 	timeStr = req.URL.Query().Get("baseEndTime")
-	baseRelease.End, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
+	baseRelease.End, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("base end time in wrong format")
 		return
 	}
 	timeStr = req.URL.Query().Get("sampleStartTime")
-	sampleRelease.Start, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
+	sampleRelease.Start, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("sample start time in wrong format")
 		return
 	}
 	timeStr = req.URL.Query().Get("sampleEndTime")
-	sampleRelease.End, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
+	sampleRelease.End, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
 	if err != nil {
 		err = fmt.Errorf("sample end time in wrong format")
 		return
@@ -831,7 +845,7 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 			return
 		}
 	}
-	cacheOption.CRTimeRoundingFactor = s.crTimeRoundingFactor
+	cacheOption.CRTimeRoundingFactor = crTimeRoundingFactor
 
 	return
 }
