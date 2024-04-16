@@ -26,9 +26,10 @@ import (
 )
 
 type ComponentReadinessFlags struct {
-	GoogleCloudFlags *flags.GoogleCloudFlags
-	BigQueryFlags    *flags.BigQueryFlags
-	CacheFlags       *flags.CacheFlags
+	GoogleCloudFlags        *flags.GoogleCloudFlags
+	BigQueryFlags           *flags.BigQueryFlags
+	CacheFlags              *flags.CacheFlags
+	ComponentReadinessFlags *flags.ComponentReadinessFlags
 
 	Config      string
 	LogLevel    string
@@ -43,9 +44,10 @@ func NewComponentReadinessCommand() *cobra.Command {
 		ListenAddr:  ":8080",
 		MetricsAddr: ":2112",
 
-		GoogleCloudFlags: flags.NewGoogleCloudFlags(),
-		BigQueryFlags:    flags.NewBigQueryFlags(),
-		CacheFlags:       flags.NewCacheFlags(),
+		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
+		BigQueryFlags:           flags.NewBigQueryFlags(),
+		CacheFlags:              flags.NewCacheFlags(),
+		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -73,6 +75,7 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.CacheFlags.BindFlags(flagSet)
 	f.BigQueryFlags.BindFlags(flagSet)
 	f.GoogleCloudFlags.BindFlags(flagSet)
+	f.ComponentReadinessFlags.BindFlags(flagSet)
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
@@ -160,7 +163,8 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		bigQueryClient,
 		nil,
 		cacheClient,
-		4*time.Hour,
+		f.ComponentReadinessFlags.CRTimeRoundingFactor,
+		f.ComponentReadinessFlags.ParseViewsFile(),
 	)
 
 	if f.MetricsAddr != "" {
@@ -170,7 +174,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			f.GoogleCloudFlags.StorageBucket,
 			nil,
 			time.Time{},
-			cache.RequestOptions{CRTimeRoundingFactor: defaultCRTimeRoundingFactor})
+			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor})
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -183,7 +187,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(nil, bigQueryClient, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: defaultCRTimeRoundingFactor})
+					err := metrics.RefreshMetricsDB(nil, bigQueryClient, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor})
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}
