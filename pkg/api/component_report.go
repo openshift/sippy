@@ -115,6 +115,15 @@ func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client, gcsBuck
 	return getDataFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, apitype.ComponentReportTestVariants{})
 }
 
+func GetJobVariantsFromBigQuery(client *bqcachedclient.Client, gcsBucket string) (apitype.JobVariants, []error) {
+	generator := componentReportGenerator{
+		client:    client,
+		gcsBucket: gcsBucket,
+	}
+
+	return getDataFromCacheOrGenerate[apitype.JobVariants](client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("TestAllVariants~", generator), generator.GenerateJobVariants, apitype.JobVariants{})
+}
+
 func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsBucket string,
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
@@ -213,6 +222,59 @@ func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTe
 		Upgrade:  columns["upgrade"],
 		Variant:  columns["variants"],
 	}, errs
+}
+
+func (c *componentReportGenerator) GenerateJobVariants() (apitype.JobVariants, []error) {
+	errs := []error{}
+	variants := apitype.JobVariants{Variants: map[string][]string{}}
+	queryString := fmt.Sprintf(`SELECT variant_name, ARRAY_AGG(DISTINCT variant_value ORDER BY variant_value) AS variant_values
+					FROM
+						%s.job_variants
+					WHERE
+						variant_value!=""
+					GROUP BY
+						variant_name`, c.client.Dataset)
+	query := c.client.BQ.Query(queryString)
+	it, err := query.Read(context.TODO())
+	if err != nil {
+		log.WithError(err).Errorf("error querying variants from bigquery for %s", queryString)
+		return variants, []error{err}
+	}
+
+	floatVariants := sets.NewString("FromRelease", "FromReleaseMajor", "FromReleaseMinor", "Release", "ReleaseMajor", "ReleaseMinor")
+	for {
+		row := apitype.JobVariant{}
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			wrappedErr := errors.Wrapf(err, "error fetching variant row")
+			log.WithError(err).Error("error fetching variants from bigquery")
+			errs = append(errs, wrappedErr)
+			return variants, errs
+		}
+
+		// Sort all releases in proper orders
+		if floatVariants.Has(row.VariantName) {
+			sort.Slice(row.VariantValues, func(i, j int) bool {
+				iStrings := strings.Split(row.VariantValues[i], ".")
+				jStrings := strings.Split(row.VariantValues[j], ".")
+				for idx, iString := range iStrings {
+					if iValue, err := strconv.ParseInt(iString, 10, 32); err == nil {
+						if jValue, err := strconv.ParseInt(jStrings[idx], 10, 32); err == nil {
+							if iValue != jValue {
+								return iValue < jValue
+							}
+						}
+					}
+				}
+				return false
+			})
+		}
+		variants.Variants[row.VariantName] = row.VariantValues
+	}
+	return variants, nil
 }
 
 func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []error) {

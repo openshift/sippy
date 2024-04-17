@@ -1026,6 +1026,17 @@ type ComponentReportTestVariants struct {
 	Variant  []string `json:"variant,omitempty"`
 }
 
+// JobVariant defines a variant and the possible values
+type JobVariant struct {
+	VariantName   string   `bigquery:"variant_name"`
+	VariantValues []string `bigquery:"variant_values"`
+}
+
+// JobVariants contains all variants supported in the system.
+type JobVariants struct {
+	Variants map[string][]string `json:"variants,omitempty"`
+}
+
 var FailureRiskLevelNone = RiskLevel{Name: "None", Level: 0}
 var FailureRiskLevelLow = RiskLevel{Name: "Low", Level: 1}
 var FailureRiskLevelUnknown = RiskLevel{Name: "Unknown", Level: 25}
