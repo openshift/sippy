@@ -59,30 +59,3 @@ func TestDateTimeNameComparisons(t *testing.T) {
 		})
 	}
 }
-
-func TestParseVariantDataFile(t *testing.T) {
-	clusterDataFile := []byte(`{
-    "Release": "4.16",
-    "FromRelease": "4.15",
-    "Platform": "gcp",
-    "Architecture": "amd64",
-    "Network": "ovn",
-    "Topology": "ha",
-    "NetworkStack": "IPv4",
-    "CloudRegion": "us-central1",
-    "CloudZone": "us-central1-a",
-    "AddonProp1": "foo",
-    "ClusterVersionHistory": [
-        "4.16.0-0.nightly-2024-02-21-020511",
-        "4.15.0-0.nightly-2024-02-20-090411"
-    ],
-    "MasterNodesUpdated": "Y"
-}`)
-	clusterData, err := ParseVariantDataFile(clusterDataFile)
-	assert.NoError(t, err)
-	assert.Equal(t, "4.16", clusterData["Release"])
-	assert.Equal(t, "4.15", clusterData["FromRelease"])
-	assert.Equal(t, "gcp", clusterData["Platform"])
-	assert.Equal(t, "IPv4", clusterData["NetworkStack"])
-	assert.Equal(t, "foo", clusterData["AddonProp1"])
-}

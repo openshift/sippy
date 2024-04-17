@@ -376,62 +376,27 @@ func (pl *ProwLoader) generateTestGridURL(release, jobName string) *url.URL {
 	return &url.URL{}
 }
 
-func GetClusterDataBytes(ctx context.Context, bkt *storage.BucketHandle, path string, matches []string) ([]byte, error) {
+func (pl *ProwLoader) getClusterData(ctx context.Context, path string, matches []string) models.ClusterData {
 	// get the variant cluster data for this job run
-	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
+	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
+	cd := models.ClusterData{}
 
 	// return empty struct to pass along
 	match := findMostRecentDateTimeMatch(matches)
 	if match == "" {
-		return []byte{}, nil
+		return cd
 	}
 
 	bytes, err := gcsJobRun.GetContent(ctx, match)
 	if err != nil {
-		log.WithError(err).Errorf("failed to read cluster-data bytes for: %s", match)
-		return []byte{}, err
-	} else if bytes == nil {
-		log.Warnf("empty cluster-data bytes found for: %s", match)
-		return []byte{}, nil
-	}
-
-	return bytes, nil
-}
-
-func GetClusterData(ctx context.Context, bkt *storage.BucketHandle, path string, matches []string) models.ClusterData {
-	cd := models.ClusterData{}
-	bytes, err := GetClusterDataBytes(ctx, bkt, path, matches)
-	if err != nil {
-		log.WithError(err).Error("failed to get prow job variant data, returning empty cluster data and proceeding")
-		return cd
-	} else if bytes == nil {
-		log.Warnf("empty job variant data file, returning empty cluster data and proceeding")
-		return cd
-	}
-	err = json.Unmarshal(bytes, &cd)
-	if err != nil {
-		log.WithError(err).Error("failed to unmarshal cluster-data bytes, returning empty cluster data")
-		return cd
-	}
-
-	return cd
-}
-
-func ParseVariantDataFile(bytes []byte) (map[string]string, error) {
-	rawJSONMap := make(map[string]interface{})
-	err := json.Unmarshal(bytes, &rawJSONMap)
-	if err != nil {
-		log.WithError(err).Errorf("failed to unmarshal prow cluster data")
-		return map[string]string{}, err
-	}
-	// Convert the raw json map to string->string, discarding anything that doesn't parse to a string.
-	clusterData := map[string]string{}
-	for k, v := range rawJSONMap {
-		if sv, ok := v.(string); ok {
-			clusterData[k] = sv
+		log.WithError(err).Errorf("Failed to get prow job variant data for: %s", match)
+	} else if bytes != nil {
+		err := json.Unmarshal(bytes, &cd)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to unmarshal prow cluster data for: %s", match)
 		}
 	}
-	return clusterData, nil
+	return cd
 }
 
 func findMostRecentDateTimeMatch(names []string) string {
@@ -545,15 +510,27 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 
 	pjLog.Infof("starting processing")
 
+	// this err validation has moved up
+	// and will exit before we save / update the ProwJob
+	// now, any concerns?
+	pjURL, err := url.Parse(pj.Status.URL)
+	if err != nil {
+		return err
+	}
+
+	// Get the path in the gcs bucket, strip out the bucket name and anything before it
+	path := gcsPathStrip.ReplaceAllString(pjURL.Path, "")
+	pjLog.Infof("gcs bucket path: %+v", path)
+	if path == "" || len(path) == len(pjURL.Path) {
+		msg := fmt.Sprintf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
+		pjLog.Warningf(msg)
+		return fmt.Errorf(msg)
+	}
+
 	// find all files here then pass to getClusterData
 	// and prowJobRunTestsFromGCS
 	// add more regexes if we require more
 	// results from scanning for file names
-	path, err := GetGCSPathForProwJobURL(pjLog, pj.Status.URL)
-	if err != nil {
-		pjLog.WithError(err).WithField("prowJobURL", pj.Status.URL).Error("error getting GCS path for prow job URL")
-		return err
-	}
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
 	allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile(), gcs.GetDefaultJunitFile()})
 	var clusterMatches []string
@@ -563,7 +540,7 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 		junitMatches = allMatches[1]
 	}
 
-	clusterData := GetClusterData(ctx, pl.bkt, path, clusterMatches)
+	clusterData := pl.getClusterData(ctx, path, clusterMatches)
 
 	// Lock the whole prow job block to avoid trying to create the pj multiple times concurrently\
 	// (resulting in a DB error)
@@ -656,26 +633,6 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 
 	pjLog.Infof("processing complete")
 	return nil
-}
-
-func GetGCSPathForProwJobURL(pjLog log.FieldLogger, prowJobURL string) (string, error) {
-	// this err validation has moved up
-	// and will exit before we save / update the ProwJob
-	// now, any concerns?
-	pjURL, err := url.Parse(prowJobURL)
-	if err != nil {
-		return "", err
-	}
-
-	// Get the path in the gcs bucket, strip out the bucket name and anything before it
-	path := gcsPathStrip.ReplaceAllString(pjURL.Path, "")
-	pjLog.Debugf("gcs bucket path: %+v", path)
-	if path == "" || len(path) == len(pjURL.Path) {
-		msg := fmt.Sprintf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
-		return "", fmt.Errorf(msg)
-	}
-
-	return path, nil
 }
 
 func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs, pjPath string) []models.ProwPullRequest {
