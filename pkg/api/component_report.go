@@ -533,6 +533,13 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 			Value: c.Arch,
 		})
 	}
+	if c.Capability != "" {
+		queryString += " AND @Capability in UNNEST(capabilities)"
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "Capability",
+			Value: c.Capability,
+		})
+	}
 	if c.Network != "" {
 		queryString += ` AND network = @Network`
 		commonParams = append(commonParams, bigquery.QueryParameter{
