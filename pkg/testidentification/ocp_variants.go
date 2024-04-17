@@ -200,13 +200,13 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string, jobVariants
 	}
 
 	// Platform
-	platform := compareAndSelectVariant(determinePlatform(jobName), jobVariants.Platform, "Platform")
+	platform := compareAndSelectVariant(determinePlatform(jobName, release), jobVariants.Platform, "Platform")
 	if platform != "" {
 		variants = append(variants, platform)
 	}
 
 	// Architectures
-	arch := compareAndSelectVariant(determineArchitecture(jobName), jobVariants.Architecture, "Architecture")
+	arch := compareAndSelectVariant(determineArchitecture(jobName, release), jobVariants.Architecture, "Architecture")
 	if arch != "" {
 		variants = append(variants, arch)
 	}
@@ -279,7 +279,7 @@ func (v openshiftVariants) IdentifyVariants(jobName, release string, jobVariants
 	return variants
 }
 
-func determinePlatform(jobName string) string {
+func determinePlatform(jobName, _ string) string {
 	// Platforms
 	if alibabaRegex.MatchString(jobName) {
 		return "alibaba"
@@ -314,7 +314,7 @@ func determinePlatform(jobName string) string {
 	return ""
 }
 
-func determineArchitecture(jobName string) string {
+func determineArchitecture(jobName, _ string) string {
 	if arm64Regex.MatchString(jobName) {
 		return "arm64"
 	} else if ppc64leRegex.MatchString(jobName) {
