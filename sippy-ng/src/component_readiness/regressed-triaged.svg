@@ -4,33 +4,9 @@
    viewBox="0 0 64 64"
    version="1.1"
    id="svg1290"
-   sodipodi:docname="regressed-triaged.svg"
-   inkscape:version="1.2 (dc2aeda, 2022-05-15)"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
+   xmlns="http://www.w3.org/2000/svg">
   <defs
      id="defs1294" />
-  <sodipodi:namedview
-     id="namedview1292"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
-     showgrid="false"
-     inkscape:zoom="13.921875"
-     inkscape:cx="32.071829"
-     inkscape:cy="32.071829"
-     inkscape:window-width="1390"
-     inkscape:window-height="1041"
-     inkscape:window-x="0"
-     inkscape:window-y="25"
-     inkscape:window-maximized="0"
-     inkscape:current-layer="svg1290" />
   <path
      d="M-.03-.03H64V64H-.03z"
      style="fill:#e31017;fill-opacity:1"

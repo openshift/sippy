@@ -15,6 +15,8 @@ import heart from './improved.svg'
 import React from 'react'
 import red from './regressed.svg'
 import red_3d from './extreme.svg'
+import red_3d_triaged from './extreme-triaged.svg'
+import red_triaged from './regressed-triaged.svg'
 
 // Set to true for debug mode
 export const debugMode = false
@@ -168,11 +170,32 @@ export function getStatusAndIcon(status, grayFactor = 0) {
       />
     )
   } else if (status == -2) {
+    statusStr = statusStr + 'SignificantTriagedRegression detected'
+    icon = (
+      <img
+        width="15px"
+        height="15px"
+        src={red_triaged}
+        alt="SignificantTriagedRegression"
+      />
+    )
+  } else if (status == -3) {
+    statusStr =
+      statusStr + 'ExtremeTriagedRegression detected ( >15% pass rate change)'
+    icon = (
+      <img
+        width="15px"
+        height="15px"
+        src={red_3d_triaged}
+        alt="ExtremeTriagedRegression >15%"
+      />
+    )
+  } else if (status == -4) {
     statusStr = statusStr + 'SignificantRegression detected'
     icon = (
       <img width="15px" height="15px" src={red} alt="SignificantRegression" />
     )
-  } else if (status <= -3) {
+  } else if (status <= -5) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
     icon = (

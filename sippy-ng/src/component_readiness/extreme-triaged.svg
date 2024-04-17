@@ -4,33 +4,9 @@
    viewBox="0 0 64 64"
    version="1.1"
    id="svg697"
-   sodipodi:docname="extreme-triaged.svg"
-   inkscape:version="1.2 (dc2aeda, 2022-05-15)"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:svg="http://www.w3.org/2000/svg">
+   xmlns="http://www.w3.org/2000/svg">
   <defs
      id="defs701" />
-  <sodipodi:namedview
-     id="namedview699"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
-     showgrid="false"
-     inkscape:zoom="13.484375"
-     inkscape:cx="32"
-     inkscape:cy="32"
-     inkscape:window-width="1390"
-     inkscape:window-height="1041"
-     inkscape:window-x="0"
-     inkscape:window-y="25"
-     inkscape:window-maximized="0"
-     inkscape:current-layer="svg697" />
   <path
      d="M0 0h63.91v63.91H0z"
      style="fill:#e31017"

@@ -1202,9 +1202,9 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				assert.Equal(t, tc.expectedSampleJobRunLen[jobName], len(report.JobStats[i].SampleJobRunStats), "expected sample job run counts %+v, got %+v", tc.expectedSampleJobRunLen[jobName], len(report.JobStats[i].SampleJobRunStats))
 				assert.Equal(t, tc.expectedBaseJobRunLen[jobName], len(report.JobStats[i].BaseJobRunStats), "expected base job run counts %+v, got %+v", tc.expectedBaseJobRunLen[jobName], len(report.JobStats[i].BaseJobRunStats))
 			}
-			//assert.Equal(t, tc.expectedReport.ReportStatus, report.ReportStatus, "expected report %+v, got %+v", tc.expectedReport, report)
-			//output, _ := json.MarshalIndent(report, "", "    ")
-			//fmt.Printf("-----report \n%+v\n", string(output))
+			// assert.Equal(t, tc.expectedReport.ReportStatus, report.ReportStatus, "expected report %+v, got %+v", tc.expectedReport, report)
+			// output, _ := json.MarshalIndent(report, "", "    ")
+			// fmt.Printf("-----report \n%+v\n", string(output))
 		})
 	}
 }
@@ -1246,6 +1246,117 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 			}
 
 			assert.Equalf(t, tt.want, c.normalizeProwJobName(tt.jobName), "normalizeProwJobName(%v)", tt.jobName)
+		})
+	}
+}
+
+func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
+	tests := []struct {
+		name                   string
+		sampleTotal            int
+		sampleSuccess          int
+		sampleFlake            int
+		baseTotal              int
+		baseSuccess            int
+		baseFlake              int
+		numberOfIgnoredSamples int
+		expectedStatus         apitype.ComponentReportStatus
+		expectedFischers       float64
+	}{
+		{
+			name:                   "triaged still regular regression",
+			sampleTotal:            16,
+			sampleSuccess:          13,
+			sampleFlake:            0,
+			baseTotal:              15,
+			baseSuccess:            14,
+			baseFlake:              1,
+			numberOfIgnoredSamples: 2,
+			expectedStatus:         -4,
+			expectedFischers:       0.4827586206896551,
+		},
+		{
+			name:                   "triaged regular regression",
+			sampleTotal:            15,
+			sampleSuccess:          13,
+			sampleFlake:            0,
+			baseTotal:              15,
+			baseSuccess:            14,
+			baseFlake:              1,
+			numberOfIgnoredSamples: 2,
+			expectedStatus:         -2,
+			expectedFischers:       1,
+		},
+		{
+			name:                   "regular regression",
+			sampleTotal:            15,
+			sampleSuccess:          13,
+			sampleFlake:            0,
+			baseTotal:              15,
+			baseSuccess:            14,
+			baseFlake:              1,
+			numberOfIgnoredSamples: 0,
+			expectedStatus:         -4,
+			expectedFischers:       0.2413793103448262,
+		},
+		{
+			name:                   "zero success",
+			sampleTotal:            15,
+			sampleSuccess:          0,
+			sampleFlake:            0,
+			baseTotal:              15,
+			baseSuccess:            14,
+			baseFlake:              1,
+			numberOfIgnoredSamples: 0,
+			expectedStatus:         -5,
+			expectedFischers:       6.446725037893782e-09,
+		},
+		{
+			name:                   "triaged, zero success",
+			sampleTotal:            15,
+			sampleSuccess:          0,
+			sampleFlake:            0,
+			baseTotal:              15,
+			baseSuccess:            14,
+			baseFlake:              1,
+			numberOfIgnoredSamples: 15,
+			expectedStatus:         -3,
+			expectedFischers:       0,
+		},
+
+		{
+			name:                   "triaged extreme, fixed",
+			sampleTotal:            15,
+			sampleSuccess:          5,
+			sampleFlake:            0,
+			baseTotal:              15,
+			baseSuccess:            14,
+			baseFlake:              1,
+			numberOfIgnoredSamples: 10,
+			expectedStatus:         -3,
+			expectedFischers:       1,
+		},
+
+		{
+			name:                   "triaged, still extreme",
+			sampleTotal:            15,
+			sampleSuccess:          5,
+			sampleFlake:            0,
+			baseTotal:              15,
+			baseSuccess:            14,
+			baseFlake:              1,
+			numberOfIgnoredSamples: 9,
+			expectedStatus:         -5,
+			expectedFischers:       0.285714285714284,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &componentReportGenerator{}
+
+			status, fischers := c.assessComponentStatus(tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, tt.numberOfIgnoredSamples)
+			assert.Equalf(t, tt.expectedStatus, status, "assessComponentStatus expected status not equal")
+			assert.Equalf(t, tt.expectedFischers, fischers, "assessComponentStatus expected fischers value not equal")
 		})
 	}
 }

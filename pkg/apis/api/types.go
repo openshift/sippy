@@ -997,9 +997,13 @@ type ComponentJobRunTestReportStatus struct {
 
 const (
 	// ExtremeRegression shows regression with >15% pass rate change
-	ExtremeRegression ComponentReportStatus = -3
+	ExtremeRegression ComponentReportStatus = -5
 	// SignificantRegression shows significant regression
-	SignificantRegression ComponentReportStatus = -2
+	SignificantRegression ComponentReportStatus = -4
+	// ExtremeTriagedRegression shows an ExtremeRegression that clears when Triaged incidents are factored in
+	ExtremeTriagedRegression ComponentReportStatus = -3
+	// SignificantTriagedRegression shows a SignificantRegression that clears when Triaged incidents are factored in
+	SignificantTriagedRegression ComponentReportStatus = -2
 	// MissingSample indicates sample data missing
 	MissingSample ComponentReportStatus = -1
 	// NotSignificant indicates no significant difference
