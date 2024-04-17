@@ -800,7 +800,6 @@ func parseComponentReportRequest(views []apitype.ComponentReportView, req *http.
 			err = pErr
 			return
 		}
-		// TODO: set params from view
 		variantOption = view.VariantOptions
 		excludeOption = view.ExcludeOptions
 		advancedOption = view.AdvancedOptions

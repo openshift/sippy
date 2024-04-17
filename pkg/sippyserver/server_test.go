@@ -310,6 +310,21 @@ func TestParseComponentReportRequest(t *testing.T) {
 
 			errMessage: "params cannot be combined with view",
 		},
+		{
+			name: "view does not exist",
+			queryParams: map[string]string{
+				"baseEndTime":     "2024-02-28T23:59:59Z",
+				"baseRelease":     "4.15",
+				"baseStartTime":   "2024-02-01T00:00:00Z",
+				"sampleEndTime":   "2024-04-11T23:59:59Z",
+				"sampleRelease":   "4.16",
+				"sampleStartTime": "2024-04-04T00:00:05Z",
+				"view":            "no such view",
+			},
+
+			errMessage: "unknown view",
+		},
+		// TODO: omit base release, assume based on sample release and whether or not it's GA
 	}
 
 	for _, tc := range tests {
@@ -327,7 +342,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 
 			if tc.errMessage != "" {
 				require.Error(t, err)
-				require.True(t, strings.Contains(err.Error(), tc.errMessage))
+				require.Contains(t, err.Error(), tc.errMessage)
 			} else {
 				assert.Equal(t, tc.baseRelease, baseRelease)
 				assert.Equal(t, tc.sampleRelease, sampleRelease)
