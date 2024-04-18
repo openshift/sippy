@@ -472,6 +472,21 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 }
 
 func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, []bigquery.QueryParameter) {
+
+	variants := []string{"Network", "Upgrade", "Architecture", "Platform"}
+	selectVariants := ""
+	joinVariants := ""
+	groupByVariants := ""
+	for _, v := range variants {
+		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+			c.client.Dataset, v, v, v, v)
+		selectVariants += fmt.Sprintf("jv_%s.variant_value AS Variant%s,\n", v, v)
+		groupByVariants += fmt.Sprintf("Variant%s,\n", v)
+	}
+	log.Infof("joinVariants:\n%s", joinVariants)
+	log.Infof("selectVariants:\n%s", selectVariants)
+	log.Infof("groupByVariants:\n%s", groupByVariants)
+
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
 						FROM %s.component_mapping cm
@@ -482,10 +497,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
 						cm.id as test_id,
-						network,
-						upgrade,
-						arch,
-						platform,
+%s
 						flat_variants,
 						ANY_VALUE(variants) AS variants,
 						COUNT(cm.id) AS total_count,
@@ -496,16 +508,17 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id
 					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
+`,
+		c.client.Dataset, c.client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
 
-	groupString := `
+	queryString += joinVariants
+
+	groupString := fmt.Sprintf(`
 					GROUP BY
-						network,
-						upgrade,
-						arch,
-						platform,
+%s
 						flat_variants,
-						cm.id `
+						cm.id `, groupByVariants)
 
 	queryString += `
 					WHERE cm.staff_approved_obsolete = false AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)`
