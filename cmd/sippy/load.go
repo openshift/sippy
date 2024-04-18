@@ -2,10 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/variantregistry"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -43,6 +47,7 @@ type LoadFlags struct {
 	GithubCommenterFlags *flags.GithubCommenterFlags
 	GoogleCloudFlags     *flags.GoogleCloudFlags
 	ModeFlags            *flags.ModeFlags
+	JobVariantsInputFile string
 }
 
 func NewLoadFlags() *LoadFlags {
@@ -66,9 +71,10 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
 	fs.BoolVar(&f.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
-	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping"}, "Which data sources to use for data loading")
+	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "job-variants"}, "Which data sources to use for data loading")
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
+	fs.StringVar(&f.JobVariantsInputFile, "job-variants-input-file", "expected-job-variants.json", "JSON input file for the job-variants loader")
 }
 
 func NewLoadCommand() *cobra.Command {
@@ -85,18 +91,18 @@ func NewLoadCommand() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*4)
 			defer cancel()
 
-			// Get a DB client
-			dbc, err := f.DBFlags.GetDBClient()
-			if err != nil {
-				return errors.WithMessage(err, "could not get db client: %+v")
-			}
-
 			start := time.Now()
 
-			if f.InitDatabase {
+			// Get a DB client if possible. Some loaders do not need one, so this dbErr may end up non-nil,
+			// each loader block should check if it needs the db connection.
+			var dbErr error
+			dbc, err := f.DBFlags.GetDBClient()
+			if err != nil {
+				dbErr = errors.WithMessage(err, "could not get db client: %+v")
+			} else if f.InitDatabase {
 				t := f.DBFlags.GetPinnedTime()
 				if err := dbc.UpdateSchema(t); err != nil {
-					return errors.WithMessage(err, "could not migrate db")
+					dbErr = errors.WithMessage(err, "could not migrate db")
 				}
 			}
 
@@ -108,11 +114,17 @@ func NewLoadCommand() *cobra.Command {
 
 			for _, l := range f.Loaders {
 				if l == "releases" {
+					if dbErr != nil {
+						return dbErr
+					}
 					loaders = append(loaders, releaseloader.New(dbc, f.Releases, f.Architectures))
 				}
 
 				// Prow Loader
 				if l == "prow" {
+					if dbErr != nil {
+						return dbErr
+					}
 					prowLoader, err := f.prowLoader(ctx, dbc, config)
 					if err != nil {
 						return err
@@ -122,11 +134,17 @@ func NewLoadCommand() *cobra.Command {
 
 				// JIRA Loader
 				if l == "jira" {
+					if dbErr != nil {
+						return dbErr
+					}
 					loaders = append(loaders, jiraloader.New(dbc))
 				}
 
-				// Load maping for jira components to tests
+				// Load mapping for jira components to tests
 				if l == "test-mapping" {
+					if dbErr != nil {
+						return dbErr
+					}
 					cl, err := testownershiploader.New(ctx,
 						dbc,
 						f.GoogleCloudFlags.ServiceAccountCredentialFile,
@@ -140,6 +158,9 @@ func NewLoadCommand() *cobra.Command {
 
 				// Bug Loader
 				if l == "bugs" {
+					if dbErr != nil {
+						return dbErr
+					}
 					// Get a bigquery client
 					bqc, err := f.BigQueryFlags.GetBigQueryClient(context.Background(), nil, f.GoogleCloudFlags.ServiceAccountCredentialFile)
 					if err != nil {
@@ -147,6 +168,16 @@ func NewLoadCommand() *cobra.Command {
 					}
 					loaders = append(loaders, bugloader.New(dbc, bqc))
 				}
+
+				// Job Variants Loader
+				if l == "job-variants" {
+					variantsLoader, err := f.jobVariantsLoader(ctx)
+					if err != nil {
+						return err
+					}
+					loaders = append(loaders, variantsLoader)
+				}
+
 			}
 
 			// Run loaders with the metrics wrapper
@@ -177,6 +208,42 @@ func NewLoadCommand() *cobra.Command {
 	f.BindFlags(cmd.Flags())
 
 	return cmd
+}
+
+func (f *LoadFlags) jobVariantsLoader(ctx context.Context) (dataloader.DataLoader, error) {
+	bigQueryClient, err := bigquery.NewClient(ctx, f.BigQueryFlags.BigQueryProject,
+		option.WithCredentialsFile(f.GoogleCloudFlags.ServiceAccountCredentialFile))
+	if err != nil {
+		log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
+		return nil, err
+	}
+
+	inputFile := f.JobVariantsInputFile
+
+	file, err := os.Open(inputFile)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	// Read the contents of the file
+	jsonData, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	// Unmarshal JSON data into a map
+	var expectedVariants map[string]map[string]string
+	err = json.Unmarshal(jsonData, &expectedVariants)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Infof("Loaded expected job variant data from: %s", inputFile)
+	syncer := variantregistry.NewJobVariantsLoader(bigQueryClient, f.BigQueryFlags.BigQueryProject,
+		f.BigQueryFlags.BigQueryDataset, "job_variants", expectedVariants)
+	return syncer, nil
+
 }
 
 func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.SippyConfig) (dataloader.DataLoader, error) {

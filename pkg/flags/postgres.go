@@ -122,7 +122,7 @@ func (f *PostgresFlags) BindFlags(fs *pflag.FlagSet) {
 func (f *PostgresFlags) GetDBClient() (*db.DB, error) {
 	dbc, err := db.New(f.DSN, logger.LogLevel(f.LogLevel))
 	if err != nil {
-		log.WithError(err).Fatal("could not connect to db")
+		log.WithError(err).Error("could not connect to db")
 		return nil, err
 	}
 
