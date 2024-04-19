@@ -253,7 +253,23 @@ export default function ProwJobRun(props) {
   // handleSegmentClicked is called whenever an individual interval in the chart is clicked.
   // Used to display details on the interval and locator in a way that a user can copy if needed.
   function handleSegmentClicked(segment) {
-    console.log(JSON.stringify(segment, null, 2))
+    // Copy label to clipboard
+    navigator.clipboard.writeText(segment.labelVal)
+  }
+
+  function segmentTooltipFunc(d) {
+    return (
+      '<span style="max-inline-size: min-content; display: inline-block;">' +
+      '<strong>' +
+      d.labelVal +
+      '</strong><br/>' +
+      '<strong>From: </strong>' +
+      new Date(d.timeRange[0]).toUTCString() +
+      '<br>' +
+      '<strong>To: </strong>' +
+      new Date(d.timeRange[1]).toUTCString() +
+      '</span>'
+    )
   }
 
   return (
@@ -304,6 +320,7 @@ export default function ProwJobRun(props) {
           data={chartData}
           eventIntervals={filteredIntervals}
           segmentClickedFunc={handleSegmentClicked}
+          segmentTooltipContentFunc={segmentTooltipFunc}
         />
       </div>
     </Fragment>
