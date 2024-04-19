@@ -83,22 +83,47 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 	tokens := strings.Split(fullGCSIntervalFile, "/")
 	baseFile := tokens[len(tokens)-1]
 
+	// Loading full intervals file into memory here briefly, they can be quite large...
 	content, err := gcsJobRun.GetContent(context.TODO(), fullGCSIntervalFile)
 	if err != nil {
 		logger.WithError(err).Errorf("error getting content for file: %s", fullGCSIntervalFile)
 		return nil, err
 	}
 	var newIntervals apitype.EventIntervalList
+	var legacyIntervals apitype.LegacyEventIntervalList
 	if err := json.Unmarshal(content, &newIntervals); err != nil {
-		log.WithError(err).Error("error unmarshaling intervals file")
-		return nil, err
+		log.WithError(err).Error("error unmarshaling intervals file, attempting to parse legacy schema instead")
+		if err := json.Unmarshal(content, &legacyIntervals); err != nil {
+			log.WithError(err).Error("error unmarshaling legacy intervals file, giving up")
+			return nil, err
+		}
+		log.Info("legacy interval files detected, successfully parsed")
 	}
+
+	// If legacy intervals is populated, we failed to parse this file with the new schema, so it must be an older
+	// intervals file. Translate it to look like a new.
+	// Memory use getting even worse in this path through the code but hopefully it won't be around for too long.
+	if len(legacyIntervals.Items) > 0 {
+		newIntervals = apitype.EventIntervalList{Items: make([]apitype.EventInterval, len(legacyIntervals.Items))}
+		for i, li := range legacyIntervals.Items {
+			interval := apitype.EventInterval{
+				Level:             li.Level,
+				Display:           li.Display,
+				Source:            li.Source,
+				StructuredLocator: li.StructuredLocator,
+				StructuredMessage: li.StructuredMessage,
+				From:              li.From,
+				To:                li.To,
+			}
+			newIntervals.Items[i] = interval
+		}
+	}
+
 	for i := range newIntervals.Items {
 		newIntervals.Items[i].Filename = baseFile
 	}
 
-	intervals.Items = append(intervals.Items, newIntervals.Items...)
-	intervals.IntervalFilesAvailable = intervalFilesAvailable
+	newIntervals.IntervalFilesAvailable = intervalFilesAvailable
 
-	return intervals, nil
+	return &newIntervals, nil
 }
