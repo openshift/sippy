@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -218,7 +219,11 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
-	report := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus)
+	report, err := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus)
+	if err != nil {
+		errs = append(errs, err)
+		return apitype.ComponentReport{}, errs
+	}
 	report.GeneratedAt = componentReportTestStatus.GeneratedAt
 	log.Infof("GenerateReport completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
 
@@ -473,20 +478,28 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 
 func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, []bigquery.QueryParameter) {
 
+	// Simulate a list of varaints that were requested, this would be specified in the API request / UI in the real world...
 	variants := []string{"Network", "Upgrade", "Architecture", "Platform"}
+
+	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
+	// Variants will be returned as columns with names like: variant_[VariantName]
+	// See fetchTestStatus for where we dynamically handle these columns.
 	selectVariants := ""
 	joinVariants := ""
 	groupByVariants := ""
 	for _, v := range variants {
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
-		selectVariants += fmt.Sprintf("jv_%s.variant_value AS Variant%s,\n", v, v)
-		groupByVariants += fmt.Sprintf("Variant%s,\n", v)
+		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
+		groupByVariants += fmt.Sprintf("variant_%s,\n", v)
 	}
+	// TODO: remove, just for devel
 	log.Infof("joinVariants:\n%s", joinVariants)
 	log.Infof("selectVariants:\n%s", selectVariants)
 	log.Infof("groupByVariants:\n%s", groupByVariants)
 
+	// WARNING: returning additional columns from this query will require explicit parsing in DeserializeRowToTestStatus
+	// TODO: jira_component and jira_comopnent_id appear to not be used? Could save bigquery costs if we remove them.
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
 						FROM %s.component_mapping cm
@@ -638,7 +651,7 @@ type baseQueryGenerator struct {
 
 func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
 	groupByQuery string,
-	queryParameters []bigquery.QueryParameter) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
+	queryParameters []bigquery.QueryParameter) (map[string]apitype.ComponentTestStatus, []error) {
 	generator := baseQueryGenerator{
 		client: c.client,
 		cacheOption: cache.RequestOptions{
@@ -705,7 +718,7 @@ type sampleQueryGenerator struct {
 func (c *componentReportGenerator) getSampleQueryStatus(
 	commonQuery string,
 	groupByQuery string,
-	queryParameters []bigquery.QueryParameter) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
+	queryParameters []bigquery.QueryParameter) (map[string]apitype.ComponentTestStatus, []error) {
 	generator := sampleQueryGenerator{
 		client:                   c.client,
 		commonQuery:              commonQuery,
@@ -760,7 +773,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (apitype.Componen
 	errs := []error{}
 	queryString, groupString, commonParams := c.getCommonTestStatusQuery()
 
-	var baseStatus, sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus
+	var baseStatus, sampleStatus map[string]apitype.ComponentTestStatus
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -812,7 +825,14 @@ func testToComponentAndCapability(test apitype.ComponentTestIdentification, stat
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the groupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
-func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStatus) ([]apitype.ComponentReportRowIdentification, []apitype.ComponentReportColumnIdentification) {
+func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string, stats apitype.ComponentTestStatus) ([]apitype.ComponentReportRowIdentification, []apitype.ComponentReportColumnIdentification, error) {
+	var test apitype.ComponentTestIdentification
+	// TODO: is this too slow?
+	err := json.Unmarshal([]byte(testIDStr), &test)
+	if err != nil {
+		return []apitype.ComponentReportRowIdentification{}, []apitype.ComponentReportColumnIdentification{}, err
+	}
+
 	component, capabilities := componentAndCapabilityGetter(test, stats)
 	rows := []apitype.ComponentReportRowIdentification{}
 	// First Page with no component requested
@@ -883,12 +903,12 @@ func (c *componentReportGenerator) getRowColumnIdentifications(test apitype.Comp
 		columns = append(columns, column)
 	}
 
-	return rows, columns
+	return rows, columns, nil
 }
 
-func fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, []error) {
+func fetchTestStatus(query *bigquery.Query) (map[string]apitype.ComponentTestStatus, []error) {
 	errs := []error{}
-	status := map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{}
+	status := map[string]apitype.ComponentTestStatus{}
 	log.Infof("Fetching test status with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
 	it, err := query.Read(context.TODO())
@@ -898,9 +918,13 @@ func fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentifica
 		return status, errs
 	}
 
+	schema := it.Schema
+
 	for {
-		testStatus := apitype.ComponentTestStatusRow{}
-		err := it.Next(&testStatus)
+		var row []bigquery.Value
+
+		//testStatus := apitype.ComponentTestStatusRow{}
+		err := it.Next(&row)
 		if err == iterator.Done {
 			break
 		}
@@ -909,27 +933,105 @@ func fetchTestStatus(query *bigquery.Query) (map[apitype.ComponentTestIdentifica
 			errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
 			continue
 		}
-		testIdentification := apitype.ComponentTestIdentification{
-			TestID:       testStatus.TestID,
-			Network:      testStatus.Network,
-			Upgrade:      testStatus.Upgrade,
-			Arch:         testStatus.Arch,
-			Platform:     testStatus.Platform,
-			FlatVariants: testStatus.FlatVariants,
+		testIDStr, testStatus, err := DeserializeRowToTestStatus(row, schema)
+		if err != nil {
+			err2 := errors.Wrap(err, "error deserializing row from bigquery")
+			log.Error(err2.Error())
+			errs = append(errs, err2)
+			continue
 		}
-		status[testIdentification] = apitype.ComponentTestStatus{
-			TestName:     testStatus.TestName,
-			TestSuite:    testStatus.TestSuite,
-			Component:    testStatus.Component,
-			Capabilities: testStatus.Capabilities,
-			Variants:     testStatus.Variants,
-			TotalCount:   testStatus.TotalCount,
-			FlakeCount:   testStatus.FlakeCount,
-			SuccessCount: testStatus.SuccessCount,
-		}
-		log.Tracef("testStatus is %+v", testStatus)
+
+		status[testIDStr] = testStatus
 	}
 	return status, errs
+}
+
+// DeserializeRowToTestStatus deserializes a single row into a testID string and matching status.
+// This is where we handle the dynamic variant_ columns, parsing these into a map on the test identification.
+// Other fixed columns we expect are serialized directly to their appropriate columns.
+func DeserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (string, apitype.ComponentTestStatus, error) {
+	if len(row) != len(schema) {
+		return "", apitype.ComponentTestStatus{}, fmt.Errorf("number of values in row doesn't match schema length")
+	}
+
+	// Expect:
+	//
+	// INFO[2024-04-22T13:31:23.123-03:00] test_id = openshift-tests:75895eeec137789cab3570a252306058
+	// INFO[2024-04-22T13:31:23.123-03:00] variants = [standard]
+	// INFO[2024-04-22T13:31:23.123-03:00] variant_Network = ovn
+	// INFO[2024-04-22T13:31:23.123-03:00] variant_Upgrade = none
+	// INFO[2024-04-22T13:31:23.123-03:00] variant_Architecture = amd64
+	// INFO[2024-04-22T13:31:23.123-03:00] variant_Platform = gcp
+	// INFO[2024-04-22T13:31:23.123-03:00] flat_variants = fips,serial
+	// INFO[2024-04-22T13:31:23.123-03:00] variants = [fips serial]
+	// INFO[2024-04-22T13:31:23.123-03:00] total_count = %!s(int64=1)
+	// INFO[2024-04-22T13:31:23.123-03:00] success_count = %!s(int64=1)
+	// INFO[2024-04-22T13:31:23.123-03:00] flake_count = %!s(int64=0)
+	// INFO[2024-04-22T13:31:23.124-03:00] component = Cluster Version Operator
+	// INFO[2024-04-22T13:31:23.124-03:00] capabilities = [Other]
+	// INFO[2024-04-22T13:31:23.124-03:00] jira_component = Cluster Version Operator
+	// INFO[2024-04-22T13:31:23.124-03:00] jira_component_id = 12367602000000000/1000000000
+	// INFO[2024-04-22T13:31:23.124-03:00] test_name = [sig-storage] [Serial] Volume metrics Ephemeral should create volume metrics in Volume Manager [Suite:openshift/conformance/serial] [Suite:k8s]
+	// INFO[2024-04-22T13:31:23.124-03:00] test_suite = openshift-tests
+	tid := apitype.ComponentTestIdentification{
+		Variants: map[string]string{},
+	}
+	cts := apitype.ComponentTestStatus{}
+	for i, fieldSchema := range schema {
+		col := fieldSchema.Name
+		// Some rows we know what to expect, others are dynamic (variants) and go into the map.
+		switch {
+		case col == "test_id":
+			tid.TestID = row[i].(string)
+		case col == "test_name":
+			cts.TestName = row[i].(string)
+		case col == "test_suite":
+			cts.TestSuite = row[i].(string)
+		case col == "total_count":
+			cts.TotalCount = row[i].(int)
+		case col == "success_count":
+			cts.SuccessCount = row[i].(int)
+		case col == "flake_count":
+			cts.FlakeCount = row[i].(int)
+		case col == "component":
+			cts.Component = row[i].(string)
+		case col == "capabilities":
+			cts.Capabilities = row[i].([]string)
+		case strings.HasPrefix(col, "variant_"):
+			variantName := col[len("variant_"):]
+			tid.Variants[variantName] = row[i].(string)
+		default:
+			log.Warn("ignoring column in query: %s", col)
+		}
+
+		/*
+				TestID:       testStatus.TestID,
+				Network:      testStatus.Network,
+				Upgrade:      testStatus.Upgrade,
+				Arch:         testStatus.Arch,
+				Platform:     testStatus.Platform,
+				FlatVariants: testStatus.FlatVariants,
+			}
+			componentTestStatus := apitype.ComponentTestStatus{
+				TestName:     testStatus.TestName,
+				TestSuite:    testStatus.TestSuite,
+				Component:    testStatus.Component,
+				Capabilities: testStatus.Capabilities,
+				Variants:     testStatus.Variants,
+				TotalCount:   testStatus.TotalCount,
+				FlakeCount:   testStatus.FlakeCount,
+				SuccessCount: testStatus.SuccessCount,
+			}
+			log.Tracef("testStatus is %+v", componentTestStatus)
+			rowData[fieldSchema.Name] = row[i]
+			log.Infof("%s = %s", fieldSchema.Name, row[i])
+		*/
+	}
+
+	// Create a string representation of the test ID so we can use it as a map key throughout:
+	// TODO: json better? reversible if we do...
+	testIDBytes, err := json.Marshal(tid)
+	return string(testIDBytes), cts, err
 }
 
 func getMajor(in string) (int, error) {
@@ -1352,8 +1454,8 @@ func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentR
 	return impactedRuns
 }
 
-func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
-	sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus) apitype.ComponentReport {
+func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[string]apitype.ComponentTestStatus,
+	sampleStatus map[string]apitype.ComponentTestStatus) (apitype.ComponentReport, error) {
 	report := apitype.ComponentReport{
 		Rows: []apitype.ComponentReportRow{},
 	}
@@ -1365,7 +1467,10 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	// testID is used to identify the most regressed test. With this, we can
 	// create a shortcut link from any page to go straight to the most regressed test page.
 	for testIdentification, baseStats := range baseStatus {
-		testID := buildTestID(baseStats, testIdentification)
+		testID, err := buildTestID(baseStats, testIdentification)
+		if err != nil {
+			return apitype.ComponentReport{}, err
+		}
 
 		var reportStatus apitype.ComponentReportStatus
 		sampleStats, ok := sampleStatus[testIdentification]
@@ -1378,13 +1483,19 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		}
 		delete(sampleStatus, testIdentification)
 
-		rowIdentifications, columnIdentifications := c.getRowColumnIdentifications(testIdentification, baseStats)
+		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testIdentification, baseStats)
+		if err != nil {
+			return apitype.ComponentReport{}, err
+		}
 		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, aggregatedStatus, allRows, allColumns)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
-		testID := buildTestID(sampleStats, testIdentification)
-		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
+		testID, err := buildTestID(sampleStats, testIdentification)
+		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testIdentification, sampleStats)
+		if err != nil {
+			return apitype.ComponentReport{}, err
+		}
 		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
 	}
 
@@ -1468,10 +1579,17 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 	}
 
 	report.Rows = append(regressionRows, goodRows...)
-	return report
+	return report, nil
 }
 
-func buildTestID(stats apitype.ComponentTestStatus, testIdentification apitype.ComponentTestIdentification) apitype.ComponentReportTestIdentification {
+func buildTestID(stats apitype.ComponentTestStatus, testIdentificationStr string) (apitype.ComponentReportTestIdentification, error) {
+	// TODO: function needs a rename, there's a lot of references to test ID/identification around.
+	var testIdentification apitype.ComponentTestIdentification
+	// TODO: is this too slow?
+	err := json.Unmarshal([]byte(testIdentificationStr), &testIdentification)
+	if err != nil {
+		return apitype.ComponentReportTestIdentification{}, err
+	}
 	testID := apitype.ComponentReportTestIdentification{
 		ComponentReportRowIdentification: apitype.ComponentReportRowIdentification{
 			Component: stats.Component,
@@ -1491,7 +1609,7 @@ func buildTestID(stats apitype.ComponentTestStatus, testIdentification apitype.C
 	if len(stats.Capabilities) > 0 {
 		testID.Capability = stats.Capabilities[0]
 	}
-	return testID
+	return testID, nil
 }
 
 func getFailureCount(status apitype.ComponentJobRunTestStatusRow) int {
