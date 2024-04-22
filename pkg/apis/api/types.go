@@ -831,11 +831,17 @@ type ComponentTestStatus struct {
 }
 
 type ComponentReportTestStatus struct {
-	BaseStatus   map[ComponentTestIdentification]ComponentTestStatus `json:"base_status"`
-	SampleStatus map[ComponentTestIdentification]ComponentTestStatus `json:"sample_status"`
-	GeneratedAt  *time.Time                                          `json:"generated_at"`
+	// BaseStatus represents the stable basis for the comparison. Maps ComponentTestIdentification serialized as a string, to test status.
+	BaseStatus map[string]ComponentTestStatus `json:"base_status"`
+
+	// SampleSatus represents the sample for the comparison. Maps ComponentTestIdentification serialized as a string, to test status.
+	SampleStatus map[string]ComponentTestStatus `json:"sample_status"`
+	GeneratedAt  *time.Time                     `json:"generated_at"`
 }
 
+// ComponentTestIdentification TODO: we need to get Network/Upgrade/Arch/Platform/FlatVariants off this struct as the actual variants will be dynamic.
+// However making it a map will likely break anything using this struct as a map key.
+// We may need to serialize it to a predictable string? Serialize as JSON string perhaps? Will fields be predictably ordered? Seems like go maps are always alphabetical.
 type ComponentTestIdentification struct {
 	TestID       string `json:"test_id"`
 	Network      string `json:"network"`
@@ -843,9 +849,13 @@ type ComponentTestIdentification struct {
 	Arch         string `json:"arch"`
 	Platform     string `json:"platform"`
 	FlatVariants string `json:"flat_variants"`
+
+	// Proposed
+	Variants map[string]string `json:"variants"`
+	// Then serialize to a string for use as a map key?
 }
 
-// implement encoding.TextMarshaler for json map key marshalling support
+// MarshalText implements encoding.TextMarshaler for json map key marshalling support
 func (s ComponentTestIdentification) MarshalText() (text []byte, err error) {
 	type t ComponentTestIdentification
 	return json.Marshal(t(s))
