@@ -850,15 +850,14 @@ type ComponentTestIdentification struct {
 	Platform     string `json:"platform"`
 	FlatVariants string `json:"flat_variants"`
 
-	// Proposed
+	// Proposed, need to serialize to use as map key
 	Variants map[string]string `json:"variants"`
-	// Then serialize to a string for use as a map key?
 }
 
 // MarshalText implements encoding.TextMarshaler for json map key marshalling support
-func (s ComponentTestIdentification) MarshalText() (text []byte, err error) {
+func (s *ComponentTestIdentification) MarshalText() (text []byte, err error) {
 	type t ComponentTestIdentification
-	return json.Marshal(t(s))
+	return json.Marshal((*t)(s))
 }
 
 func (s *ComponentTestIdentification) UnmarshalText(text []byte) error {
@@ -866,6 +865,9 @@ func (s *ComponentTestIdentification) UnmarshalText(text []byte) error {
 	return json.Unmarshal(text, (*t)(s))
 }
 
+// TODO: obsoleted by bigquery dynamic parsing
+
+/*
 type ComponentTestStatusRow struct {
 	TestName     string   `bigquery:"test_name"`
 	TestSuite    string   `bigquery:"test_suite"`
@@ -882,6 +884,8 @@ type ComponentTestStatusRow struct {
 	Component    string   `bigquery:"component"`
 	Capabilities []string `bigquery:"capabilities"`
 }
+
+*/
 
 type ComponentReport struct {
 	Rows        []ComponentReportRow `json:"rows,omitempty"`
@@ -907,12 +911,15 @@ type ComponentReportColumn struct {
 	RegressedTests []ComponentReportTestSummary `json:"regressed_tests,omitempty"`
 }
 
+type ColumnID string
+
 type ComponentReportColumnIdentification struct {
-	Network  string `json:"network,omitempty"`
-	Upgrade  string `json:"upgrade,omitempty"`
-	Arch     string `json:"arch,omitempty"`
-	Platform string `json:"platform,omitempty"`
-	Variant  string `json:"variant,omitempty"`
+	Network  string            `json:"network,omitempty"`
+	Upgrade  string            `json:"upgrade,omitempty"`
+	Arch     string            `json:"arch,omitempty"`
+	Platform string            `json:"platform,omitempty"`
+	Variant  string            `json:"variant,omitempty"`
+	Variants map[string]string `json:"variants"`
 }
 
 type ComponentReportStatus int
