@@ -269,15 +269,15 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	release, fromRelease := extractReleases(jobName)
 	variants[VariantRelease] = release
 	variants[VariantFromRelease] = fromRelease
+	releaseMajorMinor := strings.Split(release, ".")
 	if release != "" {
-		majMin := strings.Split(release, ".")
-		variants[VariantReleaseMajor] = majMin[0]
-		variants[VariantReleaseMinor] = majMin[1]
+		variants[VariantReleaseMajor] = releaseMajorMinor[0]
+		variants[VariantReleaseMinor] = releaseMajorMinor[1]
 	}
+	fromReleaseMajorMinor := strings.Split(fromRelease, ".")
 	if fromRelease != "" {
-		majMin := strings.Split(fromRelease, ".")
-		variants[VariantFromReleaseMajor] = majMin[0]
-		variants[VariantFromReleaseMinor] = majMin[1]
+		variants[VariantFromReleaseMajor] = fromReleaseMajorMinor[0]
+		variants[VariantFromReleaseMinor] = fromReleaseMajorMinor[1]
 	}
 
 	determinePlatform(jLog, variants, jobName)
@@ -296,6 +296,9 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	if upgradeRegex.MatchString(jobName) {
 		if upgradeMinorRegex.MatchString(jobName) {
 			variants[VariantUpgrade] = "minor"
+			if isMultiUpgrade(release, fromRelease) {
+				variants[VariantUpgrade] = "multi"
+			}
 		} else {
 			variants[VariantUpgrade] = "micro"
 		}
@@ -381,6 +384,31 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	}
 
 	return variants
+}
+
+// isMultiUpgrade checks if this is a multi-minor upgrade by examining the delta between the release minor
+// and from release minor versions.
+func isMultiUpgrade(release, fromRelease string) bool {
+	if release == "" || fromRelease == "" {
+		return false
+	}
+
+	releaseMajorMinor := strings.Split(release, ".")
+	fromReleaseMajorMinor := strings.Split(fromRelease, ".")
+
+	releaseMinor, err := strconv.Atoi(releaseMajorMinor[1])
+	if err != nil {
+		return false
+	}
+	fromReleaseMinor, err := strconv.Atoi(fromReleaseMajorMinor[1])
+	if err != nil {
+		return false
+	}
+	// If release minor minus from release minor is greater than 1, this is a multi-release upgrade job:
+	if releaseMinor-fromReleaseMinor > 1 {
+		return true
+	}
+	return false
 }
 
 func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobName string) {

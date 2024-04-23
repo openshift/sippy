@@ -298,7 +298,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantTopology:         "ha",
 				VariantSecurityMode:     "default",
 				VariantSuite:            "unknown",
-				VariantUpgrade:          "minor",
+				VariantUpgrade:          "multi",
 			},
 		},
 		{
@@ -323,7 +323,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantTopology:         "ha",
 				VariantSecurityMode:     "default",
 				VariantSuite:            "unknown",
-				VariantUpgrade:          "minor",
+				VariantUpgrade:          "multi",
 			},
 		},
 		{
