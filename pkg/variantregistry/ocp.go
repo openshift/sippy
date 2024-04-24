@@ -191,7 +191,7 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 }
 
 var (
-	aggregatedRegex = regexp.MustCompile(`(?i)aggregator-`)
+	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
 	// We're not sure what these aggregator jobs are but they exist as of right now:
 	aggregatorRegex = regexp.MustCompile(`(?i)aggregator-`)
 	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
