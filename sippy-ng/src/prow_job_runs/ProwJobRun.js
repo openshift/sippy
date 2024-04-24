@@ -253,7 +253,23 @@ export default function ProwJobRun(props) {
   // handleSegmentClicked is called whenever an individual interval in the chart is clicked.
   // Used to display details on the interval and locator in a way that a user can copy if needed.
   function handleSegmentClicked(segment) {
-    console.log(JSON.stringify(segment, null, 2))
+    // Copy label to clipboard
+    navigator.clipboard.writeText(segment.labelVal)
+  }
+
+  function segmentTooltipFunc(d) {
+    return (
+      '<span style="max-inline-size: min-content; display: inline-block;">' +
+      '<strong>' +
+      d.labelVal +
+      '</strong><br/>' +
+      '<strong>From: </strong>' +
+      new Date(d.timeRange[0]).toUTCString() +
+      '<br>' +
+      '<strong>To: </strong>' +
+      new Date(d.timeRange[1]).toUTCString() +
+      '</span>'
+    )
   }
 
   return (
@@ -304,6 +320,7 @@ export default function ProwJobRun(props) {
           data={chartData}
           eventIntervals={filteredIntervals}
           segmentClickedFunc={handleSegmentClicked}
+          segmentTooltipContentFunc={segmentTooltipFunc}
         />
       </div>
     </Fragment>
@@ -409,7 +426,7 @@ function mutateIntervals(eventIntervals) {
     // Calculate the string representation of the message (tooltip) and locator once on load:
     eventInterval.displayMessage = defaultToolTip(eventInterval)
     eventInterval.displayLocator = buildLocatorDisplayString(
-      eventInterval.tempStructuredLocator
+      eventInterval.locator
     )
   })
 }
@@ -557,100 +574,97 @@ function groupIntervals(filteredIntervals) {
 
 function isOperatorAvailable(eventInterval) {
   return (
-    eventInterval.tempStructuredLocator.type === 'ClusterOperator' &&
-    eventInterval.tempStructuredMessage.annotations['condition'] ===
-      'Available' &&
-    eventInterval.tempStructuredMessage.annotations['status'] === 'False'
+    eventInterval.locator.type === 'ClusterOperator' &&
+    eventInterval.message.annotations['condition'] === 'Available' &&
+    eventInterval.message.annotations['status'] === 'False'
   )
 }
 
 function isOperatorDegraded(eventInterval) {
   return (
-    eventInterval.tempStructuredLocator.type === 'ClusterOperator' &&
-    eventInterval.tempStructuredMessage.annotations['condition'] ===
-      'Degraded' &&
-    eventInterval.tempStructuredMessage.annotations['status'] === 'True'
+    eventInterval.locator.type === 'ClusterOperator' &&
+    eventInterval.message.annotations['condition'] === 'Degraded' &&
+    eventInterval.message.annotations['status'] === 'True'
   )
 }
 
 function isOperatorProgressing(eventInterval) {
   return (
-    eventInterval.tempStructuredLocator.type === 'ClusterOperator' &&
-    eventInterval.tempStructuredMessage.annotations['condition'] ===
-      'Progressing' &&
-    eventInterval.tempStructuredMessage.annotations['status'] === 'True'
+    eventInterval.locator.type === 'ClusterOperator' &&
+    eventInterval.message.annotations['condition'] === 'Progressing' &&
+    eventInterval.message.annotations['status'] === 'True'
   )
 }
 
 // When an interval in the openshift-etcd namespace had a reason of LeaderFound, LeaderLost,
-// LeaderElected, or LeaderMissing, tempSource was set to 'EtcdLeadership'.
+// LeaderElected, or LeaderMissing, source was set to 'EtcdLeadership'.
 function isEtcdLeadership(eventInterval) {
-  return eventInterval.tempSource === 'EtcdLeadership'
+  return eventInterval.source === 'EtcdLeadership'
 }
 
 function isPodLog(eventInterval) {
-  if (eventInterval.tempSource === 'PodLog') {
+  if (eventInterval.source === 'PodLog') {
     return true
   }
-  return eventInterval.tempSource === 'EtcdLog'
+  return eventInterval.source === 'EtcdLog'
 }
 
 function isInterestingOrPathological(eventInterval) {
   return (
-    eventInterval.tempSource === 'KubeEvent' &&
-    eventInterval.tempStructuredMessage.annotations['pathological'] === 'true'
+    eventInterval.source === 'KubeEvent' &&
+    eventInterval.message.annotations['pathological'] === 'true'
   )
 }
 
 function isPod(eventInterval) {
-  return eventInterval.tempSource === 'PodState'
+  return eventInterval.source === 'PodState'
 }
 
 function isPodLifecycle(eventInterval) {
   return (
-    eventInterval.tempSource === 'PodState' &&
-    (eventInterval.tempStructuredMessage.reason === 'Created' ||
-      eventInterval.tempStructuredMessage.reason === 'Scheduled' ||
-      eventInterval.tempStructuredMessage.reason === 'GracefulDelete')
+    eventInterval.source === 'PodState' &&
+    (eventInterval.message.reason === 'Created' ||
+      eventInterval.message.reason === 'Scheduled' ||
+      eventInterval.message.reason === 'GracefulDelete')
   )
 }
 
 function isContainerLifecycle(eventInterval) {
   return (
-    eventInterval.tempSource === 'PodState' &&
-    (eventInterval.tempStructuredMessage.reason === 'ContainerExit' ||
-      eventInterval.tempStructuredMessage.reason === 'ContainerStart' ||
-      eventInterval.tempStructuredMessage.reason === 'ContainerWait')
+    eventInterval.source === 'PodState' &&
+    (eventInterval.message.reason === 'ContainerExit' ||
+      eventInterval.message.reason === 'ContainerStart' ||
+      eventInterval.message.reason === 'ContainerWait')
   )
 }
 
 function isContainerReadiness(eventInterval) {
   return (
-    eventInterval.tempSource === 'PodState' &&
-    (eventInterval.tempStructuredMessage.reason === 'Ready' ||
-      eventInterval.tempStructuredMessage.reason === 'NotReady')
+    eventInterval.source === 'PodState' &&
+    (eventInterval.message.reason === 'Ready' ||
+      eventInterval.message.reason === 'NotReady')
   )
 }
 
 function isKubeletReadinessCheck(eventInterval) {
   return (
-    eventInterval.tempSource === 'PodState' &&
-    (eventInterval.tempStructuredMessage.reason === 'ReadinessFailed' ||
-      eventInterval.tempStructuredMessage.reason === 'ReadinessErrored')
+    eventInterval.source === 'PodState' &&
+    (eventInterval.message.reason === 'ReadinessFailed' ||
+      eventInterval.message.reason === 'ReadinessErrored')
   )
 }
 
 function isKubeletStartupProbeFailure(eventInterval) {
   return (
-    eventInterval.tempSource === 'PodState' &&
-    eventInterval.tempStructuredMessage.reason === 'StartupProbeFailed'
+    eventInterval.source === 'PodState' &&
+    eventInterval.message.reason === 'StartupProbeFailed'
   )
 }
 
 function isE2EFailed(eventInterval) {
   if (
-    eventInterval.tempSource === 'E2ETest' &&
-    eventInterval.tempStructuredMessage.annotations['status'] === 'Failed'
+    eventInterval.source === 'E2ETest' &&
+    eventInterval.message.annotations['status'] === 'Failed'
   ) {
     return true
   }
@@ -659,8 +673,8 @@ function isE2EFailed(eventInterval) {
 
 function isE2EFlaked(eventInterval) {
   if (
-    eventInterval.tempSource === 'E2ETest' &&
-    eventInterval.tempStructuredMessage.annotations['status'] === 'Flaked'
+    eventInterval.source === 'E2ETest' &&
+    eventInterval.message.annotations['status'] === 'Flaked'
   ) {
     return true
   }
@@ -669,8 +683,8 @@ function isE2EFlaked(eventInterval) {
 
 function isE2EPassed(eventInterval) {
   if (
-    eventInterval.tempSource === 'E2ETest' &&
-    eventInterval.tempStructuredMessage.annotations['status'] === 'Passed'
+    eventInterval.source === 'E2ETest' &&
+    eventInterval.message.annotations['status'] === 'Passed'
   ) {
     return true
   }
@@ -678,27 +692,25 @@ function isE2EPassed(eventInterval) {
 }
 
 function isGracefulShutdownActivity(eventInterval) {
-  return eventInterval.tempSource === 'APIServerGracefulShutdown'
+  return eventInterval.source === 'APIServerGracefulShutdown'
 }
 
 function isEndpointConnectivity(eventInterval) {
   if (
-    eventInterval.tempStructuredMessage.reason !== 'DisruptionBegan' &&
-    eventInterval.tempStructuredMessage.reason !==
-      'DisruptionSamplerOutageBegan'
+    eventInterval.message.reason !== 'DisruptionBegan' &&
+    eventInterval.message.reason !== 'DisruptionSamplerOutageBegan'
   ) {
     return false
   }
-  if (eventInterval.tempSource === 'Disruption') {
+  if (eventInterval.source === 'Disruption') {
     return true
   }
   if (
-    eventInterval.tempStructuredLocator.keys['namespace'] ===
-    'e2e-k8s-service-lb-available'
+    eventInterval.locator.keys['namespace'] === 'e2e-k8s-service-lb-available'
   ) {
     return true
   }
-  if (eventInterval.tempStructuredLocator.keys.has('route')) {
+  if (eventInterval.locator.keys.has('route')) {
     return true
   }
 
@@ -706,20 +718,20 @@ function isEndpointConnectivity(eventInterval) {
 }
 
 function isNodeState(eventInterval) {
-  return eventInterval.tempSource === 'NodeState'
+  return eventInterval.source === 'NodeState'
 }
 
 function isCloudMetrics(eventInterval) {
-  return eventInterval.tempSource === 'CloudMetrics'
+  return eventInterval.source === 'CloudMetrics'
 }
 
 function isAlert(eventInterval) {
-  return eventInterval.tempSource === 'Alert'
+  return eventInterval.source === 'Alert'
 }
 
 function interestingEvents(item) {
-  if (item.tempStructuredMessage.annotations['pathological'] === 'true') {
-    if (item.tempStructuredMessage.annotations['interesting'] === 'true') {
+  if (item.message.annotations['pathological'] === 'true') {
+    if (item.message.annotations['interesting'] === 'true') {
       return [item.displayLocator, ` (pathological known)`, 'PathologicalKnown']
     } else {
       return [item.displayLocator, ` (pathological new)`, 'PathologicalNew']
@@ -728,8 +740,8 @@ function interestingEvents(item) {
   // TODO: hack that can likely be removed when we get to structured intervals for these
   // Always show pod sandbox events even if they didn't make it to pathological
   if (
-    item.tempStructuredMessage.annotations['interesting'] === 'true' &&
-    item.tempStructuredMessage.humanMessage.includes('pod sandbox')
+    item.message.annotations['interesting'] === 'true' &&
+    item.message.humanMessage.includes('pod sandbox')
   ) {
     return [item.displayLocator, ` (pod sandbox)`, 'PodSandbox']
   }
@@ -814,30 +826,30 @@ function podStateValue(item) {
 const rePhase = new RegExp('(^| )phase/([^ ]+)')
 function nodeStateValue(item) {
   let roles = ''
-  if (item.tempStructuredMessage.annotations.hasOwnProperty('roles')) {
-    roles = item.tempStructuredMessage.annotations.roles
+  if (item.message.annotations.hasOwnProperty('roles')) {
+    roles = item.message.annotations.roles
   }
-  if (item.tempStructuredMessage.reason === 'NotReady') {
+  if (item.message.reason === 'NotReady') {
     return [item.displayLocator, ` (${roles})`, 'NodeNotReady']
   }
-  let m = item.tempStructuredMessage.annotations.phase
+  let m = item.message.annotations.phase
   return [item.displayLocator, ` (${roles})`, m]
 }
 
 function etcdLeadershipLogsValue(item) {
   // If source is isEtcdLeadership, the term is always there.
-  const term = item.tempStructuredMessage.annotations['term']
+  const term = item.message.annotations['term']
 
   // We are only charting the intervals with a node.
-  const nodeVal = item.tempStructuredLocator.keys['node']
+  const nodeVal = item.locator.keys['node']
 
   // Get etcd-member value (this will be present for a leader change).
-  let etcdMemberVal = item.tempStructuredLocator.keys['etcd-member'] || ''
+  let etcdMemberVal = item.locator.keys['etcd-member'] || ''
   if (etcdMemberVal.length > 0) {
     etcdMemberVal = `etcd-member/${etcdMemberVal} `
   }
 
-  let reason = item.tempStructuredMessage.reason
+  let reason = item.message.reason
   let color = 'EtcdOther'
   if (reason.length > 0) {
     color = reason
@@ -849,7 +861,7 @@ function etcdLeadershipLogsValue(item) {
 function isEtcdLeadershipAndNotEmpty(item) {
   if (isEtcdLeadership(item)) {
     // Don't chart the ones where the node is empty.
-    const node = item.tempStructuredLocator.keys['node'] || ''
+    const node = item.locator.keys['node'] || ''
     if (node.length > 0) {
       return true
     }
@@ -863,17 +875,17 @@ function cloudMetricsValue(item) {
 
 function alertSeverity(item) {
   // the other types can be pending, so check pending first
-  if (item.tempStructuredMessage.annotations['alertstate'] === 'pending') {
+  if (item.message.annotations['alertstate'] === 'pending') {
     return [item.displayLocator, '', 'AlertPending']
   }
 
-  if (item.tempStructuredMessage.annotations['severity'] === 'info') {
+  if (item.message.annotations['severity'] === 'info') {
     return [item.displayLocator, '', 'AlertInfo']
   }
-  if (item.tempStructuredMessage.annotations['severity'] === 'warning') {
+  if (item.message.annotations['severity'] === 'warning') {
     return [item.displayLocator, '', 'AlertWarning']
   }
-  if (item.tempStructuredMessage.annotations['severity'] === 'critical') {
+  if (item.message.annotations['severity'] === 'critical') {
     return [item.displayLocator, '', 'AlertCritical']
   }
 
@@ -895,7 +907,7 @@ function disruptionValue(item) {
   // We classify these disruption samples with this message if it thinks
   // it looks like a problem in the CI cluster running the tests, not the cluster under test.
   // (typically DNS lookup problems)
-  let ciClusterDisruption = item.message.indexOf(
+  let ciClusterDisruption = item.message.humanMessage.indexOf(
     'likely a problem in cluster running tests'
   )
   if (ciClusterDisruption != -1) {
@@ -921,11 +933,11 @@ function getDurationString(durationSeconds) {
 }
 
 function defaultToolTip(item) {
-  if (!item.tempStructuredMessage || !item.tempStructuredMessage.annotations) {
+  if (!item.message.annotations) {
     return ''
   }
 
-  const structuredMessage = item.tempStructuredMessage
+  const structuredMessage = item.message
   const annotations = structuredMessage.annotations
 
   const keyValuePairs = Object.entries(annotations).map(([key, value]) => {
@@ -938,8 +950,8 @@ function defaultToolTip(item) {
   if ('display' in item) {
     tt = 'display/' + item.display + ' ' + tt
   }
-  if ('tempSource' in item) {
-    tt = 'source/' + item.tempSource + ' ' + tt
+  if ('source' in item) {
+    tt = 'source/' + item.source + ' ' + tt
   }
   tt =
     tt +
@@ -1048,7 +1060,7 @@ function createTimelineData(
     if (!item.to) {
       endDate = latest
     }
-    let label = buildLocatorDisplayString(item.tempStructuredLocator)
+    let label = buildLocatorDisplayString(item.locator)
     let sub = ''
     let val = timelineVal
     if (typeof val === 'function') {

@@ -9,6 +9,7 @@ export default function TimelineChart({
   eventIntervals,
   data,
   segmentClickedFunc,
+  segmentTooltipContentFunc,
 }) {
   const ref = useRef(null)
   const ordinalScale = d3scale
@@ -124,6 +125,7 @@ export default function TimelineChart({
         .maxLineHeight(30)
         .maxHeight(20000)
         .onSegmentClick(segmentClickedFunc)
+        .segmentTooltipContent(segmentTooltipContentFunc)
         .zColorScale(ordinalScale) // seems to enable the use of our own colors
       if (eventIntervals.length > 0) {
         chart.zoomX([
@@ -147,4 +149,5 @@ TimelineChart.propTypes = {
   data: PropTypes.array,
   eventIntervals: PropTypes.array,
   segmentClickedFunc: PropTypes.func,
+  segmentTooltipContentFunc: PropTypes.func,
 }
