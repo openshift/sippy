@@ -153,6 +153,10 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 	// containing a map. Some properties will be ignored as they are job RUN specific, not job specific.
 	// Others we need to carefully decide who wins in the event is a mismatch.
 	for k, v := range variantFile {
+		if k == VariantNetworkStack {
+			// Use ipv6 / ipv4 for consistency with a lot of pre-existing code.
+			v = strings.ToLower(v)
+		}
 		if fileVariantsToIgnore[k] {
 			continue
 		}
