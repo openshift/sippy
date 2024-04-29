@@ -19,6 +19,7 @@ import {
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
+import { Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
@@ -30,6 +31,7 @@ import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
 import GeneratedAt from './GeneratedAt'
+import IconButton from '@mui/material/IconButton'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
@@ -322,6 +324,23 @@ Flakes: ${stats.flake_count}`
 
   return (
     <Fragment>
+      <Box
+        display="flex"
+        justifyContent="right"
+        alignItems="right"
+        width="100%"
+      >
+        <Tooltip title="Frequently Asked Questions">
+          <Link
+            to="/component_readiness/help"
+            style={{ textDecoration: 'none' }}
+          >
+            <IconButton>
+              <Help />
+            </IconButton>
+          </Link>
+        </Tooltip>
+      </Box>
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
       <h3>
         <Link to="/component_readiness">
