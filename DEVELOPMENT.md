@@ -59,7 +59,7 @@ available [here](config/README.md).
 
 ```bash
 ./sippy load \
-  --loader prow
+  --loader prow \
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
@@ -76,8 +76,8 @@ or [configure GitHub in your gitconfig](https://stackoverflow.com/questions/8505
 
 ```bash
 ./sippy load \
-  --loader prow
-  --loader github
+  --loader prow \
+  --loader github \
   --release 4.11 \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
@@ -92,7 +92,7 @@ releases and architectures like this:
 
 ```
 ./sippy load \
-  --loader releases
+  --loader releases \
   --arch amd64 \
   --arch arm64 \
   --release 4.12 \
@@ -123,8 +123,8 @@ Then to launch the API server:
 If you'd like to launch just Component Readiness, you can run:
 
 ```
-./sippy component-readiness
-    --google-service-account-credential-file ~/google-service-account-credential-file.json
+./sippy component-readiness \
+    --google-service-account-credential-file ~/google-service-account-credential-file.json \
     --redis-url="redis://192.168.1.215:6379"
 ```
 
