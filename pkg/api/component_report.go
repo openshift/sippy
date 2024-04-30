@@ -59,7 +59,7 @@ const (
 						ELSE 2
 					END) AS row_num
 			FROM
-				%s.junit
+				%s.unified_junit
 			WHERE modified_time >= DATETIME(@From)
 			AND modified_time < DATETIME(@To)
 			AND skipped = false
@@ -268,13 +268,7 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (apitype.Com
 }
 
 func (c *componentReportGenerator) getCommonJobRunTestStatusQuery() (string, string, []bigquery.QueryParameter) {
-	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
-						SELECT *
-						FROM %s.component_mapping cm
-						WHERE created_at = (
-								SELECT MAX(created_at)
-								FROM %s.component_mapping))
-					SELECT
+	queryString := fmt.Sprintf(`SELECT
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
 						file_path,
@@ -286,7 +280,7 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery() (string, str
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
+					INNER JOIN %s.unified_component_mapping_latest cm ON testsuite = cm.suite AND test_name = cm.name`, fmt.Sprintf(dedupedJunitTable, c.client.Dataset), c.client.Dataset)
 
 	groupString := `
 					GROUP BY
@@ -472,12 +466,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 }
 
 func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, []bigquery.QueryParameter) {
-	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
-						SELECT *
-						FROM %s.component_mapping cm
-						WHERE created_at = (
-								SELECT MAX(created_at)
-								FROM %s.component_mapping))
+	queryString := fmt.Sprintf(`
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
@@ -496,7 +485,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id
 					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
+					INNER JOIN %s.unified_component_mapping_latest cm ON testsuite = cm.suite AND test_name = cm.name`, fmt.Sprintf(dedupedJunitTable, c.client.Dataset), c.client.Dataset)
 
 	groupString := `
 					GROUP BY
@@ -1790,7 +1779,7 @@ func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nest
 	queryString := fmt.Sprintf(`SELECT
 						DISTINCT %s as name
 					FROM
-						%s.junit %s
+						%s.unified_junit %s
 					WHERE
 						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
 					ORDER BY
