@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"gorm.io/gorm"
+
 	"cloud.google.com/go/storage"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -513,6 +515,10 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 
 	bugs, err := query.LoadBugsForTest(s.db, testName, false)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			api.RespondWithJSON(http.StatusOK, w, []models.Bug{})
+			return
+		}
 		log.WithError(err).Error("error querying test bugs from db")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
 			"code":    http.StatusInternalServerError,
