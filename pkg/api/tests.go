@@ -262,10 +262,11 @@ type testsDetailAPIResult struct {
 }
 
 func (tests testsDetailAPIResult) limit(req *http.Request) testsDetailAPIResult {
+	newTests := tests
 	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
-	if limit > 0 && len(tests.Tests) >= limit {
-		tests.Tests = tests.Tests[:limit]
+	if limit > 0 && len(newTests.Tests) >= limit {
+		newTests.Tests = newTests.Tests[:limit]
 	}
 
-	return tests
+	return newTests
 }

@@ -144,6 +144,7 @@ var fileVariantsToIgnore = map[string]bool{
 	"MasterNodesUpdated": true,
 }
 
+// Presume this ultimately replaces https://github.com/openshift/sippy/blob/510ee5dc077a545ed28fcc51a683e8032a8b9389/pkg/testidentification/ocp_variants.go#L174
 func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobName string, variantFile map[string]string) map[string]string {
 
 	// Calculate variants based on job name:
@@ -314,40 +315,44 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 
 	// Topology
 	// external == hypershift hosted control plane
-	if singleNodeRegex.MatchString(jobName) {
+	switch {
+	case singleNodeRegex.MatchString(jobName):
 		variants[VariantTopology] = "single" // previously single-node
-	} else if hypershiftRegex.MatchString(jobName) {
+	case hypershiftRegex.MatchString(jobName):
 		variants[VariantTopology] = "external"
-	} else if compactRegex.MatchString(jobName) {
+	case compactRegex.MatchString(jobName):
 		variants[VariantTopology] = "compact"
-	} else if microshiftRegex.MatchString(jobName) { // No jobs for this in 4.15 - 4.16 that I can see.
+	case microshiftRegex.MatchString(jobName): // No jobs for this in 4.15 - 4.16 that I can see.
 		variants[VariantTopology] = "microshift"
-	} else {
+	default:
 		variants[VariantTopology] = "ha"
 	}
 
-	if dualStackRegex.MatchString(jobName) {
+	switch {
+	case dualStackRegex.MatchString(jobName):
 		variants[VariantNetworkStack] = "dual"
-	} else if ipv6Regex.MatchString(jobName) {
+	case ipv6Regex.MatchString(jobName):
 		variants[VariantNetworkStack] = "ipv6"
-	} else {
+	default:
 		variants[VariantNetworkStack] = "ipv4"
 	}
 
 	// TODO: suite may not be the right word here
-	if serialRegex.MatchString(jobName) {
+	switch {
+	case serialRegex.MatchString(jobName):
 		variants[VariantSuite] = "serial"
-	} else if etcdScaling.MatchString(jobName) {
+	case etcdScaling.MatchString(jobName):
 		variants[VariantSuite] = "etcd-scaling"
 	}
 
-	if assistedRegex.MatchString(jobName) {
+	switch {
+	case assistedRegex.MatchString(jobName):
 		variants[VariantInstaller] = "assisted"
-	} else if hypershiftRegex.MatchString(jobName) {
+	case hypershiftRegex.MatchString(jobName):
 		variants[VariantInstaller] = "hypershift"
-	} else if upiRegex.MatchString(jobName) {
+	case upiRegex.MatchString(jobName):
 		variants[VariantInstaller] = "upi"
-	} else {
+	default:
 		variants[VariantInstaller] = "ipi" // assume ipi by default
 	}
 
@@ -410,26 +415,26 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 	platform := ""
 
 	// Platforms
-	if alibabaRegex.MatchString(jobName) {
+	switch {
+	case alibabaRegex.MatchString(jobName):
 		platform = "alibaba"
-	} else if awsRegex.MatchString(jobName) {
+	case awsRegex.MatchString(jobName):
 		platform = "aws"
-	} else if azureRegex.MatchString(jobName) {
+	case azureRegex.MatchString(jobName):
 		platform = "azure"
-	} else if gcpRegex.MatchString(jobName) {
+	case gcpRegex.MatchString(jobName):
 		platform = "gcp"
-	} else if libvirtRegex.MatchString(jobName) {
+	case libvirtRegex.MatchString(jobName):
 		platform = "libvirt"
-	} else if metalRegex.MatchString(jobName) {
+	case metalRegex.MatchString(jobName):
 		platform = "metal"
-	} else if openstackRegex.MatchString(jobName) {
+	case openstackRegex.MatchString(jobName):
 		platform = "openstack"
-	} else if ovirtRegex.MatchString(jobName) {
+	case ovirtRegex.MatchString(jobName):
 		platform = "ovirt"
-	} else if vsphereRegex.MatchString(jobName) {
+	case vsphereRegex.MatchString(jobName):
 		platform = "vsphere"
 	}
-
 	if platform == "" {
 		jLog.WithField("jobName", jobName).Warn("unable to determine platform from job name")
 		return // do not set a platform if unknown
@@ -468,33 +473,36 @@ func extractReleases(jobName string) (release, fromRelease string) {
 func determineArchitecture(jobName string) string {
 	if arm64Regex.MatchString(jobName) {
 		return "arm64"
-	} else if ppc64leRegex.MatchString(jobName) {
-		return "ppc64le"
-	} else if s390xRegex.MatchString(jobName) {
-		return "s390x"
-	} else if multiRegex.MatchString(jobName) {
-		return "heterogeneous"
-	} else {
-		return "amd64"
 	}
+	if ppc64leRegex.MatchString(jobName) {
+		return "ppc64le"
+	}
+	if s390xRegex.MatchString(jobName) {
+		return "s390x"
+	}
+	if multiRegex.MatchString(jobName) {
+		return "heterogeneous"
+	}
+	return "amd64"
 }
 
 func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
 	if ovnRegex.MatchString(jobName) {
 		return "ovn"
-	} else if sdnRegex.MatchString(jobName) {
-		return "sdn"
-	} else {
-		// If no explicit version, guess based on release
-		ovnBecomesDefault, _ := version.NewVersion("4.12")
-		releaseVersion, err := version.NewVersion(release)
-		if err != nil {
-			jLog.Warningf("could not determine network type for %q", jobName)
-			return ""
-		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
-			return "ovn"
-		} else {
-			return "sdn"
-		}
 	}
+	if sdnRegex.MatchString(jobName) {
+		return "sdn"
+	}
+
+	// If no explicit version, guess based on release
+	ovnBecomesDefault, _ := version.NewVersion("4.12")
+	releaseVersion, err := version.NewVersion(release)
+	if err != nil {
+		jLog.Warningf("could not determine network type for %q", jobName)
+		return ""
+	}
+	if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
+		return "ovn"
+	}
+	return "sdn"
 }
