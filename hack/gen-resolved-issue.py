@@ -414,28 +414,33 @@ def match_variant(variants, key, value):
             return True
     return False
 
+def match_test_id_or_wildcard(target_test_id, test_id):
+    if target_test_id == "*":
+        return True
+    return test_id == target_test_id
+
 # Compare against the target_test_id from command line or triage_data passed in via JSON file
 # The JSON file allows for more test_ids to be targeted along with more refined matching
 # via variants and in job matches job start_time and URL
 def test_matches(triage_data, target_test_id, test_id, variants):
     
     # if we have a target via argument and it matches then we always match
-    if target_test_id and target_test_id == test_id:
+    if target_test_id and match_test_id_or_wildcard(target_test_id, test_id):
         return True, None
     
     # otherwise do we have an entry for this test id in triage_data
     # do we need to support multiples?  Currently first match wins
     if triage_data:
         for record in triage_data:
-            if record["TestId"] == test_id:
+            if match_test_id_or_wildcard(record["TestId"], test_id):
                 # does our record specify any variants
                 # if so check those for matches
                 matches = True
                 if "Variants" in record:
                     # see if we have each key / value present in the variants passed in
                     record_variants = record["Variants"]
-                    for record in record_variants:
-                        if not match_variant(variants, record["key"], record["value"]):
+                    for variant in record_variants:
+                        if not match_variant(variants, variant["key"], variant["value"]):
                             matches = False
                 if matches:
                     return True, record
@@ -536,7 +541,10 @@ if __name__ == '__main__':
     parser.add_argument("--output-file", help="Write JSON output to the specified file instead of DB.")
     # write JSON output or persist to DB    
     parser.add_argument("--output-type", choices=['JSON', 'DB'], help="Write the incident record(s) as JSON or as DB record", default='JSON')
-    
+
+    # capture just the test information and not job_runs or any other
+    parser.add_argument("--output-test-info-only", help="When the incident record is JSON you can record only the test info and not job_runs, must be specified on the command line", type=bool, default=False)
+
     args = parser.parse_args()
 
     # if we don't have an input file then we must have issue-type, test-id and test-name
@@ -688,7 +696,7 @@ if __name__ == '__main__':
                     matches, record = test_matches(triage_data, args.test_id, test_id, variants)
                     
                     # check for JobRunStartTimeMax and min times  
-                    # if the record doesn't have them and we have global setttings
+                    # if the record doesn't have them and we have global settings
                     # then use them
                     if args.job_run_start_time_max != None:
                         if record == None:
@@ -716,6 +724,18 @@ if __name__ == '__main__':
                     component = rt['component']
                     capability = rt['capability']
                     test_name = rt['test_name']
+
+                    triaged_incident = {}
+                    triaged_incident["TestId"] = test_id
+                    triaged_incident["TestName"] = test_name
+
+                    if args.output_test_info_only != None and args.output_test_info_only and args.output_type == 'JSON':
+                        if record != None:
+                            if "Variants" in record:
+                                triaged_incident["Variants"] = record["Variants"]
+
+                        triaged_incidents.append(triaged_incident)
+                        continue
                     
 
     # TODO: These are the url params we need to add onto those in the TEST_REPORT URL when we go to get the test details (job run data):
@@ -737,12 +757,11 @@ if __name__ == '__main__':
                         time.sleep(10)
                         continue
                     
-                    triaged_incident = {}
+
                     # test_release can't change since we only input one test_report_url
                     # currently require it as part of input args, though it could also be pulled out of json if provided
                     triaged_incident["Release"] = args.test_release
-                    triaged_incident["TestId"] = test_id
-                    triaged_incident["TestName"] = test_name
+
                     triaged_incident["GroupId"] = incident_group_id
                     issue = {}
                     issue["Type"] = issue_type
