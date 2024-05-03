@@ -29,6 +29,15 @@ const faqs = [
       <u>test mapping repository</u></a>.`,
   },
   {
+    question: 'Why are basis runs sometimes missing when I click on a Test Details Report?',
+    answer: `This most commonly happens for two reasons:
+      <ul>
+        <li>No job for that test existed the release you are comparing against.</li>
+        <li>The job existed, but in a slightly different form.</li>
+      </ul>
+      That second option is the most common scenario.  Most of the time users only notice basis runs are missing because there is a problem they are trying to investigate.  If the job is totally new, it usually has clear ownership and if there are major problems it will simply be hidden from Component Readiness until it's ready.  Renames are slightly more common.  This is usually the result of a feature being deprecated and jobs shifting around accordingly.  In rare cases you may notice a regression on a Test Details Report that is only slightly over the default threshold&mdash;and it's the "new job" that is tipping it over the edge.  In that case you should still investigate the problems in the failing job.  It's also wise to look in <a href="https://github.com/openshift/release">the release repository</a> to find out more background on when the job was introduced and why.`,
+  },
+  {
     question:
       "How do I change a test's assignment to a particular component or capability?",
     answer: `Test mappings can be handled through the <a href="https://github.com/openshift-eng/ci-test-mapping/">
