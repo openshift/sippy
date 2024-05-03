@@ -49,7 +49,7 @@ import SummaryCard from '../components/SummaryCard'
 export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_period: {} })
-  const [bugs, setBugs] = React.useState([])
+  const [bugsURL, setBugsURL] = React.useState('')
 
   const [filterModel, setFilterModel] = useQueryParam('filters', SafeJSONParam)
   const [period, setPeriod] = useQueryParam('period', StringParam)
@@ -89,18 +89,19 @@ export function JobAnalysis(props) {
       fetch(
         `${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`
       ),
-      fetch(`${process.env.REACT_APP_API_URL}/api/jobs/bugs?${queryParams}`),
     ])
-      .then(([analysis, bugs]) => {
+      .then(([analysis]) => {
         if (analysis.status !== 200) {
           throw new Error('server returned ' + analysis.status)
         }
 
-        return Promise.all([analysis.json(), bugs.json()])
+        return Promise.all([analysis.json()])
       })
-      .then(([analysis, bugs]) => {
+      .then(([analysis]) => {
         setAnalysis(analysis)
-        setBugs(bugs)
+        setBugsURL(
+          `${process.env.REACT_APP_API_URL}/api/jobs/bugs?${queryParams}`
+        )
 
         // allTests maps each test name to a struct containing the test name again, and the total number of
         // failures in the past 7 days. This value is used to sort on and determine the most relevant tests
@@ -452,7 +453,7 @@ export function JobAnalysis(props) {
                   <InfoIcon />
                 </Tooltip>
               </Typography>
-              <BugTable bugs={bugs} />
+              <BugTable bugsURL={bugsURL} />
             </Card>
           </Grid>
 

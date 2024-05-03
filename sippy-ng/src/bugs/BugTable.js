@@ -19,13 +19,14 @@ export default function BugTable(props) {
   const [fetchError, setFetchError] = React.useState('')
 
   const fetchData = () => {
-    Promise.all([
-      fetch(
-        `${
-          process.env.REACT_APP_API_URL
-        }/api/tests/bugs?test=${safeEncodeURIComponent(props.testName)}`
-      ),
-    ])
+    let bugsURL = props.bugsURL
+    if (!bugsURL || bugsURL.length === 0) {
+      bugsURL = `${
+        process.env.REACT_APP_API_URL
+      }/api/tests/bugs?test=${safeEncodeURIComponent(props.testName)}`
+    }
+
+    Promise.all([fetch(bugsURL)])
       .then(([bugs]) => {
         if (bugs.status !== 200) {
           throw new Error('server returned ' + bugs.status)
@@ -97,6 +98,7 @@ export default function BugTable(props) {
 }
 
 BugTable.propTypes = {
+  bugsURL: PropTypes.string,
   testName: PropTypes.string,
   classes: PropTypes.object,
 }
