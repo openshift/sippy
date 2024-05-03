@@ -52,6 +52,7 @@ func NewServer(
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
+	prowURL string,
 	gcsBucket string,
 	gcsClient *storage.Client,
 	bigQueryClient *bigquery.Client,
@@ -70,6 +71,7 @@ func NewServer(
 		db:                   dbClient,
 		bigQueryClient:       bigQueryClient,
 		pinnedDateTime:       pinnedDateTime,
+		prowURL:              prowURL,
 		gcsBucket:            gcsBucket,
 		gcsClient:            gcsClient,
 		cache:                cacheClient,
@@ -108,6 +110,7 @@ type Server struct {
 	pinnedDateTime       *time.Time
 	gcsClient            *storage.Client
 	gcsBucket            string
+	prowURL              string
 	cache                cache.Cache
 	crTimeRoundingFactor time.Duration
 	capabilities         []string
@@ -636,6 +639,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 
 	outputs, errs := api.GetComponentReportFromBigQuery(
 		s.bigQueryClient,
+		s.prowURL,
 		s.gcsBucket,
 		baseRelease,
 		sampleRelease,
@@ -670,6 +674,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 	}
 	outputs, errs := api.GetComponentReportTestDetailsFromBigQuery(
 		s.bigQueryClient,
+		s.prowURL,
 		s.gcsBucket,
 		baseRelease,
 		sampleRelease,

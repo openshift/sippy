@@ -40,6 +40,7 @@ type ServerFlags struct {
 	ListenAddr           string
 	MetricsAddr          string
 	CRTimeRoundingFactor time.Duration
+	ProwURL              string
 }
 
 func NewServerFlags() *ServerFlags {
@@ -49,6 +50,7 @@ func NewServerFlags() *ServerFlags {
 		DBFlags:          flags.NewPostgresDatabaseFlags(),
 		GoogleCloudFlags: flags.NewGoogleCloudFlags(),
 		ModeFlags:        flags.NewModeFlags(),
+		ProwURL:          "https://prow.ci.openshift.org",
 		ListenAddr:       ":8080",
 		MetricsAddr:      ":2112",
 	}
@@ -61,6 +63,7 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.GoogleCloudFlags.BindFlags(flagSet)
 	f.ModeFlags.BindFlags(flagSet)
 
+	flagSet.StringVar(&f.ProwURL, "prow-url", f.ProwURL, "URL for Prow")
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 	factorUsage := fmt.Sprintf("Set the rounding factor for component readiness release time. The time will be rounded down to the nearest multiple of the factor. Maximum value is %v", maxCRTimeRoundingFactor)
@@ -125,6 +128,7 @@ func NewServeCommand() *cobra.Command {
 				webRoot,
 				&resources.Static,
 				dbc,
+				f.ProwURL,
 				f.GoogleCloudFlags.StorageBucket,
 				gcsClient,
 				bigQueryClient,
@@ -135,7 +139,7 @@ func NewServeCommand() *cobra.Command {
 
 			if f.MetricsAddr != "" {
 				// Do an immediate metrics update
-				err = metrics.RefreshMetricsDB(dbc, bigQueryClient, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
+				err = metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwURL, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}
@@ -148,7 +152,7 @@ func NewServeCommand() *cobra.Command {
 						select {
 						case <-ticker.C:
 							log.Info("tick")
-							err := metrics.RefreshMetricsDB(dbc, bigQueryClient, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
+							err := metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwURL, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")
 							}
