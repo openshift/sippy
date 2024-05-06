@@ -868,12 +868,11 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, te
 	for _, tc := range suite.TestCases {
 		status := sippyprocessingv1.TestStatusFailure
 		var failureOutput *models.ProwJobRunTestOutput
-		switch {
-		case tc.SkipMessage != nil:
+		if tc.SkipMessage != nil {
 			continue
-		case tc.FailureOutput == nil:
+		} else if tc.FailureOutput == nil {
 			status = sippyprocessingv1.TestStatusSuccess
-		default:
+		} else {
 			failureOutput = &models.ProwJobRunTestOutput{
 				Output: tc.FailureOutput.Output,
 			}

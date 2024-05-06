@@ -123,9 +123,7 @@ func splitJobAndJobRunFilters(fil *filter.Filter) (*filter.Filter, *filter.Filte
 		LinkOperator: fil.LinkOperator,
 	}
 	for _, f := range fil.Items {
-		switch {
-
-		case f.Field == "timestamp":
+		if f.Field == "timestamp" {
 			ms, err := strconv.ParseInt(f.Value, 0, 64)
 			if err != nil {
 				return nil, nil, err
@@ -133,9 +131,9 @@ func splitJobAndJobRunFilters(fil *filter.Filter) (*filter.Filter, *filter.Filte
 
 			f.Value = time.Unix(0, ms*int64(time.Millisecond)).Format("2006-01-02T15:04:05-0700")
 			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
-		case f.Field == "cluster":
+		} else if f.Field == "cluster" {
 			jobRunsFilter.Items = append(jobRunsFilter.Items, f)
-		default:
+		} else {
 			jobFilter.Items = append(jobFilter.Items, f)
 		}
 	}

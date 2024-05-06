@@ -182,8 +182,7 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 	}
 
 	var updateRequired bool
-	switch {
-	case currSchemaHash.ID == 0:
+	if currSchemaHash.ID == 0 {
 		vlog.Debug("no current schema hash in db, creating")
 		updateRequired = true
 		currSchemaHash = models.SchemaHash{
@@ -191,11 +190,11 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 			Name: name,
 			Hash: hashStr,
 		}
-	case currSchemaHash.Hash != hashStr:
+	} else if currSchemaHash.Hash != hashStr {
 		vlog.WithField("oldHash", currSchemaHash.Hash).Debug("schema hash has changed, recreating")
 		currSchemaHash.Hash = hashStr
 		updateRequired = true
-	case forceUpdate:
+	} else if forceUpdate {
 		vlog.Debug("schema hash has not changed but a force update was requested, recreating")
 		updateRequired = true
 	}

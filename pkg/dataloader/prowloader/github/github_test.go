@@ -31,8 +31,7 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 
 	prFetch := func(org, repo string, number int) (*gh.PullRequest, error) {
 		prFetchCalls++
-		switch {
-		case org == openshift && repo == kubernetes && number == 1:
+		if org == openshift && repo == kubernetes && number == 1 {
 			return &gh.PullRequest{
 				MergedAt: &now,
 				Head: &gh.PullRequestBranch{
@@ -41,9 +40,9 @@ func TestClient_GetPRSHAMerged(t *testing.T) {
 				Title:   &pr1Title,
 				HTMLURL: &pr1URL,
 			}, nil
-		case org == openshift && repo == kubernetes && number == 2:
+		} else if org == openshift && repo == kubernetes && number == 2 {
 			return &gh.PullRequest{}, nil
-		case org == openshift && repo == "not-exist":
+		} else if org == openshift && repo == "not-exist" {
 			return nil, &gh.ErrorResponse{
 				Response: &http.Response{
 					StatusCode: 404,

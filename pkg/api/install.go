@@ -17,8 +17,7 @@ import (
 
 // PrintInstallJSONReportFromDB renders a report showing the success/fail rates of operator installation.
 func PrintInstallJSONReportFromDB(w http.ResponseWriter, dbc *db.DB, release string) {
-	excludedVariants := testidentification.DefaultExcludedVariants
-	excludedVariants = append(excludedVariants, "upgrade-minor")
+	excludedVariants := append(testidentification.DefaultExcludedVariants, "upgrade-minor")
 	exactTestNames := sets.NewString()
 	testPrefixes := sets.NewString(testidentification.OperatorInstallPrefix)
 	if useNewInstallTest(release) {

@@ -1453,8 +1453,8 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 			goodRows = append(goodRows, reportRow)
 		}
 	}
-	regressionRows = append(regressionRows, goodRows...)
-	report.Rows = regressionRows
+
+	report.Rows = append(regressionRows, goodRows...)
 	return report
 }
 
