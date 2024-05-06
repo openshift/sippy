@@ -795,28 +795,37 @@ type ComponentReportRequestTestIdentificationOptions struct {
 // ComponentReportRequestExcludeOptions group all the exclude options passed in the request.
 // Each of the variable is a comma separated string.
 type ComponentReportRequestExcludeOptions struct {
-	ExcludePlatforms string
-	ExcludeArches    string
-	ExcludeNetworks  string
-	ExcludeUpgrades  string
-	ExcludeVariants  string
+	ExcludePlatforms string `json:"exclude_platforms"`
+	ExcludeArches    string `json:"exclude_arches"`
+	ExcludeNetworks  string `json:"exclude_networks"`
+	ExcludeUpgrades  string `json:"exclude_upgrades"`
+	ExcludeVariants  string `json:"exclude_variants"`
+}
+
+// ComponentReportView is a server side construct representing a predefined view over the data.
+// Useful for defining the primary view of what we deem required for considering the release ready.
+type ComponentReportView struct {
+	Name            string                                `json:"name"`
+	VariantOptions  ComponentReportRequestVariantOptions  `json:"variant_options"`
+	ExcludeOptions  ComponentReportRequestExcludeOptions  `json:"exclude_options"`
+	AdvancedOptions ComponentReportRequestAdvancedOptions `json:"advance_options"`
 }
 
 type ComponentReportRequestVariantOptions struct {
-	GroupBy  string
-	Platform string
-	Upgrade  string
-	Arch     string
-	Network  string
-	Variant  string
+	GroupBy  string `json:"group_by"`
+	Platform string `json:"platform"`
+	Upgrade  string `json:"upgrade"`
+	Arch     string `json:"arch"`
+	Network  string `json:"network"`
+	Variant  string `json:"variant"`
 }
 
 type ComponentReportRequestAdvancedOptions struct {
-	MinimumFailure   int
-	Confidence       int
-	PityFactor       int
-	IgnoreMissing    bool
-	IgnoreDisruption bool
+	MinimumFailure   int  `json:"minimum_failure"`
+	Confidence       int  `json:"confidence"`
+	PityFactor       int  `json:"pity_factor"`
+	IgnoreMissing    bool `json:"ignore_missing"`
+	IgnoreDisruption bool `json:"ignore_disruption"`
 }
 
 type ComponentTestStatus struct {
