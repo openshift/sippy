@@ -283,43 +283,31 @@ func determinePlatform(jobName string) string {
 	// Platforms
 	if alibabaRegex.MatchString(jobName) {
 		return "alibaba"
-	}
-	if awsRegex.MatchString(jobName) {
+	} else if awsRegex.MatchString(jobName) {
 		return "aws"
-	}
-	if azureRegex.MatchString(jobName) {
+	} else if azureRegex.MatchString(jobName) {
 		return "azure"
-	}
-	if gcpRegex.MatchString(jobName) {
+	} else if gcpRegex.MatchString(jobName) {
 		return "gcp"
-	}
-	if libvirtRegex.MatchString(jobName) {
+	} else if libvirtRegex.MatchString(jobName) {
 		return "libvirt"
-	}
-	if metalAssistedRegex.MatchString(jobName) || (metalRegex.MatchString(jobName) && singleNodeRegex.MatchString(jobName)) {
+	} else if metalAssistedRegex.MatchString(jobName) || (metalRegex.MatchString(jobName) && singleNodeRegex.MatchString(jobName)) {
 		// Without support for negative lookbacks in the native
 		// regexp library, it's easiest to differentiate these
 		// three by seeing if it's metal-assisted or metal-ipi, and then fall through
 		// to check if it's UPI metal.
 		return "metal-assisted"
-	}
-
-	if metalIPIRegex.MatchString(jobName) {
+	} else if metalIPIRegex.MatchString(jobName) {
 		return "metal-ipi"
-	}
-	if metalRegex.MatchString(jobName) {
+	} else if metalRegex.MatchString(jobName) {
 		return "metal-upi"
-	}
-	if openstackRegex.MatchString(jobName) {
+	} else if openstackRegex.MatchString(jobName) {
 		return "openstack"
-	}
-	if ovirtRegex.MatchString(jobName) {
+	} else if ovirtRegex.MatchString(jobName) {
 		return "ovirt"
-	}
-	if vsphereUPIRegex.MatchString(jobName) {
+	} else if vsphereUPIRegex.MatchString(jobName) {
 		return "vsphere-upi"
-	}
-	if vsphereRegex.MatchString(jobName) {
+	} else if vsphereRegex.MatchString(jobName) {
 		return "vsphere-ipi"
 	}
 
@@ -329,40 +317,35 @@ func determinePlatform(jobName string) string {
 func determineArchitecture(jobName string) string {
 	if arm64Regex.MatchString(jobName) {
 		return "arm64"
-	}
-	if ppc64leRegex.MatchString(jobName) {
+	} else if ppc64leRegex.MatchString(jobName) {
 		return "ppc64le"
-	}
-	if s390xRegex.MatchString(jobName) {
+	} else if s390xRegex.MatchString(jobName) {
 		return "s390x"
-	}
-	if multiRegex.MatchString(jobName) {
+	} else if multiRegex.MatchString(jobName) {
 		return "heterogeneous"
+	} else {
+		return "amd64"
 	}
-
-	return "amd64"
 }
 
 func determineNetwork(jobName, release string) string {
 	if ovnRegex.MatchString(jobName) {
 		return "ovn"
-	}
-	if sdnRegex.MatchString(jobName) {
+	} else if sdnRegex.MatchString(jobName) {
 		return "sdn"
+	} else {
+		// If no explicit version, guess based on release
+		ovnBecomesDefault, _ := version.NewVersion("4.12")
+		releaseVersion, err := version.NewVersion(release)
+		if err != nil {
+			log.Warningf("could not determine network type for %q", jobName)
+			return ""
+		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
+			return "ovn"
+		} else {
+			return "sdn"
+		}
 	}
-
-	// If no explicit version, guess based on release
-	ovnBecomesDefault, _ := version.NewVersion("4.12")
-	releaseVersion, err := version.NewVersion(release)
-	if err != nil {
-		log.Warningf("could not determine network type for %q", jobName)
-		return ""
-	}
-	if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
-		return "ovn"
-	}
-
-	return "sdn"
 }
 
 func (openshiftVariants) IsJobNeverStable(jobName string) bool {

@@ -28,9 +28,22 @@ linters-settings:
   gocritic:
     enabled-checks:
       # Diagnostic
+      - argOrder
+      - badCond
+      - caseOrder
+      - codegenComment
       - commentedOutCode
+      - deprecatedComment
+      - dupArg
+      - dupBranchBody
+      - dupCase
+      - dupSubExpr
+      - exitAfterDefer
+      - flagDeref
+      - flagName
       - nilValReturn
       - octalLiteral
+      - offBy1
       - sloppyReassign
       - weakCond
 
@@ -40,14 +53,29 @@ linters-settings:
       - rangeExprCopy
 
       # Style
+      - assignOp
       - boolExprSimplify
+      - captLocal
+      - commentFormatting
       - commentedOutImport
+      - defaultCaseOrder
       - docStub
+      - elseif
       - emptyFallthrough
       - hexLiteral
       - methodExprCall
+      - regexpMust
+      - singleCaseSwitch
+      - sloppyLen
+      - switchTrue
       - typeAssertChain
+      - typeSwitchVar
+      - underef
       - unlabelStmt
+      - unlambda
+      - unslice
+      - valSwap
+      - wrapperFunc
       - yodaStyleExpr
 
       # Opinionated

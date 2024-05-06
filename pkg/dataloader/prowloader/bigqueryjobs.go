@@ -90,8 +90,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 				refs = &prow.Refs{Org: bqjr.PROrg.StringVal, Repo: bqjr.PRRepo.StringVal}
 				pulls := make([]prow.Pull, 0)
 				pull := prow.Pull{Number: prNumber, SHA: bqjr.PRSha.StringVal, Author: bqjr.PRAuthor.StringVal}
-				pulls = append(pulls, pull)
-				refs.Pulls = pulls
+				refs.Pulls = append(pulls, pull)
 			}
 		} else if bqjr.Type == "presubmit" {
 			log.Warningf("Presubmit job found without matching PR data for: %s", bqjr.JobName)

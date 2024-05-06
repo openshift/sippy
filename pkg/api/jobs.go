@@ -66,17 +66,16 @@ func PrintVariantReportFromDB(w http.ResponseWriter, req *http.Request,
 	var err error
 
 	startParam := req.URL.Query().Get("start")
-	switch {
-	case startParam != "":
+	if startParam != "" {
 		start, err = time.Parse("2006-01-02", startParam)
 		if err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding start param: %s", err.Error())})
 			return
 		}
-	case req.URL.Query().Get("period") == periodTwoDay:
+	} else if req.URL.Query().Get("period") == periodTwoDay {
 		// twoDay report period starts 9 days ago, (comparing last 2 days vs previous 7)
 		start = reportEnd.Add(-9 * 24 * time.Hour)
-	default:
+	} else {
 		// Default start to 14 days ago
 		start = reportEnd.Add(-14 * 24 * time.Hour)
 	}
@@ -84,18 +83,18 @@ func PrintVariantReportFromDB(w http.ResponseWriter, req *http.Request,
 	// TODO: currently we're assuming dates use the 00:00:00, is it more logical to add 23:23 for boundary and end? or
 	// for callers to know to specify one day beyond.
 	boundaryParam := req.URL.Query().Get("boundary")
-	switch {
-	case boundaryParam != "":
+	if boundaryParam != "" {
 		boundary, err = time.Parse("2006-01-02", boundaryParam)
 		if err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": fmt.Sprintf("Error decoding boundary param: %s", err.Error())})
 			return
 		}
-	case req.URL.Query().Get("period") == periodTwoDay:
+	} else if req.URL.Query().Get("period") == periodTwoDay {
 		boundary = reportEnd.Add(-2 * 24 * time.Hour)
-	default:
+	} else {
 		// Default boundary to 7 days ago
 		boundary = reportEnd.Add(-7 * 24 * time.Hour)
+
 	}
 
 	endParam := req.URL.Query().Get("end")
@@ -242,12 +241,12 @@ type jobDetailAPIResult struct {
 }
 
 func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
-	newJobs := jobs
 	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
-	if limit > 0 && len(newJobs.Jobs) >= limit {
-		newJobs.Jobs = newJobs.Jobs[:limit]
+	if limit > 0 && len(jobs.Jobs) >= limit {
+		jobs.Jobs = jobs.Jobs[:limit]
 	}
-	return newJobs
+
+	return jobs
 }
 
 // PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
