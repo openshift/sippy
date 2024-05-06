@@ -29,13 +29,13 @@ type ComponentReadinessFlags struct {
 	GoogleCloudFlags *flags.GoogleCloudFlags
 	BigQueryFlags    *flags.BigQueryFlags
 	CacheFlags       *flags.CacheFlags
+	ProwFlags        *flags.ProwFlags
 
 	Config      string
 	LogLevel    string
 	ListenAddr  string
 	MetricsAddr string
 	RedisURL    string
-	ProwURL     string
 }
 
 func NewComponentReadinessCommand() *cobra.Command {
@@ -43,8 +43,8 @@ func NewComponentReadinessCommand() *cobra.Command {
 		LogLevel:    "info",
 		ListenAddr:  ":8080",
 		MetricsAddr: ":2112",
-		ProwURL:     "https://prow.ci.openshift.org",
 
+		ProwFlags:        flags.NewProwFlags(),
 		GoogleCloudFlags: flags.NewGoogleCloudFlags(),
 		BigQueryFlags:    flags.NewBigQueryFlags(),
 		CacheFlags:       flags.NewCacheFlags(),
@@ -75,14 +75,14 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.CacheFlags.BindFlags(flagSet)
 	f.BigQueryFlags.BindFlags(flagSet)
 	f.GoogleCloudFlags.BindFlags(flagSet)
-	flagSet.StringVar(&f.ProwURL, "prow-url", f.ProwURL, "URL for Prow")
+	f.ProwFlags.BindFlags(flagSet)
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
-	return nil
+	return f.ProwFlags.Validate()
 }
 
 func (f *ComponentReadinessFlags) Run() error { //nolint:gocyclo
@@ -104,7 +104,7 @@ func (f *ComponentReadinessFlags) Run() error { //nolint:gocyclo
 	sippyConfig := v1.SippyConfig{}
 	if f.Config == "" {
 		sippyConfig.Prow = v1.ProwConfig{
-			URL: f.ProwURL + "/prowjobs.js",
+			URL: f.ProwFlags.URL + "/prowjobs.js",
 		}
 	} else {
 		data, err := os.ReadFile(f.Config)
@@ -158,7 +158,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		webRoot,
 		&resources.Static,
 		nil,
-		f.ProwURL,
+		f.ProwFlags.URL,
 		f.GoogleCloudFlags.StorageBucket,
 		gcsClient,
 		bigQueryClient,
@@ -171,7 +171,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		// Do an immediate metrics update
 		err = metrics.RefreshMetricsDB(nil,
 			bigQueryClient,
-			f.ProwURL,
+			f.ProwFlags.URL,
 			f.GoogleCloudFlags.StorageBucket,
 			nil,
 			time.Time{},
@@ -188,7 +188,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(nil, bigQueryClient, f.ProwURL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: defaultCRTimeRoundingFactor})
+					err := metrics.RefreshMetricsDB(nil, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: defaultCRTimeRoundingFactor})
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}
