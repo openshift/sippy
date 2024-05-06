@@ -183,14 +183,14 @@ func findReleaseMatchJobNames(dbc *db.DB, jobRun *models.ProwJobRun, compareRele
 					gosort.Strings(job.Variants)
 					if stringSlicesEqual(variants, job.Variants) {
 
-						jobIds, err := query.ProwJobRunIds(dbc, job.ID)
+						jobIDs, err := query.ProwJobRunIDs(dbc, job.ID)
 
 						if err != nil {
 							logger.WithError(err).Errorf("Failed to query job run ids for %d", job.ID)
 							continue
 						}
 
-						totalJobRunsCount += len(jobIds)
+						totalJobRunsCount += len(jobIDs)
 						allJobNames = append(allJobNames, "'"+job.Name+"'")
 					}
 				}
