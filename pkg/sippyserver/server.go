@@ -627,6 +627,29 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
+func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": "job variants API is only available when google-service-account-credential-file is configured",
+		})
+		return
+	}
+	outputs, errs := api.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	if len(errs) > 0 {
+		log.Warningf("%d errors were encountered while querying job variants from big query:", len(errs))
+		for _, err := range errs {
+			log.Error(err.Error())
+		}
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": fmt.Sprintf("error querying job variants from big query: %v", errs),
+		})
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, outputs)
+}
+
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
 	if err != nil {
@@ -1450,6 +1473,12 @@ func (s *Server) Serve() {
 			Description:  "Reports bugs related to jobs",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonJobBugsFromDB,
+		},
+		{
+			EndpointPath: "/api/job_variants",
+			Description:  "Reports all job variants defined in BigQuery",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonJobVariantsFromBigQuery,
 		},
 		{
 			EndpointPath: "/api/pull_requests",
