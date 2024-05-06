@@ -134,7 +134,7 @@ func getReleaseStatus(releases []query.Release, release string) string {
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time, cacheOptions cache.RequestOptions) error {
+func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time, cacheOptions cache.RequestOptions) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := api.GetReleases(dbc, bqc)
@@ -205,7 +205,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 
 	// BigQuery metrics
 	if bqc != nil {
-		if err := refreshComponentReadinessMetrics(bqc, gcsBucket, cacheOptions); err != nil {
+		if err := refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
 
@@ -219,7 +219,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, gcsBucket string, varian
 	return nil
 }
 
-func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string, cacheOptions cache.RequestOptions) error {
+func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucket string, cacheOptions cache.RequestOptions) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return nil
@@ -309,7 +309,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, gcsBucket string,
 	}
 
 	// Get report
-	rows, errs := api.GetComponentReportFromBigQuery(client, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOptions)
+	rows, errs := api.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOptions)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

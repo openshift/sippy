@@ -115,7 +115,7 @@ func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client, gcsBuck
 	return getDataFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, apitype.ComponentReportTestVariants{})
 }
 
-func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
+func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsBucket string,
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
@@ -125,6 +125,7 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 ) (apitype.ComponentReport, []error) {
 	generator := componentReportGenerator{
 		client:        client,
+		prowURL:       prowURL,
 		gcsBucket:     gcsBucket,
 		cacheOption:   cacheOption,
 		BaseRelease:   baseRelease,
@@ -139,7 +140,7 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, gcsBucket str
 	return getDataFromCacheOrGenerate[apitype.ComponentReport](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("ComponentReport~"), generator.GenerateReport, apitype.ComponentReport{})
 }
 
-func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gcsBucket string,
+func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, prowURL, gcsBucket string,
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
@@ -148,6 +149,7 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 	cacheOption cache.RequestOptions) (apitype.ComponentReportTestDetails, []error) {
 	generator := componentReportGenerator{
 		client:        client,
+		prowURL:       prowURL,
 		gcsBucket:     gcsBucket,
 		cacheOption:   cacheOption,
 		BaseRelease:   baseRelease,
@@ -170,6 +172,7 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, gc
 type componentReportGenerator struct {
 	ReportModified *time.Time
 	client         *bqcachedclient.Client
+	prowURL        string
 	gcsBucket      string
 	cacheOption    cache.RequestOptions
 	BaseRelease    apitype.ComponentReportRequestReleaseOptions
@@ -1497,9 +1500,9 @@ func getSuccessRate(success, failure, flake int) float64 {
 	return float64(success+flake) / float64(total)
 }
 
-func getJobRunStats(stats apitype.ComponentJobRunTestStatusRow, gcsBucket string) apitype.ComponentReportTestDetailsJobRunStats {
+func getJobRunStats(stats apitype.ComponentJobRunTestStatusRow, prowURL, gcsBucket string) apitype.ComponentReportTestDetailsJobRunStats {
 	failure := getFailureCount(stats)
-	url := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/%s/", gcsBucket)
+	url := fmt.Sprintf("%s/view/gs/%s/", prowURL, gcsBucket)
 	subs := strings.Split(stats.FilePath, "/artifacts/")
 	if len(subs) > 1 {
 		url += subs[0]
@@ -1557,7 +1560,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 				result.JiraComponentID = baseStats.JiraComponentID
 			}
 
-			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, getJobRunStats(baseStats, c.gcsBucket))
+			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, getJobRunStats(baseStats, c.prowURL, c.gcsBucket))
 			perJobBaseSuccess += baseStats.SuccessCount
 			perJobBaseFlake += baseStats.FlakeCount
 			perJobBaseFailure += getFailureCount(baseStats)
@@ -1571,7 +1574,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 					result.JiraComponentID = sampleStats.JiraComponentID
 				}
 
-				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, getJobRunStats(sampleStats, c.gcsBucket))
+				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, getJobRunStats(sampleStats, c.prowURL, c.gcsBucket))
 				perJobSampleSuccess += sampleStats.SuccessCount
 				perJobSampleFlake += sampleStats.FlakeCount
 				perJobSampleFailure += getFailureCount(sampleStats)
@@ -1609,7 +1612,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		perJobSampleSuccess = 0
 		perJobSampleFlake = 0
 		for _, sampleStats := range sampleStatsList {
-			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, getJobRunStats(sampleStats, c.gcsBucket))
+			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, getJobRunStats(sampleStats, c.prowURL, c.gcsBucket))
 			perJobSampleSuccess += sampleStats.SuccessCount
 			perJobSampleFlake += sampleStats.FlakeCount
 			perJobSampleFailure += getFailureCount(sampleStats)

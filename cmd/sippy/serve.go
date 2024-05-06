@@ -36,6 +36,7 @@ type ServerFlags struct {
 	DBFlags          *flags.PostgresFlags
 	GoogleCloudFlags *flags.GoogleCloudFlags
 	ModeFlags        *flags.ModeFlags
+	ProwFlags        *flags.ProwFlags
 
 	ListenAddr           string
 	MetricsAddr          string
@@ -49,6 +50,7 @@ func NewServerFlags() *ServerFlags {
 		DBFlags:          flags.NewPostgresDatabaseFlags(),
 		GoogleCloudFlags: flags.NewGoogleCloudFlags(),
 		ModeFlags:        flags.NewModeFlags(),
+		ProwFlags:        flags.NewProwFlags(),
 		ListenAddr:       ":8080",
 		MetricsAddr:      ":2112",
 	}
@@ -60,12 +62,17 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.DBFlags.BindFlags(flagSet)
 	f.GoogleCloudFlags.BindFlags(flagSet)
 	f.ModeFlags.BindFlags(flagSet)
+	f.ProwFlags.BindFlags(flagSet)
 
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 	factorUsage := fmt.Sprintf("Set the rounding factor for component readiness release time. The time will be rounded down to the nearest multiple of the factor. Maximum value is %v", maxCRTimeRoundingFactor)
 	flagSet.DurationVar(&f.CRTimeRoundingFactor, "component-readiness-time-rounding-factor", defaultCRTimeRoundingFactor, factorUsage)
+}
 
+func (f *ServerFlags) Validate() error {
+	// TODO: Validate other flags
+	return f.ProwFlags.Validate()
 }
 
 func NewServeCommand() *cobra.Command {
@@ -75,6 +82,10 @@ func NewServeCommand() *cobra.Command {
 		Use:   "serve",
 		Short: "Run the sippy server",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := f.Validate(); err != nil {
+				return errors.WithMessage(err, "error validating options")
+			}
+
 			dbc, err := f.DBFlags.GetDBClient()
 			if err != nil {
 				return errors.WithMessage(err, "couldn't get DB client")
@@ -125,6 +136,7 @@ func NewServeCommand() *cobra.Command {
 				webRoot,
 				&resources.Static,
 				dbc,
+				f.ProwFlags.URL,
 				f.GoogleCloudFlags.StorageBucket,
 				gcsClient,
 				bigQueryClient,
@@ -135,7 +147,7 @@ func NewServeCommand() *cobra.Command {
 
 			if f.MetricsAddr != "" {
 				// Do an immediate metrics update
-				err = metrics.RefreshMetricsDB(dbc, bigQueryClient, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
+				err = metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}
@@ -148,7 +160,7 @@ func NewServeCommand() *cobra.Command {
 						select {
 						case <-ticker.C:
 							log.Info("tick")
-							err := metrics.RefreshMetricsDB(dbc, bigQueryClient, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
+							err := metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor})
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")
 							}
