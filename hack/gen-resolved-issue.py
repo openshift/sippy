@@ -501,6 +501,37 @@ def issue_details(record, issue_type, issue_description, issue_url):
 
     return issue_type, issue_description, issue_url
 
+def find_matching_job_run_ids(incidents):
+    # take the first test entry and get the set of job runs
+    # enumerate the remaining test entries and job runs and remove any that don't match from the first set
+    # when done if there are valid job runs set them for all of the test ids
+    # otherwise remove all test ids
+    if len(incidents) > 1:
+        match_jobs = incidents[0]["JobRuns"]
+        drop_jobs = []
+
+        for test in incidents[1:]:
+            for job in match_jobs:
+                match = False
+                for job_run in test["JobRuns"]:
+                    if job_run["URL"] == job["URL"]:
+                        match = True
+
+                if not match:
+                    drop_jobs.append(job)
+
+        keep_jobs = []
+        for job in match_jobs:
+            if job not in drop_jobs:
+                keep_jobs.append(job)
+
+        if len(keep_jobs) == 0:
+            return NotFound
+
+        for test in incidents:
+            test["JobRuns"] = keep_jobs
+
+    return incidents
 
 if __name__ == '__main__':
 
@@ -532,6 +563,8 @@ if __name__ == '__main__':
     parser.add_argument("--test-release", help="The release the test is running against.")
     # the url from component readiness dev tools network console that contains regression results for the test(s) specified
     parser.add_argument("--test-report-url", help="The component readiness url for the test regression.")
+
+    parser.add_argument("--match-all-job-runs", help="Only the job runs common to all of the test ids will be preserved. Only valid with output-type == JSON.", type=bool, default=False)
 
 
     # a JSON structured file, potentially output by this tool, to be used as input for matching tests
@@ -584,6 +617,8 @@ if __name__ == '__main__':
                 args.job_run_start_time_max = arguments["JobRunStartTimeMax"]
             if "JobRunStartTimeMin" in arguments and len(arguments["JobRunStartTimeMin"]) > 0:
                 args.job_run_start_time_min = arguments["JobRunStartTimeMin"]
+            if "MatchAllJobRuns" in arguments and len(arguments["MatchAllJobRuns"]) > 0:
+                args.match_all_job_runs = bool(arguments["MatchAllJobRuns"])
 
     if args.test_report_url == None or len(args.test_report_url) == 0:
         # if we are loading incidents from a file we don't need the URL
@@ -619,6 +654,9 @@ if __name__ == '__main__':
     if args.output_type == "DB":
         if None == os.environ.get('GOOGLE_APPLICATION_CREDENTIALS'):
             print("Missing 'GOOGLE_APPLICATION_CREDENTIALS' env variable for DB output")
+            exit()
+        if args.match_all_job_runs:
+            print("Invalid specification of match-all-job-runs when output-type is DB")
             exit()
 
     output_file = ""
@@ -807,10 +845,16 @@ if __name__ == '__main__':
                         write_incident_record(triaged_incident, modified_time, target_modified_time)
 
     if args.output_type == 'JSON':
+        if args.match_all_job_runs:
+            triaged_incidents = find_matching_job_run_ids(triaged_incidents)
+            if triaged_incidents == NotFound:
+                print("Error: no remaining triaged incidents after matching job runs")
+                exit()
+
         triage_output = {"Arguments": {"TestRelease": args.test_release, "TestReportURL": args.test_report_url,
                                     "IssueDescription": description, "IssueType": args.issue_type,
                                     "IssueURL": issue_url, "OutputFile": output_file,
-                                    "OutputType": args.output_type, "IncidentGroupId": incident_group_id,
+                                    "IncidentGroupId": incident_group_id,
                                     "TargetModifiedTime": target_modified_time},
                                     "Tests": triaged_incidents}
         if  args.job_run_start_time_max != None:
