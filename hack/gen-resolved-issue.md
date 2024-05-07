@@ -13,6 +13,56 @@ Install dependencies:
 pip3 install -r requirements.txt
 ```
 
+
+# Overview
+
+## Group Incident ID
+--assign-incident-group-id: Assign the specified incident-group-id common among records.  Used when updating an existing incident-group-id and you want to add to the existing group.  When omitted a new incident-group-id will automatically be created.
+
+## Issue description, type and URL
+--issue-description: A short description of the regression
+
+--issue-type: The type of regression ['Infrastructure', 'Product']   
+
+--issue-url: The URL (JIRA / PR) associated with the regression
+
+## If there is a specific time window to consider for JobRunStartTimes specify the min and max and any runs outside that window will be ignored
+--job-run-start-time-max: The latest date time to consider a failed job run for an incident
+
+--job-run-start-time-min: The latest date time to consider a failed job run for an incident
+
+## If the JSON file specified in --input-file is complete and you don't need to use the --test-report-url to look up JobRuns, etc. set this flag to true
+--load-incidents-from-file: Skip test report lookup and persist incidents from the specified input file, only valid with output-type DB ['True', 'False'], default=False
+
+## If you expect an existing incident to exist but it hasn't been updated within the last two weeks you can specify a target modified time for the match incident search range to use
+--target-modified-time: The target date to query for existing record (range: target-2weeks - target)
+
+## Specify the single test id to match, or use an input file for multiple tests
+--test-id: The internal id of the test
+
+## The release this incident is against
+--test-release: "The release the test is running against.
+
+## The api url from component readiness dev tools network console that contains regression results for the test(s) specified 
+--test-report-url: The component readiness api url for the test regression.
+
+## Match All Job Runs
+--match-all-job-runs: Only the job runs common to all of the test ids will be preserved.  If there is a test id / variant match that does not contain common runs then all results will be dropped.  Only valid with output-type == JSON. ['True' 'False'], default=False
+
+## A JSON structured file, potentially output by this tool, to be used as input for matching tests creating records
+--input-file: JSON input file containing test criteria for creating incidents.
+
+## The output file to write JSON output too    
+--output-file: Write JSON output to the specified file instead of DB.
+
+## Write JSON output or persist to DB    
+--output-type: Write the incident record(s) as JSON or as DB record ['JSON', 'DB'], default='JSON'
+When the output type is DB 'GOOGLE_APPLICATION_CREDENTIALS' environment variable must be specified.
+
+## Capture just the test information for output
+--output-test-info-only: When the incident record is JSON you can record only the test info and not job_runs, must be specified on the command line ['True', 'False'] default=False
+
+
 # Examples
 
 ## Example Input file with a list of TestIds to match
@@ -37,7 +87,7 @@ pip3 install -r requirements.txt
         { "TestId": "openshift-tests-upgrade:44e2e0e6106443fef746afb65a3aaa9f"},
         { "TestId": "openshift-tests-upgrade:fbe6ebd6d5f577a21de3de9504ca242a"},
         { "TestId": "openshift-tests-upgrade:a7bca0ce3787e8bd213b32795d81bb50"},
-        { "TestId": "openshift-tests-upgrade:c2f88e80fa2064a98711768d5a679735"}
+        { "TestId": "openshift-tests-upgrade:c2f88e80fa2064a98711768d5a679735"} 
     ]
 }
 ```
@@ -48,9 +98,9 @@ pip3 install -r requirements.txt
 
 Review `test_cno_pods_output.json`, remove the OutputType or change it to DB
 
-Run the command to persist the entries to DB
+Run the command to persist the entries to DB (make sure GOOGLE_APPLICATION_CREDENTIALS is defined)
 ```
-./gen-resolved-issue.py --input-file=test_cno_pods_output.json --output-type=DB --load-incidents-from-file
+./gen-resolved-issue.py --input-file=test_cno_pods_output.json --output-type=DB --load-incidents-from-file=True
 ```
 
 
@@ -77,7 +127,6 @@ Start with a wildcard for the TestId and a minimal list of Variants
                     "value": "metal-ipi"
                 }
             ]
-
         }
     ]
 }
