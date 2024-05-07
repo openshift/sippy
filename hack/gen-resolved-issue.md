@@ -1,3 +1,18 @@
+# Installation
+
+Optional virtual environment:
+
+```
+$ virtualenv gen-resolved-issue
+$ source gen-resolved-issue/bin/activate
+```
+
+Install dependencies:
+
+```
+pip3 install -r requirements.txt
+```
+
 # Examples
 
 ## Example Input file with a list of TestIds to match
@@ -22,7 +37,7 @@
         { "TestId": "openshift-tests-upgrade:44e2e0e6106443fef746afb65a3aaa9f"},
         { "TestId": "openshift-tests-upgrade:fbe6ebd6d5f577a21de3de9504ca242a"},
         { "TestId": "openshift-tests-upgrade:a7bca0ce3787e8bd213b32795d81bb50"},
-        { "TestId": "openshift-tests-upgrade:c2f88e80fa2064a98711768d5a679735"}        
+        { "TestId": "openshift-tests-upgrade:c2f88e80fa2064a98711768d5a679735"}
     ]
 }
 ```
@@ -62,7 +77,7 @@ Start with a wildcard for the TestId and a minimal list of Variants
                     "value": "metal-ipi"
                 }
             ]
-               
+
         }
     ]
 }
