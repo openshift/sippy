@@ -4,6 +4,7 @@ import {
   Button,
   Grid,
   Paper,
+  Popover,
   TableContainer,
   Typography,
 } from '@mui/material'
@@ -19,7 +20,7 @@ import {
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { Help } from '@mui/icons-material'
+import { FileCopy, Help, InsertLink } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
@@ -73,6 +74,27 @@ export default function CompReadyTestReport(props) {
   const safeTestId = safeEncodeURIComponent(testId)
 
   const { expandEnvironment } = useContext(CompReadyVarsContext)
+
+  // Helpers for copying the test ID to clipboard
+  const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
+  const copyPopoverOpen = Boolean(copyPopoverEl)
+  const copyTestID = (event) => {
+    event.preventDefault()
+    navigator.clipboard.writeText(testId)
+    setCopyPopoverEl(event.currentTarget)
+    setTimeout(() => setCopyPopoverEl(null), 2000)
+  }
+
+  const handleCopy = async (event) => {
+    try {
+      await navigator.clipboard.writeText(testId)
+      setAnchorEl(event.currentTarget)
+      setTimeout(() => setAnchorEl(null), 1500) // Close popover after 1.5 seconds
+    } catch (err) {
+      setAnchorEl(event.currentTarget)
+      setTimeout(() => setAnchorEl(null), 1500) // Close popover after 1.5 seconds
+    }
+  }
 
   const apiCallStr =
     getTestDetailsAPIUrl() +
@@ -403,7 +425,18 @@ View the test details report at ${document.location.href}
         <TableBody>
           <TableRow>
             <TableCell>Test ID:</TableCell>
-            <TableCell>{testId}</TableCell>
+            <TableCell>
+              {testId}
+              <IconButton
+                aria-label="Copy test ID"
+                color="inherit"
+                onClick={copyTestID}
+              >
+                <Tooltip title="Copy test ID">
+                  <FileCopy />
+                </Tooltip>
+              </IconButton>
+            </TableCell>
           </TableRow>
           <TableRow>
             <TableCell>Environment:</TableCell>
@@ -503,6 +536,22 @@ View the test details report at ${document.location.href}
           </TableBody>
         </Table>
       </TableContainer>
+      <Popover
+        id="copyPopover"
+        open={copyPopoverOpen}
+        anchorEl={copyPopoverEl}
+        onClose={() => setCopyPopoverEl(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+      >
+        ID copied!
+      </Popover>
       <GeneratedAt time={data.generated_at} />
     </Fragment>
   )
