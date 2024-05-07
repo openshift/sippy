@@ -35,6 +35,7 @@ export default function ProwJobRun(props) {
     operator_degraded: 'Operator Degraded',
     pods: 'Pods (careful)',
     pod_logs: 'Pod Logs',
+    system_journal: 'System Journal',
     interesting_events: 'Interesting Events',
     alerts: 'Alerts',
     node_state: 'Node State',
@@ -335,6 +336,7 @@ ProwJobRun.defaultProps = {
     'operator_progressing',
     'operator_degraded',
     'pod_logs',
+    'system_journal',
     'interesting_events',
     'alerts',
     'node_state',
@@ -398,6 +400,11 @@ function mutateIntervals(eventIntervals) {
     // could be something simpler like eventInterval.category = "operator-degraded" instead.
     // Not hypthetical, found events that passed isPodLogs also passed isPods.
 
+    // Hack until https://issues.redhat.com/browse/TRT-1653 is fixed.
+    if (eventInterval.locator.keys === null) {
+      eventInterval.locator.keys = {}
+    }
+
     // Categorizing the events once on page load will save time on filtering later
     eventInterval.categories = {}
     eventInterval.categories.operator_unavailable =
@@ -408,6 +415,7 @@ function mutateIntervals(eventIntervals) {
       isOperatorDegraded(eventInterval)
     eventInterval.categories.pods = isPod(eventInterval)
     eventInterval.categories.pod_logs = isPodLog(eventInterval)
+    eventInterval.categories.system_journal = isSystemJournalLog(eventInterval)
     eventInterval.categories.interesting_events =
       isInterestingOrPathological(eventInterval)
     eventInterval.categories.alerts = isAlert(eventInterval)
@@ -475,6 +483,14 @@ function groupIntervals(filteredIntervals) {
     timelineGroups[timelineGroups.length - 1].data,
     filteredIntervals,
     'pod_logs'
+  )
+
+  timelineGroups.push({ group: 'system-journal', data: [] })
+  createTimelineData(
+    journalLogs,
+    timelineGroups[timelineGroups.length - 1].data,
+    filteredIntervals,
+    'system_journal'
   )
 
   timelineGroups.push({ group: 'alerts', data: [] })
@@ -607,6 +623,15 @@ function isPodLog(eventInterval) {
     return true
   }
   return eventInterval.source === 'EtcdLog'
+}
+
+function isSystemJournalLog(eventInterval) {
+  if (eventInterval.source === 'OVSVswitchdLog') {
+    console.log('found one')
+    return true
+  }
+  // TODO: may want to add more here in future
+  return false
 }
 
 function isInterestingOrPathological(eventInterval) {
@@ -761,6 +786,10 @@ function podLogs(item) {
   return [item.displayLocator, ` (pod log)`, 'PodLogInfo']
 }
 
+function journalLogs(item) {
+  return [item.displayLocator, ` (system journal)`, 'SystemJournal']
+}
+
 const reReason = new RegExp('(^| )reason/([^ ]+)')
 function podStateValue(item) {
   let m = item.message.match(reReason)
@@ -823,7 +852,6 @@ function podStateValue(item) {
   return [item.displayLocator, '', 'Unknown']
 }
 
-const rePhase = new RegExp('(^| )phase/([^ ]+)')
 function nodeStateValue(item) {
   let roles = ''
   if (item.message.annotations.hasOwnProperty('roles')) {
