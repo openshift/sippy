@@ -278,6 +278,25 @@ func TestVariantSyncer(t *testing.T) {
 				VariantUpgrade:          "minor",
 			},
 		},
+		{
+			job: "periodic-ci-openshift-release-master-ci-4.16-e2e-aws-ovn-upgrade-out-of-change",
+			expected: map[string]string{
+				VariantRelease:          "4.16",
+				VariantFromRelease:      "4.16",
+				VariantReleaseMajor:     "4",
+				VariantReleaseMinor:     "16",
+				VariantFromReleaseMajor: "4",
+				VariantFromReleaseMinor: "16",
+				VariantArch:             "amd64",
+				VariantInstaller:        "ipi",
+				VariantPlatform:         "aws",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "eng",
+				VariantTopology:         "ha",
+				VariantUpgrade:          "micro-downgrade",
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.job, func(t *testing.T) {

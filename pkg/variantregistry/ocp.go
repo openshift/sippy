@@ -222,17 +222,18 @@ var (
 	ipv6Regex      = regexp.MustCompile(`(?i)-ipv6`)
 	dualStackRegex = regexp.MustCompile(`(?i)-dualstack`)
 	// proxy jobs do not have a trailing -version segment
-	ppc64leRegex      = regexp.MustCompile(`(?i)-ppc64le`)
-	promoteRegex      = regexp.MustCompile(`(?i)^promote-`)
-	proxyRegex        = regexp.MustCompile(`(?i)-proxy`)
-	rtRegex           = regexp.MustCompile(`(?i)-rt`)
-	s390xRegex        = regexp.MustCompile(`(?i)-s390x`)
-	sdnRegex          = regexp.MustCompile(`(?i)-sdn`)
-	serialRegex       = regexp.MustCompile(`(?i)-serial`)
-	singleNodeRegex   = regexp.MustCompile(`(?i)-single-node`)
-	techpreview       = regexp.MustCompile(`(?i)-techpreview`)
-	upgradeMinorRegex = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
-	upgradeRegex      = regexp.MustCompile(`(?i)-upgrade`)
+	ppc64leRegex            = regexp.MustCompile(`(?i)-ppc64le`)
+	promoteRegex            = regexp.MustCompile(`(?i)^promote-`)
+	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
+	rtRegex                 = regexp.MustCompile(`(?i)-rt`)
+	s390xRegex              = regexp.MustCompile(`(?i)-s390x`)
+	sdnRegex                = regexp.MustCompile(`(?i)-sdn`)
+	serialRegex             = regexp.MustCompile(`(?i)-serial`)
+	singleNodeRegex         = regexp.MustCompile(`(?i)-single-node`)
+	techpreview             = regexp.MustCompile(`(?i)-techpreview`)
+	upgradeMinorRegex       = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
+	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
+	upgradeRegex            = regexp.MustCompile(`(?i)-upgrade`)
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex = regexp.MustCompile(`(?i)-vsphere`)
 )
@@ -282,15 +283,16 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantFromReleaseMinor] = fromReleaseMajorMinor[1]
 	}
 	if upgradeRegex.MatchString(jobName) {
-		if upgradeMinorRegex.MatchString(jobName) {
+		switch {
+		case upgradeOutOfChangeRegex.MatchString(jobName):
+			variants[VariantUpgrade] = "micro-downgrade"
+		case isMultiUpgrade(release, fromRelease):
+			variants[VariantUpgrade] = "multi"
+		case upgradeMinorRegex.MatchString(jobName):
 			variants[VariantUpgrade] = "minor"
-			if isMultiUpgrade(release, fromRelease) {
-				variants[VariantUpgrade] = "multi"
-			}
-		} else {
+		default:
 			variants[VariantUpgrade] = "micro"
 		}
-		// TODO: add multi-upgrade
 	} else {
 		variants[VariantUpgrade] = "none"
 		// Wipe out the FromRelease if it's not an upgrade job.
