@@ -22,7 +22,7 @@ pip3 install -r requirements.txt
 ## Issue description, type and URL
 --issue-description: A short description of the regression
 
---issue-type: The type of regression ['Infrastructure', 'Product']   
+--issue-type: The type of regression ['Infrastructure', 'Product']
 
 --issue-url: The URL (JIRA / PR) associated with the regression
 
@@ -43,7 +43,7 @@ pip3 install -r requirements.txt
 ## The release this incident is against
 --test-release: "The release the test is running against.
 
-## The api url from component readiness dev tools network console that contains regression results for the test(s) specified 
+## The api url from component readiness dev tools network console that contains regression results for the test(s) specified
 --test-report-url: The component readiness api url for the test regression.
 
 ## Match All Job Runs
@@ -52,10 +52,10 @@ pip3 install -r requirements.txt
 ## A JSON structured file, potentially output by this tool, to be used as input for matching tests creating records
 --input-file: JSON input file containing test criteria for creating incidents.
 
-## The output file to write JSON output too    
+## The output file to write JSON output too
 --output-file: Write JSON output to the specified file instead of DB.
 
-## Write JSON output or persist to DB    
+## Write JSON output or persist to DB
 --output-type: Write the incident record(s) as JSON or as DB record ['JSON', 'DB'], default='JSON'
 When the output type is DB 'GOOGLE_APPLICATION_CREDENTIALS' environment variable must be specified.
 
@@ -357,3 +357,39 @@ The output file can be edited and renamed (`metal_4_16_input.json `) to change t
     ]
 }
 ```
+
+## Triage JIRA Requests
+Starting with [TRT-1657](https://issues.redhat.com/browse/TRT-1657) use the [regressedModel](https://sippy.dptools.openshift.org/sippy-ng/component_readiness/main?regressedModal=1) view to see the list of regressions and filter based on the test(s) being triaged, in this case `KubePodNotReady`.  Review the failed tests and variants, copy the testIDs to create the minimal starter file.
+
+In Component Readiness navigate to the [Component / Capability view](https://sippy.dptools.openshift.org/sippy-ng/component_readiness/capability?baseEndTime=2024-02-28%2023%3A59%3A59&baseRelease=4.15&baseStartTime=2024-02-01%2000%3A00%3A00&capability=Alerts&component=OLM&confidence=95&excludeArches=arm64%2Cheterogeneous%2Cppc64le%2Cs390x&excludeClouds=openstack%2Cibmcloud%2Clibvirt%2Covirt%2Cunknown&excludeVariants=hypershift%2Cosd%2Cmicroshift%2Ctechpreview%2Csingle-node%2Cassisted%2Ccompact&groupBy=cloud%2Carch%2Cnetwork&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-05-08%2023%3A59%3A59&sampleRelease=4.16&sampleStartTime=2024-05-02%2000%3A00%3A00) that narrows the results down as much as possible ( you could exclude arches, platforms, networks, etc. if you needed).  From the web developer tools capture the [api URL](https://sippy.dptools.openshift.org/api/component_readiness?baseEndTime=2024-02-28T23:59:59Z&baseRelease=4.15&baseStartTime=2024-02-01T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-05-08T23:59:59Z&sampleRelease=4.16&sampleStartTime=2024-05-02T00:00:00Z&component=OLM&capability=Alerts).  You should have enough data to run gen-resolved-issue.py at this point to generate a fully populated output file `trt_1657_4_16_regressions.json`.  ** You can update the TestReportURL with new time ranges and rerun using this file to pick up new failures if/when the test is marked regressed again (upcoming work to do this prior to going regressed again).  If you do rerun to update incidents make sure you add the `IncidentGroupId` that is assigned the first time to keep the issues grouped properly
+
+```
+[
+    {
+    "Arguments": {
+        "TestRelease": "4.16",
+        "TestReportURL": "https://sippy.dptools.openshift.org/api/component_readiness?baseEndTime=2024-02-28T23:59:59Z&baseRelease=4.15&baseStartTime=2024-02-01T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-05-08T23:59:59Z&sampleRelease=4.16&sampleStartTime=2024-05-02T00:00:00Z&component=OLM&capability=Alerts",
+        "IssueDescription": "OLM / Akamai cache problem",
+        "IssueType": "Infrastructure",
+        "IssueURL": "https://issues.redhat.com/browse/OCPBUGS-33052",
+        "OutputFile": "/my/path/to/gen_resolved_issues/trt_1657_4_16_regressions.json"
+    },
+    "Tests": [
+        {
+            "TestId": "openshift-tests-upgrade:7dd49c583b2a86489d255d6ec262f69e"
+        },
+        {
+            "TestId": "openshift-tests:7dd49c583b2a86489d255d6ec262f69e"
+        }
+    ]
+}
+]
+```
+
+Run your command to generate the full regressions output file:
+`./hack/gen-resolved-issue.py --input-file=/my/path/to/gen_resolved_issues/trt_1657_4_16_template.json`
+
+Review the output to confirm it looks correct, has the correct variants, etc.
+Run the command with the regressions file as the input and output DB.
+`./hack/gen-resolved-issue.py --input-file=my/path/to/gen_resolved_issues/trt_1657_4_16_regressions.json --output-type=DB --load-incidents-from-file=True`
+Copy the `"IncidentGroupId": "xx-zz-yy",` value back to the Arguments section of your template and attach the template to the JIRA  in case you need to update again later on. 
