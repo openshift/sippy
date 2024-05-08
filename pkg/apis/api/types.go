@@ -831,11 +831,17 @@ type ComponentTestStatus struct {
 }
 
 type ComponentReportTestStatus struct {
-	BaseStatus   map[ComponentTestIdentification]ComponentTestStatus `json:"base_status"`
-	SampleStatus map[ComponentTestIdentification]ComponentTestStatus `json:"sample_status"`
-	GeneratedAt  *time.Time                                          `json:"generated_at"`
+	// BaseStatus represents the stable basis for the comparison. Maps ComponentTestIdentification serialized as a string, to test status.
+	BaseStatus map[string]ComponentTestStatus `json:"base_status"`
+
+	// SampleSatus represents the sample for the comparison. Maps ComponentTestIdentification serialized as a string, to test status.
+	SampleStatus map[string]ComponentTestStatus `json:"sample_status"`
+	GeneratedAt  *time.Time                     `json:"generated_at"`
 }
 
+// ComponentTestIdentification TODO: we need to get Network/Upgrade/Arch/Platform/FlatVariants off this struct as the actual variants will be dynamic.
+// However making it a map will likely break anything using this struct as a map key.
+// We may need to serialize it to a predictable string? Serialize as JSON string perhaps? Will fields be predictably ordered? Seems like go maps are always alphabetical.
 type ComponentTestIdentification struct {
 	TestID       string `json:"test_id"`
 	Network      string `json:"network"`
@@ -843,12 +849,15 @@ type ComponentTestIdentification struct {
 	Arch         string `json:"arch"`
 	Platform     string `json:"platform"`
 	FlatVariants string `json:"flat_variants"`
+
+	// Proposed, need to serialize to use as map key
+	Variants map[string]string `json:"variants"`
 }
 
-// implement encoding.TextMarshaler for json map key marshalling support
-func (s ComponentTestIdentification) MarshalText() (text []byte, err error) {
+// MarshalText implements encoding.TextMarshaler for json map key marshalling support
+func (s *ComponentTestIdentification) MarshalText() (text []byte, err error) {
 	type t ComponentTestIdentification
-	return json.Marshal(t(s))
+	return json.Marshal((*t)(s))
 }
 
 func (s *ComponentTestIdentification) UnmarshalText(text []byte) error {
@@ -856,6 +865,9 @@ func (s *ComponentTestIdentification) UnmarshalText(text []byte) error {
 	return json.Unmarshal(text, (*t)(s))
 }
 
+// TODO: obsoleted by bigquery dynamic parsing
+
+/*
 type ComponentTestStatusRow struct {
 	TestName     string   `bigquery:"test_name"`
 	TestSuite    string   `bigquery:"test_suite"`
@@ -872,6 +884,8 @@ type ComponentTestStatusRow struct {
 	Component    string   `bigquery:"component"`
 	Capabilities []string `bigquery:"capabilities"`
 }
+
+*/
 
 type ComponentReport struct {
 	Rows        []ComponentReportRow `json:"rows,omitempty"`
@@ -897,12 +911,15 @@ type ComponentReportColumn struct {
 	RegressedTests []ComponentReportTestSummary `json:"regressed_tests,omitempty"`
 }
 
+type ColumnID string
+
 type ComponentReportColumnIdentification struct {
-	Network  string `json:"network,omitempty"`
-	Upgrade  string `json:"upgrade,omitempty"`
-	Arch     string `json:"arch,omitempty"`
-	Platform string `json:"platform,omitempty"`
-	Variant  string `json:"variant,omitempty"`
+	Network  string            `json:"network,omitempty"`
+	Upgrade  string            `json:"upgrade,omitempty"`
+	Arch     string            `json:"arch,omitempty"`
+	Platform string            `json:"platform,omitempty"`
+	Variant  string            `json:"variant,omitempty"`
+	Variants map[string]string `json:"variants"`
 }
 
 type ComponentReportStatus int
