@@ -10,7 +10,7 @@ export default function CopyPageURL(props) {
   }
 
   return (
-    <Box align="left">
+    <Box align="right">
       <Typography variant="caption">
         <Tooltip title={props.apiCallStr}>
           <Button onClick={handleCopyClick}>copy page URL</Button>
