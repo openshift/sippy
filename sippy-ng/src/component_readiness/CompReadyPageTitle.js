@@ -12,7 +12,8 @@ export default function CompReadyPageTitle(props) {
 
   return (
     <div>
-      <a href={callStr}>{pageTitle}</a>
+      {pageTitle}
+      {debugMode ? <p>curl -sk &apos;{callStr}&apos;</p> : null}
     </div>
   )
 }

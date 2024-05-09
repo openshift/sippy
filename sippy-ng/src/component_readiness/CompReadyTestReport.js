@@ -31,6 +31,7 @@ import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
+import CopyPageURL from './CopyPageURL'
 import GeneratedAt from './GeneratedAt'
 import IconButton from '@mui/material/IconButton'
 import InfoIcon from '@mui/icons-material/Info'
@@ -553,6 +554,7 @@ View the test details report at ${document.location.href}
         ID copied!
       </Popover>
       <GeneratedAt time={data.generated_at} />
+      <CopyPageURL apiCallStr={apiCallStr} />
     </Fragment>
   )
 }
