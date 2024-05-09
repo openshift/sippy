@@ -3,6 +3,7 @@ package variantregistry
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/pkg/errors"
@@ -95,13 +96,10 @@ func (s *JobVariantsLoader) Load() {
 	// Delete jobs entirely, much faster than one variant at a time when jobs have been removed.
 	// This should be relatively rare and would require the job to not have run for weeks/months.
 	log.Infof("deleting %d jobs", len(deleteJobs))
-	for i, job := range deleteJobs {
-		uLog := log.WithField("progress", fmt.Sprintf("%d/%d", i+1, len(updates)))
-		err = s.deleteJob(uLog, job)
-		if err != nil {
-			log.WithError(err).Error("error syncing job variants to bigquery")
-			s.errors = append(s.errors, err)
-		}
+	err = s.deleteJobsInBatches(deleteJobs, 500)
+	if err != nil {
+		log.WithError(err).Error("error deleting jobs from registry")
+		s.errors = append(s.errors, err)
 	}
 }
 
@@ -250,15 +248,39 @@ func (s *JobVariantsLoader) deleteVariant(logger log.FieldLogger, jv jobVariant)
 	return nil
 }
 
-// deleteJob deletes all variants for a given job in the registry.
-func (s *JobVariantsLoader) deleteJob(logger log.FieldLogger, job string) error {
-	queryStr := fmt.Sprintf("DELETE FROM `%s.%s.%s` WHERE job_name = '%s'",
-		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, job)
+// deleteJobsInBatches deletes jobs that should no longer be in the registry in batches, as one at a time can be
+// very slow.
+func (s *JobVariantsLoader) deleteJobsInBatches(deleteJobs []string, batchSize int) error {
+	numBatches := (len(deleteJobs) + batchSize - 1) / batchSize
+	for batchNum := 0; batchNum < numBatches; batchNum++ {
+		start := batchNum * batchSize
+		end := (batchNum + 1) * batchSize
+		if end > len(deleteJobs) {
+			end = len(deleteJobs)
+		}
+
+		batch := deleteJobs[start:end]
+
+		err := s.deleteJobsBatch(batch)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *JobVariantsLoader) deleteJobsBatch(batch []string) error {
+	log.Infof("deleting batch of %d jobs", len(batch))
+
+	queryStr := fmt.Sprintf("DELETE FROM `%s.%s.%s` WHERE job_name IN ('%s')",
+		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, strings.Join(batch, "','"))
+
 	insertQuery := s.bqClient.Query(queryStr)
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
-		return errors.Wrapf(err, "error deleting job: %s", queryStr)
+		return errors.Wrapf(err, "error deleting batch of jobs: %s", queryStr)
 	}
-	logger.Infof("successful query: %s", queryStr)
+
+	log.Infof("successful batch job delete query: %s", queryStr)
 	return nil
 }

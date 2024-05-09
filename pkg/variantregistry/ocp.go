@@ -61,30 +61,63 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 	log.Info("loading all known jobs from bigquery for variant classification")
 	start := time.Now()
 
-	// TODO: pull presubmits for sippy as well
+	// For the primary list of all job names, we will query everything that's run in the last 6 months. Because
+	// we also try to pull cluster-data.json, we also join in a column for the prowjob_url of the most recent
+	// successful run to attempt to get stable cluster-data. Without this, the jobs would bounce around variants
+	// subtly when we hit runs without cluster-data.
+	queryStr := `
+WITH RecentSuccessfulJobs AS (
+  SELECT 
+    prowjob_job_name,
+    MAX(prowjob_start) AS successful_start,
+    MAX(prowjob_url) as prowjob_url,
+  FROM DATASET
+  WHERE prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
+        prowjob_state = 'success' AND
+        (prowjob_job_name LIKE 'periodic-ci-openshift-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
+          OR prowjob_job_name LIKE 'release-%%'
+          OR prowjob_job_name LIKE 'aggregator-%%'
+          OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
+  GROUP BY prowjob_job_name
+)
+SELECT 
+  j.prowjob_job_name,
+  MAX(j.prowjob_start) AS prowjob_start,
+  MAX(j.prowjob_build_id) AS prowjob_build_id,
+  r.prowjob_url,
+  r.successful_start,
+FROM DATASET j
+LEFT JOIN RecentSuccessfulJobs r
+ON j.prowjob_job_name = r.prowjob_job_name 
+WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
+      ((j.prowjob_job_name LIKE 'periodic-ci-openshift-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
+        OR j.prowjob_job_name LIKE 'release-%%'
+        OR j.prowjob_job_name LIKE 'aggregator-%%')
+      OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
+GROUP BY j.prowjob_job_name, r.prowjob_url, r.successful_start
+ORDER BY j.prowjob_job_name;
+`
+	queryStr = strings.ReplaceAll(queryStr, "DATASET",
+		fmt.Sprintf("%s.%s.%s", v.bigQueryProject, v.bigQueryDataSet, v.bigQueryTable))
+	log.Infof("running query for recent jobs: \n%s", queryStr)
 
-	// For the primary list of all job names, we will query everything that's run in the last 3 months:
-	// TODO: for component readiness queries to work in the past, we may need far more than jobs that ran in 3 months
-	// since start of 4.14 perhaps?
-	query := v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
-		fmt.Sprintf("%s.%s.%s", v.bigQueryProject, v.bigQueryDataSet, v.bigQueryTable) +
-		` WHERE (prowjob_job_name LIKE 'periodic-ci-openshift-%%' 
-			OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%' 
-			OR prowjob_job_name LIKE 'release-%%' 
-			OR prowjob_job_name like 'aggregator-%%')
-		OR prowjob_job_name LIKE 'pull-ci-openshift-%%'
-		GROUP BY prowjob_job_name
-		ORDER BY prowjob_job_name
-		`)
+	query := v.BigQueryClient.Query(queryStr)
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying primary list of all jobs")
 	}
 
+	// TODO: fix release on presubmits
+
 	expectedVariants := map[string]map[string]string{}
 
 	count := 0
 	for {
+		// TODO: last run but not necessarily successful, this could be a problem for cluster-data file parsing causing
+		// our churn. We can't flip the query to last success either as we wouldn't have variants for non-passing jobs at all.
+		// Two queries? Use the successful one for cluster-data?
 		jlr := prowJobLastRun{}
 		err := it.Next(&jlr)
 		if err == iterator.Done {
@@ -108,7 +141,10 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 			if len(allMatches) > 0 {
 				clusterMatches = allMatches[0]
 			}
-			jLog.WithField("prowJobURL", jlr.URL.StringVal).Debugf("Found %d cluster-data files: %s", len(clusterMatches), clusterMatches)
+			for _, cm := range clusterMatches {
+				// log with the file prefix for easy click/copy to browser:
+				jLog.WithField("prowJobURL", jlr.URL.StringVal).Infof("Found cluster-data file: https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/%s", cm)
+			}
 
 			if len(clusterMatches) > 0 {
 				clusterDataBytes, err := prowloader.GetClusterDataBytes(ctx, v.bkt, path, clusterMatches)
@@ -119,8 +155,7 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 				if err != nil {
 					jLog.WithError(err).Error("unable to parse cluster data file, proceeding without")
 				} else {
-					jLog.Debugf("loaded cluster data: %+v", clusterData)
-					// TODO: do something with it
+					jLog.Infof("loaded cluster data: %+v", clusterData)
 				}
 			}
 		}
@@ -491,7 +526,7 @@ func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
 		ovnBecomesDefault, _ := version.NewVersion("4.12")
 		releaseVersion, err := version.NewVersion(release)
 		if err != nil {
-			jLog.Warningf("could not determine network type for %q", jobName)
+			jLog.Warning("could not determine network type")
 			return ""
 		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
 			return "ovn"
