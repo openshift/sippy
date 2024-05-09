@@ -504,34 +504,211 @@ def issue_details(record, issue_type, issue_description, issue_url):
 def find_matching_job_run_ids(incidents):
     # take the first test entry and get the set of job runs
     # enumerate the remaining test entries and job runs and remove any that don't match from the first set
-    # when done if there are valid job runs set them for all of the test ids
-    # otherwise remove all test ids
-    if len(incidents) > 1:
-        match_jobs = incidents[0]["JobRuns"]
+    # we need to get the variant list and match against the other tests that have the same variants
+    # filter that list down and then update the runs for only that variant match
+    # once we process a variant match, don't process again for the next test id
+
+    processed_variant_keys = {}
+    unique_testIDs = []
+    updated_incidents = []
+
+    for test in incidents:
+        testID = test["TestId"]
+        vKey = key_from_variants(test["Variants"])
+
+        # if we have seen the vKey already then
+        # we have gone through all of the tests to match jobs
+        # for that vKey
+        if vKey in processed_variant_keys:
+            continue
+
+        matchedTests = 1
+        match_jobs = test["JobRuns"]
         drop_jobs = []
 
-        for test in incidents[1:]:
+        for match_test in incidents:
+            match_testID = match_test["TestId"]
+            match_vKey = key_from_variants(match_test["Variants"])
+
+            if match_testID not in unique_testIDs:
+                unique_testIDs.append(match_testID)
+
+            if match_testID == testID or not match_vKey == vKey:
+                continue
+
+            matchedTests += 1
             for job in match_jobs:
                 match = False
-                for job_run in test["JobRuns"]:
+                for job_run in match_test["JobRuns"]:
                     if job_run["URL"] == job["URL"]:
                         match = True
 
                 if not match:
                     drop_jobs.append(job)
 
+        processed_variant_keys[vKey] = matchedTests
+
+        # we have gone through all of the tests by this point
+        # and have a count of the unique ids
+        # if our variant key doesn't have the same count
+        # then we didn't find all of the test failures
+        # in any of the runs
+        if not len(unique_testIDs) == processed_variant_keys[vKey]:
+            return
+
         keep_jobs = []
         for job in match_jobs:
             if job not in drop_jobs:
                 keep_jobs.append(job)
 
-        if len(keep_jobs) == 0:
-            return NotFound
+        for match_test in incidents:
+            match_vKey = key_from_variants(match_test["Variants"])
 
-        for test in incidents:
-            test["JobRuns"] = keep_jobs
+            if not match_vKey == vKey:
+                continue
 
-    return incidents
+            match_test["JobRuns"] = keep_jobs
+            updated_incidents.append(match_test)
+
+    return updated_incidents
+
+def triage_regressions(regressed_tests, triaged_incidents, issue_url):
+    for rt in regressed_tests:
+
+        # test_ids can span variants
+        # if we input a file we have to check to see if any variants are included with the test_id
+        # and match only them
+
+        # we always pull variants from the test but will match against any json input
+        test_id = rt['test_id']
+
+        variants = []
+        variants.append({"key": "Network", "value": rt['network']})
+        variants.append({"key": "Upgrade", "value": rt['upgrade']})
+        variants.append({"key": "Architecture", "value": rt['arch']})
+        variants.append({"key": "Platform", "value": rt['platform']})
+        # don't see VariantVariant in https://github.com/openshift/sippy/pull/1531/files#diff-3f72919066e1ec3ae4b037dfc91c09ef6d6eac0488762ef35c5a116f73ff1637R237
+        # worth review
+        variants.append({"key": "Variant", "value": rt['variant']})
+
+        # do we have an input file, if so check to see if we have an entry
+        # for this test id
+        # if we do see if we have a variant section
+        # make sure any specified variants match
+        # then check to see if we have specified jobruns
+        # or if we specified JobRunStartRangeBegin / JobRunStartRangeEnd
+        matches, record = test_matches(triage_data, args.test_id, test_id, variants)
+
+        # check for JobRunStartTimeMax and min times
+        # if the record doesn't have them and we have global settings
+        # then use them
+        if args.job_run_start_time_max != None:
+            if record == None:
+                record = {}
+            if "JobRunStartTimeMax" not in record:
+                record["JobRunStartTimeMax"] =  args.job_run_start_time_max
+
+        if args.job_run_start_time_min != None:
+            if record == None:
+                record = {}
+            if "JobRunStartTimeMin" not in record:
+                record["JobRunStartTimeMin"] =  args.job_run_start_time_min
+
+
+        if not matches:
+            continue
+
+        # if we have a record use the
+        # issue type, description, url if provided
+        issue_type, issue_description, issue_url = issue_details(record, args.issue_type, description, issue_url)
+
+        print
+        print("REGRESSION: %s" % rt["test_name"])
+        print
+        component = rt['component']
+        capability = rt['capability']
+        test_name = rt['test_name']
+
+        triaged_incident = {}
+        triaged_incident["TestId"] = test_id
+        triaged_incident["TestName"] = test_name
+
+        if args.output_test_info_only != None and args.output_test_info_only and args.output_type == 'JSON':
+            if record != None:
+                if "Variants" in record:
+                    triaged_incident["Variants"] = record["Variants"]
+
+            triaged_incidents.append(triaged_incident)
+            continue
+
+            # TODO: These are the url params we need to add onto those in the TEST_REPORT URL when we go to get the test details (job run data):
+    # &component=Monitoring&capability=Other&testId=openshift-tests-upgrade:c1f54790201ec8f4241eca902f854b79&environment=ovn%20upgrade-minor%20amd64%20metal-ipi%20standard&network=ovn&upgrade=upgrade-minor&arch=amd64&platform=metal-ipi&variant=standard
+
+        # Build out the url for full test_details api call so we can get the job runs. Adjust the endpoint, re-use the original request params, and add some more that are needed.
+        test_details_url = args.test_report_url.replace('/api/component_readiness?', '/api/component_readiness/test_details?')
+        environment = '%20s'.join([rt['network'], rt['upgrade'],  rt['arch'], rt['platform'], rt['variant']])
+        test_details_url += '&component=%s&capability=%s&testId=%s&environment=%s&network=%s&upgrade=%s&arch=%s&platform=%s&variant=%s' % (component, capability, test_id, environment, rt['network'], rt['upgrade'], rt['arch'], rt['platform'], rt['variant'])
+        print("  Querying test details: %s" % test_details_url)
+
+        # Call the function to fetch JSON data from the API
+        json_data = fetch_json_data(test_details_url)
+
+        # bad response...
+        if json_data is None:
+            print("Error: no json data returned from %s" % test_details_url)
+            # are we hammering the server? slow down for a bit...
+            time.sleep(10)
+            continue
+
+
+        # test_release can't change since we only input one test_report_url
+        # currently require it as part of input args, though it could also be pulled out of json if provided
+        triaged_incident["Release"] = args.test_release
+
+        triaged_incident["GroupId"] = incident_group_id
+        issue = {}
+        issue["Type"] = issue_type
+        if len(issue_description) > 0:
+            issue["Description"] = issue_description
+        if len(issue_url) > 0:
+            issue["URL"] = issue_url
+        triaged_incident["Issue"] = issue
+        triaged_incident["Variants"] = variants
+        triaged_incident["JobRuns"] = []
+
+        for job in json_data["job_stats"]:
+            if not 'sample_job_run_stats' in job:
+                continue
+            for sjr in job["sample_job_run_stats"]:
+                if sjr["test_stats"]["failure_count"] == 0:
+                    continue
+                prow_url = sjr["job_url"]
+                print("  Failed job run: %s" % prow_url)
+
+                # TODO: it would be ideal to check the actual test failure output for some search string or regex to make sure it's
+                # the issue we're mass attributing. This however would require parsing junit XML today.
+
+                # grab prowjob.json from artifacts with some assumptions about paths:
+                url_tokens = prow_url.split('/')
+                job_name, job_run = url_tokens[-2], url_tokens[-1]
+                artifacts_dir = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/logs/%s/%s/" % (job_name, job_run)
+
+                # grab prowjob.json for the start time:
+                prow_job_json = fetch_json_data(artifacts_dir + 'prowjob.json')
+                start_time = prow_job_json["status"]["startTime"]
+                print("    Prow job start time: %s" % start_time)
+
+                if job_matches(record, prow_url, start_time):
+                    triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time})
+
+
+        if args.output_type == 'JSON':
+            triaged_incidents.append(triaged_incident)
+            # add that to a list of incidents that we write in the end
+        else:
+            # write the record to bigquery
+            write_incident_record(triaged_incident, modified_time, target_modified_time)
+
 
 if __name__ == '__main__':
 
@@ -704,145 +881,13 @@ if __name__ == '__main__':
 
         for row in top_lvl_report['rows']:
             for col in row['columns']:
-                if 'regressed_tests' not in col:
-                    continue
-                regressed_tests = col['regressed_tests']
-                for rt in regressed_tests:
+                if 'regressed_tests' in col:
+                    regressed_tests = col['regressed_tests']
+                    triage_regressions(regressed_tests, triaged_incidents, issue_url)
+                if 'triaged_incidents' in col:
+                    regressed_tests = col['triaged_incidents']
+                    triage_regressions(regressed_tests, triaged_incidents, issue_url)
 
-                    # test_ids can span variants
-                    # if we input a file we have to check to see if any variants are included with the test_id
-                    # and match only them
-
-                    # we always pull variants from the test but will match against any json input
-                    test_id = rt['test_id']
-
-                    variants = []
-                    variants.append({"key": "Network", "value": rt['network']})
-                    variants.append({"key": "Upgrade", "value": rt['upgrade']})
-                    variants.append({"key": "Architecture", "value": rt['arch']})
-                    variants.append({"key": "Platform", "value": rt['platform']})
-                    # don't see VariantVariant in https://github.com/openshift/sippy/pull/1531/files#diff-3f72919066e1ec3ae4b037dfc91c09ef6d6eac0488762ef35c5a116f73ff1637R237
-                    # worth review
-                    variants.append({"key": "Variant", "value": rt['variant']})
-
-                    # do we have an input file, if so check to see if we have an entry
-                    # for this test id
-                    # if we do see if we have a variant section
-                    # make sure any specified variants match
-                    # then check to see if we have specified jobruns
-                    # or if we specified JobRunStartRangeBegin / JobRunStartRangeEnd
-                    matches, record = test_matches(triage_data, args.test_id, test_id, variants)
-
-                    # check for JobRunStartTimeMax and min times
-                    # if the record doesn't have them and we have global settings
-                    # then use them
-                    if args.job_run_start_time_max != None:
-                        if record == None:
-                            record = {}
-                        if "JobRunStartTimeMax" not in record:
-                            record["JobRunStartTimeMax"] =  args.job_run_start_time_max
-
-                    if args.job_run_start_time_min != None:
-                        if record == None:
-                            record = {}
-                        if "JobRunStartTimeMin" not in record:
-                            record["JobRunStartTimeMin"] =  args.job_run_start_time_min
-
-
-                    if not matches:
-                        continue
-
-                    # if we have a record use the
-                    # issue type, description, url if provided
-                    issue_type, issue_description, issue_url = issue_details(record, args.issue_type, description, issue_url)
-
-                    print
-                    print("REGRESSION: %s" % rt["test_name"])
-                    print
-                    component = rt['component']
-                    capability = rt['capability']
-                    test_name = rt['test_name']
-
-                    triaged_incident = {}
-                    triaged_incident["TestId"] = test_id
-                    triaged_incident["TestName"] = test_name
-
-                    if args.output_test_info_only != None and args.output_test_info_only and args.output_type == 'JSON':
-                        if record != None:
-                            if "Variants" in record:
-                                triaged_incident["Variants"] = record["Variants"]
-
-                        triaged_incidents.append(triaged_incident)
-                        continue
-
-
-    # TODO: These are the url params we need to add onto those in the TEST_REPORT URL when we go to get the test details (job run data):
-    # &component=Monitoring&capability=Other&testId=openshift-tests-upgrade:c1f54790201ec8f4241eca902f854b79&environment=ovn%20upgrade-minor%20amd64%20metal-ipi%20standard&network=ovn&upgrade=upgrade-minor&arch=amd64&platform=metal-ipi&variant=standard
-
-                    # Build out the url for full test_details api call so we can get the job runs. Adjust the endpoint, re-use the original request params, and add some more that are needed.
-                    test_details_url = args.test_report_url.replace('/api/component_readiness?', '/api/component_readiness/test_details?')
-                    environment = '%20s'.join([rt['network'], rt['upgrade'],  rt['arch'], rt['platform'], rt['variant']])
-                    test_details_url += '&component=%s&capability=%s&testId=%s&environment=%s&network=%s&upgrade=%s&arch=%s&platform=%s&variant=%s' % (component, capability, test_id, environment, rt['network'], rt['upgrade'], rt['arch'], rt['platform'], rt['variant'])
-                    print("  Querying test details: %s" % test_details_url)
-
-                    # Call the function to fetch JSON data from the API
-                    json_data = fetch_json_data(test_details_url)
-
-                    # bad response...
-                    if json_data is None:
-                        print("Error: no json data returned from %s" % test_details_url)
-                        # are we hammering the server? slow down for a bit...
-                        time.sleep(10)
-                        continue
-
-
-                    # test_release can't change since we only input one test_report_url
-                    # currently require it as part of input args, though it could also be pulled out of json if provided
-                    triaged_incident["Release"] = args.test_release
-
-                    triaged_incident["GroupId"] = incident_group_id
-                    issue = {}
-                    issue["Type"] = issue_type
-                    if len(issue_description) > 0:
-                        issue["Description"] = issue_description
-                    if len(issue_url) > 0:
-                        issue["URL"] = issue_url
-                    triaged_incident["Issue"] = issue
-                    triaged_incident["Variants"] = variants
-                    triaged_incident["JobRuns"] = []
-
-                    for job in json_data["job_stats"]:
-                        if not 'sample_job_run_stats' in job:
-                            continue
-                        for sjr in job["sample_job_run_stats"]:
-                            if sjr["test_stats"]["failure_count"] == 0:
-                                continue
-                            prow_url = sjr["job_url"]
-                            print("  Failed job run: %s" % prow_url)
-
-                            # TODO: it would be ideal to check the actual test failure output for some search string or regex to make sure it's
-                            # the issue we're mass attributing. This however would require parsing junit XML today.
-
-                            # grab prowjob.json from artifacts with some assumptions about paths:
-                            url_tokens = prow_url.split('/')
-                            job_name, job_run = url_tokens[-2], url_tokens[-1]
-                            artifacts_dir = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/logs/%s/%s/" % (job_name, job_run)
-
-                            # grab prowjob.json for the start time:
-                            prow_job_json = fetch_json_data(artifacts_dir + 'prowjob.json')
-                            start_time = prow_job_json["status"]["startTime"]
-                            print("    Prow job start time: %s" % start_time)
-
-                            if job_matches(record, prow_url, start_time):
-                                triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time})
-
-
-                    if args.output_type == 'JSON':
-                        triaged_incidents.append(triaged_incident)
-                        # add that to a list of incidents that we write in the end
-                    else:
-                        # write the record to bigquery
-                        write_incident_record(triaged_incident, modified_time, target_modified_time)
 
     if args.output_type == 'JSON':
         if args.match_all_job_runs:

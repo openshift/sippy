@@ -893,8 +893,9 @@ type ComponentReportRowIdentification struct {
 
 type ComponentReportColumn struct {
 	ComponentReportColumnIdentification
-	Status         ComponentReportStatus        `json:"status"`
-	RegressedTests []ComponentReportTestSummary `json:"regressed_tests,omitempty"`
+	Status           ComponentReportStatus                  `json:"status"`
+	RegressedTests   []ComponentReportTestSummary           `json:"regressed_tests,omitempty"`
+	TriagedIncidents []ComponentReportTriageIncidentSummary `json:"triaged_incidents,omitempty"`
 }
 
 type ComponentReportColumnIdentification struct {
@@ -1094,4 +1095,44 @@ type ReleaseRow struct {
 
 	// ReleaseStatus contains the status of the release, e.g. Full Support
 	ReleaseStatus bigquery.NullString `bigquery:"ReleaseStatus"`
+}
+
+type ComponentReportTriageIncidentSummary struct {
+	ComponentReportTestSummary
+	TriagedIncidents []TriagedIncident `json:"incidents"`
+}
+
+type TriagedIncident struct {
+	Release      string                       `bigquery:"release" json:"release"`
+	TestID       string                       `bigquery:"test_id" json:"test_id"`
+	TestName     string                       `bigquery:"test_name" json:"test_name"`
+	IncidentID   string                       `bigquery:"incident_id" json:"incident_id"`
+	ModifiedTime time.Time                    `bigquery:"modified_time" json:"modified_time"`
+	Variants     []TriagedVariant             `bigquery:"variants" json:"variants"`
+	Issue        TriagedIncidentIssue         `bigquery:"issue" json:"issue"`
+	JobRuns      []TriageJobRun               `bigquery:"job_runs" json:"job_runs"`
+	Attributions []TriagedIncidentAttribution `bigquery:"attributions" json:"attributions"`
+}
+
+type TriagedIncidentIssue struct {
+	Type           string                 `bigquery:"type" json:"type"`
+	Description    bigquery.NullString    `bigquery:"description" json:"description"`
+	URL            bigquery.NullString    `bigquery:"url" json:"url"`
+	StartDate      time.Time              `bigquery:"start_date" json:"start_date"`
+	ResolutionDate bigquery.NullTimestamp `bigquery:"resolution_date" json:"resolution_date"`
+}
+
+type TriagedIncidentAttribution struct {
+	ID         string    `bigquery:"id" json:"id"`
+	UpdateTime time.Time `bigquery:"update_time" json:"update_time"`
+}
+
+type TriagedVariant struct {
+	Key   string `bigquery:"key" json:"key"`
+	Value string `bigquery:"value" json:"value"`
+}
+
+type TriageJobRun struct {
+	URL       string    `bigquery:"url" json:"url"`
+	StartTime time.Time `bigquery:"start_time" json:"start_time"`
 }

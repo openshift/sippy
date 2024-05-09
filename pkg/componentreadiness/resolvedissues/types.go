@@ -3,11 +3,8 @@ package resolvedissues
 import (
 	"fmt"
 	"sort"
-	"time"
 
 	"github.com/openshift/sippy/pkg/util/sets"
-
-	"cloud.google.com/go/bigquery"
 
 	"github.com/openshift/sippy/pkg/apis/api"
 )
@@ -34,9 +31,9 @@ func buildTriageMatchVariants(in []string) sets.String {
 
 	return set
 }
-func TransformVariant(variant api.ComponentReportColumnIdentification) []TriagedVariant {
+func TransformVariant(variant api.ComponentReportColumnIdentification) []api.TriagedVariant {
 
-	return []TriagedVariant{{
+	return []api.TriagedVariant{{
 		Key:   variantArchitecture,
 		Value: variant.Arch,
 	}, {
@@ -53,9 +50,9 @@ func TransformVariant(variant api.ComponentReportColumnIdentification) []Triaged
 		Value: variant.Variant,
 	}}
 }
-func KeyForTriagedIssue(testID string, variants []TriagedVariant) TriagedIssueKey {
+func KeyForTriagedIssue(testID string, variants []api.TriagedVariant) TriagedIssueKey {
 
-	matchVariants := make([]TriagedVariant, 0)
+	matchVariants := make([]api.TriagedVariant, 0)
 	for _, v := range variants {
 		// currently we ignore variants that aren't in api.ComponentReportColumnIdentification
 		if triageMatchVariants.Has(v.Key) {
@@ -90,90 +87,13 @@ type TriagedIssueKey struct {
 }
 
 type TriagedIncidentsForRelease struct {
-	Release          Release                               `json:"release"`
-	TriagedIncidents map[TriagedIssueKey][]TriagedIncident `json:"triaged_incidents"`
+	Release          Release                                   `json:"release"`
+	TriagedIncidents map[TriagedIssueKey][]api.TriagedIncident `json:"triaged_incidents"`
 }
 
 func NewTriagedIncidentsForRelease(release Release) TriagedIncidentsForRelease {
 	return TriagedIncidentsForRelease{
 		Release:          release,
-		TriagedIncidents: map[TriagedIssueKey][]TriagedIncident{},
+		TriagedIncidents: map[TriagedIssueKey][]api.TriagedIncident{},
 	}
-}
-
-type TriagedIncidentIssue struct {
-	Type           string                 `bigquery:"type"`
-	Description    bigquery.NullString    `bigquery:"description"`
-	URL            bigquery.NullString    `bigquery:"url"`
-	StartDate      time.Time              `bigquery:"start_date"`
-	ResolutionDate bigquery.NullTimestamp `bigquery:"resolution_date"`
-}
-
-type TriagedIncidentAttribution struct {
-	ID         string    `bigquery:"id"`
-	UpdateTime time.Time `bigquery:"update_time"`
-}
-
-type TriagedVariant struct {
-	Key   string `bigquery:"key"`
-	Value string `bigquery:"value"`
-}
-
-type TriagedIncident struct {
-	Release      string                       `bigquery:"release"`
-	TestID       string                       `bigquery:"test_id"`
-	TestName     string                       `bigquery:"test_name"`
-	IncidentID   string                       `bigquery:"incident_id"`
-	ModifiedTime time.Time                    `bigquery:"modified_time"`
-	Variants     []TriagedVariant             `bigquery:"variants"`
-	Issue        TriagedIncidentIssue         `bigquery:"issue"`
-	JobRuns      []JobRun                     `bigquery:"job_runs"`
-	Attributions []TriagedIncidentAttribution `bigquery:"attributions"`
-}
-
-type ResolvedIssue struct {
-	TestID   string
-	TestName string
-	Variant  api.ComponentReportColumnIdentification
-
-	Issue Issue
-
-	ImpactedJobRuns []JobRun
-}
-
-type Issue struct {
-	IssueType IssueType
-
-	Infrastructure *InfrastructureIssue
-	PayloadBug     *PayloadIssue
-}
-
-type InfrastructureIssue struct {
-	// required
-	Description string
-	// optional
-	JiraURL string
-	// TODO consider whether jira URL should be required and get the resolution date from there
-	ResolutionDate time.Time
-}
-
-type PayloadIssue struct {
-	// required
-	PullRequestURL string
-
-	// TODO switch to detecting this from the payload
-	// required
-	ResolutionDate time.Time
-}
-
-type IssueType string
-
-var (
-	Infrastructure IssueType = "Infrastructure"
-	PayloadBug     IssueType = "PayloadBug"
-)
-
-type JobRun struct {
-	URL       string    `bigquery:"url"`
-	StartTime time.Time `bigquery:"start_time"`
 }

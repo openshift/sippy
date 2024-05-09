@@ -1070,12 +1070,13 @@ func (c *componentReportGenerator) fetchJobRunTestStatus(query *bigquery.Query) 
 }
 
 type cellStatus struct {
-	status         apitype.ComponentReportStatus
-	regressedTests []apitype.ComponentReportTestSummary
+	status           apitype.ComponentReportStatus
+	regressedTests   []apitype.ComponentReportTestSummary
+	triagedIncidents []apitype.ComponentReportTriageIncidentSummary
 }
 
 func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
-	reportStatus apitype.ComponentReportStatus, existingCellStatus *cellStatus) cellStatus {
+	reportStatus apitype.ComponentReportStatus, existingCellStatus *cellStatus, triagedIncidents []apitype.TriagedIncident) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (reportStatus < apitype.NotSignificant && reportStatus < existingCellStatus.status) ||
@@ -1086,6 +1087,7 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 			newCellStatus.status = existingCellStatus.status
 		}
 		newCellStatus.regressedTests = existingCellStatus.regressedTests
+		newCellStatus.triagedIncidents = existingCellStatus.triagedIncidents
 	} else {
 		newCellStatus.status = reportStatus
 	}
@@ -1096,6 +1098,13 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 			ComponentReportTestIdentification: testID,
 			Status:                            reportStatus,
 		})
+	} else if reportStatus < apitype.MissingSample {
+		newCellStatus.triagedIncidents = append(newCellStatus.triagedIncidents, apitype.ComponentReportTriageIncidentSummary{
+			TriagedIncidents: triagedIncidents,
+			ComponentReportTestSummary: apitype.ComponentReportTestSummary{
+				ComponentReportTestIdentification: testID,
+				Status:                            reportStatus,
+			}})
 	}
 	return newCellStatus
 }
@@ -1106,7 +1115,8 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 	reportStatus apitype.ComponentReportStatus,
 	status map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]cellStatus,
 	allRows map[apitype.ComponentReportRowIdentification]struct{},
-	allColumns map[apitype.ComponentReportColumnIdentification]struct{}) {
+	allColumns map[apitype.ComponentReportColumnIdentification]struct{},
+	triagedIncidents []apitype.TriagedIncident) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}
@@ -1126,23 +1136,23 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 		if !ok {
 			row = map[apitype.ComponentReportColumnIdentification]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil)
+				row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil, triagedIncidents)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil)
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil, triagedIncidents)
 				} else {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, &existing)
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, &existing, triagedIncidents)
 				}
 			}
 		}
 	}
 }
 
-func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(testID apitype.ComponentReportTestIdentification) (int, []error) {
+func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(testID apitype.ComponentReportTestIdentification) (int, []apitype.TriagedIncident, []error) {
 	generator := triagedIncidentsGenerator{
 		ReportModified: c.GetLastReportModifiedTime(c.client, c.cacheOption),
 		client:         c.client,
@@ -1157,13 +1167,13 @@ func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(testID apitype.C
 		releaseTriagedIncidents, errs := getDataFromCacheOrGenerate[resolvedissues.TriagedIncidentsForRelease](generator.client.Cache, generator.cacheOption, GetPrefixedCacheKey("TriagedIncidents~", generator), generator.generateTriagedIssuesFor, resolvedissues.TriagedIncidentsForRelease{})
 
 		if len(errs) > 0 {
-			return 0, errs
+			return 0, nil, errs
 		}
 		c.triagedIssues = &releaseTriagedIncidents
 	}
-	impactedRuns := triagedIssuesFor(c.triagedIssues, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
+	impactedRuns, triagedIncidents := triagedIssuesFor(c.triagedIssues, testID.ComponentReportColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
 
-	return impactedRuns, nil
+	return impactedRuns, triagedIncidents, nil
 }
 
 func (c *componentReportGenerator) GetLastReportModifiedTime(client *bqcachedclient.Client, options cache.RequestOptions) *time.Time {
@@ -1299,9 +1309,9 @@ func (t *triagedIncidentsGenerator) generateTriagedIssuesFor() (resolvedissues.T
 	return triagedIncidents, nil
 }
 
-func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForRelease, variant apitype.ComponentReportColumnIdentification, testID string, startTime, endTime time.Time) int {
+func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForRelease, variant apitype.ComponentReportColumnIdentification, testID string, startTime, endTime time.Time) (int, []apitype.TriagedIncident) {
 	if releaseIncidents == nil {
-		return 0
+		return 0, nil
 	}
 
 	inKey := resolvedissues.KeyForTriagedIssue(testID, resolvedissues.TransformVariant(variant))
@@ -1323,10 +1333,10 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 		}
 	}
 
-	return numJobRunsToSuppress
+	return numJobRunsToSuppress, triagedIncidents
 }
 
-func (t *triagedIncidentsGenerator) queryTriagedIssues() ([]resolvedissues.TriagedIncident, []error) {
+func (t *triagedIncidentsGenerator) queryTriagedIssues() ([]apitype.TriagedIncident, []error) {
 	// Look for issue.start_date < TIMESTAMP(@TO) AND
 	// (issue.resolution_date IS NULL OR issue.resolution_date >= TIMESTAMP(@FROM))
 	// we could add a range for modified_time if we want to leverage the partitions
@@ -1357,9 +1367,9 @@ func (t *triagedIncidentsGenerator) queryTriagedIssues() ([]resolvedissues.Triag
 	return t.fetchTriagedIssues(sampleQuery)
 }
 
-func (t *triagedIncidentsGenerator) fetchTriagedIssues(query *bigquery.Query) ([]resolvedissues.TriagedIncident, []error) {
+func (t *triagedIncidentsGenerator) fetchTriagedIssues(query *bigquery.Query) ([]apitype.TriagedIncident, []error) {
 	errs := make([]error, 0)
-	incidents := make([]resolvedissues.TriagedIncident, 0)
+	incidents := make([]apitype.TriagedIncident, 0)
 	log.Infof("Fetching triaged incidents with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
 	it, err := query.Read(context.TODO())
@@ -1370,7 +1380,7 @@ func (t *triagedIncidentsGenerator) fetchTriagedIssues(query *bigquery.Query) ([
 	}
 
 	for {
-		var triagedIncident resolvedissues.TriagedIncident
+		var triagedIncident apitype.TriagedIncident
 		err := it.Next(&triagedIncident)
 		if err == iterator.Done {
 			break
@@ -1385,23 +1395,22 @@ func (t *triagedIncidentsGenerator) fetchTriagedIssues(query *bigquery.Query) ([
 	return incidents, errs
 }
 
-func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentReportTestIdentification) int {
-
+func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentReportTestIdentification) (int, []apitype.TriagedIncident) {
 	// handle test case / missing client
 	if c.client == nil {
-		return 0
+		return 0, nil
 	}
 
-	impactedRuns, errs := c.getTriagedIssuesFromBigQuery(testID)
+	impactedRuns, triagedIncidents, errs := c.getTriagedIssuesFromBigQuery(testID)
 
 	if errs != nil {
 		for _, err := range errs {
 			log.WithError(err).Error("error getting triaged issues component from bigquery")
 		}
-		return 0
+		return 0, nil
 	}
 
-	return impactedRuns
+	return impactedRuns, triagedIncidents
 }
 
 func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
@@ -1420,24 +1429,26 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		testID := buildTestID(baseStats, testIdentification)
 
 		var reportStatus apitype.ComponentReportStatus
+		var triagedIncidents []apitype.TriagedIncident
+		var resolvedIssueCompensation int
 		sampleStats, ok := sampleStatus[testIdentification]
 		if !ok {
 			reportStatus = apitype.MissingSample
 		} else {
 			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
-			resolvedIssueCompensation := c.triagedIncidentsFor(testID)
+			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
 			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
 		}
 		delete(sampleStatus, testIdentification)
 
 		rowIdentifications, columnIdentifications := c.getRowColumnIdentifications(testIdentification, baseStats)
-		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, aggregatedStatus, allRows, allColumns, triagedIncidents)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
 		testID := buildTestID(sampleStats, testIdentification)
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
-		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns, nil)
 	}
 
 	// Sort the row identifications
@@ -1503,6 +1514,10 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 				reportColumn.RegressedTests = status.regressedTests
 				sort.Slice(reportColumn.RegressedTests, func(i, j int) bool {
 					return reportColumn.RegressedTests[i].Status < reportColumn.RegressedTests[j].Status
+				})
+				reportColumn.TriagedIncidents = status.triagedIncidents
+				sort.Slice(reportColumn.TriagedIncidents, func(i, j int) bool {
+					return reportColumn.TriagedIncidents[i].Status < reportColumn.TriagedIncidents[j].Status
 				})
 			}
 			reportRow.Columns = append(reportRow.Columns, reportColumn)
@@ -1600,7 +1615,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		},
 	}
 	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ComponentReportColumnIdentification, c.TestID)
-	resolvedIssueCompensation := c.triagedIncidentsFor(result.ComponentReportTestIdentification)
+	resolvedIssueCompensation, _ := c.triagedIncidentsFor(result.ComponentReportTestIdentification)
 
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
