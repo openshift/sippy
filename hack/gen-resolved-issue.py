@@ -26,7 +26,7 @@ import uuid
 # pip install --upgrade google-cloud-bigquery
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
-
+from urllib.parse import urlsplit, urlencode, parse_qs
 
 # The main test report, taken from top level component readiness by monitoring the dev console in firefox to fetch the API request
 # made to component readiness. We'll parse through everything in this report looking for the specific test we're flagging for mass
@@ -44,6 +44,13 @@ TABLE_ID="triaged_incidents"
 TABLE_KEY=f"{PROJECT_ID}.{DATASET_ID}.{TABLE_ID}"
 
 #https://sippy.dptools.openshift.org/api/component_readiness/test_details?baseEndTime=2023-10-31T23:59:59Z&baseRelease=4.14&baseStartTime=2023-10-04T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-02-27T23:59:59Z&sampleRelease=4.15&sampleStartTime=2024-02-21T00:00:00Z&component=Monitoring&capability=Other&testId=openshift-tests-upgrade:c1f54790201ec8f4241eca902f854b79&environment=ovn%20upgrade-minor%20amd64%20metal-ipi%20standard&network=ovn&upgrade=upgrade-minor&arch=amd64&platform=metal-ipi&variant=standard
+
+def rfc_3339_start_end_times(start, end):
+   start = start.replace(hour=0, minute=0, second=0)
+   s = start.strftime("%Y-%m-%dT%H:%M:%S") + 'Z'
+   end = end.replace(hour=23, minute=59, second=59)
+   e = end.strftime("%Y-%m-%dT%H:%M:%S") + 'Z'
+   return s,e
 
 def hack_for_rfc_3339(inputTime):
     # nasty hack since python doesn't support RFC-3339
@@ -742,6 +749,7 @@ if __name__ == '__main__':
     parser.add_argument("--test-report-url", help="The component readiness url for the test regression.")
 
     parser.add_argument("--match-all-job-runs", help="Only the job runs common to all of the test ids will be preserved. Only valid with output-type == JSON.", type=bool, default=False)
+    parser.add_argument("--relative-sample-times", help="Update the sample begin and end times based on the original time span but using the current date for end.", type=bool, default=False)
 
 
     # a JSON structured file, potentially output by this tool, to be used as input for matching tests
@@ -769,6 +777,8 @@ if __name__ == '__main__':
             print(f"Failed to load input file {filename}: {e}")
             exit()
 
+    # always create and incident id by default but overwrite if one passed in
+    incident_group_id = str(uuid.uuid4())
     if triage_data_file != None:
         if "Arguments" in triage_data_file:
             arguments = triage_data_file["Arguments"]
@@ -786,8 +796,6 @@ if __name__ == '__main__':
                 args.output_file = arguments["OutputFile"]
             if "OutputType" in arguments and len(arguments["OutputType"]) > 0:
                 args.output_type = arguments["OutputType"]
-            if "IncidentGroupId" in arguments and len(arguments["IncidentGroupId"]) > 0:
-                args.assign_incident_group_id = arguments["IncidentGroupId"]
             if "TargetModifiedTime" in arguments and len(arguments["TargetModifiedTime"]) > 0:
                 args.target_modified_time = arguments["TargetModifiedTime"]
             if "JobRunStartTimeMax" in arguments and len(arguments["JobRunStartTimeMax"]) > 0:
@@ -796,6 +804,19 @@ if __name__ == '__main__':
                 args.job_run_start_time_min = arguments["JobRunStartTimeMin"]
             if "MatchAllJobRuns" in arguments and len(arguments["MatchAllJobRuns"]) > 0:
                 args.match_all_job_runs = bool(arguments["MatchAllJobRuns"])
+            if "RelativeSampleTimes" in arguments and len(arguments["RelativeSampleTimes"]) > 0:
+                args.relative_sample_times = bool(arguments["RelativeSampleTimes"])
+
+            # if we have an input file and it doesn't specify the IncidentGroupId
+            # update the file with the one we are assigning
+            if "IncidentGroupId" in arguments and len(arguments["IncidentGroupId"]) > 0:
+                args.assign_incident_group_id = arguments["IncidentGroupId"]
+            else:
+                arguments["IncidentGroupId"] = incident_group_id
+                filename = args.input_file.strip("'")
+                with open(filename, 'w') as incident_file:
+                    json.dump(triage_data_file, incident_file, indent=4)
+                    print(f"Added IncidentGroupId to to {filename}")
 
     if args.test_report_url == None or len(args.test_report_url) == 0:
         # if we are loading incidents from a file we don't need the URL
@@ -812,8 +833,35 @@ if __name__ == '__main__':
 
     validate_parameters(triage_data, args.issue_type, args.test_id)
 
-    # always create and incident id
-    incident_group_id = str(uuid.uuid4())
+    modified_time = datetime.now(tz=timezone.utc)
+    if args.relative_sample_times:
+        if not args.test_report_url == None:
+            o = urlsplit(args.test_report_url)
+            params = parse_qs(o.query)
+            startTime = None
+            endTime = None
+            if "sampleEndTime" in params:
+                print("Original sample end time: " + params["sampleEndTime"][0])
+                endTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleEndTime"][0]))
+            if "sampleStartTime" in params:
+                print("Original sample start time: " + params["sampleStartTime"][0])
+                startTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleStartTime"][0]))    
+            
+            if not startTime == None and not endTime == None:
+                diff = endTime - startTime
+                newSampleStartTime = modified_time - diff
+                newSampleEndTime = modified_time
+                newSampleStartTimeParam, newSampleEndTimeParam = rfc_3339_start_end_times(newSampleStartTime, newSampleEndTime)
+                params["sampleStartTime"][0] = newSampleStartTimeParam
+                params["sampleEndTime"][0] = newSampleEndTimeParam
+                
+                print("Updated sample end time: " + params["sampleEndTime"][0])
+                print("Updated sample start time: " + params["sampleStartTime"][0])
+                
+                query_new = urlencode(params, doseq=True)
+                parsed=o._replace(query=query_new)
+                url_new = (parsed.geturl())
+                args.test_report_url = url_new
 
     # if an incident id was passed in use it
     if args.assign_incident_group_id:
@@ -847,8 +895,6 @@ if __name__ == '__main__':
     description = ""
     if args.issue_description:
         description = args.issue_description
-
-    modified_time = datetime.now(tz=timezone.utc)
 
     target_modified_time = f"{modified_time}"
     if args.target_modified_time:
