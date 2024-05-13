@@ -1102,9 +1102,22 @@ type ComponentReportTriageIncidentSummary struct {
 	TriagedIncidents []TriagedIncident `json:"incidents"`
 }
 
+// TestRegression is used for rows in the test_regressions table and is used to track when we detect test
+// regressions opening and closing.
+type TestRegression struct {
+	Release      string                 `bigquery:"release" json:"release"`
+	TestID       string                 `bigquery:"test_id" json:"test_id"`
+	TestName     string                 `bigquery:"test_name" json:"test_name"`
+	RegressionID string                 `bigquery:"regression_id" json:"regression_id"`
+	Opened       time.Time              `bigquery:"opened" json:"opened"`
+	Closed       bigquery.NullTimestamp `bigquery:"closed" json:"closed"`
+	Variants     []TriagedVariant       `bigquery:"variants" json:"variants"`
+}
+
 type TriagedIncident struct {
-	Release      string                       `bigquery:"release" json:"release"`
-	TestID       string                       `bigquery:"test_id" json:"test_id"`
+	Release string `bigquery:"release" json:"release"`
+	TestID  string `bigquery:"test_id" json:"test_id"`
+	// TODO: should this be joined in instead of recording? test_name can change for a given test_id
 	TestName     string                       `bigquery:"test_name" json:"test_name"`
 	IncidentID   string                       `bigquery:"incident_id" json:"incident_id"`
 	ModifiedTime time.Time                    `bigquery:"modified_time" json:"modified_time"`

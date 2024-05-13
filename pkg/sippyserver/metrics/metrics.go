@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -309,7 +310,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	}
 
 	// Get report
-	rows, errs := api.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOptions)
+	report, errs := api.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOptions)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
@@ -318,7 +319,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 		return fmt.Errorf("component report generation encountered errors: " + strings.Join(strErrors, "; "))
 	}
 
-	for _, row := range rows.Rows {
+	for _, row := range report.Rows {
 		totalRegressedTestsByComponent := 0
 		uniqueRegressedTestsByComponent := sets.NewString()
 		for _, col := range row.Columns {
@@ -333,6 +334,15 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 		}
 		componentReadinessTotalRegressionsMetric.WithLabelValues(row.Component).Set(float64(totalRegressedTestsByComponent))
 		componentReadinessUniqueRegressionsMetric.WithLabelValues(row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
+	}
+
+	// Maintain the test regressions table for anything new or now no longer appearing:
+	// TODO: do we need to protect this somehow so it doesn't run on multiple developer machines? They should all
+	// be trying to apply the same updates resulting just in more rapid feedback in the table.
+	regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryStorage(client.BQ))
+	err = regressionTracker.SyncComponentReport(sampleRelease.Release, &report)
+	if err != nil {
+		return errors.Wrap(err, "regression tracker reported an error")
 	}
 
 	return nil
