@@ -1107,7 +1107,7 @@ type ComponentReportTriageIncidentSummary struct {
 type TestRegression struct {
 	Release      string                 `bigquery:"release" json:"release"`
 	TestID       string                 `bigquery:"test_id" json:"test_id"`
-	TestName     string                 `bigquery:"test_name" json:"test_name"`
+	TestName     bigquery.NullString    `bigquery:"test_name" json:"test_name"`
 	RegressionID string                 `bigquery:"regression_id" json:"regression_id"`
 	Opened       time.Time              `bigquery:"opened" json:"opened"`
 	Closed       bigquery.NullTimestamp `bigquery:"closed" json:"closed"`

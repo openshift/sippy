@@ -85,7 +85,7 @@ func (bqs *BigQueryStorage) OpenRegression(release string, newRegressedTest api.
 	newRegression := &api.TestRegression{
 		Release:      release,
 		TestID:       newRegressedTest.TestID,
-		TestName:     newRegressedTest.TestName,
+		TestName:     bigquery.NullString{StringVal: newRegressedTest.TestName},
 		RegressionID: id.String(),
 		Opened:       time.Now(),
 		Variants: []api.TriagedVariant{
@@ -165,25 +165,37 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 	rLog := log.WithField("func", "SyncComponentReport")
 	rLog.Infof("loaded %d regressions from db", len(regressions))
 
-	matchedOpenRegressions := []api.TestRegression{} // all the matches we found, used to determine what had no match
+	// All regressions, both traiged and not:
+	allRegressedTests := []api.ComponentReportTestSummary{}
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
 			for _, regTest := range col.RegressedTests {
-				if openReg := findOpenRegression(release, regTest, regressions); openReg != nil {
-					rLog.WithFields(log.Fields{
-						"test": regTest.TestName,
-					}).Infof("found open regression: %+v", openReg)
-					//matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
-				} else {
-					// Open a new regression:
-					newReg, err := rt.storage.OpenRegression(release, regTest)
-					if err != nil {
-						rLog.WithError(err).Errorf("error opening new regression for: %+v", regTest)
-						return errors.Wrapf(err, "error opening new regression: %+v", regTest)
-					}
-					rLog.Infof("opened new regression: %+v", newReg)
-				}
+				allRegressedTests = append(allRegressedTests, regTest)
 			}
+			// Once triaged, regressions move to this list, we want to still consider them an open regression until
+			// fischers exact says they're cleared and they disappear fully. Traiged does not imply fixed or no longer
+			// a regression.
+			for _, triaged := range col.TriagedIncidents {
+				allRegressedTests = append(allRegressedTests, triaged.ComponentReportTestSummary)
+			}
+		}
+	}
+
+	matchedOpenRegressions := []api.TestRegression{} // all the matches we found, used to determine what had no match
+	for _, regTest := range allRegressedTests {
+		if openReg := findOpenRegression(release, regTest, regressions); openReg != nil {
+			rLog.WithFields(log.Fields{
+				"test": regTest.TestName,
+			}).Infof("found open regression: %+v", openReg)
+			matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
+		} else {
+			// Open a new regression:
+			newReg, err := rt.storage.OpenRegression(release, regTest)
+			if err != nil {
+				rLog.WithError(err).Errorf("error opening new regression for: %+v", regTest)
+				return errors.Wrapf(err, "error opening new regression: %+v", regTest)
+			}
+			rLog.Infof("opened new regression: %+v", newReg)
 		}
 	}
 
