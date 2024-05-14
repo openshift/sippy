@@ -22,11 +22,9 @@ const (
 type Storage interface {
 	ListCurrentRegressions(release string) ([]api.TestRegression, error)
 	OpenRegression(release string, newRegressedTest api.ComponentReportTestSummary) (*api.TestRegression, error)
+	ReOpenRegression(regressionID string) error
 	CloseRegression(regressionID string, closedAt time.Time) error
 }
-
-// InMemoryRegressionTracker is purely for testing purposes.
-type InMemoryStorage struct{}
 
 // BigQueryStorage is the primary implementation for real world usage, tracking when we detect test
 // regressions opening/closing in the Bigquery test_regressions table.
@@ -39,9 +37,9 @@ func NewBigQueryStorage(client *bigquery.Client) Storage {
 }
 
 func (bqs *BigQueryStorage) ListCurrentRegressions(release string) ([]api.TestRegression, error) {
-	// TODO: list only open regressions, or possibly in future also those closed within last few days to
-	// detect churn. For now we'll keep it simple and only list open.
-	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE release = @SampleRelease AND closed IS NULL",
+	// List open regressions (no closed date), or those that closed within the last two days. This is to prevent flapping
+	// and return more accurate opened dates when a test is falling in / out of the report.
+	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE release = @SampleRelease AND (closed IS NULL or closed > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY))",
 		testRegressionsDataSet, testRegressionsTable)
 
 	params := make([]bigquery.QueryParameter, 0)
@@ -121,19 +119,27 @@ func (bqs *BigQueryStorage) OpenRegression(release string, newRegressedTest api.
 	return newRegression, nil
 
 }
+
+func (bqs *BigQueryStorage) ReOpenRegression(regressionID string) error {
+	return bqs.updateClosed(regressionID, "NULL")
+}
+
 func (bqs *BigQueryStorage) CloseRegression(regressionID string, closedAt time.Time) error {
-	queryString := fmt.Sprintf("UPDATE %s.%s SET closed = '%s' WHERE regression_id = '%s'",
-		testRegressionsDataSet, testRegressionsTable, closedAt.Format("2006-01-02 15:04:05.999999"), regressionID)
+	return bqs.updateClosed(regressionID,
+		fmt.Sprintf("'%s'", closedAt.Format("2006-01-02 15:04:05.999999")))
+}
+
+func (bqs *BigQueryStorage) updateClosed(regressionID, closed string) error {
+	queryString := fmt.Sprintf("UPDATE %s.%s SET closed = %s WHERE regression_id = '%s'",
+		testRegressionsDataSet, testRegressionsTable, closed, regressionID)
 
 	query := bqs.client.Query(queryString)
 
-	// Execute the query
 	job, err := query.Run(context.TODO())
 	if err != nil {
 		return err
 	}
 
-	// Wait for the query to complete and retrieve the job status
 	status, err := job.Wait(context.TODO())
 	if err != nil {
 		return err
@@ -143,7 +149,6 @@ func (bqs *BigQueryStorage) CloseRegression(regressionID string, closedAt time.T
 		return err
 	}
 	return nil
-
 }
 
 func NewRegressionTracker(storage Storage) *RegressionTracker {
@@ -165,7 +170,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 	rLog := log.WithField("func", "SyncComponentReport")
 	rLog.Infof("loaded %d regressions from db", len(regressions))
 
-	// All regressions, both traiged and not:
+	// All regressions, both triaged and not:
 	allRegressedTests := []api.ComponentReportTestSummary{}
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
@@ -186,7 +191,18 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 		if openReg := FindOpenRegression(release, regTest, regressions); openReg != nil {
 			rLog.WithFields(log.Fields{
 				"test": regTest.TestName,
-			}).Infof("found open regression: %+v", openReg)
+			}).Infof("found open / recently closed regression: %+v", openReg)
+			if openReg.Closed.Valid {
+				// if the regression returned has a closed date, we found a recently closed
+				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
+				// in / out of the report depending on the data available in the sample/basis.
+				err := rt.storage.ReOpenRegression(openReg.RegressionID)
+				if err != nil {
+					rLog.WithError(err).Errorf("error re-opening regression: %+v", openReg)
+					return errors.Wrapf(err, "error re-opening regression: %+v", openReg)
+				}
+				openReg.Closed = bigquery.NullTimestamp{}
+			}
 			matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
 		} else {
 			// Open a new regression:
