@@ -821,7 +821,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			report := tc.generator.generateComponentTestReport(tc.baseStatus, tc.sampleStatus)
+			report := tc.generator.generateComponentTestReport(tc.baseStatus, tc.sampleStatus, []apitype.TestRegression{})
 			assert.Equal(t, tc.expectedReport, report, "expected report %+v, got %+v", tc.expectedReport, report)
 		})
 	}

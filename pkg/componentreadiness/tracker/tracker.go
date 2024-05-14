@@ -145,10 +145,8 @@ func (bqs *BigQueryStorage) updateClosed(regressionID, closed string) error {
 		return err
 	}
 
-	if err := status.Err(); err != nil {
-		return err
-	}
-	return nil
+	err = status.Err()
+	return err
 }
 
 func NewRegressionTracker(storage Storage) *RegressionTracker {
@@ -174,9 +172,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 	allRegressedTests := []api.ComponentReportTestSummary{}
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
-			for _, regTest := range col.RegressedTests {
-				allRegressedTests = append(allRegressedTests, regTest)
-			}
+			allRegressedTests = append(allRegressedTests, col.RegressedTests...)
 			// Once triaged, regressions move to this list, we want to still consider them an open regression until
 			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
 			// a regression.
