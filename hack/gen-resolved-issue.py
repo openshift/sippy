@@ -187,6 +187,7 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
     variants = triaged_incident["Variants"]
 
     issue_type  = triaged_incident["Issue"]["Type"]
+    issue_url = ""
 
     if "URL" in triaged_incident["Issue"]:
         issue_url   = triaged_incident["Issue"]["URL"]

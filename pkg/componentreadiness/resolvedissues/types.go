@@ -79,6 +79,10 @@ func KeyForTriagedIssue(testID string, variants []api.TriagedVariant) TriagedIss
 	}
 }
 
+type TriageIssueType string
+
+const TriageIssueTypeInfrastructure TriageIssueType = "Infrastructure"
+
 type Release string
 
 type TriagedIssueKey struct {
