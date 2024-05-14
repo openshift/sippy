@@ -1438,6 +1438,28 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
 			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
 			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
+
+			if reportStatus < apitype.MissingSample && reportStatus > apitype.SignificantRegression {
+				// we are within the triage range
+				// do we want to show the triage icon or flip reportStatus
+				canClearReportStatus := true
+				for _, ti := range triagedIncidents {
+					if ti.Issue.Type != string(resolvedissues.TriageIssueTypeInfrastructure) {
+						// TODO: add check for missing ti.Issue.ResolutionDate
+						// once we stop setting ResolutionDate automatically
+						// we don't have to clear this flag for non Infrastructure types
+						// that have a ResolutionDate
+						// if !ti.Issue.ResolutionDate.Valid {
+						canClearReportStatus = false
+						// }
+					}
+				}
+
+				// sanity check to make sure we aren't just defaulting to clear without any incidents (not likely)
+				if len(triagedIncidents) > 0 && canClearReportStatus {
+					reportStatus = apitype.NotSignificant
+				}
+			}
 		}
 		delete(sampleStatus, testIdentification)
 
