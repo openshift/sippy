@@ -202,6 +202,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 				openReg.Closed = bigquery.NullTimestamp{}
 			}
 			matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
+			rLog.Infof("re-opened existing regression: %+v", openReg)
 		} else {
 			// Open a new regression:
 			newReg, err := rt.backend.OpenRegression(release, regTest)
