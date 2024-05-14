@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/openshift/sippy/pkg/apis/api"
 	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
+	"github.com/openshift/sippy/pkg/variantregistry"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -88,23 +90,23 @@ func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTe
 		Opened:       time.Now(),
 		Variants: []api.TriagedVariant{
 			{
-				Key:   "Network",
+				Key:   variantregistry.VariantNetwork,
 				Value: newRegressedTest.Network,
 			},
 			{
-				Key:   "Upgrade",
+				Key:   variantregistry.VariantUpgrade,
 				Value: newRegressedTest.Upgrade,
 			},
 			{
-				Key:   "Platform",
+				Key:   variantregistry.VariantPlatform,
 				Value: newRegressedTest.Platform,
 			},
 			{
-				Key:   "Architecture",
+				Key:   variantregistry.VariantArch,
 				Value: newRegressedTest.Arch,
 			},
 			{
-				Key:   "Variant",
+				Key:   resolvedissues.VariantVariant,
 				Value: newRegressedTest.Variant,
 			},
 		},
@@ -249,19 +251,19 @@ func FindOpenRegression(release string,
 			continue
 		}
 		// TODO: needs updating when we're ready for dynamic variants
-		if regTest.Network != findVariant("Network", tr) {
+		if regTest.Network != findVariant(variantregistry.VariantNetwork, tr) {
 			continue
 		}
-		if regTest.Upgrade != findVariant("Upgrade", tr) {
+		if regTest.Upgrade != findVariant(variantregistry.VariantUpgrade, tr) {
 			continue
 		}
-		if regTest.Platform != findVariant("Platform", tr) {
+		if regTest.Platform != findVariant(variantregistry.VariantPlatform, tr) {
 			continue
 		}
-		if regTest.Variant != findVariant("Variant", tr) {
+		if regTest.Variant != findVariant(resolvedissues.VariantVariant, tr) {
 			continue
 		}
-		if regTest.Arch != findVariant("Architecture", tr) {
+		if regTest.Arch != findVariant(variantregistry.VariantArch, tr) {
 			continue
 		}
 		// If we made it this far, this appears to be a match:
