@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
+	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 
 	"cloud.google.com/go/bigquery"
 	fischer "github.com/glycerine/golang-fisher-exact"
@@ -283,7 +284,13 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
-	report := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus)
+	bqs := tracker.NewBigQueryStorage(c.client.BQ)
+	openRegressions, err := bqs.ListCurrentRegressions(c.SampleRelease.Release)
+	if err != nil {
+		errs = append(errs, err)
+		return apitype.ComponentReport{}, errs
+	}
+	report := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus, openRegressions)
 	report.GeneratedAt = componentReportTestStatus.GeneratedAt
 	log.Infof("GenerateReport completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
 
@@ -1076,7 +1083,9 @@ type cellStatus struct {
 }
 
 func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
-	reportStatus apitype.ComponentReportStatus, existingCellStatus *cellStatus, triagedIncidents []apitype.TriagedIncident) cellStatus {
+	reportStatus apitype.ComponentReportStatus, existingCellStatus *cellStatus,
+	triagedIncidents []apitype.TriagedIncident,
+	openRegressions []apitype.TestRegression) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (reportStatus < apitype.NotSignificant && reportStatus < existingCellStatus.status) ||
@@ -1094,17 +1103,39 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 	// don't show triaged regressions in the regressed tests
 	// need a new UI to show active triaged incidents
 	if reportStatus < apitype.ExtremeTriagedRegression {
-		newCellStatus.regressedTests = append(newCellStatus.regressedTests, apitype.ComponentReportTestSummary{
+		rt := apitype.ComponentReportTestSummary{
 			ComponentReportTestIdentification: testID,
 			Status:                            reportStatus,
-		})
+		}
+		if len(openRegressions) > 0 {
+			release := openRegressions[0].Release
+			or := tracker.FindOpenRegression(release, rt, openRegressions)
+			if or != nil {
+				rt.RegressionStatus = apitype.ComponentReportRegressionStatus{
+					Status: reportStatus,
+					Opened: &or.Opened,
+				}
+			}
+		}
+		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
 	} else if reportStatus < apitype.MissingSample {
-		newCellStatus.triagedIncidents = append(newCellStatus.triagedIncidents, apitype.ComponentReportTriageIncidentSummary{
+		ti := apitype.ComponentReportTriageIncidentSummary{
 			TriagedIncidents: triagedIncidents,
 			ComponentReportTestSummary: apitype.ComponentReportTestSummary{
 				ComponentReportTestIdentification: testID,
 				Status:                            reportStatus,
-			}})
+			}}
+		if len(openRegressions) > 0 {
+			release := openRegressions[0].Release
+			or := tracker.FindOpenRegression(release, ti.ComponentReportTestSummary, openRegressions)
+			if or != nil {
+				ti.ComponentReportTestSummary.RegressionStatus = apitype.ComponentReportRegressionStatus{
+					Status: reportStatus,
+					Opened: &or.Opened,
+				}
+			}
+		}
+		newCellStatus.triagedIncidents = append(newCellStatus.triagedIncidents, ti)
 	}
 	return newCellStatus
 }
@@ -1116,7 +1147,8 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 	status map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]cellStatus,
 	allRows map[apitype.ComponentReportRowIdentification]struct{},
 	allColumns map[apitype.ComponentReportColumnIdentification]struct{},
-	triagedIncidents []apitype.TriagedIncident) {
+	triagedIncidents []apitype.TriagedIncident,
+	openRegressions []apitype.TestRegression) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}
@@ -1136,16 +1168,16 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 		if !ok {
 			row = map[apitype.ComponentReportColumnIdentification]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil, triagedIncidents)
+				row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil, triagedIncidents, openRegressions)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil, triagedIncidents)
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil, triagedIncidents, openRegressions)
 				} else {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, &existing, triagedIncidents)
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, &existing, triagedIncidents, openRegressions)
 				}
 			}
 		}
@@ -1414,10 +1446,11 @@ func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentR
 }
 
 func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus,
-	sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus) apitype.ComponentReport {
+	sampleStatus map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus, openRegressions []apitype.TestRegression) apitype.ComponentReport {
 	report := apitype.ComponentReport{
 		Rows: []apitype.ComponentReportRow{},
 	}
+
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
 	aggregatedStatus := map[apitype.ComponentReportRowIdentification]map[apitype.ComponentReportColumnIdentification]cellStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
@@ -1442,13 +1475,13 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 		delete(sampleStatus, testIdentification)
 
 		rowIdentifications, columnIdentifications := c.getRowColumnIdentifications(testIdentification, baseStats)
-		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, aggregatedStatus, allRows, allColumns, triagedIncidents)
+		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, aggregatedStatus, allRows, allColumns, triagedIncidents, openRegressions)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
 		testID := buildTestID(sampleStats, testIdentification)
 		rowIdentifications, columnIdentification := c.getRowColumnIdentifications(testIdentification, sampleStats)
-		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns, nil)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns, nil, openRegressions)
 	}
 
 	// Sort the row identifications

@@ -85,7 +85,7 @@ func (bqs *BigQueryStorage) OpenRegression(release string, newRegressedTest api.
 	newRegression := &api.TestRegression{
 		Release:      release,
 		TestID:       newRegressedTest.TestID,
-		TestName:     bigquery.NullString{StringVal: newRegressedTest.TestName},
+		TestName:     bigquery.NullString{StringVal: newRegressedTest.TestName, Valid: true},
 		RegressionID: id.String(),
 		Opened:       time.Now(),
 		Variants: []api.TriagedVariant{
@@ -173,7 +173,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 				allRegressedTests = append(allRegressedTests, regTest)
 			}
 			// Once triaged, regressions move to this list, we want to still consider them an open regression until
-			// fischers exact says they're cleared and they disappear fully. Traiged does not imply fixed or no longer
+			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
 			// a regression.
 			for _, triaged := range col.TriagedIncidents {
 				allRegressedTests = append(allRegressedTests, triaged.ComponentReportTestSummary)
@@ -183,7 +183,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 
 	matchedOpenRegressions := []api.TestRegression{} // all the matches we found, used to determine what had no match
 	for _, regTest := range allRegressedTests {
-		if openReg := findOpenRegression(release, regTest, regressions); openReg != nil {
+		if openReg := FindOpenRegression(release, regTest, regressions); openReg != nil {
 			rLog.WithFields(log.Fields{
 				"test": regTest.TestName,
 			}).Infof("found open regression: %+v", openReg)
@@ -223,7 +223,8 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 	return nil
 }
 
-func findOpenRegression(release string,
+// FindOpenRegression scans the list of open regressions for any that match the given test summary.
+func FindOpenRegression(release string,
 	regTest api.ComponentReportTestSummary,
 	regressions []api.TestRegression) *api.TestRegression {
 
