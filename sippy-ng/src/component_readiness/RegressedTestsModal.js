@@ -132,6 +132,34 @@ export default function RegressedTestsModal(props) {
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
+      field: 'opened',
+      headerName: 'Regressed Since',
+      flex: 15,
+      valueGetter: (params) => params.row.regression_status.regressed_since,
+      valueGetter: (params) => {
+        const regressedSinceDate = new Date(
+          params.row.regression_status.regressed_since
+        )
+        const formattedRegressedSince = regressedSinceDate.toLocaleString(
+          'en-US',
+          {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          }
+        )
+
+        return formattedRegressedSince
+      },
+      renderCell: (param) => (
+        <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">
+          <div className="regressed-since">{param.value}</div>
+        </Tooltip>
+      ),
+    },
+    {
       field: 'test_id',
       flex: 5,
       headerName: 'ID',
@@ -186,7 +214,7 @@ export default function RegressedTestsModal(props) {
     <Fragment>
       <Dialog
         fullWidth={true}
-        maxWidth="xl"
+        maxWidth={false}
         open={props.isOpen}
         onClose={props.close}
       >
