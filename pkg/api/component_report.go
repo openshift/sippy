@@ -284,7 +284,7 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 	if len(errs) > 0 {
 		return apitype.ComponentReport{}, errs
 	}
-	bqs := tracker.NewBigQueryRegressionStore(c.client.BQ)
+	bqs := tracker.NewBigQueryRegressionStore(c.client)
 	openRegressions, err := bqs.ListCurrentRegressions(c.SampleRelease.Release)
 	if err != nil {
 		errs = append(errs, err)

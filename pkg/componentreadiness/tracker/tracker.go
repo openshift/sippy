@@ -9,14 +9,14 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
 	"github.com/openshift/sippy/pkg/apis/api"
+	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 )
 
 const (
-	testRegressionsDataSet = "ci_analysis_us"
-	testRegressionsTable   = "test_regressions"
+	testRegressionsTable = "test_regressions"
 )
 
 // RegressionStore is an underlying interface for where we store/load data on open test regressions.
@@ -29,10 +29,10 @@ type RegressionStore interface {
 
 // BigQueryRegressionStore is the primary implementation for real world usage, storing when regressions appear/disappear in BigQuery.
 type BigQueryRegressionStore struct {
-	client *bigquery.Client
+	client *sippybigquery.Client
 }
 
-func NewBigQueryRegressionStore(client *bigquery.Client) RegressionStore {
+func NewBigQueryRegressionStore(client *sippybigquery.Client) RegressionStore {
 	return &BigQueryRegressionStore{client: client}
 }
 
@@ -40,7 +40,7 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]api
 	// List open regressions (no closed date), or those that closed within the last two days. This is to prevent flapping
 	// and return more accurate opened dates when a test is falling in / out of the report.
 	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE release = @SampleRelease AND (closed IS NULL or closed > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY))",
-		testRegressionsDataSet, testRegressionsTable)
+		bq.client.Dataset, testRegressionsTable)
 
 	params := make([]bigquery.QueryParameter, 0)
 	params = append(params, []bigquery.QueryParameter{
@@ -50,7 +50,7 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]api
 		},
 	}...)
 
-	sampleQuery := bq.client.Query(queryString)
+	sampleQuery := bq.client.BQ.Query(queryString)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, params...)
 
 	regressions := make([]api.TestRegression, 0)
@@ -109,7 +109,7 @@ func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTe
 			},
 		},
 	}
-	inserter := bq.client.Dataset(testRegressionsDataSet).Table(testRegressionsTable).Inserter()
+	inserter := bq.client.BQ.Dataset(bq.client.Dataset).Table(testRegressionsTable).Inserter()
 	items := []*api.TestRegression{
 		newRegression,
 	}
@@ -131,9 +131,9 @@ func (bq *BigQueryRegressionStore) CloseRegression(regressionID string, closedAt
 
 func (bq *BigQueryRegressionStore) updateClosed(regressionID, closed string) error {
 	queryString := fmt.Sprintf("UPDATE %s.%s SET closed = %s WHERE regression_id = '%s'",
-		testRegressionsDataSet, testRegressionsTable, closed, regressionID)
+		bq.client.Dataset, testRegressionsTable, closed, regressionID)
 
-	query := bq.client.Query(queryString)
+	query := bq.client.BQ.Query(queryString)
 
 	job, err := query.Run(context.TODO())
 	if err != nil {

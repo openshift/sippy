@@ -339,7 +339,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	// Maintain the test regressions table for anything new or now no longer appearing:
 	// TODO: do we need to protect this somehow so it doesn't run on multiple developer machines? They should all
 	// be trying to apply the same updates resulting just in more rapid feedback in the table.
-	regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client.BQ))
+	regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client))
 	err = regressionTracker.SyncComponentReport(sampleRelease.Release, &report)
 	if err != nil {
 		return errors.Wrap(err, "regression tracker reported an error")
