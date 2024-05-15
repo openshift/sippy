@@ -137,13 +137,11 @@ export default function RegressedTestsModal(props) {
       headerName: 'Regressed Since',
       flex: 15,
       valueGetter: (params) => {
-        if (!params.row.regression_status.regressed_since) {
+        if (!params.row.opened) {
           // For a regression we haven't yet detected:
           return ''
         }
-        const regressedSinceDate = new Date(
-          params.row.regression_status.regressed_since
-        )
+        const regressedSinceDate = new Date(params.row.opened)
         return relativeTime(regressedSinceDate, new Date())
       },
       renderCell: (param) => (

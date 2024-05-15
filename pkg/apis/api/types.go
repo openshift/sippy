@@ -915,12 +915,6 @@ type ComponentReportTestIdentification struct {
 
 type ComponentReportTestSummary struct {
 	ComponentReportTestIdentification
-	// Status is an integer status we're trying to get away from in favor of the regression status struct. (TODO)
-	Status           ComponentReportStatus           `json:"status"`
-	RegressionStatus ComponentReportRegressionStatus `json:"regression_status"`
-}
-
-type ComponentReportRegressionStatus struct {
 	// Status is an integer representing the severity of the regression.
 	Status ComponentReportStatus `json:"status"`
 
@@ -929,7 +923,7 @@ type ComponentReportRegressionStatus struct {
 	// the regression with it's *default view* query. However we always include it in the response (if that test
 	// is regressed per the query params used). Eventually we should only include these details if the default view
 	// is being used, without overriding the start/end dates.
-	Opened *time.Time `json:"regressed_since"`
+	Opened *time.Time `json:"opened"`
 }
 
 type ComponentReportTestDetails struct {

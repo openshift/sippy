@@ -1111,10 +1111,7 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 			release := openRegressions[0].Release
 			or := tracker.FindOpenRegression(release, rt, openRegressions)
 			if or != nil {
-				rt.RegressionStatus = apitype.ComponentReportRegressionStatus{
-					Status: reportStatus,
-					Opened: &or.Opened,
-				}
+				rt.Opened = &or.Opened
 			}
 		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
@@ -1129,10 +1126,7 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 			release := openRegressions[0].Release
 			or := tracker.FindOpenRegression(release, ti.ComponentReportTestSummary, openRegressions)
 			if or != nil {
-				ti.ComponentReportTestSummary.RegressionStatus = apitype.ComponentReportRegressionStatus{
-					Status: reportStatus,
-					Opened: &or.Opened,
-				}
+				ti.ComponentReportTestSummary.Opened = &or.Opened
 			}
 		}
 		newCellStatus.triagedIncidents = append(newCellStatus.triagedIncidents, ti)
