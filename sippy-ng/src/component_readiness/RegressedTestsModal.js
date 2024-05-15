@@ -135,7 +135,6 @@ export default function RegressedTestsModal(props) {
       field: 'opened',
       headerName: 'Regressed Since',
       flex: 15,
-      valueGetter: (params) => params.row.regression_status.regressed_since,
       valueGetter: (params) => {
         const regressedSinceDate = new Date(
           params.row.regression_status.regressed_since
