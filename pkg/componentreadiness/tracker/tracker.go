@@ -197,7 +197,6 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 					return errors.Wrapf(err, "error re-opening regression: %v", openReg)
 				}
 				rLog.Infof("re-opened existing regression: %+v", openReg)
-				//openReg.Closed = bigquery.NullTimestamp{}
 			} else {
 				rLog.WithFields(log.Fields{
 					"test": regTest.TestName,
@@ -226,7 +225,8 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 				break
 			}
 		}
-		if !matched {
+		// If we didn't match to an active test regression, and this record isn't already closed, close it.
+		if !matched && !regression.Closed.Valid {
 			rLog.Infof("found a regression no longer appearing in the report which should be closed: %v", regression)
 			err := rt.backend.CloseRegression(regression.RegressionID, now)
 			if err != nil {
