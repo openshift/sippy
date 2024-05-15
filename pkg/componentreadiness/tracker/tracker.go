@@ -85,10 +85,10 @@ func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTe
 	newRegression := &api.TestRegression{
 		Release:      release,
 		TestID:       newRegressedTest.TestID,
-		TestName:     bigquery.NullString{StringVal: newRegressedTest.TestName, Valid: true},
+		TestName:     newRegressedTest.TestName,
 		RegressionID: id.String(),
 		Opened:       time.Now(),
-		Variants: []api.TriagedVariant{
+		Variants: []api.ComponentReportVariant{
 			{
 				Key:   variantregistry.VariantNetwork,
 				Value: newRegressedTest.Network,

@@ -4,6 +4,7 @@ import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
 import { formColumnName, sortQueryParams } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { relativeTime } from '../helpers'
 import { safeEncodeURIComponent } from '../helpers'
 import CompSeverityIcon from './CompSeverityIcon'
 import Dialog from '@mui/material/Dialog'
@@ -136,21 +137,14 @@ export default function RegressedTestsModal(props) {
       headerName: 'Regressed Since',
       flex: 15,
       valueGetter: (params) => {
+        if (!params.row.regression_status.regressed_since) {
+          // For a regression we haven't yet detected:
+          return ''
+        }
         const regressedSinceDate = new Date(
           params.row.regression_status.regressed_since
         )
-        const formattedRegressedSince = regressedSinceDate.toLocaleString(
-          'en-US',
-          {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit',
-          }
-        )
-
-        return formattedRegressedSince
+        return relativeTime(regressedSinceDate, new Date())
       },
       renderCell: (param) => (
         <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">

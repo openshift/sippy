@@ -29,9 +29,9 @@ func buildTriageMatchVariants(in []string) sets.String {
 
 	return set
 }
-func TransformVariant(variant api.ComponentReportColumnIdentification) []api.TriagedVariant {
+func TransformVariant(variant api.ComponentReportColumnIdentification) []api.ComponentReportVariant {
 
-	return []api.TriagedVariant{{
+	return []api.ComponentReportVariant{{
 		Key:   variantregistry.VariantArch,
 		Value: variant.Arch,
 	}, {
@@ -48,9 +48,9 @@ func TransformVariant(variant api.ComponentReportColumnIdentification) []api.Tri
 		Value: variant.Variant,
 	}}
 }
-func KeyForTriagedIssue(testID string, variants []api.TriagedVariant) TriagedIssueKey {
+func KeyForTriagedIssue(testID string, variants []api.ComponentReportVariant) TriagedIssueKey {
 
-	matchVariants := make([]api.TriagedVariant, 0)
+	matchVariants := make([]api.ComponentReportVariant, 0)
 	for _, v := range variants {
 		// currently we ignore variants that aren't in api.ComponentReportColumnIdentification
 		if triageMatchVariants.Has(v.Key) {
