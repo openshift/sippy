@@ -2,6 +2,7 @@ import {
   ArrayParam,
   BooleanParam,
   NumberParam,
+  ObjectParam,
   SafeStringParam,
   StringParam,
   useQueryParam,
@@ -10,7 +11,7 @@ import {
   dateEndFormat,
   dateFormat,
   formatLongDate,
-  getAPIUrl,
+  getJobVariantsUrl,
   gotFetchError,
 } from './CompReadyUtils'
 import { ReleasesContext } from '../App'
@@ -26,6 +27,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [excludeArchesList, setExcludeArchesList] = useState([])
   const [excludeUpgradesList, setExcludeUpgradesList] = useState([])
   const [excludeVariantsList, setExcludeVariantsList] = useState([])
+  const [allJobVariants, setAllJobVariants] = useState([])
   const [isLoaded, setIsLoaded] = useState(false)
   const [fetchError, setFetchError] = useState('')
 
@@ -96,7 +98,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleEndTimeParam,
   ] = useQueryParam('sampleEndTime', StringParam)
   const [
-    groupByCheckedItemsParam = ['cloud', 'arch', 'network'],
+    groupByCheckedItemsParam = ['Platform', 'Architecture', 'Network'],
     setGroupByCheckedItemsParam,
   ] = useQueryParam('groupBy', ArrayParam)
   const [
@@ -138,6 +140,19 @@ export const CompReadyVarsProvider = ({ children }) => {
     ],
     setExcludeVariantsCheckedItemsParam,
   ] = useQueryParam('excludeVariants', ArrayParam)
+  const [
+    includeVariantsCheckedItemsParam = [
+      'Architecture:amd64',
+      'Installer:ipi',
+      'Installer:upi',
+      'Platform:aws',
+      'Platform:azure',
+      'Platform:gcp',
+      'Platform:metal',
+      'Platform:vsphere',
+    ],
+    setIncludeVariantsCheckedItemsParam,
+  ] = useQueryParam('includeVariant', ArrayParam)
 
   const [confidenceParam = 95, setConfidenceParam] = useQueryParam(
     'confidence',
@@ -214,6 +229,38 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
     React.useState(excludeVariantsCheckedItemsParam)
 
+  const convertIncludeVariantsCheckedItemsToParam = (
+    includeVariantsCheckedItems
+  ) => {
+    let param = []
+    Object.keys(includeVariantsCheckedItems).forEach((variant) => {
+      includeVariantsCheckedItems[variant].forEach((value) => {
+        param.push(variant + ':' + value)
+      })
+    })
+    return param
+  }
+
+  const convertParamToIncludeVariantsCheckedItems = (includeVariantParam) => {
+    let includeVariants = {}
+    includeVariantParam.forEach((variant) => {
+      let kv = variant.split(':')
+      if (kv.length == 2) {
+        if (kv[0] in includeVariants) {
+          includeVariants[kv[0]].push(kv[1])
+        } else {
+          includeVariants[kv[0]] = [kv[1]]
+        }
+      }
+    })
+    return includeVariants
+  }
+  const includeVariantsCheckedItems = convertParamToIncludeVariantsCheckedItems(
+    includeVariantsCheckedItemsParam
+  )
+  const replaceIncludeVariantsCheckedItems = (variant, checkedItems) => {
+    includeVariantsCheckedItems[variant] = checkedItems
+  }
   const [confidence, setConfidence] = React.useState(confidenceParam)
   const [pity, setPity] = React.useState(pityParam)
   const [minFail, setMinFail] = React.useState(minFailParam)
@@ -256,6 +303,9 @@ export const CompReadyVarsProvider = ({ children }) => {
     setExcludeNetworksCheckedItemsParam(excludeNetworksCheckedItems)
     setExcludeUpgradesCheckedItemsParam(excludeUpgradesCheckedItems)
     setExcludeVariantsCheckedItemsParam(excludeVariantsCheckedItems)
+    setIncludeVariantsCheckedItemsParam(
+      convertIncludeVariantsCheckedItemsToParam(includeVariantsCheckedItems)
+    )
     setConfidenceParam(confidence)
     setPityParam(pity)
     setMinFailParam(minFail)
@@ -267,7 +317,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    const apiCallStr = getAPIUrl() + '/variants'
+    const apiCallStr = getJobVariantsUrl()
     fetch(apiCallStr)
       .then((response) => response.json())
       .then((data) => {
@@ -277,11 +327,12 @@ export const CompReadyVarsProvider = ({ children }) => {
             : 'No error message'
           throw new Error(`Return code = ${data.code} (${errorMessage})`)
         }
-        setExcludeCloudsList(data.platform)
-        setExcludeArchesList(data.arch)
-        setExcludeNetworksList(data.network)
-        setExcludeUpgradesList(data.upgrade)
-        setExcludeVariantsList(data.variant)
+        setExcludeCloudsList(data.variants['Platform'])
+        setExcludeArchesList(data.variants['Architecture'])
+        setExcludeNetworksList(data.variants['Network'])
+        setExcludeUpgradesList(data.variants['Upgrade'])
+        setExcludeVariantsList(data.variants['Installer'])
+        setAllJobVariants(data.variants)
         setIsLoaded(true)
       })
       .catch((error) => {
@@ -307,26 +358,11 @@ export const CompReadyVarsProvider = ({ children }) => {
     const items = environmentStr.split(' ')
     const params = {}
     items.forEach((item) => {
-      if (excludeCloudsList.includes(item)) {
-        params.platform = item
-      } else if (excludeArchesList.includes(item)) {
-        params.arch = item
-      } else if (excludeNetworksList.includes(item)) {
-        params.network = item
-      } else if (excludeUpgradesList.includes(item)) {
-        params.upgrade = item
-      } else {
-        const variants = item.split(',')
-        let valid = variants.some((variant) => {
-          if (excludeVariantsList.includes(variant)) {
-            params.variant = item
-            return true
-          }
-        })
-        if (!valid) {
-          console.log(`Warning: Item '${item}' not found in lists`)
+      Object.entries(allJobVariants).forEach(([variantName, variantValues]) => {
+        if (variantValues.includes(item)) {
+          params[variantName] = item
         }
-      }
+      })
     })
     const paramStrings = Object.entries(params).map(
       ([key, value]) => `${key}=${value}`
@@ -368,6 +404,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         excludeArchesList,
         excludeUpgradesList,
         excludeVariantsList,
+        allJobVariants,
         expandEnvironment,
         baseRelease,
         setBaseReleaseWithDates,
@@ -393,6 +430,8 @@ export const CompReadyVarsProvider = ({ children }) => {
         setExcludeArchesCheckedItems,
         excludeNetworksCheckedItems,
         setExcludeNetworksCheckedItems,
+        includeVariantsCheckedItems,
+        replaceIncludeVariantsCheckedItems,
         confidence,
         setConfidence,
         pity,

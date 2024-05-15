@@ -1,6 +1,7 @@
 package regressionallowances
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 
@@ -22,7 +23,7 @@ type IntentionalRegression struct {
 }
 
 func IntentionalRegressionFor(releaseString string, variant api.ComponentReportColumnIdentification, testID string) *IntentionalRegression {
-	var targetMap map[regressionKey]IntentionalRegression
+	var targetMap map[string]IntentionalRegression
 	switch release(releaseString) {
 	case release415:
 		targetMap = regressions415
@@ -45,7 +46,7 @@ var (
 )
 
 var (
-	regressions415 = map[regressionKey]IntentionalRegression{}
+	regressions415 = map[string]IntentionalRegression{}
 )
 
 type regressionKey struct {
@@ -53,8 +54,8 @@ type regressionKey struct {
 	variant api.ComponentReportColumnIdentification
 }
 
-func keyFor(testID string, variant api.ComponentReportColumnIdentification) regressionKey {
-	return regressionKey{
+func keyFor(testID string, variant api.ComponentReportColumnIdentification) string {
+	key := regressionKey{
 		testID: testID,
 		variant: api.ComponentReportColumnIdentification{
 			Network:  variant.Network,
@@ -63,6 +64,11 @@ func keyFor(testID string, variant api.ComponentReportColumnIdentification) regr
 			Platform: variant.Platform,
 		},
 	}
+	k, err := json.Marshal(key)
+	if err != nil {
+
+	}
+	return string(k)
 }
 
 func mustAddIntentionalRegression(release release, in IntentionalRegression) {
@@ -112,7 +118,7 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 		return fmt.Errorf("upgrade must be specified")
 	}
 
-	var targetMap map[regressionKey]IntentionalRegression
+	var targetMap map[string]IntentionalRegression
 
 	switch release {
 	case release415:

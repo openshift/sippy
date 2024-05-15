@@ -71,6 +71,10 @@ export function getAPIUrl() {
   return process.env.REACT_APP_API_URL + '/api/component_readiness'
 }
 
+export function getJobVariantsUrl() {
+  return process.env.REACT_APP_API_URL + '/api/job_variants'
+}
+
 // Make one place to create the Component Readiness test_details api call
 export function getTestDetailsAPIUrl() {
   return process.env.REACT_APP_API_URL + '/api/component_readiness/test_details'
@@ -214,9 +218,9 @@ export function getStatusAndIcon(status, grayFactor = 0) {
 // The values of a column's key/value pairs (except status) are
 // concatenated to form a column name
 export function formColumnName(column) {
-  return Object.keys(column)
-    .filter((key) => key != 'status' && key != 'regressed_tests')
-    .map((key) => column[key])
+  let variants = column['variants']
+  return Object.keys(variants)
+    .map((key) => variants[key])
     .join(' ')
 }
 
@@ -315,6 +319,7 @@ export function getUpdatedUrlParts(
   excludeNetworksCheckedItems,
   excludeUpgradesCheckedItems,
   excludeVariantsCheckedItems,
+  includeVariantsCheckedItems,
   confidence,
   pity,
   minFail,
@@ -357,6 +362,13 @@ export function getUpdatedUrlParts(
     if (value && value.length) {
       queryParams.append(key, value.join(','))
     }
+  })
+
+  // Render includeVariantsCheckedItems
+  Object.entries(includeVariantsCheckedItems).forEach(([key, values]) => {
+    values.forEach((value) => {
+      queryParams.append('includeVariant', key + ':' + value)
+    })
   })
 
   // Stringify and put the begin param character.

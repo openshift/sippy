@@ -3,6 +3,7 @@ package sippyserver
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/openshift/sippy/pkg/util/sets"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -734,6 +735,12 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 		err = fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
 		return
 	}
+
+	allJobVariants, errs := api.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	if len(errs) > 0 {
+		err = fmt.Errorf("failed to get variants from bigquery")
+		return
+	}
 	baseRelease.Release = req.URL.Query().Get("baseRelease")
 	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
 	if baseRelease.Release == "" {
@@ -776,17 +783,61 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	testIDOption.TestID = req.URL.Query().Get("testId")
 
 	variantOption.GroupBy = req.URL.Query().Get("groupBy")
-	variantOption.Platform = req.URL.Query().Get("platform")
-	variantOption.Upgrade = req.URL.Query().Get("upgrade")
-	variantOption.Arch = req.URL.Query().Get("arch")
-	variantOption.Network = req.URL.Query().Get("network")
-	variantOption.Variant = req.URL.Query().Get("variant")
+	variantOption.GroupByVariants = sets.String{}
+	groups := strings.Split(variantOption.GroupBy, ",")
+	for _, g := range groups {
+		if _, ok := allJobVariants.Variants[g]; !ok {
+			err = fmt.Errorf("invalid groupBy value %s", g)
+			return
+		}
+		variantOption.GroupByVariants.Insert(g)
+	}
+	variantOption.RequestedVariants = map[string]string{}
+	// Only the groupBy variants can be specifically requested
+	for _, variant := range variantOption.GroupByVariants.List() {
+		if value := req.URL.Query().Get(variant); value != "" {
+			variantOption.RequestedVariants[variant] = value
+		}
+	}
+	//variantOption.Platform = req.URL.Query().Get("platform")
+	//variantOption.Upgrade = req.URL.Query().Get("upgrade")
+	//variantOption.Arch = req.URL.Query().Get("arch")
+	//variantOption.Network = req.URL.Query().Get("network")
+	//variantOption.Variant = req.URL.Query().Get("variant")
+	variantOption.IncludeVariants = req.URL.Query()["includeVariant"]
+	variantOption.IncludeVariantsMap = map[string][]string{}
+	for _, includeVariant := range  variantOption.IncludeVariants {
+		kv := strings.Split(includeVariant, ":")
+		if len(kv) != 2 {
+			err = fmt.Errorf("invalid includeVariant %s", includeVariant)
+			return
+		}
+		values, ok := allJobVariants.Variants[kv[0]]
+		if !ok {
+			err = fmt.Errorf("invalid variant name from includeVariant %s", includeVariant)
+			return
+		}
+		found := false
+		for _, v := range values {
+			if v == kv[1] {
+				variantOption.IncludeVariantsMap[kv[0]] = append(variantOption.IncludeVariantsMap[kv[0]], kv[1])
+				found = true
+				break
+			}
+		}
+		if !found {
+			err = fmt.Errorf("invalid variant value from includeVariant %s", includeVariant)
+			return
+		}
+	}
+	log.Infof("-----------query is %+v", req.URL.Query())
+	log.Infof("-----------IncludeVariants is %+v", variantOption.IncludeVariants)
 
-	excludeOption.ExcludePlatforms = req.URL.Query().Get("excludeClouds")
-	excludeOption.ExcludeArches = req.URL.Query().Get("excludeArches")
-	excludeOption.ExcludeNetworks = req.URL.Query().Get("excludeNetworks")
-	excludeOption.ExcludeUpgrades = req.URL.Query().Get("excludeUpgrades")
-	excludeOption.ExcludeVariants = req.URL.Query().Get("excludeVariants")
+	//excludeOption.ExcludePlatforms = req.URL.Query().Get("excludeClouds")
+	//excludeOption.ExcludeArches = req.URL.Query().Get("excludeArches")
+	//excludeOption.ExcludeNetworks = req.URL.Query().Get("excludeNetworks")
+	//excludeOption.ExcludeUpgrades = req.URL.Query().Get("excludeUpgrades")
+	//excludeOption.ExcludeVariants = req.URL.Query().Get("excludeVariants")
 
 	advancedOption.Confidence = 95
 	confidenceStr := req.URL.Query().Get("confidence")

@@ -299,6 +299,8 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	}
 	variantOption := apitype.ComponentReportRequestVariantOptions{
 		GroupBy: api.DefaultGroupBy,
+		GroupByVariants: sets.String{},
+		RequestedVariants: map[string]string{},
 	}
 	advancedOption := apitype.ComponentReportRequestAdvancedOptions{
 		MinimumFailure:   api.DefaultMinimumFailure,

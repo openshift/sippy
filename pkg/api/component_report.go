@@ -308,14 +308,15 @@ func (c *componentReportGenerator) GenerateComponentReportTestStatus() (apitype.
 }
 
 func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.ComponentReportTestDetails, []error) {
-	if c.TestID == "" ||
-		c.Platform == "" ||
-		c.Network == "" ||
-		c.Upgrade == "" ||
-		c.Arch == "" ||
-		c.Variant == "" {
-		return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all parameters have to be defined for test details: test_id, platform, network, upgrade, arch, variant")}
+	if c.TestID == "" {
+		return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
+	for _, v := range c.GroupByVariants.List() {
+		if _, ok := c.RequestedVariants[v]; !ok {
+			return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all groupBy variants have to be defined for test details: %s is missing", v)}
+		}
+	}
+
 	componentJobRunTestReportStatus, errs := c.GenerateJobRunTestReportStatus()
 	if len(errs) > 0 {
 		return apitype.ComponentReportTestDetails{}, errs
@@ -337,7 +338,13 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (apitype.Com
 	return componentJobRunTestReportStatus, nil
 }
 
-func (c *componentReportGenerator) getCommonJobRunTestStatusQuery() (string, string, []bigquery.QueryParameter) {
+func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
+	joinVariants := ""
+	for v, _ := range allJobVariants.Variants {
+		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+			c.client.Dataset, v, v, v, v)
+	}
+
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
 						FROM %s.component_mapping cm
@@ -356,7 +363,10 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery() (string, str
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
+`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
+
+	queryString += joinVariants
 
 	groupString := `
 					GROUP BY
@@ -368,11 +378,6 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery() (string, str
 					WHERE
 						(prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
 						AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
-						AND upgrade = @Upgrade
-						AND arch = @Arch
-						AND network = @Network
-						AND platform = @Platform
-						AND flat_variants = @Variant
 						AND cm.id = @TestId `
 	commonParams := []bigquery.QueryParameter{
 		{
@@ -380,31 +385,13 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery() (string, str
 			Value: ignoredJobsRegexp,
 		},
 		{
-			Name:  "Upgrade",
-			Value: c.Upgrade,
-		},
-		{
-			Name:  "Arch",
-			Value: c.Arch,
-		},
-		{
-			Name:  "Network",
-			Value: c.Network,
-		},
-		{
-			Name:  "Platform",
-			Value: c.Platform,
-		},
-		{
 			Name:  "TestId",
 			Value: c.TestID,
 		},
-		{
-			Name:  "Variant",
-			Value: c.Variant,
-		},
 	}
-
+	for k, v := range c.RequestedVariants {
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
+	}
 	return queryString, groupString, commonParams
 }
 
@@ -516,8 +503,12 @@ func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJob
 
 func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.ComponentJobRunTestReportStatus, []error) {
 	errs := []error{}
-
-	queryString, groupString, commonParams := c.getCommonJobRunTestStatusQuery()
+	allJobVariants, errs := GetJobVariantsFromBigQuery(c.client, c.gcsBucket)
+	if len(errs) > 0 {
+		log.Errorf("failed to get variants from bigquery")
+		return apitype.ComponentJobRunTestReportStatus{}, errs
+	}
+	queryString, groupString, commonParams := c.getCommonJobRunTestStatusQuery(allJobVariants)
 	var baseStatus, sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
@@ -541,22 +532,20 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 	return apitype.ComponentJobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
-func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, []bigquery.QueryParameter) {
-
-	// Simulate a list of varaints that were requested, this would be specified in the API request / UI in the real world...
-	variants := []string{"Network", "Upgrade", "Architecture", "Platform"}
-
+func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
 	// See fetchTestStatus for where we dynamically handle these columns.
 	selectVariants := ""
 	joinVariants := ""
 	groupByVariants := ""
-	for _, v := range variants {
+	for v, _ := range allJobVariants.Variants {
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
+	}
+	for _, v := range c.GroupByVariants.List() {
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
-		groupByVariants += fmt.Sprintf("variant_%s,\n", v)
+		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
 	// TODO: remove, just for devel
 	log.Infof("joinVariants:\n%s", joinVariants)
@@ -575,16 +564,12 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
 						cm.id as test_id,
-%s
-						flat_variants,
-						ANY_VALUE(variants) AS variants,
+						%s
 						COUNT(cm.id) AS total_count,
 						SUM(success_val) AS success_count,
 						SUM(flake_count) AS flake_count,
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities,
-						ANY_VALUE(cm.jira_component) AS jira_component,
-						ANY_VALUE(cm.jira_component_id) AS jira_component_id
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `,
@@ -594,8 +579,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 
 	groupString := fmt.Sprintf(`
 					GROUP BY
-%s
-						flat_variants,
+						%s
 						cm.id `, groupByVariants)
 
 	queryString += `
@@ -610,7 +594,26 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 	if c.IgnoreDisruption {
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
 	}
-	if c.Upgrade != "" {
+
+	for k, vs := range c.IncludeVariantsMap {
+		queryString += " AND ("
+		first := true
+		for _, v := range vs {
+			if first {
+				queryString += fmt.Sprintf(`jv_%s.variant_value = '%s'`, k, v)
+				first = false
+			} else {
+				queryString += fmt.Sprintf(` OR jv_%s.variant_value = '%s'`, k, v)
+			}
+		}
+		queryString += ")"
+	}
+
+	for k, v := range c.RequestedVariants {
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
+	}
+
+/*	if c.Upgrade != "" {
 		queryString += ` AND upgrade = @Upgrade`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Upgrade",
@@ -623,7 +626,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 			Name:  "Arch",
 			Value: c.Arch,
 		})
-	}
+	}*/
 	if c.Capability != "" {
 		queryString += " AND @Capability in UNNEST(capabilities)"
 		commonParams = append(commonParams, bigquery.QueryParameter{
@@ -631,7 +634,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 			Value: c.Capability,
 		})
 	}
-	if c.Network != "" {
+/*	if c.Network != "" {
 		queryString += ` AND network = @Network`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Network",
@@ -644,7 +647,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 			Name:  "Platform",
 			Value: c.Platform,
 		})
-	}
+	}*/
 	if c.TestID != "" {
 		queryString += ` AND cm.id = @TestId`
 		commonParams = append(commonParams, bigquery.QueryParameter{
@@ -653,13 +656,13 @@ func (c *componentReportGenerator) getCommonTestStatusQuery() (string, string, [
 		})
 	}
 
-	if c.Variant != "" {
+/*	if c.Variant != "" {
 		queryString += ` AND flat_variants = @Variant`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "Variant",
 			Value: c.Variant,
 		})
-	}
+	}*/
 
 	if c.ExcludePlatforms != "" {
 		queryString += ` AND platform NOT IN UNNEST(@ExcludePlatforms)`
@@ -836,7 +839,12 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 func (c *componentReportGenerator) getTestStatusFromBigQuery() (apitype.ComponentReportTestStatus, []error) {
 	before := time.Now()
 	errs := []error{}
-	queryString, groupString, commonParams := c.getCommonTestStatusQuery()
+	allJobVariants, errs := GetJobVariantsFromBigQuery(c.client, c.gcsBucket)
+	if len(errs) > 0 {
+		log.Errorf("failed to get variants from bigquery")
+		return apitype.ComponentReportTestStatus{}, errs
+	}
+	queryString, groupString, commonParams := c.getCommonTestStatusQuery(allJobVariants)
 
 	var baseStatus, sampleStatus map[string]apitype.ComponentTestStatus
 	var baseErrs, sampleErrs []error
@@ -938,44 +946,32 @@ func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string,
 		}
 	}
 	columns := []apitype.ColumnID{}
-	if c.TestID != "" {
-		// When testID is specified, ignore groupBy to disambiguate the test
-		column := apitype.ComponentReportColumnIdentification{}
+	column := apitype.ComponentReportColumnIdentification{Variants: map[string]string{}}
+	/*if groups.Has("cloud") {
 		column.Platform = test.Platform
-		column.Network = test.Network
-		column.Arch = test.Arch
-		column.Upgrade = test.Upgrade
-		column.Variant = test.FlatVariants
-		column.Variants = test.Variants
-		columnKeyBytes, err := json.Marshal(column)
-		if err != nil {
-			return []apitype.ComponentReportRowIdentification{}, []apitype.ColumnID{}, err
-		}
-		columns = append(columns, apitype.ColumnID(columnKeyBytes))
-	} else {
-		groups := sets.NewString(strings.Split(c.GroupBy, ",")...)
-		column := apitype.ComponentReportColumnIdentification{}
-		if groups.Has("cloud") {
-			column.Platform = test.Platform
-		}
-		if groups.Has("network") {
-			column.Network = test.Network
-		}
-		if groups.Has("arch") {
-			column.Arch = test.Arch
-		}
-		if groups.Has("upgrade") {
-			column.Upgrade = test.Upgrade
-		}
-		if groups.Has("variants") {
-			column.Variant = test.FlatVariants
-		}
-		columnKeyBytes, err := json.Marshal(column)
-		if err != nil {
-			return []apitype.ComponentReportRowIdentification{}, []apitype.ColumnID{}, err
-		}
-		columns = append(columns, apitype.ColumnID(columnKeyBytes))
 	}
+	if groups.Has("network") {
+		column.Network = test.Network
+	}
+	if groups.Has("arch") {
+		column.Arch = test.Arch
+	}
+	if groups.Has("upgrade") {
+		column.Upgrade = test.Upgrade
+	}
+	if groups.Has("variants") {
+		column.Variant = test.FlatVariants
+	}*/
+	for key, value := range test.Variants {
+		if c.GroupByVariants.Has(key) {
+			column.Variants[key] = value
+		}
+	}
+	columnKeyBytes, err := json.Marshal(column)
+	if err != nil {
+		return []apitype.ComponentReportRowIdentification{}, []apitype.ColumnID{}, err
+	}
+	columns = append(columns, apitype.ColumnID(columnKeyBytes))
 
 	return rows, columns, nil
 }
@@ -992,8 +988,6 @@ func fetchTestStatus(query *bigquery.Query) (map[string]apitype.ComponentTestSta
 		return status, errs
 	}
 
-	schema := it.Schema
-
 	for {
 		var row []bigquery.Value
 
@@ -1007,7 +1001,8 @@ func fetchTestStatus(query *bigquery.Query) (map[string]apitype.ComponentTestSta
 			errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
 			continue
 		}
-		testIDStr, testStatus, err := deserializeRowToTestStatus(row, schema)
+
+		testIDStr, testStatus, err := deserializeRowToTestStatus(row, it.Schema)
 		if err != nil {
 			err2 := errors.Wrap(err, "error deserializing row from bigquery")
 			log.Error(err2.Error())
@@ -1025,6 +1020,7 @@ func fetchTestStatus(query *bigquery.Query) (map[string]apitype.ComponentTestSta
 // Other fixed columns we expect are serialized directly to their appropriate columns.
 func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (string, apitype.ComponentTestStatus, error) {
 	if len(row) != len(schema) {
+		log.Infof("row is %+v, schema is %+v", row, schema)
 		return "", apitype.ComponentTestStatus{}, fmt.Errorf("number of values in row doesn't match schema length")
 	}
 
@@ -1111,6 +1107,7 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 	// Create a string representation of the test ID so we can use it as a map key throughout:
 	// TODO: json better? reversible if we do...
 	testIDBytes, err := json.Marshal(tid)
+
 	return string(testIDBytes), cts, err
 }
 
@@ -1598,6 +1595,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		return less
 	})
 
+	log.Infof("----sorted rows %+v", sortedRows)
 	// Sort the column identifications
 	sortedColumns := []apitype.ColumnID{}
 	for columnID := range allColumns {
@@ -1678,6 +1676,7 @@ func buildTestID(stats apitype.ComponentTestStatus, testIdentificationStr string
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIdentificationStr), &testIdentification)
 	if err != nil {
+		log.WithError(err).Errorf("trying to unmarshel %s", testIdentificationStr)
 		return apitype.ComponentReportTestIdentification{}, err
 	}
 	testID := apitype.ComponentReportTestIdentification{
@@ -1693,6 +1692,7 @@ func buildTestID(stats apitype.ComponentTestStatus, testIdentificationStr string
 			Arch:     testIdentification.Arch,
 			Platform: testIdentification.Platform,
 			Variant:  testIdentification.FlatVariants,
+			Variants: testIdentification.Variants,
 		},
 	}
 	// Take the first cap for now. When we reach to a cell with specific capability, we will override the value.

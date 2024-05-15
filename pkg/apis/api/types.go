@@ -2,8 +2,8 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
+	"github.com/openshift/sippy/pkg/util/sets"
 	"math/big"
 	"strconv"
 	"time"
@@ -804,11 +804,15 @@ type ComponentReportRequestExcludeOptions struct {
 
 type ComponentReportRequestVariantOptions struct {
 	GroupBy  string
+	GroupByVariants sets.String
 	Platform string
 	Upgrade  string
 	Arch     string
 	Network  string
 	Variant  string
+	IncludeVariants []string
+	IncludeVariantsMap map[string][]string
+	RequestedVariants map[string]string
 }
 
 type ComponentReportRequestAdvancedOptions struct {
@@ -853,7 +857,9 @@ type ComponentTestIdentification struct {
 	// Proposed, need to serialize to use as map key
 	Variants map[string]string `json:"variants"`
 }
+/*
 
+// We do not seem to need this. In fact, having this screwed up unmarshalling
 // MarshalText implements encoding.TextMarshaler for json map key marshalling support
 func (s *ComponentTestIdentification) MarshalText() (text []byte, err error) {
 	type t ComponentTestIdentification
@@ -863,7 +869,7 @@ func (s *ComponentTestIdentification) MarshalText() (text []byte, err error) {
 func (s *ComponentTestIdentification) UnmarshalText(text []byte) error {
 	type t ComponentTestIdentification
 	return json.Unmarshal(text, (*t)(s))
-}
+}*/
 
 // TODO: obsoleted by bigquery dynamic parsing
 
