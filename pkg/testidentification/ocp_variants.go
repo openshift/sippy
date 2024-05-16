@@ -55,7 +55,8 @@ var (
 	metalIPIRegex   = regexp.MustCompile(`(?i)-metal-ipi`)
 	microshiftRegex = regexp.MustCompile(`(?i)-microshift`)
 	// Variant for Heterogeneous
-	multiRegex = regexp.MustCompile(`(?i)-heterogeneous`)
+	multiRegex   = regexp.MustCompile(`(?i)-heterogeneous`)
+	nutanixRegex = regexp.MustCompile(`(?i)-nutanix`)
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
@@ -98,6 +99,7 @@ var (
 		"metal-upi",
 		"microshift",
 		"never-stable",
+		"nutanix",
 		"openstack",
 		"osd",
 		"ovirt",
@@ -127,6 +129,7 @@ var (
 		"metal-assisted",
 		"metal-ipi",
 		"metal-upi",
+		"nutanix",
 		"openstack",
 		"ovirt",
 		"vsphere-ipi",
@@ -301,6 +304,8 @@ func determinePlatform(jobName string) string {
 		return "metal-ipi"
 	} else if metalRegex.MatchString(jobName) {
 		return "metal-upi"
+	} else if nutanixRegex.MatchString(jobName) {
+		return "nutanix"
 	} else if openstackRegex.MatchString(jobName) {
 		return "openstack"
 	} else if ovirtRegex.MatchString(jobName) {

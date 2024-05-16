@@ -11,12 +11,13 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/hashicorp/go-version"
-	"github.com/openshift/sippy/pkg/dataloader/prowloader"
-	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
-	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+
+	"github.com/openshift/sippy/pkg/dataloader/prowloader"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 // OCPVariantLoader generates a mapping of job names to their variant map for all known jobs.
@@ -247,7 +248,8 @@ var (
 	metalRegex      = regexp.MustCompile(`(?i)-metal`)
 	microshiftRegex = regexp.MustCompile(`(?i)-microshift`)
 	// Variant for Heterogeneous
-	multiRegex = regexp.MustCompile(`(?i)-heterogeneous`)
+	multiRegex   = regexp.MustCompile(`(?i)-heterogeneous`)
+	nutanixRegex = regexp.MustCompile(`(?i)-nutanix`)
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
@@ -459,6 +461,8 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 		platform = "libvirt"
 	} else if metalRegex.MatchString(jobName) {
 		platform = "metal"
+	} else if nutanixRegex.MatchString(jobName) {
+		platform = "nutanix"
 	} else if openstackRegex.MatchString(jobName) {
 		platform = "openstack"
 	} else if ovirtRegex.MatchString(jobName) {
