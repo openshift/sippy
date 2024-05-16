@@ -1355,6 +1355,11 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 
 			if impactedJobRun.StartTime.After(startTime) && impactedJobRun.StartTime.Before(endTime) {
 				numJobRunsToSuppress++
+			} else if startTime.Sub(impactedJobRun.StartTime) < (6 * time.Hour) {
+				// query uses modified time, we track start time
+				// could also consider tracking EndTime which would be closer to modified time
+				// but more work
+				numJobRunsToSuppress++
 			}
 		}
 	}
