@@ -4,6 +4,7 @@ import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
 import { formColumnName, sortQueryParams } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { relativeTime } from '../helpers'
 import { safeEncodeURIComponent } from '../helpers'
 import CompSeverityIcon from './CompSeverityIcon'
 import Dialog from '@mui/material/Dialog'
@@ -132,6 +133,24 @@ export default function RegressedTestsModal(props) {
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
+      field: 'opened',
+      headerName: 'Regressed Since',
+      flex: 15,
+      valueGetter: (params) => {
+        if (!params.row.opened) {
+          // For a regression we haven't yet detected:
+          return ''
+        }
+        const regressedSinceDate = new Date(params.row.opened)
+        return relativeTime(regressedSinceDate, new Date())
+      },
+      renderCell: (param) => (
+        <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">
+          <div className="regressed-since">{param.value}</div>
+        </Tooltip>
+      ),
+    },
+    {
       field: 'test_id',
       flex: 5,
       headerName: 'ID',
@@ -186,7 +205,7 @@ export default function RegressedTestsModal(props) {
     <Fragment>
       <Dialog
         fullWidth={true}
-        maxWidth="xl"
+        maxWidth={false}
         open={props.isOpen}
         onClose={props.close}
       >

@@ -5,18 +5,16 @@ import (
 	"sort"
 
 	"github.com/openshift/sippy/pkg/util/sets"
+	"github.com/openshift/sippy/pkg/variantregistry"
 
 	"github.com/openshift/sippy/pkg/apis/api"
 )
 
-// sync with https://github.com/openshift/sippy/pull/1531/files#diff-3f72919066e1ec3ae4b037dfc91c09ef6d6eac0488762ef35c5a116f73ff1637R237 eventually
-const variantArchitecture = "Architecture"
-const variantNetwork = "Network"
-const variantPlatform = "Platform"
-const variantUpgrade = "Upgrade"
-const variantVariant = "Variant"
+// VariantVariant is a temporary holdover until we have full variant registry support
+// in component readiness.
+const VariantVariant = "Variant"
 
-var triageMatchVariants = buildTriageMatchVariants([]string{variantArchitecture, variantNetwork, variantPlatform, variantUpgrade, variantVariant})
+var triageMatchVariants = buildTriageMatchVariants([]string{variantregistry.VariantArch, variantregistry.VariantNetwork, variantregistry.VariantPlatform, variantregistry.VariantUpgrade, VariantVariant})
 
 func buildTriageMatchVariants(in []string) sets.String {
 	if in == nil || len(in) < 1 {
@@ -31,28 +29,28 @@ func buildTriageMatchVariants(in []string) sets.String {
 
 	return set
 }
-func TransformVariant(variant api.ComponentReportColumnIdentification) []api.TriagedVariant {
+func TransformVariant(variant api.ComponentReportColumnIdentification) []api.ComponentReportVariant {
 
-	return []api.TriagedVariant{{
-		Key:   variantArchitecture,
+	return []api.ComponentReportVariant{{
+		Key:   variantregistry.VariantArch,
 		Value: variant.Arch,
 	}, {
-		Key:   variantNetwork,
+		Key:   variantregistry.VariantNetwork,
 		Value: variant.Network,
 	}, {
-		Key:   variantPlatform,
+		Key:   variantregistry.VariantPlatform,
 		Value: variant.Platform,
 	}, {
-		Key:   variantUpgrade,
+		Key:   variantregistry.VariantUpgrade,
 		Value: variant.Upgrade,
 	}, {
-		Key:   variantVariant,
+		Key:   VariantVariant,
 		Value: variant.Variant,
 	}}
 }
-func KeyForTriagedIssue(testID string, variants []api.TriagedVariant) TriagedIssueKey {
+func KeyForTriagedIssue(testID string, variants []api.ComponentReportVariant) TriagedIssueKey {
 
-	matchVariants := make([]api.TriagedVariant, 0)
+	matchVariants := make([]api.ComponentReportVariant, 0)
 	for _, v := range variants {
 		// currently we ignore variants that aren't in api.ComponentReportColumnIdentification
 		if triageMatchVariants.Has(v.Key) {
