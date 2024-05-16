@@ -26,6 +26,8 @@ pip3 install -r requirements.txt
 
 --issue-url: The URL (JIRA / PR) associated with the regression
 
+--issue-resolution-date: The date when the issue was fixed and no longer causing test regressions, this will clear the triaged regression icon if it is within the sample range
+
 ## If there is a specific time window to consider for JobRunStartTimes specify the min and max and any runs outside that window will be ignored
 --job-run-start-time-max: The latest date time to consider a failed job run for an incident
 
