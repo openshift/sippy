@@ -1477,13 +1477,11 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[ap
 				canClearReportStatus := true
 				for _, ti := range triagedIncidents {
 					if ti.Issue.Type != string(resolvedissues.TriageIssueTypeInfrastructure) {
-						// TODO: add check for missing ti.Issue.ResolutionDate
-						// once we stop setting ResolutionDate automatically
-						// we don't have to clear this flag for non Infrastructure types
-						// that have a ResolutionDate
-						// if !ti.Issue.ResolutionDate.Valid {
-						canClearReportStatus = false
-						// }
+						// if a non Infrastructure regression isn't marked resolved or the resolution date is after the end of our sample query
+						// then we won't clear it.  Otherwise, we can.
+						if !ti.Issue.ResolutionDate.Valid || ti.Issue.ResolutionDate.Timestamp.After(c.SampleRelease.End) {
+							canClearReportStatus = false
+						}
 					}
 				}
 

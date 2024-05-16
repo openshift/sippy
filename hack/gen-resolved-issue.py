@@ -128,13 +128,12 @@ def match_existing_incident(variants, issue_type, issue_url, existing_results, n
             if rowKey != vKey:
                 continue
 
-
             existing_issue = row["issue"]
             # issue type is required but we have to check to see if the existing issue has a url or not
             if len(issue_url) > 0 and "url" in existing_issue and issue_url == existing_issue["url"] and issue_type == existing_issue["type"] :
                 if len(updateIncidentID) > 0 and updateIncidentID != row["incident_id"]:
-                    print("Error: Found multiple matching incidents")
-                    return "invalid", None, None
+                    print("Error: Found multiple matching incidents: " + updateIncidentID + ", " + row["incident_id"])
+                    return "invalid", None, None, None
                 updateIncidentID = row["incident_id"]
                 matchedRow = row
                 print("Matched IncidentID: " + updateIncidentID)
@@ -145,7 +144,7 @@ def match_existing_incident(variants, issue_type, issue_url, existing_results, n
                         if newJobRun["URL"] == jobRun["url"]:
                                 if len(updateIncidentID) > 0 and updateIncidentID != row["incident_id"]:
                                     print("Error: Found job_runs overlapping with multiple IncidentIDs")
-                                    return "invalid", None, None
+                                    return "invalid", None, None, None
                                 updateIncidentID = row["incident_id"]
                                 matchedRow = row
                                 print("Matched IncidentID: " + updateIncidentID)
@@ -194,9 +193,15 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
     if "Description" in triaged_incident["Issue"]:
         issue_description   = triaged_incident["Issue"]["Description"]
 
+    resolution_date = None
+    validate_resolution_date = None
+    if "ResolutionDate" in triaged_incident["Issue"]:
+        resolution_date = triaged_incident["Issue"]["ResolutionDate"]
+        validate_resolution_date = datetime.fromisoformat(hack_for_rfc_3339(resolution_date))
+
     # build a query to check for exising incidents
     query_job = client.query(f"SELECT * FROM `{TABLE_KEY}` WHERE release='{release}' AND test_id='{test_id}' \
-                            AND modified_time > TIMESTAMP_ADD(TIMESTAMP('{target_modified_time}'), INTERVAL -14 DAY) AND modified_time < TIMESTAMP('{target_modified_time}')" )
+                            AND modified_time > TIMESTAMP_ADD(TIMESTAMP('{target_modified_time}'), INTERVAL -14 DAY) AND modified_time < TIMESTAMP_ADD(TIMESTAMP('{target_modified_time}'), INTERVAL 1 DAY)" )
     results = query_job.result()
 
     # from our query see if we have any existing incidents that match
@@ -253,15 +258,16 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
 
 
         earliestStartTime = None
-        latestStartTime = None
         updateJobRuns = ""
         for jr in complete_jobs:
             try:
                 startTime = datetime.fromisoformat(hack_for_rfc_3339(jr["start_time"]))
+
+                if validate_resolution_date != None and startTime > validate_resolution_date:
+                    continue
+
                 if earliestStartTime == None or startTime < earliestStartTime:
                     earliestStartTime = startTime
-                if latestStartTime == None or latestStartTime < startTime:
-                    latestStartTime = startTime
 
             except ValueError:
                 print("Error parsing start time: " + jr["start_time"])
@@ -276,9 +282,12 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
 
 
         q = f"UPDATE `{TABLE_KEY}` SET job_runs=ARRAY(SELECT AS STRUCT * FROM ({updateJobRuns})), attributions=ARRAY(SELECT AS STRUCT * FROM({updateAttributions})), modified_time='{modified_time}'"
-        #q = "UPDATE `" + TABLE_KEY +"` SET JobRuns=ARRAY(SELECT AS STRUCT * FROM (" +  updateJobRuns  +")), attributions=ARRAY(SELECT AS STRUCT * FROM("+ updateAttributions + ")), modified_time='" + modified_time + "'"
-
-        q += f", issue.start_date=TIMESTAMP('{earliestStartTime}'), issue.resolution_date=TIMESTAMP('{latestStartTime}')"
+       
+        q += f", issue.start_date=TIMESTAMP('{earliestStartTime}')"
+        if resolution_date != None:
+            q += f", issue.resolution_date=TIMESTAMP('{resolution_date}')"
+        else:
+            q += f", issue.resolution_date=NULL"
 
         if len(issue_description) > 0 :
             q += f", issue.description='{issue_description}'"
@@ -313,21 +322,25 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
         save_jobs = []
 
         earliestStartTime = None
-        latestStartTime = None
         for jr in job_runs:
             startTime = datetime.fromisoformat(hack_for_rfc_3339(jr["StartTime"]))
+
+            if validate_resolution_date != None and startTime > validate_resolution_date:
+                continue
+
             save_jobs.append({"url": jr["URL"], "start_time": startTime})
 
             if earliestStartTime == None or startTime < earliestStartTime:
                 earliestStartTime = startTime
-            if latestStartTime == None or latestStartTime < startTime:
-                latestStartTime = startTime
 
 
         if earliestStartTime == None:
             earliestStartTime = modified_time
 
-        issue = {"type": issue_type, "url": issue_url, "start_date": earliestStartTime, "resolution_date": latestStartTime}
+        issue = {"type": issue_type, "start_date": earliestStartTime, "resolution_date": resolution_date}
+        if len(issue_url) > 0:
+             issue["url"] = issue_url
+
         if len(issue_description) > 0 :
             issue["description"] = issue_description
 
@@ -473,7 +486,7 @@ def compare_time_is_greater(base, check):
 
     return check > base
 
-def job_matches(record, prow_url, start_time):
+def job_matches(record, prow_url, start_time, issue_resolution_date):
     if record:
         if "JobRunStartTimeMax" in record:
             mx = record["JobRunStartTimeMax"]
@@ -482,6 +495,9 @@ def job_matches(record, prow_url, start_time):
         if "JobRunStartTimeMin" in record:
             mx = record["JobRunStartTimeMin"]
             if compare_time_is_greater(start_time, mx):
+                return False
+        if issue_resolution_date != None:
+            if compare_time_is_greater(start_time, issue_resolution_date):
                 return False
         if "JobRuns" in record:
             for run in record["JobRuns"]:
@@ -493,7 +509,7 @@ def job_matches(record, prow_url, start_time):
     # either no record or no JobRuns in the record
     return True
 
-def issue_details(record, issue_type, issue_description, issue_url):
+def issue_details(record, issue_type, issue_description, issue_url, resolution_date):
     if record:
         if "Issue" in record:
             if "Type" in record["Issue"]:
@@ -506,8 +522,11 @@ def issue_details(record, issue_type, issue_description, issue_url):
             if "URL" in record["Issue"]:
                     if len(record["Issue"]["URL"]) > 0:
                         issue_url = record["Issue"]["URL"]
+            if "ResolutionDate" in  record["Issue"]:
+                if len(record["Issue"]["ResolutionDate"]) > 0:
+                        resolution_date = record["Issue"]["ResolutionDate"]
 
-    return issue_type, issue_description, issue_url
+    return issue_type, issue_description, issue_url, resolution_date
 
 def find_matching_job_run_ids(incidents):
     # take the first test entry and get the set of job runs
@@ -628,7 +647,7 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
 
         # if we have a record use the
         # issue type, description, url if provided
-        issue_type, issue_description, issue_url = issue_details(record, args.issue_type, description, issue_url)
+        issue_type, issue_description, issue_url, issue_resolution_date = issue_details(record, args.issue_type, description, issue_url, args.issue_resolution_date)
 
         print
         print("REGRESSION: %s" % rt["test_name"])
@@ -680,6 +699,9 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
             issue["Description"] = issue_description
         if len(issue_url) > 0:
             issue["URL"] = issue_url
+        if issue_resolution_date != None:
+            issue["ResolutionDate"] = issue_resolution_date
+
         triaged_incident["Issue"] = issue
         triaged_incident["Variants"] = variants
         triaged_incident["JobRuns"] = []
@@ -706,7 +728,7 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
                 start_time = prow_job_json["status"]["startTime"]
                 print("    Prow job start time: %s" % start_time)
 
-                if job_matches(record, prow_url, start_time):
+                if job_matches(record, prow_url, start_time, issue_resolution_date):
                     triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time})
 
 
@@ -728,6 +750,8 @@ if __name__ == '__main__':
     parser.add_argument("--issue-description", help="A short description of the regression.")
     parser.add_argument("--issue-type", choices=['Infrastructure', 'Product'], help="The type of regression.")
     parser.add_argument("--issue-url", help="The URL (JIRA / PR) associated with the regression.")
+    parser.add_argument("--issue-resolution-date", help="The date when the issue was fixed and no longer causing test regressions.")
+
 
     # If there is a specific time window to consider for JobRunStartTimes specify the min and max and
     # any runs outside that window will be ignored
@@ -793,6 +817,8 @@ if __name__ == '__main__':
                 args.issue_type = arguments["IssueType"]
             if "IssueURL" in arguments and len(arguments["IssueURL"]) > 0:
                 args.issue_url = arguments["IssueURL"]
+            if "IssueResolutionDate" in arguments and len(arguments["IssueResolutionDate"]) > 0:
+                args.issue_resolution_date = arguments["IssueResolutionDate"]
             if "OutputFile" in arguments and len(arguments["OutputFile"]) > 0:
                 args.output_file = arguments["OutputFile"]
             if "OutputType" in arguments and len(arguments["OutputType"]) > 0:
@@ -908,8 +934,17 @@ if __name__ == '__main__':
         # keep the string format for now...
         target_modified_time = args.target_modified_time
 
+    issue_resolution_date = ""
+    if args.issue_resolution_date:
+        try:
+            issue_resolution_date = datetime.fromisoformat(hack_for_rfc_3339(args.issue_resolution_date))
+        except ValueError:
+            print("Invalid issue resolution date: " + args.issue_resolution_date)
+            exit()        
+
     print(f"\nIssue URL: {issue_url}")
     print(f"\nIssue Description: {description}")
+    print(f"\nIssue Resolution Date: {issue_resolution_date}")
     print(f"\nModified Time: {modified_time}")
     print(f"\nTargetModifiedTime: {target_modified_time}")
 
@@ -953,6 +988,8 @@ if __name__ == '__main__':
             triage_output["Arguments"]["JobRunStartTimeMax"] = args.job_run_start_time_max
         if  args.job_run_start_time_min != None:
             triage_output["Arguments"]["JobRunStartTimeMin"] = args.job_run_start_time_min
+        if args.issue_resolution_date != None:
+            triage_output["Arguments"]["IssueResolutionDate"] = args.issue_resolution_date
         if len(output_file) > 0:
             with open(output_file, 'w') as incident_file:
                 json.dump(triage_output, incident_file, indent=4)
