@@ -652,7 +652,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
+	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -669,7 +669,6 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		sampleRelease,
 		testIDOption,
 		variantOption,
-		excludeOption,
 		advancedOption,
 		cacheOption,
 	)
@@ -688,7 +687,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 }
 
 func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
+	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -704,7 +703,6 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		sampleRelease,
 		testIDOption,
 		variantOption,
-		excludeOption,
 		advancedOption,
 		cacheOption)
 	if len(errs) > 0 {
@@ -726,7 +724,6 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
-	excludeOption apitype.ComponentReportRequestExcludeOptions,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
 	cacheOption cache.RequestOptions,
 	err error) {
@@ -799,14 +796,9 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 			variantOption.RequestedVariants[variant] = value
 		}
 	}
-	//variantOption.Platform = req.URL.Query().Get("platform")
-	//variantOption.Upgrade = req.URL.Query().Get("upgrade")
-	//variantOption.Arch = req.URL.Query().Get("arch")
-	//variantOption.Network = req.URL.Query().Get("network")
-	//variantOption.Variant = req.URL.Query().Get("variant")
 	variantOption.IncludeVariants = req.URL.Query()["includeVariant"]
 	variantOption.IncludeVariantsMap = map[string][]string{}
-	for _, includeVariant := range  variantOption.IncludeVariants {
+	for _, includeVariant := range variantOption.IncludeVariants {
 		kv := strings.Split(includeVariant, ":")
 		if len(kv) != 2 {
 			err = fmt.Errorf("invalid includeVariant %s", includeVariant)
@@ -830,15 +822,6 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 			return
 		}
 	}
-	log.Infof("-----------query is %+v", req.URL.Query())
-	log.Infof("-----------IncludeVariants is %+v", variantOption.IncludeVariants)
-
-	//excludeOption.ExcludePlatforms = req.URL.Query().Get("excludeClouds")
-	//excludeOption.ExcludeArches = req.URL.Query().Get("excludeArches")
-	//excludeOption.ExcludeNetworks = req.URL.Query().Get("excludeNetworks")
-	//excludeOption.ExcludeUpgrades = req.URL.Query().Get("excludeUpgrades")
-	//excludeOption.ExcludeVariants = req.URL.Query().Get("excludeVariants")
-
 	advancedOption.Confidence = 95
 	confidenceStr := req.URL.Query().Get("confidence")
 	if confidenceStr != "" {

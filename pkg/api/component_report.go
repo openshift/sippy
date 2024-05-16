@@ -73,10 +73,7 @@ type GeneratorType string
 var (
 	// Default filters, these are also hardcoded in the UI. Both must be updated.
 	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
-	DefaultExcludePlatforms = "openstack,ibmcloud,libvirt,ovirt,unknown"
-	DefaultExcludeArches    = "arm64,heterogeneous,ppc64le,s390x"
-	DefaultExcludeVariants  = "hypershift,osd,microshift,techpreview,single-node,assisted,compact"
-	DefaultGroupBy          = "cloud,arch,network"
+	DefaultGroupBy          = "Platform,Architecture,Network"
 	DefaultMinimumFailure   = 3
 	DefaultConfidence       = 95
 	DefaultPityFactor       = 5
@@ -129,7 +126,6 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsB
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
-	excludeOption apitype.ComponentReportRequestExcludeOptions,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
 	cacheOption cache.RequestOptions,
 ) (apitype.ComponentReport, []error) {
@@ -143,7 +139,6 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsB
 		triagedIssues: nil,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
 		ComponentReportRequestVariantOptions:            variantOption,
-		ComponentReportRequestExcludeOptions:            excludeOption,
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
@@ -154,7 +149,6 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, pr
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
-	excludeOption apitype.ComponentReportRequestExcludeOptions,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
 	cacheOption cache.RequestOptions) (apitype.ComponentReportTestDetails, []error) {
 	generator := componentReportGenerator{
@@ -166,7 +160,6 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, pr
 		SampleRelease: sampleRelease,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
 		ComponentReportRequestVariantOptions:            variantOption,
-		ComponentReportRequestExcludeOptions:            excludeOption,
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
@@ -190,7 +183,6 @@ type componentReportGenerator struct {
 	triagedIssues  *resolvedissues.TriagedIncidentsForRelease
 	apitype.ComponentReportRequestTestIdentificationOptions
 	apitype.ComponentReportRequestVariantOptions
-	apitype.ComponentReportRequestExcludeOptions
 	apitype.ComponentReportRequestAdvancedOptions
 }
 
@@ -612,21 +604,6 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 	for k, v := range c.RequestedVariants {
 		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
 	}
-
-/*	if c.Upgrade != "" {
-		queryString += ` AND upgrade = @Upgrade`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "Upgrade",
-			Value: c.Upgrade,
-		})
-	}
-	if c.Arch != "" {
-		queryString += ` AND arch = @Arch`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "Arch",
-			Value: c.Arch,
-		})
-	}*/
 	if c.Capability != "" {
 		queryString += " AND @Capability in UNNEST(capabilities)"
 		commonParams = append(commonParams, bigquery.QueryParameter{
@@ -634,20 +611,6 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 			Value: c.Capability,
 		})
 	}
-/*	if c.Network != "" {
-		queryString += ` AND network = @Network`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "Network",
-			Value: c.Network,
-		})
-	}
-	if c.Platform != "" {
-		queryString += ` AND platform = @Platform`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "Platform",
-			Value: c.Platform,
-		})
-	}*/
 	if c.TestID != "" {
 		queryString += ` AND cm.id = @TestId`
 		commonParams = append(commonParams, bigquery.QueryParameter{
@@ -655,57 +618,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 			Value: c.TestID,
 		})
 	}
-
-/*	if c.Variant != "" {
-		queryString += ` AND flat_variants = @Variant`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "Variant",
-			Value: c.Variant,
-		})
-	}*/
-
-	if c.ExcludePlatforms != "" {
-		queryString += ` AND platform NOT IN UNNEST(@ExcludePlatforms)`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "ExcludePlatforms",
-			Value: strings.Split(c.ExcludePlatforms, ","),
-		})
-	}
-	if c.ExcludeArches != "" {
-		queryString += ` AND arch NOT IN UNNEST(@ExcludeArches)`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "ExcludeArches",
-			Value: strings.Split(c.ExcludeArches, ","),
-		})
-	}
-	if c.ExcludeNetworks != "" {
-		queryString += ` AND network NOT IN UNNEST(@ExcludeNetworks)`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "ExcludeNetworks",
-			Value: strings.Split(c.ExcludeNetworks, ","),
-		})
-	}
-	if c.ExcludeUpgrades != "" {
-		queryString += ` AND upgrade NOT IN UNNEST(@ExcludeUpgrades)`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "ExcludeUpgrades",
-			Value: strings.Split(c.ExcludeUpgrades, ","),
-		})
-	}
-	if c.ExcludeVariants != "" {
-		variants := strings.Split(c.ExcludeVariants, ",")
-		for i, variant := range variants {
-			paramName := fmt.Sprintf("ExcludeVariant%d", i)
-			queryString += ` AND @` + paramName + ` NOT IN UNNEST(variants)`
-			commonParams = append(commonParams, bigquery.QueryParameter{
-				Name:  paramName,
-				Value: variant,
-			})
-		}
-	}
-
 	return queryString, groupString, commonParams
-
 }
 
 type baseQueryGenerator struct {
@@ -871,27 +784,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (apitype.Componen
 
 var componentAndCapabilityGetter func(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStatus) (string, []string)
 
-/*
-func testToComponentAndCapabilityUseRegex(test *apitype.ComponentTestIdentification, stats *apitype.ComponentTestStatus) (string, []string) {
-	name := test.TestName
-	component := "other_component"
-	capability := "other_capability"
-	r := regexp.MustCompile(`.*(?P<component>\[sig-[A-Za-z]*\]).*(?P<feature>\[Feature:[A-Za-z]*\]).*`)
-	subMatches := r.FindStringSubmatch(name)
-	if len(subMatches) >= 2 {
-		subNames := r.SubexpNames()
-		for i, sName := range subNames {
-			switch sName {
-			case "component":
-				component = subMatches[i]
-			case "feature":
-				capability = subMatches[i]
-			}
-		}
-	}
-	return component, []string{capability}
-}*/
-
 func testToComponentAndCapability(test apitype.ComponentTestIdentification, stats apitype.ComponentTestStatus) (string, []string) {
 	return stats.Component, stats.Capabilities
 }
@@ -947,21 +839,6 @@ func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	}
 	columns := []apitype.ColumnID{}
 	column := apitype.ComponentReportColumnIdentification{Variants: map[string]string{}}
-	/*if groups.Has("cloud") {
-		column.Platform = test.Platform
-	}
-	if groups.Has("network") {
-		column.Network = test.Network
-	}
-	if groups.Has("arch") {
-		column.Arch = test.Arch
-	}
-	if groups.Has("upgrade") {
-		column.Upgrade = test.Upgrade
-	}
-	if groups.Has("variants") {
-		column.Variant = test.FlatVariants
-	}*/
 	for key, value := range test.Variants {
 		if c.GroupByVariants.Has(key) {
 			column.Variants[key] = value
@@ -1687,11 +1564,6 @@ func buildTestID(stats apitype.ComponentTestStatus, testIdentificationStr string
 			TestID:    testIdentification.TestID,
 		},
 		ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
-			Network:  testIdentification.Network,
-			Upgrade:  testIdentification.Upgrade,
-			Arch:     testIdentification.Arch,
-			Platform: testIdentification.Platform,
-			Variant:  testIdentification.FlatVariants,
 			Variants: testIdentification.Variants,
 		},
 	}
@@ -1747,11 +1619,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 				TestID:     c.TestID,
 			},
 			ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
-				Platform: c.Platform,
-				Upgrade:  c.Upgrade,
-				Arch:     c.Arch,
-				Network:  c.Network,
-				Variant:  c.Variant,
+				Variants: c.RequestedVariants,
 			},
 		},
 	}

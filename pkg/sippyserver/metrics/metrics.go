@@ -292,14 +292,9 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	log.Infof("int   : %d seconds", int(numSecs)) // 604799 (7 days minus 1 second in seconds)
 
 	testIDOption := apitype.ComponentReportRequestTestIdentificationOptions{}
-	excludeOption := apitype.ComponentReportRequestExcludeOptions{
-		ExcludePlatforms: api.DefaultExcludePlatforms,
-		ExcludeArches:    api.DefaultExcludeArches,
-		ExcludeVariants:  api.DefaultExcludeVariants,
-	}
 	variantOption := apitype.ComponentReportRequestVariantOptions{
-		GroupBy: api.DefaultGroupBy,
-		GroupByVariants: sets.String{},
+		GroupBy:           api.DefaultGroupBy,
+		GroupByVariants:   sets.String{},
 		RequestedVariants: map[string]string{},
 	}
 	advancedOption := apitype.ComponentReportRequestAdvancedOptions{
@@ -311,7 +306,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	}
 
 	// Get report
-	rows, errs := api.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOptions)
+	rows, errs := api.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOptions)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
@@ -331,7 +326,19 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 			for _, regressedTest := range col.RegressedTests {
 				uniqueRegressedTestsByComponent.Insert(regressedTest.TestID)
 			}
-			componentReadinessMetric.WithLabelValues(row.Component, col.Network, col.Arch, col.Platform).Set(float64(col.Status))
+			networkLabel, ok := col.Variants["Network"]
+			if !ok {
+				networkLabel = ""
+			}
+			archLabel, ok := col.Variants["Architecture"]
+			if !ok {
+				archLabel = ""
+			}
+			platLabel, ok := col.Variants["Platform"]
+			if !ok {
+				platLabel = ""
+			}
+			componentReadinessMetric.WithLabelValues(row.Component, networkLabel, archLabel, platLabel).Set(float64(col.Status))
 		}
 		componentReadinessTotalRegressionsMetric.WithLabelValues(row.Component).Set(float64(totalRegressedTestsByComponent))
 		componentReadinessUniqueRegressionsMetric.WithLabelValues(row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))

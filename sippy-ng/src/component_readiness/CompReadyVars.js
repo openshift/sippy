@@ -22,11 +22,6 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 export const CompReadyVarsContext = createContext()
 
 export const CompReadyVarsProvider = ({ children }) => {
-  const [excludeNetworksList, setExcludeNetworksList] = useState([])
-  const [excludeCloudsList, setExcludeCloudsList] = useState([])
-  const [excludeArchesList, setExcludeArchesList] = useState([])
-  const [excludeUpgradesList, setExcludeUpgradesList] = useState([])
-  const [excludeVariantsList, setExcludeVariantsList] = useState([])
   const [allJobVariants, setAllJobVariants] = useState([])
   const [isLoaded, setIsLoaded] = useState(false)
   const [fetchError, setFetchError] = useState('')
@@ -102,54 +97,17 @@ export const CompReadyVarsProvider = ({ children }) => {
     setGroupByCheckedItemsParam,
   ] = useQueryParam('groupBy', ArrayParam)
   const [
-    excludeCloudsCheckedItemsParam = [
-      'openstack',
-      'ibmcloud',
-      'libvirt',
-      'ovirt',
-      'unknown',
-    ],
-    setExcludeCloudsCheckedItemsParam,
-  ] = useQueryParam('excludeClouds', ArrayParam)
-  const [
-    excludeArchesCheckedItemsParam = [
-      'arm64',
-      'heterogeneous',
-      'ppc64le',
-      's390x',
-    ],
-    setExcludeArchesCheckedItemsParam,
-  ] = useQueryParam('excludeArches', ArrayParam)
-  const [
-    excludeNetworksCheckedItemsParam = [],
-    setExcludeNetworksCheckedItemsParam,
-  ] = useQueryParam('excludeNetworks', ArrayParam)
-  const [
-    excludeUpgradesCheckedItemsParam = [],
-    setExcludeUpgradesCheckedItemsParam,
-  ] = useQueryParam('excludeUpgrades', ArrayParam)
-  const [
-    excludeVariantsCheckedItemsParam = [
-      'hypershift',
-      'osd',
-      'microshift',
-      'techpreview',
-      'single-node',
-      'assisted',
-      'compact',
-    ],
-    setExcludeVariantsCheckedItemsParam,
-  ] = useQueryParam('excludeVariants', ArrayParam)
-  const [
     includeVariantsCheckedItemsParam = [
       'Architecture:amd64',
       'Installer:ipi',
       'Installer:upi',
+      'Owner:eng',
       'Platform:aws',
       'Platform:azure',
       'Platform:gcp',
       'Platform:metal',
       'Platform:vsphere',
+      'Topology:ha',
     ],
     setIncludeVariantsCheckedItemsParam,
   ] = useQueryParam('includeVariant', ArrayParam)
@@ -189,13 +147,6 @@ export const CompReadyVarsProvider = ({ children }) => {
     StringParam
   )
 
-  const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
-    React.useState(excludeCloudsCheckedItemsParam)
-  const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
-    React.useState(excludeArchesCheckedItemsParam)
-  const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
-    React.useState(excludeNetworksCheckedItemsParam)
-
   const [baseRelease, setBaseRelease] = React.useState(baseReleaseParam)
 
   const [sampleRelease, setSampleRelease] = React.useState(sampleReleaseParam)
@@ -223,11 +174,6 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleStartTime(formatLongDate(initialSampleStartTime, dateFormat))
     setSampleEndTime(formatLongDate(initialSampleEndTime, dateEndFormat))
   }
-
-  const [excludeUpgradesCheckedItems, setExcludeUpgradesCheckedItems] =
-    React.useState(excludeUpgradesCheckedItemsParam)
-  const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
-    React.useState(excludeVariantsCheckedItemsParam)
 
   const convertIncludeVariantsCheckedItemsToParam = (
     includeVariantsCheckedItems
@@ -298,11 +244,6 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleStartTimeParam(formatLongDate(sampleStartTime, dateFormat))
     setSampleEndTimeParam(formatLongDate(sampleEndTime, dateEndFormat))
     setGroupByCheckedItemsParam(groupByCheckedItems)
-    setExcludeCloudsCheckedItemsParam(excludeCloudsCheckedItems)
-    setExcludeArchesCheckedItemsParam(excludeArchesCheckedItems)
-    setExcludeNetworksCheckedItemsParam(excludeNetworksCheckedItems)
-    setExcludeUpgradesCheckedItemsParam(excludeUpgradesCheckedItems)
-    setExcludeVariantsCheckedItemsParam(excludeVariantsCheckedItems)
     setIncludeVariantsCheckedItemsParam(
       convertIncludeVariantsCheckedItemsToParam(includeVariantsCheckedItems)
     )
@@ -327,11 +268,6 @@ export const CompReadyVarsProvider = ({ children }) => {
             : 'No error message'
           throw new Error(`Return code = ${data.code} (${errorMessage})`)
         }
-        setExcludeCloudsList(data.variants['Platform'])
-        setExcludeArchesList(data.variants['Architecture'])
-        setExcludeNetworksList(data.variants['Network'])
-        setExcludeUpgradesList(data.variants['Upgrade'])
-        setExcludeVariantsList(data.variants['Installer'])
         setAllJobVariants(data.variants)
         setIsLoaded(true)
       })
@@ -399,11 +335,6 @@ export const CompReadyVarsProvider = ({ children }) => {
   return (
     <CompReadyVarsContext.Provider
       value={{
-        excludeNetworksList,
-        excludeCloudsList,
-        excludeArchesList,
-        excludeUpgradesList,
-        excludeVariantsList,
         allJobVariants,
         expandEnvironment,
         baseRelease,
@@ -420,16 +351,6 @@ export const CompReadyVarsProvider = ({ children }) => {
         setSampleEndTime,
         groupByCheckedItems,
         setGroupByCheckedItems,
-        excludeUpgradesCheckedItems,
-        setExcludeUpgradesCheckedItems,
-        excludeVariantsCheckedItems,
-        setExcludeVariantsCheckedItems,
-        excludeCloudsCheckedItems,
-        setExcludeCloudsCheckedItems,
-        excludeArchesCheckedItems,
-        setExcludeArchesCheckedItems,
-        excludeNetworksCheckedItems,
-        setExcludeNetworksCheckedItems,
         includeVariantsCheckedItems,
         replaceIncludeVariantsCheckedItems,
         confidence,

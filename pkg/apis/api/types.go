@@ -792,27 +792,12 @@ type ComponentReportRequestTestIdentificationOptions struct {
 	TestID string
 }
 
-// ComponentReportRequestExcludeOptions group all the exclude options passed in the request.
-// Each of the variable is a comma separated string.
-type ComponentReportRequestExcludeOptions struct {
-	ExcludePlatforms string
-	ExcludeArches    string
-	ExcludeNetworks  string
-	ExcludeUpgrades  string
-	ExcludeVariants  string
-}
-
 type ComponentReportRequestVariantOptions struct {
-	GroupBy  string
-	GroupByVariants sets.String
-	Platform string
-	Upgrade  string
-	Arch     string
-	Network  string
-	Variant  string
-	IncludeVariants []string
+	GroupBy            string
+	GroupByVariants    sets.String
+	IncludeVariants    []string
 	IncludeVariantsMap map[string][]string
-	RequestedVariants map[string]string
+	RequestedVariants  map[string]string
 }
 
 type ComponentReportRequestAdvancedOptions struct {
@@ -847,16 +832,12 @@ type ComponentReportTestStatus struct {
 // However making it a map will likely break anything using this struct as a map key.
 // We may need to serialize it to a predictable string? Serialize as JSON string perhaps? Will fields be predictably ordered? Seems like go maps are always alphabetical.
 type ComponentTestIdentification struct {
-	TestID       string `json:"test_id"`
-	Network      string `json:"network"`
-	Upgrade      string `json:"upgrade"`
-	Arch         string `json:"arch"`
-	Platform     string `json:"platform"`
-	FlatVariants string `json:"flat_variants"`
+	TestID string `json:"test_id"`
 
 	// Proposed, need to serialize to use as map key
 	Variants map[string]string `json:"variants"`
 }
+
 /*
 
 // We do not seem to need this. In fact, having this screwed up unmarshalling
@@ -920,11 +901,6 @@ type ComponentReportColumn struct {
 type ColumnID string
 
 type ComponentReportColumnIdentification struct {
-	Network  string            `json:"network,omitempty"`
-	Upgrade  string            `json:"upgrade,omitempty"`
-	Arch     string            `json:"arch,omitempty"`
-	Platform string            `json:"platform,omitempty"`
-	Variant  string            `json:"variant,omitempty"`
 	Variants map[string]string `json:"variants"`
 }
 

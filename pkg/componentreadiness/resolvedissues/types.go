@@ -17,9 +17,8 @@ const variantArchitecture = "Architecture"
 const variantNetwork = "Network"
 const variantPlatform = "Platform"
 const variantUpgrade = "Upgrade"
-const variantVariant = "Variant"
 
-var triageMatchVariants = buildTriageMatchVariants([]string{variantArchitecture, variantNetwork, variantPlatform, variantUpgrade, variantVariant})
+var triageMatchVariants = buildTriageMatchVariants([]string{variantArchitecture, variantNetwork, variantPlatform, variantUpgrade})
 
 func buildTriageMatchVariants(in []string) sets.String {
 	if in == nil || len(in) < 1 {
@@ -35,23 +34,14 @@ func buildTriageMatchVariants(in []string) sets.String {
 	return set
 }
 func TransformVariant(variant api.ComponentReportColumnIdentification) []TriagedVariant {
-
-	return []TriagedVariant{{
-		Key:   variantArchitecture,
-		Value: variant.Arch,
-	}, {
-		Key:   variantNetwork,
-		Value: variant.Network,
-	}, {
-		Key:   variantPlatform,
-		Value: variant.Platform,
-	}, {
-		Key:   variantUpgrade,
-		Value: variant.Upgrade,
-	}, {
-		Key:   variantVariant,
-		Value: variant.Variant,
-	}}
+	triagedVariants := []TriagedVariant{}
+	for name, value := range variant.Variants {
+		// For now, we only use the defined match variants
+		if triageMatchVariants.Has(name) {
+			triagedVariants = append(triagedVariants, TriagedVariant{Key: name, Value: value})
+		}
+	}
+	return triagedVariants
 }
 func KeyForTriagedIssue(testID string, variants []TriagedVariant) TriagedIssueKey {
 

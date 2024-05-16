@@ -314,11 +314,6 @@ export function getUpdatedUrlParts(
   sampleStartTime,
   sampleEndTime,
   groupByCheckedItems,
-  excludeCloudsCheckedItems,
-  excludeArchesCheckedItems,
-  excludeNetworksCheckedItems,
-  excludeUpgradesCheckedItems,
-  excludeVariantsCheckedItems,
   includeVariantsCheckedItems,
   confidence,
   pity,
@@ -342,11 +337,6 @@ export function getUpdatedUrlParts(
   }
 
   const arraysMap = {
-    excludeClouds: excludeCloudsCheckedItems,
-    excludeArches: excludeArchesCheckedItems,
-    excludeNetworks: excludeNetworksCheckedItems,
-    excludeUpgrades: excludeUpgradesCheckedItems,
-    excludeVariants: excludeVariantsCheckedItems,
     groupBy: groupByCheckedItems,
   }
 

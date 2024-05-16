@@ -9,6 +9,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+var requiredVariants = []string{"Architecture", "Network", "Platform", "Upgrade"}
+
 type IntentionalRegression struct {
 	JiraComponent             string
 	TestID                    string
@@ -58,10 +60,7 @@ func keyFor(testID string, variant api.ComponentReportColumnIdentification) stri
 	key := regressionKey{
 		testID: testID,
 		variant: api.ComponentReportColumnIdentification{
-			Network:  variant.Network,
-			Upgrade:  variant.Upgrade,
-			Arch:     variant.Arch,
-			Platform: variant.Platform,
+			Variants: variant.Variants,
 		},
 	}
 	k, err := json.Marshal(key)
@@ -105,17 +104,10 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	if _, err := url.ParseRequestURI(in.JiraBug); err != nil {
 		return fmt.Errorf("jiraBug must be a valid URL")
 	}
-	if len(in.Variant.Network) == 0 {
-		return fmt.Errorf("network must be specified")
-	}
-	if len(in.Variant.Arch) == 0 {
-		return fmt.Errorf("arch must be specified")
-	}
-	if len(in.Variant.Platform) == 0 {
-		return fmt.Errorf("platform must be specified")
-	}
-	if len(in.Variant.Upgrade) == 0 {
-		return fmt.Errorf("upgrade must be specified")
+	for _, v := range requiredVariants {
+		if _, ok := in.Variant.Variants[v]; !ok {
+			return fmt.Errorf("%s must be specified", v)
+		}
 	}
 
 	var targetMap map[string]IntentionalRegression
