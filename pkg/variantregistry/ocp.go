@@ -304,6 +304,8 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 
 	if aggregatedRegex.MatchString(jobName) || aggregatorRegex.MatchString(jobName) {
 		variants[VariantAggregation] = "aggregated"
+	} else {
+		variants[VariantAggregation] = "none"
 	}
 
 	release, fromRelease := extractReleases(jobName)
@@ -378,6 +380,8 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantSuite] = "serial"
 	} else if etcdScaling.MatchString(jobName) {
 		variants[VariantSuite] = "etcd-scaling"
+	} else {
+		variants[VariantSuite] = "unknown" // parallel perhaps but lots of jobs aren't running out suites
 	}
 
 	if assistedRegex.MatchString(jobName) {
@@ -398,18 +402,26 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 
 	if fipsRegex.MatchString(jobName) {
 		variants[VariantSecurityMode] = "fips"
+	} else {
+		variants[VariantSecurityMode] = VariantDefaultValue
 	}
 
 	if techpreview.MatchString(jobName) {
 		variants[VariantFeatureSet] = "techpreview"
+	} else {
+		variants[VariantFeatureSet] = VariantDefaultValue
 	}
 
 	if rtRegex.MatchString(jobName) {
 		variants[VariantScheduler] = "realtime"
+	} else {
+		variants[VariantScheduler] = VariantDefaultValue
 	}
 
 	if proxyRegex.MatchString(jobName) {
 		variants[VariantNetworkAccess] = "proxy"
+	} else {
+		variants[VariantNetworkAccess] = VariantDefaultValue
 	}
 
 	if len(variants) == 0 {
