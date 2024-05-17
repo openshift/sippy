@@ -27,26 +27,8 @@ export default function ProwJobRun(props) {
   const [selectedSources = props.selectedSources, setSelectedSources] =
     useQueryParam('selectedSources', ArrayParam)
 
-  const allCategories = {
-    operator_unavailable: 'Operator Unavailable',
-    operator_progressing: 'Operator Progressing',
-    operator_degraded: 'Operator Degraded',
-    pods: 'Pods (careful)',
-    pod_logs: 'Pod Logs',
-    system_journal: 'System Journal',
-    interesting_events: 'Interesting Events',
-    alerts: 'Alerts',
-    node_state: 'Node State',
-    e2e_test_failed: 'E2E Failed',
-    e2e_test_flaked: 'E2E Flaked',
-    e2e_test_passed: 'E2E Passed',
-    disruption: 'Disruption',
-    apiserver_shutdown: 'API Server Shutdown',
-    etcd_leaders: 'Etcd Leaders',
-    cloud_metrics: 'Cloud Metrics',
-  }
-
   const [allIntervalFiles, setAllIntervalFiles] = useState([])
+  const [allSources, setAllSources] = useState([])
   const [intervalFile = props.intervalFile, setIntervalFile] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('intervalFile')) {
@@ -108,6 +90,14 @@ export default function ProwJobRun(props) {
           let intervalFilesAvailable = json.intervalFilesAvailable
           intervalFilesAvailable.sort()
           setAllIntervalFiles(intervalFilesAvailable)
+          let allSources = []
+          lodash.forEach(tmpIntervals, function (eventInterval) {
+            if (!allSources.includes(eventInterval.source)) {
+              allSources.push(eventInterval.source)
+            }
+          })
+          console.log('allSources = ' + allSources)
+          setAllSources(allSources)
           // This is a little tricky, we do a query first without specifying a filename, as we don't know what
           // files are available. The server makes a best guess and returns the intervals for that file, as well as
           // a list of all available file names. In the UI if we don't yet have one, populate the select with the value
@@ -206,19 +196,19 @@ export default function ProwJobRun(props) {
 
   function handleCategoryClick(buttonValue) {
     console.log('got category button click: ' + buttonValue)
-    const newCategories = [...selectedSources]
+    const newSources = [...selectedSources]
     const selectedIndex = selectedSources.indexOf(buttonValue)
 
     if (selectedIndex === -1) {
       console.log(buttonValue + ' is now selected')
-      newCategories.push(buttonValue)
+      newSources.push(buttonValue)
     } else {
       console.log(buttonValue + ' is no longer selected')
-      newCategories.splice(selectedIndex, 1)
+      newSources.splice(selectedIndex, 1)
     }
 
-    console.log('new selectedSources: ' + newCategories)
-    setCategories(newCategories)
+    console.log('new selectedSources: ' + newSources)
+    setSelectedSources(newSources)
   }
 
   /*
@@ -280,13 +270,15 @@ export default function ProwJobRun(props) {
       <div>
         Categories:
         <ButtonGroup size="small" aria-label="Categories">
-          {Object.keys(allCategories).map((key) => (
+          {allSources.map((source) => (
             <Button
-              key={key}
-              onClick={() => handleCategoryClick(key)}
-              variant={selectedSources.includes(key) ? 'contained' : 'outlined'}
+              key={source}
+              onClick={() => handleCategoryClick(source)}
+              variant={
+                selectedSources.includes(source) ? 'contained' : 'outlined'
+              }
             >
-              {allCategories[key]}
+              {source}
             </Button>
           ))}
         </ButtonGroup>
@@ -331,19 +323,16 @@ ProwJobRun.defaultProps = {}
 ProwJobRun.defaultProps = {
   // default list of pre-selected sources:
   selectedSources: [
-    'operator_unavailable',
-    'operator_progressing',
-    'operator_degraded',
-    'pod_logs',
-    'system_journal',
-    'interesting_events',
-    'alerts',
-    'node_state',
-    'e2e_test_failed',
-    'disruption',
-    'apiserver_shutdown',
-    'etcd_leaders',
-    'cloud_metrics',
+    'OperatorState',
+    'KubeletLog',
+    'EtcdLog',
+    'EtcdLeadership',
+    'Alert',
+    'Disruption',
+    'E2ETest',
+    'APIServerGracefulShutdown',
+    'KubeEvent',
+    'NodeState',
   ],
   intervalFile: '',
 }
