@@ -93,9 +93,9 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleEndTimeParam,
   ] = useQueryParam('sampleEndTime', StringParam)
   const [
-    groupByCheckedItemsParam = ['Platform', 'Architecture', 'Network'],
-    setGroupByCheckedItemsParam,
-  ] = useQueryParam('groupBy', ArrayParam)
+    columnGroupByCheckedItemsParam = ['Platform', 'Architecture', 'Network'],
+    setColumnGroupByCheckedItemsParam,
+  ] = useQueryParam('columnGroupBy', ArrayParam)
   const [
     includeVariantsCheckedItemsParam = [
       'Architecture:amd64',
@@ -130,9 +130,8 @@ export const CompReadyVarsProvider = ({ children }) => {
 
   // Create the variables to be used for api calls; these are initilized to the
   // value of the variables that got their values from the URL.
-  const [groupByCheckedItems, setGroupByCheckedItems] = React.useState(
-    groupByCheckedItemsParam
-  )
+  const [columnGroupByCheckedItems, setColumnGroupByCheckedItems] =
+    React.useState(columnGroupByCheckedItemsParam)
 
   const [componentParam, setComponentParam] = useQueryParam(
     'component',
@@ -233,6 +232,18 @@ export const CompReadyVarsProvider = ({ children }) => {
     setCapability(capabilityParam)
   }
 
+  // dbGroupByVariants defines what variants are used for GroupBy in DB query
+  const dbGroupByVariants = [
+    'Platform',
+    'Architecture',
+    'Network',
+    'Topology',
+    'FeatureSet',
+    'Upgrade',
+    'Suite',
+    'Installer',
+  ]
+
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
   const handleGenerateReport = (event) => {
@@ -243,7 +254,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleReleaseParam(sampleRelease)
     setSampleStartTimeParam(formatLongDate(sampleStartTime, dateFormat))
     setSampleEndTimeParam(formatLongDate(sampleEndTime, dateEndFormat))
-    setGroupByCheckedItemsParam(groupByCheckedItems)
+    setColumnGroupByCheckedItemsParam(columnGroupByCheckedItems)
     setIncludeVariantsCheckedItemsParam(
       convertIncludeVariantsCheckedItemsToParam(includeVariantsCheckedItems)
     )
@@ -349,9 +360,10 @@ export const CompReadyVarsProvider = ({ children }) => {
         setSampleStartTime,
         sampleEndTime,
         setSampleEndTime,
-        groupByCheckedItems,
-        setGroupByCheckedItems,
+        columnGroupByCheckedItems,
+        setColumnGroupByCheckedItems,
         includeVariantsCheckedItems,
+        dbGroupByVariants,
         replaceIncludeVariantsCheckedItems,
         confidence,
         setConfidence,

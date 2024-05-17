@@ -292,10 +292,25 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	log.Infof("int   : %d seconds", int(numSecs)) // 604799 (7 days minus 1 second in seconds)
 
 	testIDOption := apitype.ComponentReportRequestTestIdentificationOptions{}
+
+	allJobVariants, errs := api.GetJobVariantsFromBigQuery(client, gcsBucket)
+	if len(errs) > 0 {
+		return fmt.Errorf("failed to get variants from bigquery")
+	}
+	columnGroupByVariants, err := api.VariantsStringToSet(allJobVariants, api.DefaultColumnGroupBy)
+	if err != nil {
+		return err
+	}
+	dbGroupByVariants, err := api.VariantsStringToSet(allJobVariants, api.DefaultDBGroupBy)
+	if err != nil {
+		return err
+	}
 	variantOption := apitype.ComponentReportRequestVariantOptions{
-		GroupBy:           api.DefaultGroupBy,
-		GroupByVariants:   sets.String{},
-		RequestedVariants: map[string]string{},
+		ColumnGroupBy:         api.DefaultColumnGroupBy,
+		ColumnGroupByVariants: columnGroupByVariants,
+		DBGroupBy: api.DefaultDBGroupBy,
+		DBGroupByVariants: dbGroupByVariants,
+		RequestedVariants:     map[string]string{},
 	}
 	advancedOption := apitype.ComponentReportRequestAdvancedOptions{
 		MinimumFailure:   api.DefaultMinimumFailure,

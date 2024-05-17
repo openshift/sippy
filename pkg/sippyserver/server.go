@@ -3,7 +3,6 @@ package sippyserver
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -779,19 +778,19 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	testIDOption.Capability = req.URL.Query().Get("capability")
 	testIDOption.TestID = req.URL.Query().Get("testId")
 
-	variantOption.GroupBy = req.URL.Query().Get("groupBy")
-	variantOption.GroupByVariants = sets.String{}
-	groups := strings.Split(variantOption.GroupBy, ",")
-	for _, g := range groups {
-		if _, ok := allJobVariants.Variants[g]; !ok {
-			err = fmt.Errorf("invalid groupBy value %s", g)
-			return
-		}
-		variantOption.GroupByVariants.Insert(g)
+	variantOption.ColumnGroupBy = req.URL.Query().Get("columnGroupBy")
+	variantOption.ColumnGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.ColumnGroupBy)
+	if err != nil {
+		return
+	}
+	variantOption.DBGroupBy = req.URL.Query().Get("dbGroupBy")
+	variantOption.DBGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.DBGroupBy)
+	if err != nil {
+		return
 	}
 	variantOption.RequestedVariants = map[string]string{}
-	// Only the groupBy variants can be specifically requested
-	for _, variant := range variantOption.GroupByVariants.List() {
+	// Only the dbGroupBy variants can be specifically requested
+	for _, variant := range variantOption.DBGroupByVariants.List() {
 		if value := req.URL.Query().Get(variant); value != "" {
 			variantOption.RequestedVariants[variant] = value
 		}

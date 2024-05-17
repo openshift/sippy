@@ -793,9 +793,11 @@ type ComponentReportRequestTestIdentificationOptions struct {
 }
 
 type ComponentReportRequestVariantOptions struct {
-	GroupBy            string
-	GroupByVariants    sets.String
-	IncludeVariants    []string
+	ColumnGroupBy         string
+	ColumnGroupByVariants sets.String
+	DBGroupBy         string
+	DBGroupByVariants sets.String
+	IncludeVariants       []string
 	IncludeVariantsMap map[string][]string
 	RequestedVariants  map[string]string
 }

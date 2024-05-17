@@ -3,7 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/util/sets"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -128,4 +131,17 @@ func GetReleases(dbc *db.DB, bqc *bqclient.Client) ([]query.Release, error) {
 		return releases, nil
 	}
 	return query.ReleasesFromDB(dbc)
+}
+
+// VariantsStringToSet converts comma separated variant string into a set
+func VariantsStringToSet(allJobVariants apitype.JobVariants, variantsString string) (sets.String, error) {
+	variantSet := sets.String{}
+	variants := strings.Split(variantsString, ",")
+	for _, v := range variants {
+		if _, ok := allJobVariants.Variants[v]; !ok {
+			return variantSet, fmt.Errorf("invalid variant %s in variants string %s", v, variantsString)
+		}
+		variantSet.Insert(v)
+	}
+	return variantSet, nil
 }

@@ -4,7 +4,6 @@ import {
   dateFormat,
   formatLongDate,
   getUpdatedUrlParts,
-  groupByList,
 } from './CompReadyUtils'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
@@ -35,19 +34,10 @@ const useStyles = makeStyles((theme) => ({
 export default function CompReadyMainInputs(props) {
   const theme = useTheme()
   const classes = useStyles(theme)
-  // checkBoxGroupByHiddenVariants defines what variants are excluded as GroupBy variants
-  const checkBoxGroupByHiddenVariants = new Set([
-    'FromRelease',
-    'FromReleaseMajor',
-    'FromReleaseMinor',
-    'Release',
-    'ReleaseMajor',
-    'ReleaseMinor',
-  ])
   // checkBoxHiddenIncludeVariants defines what variants are excluded when creating Include Variant CheckBox
+  // This could also be deduced from varsContext.dbGroupByVariants
   const checkBoxHiddenIncludeVariants = new Set([
     'Aggregation',
-    'FeatureSet',
     'FromRelease',
     'FromReleaseMajor',
     'FromReleaseMinor',
@@ -59,8 +49,6 @@ export default function CompReadyMainInputs(props) {
     'ReleaseMinor',
     'Scheduler',
     'SecurityMode',
-    'Suite',
-    'Topology',
   ])
 
   const varsContext = useContext(CompReadyVarsContext)
@@ -80,8 +68,9 @@ export default function CompReadyMainInputs(props) {
               varsContext.sampleRelease,
               varsContext.sampleStartTime,
               varsContext.sampleEndTime,
-              varsContext.groupByCheckedItems,
+              varsContext.columnGroupByCheckedItems,
               varsContext.includeVariantsCheckedItems,
+              varsContext.dbGroupByVariants,
               varsContext.confidence,
               varsContext.pity,
               varsContext.minFail,
@@ -127,10 +116,8 @@ export default function CompReadyMainInputs(props) {
       <div>
         <CheckBoxList
           headerName="Group By"
-          displayList={Object.keys(varsContext.allJobVariants).filter(
-            (key) => !checkBoxGroupByHiddenVariants.has(key)
-          )}
-          checkedItems={varsContext.groupByCheckedItems}
+          displayList={varsContext.dbGroupByVariants}
+          checkedItems={varsContext.columnGroupByCheckedItems}
           setCheckedItems={varsContext.setGroupByCheckedItems}
         />
         {Object.keys(varsContext.allJobVariants)

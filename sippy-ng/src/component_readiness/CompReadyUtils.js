@@ -302,8 +302,6 @@ export function formatLongDate(aLongDate, aDateFormat) {
 
 // These next set of variables are used for CompReadyMainInputs
 
-export const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variants']
-
 // Take the values needed to make an api call and return a string that can be used to
 // make that call.
 export function getUpdatedUrlParts(
@@ -313,8 +311,9 @@ export function getUpdatedUrlParts(
   sampleRelease,
   sampleStartTime,
   sampleEndTime,
-  groupByCheckedItems,
+  columnGroupByCheckedItems,
   includeVariantsCheckedItems,
+  dbGroupByVariants,
   confidence,
   pity,
   minFail,
@@ -337,7 +336,8 @@ export function getUpdatedUrlParts(
   }
 
   const arraysMap = {
-    groupBy: groupByCheckedItems,
+    columnGroupBy: columnGroupByCheckedItems,
+    dbGroupBy: dbGroupByVariants,
   }
 
   const queryParams = new URLSearchParams()

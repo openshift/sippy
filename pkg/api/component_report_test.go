@@ -43,12 +43,12 @@ var (
 	}
 	defaultComponentReportGenerator = componentReportGenerator{
 		gcsBucket:                             "test-platform-results",
-		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network"},
+		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{ColumnGroupBy: "cloud,arch,network"},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	groupByVariantComponentReportGenerator = componentReportGenerator{
 		gcsBucket:                             "test-platform-results",
-		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network,variants"},
+		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{ColumnGroupBy: "cloud,arch,network,variants"},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	componentPageGenerator = componentReportGenerator{
@@ -57,7 +57,7 @@ var (
 			Component: "component 2",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			GroupBy: "cloud,arch,network",
+			ColumnGroupBy: "cloud,arch,network",
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -68,7 +68,7 @@ var (
 			Capability: "cap22",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			GroupBy: "cloud,arch,network",
+			ColumnGroupBy: "cloud,arch,network",
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -80,7 +80,7 @@ var (
 			TestID:     "2",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			GroupBy: "cloud,arch,network",
+			ColumnGroupBy: "cloud,arch,network",
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -92,7 +92,7 @@ var (
 			TestID:     "1",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			GroupBy: "Platform,Architecture,Network",
+			ColumnGroupBy: "Platform,Architecture,Network",
 			RequestedVariants: map[string]string{
 				"Platform":     "aws",
 				"Architecture": "amd64",
@@ -645,7 +645,7 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name: "top page test confidence 90 result in regression",
 			generator: componentReportGenerator{
-				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network"},
+				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{ColumnGroupBy: "cloud,arch,network"},
 				ComponentReportRequestAdvancedOptions: apitype.ComponentReportRequestAdvancedOptions{
 					Confidence:     90,
 					PityFactor:     5,
@@ -708,7 +708,7 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name: "top page test confidence 90 pity 10 result in no regression",
 			generator: componentReportGenerator{
-				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network"},
+				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{ColumnGroupBy: "cloud,arch,network"},
 				ComponentReportRequestAdvancedOptions: apitype.ComponentReportRequestAdvancedOptions{
 					Confidence:     90,
 					PityFactor:     10,

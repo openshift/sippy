@@ -73,8 +73,9 @@ type GeneratorType string
 var (
 	// Default filters, these are also hardcoded in the UI. Both must be updated.
 	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
-	DefaultGroupBy          = "Platform,Architecture,Network"
-	DefaultMinimumFailure   = 3
+	DefaultColumnGroupBy  = "Platform,Architecture,Network"
+	DefaultDBGroupBy  = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
+	DefaultMinimumFailure = 3
 	DefaultConfidence       = 95
 	DefaultPityFactor       = 5
 	DefaultIgnoreMissing    = false
@@ -303,9 +304,9 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 	if c.TestID == "" {
 		return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
-	for _, v := range c.GroupByVariants.List() {
+	for _, v := range c.DBGroupByVariants.List() {
 		if _, ok := c.RequestedVariants[v]; !ok {
-			return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all groupBy variants have to be defined for test details: %s is missing", v)}
+			return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing", v)}
 		}
 	}
 
@@ -535,7 +536,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
-	for _, v := range c.GroupByVariants.List() {
+	for _, v := range c.DBGroupByVariants.List() {
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
@@ -789,9 +790,10 @@ func testToComponentAndCapability(test apitype.ComponentTestIdentification, stat
 }
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
-// Columns titles depends on the groupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
+// Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
 func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string, stats apitype.ComponentTestStatus) ([]apitype.ComponentReportRowIdentification, []apitype.ColumnID, error) {
 	var test apitype.ComponentTestIdentification
+	columnGroupByVariants := c.ColumnGroupByVariants
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIDStr), &test)
 	if err != nil {
@@ -816,6 +818,8 @@ func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string,
 				row.Capability = c.Capability
 			}
 			rows = append(rows, row)
+			// We show column groups by DBGroupByVariants only for the last page before test details
+			columnGroupByVariants = c.DBGroupByVariants
 		} else {
 			for _, capability := range capabilities {
 				// Exact capability match only produces one row
@@ -840,7 +844,7 @@ func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	columns := []apitype.ColumnID{}
 	column := apitype.ComponentReportColumnIdentification{Variants: map[string]string{}}
 	for key, value := range test.Variants {
-		if c.GroupByVariants.Has(key) {
+		if columnGroupByVariants.Has(key) {
 			column.Variants[key] = value
 		}
 	}
@@ -1472,7 +1476,6 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		return less
 	})
 
-	log.Infof("----sorted rows %+v", sortedRows)
 	// Sort the column identifications
 	sortedColumns := []apitype.ColumnID{}
 	for columnID := range allColumns {
