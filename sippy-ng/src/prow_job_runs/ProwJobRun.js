@@ -192,7 +192,7 @@ export default function ProwJobRun(props) {
     )
   }
 
-  let chartData = groupIntervals(filteredIntervals)
+  let chartData = groupIntervals(selectedSources, filteredIntervals)
 
   function handleCategoryClick(buttonValue) {
     console.log('got category button click: ' + buttonValue)
@@ -353,13 +353,12 @@ ProwJobRun.propTypes = {
 }
 
 function filterIntervals(eventIntervals, selectedSources, filterText) {
-  // if none of the filter inputs are set, nothing to filter so don't waste time looping through everything
-  //let filteredIntervals = eventIntervals
-
   let re = null
   if (filterText) {
     re = new RegExp(filterText)
   }
+
+  // TODO: Filter on display = true?
 
   return _.filter(eventIntervals, function (eventInterval) {
     let shouldInclude = false
@@ -440,8 +439,27 @@ function mutateIntervals(eventIntervals) {
   })
 }
 
-function groupIntervals(filteredIntervals) {
+function groupIntervals(selectedSources, filteredIntervals) {
   let timelineGroups = []
+  console.log('grouping intervals for selected sources: ' + selectedSources)
+
+  selectedSources.forEach((source) => {
+    timelineGroups.push({ group: source, data: [] })
+    createTimelineData(
+      source,
+      timelineGroups[timelineGroups.length - 1].data,
+      filteredIntervals,
+      source
+    )
+    console.log(
+      'pushed ' +
+        timelineGroups[timelineGroups.length - 1].data.length +
+        ' intervals for source: ' +
+        source
+    )
+  })
+
+  /*
   timelineGroups.push({ group: 'operator-unavailable', data: [] })
   createTimelineData(
     'OperatorUnavailable',
@@ -586,6 +604,7 @@ function groupIntervals(filteredIntervals) {
     filteredIntervals,
     'interesting_events'
   )
+       */
   return timelineGroups
 }
 
@@ -1059,7 +1078,7 @@ function createTimelineData(
   timelineVal,
   timelineData,
   filteredEventIntervals,
-  category
+  source
 ) {
   const data = {}
   let now = new Date()
@@ -1078,7 +1097,7 @@ function createTimelineData(
     new Date(now.getTime() - 1)
   )
   filteredEventIntervals.forEach((item) => {
-    if (!item.categories[category]) {
+    if (item.source !== source || !item.display) {
       return
     }
     let startDate = new Date(item.from)
