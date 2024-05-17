@@ -24,10 +24,8 @@ export default function ProwJobRun(props) {
 
   // categories is the set of selected categories to display. It is controlled by a combination
   // of default props, the categories query param, and the buttons the user can modify with.
-  const [categories = props.categories, setCategories] = useQueryParam(
-    'categories',
-    ArrayParam
-  )
+  const [selectedSources = props.selectedSources, setSelectedSources] =
+    useQueryParam('selectedSources', ArrayParam)
 
   const allCategories = {
     operator_unavailable: 'Operator Unavailable',
@@ -150,7 +148,7 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     updateFiltering()
-  }, [categories, history, eventIntervals])
+  }, [selectedSources, history, eventIntervals])
 
   useEffect(() => {
     // Delayed processing of the filter text input to allow the user to finish typing before
@@ -168,11 +166,11 @@ export default function ProwJobRun(props) {
 
     let queryString = encodeQueryParams(
       {
-        categories: ArrayParam,
+        selectedSources: ArrayParam,
         intervalFile: StringParam,
         filter: StringParam,
       },
-      { categories, intervalFile, filterText }
+      { selectedSources, intervalFile, filterText }
     )
 
     history.replace({
@@ -181,7 +179,7 @@ export default function ProwJobRun(props) {
 
     let filteredIntervals = filterIntervals(
       eventIntervals,
-      categories,
+      selectedSources,
       filterText
     )
     setFilteredIntervals(filteredIntervals)
@@ -208,8 +206,8 @@ export default function ProwJobRun(props) {
 
   function handleCategoryClick(buttonValue) {
     console.log('got category button click: ' + buttonValue)
-    const newCategories = [...categories]
-    const selectedIndex = categories.indexOf(buttonValue)
+    const newCategories = [...selectedSources]
+    const selectedIndex = selectedSources.indexOf(buttonValue)
 
     if (selectedIndex === -1) {
       console.log(buttonValue + ' is now selected')
@@ -219,7 +217,7 @@ export default function ProwJobRun(props) {
       newCategories.splice(selectedIndex, 1)
     }
 
-    console.log('new categories: ' + newCategories)
+    console.log('new selectedSources: ' + newCategories)
     setCategories(newCategories)
   }
 
@@ -286,7 +284,7 @@ export default function ProwJobRun(props) {
             <Button
               key={key}
               onClick={() => handleCategoryClick(key)}
-              variant={categories.includes(key) ? 'contained' : 'outlined'}
+              variant={selectedSources.includes(key) ? 'contained' : 'outlined'}
             >
               {allCategories[key]}
             </Button>
@@ -331,7 +329,8 @@ export default function ProwJobRun(props) {
 ProwJobRun.defaultProps = {}
 
 ProwJobRun.defaultProps = {
-  categories: [
+  // default list of pre-selected sources:
+  selectedSources: [
     'operator_unavailable',
     'operator_progressing',
     'operator_degraded',
@@ -350,7 +349,7 @@ ProwJobRun.defaultProps = {
 }
 
 ProwJobRun.propTypes = {
-  categories: PropTypes.array,
+  selectedSources: PropTypes.array,
   intervalFile: PropTypes.string,
 }
 
@@ -362,7 +361,7 @@ ProwJobRun.propTypes = {
   filterModel: PropTypes.object,
 }
 
-function filterIntervals(eventIntervals, categories, filterText) {
+function filterIntervals(eventIntervals, selectedSources, filterText) {
   // if none of the filter inputs are set, nothing to filter so don't waste time looping through everything
   //let filteredIntervals = eventIntervals
 
@@ -375,18 +374,15 @@ function filterIntervals(eventIntervals, categories, filterText) {
     let shouldInclude = false
     // Go ahead and filter out uncategorized events
     Object.keys(eventInterval.categories).forEach(function (cat) {
-      if (eventInterval.categories[cat] && categories.includes(cat)) {
-        if (re) {
-          if (
-            re.test(eventInterval.message) ||
-            re.test(eventInterval.locator)
-          ) {
-            shouldInclude = true
-          }
-        } else {
+      //      if (eventInterval.categories[cat] && selectedSources.includes(cat)) {
+      if (re) {
+        if (re.test(eventInterval.message) || re.test(eventInterval.locator)) {
           shouldInclude = true
         }
+      } else {
+        shouldInclude = true
       }
+      //     }
     })
     return shouldInclude
   })
