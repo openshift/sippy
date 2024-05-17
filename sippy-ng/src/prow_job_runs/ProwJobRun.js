@@ -323,7 +323,9 @@ ProwJobRun.defaultProps = {}
 ProwJobRun.defaultProps = {
   // default list of pre-selected sources:
   selectedSources: [
-    'OperatorState',
+    'OperatorAvailable',
+    'OperatorProgressing',
+    'OperatorDegraded',
     'KubeletLog',
     'EtcdLog',
     'EtcdLeadership',
@@ -388,6 +390,20 @@ function mutateIntervals(eventIntervals) {
     // Hack until https://issues.redhat.com/browse/TRT-1653 is fixed.
     if (eventInterval.locator.keys === null) {
       eventInterval.locator.keys = {}
+    }
+
+    // Hack to split the OperatorSource intervals into "fake" sources of Progressing
+    // Available and Degraded:
+    if (eventInterval.source === 'OperatorState') {
+      if (eventInterval.message.annotations.condition === 'Available') {
+        eventInterval.source = 'OperatorAvailable'
+      } else if (
+        eventInterval.message.annotations.condition === 'Progressing'
+      ) {
+        eventInterval.source = 'OperatorProgressing'
+      } else if (eventInterval.message.annotations.condition === 'Degraded') {
+        eventInterval.source = 'OperatorDegraded'
+      }
     }
 
     // Categorizing the events once on page load will save time on filtering later
