@@ -233,7 +233,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   }
 
   // dbGroupByVariants defines what variants are used for GroupBy in DB query
-  const dbGroupByVariants = [
+  /*  const dbGroupByVariants = [
     'Platform',
     'Architecture',
     'Network',
@@ -241,6 +241,14 @@ export const CompReadyVarsProvider = ({ children }) => {
     'FeatureSet',
     'Upgrade',
     'Suite',
+    'Installer',
+  ]*/
+  const dbGroupByVariants = [
+    'Platform',
+    'Architecture',
+    'Network',
+    'Topology',
+    'Upgrade',
     'Installer',
   ]
 
@@ -302,6 +310,8 @@ export const CompReadyVarsProvider = ({ children }) => {
     ) {
       return ''
     }
+    console.log('------env')
+    console.log(environmentStr)
     const items = environmentStr.split(' ')
     const params = {}
     items.forEach((item) => {
