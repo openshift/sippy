@@ -73,6 +73,7 @@ type GeneratorType string
 var (
 	// Default filters, these are also hardcoded in the UI. Both must be updated.
 	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
+
 	DefaultColumnGroupBy = "Platform,Architecture,Network"
 	//	DefaultDBGroupBy  = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
 	DefaultDBGroupBy        = "Platform,Architecture,Network,Topology,Upgrade,Installer"
@@ -334,7 +335,7 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (apitype.Com
 
 func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
 	joinVariants := ""
-	for v, _ := range allJobVariants.Variants {
+	for v := range allJobVariants.Variants {
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
@@ -496,7 +497,6 @@ func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJob
 }
 
 func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.ComponentJobRunTestReportStatus, []error) {
-	errs := []error{}
 	allJobVariants, errs := GetJobVariantsFromBigQuery(c.client, c.gcsBucket)
 	if len(errs) > 0 {
 		log.Errorf("failed to get variants from bigquery")
@@ -533,7 +533,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 	selectVariants := ""
 	joinVariants := ""
 	groupByVariants := ""
-	for v, _ := range allJobVariants.Variants {
+	for v := range allJobVariants.Variants {
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
@@ -753,7 +753,6 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 
 func (c *componentReportGenerator) getTestStatusFromBigQuery() (apitype.ComponentReportTestStatus, []error) {
 	before := time.Now()
-	errs := []error{}
 	allJobVariants, errs := GetJobVariantsFromBigQuery(c.client, c.gcsBucket)
 	if len(errs) > 0 {
 		log.Errorf("failed to get variants from bigquery")
@@ -875,7 +874,6 @@ func fetchTestStatus(query *bigquery.Query) (map[string]apitype.ComponentTestSta
 	for {
 		var row []bigquery.Value
 
-		//testStatus := apitype.ComponentTestStatusRow{}
 		err := it.Next(&row)
 		if err == iterator.Done {
 			break
@@ -963,29 +961,6 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 		default:
 			log.Warnf("ignoring column in query: %s", col)
 		}
-
-		/*
-				TestID:       testStatus.TestID,
-				Network:      testStatus.Network,
-				Upgrade:      testStatus.Upgrade,
-				Arch:         testStatus.Arch,
-				Platform:     testStatus.Platform,
-				FlatVariants: testStatus.FlatVariants,
-			}
-			componentTestStatus := apitype.ComponentTestStatus{
-				TestName:     testStatus.TestName,
-				TestSuite:    testStatus.TestSuite,
-				Component:    testStatus.Component,
-				Capabilities: testStatus.Capabilities,
-				Variants:     testStatus.Variants,
-				TotalCount:   testStatus.TotalCount,
-				FlakeCount:   testStatus.FlakeCount,
-				SuccessCount: testStatus.SuccessCount,
-			}
-			log.Tracef("testStatus is %+v", componentTestStatus)
-			rowData[fieldSchema.Name] = row[i]
-			log.Infof("%s = %s", fieldSchema.Name, row[i])
-		*/
 	}
 
 	// Create a string representation of the test ID so we can use it as a map key throughout:
@@ -1453,6 +1428,9 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
 		testID, err := buildTestID(sampleStats, testIdentification)
+		if err != nil {
+			return apitype.ComponentReport{}, err
+		}
 		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testIdentification, sampleStats)
 		if err != nil {
 			return apitype.ComponentReport{}, err
@@ -1485,25 +1463,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		sortedColumns = append(sortedColumns, columnID)
 	}
 	sort.Slice(sortedColumns, func(i, j int) bool {
-		// TODO: is sorting based on the json string keys ok?
 		return sortedColumns[i] < sortedColumns[j]
-		/*
-			less := sortedColumns[i].Platform < sortedColumns[j].Platform
-			if sortedColumns[i].Platform == sortedColumns[j].Platform {
-				less = sortedColumns[i].Arch < sortedColumns[j].Arch
-				if sortedColumns[i].Arch == sortedColumns[j].Arch {
-					less = sortedColumns[i].Network < sortedColumns[j].Network
-					if sortedColumns[i].Network == sortedColumns[j].Network {
-						less = sortedColumns[i].Upgrade < sortedColumns[j].Upgrade
-						if sortedColumns[i].Upgrade == sortedColumns[j].Upgrade {
-							less = sortedColumns[i].Variant < sortedColumns[j].Variant
-						}
-					}
-				}
-			}
-			return less
-
-		*/
 	})
 
 	// Now build the report

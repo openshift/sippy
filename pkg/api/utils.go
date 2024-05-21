@@ -3,20 +3,19 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
+	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/openshift/sippy/pkg/apis/cache"
 )
 
 var (
