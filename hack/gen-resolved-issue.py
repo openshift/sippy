@@ -497,7 +497,7 @@ def job_matches(record, prow_url, start_time, issue_resolution_date):
             if compare_time_is_greater(start_time, mx):
                 return False
         if issue_resolution_date != None:
-            if compare_time_is_greater(start_time, issue_resolution_date):
+            if compare_time_is_greater(issue_resolution_date, start_time):
                 return False
         if "JobRuns" in record:
             for run in record["JobRuns"]:
