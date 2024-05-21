@@ -146,7 +146,7 @@ export default function ProwJobRun(props) {
     const timer = setTimeout(() => {
       console.log('Filter text updated:', filterText)
       updateFiltering()
-    }, 500)
+    }, 800)
 
     return () => clearTimeout(timer)
   }, [filterText])
@@ -358,12 +358,13 @@ function filterIntervals(eventIntervals, selectedSources, filterText) {
     re = new RegExp(filterText)
   }
 
-  // TODO: Filter on display = true?
-
   return _.filter(eventIntervals, function (eventInterval) {
     let shouldInclude = false
     if (re) {
-      if (re.test(eventInterval.message) || re.test(eventInterval.locator)) {
+      if (
+        re.test(eventInterval.displayMessage) ||
+        re.test(eventInterval.displayLocator)
+      ) {
         shouldInclude = true
       }
     } else {
@@ -415,12 +416,6 @@ function groupIntervals(selectedSources, filteredIntervals) {
       timelineGroups[timelineGroups.length - 1].data,
       filteredIntervals,
       source
-    )
-    console.log(
-      'pushed ' +
-        timelineGroups[timelineGroups.length - 1].data.length +
-        ' intervals for source: ' +
-        source
     )
   })
 
