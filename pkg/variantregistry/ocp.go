@@ -261,6 +261,7 @@ var (
 	// proxy jobs do not have a trailing -version segment
 	ppc64leRegex            = regexp.MustCompile(`(?i)-ppc64le`)
 	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
+	qeRegex                 = regexp.MustCompile(`(?i)-openshift-tests-private`)
 	rosaRegex               = regexp.MustCompile(`(?i)-rosa`)
 	rtRegex                 = regexp.MustCompile(`(?i)-rt`)
 	s390xRegex              = regexp.MustCompile(`(?i)-s390x`)
@@ -401,6 +402,8 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 
 	if sdRegex.MatchString(jobName) {
 		variants[VariantOwner] = "service-delivery"
+	} else if qeRegex.MatchString(jobName) {
+		variants[VariantOwner] = "qe"
 	} else {
 		variants[VariantOwner] = "eng"
 	}
