@@ -3,9 +3,10 @@ package variantregistry
 import (
 	"testing"
 
-	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 func TestVariantSyncer(t *testing.T) {
@@ -15,6 +16,29 @@ func TestVariantSyncer(t *testing.T) {
 		variantsFile map[string]string
 		expected     map[string]string
 	}{
+		{
+			job:          "periodic-ci-openshift-osde2e-main-nightly-4.17-conformance-rosa-classic-sts",
+			variantsFile: map[string]string{},
+			expected: map[string]string{
+				VariantRelease:       "4.17",
+				VariantReleaseMajor:  "4",
+				VariantReleaseMinor:  "17",
+				VariantArch:          "amd64",
+				VariantInstaller:     "rosa",
+				VariantPlatform:      "rosa",
+				VariantNetwork:       "ovn",
+				VariantNetworkStack:  "ipv4",
+				VariantOwner:         "service-delivery",
+				VariantTopology:      "ha",
+				VariantSuite:         "parallel",
+				VariantUpgrade:       "none",
+				VariantAggregation:   "none",
+				VariantSecurityMode:  VariantDefaultValue,
+				VariantFeatureSet:    VariantDefaultValue,
+				VariantNetworkAccess: VariantDefaultValue,
+				VariantScheduler:     VariantDefaultValue,
+			},
+		},
 		{
 			job: "periodic-ci-openshift-release-master-nightly-4.16-e2e-gcp-ovn-fips",
 			variantsFile: map[string]string{
@@ -55,7 +79,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantNetworkStack:  "ipv4",
 				VariantOwner:         "eng",
 				VariantTopology:      "external",
-				VariantSuite:         "unknown",
+				VariantSuite:         "parallel",
 				VariantUpgrade:       "none",
 				VariantAggregation:   "none",
 				VariantFeatureSet:    VariantDefaultValue,

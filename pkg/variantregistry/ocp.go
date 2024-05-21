@@ -253,15 +253,15 @@ var (
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
-	osdRegex       = regexp.MustCompile(`(?i)-osd`)
+	sdRegex        = regexp.MustCompile(`(?i)-osd|-rosa`)
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn`)
 	ipv6Regex      = regexp.MustCompile(`(?i)-ipv6`)
 	dualStackRegex = regexp.MustCompile(`(?i)-dualstack`)
 	// proxy jobs do not have a trailing -version segment
 	ppc64leRegex            = regexp.MustCompile(`(?i)-ppc64le`)
-	promoteRegex            = regexp.MustCompile(`(?i)^promote-`)
 	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
+	rosaRegex               = regexp.MustCompile(`(?i)-rosa`)
 	rtRegex                 = regexp.MustCompile(`(?i)-rt`)
 	s390xRegex              = regexp.MustCompile(`(?i)-s390x`)
 	sdnRegex                = regexp.MustCompile(`(?i)-sdn`)
@@ -380,6 +380,9 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantSuite] = "serial"
 	} else if etcdScaling.MatchString(jobName) {
 		variants[VariantSuite] = "etcd-scaling"
+	} else if strings.Contains(jobName, "conformance") {
+		// jobs with "conformance" that don't explicitly mention serial are probably parallel
+		variants[VariantSuite] = "parallel"
 	} else {
 		variants[VariantSuite] = "unknown" // parallel perhaps but lots of jobs aren't running out suites
 	}
@@ -390,12 +393,14 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantInstaller] = "hypershift"
 	} else if upiRegex.MatchString(jobName) {
 		variants[VariantInstaller] = "upi"
+	} else if rosaRegex.MatchString(jobName) {
+		variants[VariantInstaller] = "rosa"
 	} else {
 		variants[VariantInstaller] = "ipi" // assume ipi by default
 	}
 
-	if osdRegex.MatchString(jobName) {
-		variants[VariantOwner] = "osd"
+	if sdRegex.MatchString(jobName) {
+		variants[VariantOwner] = "service-delivery"
 	} else {
 		variants[VariantOwner] = "eng"
 	}
@@ -479,6 +484,8 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 		platform = "openstack"
 	} else if ovirtRegex.MatchString(jobName) {
 		platform = "ovirt"
+	} else if rosaRegex.MatchString(jobName) {
+		platform = "rosa"
 	} else if vsphereRegex.MatchString(jobName) {
 		platform = "vsphere"
 	}
