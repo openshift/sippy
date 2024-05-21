@@ -376,12 +376,8 @@ function filterIntervals(eventIntervals, selectedSources, filterText) {
 function mutateIntervals(eventIntervals) {
   // Structure the locator data and then categorize the event
   lodash.forEach(eventIntervals, function (eventInterval) {
-    // TODO Wasn't clear if an event is only supposed to be in one category or if it can show up in multiple, with the existing implementation
-    // it can show up more than once if it passes more than one of the category checks. If it is meant to only be one category this
-    // could be something simpler like eventInterval.category = "operator-degraded" instead.
-    // Not hypthetical, found events that passed isPodLogs also passed isPods.
-
-    // Hack until https://issues.redhat.com/browse/TRT-1653 is fixed.
+    // Hack until https://issues.redhat.com/browse/TRT-1653 is fixed, and we don't intend to view old interval files
+    // that did not have that fix anymore.
     if (eventInterval.locator.keys === null) {
       eventInterval.locator.keys = {}
     }
