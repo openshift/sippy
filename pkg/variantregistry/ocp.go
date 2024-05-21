@@ -261,6 +261,7 @@ var (
 	// proxy jobs do not have a trailing -version segment
 	ppc64leRegex            = regexp.MustCompile(`(?i)-ppc64le`)
 	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
+	qeRegex                 = regexp.MustCompile(`(?i)-openshift-tests-private`)
 	rosaRegex               = regexp.MustCompile(`(?i)-rosa`)
 	rtRegex                 = regexp.MustCompile(`(?i)-rt`)
 	s390xRegex              = regexp.MustCompile(`(?i)-s390x`)
@@ -340,8 +341,16 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		delete(variants, VariantFromReleaseMinor)
 	}
 
+	// Platform
 	determinePlatform(jLog, variants, jobName)
 
+	// Installation
+	install := determineInstallation(jobName)
+	if install != "" {
+		variants[VariantInstaller] = install
+	}
+
+	// Architecture
 	arch := determineArchitecture(jobName)
 	if arch != "" {
 		variants[VariantArch] = arch
@@ -354,17 +363,9 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	}
 
 	// Topology
-	// external == hypershift hosted control plane
-	if singleNodeRegex.MatchString(jobName) {
-		variants[VariantTopology] = "single" // previously single-node
-	} else if hypershiftRegex.MatchString(jobName) {
-		variants[VariantTopology] = "external"
-	} else if compactRegex.MatchString(jobName) {
-		variants[VariantTopology] = "compact"
-	} else if microshiftRegex.MatchString(jobName) { // No jobs for this in 4.15 - 4.16 that I can see.
-		variants[VariantTopology] = "microshift"
-	} else {
-		variants[VariantTopology] = "ha"
+	topology := determineTopology(jobName)
+	if topology != "" {
+		variants[VariantTopology] = topology
 	}
 
 	if dualStackRegex.MatchString(jobName) {
@@ -387,20 +388,10 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantSuite] = "unknown" // parallel perhaps but lots of jobs aren't running out suites
 	}
 
-	if assistedRegex.MatchString(jobName) {
-		variants[VariantInstaller] = "assisted"
-	} else if hypershiftRegex.MatchString(jobName) {
-		variants[VariantInstaller] = "hypershift"
-	} else if upiRegex.MatchString(jobName) {
-		variants[VariantInstaller] = "upi"
-	} else if rosaRegex.MatchString(jobName) {
-		variants[VariantInstaller] = "rosa"
-	} else {
-		variants[VariantInstaller] = "ipi" // assume ipi by default
-	}
-
 	if sdRegex.MatchString(jobName) {
 		variants[VariantOwner] = "service-delivery"
+	} else if qeRegex.MatchString(jobName) {
+		variants[VariantOwner] = "qe"
 	} else {
 		variants[VariantOwner] = "eng"
 	}
@@ -435,6 +426,36 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	}
 
 	return variants
+}
+
+func determineTopology(jobName string) string {
+	// Topology
+	// external == hypershift hosted control plane
+	if singleNodeRegex.MatchString(jobName) {
+		return "single" // previously single-node
+	} else if hypershiftRegex.MatchString(jobName) {
+		return "external"
+	} else if compactRegex.MatchString(jobName) {
+		return "compact"
+	} else if microshiftRegex.MatchString(jobName) { // No jobs for this in 4.15 - 4.16 that I can see.
+		return "microshift"
+	}
+
+	return "ha"
+}
+
+func determineInstallation(jobName string) string {
+	if assistedRegex.MatchString(jobName) {
+		return "assisted"
+	} else if hypershiftRegex.MatchString(jobName) {
+		return "hypershift"
+	} else if upiRegex.MatchString(jobName) {
+		return "upi"
+	} else if rosaRegex.MatchString(jobName) {
+		return "rosa"
+	}
+
+	return "ipi" // assume ipi by default
 }
 
 // isMultiUpgrade checks if this is a multi-minor upgrade by examining the delta between the release minor
