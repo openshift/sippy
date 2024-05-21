@@ -38,6 +38,8 @@ lint: builddir npm
 npm:
 	# For debugging
 	npm --version
+	npm config set fetch-retry-mintimeout 20000
+	npm config set fetch-retry-maxtimeout 120000
 	cd sippy-ng; npm install --no-audit
 
 clean:

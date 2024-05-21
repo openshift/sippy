@@ -9,9 +9,7 @@ echo "The sippy CI image: ${SIPPY_IMAGE}"
 # The GCS_CRED allows us to pull artifacts from GCS when importing prow jobs.
 # Redefine GCS_CRED to use your own.
 GCS_CRED="${GCS_CRED:=/var/run/sippy-ci-gcs-sa/gcs-sa}"
-GCS_CRED2="${GCS_CRED2:=/var/run/sippy-ci-gcs-sa-e2e/sippy-ci-gcs-read-sa-e2e}"
 echo "The GCS cred is: ${GCS_CRED}"
-echo "The GCS cred2 is: ${GCS_CRED2}"
 
 # If you're using Openshift, we use oc, if you're using plain Kubernetes,
 # we use kubectl.
@@ -70,13 +68,7 @@ else
   echo "Aborting: GCS credential file ${GCS_CRED} not found"
   exit 1
 fi
-echo "Checking for presense of GCS credentials2 ..."
-if [ -f ${GCS_CRED2} ]; then
-  ls -l ${GCS_CRED2}
-else
-  echo "Aborting: GCS credential file ${GCS_CRED2} not found"
-  exit 1
-fi
+
 echo "Starting postgres on cluster-pool cluster..."
 
 # Make the "postgres" namespace and pod.
@@ -173,7 +165,6 @@ ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 #
 
 ${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred=$GCS_CRED -n sippy-e2e
-${KUBECTL_CMD} create secret generic gcs-cred2 --from-file gcs-cred=$GCS_CRED2 -n sippy-e2e
 
 # Get the registry credentials for all build farm clusters out to the cluster-pool cluster.
 ${KUBECTL_CMD} -n sippy-e2e create secret generic regcred --from-file=.dockerconfigjson=${DOCKERCONFIGJSON} --type=kubernetes.io/dockerconfigjson
