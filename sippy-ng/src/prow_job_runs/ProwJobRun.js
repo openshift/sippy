@@ -43,8 +43,8 @@ export default function ProwJobRun(props) {
 
   const [filterText, setFilterText] = useState(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('filter')) {
-      return params.get('filter')
+    if (params.get('filterText')) {
+      return params.get('filterText')
     }
     return ''
   })
@@ -340,16 +340,13 @@ ProwJobRun.defaultProps = {
 }
 
 ProwJobRun.propTypes = {
-  selectedSources: PropTypes.array,
-  intervalFile: PropTypes.string,
-}
-
-ProwJobRun.propTypes = {
   jobRunID: PropTypes.string.isRequired,
   jobName: PropTypes.string,
   repoInfo: PropTypes.string,
   pullNumber: PropTypes.string,
-  filterModel: PropTypes.object,
+  filterText: PropTypes.string,
+  selectedSources: PropTypes.array,
+  intervalFile: PropTypes.string,
 }
 
 function filterIntervals(eventIntervals, selectedSources, filterText) {
