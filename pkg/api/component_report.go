@@ -73,10 +73,10 @@ type GeneratorType string
 var (
 	// Default filters, these are also hardcoded in the UI. Both must be updated.
 	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
-	DefaultColumnGroupBy  = "Platform,Architecture,Network"
-//	DefaultDBGroupBy  = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
-	DefaultDBGroupBy  = "Platform,Architecture,Network,Topology,Upgrade,Installer"
-	DefaultMinimumFailure = 3
+	DefaultColumnGroupBy = "Platform,Architecture,Network"
+	//	DefaultDBGroupBy  = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
+	DefaultDBGroupBy        = "Platform,Architecture,Network,Topology,Upgrade,Installer"
+	DefaultMinimumFailure   = 3
 	DefaultConfidence       = 95
 	DefaultPityFactor       = 5
 	DefaultIgnoreMissing    = false
@@ -795,6 +795,10 @@ func testToComponentAndCapability(test apitype.ComponentTestIdentification, stat
 func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string, stats apitype.ComponentTestStatus) ([]apitype.ComponentReportRowIdentification, []apitype.ColumnID, error) {
 	var test apitype.ComponentTestIdentification
 	columnGroupByVariants := c.ColumnGroupByVariants
+	// We show column groups by DBGroupByVariants only for the last page before test details
+	if c.TestID != "" {
+		columnGroupByVariants = c.DBGroupByVariants
+	}
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIDStr), &test)
 	if err != nil {
@@ -819,8 +823,6 @@ func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string,
 				row.Capability = c.Capability
 			}
 			rows = append(rows, row)
-			// We show column groups by DBGroupByVariants only for the last page before test details
-			columnGroupByVariants = c.DBGroupByVariants
 		} else {
 			for _, capability := range capabilities {
 				// Exact capability match only produces one row
