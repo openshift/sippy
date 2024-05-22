@@ -1,11 +1,14 @@
-import { Button, Grid, Tooltip, Typography } from '@mui/material'
+import { Button, Grid, Popover, Tooltip, Typography } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
+import { FileCopy } from '@mui/icons-material'
 import { formColumnName, sortQueryParams } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { relativeTime } from '../helpers'
 import { safeEncodeURIComponent } from '../helpers'
 import CompSeverityIcon from './CompSeverityIcon'
 import Dialog from '@mui/material/Dialog'
+import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 
@@ -47,6 +50,16 @@ export default function RegressedTestsModal(props) {
     { field: 'component', sort: 'asc' },
   ])
 
+  // Helpers for copying the test ID to clipboard
+  const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
+  const copyPopoverOpen = Boolean(copyPopoverEl)
+  const copyTestID = (event, testId) => {
+    event.preventDefault()
+    navigator.clipboard.writeText(testId)
+    setCopyPopoverEl(event.currentTarget)
+    setTimeout(() => setCopyPopoverEl(null), 2000)
+  }
+
   // define table columns
   const columns = [
     {
@@ -84,6 +97,44 @@ export default function RegressedTestsModal(props) {
       ),
     },
     {
+      field: 'opened',
+      headerName: 'Regressed Since',
+      flex: 15,
+      valueGetter: (params) => {
+        if (!params.row.opened) {
+          // For a regression we haven't yet detected:
+          return ''
+        }
+        const regressedSinceDate = new Date(params.row.opened)
+        return relativeTime(regressedSinceDate, new Date())
+      },
+      renderCell: (param) => (
+        <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">
+          <div className="regressed-since">{param.value}</div>
+        </Tooltip>
+      ),
+    },
+    {
+      field: 'test_id',
+      flex: 5,
+      headerName: 'ID',
+      renderCell: (params) => {
+        return (
+          <IconButton
+            onClick={(event) => copyTestID(event, params.value)}
+            size="small"
+            aria-label="Copy test ID"
+            color="inherit"
+            sx={{ marginBottom: 1 }}
+          >
+            <Tooltip title="Copy test ID">
+              <FileCopy color="primary" />
+            </Tooltip>
+          </IconButton>
+        )
+      },
+    },
+    {
       field: 'status',
       headerName: 'Status',
       renderCell: (params) => (
@@ -114,7 +165,7 @@ export default function RegressedTestsModal(props) {
     <Fragment>
       <Dialog
         fullWidth={true}
-        maxWidth="xl"
+        maxWidth={false}
         open={props.isOpen}
         onClose={props.close}
       >
@@ -160,6 +211,22 @@ export default function RegressedTestsModal(props) {
             CLOSE
           </Button>
         </Grid>
+        <Popover
+          id="copyPopover"
+          open={copyPopoverOpen}
+          anchorEl={copyPopoverEl}
+          onClose={() => setCopyPopoverEl(null)}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'center',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'center',
+          }}
+        >
+          ID copied!
+        </Popover>
       </Dialog>
     </Fragment>
   )

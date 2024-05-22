@@ -1,6 +1,142 @@
-# Examples
+# Installation and Setup
 
-## Example Input file with a list of TestIds to match
+## Virtual Environment Setup (Optional)
+
+For isolated dependency management, you can set up a virtual environment:
+```bash
+virtualenv gen-resolved-issue
+source gen-resolved-issue/bin/activate
+```
+
+## Install Dependencies
+
+Ensure you have all necessary libraries by installing them from a `requirements.txt` file:
+```bash
+pip3 install -r requirements.txt
+```
+
+# Usage Overview
+
+## Command Line Arguments
+
+Below is a list of command-line options grouped by type.
+
+### Group Incident ID
+
+- `--assign-incident-group-id`: Assign the specified incident-group-id common among records.  Use this to update an existing incident-group-id (e.g., to add to the existing group).  When omitted a new incident-group-id will automatically be created.
+
+### Issue Details
+
+- `--issue-resolution-date`: The date when the issue was fixed and no longer causing test regressions, this will clear the triaged regression icon if it is within the sample range
+- `--issue-description`: A short description of the issue.
+- `--issue-type`: Type of issue (options: 'Infrastructure', 'Product').
+- `--issue-url`: URL associated with the issue (e.g., JIRA or PR link).
+
+### Job Run Time Windows
+
+If there is a specific time window to consider for JobRunStartTimes, specify the min and max, and any runs outside that window will be ignored.
+
+- `--job-run-start-time-max`: Latest datetime to consider a job run for inclusion.
+- `--job-run-start-time-min`: Earliest datetime to consider a job run for inclusion.
+
+### Incident Data Source
+
+If the JSON file specified in `--input-file` is complete and you don't need to use the `--test-report-url` to look up JobRuns, etc. set this flag to true.
+
+- `--load-incidents-from-file`: Skips test report lookup and uses specified input file. Only valid with `--output-type=DB`.  But if `--output-type=JSON`, `--load-incidents-from-file=True` is implied.
+
+### Incident Query Range
+
+If you expect an existing incident to exist, but it hasn't been updated within the last two weeks, specify a target modified time for the match incident search range to use.
+
+- `--target-modified-time`: Specifies the target date for querying existing records (format: target-2weeks to target).
+
+### Test Identification
+
+- `--test-id`: Internal ID of the test to match.
+- `--test-release`: Release version the test is running against.
+- `--test-report-url`: API URL from component readiness that contains regression results (obtain this from the link on the lower right corner of a component readiness page).
+
+### Output Control
+
+- `--match-all-job-runs`: Only the job runs that contain failures for each of the test ids will be preserved. Only valid with `--output-type=JSON`. ['True' 'False'], default=False
+- `--input-file`: Specifies a JSON file containing test criteria for creating incidents. The specificed JSON file could protentially have been produced by this tool.
+- `--output-file`: Specifies the file to write JSON output to (instead of DB).
+- `--output-type`: Write the incident record(s) as JSON or as DB record ['JSON', 'DB']; default='JSON'. When the output type is DB 'GOOGLE_APPLICATION_CREDENTIALS' environment variable must be specified.
+- `--output-test-info-only`: When the incident record is JSON, record only the test info and not job_runs, must be specified on the command line ['True', 'False'] default=False.
+
+## Examples
+
+### Basic Workflow Example
+
+This example demonstrates a basic workflow of using the script to generate an output JSON, modify it, and then persist the results to big query.
+
+1. **Generate Initial JSON**
+
+   Run the tool with a minimal configuration to generate initial data:
+
+   ```bash
+   ./gen-resolved-issue.py --input-file=example_input.json
+   ```
+   `example_input.json` content:
+   ```json
+    {
+        "Arguments": {
+            "TestRelease": "4.16",
+            "TestReportURL": "https://sippy.dptools.openshift.org/api/component_readiness?baseEndTime=2024-02-28T23:59:59Z&baseRelease=4.15&baseStartTime=2024-02-01T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-04-05T23:59:59Z&sampleRelease=4.16&sampleStartTime=2024-03-29T00:00:00Z&component=Networking%20%2F%20cluster-network-operator&capability=Other&environment=ovn%20amd64%20metal-ipi&network=ovn&arch=amd64&platform=metal-ipi",
+            "IssueDescription": "sample description for OLM Failures",
+            "IssueType": "Infrastructure",
+            "OutputFile": "example_output.json",
+            "OutputType": "JSON"
+        },
+        "Tests": [
+            {
+                "TestId": "openshift-tests-networking:e83723b6"
+            }
+        ]
+    }
+   ```
+
+   This will produce `example_output.json`.
+
+2. **Review and Modify JSON**
+
+   Manually review the `example_output.json` to ensure that the `Arguments`, `Tests`, `Variants`, and `Jobs` sections are as expected.
+
+3. **Persist to Database**
+
+   After reviewing and potentially modifying the output JSON, run the tool again to persist the data in bigquery:
+
+   ```bash
+   ./gen-resolved-issue.py --input-file=example_output.json --output-type=DB --load-incidents-from-file=True
+   ```
+
+4. **If you made a mistake**
+
+   If you triaged the wrong jobs, you can always remove rows related to the `IncidentGroupId` you used from the `triaged_incidents` table in bigquery and start over.
+
+### Using IncidentGroupId
+
+To associate records with an existing incident group or to create a new group and maintain the association for subsequent updates:
+
+1. **Initial Run with New Group**
+
+   ```bash
+   ./gen-resolved-issue.py --input-file=example_input.json --output-type=JSON
+   cat example_output.json|grep IncidentGroupId
+           "IncidentGroupId": "08406e53-435e-48d1-ae7e-e2c5a48d0398",
+   ```
+
+   Make sure to capture the `IncidentGroupId` generated in the initial run.
+
+2. **Subsequent Run Using Existing Group**
+
+   Use the `IncidentGroupId` from the initial output to keep the issues grouped properly:
+   ```bash
+   ./gen-resolved-issue.py --input-file=subsequent_input.json --assign-incident-group-id=[your-incident-group-id] --output-type=DB
+   ```
+
+### Example Input file with a list of TestIds to match
 ```
 {
     "Arguments": {
@@ -22,7 +158,7 @@
         { "TestId": "openshift-tests-upgrade:44e2e0e6106443fef746afb65a3aaa9f"},
         { "TestId": "openshift-tests-upgrade:fbe6ebd6d5f577a21de3de9504ca242a"},
         { "TestId": "openshift-tests-upgrade:a7bca0ce3787e8bd213b32795d81bb50"},
-        { "TestId": "openshift-tests-upgrade:c2f88e80fa2064a98711768d5a679735"}        
+        { "TestId": "openshift-tests-upgrade:c2f88e80fa2064a98711768d5a679735"} 
     ]
 }
 ```
@@ -33,13 +169,12 @@
 
 Review `test_cno_pods_output.json`, remove the OutputType or change it to DB
 
-Run the command to persist the entries to DB
+Run the command to persist the entries to DB (make sure GOOGLE_APPLICATION_CREDENTIALS is defined)
 ```
-./gen-resolved-issue.py --input-file=test_cno_pods_output.json --output-type=DB --load-incidents-from-file
+./gen-resolved-issue.py --input-file=test_cno_pods_output.json --output-type=DB --load-incidents-from-file=True
 ```
 
-
-## Example Pulling in Test Information Only
+### Example Pulling in Test Information Only
 Start with a wildcard for the TestId and a minimal list of Variants
 ```
 {
@@ -62,7 +197,6 @@ Start with a wildcard for the TestId and a minimal list of Variants
                     "value": "metal-ipi"
                 }
             ]
-               
         }
     ]
 }
@@ -293,3 +427,39 @@ The output file can be edited and renamed (`metal_4_16_input.json `) to change t
     ]
 }
 ```
+
+## Triage JIRA Requests
+Starting with [TRT-1657](https://issues.redhat.com/browse/TRT-1657) use the [regressedModal](https://sippy.dptools.openshift.org/sippy-ng/component_readiness/main?regressedModal=1) view to see the list of regressions and filter based on the test(s) being triaged, in this case `KubePodNotReady`.  Review the failed tests and variants, copy the testIDs to create the minimal starter file.
+
+In Component Readiness navigate to the [Component / Capability view](https://sippy.dptools.openshift.org/sippy-ng/component_readiness/capability?baseEndTime=2024-02-28%2023%3A59%3A59&baseRelease=4.15&baseStartTime=2024-02-01%2000%3A00%3A00&capability=Alerts&component=OLM&confidence=95&excludeArches=arm64%2Cheterogeneous%2Cppc64le%2Cs390x&excludeClouds=openstack%2Cibmcloud%2Clibvirt%2Covirt%2Cunknown&excludeVariants=hypershift%2Cosd%2Cmicroshift%2Ctechpreview%2Csingle-node%2Cassisted%2Ccompact&groupBy=cloud%2Carch%2Cnetwork&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-05-08%2023%3A59%3A59&sampleRelease=4.16&sampleStartTime=2024-05-02%2000%3A00%3A00) that narrows the results down as much as possible ( you could exclude arches, platforms, networks, etc. if you needed).  From the web developer tools capture the [api URL](https://sippy.dptools.openshift.org/api/component_readiness?baseEndTime=2024-02-28T23:59:59Z&baseRelease=4.15&baseStartTime=2024-02-01T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-05-08T23:59:59Z&sampleRelease=4.16&sampleStartTime=2024-05-02T00:00:00Z&component=OLM&capability=Alerts).  You should have enough data to run gen-resolved-issue.py at this point to generate a fully populated output file `trt_1657_4_16_regressions.json`.  ** You can update the TestReportURL with new time ranges and rerun using this file to pick up new failures.  If you do rerun to update incidents make sure you add the `IncidentGroupId` that is assigned the first time to keep the issues grouped properly.
+
+```
+[
+    {
+    "Arguments": {
+        "TestRelease": "4.16",
+        "TestReportURL": "https://sippy.dptools.openshift.org/api/component_readiness?baseEndTime=2024-02-28T23:59:59Z&baseRelease=4.15&baseStartTime=2024-02-01T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-05-08T23:59:59Z&sampleRelease=4.16&sampleStartTime=2024-05-02T00:00:00Z&component=OLM&capability=Alerts",
+        "IssueDescription": "OLM / Akamai cache problem",
+        "IssueType": "Infrastructure",
+        "IssueURL": "https://issues.redhat.com/browse/OCPBUGS-33052",
+        "OutputFile": "/my/path/to/gen_resolved_issues/trt_1657_4_16_regressions.json"
+    },
+    "Tests": [
+        {
+            "TestId": "openshift-tests-upgrade:7dd49c583b2a86489d255d6ec262f69e"
+        },
+        {
+            "TestId": "openshift-tests:7dd49c583b2a86489d255d6ec262f69e"
+        }
+    ]
+}
+]
+```
+
+Run your command to generate the full regressions output file:
+`./hack/gen-resolved-issue.py --input-file=/my/path/to/gen_resolved_issues/trt_1657_4_16_template.json`
+
+Review the output to confirm it looks correct, has the correct variants, etc.
+Run the command with the regressions file as the input and output DB.
+`./hack/gen-resolved-issue.py --input-file=my/path/to/gen_resolved_issues/trt_1657_4_16_regressions.json --output-type=DB --load-incidents-from-file=True`
+Copy the `"IncidentGroupId": "xx-zz-yy",` value back to the Arguments section of your template and attach the template to the JIRA  in case you need to update again later on. 

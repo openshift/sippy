@@ -2,7 +2,10 @@ a {
   text-decoration: none;
 }
 
-a:link, a:active, a:hover, a:visited {
+a:link,
+a:active,
+a:hover,
+a:visited {
   color: inherit;
 }
 

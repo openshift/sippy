@@ -67,6 +67,7 @@ import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import CompReadyTestReport from './CompReadyTestReport'
+import CopyPageURL from './CopyPageURL'
 import GeneratedAt from './GeneratedAt'
 import IconButton from '@mui/material/IconButton'
 import MenuIcon from '@mui/icons-material/Menu'
@@ -813,6 +814,7 @@ export default function ComponentReadiness(props) {
                             </Table>
                           </TableContainer>
                           <GeneratedAt time={data.generated_at} />
+                          <CopyPageURL apiCallStr={showValuesForReport()} />
                         </div>
                       )}
                     </div>

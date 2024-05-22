@@ -11,12 +11,13 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/hashicorp/go-version"
-	"github.com/openshift/sippy/pkg/dataloader/prowloader"
-	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
-	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+
+	"github.com/openshift/sippy/pkg/dataloader/prowloader"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 // OCPVariantLoader generates a mapping of job names to their variant map for all known jobs.
@@ -61,30 +62,63 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 	log.Info("loading all known jobs from bigquery for variant classification")
 	start := time.Now()
 
-	// TODO: pull presubmits for sippy as well
+	// For the primary list of all job names, we will query everything that's run in the last 6 months. Because
+	// we also try to pull cluster-data.json, we also join in a column for the prowjob_url of the most recent
+	// successful run to attempt to get stable cluster-data. Without this, the jobs would bounce around variants
+	// subtly when we hit runs without cluster-data.
+	queryStr := `
+WITH RecentSuccessfulJobs AS (
+  SELECT 
+    prowjob_job_name,
+    MAX(prowjob_start) AS successful_start,
+    MAX(prowjob_url) as prowjob_url,
+  FROM DATASET
+  WHERE prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
+        prowjob_state = 'success' AND
+        (prowjob_job_name LIKE 'periodic-ci-openshift-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
+          OR prowjob_job_name LIKE 'release-%%'
+          OR prowjob_job_name LIKE 'aggregator-%%'
+          OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
+  GROUP BY prowjob_job_name
+)
+SELECT 
+  j.prowjob_job_name,
+  MAX(j.prowjob_start) AS prowjob_start,
+  MAX(j.prowjob_build_id) AS prowjob_build_id,
+  r.prowjob_url,
+  r.successful_start,
+FROM DATASET j
+LEFT JOIN RecentSuccessfulJobs r
+ON j.prowjob_job_name = r.prowjob_job_name 
+WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
+      ((j.prowjob_job_name LIKE 'periodic-ci-openshift-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
+        OR j.prowjob_job_name LIKE 'release-%%'
+        OR j.prowjob_job_name LIKE 'aggregator-%%')
+      OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
+GROUP BY j.prowjob_job_name, r.prowjob_url, r.successful_start
+ORDER BY j.prowjob_job_name;
+`
+	queryStr = strings.ReplaceAll(queryStr, "DATASET",
+		fmt.Sprintf("%s.%s.%s", v.bigQueryProject, v.bigQueryDataSet, v.bigQueryTable))
+	log.Infof("running query for recent jobs: \n%s", queryStr)
 
-	// For the primary list of all job names, we will query everything that's run in the last 3 months:
-	// TODO: for component readiness queries to work in the past, we may need far more than jobs that ran in 3 months
-	// since start of 4.14 perhaps?
-	query := v.BigQueryClient.Query(`SELECT prowjob_job_name, MAX(prowjob_url) AS prowjob_url, MAX(prowjob_build_id) AS prowjob_build_id FROM ` +
-		fmt.Sprintf("%s.%s.%s", v.bigQueryProject, v.bigQueryDataSet, v.bigQueryTable) +
-		` WHERE (prowjob_job_name LIKE 'periodic-ci-openshift-%%' 
-			OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%' 
-			OR prowjob_job_name LIKE 'release-%%' 
-			OR prowjob_job_name like 'aggregator-%%')
-		OR prowjob_job_name LIKE 'pull-ci-openshift-%%'
-		GROUP BY prowjob_job_name
-		ORDER BY prowjob_job_name
-		`)
+	query := v.BigQueryClient.Query(queryStr)
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying primary list of all jobs")
 	}
 
+	// TODO: fix release on presubmits
+
 	expectedVariants := map[string]map[string]string{}
 
 	count := 0
 	for {
+		// TODO: last run but not necessarily successful, this could be a problem for cluster-data file parsing causing
+		// our churn. We can't flip the query to last success either as we wouldn't have variants for non-passing jobs at all.
+		// Two queries? Use the successful one for cluster-data?
 		jlr := prowJobLastRun{}
 		err := it.Next(&jlr)
 		if err == iterator.Done {
@@ -108,7 +142,10 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 			if len(allMatches) > 0 {
 				clusterMatches = allMatches[0]
 			}
-			jLog.WithField("prowJobURL", jlr.URL.StringVal).Debugf("Found %d cluster-data files: %s", len(clusterMatches), clusterMatches)
+			for _, cm := range clusterMatches {
+				// log with the file prefix for easy click/copy to browser:
+				jLog.WithField("prowJobURL", jlr.URL.StringVal).Infof("Found cluster-data file: https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/%s", cm)
+			}
 
 			if len(clusterMatches) > 0 {
 				clusterDataBytes, err := prowloader.GetClusterDataBytes(ctx, v.bkt, path, clusterMatches)
@@ -119,8 +156,7 @@ func (v *OCPVariantLoader) LoadExpectedJobVariants(ctx context.Context) (map[str
 				if err != nil {
 					jLog.WithError(err).Error("unable to parse cluster data file, proceeding without")
 				} else {
-					jLog.Debugf("loaded cluster data: %+v", clusterData)
-					// TODO: do something with it
+					jLog.Infof("loaded cluster data: %+v", clusterData)
 				}
 			}
 		}
@@ -212,27 +248,30 @@ var (
 	metalRegex      = regexp.MustCompile(`(?i)-metal`)
 	microshiftRegex = regexp.MustCompile(`(?i)-microshift`)
 	// Variant for Heterogeneous
-	multiRegex = regexp.MustCompile(`(?i)-heterogeneous`)
+	multiRegex   = regexp.MustCompile(`(?i)-heterogeneous`)
+	nutanixRegex = regexp.MustCompile(`(?i)-nutanix`)
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
-	osdRegex       = regexp.MustCompile(`(?i)-osd`)
+	sdRegex        = regexp.MustCompile(`(?i)-osd|-rosa`)
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn`)
 	ipv6Regex      = regexp.MustCompile(`(?i)-ipv6`)
 	dualStackRegex = regexp.MustCompile(`(?i)-dualstack`)
 	// proxy jobs do not have a trailing -version segment
-	ppc64leRegex      = regexp.MustCompile(`(?i)-ppc64le`)
-	promoteRegex      = regexp.MustCompile(`(?i)^promote-`)
-	proxyRegex        = regexp.MustCompile(`(?i)-proxy`)
-	rtRegex           = regexp.MustCompile(`(?i)-rt`)
-	s390xRegex        = regexp.MustCompile(`(?i)-s390x`)
-	sdnRegex          = regexp.MustCompile(`(?i)-sdn`)
-	serialRegex       = regexp.MustCompile(`(?i)-serial`)
-	singleNodeRegex   = regexp.MustCompile(`(?i)-single-node`)
-	techpreview       = regexp.MustCompile(`(?i)-techpreview`)
-	upgradeMinorRegex = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
-	upgradeRegex      = regexp.MustCompile(`(?i)-upgrade`)
+	ppc64leRegex            = regexp.MustCompile(`(?i)-ppc64le`)
+	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
+	qeRegex                 = regexp.MustCompile(`(?i)-openshift-tests-private`)
+	rosaRegex               = regexp.MustCompile(`(?i)-rosa`)
+	rtRegex                 = regexp.MustCompile(`(?i)-rt`)
+	s390xRegex              = regexp.MustCompile(`(?i)-s390x`)
+	sdnRegex                = regexp.MustCompile(`(?i)-sdn`)
+	serialRegex             = regexp.MustCompile(`(?i)-serial`)
+	singleNodeRegex         = regexp.MustCompile(`(?i)-single-node`)
+	techpreview             = regexp.MustCompile(`(?i)-techpreview`)
+	upgradeMinorRegex       = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
+	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
+	upgradeRegex            = regexp.MustCompile(`(?i)-upgrade`)
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex = regexp.MustCompile(`(?i)-vsphere`)
 )
@@ -266,6 +305,8 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 
 	if aggregatedRegex.MatchString(jobName) || aggregatorRegex.MatchString(jobName) {
 		variants[VariantAggregation] = "aggregated"
+	} else {
+		variants[VariantAggregation] = "none"
 	}
 
 	release, fromRelease := extractReleases(jobName)
@@ -282,15 +323,16 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantFromReleaseMinor] = fromReleaseMajorMinor[1]
 	}
 	if upgradeRegex.MatchString(jobName) {
-		if upgradeMinorRegex.MatchString(jobName) {
+		switch {
+		case upgradeOutOfChangeRegex.MatchString(jobName):
+			variants[VariantUpgrade] = "micro-downgrade"
+		case isMultiUpgrade(release, fromRelease):
+			variants[VariantUpgrade] = "multi"
+		case upgradeMinorRegex.MatchString(jobName):
 			variants[VariantUpgrade] = "minor"
-			if isMultiUpgrade(release, fromRelease) {
-				variants[VariantUpgrade] = "multi"
-			}
-		} else {
+		default:
 			variants[VariantUpgrade] = "micro"
 		}
-		// TODO: add multi-upgrade
 	} else {
 		variants[VariantUpgrade] = "none"
 		// Wipe out the FromRelease if it's not an upgrade job.
@@ -299,8 +341,16 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		delete(variants, VariantFromReleaseMinor)
 	}
 
+	// Platform
 	determinePlatform(jLog, variants, jobName)
 
+	// Installation
+	install := determineInstallation(jobName)
+	if install != "" {
+		variants[VariantInstaller] = install
+	}
+
+	// Architecture
 	arch := determineArchitecture(jobName)
 	if arch != "" {
 		variants[VariantArch] = arch
@@ -313,17 +363,9 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	}
 
 	// Topology
-	// external == hypershift hosted control plane
-	if singleNodeRegex.MatchString(jobName) {
-		variants[VariantTopology] = "single" // previously single-node
-	} else if hypershiftRegex.MatchString(jobName) {
-		variants[VariantTopology] = "external"
-	} else if compactRegex.MatchString(jobName) {
-		variants[VariantTopology] = "compact"
-	} else if microshiftRegex.MatchString(jobName) { // No jobs for this in 4.15 - 4.16 that I can see.
-		variants[VariantTopology] = "microshift"
-	} else {
-		variants[VariantTopology] = "ha"
+	topology := determineTopology(jobName)
+	if topology != "" {
+		variants[VariantTopology] = topology
 	}
 
 	if dualStackRegex.MatchString(jobName) {
@@ -339,38 +381,43 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantSuite] = "serial"
 	} else if etcdScaling.MatchString(jobName) {
 		variants[VariantSuite] = "etcd-scaling"
-	}
-
-	if assistedRegex.MatchString(jobName) {
-		variants[VariantInstaller] = "assisted"
-	} else if hypershiftRegex.MatchString(jobName) {
-		variants[VariantInstaller] = "hypershift"
-	} else if upiRegex.MatchString(jobName) {
-		variants[VariantInstaller] = "upi"
+	} else if strings.Contains(jobName, "conformance") {
+		// jobs with "conformance" that don't explicitly mention serial are probably parallel
+		variants[VariantSuite] = "parallel"
 	} else {
-		variants[VariantInstaller] = "ipi" // assume ipi by default
+		variants[VariantSuite] = "unknown" // parallel perhaps but lots of jobs aren't running out suites
 	}
 
-	if osdRegex.MatchString(jobName) {
-		variants[VariantOwner] = "osd"
+	if sdRegex.MatchString(jobName) {
+		variants[VariantOwner] = "service-delivery"
+	} else if qeRegex.MatchString(jobName) {
+		variants[VariantOwner] = "qe"
 	} else {
 		variants[VariantOwner] = "eng"
 	}
 
 	if fipsRegex.MatchString(jobName) {
 		variants[VariantSecurityMode] = "fips"
+	} else {
+		variants[VariantSecurityMode] = VariantDefaultValue
 	}
 
 	if techpreview.MatchString(jobName) {
 		variants[VariantFeatureSet] = "techpreview"
+	} else {
+		variants[VariantFeatureSet] = VariantDefaultValue
 	}
 
 	if rtRegex.MatchString(jobName) {
 		variants[VariantScheduler] = "realtime"
+	} else {
+		variants[VariantScheduler] = VariantDefaultValue
 	}
 
 	if proxyRegex.MatchString(jobName) {
 		variants[VariantNetworkAccess] = "proxy"
+	} else {
+		variants[VariantNetworkAccess] = VariantDefaultValue
 	}
 
 	if len(variants) == 0 {
@@ -379,6 +426,36 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	}
 
 	return variants
+}
+
+func determineTopology(jobName string) string {
+	// Topology
+	// external == hypershift hosted control plane
+	if singleNodeRegex.MatchString(jobName) {
+		return "single" // previously single-node
+	} else if hypershiftRegex.MatchString(jobName) {
+		return "external"
+	} else if compactRegex.MatchString(jobName) {
+		return "compact"
+	} else if microshiftRegex.MatchString(jobName) { // No jobs for this in 4.15 - 4.16 that I can see.
+		return "microshift"
+	}
+
+	return "ha"
+}
+
+func determineInstallation(jobName string) string {
+	if assistedRegex.MatchString(jobName) {
+		return "assisted"
+	} else if hypershiftRegex.MatchString(jobName) {
+		return "hypershift"
+	} else if upiRegex.MatchString(jobName) {
+		return "upi"
+	} else if rosaRegex.MatchString(jobName) {
+		return "rosa"
+	}
+
+	return "ipi" // assume ipi by default
 }
 
 // isMultiUpgrade checks if this is a multi-minor upgrade by examining the delta between the release minor
@@ -422,10 +499,14 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 		platform = "libvirt"
 	} else if metalRegex.MatchString(jobName) {
 		platform = "metal"
+	} else if nutanixRegex.MatchString(jobName) {
+		platform = "nutanix"
 	} else if openstackRegex.MatchString(jobName) {
 		platform = "openstack"
 	} else if ovirtRegex.MatchString(jobName) {
 		platform = "ovirt"
+	} else if rosaRegex.MatchString(jobName) {
+		platform = "rosa"
 	} else if vsphereRegex.MatchString(jobName) {
 		platform = "vsphere"
 	}
@@ -489,7 +570,7 @@ func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
 		ovnBecomesDefault, _ := version.NewVersion("4.12")
 		releaseVersion, err := version.NewVersion(release)
 		if err != nil {
-			jLog.Warningf("could not determine network type for %q", jobName)
+			jLog.Warning("could not determine network type")
 			return ""
 		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
 			return "ovn"

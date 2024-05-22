@@ -1,7 +1,7 @@
 .cr-report-button {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
 }
 
 .cr-table-wrapper {
@@ -22,7 +22,7 @@
 .cr-comp-read-table {
   width: auto !important;
   margin-top: 0.5em;
-  border: 1px solid #EEE;
+  border: 1px solid #eee;
   table-layout: fixed;
 }
 

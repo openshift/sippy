@@ -20,6 +20,7 @@ import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompTestRow from './CompTestRow'
+import CopyPageURL from './CopyPageURL'
 import GeneratedAt from './GeneratedAt'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect, useState } from 'react'
@@ -291,6 +292,7 @@ export default function CompReadyEnvCapability(props) {
         </Table>
       </TableContainer>
       <GeneratedAt time={data.generated_at} />
+      <CopyPageURL apiCallStr={apiCallStr} />
     </Fragment>
   )
 }

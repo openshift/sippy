@@ -896,8 +896,9 @@ type ComponentReportRowIdentification struct {
 
 type ComponentReportColumn struct {
 	ComponentReportColumnIdentification
-	Status         ComponentReportStatus        `json:"status"`
-	RegressedTests []ComponentReportTestSummary `json:"regressed_tests,omitempty"`
+	Status           ComponentReportStatus                  `json:"status"`
+	RegressedTests   []ComponentReportTestSummary           `json:"regressed_tests,omitempty"`
+	TriagedIncidents []ComponentReportTriageIncidentSummary `json:"triaged_incidents,omitempty"`
 }
 
 type ColumnID string
@@ -915,7 +916,15 @@ type ComponentReportTestIdentification struct {
 
 type ComponentReportTestSummary struct {
 	ComponentReportTestIdentification
+	// Status is an integer representing the severity of the regression.
 	Status ComponentReportStatus `json:"status"`
+
+	// Opened will be set to the time we first recorded this test went regressed.
+	// TODO: This is largely a hack right now, the sippy metrics loop sets this as soon as it notices
+	// the regression with it's *default view* query. However we always include it in the response (if that test
+	// is regressed per the query params used). Eventually we should only include these details if the default view
+	// is being used, without overriding the start/end dates.
+	Opened *time.Time `json:"opened"`
 }
 
 type ComponentReportTestDetails struct {
@@ -1095,4 +1104,57 @@ type ReleaseRow struct {
 
 	// ReleaseStatus contains the status of the release, e.g. Full Support
 	ReleaseStatus bigquery.NullString `bigquery:"ReleaseStatus"`
+}
+
+type ComponentReportTriageIncidentSummary struct {
+	ComponentReportTestSummary
+	TriagedIncidents []TriagedIncident `json:"incidents"`
+}
+
+// TestRegression is used for rows in the test_regressions table and is used to track when we detect test
+// regressions opening and closing.
+type TestRegression struct {
+	Release      string                   `bigquery:"release" json:"release"`
+	TestID       string                   `bigquery:"test_id" json:"test_id"`
+	TestName     string                   `bigquery:"test_name" json:"test_name"`
+	RegressionID string                   `bigquery:"regression_id" json:"regression_id"`
+	Opened       time.Time                `bigquery:"opened" json:"opened"`
+	Closed       bigquery.NullTimestamp   `bigquery:"closed" json:"closed"`
+	Variants     []ComponentReportVariant `bigquery:"variants" json:"variants"`
+}
+
+type TriagedIncident struct {
+	Release string `bigquery:"release" json:"release"`
+	TestID  string `bigquery:"test_id" json:"test_id"`
+	// TODO: should this be joined in instead of recording? test_name can change for a given test_id
+	TestName     string                       `bigquery:"test_name" json:"test_name"`
+	IncidentID   string                       `bigquery:"incident_id" json:"incident_id"`
+	ModifiedTime time.Time                    `bigquery:"modified_time" json:"modified_time"`
+	Variants     []ComponentReportVariant     `bigquery:"variants" json:"variants"`
+	Issue        TriagedIncidentIssue         `bigquery:"issue" json:"issue"`
+	JobRuns      []TriageJobRun               `bigquery:"job_runs" json:"job_runs"`
+	Attributions []TriagedIncidentAttribution `bigquery:"attributions" json:"attributions"`
+}
+
+type TriagedIncidentIssue struct {
+	Type           string                 `bigquery:"type" json:"type"`
+	Description    bigquery.NullString    `bigquery:"description" json:"description"`
+	URL            bigquery.NullString    `bigquery:"url" json:"url"`
+	StartDate      time.Time              `bigquery:"start_date" json:"start_date"`
+	ResolutionDate bigquery.NullTimestamp `bigquery:"resolution_date" json:"resolution_date"`
+}
+
+type TriagedIncidentAttribution struct {
+	ID         string    `bigquery:"id" json:"id"`
+	UpdateTime time.Time `bigquery:"update_time" json:"update_time"`
+}
+
+type ComponentReportVariant struct {
+	Key   string `bigquery:"key" json:"key"`
+	Value string `bigquery:"value" json:"value"`
+}
+
+type TriageJobRun struct {
+	URL       string    `bigquery:"url" json:"url"`
+	StartTime time.Time `bigquery:"start_time" json:"start_time"`
 }
