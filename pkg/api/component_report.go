@@ -75,9 +75,8 @@ var (
 	// Default filters, these are also hardcoded in the UI. Both must be updated.
 	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
 
-	DefaultColumnGroupBy = "Platform,Architecture,Network"
-	//	DefaultDBGroupBy  = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
-	DefaultDBGroupBy        = "Platform,Architecture,Network,Topology,Upgrade,Installer"
+	DefaultColumnGroupBy    = "Platform,Architecture,Network"
+	DefaultDBGroupBy        = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
 	DefaultMinimumFailure   = 3
 	DefaultConfidence       = 95
 	DefaultPityFactor       = 5
@@ -287,6 +286,10 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 		return apitype.ComponentReport{}, errs
 	}
 	report, err := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus, openRegressions)
+	if err != nil {
+		errs = append(errs, err)
+		return apitype.ComponentReport{}, errs
+	}
 	report.GeneratedAt = componentReportTestStatus.GeneratedAt
 	log.Infof("GenerateReport completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
 

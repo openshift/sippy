@@ -3,7 +3,6 @@ package api
 
 import (
 	"fmt"
-	"github.com/openshift/sippy/pkg/util/sets"
 	"math/big"
 	"strconv"
 	"time"
@@ -15,6 +14,7 @@ import (
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type ColumnType int

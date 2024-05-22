@@ -52,6 +52,7 @@ export default function CompReadyMainInputs(props) {
   ])
 
   const varsContext = useContext(CompReadyVarsContext)
+  console.log(varsContext)
   return (
     <Fragment>
       <div className="cr-report-button">
@@ -118,7 +119,7 @@ export default function CompReadyMainInputs(props) {
           headerName="Group By"
           displayList={varsContext.dbGroupByVariants}
           checkedItems={varsContext.columnGroupByCheckedItems}
-          setCheckedItems={varsContext.setGroupByCheckedItems}
+          setCheckedItems={varsContext.setColumnGroupByCheckedItems}
         />
         {Object.keys(varsContext.allJobVariants)
           .filter((key) => !checkBoxHiddenIncludeVariants.has(key))

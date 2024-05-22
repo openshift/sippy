@@ -52,20 +52,20 @@ var (
 )
 
 type regressionKey struct {
-	testID  string
-	variant api.ComponentReportColumnIdentification
+	TestID  string
+	Variant api.ComponentReportColumnIdentification
 }
 
 func keyFor(testID string, variant api.ComponentReportColumnIdentification) string {
 	key := regressionKey{
-		testID: testID,
-		variant: api.ComponentReportColumnIdentification{
+		TestID: testID,
+		Variant: api.ComponentReportColumnIdentification{
 			Variants: variant.Variants,
 		},
 	}
 	k, err := json.Marshal(key)
 	if err != nil {
-
+		log.WithError(err).Errorf("error marshalling regressionKey")
 	}
 	return string(k)
 }
