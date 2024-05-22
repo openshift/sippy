@@ -14,6 +14,19 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 import TimelineChart from '../components/TimelineChart'
 
+// sourceOrder is our preferred ordering of the sections of the chart (interval sources), assuming that
+// source is selected in the UI and present in the intervals file:
+const sourceOrder = [
+  'OperatorAvailable',
+  'OperatorProgressing',
+  'OperatorDegraded',
+  'NodeState',
+  'Disruption',
+  'KubeletLog',
+  'EtcdLog',
+  'EtcdLeadership',
+]
+
 export default function ProwJobRun(props) {
   const history = useHistory()
 
@@ -211,25 +224,6 @@ export default function ProwJobRun(props) {
     setSelectedSources(newSources)
   }
 
-  /*
-  function handleIntervalFileChange(buttonValue) {
-    console.log('got interval file button click: ' + buttonValue)
-    const newSelectedIntervalFile = [...intervalFiles]
-    const selectedIndex = intervalFiles.indexOf(buttonValue)
-
-    if (selectedIndex === -1) {
-      console.log(buttonValue + ' is now selected')
-      newSelectedIntervalFiles.push(buttonValue)
-    } else {
-      console.log(buttonValue + ' is no longer selected')
-      newSelectedIntervalFiles.splice(selectedIndex, 1)
-    }
-
-    console.log('new selected interval files: ' + newSelectedIntervalFiles)
-    setIntervalFiles(newSelectedIntervalFiles)
-  }
-
-   */
   const handleIntervalFileChange = (event) => {
     console.log('new interval file selected: ' + event.target.value)
     setIntervalFile(event.target.value)
@@ -402,11 +396,52 @@ function mutateIntervals(eventIntervals) {
   })
 }
 
+// groupIntervals is the core function that sorts our intervals based on their source, and adds them
+// to the appropriate section of the chart. We work largely dynamically on the intervals that are present
+// with the display flag set to true, but this function does have some implicit ordering for source groups
+// we prefer at the top of the chart.
+/*
 function groupIntervals(selectedSources, filteredIntervals) {
   let timelineGroups = []
   console.log('grouping intervals for selected sources: ' + selectedSources)
 
   selectedSources.forEach((source) => {
+    timelineGroups.push({ group: source, data: [] })
+    createTimelineData(
+      source,
+      timelineGroups[timelineGroups.length - 1].data,
+      filteredIntervals,
+      source
+    )
+  })
+
+  return timelineGroups
+}
+
+ */
+
+function groupIntervals(selectedSources, filteredIntervals) {
+  let timelineGroups = []
+
+  // Separate sources into those that appear in our explicit ordering and those that don't.
+  // Any sources that do not appear in our order list will be added to the end.
+  let orderedSources = []
+  let otherSources = []
+
+  selectedSources.forEach((source) => {
+    if (sourceOrder.includes(source)) {
+      orderedSources.push(source)
+    } else {
+      otherSources.push(source)
+    }
+  })
+
+  // Sort orderedSources according to sourceOrder
+  orderedSources.sort((a, b) => sourceOrder.indexOf(a) - sourceOrder.indexOf(b))
+
+  let finalSourceOrder = orderedSources.concat(otherSources)
+
+  finalSourceOrder.forEach((source) => {
     timelineGroups.push({ group: source, data: [] })
     createTimelineData(
       source,
