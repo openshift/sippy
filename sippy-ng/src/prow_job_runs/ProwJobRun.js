@@ -1,15 +1,26 @@
 import * as lodash from 'lodash'
 import {
   ArrayParam,
+  BooleanParam,
   encodeQueryParams,
   StringParam,
   useQueryParam,
 } from 'use-query-params'
-import { Button, ButtonGroup, MenuItem, Select, TextField } from '@mui/material'
+import {
+  Button,
+  ButtonGroup,
+  Checkbox,
+  MenuItem,
+  Select,
+  TextField,
+  Tooltip,
+} from '@mui/material'
 import { CircularProgress } from '@mui/material'
 import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import FormGroup from '@mui/material/FormGroup'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
 import TimelineChart from '../components/TimelineChart'
@@ -39,6 +50,11 @@ export default function ProwJobRun(props) {
   // of default props, the categories query param, and the buttons the user can modify with.
   const [selectedSources = props.selectedSources, setSelectedSources] =
     useQueryParam('selectedSources', ArrayParam)
+
+  const [
+    overrideDisplayFlag = props.overrideDisplayFlag,
+    setOverrideDisplayFlag,
+  ] = useQueryParam('overrideDisplayFlag', BooleanParam)
 
   const [allIntervalFiles, setAllIntervalFiles] = useState([])
   const [allSources, setAllSources] = useState([])
@@ -151,7 +167,7 @@ export default function ProwJobRun(props) {
 
   useEffect(() => {
     updateFiltering()
-  }, [selectedSources, history, eventIntervals])
+  }, [selectedSources, history, eventIntervals, overrideDisplayFlag])
 
   useEffect(() => {
     // Delayed processing of the filter text input to allow the user to finish typing before
@@ -172,8 +188,9 @@ export default function ProwJobRun(props) {
         selectedSources: ArrayParam,
         intervalFile: StringParam,
         filter: StringParam,
+        overrideDisplayFlag: BooleanParam,
       },
-      { selectedSources, intervalFile, filterText }
+      { selectedSources, intervalFile, filterText, overrideDisplayFlag }
     )
 
     history.replace({
@@ -183,7 +200,8 @@ export default function ProwJobRun(props) {
     let filteredIntervals = filterIntervals(
       eventIntervals,
       selectedSources,
-      filterText
+      filterText,
+      overrideDisplayFlag
     )
     setFilteredIntervals(filteredIntervals)
   }
@@ -238,6 +256,10 @@ export default function ProwJobRun(props) {
   function handleSegmentClicked(segment) {
     // Copy label to clipboard
     navigator.clipboard.writeText(segment.labelVal)
+  }
+
+  const handleOverrideDisplayFlagChanged = (event) => {
+    setOverrideDisplayFlag(event.target.checked)
   }
 
   function segmentTooltipFunc(d) {
@@ -301,6 +323,21 @@ export default function ProwJobRun(props) {
         />
       </div>
       <div>
+        <Tooltip
+          title={
+            'Display ALL intervals, not just those that origin indicated were meant for display'
+          }
+        >
+          <FormGroup>
+            <FormControlLabel
+              checked={overrideDisplayFlag}
+              control={<Checkbox onChange={handleOverrideDisplayFlagChanged} />}
+              label="Override Display Flag"
+            />
+          </FormGroup>
+        </Tooltip>
+      </div>
+      <div>
         <TimelineChart
           data={chartData}
           eventIntervals={filteredIntervals}
@@ -311,8 +348,6 @@ export default function ProwJobRun(props) {
     </Fragment>
   )
 }
-
-ProwJobRun.defaultProps = {}
 
 ProwJobRun.defaultProps = {
   // default list of pre-selected sources:
@@ -331,6 +366,7 @@ ProwJobRun.defaultProps = {
     'NodeState',
   ],
   intervalFile: '',
+  overrideDisplayFlag: false,
 }
 
 ProwJobRun.propTypes = {
@@ -341,9 +377,15 @@ ProwJobRun.propTypes = {
   filterText: PropTypes.string,
   selectedSources: PropTypes.array,
   intervalFile: PropTypes.string,
+  overrideDisplayFlag: PropTypes.bool,
 }
 
-function filterIntervals(eventIntervals, selectedSources, filterText) {
+function filterIntervals(
+  eventIntervals,
+  selectedSources,
+  filterText,
+  overrideDisplayFlag
+) {
   let re = null
   if (filterText) {
     re = new RegExp(filterText)
@@ -351,6 +393,9 @@ function filterIntervals(eventIntervals, selectedSources, filterText) {
 
   return _.filter(eventIntervals, function (eventInterval) {
     let shouldInclude = false
+    if (!overrideDisplayFlag && !eventInterval.display) {
+      return shouldInclude
+    }
     if (re) {
       if (
         re.test(eventInterval.displayMessage) ||
@@ -395,30 +440,6 @@ function mutateIntervals(eventIntervals) {
     )
   })
 }
-
-// groupIntervals is the core function that sorts our intervals based on their source, and adds them
-// to the appropriate section of the chart. We work largely dynamically on the intervals that are present
-// with the display flag set to true, but this function does have some implicit ordering for source groups
-// we prefer at the top of the chart.
-/*
-function groupIntervals(selectedSources, filteredIntervals) {
-  let timelineGroups = []
-  console.log('grouping intervals for selected sources: ' + selectedSources)
-
-  selectedSources.forEach((source) => {
-    timelineGroups.push({ group: source, data: [] })
-    createTimelineData(
-      source,
-      timelineGroups[timelineGroups.length - 1].data,
-      filteredIntervals,
-      source
-    )
-  })
-
-  return timelineGroups
-}
-
- */
 
 function groupIntervals(selectedSources, filteredIntervals) {
   let timelineGroups = []
@@ -582,7 +603,7 @@ function createTimelineData(
     new Date(now.getTime() - 1)
   )
   filteredEventIntervals.forEach((item) => {
-    if (item.source !== source || !item.display) {
+    if (item.source !== source) {
       return
     }
     let startDate = new Date(item.from)
