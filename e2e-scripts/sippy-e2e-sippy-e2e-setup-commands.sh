@@ -8,7 +8,7 @@ echo "The sippy CI image: ${SIPPY_IMAGE}"
 
 # The GCS_CRED allows us to pull artifacts from GCS when importing prow jobs.
 # Redefine GCS_CRED to use your own.
-GCS_CRED="${GCS_CRED:=/var/run/sippy-ci-gcs-sa/gcs-sa}"
+GCS_CRED="${GCS_CRED:=/var/run/sippy-bigquery-job-importer/gcs-sa}"
 echo "The GCS cred is: ${GCS_CRED}"
 
 # If you're using Openshift, we use oc, if you're using plain Kubernetes,
