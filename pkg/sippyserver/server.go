@@ -718,6 +718,55 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
+func createVariantOptions(req *http.Request, allJobVariants apitype.JobVariants) (apitype.ComponentReportRequestVariantOptions, error) {
+	var err error
+	variantOption := apitype.ComponentReportRequestVariantOptions{}
+	variantOption.ColumnGroupBy = req.URL.Query().Get("columnGroupBy")
+	variantOption.ColumnGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.ColumnGroupBy)
+	if err != nil {
+		return variantOption, err
+	}
+	variantOption.DBGroupBy = req.URL.Query().Get("dbGroupBy")
+	variantOption.DBGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.DBGroupBy)
+	if err != nil {
+		return variantOption, err
+	}
+	variantOption.RequestedVariants = map[string]string{}
+	// Only the dbGroupBy variants can be specifically requested
+	for _, variant := range variantOption.DBGroupByVariants.List() {
+		if value := req.URL.Query().Get(variant); value != "" {
+			variantOption.RequestedVariants[variant] = value
+		}
+	}
+	variantOption.IncludeVariants = req.URL.Query()["includeVariant"]
+	variantOption.IncludeVariantsMap = map[string][]string{}
+	for _, includeVariant := range variantOption.IncludeVariants {
+		kv := strings.Split(includeVariant, ":")
+		if len(kv) != 2 {
+			err = fmt.Errorf("invalid includeVariant %s", includeVariant)
+			return variantOption, err
+		}
+		values, ok := allJobVariants.Variants[kv[0]]
+		if !ok {
+			err = fmt.Errorf("invalid variant name from includeVariant %s", includeVariant)
+			return variantOption, err
+		}
+		found := false
+		for _, v := range values {
+			if v == kv[1] {
+				variantOption.IncludeVariantsMap[kv[0]] = append(variantOption.IncludeVariantsMap[kv[0]], kv[1])
+				found = true
+				break
+			}
+		}
+		if !found {
+			err = fmt.Errorf("invalid variant value from includeVariant %s", includeVariant)
+			return variantOption, err
+		}
+	}
+	return variantOption, nil
+}
+
 func (s *Server) parseComponentReportRequest(req *http.Request) (
 	baseRelease apitype.ComponentReportRequestReleaseOptions,
 	sampleRelease apitype.ComponentReportRequestReleaseOptions,
@@ -778,49 +827,11 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	testIDOption.Capability = req.URL.Query().Get("capability")
 	testIDOption.TestID = req.URL.Query().Get("testId")
 
-	variantOption.ColumnGroupBy = req.URL.Query().Get("columnGroupBy")
-	variantOption.ColumnGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.ColumnGroupBy)
+	variantOption, err = createVariantOptions(req, allJobVariants)
 	if err != nil {
 		return
 	}
-	variantOption.DBGroupBy = req.URL.Query().Get("dbGroupBy")
-	variantOption.DBGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.DBGroupBy)
-	if err != nil {
-		return
-	}
-	variantOption.RequestedVariants = map[string]string{}
-	// Only the dbGroupBy variants can be specifically requested
-	for _, variant := range variantOption.DBGroupByVariants.List() {
-		if value := req.URL.Query().Get(variant); value != "" {
-			variantOption.RequestedVariants[variant] = value
-		}
-	}
-	variantOption.IncludeVariants = req.URL.Query()["includeVariant"]
-	variantOption.IncludeVariantsMap = map[string][]string{}
-	for _, includeVariant := range variantOption.IncludeVariants {
-		kv := strings.Split(includeVariant, ":")
-		if len(kv) != 2 {
-			err = fmt.Errorf("invalid includeVariant %s", includeVariant)
-			return
-		}
-		values, ok := allJobVariants.Variants[kv[0]]
-		if !ok {
-			err = fmt.Errorf("invalid variant name from includeVariant %s", includeVariant)
-			return
-		}
-		found := false
-		for _, v := range values {
-			if v == kv[1] {
-				variantOption.IncludeVariantsMap[kv[0]] = append(variantOption.IncludeVariantsMap[kv[0]], kv[1])
-				found = true
-				break
-			}
-		}
-		if !found {
-			err = fmt.Errorf("invalid variant value from includeVariant %s", includeVariant)
-			return
-		}
-	}
+
 	advancedOption.Confidence = 95
 	confidenceStr := req.URL.Query().Get("confidence")
 	if confidenceStr != "" {
