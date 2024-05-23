@@ -8,7 +8,7 @@ echo "The sippy CI image: ${SIPPY_IMAGE}"
 
 # The GCS_CRED allows us to pull artifacts from GCS when importing prow jobs.
 # Redefine GCS_CRED to use your own.
-GCS_CRED="${GCS_CRED:=/var/run/sippy-ci-gcs-sa/gcs-sa}"
+GCS_CRED="${GCS_CRED:=/var/run/sippy-bigquery-job-importer/gcs-sa}"
 echo "The GCS cred is: ${GCS_CRED}"
 
 # If you're using Openshift, we use oc, if you're using plain Kubernetes,
@@ -190,7 +190,7 @@ spec:
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy load --init-database --loader prow --loader releases --log-level=debug --release 4.14 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
+          - /bin/sippy load --init-database --load-openshift-ci-bigquery    --log-level=debug --release 4.14 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
         env:
         - name: GCS_SA_JSON_PATH
           value: /tmp/secrets/gcs-cred
