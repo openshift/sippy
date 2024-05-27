@@ -38,6 +38,69 @@ const sourceOrder = [
   'EtcdLeadership',
 ]
 
+const combinedArray = [
+  ['AlertInfo', '#fada5e'],
+  ['AlertPending', '#fada5e'],
+  ['AlertWarning', '#ffa500'],
+  ['AlertCritical', '#d0312d'], // alerts
+  ['OperatorUnavailable', '#d0312d'],
+  ['OperatorDegraded', '#ffa500'],
+  ['OperatorProgressing', '#fada5e'], // operators
+  ['Update', '#1e7bd9'],
+  ['Drain', '#4294e6'],
+  ['Reboot', '#6aaef2'],
+  ['OperatingSystemUpdate', '#96cbff'],
+  ['NodeNotReady', '#fada5e'], // nodes
+  ['Passed', '#3cb043'],
+  ['Skipped', '#ceba76'],
+  ['Flaked', '#ffa500'],
+  ['Failed', '#d0312d'], // tests
+  ['PodCreated', '#96cbff'],
+  ['PodScheduled', '#1e7bd9'],
+  ['PodTerminating', '#ffa500'],
+  ['ContainerWait', '#ca8dfd'],
+  ['ContainerStart', '#9300ff'],
+  ['ContainerNotReady', '#fada5e'],
+  ['ContainerReady', '#3cb043'],
+  ['ContainerReadinessFailed', '#d0312d'],
+  ['ContainerReadinessErrored', '#d0312d'],
+  ['StartupProbeFailed', '#c90076'], // pods
+  ['CIClusterDisruption', '#96cbff'],
+  ['Disruption', '#d0312d'], // disruption
+  ['Degraded', '#b65049'],
+  ['Upgradeable', '#32b8b6'],
+  ['False', '#ffffff'],
+  ['Unknown', '#bbbbbb'],
+  ['PodLogInfo', '#96cbff'],
+  ['PodLogWarning', '#fada5e'],
+  ['PodLogError', '#d0312d'],
+  ['EtcdOther', '#d3d3de'],
+  ['EtcdLeaderFound', '#03fc62'],
+  ['EtcdLeaderLost', '#fc0303'],
+  ['EtcdLeaderElected', '#fada5e'],
+  ['EtcdLeaderMissing', '#8c5efa'],
+  ['GracefulShutdownInterval', '#6E6E6E'],
+  ['CloudMetric', '#6E6E6E'],
+]
+
+// While we target a fully dynamic UI that will render whatever origin records if display=true, grouped by Source,
+// some Sources/Sections/Groups require specific colors. Entries here are optional.
+// The function for each source takes the interval as an argument, and returns a key+color string the chart will then use.
+const intervalColorizers = {
+  KubeEvent: function (interval) {
+    if (interval.message.annotations['pathological'] === 'true') {
+      if (interval.message.annotations['interesting'] === 'true') {
+        return ['PathologicalKnown', '#0000ff']
+      } else {
+        return ['PathologicalNew', '#d0312d']
+      }
+    }
+    if (interval.message.annotations['interesting'] === 'true') {
+      return ['InterestingEvent', '#6E6E6E']
+    }
+  },
+}
+
 export default function ProwJobRun(props) {
   const history = useHistory()
 
@@ -45,6 +108,11 @@ export default function ProwJobRun(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [eventIntervals, setEventIntervals] = React.useState([])
   const [filteredIntervals, setFilteredIntervals] = React.useState([])
+
+  // Interval colors will hold the colors calculated by invoking intervalColorizers functions
+  // against each interval. Anything that matches will get added to this map and passed to the
+  // TimelineChart for display. Maps the interval color 'key' to a color string.
+  const [intervalColors, setIntervalColors] = React.useState({})
 
   // categories is the set of selected categories to display. It is controlled by a combination
   // of default props, the categories query param, and the buttons the user can modify with.
@@ -223,6 +291,48 @@ export default function ProwJobRun(props) {
     )
   }
 
+  function groupIntervals(selectedSources, filteredIntervals) {
+    let timelineGroups = []
+
+    // Separate sources into those that appear in our explicit ordering and those that don't.
+    // Any sources that do not appear in our order list will be added to the end.
+    let orderedSources = []
+    let otherSources = []
+
+    selectedSources.forEach((source) => {
+      if (sourceOrder.includes(source)) {
+        orderedSources.push(source)
+      } else {
+        otherSources.push(source)
+      }
+    })
+
+    // Sort orderedSources according to sourceOrder
+    orderedSources.sort(
+      (a, b) => sourceOrder.indexOf(a) - sourceOrder.indexOf(b)
+    )
+
+    let finalSourceOrder = orderedSources.concat(otherSources)
+
+    let intervalColors = {}
+
+    finalSourceOrder.forEach((source) => {
+      timelineGroups.push({ group: source, data: [] })
+      createTimelineData(
+        intervalColors,
+        source,
+        timelineGroups[timelineGroups.length - 1].data,
+        filteredIntervals,
+        source
+      )
+    })
+
+    console.log('final intervalColors: ' + JSON.stringify(intervalColors))
+    setIntervalColors(intervalColors)
+
+    return timelineGroups
+  }
+
   let chartData = groupIntervals(selectedSources, filteredIntervals)
 
   function handleCategoryClick(buttonValue) {
@@ -393,6 +503,9 @@ function filterIntervals(
 
   return _.filter(eventIntervals, function (eventInterval) {
     let shouldInclude = false
+    if (!selectedSources.includes(eventInterval.source)) {
+      return shouldInclude
+    }
     if (!overrideDisplayFlag && !eventInterval.display) {
       return shouldInclude
     }
@@ -439,40 +552,6 @@ function mutateIntervals(eventIntervals) {
       eventInterval.locator
     )
   })
-}
-
-function groupIntervals(selectedSources, filteredIntervals) {
-  let timelineGroups = []
-
-  // Separate sources into those that appear in our explicit ordering and those that don't.
-  // Any sources that do not appear in our order list will be added to the end.
-  let orderedSources = []
-  let otherSources = []
-
-  selectedSources.forEach((source) => {
-    if (sourceOrder.includes(source)) {
-      orderedSources.push(source)
-    } else {
-      otherSources.push(source)
-    }
-  })
-
-  // Sort orderedSources according to sourceOrder
-  orderedSources.sort((a, b) => sourceOrder.indexOf(a) - sourceOrder.indexOf(b))
-
-  let finalSourceOrder = orderedSources.concat(otherSources)
-
-  finalSourceOrder.forEach((source) => {
-    timelineGroups.push({ group: source, data: [] })
-    createTimelineData(
-      source,
-      timelineGroups[timelineGroups.length - 1].data,
-      filteredIntervals,
-      source
-    )
-  })
-
-  return timelineGroups
 }
 
 function getDurationString(durationSeconds) {
@@ -581,6 +660,7 @@ function sortKeys(keys) {
 }
 
 function createTimelineData(
+  intervalColors,
   timelineVal,
   timelineData,
   filteredEventIntervals,
@@ -606,6 +686,15 @@ function createTimelineData(
     if (item.source !== source) {
       return
     }
+
+    if (intervalColorizers[item.source]) {
+      let r = intervalColorizers[item.source](item)
+      if (r) {
+        console.log('got result: ' + r)
+        intervalColors[r[0]] = r[1]
+      }
+    }
+
     let startDate = new Date(item.from)
     if (!item.from) {
       startDate = earliest
@@ -614,11 +703,11 @@ function createTimelineData(
     if (!item.to) {
       endDate = latest
     }
-    let label = buildLocatorDisplayString(item.locator)
+    let label = item.displayLocator
     let sub = ''
     let val = timelineVal
     if (typeof val === 'function') {
-      ;[label, sub, val] = timelineVal(item)
+      ;[sub, val] = timelineVal(item)
     }
     let section = data[label]
     if (!section) {

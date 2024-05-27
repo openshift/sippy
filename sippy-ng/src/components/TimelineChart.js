@@ -12,6 +12,12 @@ export default function TimelineChart({
   segmentTooltipContentFunc,
 }) {
   const ref = useRef(null)
+
+  // split the intervalColors, a map of interval color keys to color strings. The timeline charts wants
+  // these in two positional arrays.
+  let domain = []
+  let range = []
+
   const ordinalScale = d3scale
     .scaleOrdinal()
     .domain([
@@ -150,4 +156,5 @@ TimelineChart.propTypes = {
   eventIntervals: PropTypes.array,
   segmentClickedFunc: PropTypes.func,
   segmentTooltipContentFunc: PropTypes.func,
+  intervalColors: PropTypes.object,
 }
