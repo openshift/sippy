@@ -16,11 +16,22 @@ trap cleanup EXIT
 # When running locally, the user has to define SIPPY_IMAGE.
 echo "The sippy CI image: ${SIPPY_IMAGE}"
 
+# The GCS_CRED allows us to pull artifacts from GCS when importing prow jobs.
+# Redefine GCS_CRED to use your own.
+GCS_CRED="${GCS_CRED:=/var/run/sippy-bigquery-job-importer/gcs-sa}"
+echo "The GCS cred is: ${GCS_CRED}"
+
 # If you're using Openshift, we use oc, if you're using plain Kubernetes,
 # we use kubectl.
 #
 KUBECTL_CMD="${KUBECTL_CMD:=oc}"
 echo "The kubectl command is: ${KUBECTL_CMD}"
+
+# Get the gcs credentials out to the cluster-pool cluster.
+# These credentials are in vault and maintained by the TRT team (e.g. for updates and rotations).
+# See https://vault.ci.openshift.org/ui/vault/secrets/kv/show/selfservice/technical-release-team/sippy-ci-gcs-read-sa
+#
+${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred=$GCS_CRED -n sippy-e2e
 
 # Launch the sippy api server pod.
 cat << END | ${KUBECTL_CMD} apply -f -
@@ -51,7 +62,7 @@ spec:
       initialDelaySeconds: 10
     resources:
       limits:
-        memory: 2G
+        memory: 2Gi
     terminationMessagePath: /dev/termination-log
     terminationMessagePolicy: File
     command:
@@ -63,12 +74,25 @@ spec:
     - --listen-metrics
     -  ":12112"
     - --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres
+    - --google-service-account-credential-file
+    - /tmp/secrets/gcs-cred
     - --log-level
     - debug
     - --mode
     - ocp
+    env:
+    - name: GCS_SA_JSON_PATH
+      value: /tmp/secrets/gcs-cred
+    volumeMounts:
+    - mountPath: /tmp/secrets
+      name: gcs-cred
+      readOnly: true
   imagePullSecrets:
   - name: regcred
+  volumes:
+    - name: gcs-cred
+      secret:
+        secretName: gcs-cred
   dnsPolicy: ClusterFirst
   restartPolicy: Always
   schedulerName: default-scheduler
