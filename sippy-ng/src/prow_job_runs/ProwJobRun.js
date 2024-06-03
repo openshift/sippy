@@ -112,7 +112,6 @@ export default function ProwJobRun(props) {
   // Interval colors will hold the colors calculated by invoking intervalColorizers functions
   // against each interval. Anything that matches will get added to this map and passed to the
   // TimelineChart for display. Maps the interval color 'key' to a color string.
-  const [intervalColors, setIntervalColors] = React.useState({})
 
   // categories is the set of selected categories to display. It is controlled by a combination
   // of default props, the categories query param, and the buttons the user can modify with.
@@ -328,7 +327,6 @@ export default function ProwJobRun(props) {
     })
 
     console.log('final intervalColors: ' + JSON.stringify(intervalColors))
-    setIntervalColors(intervalColors)
 
     return timelineGroups
   }
