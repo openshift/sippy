@@ -290,6 +290,8 @@ export default function ProwJobRun(props) {
     )
   }
 
+  let intervalColors = {}
+
   function groupIntervals(selectedSources, filteredIntervals) {
     let timelineGroups = []
 
@@ -312,8 +314,6 @@ export default function ProwJobRun(props) {
     )
 
     let finalSourceOrder = orderedSources.concat(otherSources)
-
-    let intervalColors = {}
 
     finalSourceOrder.forEach((source) => {
       timelineGroups.push({ group: source, data: [] })
@@ -449,6 +449,7 @@ export default function ProwJobRun(props) {
         <TimelineChart
           data={chartData}
           eventIntervals={filteredIntervals}
+          intervalColors={intervalColors}
           segmentClickedFunc={handleSegmentClicked}
           segmentTooltipContentFunc={segmentTooltipFunc}
         />
