@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# test
 set -x
 
 function cleanup() {
