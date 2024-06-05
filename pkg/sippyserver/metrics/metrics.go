@@ -135,7 +135,9 @@ func getReleaseStatus(releases []query.Release, release string) string {
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time, cacheOptions cache.RequestOptions) error {
+func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string,
+	variantManager testidentification.VariantManager, reportEnd time.Time,
+	cacheOptions cache.RequestOptions, maintainRegressionTables bool) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := api.GetReleases(dbc, bqc)
@@ -206,7 +208,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 
 	// BigQuery metrics
 	if bqc != nil {
-		if err := refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions); err != nil {
+		if err := refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions, maintainRegressionTables); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
 
@@ -220,7 +222,8 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 	return nil
 }
 
-func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucket string, cacheOptions cache.RequestOptions) error {
+func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucket string,
+	cacheOptions cache.RequestOptions, maintainRegressionTables bool) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return nil
@@ -361,9 +364,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	}
 
 	// Maintain the test regressions table for anything new or now no longer appearing:
-	// TODO: do we need to protect this somehow so it doesn't run on multiple developer machines? They should all
-	// be trying to apply the same updates resulting just in more rapid feedback in the table.
-	regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client))
+	regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client), !maintainRegressionTables)
 	err = regressionTracker.SyncComponentReport(sampleRelease.Release, &report)
 	if err != nil {
 		return errors.Wrap(err, "regression tracker reported an error")
