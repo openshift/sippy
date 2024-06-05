@@ -151,15 +151,17 @@ func (bq *BigQueryRegressionStore) updateClosed(regressionID, closed string) err
 	return err
 }
 
-func NewRegressionTracker(backend RegressionStore) *RegressionTracker {
+func NewRegressionTracker(backend RegressionStore, dryRun bool) *RegressionTracker {
 	return &RegressionTracker{
 		backend: backend,
+		dryRun:  dryRun,
 	}
 }
 
 // RegressionTracker is the primary object for managing regression tracking logic.
 type RegressionTracker struct {
 	backend RegressionStore
+	dryRun  bool
 }
 
 func (rt *RegressionTracker) SyncComponentReport(release string, report *api.ComponentReport) error {
@@ -167,7 +169,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 	if err != nil {
 		return err
 	}
-	rLog := log.WithField("func", "SyncComponentReport")
+	rLog := log.WithField("func", "SyncComponentReport").WithField("dryRun", rt.dryRun)
 	rLog.Infof("loaded %d regressions from db", len(regressions))
 
 	// All regressions, both triaged and not:
@@ -191,12 +193,14 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 				// if the regression returned has a closed date, we found a recently closed
 				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
 				// in / out of the report depending on the data available in the sample/basis.
-				err := rt.backend.ReOpenRegression(openReg.RegressionID)
-				if err != nil {
-					rLog.WithError(err).Errorf("error re-opening regression: %v", openReg)
-					return errors.Wrapf(err, "error re-opening regression: %v", openReg)
+				rLog.Infof("re-opening existing regression: %v", openReg)
+				if !rt.dryRun {
+					err := rt.backend.ReOpenRegression(openReg.RegressionID)
+					if err != nil {
+						rLog.WithError(err).Errorf("error re-opening regression: %v", openReg)
+						return errors.Wrapf(err, "error re-opening regression: %v", openReg)
+					}
 				}
-				rLog.Infof("re-opened existing regression: %+v", openReg)
 			} else {
 				rLog.WithFields(log.Fields{
 					"test": regTest.TestName,
@@ -205,13 +209,16 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 			}
 			matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
 		} else {
-			// Open a new regression:
-			newReg, err := rt.backend.OpenRegression(release, regTest)
-			if err != nil {
-				rLog.WithError(err).Errorf("error opening new regression for: %v", regTest)
-				return errors.Wrapf(err, "error opening new regression: %v", regTest)
+			rLog.Infof("opening new regression: %v", regTest)
+			if !rt.dryRun {
+				// Open a new regression:
+				newReg, err := rt.backend.OpenRegression(release, regTest)
+				if err != nil {
+					rLog.WithError(err).Errorf("error opening new regression for: %v", regTest)
+					return errors.Wrapf(err, "error opening new regression: %v", regTest)
+				}
+				rLog.Infof("new regression opened with id: %s", newReg.RegressionID)
 			}
-			rLog.Infof("opened new regression: %v", newReg)
 		}
 	}
 
@@ -228,10 +235,12 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 		// If we didn't match to an active test regression, and this record isn't already closed, close it.
 		if !matched && !regression.Closed.Valid {
 			rLog.Infof("found a regression no longer appearing in the report which should be closed: %v", regression)
-			err := rt.backend.CloseRegression(regression.RegressionID, now)
-			if err != nil {
-				rLog.WithError(err).Errorf("error closing regression: %v", regression)
-				return errors.Wrap(err, "error closing regression")
+			if !rt.dryRun {
+				err := rt.backend.CloseRegression(regression.RegressionID, now)
+				if err != nil {
+					rLog.WithError(err).Errorf("error closing regression: %v", regression)
+					return errors.Wrap(err, "error closing regression")
+				}
 			}
 		}
 
