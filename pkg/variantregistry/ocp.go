@@ -220,6 +220,10 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 				// amd64 as it's read from a single node.
 				jLog.Infof("variant mismatch: using %s from job name", k)
 				continue
+			case VariantTopology:
+				// Topology mismatches on Compact as the job cluster data reports ha.
+				jLog.Infof("variant mismatch: using %s from job name", k)
+				continue
 			default:
 				jLog.Infof("variant mismatch: using %s from job run variants file", k)
 				variants[k] = v
