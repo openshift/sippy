@@ -99,6 +99,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [
     includeVariantsCheckedItemsParam = [
       'Architecture:amd64',
+      'FeatureSet:default',
       'Installer:ipi',
       'Installer:upi',
       'Owner:eng',

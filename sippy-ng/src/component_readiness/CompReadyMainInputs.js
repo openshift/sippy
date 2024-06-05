@@ -52,7 +52,6 @@ export default function CompReadyMainInputs(props) {
   ])
 
   const varsContext = useContext(CompReadyVarsContext)
-  console.log(varsContext)
   return (
     <Fragment>
       <div className="cr-report-button">

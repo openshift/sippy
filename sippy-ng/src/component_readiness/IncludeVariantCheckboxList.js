@@ -5,20 +5,23 @@ import React, { useContext } from 'react'
 
 export default function IncludeVariantCheckBoxList(props) {
   const variantName = props.variantName
-  const setCheckedItems = (checkedItems) => {
-    varsContext.replaceIncludeVariantsCheckedItems(variantName, checkedItems)
-  }
   const varsContext = useContext(CompReadyVarsContext)
+  const [checkedItems, setCheckedItems] = React.useState(
+    variantName in varsContext.includeVariantsCheckedItems
+      ? varsContext.includeVariantsCheckedItems[variantName]
+      : []
+  )
+
+  const updateCheckedItems = (newCheckedItems) => {
+    varsContext.replaceIncludeVariantsCheckedItems(variantName, newCheckedItems)
+    setCheckedItems(newCheckedItems)
+  }
   return (
     <CheckBoxList
       headerName={'Include ' + variantName}
       displayList={varsContext.allJobVariants[variantName]}
-      checkedItems={
-        variantName in varsContext.includeVariantsCheckedItems
-          ? varsContext.includeVariantsCheckedItems[variantName]
-          : []
-      }
-      setCheckedItems={setCheckedItems}
+      checkedItems={checkedItems}
+      setCheckedItems={updateCheckedItems}
     />
   )
 }
