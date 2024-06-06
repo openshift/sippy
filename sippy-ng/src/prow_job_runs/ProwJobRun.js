@@ -47,16 +47,6 @@ const combinedArray = [
   ['AlertWarning', '#ffa500'],
   ['AlertCritical', '#d0312d'], // alerts
   ['NodeNotReady', '#fada5e'], // nodes
-  ['PodCreated', '#96cbff'],
-  ['PodScheduled', '#1e7bd9'],
-  ['PodTerminating', '#ffa500'],
-  ['ContainerWait', '#ca8dfd'],
-  ['ContainerStart', '#9300ff'],
-  ['ContainerNotReady', '#fada5e'],
-  ['ContainerReady', '#3cb043'],
-  ['ContainerReadinessFailed', '#d0312d'],
-  ['ContainerReadinessErrored', '#d0312d'],
-  ['StartupProbeFailed', '#c90076'], // pods
   ['CIClusterDisruption', '#96cbff'],
   ['Degraded', '#b65049'],
   ['Upgradeable', '#32b8b6'],
@@ -143,6 +133,31 @@ const intervalColorizers = {
   },
   E2EFlaked: function (interval) {
     return ['Flaked', '#ffa500']
+  },
+  PodState: function (interval) {
+    switch (interval.message.reason) {
+      case 'Created':
+        return ['PodCreated', '#96cbff']
+      case 'Scheduled':
+        return ['PodScheduled', '#1e7bd9']
+      case 'GracefulDelete':
+        return ['PodTerminating', '#ffa500']
+      case 'ContainerStart':
+        return ['ContainerStart', '#9300ff']
+      case 'ContainerWait':
+        return ['ContainerWait', '#ca8dfd']
+      // ContainerExit was not present in original code?
+      case 'Ready':
+        return ['ContainerReady', '#3cb043']
+      case 'NotReady':
+        return ['ContainerNotReady', '#fada5e']
+      case 'ReadinessFailed':
+        return ['ContainerReadinessFailed', '#d0312d']
+      case 'ReadinessErrored':
+        return ['ContainerReadinessErrored', '#d0312d']
+      case 'StartupProbeFailed':
+        return ['StartupProbeFailed', '#c90076']
+    }
   },
   //['Skipped', '#ceba76'],
 }
