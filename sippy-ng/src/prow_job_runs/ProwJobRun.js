@@ -44,10 +44,6 @@ const combinedArray = [
   ['AlertWarning', '#ffa500'],
   ['AlertCritical', '#d0312d'], // alerts
   ['NodeNotReady', '#fada5e'], // nodes
-  ['Passed', '#3cb043'],
-  ['Skipped', '#ceba76'],
-  ['Flaked', '#ffa500'],
-  ['Failed', '#d0312d'], // tests
   ['PodCreated', '#96cbff'],
   ['PodScheduled', '#1e7bd9'],
   ['PodTerminating', '#ffa500'],
@@ -136,6 +132,16 @@ const intervalColorizers = {
   APIServerGracefulShutdown: function (interval) {
     return ['GracefulShutdownInterval', '#6E6E6E']
   },
+  E2EPassed: function (interval) {
+    return ['Passed', '#3cb043']
+  },
+  E2EFailed: function (interval) {
+    return ['Failed', '#d0312d']
+  },
+  E2EFlaked: function (interval) {
+    return ['Flaked', '#ffa500']
+  },
+  //['Skipped', '#ceba76'],
 }
 
 export default function ProwJobRun(props) {
@@ -505,7 +511,7 @@ ProwJobRun.defaultProps = {
     'EtcdLeadership',
     'Alert',
     'Disruption',
-    'E2ETest',
+    'E2EFailed',
     'APIServerGracefulShutdown',
     'KubeEvent',
     'NodeState',
@@ -567,6 +573,8 @@ function mutateIntervals(eventIntervals) {
       eventInterval.locator.keys = {}
     }
 
+    // TODO: Should we split these into separate sources in origin?
+
     // Hack to split the OperatorSource intervals into "fake" sources of Progressing
     // Available and Degraded:
     if (eventInterval.source === 'OperatorState') {
@@ -578,6 +586,24 @@ function mutateIntervals(eventIntervals) {
         eventInterval.source = 'OperatorProgressing'
       } else if (eventInterval.message.annotations.condition === 'Degraded') {
         eventInterval.source = 'OperatorDegraded'
+      }
+    }
+
+    // Hack to split the E2ETest intervals into "fake" sources for passed / failed / flaked
+    if (eventInterval.source === 'E2ETest') {
+      switch (eventInterval.message.annotations.status) {
+        case 'Passed':
+          eventInterval.source = 'E2EPassed'
+          break
+        case 'Failed':
+          eventInterval.source = 'E2EFailed'
+          break
+        case 'Flaked':
+          eventInterval.source = 'E2EFlaked'
+          break
+        case 'Skipped':
+          eventInterval.source = 'E2ESkipped'
+          break
       }
     }
 
