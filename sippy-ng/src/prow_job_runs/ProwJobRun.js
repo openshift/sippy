@@ -43,13 +43,6 @@ const combinedArray = [
   ['AlertPending', '#fada5e'],
   ['AlertWarning', '#ffa500'],
   ['AlertCritical', '#d0312d'], // alerts
-  ['OperatorUnavailable', '#d0312d'],
-  ['OperatorDegraded', '#ffa500'],
-  ['OperatorProgressing', '#fada5e'], // operators
-  ['Update', '#1e7bd9'],
-  ['Drain', '#4294e6'],
-  ['Reboot', '#6aaef2'],
-  ['OperatingSystemUpdate', '#96cbff'],
   ['NodeNotReady', '#fada5e'], // nodes
   ['Passed', '#3cb043'],
   ['Skipped', '#ceba76'],
@@ -66,7 +59,6 @@ const combinedArray = [
   ['ContainerReadinessErrored', '#d0312d'],
   ['StartupProbeFailed', '#c90076'], // pods
   ['CIClusterDisruption', '#96cbff'],
-  ['Disruption', '#d0312d'], // disruption
   ['Degraded', '#b65049'],
   ['Upgradeable', '#32b8b6'],
   ['False', '#ffffff'],
@@ -79,7 +71,6 @@ const combinedArray = [
   ['EtcdLeaderLost', '#fc0303'],
   ['EtcdLeaderElected', '#fada5e'],
   ['EtcdLeaderMissing', '#8c5efa'],
-  ['GracefulShutdownInterval', '#6E6E6E'],
   ['CloudMetric', '#6E6E6E'],
 ]
 
@@ -98,6 +89,52 @@ const intervalColorizers = {
     if (interval.message.annotations['interesting'] === 'true') {
       return ['InterestingEvent', '#6E6E6E']
     }
+  },
+  OperatorAvailable: function (interval) {
+    return ['OperatorUnavailable', '#d0312d']
+  },
+  OperatorDegraded: function (interval) {
+    return ['OperatorDegraded', '#ffa500']
+  },
+  OperatorProgressing: function (interval) {
+    return ['OperatorProgressing', '#fada5e']
+  },
+  NodeState: function (interval) {
+    switch (interval.message.annotations.phase) {
+      case 'Update':
+        return ['Update', '#1e7bd9']
+      case 'Drain':
+        return ['Drain', '#4294e6']
+      case 'OperatingSystemUpdate':
+        return ['OperatingSystemUpdate', '#96cbff']
+      case 'Reboot':
+        return ['Reboot', '#6aaef2']
+    }
+    if (interval.message.reason === 'NotReady') {
+      return ['Black', '#000000']
+    }
+  },
+  Disruption: function (interval) {
+    return ['Disruption', '#d0312d']
+  },
+  EtcdLog: function (interval) {
+    switch (interval.level) {
+      case 'Warning':
+        return ['EtcdLogWarning', '#fada5e']
+      case 'Error':
+        return ['EtcdLogError', '#d0312d']
+    }
+  },
+  KubeletLog: function (interval) {
+    switch (interval.level) {
+      case 'Warning':
+        return ['KubeletLogWarning', '#fada5e']
+      case 'Error':
+        return ['KubeletLogError', '#d0312d']
+    }
+  },
+  APIServerGracefulShutdown: function (interval) {
+    return ['GracefulShutdownInterval', '#6E6E6E']
   },
 }
 
@@ -319,7 +356,6 @@ export default function ProwJobRun(props) {
       timelineGroups.push({ group: source, data: [] })
       createTimelineData(
         intervalColors,
-        source,
         timelineGroups[timelineGroups.length - 1].data,
         filteredIntervals,
         source
@@ -660,7 +696,6 @@ function sortKeys(keys) {
 
 function createTimelineData(
   intervalColors,
-  timelineVal,
   timelineData,
   filteredEventIntervals,
   source
@@ -686,11 +721,13 @@ function createTimelineData(
       return
     }
 
+    let val = source
     if (intervalColorizers[item.source]) {
       let r = intervalColorizers[item.source](item)
       if (r) {
-        console.log('got result: ' + r)
+        console.log('for ' + item.source + ' got result: ' + r)
         intervalColors[r[0]] = r[1]
+        val = r[0]
       }
     }
 
@@ -704,10 +741,6 @@ function createTimelineData(
     }
     let label = item.displayLocator
     let sub = ''
-    let val = timelineVal
-    if (typeof val === 'function') {
-      ;[sub, val] = timelineVal(item)
-    }
     let section = data[label]
     if (!section) {
       section = {}
