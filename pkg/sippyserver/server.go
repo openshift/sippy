@@ -739,32 +739,8 @@ func createVariantOptions(req *http.Request, allJobVariants apitype.JobVariants)
 		}
 	}
 	variantOption.IncludeVariants = req.URL.Query()["includeVariant"]
-	variantOption.IncludeVariantsMap = map[string][]string{}
-	for _, includeVariant := range variantOption.IncludeVariants {
-		kv := strings.Split(includeVariant, ":")
-		if len(kv) != 2 {
-			err = fmt.Errorf("invalid includeVariant %s", includeVariant)
-			return variantOption, err
-		}
-		values, ok := allJobVariants.Variants[kv[0]]
-		if !ok {
-			err = fmt.Errorf("invalid variant name from includeVariant %s", includeVariant)
-			return variantOption, err
-		}
-		found := false
-		for _, v := range values {
-			if v == kv[1] {
-				variantOption.IncludeVariantsMap[kv[0]] = append(variantOption.IncludeVariantsMap[kv[0]], kv[1])
-				found = true
-				break
-			}
-		}
-		if !found {
-			err = fmt.Errorf("invalid variant value from includeVariant %s", includeVariant)
-			return variantOption, err
-		}
-	}
-	return variantOption, nil
+	variantOption.IncludeVariantsMap, err = api.IncludeVariantsToMap(allJobVariants, variantOption.IncludeVariants)
+	return variantOption, err
 }
 
 func (s *Server) parseComponentReportRequest(req *http.Request) (

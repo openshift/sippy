@@ -144,3 +144,33 @@ func VariantsStringToSet(allJobVariants apitype.JobVariants, variantsString stri
 	}
 	return variantSet, nil
 }
+
+func IncludeVariantsToMap(allJobVariants apitype.JobVariants, includeVariants []string) (map[string][]string, error) {
+	includeVariantsMap := map[string][]string{}
+	var err error
+	for _, includeVariant := range includeVariants {
+		kv := strings.Split(includeVariant, ":")
+		if len(kv) != 2 {
+			err = fmt.Errorf("invalid includeVariant %s", includeVariant)
+			return includeVariantsMap, err
+		}
+		values, ok := allJobVariants.Variants[kv[0]]
+		if !ok {
+			err = fmt.Errorf("invalid variant name from includeVariant %s", includeVariant)
+			return includeVariantsMap, err
+		}
+		found := false
+		for _, v := range values {
+			if v == kv[1] {
+				includeVariantsMap[kv[0]] = append(includeVariantsMap[kv[0]], kv[1])
+				found = true
+				break
+			}
+		}
+		if !found {
+			err = fmt.Errorf("invalid variant value from includeVariant %s", includeVariant)
+			return includeVariantsMap, err
+		}
+	}
+	return includeVariantsMap, err
+}

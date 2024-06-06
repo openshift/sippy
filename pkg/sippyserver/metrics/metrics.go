@@ -309,12 +309,18 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	if err != nil {
 		return err
 	}
+	includeVariantsMap, err := api.IncludeVariantsToMap(allJobVariants, api.DefaultIncludeVariants)
+	if err != nil {
+		return err
+	}
 	variantOption := apitype.ComponentReportRequestVariantOptions{
 		ColumnGroupBy:         api.DefaultColumnGroupBy,
 		ColumnGroupByVariants: columnGroupByVariants,
 		DBGroupBy:             api.DefaultDBGroupBy,
 		DBGroupByVariants:     dbGroupByVariants,
 		RequestedVariants:     map[string]string{},
+		IncludeVariants:       api.DefaultIncludeVariants,
+		IncludeVariantsMap:    includeVariantsMap,
 	}
 	advancedOption := apitype.ComponentReportRequestAdvancedOptions{
 		MinimumFailure:   api.DefaultMinimumFailure,
