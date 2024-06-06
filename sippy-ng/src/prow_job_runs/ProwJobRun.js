@@ -41,32 +41,37 @@ const sourceOrder = [
 // These Sources should be sorted on their locator to group lines together by node, pod, etc.
 const sortOnLocatorSources = ['NodeState']
 
-const combinedArray = [
-  ['AlertInfo', '#fada5e'],
-  ['AlertPending', '#fada5e'],
-  ['AlertWarning', '#ffa500'],
-  ['AlertCritical', '#d0312d'], // alerts
-  ['NodeNotReady', '#fada5e'], // nodes
-  ['CIClusterDisruption', '#96cbff'],
-  ['Degraded', '#b65049'],
-  ['Upgradeable', '#32b8b6'],
-  ['False', '#ffffff'],
-  ['Unknown', '#bbbbbb'],
-  ['PodLogInfo', '#96cbff'],
-  ['PodLogWarning', '#fada5e'],
-  ['PodLogError', '#d0312d'],
-  ['EtcdOther', '#d3d3de'],
-  ['EtcdLeaderFound', '#03fc62'],
-  ['EtcdLeaderLost', '#fc0303'],
-  ['EtcdLeaderElected', '#fada5e'],
-  ['EtcdLeaderMissing', '#8c5efa'],
-  ['CloudMetric', '#6E6E6E'],
-]
-
 // While we target a fully dynamic UI that will render whatever origin records if display=true, grouped by Source,
 // some Sources/Sections/Groups require specific colors. Entries here are optional.
 // The function for each source takes the interval as an argument, and returns a key+color string the chart will then use.
 const intervalColorizers = {
+  EtcdLeadership: function (interval) {
+    switch (interval.message.reason) {
+      case 'LeaderFound':
+        return ['EtcdLeaderFound', '#03fc62']
+      case 'LeaderLost':
+        return ['EtcdLeaderLost', '#fc0303']
+      case 'LeaderElected':
+        return ['EtcdLeaderElected', '#fada5e']
+      case 'LeaderMissing':
+        return ['EtcdLeaderMissing', '#8c5efa']
+      default:
+        return ['EtcdOther', '#d3d3de']
+    }
+  },
+  Alert: function (interval) {
+    if (interval.message.annotations.alertstate === 'pending') {
+      return ['AlertPending', '#fada5e']
+    }
+    switch (interval.message.annotations.severity) {
+      case 'info':
+        return ['AlertInfo', '#fada5e']
+      case 'warning':
+        return ['AlertWarning', '#ffa500']
+      case 'critical':
+        return ['AlertCritical', '#d0312d']
+    }
+  },
   KubeEvent: function (interval) {
     if (interval.message.annotations['pathological'] === 'true') {
       if (interval.message.annotations['interesting'] === 'true') {
@@ -104,6 +109,12 @@ const intervalColorizers = {
     }
   },
   Disruption: function (interval) {
+    let ciClusterDisruption = item.message.humanMessage.indexOf(
+      'likely a problem in cluster running tests'
+    )
+    if (ciClusterDisruption !== -1) {
+      return ['CIClusterDisruption', '#96cbff']
+    }
     return ['Disruption', '#d0312d']
   },
   EtcdLog: function (interval) {
@@ -159,7 +170,6 @@ const intervalColorizers = {
         return ['StartupProbeFailed', '#c90076']
     }
   },
-  //['Skipped', '#ceba76'],
 }
 
 export default function ProwJobRun(props) {
