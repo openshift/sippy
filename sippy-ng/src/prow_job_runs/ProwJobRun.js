@@ -38,6 +38,9 @@ const sourceOrder = [
   'EtcdLeadership',
 ]
 
+// These Sources should be sorted on their locator to group lines together by node, pod, etc.
+const sortOnLocatorSources = ['NodeState']
+
 const combinedArray = [
   ['AlertInfo', '#fada5e'],
   ['AlertPending', '#fada5e'],
@@ -366,6 +369,12 @@ export default function ProwJobRun(props) {
         filteredIntervals,
         source
       )
+
+      if (sortOnLocatorSources.includes(source)) {
+        timelineGroups[timelineGroups.length - 1].data.sort(function (e1, e2) {
+          return e1.label < e2.label ? -1 : e1.label > e2.label
+        })
+      }
     })
 
     console.log('final intervalColors: ' + JSON.stringify(intervalColors))
