@@ -9,12 +9,15 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/openshift/sippy/pkg/variantregistry"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/api/option"
+
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/dataloader/variantsyncer"
+	"github.com/openshift/sippy/pkg/variantregistry"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader"
@@ -170,7 +173,21 @@ func NewLoadCommand() *cobra.Command {
 					loaders = append(loaders, bugloader.New(dbc, bqc))
 				}
 
-				// Job Variants Loader
+				// Sync postgres variants from BigQuery -- directly updates all jobs immediately
+				// without us waiting to see the job again.
+				if l == "sync-variants" {
+					bqc, err := f.BigQueryFlags.GetBigQueryClient(context.Background(), nil, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+					if err != nil {
+						return errors.WithMessage(err, "could not get bigquery client")
+					}
+					variantsyncer, err := variantsyncer.New(dbc, bqc)
+					if err != nil {
+						return err
+					}
+					loaders = append(loaders, variantsyncer)
+				}
+
+				// Job Variants Loader from BigQuery
 				if l == "job-variants" {
 					variantsLoader, err := f.jobVariantsLoader(ctx)
 					if err != nil {
@@ -257,10 +274,9 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		return nil, err
 	}
 
-	var bigQueryClient *bigquery.Client
+	var bigQueryClient *bqcachedclient.Client
 	if f.LoadOpenShiftCIBigQuery {
-		bigQueryClient, err = bigquery.NewClient(ctx, f.BigQueryFlags.BigQueryProject,
-			option.WithCredentialsFile(f.GoogleCloudFlags.ServiceAccountCredentialFile))
+		bigQueryClient, err = bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, nil)
 		if err != nil {
 			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
 			return nil, err
@@ -285,10 +301,10 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		ctx,
 		dbc,
 		gcsClient,
-		bigQueryClient,
+		bigQueryClient.BQ,
 		f.GoogleCloudFlags.StorageBucket,
 		githubClient,
-		f.ModeFlags.GetVariantManager(),
+		f.ModeFlags.GetVariantManager(ctx, bigQueryClient),
 		f.ModeFlags.GetSyntheticTestManager(),
 		f.Releases,
 		sippyConfig,
