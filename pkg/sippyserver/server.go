@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -920,8 +921,10 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
+	gaDateMap := make(map[string]time.Time)
+	maps.Copy(gaDateMap, releaseloader.GADateMap)
 	response := apitype.Releases{
-		GADates: releaseloader.GADateMap,
+		GADates: gaDateMap,
 	}
 	releases, err := api.GetReleases(s.db, s.bigQueryClient)
 	if err != nil {
