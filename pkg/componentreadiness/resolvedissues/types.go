@@ -10,11 +10,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api"
 )
 
-// VariantVariant is a temporary holdover until we have full variant registry support
-// in component readiness.
-const VariantVariant = "Variant"
-
-var triageMatchVariants = buildTriageMatchVariants([]string{variantregistry.VariantArch, variantregistry.VariantNetwork, variantregistry.VariantPlatform, variantregistry.VariantUpgrade, VariantVariant})
+var triageMatchVariants = buildTriageMatchVariants([]string{variantregistry.VariantArch, variantregistry.VariantNetwork, variantregistry.VariantPlatform, variantregistry.VariantUpgrade})
 
 func buildTriageMatchVariants(in []string) sets.String {
 	if in == nil || len(in) < 1 {
@@ -30,23 +26,14 @@ func buildTriageMatchVariants(in []string) sets.String {
 	return set
 }
 func TransformVariant(variant api.ComponentReportColumnIdentification) []api.ComponentReportVariant {
-
-	return []api.ComponentReportVariant{{
-		Key:   variantregistry.VariantArch,
-		Value: variant.Arch,
-	}, {
-		Key:   variantregistry.VariantNetwork,
-		Value: variant.Network,
-	}, {
-		Key:   variantregistry.VariantPlatform,
-		Value: variant.Platform,
-	}, {
-		Key:   variantregistry.VariantUpgrade,
-		Value: variant.Upgrade,
-	}, {
-		Key:   VariantVariant,
-		Value: variant.Variant,
-	}}
+	triagedVariants := []api.ComponentReportVariant{}
+	for name, value := range variant.Variants {
+		// For now, we only use the defined match variants
+		if triageMatchVariants.Has(name) {
+			triagedVariants = append(triagedVariants, api.ComponentReportVariant{Key: name, Value: value})
+		}
+	}
+	return triagedVariants
 }
 func KeyForTriagedIssue(testID string, variants []api.ComponentReportVariant) TriagedIssueKey {
 

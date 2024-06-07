@@ -2,6 +2,7 @@ import {
   ArrayParam,
   BooleanParam,
   NumberParam,
+  ObjectParam,
   SafeStringParam,
   StringParam,
   useQueryParam,
@@ -10,7 +11,7 @@ import {
   dateEndFormat,
   dateFormat,
   formatLongDate,
-  getAPIUrl,
+  getJobVariantsUrl,
   gotFetchError,
 } from './CompReadyUtils'
 import { ReleasesContext } from '../App'
@@ -21,11 +22,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 export const CompReadyVarsContext = createContext()
 
 export const CompReadyVarsProvider = ({ children }) => {
-  const [excludeNetworksList, setExcludeNetworksList] = useState([])
-  const [excludeCloudsList, setExcludeCloudsList] = useState([])
-  const [excludeArchesList, setExcludeArchesList] = useState([])
-  const [excludeUpgradesList, setExcludeUpgradesList] = useState([])
-  const [excludeVariantsList, setExcludeVariantsList] = useState([])
+  const [allJobVariants, setAllJobVariants] = useState([])
   const [isLoaded, setIsLoaded] = useState(false)
   const [fetchError, setFetchError] = useState('')
 
@@ -96,48 +93,25 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleEndTimeParam,
   ] = useQueryParam('sampleEndTime', StringParam)
   const [
-    groupByCheckedItemsParam = ['cloud', 'arch', 'network'],
-    setGroupByCheckedItemsParam,
-  ] = useQueryParam('groupBy', ArrayParam)
+    columnGroupByCheckedItemsParam = ['Platform', 'Architecture', 'Network'],
+    setColumnGroupByCheckedItemsParam,
+  ] = useQueryParam('columnGroupBy', ArrayParam)
   const [
-    excludeCloudsCheckedItemsParam = [
-      'openstack',
-      'ibmcloud',
-      'libvirt',
-      'ovirt',
-      'unknown',
+    includeVariantsCheckedItemsParam = [
+      'Architecture:amd64',
+      'FeatureSet:default',
+      'Installer:ipi',
+      'Installer:upi',
+      'Owner:eng',
+      'Platform:aws',
+      'Platform:azure',
+      'Platform:gcp',
+      'Platform:metal',
+      'Platform:vsphere',
+      'Topology:ha',
     ],
-    setExcludeCloudsCheckedItemsParam,
-  ] = useQueryParam('excludeClouds', ArrayParam)
-  const [
-    excludeArchesCheckedItemsParam = [
-      'arm64',
-      'heterogeneous',
-      'ppc64le',
-      's390x',
-    ],
-    setExcludeArchesCheckedItemsParam,
-  ] = useQueryParam('excludeArches', ArrayParam)
-  const [
-    excludeNetworksCheckedItemsParam = [],
-    setExcludeNetworksCheckedItemsParam,
-  ] = useQueryParam('excludeNetworks', ArrayParam)
-  const [
-    excludeUpgradesCheckedItemsParam = [],
-    setExcludeUpgradesCheckedItemsParam,
-  ] = useQueryParam('excludeUpgrades', ArrayParam)
-  const [
-    excludeVariantsCheckedItemsParam = [
-      'hypershift',
-      'osd',
-      'microshift',
-      'techpreview',
-      'single-node',
-      'assisted',
-      'compact',
-    ],
-    setExcludeVariantsCheckedItemsParam,
-  ] = useQueryParam('excludeVariants', ArrayParam)
+    setIncludeVariantsCheckedItemsParam,
+  ] = useQueryParam('includeVariant', ArrayParam)
 
   const [confidenceParam = 95, setConfidenceParam] = useQueryParam(
     'confidence',
@@ -157,9 +131,8 @@ export const CompReadyVarsProvider = ({ children }) => {
 
   // Create the variables to be used for api calls; these are initilized to the
   // value of the variables that got their values from the URL.
-  const [groupByCheckedItems, setGroupByCheckedItems] = React.useState(
-    groupByCheckedItemsParam
-  )
+  const [columnGroupByCheckedItems, setColumnGroupByCheckedItems] =
+    React.useState(columnGroupByCheckedItemsParam)
 
   const [componentParam, setComponentParam] = useQueryParam(
     'component',
@@ -173,13 +146,6 @@ export const CompReadyVarsProvider = ({ children }) => {
     'capability',
     StringParam
   )
-
-  const [excludeCloudsCheckedItems, setExcludeCloudsCheckedItems] =
-    React.useState(excludeCloudsCheckedItemsParam)
-  const [excludeArchesCheckedItems, setExcludeArchesCheckedItems] =
-    React.useState(excludeArchesCheckedItemsParam)
-  const [excludeNetworksCheckedItems, setExcludeNetworksCheckedItems] =
-    React.useState(excludeNetworksCheckedItemsParam)
 
   const [baseRelease, setBaseRelease] = React.useState(baseReleaseParam)
 
@@ -209,11 +175,38 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleEndTime(formatLongDate(initialSampleEndTime, dateEndFormat))
   }
 
-  const [excludeUpgradesCheckedItems, setExcludeUpgradesCheckedItems] =
-    React.useState(excludeUpgradesCheckedItemsParam)
-  const [excludeVariantsCheckedItems, setExcludeVariantsCheckedItems] =
-    React.useState(excludeVariantsCheckedItemsParam)
+  const convertIncludeVariantsCheckedItemsToParam = (
+    includeVariantsCheckedItems
+  ) => {
+    let param = []
+    Object.keys(includeVariantsCheckedItems).forEach((variant) => {
+      includeVariantsCheckedItems[variant].forEach((value) => {
+        param.push(variant + ':' + value)
+      })
+    })
+    return param
+  }
 
+  const convertParamToIncludeVariantsCheckedItems = (includeVariantParam) => {
+    let includeVariants = {}
+    includeVariantParam.forEach((variant) => {
+      let kv = variant.split(':')
+      if (kv.length == 2) {
+        if (kv[0] in includeVariants) {
+          includeVariants[kv[0]].push(kv[1])
+        } else {
+          includeVariants[kv[0]] = [kv[1]]
+        }
+      }
+    })
+    return includeVariants
+  }
+  const includeVariantsCheckedItems = convertParamToIncludeVariantsCheckedItems(
+    includeVariantsCheckedItemsParam
+  )
+  const replaceIncludeVariantsCheckedItems = (variant, checkedItems) => {
+    includeVariantsCheckedItems[variant] = checkedItems
+  }
   const [confidence, setConfidence] = React.useState(confidenceParam)
   const [pity, setPity] = React.useState(pityParam)
   const [minFail, setMinFail] = React.useState(minFailParam)
@@ -240,6 +233,18 @@ export const CompReadyVarsProvider = ({ children }) => {
     setCapability(capabilityParam)
   }
 
+  // dbGroupByVariants defines what variants are used for GroupBy in DB query
+  const dbGroupByVariants = [
+    'Platform',
+    'Architecture',
+    'Network',
+    'Topology',
+    'FeatureSet',
+    'Upgrade',
+    'Suite',
+    'Installer',
+  ]
+
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
   const handleGenerateReport = (event) => {
@@ -250,12 +255,10 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleReleaseParam(sampleRelease)
     setSampleStartTimeParam(formatLongDate(sampleStartTime, dateFormat))
     setSampleEndTimeParam(formatLongDate(sampleEndTime, dateEndFormat))
-    setGroupByCheckedItemsParam(groupByCheckedItems)
-    setExcludeCloudsCheckedItemsParam(excludeCloudsCheckedItems)
-    setExcludeArchesCheckedItemsParam(excludeArchesCheckedItems)
-    setExcludeNetworksCheckedItemsParam(excludeNetworksCheckedItems)
-    setExcludeUpgradesCheckedItemsParam(excludeUpgradesCheckedItems)
-    setExcludeVariantsCheckedItemsParam(excludeVariantsCheckedItems)
+    setColumnGroupByCheckedItemsParam(columnGroupByCheckedItems)
+    setIncludeVariantsCheckedItemsParam(
+      convertIncludeVariantsCheckedItemsToParam(includeVariantsCheckedItems)
+    )
     setConfidenceParam(confidence)
     setPityParam(pity)
     setMinFailParam(minFail)
@@ -267,7 +270,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    const apiCallStr = getAPIUrl() + '/variants'
+    const apiCallStr = getJobVariantsUrl()
     fetch(apiCallStr)
       .then((response) => response.json())
       .then((data) => {
@@ -277,11 +280,7 @@ export const CompReadyVarsProvider = ({ children }) => {
             : 'No error message'
           throw new Error(`Return code = ${data.code} (${errorMessage})`)
         }
-        setExcludeCloudsList(data.platform)
-        setExcludeArchesList(data.arch)
-        setExcludeNetworksList(data.network)
-        setExcludeUpgradesList(data.upgrade)
-        setExcludeVariantsList(data.variant)
+        setAllJobVariants(data.variants)
         setIsLoaded(true)
       })
       .catch((error) => {
@@ -307,26 +306,11 @@ export const CompReadyVarsProvider = ({ children }) => {
     const items = environmentStr.split(' ')
     const params = {}
     items.forEach((item) => {
-      if (excludeCloudsList.includes(item)) {
-        params.platform = item
-      } else if (excludeArchesList.includes(item)) {
-        params.arch = item
-      } else if (excludeNetworksList.includes(item)) {
-        params.network = item
-      } else if (excludeUpgradesList.includes(item)) {
-        params.upgrade = item
-      } else {
-        const variants = item.split(',')
-        let valid = variants.some((variant) => {
-          if (excludeVariantsList.includes(variant)) {
-            params.variant = item
-            return true
-          }
-        })
-        if (!valid) {
-          console.log(`Warning: Item '${item}' not found in lists`)
+      Object.entries(allJobVariants).forEach(([variantName, variantValues]) => {
+        if (variantValues.includes(item)) {
+          params[variantName] = item
         }
-      }
+      })
     })
     const paramStrings = Object.entries(params).map(
       ([key, value]) => `${key}=${value}`
@@ -363,11 +347,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   return (
     <CompReadyVarsContext.Provider
       value={{
-        excludeNetworksList,
-        excludeCloudsList,
-        excludeArchesList,
-        excludeUpgradesList,
-        excludeVariantsList,
+        allJobVariants,
         expandEnvironment,
         baseRelease,
         setBaseReleaseWithDates,
@@ -381,18 +361,11 @@ export const CompReadyVarsProvider = ({ children }) => {
         setSampleStartTime,
         sampleEndTime,
         setSampleEndTime,
-        groupByCheckedItems,
-        setGroupByCheckedItems,
-        excludeUpgradesCheckedItems,
-        setExcludeUpgradesCheckedItems,
-        excludeVariantsCheckedItems,
-        setExcludeVariantsCheckedItems,
-        excludeCloudsCheckedItems,
-        setExcludeCloudsCheckedItems,
-        excludeArchesCheckedItems,
-        setExcludeArchesCheckedItems,
-        excludeNetworksCheckedItems,
-        setExcludeNetworksCheckedItems,
+        columnGroupByCheckedItems,
+        setColumnGroupByCheckedItems,
+        includeVariantsCheckedItems,
+        dbGroupByVariants,
+        replaceIncludeVariantsCheckedItems,
         confidence,
         setConfidence,
         pity,

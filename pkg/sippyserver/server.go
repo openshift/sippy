@@ -651,7 +651,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
+	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -668,7 +668,6 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		sampleRelease,
 		testIDOption,
 		variantOption,
-		excludeOption,
 		advancedOption,
 		cacheOption,
 	)
@@ -687,7 +686,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 }
 
 func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, excludeOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
+	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -703,7 +702,6 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		sampleRelease,
 		testIDOption,
 		variantOption,
-		excludeOption,
 		advancedOption,
 		cacheOption)
 	if len(errs) > 0 {
@@ -720,18 +718,48 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
+func createVariantOptions(req *http.Request, allJobVariants apitype.JobVariants) (apitype.ComponentReportRequestVariantOptions, error) {
+	var err error
+	variantOption := apitype.ComponentReportRequestVariantOptions{}
+	variantOption.ColumnGroupBy = req.URL.Query().Get("columnGroupBy")
+	variantOption.ColumnGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.ColumnGroupBy)
+	if err != nil {
+		return variantOption, err
+	}
+	variantOption.DBGroupBy = req.URL.Query().Get("dbGroupBy")
+	variantOption.DBGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.DBGroupBy)
+	if err != nil {
+		return variantOption, err
+	}
+	variantOption.RequestedVariants = map[string]string{}
+	// Only the dbGroupBy variants can be specifically requested
+	for _, variant := range variantOption.DBGroupByVariants.List() {
+		if value := req.URL.Query().Get(variant); value != "" {
+			variantOption.RequestedVariants[variant] = value
+		}
+	}
+	variantOption.IncludeVariants = req.URL.Query()["includeVariant"]
+	variantOption.IncludeVariantsMap, err = api.IncludeVariantsToMap(allJobVariants, variantOption.IncludeVariants)
+	return variantOption, err
+}
+
 func (s *Server) parseComponentReportRequest(req *http.Request) (
 	baseRelease apitype.ComponentReportRequestReleaseOptions,
 	sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
 	variantOption apitype.ComponentReportRequestVariantOptions,
-	excludeOption apitype.ComponentReportRequestExcludeOptions,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
 	cacheOption cache.RequestOptions,
 	err error) {
 
 	if s.bigQueryClient == nil {
 		err = fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
+		return
+	}
+
+	allJobVariants, errs := api.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	if len(errs) > 0 {
+		err = fmt.Errorf("failed to get variants from bigquery")
 		return
 	}
 	baseRelease.Release = req.URL.Query().Get("baseRelease")
@@ -775,18 +803,10 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 	testIDOption.Capability = req.URL.Query().Get("capability")
 	testIDOption.TestID = req.URL.Query().Get("testId")
 
-	variantOption.GroupBy = req.URL.Query().Get("groupBy")
-	variantOption.Platform = req.URL.Query().Get("platform")
-	variantOption.Upgrade = req.URL.Query().Get("upgrade")
-	variantOption.Arch = req.URL.Query().Get("arch")
-	variantOption.Network = req.URL.Query().Get("network")
-	variantOption.Variant = req.URL.Query().Get("variant")
-
-	excludeOption.ExcludePlatforms = req.URL.Query().Get("excludeClouds")
-	excludeOption.ExcludeArches = req.URL.Query().Get("excludeArches")
-	excludeOption.ExcludeNetworks = req.URL.Query().Get("excludeNetworks")
-	excludeOption.ExcludeUpgrades = req.URL.Query().Get("excludeUpgrades")
-	excludeOption.ExcludeVariants = req.URL.Query().Get("excludeVariants")
+	variantOption, err = createVariantOptions(req, allJobVariants)
+	if err != nil {
+		return
+	}
 
 	advancedOption.Confidence = 95
 	confidenceStr := req.URL.Query().Get("confidence")
