@@ -109,7 +109,7 @@ const intervalColorizers = {
     }
   },
   Disruption: function (interval) {
-    let ciClusterDisruption = item.message.humanMessage.indexOf(
+    let ciClusterDisruption = interval.message.humanMessage.indexOf(
       'likely a problem in cluster running tests'
     )
     if (ciClusterDisruption !== -1) {
