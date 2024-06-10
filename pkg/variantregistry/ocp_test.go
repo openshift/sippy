@@ -5,12 +5,10 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 func TestVariantSyncer(t *testing.T) {
-	variantSyncer := OCPVariantLoader{VariantManager: testidentification.NewOpenshiftVariantManager()}
+	variantSyncer := OCPVariantLoader{}
 	tests := []struct {
 		job          string
 		variantsFile map[string]string
