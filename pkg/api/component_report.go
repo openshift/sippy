@@ -377,6 +377,8 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (apitype.Com
 	return componentJobRunTestReportStatus, nil
 }
 
+// getCommonJobRunTestStatusQuery returns the report for a specific test + variant combo, including job run data.
+// This is for the bottom level most specific pages in component readiness.
 func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
 	joinVariants := ""
 	for v := range allJobVariants.Variants {
@@ -570,7 +572,9 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 	return apitype.ComponentJobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
-func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
+// TODO: prSample
+// getCommonTestStatusQuery returns the common query for the higher level summary component summary.
+func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apitype.JobVariants, prSample bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
 	// See fetchTestStatus for where we dynamically handle these columns.
@@ -578,7 +582,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 	joinVariants := ""
 	groupByVariants := ""
 	for v := range allJobVariants.Variants {
-		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
 	for _, v := range c.DBGroupByVariants.List() {
@@ -616,8 +620,9 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 						%s
 						cm.id `, groupByVariants)
 
-	queryString += `
-					WHERE cm.staff_approved_obsolete = false AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)`
+	queryString += `WHERE cm.staff_approved_obsolete = false AND 
+						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%') 
+						AND NOT REGEXP_CONTAINS(variant_registry_job_name, @IgnoredJobs)`
 
 	commonParams := []bigquery.QueryParameter{
 		{
@@ -672,9 +677,9 @@ type baseQueryGenerator struct {
 	ComponentReportGenerator *componentReportGenerator
 }
 
-func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
-	groupByQuery string,
-	queryParameters []bigquery.QueryParameter) (map[string]apitype.ComponentTestStatus, []error) {
+// getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
+func (c *componentReportGenerator) getBaseQueryStatus(allJobVariants apitype.JobVariants) (map[string]apitype.ComponentTestStatus, []error) {
+	baseQuery, baseGrouping, baseParams := c.getCommonTestStatusQuery(allJobVariants, false)
 	generator := baseQueryGenerator{
 		client: c.client,
 		cacheOption: cache.RequestOptions{
@@ -682,9 +687,9 @@ func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
 			// increase the time that base query is cached for since it shouldn't be changing?
 			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
 		},
-		commonQuery:              commonQuery,
-		groupByQuery:             groupByQuery,
-		queryParameters:          queryParameters,
+		commonQuery:              baseQuery,
+		groupByQuery:             baseGrouping,
+		queryParameters:          baseParams,
 		ComponentReportGenerator: c,
 	}
 
@@ -738,10 +743,10 @@ type sampleQueryGenerator struct {
 	ComponentReportGenerator *componentReportGenerator
 }
 
+// getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
 func (c *componentReportGenerator) getSampleQueryStatus(
-	commonQuery string,
-	groupByQuery string,
-	queryParameters []bigquery.QueryParameter) (map[string]apitype.ComponentTestStatus, []error) {
+	allJobVariants apitype.JobVariants) (map[string]apitype.ComponentTestStatus, []error) {
+	commonQuery, groupByQuery, queryParameters := c.getCommonTestStatusQuery(allJobVariants, true)
 	generator := sampleQueryGenerator{
 		client:                   c.client,
 		commonQuery:              commonQuery,
@@ -763,6 +768,7 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 	before := time.Now()
 	errs := []error{}
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
+	sampleString = sampleString + ` AND org='openshift' AND repo='kubernetes' AND pr_number='1953'`
 	sampleQuery := s.client.BQ.Query(sampleString + s.groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
@@ -798,8 +804,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (apitype.Componen
 		log.Errorf("failed to get variants from bigquery")
 		return apitype.ComponentReportTestStatus{}, errs
 	}
-	// TODO: generating the query here
-	queryString, groupString, commonParams := c.getCommonTestStatusQuery(allJobVariants)
 
 	var baseStatus, sampleStatus map[string]apitype.ComponentTestStatus
 	var baseErrs, sampleErrs []error
@@ -807,14 +811,13 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (apitype.Componen
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		baseStatus, baseErrs = c.getBaseQueryStatus(queryString, groupString, commonParams)
+		baseStatus, baseErrs = c.getBaseQueryStatus(allJobVariants)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// TODO: pass through pull request info here somehow, the fixed query will be a problem
-		sampleStatus, sampleErrs = c.getSampleQueryStatus(queryString, groupString, commonParams)
+		sampleStatus, sampleErrs = c.getSampleQueryStatus(allJobVariants)
 	}()
 	wg.Wait()
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
