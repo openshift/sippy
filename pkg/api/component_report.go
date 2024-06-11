@@ -207,7 +207,7 @@ func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTe
 	columns := make(map[string][]string)
 
 	for _, column := range []string{"platform", "network", "arch", "upgrade", "variants"} {
-		values, err := c.getUniqueJUnitColumnValues(column, column == "variants")
+		values, err := c.getUniqueJUnitColumnValuesLast60Days(column, column == "variants")
 		if err != nil {
 			wrappedErr := errors.Wrapf(err, "couldn't fetch %s", column)
 			log.WithError(wrappedErr).Errorf("error generating variants")
@@ -1912,7 +1912,7 @@ func (c *componentReportGenerator) fischerExactTest(sampleTotal, sampleSuccess, 
 	return r < 1-float64(c.Confidence)/100, r
 }
 
-func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nested bool) ([]string, error) {
+func (c *componentReportGenerator) getUniqueJUnitColumnValuesLast60Days(field string, nested bool) ([]string, error) {
 	unnest := ""
 	if nested {
 		unnest = fmt.Sprintf(", UNNEST(%s) nested", field)
@@ -1925,6 +1925,7 @@ func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nest
 						%s.junit %s
 					WHERE
 						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
+						AND modified_time > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 60 DAY)
 					ORDER BY
 						name`, field, c.client.Dataset, unnest)
 
