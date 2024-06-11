@@ -22,7 +22,7 @@ type ProwJob struct {
 	Kind        ProwKind
 	Name        string         `gorm:"unique"`
 	Release     string         `gorm:"varchar(10)"`
-	Variants    pq.StringArray `gorm:"index;type:text[]"`
+	Variants    pq.StringArray `gorm:"type:text[];index:idx_prow_jobs_variants,type:gin"`
 	TestGridURL string
 	Bugs        []Bug        `gorm:"many2many:bug_jobs;"`
 	JobRuns     []ProwJobRun `gorm:"constraint:OnDelete:CASCADE;"`
