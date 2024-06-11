@@ -377,12 +377,12 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (apitype.Com
 	return componentJobRunTestReportStatus, nil
 }
 
-// getCommonJobRunTestStatusQuery returns the report for a specific test + variant combo, including job run data.
+// getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
 // This is for the bottom level most specific pages in component readiness.
-func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
+func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
 	joinVariants := ""
 	for v := range allJobVariants.Variants {
-		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
 
@@ -396,7 +396,7 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
 						file_path,
-						ANY_VALUE(prowjob_name) AS prowjob_name,
+						ANY_VALUE(variant_registry_job_name) AS prowjob_name,
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
 						COUNT(*) AS total_count,
@@ -417,8 +417,8 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants
 						modified_time `
 	queryString += `
 					WHERE
-						(prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
-						AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
+						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
+						AND NOT REGEXP_CONTAINS(variant_registry_job_name, @IgnoredJobs)
 						AND cm.id = @TestId `
 	commonParams := []bigquery.QueryParameter{
 		{
@@ -520,6 +520,8 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 
 func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJobRunTestReportStatus, []error) {
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
+	// TODO
+	sampleString = sampleString + `  AND org='openshift' AND repo='kubernetes' AND pr_number='1953'`
 	sampleQuery := s.ComponentReportGenerator.client.BQ.Query(sampleString + s.groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
@@ -548,7 +550,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 		log.Errorf("failed to get variants from bigquery")
 		return apitype.ComponentJobRunTestReportStatus{}, errs
 	}
-	queryString, groupString, commonParams := c.getCommonJobRunTestStatusQuery(allJobVariants)
+	queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants)
 	var baseStatus, sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
