@@ -103,7 +103,7 @@ function TestTable(props) {
         },
         {
           field: 'variants',
-          flex: 1.5,
+          flex: 1.75,
           hide: props.collapse,
         },
         {
@@ -170,7 +170,7 @@ function TestTable(props) {
         },
         {
           field: 'variants',
-          flex: 1.5,
+          flex: 1.75,
           hide: props.collapse,
         },
         {
@@ -236,7 +236,7 @@ function TestTable(props) {
         },
         {
           field: 'variants',
-          flex: 1.5,
+          flex: 1.75,
           hide: props.collapse,
         },
         {
@@ -426,9 +426,19 @@ function TestTable(props) {
       autocomplete: 'variants',
       type: 'string',
       renderCell: (params) => (
-        <div className="test-name">
-          {params.value ? params.value.join(', ') : ''}
-        </div>
+        <Tooltip
+          sx={{ whiteSpace: 'pre' }}
+          title={params.value ? params.value.join('\n') : ''}
+        >
+          <div className="variants-list">
+            {params.value
+              ? params.value
+                  .slice(0, 8)
+                  .filter((item) => !item.endsWith(':default'))
+                  .join('\n')
+              : ''}
+          </div>
+        </Tooltip>
       ),
     },
     delta_from_working_average: {
@@ -919,7 +929,7 @@ function TestTable(props) {
         rows={rows}
         columns={gridView.columns}
         autoHeight={true}
-        rowHeight={100}
+        getRowHeight={() => (props.collapse ? 100 : 'auto')}
         disableColumnFilter={props.briefTable}
         pageSize={pageSize}
         onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}

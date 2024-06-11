@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -940,8 +941,10 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
+	gaDateMap := make(map[string]time.Time)
+	maps.Copy(gaDateMap, releaseloader.GADateMap)
 	response := apitype.Releases{
-		GADates: releaseloader.GADateMap,
+		GADates: gaDateMap,
 	}
 	releases, err := api.GetReleases(s.db, s.bigQueryClient)
 	if err != nil {
@@ -1232,10 +1235,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		}
 		jobRun.ProwJob = *job
 
-		// if the ClusterData is being passed in then use it to override the variants (agnostic case, etc)
-		if jobRun.ClusterData.Release != "" {
-			jobRun.ProwJob.Variants = s.variantManager.IdentifyVariants(jobRun.ProwJob.Name, jobRun.ClusterData.Release, jobRun.ClusterData)
-		}
+		jobRun.ProwJob.Variants = s.variantManager.IdentifyVariants(jobRun.ProwJob.Name)
 		logger = logger.WithField("jobRunID", jobRun.ID)
 	}
 
