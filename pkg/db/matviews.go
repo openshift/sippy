@@ -234,7 +234,7 @@ FROM
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id
 WHERE
-    prow_job_runs.timestamp >= |||START|||
+    prow_job_run_tests.created_at >= |||START||| AND prow_job_runs.timestamp >= |||START|||
 GROUP BY
     tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, prow_jobs.release
 `
@@ -257,7 +257,7 @@ FROM
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
 WHERE
-    prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
+    prow_job_run_tests.created_at > (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
 GROUP BY
     tests.name, tests.id, date(prow_job_runs."timestamp"), unnest(prow_jobs.variants), prow_jobs.release
 `
@@ -280,7 +280,7 @@ FROM
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
 WHERE
-    prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
+    prow_job_run_tests.created_at > (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
 GROUP BY
     tests.name, tests.id, date(prow_job_runs."timestamp"), prow_jobs.release, prow_jobs.name
 `
