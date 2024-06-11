@@ -778,10 +778,19 @@ type RiskLevel struct {
 	Level int
 }
 
+// ComponentReportPullRequestOptions specifies a specific pull request to use as the
+// basis or (more often) sample for the report.
+type PullRequestOptions struct {
+	Org      string
+	Repo     string
+	PRNumber string
+}
+
 type ComponentReportRequestReleaseOptions struct {
-	Release string
-	Start   time.Time
-	End     time.Time
+	Release            string
+	PullRequestOptions *PullRequestOptions
+	Start              time.Time
+	End                time.Time
 }
 
 type ComponentReportRequestTestIdentificationOptions struct {

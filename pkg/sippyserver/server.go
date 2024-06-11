@@ -764,15 +764,26 @@ func (s *Server) parseComponentReportRequest(req *http.Request) (
 		return
 	}
 	baseRelease.Release = req.URL.Query().Get("baseRelease")
-	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
 	if baseRelease.Release == "" {
 		err = fmt.Errorf("missing base_release")
 		return
 	}
 
+	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
 	if sampleRelease.Release == "" {
 		err = fmt.Errorf("missing sample_release")
 		return
+	}
+	// We only support pull request jobs as the sample, not the basis:
+	samplePROrg := req.URL.Query().Get("samplePROrg")
+	samplePRRepo := req.URL.Query().Get("samplePRRepo")
+	samplePRNumber := req.URL.Query().Get("samplePRNumber")
+	if len(samplePROrg) > 0 && len(samplePRRepo) > 0 && len(samplePRNumber) > 0 {
+		sampleRelease.PullRequestOptions = &apitype.PullRequestOptions{
+			Org:      samplePROrg,
+			Repo:     samplePRRepo,
+			PRNumber: samplePRNumber,
+		}
 	}
 
 	timeStr := req.URL.Query().Get("baseStartTime")

@@ -186,6 +186,10 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsB
 	return getDataFromCacheOrGenerate[apitype.ComponentReport](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("ComponentReport~"), generator.GenerateReport, apitype.ComponentReport{})
 }
 
+// TODO: ComponentReport is inaccurate and overly verbose in this naming, at this point it's not really about a component
+// anymore. Suggest GetTestDetails, and using that as consistent naming for all the functions and structs specific to
+// TestDetails page below this. At present it can get confusing if you're looking at code for the ComponentReport or the TestDetails.
+
 func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, prowURL, gcsBucket string,
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
@@ -521,7 +525,9 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJobRunTestReportStatus, []error) {
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
 	// TODO
-	sampleString = sampleString + `  AND org='openshift' AND repo='kubernetes' AND pr_number='1953'`
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleString = sampleString + `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
+	}
 	sampleQuery := s.ComponentReportGenerator.client.BQ.Query(sampleString + s.groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
@@ -538,6 +544,22 @@ func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJob
 			Value: s.ComponentReportGenerator.SampleRelease.Release,
 		},
 	}...)
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+			{
+				Name:  "Org",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Org,
+			},
+			{
+				Name:  "Repo",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Repo,
+			},
+			{
+				Name:  "PRNumber",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.PRNumber,
+			},
+		}...)
+	}
 
 	sampleStatus, errs := s.ComponentReportGenerator.fetchJobRunTestStatus(sampleQuery)
 
@@ -770,7 +792,9 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 	before := time.Now()
 	errs := []error{}
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
-	sampleString = sampleString + ` AND org='openshift' AND repo='kubernetes' AND pr_number='1953'`
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleString = sampleString + `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
+	}
 	sampleQuery := s.client.BQ.Query(sampleString + s.groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
@@ -787,6 +811,22 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 			Value: s.ComponentReportGenerator.SampleRelease.Release,
 		},
 	}...)
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+			{
+				Name:  "Org",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Org,
+			},
+			{
+				Name:  "Repo",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Repo,
+			},
+			{
+				Name:  "PRNumber",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.PRNumber,
+			},
+		}...)
+	}
 
 	sampleStatus, sampleErrs := fetchTestStatus(sampleQuery)
 
