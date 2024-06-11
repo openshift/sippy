@@ -11,7 +11,7 @@ import React, { useContext } from 'react'
 
 export default function Sidebar(props) {
   const classes = useContext(ComponentReadinessStyleContext)
-  const { theme } = props
+  const { theme, isTestDetails } = props
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
     setDrawerOpen(true)
@@ -51,7 +51,7 @@ export default function Sidebar(props) {
             )}
           </IconButton>
         </div>
-        <CompReadyMainInputs />
+        <CompReadyMainInputs isTestDetails={isTestDetails} />
       </Drawer>
     </div>
   )
@@ -59,4 +59,5 @@ export default function Sidebar(props) {
 
 Sidebar.propTypes = {
   theme: PropTypes.object.isRequired,
+  isTestDetails: PropTypes.bool,
 }

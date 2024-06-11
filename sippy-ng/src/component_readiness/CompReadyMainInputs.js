@@ -17,7 +17,7 @@ import React, { useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Tooltip from '@mui/material/Tooltip'
 
-const useStyles = makeStyles((theme) => ({
+export const useStyles = makeStyles((theme) => ({
   crRelease: {
     textAlign: 'center',
     marginBottom: 50,
@@ -35,6 +35,59 @@ export default function CompReadyMainInputs(props) {
   const classes = useStyles(theme)
 
   const varsContext = useContext(CompReadyVarsContext)
+  const compReadyEnvOptions = (
+    <div>
+      <CheckBoxList
+        headerName="Group By"
+        displayList={groupByList}
+        checkedItems={varsContext.groupByCheckedItems}
+        setCheckedItems={varsContext.setGroupByCheckedItems}
+      ></CheckBoxList>
+      <CheckBoxList
+        headerName="Exclude Arches"
+        displayList={varsContext.excludeArchesList}
+        checkedItems={varsContext.excludeArchesCheckedItems}
+        setCheckedItems={varsContext.setExcludeArchesCheckedItems}
+      ></CheckBoxList>
+      <CheckBoxList
+        headerName="Exclude Networks"
+        displayList={varsContext.excludeNetworksList}
+        checkedItems={varsContext.excludeNetworksCheckedItems}
+        setCheckedItems={varsContext.setExcludeNetworksCheckedItems}
+      ></CheckBoxList>
+      <CheckBoxList
+        headerName="Exclude Clouds"
+        displayList={varsContext.excludeCloudsList}
+        checkedItems={varsContext.excludeCloudsCheckedItems}
+        setCheckedItems={varsContext.setExcludeCloudsCheckedItems}
+      ></CheckBoxList>
+      <CheckBoxList
+        headerName="Exclude Upgrades"
+        displayList={varsContext.excludeUpgradesList}
+        checkedItems={varsContext.excludeUpgradesCheckedItems}
+        setCheckedItems={varsContext.setExcludeUpgradesCheckedItems}
+      ></CheckBoxList>
+      <CheckBoxList
+        headerName="Exclude Variants"
+        displayList={varsContext.excludeVariantsList}
+        checkedItems={varsContext.excludeVariantsCheckedItems}
+        setCheckedItems={varsContext.setExcludeVariantsCheckedItems}
+      ></CheckBoxList>
+      <AdvancedOptions
+        headerName="Advanced"
+        confidence={varsContext.confidence}
+        pity={varsContext.pity}
+        minFail={varsContext.minFail}
+        ignoreMissing={varsContext.ignoreMissing}
+        ignoreDisruption={varsContext.ignoreDisruption}
+        setConfidence={varsContext.setConfidence}
+        setPity={varsContext.setPity}
+        setMinFail={varsContext.setMinFail}
+        setIgnoreMissing={varsContext.setIgnoreMissing}
+        setIgnoreDisruption={varsContext.setIgnoreDisruption}
+      ></AdvancedOptions>
+    </div>
+  )
   return (
     <Fragment>
       <div className="cr-report-button">
@@ -99,60 +152,12 @@ export default function CompReadyMainInputs(props) {
           setEndTime={varsContext.setBaseEndTime}
         ></ReleaseSelector>
       </div>
-      <div>
-        <CheckBoxList
-          headerName="Group By"
-          displayList={groupByList}
-          checkedItems={varsContext.groupByCheckedItems}
-          setCheckedItems={varsContext.setGroupByCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Arches"
-          displayList={varsContext.excludeArchesList}
-          checkedItems={varsContext.excludeArchesCheckedItems}
-          setCheckedItems={varsContext.setExcludeArchesCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Networks"
-          displayList={varsContext.excludeNetworksList}
-          checkedItems={varsContext.excludeNetworksCheckedItems}
-          setCheckedItems={varsContext.setExcludeNetworksCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Clouds"
-          displayList={varsContext.excludeCloudsList}
-          checkedItems={varsContext.excludeCloudsCheckedItems}
-          setCheckedItems={varsContext.setExcludeCloudsCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Upgrades"
-          displayList={varsContext.excludeUpgradesList}
-          checkedItems={varsContext.excludeUpgradesCheckedItems}
-          setCheckedItems={varsContext.setExcludeUpgradesCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Variants"
-          displayList={varsContext.excludeVariantsList}
-          checkedItems={varsContext.excludeVariantsCheckedItems}
-          setCheckedItems={varsContext.setExcludeVariantsCheckedItems}
-        ></CheckBoxList>
-        <AdvancedOptions
-          headerName="Advanced"
-          confidence={varsContext.confidence}
-          pity={varsContext.pity}
-          minFail={varsContext.minFail}
-          ignoreMissing={varsContext.ignoreMissing}
-          ignoreDisruption={varsContext.ignoreDisruption}
-          setConfidence={varsContext.setConfidence}
-          setPity={varsContext.setPity}
-          setMinFail={varsContext.setMinFail}
-          setIgnoreMissing={varsContext.setIgnoreMissing}
-          setIgnoreDisruption={varsContext.setIgnoreDisruption}
-        ></AdvancedOptions>
-      </div>
+      {props.isTestDetails ? '' : compReadyEnvOptions}
     </Fragment>
   )
 }
 
 // component and environment may be null so they are not required
-CompReadyMainInputs.propTypes = {}
+CompReadyMainInputs.propTypes = {
+  isTestDetails: PropTypes.bool,
+}

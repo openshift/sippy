@@ -469,6 +469,7 @@ export default function ComponentReadiness(props) {
                       environment={varsContext.environment}
                       testId={testId}
                       testName={testName}
+                      theme={theme}
                     ></CompReadyTestReport>
                   )
                 }}
