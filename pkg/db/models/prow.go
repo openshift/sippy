@@ -85,7 +85,7 @@ type ProwJobRunTest struct {
 	Suite     Suite
 	Status    int `gorm:"index"`
 	Duration  float64
-	CreatedAt time.Time
+	CreatedAt time.Time `gorm:"index"`
 	DeletedAt gorm.DeletedAt
 
 	// ProwJobRunTestOutput collect the output of a failed test run. This is stored as a separate object in the DB, so
