@@ -17,11 +17,13 @@ import (
 
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 // OCPVariantLoader generates a mapping of job names to their variant map for all known jobs.
 type OCPVariantLoader struct {
 	BigQueryClient  *bigquery.Client
+	VariantManager  testidentification.VariantManager
 	bkt             *storage.BucketHandle
 	bigQueryProject string
 	bigQueryDataSet string

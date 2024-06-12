@@ -11,8 +11,6 @@ import (
 	"google.golang.org/api/iterator"
 )
 
-const invalidCharacters = ",:"
-
 // JobVariantsLoader can be used to reconcile expected job variants with whatever is currently in the bigquery
 // tables.
 // If a job is missing from the current tables it will be added, of or if missing from expected it will be removed from
@@ -67,11 +65,6 @@ func (s *JobVariantsLoader) Load() {
 
 	inserts, updates, deletes, deleteJobs := compareVariants(s.expectedVariants, currentVariants)
 
-	if err := verifyVariants(inserts, updates); err != nil {
-		s.errors = append(s.errors, err)
-		return
-	}
-
 	log.Infof("inserting %d new job variants", len(inserts))
 	err = s.bulkInsertVariants(inserts)
 	if err != nil {
@@ -108,20 +101,6 @@ func (s *JobVariantsLoader) Load() {
 		log.WithError(err).Error("error deleting jobs from registry")
 		s.errors = append(s.errors, err)
 	}
-}
-
-func verifyVariants(variants ...[]jobVariant) error {
-	for _, variantGroup := range variants {
-		for _, variant := range variantGroup {
-			if strings.ContainsAny(variant.VariantName, invalidCharacters) {
-				return fmt.Errorf("invalid character in VariantName: %q", variant.VariantName)
-			}
-			if strings.ContainsAny(variant.VariantValue, invalidCharacters) {
-				return fmt.Errorf("invalid character in VariantValue: %q", variant.VariantValue)
-			}
-		}
-	}
-	return nil
 }
 
 // compareVariants compares the list of variants vs expected and returns the variants to be inserted, deleted, and updated.
