@@ -413,6 +413,28 @@ func TestVariantSyncer(t *testing.T) {
 				VariantSecurityMode:     VariantDefaultValue,
 			},
 		},
+		{
+			job:          "periodic-ci-openshift-release-master-nightly-4.17-e2e-telco5g",
+			variantsFile: map[string]string{},
+			expected: map[string]string{
+				VariantRelease:       "4.17",
+				VariantReleaseMajor:  "4",
+				VariantReleaseMinor:  "17",
+				VariantArch:          "amd64",
+				VariantInstaller:     "ipi",
+				VariantNetwork:       "ovn",
+				VariantNetworkStack:  "ipv4",
+				VariantOwner:         "cnf",
+				VariantTopology:      "ha",
+				VariantSuite:         "unknown",
+				VariantUpgrade:       "none",
+				VariantAggregation:   "none",
+				VariantSecurityMode:  VariantDefaultValue,
+				VariantFeatureSet:    VariantDefaultValue,
+				VariantNetworkAccess: VariantDefaultValue,
+				VariantScheduler:     VariantDefaultValue,
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.job, func(t *testing.T) {
