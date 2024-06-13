@@ -22,7 +22,7 @@ type ProwJob struct {
 	Kind        ProwKind
 	Name        string         `gorm:"unique"`
 	Release     string         `gorm:"varchar(10)"`
-	Variants    pq.StringArray `gorm:"index;type:text[]"`
+	Variants    pq.StringArray `gorm:"type:text[];index:idx_prow_jobs_variants,type:gin"`
 	TestGridURL string
 	Bugs        []Bug        `gorm:"many2many:bug_jobs;"`
 	JobRuns     []ProwJobRun `gorm:"constraint:OnDelete:CASCADE;"`
@@ -85,7 +85,7 @@ type ProwJobRunTest struct {
 	Suite     Suite
 	Status    int `gorm:"index"`
 	Duration  float64
-	CreatedAt time.Time
+	CreatedAt time.Time `gorm:"index"`
 	DeletedAt gorm.DeletedAt
 
 	// ProwJobRunTestOutput collect the output of a failed test run. This is stored as a separate object in the DB, so

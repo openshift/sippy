@@ -304,6 +304,7 @@ export function formatLongDate(aLongDate, aDateFormat) {
 
 // Take the values needed to make an api call and return a string that can be used to
 // make that call.
+// TODO: pass varsContext entirely, instead of nearly every field on it in multiple places positionally
 export function getUpdatedUrlParts(
   baseRelease,
   baseStartTime,
@@ -311,6 +312,9 @@ export function getUpdatedUrlParts(
   sampleRelease,
   sampleStartTime,
   sampleEndTime,
+  samplePROrg,
+  samplePRRepo,
+  samplePRNumber,
   columnGroupByCheckedItems,
   includeVariantsCheckedItems,
   dbGroupByVariants,
@@ -334,6 +338,14 @@ export function getUpdatedUrlParts(
     ignoreMissing: ignoreMissing,
     //component: component,
   }
+
+  if (samplePROrg && samplePRRepo && samplePRNumber) {
+    valuesMap.samplePROrg = samplePROrg
+    valuesMap.samplePRRepo = samplePRRepo
+    valuesMap.samplePRNumber = samplePRNumber
+  }
+
+  // TODO: inject the PR vars into query params
 
   const arraysMap = {
     columnGroupBy: columnGroupByCheckedItems,

@@ -53,15 +53,40 @@ const (
 	// partition.
 	dedupedJunitTable = `
 		WITH deduped_testcases AS (
-			SELECT  *,
+			SELECT  
+				junit.*,
 				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY
 					CASE
 						WHEN flake_count > 0 THEN 0
 						WHEN success_val > 0 THEN 1
 						ELSE 2
-					END) AS row_num
+					END) AS row_num,
+				/* add a dynamic column which is the releaseJobName annotation for /payload jobs, *if* it exists,
+					otherwise the normal prow job name, giving us a job name column we can always rely on */
+				CASE
+					WHEN EXISTS (
+						SELECT 1
+						FROM UNNEST(jobs.prowjob_annotations) AS annotation
+						WHERE annotation LIKE 'releaseJobName=%%'
+					) THEN (
+						SELECT
+						SPLIT(SPLIT(annotation, 'releaseJobName=')[OFFSET(1)], ',')[SAFE_OFFSET(0)]
+						FROM UNNEST(jobs.prowjob_annotations) AS annotation	
+						WHERE annotation LIKE 'releaseJobName=%%'
+						LIMIT 1
+					)
+					ELSE jobs.prowjob_job_name
+		    	END AS variant_registry_job_name,
+				jobs.org,
+				jobs.repo,
+				jobs.pr_number,
+				jobs.pr_sha,
 			FROM
 				%s.junit
+			INNER JOIN %s.jobs  jobs ON 
+				junit.prowjob_build_id = jobs.prowjob_build_id 
+				AND jobs.prowjob_start >= DATETIME(@From)
+				AND jobs.prowjob_start < DATETIME(@To)
 			WHERE modified_time >= DATETIME(@From)
 			AND modified_time < DATETIME(@To)
 			AND skipped = false
@@ -161,6 +186,10 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsB
 	return getDataFromCacheOrGenerate[apitype.ComponentReport](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("ComponentReport~"), generator.GenerateReport, apitype.ComponentReport{})
 }
 
+// TODO: ComponentReport is inaccurate and overly verbose in this naming, at this point it's not really about a component
+// anymore. Suggest GetTestDetails, and using that as consistent naming for all the functions and structs specific to
+// TestDetails page below this. At present it can get confusing if you're looking at code for the ComponentReport or the TestDetails.
+
 func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, prowURL, gcsBucket string,
 	baseRelease, sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
@@ -215,7 +244,7 @@ func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTe
 	columns := make(map[string][]string)
 
 	for _, column := range []string{"platform", "network", "arch", "upgrade", "variants"} {
-		values, err := c.getUniqueJUnitColumnValues(column, column == "variants")
+		values, err := c.getUniqueJUnitColumnValuesLast60Days(column, column == "variants")
 		if err != nil {
 			wrappedErr := errors.Wrapf(err, "couldn't fetch %s", column)
 			log.WithError(wrappedErr).Errorf("error generating variants")
@@ -352,10 +381,12 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (apitype.Com
 	return componentJobRunTestReportStatus, nil
 }
 
-func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
+// getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
+// This is for the bottom level most specific pages in component readiness.
+func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
 	joinVariants := ""
 	for v := range allJobVariants.Variants {
-		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
 
@@ -369,7 +400,7 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
 						file_path,
-						ANY_VALUE(prowjob_name) AS prowjob_name,
+						ANY_VALUE(variant_registry_job_name) AS prowjob_name,
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
 						COUNT(*) AS total_count,
@@ -378,7 +409,7 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants
 						SUM(flake_count) AS flake_count,
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
+`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset, c.client.Dataset))
 
 	queryString += joinVariants
 
@@ -390,8 +421,8 @@ func (c *componentReportGenerator) getCommonJobRunTestStatusQuery(allJobVariants
 						modified_time `
 	queryString += `
 					WHERE
-						(prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%')
-						AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
+						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
+						AND NOT REGEXP_CONTAINS(variant_registry_job_name, @IgnoredJobs)
 						AND cm.id = @TestId `
 	commonParams := []bigquery.QueryParameter{
 		{
@@ -493,6 +524,10 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 
 func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJobRunTestReportStatus, []error) {
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
+	// TODO
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleString = sampleString + `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
+	}
 	sampleQuery := s.ComponentReportGenerator.client.BQ.Query(sampleString + s.groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
@@ -509,6 +544,22 @@ func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJob
 			Value: s.ComponentReportGenerator.SampleRelease.Release,
 		},
 	}...)
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+			{
+				Name:  "Org",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Org,
+			},
+			{
+				Name:  "Repo",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Repo,
+			},
+			{
+				Name:  "PRNumber",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.PRNumber,
+			},
+		}...)
+	}
 
 	sampleStatus, errs := s.ComponentReportGenerator.fetchJobRunTestStatus(sampleQuery)
 
@@ -521,7 +572,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 		log.Errorf("failed to get variants from bigquery")
 		return apitype.ComponentJobRunTestReportStatus{}, errs
 	}
-	queryString, groupString, commonParams := c.getCommonJobRunTestStatusQuery(allJobVariants)
+	queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants)
 	var baseStatus, sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
@@ -545,7 +596,9 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 	return apitype.ComponentJobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
-func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
+// TODO: prSample
+// getCommonTestStatusQuery returns the common query for the higher level summary component summary.
+func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apitype.JobVariants, prSample bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
 	// See fetchTestStatus for where we dynamically handle these columns.
@@ -553,17 +606,13 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 	joinVariants := ""
 	groupByVariants := ""
 	for v := range allJobVariants.Variants {
-		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON prowjob_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
 	for _, v := range c.DBGroupByVariants.List() {
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
-	// TODO: remove, just for devel
-	log.Infof("joinVariants:\n%s", joinVariants)
-	log.Infof("selectVariants:\n%s", selectVariants)
-	log.Infof("groupByVariants:\n%s", groupByVariants)
 
 	// WARNING: returning additional columns from this query will require explicit parsing in deserializeRowToTestStatus
 	// TODO: jira_component and jira_comopnent_id appear to not be used? Could save bigquery costs if we remove them.
@@ -586,7 +635,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `,
-		c.client.Dataset, c.client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, c.client.Dataset))
+		c.client.Dataset, c.client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, c.client.Dataset, c.client.Dataset))
 
 	queryString += joinVariants
 
@@ -595,8 +644,9 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 						%s
 						cm.id `, groupByVariants)
 
-	queryString += `
-					WHERE cm.staff_approved_obsolete = false AND (prowjob_name LIKE 'periodic-%%' OR prowjob_name LIKE 'release-%%' OR prowjob_name LIKE 'aggregator-%%') AND NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)`
+	queryString += `WHERE cm.staff_approved_obsolete = false AND 
+						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%') 
+						AND NOT REGEXP_CONTAINS(variant_registry_job_name, @IgnoredJobs)`
 
 	commonParams := []bigquery.QueryParameter{
 		{
@@ -651,9 +701,9 @@ type baseQueryGenerator struct {
 	ComponentReportGenerator *componentReportGenerator
 }
 
-func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
-	groupByQuery string,
-	queryParameters []bigquery.QueryParameter) (map[string]apitype.ComponentTestStatus, []error) {
+// getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
+func (c *componentReportGenerator) getBaseQueryStatus(allJobVariants apitype.JobVariants) (map[string]apitype.ComponentTestStatus, []error) {
+	baseQuery, baseGrouping, baseParams := c.getCommonTestStatusQuery(allJobVariants, false)
 	generator := baseQueryGenerator{
 		client: c.client,
 		cacheOption: cache.RequestOptions{
@@ -661,9 +711,9 @@ func (c *componentReportGenerator) getBaseQueryStatus(commonQuery string,
 			// increase the time that base query is cached for since it shouldn't be changing?
 			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
 		},
-		commonQuery:              commonQuery,
-		groupByQuery:             groupByQuery,
-		queryParameters:          queryParameters,
+		commonQuery:              baseQuery,
+		groupByQuery:             baseGrouping,
+		queryParameters:          baseParams,
 		ComponentReportGenerator: c,
 	}
 
@@ -717,10 +767,10 @@ type sampleQueryGenerator struct {
 	ComponentReportGenerator *componentReportGenerator
 }
 
+// getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
 func (c *componentReportGenerator) getSampleQueryStatus(
-	commonQuery string,
-	groupByQuery string,
-	queryParameters []bigquery.QueryParameter) (map[string]apitype.ComponentTestStatus, []error) {
+	allJobVariants apitype.JobVariants) (map[string]apitype.ComponentTestStatus, []error) {
+	commonQuery, groupByQuery, queryParameters := c.getCommonTestStatusQuery(allJobVariants, true)
 	generator := sampleQueryGenerator{
 		client:                   c.client,
 		commonQuery:              commonQuery,
@@ -742,6 +792,9 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 	before := time.Now()
 	errs := []error{}
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleString = sampleString + `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
+	}
 	sampleQuery := s.client.BQ.Query(sampleString + s.groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
@@ -758,6 +811,22 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 			Value: s.ComponentReportGenerator.SampleRelease.Release,
 		},
 	}...)
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+			{
+				Name:  "Org",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Org,
+			},
+			{
+				Name:  "Repo",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Repo,
+			},
+			{
+				Name:  "PRNumber",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.PRNumber,
+			},
+		}...)
+	}
 
 	sampleStatus, sampleErrs := fetchTestStatus(sampleQuery)
 
@@ -777,7 +846,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (apitype.Componen
 		log.Errorf("failed to get variants from bigquery")
 		return apitype.ComponentReportTestStatus{}, errs
 	}
-	queryString, groupString, commonParams := c.getCommonTestStatusQuery(allJobVariants)
 
 	var baseStatus, sampleStatus map[string]apitype.ComponentTestStatus
 	var baseErrs, sampleErrs []error
@@ -785,13 +853,13 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery() (apitype.Componen
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		baseStatus, baseErrs = c.getBaseQueryStatus(queryString, groupString, commonParams)
+		baseStatus, baseErrs = c.getBaseQueryStatus(allJobVariants)
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		sampleStatus, sampleErrs = c.getSampleQueryStatus(queryString, groupString, commonParams)
+		sampleStatus, sampleErrs = c.getSampleQueryStatus(allJobVariants)
 	}()
 	wg.Wait()
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
@@ -1914,7 +1982,7 @@ func (c *componentReportGenerator) fischerExactTest(sampleTotal, sampleSuccess, 
 	return r < 1-float64(c.Confidence)/100, r
 }
 
-func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nested bool) ([]string, error) {
+func (c *componentReportGenerator) getUniqueJUnitColumnValuesLast60Days(field string, nested bool) ([]string, error) {
 	unnest := ""
 	if nested {
 		unnest = fmt.Sprintf(", UNNEST(%s) nested", field)
@@ -1927,6 +1995,7 @@ func (c *componentReportGenerator) getUniqueJUnitColumnValues(field string, nest
 						%s.junit %s
 					WHERE
 						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
+						AND modified_time > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 60 DAY)
 					ORDER BY
 						name`, field, c.client.Dataset, unnest)
 
