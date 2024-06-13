@@ -68,6 +68,9 @@ export default function CompReadyMainInputs(props) {
               varsContext.sampleRelease,
               varsContext.sampleStartTime,
               varsContext.sampleEndTime,
+              varsContext.samplePROrg,
+              varsContext.samplePRRepo,
+              varsContext.samplePRNumber,
               varsContext.columnGroupByCheckedItems,
               varsContext.includeVariantsCheckedItems,
               varsContext.dbGroupByVariants,
@@ -100,6 +103,10 @@ export default function CompReadyMainInputs(props) {
           setStartTime={varsContext.setSampleStartTime}
           endTime={formatLongDate(varsContext.sampleEndTime, dateFormat)}
           setEndTime={varsContext.setSampleEndTime}
+          pullRequestSupport={true}
+          pullRequestOrg={varsContext.samplePROrg}
+          pullRequestRepo={varsContext.samplePRRepo}
+          pullRequestNumber={varsContext.samplePRNumber}
         ></ReleaseSelector>
       </div>
       <div className={classes.crRelease}>

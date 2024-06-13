@@ -4,7 +4,9 @@ import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { Filter1, Filter2, Filter4, LocalShipping } from '@mui/icons-material'
 import {
   FormControl,
+  FormHelperText,
   Grid,
+  Input,
   InputLabel,
   MenuItem,
   Select,
@@ -121,6 +123,24 @@ function ReleaseSelector(props) {
               ))}
             </Select>
           </FormControl>
+          <div>
+            {props.pullRequestSupport && (
+              <FormControl>
+                <InputLabel htmlFor="pullRequestURL">
+                  Pull Request (optional)
+                </InputLabel>
+                <Input
+                  id="pullRequestURL"
+                  /*
+                  value={pullRequestURL}
+                  onChange={setPullRequestURL}
+
+                   */
+                />
+              </FormControl>
+            )}
+          </div>
+
           <LocalizationProvider dateAdapter={AdapterDateFns}>
             <DatePicker
               showTodayButton
@@ -216,10 +236,15 @@ ReleaseSelector.propTypes = {
   label: PropTypes.string,
   version: PropTypes.string,
   onChange: PropTypes.func,
+  pullRequestSupport: PropTypes.bool,
+  pullRequestOrg: PropTypes.string,
+  pullRequestRepo: PropTypes.string,
+  pullRequestNumber: PropTypes.string,
 }
 
 ReleaseSelector.defaultProps = {
   label: 'Version',
+  pullRequestSupport: false,
 }
 
 export default ReleaseSelector

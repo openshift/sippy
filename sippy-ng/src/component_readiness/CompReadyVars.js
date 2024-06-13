@@ -159,6 +159,23 @@ export const CompReadyVarsProvider = ({ children }) => {
     React.useState(sampleStartTimeParam)
   const [sampleEndTime, setSampleEndTime] = React.useState(sampleEndTimeParam)
 
+  const [samplePROrgParam = '', setSamplePROrgParam] = useQueryParam(
+    'samplePROrg',
+    StringParam
+  )
+  const [samplePROrg, setSamplePROrg] = React.useState(samplePROrgParam)
+  const [samplePRRepoParam = '', setSamplePRRepoParam] = useQueryParam(
+    'samplePRRepo',
+    StringParam
+  )
+  const [samplePRRepo, setSamplePRRepo] = React.useState(samplePRRepoParam)
+  const [samplePRNumberParam = '', setSamplePRNumberParam] = useQueryParam(
+    'samplePRNumber',
+    StringParam
+  )
+  const [samplePRNumber, setSamplePRNumber] =
+    React.useState(samplePRNumberParam)
+
   const setBaseReleaseWithDates = (event) => {
     let release = event.target.value
     let endTime = getReleaseDate(release)
@@ -260,6 +277,9 @@ export const CompReadyVarsProvider = ({ children }) => {
       convertIncludeVariantsCheckedItemsToParam(includeVariantsCheckedItems)
     )
     setConfidenceParam(confidence)
+    setSamplePROrgParam(samplePROrg)
+    setSamplePRRepoParam(samplePRRepo)
+    setSamplePRNumberParam(samplePRNumber)
     setPityParam(pity)
     setMinFailParam(minFail)
     setIgnoreDisruptionParam(ignoreDisruption)
@@ -361,6 +381,12 @@ export const CompReadyVarsProvider = ({ children }) => {
         setSampleStartTime,
         sampleEndTime,
         setSampleEndTime,
+        samplePROrg,
+        setSamplePROrg,
+        samplePRRepo,
+        setSamplePRRepo,
+        samplePRNumber,
+        setSamplePRNumber,
         columnGroupByCheckedItems,
         setColumnGroupByCheckedItems,
         includeVariantsCheckedItems,
