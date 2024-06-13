@@ -555,11 +555,15 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 		return err
 	}
 	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
-	allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultJunitFile()})
+	allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile(), gcs.GetDefaultJunitFile()})
+	var clusterMatches []string
 	var junitMatches []string
 	if len(allMatches) > 0 {
-		junitMatches = allMatches[0]
+		clusterMatches = allMatches[0]
+		junitMatches = allMatches[1]
 	}
+
+	clusterData := GetClusterData(ctx, pl.bkt, path, clusterMatches)
 
 	// Lock the whole prow job block to avoid trying to create the pj multiple times concurrently\
 	// (resulting in a DB error)
@@ -571,7 +575,7 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 			Name:        pj.Spec.Job,
 			Kind:        models.ProwKind(pj.Spec.Type),
 			Release:     release,
-			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job),
+			Variants:    pl.variantManager.IdentifyVariants(pj.Spec.Job, release, clusterData),
 			TestGridURL: pl.generateTestGridURL(release, pj.Spec.Job).String(),
 		}
 		err := pl.dbc.DB.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
@@ -581,7 +585,7 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 		pl.prowJobCache[pj.Spec.Job] = dbProwJob
 	} else {
 		saveDB := false
-		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job)
+		newVariants := pl.variantManager.IdentifyVariants(pj.Spec.Job, release, clusterData)
 		if !reflect.DeepEqual(newVariants, []string(dbProwJob.Variants)) || dbProwJob.Kind != models.ProwKind(pj.Spec.Type) {
 			dbProwJob.Kind = models.ProwKind(pj.Spec.Type)
 			dbProwJob.Variants = newVariants

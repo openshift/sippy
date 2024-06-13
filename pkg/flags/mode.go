@@ -1,11 +1,8 @@
 package flags
 
 import (
-	"context"
-
 	"github.com/spf13/pflag"
 
-	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -38,14 +35,10 @@ func (f *ModeFlags) GetServerMode() sippyserver.Mode {
 	return sippyserver.ModeKubernetes
 }
 
-func (f *ModeFlags) GetVariantManager(ctx context.Context, bqc *bqcachedclient.Client) testidentification.VariantManager {
+func (f *ModeFlags) GetVariantManager() testidentification.VariantManager {
 	switch f.Mode {
 	case ModeOpenshift:
-		mgr, err := testidentification.NewOpenshiftVariantManager(ctx, bqc)
-		if err != nil {
-			panic(err)
-		}
-		return mgr
+		return testidentification.NewOpenshiftVariantManager()
 	case ModeNone:
 		return testidentification.NewEmptyVariantManager()
 	default:
