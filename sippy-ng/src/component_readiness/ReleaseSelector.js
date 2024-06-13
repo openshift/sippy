@@ -238,8 +238,11 @@ ReleaseSelector.propTypes = {
   onChange: PropTypes.func,
   pullRequestSupport: PropTypes.bool,
   pullRequestOrg: PropTypes.string,
+  setPullRequestOrg: PropTypes.func,
   pullRequestRepo: PropTypes.string,
+  setPullRequestRepo: PropTypes.func,
   pullRequestNumber: PropTypes.string,
+  setPullRequestNumber: PropTypes.func,
 }
 
 ReleaseSelector.defaultProps = {

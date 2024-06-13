@@ -105,8 +105,11 @@ export default function CompReadyMainInputs(props) {
           setEndTime={varsContext.setSampleEndTime}
           pullRequestSupport={true}
           pullRequestOrg={varsContext.samplePROrg}
+          setPullRequestOrg={varsContext.setSamplePROrg}
           pullRequestRepo={varsContext.samplePRRepo}
+          setPullRequestRepo={varsContext.setSamplePRRepo}
           pullRequestNumber={varsContext.samplePRNumber}
+          setPullRequestNumber={varsContext.setSamplePRNumber}
         ></ReleaseSelector>
       </div>
       <div className={classes.crRelease}>
