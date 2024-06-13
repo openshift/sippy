@@ -331,12 +331,6 @@ export function getUpdatedUrlParts(
     sampleRelease: sampleRelease,
     sampleStartTime: formatLongDate(sampleStartTime, dateFormat),
     sampleEndTime: formatLongDate(sampleEndTime, dateEndFormat),
-    /*
-    samplePROrg: samplePROrg,
-    samplePRRepo: samplePRRepo,
-    samplePRNumber: samplePRNumber,
-    
-       */
     confidence: confidence,
     pity: pity,
     minFail: minFail,
@@ -345,9 +339,6 @@ export function getUpdatedUrlParts(
     //component: component,
   }
 
-  console.log('samplePROrg = ' + samplePROrg)
-  console.log('samplePRRepo = ' + samplePRRepo)
-  console.log('samplePRNumber = ' + samplePRNumber)
   if (samplePROrg && samplePRRepo && samplePRNumber) {
     valuesMap.samplePROrg = samplePROrg
     valuesMap.samplePRRepo = samplePRRepo
