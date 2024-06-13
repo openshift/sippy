@@ -112,6 +112,16 @@ function ReleaseSelector(props) {
   const handlePullRequestURLChange = (e) => {
     const newURL = e.target.value
     setPullRequestURL(newURL)
+
+    // Allow clearing the URL:
+    if (newURL === '') {
+      setPullRequestURLError(false)
+      setPullRequestOrg('')
+      setPullRequestRepo('')
+      setPullRequestNumber('')
+      return
+    }
+
     const regex = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)$/
     const match = newURL.match(regex)
     if (match) {
