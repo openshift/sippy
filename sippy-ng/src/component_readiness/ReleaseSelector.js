@@ -10,16 +10,16 @@ import {
   InputLabel,
   MenuItem,
   Select,
+  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
 } from '@mui/material'
-import { Fragment, useContext, useEffect } from 'react'
+import { Fragment, useContext, useEffect, useState } from 'react'
 import { makeStyles } from '@mui/styles'
 import { ReleasesContext } from '../App'
 import PropTypes from 'prop-types'
 import React from 'react'
-import TextField from '@mui/material/TextField'
 
 const useStyles = makeStyles((theme) => ({
   formControl: {
@@ -38,7 +38,7 @@ const useStyles = makeStyles((theme) => ({
 function ReleaseSelector(props) {
   const classes = useStyles()
   const releases = useContext(ReleasesContext)
-  const [versions, setVersions] = React.useState({})
+  const [versions, setVersions] = useState({})
   const {
     label,
     setStartTime,
@@ -47,6 +47,13 @@ function ReleaseSelector(props) {
     endTime,
     version,
     onChange,
+    pullRequestSupport,
+    pullRequestOrg,
+    setPullRequestOrg,
+    pullRequestRepo,
+    setPullRequestRepo,
+    pullRequestNumber,
+    setPullRequestNumber,
   } = props
 
   const days = 24 * 60 * 60 * 1000
@@ -54,6 +61,9 @@ function ReleaseSelector(props) {
   const twoWeeksStart = new Date(new Date().getTime() - 2 * 7 * days)
   const fourWeeksStart = new Date(new Date().getTime() - 4 * 7 * days)
   const defaultEndTime = new Date(new Date().getTime())
+
+  const [pullRequestURL, setPullRequestURL] = useState('')
+  const [pullRequestURLError, setPullRequestURLError] = useState(false)
 
   const setGADate = () => {
     let start = new Date(versions[version])
@@ -83,13 +93,36 @@ function ReleaseSelector(props) {
     releases.releases
       .filter((aVersion) => {
         // We won't process Presubmits or 3.11
-        return aVersion !== 'Presubmits' && aVersion != '3.11'
+        return aVersion !== 'Presubmits' && aVersion !== '3.11'
       })
       .forEach((r) => {
         tmpRelease[r] = releases.ga_dates[r]
       })
     setVersions(tmpRelease)
   }, [releases])
+
+  useEffect(() => {
+    if (pullRequestOrg && pullRequestRepo && pullRequestNumber) {
+      setPullRequestURL(
+        `https://github.com/${pullRequestOrg}/${pullRequestRepo}/pull/${pullRequestNumber}`
+      )
+    }
+  }, [pullRequestOrg, pullRequestRepo, pullRequestNumber])
+
+  const handlePullRequestURLChange = (e) => {
+    const newURL = e.target.value
+    setPullRequestURL(newURL)
+    const regex = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)$/
+    const match = newURL.match(regex)
+    if (match) {
+      setPullRequestURLError(false)
+      setPullRequestOrg(match[1])
+      setPullRequestRepo(match[2])
+      setPullRequestNumber(match[3])
+    } else {
+      setPullRequestURLError(true)
+    }
+  }
 
   // Ensure that versions has a list of versions before trying to display the Form
   if (Object.keys(versions).length === 0) {
@@ -124,19 +157,19 @@ function ReleaseSelector(props) {
             </Select>
           </FormControl>
           <div>
-            {props.pullRequestSupport && (
-              <FormControl>
+            {pullRequestSupport && (
+              <FormControl error={pullRequestURLError}>
                 <InputLabel htmlFor="pullRequestURL">
                   Pull Request (optional)
                 </InputLabel>
                 <Input
                   id="pullRequestURL"
-                  /*
                   value={pullRequestURL}
-                  onChange={setPullRequestURL}
-
-                   */
+                  onChange={handlePullRequestURLChange}
                 />
+                {pullRequestURLError && (
+                  <FormHelperText>Invalid Pull Request URL</FormHelperText>
+                )}
               </FormControl>
             )}
           </div>

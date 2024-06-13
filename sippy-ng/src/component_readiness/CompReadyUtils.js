@@ -345,6 +345,15 @@ export function getUpdatedUrlParts(
     //component: component,
   }
 
+  console.log('samplePROrg = ' + samplePROrg)
+  console.log('samplePRRepo = ' + samplePRRepo)
+  console.log('samplePRNumber = ' + samplePRNumber)
+  if (samplePROrg && samplePRRepo && samplePRNumber) {
+    valuesMap.samplePROrg = samplePROrg
+    valuesMap.samplePRRepo = samplePRRepo
+    valuesMap.samplePRNumber = samplePRNumber
+  }
+
   // TODO: inject the PR vars into query params
 
   const arraysMap = {
