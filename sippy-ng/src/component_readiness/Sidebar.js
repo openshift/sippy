@@ -1,5 +1,6 @@
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Drawer } from '@mui/material'
+import { useTheme } from '@mui/styles'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import clsx from 'clsx'
@@ -11,7 +12,8 @@ import React, { useContext } from 'react'
 
 export default function Sidebar(props) {
   const classes = useContext(ComponentReadinessStyleContext)
-  const { theme, isTestDetails } = props
+  const theme = useTheme()
+  const { isTestDetails } = props
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
     setDrawerOpen(true)
@@ -58,6 +60,5 @@ export default function Sidebar(props) {
 }
 
 Sidebar.propTypes = {
-  theme: PropTypes.object.isRequired,
   isTestDetails: PropTypes.bool,
 }

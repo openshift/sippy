@@ -57,15 +57,8 @@ const cancelFetch = () => {
 export default function CompReadyTestReport(props) {
   const classes = useContext(ComponentReadinessStyleContext)
 
-  const {
-    filterVals,
-    component,
-    capability,
-    testId,
-    environment,
-    testName,
-    theme,
-  } = props
+  const { filterVals, component, capability, testId, environment, testName } =
+    props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -361,7 +354,7 @@ Flakes: ${stats.flake_count}`
 
   return (
     <Fragment>
-      <Sidebar theme={theme} isTestDetails={true} />
+      <Sidebar isTestDetails={true} />
       <Box
         display="flex"
         justifyContent="right"
@@ -579,5 +572,4 @@ CompReadyTestReport.propTypes = {
   testId: PropTypes.string.isRequired,
   environment: PropTypes.string.isRequired,
   testName: PropTypes.string.isRequired,
-  theme: PropTypes.object.isRequired,
 }
