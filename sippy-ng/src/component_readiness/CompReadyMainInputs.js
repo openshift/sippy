@@ -4,7 +4,6 @@ import {
   dateFormat,
   formatLongDate,
   getUpdatedUrlParts,
-  groupByList,
 } from './CompReadyUtils'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
@@ -12,6 +11,8 @@ import { makeStyles, useTheme } from '@mui/styles'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@mui/material/Button'
 import CheckBoxList from './CheckboxList'
+import CompReadyTestCell from './CompReadyTestCell'
+import IncludeVariantCheckBoxList from './IncludeVariantCheckboxList'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
@@ -33,6 +34,22 @@ const useStyles = makeStyles((theme) => ({
 export default function CompReadyMainInputs(props) {
   const theme = useTheme()
   const classes = useStyles(theme)
+  // checkBoxHiddenIncludeVariants defines what variants are excluded when creating Include Variant CheckBox
+  // This could also be deduced from varsContext.dbGroupByVariants
+  const checkBoxHiddenIncludeVariants = new Set([
+    'Aggregation',
+    'FromRelease',
+    'FromReleaseMajor',
+    'FromReleaseMinor',
+    'NetworkAccess',
+    'NetworkStack',
+    'Owner',
+    'Release',
+    'ReleaseMajor',
+    'ReleaseMinor',
+    'Scheduler',
+    'SecurityMode',
+  ])
 
   const varsContext = useContext(CompReadyVarsContext)
   return (
@@ -51,12 +68,9 @@ export default function CompReadyMainInputs(props) {
               varsContext.sampleRelease,
               varsContext.sampleStartTime,
               varsContext.sampleEndTime,
-              varsContext.groupByCheckedItems,
-              varsContext.excludeCloudsCheckedItems,
-              varsContext.excludeArchesCheckedItems,
-              varsContext.excludeNetworksCheckedItems,
-              varsContext.excludeUpgradesCheckedItems,
-              varsContext.excludeVariantsCheckedItems,
+              varsContext.columnGroupByCheckedItems,
+              varsContext.includeVariantsCheckedItems,
+              varsContext.dbGroupByVariants,
               varsContext.confidence,
               varsContext.pity,
               varsContext.minFail,
@@ -102,40 +116,15 @@ export default function CompReadyMainInputs(props) {
       <div>
         <CheckBoxList
           headerName="Group By"
-          displayList={groupByList}
-          checkedItems={varsContext.groupByCheckedItems}
-          setCheckedItems={varsContext.setGroupByCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Arches"
-          displayList={varsContext.excludeArchesList}
-          checkedItems={varsContext.excludeArchesCheckedItems}
-          setCheckedItems={varsContext.setExcludeArchesCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Networks"
-          displayList={varsContext.excludeNetworksList}
-          checkedItems={varsContext.excludeNetworksCheckedItems}
-          setCheckedItems={varsContext.setExcludeNetworksCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Clouds"
-          displayList={varsContext.excludeCloudsList}
-          checkedItems={varsContext.excludeCloudsCheckedItems}
-          setCheckedItems={varsContext.setExcludeCloudsCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Upgrades"
-          displayList={varsContext.excludeUpgradesList}
-          checkedItems={varsContext.excludeUpgradesCheckedItems}
-          setCheckedItems={varsContext.setExcludeUpgradesCheckedItems}
-        ></CheckBoxList>
-        <CheckBoxList
-          headerName="Exclude Variants"
-          displayList={varsContext.excludeVariantsList}
-          checkedItems={varsContext.excludeVariantsCheckedItems}
-          setCheckedItems={varsContext.setExcludeVariantsCheckedItems}
-        ></CheckBoxList>
+          displayList={varsContext.dbGroupByVariants}
+          checkedItems={varsContext.columnGroupByCheckedItems}
+          setCheckedItems={varsContext.setColumnGroupByCheckedItems}
+        />
+        {Object.keys(varsContext.allJobVariants)
+          .filter((key) => !checkBoxHiddenIncludeVariants.has(key))
+          .map((variant, i) => (
+            <IncludeVariantCheckBoxList key={variant} variantName={variant} />
+          ))}
         <AdvancedOptions
           headerName="Advanced"
           confidence={varsContext.confidence}

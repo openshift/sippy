@@ -17,33 +17,21 @@ import React, { Fragment, useContext } from 'react'
 // We pass these arguments to the component that generates the test details report.
 function generateTestReport(
   testId,
-  platform,
-  upgrade,
-  arch,
-  network,
-  variant,
+  variants,
   filterVals,
   componentName,
   capabilityName,
   testName
 ) {
-  const environment = {
-    network: network,
-    upgrade: upgrade,
-    arch: arch,
-    platform: platform,
-    variant: variant,
-  }
-  const environmentVal = formColumnName(environment)
+  const environmentVal = formColumnName({ variants: variants })
   const { expandEnvironment } = useContext(CompReadyVarsContext)
   const safeComponentName = safeEncodeURIComponent(componentName)
   const safeTestId = safeEncodeURIComponent(testId)
   const safeTestName = safeEncodeURIComponent(testName)
-  const safePlatform = safeEncodeURIComponent(platform)
-  const safeUpgrade = safeEncodeURIComponent(upgrade)
-  const safeArch = safeEncodeURIComponent(arch)
-  const safeNetwork = safeEncodeURIComponent(network)
-  const safeVariant = safeEncodeURIComponent(variant)
+  let variantsUrl = ''
+  Object.entries(variants).forEach(([key, value]) => {
+    variantsUrl += '&' + key + '=' + safeEncodeURIComponent(value)
+  })
   const retUrl =
     '/component_readiness/test_details' +
     filterVals +
@@ -51,11 +39,7 @@ function generateTestReport(
     expandEnvironment(environmentVal) +
     `&component=${safeComponentName}` +
     `&capability=${capabilityName}` +
-    `&platform=${safePlatform}` +
-    `&upgrade=${safeUpgrade}` +
-    `&arch=${safeArch}` +
-    `&network=${safeNetwork}` +
-    `&variant=${safeVariant}` +
+    variantsUrl +
     `&testName=${safeTestName}`
 
   return sortQueryParams(retUrl)
@@ -93,7 +77,7 @@ export default function RegressedTestsModal(props) {
     {
       field: 'test_name',
       headerName: 'Test Name',
-      flex: 30,
+      flex: 40,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
@@ -103,34 +87,14 @@ export default function RegressedTestsModal(props) {
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
-      field: 'network',
-      headerName: 'Network',
-      flex: 8,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
-    },
-    {
-      field: 'upgrade',
-      headerName: 'Upgrade',
-      flex: 12,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
-    },
-    {
-      field: 'arch',
-      headerName: 'Arch',
-      flex: 8,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
-    },
-    {
-      field: 'platform',
-      headerName: 'Platform',
-      flex: 8,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
-    },
-    {
-      field: 'variant',
-      headerName: 'Variant',
-      flex: 10,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      field: 'variants',
+      headerName: 'Variants',
+      flex: 30,
+      renderCell: (param) => (
+        <div className="test-name">
+          {formColumnName({ variants: param.value })}
+        </div>
+      ),
     },
     {
       field: 'opened',
@@ -183,11 +147,7 @@ export default function RegressedTestsModal(props) {
           <Link
             to={generateTestReport(
               params.row.test_id,
-              params.row.platform,
-              params.row.upgrade,
-              params.row.arch,
-              params.row.network,
-              params.row.variant,
+              params.row.variants,
               props.filterVals,
               params.row.component,
               params.row.capability,
@@ -226,11 +186,9 @@ export default function RegressedTestsModal(props) {
               row.test_id +
               row.component +
               row.capability +
-              row.variant +
-              row.platform +
-              row.network +
-              row.arch +
-              row.upgrade
+              Object.keys(row.variants)
+                .map((key) => row.variants[key])
+                .join(' ')
             }
             pageSize={10}
             rowHeight={60}
