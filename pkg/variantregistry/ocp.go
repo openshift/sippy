@@ -267,6 +267,7 @@ var (
 	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
 	qeRegex                 = regexp.MustCompile(`(?i)-openshift-tests-private`)
 	rosaRegex               = regexp.MustCompile(`(?i)-rosa`)
+	cnfRegex                = regexp.MustCompile(`(?i)-telco5g`)
 	rtRegex                 = regexp.MustCompile(`(?i)-rt`)
 	s390xRegex              = regexp.MustCompile(`(?i)-s390x`)
 	sdnRegex                = regexp.MustCompile(`(?i)-sdn`)
@@ -396,6 +397,8 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantOwner] = "service-delivery"
 	} else if qeRegex.MatchString(jobName) {
 		variants[VariantOwner] = "qe"
+	} else if cnfRegex.MatchString(jobName) {
+		variants[VariantOwner] = "cnf"
 	} else {
 		variants[VariantOwner] = "eng"
 	}
