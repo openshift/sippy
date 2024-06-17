@@ -4,7 +4,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -123,8 +122,10 @@ func (v *openshiftVariants) IdentifyVariants(jobName string) []string {
 		allVariants = append(allVariants, NeverStable)
 	}
 
-	// Ensure sorted by PANTFUSI (or whatever ordering we determine is useful)
-	return sortByPrefixes(allVariants, importantVariants)
+	// Ensure filtered by important variants; including them all
+	// significantly increases cardinality and slows matview refreshes
+	// to a crawl.
+	return filterVariants(allVariants, importantVariants)
 }
 
 func (*openshiftVariants) IsJobNeverStable(jobName string) bool {
@@ -137,41 +138,28 @@ func (*openshiftVariants) IsJobNeverStable(jobName string) bool {
 	return false
 }
 
-// sortByPrefixes sorts a slice by prefix order, with alphabetical fallback
-func sortByPrefixes(arr, prefixes []string) []string {
-	// Create a map to store the order of prefixes
-	prefixOrder := make(map[string]int)
-	for i, prefix := range prefixes {
-		prefixOrder[prefix] = i
-	}
+// filterVariants only includes the important variants, returns them sorted
+// according to the original array's order
+func filterVariants(arr, prefixes []string) []string {
+	var result []string
+	prefixMap := make(map[string]string)
 
-	// Custom sort function
-	sort.SliceStable(arr, func(i, j int) bool {
-		prefixI, foundI := getPrefix(arr[i], prefixOrder)
-		prefixJ, foundJ := getPrefix(arr[j], prefixOrder)
-
-		if foundI && foundJ {
-			// Both items have prefixes, sort by their order
-			return prefixOrder[prefixI] < prefixOrder[prefixJ]
-		} else if foundI {
-			// Only the first item has a prefix, it goes first
-			return true
-		} else if foundJ {
-			// Only the second item has a prefix, it goes first
-			return false
-		}
-		// Neither item has a prefix, sort alphabetically
-		return arr[i] < arr[j]
-	})
-
-	return arr
-}
-
-func getPrefix(item string, prefixOrder map[string]int) (string, bool) {
-	for prefix := range prefixOrder {
-		if strings.HasPrefix(item, fmt.Sprintf("%s:", prefix)) {
-			return prefix, true
+	// Create a map of prefix to full string
+	for _, item := range arr {
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(item, prefix+":") {
+				prefixMap[prefix] = item
+				break
+			}
 		}
 	}
-	return "", false
+
+	// Add items to result in the order of prefixes
+	for _, prefix := range prefixes {
+		if val, exists := prefixMap[prefix]; exists {
+			result = append(result, val)
+		}
+	}
+
+	return result
 }
