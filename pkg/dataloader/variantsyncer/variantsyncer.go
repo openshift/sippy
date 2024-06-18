@@ -3,6 +3,7 @@ package variantsyncer
 import (
 	"context"
 	"reflect"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 
@@ -41,8 +42,14 @@ func (vl *VariantSyncer) Errors() []error {
 func (vl *VariantSyncer) Load() {
 	allJobs := loadAllProwJobs(vl.dbc)
 	for _, j := range allJobs {
+		log.Debugf("syncing variants for %s", j.Name)
 		newVariants := vl.mgr.IdentifyVariants(j.Name)
 		if !reflect.DeepEqual(newVariants, []string(j.Variants)) {
+			log.WithFields(log.Fields{
+				"job":      j.Name,
+				"original": strings.Join(j.Variants, ", "),
+				"updated":  strings.Join(newVariants, ", "),
+			}).Debugf("mismatched; updating database")
 			j.Variants = newVariants
 			if res := vl.dbc.DB.WithContext(context.TODO()).Save(j); res.Error != nil {
 				vl.errors = append(vl.errors, res.Error)
