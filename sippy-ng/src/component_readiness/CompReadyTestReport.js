@@ -37,6 +37,7 @@ import IconButton from '@mui/material/IconButton'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
+import Sidebar from './Sidebar'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -155,6 +156,12 @@ export default function CompReadyTestReport(props) {
       })
     setVersions(tmpRelease)
   }, [releases])
+
+  // this backhand way of recording the query dates keeps their display
+  // from re-rendering to match the controls until the controls update the report
+  const [staticDates, setDates] = React.useState({})
+  const datesEnv = useContext(CompReadyVarsContext)
+  useEffect(() => setDates(datesEnv), [])
 
   if (fetchError !== '') {
     return gotFetchError(fetchError)
@@ -347,6 +354,7 @@ Flakes: ${stats.flake_count}`
 
   return (
     <Fragment>
+      <Sidebar isTestDetails={true} />
       <Box
         display="flex"
         justifyContent="right"
@@ -462,22 +470,20 @@ View the test details report at ${document.location.href}
           </TableRow>
         </TableBody>
       </Table>
-
       <Box sx={{ marginTop: 5 }}>
         {printStats(
           'Sample (being evaluated)',
           data.sample_stats,
-          sampleStartTime,
-          sampleEndTime
+          staticDates.sampleStartTime,
+          staticDates.sampleEndTime
         )}
         {printStats(
           'Base (historical)',
           data.base_stats,
-          baseStartTime,
-          baseEndTime
+          staticDates.baseStartTime,
+          staticDates.baseEndTime
         )}
       </Box>
-
       <div style={{ marginTop: '10px', marginBottom: '10px' }}>
         <label>
           <input

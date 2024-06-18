@@ -506,7 +506,6 @@ export default function ComponentReadiness(props) {
                       component={varsContext.component}
                       capability={varsContext.capability}
                       testId={testId}
-                      theme={theme}
                     ></CompReadyEnvCapabilityTest>
                   )
                 }}
@@ -712,7 +711,7 @@ export default function ComponentReadiness(props) {
                   )
                   return (
                     <div className="cr-view">
-                      <Sidebar theme={theme} />
+                      <Sidebar />
                       <CompReadyPageTitle
                         pageTitle={pageTitle}
                         apiCallStr={showValuesForReport()}

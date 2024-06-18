@@ -17,7 +17,7 @@ const getJobRunColor = (jobRun) => {
   }
 }
 
-// Represents a row on page 5a when you clicked a status cell on on page4 or page4a
+// Represents a row on page 5a when you clicked a status cell on page4 or page4a
 export default function CompReadyTestDetailRow(props) {
   const classes = useContext(ComponentReadinessStyleContext)
 
