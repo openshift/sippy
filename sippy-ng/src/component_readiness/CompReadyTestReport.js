@@ -474,14 +474,14 @@ View the test details report at ${document.location.href}
         {printStats(
           'Sample (being evaluated)',
           data.sample_stats,
-          staticDates.sampleStartTime,
-          staticDates.sampleEndTime
+          staticDates.sampleStartTime.toString(),
+          staticDates.sampleEndTime.toString()
         )}
         {printStats(
           'Base (historical)',
           data.base_stats,
-          staticDates.baseStartTime,
-          staticDates.baseEndTime
+          staticDates.baseStartTime.toString(),
+          staticDates.baseEndTime.toString()
         )}
       </Box>
       <div style={{ marginTop: '10px', marginBottom: '10px' }}>
