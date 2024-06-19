@@ -551,7 +551,7 @@ ProwJobRun.defaultProps = {
     'NodeState',
   ],
   intervalFile: '',
-  overrideDisplayFlag: false,
+  overrideDisplayFlag: true,
 }
 
 ProwJobRun.propTypes = {
