@@ -1,15 +1,17 @@
 package testidentification
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
-	"regexp"
 	"strings"
+	"time"
 
-	"github.com/hashicorp/go-version"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/iterator"
 
-	"github.com/openshift/sippy/pkg/db/models"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -21,339 +23,112 @@ import (
 var openshiftJobsNeverStableRaw string
 var openshiftJobsNeverStable = strings.Split(openshiftJobsNeverStableRaw, "\n")
 
-// jobsWithoutReleaseImpact contains a list of jobs that teams have indicated are not subject to regression checking.
-// IOW, these jobs can regress and not prevent a release from shipping (not a blocker bug).  This makes them ineligible
-// for analysis in our install rate, our upgrade rate, our overall job pass rate, and component readiness
-var jobsWithoutReleaseImpact = sets.NewString(
-	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-e2e-compact-ovn-remote-libvirt-ppc64le",
-	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-e2e-ovn-remote-libvirt-ppc64le",
-	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-e2e-serial-ovn-remote-libvirt-ppc64le",
-	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-fips-ovn-remote-libvirt-ppc64le",
-	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-image-ecosystem-ovn-remote-libvirt-ppc64le",
-	"periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-jenkins-e2e-ovn-remote-libvirt-ppc64le",
-	"periodic-ci-openshift-multiarch-master-nightly-4.14-upgrade-from-nightly-4.13-ocp-ovn-remote-libvirt-ppc64le",
+var importantVariants = []string{
+	"Platform",
+	"Architecture",
+	"Network",
+	"NetworkStack",
+	"Topology",
+	"FeatureSet",
+	"Upgrade",
+	"SecurityMode",
+	"Installer",
+}
+
+const (
+	NeverStable = "never-stable"
+
+	jobVariantsQuery = `SELECT
+  job_name,
+  ARRAY_AGG(STRUCT(variant_name, variant_value)) AS variants
+FROM 
+  $$DATASET$$.job_variants
+WHERE variant_value IS NOT NULL AND variant_value != ""
+GROUP BY 
+  job_name`
 )
 
-var (
-	// variant regexes - when adding a new one, please update both allOpenshiftVariants,
-	// and allPlatforms as appropriate.
-	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
-	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
-	arm64Regex      = regexp.MustCompile(`(?i)-arm64`)
-	assistedRegex   = regexp.MustCompile(`(?i)-assisted`)
-	awsRegex        = regexp.MustCompile(`(?i)-aws`)
-	azureRegex      = regexp.MustCompile(`(?i)-azure`)
-	compactRegex    = regexp.MustCompile(`(?i)-compact`)
-	etcdScaling     = regexp.MustCompile(`(?i)-etcd-scaling`)
-	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
-	hypershiftRegex = regexp.MustCompile(`(?i)-hypershift`)
-	libvirtRegex    = regexp.MustCompile(`(?i)-libvirt`)
-	metalRegex      = regexp.MustCompile(`(?i)-metal`)
-	// metal-assisted jobs do not have a trailing -version segment
-	metalAssistedRegex = regexp.MustCompile(`(?i)-metal-assisted`)
-	// metal-ipi jobs do not have a trailing -version segment
-	metalIPIRegex   = regexp.MustCompile(`(?i)-metal-ipi`)
-	microshiftRegex = regexp.MustCompile(`(?i)-microshift`)
-	// Variant for Heterogeneous
-	multiRegex   = regexp.MustCompile(`(?i)-heterogeneous`)
-	nutanixRegex = regexp.MustCompile(`(?i)-nutanix`)
-	// 3.11 gcp jobs don't have a trailing -version segment
-	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
-	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
-	osdRegex       = regexp.MustCompile(`(?i)-osd`)
-	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
-	ovnRegex       = regexp.MustCompile(`(?i)-ovn`)
-	// proxy jobs do not have a trailing -version segment
-	ppc64leRegex      = regexp.MustCompile(`(?i)-ppc64le`)
-	promoteRegex      = regexp.MustCompile(`(?i)^promote-`)
-	proxyRegex        = regexp.MustCompile(`(?i)-proxy`)
-	rtRegex           = regexp.MustCompile(`(?i)-rt`)
-	s390xRegex        = regexp.MustCompile(`(?i)-s390x`)
-	sdnRegex          = regexp.MustCompile(`(?i)-sdn`)
-	serialRegex       = regexp.MustCompile(`(?i)-serial`)
-	singleNodeRegex   = regexp.MustCompile(`(?i)-single-node`)
-	techpreview       = regexp.MustCompile(`(?i)-techpreview`)
-	upgradeMinorRegex = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
-	upgradeRegex      = regexp.MustCompile(`(?i)-upgrade`)
-	// some vsphere jobs do not have a trailing -version segment
-	vsphereRegex    = regexp.MustCompile(`(?i)-vsphere`)
-	vsphereUPIRegex = regexp.MustCompile(`(?i)-vsphere.*-upi`)
-
-	allOpenshiftVariants = sets.NewString(
-		"alibaba",
-		"amd64",
-		"arm64",
-		"assisted",
-		"aws",
-		"azure",
-		"compact",
-		"etcd-scaling",
-		"fips",
-		"gcp",
-		"ha",
-		"hypershift",
-		"heterogeneous",
-		"libvirt",
-		"metal-assisted",
-		"metal-ipi",
-		"metal-upi",
-		"microshift",
-		"never-stable",
-		"nutanix",
-		"openstack",
-		"osd",
-		"ovirt",
-		"ovn",
-		"ppc64le",
-		"promote",
-		"proxy",
-		"realtime",
-		"s390x",
-		"sdn",
-		"serial",
-		"single-node",
-		"techpreview",
-		"upgrade",
-		"upgrade-micro",
-		"upgrade-minor",
-		"vsphere-ipi",
-		"vsphere-upi",
-	)
-
-	allPlatforms = sets.NewString(
-		"alibaba",
-		"aws",
-		"azure",
-		"gcp",
-		"libvirt",
-		"metal-assisted",
-		"metal-ipi",
-		"metal-upi",
-		"nutanix",
-		"openstack",
-		"ovirt",
-		"vsphere-ipi",
-		"vsphere-upi",
-	)
-)
-
-func init() {
-	// remove jobs that don't have a release impact from all standard sippy views.
-	// These can be inspected on a per-job basis by the particular team.
-	openshiftJobsNeverStable = append(openshiftJobsNeverStable, jobsWithoutReleaseImpact.List()...)
+type openshiftVariants struct {
+	jobVariants   map[string][]string
+	variantValues map[string]sets.String
 }
 
-const NeverStable = "never-stable"
-
-type openshiftVariants struct{}
-
-func NewOpenshiftVariantManager() VariantManager {
-	return openshiftVariants{}
+type variant struct {
+	VariantName  string `json:"variant_name" bigquery:"variant_name"`
+	VariantValue string `json:"variant_value" bigquery:"variant_value"`
 }
 
-func (openshiftVariants) AllVariants() sets.String {
-	return allOpenshiftVariants
-}
-func (openshiftVariants) AllPlatforms() sets.String {
-	return allPlatforms
+type jobVariant struct {
+	JobName  string    `json:"job_name" bigquery:"job_name"`
+	Variants []variant `json:"variants" bigquery:"variants"`
 }
 
-func compareAndSelectVariant(jobNameVariant, clusterVariant, variantKey string) string {
-	val := jobNameVariant
-
-	if clusterVariant != "" {
-		if val != "" && clusterVariant != val {
-			log.Errorf("ClusterData %s: %s, does not match jobName %s: %s", variantKey, clusterVariant, variantKey, jobNameVariant)
-		}
-		// defer to the clusterVariant if it is a known openshift variant
-		if allOpenshiftVariants.Has(clusterVariant) {
-			val = clusterVariant
-		}
+func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client) (VariantManager, error) {
+	if bqc == nil {
+		return nil, fmt.Errorf("openshift variant manager requires bigquery")
 	}
 
-	return val
-}
+	mgr := openshiftVariants{
+		variantValues: make(map[string]sets.String),
+		jobVariants:   make(map[string][]string),
+	}
 
-func (v openshiftVariants) IdentifyVariants(jobName, release string, jobVariants models.ClusterData) []string {
-	variants := []string{}
+	start := time.Now()
+	log.Infof("loading variants from bigquery...")
+	// Read variants mapping from bigquery
+	variantsQuery := strings.ReplaceAll(jobVariantsQuery, "$$DATASET$$", bqc.Dataset)
+	log.Debugf("variant query is %+v", variantsQuery)
+	it, err := bqc.BQ.Query(variantsQuery).Read(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	defer func() {
-		for _, variant := range variants {
-			if !allOpenshiftVariants.Has(variant) {
-				panic(fmt.Sprintf("coding error: missing variant: %q", variant))
+	jobVariants := make(map[string][]string)
+	variantKeyValues := make(map[string]sets.String)
+	for {
+		var row jobVariant
+		err := it.Next(&row)
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			return nil, errors.WithMessage(err, "failed to read row")
+		}
+		for _, v := range row.Variants {
+			jobVariants[row.JobName] = append(jobVariants[row.JobName], fmt.Sprintf("%s:%s", v.VariantName, v.VariantValue))
+			if _, ok := variantKeyValues[v.VariantValue]; ok {
+				variantKeyValues[v.VariantName].Insert(v.VariantValue)
+			} else {
+				variantKeyValues[v.VariantName] = sets.NewString(v.VariantValue)
 			}
 		}
-	}()
+	}
+	mgr.jobVariants = jobVariants
+	mgr.variantValues = variantKeyValues
 
-	// Terminal variants -- these are excluded from other possible variant aggregations
+	log.WithFields(log.Fields{
+		"jobs": len(jobVariants),
+	}).Infof("variants loaded from bigquery in %+v", time.Since(start))
+	return &mgr, nil
+}
+
+func (v *openshiftVariants) AllPlatforms() sets.String {
+	return v.variantValues["Platform"]
+}
+
+func (v *openshiftVariants) IdentifyVariants(jobName string) []string {
+	allVariants := v.jobVariants[jobName]
 	if v.IsJobNeverStable(jobName) {
-		return []string{NeverStable}
-	}
-	if promoteRegex.MatchString(jobName) {
-		variants = append(variants, "promote")
-		return variants
+		allVariants = append(allVariants, NeverStable)
 	}
 
-	// If a job is an aggregation, it should only be bucketed in
-	// `aggregated`. Pushing it into other variants causes unwanted
-	// hysteresis for test and job pass rates. The jobs that compose
-	// an aggregated job are already in Sippy.
-	if aggregatedRegex.MatchString(jobName) {
-		return []string{"aggregated"}
-	}
-
-	// Platform
-	platform := compareAndSelectVariant(determinePlatform(jobName), jobVariants.Platform, "Platform")
-	if platform != "" {
-		variants = append(variants, platform)
-	}
-
-	// Architectures
-	arch := compareAndSelectVariant(determineArchitecture(jobName), jobVariants.Architecture, "Architecture")
-	if arch != "" {
-		variants = append(variants, arch)
-	}
-
-	// Network
-	network := compareAndSelectVariant(determineNetwork(jobName, release), jobVariants.Network, "Network")
-	if network != "" {
-		variants = append(variants, network)
-	}
-
-	// Upgrade
-	// TODO: consider adding jobType.FromRelease and jobType.Release comparisons for determining minor / micro, if desirable
-	if upgradeRegex.MatchString(jobName) {
-		variants = append(variants, "upgrade")
-		if upgradeMinorRegex.MatchString(jobName) {
-			variants = append(variants, "upgrade-minor")
-		} else {
-			variants = append(variants, "upgrade-micro")
-		}
-	}
-
-	// Topology
-	// external == hypershift hosted
-	if singleNodeRegex.MatchString(jobName) {
-		variants = append(variants, compareAndSelectVariant("single-node", jobVariants.Topology, "Topology"))
-	} else {
-		variants = append(variants, compareAndSelectVariant("ha", jobVariants.Topology, "Topology"))
-	}
-
-	// Other
-	if microshiftRegex.MatchString(jobName) {
-		variants = append(variants, "microshift")
-	}
-	if hypershiftRegex.MatchString(jobName) {
-		variants = append(variants, "hypershift")
-	}
-	if serialRegex.MatchString(jobName) {
-		variants = append(variants, "serial")
-	}
-	if assistedRegex.MatchString(jobName) {
-		variants = append(variants, "assisted")
-	}
-	if compactRegex.MatchString(jobName) {
-		variants = append(variants, "compact")
-	}
-	if etcdScaling.MatchString(jobName) {
-		variants = append(variants, "etcd-scaling")
-	}
-	if osdRegex.MatchString(jobName) {
-		variants = append(variants, "osd")
-	}
-	if fipsRegex.MatchString(jobName) {
-		variants = append(variants, "fips")
-	}
-	if techpreview.MatchString(jobName) {
-		variants = append(variants, "techpreview")
-	}
-	if rtRegex.MatchString(jobName) {
-		variants = append(variants, "realtime")
-	}
-	if proxyRegex.MatchString(jobName) {
-		variants = append(variants, "proxy")
-	}
-
-	if len(variants) == 0 {
-		log.Infof("unknown variant for job: %s\n", jobName)
-		return []string{"unknown variant"}
-	}
-
-	return variants
+	// Ensure filtered by important variants; including them all
+	// significantly increases cardinality and slows matview refreshes
+	// to a crawl.
+	return filterVariants(allVariants, importantVariants)
 }
 
-func determinePlatform(jobName string) string {
-	// Platforms
-	if alibabaRegex.MatchString(jobName) {
-		return "alibaba"
-	} else if awsRegex.MatchString(jobName) {
-		return "aws"
-	} else if azureRegex.MatchString(jobName) {
-		return "azure"
-	} else if gcpRegex.MatchString(jobName) {
-		return "gcp"
-	} else if libvirtRegex.MatchString(jobName) {
-		return "libvirt"
-	} else if metalAssistedRegex.MatchString(jobName) || (metalRegex.MatchString(jobName) && singleNodeRegex.MatchString(jobName)) {
-		// Without support for negative lookbacks in the native
-		// regexp library, it's easiest to differentiate these
-		// three by seeing if it's metal-assisted or metal-ipi, and then fall through
-		// to check if it's UPI metal.
-		return "metal-assisted"
-	} else if metalIPIRegex.MatchString(jobName) {
-		return "metal-ipi"
-	} else if metalRegex.MatchString(jobName) {
-		return "metal-upi"
-	} else if nutanixRegex.MatchString(jobName) {
-		return "nutanix"
-	} else if openstackRegex.MatchString(jobName) {
-		return "openstack"
-	} else if ovirtRegex.MatchString(jobName) {
-		return "ovirt"
-	} else if vsphereUPIRegex.MatchString(jobName) {
-		return "vsphere-upi"
-	} else if vsphereRegex.MatchString(jobName) {
-		return "vsphere-ipi"
-	}
-
-	return ""
-}
-
-func determineArchitecture(jobName string) string {
-	if arm64Regex.MatchString(jobName) {
-		return "arm64"
-	} else if ppc64leRegex.MatchString(jobName) {
-		return "ppc64le"
-	} else if s390xRegex.MatchString(jobName) {
-		return "s390x"
-	} else if multiRegex.MatchString(jobName) {
-		return "heterogeneous"
-	} else {
-		return "amd64"
-	}
-}
-
-func determineNetwork(jobName, release string) string {
-	if ovnRegex.MatchString(jobName) {
-		return "ovn"
-	} else if sdnRegex.MatchString(jobName) {
-		return "sdn"
-	} else {
-		// If no explicit version, guess based on release
-		ovnBecomesDefault, _ := version.NewVersion("4.12")
-		releaseVersion, err := version.NewVersion(release)
-		if err != nil {
-			log.Warningf("could not determine network type for %q", jobName)
-			return ""
-		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
-			return "ovn"
-		} else {
-			return "sdn"
-		}
-	}
-}
-
-func (openshiftVariants) IsJobNeverStable(jobName string) bool {
+func (*openshiftVariants) IsJobNeverStable(jobName string) bool {
 	for _, ns := range openshiftJobsNeverStable {
 		if ns == jobName {
 			return true
@@ -361,4 +136,30 @@ func (openshiftVariants) IsJobNeverStable(jobName string) bool {
 	}
 
 	return false
+}
+
+// filterVariants only includes the important variants, returns them sorted
+// according to the original array's order
+func filterVariants(arr, prefixes []string) []string {
+	var result []string
+	prefixMap := make(map[string]string)
+
+	// Create a map of prefix to full string
+	for _, item := range arr {
+		for _, prefix := range prefixes {
+			if strings.HasPrefix(item, prefix+":") {
+				prefixMap[prefix] = item
+				break
+			}
+		}
+	}
+
+	// Add items to result in the order of prefixes
+	for _, prefix := range prefixes {
+		if val, exists := prefixMap[prefix]; exists {
+			result = append(result, val)
+		}
+	}
+
+	return result
 }

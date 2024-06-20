@@ -130,11 +130,13 @@ func NewServeCommand() *cobra.Command {
 
 			pinnedDateTime := f.DBFlags.GetPinnedTime()
 
+			variantManager := f.ModeFlags.GetVariantManager(context.Background(), bigQueryClient)
+
 			server := sippyserver.NewServer(
 				f.ModeFlags.GetServerMode(),
 				f.ListenAddr,
 				f.ModeFlags.GetSyntheticTestManager(),
-				f.ModeFlags.GetVariantManager(),
+				variantManager,
 				webRoot,
 				&resources.Static,
 				dbc,
@@ -149,7 +151,7 @@ func NewServeCommand() *cobra.Command {
 
 			if f.MetricsAddr != "" {
 				// Do an immediate metrics update
-				err = metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor}, f.MaintainRegressionTables)
+				err = metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, variantManager, util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor}, f.MaintainRegressionTables)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}
@@ -162,7 +164,7 @@ func NewServeCommand() *cobra.Command {
 						select {
 						case <-ticker.C:
 							log.Info("tick")
-							err := metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, f.ModeFlags.GetVariantManager(), util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor}, f.MaintainRegressionTables)
+							err := metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, variantManager, util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.CRTimeRoundingFactor}, f.MaintainRegressionTables)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")
 							}
