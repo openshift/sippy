@@ -99,9 +99,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		// If we read in an invalid StartTime, skip this job but put out an error.
 		if !bqjr.StartTime.Valid {
 			log.WithField("job", bqjr.JobName).Error("invalid start time for prowjob")
-
-			// Add a new error to errs that shows the name of the job and that it has an invalid start time.
-			errs = append(errs, errors.Errorf("%s has invalid start time for prowjob", bqjr.JobName))
+			// Do not return an error as that will cause the job to fail.
 			continue
 		}
 		prowJobs[bqjr.BuildID] = prow.ProwJob{
