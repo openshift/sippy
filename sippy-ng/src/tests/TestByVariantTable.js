@@ -1,6 +1,6 @@
 import './TestByVariantTable.css'
 import { Link } from 'react-router-dom'
-import { pathForExactTestAnalysis } from '../helpers'
+import { parseVariantName, pathForExactTestAnalysis } from '../helpers'
 import { scale } from 'chroma-js'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
 import { useCookies } from 'react-cookie'
@@ -246,14 +246,20 @@ export default function TestByVariantTable(props) {
           <TableHead>
             <TableRow>
               {props.briefTable ? '' : nameColumn}
-              {props.data.column_names.map((column, idx) => (
-                <TableCell
-                  className={'col-result' + (showFull ? '-full' : '')}
-                  key={'column' + '-' + idx}
-                >
-                  {column}
-                </TableCell>
-              ))}
+              {props.data.column_names.map((column, idx) => {
+                const variantInfo = parseVariantName(column)
+                return (
+                  <TableCell
+                    className={'col-result' + (showFull ? '-full' : '')}
+                    key={'column' + '-' + idx}
+                  >
+                    <Typography variant="h6">{variantInfo.name}</Typography>
+                    <Typography variant="caption">
+                      {variantInfo.variant}
+                    </Typography>
+                  </TableCell>
+                )
+              })}
             </TableRow>
           </TableHead>
           <TableBody>

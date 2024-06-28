@@ -2,12 +2,13 @@ import {
   Box,
   Card,
   CardContent,
+  CardHeader,
   Grid,
   Tooltip,
-  Typography,
 } from '@mui/material'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
+import { parseVariantName } from '../helpers'
 import { scale } from 'chroma-js'
 import PassRateIcon from './PassRateIcon'
 import PropTypes from 'prop-types'
@@ -41,6 +42,8 @@ export default function MiniCard(props) {
     bgColor = theme.palette.text.disabled
   }
 
+  let variantInfo = parseVariantName(props.name)
+
   const summary = (
     <Fragment>
       <div align="center">
@@ -57,11 +60,11 @@ export default function MiniCard(props) {
       className={`${classes.miniCard}`}
       sx={{ backgroundColor: bgColor }}
     >
+      <CardHeader title={variantInfo.name} subheader={variantInfo.variant} />
       <CardContent
         className={`${classes.cardContent}`}
         sx={{ textAlign: 'center' }}
       >
-        <Typography variant="h6">{props.name}</Typography>
         <Grid
           container
           direction="row"
