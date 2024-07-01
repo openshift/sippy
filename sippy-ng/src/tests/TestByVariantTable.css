@@ -38,9 +38,11 @@
   opacity: 1;
   border-left: 1px solid black;
   border-right: 1px solid black;
-  width: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100vh;
   min-width: 100px;
-  max-width: 100px;
+  max-width: 170px;
 }
 
 .col-result-full {
