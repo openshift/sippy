@@ -1136,13 +1136,14 @@ type TriagedIncident struct {
 	Release string `bigquery:"release" json:"release"`
 	TestID  string `bigquery:"test_id" json:"test_id"`
 	// TODO: should this be joined in instead of recording? test_name can change for a given test_id
-	TestName     string                       `bigquery:"test_name" json:"test_name"`
-	IncidentID   string                       `bigquery:"incident_id" json:"incident_id"`
-	ModifiedTime time.Time                    `bigquery:"modified_time" json:"modified_time"`
-	Variants     []ComponentReportVariant     `bigquery:"variants" json:"variants"`
-	Issue        TriagedIncidentIssue         `bigquery:"issue" json:"issue"`
-	JobRuns      []TriageJobRun               `bigquery:"job_runs" json:"job_runs"`
-	Attributions []TriagedIncidentAttribution `bigquery:"attributions" json:"attributions"`
+	TestName        string                       `bigquery:"test_name" json:"test_name"`
+	IncidentID      string                       `bigquery:"incident_id" json:"incident_id"`
+	IncidentGroupID string                       `bigquery:"incident_group_id" json:"incident_group_id"`
+	ModifiedTime    time.Time                    `bigquery:"modified_time" json:"modified_time"`
+	Variants        []ComponentReportVariant     `bigquery:"variants" json:"variants"`
+	Issue           TriagedIncidentIssue         `bigquery:"issue" json:"issue"`
+	JobRuns         []TriageJobRun               `bigquery:"job_runs" json:"job_runs"`
+	Attributions    []TriagedIncidentAttribution `bigquery:"attributions" json:"attributions"`
 }
 
 type TriagedIncidentIssue struct {
@@ -1164,6 +1165,7 @@ type ComponentReportVariant struct {
 }
 
 type TriageJobRun struct {
-	URL       string    `bigquery:"url" json:"url"`
-	StartTime time.Time `bigquery:"start_time" json:"start_time"`
+	URL           string                 `bigquery:"url" json:"url"`
+	StartTime     time.Time              `bigquery:"start_time" json:"start_time"`
+	CompletedTime bigquery.NullTimestamp `bigquery:"completed_time" json:"completed_time"`
 }
