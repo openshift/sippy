@@ -1419,12 +1419,14 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 			}
 			impactedJobRuns.Insert(impactedJobRun.URL)
 
-			if impactedJobRun.StartTime.After(startTime) && impactedJobRun.StartTime.Before(endTime) {
-				numJobRunsToSuppress++
-			} else if startTime.Sub(impactedJobRun.StartTime) < (6 * time.Hour) {
-				// query uses modified time, we track start time
-				// could also consider tracking EndTime which would be closer to modified time
-				// but more work
+			compareTime := impactedJobRun.StartTime
+			// preference is to compare to CompletedTime as it will more closely match jobrun modified time
+			// but, it is optional so default to StartTime and set to CompletedTime when present
+			if impactedJobRun.CompletedTime.Valid {
+				compareTime = impactedJobRun.CompletedTime.Timestamp
+			}
+
+			if compareTime.After(startTime) && compareTime.Before(endTime) {
 				numJobRunsToSuppress++
 			}
 		}
