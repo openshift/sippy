@@ -43,13 +43,14 @@ If there is a specific time window to consider for JobRunStartTimes, specify the
 
 If the JSON file specified in `--input-file` is complete and you don't need to use the `--test-report-url` to look up JobRuns, etc. set this flag to true.
 
-- `--load-incidents-from-file`: Skips test report lookup and uses specified input file. Only valid with `--output-type=DB`.  But if `--output-type=JSON`, `--load-incidents-from-file=True` is implied.
+- `--load-incidents-from-file`: Skips test report lookup and uses specified input file. Only valid with `--output-type=DB`.
 
 ### Incident Query Range
 
 If you expect an existing incident to exist, but it hasn't been updated within the last two weeks, specify a target modified time for the match incident search range to use.
 
 - `--target-modified-time`: Specifies the target date for querying existing records (format: target-2weeks to target).
+- `--target-build-cluster`: Specifies the target build cluster a job was run on.  Generally used for cluster specific infrastructure failures.
 
 ### Test Identification
 
