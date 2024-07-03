@@ -754,6 +754,12 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
                 if "completionTime" in prow_job_json["status"]:
                     completion_time = prow_job_json["status"]["completionTime"]
 
+                build_cluster =  prow_job_json["spec"]["cluster"]
+
+                if args.target_build_cluster != None and len(args.target_build_cluster) > 0:
+                    if build_cluster != args.target_build_cluster:
+                        continue  
+
                 if job_matches(record, prow_url, start_time, issue_resolution_date):
                     triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time, "CompletionTime": completion_time})
 
@@ -791,6 +797,8 @@ if __name__ == '__main__':
     # if you expect an existing incident but that is hasn't been updated within the last two weeks you can specify a target
     # modified time for the match incident search range to use
     parser.add_argument("--target-modified-time", help="The target date to query for existing record (range: target-2weeks - target).")
+
+    parser.add_argument("--target-build-cluster", help="Specify a specific build cluster that the job was run from.")
 
     # specify the single test id to match, or use an input file for multiple tests
     parser.add_argument("--test-id", help="The internal id of the test.")
@@ -851,6 +859,8 @@ if __name__ == '__main__':
                 args.output_type = arguments["OutputType"]
             if "TargetModifiedTime" in arguments and len(arguments["TargetModifiedTime"]) > 0:
                 args.target_modified_time = arguments["TargetModifiedTime"]
+            if "TargetBuildCluster" in arguments and len(arguments["TargetBuildCluster"]) > 0:
+                args.target_build_cluster = arguments["TargetBuildCluster"]    
             if "JobRunStartTimeMax" in arguments and len(arguments["JobRunStartTimeMax"]) > 0:
                 args.job_run_start_time_max = arguments["JobRunStartTimeMax"]
             if "JobRunStartTimeMin" in arguments and len(arguments["JobRunStartTimeMin"]) > 0:
@@ -1016,6 +1026,9 @@ if __name__ == '__main__':
             triage_output["Arguments"]["JobRunStartTimeMin"] = args.job_run_start_time_min
         if args.issue_resolution_date != None:
             triage_output["Arguments"]["IssueResolutionDate"] = args.issue_resolution_date
+        if args.target_build_cluster != None:
+            triage_output["Arguments"]["TargetBuildCluster"] = args.target_build_cluster
+
         if len(output_file) > 0:
             with open(output_file, 'w') as incident_file:
                 json.dump(triage_output, incident_file, indent=4)
