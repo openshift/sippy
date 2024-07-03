@@ -21,6 +21,10 @@ import (
 )
 
 const (
+	blBigQueryQueryLabelKey                  = "sippy-bug-loader"
+	blBigQueryQueryLabelValueJobBugMappings  = "job-bug-mappings"
+	blBigQueryQueryLabelValueTestBugMappings = "test-bug-mappings"
+
 	// Unfortunate cross-project join
 	ComponentMappingProject = "openshift-gce-devel"
 	ComponentMappingDataset = "ci_analysis_us"
@@ -180,6 +184,7 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
 	log.Debugf(querySQL)
 	query := bl.bqc.BQ.Query(querySQL)
+	query.Labels = map[string]string{blBigQueryQueryLabelKey: blBigQueryQueryLabelValueTestBugMappings}
 
 	it, err := query.Read(ctx)
 	if err != nil {
@@ -234,6 +239,7 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 		TicketDataQuery)
 	log.Debugf(querySQL)
 	query := bl.bqc.BQ.Query(querySQL)
+	query.Labels = map[string]string{blBigQueryQueryLabelKey: blBigQueryQueryLabelValueJobBugMappings}
 
 	it, err := query.Read(ctx)
 	if err != nil {

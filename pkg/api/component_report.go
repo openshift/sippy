@@ -28,6 +28,15 @@ import (
 )
 
 const (
+	crBigQueryQueryLabelKey                      = "sippy-component-readiness"
+	crBigQueryQueryLabelValueJunitColumnCount    = "junit-column-count"
+	crBigQueryQueryLabelValueJunitSample         = "junit-sample"
+	crBigQueryQueryLabelValueJunitBase           = "junit-base"
+	crBigQueryQueryLabelValueJobVariants         = "job-variants"
+	crBigQueryQueryLabelValueTriagedModifiedTime = "triaged-modified-time"
+	crBigQueryQueryLabelValueTriagedIssues       = "triaged-issues"
+	crBigQueryQueryLabelValueCurrentRegressions  = "current-regressions"
+
 	triagedIncidentsTableID = "triaged_incidents"
 
 	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
@@ -273,6 +282,7 @@ func (c *componentReportGenerator) GenerateJobVariants() (apitype.JobVariants, [
 					GROUP BY
 						variant_name`, c.client.Dataset)
 	query := c.client.BQ.Query(queryString)
+	query.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueJobVariants}
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		log.WithError(err).Errorf("error querying variants from bigquery for %s", queryString)
@@ -475,6 +485,7 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 func (b *baseJobRunTestStatusGenerator) queryTestStatus() (apitype.ComponentJobRunTestReportStatus, []error) {
 	baseString := b.commonQuery + ` AND branch = @BaseRelease`
 	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + b.groupByQuery)
+	baseQuery.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueJunitBase}
 
 	baseQuery.Parameters = append(baseQuery.Parameters, b.queryParameters...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
@@ -529,6 +540,8 @@ func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJob
 		sampleString = sampleString + `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
 	}
 	sampleQuery := s.ComponentReportGenerator.client.BQ.Query(sampleString + s.groupByQuery)
+	sampleQuery.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueJunitSample}
+
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
@@ -731,6 +744,7 @@ func (b *baseQueryGenerator) queryTestStatus() (apitype.ComponentReportTestStatu
 	errs := []error{}
 	baseString := b.commonQuery + ` AND branch = @BaseRelease`
 	baseQuery := b.client.BQ.Query(baseString + b.groupByQuery)
+	baseQuery.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueJunitBase}
 
 	baseQuery.Parameters = append(baseQuery.Parameters, b.queryParameters...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
@@ -796,6 +810,7 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 		sampleString = sampleString + `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
 	}
 	sampleQuery := s.client.BQ.Query(sampleString + s.groupByQuery)
+	sampleQuery.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueJunitSample}
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
@@ -1342,6 +1357,7 @@ func (t *triagedIncidentsModifiedTimeGenerator) queryTriagedIssuesLastModified()
 	}...)
 
 	sampleQuery := t.client.BQ.Query(queryString)
+	sampleQuery.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueTriagedModifiedTime}
 	sampleQuery.Parameters = append(sampleQuery.Parameters, params...)
 
 	return t.fetchLastModified(sampleQuery)
@@ -1459,6 +1475,7 @@ func (t *triagedIncidentsGenerator) queryTriagedIssues() ([]apitype.TriagedIncid
 	}...)
 
 	sampleQuery := t.client.BQ.Query(queryString)
+	sampleQuery.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueTriagedIssues}
 	sampleQuery.Parameters = append(sampleQuery.Parameters, params...)
 
 	return t.fetchTriagedIssues(sampleQuery)
@@ -2000,6 +2017,7 @@ func (c *componentReportGenerator) getUniqueJUnitColumnValuesLast60Days(field st
 						name`, field, c.client.Dataset, unnest)
 
 	query := c.client.BQ.Query(queryString)
+	query.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueJunitColumnCount}
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "IgnoredJobs",

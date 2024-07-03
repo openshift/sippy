@@ -13,6 +13,11 @@ import (
 	"github.com/openshift/sippy/pkg/apis/prow"
 )
 
+const (
+	plBigQueryQueryLabelKey           = "sippy-prow-loader"
+	plBigQueryQueryLabelValueProwJobs = "prow-jobs"
+)
+
 func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []error) {
 	errs := []error{}
 
@@ -53,6 +58,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		`WHERE TIMESTAMP(prowjob_completion) > @queryFrom
 	       AND prowjob_url IS NOT NULL
 	       ORDER BY prowjob_start_ts`)
+	query.Labels = map[string]string{plBigQueryQueryLabelKey: plBigQueryQueryLabelValueProwJobs}
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "queryFrom",

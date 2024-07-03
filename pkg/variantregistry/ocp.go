@@ -105,6 +105,7 @@ ORDER BY j.prowjob_job_name;
 	log.Infof("running query for recent jobs: \n%s", queryStr)
 
 	query := v.BigQueryClient.Query(queryStr)
+	query.Labels = map[string]string{vrBigQueryQueryLabelKey: vrBigQueryQueryLabelValueLoadExpectedVariants}
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying primary list of all jobs")
