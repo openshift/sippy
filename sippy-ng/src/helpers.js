@@ -322,3 +322,16 @@ export function getUrlWithoutParams(params) {
   params.forEach((param) => url.searchParams.delete(param))
   return url.href
 }
+
+export function parseVariantName(variantName) {
+  let name = variantName
+  let variant = ''
+  if (variantName.split(':').length > 1) {
+    name = variantName.split(':')[1]
+    variant = variantName.split(':')[0]
+  }
+  return {
+    name,
+    variant,
+  }
+}

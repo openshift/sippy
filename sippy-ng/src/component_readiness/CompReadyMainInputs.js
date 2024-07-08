@@ -18,7 +18,7 @@ import React, { useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Tooltip from '@mui/material/Tooltip'
 
-const useStyles = makeStyles((theme) => ({
+export const useStyles = makeStyles((theme) => ({
   crRelease: {
     textAlign: 'center',
     marginBottom: 50,
@@ -52,6 +52,34 @@ export default function CompReadyMainInputs(props) {
   ])
 
   const varsContext = useContext(CompReadyVarsContext)
+  const compReadyEnvOptions = (
+    <div>
+      <CheckBoxList
+        headerName="Group By"
+        displayList={varsContext.dbGroupByVariants}
+        checkedItems={varsContext.columnGroupByCheckedItems}
+        setCheckedItems={varsContext.setColumnGroupByCheckedItems}
+      />
+      {Object.keys(varsContext.allJobVariants)
+        .filter((key) => !checkBoxHiddenIncludeVariants.has(key))
+        .map((variant, i) => (
+          <IncludeVariantCheckBoxList key={variant} variantName={variant} />
+        ))}
+      <AdvancedOptions
+        headerName="Advanced"
+        confidence={varsContext.confidence}
+        pity={varsContext.pity}
+        minFail={varsContext.minFail}
+        ignoreMissing={varsContext.ignoreMissing}
+        ignoreDisruption={varsContext.ignoreDisruption}
+        setConfidence={varsContext.setConfidence}
+        setPity={varsContext.setPity}
+        setMinFail={varsContext.setMinFail}
+        setIgnoreMissing={varsContext.setIgnoreMissing}
+        setIgnoreDisruption={varsContext.setIgnoreDisruption}
+      ></AdvancedOptions>
+    </div>
+  )
   return (
     <Fragment>
       <div className="cr-report-button">
@@ -123,35 +151,12 @@ export default function CompReadyMainInputs(props) {
           setEndTime={varsContext.setBaseEndTime}
         ></ReleaseSelector>
       </div>
-      <div>
-        <CheckBoxList
-          headerName="Group By"
-          displayList={varsContext.dbGroupByVariants}
-          checkedItems={varsContext.columnGroupByCheckedItems}
-          setCheckedItems={varsContext.setColumnGroupByCheckedItems}
-        />
-        {Object.keys(varsContext.allJobVariants)
-          .filter((key) => !checkBoxHiddenIncludeVariants.has(key))
-          .map((variant, i) => (
-            <IncludeVariantCheckBoxList key={variant} variantName={variant} />
-          ))}
-        <AdvancedOptions
-          headerName="Advanced"
-          confidence={varsContext.confidence}
-          pity={varsContext.pity}
-          minFail={varsContext.minFail}
-          ignoreMissing={varsContext.ignoreMissing}
-          ignoreDisruption={varsContext.ignoreDisruption}
-          setConfidence={varsContext.setConfidence}
-          setPity={varsContext.setPity}
-          setMinFail={varsContext.setMinFail}
-          setIgnoreMissing={varsContext.setIgnoreMissing}
-          setIgnoreDisruption={varsContext.setIgnoreDisruption}
-        ></AdvancedOptions>
-      </div>
+      {props.isTestDetails ? '' : compReadyEnvOptions}
     </Fragment>
   )
 }
 
 // component and environment may be null so they are not required
-CompReadyMainInputs.propTypes = {}
+CompReadyMainInputs.propTypes = {
+  isTestDetails: PropTypes.bool,
+}
