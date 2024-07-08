@@ -61,8 +61,7 @@ func KeyForTriagedIssue(testID string, variants []api.ComponentReportVariant) Tr
 					newValue = "none"
 				}
 			case "Platform":
-				switch v.Value {
-				case "metal-ipi":
+				if v.Value == "metal-ipi" {
 					newValue = "metal"
 				}
 			}

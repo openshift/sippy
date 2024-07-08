@@ -21,6 +21,12 @@ To do this, change the [sippy-ng/.env.development](.env.development) file to con
 REACT_APP_API_URL="https://sippy.dptools.openshift.org"
 ```
 
+This also works as a runtime setting:
+
+```
+sippy/sippy-ng: $ REACT_APP_API_URL="https://sippy.dptools.openshift.org" npm start
+```
+
 If you are running tests and want to use the production Sippy API server, modify this line in [`setupTests.js`](src/setupTests.js):
 
 ```
@@ -32,9 +38,9 @@ to be:
 ```
 process.env.REACT_APP_API_URL = 'https://sippy.dptools.openshift.org'
 ```
-## Formattting requirements
+## Formatting requirements
 
-Formatting requirements are enforce on the order of imports (alphabetically) and [prettier](https://prettier.io/docs/en/options.html).  The [prettier config](prettier.config.js) can be modified to change the formatting standards.  From the command line prettier formatting can be applied via
+Formatting requirements are enforced on the order of imports (alphabetically) and [prettier](https://prettier.io/docs/en/options.html).  The [prettier config](prettier.config.js) can be modified to change the formatting standards.  From the command line prettier formatting can be applied via
 ```
 sippy/sippy-ng: $ npx prettier -w src/
 ```

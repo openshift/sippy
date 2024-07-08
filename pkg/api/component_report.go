@@ -526,7 +526,7 @@ func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (apitype.ComponentJob
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
 	// TODO
 	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
-		sampleString = sampleString + `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
+		sampleString += `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
 	}
 	sampleQuery := s.ComponentReportGenerator.client.BQ.Query(sampleString + s.groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
@@ -598,7 +598,8 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 
 // TODO: prSample
 // getCommonTestStatusQuery returns the common query for the higher level summary component summary.
-func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apitype.JobVariants, prSample bool) (string, string, []bigquery.QueryParameter) {
+// nolint:unused
+func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apitype.JobVariants, _ bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
 	// See fetchTestStatus for where we dynamically handle these columns.
@@ -793,7 +794,7 @@ func (s *sampleQueryGenerator) queryTestStatus() (apitype.ComponentReportTestSta
 	errs := []error{}
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
 	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
-		sampleString = sampleString + `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
+		sampleString += `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
 	}
 	sampleQuery := s.client.BQ.Query(sampleString + s.groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
@@ -1658,7 +1659,8 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		}
 	}
 
-	report.Rows = append(regressionRows, goodRows...)
+	regressionRows = append(regressionRows, goodRows...)
+	report.Rows = regressionRows
 	return report, nil
 }
 

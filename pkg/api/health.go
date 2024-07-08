@@ -47,7 +47,8 @@ func useNewInstallTest(release string) bool {
 func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time) {
 	excludedVariants := testidentification.DefaultExcludedVariants
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
-	excludedInstallVariants := append(testidentification.DefaultExcludedVariants, "upgrade-minor")
+	excludedInstallVariants := testidentification.DefaultExcludedVariants
+	excludedInstallVariants = append(excludedInstallVariants, "upgrade-minor")
 
 	indicators := make(map[string]apitype.Test)
 

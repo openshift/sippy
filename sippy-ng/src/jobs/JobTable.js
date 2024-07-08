@@ -216,6 +216,20 @@ export const getColumns = (config, openBugzillaDialog) => {
       type: 'array',
       headerName: 'Variants',
       hide: true,
+      renderCell: (params) => (
+        <Tooltip
+          sx={{ whiteSpace: 'pre' }}
+          title={params.value ? params.value.join('\n') : ''}
+        >
+          <div className="variants-list">
+            {params.value
+              ? params.value
+                  .filter((item) => !item.endsWith(':default'))
+                  .join('\n')
+              : ''}
+          </div>
+        </Tooltip>
+      ),
     },
     current_runs: {
       field: 'current_runs',
@@ -270,6 +284,34 @@ export const getViews = (props) => {
           field: 'job_runs',
           flex: 0.4,
           hide: props.briefTable,
+        },
+      ],
+    },
+    Variants: {
+      sortField: 'name',
+      sort: 'asc',
+      fieldOrder: [
+        {
+          field: 'name',
+          flex: 3.5,
+        },
+        {
+          field: 'current_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'net_improvement',
+          flex: 0.5,
+        },
+        {
+          field: 'previous_pass_percentage',
+          flex: 0.75,
+          headerClassName: props.briefTable ? '' : 'wrapHeader',
+        },
+        {
+          field: 'variants',
+          flex: 2,
         },
       ],
     },
@@ -581,7 +623,7 @@ function JobTable(props) {
         rows={rows}
         columns={gridView.columns}
         autoHeight={true}
-        rowHeight={70}
+        getRowHeight={() => 'auto'}
         sortingOrder={['desc', 'asc']}
         sortModel={[
           {

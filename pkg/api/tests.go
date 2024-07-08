@@ -12,7 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
@@ -248,24 +247,4 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	}).Info("BuildTestsResults completed")
 
 	return testReports, overallTest, nil
-}
-
-type testDetail struct {
-	Name    string                         `json:"name"`
-	Results []v1sippyprocessing.TestResult `json:"results"`
-}
-
-type testsDetailAPIResult struct {
-	Tests []testDetail `json:"tests"`
-	Start int          `json:"start"`
-	End   int          `json:"end"`
-}
-
-func (tests testsDetailAPIResult) limit(req *http.Request) testsDetailAPIResult {
-	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
-	if limit > 0 && len(tests.Tests) >= limit {
-		tests.Tests = tests.Tests[:limit]
-	}
-
-	return tests
 }

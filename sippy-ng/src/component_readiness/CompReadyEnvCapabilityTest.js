@@ -44,8 +44,7 @@ const cancelFetch = () => {
 export default function CompReadyEnvCapabilityTest(props) {
   const classes = useContext(ComponentReadinessStyleContext)
 
-  const { filterVals, component, capability, testId, environment, theme } =
-    props
+  const { filterVals, component, capability, testId, environment } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -196,7 +195,7 @@ export default function CompReadyEnvCapabilityTest(props) {
 
   return (
     <Fragment>
-      <Sidebar theme={theme} />
+      <Sidebar />
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
       <h2>
         <Link to="/component_readiness">/</Link> {component} &gt; {capability}
@@ -271,5 +270,4 @@ CompReadyEnvCapabilityTest.propTypes = {
   capability: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   environment: PropTypes.string,
-  theme: PropTypes.object.isRequired,
 }
