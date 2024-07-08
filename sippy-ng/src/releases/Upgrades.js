@@ -54,7 +54,7 @@ export default function Upgrades(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} currentPage="Upgrades" />
-      <Grid width="100vw">
+      <Grid>
         <Typography variant="h4" style={{ margin: 10 }} align="center">
           Upgrade health for {props.release}
         </Typography>
