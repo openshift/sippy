@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
+
 	"github.com/openshift/sippy/pkg/apis/api"
 	log "github.com/sirupsen/logrus"
 )
-
-var requiredVariants = []string{"Architecture", "Network", "Platform", "Upgrade"}
 
 type IntentionalRegression struct {
 	JiraComponent             string
@@ -104,7 +104,7 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	if _, err := url.ParseRequestURI(in.JiraBug); err != nil {
 		return fmt.Errorf("jiraBug must be a valid URL")
 	}
-	for _, v := range requiredVariants {
+	for _, v := range resolvedissues.TriageMatchVariants.List() {
 		if _, ok := in.Variant.Variants[v]; !ok {
 			return fmt.Errorf("%s must be specified", v)
 		}
