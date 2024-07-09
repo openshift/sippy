@@ -61,22 +61,7 @@ const (
 						WHEN success_val > 0 THEN 1
 						ELSE 2
 					END) AS row_num,
-				/* add a dynamic column which is the releaseJobName annotation for /payload jobs, *if* it exists,
-					otherwise the normal prow job name, giving us a job name column we can always rely on */
-				CASE
-					WHEN EXISTS (
-						SELECT 1
-						FROM UNNEST(jobs.prowjob_annotations) AS annotation
-						WHERE annotation LIKE 'releaseJobName=%%'
-					) THEN (
-						SELECT
-						SPLIT(SPLIT(annotation, 'releaseJobName=')[OFFSET(1)], ',')[SAFE_OFFSET(0)]
-						FROM UNNEST(jobs.prowjob_annotations) AS annotation	
-						WHERE annotation LIKE 'releaseJobName=%%'
-						LIMIT 1
-					)
-					ELSE jobs.prowjob_job_name
-		    	END AS variant_registry_job_name,
+%s
 				jobs.org,
 				jobs.repo,
 				jobs.pr_number,
@@ -92,6 +77,30 @@ const (
 			AND skipped = false
 		)
 		SELECT * FROM deduped_testcases WHERE row_num = 1`
+
+	// normalJobNameCol simply uses the prow job name for regular (non-pull-request) component reports.
+	normalJobNameCol = `
+				jobs.prowjob_job_name AS variant_registry_job_name,
+`
+	// pullRequestDynamicJobNameCol is used for pull-request component reports and will use the releaseJobName
+	// annotation for /payload jobs if it exists, otherwise the normal prow job name. This is done as /payload
+	// jobs get custom job names which will not be in the variant registry.
+	pullRequestDynamicJobNameCol = `
+				CASE
+					WHEN EXISTS (
+						SELECT 1
+						FROM UNNEST(jobs.prowjob_annotations) AS annotation
+						WHERE annotation LIKE 'releaseJobName=%%'
+					) THEN (
+						SELECT
+						SPLIT(SPLIT(annotation, 'releaseJobName=')[OFFSET(1)], ',')[SAFE_OFFSET(0)]
+						FROM UNNEST(jobs.prowjob_annotations) AS annotation	
+						WHERE annotation LIKE 'releaseJobName=%%'
+						LIMIT 1
+					)
+					ELSE jobs.prowjob_job_name
+		    	END AS variant_registry_job_name,
+`
 )
 
 type GeneratorType string
@@ -383,11 +392,16 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (apitype.Com
 
 // getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
 // This is for the bottom level most specific pages in component readiness.
-func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants apitype.JobVariants) (string, string, []bigquery.QueryParameter) {
+func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants apitype.JobVariants, isSample bool) (string, string, []bigquery.QueryParameter) {
 	joinVariants := ""
 	for v := range allJobVariants.Variants {
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
+	}
+
+	jobNameQueryPortion := normalJobNameCol
+	if c.SampleRelease.PullRequestOptions != nil && isSample {
+		jobNameQueryPortion = pullRequestDynamicJobNameCol
 	}
 
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
@@ -409,7 +423,7 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants apitype.Jo
 						SUM(flake_count) AS flake_count,
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, c.client.Dataset, c.client.Dataset))
+`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, c.client.Dataset))
 
 	queryString += joinVariants
 
@@ -572,7 +586,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 		log.Errorf("failed to get variants from bigquery")
 		return apitype.ComponentJobRunTestReportStatus{}, errs
 	}
-	queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants)
+	queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, false)
 	var baseStatus, sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
@@ -582,6 +596,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 		baseStatus, baseErrs = c.getBaseJobRunTestStatus(queryString, groupString, commonParams)
 	}()
 
+	queryString, groupString, commonParams = c.getTestDetailsQuery(allJobVariants, true)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -596,10 +611,8 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (apitype.Co
 	return apitype.ComponentJobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
-// TODO: prSample
 // getCommonTestStatusQuery returns the common query for the higher level summary component summary.
-// nolint:unused
-func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apitype.JobVariants, _ bool) (string, string, []bigquery.QueryParameter) {
+func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apitype.JobVariants, isSample bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
 	// See fetchTestStatus for where we dynamically handle these columns.
@@ -615,8 +628,13 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
 
+	jobNameQueryPortion := normalJobNameCol
+	if c.SampleRelease.PullRequestOptions != nil && isSample {
+		jobNameQueryPortion = pullRequestDynamicJobNameCol
+	}
+
 	// WARNING: returning additional columns from this query will require explicit parsing in deserializeRowToTestStatus
-	// TODO: jira_component and jira_comopnent_id appear to not be used? Could save bigquery costs if we remove them.
+	// TODO: jira_component and jira_component_id appear to not be used? Could save bigquery costs if we remove them.
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
 						FROM %s.component_mapping cm
@@ -636,7 +654,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `,
-		c.client.Dataset, c.client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, c.client.Dataset, c.client.Dataset))
+		c.client.Dataset, c.client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, c.client.Dataset))
 
 	queryString += joinVariants
 
