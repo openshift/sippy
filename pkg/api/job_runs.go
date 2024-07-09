@@ -453,103 +453,104 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 		return response, nil
 	}
 
-	var maxTestRiskReason string
+	maxTestRisk := apitype.FailureRiskLevelNone
 
-	// Iterate each failed test, query it's pass rates by NURPs, find a matching variant combo, and
-	// see how often we've passed in the last week.
 	for _, ft := range jobRun.Tests {
 
 		if ft.Test.Name == testidentification.OpenShiftTestsName || testidentification.IsIgnoredTest(ft.Test.Name) {
 			continue
 		}
 
-		loggerFields := logger.WithFields(log.Fields{
-			"name": ft.Test.Name,
-		})
+		loggerFields := logger.WithFields(log.Fields{"name": ft.Test.Name})
+		analysis, err := runTestRunAnalysis(ft, jobRun, compareRelease, loggerFields, testResultsJobNameFunc, jobNames, testResultsVariantsFunc, neverStableJob)
+		if err != nil {
+			continue // ignore runs where analysis failed
+		}
+		if analysis.Risk.Level.Level > maxTestRisk.Level {
+			maxTestRisk = analysis.Risk.Level
+		}
+		response.Tests = append(response.Tests, analysis)
+	}
+	if maxTestRisk.Level >= response.OverallRisk.Level.Level {
+		response.OverallRisk.Level = maxTestRisk
+		response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, fmt.Sprintf("Maximum failed test risk: %s", maxTestRisk.Name))
+	}
 
-		loggerFields.Debug("failed test")
+	return response, nil
+}
 
-		var testResultsJobNames, testResultsVariants *apitype.Test
-		var errJobNames, errVariants error
+// For a failed test, query its pass rates by NURPs, find a matching variant combo, and
+// see how often we've passed in the last week.
+func runTestRunAnalysis(failedTest models.ProwJobRunTest, jobRun *models.ProwJobRun, compareRelease string, logger *log.Entry, testResultsJobNameFunc testResultsByJobNameFunc, jobNames []string, testResultsVariantsFunc testResultsByVariantsFunc, neverStableJob bool) (apitype.ProwJobRunTestRiskAnalysis, error) {
 
-		// set upper and lower bounds for the number of jobNames we look to match against
-		if testResultsJobNameFunc != nil {
-			if len(jobNames) < 5 && len(jobNames) > 0 {
-				testResultsJobNames, errJobNames = testResultsJobNameFunc(ft.Test.Name, jobNames)
+	logger.Debug("failed test")
 
-				if errJobNames == nil && testResultsJobNames != nil {
-					if testResultsJobNames.CurrentRuns == 0 {
-						// do we need to prepend the suite name to the test?
-						testResultsJobNames, errJobNames = testResultsJobNameFunc(fmt.Sprintf("%s.%s", ft.Suite.Name, ft.Test.Name), jobNames)
-					}
+	var testResultsJobNames, testResultsVariants *apitype.Test
+	var errJobNames, errVariants error
+
+	// set upper and lower bounds for the number of jobNames we look to match against
+	if testResultsJobNameFunc != nil {
+		if len(jobNames) < 5 && len(jobNames) > 0 {
+			testResultsJobNames, errJobNames = testResultsJobNameFunc(failedTest.Test.Name, jobNames)
+
+			if errJobNames == nil && testResultsJobNames != nil {
+				if testResultsJobNames.CurrentRuns == 0 {
+					// do we need to prepend the suite name to the test?
+					testResultsJobNames, errJobNames = testResultsJobNameFunc(fmt.Sprintf("%s.%s", failedTest.Suite.Name, failedTest.Test.Name), jobNames)
 				}
-
-			} else {
-				loggerFields.Warningf("Skipping job names test analysis due to jobNames length: %d", len(jobNames))
 			}
-		}
 
-		// if this matched a neverStableJob we don't want to use the variant match as it will include
-		// results from stable jobs and potentially skew results.
-		// we will rely on the jobname match, if any, for analysis
-		if testResultsVariantsFunc != nil && !neverStableJob {
-			testResultsVariants, errVariants = testResultsVariantsFunc(ft.Test.Name, compareRelease, ft.Suite.Name, jobRun.ProwJob.Variants, jobNames)
-
-			if errVariants == nil && (testResultsVariants == nil || testResultsVariants.CurrentRuns == 0) {
-				// do we need to prepend the suite name to the test?
-				// drop passing the suite name to the func as we are prepending it to the test name
-				testResultsVariants, errVariants = testResultsVariantsFunc(fmt.Sprintf("%s.%s", ft.Suite.Name, ft.Test.Name), compareRelease, "", jobRun.ProwJob.Variants, jobNames)
-			}
-		}
-
-		if errJobNames != nil && errVariants != nil {
-			// log them both or just the one we don't pass back up?
-			loggerFields.WithError(errVariants).Error("Failed test results by variants")
-			loggerFields.WithError(errJobNames).Error("Failed test results job names")
-			return response, errJobNames
-		}
-
-		// Watch out for tests that ran in previous period, but not current, no sense comparing to 0 runs:
-		if (testResultsVariants != nil && testResultsVariants.CurrentRuns > 0) || (testResultsJobNames != nil && testResultsJobNames.CurrentRuns > 0) {
-
-			// select the 'best' test result
-			testRiskLvl, reasons := selectRiskAnalysisResult(testResultsJobNames, testResultsVariants, jobNames, compareRelease)
-
-			if testRiskLvl.Level >= response.OverallRisk.Level.Level {
-				response.OverallRisk.Level = testRiskLvl
-				maxTestRiskReason = fmt.Sprintf("Maximum failed test risk: %s", testRiskLvl.Name)
-			}
-			response.Tests = append(response.Tests, apitype.ProwJobRunTestRiskAnalysis{
-				Name: ft.Test.Name,
-				Risk: apitype.FailureRisk{
-					Level:   testRiskLvl,
-					Reasons: reasons,
-				},
-				OpenBugs: ft.Test.Bugs,
-			})
 		} else {
-			testRiskLvl := apitype.FailureRiskLevelUnknown
-			if testRiskLvl.Level >= response.OverallRisk.Level.Level {
-				response.OverallRisk.Level = testRiskLvl
-				maxTestRiskReason = fmt.Sprintf("Maximum failed test risk: %s", testRiskLvl.Name)
-			}
-			response.Tests = append(response.Tests, apitype.ProwJobRunTestRiskAnalysis{
-				Name: ft.Test.Name,
-				Risk: apitype.FailureRisk{
-					Level: testRiskLvl,
-					Reasons: []string{
-						fmt.Sprintf("Unable to find matching test results for variants: %v",
-							jobRun.ProwJob.Variants),
-					},
-				},
-				OpenBugs: ft.Test.Bugs,
-			})
+			logger.Warningf("Skipping job names test analysis due to jobNames length: %d", len(jobNames))
 		}
 	}
 
-	response.OverallRisk.Reasons = append(response.OverallRisk.Reasons, maxTestRiskReason)
+	// if this matched a neverStableJob we don't want to use the variant match as it will include
+	// results from stable jobs and potentially skew results.
+	// we will rely on the jobname match, if any, for analysis
+	if testResultsVariantsFunc != nil && !neverStableJob {
+		testResultsVariants, errVariants = testResultsVariantsFunc(failedTest.Test.Name, compareRelease, failedTest.Suite.Name, jobRun.ProwJob.Variants, jobNames)
 
-	return response, nil
+		if errVariants == nil && (testResultsVariants == nil || testResultsVariants.CurrentRuns == 0) {
+			// do we need to prepend the suite name to the test?
+			// drop passing the suite name to the func as we are prepending it to the test name
+			testResultsVariants, errVariants = testResultsVariantsFunc(fmt.Sprintf("%s.%s", failedTest.Suite.Name, failedTest.Test.Name), compareRelease, "", jobRun.ProwJob.Variants, jobNames)
+		}
+	}
+
+	if errJobNames != nil && errVariants != nil {
+		logger.WithError(errVariants).Error("Failed test results by variants")
+		logger.WithError(errJobNames).Error("Failed test results job names")
+		return apitype.ProwJobRunTestRiskAnalysis{}, errJobNames
+	}
+
+	// Watch out for tests that ran in previous period, but not current, no sense comparing to 0 runs:
+	if (testResultsVariants != nil && testResultsVariants.CurrentRuns > 0) || (testResultsJobNames != nil && testResultsJobNames.CurrentRuns > 0) {
+
+		// select the 'best' test result
+		testRiskLvl, reasons := selectRiskAnalysisResult(testResultsJobNames, testResultsVariants, jobNames, compareRelease)
+
+		return apitype.ProwJobRunTestRiskAnalysis{
+			Name: failedTest.Test.Name,
+			Risk: apitype.FailureRisk{
+				Level:   testRiskLvl,
+				Reasons: reasons,
+			},
+			OpenBugs: failedTest.Test.Bugs,
+		}, nil
+	} else {
+		return apitype.ProwJobRunTestRiskAnalysis{
+			Name: failedTest.Test.Name,
+			Risk: apitype.FailureRisk{
+				Level: apitype.FailureRiskLevelUnknown,
+				Reasons: []string{
+					fmt.Sprintf("Unable to find matching test results for variants: %v",
+						jobRun.ProwJob.Variants),
+				},
+			},
+			OpenBugs: failedTest.Test.Bugs,
+		}, nil
+	}
 }
 
 func selectRiskAnalysisResult(testResultsJobNames, testResultsVariants *apitype.Test, jobNames []string, compareRelease string) (apitype.RiskLevel, []string) {
