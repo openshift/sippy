@@ -524,36 +524,27 @@ func runTestRunAnalysis(failedTest models.ProwJobRunTest, jobRun *models.ProwJob
 		return apitype.ProwJobRunTestRiskAnalysis{}, errJobNames
 	}
 
+	analysis := apitype.ProwJobRunTestRiskAnalysis{
+		Name:     failedTest.Test.Name,
+		OpenBugs: failedTest.Test.Bugs,
+	}
 	// Watch out for tests that ran in previous period, but not current, no sense comparing to 0 runs:
 	if (testResultsVariants != nil && testResultsVariants.CurrentRuns > 0) || (testResultsJobNames != nil && testResultsJobNames.CurrentRuns > 0) {
-
 		// select the 'best' test result
-		testRiskLvl, reasons := selectRiskAnalysisResult(testResultsJobNames, testResultsVariants, jobNames, compareRelease)
-
-		return apitype.ProwJobRunTestRiskAnalysis{
-			Name: failedTest.Test.Name,
-			Risk: apitype.FailureRisk{
-				Level:   testRiskLvl,
-				Reasons: reasons,
-			},
-			OpenBugs: failedTest.Test.Bugs,
-		}, nil
+		analysis.Risk = selectRiskAnalysisResult(testResultsJobNames, testResultsVariants, jobNames, compareRelease)
 	} else {
-		return apitype.ProwJobRunTestRiskAnalysis{
-			Name: failedTest.Test.Name,
-			Risk: apitype.FailureRisk{
-				Level: apitype.FailureRiskLevelUnknown,
-				Reasons: []string{
-					fmt.Sprintf("Unable to find matching test results for variants: %v",
-						jobRun.ProwJob.Variants),
-				},
+		analysis.Risk = apitype.FailureRisk{
+			Level: apitype.FailureRiskLevelUnknown,
+			Reasons: []string{
+				fmt.Sprintf("Unable to find matching test results for variants: %v",
+					jobRun.ProwJob.Variants),
 			},
-			OpenBugs: failedTest.Test.Bugs,
-		}, nil
+		}
 	}
+	return analysis, nil
 }
 
-func selectRiskAnalysisResult(testResultsJobNames, testResultsVariants *apitype.Test, jobNames []string, compareRelease string) (apitype.RiskLevel, []string) {
+func selectRiskAnalysisResult(testResultsJobNames, testResultsVariants *apitype.Test, jobNames []string, compareRelease string) apitype.FailureRisk {
 
 	var testRiskLvlJobNames, testRiskLvlVariants apitype.RiskLevel
 	var reasonsJobNames, reasonsVariants []string
@@ -574,34 +565,34 @@ func selectRiskAnalysisResult(testResultsJobNames, testResultsVariants *apitype.
 		}
 	}
 
-	// if one is empty return the other
 	// if both are empty then return Unknown
-	if len(testRiskLvlJobNames.Name) == 0 {
-		if len(testRiskLvlVariants.Name) == 0 {
-			return apitype.FailureRiskLevelUnknown, []string{"Analysis was not performed for this test due to lack of current runs"}
+	if len(testRiskLvlJobNames.Name) == 0 && len(testRiskLvlVariants.Name) == 0 {
+		return apitype.FailureRisk{
+			Level:   apitype.FailureRiskLevelUnknown,
+			Reasons: []string{"Analysis was not performed for this test due to lack of current runs"},
 		}
-		return testRiskLvlVariants, reasonsVariants
-	}
-	if len(testRiskLvlVariants.Name) == 0 {
-		return testRiskLvlJobNames, reasonsJobNames
 	}
 
-	// if jobnames nondeterministic then return variants
-	if containsValue(nonDeterministicRiskLevels, testRiskLvlJobNames.Level) {
-		return testRiskLvlVariants, reasonsVariants
+	variantRisk := apitype.FailureRisk{Level: testRiskLvlVariants, Reasons: reasonsVariants}
+	jobRisk := apitype.FailureRisk{Level: testRiskLvlJobNames, Reasons: reasonsJobNames}
+	switch {
+	// if one is empty return the other
+	case len(testRiskLvlJobNames.Name) == 0:
+		return variantRisk
+	case len(testRiskLvlVariants.Name) == 0:
+		return jobRisk
+	case containsValue(nonDeterministicRiskLevels, testRiskLvlJobNames.Level):
+		// if jobnames nondeterministic then return variants
+		return variantRisk
+	case containsValue(nonDeterministicRiskLevels, testRiskLvlVariants.Level):
+		// if variants nondeterministic then return jobnames
+		return jobRisk
+	case testRiskLvlVariants.Level < testRiskLvlJobNames.Level:
+		// biased to return the lower risk level
+		return variantRisk
+	default:
+		return jobRisk
 	}
-
-	// if variants nondeterministic then return jobnames
-	if containsValue(nonDeterministicRiskLevels, testRiskLvlVariants.Level) {
-		return testRiskLvlJobNames, reasonsJobNames
-	}
-
-	// biased to return the lower risk level
-	if testRiskLvlVariants.Level < testRiskLvlJobNames.Level {
-		return testRiskLvlVariants, reasonsVariants
-	}
-
-	return testRiskLvlJobNames, reasonsJobNames
 }
 
 func containsValue(values []int, value int) bool {
