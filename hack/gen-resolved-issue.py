@@ -89,6 +89,7 @@ def ensure_resolved_incidents_table_exists():
 
         bigquery.SchemaField("job_runs", "RECORD", mode="REPEATED", fields=[
         bigquery.SchemaField("url", "STRING", mode="REQUIRED"),
+        bigquery.SchemaField("completion_time", "TIMESTAMP", mode="NULLABLE"),
         bigquery.SchemaField("start_time", "TIMESTAMP", mode="REQUIRED")]),
 
         bigquery.SchemaField("attributions", "RECORD", mode="REPEATED", fields=[
@@ -113,7 +114,11 @@ def match_existing_incident(variants, issue_type, issue_url, existing_results, n
     complete_jobs = []
 
     for job in new_job_runs:
-        complete_jobs.append({"url": job["URL"], "start_time": hack_for_rfc_3339(job["StartTime"])})
+        newJob = {"url": job["URL"], "start_time": hack_for_rfc_3339(job["StartTime"])}
+        if "CompletionTime" in job and job["CompletionTime"] != None:
+            newJob["completion_time"] = hack_for_rfc_3339(job["CompletionTime"])
+
+        complete_jobs.append(newJob)
 
 
     vKey = key_from_variants(variants)
@@ -161,7 +166,12 @@ def match_existing_incident(variants, issue_type, issue_url, existing_results, n
 
                     if not found:
                         st = jobRun["start_time"]
-                        complete_jobs.append({"url": jobRun["url"], "start_time":  hack_for_rfc_3339(f"{st}")})
+                        ct = None
+                        if "completion_time" in jobRun and jobRun["completion_time"] != None:
+                            ct = jobRun["completion_time"]                        
+                            ct = hack_for_rfc_3339(f"{ct}")
+
+                        complete_jobs.append({"url": jobRun["url"], "start_time":  hack_for_rfc_3339(f"{st}"), "completion_time": ct})
 
             return updateIncidentID, complete_jobs, matchedRow["attributions"], matchedRow["modified_time"]
 
@@ -280,6 +290,9 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
             jobStartTime = jr["start_time"]
             updateJobRuns += f"SELECT '{jobURL}' AS url, TIMESTAMP('{jobStartTime}') AS start_time"
 
+            if jr["completion_time"] != None:
+                jobCompletionTime = jr["completion_time"]
+                updateJobRuns += f", TIMESTAMP('{jobCompletionTime}') AS completion_time"
 
         q = f"UPDATE `{TABLE_KEY}` SET job_runs=ARRAY(SELECT AS STRUCT * FROM ({updateJobRuns})), attributions=ARRAY(SELECT AS STRUCT * FROM({updateAttributions})), modified_time='{modified_time}'"
        
@@ -324,11 +337,16 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
         earliestStartTime = None
         for jr in job_runs:
             startTime = datetime.fromisoformat(hack_for_rfc_3339(jr["StartTime"]))
+            
+            completionTime = None
+            if "CompletionTime" in jr and jr["CompletionTime"] != None:
+                completionTime = jr["CompletionTime"]
+                completionTime = datetime.fromisoformat(hack_for_rfc_3339(completionTime))
 
             if validate_resolution_date != None and startTime > validate_resolution_date:
                 continue
 
-            save_jobs.append({"url": jr["URL"], "start_time": startTime})
+            save_jobs.append({"url": jr["URL"], "start_time": startTime, "completion_time": completionTime})
 
             if earliestStartTime == None or startTime < earliestStartTime:
                 earliestStartTime = startTime
@@ -610,13 +628,15 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
         test_id = rt['test_id']
 
         variants = []
-        variants.append({"key": "Network", "value": rt['network']})
-        variants.append({"key": "Upgrade", "value": rt['upgrade']})
-        variants.append({"key": "Architecture", "value": rt['arch']})
-        variants.append({"key": "Platform", "value": rt['platform']})
-        # don't see VariantVariant in https://github.com/openshift/sippy/pull/1531/files#diff-3f72919066e1ec3ae4b037dfc91c09ef6d6eac0488762ef35c5a116f73ff1637R237
-        # worth review
-        variants.append({"key": "Variant", "value": rt['variant']})
+        variants.append({"key": "Network", "value": rt['variants']['Network']})
+        variants.append({"key": "Upgrade", "value": rt['variants']['Upgrade']})
+        variants.append({"key": "Architecture", "value": rt['variants']['Architecture']})
+        variants.append({"key": "Platform", "value": rt['variants']['Platform']})
+
+        variants.append({"key": "FeatureSet", "value": rt['variants']['FeatureSet']})
+        variants.append({"key": "Suite", "value": rt['variants']['Suite']})
+        variants.append({"key": "Topology", "value": rt['variants']['Topology']})
+        variants.append({"key": "Installer", "value": rt['variants']['Installer']})
 
         # do we have an input file, if so check to see if we have an entry
         # for this test id
@@ -673,8 +693,10 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
 
         # Build out the url for full test_details api call so we can get the job runs. Adjust the endpoint, re-use the original request params, and add some more that are needed.
         test_details_url = args.test_report_url.replace('/api/component_readiness?', '/api/component_readiness/test_details?')
-        environment = '%20s'.join([rt['network'], rt['upgrade'],  rt['arch'], rt['platform'], rt['variant']])
-        test_details_url += '&component=%s&capability=%s&testId=%s&environment=%s&network=%s&upgrade=%s&arch=%s&platform=%s&variant=%s' % (component, capability, test_id, environment, rt['network'], rt['upgrade'], rt['arch'], rt['platform'], rt['variant'])
+        #DBOptions
+        dbGroupBy = f"&Platform={rt['variants']['Platform']}&Architecture={rt['variants']['Architecture']}&Network={rt['variants']['Network']}&Topology={rt['variants']['Topology']}&FeatureSet={rt['variants']['FeatureSet']}&Upgrade={rt['variants']['Upgrade']}&Suite={rt['variants']['Suite']}&Installer={rt['variants']['Installer']}"
+        
+        test_details_url += '&component=%s&capability=%s&testId=%s%s' % (component, capability, test_id, dbGroupBy)
         print("  Querying test details: %s" % test_details_url)
 
         # Call the function to fetch JSON data from the API
@@ -728,8 +750,18 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
                 start_time = prow_job_json["status"]["startTime"]
                 print("    Prow job start time: %s" % start_time)
 
+                completion_time = None
+                if "completionTime" in prow_job_json["status"]:
+                    completion_time = prow_job_json["status"]["completionTime"]
+
+                build_cluster =  prow_job_json["spec"]["cluster"]
+
+                if args.target_build_cluster != None and len(args.target_build_cluster) > 0:
+                    if build_cluster != args.target_build_cluster:
+                        continue  
+
                 if job_matches(record, prow_url, start_time, issue_resolution_date):
-                    triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time})
+                    triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time, "CompletionTime": completion_time})
 
 
         if args.output_type == 'JSON':
@@ -765,6 +797,8 @@ if __name__ == '__main__':
     # if you expect an existing incident but that is hasn't been updated within the last two weeks you can specify a target
     # modified time for the match incident search range to use
     parser.add_argument("--target-modified-time", help="The target date to query for existing record (range: target-2weeks - target).")
+
+    parser.add_argument("--target-build-cluster", help="Specify a specific build cluster that the job was run from.")
 
     # specify the single test id to match, or use an input file for multiple tests
     parser.add_argument("--test-id", help="The internal id of the test.")
@@ -825,6 +859,8 @@ if __name__ == '__main__':
                 args.output_type = arguments["OutputType"]
             if "TargetModifiedTime" in arguments and len(arguments["TargetModifiedTime"]) > 0:
                 args.target_modified_time = arguments["TargetModifiedTime"]
+            if "TargetBuildCluster" in arguments and len(arguments["TargetBuildCluster"]) > 0:
+                args.target_build_cluster = arguments["TargetBuildCluster"]    
             if "JobRunStartTimeMax" in arguments and len(arguments["JobRunStartTimeMax"]) > 0:
                 args.job_run_start_time_max = arguments["JobRunStartTimeMax"]
             if "JobRunStartTimeMin" in arguments and len(arguments["JobRunStartTimeMin"]) > 0:
@@ -990,6 +1026,9 @@ if __name__ == '__main__':
             triage_output["Arguments"]["JobRunStartTimeMin"] = args.job_run_start_time_min
         if args.issue_resolution_date != None:
             triage_output["Arguments"]["IssueResolutionDate"] = args.issue_resolution_date
+        if args.target_build_cluster != None:
+            triage_output["Arguments"]["TargetBuildCluster"] = args.target_build_cluster
+
         if len(output_file) > 0:
             with open(output_file, 'w') as incident_file:
                 json.dump(triage_output, incident_file, indent=4)

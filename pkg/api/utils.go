@@ -4,16 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 
+	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
+	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
-
-	"github.com/openshift/sippy/pkg/apis/cache"
 )
 
 var (
@@ -128,4 +130,47 @@ func GetReleases(dbc *db.DB, bqc *bqclient.Client) ([]query.Release, error) {
 		return releases, nil
 	}
 	return query.ReleasesFromDB(dbc)
+}
+
+// VariantsStringToSet converts comma separated variant string into a set
+func VariantsStringToSet(allJobVariants apitype.JobVariants, variantsString string) (sets.String, error) {
+	variantSet := sets.String{}
+	variants := strings.Split(variantsString, ",")
+	for _, v := range variants {
+		if _, ok := allJobVariants.Variants[v]; !ok {
+			return variantSet, fmt.Errorf("invalid variant %s in variants string %s", v, variantsString)
+		}
+		variantSet.Insert(v)
+	}
+	return variantSet, nil
+}
+
+func IncludeVariantsToMap(allJobVariants apitype.JobVariants, includeVariants []string) (map[string][]string, error) {
+	includeVariantsMap := map[string][]string{}
+	var err error
+	for _, includeVariant := range includeVariants {
+		kv := strings.Split(includeVariant, ":")
+		if len(kv) != 2 {
+			err = fmt.Errorf("invalid includeVariant %s", includeVariant)
+			return includeVariantsMap, err
+		}
+		values, ok := allJobVariants.Variants[kv[0]]
+		if !ok {
+			err = fmt.Errorf("invalid variant name from includeVariant %s", includeVariant)
+			return includeVariantsMap, err
+		}
+		found := false
+		for _, v := range values {
+			if v == kv[1] {
+				includeVariantsMap[kv[0]] = append(includeVariantsMap[kv[0]], kv[1])
+				found = true
+				break
+			}
+		}
+		if !found {
+			err = fmt.Errorf("invalid variant value from includeVariant %s", includeVariant)
+			return includeVariantsMap, err
+		}
+	}
+	return includeVariantsMap, err
 }

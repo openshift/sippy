@@ -10,11 +10,9 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api"
 )
 
-// VariantVariant is a temporary holdover until we have full variant registry support
-// in component readiness.
-const VariantVariant = "Variant"
-
-var triageMatchVariants = buildTriageMatchVariants([]string{variantregistry.VariantArch, variantregistry.VariantNetwork, variantregistry.VariantPlatform, variantregistry.VariantUpgrade, VariantVariant})
+var TriageMatchVariants = buildTriageMatchVariants([]string{variantregistry.VariantPlatform, variantregistry.VariantArch, variantregistry.VariantNetwork,
+	variantregistry.VariantTopology, variantregistry.VariantFeatureSet, variantregistry.VariantUpgrade,
+	variantregistry.VariantSuite, variantregistry.VariantInstaller})
 
 func buildTriageMatchVariants(in []string) sets.String {
 	if in == nil || len(in) < 1 {
@@ -30,32 +28,73 @@ func buildTriageMatchVariants(in []string) sets.String {
 	return set
 }
 func TransformVariant(variant api.ComponentReportColumnIdentification) []api.ComponentReportVariant {
-
-	return []api.ComponentReportVariant{{
-		Key:   variantregistry.VariantArch,
-		Value: variant.Arch,
-	}, {
-		Key:   variantregistry.VariantNetwork,
-		Value: variant.Network,
-	}, {
-		Key:   variantregistry.VariantPlatform,
-		Value: variant.Platform,
-	}, {
-		Key:   variantregistry.VariantUpgrade,
-		Value: variant.Upgrade,
-	}, {
-		Key:   VariantVariant,
-		Value: variant.Variant,
-	}}
+	triagedVariants := []api.ComponentReportVariant{}
+	for name, value := range variant.Variants {
+		// For now, we only use the defined match variants
+		if TriageMatchVariants.Has(name) {
+			triagedVariants = append(triagedVariants, api.ComponentReportVariant{Key: name, Value: value})
+		}
+	}
+	return triagedVariants
 }
 func KeyForTriagedIssue(testID string, variants []api.ComponentReportVariant) TriagedIssueKey {
 
-	matchVariants := make([]api.ComponentReportVariant, 0)
+	triagedVariants := make(map[string]string)
+	// initialize missing defaults
+	triagedVariants[variantregistry.VariantSuite] = "unknown"
+	triagedVariants[variantregistry.VariantTopology] = "ha"
+	triagedVariants[variantregistry.VariantFeatureSet] = "default"
+	triagedVariants[variantregistry.VariantInstaller] = "ipi"
+
 	for _, v := range variants {
 		// currently we ignore variants that aren't in api.ComponentReportColumnIdentification
-		if triageMatchVariants.Has(v.Key) {
-			matchVariants = append(matchVariants, v)
+		if TriageMatchVariants.Has(v.Key) {
+			newValue := v.Value
+			switch v.Key {
+			case "Upgrade":
+				switch v.Value {
+				case "upgrade-minor":
+					newValue = "minor"
+				case "upgrade-micro":
+					newValue = "micro"
+				case "no-upgrade":
+					newValue = "none"
+				}
+			case "Platform":
+				if v.Value == "metal-ipi" {
+					newValue = "metal"
+				}
+			}
+			triagedVariants[v.Key] = newValue
+		} else if v.Key == "Variant" {
+			// inspect the value and create a new key for it to match up with the new variants
+			// if the key is part of our triageMatchVariants then add it
+			newKey := ""
+			newValue := v.Value
+			// We have some variant=standard triage records but the discussion was that was just a default value for 'nothing' and isn't needed to
+			// be mapped to the new variant standard
+
+			switch v.Value {
+			case "proxy":
+				newKey = variantregistry.VariantNetworkAccess
+			case "fips":
+				newKey = variantregistry.VariantSecurityMode
+			case "rt":
+				newKey = variantregistry.VariantScheduler
+				newValue = "realtime"
+			case "serial":
+				newKey = variantregistry.VariantSuite
+			}
+
+			if TriageMatchVariants.Has(newKey) {
+				triagedVariants[newKey] = newValue
+			}
 		}
+	}
+
+	matchVariants := make([]api.ComponentReportVariant, 0)
+	for key, value := range triagedVariants {
+		matchVariants = append(matchVariants, api.ComponentReportVariant{Key: key, Value: value})
 	}
 
 	sort.Slice(matchVariants,

@@ -1,8 +1,11 @@
 package regressionallowances
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
+
+	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	log "github.com/sirupsen/logrus"
@@ -22,7 +25,7 @@ type IntentionalRegression struct {
 }
 
 func IntentionalRegressionFor(releaseString string, variant api.ComponentReportColumnIdentification, testID string) *IntentionalRegression {
-	var targetMap map[regressionKey]IntentionalRegression
+	var targetMap map[string]IntentionalRegression
 	switch release(releaseString) {
 	case release415:
 		targetMap = regressions415
@@ -45,24 +48,26 @@ var (
 )
 
 var (
-	regressions415 = map[regressionKey]IntentionalRegression{}
+	regressions415 = map[string]IntentionalRegression{}
 )
 
 type regressionKey struct {
-	testID  string
-	variant api.ComponentReportColumnIdentification
+	TestID  string
+	Variant api.ComponentReportColumnIdentification
 }
 
-func keyFor(testID string, variant api.ComponentReportColumnIdentification) regressionKey {
-	return regressionKey{
-		testID: testID,
-		variant: api.ComponentReportColumnIdentification{
-			Network:  variant.Network,
-			Upgrade:  variant.Upgrade,
-			Arch:     variant.Arch,
-			Platform: variant.Platform,
+func keyFor(testID string, variant api.ComponentReportColumnIdentification) string {
+	key := regressionKey{
+		TestID: testID,
+		Variant: api.ComponentReportColumnIdentification{
+			Variants: variant.Variants,
 		},
 	}
+	k, err := json.Marshal(key)
+	if err != nil {
+		log.WithError(err).Errorf("error marshalling regressionKey")
+	}
+	return string(k)
 }
 
 func mustAddIntentionalRegression(release release, in IntentionalRegression) {
@@ -99,20 +104,13 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	if _, err := url.ParseRequestURI(in.JiraBug); err != nil {
 		return fmt.Errorf("jiraBug must be a valid URL")
 	}
-	if len(in.Variant.Network) == 0 {
-		return fmt.Errorf("network must be specified")
-	}
-	if len(in.Variant.Arch) == 0 {
-		return fmt.Errorf("arch must be specified")
-	}
-	if len(in.Variant.Platform) == 0 {
-		return fmt.Errorf("platform must be specified")
-	}
-	if len(in.Variant.Upgrade) == 0 {
-		return fmt.Errorf("upgrade must be specified")
+	for _, v := range resolvedissues.TriageMatchVariants.List() {
+		if _, ok := in.Variant.Variants[v]; !ok {
+			return fmt.Errorf("%s must be specified", v)
+		}
 	}
 
-	var targetMap map[regressionKey]IntentionalRegression
+	var targetMap map[string]IntentionalRegression
 
 	switch release {
 	case release415:
