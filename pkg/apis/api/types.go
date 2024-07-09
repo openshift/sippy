@@ -751,23 +751,36 @@ type ProwJobRunRiskAnalysis struct {
 	Release        string
 	CompareRelease string
 	Tests          []ProwJobRunTestRiskAnalysis
-	OverallRisk    FailureRisk
+	OverallRisk    JobFailureRisk
 	OpenBugs       []models.Bug
 }
 
 type ProwJobRunTestRiskAnalysis struct {
 	Name     string
-	Risk     FailureRisk
+	TestID   uint
+	Risk     TestFailureRisk
 	OpenBugs []models.Bug
 }
 
-type FailureRisk struct {
-	Level   RiskLevel
-	Reasons []string
+type JobFailureRisk struct {
+	Level                  RiskLevel
+	Reasons                []string
+	JobRunTestCount        int
+	JobRunTestFailures     int
+	NeverStableJob         bool
+	HistoricalRunTestCount int
+}
+
+type TestFailureRisk struct {
+	Level                 RiskLevel
+	Reasons               []string
+	CurrentRuns           int
+	CurrentPasses         int
+	CurrentPassPercentage float64
 }
 
 type RiskSummary struct {
-	OverallRisk FailureRisk
+	OverallRisk JobFailureRisk
 	Tests       []ProwJobRunTestRiskAnalysis
 }
 

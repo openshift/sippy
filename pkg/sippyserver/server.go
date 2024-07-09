@@ -1221,7 +1221,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 
 			log.Warn("Invalid ProwJob provided for analysis, returning elevated risk")
 			result := apitype.ProwJobRunRiskAnalysis{
-				OverallRisk: apitype.FailureRisk{
+				OverallRisk: apitype.JobFailureRisk{
 					Level:   apitype.FailureRiskLevelMissingData,
 					Reasons: []string{fmt.Sprintf("Invalid ProwJob provided for analysis: %s", detailReason)},
 				},

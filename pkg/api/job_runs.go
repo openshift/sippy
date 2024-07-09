@@ -420,9 +420,13 @@ func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunT
 		Release:        jobRun.ProwJob.Release,
 		CompareRelease: compareRelease,
 		Tests:          []apitype.ProwJobRunTestRiskAnalysis{},
-		OverallRisk: apitype.FailureRisk{
-			Level:   apitype.FailureRiskLevelNone,
-			Reasons: []string{},
+		OverallRisk: apitype.JobFailureRisk{
+			Level:                  apitype.FailureRiskLevelNone,
+			Reasons:                []string{},
+			JobRunTestCount:        jobRunTestCount,
+			JobRunTestFailures:     len(jobRun.Tests),
+			NeverStableJob:         neverStableJob,
+			HistoricalRunTestCount: historicalRunTestCount,
 		},
 		OpenBugs: jobRun.ProwJob.Bugs,
 	}
@@ -526,6 +530,7 @@ func runTestRunAnalysis(failedTest models.ProwJobRunTest, jobRun *models.ProwJob
 
 	analysis := apitype.ProwJobRunTestRiskAnalysis{
 		Name:     failedTest.Test.Name,
+		TestID:   failedTest.Test.ID,
 		OpenBugs: failedTest.Test.Bugs,
 	}
 	// Watch out for tests that ran in previous period, but not current, no sense comparing to 0 runs:
@@ -533,7 +538,7 @@ func runTestRunAnalysis(failedTest models.ProwJobRunTest, jobRun *models.ProwJob
 		// select the 'best' test result
 		analysis.Risk = selectRiskAnalysisResult(testResultsJobNames, testResultsVariants, jobNames, compareRelease)
 	} else {
-		analysis.Risk = apitype.FailureRisk{
+		analysis.Risk = apitype.TestFailureRisk{
 			Level: apitype.FailureRiskLevelUnknown,
 			Reasons: []string{
 				fmt.Sprintf("Unable to find matching test results for variants: %v",
@@ -544,50 +549,58 @@ func runTestRunAnalysis(failedTest models.ProwJobRunTest, jobRun *models.ProwJob
 	return analysis, nil
 }
 
-func selectRiskAnalysisResult(testResultsJobNames, testResultsVariants *apitype.Test, jobNames []string, compareRelease string) apitype.FailureRisk {
+func selectRiskAnalysisResult(testResultsJobNames, testResultsVariants *apitype.Test, jobNames []string, compareRelease string) apitype.TestFailureRisk {
 
-	var testRiskLvlJobNames, testRiskLvlVariants apitype.RiskLevel
-	var reasonsJobNames, reasonsVariants []string
+	var variantRisk, jobRisk apitype.TestFailureRisk
 
 	if testResultsJobNames != nil && testResultsJobNames.CurrentRuns > 0 {
-		testRiskLvlJobNames = getSeverityLevelForPassRate(testResultsJobNames.CurrentPassPercentage)
-		reasonsJobNames = []string{
-			fmt.Sprintf("This test has passed %.2f%% of %d runs on jobs %v in the last 14 days.",
-				testResultsJobNames.CurrentPassPercentage, testResultsJobNames.CurrentRuns, jobNames),
+		jobRisk = apitype.TestFailureRisk{
+			Level: getSeverityLevelForPassRate(testResultsJobNames.CurrentPassPercentage),
+			Reasons: []string{
+				fmt.Sprintf("This test has passed %.2f%% of %d runs on jobs %v in the last 14 days.",
+					testResultsJobNames.CurrentPassPercentage, testResultsJobNames.CurrentRuns, jobNames),
+			},
+			CurrentRuns:           testResultsJobNames.CurrentRuns,
+			CurrentPassPercentage: testResultsJobNames.CurrentPassPercentage,
+			CurrentPasses:         testResultsJobNames.CurrentSuccesses,
 		}
 	}
 
 	if testResultsVariants != nil && testResultsVariants.CurrentRuns > 0 {
-		testRiskLvlVariants = getSeverityLevelForPassRate(testResultsVariants.CurrentPassPercentage)
-		reasonsVariants = []string{
-			fmt.Sprintf("This test has passed %.2f%% of %d runs on release %s %v in the last week.",
-				testResultsVariants.CurrentPassPercentage, testResultsVariants.CurrentRuns, compareRelease, testResultsVariants.Variants),
+		variantRisk = apitype.TestFailureRisk{
+			Level: getSeverityLevelForPassRate(testResultsVariants.CurrentPassPercentage),
+			Reasons: []string{
+				fmt.Sprintf("This test has passed %.2f%% of %d runs on release %s %v in the last week.",
+					testResultsVariants.CurrentPassPercentage, testResultsVariants.CurrentRuns, compareRelease, testResultsVariants.Variants),
+			},
+			CurrentRuns:           testResultsVariants.CurrentRuns,
+			CurrentPassPercentage: testResultsVariants.CurrentPassPercentage,
+			CurrentPasses:         testResultsVariants.CurrentSuccesses,
 		}
+
 	}
 
 	// if both are empty then return Unknown
-	if len(testRiskLvlJobNames.Name) == 0 && len(testRiskLvlVariants.Name) == 0 {
-		return apitype.FailureRisk{
+	if len(jobRisk.Level.Name) == 0 && len(variantRisk.Level.Name) == 0 {
+		return apitype.TestFailureRisk{
 			Level:   apitype.FailureRiskLevelUnknown,
 			Reasons: []string{"Analysis was not performed for this test due to lack of current runs"},
 		}
 	}
 
-	variantRisk := apitype.FailureRisk{Level: testRiskLvlVariants, Reasons: reasonsVariants}
-	jobRisk := apitype.FailureRisk{Level: testRiskLvlJobNames, Reasons: reasonsJobNames}
 	switch {
 	// if one is empty return the other
-	case len(testRiskLvlJobNames.Name) == 0:
+	case len(jobRisk.Level.Name) == 0:
 		return variantRisk
-	case len(testRiskLvlVariants.Name) == 0:
+	case len(variantRisk.Level.Name) == 0:
 		return jobRisk
-	case containsValue(nonDeterministicRiskLevels, testRiskLvlJobNames.Level):
+	case containsValue(nonDeterministicRiskLevels, jobRisk.Level.Level):
 		// if jobnames nondeterministic then return variants
 		return variantRisk
-	case containsValue(nonDeterministicRiskLevels, testRiskLvlVariants.Level):
+	case containsValue(nonDeterministicRiskLevels, variantRisk.Level.Level):
 		// if variants nondeterministic then return jobnames
 		return jobRisk
-	case testRiskLvlVariants.Level < testRiskLvlJobNames.Level:
+	case variantRisk.Level.Level < jobRisk.Level.Level:
 		// biased to return the lower risk level
 		return variantRisk
 	default:

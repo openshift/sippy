@@ -86,7 +86,7 @@ func TestValidateProwJobRun(t *testing.T) {
 
 func TestEncodeDefaultHighRisk(t *testing.T) {
 	result := apitype.ProwJobRunRiskAnalysis{
-		OverallRisk: apitype.FailureRisk{
+		OverallRisk: apitype.JobFailureRisk{
 			Level:   apitype.FailureRiskLevelHigh,
 			Reasons: []string{"Invalid ProwJob provided for analysis"},
 		},
