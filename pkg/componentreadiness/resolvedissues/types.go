@@ -10,7 +10,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api"
 )
 
-var triageMatchVariants = buildTriageMatchVariants([]string{variantregistry.VariantPlatform, variantregistry.VariantArch, variantregistry.VariantNetwork,
+var TriageMatchVariants = buildTriageMatchVariants([]string{variantregistry.VariantPlatform, variantregistry.VariantArch, variantregistry.VariantNetwork,
 	variantregistry.VariantTopology, variantregistry.VariantFeatureSet, variantregistry.VariantUpgrade,
 	variantregistry.VariantSuite, variantregistry.VariantInstaller})
 
@@ -31,7 +31,7 @@ func TransformVariant(variant api.ComponentReportColumnIdentification) []api.Com
 	triagedVariants := []api.ComponentReportVariant{}
 	for name, value := range variant.Variants {
 		// For now, we only use the defined match variants
-		if triageMatchVariants.Has(name) {
+		if TriageMatchVariants.Has(name) {
 			triagedVariants = append(triagedVariants, api.ComponentReportVariant{Key: name, Value: value})
 		}
 	}
@@ -48,7 +48,7 @@ func KeyForTriagedIssue(testID string, variants []api.ComponentReportVariant) Tr
 
 	for _, v := range variants {
 		// currently we ignore variants that aren't in api.ComponentReportColumnIdentification
-		if triageMatchVariants.Has(v.Key) {
+		if TriageMatchVariants.Has(v.Key) {
 			newValue := v.Value
 			switch v.Key {
 			case "Upgrade":
@@ -86,7 +86,7 @@ func KeyForTriagedIssue(testID string, variants []api.ComponentReportVariant) Tr
 				newKey = variantregistry.VariantSuite
 			}
 
-			if triageMatchVariants.Has(newKey) {
+			if TriageMatchVariants.Has(newKey) {
 				triagedVariants[newKey] = newValue
 			}
 		}
