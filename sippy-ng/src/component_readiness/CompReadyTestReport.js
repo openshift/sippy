@@ -398,7 +398,9 @@ Flakes: ${stats.flake_count}`
               testName={testName}
               jiraComponentID={data.jira_component_id}
               labels={['component-regression']}
-              context={`Component Readiness has found a potential regression in ${testName}.
+              context={`Component Readiness has found a potential regression in the following test:
+
+{code}${testName}{code}
  
 ${probabilityStr(statusStr, data.fisher_exact)}
 ${printStatsText(
