@@ -66,7 +66,7 @@ export default function Install(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} currentPage="Install" />
-      <Grid width="100vw">
+      <Grid>
         <Typography variant="h4" style={{ margin: 10 }} align="center">
           Install health for {props.release}
         </Typography>
@@ -75,14 +75,14 @@ export default function Install(props) {
         path="/"
         render={({ location }) => (
           <Fragment>
-            <Grid container spacing={3} width="100vw">
+            <Grid container justifyContent="center" spacing={3}>
               <TopLevelIndicators
                 release={props.release}
                 indicators={health.indicators}
               />
             </Grid>
 
-            <Grid container spacing={2} alignItems="stretch">
+            <Grid>
               <Switch>
                 <Route path={path + '/operators'}>
                   <TestByVariantTable

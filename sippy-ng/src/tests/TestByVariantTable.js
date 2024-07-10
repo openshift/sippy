@@ -1,5 +1,7 @@
 import './TestByVariantTable.css'
+import { grey } from '@mui/material/colors'
 import { Link } from 'react-router-dom'
+import { makeStyles } from '@mui/styles'
 import { parseVariantName, pathForExactTestAnalysis } from '../helpers'
 import { scale } from 'chroma-js'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
@@ -8,6 +10,7 @@ import { useTheme } from '@mui/material/styles'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
 import HelpOutlineIcon from '@mui/icons-material/HelpOutline'
+import Paper from '@mui/material/Paper'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -17,6 +20,30 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+
+const useStyles = makeStyles((theme) => ({
+  tableContainer: {
+    maxHeight: 800,
+    [theme.breakpoints.down('sm')]: {
+      maxHeight: 500,
+    },
+    [theme.breakpoints.down('md')]: {
+      maxHeight: 600,
+    },
+    [theme.breakpoints.down('lg')]: {
+      maxHeight: 700,
+    },
+  },
+  stickyCellName: {
+    position: 'sticky',
+    left: 0,
+    background: theme.palette.mode === 'dark' ? grey[800] : 'white',
+    borderRight: '2px solid black',
+    lineHeight: 'normal',
+    whiteSpace: 'break-spaces',
+    wordWrap: 'break-word',
+  },
+}))
 
 function PassRateCompare(props) {
   const { previous, current } = props
@@ -130,9 +157,9 @@ Cell.propTypes = {
 
 function Row(props) {
   const { columnNames, testName, results } = props
-
+  const classes = useStyles()
   const nameColumn = (
-    <TableCell className={'cell-name'} key={testName}>
+    <TableCell className={classes.stickyCellName} key={testName}>
       <Tooltip title={testName}>
         <Typography className="cell-name">
           <Link
@@ -185,7 +212,7 @@ export default function TestByVariantTable(props) {
   const cookie =
     cookies['testDetailShowFull'] || cookies['testDetailShowFull'] === 'true'
   const [showFull, setShowFull] = React.useState(props.showFull || cookie)
-
+  const classes = useStyles()
   if (props.data === undefined || props.data.tests.length === 0) {
     return <p>No data.</p>
   }
@@ -198,11 +225,13 @@ export default function TestByVariantTable(props) {
     setShowFull(e.target.checked)
   }
 
-  const pageTitle = (
-    <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
-      {props.title}
-    </Typography>
-  )
+  const pageTitle = () => {
+    props.title ? (
+      <Typography variant="h4" style={{ margin: 20, textAlign: 'center' }}>
+        {props.title}
+      </Typography>
+    ) : null
+  }
 
   if (props.data.tests && Object.keys(props.data.tests).length === 0) {
     return (
@@ -222,7 +251,10 @@ export default function TestByVariantTable(props) {
   }
 
   const nameColumn = (
-    <TableCell className={`col-name ${props.briefTable ? 'col-hide' : ''}`}>
+    <TableCell
+      className={`col-name ${props.briefTable ? 'col-hide' : ''}`}
+      sx={{ zIndex: 1099 }}
+    >
       <FormGroup row>
         <FormControlLabel
           control={
@@ -239,10 +271,10 @@ export default function TestByVariantTable(props) {
   )
 
   return (
-    <div className="view" width="100%">
+    <Paper variant="outlined" elevation={3} sx={{ margin: '20px' }}>
       {pageTitle}
-      <TableContainer component="div" className="wrapper">
-        <Table className="test-variant-table">
+      <TableContainer className={classes.tableContainer}>
+        <Table stickyHeader>
           <TableHead>
             <TableRow>
               {props.briefTable ? '' : nameColumn}
@@ -279,7 +311,7 @@ export default function TestByVariantTable(props) {
           </TableBody>
         </Table>
       </TableContainer>
-    </div>
+    </Paper>
   )
 }
 

@@ -2,11 +2,8 @@
 package api
 
 import (
-	"encoding/json"
-	"strings"
 	"testing"
 
-	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/stretchr/testify/assert"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -43,28 +40,14 @@ var (
 		PityFactor:     5,
 		MinimumFailure: 3,
 	}
-	defaultColumnGroupByVariants    = sets.NewString(strings.Split(DefaultColumnGroupBy, ",")...)
-	defaultDBGroupByVariants        = sets.NewString(strings.Split(DefaultDBGroupBy, ",")...)
 	defaultComponentReportGenerator = componentReportGenerator{
-		gcsBucket: "test-platform-results",
-		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
-		},
+		gcsBucket:                             "test-platform-results",
+		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network"},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
-	installerColumnGroupBy                   = "Platform,Architecture,Network,Installer"
-	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
-	groupByInstallerComponentReportGenerator = componentReportGenerator{
-		gcsBucket: "test-platform-results",
-		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         installerColumnGroupBy,
-			ColumnGroupByVariants: installerColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
-		},
+	groupByVariantComponentReportGenerator = componentReportGenerator{
+		gcsBucket:                             "test-platform-results",
+		ComponentReportRequestVariantOptions:  apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network,variants"},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 	componentPageGenerator = componentReportGenerator{
@@ -73,10 +56,7 @@ var (
 			Component: "component 2",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
+			GroupBy: "cloud,arch,network",
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -87,10 +67,7 @@ var (
 			Capability: "cap22",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
+			GroupBy: "cloud,arch,network",
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -102,10 +79,7 @@ var (
 			TestID:     "2",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
+			GroupBy: "cloud,arch,network",
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -117,111 +91,48 @@ var (
 			TestID:     "1",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
-			RequestedVariants: map[string]string{
-				"Platform":     "aws",
-				"Architecture": "amd64",
-				"Network":      "ovn",
-			},
+			GroupBy:  "cloud,arch,network",
+			Platform: "aws",
+			Arch:     "amd64",
+			Network:  "ovn",
+			Upgrade:  "upgrade-micro",
+			Variant:  "standard",
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
 )
 
-func filterColumnIDByDefault(id apitype.ComponentReportColumnIdentification) apitype.ComponentReportColumnIdentification {
-	ret := apitype.ComponentReportColumnIdentification{Variants: map[string]string{}}
-	for _, variant := range strings.Split(DefaultDBGroupBy, ",") {
-		if value, ok := id.Variants[variant]; ok {
-			ret.Variants[variant] = value
-		}
-	}
-	return ret
-}
-
 func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNTest := apitype.ComponentTestIdentification{
-		TestID: "1",
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "ovn",
-			"Upgrade":      "upgrade-micro",
-			"Topology":     "ha",
-			"FeatureSet":   "techpreview",
-			"Suite":        "serial",
-			"Installer":    "ipi",
-		},
-	}
-	awsAMD64OVNTestBytes, err := json.Marshal(awsAMD64OVNTest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64OVNTest")
+		TestID:       "1",
+		Platform:     "aws",
+		Arch:         "amd64",
+		Network:      "ovn",
+		Upgrade:      "upgrade-micro",
+		FlatVariants: "standard",
 	}
 	awsAMD64SDNTest := apitype.ComponentTestIdentification{
-		TestID: "2",
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "sdn",
-			"Upgrade":      "upgrade-micro",
-			"Topology":     "ha",
-			"FeatureSet":   "techpreview",
-			"Suite":        "serial",
-			"Installer":    "ipi",
-		},
-	}
-	awsAMD64SDNTestBytes, err := json.Marshal(awsAMD64SDNTest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64SDNTest")
-	}
-	awsAMD64SDNInstallerUPITest := apitype.ComponentTestIdentification{
-		TestID: "2",
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "sdn",
-			"Upgrade":      "upgrade-micro",
-			"Topology":     "ha",
-			"FeatureSet":   "techpreview",
-			"Suite":        "serial",
-			"Installer":    "upi",
-		},
-	}
-	awsAMD64SDNInstallerUPITestBytes, err := json.Marshal(awsAMD64SDNInstallerUPITest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64SDNInstallerUPITest")
+		TestID:       "2",
+		Platform:     "aws",
+		Arch:         "amd64",
+		Network:      "sdn",
+		Upgrade:      "upgrade-micro",
+		FlatVariants: "standard",
 	}
 	awsAMD64OVN2Test := apitype.ComponentTestIdentification{
-		TestID: "3",
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "ovn",
-			"Upgrade":      "upgrade-micro",
-		},
+		TestID:   "3",
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "ovn",
+		Upgrade:  "upgrade-micro",
 	}
-	awsAMD64OVN2TestBytes, err := json.Marshal(awsAMD64OVN2Test)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64OVN2Test")
-	}
-	awsAMD64OVNInstallerIPITest := apitype.ComponentTestIdentification{
-		TestID: "1",
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "ovn",
-			"Upgrade":      "upgrade-micro",
-			"Topology":     "ha",
-			"FeatureSet":   "techpreview",
-			"Suite":        "serial",
-			"Installer":    "ipi",
-		},
-	}
-	awsAMD64OVNVariantsTestBytes, err := json.Marshal(awsAMD64OVNInstallerIPITest)
-	if err != nil {
-		assert.NoError(t, err, "error marshalling awsAMD64OVNInstallerIPITest")
+	awsAMD64OVNVariantsTest := apitype.ComponentTestIdentification{
+		TestID:       "1",
+		Platform:     "aws",
+		Arch:         "amd64",
+		Network:      "ovn",
+		Upgrade:      "upgrade-micro",
+		FlatVariants: "standard,fips",
 	}
 	awsAMD64OVNBaseTestStats90Percent := apitype.ComponentTestStatus{
 		TestName:     "test 1",
@@ -315,58 +226,40 @@ func TestGenerateComponentReport(t *testing.T) {
 		SuccessCount: 80,
 	}
 	columnAWSAMD64OVN := apitype.ComponentReportColumnIdentification{
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "ovn",
-		},
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "ovn",
 	}
-	columnAWSAMD64OVNInstallerIPI := apitype.ComponentReportColumnIdentification{
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "ovn",
-			"Installer":    "ipi",
-		},
+	columnAWSAMD64OVNVariantFipsStandard := apitype.ComponentReportColumnIdentification{
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "ovn",
+		Variant:  "standard,fips",
 	}
 	columnAWSAMD64SDN := apitype.ComponentReportColumnIdentification{
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "sdn",
-		},
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "sdn",
 	}
-	columnAWSAMD64SDNInstallerUPI := apitype.ComponentReportColumnIdentification{
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "sdn",
-			"Installer":    "upi",
-		},
+	columnAWSAMD64SDNVariantStandard := apitype.ComponentReportColumnIdentification{
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "sdn",
+		Variant:  "standard",
 	}
 	columnAWSAMD64OVNFull := apitype.ComponentReportColumnIdentification{
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "ovn",
-			"Upgrade":      "upgrade-micro",
-			"Topology":     "ha",
-			"FeatureSet":   "techpreview",
-			"Suite":        "serial",
-			"Installer":    "ipi",
-		},
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "ovn",
+		Upgrade:  "upgrade-micro",
+		Variant:  "standard",
 	}
 	columnAWSAMD64SDNFull := apitype.ComponentReportColumnIdentification{
-		Variants: map[string]string{
-			"Platform":     "aws",
-			"Architecture": "amd64",
-			"Network":      "sdn",
-			"Upgrade":      "upgrade-micro",
-			"Topology":     "ha",
-			"FeatureSet":   "techpreview",
-			"Suite":        "serial",
-			"Installer":    "ipi",
-		},
+		Platform: "aws",
+		Arch:     "amd64",
+		Network:  "sdn",
+		Upgrade:  "upgrade-micro",
+		Variant:  "standard",
 	}
 	rowComponent1 := apitype.ComponentReportRowIdentification{
 		Component: "component 1",
@@ -392,20 +285,20 @@ func TestGenerateComponentReport(t *testing.T) {
 	tests := []struct {
 		name           string
 		generator      componentReportGenerator
-		baseStatus     map[string]apitype.ComponentTestStatus
-		sampleStatus   map[string]apitype.ComponentTestStatus
+		baseStatus     map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus
+		sampleStatus   map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus
 		expectedReport apitype.ComponentReport
 	}{
 		{
 			name:      "top page test no significant and missing data",
 			generator: defaultComponentReportGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats90Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats85Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNSampleTestStats85Percent,
+				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -445,15 +338,15 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name:      "top page test with both improvement and regression",
 			generator: defaultComponentReportGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2BaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNBaseTestStats50Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest:  awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64OVN2Test: awsAMD64OVN2BaseTestStats90Percent,
+				awsAMD64SDNTest:  awsAMD64SDNBaseTestStats50Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes):  awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64OVN2TestBytes): awsAMD64OVN2SampleTestStats80Percent,
-				string(awsAMD64SDNTestBytes):  awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest:  awsAMD64OVNSampleTestStats50Percent,
+				awsAMD64OVN2Test: awsAMD64OVN2SampleTestStats80Percent,
+				awsAMD64SDNTest:  awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -471,7 +364,11 @@ func TestGenerateComponentReport(t *testing.T) {
 												TestID:   awsAMD64OVNTest.TestID,
 											},
 											ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
-												Variants: awsAMD64OVNTest.Variants,
+												Platform: columnAWSAMD64OVN.Platform,
+												Arch:     columnAWSAMD64OVN.Arch,
+												Network:  columnAWSAMD64OVN.Network,
+												Upgrade:  awsAMD64OVNTest.Upgrade,
+												Variant:  awsAMD64OVNTest.FlatVariants,
 											},
 										},
 										Status: apitype.ExtremeRegression,
@@ -483,7 +380,11 @@ func TestGenerateComponentReport(t *testing.T) {
 												TestID:   awsAMD64OVN2Test.TestID,
 											},
 											ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
-												Variants: awsAMD64OVN2Test.Variants,
+												Platform: columnAWSAMD64OVN.Platform,
+												Arch:     columnAWSAMD64OVN.Arch,
+												Network:  columnAWSAMD64OVN.Network,
+												Upgrade:  awsAMD64OVN2Test.Upgrade,
+												Variant:  awsAMD64OVN2Test.FlatVariants,
 											},
 										},
 										Status: apitype.SignificantRegression,
@@ -515,13 +416,13 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name:      "component page test no significant and missing data",
 			generator: componentPageGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats90Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNSampleTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -557,13 +458,13 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name:      "component page test with both improvement and regression",
 			generator: componentPageGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats50Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats50Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats50Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats50Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -599,13 +500,13 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name:      "capability page test no significant and missing data",
 			generator: capabilityPageGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats90Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNSampleTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -628,13 +529,13 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name:      "capability page test with both improvement and regression",
 			generator: capabilityPageGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats50Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats50Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNSampleTestStats50Percent,
+				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -657,13 +558,13 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name:      "test page test no significant and missing data",
 			generator: testPageGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats90Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNSampleTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -671,11 +572,11 @@ func TestGenerateComponentReport(t *testing.T) {
 						ComponentReportRowIdentification: rowComponent2Cap22Test2,
 						Columns: []apitype.ComponentReportColumn{
 							{
-								ComponentReportColumnIdentification: filterColumnIDByDefault(columnAWSAMD64OVNFull),
+								ComponentReportColumnIdentification: columnAWSAMD64OVNFull,
 								Status:                              apitype.MissingBasisAndSample,
 							},
 							{
-								ComponentReportColumnIdentification: filterColumnIDByDefault(columnAWSAMD64SDNFull),
+								ComponentReportColumnIdentification: columnAWSAMD64SDNFull,
 								Status:                              apitype.NotSignificant,
 							},
 						},
@@ -686,13 +587,13 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name:      "test page test with both improvement and regression",
 			generator: testPageGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats50Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats50Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats50Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNSampleTestStats50Percent,
+				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -700,11 +601,11 @@ func TestGenerateComponentReport(t *testing.T) {
 						ComponentReportRowIdentification: rowComponent2Cap22Test2,
 						Columns: []apitype.ComponentReportColumn{
 							{
-								ComponentReportColumnIdentification: filterColumnIDByDefault(columnAWSAMD64OVNFull),
+								ComponentReportColumnIdentification: columnAWSAMD64OVNFull,
 								Status:                              apitype.MissingBasisAndSample,
 							},
 							{
-								ComponentReportColumnIdentification: filterColumnIDByDefault(columnAWSAMD64SDNFull),
+								ComponentReportColumnIdentification: columnAWSAMD64SDNFull,
 								Status:                              apitype.SignificantImprovement,
 							},
 						},
@@ -715,23 +616,20 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name: "top page test confidence 90 result in regression",
 			generator: componentReportGenerator{
-				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-					ColumnGroupBy:         DefaultColumnGroupBy,
-					ColumnGroupByVariants: defaultColumnGroupByVariants,
-				},
+				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network"},
 				ComponentReportRequestAdvancedOptions: apitype.ComponentReportRequestAdvancedOptions{
 					Confidence:     90,
 					PityFactor:     5,
 					MinimumFailure: 3,
 				},
 			},
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats90Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats85Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNSampleTestStats85Percent,
+				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -749,7 +647,11 @@ func TestGenerateComponentReport(t *testing.T) {
 												TestID:   awsAMD64OVNTest.TestID,
 											},
 											ComponentReportColumnIdentification: apitype.ComponentReportColumnIdentification{
-												Variants: awsAMD64OVNTest.Variants,
+												Platform: columnAWSAMD64OVN.Platform,
+												Arch:     columnAWSAMD64OVN.Arch,
+												Network:  columnAWSAMD64OVN.Network,
+												Upgrade:  awsAMD64OVNTest.Upgrade,
+												Variant:  awsAMD64OVNBaseTestStats90Percent.Variants[0],
 											},
 										},
 										Status: apitype.SignificantRegression,
@@ -781,23 +683,20 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name: "top page test confidence 90 pity 10 result in no regression",
 			generator: componentReportGenerator{
-				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-					ColumnGroupBy:         DefaultColumnGroupBy,
-					ColumnGroupByVariants: defaultColumnGroupByVariants,
-				},
+				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{GroupBy: "cloud,arch,network"},
 				ComponentReportRequestAdvancedOptions: apitype.ComponentReportRequestAdvancedOptions{
 					Confidence:     90,
 					PityFactor:     10,
 					MinimumFailure: 3,
 				},
 			},
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats90Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStats85Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNSampleTestStats85Percent,
+				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -833,13 +732,13 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name:      "top page test minimum failure no regression",
 			generator: defaultComponentReportGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNBaseTestStats90Percent,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNBaseTestStats90Percent,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNBaseTestStats90Percent,
+				awsAMD64SDNTest: awsAMD64SDNBaseTestStats90Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNTestBytes): awsAMD64OVNSampleTestStatsTiny,
-				string(awsAMD64SDNTestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNTest: awsAMD64OVNSampleTestStatsTiny,
+				awsAMD64SDNTest: awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -873,15 +772,15 @@ func TestGenerateComponentReport(t *testing.T) {
 			},
 		},
 		{
-			name:      "top page test group by installer",
-			generator: groupByInstallerComponentReportGenerator,
-			baseStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNVariantsTestBytes):     awsAMD64OVNBaseTestStatsVariants90Percent,
-				string(awsAMD64SDNInstallerUPITestBytes): awsAMD64SDNBaseTestStats90Percent,
+			name:      "top page test group by variant",
+			generator: groupByVariantComponentReportGenerator,
+			baseStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNVariantsTest: awsAMD64OVNBaseTestStatsVariants90Percent,
+				awsAMD64SDNTest:         awsAMD64SDNBaseTestStats90Percent,
 			},
-			sampleStatus: map[string]apitype.ComponentTestStatus{
-				string(awsAMD64OVNVariantsTestBytes):     awsAMD64OVNSampleTestStatsVariants90Percent,
-				string(awsAMD64SDNInstallerUPITestBytes): awsAMD64SDNSampleTestStats90Percent,
+			sampleStatus: map[apitype.ComponentTestIdentification]apitype.ComponentTestStatus{
+				awsAMD64OVNVariantsTest: awsAMD64OVNSampleTestStatsVariants90Percent,
+				awsAMD64SDNTest:         awsAMD64SDNSampleTestStats90Percent,
 			},
 			expectedReport: apitype.ComponentReport{
 				Rows: []apitype.ComponentReportRow{
@@ -891,11 +790,11 @@ func TestGenerateComponentReport(t *testing.T) {
 						},
 						Columns: []apitype.ComponentReportColumn{
 							{
-								ComponentReportColumnIdentification: columnAWSAMD64OVNInstallerIPI,
+								ComponentReportColumnIdentification: columnAWSAMD64OVNVariantFipsStandard,
 								Status:                              apitype.NotSignificant,
 							},
 							{
-								ComponentReportColumnIdentification: columnAWSAMD64SDNInstallerUPI,
+								ComponentReportColumnIdentification: columnAWSAMD64SDNVariantStandard,
 								Status:                              apitype.MissingBasisAndSample,
 							},
 						},
@@ -906,11 +805,11 @@ func TestGenerateComponentReport(t *testing.T) {
 						},
 						Columns: []apitype.ComponentReportColumn{
 							{
-								ComponentReportColumnIdentification: columnAWSAMD64OVNInstallerIPI,
+								ComponentReportColumnIdentification: columnAWSAMD64OVNVariantFipsStandard,
 								Status:                              apitype.MissingBasisAndSample,
 							},
 							{
-								ComponentReportColumnIdentification: columnAWSAMD64SDNInstallerUPI,
+								ComponentReportColumnIdentification: columnAWSAMD64SDNVariantStandard,
 								Status:                              apitype.NotSignificant,
 							},
 						},
@@ -922,8 +821,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			report, err := tc.generator.generateComponentTestReport(tc.baseStatus, tc.sampleStatus, []apitype.TestRegression{})
-			assert.NoError(t, err, "error generating component report")
+			report := tc.generator.generateComponentTestReport(tc.baseStatus, tc.sampleStatus, []apitype.TestRegression{})
 			assert.Equal(t, tc.expectedReport, report, "expected report %+v, got %+v", tc.expectedReport, report)
 		})
 	}
@@ -967,7 +865,11 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		Capability: testDetailsGenerator.Capability,
 	}
 	testDetailsColumnIdentification := apitype.ComponentReportColumnIdentification{
-		Variants: testDetailsGenerator.RequestedVariants,
+		Network:  testDetailsGenerator.Network,
+		Upgrade:  testDetailsGenerator.Upgrade,
+		Arch:     testDetailsGenerator.Arch,
+		Platform: testDetailsGenerator.Platform,
+		Variant:  testDetailsGenerator.Variant,
 	}
 	sampleReleaseStatsTwoHigh := apitype.ComponentReportTestDetailsReleaseStats{
 		Release: testDetailsGenerator.SampleRelease.Release,
