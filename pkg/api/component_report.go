@@ -449,7 +449,11 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants apitype.Jo
 		},
 	}
 	for k, v := range c.RequestedVariants {
-		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
+		if k == "Topology" && isSample {
+			queryString += fmt.Sprintf(` AND jv_%s.variant_value = 'single'`, k)
+		} else {
+			queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
+		}
 	}
 	return queryString, groupString, commonParams
 }
@@ -624,8 +628,14 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 			c.client.Dataset, v, v, v, v)
 	}
 	for _, v := range c.DBGroupByVariants.List() {
-		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
-		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
+		if v == "Topology" && isSample {
+			// GROTESQUE HACK: swap out Topology single for ha
+			selectVariants += "'ha' AS variant_Topology,\n" // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
+			groupByVariants += "variant_Topology,\n"
+		} else {
+			selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
+			groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
+		}
 	}
 
 	jobNameQueryPortion := normalJobNameCol
@@ -681,6 +691,9 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 		queryString += " AND ("
 		first := true
 		for _, v := range vs {
+			if isSample && v == "ha" {
+				v = "single"
+			}
 			if first {
 				queryString += fmt.Sprintf(`jv_%s.variant_value = '%s'`, k, v)
 				first = false
@@ -692,7 +705,12 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 	}
 
 	for k, v := range c.RequestedVariants {
-		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
+		if k == "Topology" {
+			queryString += fmt.Sprintf(` AND jv_%s.variant_value = 'single'`, k)
+
+		} else {
+			queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
+		}
 	}
 	if c.Capability != "" {
 		queryString += " AND @Capability in UNNEST(capabilities)"
