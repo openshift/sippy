@@ -71,10 +71,6 @@ export function getAPIUrl() {
   return process.env.REACT_APP_API_URL + '/api/component_readiness'
 }
 
-export function getJobVariantsUrl() {
-  return process.env.REACT_APP_API_URL + '/api/job_variants'
-}
-
 // Make one place to create the Component Readiness test_details api call
 export function getTestDetailsAPIUrl() {
   return process.env.REACT_APP_API_URL + '/api/component_readiness/test_details'
@@ -218,9 +214,14 @@ export function getStatusAndIcon(status, grayFactor = 0) {
 // The values of a column's key/value pairs (except status) are
 // concatenated to form a column name
 export function formColumnName(column) {
-  let variants = column['variants']
-  return Object.keys(variants)
-    .map((key) => variants[key])
+  return Object.keys(column)
+    .filter(
+      (key) =>
+        key != 'status' &&
+        key != 'regressed_tests' &&
+        key != 'triaged_incidents'
+    )
+    .map((key) => column[key])
     .join(' ')
 }
 
@@ -302,9 +303,10 @@ export function formatLongDate(aLongDate, aDateFormat) {
 
 // These next set of variables are used for CompReadyMainInputs
 
+export const groupByList = ['cloud', 'arch', 'network', 'upgrade', 'variants']
+
 // Take the values needed to make an api call and return a string that can be used to
 // make that call.
-// TODO: pass varsContext entirely, instead of nearly every field on it in multiple places positionally
 export function getUpdatedUrlParts(
   baseRelease,
   baseStartTime,
@@ -312,12 +314,12 @@ export function getUpdatedUrlParts(
   sampleRelease,
   sampleStartTime,
   sampleEndTime,
-  samplePROrg,
-  samplePRRepo,
-  samplePRNumber,
-  columnGroupByCheckedItems,
-  includeVariantsCheckedItems,
-  dbGroupByVariants,
+  groupByCheckedItems,
+  excludeCloudsCheckedItems,
+  excludeArchesCheckedItems,
+  excludeNetworksCheckedItems,
+  excludeUpgradesCheckedItems,
+  excludeVariantsCheckedItems,
   confidence,
   pity,
   minFail,
@@ -339,17 +341,13 @@ export function getUpdatedUrlParts(
     //component: component,
   }
 
-  if (samplePROrg && samplePRRepo && samplePRNumber) {
-    valuesMap.samplePROrg = samplePROrg
-    valuesMap.samplePRRepo = samplePRRepo
-    valuesMap.samplePRNumber = samplePRNumber
-  }
-
-  // TODO: inject the PR vars into query params
-
   const arraysMap = {
-    columnGroupBy: columnGroupByCheckedItems,
-    dbGroupBy: dbGroupByVariants,
+    excludeClouds: excludeCloudsCheckedItems,
+    excludeArches: excludeArchesCheckedItems,
+    excludeNetworks: excludeNetworksCheckedItems,
+    excludeUpgrades: excludeUpgradesCheckedItems,
+    excludeVariants: excludeVariantsCheckedItems,
+    groupBy: groupByCheckedItems,
   }
 
   const queryParams = new URLSearchParams()
@@ -364,13 +362,6 @@ export function getUpdatedUrlParts(
     if (value && value.length) {
       queryParams.append(key, value.join(','))
     }
-  })
-
-  // Render includeVariantsCheckedItems
-  Object.entries(includeVariantsCheckedItems).forEach(([key, values]) => {
-    values.forEach((value) => {
-      queryParams.append('includeVariant', key + ':' + value)
-    })
   })
 
   // Stringify and put the begin param character.

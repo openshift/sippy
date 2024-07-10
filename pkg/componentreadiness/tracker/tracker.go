@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/openshift/sippy/pkg/apis/api"
 	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
+	"github.com/openshift/sippy/pkg/variantregistry"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -86,11 +88,28 @@ func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTe
 		TestName:     newRegressedTest.TestName,
 		RegressionID: id.String(),
 		Opened:       time.Now(),
-	}
-	for key, value := range newRegressedTest.Variants {
-		newRegression.Variants = append(newRegression.Variants, api.ComponentReportVariant{
-			Key: key, Value: value,
-		})
+		Variants: []api.ComponentReportVariant{
+			{
+				Key:   variantregistry.VariantNetwork,
+				Value: newRegressedTest.Network,
+			},
+			{
+				Key:   variantregistry.VariantUpgrade,
+				Value: newRegressedTest.Upgrade,
+			},
+			{
+				Key:   variantregistry.VariantPlatform,
+				Value: newRegressedTest.Platform,
+			},
+			{
+				Key:   variantregistry.VariantArch,
+				Value: newRegressedTest.Arch,
+			},
+			{
+				Key:   resolvedissues.VariantVariant,
+				Value: newRegressedTest.Variant,
+			},
+		},
 	}
 	inserter := bq.client.BQ.Dataset(bq.client.Dataset).Table(testRegressionsTable).Inserter()
 	items := []*api.TestRegression{
@@ -243,14 +262,20 @@ func FindOpenRegression(release string,
 		if tr.TestID != regTest.TestID {
 			continue
 		}
-		found := true
-		for key, value := range regTest.Variants {
-			if value != findVariant(key, tr) {
-				found = false
-				break
-			}
+		// TODO: needs updating when we're ready for dynamic variants
+		if regTest.Network != findVariant(variantregistry.VariantNetwork, tr) {
+			continue
 		}
-		if !found {
+		if regTest.Upgrade != findVariant(variantregistry.VariantUpgrade, tr) {
+			continue
+		}
+		if regTest.Platform != findVariant(variantregistry.VariantPlatform, tr) {
+			continue
+		}
+		if regTest.Variant != findVariant(resolvedissues.VariantVariant, tr) {
+			continue
+		}
+		if regTest.Arch != findVariant(variantregistry.VariantArch, tr) {
 			continue
 		}
 		// If we made it this far, this appears to be a match:

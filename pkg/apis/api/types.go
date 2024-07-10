@@ -2,6 +2,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -14,7 +15,6 @@ import (
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type ColumnType int
@@ -778,19 +778,10 @@ type RiskLevel struct {
 	Level int
 }
 
-// ComponentReportPullRequestOptions specifies a specific pull request to use as the
-// basis or (more often) sample for the report.
-type PullRequestOptions struct {
-	Org      string
-	Repo     string
-	PRNumber string
-}
-
 type ComponentReportRequestReleaseOptions struct {
-	Release            string
-	PullRequestOptions *PullRequestOptions
-	Start              time.Time
-	End                time.Time
+	Release string
+	Start   time.Time
+	End     time.Time
 }
 
 type ComponentReportRequestTestIdentificationOptions struct {
@@ -801,14 +792,23 @@ type ComponentReportRequestTestIdentificationOptions struct {
 	TestID string
 }
 
+// ComponentReportRequestExcludeOptions group all the exclude options passed in the request.
+// Each of the variable is a comma separated string.
+type ComponentReportRequestExcludeOptions struct {
+	ExcludePlatforms string
+	ExcludeArches    string
+	ExcludeNetworks  string
+	ExcludeUpgrades  string
+	ExcludeVariants  string
+}
+
 type ComponentReportRequestVariantOptions struct {
-	ColumnGroupBy         string
-	ColumnGroupByVariants sets.String
-	DBGroupBy             string
-	DBGroupByVariants     sets.String
-	IncludeVariants       []string
-	IncludeVariantsMap    map[string][]string
-	RequestedVariants     map[string]string
+	GroupBy  string
+	Platform string
+	Upgrade  string
+	Arch     string
+	Network  string
+	Variant  string
 }
 
 type ComponentReportRequestAdvancedOptions struct {
@@ -831,41 +831,31 @@ type ComponentTestStatus struct {
 }
 
 type ComponentReportTestStatus struct {
-	// BaseStatus represents the stable basis for the comparison. Maps ComponentTestIdentification serialized as a string, to test status.
-	BaseStatus map[string]ComponentTestStatus `json:"base_status"`
-
-	// SampleSatus represents the sample for the comparison. Maps ComponentTestIdentification serialized as a string, to test status.
-	SampleStatus map[string]ComponentTestStatus `json:"sample_status"`
-	GeneratedAt  *time.Time                     `json:"generated_at"`
+	BaseStatus   map[ComponentTestIdentification]ComponentTestStatus `json:"base_status"`
+	SampleStatus map[ComponentTestIdentification]ComponentTestStatus `json:"sample_status"`
+	GeneratedAt  *time.Time                                          `json:"generated_at"`
 }
 
-// ComponentTestIdentification TODO: we need to get Network/Upgrade/Arch/Platform/FlatVariants off this struct as the actual variants will be dynamic.
-// However making it a map will likely break anything using this struct as a map key.
-// We may need to serialize it to a predictable string? Serialize as JSON string perhaps? Will fields be predictably ordered? Seems like go maps are always alphabetical.
 type ComponentTestIdentification struct {
-	TestID string `json:"test_id"`
-
-	// Proposed, need to serialize to use as map key
-	Variants map[string]string `json:"variants"`
+	TestID       string `json:"test_id"`
+	Network      string `json:"network"`
+	Upgrade      string `json:"upgrade"`
+	Arch         string `json:"arch"`
+	Platform     string `json:"platform"`
+	FlatVariants string `json:"flat_variants"`
 }
 
-/*
-
-// We do not seem to need this. In fact, having this screwed up unmarshalling
-// MarshalText implements encoding.TextMarshaler for json map key marshalling support
-func (s *ComponentTestIdentification) MarshalText() (text []byte, err error) {
+// implement encoding.TextMarshaler for json map key marshalling support
+func (s ComponentTestIdentification) MarshalText() (text []byte, err error) {
 	type t ComponentTestIdentification
-	return json.Marshal((*t)(s))
+	return json.Marshal(t(s))
 }
 
 func (s *ComponentTestIdentification) UnmarshalText(text []byte) error {
 	type t ComponentTestIdentification
 	return json.Unmarshal(text, (*t)(s))
-}*/
+}
 
-// TODO: obsoleted by bigquery dynamic parsing
-
-/*
 type ComponentTestStatusRow struct {
 	TestName     string   `bigquery:"test_name"`
 	TestSuite    string   `bigquery:"test_suite"`
@@ -882,8 +872,6 @@ type ComponentTestStatusRow struct {
 	Component    string   `bigquery:"component"`
 	Capabilities []string `bigquery:"capabilities"`
 }
-
-*/
 
 type ComponentReport struct {
 	Rows        []ComponentReportRow `json:"rows,omitempty"`
@@ -910,10 +898,12 @@ type ComponentReportColumn struct {
 	TriagedIncidents []ComponentReportTriageIncidentSummary `json:"triaged_incidents,omitempty"`
 }
 
-type ColumnID string
-
 type ComponentReportColumnIdentification struct {
-	Variants map[string]string `json:"variants"`
+	Network  string `json:"network,omitempty"`
+	Upgrade  string `json:"upgrade,omitempty"`
+	Arch     string `json:"arch,omitempty"`
+	Platform string `json:"platform,omitempty"`
+	Variant  string `json:"variant,omitempty"`
 }
 
 type ComponentReportStatus int
@@ -1136,14 +1126,13 @@ type TriagedIncident struct {
 	Release string `bigquery:"release" json:"release"`
 	TestID  string `bigquery:"test_id" json:"test_id"`
 	// TODO: should this be joined in instead of recording? test_name can change for a given test_id
-	TestName        string                       `bigquery:"test_name" json:"test_name"`
-	IncidentID      string                       `bigquery:"incident_id" json:"incident_id"`
-	IncidentGroupID string                       `bigquery:"incident_group_id" json:"incident_group_id"`
-	ModifiedTime    time.Time                    `bigquery:"modified_time" json:"modified_time"`
-	Variants        []ComponentReportVariant     `bigquery:"variants" json:"variants"`
-	Issue           TriagedIncidentIssue         `bigquery:"issue" json:"issue"`
-	JobRuns         []TriageJobRun               `bigquery:"job_runs" json:"job_runs"`
-	Attributions    []TriagedIncidentAttribution `bigquery:"attributions" json:"attributions"`
+	TestName     string                       `bigquery:"test_name" json:"test_name"`
+	IncidentID   string                       `bigquery:"incident_id" json:"incident_id"`
+	ModifiedTime time.Time                    `bigquery:"modified_time" json:"modified_time"`
+	Variants     []ComponentReportVariant     `bigquery:"variants" json:"variants"`
+	Issue        TriagedIncidentIssue         `bigquery:"issue" json:"issue"`
+	JobRuns      []TriageJobRun               `bigquery:"job_runs" json:"job_runs"`
+	Attributions []TriagedIncidentAttribution `bigquery:"attributions" json:"attributions"`
 }
 
 type TriagedIncidentIssue struct {
@@ -1165,7 +1154,6 @@ type ComponentReportVariant struct {
 }
 
 type TriageJobRun struct {
-	URL           string                 `bigquery:"url" json:"url"`
-	StartTime     time.Time              `bigquery:"start_time" json:"start_time"`
-	CompletedTime bigquery.NullTimestamp `bigquery:"completed_time" json:"completed_time"`
+	URL       string    `bigquery:"url" json:"url"`
+	StartTime time.Time `bigquery:"start_time" json:"start_time"`
 }

@@ -17,21 +17,33 @@ import React, { Fragment, useContext } from 'react'
 // We pass these arguments to the component that generates the test details report.
 function generateTestReport(
   testId,
-  variants,
+  platform,
+  upgrade,
+  arch,
+  network,
+  variant,
   filterVals,
   componentName,
   capabilityName,
   testName
 ) {
-  const environmentVal = formColumnName({ variants: variants })
+  const environment = {
+    network: network,
+    upgrade: upgrade,
+    arch: arch,
+    platform: platform,
+    variant: variant,
+  }
+  const environmentVal = formColumnName(environment)
   const { expandEnvironment } = useContext(CompReadyVarsContext)
   const safeComponentName = safeEncodeURIComponent(componentName)
   const safeTestId = safeEncodeURIComponent(testId)
   const safeTestName = safeEncodeURIComponent(testName)
-  let variantsUrl = ''
-  Object.entries(variants).forEach(([key, value]) => {
-    variantsUrl += '&' + key + '=' + safeEncodeURIComponent(value)
-  })
+  const safePlatform = safeEncodeURIComponent(platform)
+  const safeUpgrade = safeEncodeURIComponent(upgrade)
+  const safeArch = safeEncodeURIComponent(arch)
+  const safeNetwork = safeEncodeURIComponent(network)
+  const safeVariant = safeEncodeURIComponent(variant)
   const retUrl =
     '/component_readiness/test_details' +
     filterVals +
@@ -39,7 +51,11 @@ function generateTestReport(
     expandEnvironment(environmentVal) +
     `&component=${safeComponentName}` +
     `&capability=${capabilityName}` +
-    variantsUrl +
+    `&platform=${safePlatform}` +
+    `&upgrade=${safeUpgrade}` +
+    `&arch=${safeArch}` +
+    `&network=${safeNetwork}` +
+    `&variant=${safeVariant}` +
     `&testName=${safeTestName}`
 
   return sortQueryParams(retUrl)
@@ -77,7 +93,7 @@ export default function RegressedTestsModal(props) {
     {
       field: 'test_name',
       headerName: 'Test Name',
-      flex: 40,
+      flex: 30,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
@@ -87,14 +103,34 @@ export default function RegressedTestsModal(props) {
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
-      field: 'variants',
-      headerName: 'Variants',
-      flex: 30,
-      renderCell: (param) => (
-        <div className="test-name">
-          {formColumnName({ variants: param.value })}
-        </div>
-      ),
+      field: 'network',
+      headerName: 'Network',
+      flex: 8,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'upgrade',
+      headerName: 'Upgrade',
+      flex: 12,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'arch',
+      headerName: 'Arch',
+      flex: 8,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'platform',
+      headerName: 'Platform',
+      flex: 8,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'variant',
+      headerName: 'Variant',
+      flex: 10,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'opened',
@@ -147,7 +183,11 @@ export default function RegressedTestsModal(props) {
           <Link
             to={generateTestReport(
               params.row.test_id,
-              params.row.variants,
+              params.row.platform,
+              params.row.upgrade,
+              params.row.arch,
+              params.row.network,
+              params.row.variant,
               props.filterVals,
               params.row.component,
               params.row.capability,
@@ -186,9 +226,11 @@ export default function RegressedTestsModal(props) {
               row.test_id +
               row.component +
               row.capability +
-              Object.keys(row.variants)
-                .map((key) => row.variants[key])
-                .join(' ')
+              row.variant +
+              row.platform +
+              row.network +
+              row.arch +
+              row.upgrade
             }
             pageSize={10}
             rowHeight={60}

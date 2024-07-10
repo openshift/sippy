@@ -551,7 +551,7 @@ ProwJobRun.defaultProps = {
     'NodeState',
   ],
   intervalFile: '',
-  overrideDisplayFlag: true,
+  overrideDisplayFlag: false,
 }
 
 ProwJobRun.propTypes = {
@@ -582,11 +582,6 @@ function filterIntervals(
       return shouldInclude
     }
     if (!overrideDisplayFlag && !eventInterval.display) {
-      return shouldInclude
-    }
-    // Hack for Disruption intervals, we don't ever want to show those without the display flag, they should have been
-    // separated on source.
-    if (eventInterval.source === 'Disruption' && !eventInterval.display) {
       return shouldInclude
     }
     if (re) {
