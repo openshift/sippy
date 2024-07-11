@@ -436,9 +436,9 @@ func TestSelectRiskAnalysisResult(t *testing.T) {
 	for _, tc := range tests {
 
 		t.Run(tc.name, func(t *testing.T) {
-			riskLevel, response := selectRiskAnalysisResult(tc.jobNamesRiskLevel, tc.variantsRiskLevel, tc.jobNames, tc.compareRelease)
-			assert.Equal(t, tc.expectedRiskLevel, riskLevel.Level, "%s risk level did not match expected", tc.name)
-			assert.Equal(t, tc.expectedResponse, response, "%s response did not match expected", tc.name)
+			analysis := selectRiskAnalysisResult(tc.jobNamesRiskLevel, tc.variantsRiskLevel, tc.jobNames, tc.compareRelease)
+			assert.Equal(t, tc.expectedRiskLevel, analysis.Level.Level, "%s risk level did not match expected", tc.name)
+			assert.Equal(t, tc.expectedResponse, analysis.Reasons, "%s response did not match expected", tc.name)
 		})
 	}
 }

@@ -838,7 +838,7 @@ func (aw *AnalysisWorker) getRiskSummary(jobRunID, jobRunIDPath string, priorRis
 
 func buildRiskSummary(riskAnalysis, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) api.RiskSummary {
 
-	riskSummary := api.RiskSummary{OverallRisk: api.FailureRisk{Level: riskAnalysis.OverallRisk.Level, Reasons: riskAnalysis.OverallRisk.Reasons}}
+	riskSummary := api.RiskSummary{OverallRisk: api.JobFailureRisk{Level: riskAnalysis.OverallRisk.Level, Reasons: riskAnalysis.OverallRisk.Reasons}}
 
 	for _, t := range riskAnalysis.Tests {
 		if t.Risk.Level.Level == riskSummary.OverallRisk.Level.Level && !isTestFiltered(t, priorRiskAnalysis) {
@@ -861,7 +861,7 @@ func buildRiskSummary(riskAnalysis, priorRiskAnalysis *api.ProwJobRunRiskAnalysi
 
 		// otherwise none
 		return api.RiskSummary{
-			OverallRisk: api.FailureRisk{Level: api.FailureRiskLevelNone},
+			OverallRisk: api.JobFailureRisk{Level: api.FailureRiskLevelNone},
 		}
 	}
 
@@ -892,7 +892,7 @@ func (aw *AnalysisWorker) getGCSOverallRiskLevel(latestPath string) (api.RiskSum
 	if err != nil {
 		log.WithError(err).Errorf("Error with fallback lookup of gcs RiskAnalysis for: %s", latestPath)
 		return api.RiskSummary{
-			OverallRisk: api.FailureRisk{Level: api.FailureRiskLevelUnknown},
+			OverallRisk: api.JobFailureRisk{Level: api.FailureRiskLevelUnknown},
 		}, nil
 	}
 
@@ -900,7 +900,7 @@ func (aw *AnalysisWorker) getGCSOverallRiskLevel(latestPath string) (api.RiskSum
 	// in that case we do not include an entry for it
 	if riskAnalysis != nil {
 		riskSummary := api.RiskSummary{
-			OverallRisk: api.FailureRisk{Level: riskAnalysis.OverallRisk.Level},
+			OverallRisk: api.JobFailureRisk{Level: riskAnalysis.OverallRisk.Level},
 		}
 
 		for _, t := range riskAnalysis.Tests {
@@ -917,7 +917,7 @@ func (aw *AnalysisWorker) getGCSOverallRiskLevel(latestPath string) (api.RiskSum
 
 	// default is none if we didn't find one
 	return api.RiskSummary{
-		OverallRisk: api.FailureRisk{Level: api.FailureRiskLevelNone},
+		OverallRisk: api.JobFailureRisk{Level: api.FailureRiskLevelNone},
 	}, nil
 }
 
