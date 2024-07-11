@@ -79,7 +79,11 @@ func (f *ServerFlags) Validate() error {
 
 func NewServeCommand() *cobra.Command {
 	f := NewServerFlags()
-
+	cmd := newServeFlagsCommand(f)
+	f.BindFlags(cmd.Flags())
+	return cmd
+}
+func newServeFlagsCommand(f *ServerFlags) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve",
 		Short: "Run the sippy server",
