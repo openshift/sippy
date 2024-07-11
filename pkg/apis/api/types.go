@@ -494,7 +494,7 @@ type Test struct {
 	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty"`
 	Watchlist                bool    `json:"watchlist"`
 
-	Tags     []string `json:"tags"`
+	Tags     []string `json:"tags" gorm:"type:text[]"`
 	OpenBugs int      `json:"open_bugs"`
 }
 
