@@ -528,9 +528,17 @@ func runTestRunAnalysis(failedTest models.ProwJobRunTest, jobRun *models.ProwJob
 		return apitype.ProwJobRunTestRiskAnalysis{}, errJobNames
 	}
 
+	// one of our data sources should have the test ID
+	testID := failedTest.Test.ID
+	if testID == 0 && testResultsJobNames != nil {
+		testID = uint(testResultsJobNames.ID)
+	}
+	if testID == 0 && testResultsVariants != nil {
+		testID = uint(testResultsVariants.ID)
+	}
 	analysis := apitype.ProwJobRunTestRiskAnalysis{
 		Name:     failedTest.Test.Name,
-		TestID:   failedTest.Test.ID,
+		TestID:   testID,
 		OpenBugs: failedTest.Test.Bugs,
 	}
 	// Watch out for tests that ran in previous period, but not current, no sense comparing to 0 runs:
