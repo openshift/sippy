@@ -1168,7 +1168,9 @@ type cellStatus struct {
 }
 
 func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
-	reportStatus apitype.ComponentReportStatus, existingCellStatus *cellStatus,
+	reportStatus apitype.ComponentReportStatus,
+	fishersExact float64,
+	existingCellStatus *cellStatus,
 	triagedIncidents []apitype.TriagedIncident,
 	openRegressions []apitype.TestRegression) cellStatus {
 	var newCellStatus cellStatus
@@ -1191,6 +1193,7 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 		rt := apitype.ComponentReportTestSummary{
 			ComponentReportTestIdentification: testID,
 			Status:                            reportStatus,
+			FisherExact:                       fishersExact,
 		}
 		if len(openRegressions) > 0 {
 			release := openRegressions[0].Release
@@ -1223,6 +1226,7 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 	columnIdentifications []apitype.ColumnID,
 	testID apitype.ComponentReportTestIdentification,
 	reportStatus apitype.ComponentReportStatus,
+	fishersExact float64,
 	status map[apitype.ComponentReportRowIdentification]map[apitype.ColumnID]cellStatus,
 	allRows map[apitype.ComponentReportRowIdentification]struct{},
 	allColumns map[apitype.ColumnID]struct{},
@@ -1247,16 +1251,16 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 		if !ok {
 			row = map[apitype.ColumnID]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil, triagedIncidents, openRegressions)
+				row[columnIdentification] = getNewCellStatus(testID, reportStatus, fishersExact, nil, triagedIncidents, openRegressions)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, nil, triagedIncidents, openRegressions)
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, fishersExact, nil, triagedIncidents, openRegressions)
 				} else {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, &existing, triagedIncidents, openRegressions)
+					row[columnIdentification] = getNewCellStatus(testID, reportStatus, fishersExact, &existing, triagedIncidents, openRegressions)
 				}
 			}
 		}
@@ -1551,6 +1555,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		}
 
 		var reportStatus apitype.ComponentReportStatus
+		var fishersExact float64
 		var triagedIncidents []apitype.TriagedIncident
 		var resolvedIssueCompensation int
 		sampleStats, ok := sampleStatus[testIdentification]
@@ -1559,7 +1564,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		} else {
 			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
 			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
-			reportStatus, _ = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
+			reportStatus, fishersExact = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
 
 			if reportStatus < apitype.MissingSample && reportStatus > apitype.SignificantRegression {
 				// we are within the triage range
@@ -1587,7 +1592,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if err != nil {
 			return apitype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, aggregatedStatus, allRows, allColumns, triagedIncidents, openRegressions)
+		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, fishersExact, aggregatedStatus, allRows, allColumns, triagedIncidents, openRegressions)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
@@ -1599,7 +1604,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if err != nil {
 			return apitype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, aggregatedStatus, allRows, allColumns, nil, openRegressions)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, 0, aggregatedStatus, allRows, allColumns, nil, openRegressions)
 	}
 
 	// Sort the row identifications

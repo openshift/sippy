@@ -99,7 +99,7 @@ export default function RegressedTestsModal(props) {
     {
       field: 'opened',
       headerName: 'Regressed Since',
-      flex: 15,
+      flex: 12,
       valueGetter: (params) => {
         if (!params.row.opened) {
           // For a regression we haven't yet detected:
@@ -113,6 +113,18 @@ export default function RegressedTestsModal(props) {
           <div className="regressed-since">{param.value}</div>
         </Tooltip>
       ),
+    },
+    {
+      field: 'fisher_exact',
+      headerName: 'Certainty',
+      flex: 8,
+      valueGetter: (params) => {
+        if (!params.row.fisher_exact) {
+          return ''
+        }
+        return (100 - params.row.fisher_exact * 100).toFixed(1) + '%'
+      },
+      renderCell: (param) => <div className="fishers-exact">{param.value}</div>,
     },
     {
       field: 'test_id',

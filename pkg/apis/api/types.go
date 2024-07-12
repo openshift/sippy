@@ -947,6 +947,8 @@ type ComponentReportTestSummary struct {
 	// is regressed per the query params used). Eventually we should only include these details if the default view
 	// is being used, without overriding the start/end dates.
 	Opened *time.Time `json:"opened"`
+
+	FisherExact float64 `json:"fisher_exact"`
 }
 
 type ComponentReportTestDetails struct {
