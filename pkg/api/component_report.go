@@ -238,6 +238,7 @@ type componentReportGenerator struct {
 	apitype.ComponentReportRequestTestIdentificationOptions
 	apitype.ComponentReportRequestVariantOptions
 	apitype.ComponentReportRequestAdvancedOptions
+	openRegressions []apitype.TestRegression
 }
 
 func (c *componentReportGenerator) GetComponentReportCacheKey(prefix string) CacheData {
@@ -331,12 +332,13 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 		return apitype.ComponentReport{}, errs
 	}
 	bqs := tracker.NewBigQueryRegressionStore(c.client)
-	openRegressions, err := bqs.ListCurrentRegressions(c.SampleRelease.Release)
+	var err error
+	c.openRegressions, err = bqs.ListCurrentRegressions(c.SampleRelease.Release)
 	if err != nil {
 		errs = append(errs, err)
 		return apitype.ComponentReport{}, errs
 	}
-	report, err := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus, openRegressions)
+	report, err := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus)
 	if err != nil {
 		errs = append(errs, err)
 		return apitype.ComponentReport{}, errs
@@ -1536,7 +1538,7 @@ func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentR
 }
 
 func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[string]apitype.ComponentTestStatus,
-	sampleStatus map[string]apitype.ComponentTestStatus, openRegressions []apitype.TestRegression) (apitype.ComponentReport, error) {
+	sampleStatus map[string]apitype.ComponentTestStatus) (apitype.ComponentReport, error) {
 	report := apitype.ComponentReport{
 		Rows: []apitype.ComponentReportRow{},
 	}
@@ -1592,7 +1594,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if err != nil {
 			return apitype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, fishersExact, aggregatedStatus, allRows, allColumns, triagedIncidents, openRegressions)
+		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, fishersExact, aggregatedStatus, allRows, allColumns, triagedIncidents, c.openRegressions)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
@@ -1604,7 +1606,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if err != nil {
 			return apitype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, 0, aggregatedStatus, allRows, allColumns, nil, openRegressions)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, 0, aggregatedStatus, allRows, allColumns, nil, c.openRegressions)
 	}
 
 	// Sort the row identifications
