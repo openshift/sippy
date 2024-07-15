@@ -925,7 +925,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			report, err := tc.generator.generateComponentTestReport(tc.baseStatus, tc.sampleStatus, []apitype.TestRegression{})
+			report, err := tc.generator.generateComponentTestReport(tc.baseStatus, tc.sampleStatus)
 			assert.NoError(t, err, "error generating component report")
 			assert.Equal(t, tc.expectedReport, report, "expected report %+v, got %+v", tc.expectedReport, report)
 		})
@@ -1455,7 +1455,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &componentReportGenerator{}
 
-			status, fischers := c.assessComponentStatus(tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, tt.numberOfIgnoredSamples)
+			status, fischers := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, tt.numberOfIgnoredSamples)
 			assert.Equalf(t, tt.expectedStatus, status, "assessComponentStatus expected status not equal")
 			assert.Equalf(t, tt.expectedFischers, fischers, "assessComponentStatus expected fischers value not equal")
 		})

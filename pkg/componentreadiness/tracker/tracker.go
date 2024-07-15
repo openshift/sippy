@@ -169,7 +169,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 
 	matchedOpenRegressions := []api.TestRegression{} // all the matches we found, used to determine what had no match
 	for _, regTest := range allRegressedTests {
-		if openReg := FindOpenRegression(release, regTest, regressions); openReg != nil {
+		if openReg := FindOpenRegression(release, regTest.TestID, regTest.Variants, regressions); openReg != nil {
 			if openReg.Closed.Valid {
 				// if the regression returned has a closed date, we found a recently closed
 				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
@@ -232,7 +232,8 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 
 // FindOpenRegression scans the list of open regressions for any that match the given test summary.
 func FindOpenRegression(release string,
-	regTest api.ComponentReportTestSummary,
+	testID string,
+	variants map[string]string,
 	regressions []api.TestRegression) *api.TestRegression {
 
 	for _, tr := range regressions {
@@ -240,11 +241,11 @@ func FindOpenRegression(release string,
 			continue
 		}
 		// We compare test ID not name, as names can change.
-		if tr.TestID != regTest.TestID {
+		if tr.TestID != testID {
 			continue
 		}
 		found := true
-		for key, value := range regTest.Variants {
+		for key, value := range variants {
 			if value != findVariant(key, tr) {
 				found = false
 				break

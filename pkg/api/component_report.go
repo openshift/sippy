@@ -11,11 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
-	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
-
 	"cloud.google.com/go/bigquery"
 	fischer "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
+	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -31,6 +30,10 @@ const (
 	triagedIncidentsTableID = "triaged_incidents"
 
 	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
+
+	// openRegressionConfidenceAdjustment is subtracted from the requested confidence for regressed tests that have
+	// an open regression.
+	openRegressionConfidenceAdjustment = 5
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
@@ -373,6 +376,13 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 
 	componentJobRunTestReportStatus, errs := c.GenerateJobRunTestReportStatus()
 	if len(errs) > 0 {
+		return apitype.ComponentReportTestDetails{}, errs
+	}
+	var err error
+	bqs := tracker.NewBigQueryRegressionStore(c.client)
+	c.openRegressions, err = bqs.ListCurrentRegressions(c.SampleRelease.Release)
+	if err != nil {
+		errs = append(errs, err)
 		return apitype.ComponentReportTestDetails{}, errs
 	}
 	report := c.generateComponentTestDetailsReport(componentJobRunTestReportStatus.BaseStatus, componentJobRunTestReportStatus.SampleStatus)
@@ -1198,8 +1208,8 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 			FisherExact:                       fishersExact,
 		}
 		if len(openRegressions) > 0 {
-			release := openRegressions[0].Release
-			or := tracker.FindOpenRegression(release, rt, openRegressions)
+			release := openRegressions[0].Release // grab release from first regression, they were queried only for sample release
+			or := tracker.FindOpenRegression(release, rt.TestID, rt.Variants, openRegressions)
 			if or != nil {
 				rt.Opened = &or.Opened
 			}
@@ -1214,7 +1224,8 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 			}}
 		if len(openRegressions) > 0 {
 			release := openRegressions[0].Release
-			or := tracker.FindOpenRegression(release, ti.ComponentReportTestSummary, openRegressions)
+			or := tracker.FindOpenRegression(release, ti.ComponentReportTestSummary.TestID,
+				ti.ComponentReportTestSummary.Variants, openRegressions)
 			if or != nil {
 				ti.ComponentReportTestSummary.Opened = &or.Opened
 			}
@@ -1537,6 +1548,33 @@ func (c *componentReportGenerator) triagedIncidentsFor(testID apitype.ComponentR
 	return impactedRuns, triagedIncidents
 }
 
+// getRequiredConfidence returns the required certainty of a regression before we include it in the report as a
+// regressed test. This is to introduce some hysteresis into the process so once a regression creeps over the 95%
+// confidence we typically use, dropping to 94.9% should not make the cell immediately green.
+//
+// Instead, once you cross the confidence threshold and a regression begins tracking in the openRegressions list,
+// we'll require less confidence for that test until the regression is closed. (-5%) Once the certainty drops below that
+// modified confidence, the regression will be closed and the -5% adjuster is gone.
+//
+// ie. if the request was for 95% confidence, but we see that a test has an open regression (meaning at some point recently
+// we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
+func (c *componentReportGenerator) getRequiredConfidence(testID string, variants map[string]string) int {
+	if len(c.openRegressions) > 0 {
+		release := c.openRegressions[0].Release // grab release from first regression, they were queried only for sample release
+		or := tracker.FindOpenRegression(release, testID, variants, c.openRegressions)
+		if or != nil {
+			log.Debugf("adjusting required regression confidence from %d to %d because %s (%v) has an open regression since %s",
+				c.ComponentReportRequestAdvancedOptions.Confidence,
+				c.ComponentReportRequestAdvancedOptions.Confidence-openRegressionConfidenceAdjustment,
+				testID,
+				variants,
+				or.Opened)
+			return c.ComponentReportRequestAdvancedOptions.Confidence /*- openRegressionConfidenceAdjustment*/
+		}
+	}
+	return c.ComponentReportRequestAdvancedOptions.Confidence
+}
+
 func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[string]apitype.ComponentTestStatus,
 	sampleStatus map[string]apitype.ComponentTestStatus) (apitype.ComponentReport, error) {
 	report := apitype.ComponentReport{
@@ -1566,7 +1604,10 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		} else {
 			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
 			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
-			reportStatus, fishersExact = c.assessComponentStatus(sampleStats.TotalCount, sampleStats.SuccessCount, sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount, baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
+			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
+			reportStatus, fishersExact = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
+				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
+				baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
 
 			if reportStatus < apitype.MissingSample && reportStatus > apitype.SignificantRegression {
 				// we are within the triage range
@@ -1870,7 +1911,9 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 	result.SampleStats.FailureCount = totalSampleFailure
 	result.SampleStats.FlakeCount = totalSampleFlake
 	result.SampleStats.SuccessRate = getSuccessRate(totalSampleSuccess, totalSampleFailure, totalSampleFlake)
+	requiredConfidence := c.getRequiredConfidence(c.TestID, c.RequestedVariants)
 	result.ReportStatus, result.FisherExact = c.assessComponentStatus(
+		requiredConfidence,
 		totalSampleSuccess+totalSampleFailure+totalSampleFlake,
 		totalSampleSuccess,
 		totalSampleFlake,
@@ -1886,7 +1929,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 	return result
 }
 
-func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) (apitype.ComponentReportStatus, float64) {
+func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) (apitype.ComponentReportStatus, float64) {
 	// preserve the initial sampleTotal so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
 	initialSampleTotal := sampleTotal
@@ -1919,7 +1962,7 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 			// pass percentage is below the basis
 			if initialSampleTotal > sampleTotal && initialPassPercentage < basisPassPercentage {
 				if basisPassPercentage-initialPassPercentage > float64(effectivePityFactor)/100 {
-					wasSignificant, _ = c.fischerExactTest(initialSampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
+					wasSignificant, _ = c.fischerExactTest(requiredConfidence, initialSampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
 				}
 				// if it was significant without the adjustment use
 				// ExtremeTriagedRegression or SignificantTriagedRegression
@@ -1980,9 +2023,9 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 
 			if improved {
 				// flip base and sample when improved
-				significant, fischerExact = c.fischerExactTest(baseTotal, baseSuccess, baseFlake, sampleTotal, sampleSuccess, sampleFlake)
+				significant, fischerExact = c.fischerExactTest(requiredConfidence, baseTotal, baseSuccess, baseFlake, sampleTotal, sampleSuccess, sampleFlake)
 			} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
-				significant, fischerExact = c.fischerExactTest(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
+				significant, fischerExact = c.fischerExactTest(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
 			}
 			if significant {
 				if improved {
@@ -2003,12 +2046,12 @@ func (c *componentReportGenerator) assessComponentStatus(sampleTotal, sampleSucc
 	return status, fischerExact
 }
 
-func (c *componentReportGenerator) fischerExactTest(sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (bool, float64) {
+func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (bool, float64) {
 	_, _, r, _ := fischer.FisherExactTest(sampleTotal-sampleSuccess-sampleFlake,
 		sampleSuccess+sampleFlake,
 		baseTotal-baseSuccess-baseFlake,
 		baseSuccess+baseFlake)
-	return r < 1-float64(c.Confidence)/100, r
+	return r < 1-float64(confidenceRequired)/100, r
 }
 
 func (c *componentReportGenerator) getUniqueJUnitColumnValuesLast60Days(field string, nested bool) ([]string, error) {
