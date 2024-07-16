@@ -90,7 +90,7 @@ export default function AdvancedOptions(props) {
               value={confidence}
               onChange={handleChangeConfidence}
               aria-labelledby="my-slider"
-              min={90}
+              min={80}
               max={100}
             />
             <p>Pity: {pity}</p>
