@@ -29,7 +29,7 @@ import (
 const (
 	triagedIncidentsTableID = "triaged_incidents"
 
-	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
+	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert|periodic-ci-ComplianceAsCode-|-efs-|-interop-`
 
 	// openRegressionConfidenceAdjustment is subtracted from the requested confidence for regressed tests that have
 	// an open regression.
