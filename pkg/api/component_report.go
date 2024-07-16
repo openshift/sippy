@@ -1180,32 +1180,30 @@ type cellStatus struct {
 }
 
 func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
-	reportStatus apitype.ComponentReportStatus,
-	fishersExact float64,
+	testStats apitype.ComponentReportTestStats,
 	existingCellStatus *cellStatus,
 	triagedIncidents []apitype.TriagedIncident,
 	openRegressions []apitype.TestRegression) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
-		if (reportStatus < apitype.NotSignificant && reportStatus < existingCellStatus.status) ||
-			(existingCellStatus.status == apitype.NotSignificant && reportStatus == apitype.SignificantImprovement) {
+		if (testStats.ReportStatus < apitype.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
+			(existingCellStatus.status == apitype.NotSignificant && testStats.ReportStatus == apitype.SignificantImprovement) {
 			// We want to show the significant improvement if assessment is not regression
-			newCellStatus.status = reportStatus
+			newCellStatus.status = testStats.ReportStatus
 		} else {
 			newCellStatus.status = existingCellStatus.status
 		}
 		newCellStatus.regressedTests = existingCellStatus.regressedTests
 		newCellStatus.triagedIncidents = existingCellStatus.triagedIncidents
 	} else {
-		newCellStatus.status = reportStatus
+		newCellStatus.status = testStats.ReportStatus
 	}
 	// don't show triaged regressions in the regressed tests
 	// need a new UI to show active triaged incidents
-	if reportStatus < apitype.ExtremeTriagedRegression {
+	if testStats.ReportStatus < apitype.ExtremeTriagedRegression {
 		rt := apitype.ComponentReportTestSummary{
 			ComponentReportTestIdentification: testID,
-			Status:                            reportStatus,
-			FisherExact:                       fishersExact,
+			ComponentReportTestStats:          testStats,
 		}
 		if len(openRegressions) > 0 {
 			release := openRegressions[0].Release // grab release from first regression, they were queried only for sample release
@@ -1215,12 +1213,12 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 			}
 		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
-	} else if reportStatus < apitype.MissingSample {
+	} else if testStats.ReportStatus < apitype.MissingSample {
 		ti := apitype.ComponentReportTriageIncidentSummary{
 			TriagedIncidents: triagedIncidents,
 			ComponentReportTestSummary: apitype.ComponentReportTestSummary{
 				ComponentReportTestIdentification: testID,
-				Status:                            reportStatus,
+				ComponentReportTestStats:          testStats,
 			}}
 		if len(openRegressions) > 0 {
 			release := openRegressions[0].Release
@@ -1238,8 +1236,7 @@ func getNewCellStatus(testID apitype.ComponentReportTestIdentification,
 func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentification,
 	columnIdentifications []apitype.ColumnID,
 	testID apitype.ComponentReportTestIdentification,
-	reportStatus apitype.ComponentReportStatus,
-	fishersExact float64,
+	testStats apitype.ComponentReportTestStats,
 	status map[apitype.ComponentReportRowIdentification]map[apitype.ColumnID]cellStatus,
 	allRows map[apitype.ComponentReportRowIdentification]struct{},
 	allColumns map[apitype.ColumnID]struct{},
@@ -1264,16 +1261,16 @@ func updateCellStatus(rowIdentifications []apitype.ComponentReportRowIdentificat
 		if !ok {
 			row = map[apitype.ColumnID]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = getNewCellStatus(testID, reportStatus, fishersExact, nil, triagedIncidents, openRegressions)
+				row[columnIdentification] = getNewCellStatus(testID, testStats, nil, triagedIncidents, openRegressions)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, fishersExact, nil, triagedIncidents, openRegressions)
+					row[columnIdentification] = getNewCellStatus(testID, testStats, nil, triagedIncidents, openRegressions)
 				} else {
-					row[columnIdentification] = getNewCellStatus(testID, reportStatus, fishersExact, &existing, triagedIncidents, openRegressions)
+					row[columnIdentification] = getNewCellStatus(testID, testStats, &existing, triagedIncidents, openRegressions)
 				}
 			}
 		}
@@ -1594,22 +1591,21 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 			return apitype.ComponentReport{}, err
 		}
 
-		var reportStatus apitype.ComponentReportStatus
-		var fishersExact float64
+		var testStats apitype.ComponentReportTestStats
 		var triagedIncidents []apitype.TriagedIncident
 		var resolvedIssueCompensation int
 		sampleStats, ok := sampleStatus[testIdentification]
 		if !ok {
-			reportStatus = apitype.MissingSample
+			testStats.ReportStatus = apitype.MissingSample
 		} else {
 			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ComponentReportColumnIdentification, testID.TestID)
 			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
 			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
-			reportStatus, fishersExact = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
+			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
 				baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
 
-			if reportStatus < apitype.MissingSample && reportStatus > apitype.SignificantRegression {
+			if testStats.ReportStatus < apitype.MissingSample && testStats.ReportStatus > apitype.SignificantRegression {
 				// we are within the triage range
 				// do we want to show the triage icon or flip reportStatus
 				canClearReportStatus := true
@@ -1625,7 +1621,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 
 				// sanity check to make sure we aren't just defaulting to clear without any incidents (not likely)
 				if len(triagedIncidents) > 0 && canClearReportStatus {
-					reportStatus = apitype.NotSignificant
+					testStats.ReportStatus = apitype.NotSignificant
 				}
 			}
 		}
@@ -1635,7 +1631,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if err != nil {
 			return apitype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentifications, testID, reportStatus, fishersExact, aggregatedStatus, allRows, allColumns, triagedIncidents, c.openRegressions)
+		updateCellStatus(rowIdentifications, columnIdentifications, testID, testStats, aggregatedStatus, allRows, allColumns, triagedIncidents, c.openRegressions)
 	}
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
@@ -1647,7 +1643,8 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if err != nil {
 			return apitype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentification, testID, apitype.MissingBasis, 0, aggregatedStatus, allRows, allColumns, nil, c.openRegressions)
+		testStats := apitype.ComponentReportTestStats{ReportStatus: apitype.MissingBasis}
+		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus, allRows, allColumns, nil, c.openRegressions)
 	}
 
 	// Sort the row identifications
@@ -1704,11 +1701,11 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 				reportColumn.Status = status.status
 				reportColumn.RegressedTests = status.regressedTests
 				sort.Slice(reportColumn.RegressedTests, func(i, j int) bool {
-					return reportColumn.RegressedTests[i].Status < reportColumn.RegressedTests[j].Status
+					return reportColumn.RegressedTests[i].ReportStatus < reportColumn.RegressedTests[j].ReportStatus
 				})
 				reportColumn.TriagedIncidents = status.triagedIncidents
 				sort.Slice(reportColumn.TriagedIncidents, func(i, j int) bool {
-					return reportColumn.TriagedIncidents[i].Status < reportColumn.TriagedIncidents[j].Status
+					return reportColumn.TriagedIncidents[i].ReportStatus < reportColumn.TriagedIncidents[j].ReportStatus
 				})
 			}
 			reportRow.Columns = append(reportRow.Columns, reportColumn)
@@ -1792,6 +1789,8 @@ func getJobRunStats(stats apitype.ComponentJobRunTestStatusRow, prowURL, gcsBuck
 	return jobRunStats
 }
 
+// generateComponentTestDetailsReport handles the report generation for the lowest level test report including
+// breakdown by job as well as overall stats.
 func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus map[string][]apitype.ComponentJobRunTestStatusRow,
 	sampleStatus map[string][]apitype.ComponentJobRunTestStatusRow) apitype.ComponentReportTestDetails {
 	result := apitype.ComponentReportTestDetails{
@@ -1811,6 +1810,7 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
+
 	for prowJob, baseStatsList := range baseStatus {
 		jobStats := apitype.ComponentReportTestDetailsJobStats{
 			JobName: prowJob,
@@ -1901,18 +1901,13 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		totalSampleSuccess += perJobSampleSuccess
 		totalSampleFlake += perJobSampleFlake
 	}
-	result.BaseStats.Release = c.BaseRelease.Release
-	result.BaseStats.SuccessCount = totalBaseSuccess
-	result.BaseStats.FailureCount = totalBaseFailure
-	result.BaseStats.FlakeCount = totalBaseFlake
-	result.BaseStats.SuccessRate = getSuccessRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake)
-	result.SampleStats.Release = c.SampleRelease.Release
-	result.SampleStats.SuccessCount = totalSampleSuccess
-	result.SampleStats.FailureCount = totalSampleFailure
-	result.SampleStats.FlakeCount = totalSampleFlake
-	result.SampleStats.SuccessRate = getSuccessRate(totalSampleSuccess, totalSampleFailure, totalSampleFlake)
+	sort.Slice(result.JobStats, func(i, j int) bool {
+		return result.JobStats[i].JobName < result.JobStats[j].JobName
+	})
+
 	requiredConfidence := c.getRequiredConfidence(c.TestID, c.RequestedVariants)
-	result.ReportStatus, result.FisherExact = c.assessComponentStatus(
+
+	result.ComponentReportTestStats = c.assessComponentStatus(
 		requiredConfidence,
 		totalSampleSuccess+totalSampleFailure+totalSampleFlake,
 		totalSampleSuccess,
@@ -1923,13 +1918,11 @@ func (c *componentReportGenerator) generateComponentTestDetailsReport(baseStatus
 		approvedRegression,
 		resolvedIssueCompensation,
 	)
-	sort.Slice(result.JobStats, func(i, j int) bool {
-		return result.JobStats[i].JobName < result.JobStats[j].JobName
-	})
+
 	return result
 }
 
-func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) (apitype.ComponentReportStatus, float64) {
+func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) apitype.ComponentReportTestStats {
 	// preserve the initial sampleTotal so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
 	initialSampleTotal := sampleTotal
@@ -1941,7 +1934,7 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 	}
 
 	status := apitype.MissingBasis
-	fischerExact := 0.0
+	fisherExact := 0.0
 	if baseTotal != 0 {
 		// if the unadjusted sample was 0 then nothing to do
 		if initialSampleTotal == 0 {
@@ -1984,7 +1977,10 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 						status = apitype.MissingSample
 					}
 				}
-				return status, fischerExact
+				return apitype.ComponentReportTestStats{
+					ReportStatus: status,
+					FisherExact:  fisherExact,
+				}
 			}
 
 			// if we didn't detect a significant regression prior to adjusting set our default here
@@ -1999,9 +1995,15 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 			if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
 				// if we were below the threshold with the initialSampleTotal too then return not significant
 				if c.MinimumFailure != 0 && (initialSampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
-					return apitype.NotSignificant, fischerExact
+					return apitype.ComponentReportTestStats{
+						ReportStatus: apitype.NotSignificant,
+						FisherExact:  fisherExact,
+					}
 				}
-				return status, fischerExact
+				return apitype.ComponentReportTestStats{
+					ReportStatus: status,
+					FisherExact:  fisherExact,
+				}
 			}
 
 			// how do approvedRegressions and triagedRegressions interact?  If we triaged a regression we will
@@ -2023,9 +2025,9 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 
 			if improved {
 				// flip base and sample when improved
-				significant, fischerExact = c.fischerExactTest(requiredConfidence, baseTotal, baseSuccess, baseFlake, sampleTotal, sampleSuccess, sampleFlake)
+				significant, fisherExact = c.fischerExactTest(requiredConfidence, baseTotal, baseSuccess, baseFlake, sampleTotal, sampleSuccess, sampleFlake)
 			} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
-				significant, fischerExact = c.fischerExactTest(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
+				significant, fisherExact = c.fischerExactTest(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
 			}
 			if significant {
 				if improved {
@@ -2043,7 +2045,31 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 			}
 		}
 	}
-	return status, fischerExact
+
+	sampleFailure := sampleTotal - sampleSuccess - sampleFlake
+	baseFailure := baseTotal - baseSuccess - baseFlake
+	return apitype.ComponentReportTestStats{
+		ReportStatus: status,
+		FisherExact:  fisherExact,
+		SampleStats: apitype.ComponentReportTestDetailsReleaseStats{
+			Release: c.SampleRelease.Release,
+			ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+				SuccessRate:  getSuccessRate(sampleSuccess, sampleFailure, sampleFlake),
+				SuccessCount: sampleSuccess,
+				FailureCount: sampleFailure,
+				FlakeCount:   sampleFlake,
+			},
+		},
+		BaseStats: apitype.ComponentReportTestDetailsReleaseStats{
+			Release: c.BaseRelease.Release,
+			ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+				SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
+				SuccessCount: baseSuccess,
+				FailureCount: baseFailure,
+				FlakeCount:   baseFlake,
+			},
+		},
+	}
 }
 
 func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (bool, float64) {

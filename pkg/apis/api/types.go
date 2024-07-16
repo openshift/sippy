@@ -938,8 +938,6 @@ type ComponentReportTestIdentification struct {
 
 type ComponentReportTestSummary struct {
 	ComponentReportTestIdentification
-	// Status is an integer representing the severity of the regression.
-	Status ComponentReportStatus `json:"status"`
 
 	// Opened will be set to the time we first recorded this test went regressed.
 	// TODO: This is largely a hack right now, the sippy metrics loop sets this as soon as it notices
@@ -948,19 +946,26 @@ type ComponentReportTestSummary struct {
 	// is being used, without overriding the start/end dates.
 	Opened *time.Time `json:"opened"`
 
-	FisherExact float64 `json:"fisher_exact"`
+	ComponentReportTestStats
+}
+
+// ComponentReportTestStats is an overview struct for a particular regressed test's stats.
+// (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
+type ComponentReportTestStats struct {
+	// Status is an integer representing the severity of the regression.
+	ReportStatus ComponentReportStatus                  `json:"status"`
+	FisherExact  float64                                `json:"fisher_exact"`
+	SampleStats  ComponentReportTestDetailsReleaseStats `json:"sample_stats"`
+	BaseStats    ComponentReportTestDetailsReleaseStats `json:"base_stats"`
 }
 
 type ComponentReportTestDetails struct {
 	ComponentReportTestIdentification
-	JiraComponent   string                                 `json:"jira_component"`
-	JiraComponentID *big.Rat                               `json:"jira_component_id"`
-	SampleStats     ComponentReportTestDetailsReleaseStats `json:"sample_stats"`
-	BaseStats       ComponentReportTestDetailsReleaseStats `json:"base_stats"`
-	FisherExact     float64                                `json:"fisher_exact"`
-	ReportStatus    ComponentReportStatus                  `json:"report_status"`
-	JobStats        []ComponentReportTestDetailsJobStats   `json:"job_stats,omitempty"`
-	GeneratedAt     *time.Time                             `json:"generated_at"`
+	ComponentReportTestStats
+	JiraComponent   string                               `json:"jira_component"`
+	JiraComponentID *big.Rat                             `json:"jira_component_id"`
+	JobStats        []ComponentReportTestDetailsJobStats `json:"job_stats,omitempty"`
+	GeneratedAt     *time.Time                           `json:"generated_at"`
 }
 
 type ComponentReportTestDetailsReleaseStats struct {

@@ -232,7 +232,7 @@ export default function CompReadyTestReport(props) {
     }
   }
 
-  const [statusStr, assessmentIcon] = getStatusAndIcon(data.report_status)
+  const [statusStr, assessmentIcon] = getStatusAndIcon(data.status)
   const significanceTitle = `Test results for individual Prow Jobs may not be statistically
   significant, but when taken in aggregate, there may be a statistically
   significant difference compared to the historical basis
@@ -401,7 +401,7 @@ Flakes: ${stats.flake_count}`
               context={`Component Readiness has found a potential regression in the following test:
 
 {code}${testName}{code}
- 
+
 ${probabilityStr(statusStr, data.fisher_exact)}
 ${printStatsText(
   'Sample (being evaluated)',
