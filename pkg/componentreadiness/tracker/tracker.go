@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	testRegressionsTable = "test_regressions"
+	// TODO: don't commit
+	testRegressionsTable = "test_regressions_dgoodwin_temp"
 )
 
 // RegressionStore is an underlying interface for where we store/load data on open test regressions.
@@ -81,11 +82,19 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]api
 func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTest api.ComponentReportTestSummary) (*api.TestRegression, error) {
 	id := uuid.New()
 	newRegression := &api.TestRegression{
-		Release:      release,
-		TestID:       newRegressedTest.TestID,
-		TestName:     newRegressedTest.TestName,
-		RegressionID: id.String(),
-		Opened:       time.Now(),
+		Release:               release,
+		TestID:                newRegressedTest.TestID,
+		TestName:              newRegressedTest.TestName,
+		RegressionID:          id.String(),
+		Opened:                time.Now(),
+		OpenedSampleSuccesses: newRegressedTest.SampleStats.SuccessCount,
+		OpenedSampleFailures:  newRegressedTest.SampleStats.FailureCount,
+		OpenedSampleFlakes:    newRegressedTest.SampleStats.FlakeCount,
+		OpenedSamplePassRate:  newRegressedTest.SampleStats.SuccessRate,
+		OpenedBaseSuccesses:   newRegressedTest.BaseStats.SuccessCount,
+		OpenedBaseFailures:    newRegressedTest.BaseStats.FailureCount,
+		OpenedBaseFlakes:      newRegressedTest.BaseStats.FlakeCount,
+		OpenedBasePassRate:    newRegressedTest.BaseStats.SuccessRate,
 	}
 	for key, value := range newRegressedTest.Variants {
 		newRegression.Variants = append(newRegression.Variants, api.ComponentReportVariant{

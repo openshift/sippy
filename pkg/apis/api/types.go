@@ -1142,6 +1142,15 @@ type ComponentReportTriageIncidentSummary struct {
 
 // TestRegression is used for rows in the test_regressions table and is used to track when we detect test
 // regressions opening and closing.
+//
+// It tracks the sample and base pass rate data at the time the regression was originally opened. If the
+// regression is re-opened within a few days (re-using the previous regression ID), this remains
+// the data from the original open.
+//
+// Similarly when the regression is closed, we also store the sample pass rate data at that time. (base
+// remaining unchanged is assumed as this is a fixed timeframe. If the regression reappears within
+// the timeframe we allow (couple days) and the regression is re-used, the closed sample pass rate data
+// will be cleared.
 type TestRegression struct {
 	Release      string                   `bigquery:"release" json:"release"`
 	TestID       string                   `bigquery:"test_id" json:"test_id"`
@@ -1150,6 +1159,21 @@ type TestRegression struct {
 	Opened       time.Time                `bigquery:"opened" json:"opened"`
 	Closed       bigquery.NullTimestamp   `bigquery:"closed" json:"closed"`
 	Variants     []ComponentReportVariant `bigquery:"variants" json:"variants"`
+
+	OpenedSampleSuccesses int     `bigquery:"opened_sample_successes" json:"opened_sample_successes"`
+	OpenedSampleFailures  int     `bigquery:"opened_sample_failures" json:"opened_sample_failures"`
+	OpenedSampleFlakes    int     `bigquery:"opened_sample_flakes" json:"opened_sample_flakes"`
+	OpenedSamplePassRate  float64 `bigquery:"opened_sample_pass_rate" json:"opened_sample_pass_rate"`
+
+	OpenedBaseSuccesses int     `bigquery:"opened_base_successes" json:"opened_base_successes"`
+	OpenedBaseFailures  int     `bigquery:"opened_base_failures" json:"opened_base_failures"`
+	OpenedBaseFlakes    int     `bigquery:"opened_base_flakes" json:"opened_base_flakes"`
+	OpenedBasePassRate  float64 `bigquery:"opened_base_pass_rate" json:"opened_base_pass_rate"`
+
+	ClosedSampleSuccesses int     `bigquery:"closed_sample_successes" json:"closed_sample_successes"`
+	ClosedSampleFailures  int     `bigquery:"closed_sample_failures" json:"closed_sample_failures"`
+	ClosedSampleFlakes    int     `bigquery:"closed_sample_flakes" json:"closed_sample_flakes"`
+	ClosedSamplePassRate  float64 `bigquery:"closed_sample_pass_rate" json:"closed_sample_pass_rate"`
 }
 
 type TriagedIncident struct {
