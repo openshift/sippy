@@ -1933,7 +1933,36 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 		sampleTotal = adjustedSampleTotal
 	}
 
+	sampleFailure := sampleTotal - sampleSuccess - sampleFlake
+	// The adjusted total for ignored runs can push failure count into the negatives if there were
+	// more ignored runs than actual failures. (or no failures at all)
+	if sampleFailure < 0 {
+		sampleFailure = 0
+	}
+	baseFailure := baseTotal - baseSuccess - baseFlake
+
 	status := apitype.MissingBasis
+	testStats := apitype.ComponentReportTestStats{
+		SampleStats: apitype.ComponentReportTestDetailsReleaseStats{
+			Release: c.SampleRelease.Release,
+			ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+				SuccessRate:  getSuccessRate(sampleSuccess, sampleFailure, sampleFlake),
+				SuccessCount: sampleSuccess,
+				FailureCount: sampleFailure,
+				FlakeCount:   sampleFlake,
+			},
+		},
+		BaseStats: apitype.ComponentReportTestDetailsReleaseStats{
+			Release: c.BaseRelease.Release,
+			ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+				SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
+				SuccessCount: baseSuccess,
+				FailureCount: baseFailure,
+				FlakeCount:   baseFlake,
+			},
+		},
+	}
+
 	fisherExact := 0.0
 	if baseTotal != 0 {
 		// if the unadjusted sample was 0 then nothing to do
@@ -1995,15 +2024,13 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 			if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
 				// if we were below the threshold with the initialSampleTotal too then return not significant
 				if c.MinimumFailure != 0 && (initialSampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
-					return apitype.ComponentReportTestStats{
-						ReportStatus: apitype.NotSignificant,
-						FisherExact:  fisherExact,
-					}
+					testStats.ReportStatus = status
+					testStats.FisherExact = fisherExact
+					return testStats
 				}
-				return apitype.ComponentReportTestStats{
-					ReportStatus: status,
-					FisherExact:  fisherExact,
-				}
+				testStats.ReportStatus = status
+				testStats.FisherExact = fisherExact
+				return testStats
 			}
 
 			// how do approvedRegressions and triagedRegressions interact?  If we triaged a regression we will
@@ -2046,30 +2073,9 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 		}
 	}
 
-	sampleFailure := sampleTotal - sampleSuccess - sampleFlake
-	baseFailure := baseTotal - baseSuccess - baseFlake
-	return apitype.ComponentReportTestStats{
-		ReportStatus: status,
-		FisherExact:  fisherExact,
-		SampleStats: apitype.ComponentReportTestDetailsReleaseStats{
-			Release: c.SampleRelease.Release,
-			ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
-				SuccessRate:  getSuccessRate(sampleSuccess, sampleFailure, sampleFlake),
-				SuccessCount: sampleSuccess,
-				FailureCount: sampleFailure,
-				FlakeCount:   sampleFlake,
-			},
-		},
-		BaseStats: apitype.ComponentReportTestDetailsReleaseStats{
-			Release: c.BaseRelease.Release,
-			ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
-				SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
-				SuccessCount: baseSuccess,
-				FailureCount: baseFailure,
-				FlakeCount:   baseFlake,
-			},
-		},
-	}
+	testStats.ReportStatus = status
+	testStats.FisherExact = fisherExact
+	return testStats
 }
 
 func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (bool, float64) {
