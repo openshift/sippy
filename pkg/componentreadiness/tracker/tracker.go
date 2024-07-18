@@ -23,9 +23,11 @@ const (
 // RegressionStore is an underlying interface for where we store/load data on open test regressions.
 type RegressionStore interface {
 	ListCurrentRegressions(release string) ([]api.TestRegression, error)
-	OpenRegression(release string, newRegressedTest api.ComponentReportTestSummary) (*api.TestRegression, error)
-	ReOpenRegression(regressionID string) error
 	CloseRegression(regressionID string, closedAt time.Time) error
+
+	// TODO: can these be made private?
+	OpenRegression(release, testID, testName string, variants map[string]string, testStats api.ComponentReportTestStats) (*api.TestRegression, error)
+	ReOpenRegression(regressionID string) error
 }
 
 // BigQueryRegressionStore is the primary implementation for real world usage, storing when regressions appear/disappear in BigQuery.
@@ -79,24 +81,27 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]api
 	return regressions, nil
 
 }
-func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTest api.ComponentReportTestSummary) (*api.TestRegression, error) {
+func (bq *BigQueryRegressionStore) OpenRegression(
+	release, testID, testName string,
+	variants map[string]string,
+	testStats api.ComponentReportTestStats) (*api.TestRegression, error) {
 	id := uuid.New()
 	newRegression := &api.TestRegression{
 		Release:               release,
-		TestID:                newRegressedTest.TestID,
-		TestName:              newRegressedTest.TestName,
+		TestID:                testID,
+		TestName:              testName,
 		RegressionID:          id.String(),
 		Opened:                time.Now(),
-		OpenedSampleSuccesses: newRegressedTest.SampleStats.SuccessCount,
-		OpenedSampleFailures:  newRegressedTest.SampleStats.FailureCount,
-		OpenedSampleFlakes:    newRegressedTest.SampleStats.FlakeCount,
-		OpenedSamplePassRate:  newRegressedTest.SampleStats.SuccessRate,
-		OpenedBaseSuccesses:   newRegressedTest.BaseStats.SuccessCount,
-		OpenedBaseFailures:    newRegressedTest.BaseStats.FailureCount,
-		OpenedBaseFlakes:      newRegressedTest.BaseStats.FlakeCount,
-		OpenedBasePassRate:    newRegressedTest.BaseStats.SuccessRate,
+		OpenedSampleSuccesses: testStats.SampleStats.SuccessCount,
+		OpenedSampleFailures:  testStats.SampleStats.FailureCount,
+		OpenedSampleFlakes:    testStats.SampleStats.FlakeCount,
+		OpenedSamplePassRate:  testStats.SampleStats.SuccessRate,
+		OpenedBaseSuccesses:   testStats.BaseStats.SuccessCount,
+		OpenedBaseFailures:    testStats.BaseStats.FailureCount,
+		OpenedBaseFlakes:      testStats.BaseStats.FlakeCount,
+		OpenedBasePassRate:    testStats.BaseStats.SuccessRate,
 	}
-	for key, value := range newRegressedTest.Variants {
+	for key, value := range variants {
 		newRegression.Variants = append(newRegression.Variants, api.ComponentReportVariant{
 			Key: key, Value: value,
 		})
@@ -178,41 +183,19 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 
 	matchedOpenRegressions := []api.TestRegression{} // all the matches we found, used to determine what had no match
 	for _, regTest := range allRegressedTests {
-		if openReg := FindOpenRegression(release, regTest.TestID, regTest.Variants, regressions); openReg != nil {
-			if openReg.Closed.Valid {
-				// if the regression returned has a closed date, we found a recently closed
-				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
-				// in / out of the report depending on the data available in the sample/basis.
-				rLog.Infof("re-opening existing regression: %v", openReg)
-				if !rt.dryRun {
-					err := rt.backend.ReOpenRegression(openReg.RegressionID)
-					if err != nil {
-						rLog.WithError(err).Errorf("error re-opening regression: %v", openReg)
-						return errors.Wrapf(err, "error re-opening regression: %v", openReg)
-					}
-				}
-			} else {
-				rLog.WithFields(log.Fields{
-					"test": regTest.TestName,
-				}).Infof("reusing already opened regression: %v", openReg)
-
-			}
+		openReg, isNew, err := rt.ReuseOrOpenRegression(rLog, release,
+			regTest.TestID, regTest.TestName, regTest.Variants,
+			regTest.ComponentReportTestStats, regressions)
+		if err != nil {
+			rLog.WithError(err).Error("error in ReuseOrOpenRegression")
+			return err
+		}
+		if !isNew {
 			matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
-		} else {
-			rLog.Infof("opening new regression: %v", regTest)
-			if !rt.dryRun {
-				// Open a new regression:
-				newReg, err := rt.backend.OpenRegression(release, regTest)
-				if err != nil {
-					rLog.WithError(err).Errorf("error opening new regression for: %v", regTest)
-					return errors.Wrapf(err, "error opening new regression: %v", regTest)
-				}
-				rLog.Infof("new regression opened with id: %s", newReg.RegressionID)
-			}
 		}
 	}
 
-	// Now we want to close any open regressions that are not appearing in the latest report:
+	// Now we want to close any open regressions that are not appearing in the report:
 	now := time.Now()
 	for _, regression := range regressions {
 		var matched bool
@@ -237,6 +220,59 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 	}
 
 	return nil
+}
+
+// ReuseOrOpenRegression will check the list of open regressions for a match or a recent closure within the last few days.
+// If a regression is already open it will no-op. If a recent closure is found, it will be re-used and re-opened.
+// Otherwise we'll open a new regression.
+//
+// Return the regression opened/reused, a bool true if it was a new regression, and optionally an error.
+func (rt *RegressionTracker) ReuseOrOpenRegression(
+	rLog log.FieldLogger,
+	release, testID, testName string,
+	variants map[string]string,
+	testStats api.ComponentReportTestStats, openRegressions []api.TestRegression) (*api.TestRegression, bool, error) {
+	tLog := rLog.WithFields(log.Fields{
+		"release":  release,
+		"testID":   testID,
+		"testName": testName,
+		"variants": variants,
+	})
+
+	if openReg := FindOpenRegression(release, testID, variants, openRegressions); openReg != nil {
+		if openReg.Closed.Valid {
+			// if the regression returned has a closed date, we found a recently closed
+			// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
+			// in / out of the report depending on the data available in the sample/basis.
+			tLog.Infof("re-opening existing regression: %v", openReg)
+			if !rt.dryRun {
+				err := rt.backend.ReOpenRegression(openReg.RegressionID)
+				if err != nil {
+					tLog.WithError(err).Errorf("error re-opening regression: %v", openReg)
+					return nil, false, errors.Wrapf(err, "error re-opening regression: %v", openReg)
+				}
+			}
+		} else {
+			tLog.Infof("reusing already opened regression: %v", openReg)
+
+		}
+		return openReg, false, nil
+	}
+
+	tLog.Infof("opening new regression")
+	if !rt.dryRun {
+		// Open a new regression:
+		newReg, err := rt.backend.OpenRegression(release, testID, testName, variants, testStats)
+		if err != nil {
+			tLog.WithError(err).Error("error opening new regression")
+			return nil, false, errors.Wrap(err, "error opening new regression")
+		}
+		tLog.Infof("new regression opened with id: %s", newReg.RegressionID)
+		return newReg, true, nil
+	}
+
+	// No open regression, but we were in dry-run mode.
+	return nil, false, nil
 }
 
 // FindOpenRegression scans the list of open regressions for any that match the given test summary.
