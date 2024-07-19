@@ -122,9 +122,26 @@ export default function RegressedTestsModal(props) {
         if (!params.row.fisher_exact) {
           return ''
         }
-        return (100 - params.row.fisher_exact * 100).toFixed(1) + '%'
+        return (100 - params.row.fisher_exact * 100).toFixed(1)
       },
-      renderCell: (param) => <div className="fishers-exact">{param.value}</div>,
+      renderCell: (param) => (
+        <div className="fishers-exact">{param.value}%</div>
+      ),
+    },
+    {
+      field: 'pass_rate_delta',
+      headerName: 'Pass Rate Delta',
+      flex: 8,
+      valueGetter: (params) => {
+        if (!params.row.sample_stats || !params.row.base_stats) {
+          return ''
+        }
+        return (
+          (params.row.sample_stats.success_rate * 100).toFixed(0) -
+          (params.row.base_stats.success_rate * 100).toFixed(0)
+        )
+      },
+      renderCell: (param) => <div className="pass-rate">{param.value}%</div>,
     },
     {
       field: 'test_id',

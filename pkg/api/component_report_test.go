@@ -474,8 +474,26 @@ func TestGenerateComponentReport(t *testing.T) {
 												Variants: awsAMD64OVNTest.Variants,
 											},
 										},
-										Status:      apitype.ExtremeRegression,
-										FisherExact: 1.8251046156331867e-21,
+										ComponentReportTestStats: apitype.ComponentReportTestStats{
+											ReportStatus: apitype.ExtremeRegression,
+											FisherExact:  1.8251046156331867e-21,
+											SampleStats: apitype.ComponentReportTestDetailsReleaseStats{
+												ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+													SuccessRate:  0.51,
+													SuccessCount: 50,
+													FailureCount: 49,
+													FlakeCount:   1,
+												},
+											},
+											BaseStats: apitype.ComponentReportTestDetailsReleaseStats{
+												ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+													SuccessRate:  0.91,
+													SuccessCount: 900,
+													FailureCount: 90,
+													FlakeCount:   10,
+												},
+											},
+										},
 									},
 									{
 										ComponentReportTestIdentification: apitype.ComponentReportTestIdentification{
@@ -487,8 +505,26 @@ func TestGenerateComponentReport(t *testing.T) {
 												Variants: awsAMD64OVN2Test.Variants,
 											},
 										},
-										Status:      apitype.SignificantRegression,
-										FisherExact: 0.002621948654892275,
+										ComponentReportTestStats: apitype.ComponentReportTestStats{
+											ReportStatus: apitype.SignificantRegression,
+											FisherExact:  0.002621948654892275,
+											SampleStats: apitype.ComponentReportTestDetailsReleaseStats{
+												ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+													SuccessRate:  0.81,
+													SuccessCount: 80,
+													FailureCount: 19,
+													FlakeCount:   1,
+												},
+											},
+											BaseStats: apitype.ComponentReportTestDetailsReleaseStats{
+												ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+													SuccessRate:  0.91,
+													SuccessCount: 900,
+													FailureCount: 90,
+													FlakeCount:   10,
+												},
+											},
+										},
 									},
 								},
 							},
@@ -754,8 +790,26 @@ func TestGenerateComponentReport(t *testing.T) {
 												Variants: awsAMD64OVNTest.Variants,
 											},
 										},
-										Status:      apitype.SignificantRegression,
-										FisherExact: 0.07837082801914011,
+										ComponentReportTestStats: apitype.ComponentReportTestStats{
+											ReportStatus: apitype.SignificantRegression,
+											FisherExact:  0.07837082801914011,
+											SampleStats: apitype.ComponentReportTestDetailsReleaseStats{
+												ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+													SuccessRate:  0.86,
+													SuccessCount: 85,
+													FailureCount: 14,
+													FlakeCount:   1,
+												},
+											},
+											BaseStats: apitype.ComponentReportTestDetailsReleaseStats{
+												ComponentReportTestDetailsTestStats: apitype.ComponentReportTestDetailsTestStats{
+													SuccessRate:  0.91,
+													SuccessCount: 900,
+													FailureCount: 90,
+													FlakeCount:   10,
+												},
+											},
+										},
 									},
 								},
 							},
@@ -1079,10 +1133,12 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					ComponentReportRowIdentification:    testDetailsRowIdentification,
 					ComponentReportColumnIdentification: testDetailsColumnIdentification,
 				},
-				SampleStats:  sampleReleaseStatsOneHigh,
-				BaseStats:    baseReleaseStatsOneHigh,
-				FisherExact:  0.4807457902463764,
-				ReportStatus: apitype.NotSignificant,
+				ComponentReportTestStats: apitype.ComponentReportTestStats{
+					SampleStats:  sampleReleaseStatsOneHigh,
+					BaseStats:    baseReleaseStatsOneHigh,
+					FisherExact:  0.4807457902463764,
+					ReportStatus: apitype.NotSignificant,
+				},
 				JobStats: []apitype.ComponentReportTestDetailsJobStats{
 					{
 						JobName:     prowJob1,
@@ -1119,10 +1175,12 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					ComponentReportRowIdentification:    testDetailsRowIdentification,
 					ComponentReportColumnIdentification: testDetailsColumnIdentification,
 				},
-				SampleStats:  sampleReleaseStatsOneLow,
-				BaseStats:    baseReleaseStatsOneHigh,
-				FisherExact:  8.209711662216515e-28,
-				ReportStatus: apitype.ExtremeRegression,
+				ComponentReportTestStats: apitype.ComponentReportTestStats{
+					SampleStats:  sampleReleaseStatsOneLow,
+					BaseStats:    baseReleaseStatsOneHigh,
+					FisherExact:  8.209711662216515e-28,
+					ReportStatus: apitype.ExtremeRegression,
+				},
 				JobStats: []apitype.ComponentReportTestDetailsJobStats{
 					{
 						JobName:     prowJob1,
@@ -1159,10 +1217,12 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					ComponentReportRowIdentification:    testDetailsRowIdentification,
 					ComponentReportColumnIdentification: testDetailsColumnIdentification,
 				},
-				SampleStats:  sampleReleaseStatsOneHigh,
-				BaseStats:    baseReleaseStatsOneLow,
-				FisherExact:  4.911246201592593e-22,
-				ReportStatus: apitype.SignificantImprovement,
+				ComponentReportTestStats: apitype.ComponentReportTestStats{
+					SampleStats:  sampleReleaseStatsOneHigh,
+					BaseStats:    baseReleaseStatsOneLow,
+					FisherExact:  4.911246201592593e-22,
+					ReportStatus: apitype.SignificantImprovement,
+				},
 				JobStats: []apitype.ComponentReportTestDetailsJobStats{
 					{
 						JobName:     prowJob1,
@@ -1207,10 +1267,12 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					ComponentReportRowIdentification:    testDetailsRowIdentification,
 					ComponentReportColumnIdentification: testDetailsColumnIdentification,
 				},
-				SampleStats:  sampleReleaseStatsTwoHigh,
-				BaseStats:    baseReleaseStatsTwoHigh,
-				FisherExact:  0.4119831376606586,
-				ReportStatus: apitype.NotSignificant,
+				ComponentReportTestStats: apitype.ComponentReportTestStats{
+					SampleStats:  sampleReleaseStatsTwoHigh,
+					BaseStats:    baseReleaseStatsTwoHigh,
+					FisherExact:  0.4119831376606586,
+					ReportStatus: apitype.NotSignificant,
+				},
 				JobStats: []apitype.ComponentReportTestDetailsJobStats{
 					{
 						JobName:     prowJob1,
@@ -1455,9 +1517,9 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &componentReportGenerator{}
 
-			status, fischers := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, tt.numberOfIgnoredSamples)
-			assert.Equalf(t, tt.expectedStatus, status, "assessComponentStatus expected status not equal")
-			assert.Equalf(t, tt.expectedFischers, fischers, "assessComponentStatus expected fischers value not equal")
+			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, tt.numberOfIgnoredSamples)
+			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")
+			assert.Equalf(t, tt.expectedFischers, testStats.FisherExact, "assessComponentStatus expected fischers value not equal")
 		})
 	}
 }
