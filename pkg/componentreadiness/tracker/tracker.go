@@ -23,7 +23,7 @@ const (
 // RegressionStore is an underlying interface for where we store/load data on open test regressions.
 type RegressionStore interface {
 	ListCurrentRegressions(release string) ([]api.TestRegression, error)
-	CloseRegression(regressionID string, closedAt time.Time) error
+	CloseRegression(regressionID string, closedAt time.Time, closeStats api.ComponentReportTestDetailsTestStats) error
 
 	// TODO: can these be made private?
 	OpenRegression(release, testID, testName string, variants map[string]string, testStats api.ComponentReportTestStats) (*api.TestRegression, error)
@@ -118,17 +118,31 @@ func (bq *BigQueryRegressionStore) OpenRegression(
 }
 
 func (bq *BigQueryRegressionStore) ReOpenRegression(regressionID string) error {
-	return bq.updateClosed(regressionID, "NULL")
+	return bq.updateClosed(regressionID, "NULL", api.ComponentReportTestDetailsTestStats{})
 }
 
-func (bq *BigQueryRegressionStore) CloseRegression(regressionID string, closedAt time.Time) error {
+func (bq *BigQueryRegressionStore) CloseRegression(regressionID string, closedAt time.Time, closeStats api.ComponentReportTestDetailsTestStats) error {
 	return bq.updateClosed(regressionID,
-		fmt.Sprintf("'%s'", closedAt.Format("2006-01-02 15:04:05.999999")))
+		fmt.Sprintf("'%s'", closedAt.Format("2006-01-02 15:04:05.999999")), closeStats)
 }
 
-func (bq *BigQueryRegressionStore) updateClosed(regressionID, closed string) error {
-	queryString := fmt.Sprintf("UPDATE %s.%s SET closed = %s WHERE regression_id = '%s'",
-		bq.client.Dataset, testRegressionsTable, closed, regressionID)
+func (bq *BigQueryRegressionStore) updateClosed(regressionID, closed string, closeStats api.ComponentReportTestDetailsTestStats) error {
+	queryString := fmt.Sprintf(`
+UPDATE %s.%s SET 
+	closed = %s, 
+	closed_sample_successes = %d, 
+	closed_sample_failures = %d, 
+	closed_sample_flakes = %d, 
+	closed_sample_pass_rate = %.2f 
+WHERE regression_id = '%s'`,
+		bq.client.Dataset,
+		testRegressionsTable,
+		closed,
+		closeStats.SuccessCount,
+		closeStats.FailureCount,
+		closeStats.FlakeCount,
+		closeStats.SuccessRate,
+		regressionID)
 
 	query := bq.client.BQ.Query(queryString)
 
@@ -207,18 +221,28 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 		}
 		// If we didn't match to an active test regression, and this record isn't already closed, close it.
 		if !matched && !regression.Closed.Valid {
-			rLog.Infof("found a regression no longer appearing in the report which should be closed: %v", regression)
-			if !rt.dryRun {
-				err := rt.backend.CloseRegression(regression.RegressionID, now)
-				if err != nil {
-					rLog.WithError(err).Errorf("error closing regression: %v", regression)
-					return errors.Wrap(err, "error closing regression")
-				}
+			err := rt.CloseRegression(rLog, regression.RegressionID, api.ComponentReportTestDetailsTestStats{}, now)
+			if err != nil {
+				return err
 			}
 		}
 
 	}
 
+	return nil
+}
+
+func (rt *RegressionTracker) CloseRegression(rLog log.FieldLogger, regressionID string,
+	sampleStats api.ComponentReportTestDetailsTestStats, closeTime time.Time) error {
+	rLog.Infof("found a regression no longer appearing in the report which should be closed: %v", regressionID)
+	// TODO: what to do about test stats here?
+	if !rt.dryRun {
+		err := rt.backend.CloseRegression(regressionID, closeTime, sampleStats)
+		if err != nil {
+			rLog.WithError(err).Errorf("error closing regression: %v", regressionID)
+			return errors.Wrap(err, "error closing regression")
+		}
+	}
 	return nil
 }
 

@@ -181,15 +181,17 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsB
 	variantOption apitype.ComponentReportRequestVariantOptions,
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
 	cacheOption cache.RequestOptions,
+	trackRegressions bool,
 ) (apitype.ComponentReport, []error) {
 	generator := componentReportGenerator{
-		client:        client,
-		prowURL:       prowURL,
-		gcsBucket:     gcsBucket,
-		cacheOption:   cacheOption,
-		BaseRelease:   baseRelease,
-		SampleRelease: sampleRelease,
-		triagedIssues: nil,
+		client:           client,
+		prowURL:          prowURL,
+		gcsBucket:        gcsBucket,
+		cacheOption:      cacheOption,
+		BaseRelease:      baseRelease,
+		SampleRelease:    sampleRelease,
+		triagedIssues:    nil,
+		trackRegressions: trackRegressions,
 		ComponentReportRequestTestIdentificationOptions: testIDOption,
 		ComponentReportRequestVariantOptions:            variantOption,
 		ComponentReportRequestAdvancedOptions:           advancedOption,
@@ -241,7 +243,12 @@ type componentReportGenerator struct {
 	apitype.ComponentReportRequestTestIdentificationOptions
 	apitype.ComponentReportRequestVariantOptions
 	apitype.ComponentReportRequestAdvancedOptions
-	openRegressions []apitype.TestRegression
+	openRegressions   []apitype.TestRegression
+	regressionTracker *tracker.RegressionTracker
+
+	// trackRegressions enabled maintenance of the test_regressions table for whatever results
+	// we find when generating this component report.
+	trackRegressions bool
 }
 
 func (c *componentReportGenerator) GetComponentReportCacheKey(prefix string) CacheData {
@@ -335,6 +342,9 @@ func (c *componentReportGenerator) GenerateReport() (apitype.ComponentReport, []
 		return apitype.ComponentReport{}, errs
 	}
 	bqs := tracker.NewBigQueryRegressionStore(c.client)
+	// specify dryRun flag just in-case we fail to guard a call to the regression tracker on
+	// c.trackRegressions
+	c.regressionTracker = tracker.NewRegressionTracker(bqs, !c.trackRegressions)
 	var err error
 	c.openRegressions, err = bqs.ListCurrentRegressions(c.SampleRelease.Release)
 	if err != nil {
@@ -1604,6 +1614,41 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
 				baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
+
+			// TODO: we could try to track regressions here, however regressed tests that suddenly
+			// lack sample would be missed and need to be handled somewhere else. This could be a scan of regressed tests at the end. Those closures would not get stats but that's probably ok,
+			// losing sample should be relatively rare reason for closing a regression given our min-fails of 3.
+			if c.trackRegressions {
+				if testStats.ReportStatus < apitype.MissingSample {
+					// If regression tracking is enabled, and we've detected a regression
+					// of any kind (including triaged), open a test regression record if one
+					// does not already exist.
+					_, _, err := c.regressionTracker.ReuseOrOpenRegression(
+						log.WithFields(log.Fields{}),
+						testStats.SampleStats.Release,
+						testID.TestID,
+						testID.TestName,
+						testID.Variants,
+						testStats,
+						c.openRegressions,
+					)
+					if err != nil {
+						return apitype.ComponentReport{}, err
+					}
+				} else {
+					// If this is not a regression, see if we have a matching open regression to close with stats:
+					if openReg := tracker.FindOpenRegression(
+						testStats.SampleStats.Release,
+						testID.TestID,
+						testID.Variants,
+						c.openRegressions); openReg != nil {
+						err = c.regressionTracker.CloseRegression(log.WithFields(log.Fields{}), openReg.RegressionID, testStats.SampleStats.ComponentReportTestDetailsTestStats, time.Now())
+						if err != nil {
+							return apitype.ComponentReport{}, err
+						}
+					}
+				}
+			}
 
 			if testStats.ReportStatus < apitype.MissingSample && testStats.ReportStatus > apitype.SignificantRegression {
 				// we are within the triage range
