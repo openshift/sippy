@@ -90,11 +90,10 @@ export default function RegressedTestsModal(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 30,
-      renderCell: (param) => (
-        <div className="test-name">
-          {formColumnName({ variants: param.value })}
-        </div>
-      ),
+      valueGetter: (params) => {
+        return formColumnName({ variants: params.row.variants })
+      },
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'opened',
