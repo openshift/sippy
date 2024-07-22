@@ -260,6 +260,7 @@ var (
 	ovnRegex       = regexp.MustCompile(`(?i)-ovn`)
 	ipv6Regex      = regexp.MustCompile(`(?i)-ipv6`)
 	dualStackRegex = regexp.MustCompile(`(?i)-dualstack`)
+	perfScaleRegex = regexp.MustCompile(`(?i)-perfscale`)
 	// proxy jobs do not have a trailing -version segment
 	ppc64leRegex            = regexp.MustCompile(`(?i)-ppc64le`)
 	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
@@ -397,6 +398,8 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantOwner] = "qe"
 	} else if cnfRegex.MatchString(jobName) {
 		variants[VariantOwner] = "cnf"
+	} else if perfScaleRegex.MatchString(jobName) {
+		variants[VariantOwner] = "perfscale"
 	} else {
 		variants[VariantOwner] = "eng"
 	}
