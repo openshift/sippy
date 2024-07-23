@@ -1164,6 +1164,7 @@ type TestRegression struct {
 	OpenedSampleFailures  int     `bigquery:"opened_sample_failures" json:"opened_sample_failures"`
 	OpenedSampleFlakes    int     `bigquery:"opened_sample_flakes" json:"opened_sample_flakes"`
 	OpenedSamplePassRate  float64 `bigquery:"opened_sample_pass_rate" json:"opened_sample_pass_rate"`
+	OpenedFisherExact     float64 `bigquery:"opened_fisher_exact" json:"opened_fisher_exact"`
 
 	OpenedBaseSuccesses int     `bigquery:"opened_base_successes" json:"opened_base_successes"`
 	OpenedBaseFailures  int     `bigquery:"opened_base_failures" json:"opened_base_failures"`
@@ -1174,6 +1175,7 @@ type TestRegression struct {
 	ClosedSampleFailures  int     `bigquery:"closed_sample_failures" json:"closed_sample_failures"`
 	ClosedSampleFlakes    int     `bigquery:"closed_sample_flakes" json:"closed_sample_flakes"`
 	ClosedSamplePassRate  float64 `bigquery:"closed_sample_pass_rate" json:"closed_sample_pass_rate"`
+	ClosedFisherExact     float64 `bigquery:"closed_fisher_exact" json:"closed_fisher_exact"`
 }
 
 type TriagedIncident struct {

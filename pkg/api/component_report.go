@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -1584,9 +1585,13 @@ func (c *componentReportGenerator) getRequiredConfidence(testID string, variants
 
 func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[string]apitype.ComponentTestStatus,
 	sampleStatus map[string]apitype.ComponentTestStatus) (apitype.ComponentReport, error) {
+	rLog := log.WithField("func", "generateComponentTestReport")
 	report := apitype.ComponentReport{
 		Rows: []apitype.ComponentReportRow{},
 	}
+
+	now := time.Now()
+	matchedOpenRegressions := []apitype.TestRegression{} // all the matches we found, used to determine what had no match
 
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
 	aggregatedStatus := map[apitype.ComponentReportRowIdentification]map[apitype.ColumnID]cellStatus{}
@@ -1615,16 +1620,16 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
 				baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
 
-			// TODO: we could try to track regressions here, however regressed tests that suddenly
-			// lack sample would be missed and need to be handled somewhere else. This could be a scan of regressed tests at the end. Those closures would not get stats but that's probably ok,
-			// losing sample should be relatively rare reason for closing a regression given our min-fails of 3.
+			// Maintain the list of open regressions in the db here where we have access to the stats.
+			// However remember we will need a fallback later for any open regression
+			// that is now missing sample.
 			if c.trackRegressions {
 				if testStats.ReportStatus < apitype.MissingSample {
 					// If regression tracking is enabled, and we've detected a regression
 					// of any kind (including triaged), open a test regression record if one
 					// does not already exist.
-					_, _, err := c.regressionTracker.ReuseOrOpenRegression(
-						log.WithFields(log.Fields{}),
+					openReg, isNew, err := c.regressionTracker.ReuseOrOpenRegression(
+						rLog,
 						testStats.SampleStats.Release,
 						testID.TestID,
 						testID.TestName,
@@ -1635,17 +1640,22 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 					if err != nil {
 						return apitype.ComponentReport{}, err
 					}
+					if !isNew {
+						matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
+					}
 				} else {
 					// If this is not a regression, see if we have a matching open regression to close with stats:
 					if openReg := tracker.FindOpenRegression(
 						testStats.SampleStats.Release,
 						testID.TestID,
 						testID.Variants,
-						c.openRegressions); openReg != nil {
-						err = c.regressionTracker.CloseRegression(log.WithFields(log.Fields{}), openReg.RegressionID, testStats.SampleStats.ComponentReportTestDetailsTestStats, time.Now())
+						c.openRegressions); openReg != nil && !openReg.Closed.Valid {
+						err = c.regressionTracker.CloseRegression(rLog,
+							openReg.RegressionID, testStats, now)
 						if err != nil {
 							return apitype.ComponentReport{}, err
 						}
+						matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
 					}
 				}
 			}
@@ -1690,6 +1700,31 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		}
 		testStats := apitype.ComponentReportTestStats{ReportStatus: apitype.MissingBasis}
 		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus, allRows, allColumns, nil, c.openRegressions)
+	}
+
+	// Fallback for any open regressions in the db, that did not appear in this report.
+	// This would likely imply they no longer have sufficient sample, and this should be rare.
+	if c.trackRegressions {
+		rLog.Info("scanning for open regressions that we did not see test results for (missing sample now)")
+		for _, regression := range c.openRegressions {
+			var matched bool
+			for _, m := range matchedOpenRegressions {
+				if reflect.DeepEqual(m, regression) {
+					matched = true
+					break
+				}
+			}
+			// If we didn't match to an active test regression, and this record isn't already closed, close it.
+			if !matched && !regression.Closed.Valid {
+				// No stats to pass in available at this time.
+				err := c.regressionTracker.CloseRegression(rLog,
+					regression.RegressionID, apitype.ComponentReportTestStats{}, now)
+				if err != nil {
+					return apitype.ComponentReport{}, err
+				}
+			}
+		}
+
 	}
 
 	// Sort the row identifications
@@ -1769,6 +1804,10 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 
 	regressionRows = append(regressionRows, goodRows...)
 	report.Rows = regressionRows
+
+	// Scan for any open regressions we did not see in the test results at all, implying they probably
+	// do not have enough sample size anymore and we will close the regression for now.
+
 	return report, nil
 }
 

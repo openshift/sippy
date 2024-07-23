@@ -3,7 +3,6 @@ package tracker
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -23,7 +22,7 @@ const (
 // RegressionStore is an underlying interface for where we store/load data on open test regressions.
 type RegressionStore interface {
 	ListCurrentRegressions(release string) ([]api.TestRegression, error)
-	CloseRegression(regressionID string, closedAt time.Time, closeStats api.ComponentReportTestDetailsTestStats) error
+	CloseRegression(regressionID string, closedAt time.Time, closeStats api.ComponentReportTestStats) error
 
 	// TODO: can these be made private?
 	OpenRegression(release, testID, testName string, variants map[string]string, testStats api.ComponentReportTestStats) (*api.TestRegression, error)
@@ -92,6 +91,7 @@ func (bq *BigQueryRegressionStore) OpenRegression(
 		TestName:              testName,
 		RegressionID:          id.String(),
 		Opened:                time.Now(),
+		OpenedFisherExact:     testStats.FisherExact,
 		OpenedSampleSuccesses: testStats.SampleStats.SuccessCount,
 		OpenedSampleFailures:  testStats.SampleStats.FailureCount,
 		OpenedSampleFlakes:    testStats.SampleStats.FlakeCount,
@@ -118,15 +118,15 @@ func (bq *BigQueryRegressionStore) OpenRegression(
 }
 
 func (bq *BigQueryRegressionStore) ReOpenRegression(regressionID string) error {
-	return bq.updateClosed(regressionID, "NULL", api.ComponentReportTestDetailsTestStats{})
+	return bq.updateClosed(regressionID, "NULL", api.ComponentReportTestStats{})
 }
 
-func (bq *BigQueryRegressionStore) CloseRegression(regressionID string, closedAt time.Time, closeStats api.ComponentReportTestDetailsTestStats) error {
+func (bq *BigQueryRegressionStore) CloseRegression(regressionID string, closedAt time.Time, closeStats api.ComponentReportTestStats) error {
 	return bq.updateClosed(regressionID,
 		fmt.Sprintf("'%s'", closedAt.Format("2006-01-02 15:04:05.999999")), closeStats)
 }
 
-func (bq *BigQueryRegressionStore) updateClosed(regressionID, closed string, closeStats api.ComponentReportTestDetailsTestStats) error {
+func (bq *BigQueryRegressionStore) updateClosed(regressionID, closed string, closeStats api.ComponentReportTestStats) error {
 	queryString := fmt.Sprintf(`
 UPDATE %s.%s SET 
 	closed = %s, 
@@ -134,14 +134,16 @@ UPDATE %s.%s SET
 	closed_sample_failures = %d, 
 	closed_sample_flakes = %d, 
 	closed_sample_pass_rate = %.2f 
+	closed_fisher_exact = %.2f 
 WHERE regression_id = '%s'`,
 		bq.client.Dataset,
 		testRegressionsTable,
 		closed,
-		closeStats.SuccessCount,
-		closeStats.FailureCount,
-		closeStats.FlakeCount,
-		closeStats.SuccessRate,
+		closeStats.SampleStats.SuccessCount,
+		closeStats.SampleStats.FailureCount,
+		closeStats.SampleStats.FlakeCount,
+		closeStats.SampleStats.SuccessRate,
+		closeStats.FisherExact,
 		regressionID)
 
 	query := bq.client.BQ.Query(queryString)
@@ -173,74 +175,14 @@ type RegressionTracker struct {
 	dryRun  bool
 }
 
-func (rt *RegressionTracker) SyncComponentReport(release string, report *api.ComponentReport) error {
-	regressions, err := rt.backend.ListCurrentRegressions(release)
-	if err != nil {
-		return err
-	}
-	rLog := log.WithField("func", "SyncComponentReport").WithField("dryRun", rt.dryRun)
-	rLog.Infof("loaded %d regressions from db", len(regressions))
-
-	// All regressions, both triaged and not:
-	allRegressedTests := []api.ComponentReportTestSummary{}
-	for _, row := range report.Rows {
-		for _, col := range row.Columns {
-			allRegressedTests = append(allRegressedTests, col.RegressedTests...)
-			// Once triaged, regressions move to this list, we want to still consider them an open regression until
-			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
-			// a regression.
-			for _, triaged := range col.TriagedIncidents {
-				allRegressedTests = append(allRegressedTests, triaged.ComponentReportTestSummary)
-			}
-		}
-	}
-
-	matchedOpenRegressions := []api.TestRegression{} // all the matches we found, used to determine what had no match
-	for _, regTest := range allRegressedTests {
-		openReg, isNew, err := rt.ReuseOrOpenRegression(rLog, release,
-			regTest.TestID, regTest.TestName, regTest.Variants,
-			regTest.ComponentReportTestStats, regressions)
-		if err != nil {
-			rLog.WithError(err).Error("error in ReuseOrOpenRegression")
-			return err
-		}
-		if !isNew {
-			matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
-		}
-	}
-
-	// Now we want to close any open regressions that are not appearing in the report:
-	now := time.Now()
-	for _, regression := range regressions {
-		var matched bool
-		for _, m := range matchedOpenRegressions {
-			if reflect.DeepEqual(m, regression) {
-				matched = true
-				break
-			}
-		}
-		// If we didn't match to an active test regression, and this record isn't already closed, close it.
-		if !matched && !regression.Closed.Valid {
-			err := rt.CloseRegression(rLog, regression.RegressionID, api.ComponentReportTestDetailsTestStats{}, now)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-
-	return nil
-}
-
 func (rt *RegressionTracker) CloseRegression(rLog log.FieldLogger, regressionID string,
-	sampleStats api.ComponentReportTestDetailsTestStats, closeTime time.Time) error {
-	rLog.Infof("found a regression no longer appearing in the report which should be closed: %v", regressionID)
-	// TODO: what to do about test stats here?
+	testStats api.ComponentReportTestStats, closeTime time.Time) error {
+	rLog.Infof("found a regression which should be closed: %+v currentStats: %+v", regressionID, testStats)
 	if !rt.dryRun {
-		err := rt.backend.CloseRegression(regressionID, closeTime, sampleStats)
+		err := rt.backend.CloseRegression(regressionID, closeTime, testStats)
 		if err != nil {
-			rLog.WithError(err).Errorf("error closing regression: %v", regressionID)
-			return errors.Wrap(err, "error closing regression")
+			rLog.WithError(err).Errorf("error closing regression: %s", regressionID)
+			return errors.Wrapf(err, "error closing regression: %s", regressionID)
 		}
 	}
 	return nil
@@ -277,13 +219,13 @@ func (rt *RegressionTracker) ReuseOrOpenRegression(
 				}
 			}
 		} else {
-			tLog.Infof("reusing already opened regression: %v", openReg)
+			tLog.Infof("reusing already opened regression: %+v", openReg)
 
 		}
 		return openReg, false, nil
 	}
 
-	tLog.Infof("opening new regression")
+	tLog.Infof("opening new regression with stats: %+v", testStats)
 	if !rt.dryRun {
 		// Open a new regression:
 		newReg, err := rt.backend.OpenRegression(release, testID, testName, variants, testStats)

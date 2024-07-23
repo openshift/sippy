@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
-	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -371,11 +370,14 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	}
 
 	// Maintain the test regressions table for anything new or now no longer appearing:
-	regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client), !maintainRegressionTables)
-	err = regressionTracker.SyncComponentReport(sampleRelease.Release, &report)
-	if err != nil {
-		return errors.Wrap(err, "regression tracker reported an error")
-	}
+	/*
+		regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client), !maintainRegressionTables)
+		err = regressionTracker.SyncComponentReport(sampleRelease.Release, &report)
+		if err != nil {
+			return errors.Wrap(err, "regression tracker reported an error")
+		}
+
+	*/
 
 	return nil
 }
