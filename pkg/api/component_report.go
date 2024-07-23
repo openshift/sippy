@@ -1583,6 +1583,7 @@ func (c *componentReportGenerator) getRequiredConfidence(testID string, variants
 	return c.ComponentReportRequestAdvancedOptions.Confidence
 }
 
+// nolint:gocyclo
 func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[string]apitype.ComponentTestStatus,
 	sampleStatus map[string]apitype.ComponentTestStatus) (apitype.ComponentReport, error) {
 	rLog := log.WithField("func", "generateComponentTestReport")
@@ -1623,41 +1624,9 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 			// Maintain the list of open regressions in the db here where we have access to the stats.
 			// However remember we will need a fallback later for any open regression
 			// that is now missing sample.
-			if c.trackRegressions {
-				if testStats.ReportStatus < apitype.MissingSample {
-					// If regression tracking is enabled, and we've detected a regression
-					// of any kind (including triaged), open a test regression record if one
-					// does not already exist.
-					openReg, isNew, err := c.regressionTracker.ReuseOrOpenRegression(
-						rLog,
-						testStats.SampleStats.Release,
-						testID.TestID,
-						testID.TestName,
-						testID.Variants,
-						testStats,
-						c.openRegressions,
-					)
-					if err != nil {
-						return apitype.ComponentReport{}, err
-					}
-					if !isNew {
-						matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
-					}
-				} else {
-					// If this is not a regression, see if we have a matching open regression to close with stats:
-					if openReg := tracker.FindOpenRegression(
-						testStats.SampleStats.Release,
-						testID.TestID,
-						testID.Variants,
-						c.openRegressions); openReg != nil && !openReg.Closed.Valid {
-						err = c.regressionTracker.CloseRegression(rLog,
-							openReg.RegressionID, testStats, now)
-						if err != nil {
-							return apitype.ComponentReport{}, err
-						}
-						matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
-					}
-				}
+			matchedOpenRegressions, err = c.maintainOpenRegressionsForTest(rLog, testStats, testID, matchedOpenRegressions, now)
+			if err != nil {
+				return apitype.ComponentReport{}, err
 			}
 
 			if testStats.ReportStatus < apitype.MissingSample && testStats.ReportStatus > apitype.SignificantRegression {
@@ -1704,27 +1673,9 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 
 	// Fallback for any open regressions in the db, that did not appear in this report.
 	// This would likely imply they no longer have sufficient sample, and this should be rare.
-	if c.trackRegressions {
-		rLog.Info("scanning for open regressions that we did not see test results for (missing sample now)")
-		for _, regression := range c.openRegressions {
-			var matched bool
-			for _, m := range matchedOpenRegressions {
-				if reflect.DeepEqual(m, regression) {
-					matched = true
-					break
-				}
-			}
-			// If we didn't match to an active test regression, and this record isn't already closed, close it.
-			if !matched && !regression.Closed.Valid {
-				// No stats to pass in available at this time.
-				err := c.regressionTracker.CloseRegression(rLog,
-					regression.RegressionID, apitype.ComponentReportTestStats{}, now)
-				if err != nil {
-					return apitype.ComponentReport{}, err
-				}
-			}
-		}
-
+	err := c.closeRegressionsForMissingTests(rLog, matchedOpenRegressions, now)
+	if err != nil {
+		return apitype.ComponentReport{}, err
 	}
 
 	// Sort the row identifications
@@ -1809,6 +1760,71 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 	// do not have enough sample size anymore and we will close the regression for now.
 
 	return report, nil
+}
+
+func (c *componentReportGenerator) closeRegressionsForMissingTests(rLog *log.Entry, matchedOpenRegressions []apitype.TestRegression, now time.Time) error {
+	if c.trackRegressions {
+		rLog.Info("scanning for open regressions that we did not see test results for (missing sample now)")
+		for _, regression := range c.openRegressions {
+			var matched bool
+			for _, m := range matchedOpenRegressions {
+				if reflect.DeepEqual(m, regression) {
+					matched = true
+					break
+				}
+			}
+			// If we didn't match to an active test regression, and this record isn't already closed, close it.
+			if !matched && !regression.Closed.Valid {
+				// No stats to pass in available at this time.
+				err := c.regressionTracker.CloseRegression(rLog,
+					regression.RegressionID, apitype.ComponentReportTestStats{}, now)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (c *componentReportGenerator) maintainOpenRegressionsForTest(rLog *log.Entry, testStats apitype.ComponentReportTestStats, testID apitype.ComponentReportTestIdentification, matchedOpenRegressions []apitype.TestRegression, now time.Time) ([]apitype.TestRegression, error) {
+	if c.trackRegressions {
+		if testStats.ReportStatus < apitype.MissingSample {
+			// If regression tracking is enabled, and we've detected a regression
+			// of any kind (including triaged), open a test regression record if one
+			// does not already exist.
+			openReg, isNew, err := c.regressionTracker.ReuseOrOpenRegression(
+				rLog,
+				testStats.SampleStats.Release,
+				testID.TestID,
+				testID.TestName,
+				testID.Variants,
+				testStats,
+				c.openRegressions,
+			)
+			if err != nil {
+				return matchedOpenRegressions, err
+			}
+			if !isNew {
+				matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
+			}
+		} else {
+			// If this is not a regression, see if we have a matching open regression to close with stats:
+			if openReg := tracker.FindOpenRegression(
+				testStats.SampleStats.Release,
+				testID.TestID,
+				testID.Variants,
+				c.openRegressions); openReg != nil && !openReg.Closed.Valid {
+				err := c.regressionTracker.CloseRegression(rLog,
+					openReg.RegressionID, testStats, now)
+				if err != nil {
+					return matchedOpenRegressions, err
+				}
+				matchedOpenRegressions = append(matchedOpenRegressions, *openReg)
+			}
+		}
+	}
+	return matchedOpenRegressions, nil
 }
 
 func buildTestID(stats apitype.ComponentTestStatus, testIdentificationStr string) (apitype.ComponentReportTestIdentification, error) {

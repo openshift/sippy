@@ -331,7 +331,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 
 	// Get report
 	report, errs := api.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, baseRelease,
-		sampleRelease, testIDOption, variantOption, advancedOption, cacheOptions, true)
+		sampleRelease, testIDOption, variantOption, advancedOption, cacheOptions, maintainRegressionTables)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
@@ -368,16 +368,6 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 		componentReadinessTotalRegressionsMetric.WithLabelValues(row.Component).Set(float64(totalRegressedTestsByComponent))
 		componentReadinessUniqueRegressionsMetric.WithLabelValues(row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
 	}
-
-	// Maintain the test regressions table for anything new or now no longer appearing:
-	/*
-		regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client), !maintainRegressionTables)
-		err = regressionTracker.SyncComponentReport(sampleRelease.Release, &report)
-		if err != nil {
-			return errors.Wrap(err, "regression tracker reported an error")
-		}
-
-	*/
 
 	return nil
 }
