@@ -133,7 +133,7 @@ UPDATE %s.%s SET
 	closed_sample_successes = %d, 
 	closed_sample_failures = %d, 
 	closed_sample_flakes = %d, 
-	closed_sample_pass_rate = %.2f 
+	closed_sample_pass_rate = %.2f,
 	closed_fisher_exact = %.2f 
 WHERE regression_id = '%s'`,
 		bq.client.Dataset,
@@ -219,8 +219,7 @@ func (rt *RegressionTracker) ReuseOrOpenRegression(
 				}
 			}
 		} else {
-			tLog.Infof("reusing already opened regression: %+v", openReg)
-
+			tLog.Debugf("reusing already opened regression: %+v", openReg)
 		}
 		return openReg, false, nil
 	}
