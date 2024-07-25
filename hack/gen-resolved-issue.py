@@ -19,6 +19,7 @@ import io
 import json
 import os
 import requests
+import re
 import sys
 import time
 import uuid
@@ -381,6 +382,97 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
             print(f"Errors creating the incident: {errors}")
         else :
             print("Incident created")
+    
+def files_match(artifacts_dir, file_matches):
+    # file matches will be a relative filePath with a list of regexes to compare
+    # may have limitations for large files...
+    if not file_matches or not file_matches["MatchDefinitions"]:
+        return True
+    
+    match_definitions = file_matches["MatchDefinitions"]
+    and_gate = False
+    if "MatchGate" in match_definitions:
+        gate = match_definitions["MatchGate"]
+        if gate.lower() == "and":
+            and_gate = True
+
+
+    if not match_definitions["Files"]:
+         print("Error: Invalid MatchDefinitions files")
+
+    for file in match_definitions["Files"]:
+        # get the file path, prepend the artifacts_dir
+        # load the file
+        # search for each Match
+        file_url = artifacts_dir + file["FilePath"]
+        contentType = None
+        if "ContentType" in file:
+            contentType = file["ContentType"]
+
+        file_and_gate = False
+        if "MatchGate" in file:
+            gate = file["MatchGate"]
+            if gate.lower() == "and":
+                file_and_gate = True
+
+        patterns = []
+        for match in file["Matches"]:
+            pattern = re.compile(match)
+            patterns.append(pattern)
+
+        if not find_file_match(file_url, patterns, contentType, file_and_gate):
+            # if we are and'ing all file matches (not just this file) then return false
+            if and_gate:
+                return False
+        else:
+            if not and_gate:
+                return True        
+    
+    # if we aren't an and gate and we didn't hit a match then return false
+    # if we are and and gate and didn't hit a miss then true
+    if not and_gate:
+        return False
+    else:
+        return True
+
+def find_file_match(file_url, patterns, contentType, and_gate):
+    try:
+        response = requests.get(file_url)
+        # Check if the request was successful (status code 200)
+        if response.status_code == 200:
+            # when we request a file that doesn't exist the response is
+            # html, so we want to know the expected content-type
+            # to validate the response
+            if contentType and contentType not in response.headers["content-type"]:
+                print("Skipping response content type: " + response.headers["content-type"] )
+                return False
+
+            # if large files become an issue we can look to download them to a temp file
+            # and use https://pymotw.com/3/mmap/#regular-expressions
+            # if necessary
+            text = response.text
+            for pattern in patterns:
+                if None == re.search(pattern, text):
+                    if and_gate:
+                        return False
+                else:
+                    if not and_gate:
+                        return True
+
+            # if we got here and we are and gated then we didn't have any misses 
+            if and_gate:
+                return True
+            # if we aren't and gated and we didn't get a match return false
+            return False
+
+        else:
+            # If the request was not successful, print error message
+            print("Error: Unable to fetch data. Status code:", response.status_code)
+            return False
+    except requests.exceptions.RequestException as e:
+        # Handle any exceptions that may occur during the request
+        print("Error: An exception occurred during the request:", e)
+        return False
 
 def fetch_json_data(api_url):
     try:
@@ -761,8 +853,15 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
                         continue  
 
                 if job_matches(record, prow_url, start_time, issue_resolution_date):
-                    triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time, "CompletionTime": completion_time})
+                    # do we have any file matches defined, if so validate we have matches
+                    if files_match(artifacts_dir, file_matches):
+                        triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time, "CompletionTime": completion_time})
 
+        
+        # don't output empty job run incidents unless we expect to have all
+        # failures matched
+        if len(triaged_incident["JobRuns"]) == 0 and not args.match_all_job_runs:
+            continue
 
         if args.output_type == 'JSON':
             triaged_incidents.append(triaged_incident)
@@ -809,6 +908,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--match-all-job-runs", help="Only the job runs common to all of the test ids will be preserved. Only valid with output-type == JSON.", type=bool, default=False)
     parser.add_argument("--relative-sample-times", help="Update the sample begin and end times based on the original time span but using the current date for end.", type=bool, default=False)
+    parser.add_argument("--file-matches", help="JSON string listing artifact files to look for regex matches in")
 
 
     # a JSON structured file, potentially output by this tool, to be used as input for matching tests
@@ -869,6 +969,8 @@ if __name__ == '__main__':
                 args.match_all_job_runs = bool(arguments["MatchAllJobRuns"])
             if "RelativeSampleTimes" in arguments and len(arguments["RelativeSampleTimes"]) > 0:
                 args.relative_sample_times = bool(arguments["RelativeSampleTimes"])
+            if "FileMatches" in arguments and len(arguments["FileMatches"]) > 0:
+                args.file_matches = arguments["FileMatches"]
 
             # if we have an input file and it doesn't specify the IncidentGroupId
             # update the file with the one we are assigning
@@ -880,6 +982,15 @@ if __name__ == '__main__':
                 with open(filename, 'w') as incident_file:
                     json.dump(triage_data_file, incident_file, indent=4)
                     print(f"Added IncidentGroupId to to {filename}")
+
+    file_matches = None
+    if args.file_matches:
+        try:
+            # file_matches = json.load(args.file_matches)
+            file_matches = args.file_matches
+        except Exception as e:
+            print(f"Failed to load json file matches: {e}")
+            exit()                
 
     if args.test_report_url == None or len(args.test_report_url) == 0:
         # if we are loading incidents from a file we don't need the URL
