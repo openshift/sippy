@@ -69,6 +69,14 @@ const (
 				jobs.repo,
 				jobs.pr_number,
 				jobs.pr_sha,
+				CASE
+					WHEN flake_count > 0 THEN 0
+					ELSE success_val
+				END AS adjusted_success_val,
+				CASE
+					WHEN flake_count > 0 THEN 1
+					ELSE 0
+				END AS adjusted_flake_count
 			FROM
 				%s.junit
 			INNER JOIN %s.jobs  jobs ON 
@@ -431,8 +439,8 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants apitype.Jo
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
 						COUNT(*) AS total_count,
 						ANY_VALUE(cm.capabilities) as capabilities,
-						SUM(success_val) AS success_count,
-						SUM(flake_count) AS flake_count,
+						SUM(adjusted_success_val) AS success_count,
+						SUM(adjusted_flake_count) AS flake_count,
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, c.client.Dataset))
@@ -659,8 +667,8 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 						cm.id as test_id,
 						%s
 						COUNT(cm.id) AS total_count,
-						SUM(success_val) AS success_count,
-						SUM(flake_count) AS flake_count,
+						SUM(adjusted_success_val) AS success_count,
+						SUM(adjusted_flake_count) AS flake_count,
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities,
 					FROM (%s)
