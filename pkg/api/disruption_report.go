@@ -14,11 +14,6 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 )
 
-const (
-	disruptionBigQueryQueryLabelKey                  = "sippy-disruption"
-	disruptionBigQueryQueryLabelValueDisruptionDelta = "disruption-delta"
-)
-
 func GetDisruptionVsPrevGAReportFromBigQuery(client *bqcachedclient.Client) (apitype.DisruptionReport, []error) {
 	generator := disruptionReportGenerator{
 		client:   client.BQ,
@@ -61,7 +56,10 @@ func (c *disruptionReportGenerator) getDisruptionDeltasFromBigQuery() (apitype.D
 						WHERE LookbackDays = 3`, c.ViewName)
 
 	query := c.client.Query(queryString)
-	query.Labels = map[string]string{disruptionBigQueryQueryLabelKey: disruptionBigQueryQueryLabelValueDisruptionDelta}
+	query.Labels = map[string]string{
+		apitype.BigQueryLabelKeyApp:   apitype.BigQueryLabelValueApp,
+		apitype.BigQueryLabelKeyQuery: apitype.BigQueryLabelValueDisruptionDelta,
+	}
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		log.WithError(err).Error("error querying disruption data from bigquery")

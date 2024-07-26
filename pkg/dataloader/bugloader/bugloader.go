@@ -14,6 +14,7 @@ import (
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
+	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -21,10 +22,6 @@ import (
 )
 
 const (
-	blBigQueryQueryLabelKey                  = "sippy-bug-loader"
-	blBigQueryQueryLabelValueJobBugMappings  = "job-bug-mappings"
-	blBigQueryQueryLabelValueTestBugMappings = "test-bug-mappings"
-
 	// Unfortunate cross-project join
 	ComponentMappingProject = "openshift-gce-devel"
 	ComponentMappingDataset = "ci_analysis_us"
@@ -184,7 +181,10 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
 	log.Debugf(querySQL)
 	query := bl.bqc.BQ.Query(querySQL)
-	query.Labels = map[string]string{blBigQueryQueryLabelKey: blBigQueryQueryLabelValueTestBugMappings}
+	query.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueBugLoaderTestBugMappings,
+	}
 
 	it, err := query.Read(ctx)
 	if err != nil {
@@ -239,7 +239,10 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 		TicketDataQuery)
 	log.Debugf(querySQL)
 	query := bl.bqc.BQ.Query(querySQL)
-	query.Labels = map[string]string{blBigQueryQueryLabelKey: blBigQueryQueryLabelValueJobBugMappings}
+	query.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueBugLoaderJobBugMappings,
+	}
 
 	it, err := query.Read(ctx)
 	if err != nil {

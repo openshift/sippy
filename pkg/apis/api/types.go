@@ -33,6 +33,30 @@ const (
 	SortDescending Sort = "desc"
 )
 
+const (
+	BigQueryLabelKeyApp                                   = "client-application"
+	BigQueryLabelKeyQuery                                 = "query-details"
+	BigQueryLabelValueApp                                 = "sippy"
+	BigQueryLabelValueCRJobVariants                       = "component-readiness-job-variants"
+	BigQueryLabelValueCRJunitColumnCount                  = "component-readiness-junit-column-count"
+	BigQueryLabelValueCRJunitBase                         = "component-readiness-junit-base"
+	BigQueryLabelValueCRJunitSample                       = "component-readiness-junit-sample"
+	BigQueryLabelValueCRTriagedIssues                     = "component-readiness-triaged-issues"
+	BigQueryLabelValueCRTriagedModifiedTime               = "component-readiness-triaged-modified-time"
+	BigQueryLabelValueCRCurrentRegressions                = "component-readiness-current-regressions"
+	BigQueryLabelValueCRUpdateRegressionClosed            = "component-readiness-update-regression-closed"
+	BigQueryLabelValueDisruptionDelta                     = "disruption-delta"
+	BigQueryLabelValueRleaseAllReleases                   = "release-all-releases"
+	BigQueryLabelValueBugLoaderJobBugMappings             = "bug-loader-job-bug-mappings"
+	BigQueryLabelValueBugLoaderTestBugMappings            = "bug-loader-test-bug-mappings"
+	BigQueryLabelValueProwLoaderProwJobs                  = "prow-loader-prow-jobs"
+	BigQueryLabelValueVariantRegistryDeleteJobBatch       = "variant-registry-delete-job-batch"
+	BigQueryLabelValueVariantRegistryDeleteVariant        = "variant-registry-delete-variant"
+	BigQueryLabelValueVariantRegistryUpdateVariant        = "variant-registry-update-variant"
+	BigQueryLabelValueVariantRegistryLoadCurrentVariants  = "variant-registry-load-current-variants"
+	BigQueryLabelValueVariantRegistryLoadExpectedVariants = "variant-registry-load-expected-variants"
+)
+
 // PaginationResult is a type used by API endpoints that enable server-side
 // pagination. It wraps the returned rows  with page information such as page
 // size, which page, and the total rows.

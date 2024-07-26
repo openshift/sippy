@@ -16,10 +16,6 @@ import (
 )
 
 const (
-	crBigQueryQueryLabelKey                         = "sippy-component-readiness"
-	crBigQueryQueryLabelValueCurrentRegressions     = "current-regressions"
-	crBigQueryQueryLabelValueUpdateRegressionClosed = "update-regression-closed"
-
 	testRegressionsTable = "test_regressions"
 )
 
@@ -55,7 +51,10 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]api
 	}...)
 
 	sampleQuery := bq.client.BQ.Query(queryString)
-	sampleQuery.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueCurrentRegressions}
+	sampleQuery.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueCRCurrentRegressions,
+	}
 	sampleQuery.Parameters = append(sampleQuery.Parameters, params...)
 
 	regressions := make([]api.TestRegression, 0)
@@ -122,7 +121,10 @@ func (bq *BigQueryRegressionStore) updateClosed(regressionID, closed string) err
 		bq.client.Dataset, testRegressionsTable, closed, regressionID)
 
 	query := bq.client.BQ.Query(queryString)
-	query.Labels = map[string]string{crBigQueryQueryLabelKey: crBigQueryQueryLabelValueUpdateRegressionClosed}
+	query.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueCRUpdateRegressionClosed,
+	}
 
 	job, err := query.Run(context.TODO())
 	if err != nil {

@@ -10,12 +10,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
+	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/prow"
-)
-
-const (
-	plBigQueryQueryLabelKey           = "sippy-prow-loader"
-	plBigQueryQueryLabelValueProwJobs = "prow-jobs"
 )
 
 func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []error) {
@@ -58,7 +54,10 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		`WHERE TIMESTAMP(prowjob_completion) > @queryFrom
 	       AND prowjob_url IS NOT NULL
 	       ORDER BY prowjob_start_ts`)
-	query.Labels = map[string]string{plBigQueryQueryLabelKey: plBigQueryQueryLabelValueProwJobs}
+	query.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueProwLoaderProwJobs,
+	}
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "queryFrom",

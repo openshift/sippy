@@ -15,6 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
+	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/testidentification"
@@ -105,7 +106,10 @@ ORDER BY j.prowjob_job_name;
 	log.Infof("running query for recent jobs: \n%s", queryStr)
 
 	query := v.BigQueryClient.Query(queryStr)
-	query.Labels = map[string]string{vrBigQueryQueryLabelKey: vrBigQueryQueryLabelValueLoadExpectedVariants}
+	query.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueVariantRegistryLoadExpectedVariants,
+	}
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying primary list of all jobs")
