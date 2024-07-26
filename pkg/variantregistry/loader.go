@@ -9,6 +9,8 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+
+	"github.com/openshift/sippy/pkg/apis/api"
 )
 
 const invalidCharacters = ",:"
@@ -190,6 +192,10 @@ func (s *JobVariantsLoader) loadCurrentJobVariants() (map[string]map[string]stri
 	query := s.bqClient.Query(`SELECT * FROM ` +
 		fmt.Sprintf("%s.%s.%s", s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable) +
 		` ORDER BY job_name, variant_name`)
+	query.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueVariantRegistryLoadCurrentVariants,
+	}
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying current job variants")
@@ -248,6 +254,10 @@ func (s *JobVariantsLoader) updateVariant(logger log.FieldLogger, jv jobVariant)
 	queryStr := fmt.Sprintf("UPDATE `%s.%s.%s` SET variant_value = '%s' WHERE job_name = '%s' and variant_name = '%s'",
 		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, jv.VariantValue, jv.JobName, jv.VariantName)
 	insertQuery := s.bqClient.Query(queryStr)
+	insertQuery.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueVariantRegistryUpdateVariant,
+	}
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
 		return errors.Wrapf(err, "error updating variants: %s", queryStr)
@@ -261,6 +271,10 @@ func (s *JobVariantsLoader) deleteVariant(logger log.FieldLogger, jv jobVariant)
 	queryStr := fmt.Sprintf("DELETE FROM `%s.%s.%s` WHERE job_name = '%s' and variant_name = '%s' and variant_value = '%s'",
 		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, jv.JobName, jv.VariantName, jv.VariantValue)
 	insertQuery := s.bqClient.Query(queryStr)
+	insertQuery.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueVariantRegistryDeleteVariant,
+	}
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
 		return errors.Wrapf(err, "error deleting variant: %s", queryStr)
@@ -297,6 +311,10 @@ func (s *JobVariantsLoader) deleteJobsBatch(batch []string) error {
 		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, strings.Join(batch, "','"))
 
 	insertQuery := s.bqClient.Query(queryStr)
+	insertQuery.Labels = map[string]string{
+		api.BigQueryLabelKeyApp:   api.BigQueryLabelValueApp,
+		api.BigQueryLabelKeyQuery: api.BigQueryLabelValueVariantRegistryDeleteJobBatch,
+	}
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
 		return errors.Wrapf(err, "error deleting batch of jobs: %s", queryStr)

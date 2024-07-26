@@ -486,6 +486,10 @@ func GetReleasesFromBigQuery(client *bqcachedclient.Client) ([]query.Release, er
 	queryString := "SELECT * FROM openshift-ci-data-analysis.ci_data.Releases ORDER BY DevelStartDate DESC"
 
 	q := client.BQ.Query(queryString)
+	q.Labels = map[string]string{
+		apitype.BigQueryLabelKeyApp:   apitype.BigQueryLabelValueApp,
+		apitype.BigQueryLabelKeyQuery: apitype.BigQueryLabelValueRleaseAllReleases,
+	}
 	it, err := q.Read(context.TODO())
 	if err != nil {
 		log.WithError(err).Error("error querying releases data from bigquery")

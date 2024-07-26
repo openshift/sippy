@@ -56,6 +56,10 @@ func (c *disruptionReportGenerator) getDisruptionDeltasFromBigQuery() (apitype.D
 						WHERE LookbackDays = 3`, c.ViewName)
 
 	query := c.client.Query(queryString)
+	query.Labels = map[string]string{
+		apitype.BigQueryLabelKeyApp:   apitype.BigQueryLabelValueApp,
+		apitype.BigQueryLabelKeyQuery: apitype.BigQueryLabelValueDisruptionDelta,
+	}
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		log.WithError(err).Error("error querying disruption data from bigquery")
