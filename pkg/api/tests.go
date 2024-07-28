@@ -195,7 +195,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
 	variantSelect := ""
 	if collapse {
-		rawQuery = rawQuery.Select(`id,name,watchlist,jira_component,jira_component_id,` + query.QueryTestSummer).Group("id,name,watchlist,jira_component,jira_component_id")
+		rawQuery = rawQuery.Select(`test_id,name,watchlist,jira_component,jira_component_id,` + query.QueryTestSummer).Group("test_id,name,watchlist,jira_component,jira_component_id")
 	} else {
 		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, release, table)
 		variantSelect = "suite_name, variants," +
@@ -211,7 +211,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 
 	testReports := make([]apitype.Test, 0)
 	processedResults := dbc.DB.Table("(?) as results", rawQuery).
-		Select(`id, watchlist, name, jira_component, jira_component_id,` + variantSelect + query.QueryTestSummarizer).
+		Select(`ROW_NUMBER() OVER() as id, test_id, watchlist, name, jira_component, jira_component_id,` + variantSelect + query.QueryTestSummarizer).
 		Where("current_runs > 0 or previous_runs > 0")
 
 	finalResults := dbc.DB.Table("(?) as final_results", processedResults)

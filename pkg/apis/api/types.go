@@ -452,6 +452,7 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 // of this struct is suitable for use in a data table.
 type Test struct {
 	ID        int            `json:"id,omitempty"`
+	TestID    string         `json:"test_id,omitempty"`
 	Name      string         `json:"name"`
 	SuiteName string         `json:"suite_name"`
 	Variant   string         `json:"variant,omitempty"`
@@ -757,7 +758,7 @@ type ProwJobRunRiskAnalysis struct {
 
 type ProwJobRunTestRiskAnalysis struct {
 	Name     string
-	TestID   uint
+	TestID   string
 	Risk     TestFailureRisk
 	OpenBugs []models.Bug
 }

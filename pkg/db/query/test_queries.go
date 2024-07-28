@@ -55,7 +55,7 @@ const (
 
 	QueryTestSummarizer = QueryTestFields + "," + QueryTestPercentages
 
-	QueryTestAnalysis = "select test_id as id, current_successes, current_runs, current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage from ( select test_id, sum(runs) as current_runs, sum(passes) as current_successes from prow_test_analysis_by_job_14d_matview where test_name = '%s' AND job_name in (%s) GROUP BY test_id)t"
+	QueryTestAnalysis = "select test_id as id, current_successes, current_runs, current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage from ( select test_id, sum(runs) as current_runs, sum(passes) as current_successes from prow_test_analysis_by_job_14d_matview join where test_name = '%s' AND job_name in (%s) GROUP BY test_id)t"
 )
 
 // TestReportsByVariant returns a test report for every test in the db matching the given substrings, separated by variant.
