@@ -51,6 +51,72 @@ If you expect an existing incident to exist, but it hasn't been updated within t
 
 - `--target-modified-time`: Specifies the target date for querying existing records (format: target-2weeks to target).
 - `--target-build-cluster`: Specifies the target build cluster a job was run on.  Generally used for cluster specific infrastructure failures.
+- `--file-matches`: Specifies a set of files to check for specific regex matches within to identify a matching failure.  
+  
+  While possible to pass the expected JSON as an argument, consider using JSON --input-file and filling in the Arguments - FileMatches section.
+This can be used with the TestId wildcard (*) to match all regressed tests returned from the TestReportURL which have JobRuns with a matching FileMatch.  In this example a second JSON file is created to be reviewed prior to persisting to the DB. 
+```json
+    {
+    "Arguments": {
+        "TestRelease": "4.17",
+        "TestReportURL": "https://sippy.dptools.openshift.org/api/component_readiness?baseEndTime=2024-06-27T23:59:59Z&baseRelease=4.16&baseStartTime=2024-05-31T00:00:00Z&columnGroupBy=Platform,Architecture,Network&confidence=95&dbGroupBy=Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer&ignoreDisruption=true&ignoreMissing=false&includeVariant=Architecture:amd64&includeVariant=FeatureSet:default&includeVariant=Installer:ipi&includeVariant=Installer:upi&includeVariant=Owner:eng&includeVariant=Platform:metal&includeVariant=Topology:ha&includeVariant=Network:ovn&minFail=3&pity=5&sampleEndTime=2024-07-25T23:59:59Z&sampleRelease=4.17&sampleStartTime=2024-07-20T00:00:00Z",
+        "IssueDescription": "Triage metal resource issues",
+        "IssueType": "Infrastructure",
+        "IssueURL": "",
+        "OutputFile": "component-readiness-triage/triage/active/metal_resource_review_4_17_test_regressions.json",
+        "FileMatches": {
+            "MatchDefinitions": {
+                "MatchGate": "OR",
+                "Files": [
+                    {
+                        "FilePath": "artifacts/e2e-metal-ipi-ovn-bm-upgrade/gather-extra/artifacts/machines.json",
+                        "ContentType": "application/json",
+                        "MatchGate": "AND",
+                        "Matches": [
+                            "errorReason[\\\":\\s]*InsufficientResources",
+                            "\"phase\": \"Provisioning\"",
+                            "\"errorMessage\": \"No available BareMetalHost found\""
+                        ]
+                    },
+                    {
+                        "FilePath": "build-log.txt",
+                        "ContentType": "text/plain",
+                        "MatchGate": "AND",
+                        "Matches": [
+                            "<==== OFCIR ERROR RESPONSE BODY =====",
+                            "^No available resource found"
+                        ]
+                    },
+                    {
+                        "FilePath": "artifacts/e2e-metal-ipi-ovn-bm/gather-extra/artifacts/machines.json",
+                        "ContentType": "application/json",
+                        "MatchGate": "AND",
+                        "Matches": [
+                            "\"errorMessage\": \"No available BareMetalHost found\"",
+                            "\"errorReason\": \"InsufficientResources\""
+                        ]
+                    },
+                    {
+                        "FilePath": "artifacts/e2e-metal-ipi-ovn-bm-upgrade/gather-extra/artifacts/machines.json",
+                        "ContentType": "application/json",
+                        "MatchGate": "AND",
+                        "Matches": [
+                            "\"message\": \"Instance has not been created\"",
+                            "\"reason\": \"InstanceNotCreated\""
+                        ]
+                    }
+                ]
+            }
+        },
+        "IncidentGroupId": "25140332-b6da-45ed-a3f6-8456182e4df2"
+    },
+    "Tests": [
+        {
+            "TestId": "*"
+        }
+    ]
+}
+```
 
 ### Test Identification
 
@@ -138,7 +204,7 @@ To associate records with an existing incident group or to create a new group an
    ```
 
 ### Example Input file with a list of TestIds to match
-```
+```json
 {
     "Arguments": {
         "TestRelease": "4.16",
@@ -177,7 +243,7 @@ Run the command to persist the entries to DB (make sure GOOGLE_APPLICATION_CREDE
 
 ### Example Pulling in Test Information Only
 Start with a wildcard for the TestId and a minimal list of Variants
-```
+```json
 {
     "Arguments": {
         "TestRelease": "4.15",
@@ -211,7 +277,7 @@ This will skip adding job runs and allow the output to be used for a different r
 
 The output file can be edited and renamed (`metal_4_16_input.json `) to change the TestRelease to 4.16, update the TestReportURL and the OutputFile name.  Then rerun the command specifying the 4.16 input file and omitting the output-test-info-only flag to create the full 4.16 specific output that matches only the provided tests and variants.
 
-```
+```json
 {
     "Arguments": {
         "TestRelease": "4.16",
@@ -434,7 +500,7 @@ Starting with [TRT-1657](https://issues.redhat.com/browse/TRT-1657) use the [reg
 
 In Component Readiness navigate to the [Component / Capability view](https://sippy.dptools.openshift.org/sippy-ng/component_readiness/capability?baseEndTime=2024-02-28%2023%3A59%3A59&baseRelease=4.15&baseStartTime=2024-02-01%2000%3A00%3A00&capability=Alerts&component=OLM&confidence=95&excludeArches=arm64%2Cheterogeneous%2Cppc64le%2Cs390x&excludeClouds=openstack%2Cibmcloud%2Clibvirt%2Covirt%2Cunknown&excludeVariants=hypershift%2Cosd%2Cmicroshift%2Ctechpreview%2Csingle-node%2Cassisted%2Ccompact&groupBy=cloud%2Carch%2Cnetwork&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-05-08%2023%3A59%3A59&sampleRelease=4.16&sampleStartTime=2024-05-02%2000%3A00%3A00) that narrows the results down as much as possible ( you could exclude arches, platforms, networks, etc. if you needed).  From the web developer tools capture the [api URL](https://sippy.dptools.openshift.org/api/component_readiness?baseEndTime=2024-02-28T23:59:59Z&baseRelease=4.15&baseStartTime=2024-02-01T00:00:00Z&confidence=95&excludeArches=arm64,heterogeneous,ppc64le,s390x&excludeClouds=openstack,ibmcloud,libvirt,ovirt,unknown&excludeVariants=hypershift,osd,microshift,techpreview,single-node,assisted,compact&groupBy=cloud,arch,network&ignoreDisruption=true&ignoreMissing=false&minFail=3&pity=5&sampleEndTime=2024-05-08T23:59:59Z&sampleRelease=4.16&sampleStartTime=2024-05-02T00:00:00Z&component=OLM&capability=Alerts).  You should have enough data to run gen-resolved-issue.py at this point to generate a fully populated output file `trt_1657_4_16_regressions.json`.  ** You can update the TestReportURL with new time ranges and rerun using this file to pick up new failures.  If you do rerun to update incidents make sure you add the `IncidentGroupId` that is assigned the first time to keep the issues grouped properly.
 
-```
+```json
 [
     {
     "Arguments": {
