@@ -255,13 +255,13 @@ SELECT
 FROM
     prow_job_run_tests
     JOIN tests ON tests.id = prow_job_run_tests.test_id
-	JOIN test_ownerships town ON town.test_id = tests.id
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
+	LEFT JOIN test_ownerships town ON town.test_id = tests.id
 WHERE
     prow_job_run_tests.created_at > (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
 GROUP BY
-    tests.name, town.unique_id, tests.id, date(prow_job_runs."timestamp"), unnest(prow_jobs.variants), prow_jobs.release
+    tests.name, tests.id, town.unique_id, date(prow_job_runs."timestamp"), unnest(prow_jobs.variants), prow_jobs.release
 `
 
 const testAnalysisByJobMatView = `
@@ -280,13 +280,13 @@ SELECT
 FROM
     prow_job_run_tests
     JOIN tests ON tests.id = prow_job_run_tests.test_id
-	JOIN test_ownerships town ON town.test_id = tests.id
     JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
     JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
+	LEFT JOIN test_ownerships town ON town.test_id = tests.id
 WHERE
     prow_job_run_tests.created_at > (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
 GROUP BY
-    tests.name, town.unique_id, tests.id, date(prow_job_runs."timestamp"), prow_jobs.release, prow_jobs.name
+    tests.name, tests.id, town.unique_id, date(prow_job_runs."timestamp"), prow_jobs.release, prow_jobs.name
 `
 
 const prowJobFailedTestsMatView = `
