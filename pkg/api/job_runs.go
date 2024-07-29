@@ -529,12 +529,12 @@ func runTestRunAnalysis(failedTest models.ProwJobRunTest, jobRun *models.ProwJob
 	}
 
 	// one of our data sources should have the test ID
-	testID := failedTest.Test.TestID
+	testID := failedTest.TestID
 	if testID == 0 && testResultsJobNames != nil {
-		testID = testResultsJobNames.TestID
+		testID = uint(testResultsJobNames.TestID)
 	}
 	if testID == 0 && testResultsVariants != nil {
-		testID = testResultsVariants.TestID
+		testID = uint(testResultsVariants.TestID)
 	}
 	analysis := apitype.ProwJobRunTestRiskAnalysis{
 		Name:     failedTest.Test.Name,
