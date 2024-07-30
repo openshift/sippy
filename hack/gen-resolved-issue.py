@@ -1022,9 +1022,9 @@ if __name__ == '__main__':
                 startTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleStartTime"][0]))    
             
             if not startTime == None and not endTime == None:
-                diff = endTime - startTime
-                newSampleStartTime = modified_time - diff
-                newSampleEndTime = modified_time
+                diff = endTime - startTime                
+                newSampleEndTime = modified_time.replace(hour=23, minute=59, second=59)
+                newSampleStartTime = newSampleEndTime - diff
                 newSampleStartTimeParam, newSampleEndTimeParam = rfc_3339_start_end_times(newSampleStartTime, newSampleEndTime)
                 params["sampleStartTime"][0] = newSampleStartTimeParam
                 params["sampleEndTime"][0] = newSampleEndTimeParam
