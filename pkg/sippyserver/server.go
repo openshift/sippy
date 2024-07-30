@@ -667,7 +667,16 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		})
 		return
 	}
-	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req, s.crTimeRoundingFactor)
+	allJobVariants, errs := api.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	if len(errs) > 0 {
+		err := fmt.Errorf("failed to get variants from bigquery")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := parseComponentReportRequest(req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -710,7 +719,16 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req, s.crTimeRoundingFactor)
+	allJobVariants, errs := api.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	if len(errs) > 0 {
+		err := fmt.Errorf("failed to get variants from bigquery")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := parseComponentReportRequest(req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -767,7 +785,7 @@ func createVariantOptions(req *http.Request, allJobVariants apitype.JobVariants)
 	return variantOption, err
 }
 
-func (s *Server) parseComponentReportRequest(req *http.Request, crTimeRoundingFactor time.Duration) (
+func parseComponentReportRequest(req *http.Request, allJobVariants apitype.JobVariants, crTimeRoundingFactor time.Duration) (
 	baseRelease apitype.ComponentReportRequestReleaseOptions,
 	sampleRelease apitype.ComponentReportRequestReleaseOptions,
 	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
@@ -775,12 +793,6 @@ func (s *Server) parseComponentReportRequest(req *http.Request, crTimeRoundingFa
 	advancedOption apitype.ComponentReportRequestAdvancedOptions,
 	cacheOption cache.RequestOptions,
 	err error) {
-
-	allJobVariants, errs := api.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
-	if len(errs) > 0 {
-		err = fmt.Errorf("failed to get variants from bigquery")
-		return
-	}
 
 	baseRelease.Release = req.URL.Query().Get("baseRelease")
 	if baseRelease.Release == "" {
