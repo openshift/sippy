@@ -103,6 +103,7 @@ export const CompReadyVarsProvider = ({ children }) => {
       'Installer:ipi',
       'Installer:upi',
       'Owner:eng',
+      'Owner:qe',
       'Platform:aws',
       'Platform:azure',
       'Platform:gcp',
