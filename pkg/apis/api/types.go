@@ -815,13 +815,10 @@ type ComponentReportRequestTestIdentificationOptions struct {
 }
 
 type ComponentReportRequestVariantOptions struct {
-	ColumnGroupBy         string              `json:"column_group_by" yaml:"column_group_by"`
-	ColumnGroupByVariants sets.String         `json:"column_group_by_variants" yaml:"column_group_by_variants"`
-	DBGroupBy             string              `json:"db_group_by" yaml:"db_group_by"`
-	DBGroupByVariants     sets.String         `json:"db_group_by_variants" yaml:"db_group_by_variants"`
-	IncludeVariants       []string            `json:"include_variants" yaml:"include_variants"`
-	IncludeVariantsMap    map[string][]string `json:"include_variants_map" yaml:"include_variants_map"`
-	RequestedVariants     map[string]string   `json:"requested_variants" yaml:"requested_variants"`
+	ColumnGroupBy     sets.String         `json:"column_group_by" yaml:"column_group_by"`
+	DBGroupBy         sets.String         `json:"db_group_by" yaml:"db_group_by"`
+	IncludeVariants   map[string][]string `json:"include_variants" yaml:"include_variants"`
+	RequestedVariants map[string]string   `json:"requested_variants" yaml:"requested_variants"`
 }
 
 // ComponentReportView is a server side construct representing a predefined view over the data.

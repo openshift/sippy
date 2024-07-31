@@ -66,12 +66,9 @@ func TestParseComponentReportRequest(t *testing.T) {
 			},
 			//includeVariant=Installer:ipi&includeVariant=Installer:upi&includeVariant=Owner:eng&includeVariant=Platform:aws&includeVariant=Platform:azure&includeVariant=Platform:gcp&includeVariant=Platform:metal&includeVariant=Platform:vsphere&includeVariant=Topology:ha&minFail=3&pity=5&sampleEndTime=2024-07-30T23:59:59Z&sampleRelease=4.17&sampleStartTime=2024-07-24T00:00:00Z
 			variantOption: apitype.ComponentReportRequestVariantOptions{
-				ColumnGroupBy:         "Platform,Architecture,Network",
-				ColumnGroupByVariants: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:             "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Installer",
-				DBGroupByVariants:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
-				IncludeVariants:       []string{"Architecture:amd64", "FeatureSet:default", "Installer:ipi", "Installer:upi"},
-				IncludeVariantsMap: map[string][]string{
+				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
+				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"FeatureSet":   {"default"},
 					"Installer":    {"ipi", "upi"},

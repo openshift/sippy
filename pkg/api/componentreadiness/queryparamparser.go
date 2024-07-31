@@ -11,6 +11,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
 )
 
 func ParseComponentReportRequest(
@@ -200,31 +201,41 @@ func ParseComponentReportRequest(
 	}
 	cacheOption.CRTimeRoundingFactor = crTimeRoundingFactor
 
+	tempView := apitype.ComponentReportView{
+		Name:            "4.17-main",
+		BaseRelease:     baseRelease,
+		SampleRelease:   sampleRelease,
+		VariantOptions:  variantOption,
+		AdvancedOptions: advancedOption,
+	}
+	bytes, _ := yaml.Marshal(tempView)
+	fmt.Printf("\n\n%s\n\n", string(bytes))
+
 	return
 }
 
 func parseVariantOptions(req *http.Request, allJobVariants apitype.JobVariants) (apitype.ComponentReportRequestVariantOptions, error) {
 	var err error
 	variantOption := apitype.ComponentReportRequestVariantOptions{}
-	variantOption.ColumnGroupBy = req.URL.Query().Get("columnGroupBy")
-	variantOption.ColumnGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.ColumnGroupBy)
+	columnGroupBy := req.URL.Query().Get("columnGroupBy")
+	variantOption.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
 	if err != nil {
 		return variantOption, err
 	}
-	variantOption.DBGroupBy = req.URL.Query().Get("dbGroupBy")
-	variantOption.DBGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.DBGroupBy)
+	dbGroupBy := req.URL.Query().Get("dbGroupBy")
+	variantOption.DBGroupBy, err = api.VariantsStringToSet(allJobVariants, dbGroupBy)
 	if err != nil {
 		return variantOption, err
 	}
 	variantOption.RequestedVariants = map[string]string{}
 	// Only the dbGroupBy variants can be specifically requested
-	for _, variant := range variantOption.DBGroupByVariants.List() {
+	for _, variant := range variantOption.DBGroupBy.List() {
 		if value := req.URL.Query().Get(variant); value != "" {
 			variantOption.RequestedVariants[variant] = value
 		}
 	}
-	variantOption.IncludeVariants = req.URL.Query()["includeVariant"]
-	variantOption.IncludeVariantsMap, err = api.IncludeVariantsToMap(allJobVariants, variantOption.IncludeVariants)
+	includeVariants := req.URL.Query()["includeVariant"]
+	variantOption.IncludeVariants, err = api.IncludeVariantsToMap(allJobVariants, includeVariants)
 	return variantOption, err
 }
 

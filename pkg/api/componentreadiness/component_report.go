@@ -377,7 +377,7 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 	if c.TestID == "" {
 		return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
-	for _, v := range c.DBGroupByVariants.List() {
+	for _, v := range c.DBGroupBy.List() {
 		if _, ok := c.RequestedVariants[v]; !ok {
 			return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing", v)}
 		}
@@ -644,7 +644,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
-	for _, v := range c.DBGroupByVariants.List() {
+	for _, v := range c.DBGroupBy.List() {
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
@@ -698,7 +698,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
 	}
 
-	for k, vs := range c.IncludeVariantsMap {
+	for k, vs := range c.IncludeVariants {
 		queryString += " AND ("
 		first := true
 		for _, v := range vs {
@@ -920,10 +920,10 @@ func testToComponentAndCapability(test apitype.ComponentTestIdentification, stat
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
 func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string, stats apitype.ComponentTestStatus) ([]apitype.ComponentReportRowIdentification, []apitype.ColumnID, error) {
 	var test apitype.ComponentTestIdentification
-	columnGroupByVariants := c.ColumnGroupByVariants
-	// We show column groups by DBGroupByVariants only for the last page before test details
+	columnGroupByVariants := c.ColumnGroupBy
+	// We show column groups by DBGroupBy only for the last page before test details
 	if c.TestID != "" {
-		columnGroupByVariants = c.DBGroupByVariants
+		columnGroupByVariants = c.DBGroupBy
 	}
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIDStr), &test)

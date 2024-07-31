@@ -48,10 +48,8 @@ var (
 	defaultComponentReportGenerator = componentReportGenerator{
 		gcsBucket: "test-platform-results",
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
+			ColumnGroupBy: defaultColumnGroupByVariants,
+			DBGroupBy:     defaultDBGroupByVariants,
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -60,10 +58,8 @@ var (
 	groupByInstallerComponentReportGenerator = componentReportGenerator{
 		gcsBucket: "test-platform-results",
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         installerColumnGroupBy,
-			ColumnGroupByVariants: installerColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
+			ColumnGroupBy: installerColumnGroupByVariants,
+			DBGroupBy:     defaultDBGroupByVariants,
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -73,10 +69,8 @@ var (
 			Component: "component 2",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
+			ColumnGroupBy: defaultColumnGroupByVariants,
+			DBGroupBy:     defaultDBGroupByVariants,
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -87,10 +81,8 @@ var (
 			Capability: "cap22",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
+			ColumnGroupBy: defaultColumnGroupByVariants,
+			DBGroupBy:     defaultDBGroupByVariants,
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -102,10 +94,8 @@ var (
 			TestID:     "2",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
+			ColumnGroupBy: defaultColumnGroupByVariants,
+			DBGroupBy:     defaultDBGroupByVariants,
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
@@ -117,10 +107,8 @@ var (
 			TestID:     "1",
 		},
 		ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-			ColumnGroupBy:         DefaultColumnGroupBy,
-			ColumnGroupByVariants: defaultColumnGroupByVariants,
-			DBGroupBy:             DefaultDBGroupBy,
-			DBGroupByVariants:     defaultDBGroupByVariants,
+			ColumnGroupBy: defaultColumnGroupByVariants,
+			DBGroupBy:     defaultDBGroupByVariants,
 			RequestedVariants: map[string]string{
 				"Platform":     "aws",
 				"Architecture": "amd64",
@@ -754,8 +742,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			name: "top page test confidence 90 result in regression",
 			generator: componentReportGenerator{
 				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-					ColumnGroupBy:         DefaultColumnGroupBy,
-					ColumnGroupByVariants: defaultColumnGroupByVariants,
+					ColumnGroupBy: defaultColumnGroupByVariants,
 				},
 				ComponentReportRequestAdvancedOptions: apitype.ComponentReportRequestAdvancedOptions{
 					Confidence:     90,
@@ -839,8 +826,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			name: "top page test confidence 90 pity 10 result in no regression",
 			generator: componentReportGenerator{
 				ComponentReportRequestVariantOptions: apitype.ComponentReportRequestVariantOptions{
-					ColumnGroupBy:         DefaultColumnGroupBy,
-					ColumnGroupByVariants: defaultColumnGroupByVariants,
+					ColumnGroupBy: defaultColumnGroupByVariants,
 				},
 				ComponentReportRequestAdvancedOptions: apitype.ComponentReportRequestAdvancedOptions{
 					Confidence:     90,

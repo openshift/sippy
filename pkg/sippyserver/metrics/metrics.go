@@ -315,13 +315,10 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 		return err
 	}
 	variantOption := apitype.ComponentReportRequestVariantOptions{
-		ColumnGroupBy:         componentreadiness.DefaultColumnGroupBy,
-		ColumnGroupByVariants: columnGroupByVariants,
-		DBGroupBy:             componentreadiness.DefaultDBGroupBy,
-		DBGroupByVariants:     dbGroupByVariants,
-		RequestedVariants:     map[string]string{},
-		IncludeVariants:       componentreadiness.DefaultIncludeVariants,
-		IncludeVariantsMap:    includeVariantsMap,
+		ColumnGroupBy:     columnGroupByVariants,
+		DBGroupBy:         dbGroupByVariants,
+		RequestedVariants: map[string]string{},
+		IncludeVariants:   includeVariantsMap,
 	}
 	advancedOption := apitype.ComponentReportRequestAdvancedOptions{
 		MinimumFailure:   componentreadiness.DefaultMinimumFailure,
