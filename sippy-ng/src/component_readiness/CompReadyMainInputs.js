@@ -43,7 +43,6 @@ export default function CompReadyMainInputs(props) {
     'FromReleaseMinor',
     'NetworkAccess',
     'NetworkStack',
-    'Owner',
     'Release',
     'ReleaseMajor',
     'ReleaseMinor',
