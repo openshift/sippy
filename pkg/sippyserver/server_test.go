@@ -228,7 +228,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
 			baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
-				parseComponentReportRequest(req, allJobVariants, 4*time.Hour)
+				parseComponentReportRequest([]apitype.ComponentReportView{}, req,
+					allJobVariants, 4*time.Hour)
 			assert.Equal(t, tc.baseRelease, baseRelease)
 			assert.Equal(t, tc.sampleRelease, sampleRelease)
 			assert.Equal(t, tc.testIDOption, testIDOption)

@@ -828,6 +828,8 @@ type ComponentReportRequestVariantOptions struct {
 // Useful for defining the primary view of what we deem required for considering the release ready.
 type ComponentReportView struct {
 	Name            string                                `json:"name"`
+	BaseRelease     ComponentReportRequestReleaseOptions  `json:"base_release"`
+	SampleRelease   ComponentReportRequestReleaseOptions  `json:"sample_release"`
 	VariantOptions  ComponentReportRequestVariantOptions  `json:"variant_options"`
 	AdvancedOptions ComponentReportRequestAdvancedOptions `json:"advance_options"`
 }
