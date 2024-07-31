@@ -157,35 +157,37 @@ func ParseComponentReportRequest(
 				return
 			}
 		}
+
+		// TODO: if specified, allow these to override view defaults for start/end time.
+		// will need to relocate this outside this else.
+		timeStr := req.URL.Query().Get("baseStartTime")
+		baseRelease.Start, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
+		if err != nil {
+			err = fmt.Errorf("base start time in wrong format")
+			return
+		}
+		timeStr = req.URL.Query().Get("baseEndTime")
+		baseRelease.End, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
+		if err != nil {
+			err = fmt.Errorf("base end time in wrong format")
+			return
+		}
+		timeStr = req.URL.Query().Get("sampleStartTime")
+		sampleRelease.Start, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
+		if err != nil {
+			err = fmt.Errorf("sample start time in wrong format")
+			return
+		}
+		timeStr = req.URL.Query().Get("sampleEndTime")
+		sampleRelease.End, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
+		if err != nil {
+			err = fmt.Errorf("sample end time in wrong format")
+			return
+		}
+
 	}
 
 	// Params below this point can be used with and without views:
-
-	// TODO: start with a value calculated from the view, then allow overriding:
-	timeStr := req.URL.Query().Get("baseStartTime")
-	baseRelease.Start, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
-	if err != nil {
-		err = fmt.Errorf("base start time in wrong format")
-		return
-	}
-	timeStr = req.URL.Query().Get("baseEndTime")
-	baseRelease.End, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
-	if err != nil {
-		err = fmt.Errorf("base end time in wrong format")
-		return
-	}
-	timeStr = req.URL.Query().Get("sampleStartTime")
-	sampleRelease.Start, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
-	if err != nil {
-		err = fmt.Errorf("sample start time in wrong format")
-		return
-	}
-	timeStr = req.URL.Query().Get("sampleEndTime")
-	sampleRelease.End, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
-	if err != nil {
-		err = fmt.Errorf("sample end time in wrong format")
-		return
-	}
 
 	testIDOption.Component = req.URL.Query().Get("component")
 	testIDOption.Capability = req.URL.Query().Get("capability")
