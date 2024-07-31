@@ -1,5 +1,5 @@
 // nolint
-package api
+package componentreadiness
 
 import (
 	"encoding/json"
