@@ -800,10 +800,10 @@ type PullRequestOptions struct {
 }
 
 type ComponentReportRequestReleaseOptions struct {
-	Release            string
-	PullRequestOptions *PullRequestOptions
-	Start              time.Time
-	End                time.Time
+	Release            string              `json:"release" yaml:"release"`
+	PullRequestOptions *PullRequestOptions `json:"pull_request_options,omitempty" yaml:"pull_request_options,omitempty"`
+	Start              time.Time           `json:"start,omitempty" yaml:"start,omitempty"`
+	End                time.Time           `json:"end,omitempty" yaml:"end,omitempty"`
 }
 
 type ComponentReportRequestTestIdentificationOptions struct {
@@ -815,31 +815,31 @@ type ComponentReportRequestTestIdentificationOptions struct {
 }
 
 type ComponentReportRequestVariantOptions struct {
-	ColumnGroupBy         string
-	ColumnGroupByVariants sets.String
-	DBGroupBy             string
-	DBGroupByVariants     sets.String
-	IncludeVariants       []string
-	IncludeVariantsMap    map[string][]string
-	RequestedVariants     map[string]string
+	ColumnGroupBy         string              `json:"column_group_by" yaml:"column_group_by"`
+	ColumnGroupByVariants sets.String         `json:"column_group_by_variants" yaml:"column_group_by_variants"`
+	DBGroupBy             string              `json:"db_group_by" yaml:"db_group_by"`
+	DBGroupByVariants     sets.String         `json:"db_group_by_variants" yaml:"db_group_by_variants"`
+	IncludeVariants       []string            `json:"include_variants" yaml:"include_variants"`
+	IncludeVariantsMap    map[string][]string `json:"include_variants_map" yaml:"include_variants_map"`
+	RequestedVariants     map[string]string   `json:"requested_variants" yaml:"requested_variants"`
 }
 
 // ComponentReportView is a server side construct representing a predefined view over the data.
 // Useful for defining the primary view of what we deem required for considering the release ready.
 type ComponentReportView struct {
-	Name            string                                `json:"name"`
-	BaseRelease     ComponentReportRequestReleaseOptions  `json:"base_release"`
-	SampleRelease   ComponentReportRequestReleaseOptions  `json:"sample_release"`
-	VariantOptions  ComponentReportRequestVariantOptions  `json:"variant_options"`
-	AdvancedOptions ComponentReportRequestAdvancedOptions `json:"advance_options"`
+	Name            string                                `json:"name" yaml:"name"`
+	BaseRelease     ComponentReportRequestReleaseOptions  `json:"base_release" yaml:"base_release"`
+	SampleRelease   ComponentReportRequestReleaseOptions  `json:"sample_release" yaml:"sample_release"`
+	VariantOptions  ComponentReportRequestVariantOptions  `json:"variant_options" yaml:"variant_options"`
+	AdvancedOptions ComponentReportRequestAdvancedOptions `json:"advanced_options" yaml:"advanced_options"`
 }
 
 type ComponentReportRequestAdvancedOptions struct {
-	MinimumFailure   int  `json:"minimum_failure"`
-	Confidence       int  `json:"confidence"`
-	PityFactor       int  `json:"pity_factor"`
-	IgnoreMissing    bool `json:"ignore_missing"`
-	IgnoreDisruption bool `json:"ignore_disruption"`
+	MinimumFailure   int  `json:"minimum_failure" yaml:"minimum_failure"`
+	Confidence       int  `json:"confidence" yaml:"confidence"`
+	PityFactor       int  `json:"pity_factor" yaml:"pity_factor"`
+	IgnoreMissing    bool `json:"ignore_missing" yaml:"ignore_missing"`
+	IgnoreDisruption bool `json:"ignore_disruption" yaml:"ignore_disruption"`
 }
 
 type ComponentTestStatus struct {
