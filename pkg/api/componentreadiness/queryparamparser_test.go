@@ -14,6 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var (
+	includeVariants = map[string][]string{
+		"Architecture": []string{"amd64"},
+		"FeatureSet":   []string{"default", "techpreview"},
+		"Installer":    []string{"ipi", "upi"},
+	}
+)
+
 func TestParseComponentReportRequest(t *testing.T) {
 
 	allJobVariants := apitype.JobVariants{Variants: map[string][]string{
@@ -26,11 +34,40 @@ func TestParseComponentReportRequest(t *testing.T) {
 		"Upgrade":      {"micro", "minor", "none"},
 	}}
 
+	view417main := apitype.ComponentReportView{
+		Name: "4.17-main",
+		BaseRelease: apitype.ComponentReportRequestReleaseOptions{
+			Release: "4.16",
+			Start:   time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
+			End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
+		},
+		SampleRelease: apitype.ComponentReportRequestReleaseOptions{
+			Release: "4.17",
+			Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
+			End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
+		},
+		VariantOptions: apitype.ComponentReportRequestVariantOptions{
+			ColumnGroupBy:     defaultColumnGroupByVariants,
+			DBGroupBy:         defaultDBGroupByVariants,
+			IncludeVariants:   includeVariants,
+			RequestedVariants: nil,
+		},
+		AdvancedOptions: apitype.ComponentReportRequestAdvancedOptions{
+			MinimumFailure:   3,
+			Confidence:       95,
+			PityFactor:       5,
+			IgnoreMissing:    false,
+			IgnoreDisruption: true,
+		},
+	}
+	views := []apitype.ComponentReportView{
+		view417main,
+	}
+
 	tests := []struct {
 		name string
 
 		// inputs
-		views       []apitype.ComponentReportView
 		queryParams [][]string
 
 		// expected outputs
@@ -97,6 +134,58 @@ func TestParseComponentReportRequest(t *testing.T) {
 				CRTimeRoundingFactor: 4 * time.Hour,
 			},
 		},
+		{
+			name: "basic view",
+			queryParams: [][]string{
+				{"view", "4.17-main"},
+			},
+			variantOption: apitype.ComponentReportRequestVariantOptions{
+				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer"),
+				IncludeVariants: map[string][]string{
+					"Architecture": {"amd64"},
+					"FeatureSet":   {"default", "techpreview"},
+					"Installer":    {"ipi", "upi"},
+				},
+			},
+			baseRelease: apitype.ComponentReportRequestReleaseOptions{
+				Release: "4.16",
+				Start:   time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
+				End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
+			},
+			sampleRelease: apitype.ComponentReportRequestReleaseOptions{
+				Release: "4.17",
+				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
+				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
+			},
+			testIDOption: apitype.ComponentReportRequestTestIdentificationOptions{},
+			advancedOption: apitype.ComponentReportRequestAdvancedOptions{
+				MinimumFailure:   3,
+				Confidence:       95,
+				PityFactor:       5,
+				IgnoreMissing:    false,
+				IgnoreDisruption: true,
+			},
+			cacheOption: cache.RequestOptions{
+				ForceRefresh:         false,
+				CRTimeRoundingFactor: 4 * time.Hour,
+			},
+		},
+		{
+			name: "non-existent view",
+			queryParams: [][]string{
+				{"view", "4.13-main"}, // doesn't exist
+			},
+			errMessage: "unknown view",
+		},
+		{
+			name: "cannot combine view and includeVariant",
+			queryParams: [][]string{
+				{"view", "4.17-main"}, // doesn't exist
+				{"includeVariant", "Topology:single"},
+			},
+			errMessage: "params cannot be combined with view",
+		},
 	}
 
 	for _, tc := range tests {
@@ -110,19 +199,24 @@ func TestParseComponentReportRequest(t *testing.T) {
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
 			baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
-				ParseComponentReportRequest([]apitype.ComponentReportView{}, req,
-					allJobVariants, 4*time.Hour)
-			assert.Equal(t, tc.baseRelease, baseRelease)
-			assert.Equal(t, tc.sampleRelease, sampleRelease)
-			assert.Equal(t, tc.testIDOption, testIDOption)
-			assert.Equal(t, tc.variantOption, variantOption)
-			assert.Equal(t, tc.advancedOption, advancedOption)
-			assert.Equal(t, tc.cacheOption, cacheOption)
+				ParseComponentReportRequest(views, req, allJobVariants, 4*time.Hour)
 			if tc.errMessage != "" {
-				assert.Error(t, err)
-				assert.True(t, strings.Contains(err.Error(), tc.errMessage))
+				require.Error(t, err)
+				assert.Contains(t, err.Error(), tc.errMessage)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tc.baseRelease, baseRelease)
+				assert.Equal(t, tc.sampleRelease, sampleRelease)
+				assert.Equal(t, tc.testIDOption, testIDOption)
+				assert.Equal(t, tc.variantOption, variantOption)
+				assert.Equal(t, tc.advancedOption, advancedOption)
+				assert.Equal(t, tc.cacheOption, cacheOption)
+				if tc.errMessage != "" {
+					assert.Error(t, err)
+					assert.True(t, strings.Contains(err.Error(), tc.errMessage))
+				}
+				assert.Equal(t, tc.baseRelease, baseRelease)
 			}
-			assert.Equal(t, tc.baseRelease, baseRelease)
 		})
 	}
 

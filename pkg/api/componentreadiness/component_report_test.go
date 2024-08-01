@@ -53,7 +53,6 @@ var (
 		},
 		ComponentReportRequestAdvancedOptions: defaultAdvancedOption,
 	}
-	installerColumnGroupBy                   = "Platform,Architecture,Network,Installer"
 	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
 	groupByInstallerComponentReportGenerator = componentReportGenerator{
 		gcsBucket: "test-platform-results",
