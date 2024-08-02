@@ -1,4 +1,4 @@
-package api
+package componentreadiness
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	fischer "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
 	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/pkg/errors"
@@ -171,7 +172,7 @@ func GetComponentTestVariantsFromBigQuery(client *bqcachedclient.Client, gcsBuck
 		gcsBucket: gcsBucket,
 	}
 
-	return getDataFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, apitype.ComponentReportTestVariants{})
+	return api.GetDataFromCacheOrGenerate[apitype.ComponentReportTestVariants](client.Cache, cache.RequestOptions{}, api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, apitype.ComponentReportTestVariants{})
 }
 
 func GetJobVariantsFromBigQuery(client *bqcachedclient.Client, gcsBucket string) (apitype.JobVariants, []error) {
@@ -180,7 +181,7 @@ func GetJobVariantsFromBigQuery(client *bqcachedclient.Client, gcsBucket string)
 		gcsBucket: gcsBucket,
 	}
 
-	return getDataFromCacheOrGenerate[apitype.JobVariants](client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("TestAllVariants~", generator), generator.GenerateJobVariants, apitype.JobVariants{})
+	return api.GetDataFromCacheOrGenerate[apitype.JobVariants](client.Cache, cache.RequestOptions{}, api.GetPrefixedCacheKey("TestAllVariants~", generator), generator.GenerateJobVariants, apitype.JobVariants{})
 }
 
 func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsBucket string,
@@ -203,7 +204,7 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsB
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return getDataFromCacheOrGenerate[apitype.ComponentReport](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("ComponentReport~"), generator.GenerateReport, apitype.ComponentReport{})
+	return api.GetDataFromCacheOrGenerate[apitype.ComponentReport](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("ComponentReport~"), generator.GenerateReport, apitype.ComponentReport{})
 }
 
 // TODO: ComponentReport is inaccurate and overly verbose in this naming, at this point it's not really about a component
@@ -228,7 +229,7 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, pr
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return getDataFromCacheOrGenerate[apitype.ComponentReportTestDetails](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("TestDetailsReport~"), generator.GenerateTestDetailsReport, apitype.ComponentReportTestDetails{})
+	return api.GetDataFromCacheOrGenerate[apitype.ComponentReportTestDetails](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("TestDetailsReport~"), generator.GenerateTestDetailsReport, apitype.ComponentReportTestDetails{})
 }
 
 // componentReportGenerator contains the information needed to generate a CR report. Do
@@ -252,12 +253,12 @@ type componentReportGenerator struct {
 	openRegressions []apitype.TestRegression
 }
 
-func (c *componentReportGenerator) GetComponentReportCacheKey(prefix string) CacheData {
+func (c *componentReportGenerator) GetComponentReportCacheKey(prefix string) api.CacheData {
 	// Make sure we have initialized the report modified field
 	if c.ReportModified == nil {
 		c.ReportModified = c.GetLastReportModifiedTime(c.client, c.cacheOption)
 	}
-	return GetPrefixedCacheKey(prefix, c)
+	return api.GetPrefixedCacheKey(prefix, c)
 }
 
 func (c *componentReportGenerator) GenerateVariants() (apitype.ComponentReportTestVariants, []error) {
@@ -376,7 +377,7 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (apitype.Componen
 	if c.TestID == "" {
 		return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
-	for _, v := range c.DBGroupByVariants.List() {
+	for _, v := range c.DBGroupBy.List() {
 		if _, ok := c.RequestedVariants[v]; !ok {
 			return apitype.ComponentReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing", v)}
 		}
@@ -497,7 +498,7 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 		ComponentReportGenerator: c,
 	}
 
-	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](generator.ComponentReportGenerator.client.Cache, generator.cacheOption, GetPrefixedCacheKey("BaseJobRunTestStatus~", generator), generator.queryTestStatus, apitype.ComponentJobRunTestReportStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](generator.ComponentReportGenerator.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator), generator.queryTestStatus, apitype.ComponentJobRunTestReportStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -547,7 +548,7 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 		ComponentReportGenerator: c,
 	}
 
-	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](c.client.Cache, c.cacheOption, GetPrefixedCacheKey("SampleJobRunTestStatus~", generator), generator.queryTestStatus, apitype.ComponentJobRunTestReportStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[apitype.ComponentJobRunTestReportStatus](c.client.Cache, c.cacheOption, api.GetPrefixedCacheKey("SampleJobRunTestStatus~", generator), generator.queryTestStatus, apitype.ComponentJobRunTestReportStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -643,7 +644,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
-	for _, v := range c.DBGroupByVariants.List() {
+	for _, v := range c.DBGroupBy.List() {
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
@@ -697,7 +698,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants apity
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
 	}
 
-	for k, vs := range c.IncludeVariantsMap {
+	for k, vs := range c.IncludeVariants {
 		queryString += " AND ("
 		first := true
 		for _, v := range vs {
@@ -756,7 +757,7 @@ func (c *componentReportGenerator) getBaseQueryStatus(allJobVariants apitype.Job
 		ComponentReportGenerator: c,
 	}
 
-	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, generator.cacheOption, GetPrefixedCacheKey("BaseTestStatus~", generator), generator.queryTestStatus, apitype.ComponentReportTestStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.queryTestStatus, apitype.ComponentReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -818,7 +819,7 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 		ComponentReportGenerator: c,
 	}
 
-	componentReportTestStatus, errs := getDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, c.cacheOption, GetPrefixedCacheKey("SampleTestStatus~", generator), generator.queryTestStatus, apitype.ComponentReportTestStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[apitype.ComponentReportTestStatus](c.client.Cache, c.cacheOption, api.GetPrefixedCacheKey("SampleTestStatus~", generator), generator.queryTestStatus, apitype.ComponentReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -919,10 +920,10 @@ func testToComponentAndCapability(test apitype.ComponentTestIdentification, stat
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
 func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string, stats apitype.ComponentTestStatus) ([]apitype.ComponentReportRowIdentification, []apitype.ColumnID, error) {
 	var test apitype.ComponentTestIdentification
-	columnGroupByVariants := c.ColumnGroupByVariants
-	// We show column groups by DBGroupByVariants only for the last page before test details
+	columnGroupByVariants := c.ColumnGroupBy
+	// We show column groups by DBGroupBy only for the last page before test details
 	if c.TestID != "" {
-		columnGroupByVariants = c.DBGroupByVariants
+		columnGroupByVariants = c.DBGroupBy
 	}
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIDStr), &test)
@@ -1297,7 +1298,7 @@ func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(testID apitype.C
 	// this is the full list from the cache if available that will be subset to specific test
 	// in triagedIssuesFor
 	if c.triagedIssues == nil {
-		releaseTriagedIncidents, errs := getDataFromCacheOrGenerate[resolvedissues.TriagedIncidentsForRelease](generator.client.Cache, generator.cacheOption, GetPrefixedCacheKey("TriagedIncidents~", generator), generator.generateTriagedIssuesFor, resolvedissues.TriagedIncidentsForRelease{})
+		releaseTriagedIncidents, errs := api.GetDataFromCacheOrGenerate[resolvedissues.TriagedIncidentsForRelease](generator.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("TriagedIncidents~", generator), generator.generateTriagedIssuesFor, resolvedissues.TriagedIncidentsForRelease{})
 
 		if len(errs) > 0 {
 			return 0, nil, errs
@@ -1336,7 +1337,7 @@ func (c *componentReportGenerator) GetLastReportModifiedTime(client *bqcachedcli
 		}
 
 		// this gets called a lot, so we want to set it once on the componentReportGenerator
-		lastModifiedTime, errs := getDataFromCacheOrGenerate[*time.Time](generator.client.Cache, generator.cacheOption, GetPrefixedCacheKey("TriageLastModified~", generator), generator.generateTriagedIssuesLastModifiedTime, generator.LastModifiedStartTime)
+		lastModifiedTime, errs := api.GetDataFromCacheOrGenerate[*time.Time](generator.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("TriageLastModified~", generator), generator.generateTriagedIssuesLastModifiedTime, generator.LastModifiedStartTime)
 
 		if len(errs) > 0 {
 			c.ReportModified = generator.LastModifiedStartTime

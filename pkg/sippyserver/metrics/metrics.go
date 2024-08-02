@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -279,7 +280,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	today := now.Truncate(24 * time.Hour)
 	end := today.Add(24 * time.Hour).Add(-1 * time.Second)
 	if cacheOptions.CRTimeRoundingFactor > 0 {
-		end, _ = util.ParseCRReleaseTime(now.Format(time.RFC3339), cacheOptions.CRTimeRoundingFactor)
+		end, _ = util.ParseCRReleaseTime(baseRelease.Release, now.Format(time.RFC3339), false, cacheOptions.CRTimeRoundingFactor)
 	}
 	sampleRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: next,
@@ -297,41 +298,38 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 
 	testIDOption := apitype.ComponentReportRequestTestIdentificationOptions{}
 
-	allJobVariants, errs := api.GetJobVariantsFromBigQuery(client, gcsBucket)
+	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(client, gcsBucket)
 	if len(errs) > 0 {
 		return fmt.Errorf("failed to get variants from bigquery")
 	}
-	columnGroupByVariants, err := api.VariantsStringToSet(allJobVariants, api.DefaultColumnGroupBy)
+	columnGroupByVariants, err := api.VariantsStringToSet(allJobVariants, componentreadiness.DefaultColumnGroupBy)
 	if err != nil {
 		return err
 	}
-	dbGroupByVariants, err := api.VariantsStringToSet(allJobVariants, api.DefaultDBGroupBy)
+	dbGroupByVariants, err := api.VariantsStringToSet(allJobVariants, componentreadiness.DefaultDBGroupBy)
 	if err != nil {
 		return err
 	}
-	includeVariantsMap, err := api.IncludeVariantsToMap(allJobVariants, api.DefaultIncludeVariants)
+	includeVariantsMap, err := api.IncludeVariantsToMap(allJobVariants, componentreadiness.DefaultIncludeVariants)
 	if err != nil {
 		return err
 	}
 	variantOption := apitype.ComponentReportRequestVariantOptions{
-		ColumnGroupBy:         api.DefaultColumnGroupBy,
-		ColumnGroupByVariants: columnGroupByVariants,
-		DBGroupBy:             api.DefaultDBGroupBy,
-		DBGroupByVariants:     dbGroupByVariants,
-		RequestedVariants:     map[string]string{},
-		IncludeVariants:       api.DefaultIncludeVariants,
-		IncludeVariantsMap:    includeVariantsMap,
+		ColumnGroupBy:     columnGroupByVariants,
+		DBGroupBy:         dbGroupByVariants,
+		RequestedVariants: map[string]string{},
+		IncludeVariants:   includeVariantsMap,
 	}
 	advancedOption := apitype.ComponentReportRequestAdvancedOptions{
-		MinimumFailure:   api.DefaultMinimumFailure,
-		Confidence:       api.DefaultConfidence,
-		PityFactor:       api.DefaultPityFactor,
-		IgnoreMissing:    api.DefaultIgnoreMissing,
-		IgnoreDisruption: api.DefaultIgnoreDisruption,
+		MinimumFailure:   componentreadiness.DefaultMinimumFailure,
+		Confidence:       componentreadiness.DefaultConfidence,
+		PityFactor:       componentreadiness.DefaultPityFactor,
+		IgnoreMissing:    componentreadiness.DefaultIgnoreMissing,
+		IgnoreDisruption: componentreadiness.DefaultIgnoreDisruption,
 	}
 
 	// Get report
-	report, errs := api.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOptions)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOptions)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

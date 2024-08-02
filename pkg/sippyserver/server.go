@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"gorm.io/gorm"
 
 	"cloud.google.com/go/storage"
@@ -60,27 +61,29 @@ func NewServer(
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
+	componentReadinessViews []apitype.ComponentReportView,
 ) *Server {
 
 	server := &Server{
-		mode:                 mode,
-		listenAddr:           listenAddr,
-		syntheticTestManager: syntheticTestManager,
-		variantManager:       variantManager,
-		sippyNG:              sippyNG,
-		static:               static,
-		db:                   dbClient,
-		bigQueryClient:       bigQueryClient,
-		pinnedDateTime:       pinnedDateTime,
-		prowURL:              prowURL,
-		gcsBucket:            gcsBucket,
-		gcsClient:            gcsClient,
-		cache:                cacheClient,
-		crTimeRoundingFactor: crTimeRoundingFactor,
+		mode:                    mode,
+		listenAddr:              listenAddr,
+		syntheticTestManager:    syntheticTestManager,
+		variantManager:          variantManager,
+		sippyNG:                 sippyNG,
+		static:                  static,
+		db:                      dbClient,
+		bigQueryClient:          bigQueryClient,
+		pinnedDateTime:          pinnedDateTime,
+		prowURL:                 prowURL,
+		gcsBucket:               gcsBucket,
+		gcsClient:               gcsClient,
+		cache:                   cacheClient,
+		crTimeRoundingFactor:    crTimeRoundingFactor,
+		componentReadinessViews: componentReadinessViews,
 	}
 
 	if bigQueryClient != nil {
-		go api.GetComponentTestVariantsFromBigQuery(bigQueryClient, gcsBucket)
+		go componentreadiness.GetComponentTestVariantsFromBigQuery(bigQueryClient, gcsBucket)
 	}
 
 	return server
@@ -99,22 +102,23 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 })
 
 type Server struct {
-	mode                 Mode
-	listenAddr           string
-	syntheticTestManager synthetictests.SyntheticTestManager
-	variantManager       testidentification.VariantManager
-	sippyNG              fs.FS
-	static               fs.FS
-	httpServer           *http.Server
-	db                   *db.DB
-	bigQueryClient       *bigquery.Client
-	pinnedDateTime       *time.Time
-	gcsClient            *storage.Client
-	gcsBucket            string
-	prowURL              string
-	cache                cache.Cache
-	crTimeRoundingFactor time.Duration
-	capabilities         []string
+	mode                    Mode
+	listenAddr              string
+	syntheticTestManager    synthetictests.SyntheticTestManager
+	variantManager          testidentification.VariantManager
+	sippyNG                 fs.FS
+	static                  fs.FS
+	httpServer              *http.Server
+	db                      *db.DB
+	bigQueryClient          *bigquery.Client
+	pinnedDateTime          *time.Time
+	gcsClient               *storage.Client
+	gcsBucket               string
+	prowURL                 string
+	cache                   cache.Cache
+	crTimeRoundingFactor    time.Duration
+	capabilities            []string
+	componentReadinessViews []apitype.ComponentReportView
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -613,7 +617,7 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 		})
 		return
 	}
-	outputs, errs := api.GetComponentTestVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	outputs, errs := componentreadiness.GetComponentTestVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying test variants from big query:", len(errs))
 		for _, err := range errs {
@@ -636,7 +640,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 		})
 		return
 	}
-	outputs, errs := api.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	outputs, errs := componentreadiness.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying job variants from big query:", len(errs))
 		for _, err := range errs {
@@ -651,8 +655,30 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
+func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
+	api.RespondWithJSON(http.StatusOK, w, s.componentReadinessViews)
+}
+
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
+	if s.bigQueryClient == nil {
+		err := fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	if len(errs) > 0 {
+		err := fmt.Errorf("failed to get variants from bigquery")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
+		componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -661,7 +687,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 
-	outputs, errs := api.GetComponentReportFromBigQuery(
+	outputs, errs := componentreadiness.GetComponentReportFromBigQuery(
 		s.bigQueryClient,
 		s.prowURL,
 		s.gcsBucket,
@@ -687,7 +713,25 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 }
 
 func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
-	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err := s.parseComponentReportRequest(req)
+	if s.bigQueryClient == nil {
+		err := fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	if len(errs) > 0 {
+		err := fmt.Errorf("failed to get variants from bigquery")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
+		componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -695,7 +739,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	outputs, errs := api.GetComponentReportTestDetailsFromBigQuery(
+	outputs, errs := componentreadiness.GetComponentReportTestDetailsFromBigQuery(
 		s.bigQueryClient,
 		s.prowURL,
 		s.gcsBucket,
@@ -717,182 +761,6 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
-}
-
-func createVariantOptions(req *http.Request, allJobVariants apitype.JobVariants) (apitype.ComponentReportRequestVariantOptions, error) {
-	var err error
-	variantOption := apitype.ComponentReportRequestVariantOptions{}
-	variantOption.ColumnGroupBy = req.URL.Query().Get("columnGroupBy")
-	variantOption.ColumnGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.ColumnGroupBy)
-	if err != nil {
-		return variantOption, err
-	}
-	variantOption.DBGroupBy = req.URL.Query().Get("dbGroupBy")
-	variantOption.DBGroupByVariants, err = api.VariantsStringToSet(allJobVariants, variantOption.DBGroupBy)
-	if err != nil {
-		return variantOption, err
-	}
-	variantOption.RequestedVariants = map[string]string{}
-	// Only the dbGroupBy variants can be specifically requested
-	for _, variant := range variantOption.DBGroupByVariants.List() {
-		if value := req.URL.Query().Get(variant); value != "" {
-			variantOption.RequestedVariants[variant] = value
-		}
-	}
-	variantOption.IncludeVariants = req.URL.Query()["includeVariant"]
-	variantOption.IncludeVariantsMap, err = api.IncludeVariantsToMap(allJobVariants, variantOption.IncludeVariants)
-	return variantOption, err
-}
-
-func (s *Server) parseComponentReportRequest(req *http.Request) (
-	baseRelease apitype.ComponentReportRequestReleaseOptions,
-	sampleRelease apitype.ComponentReportRequestReleaseOptions,
-	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
-	variantOption apitype.ComponentReportRequestVariantOptions,
-	advancedOption apitype.ComponentReportRequestAdvancedOptions,
-	cacheOption cache.RequestOptions,
-	err error) {
-
-	if s.bigQueryClient == nil {
-		err = fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
-		return
-	}
-
-	allJobVariants, errs := api.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
-	if len(errs) > 0 {
-		err = fmt.Errorf("failed to get variants from bigquery")
-		return
-	}
-	baseRelease.Release = req.URL.Query().Get("baseRelease")
-	if baseRelease.Release == "" {
-		err = fmt.Errorf("missing base_release")
-		return
-	}
-
-	sampleRelease.Release = req.URL.Query().Get("sampleRelease")
-	if sampleRelease.Release == "" {
-		err = fmt.Errorf("missing sample_release")
-		return
-	}
-	// We only support pull request jobs as the sample, not the basis:
-	samplePROrg := req.URL.Query().Get("samplePROrg")
-	samplePRRepo := req.URL.Query().Get("samplePRRepo")
-	samplePRNumber := req.URL.Query().Get("samplePRNumber")
-	if len(samplePROrg) > 0 && len(samplePRRepo) > 0 && len(samplePRNumber) > 0 {
-		sampleRelease.PullRequestOptions = &apitype.PullRequestOptions{
-			Org:      samplePROrg,
-			Repo:     samplePRRepo,
-			PRNumber: samplePRNumber,
-		}
-	}
-
-	timeStr := req.URL.Query().Get("baseStartTime")
-	baseRelease.Start, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
-	if err != nil {
-		err = fmt.Errorf("base start time in wrong format")
-		return
-	}
-	timeStr = req.URL.Query().Get("baseEndTime")
-	baseRelease.End, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
-	if err != nil {
-		err = fmt.Errorf("base end time in wrong format")
-		return
-	}
-	timeStr = req.URL.Query().Get("sampleStartTime")
-	sampleRelease.Start, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
-	if err != nil {
-		err = fmt.Errorf("sample start time in wrong format")
-		return
-	}
-	timeStr = req.URL.Query().Get("sampleEndTime")
-	sampleRelease.End, err = util.ParseCRReleaseTime(timeStr, s.crTimeRoundingFactor)
-	if err != nil {
-		err = fmt.Errorf("sample end time in wrong format")
-		return
-	}
-
-	testIDOption.Component = req.URL.Query().Get("component")
-	testIDOption.Capability = req.URL.Query().Get("capability")
-	testIDOption.TestID = req.URL.Query().Get("testId")
-
-	variantOption, err = createVariantOptions(req, allJobVariants)
-	if err != nil {
-		return
-	}
-
-	advancedOption.Confidence = 95
-	confidenceStr := req.URL.Query().Get("confidence")
-	if confidenceStr != "" {
-		advancedOption.Confidence, err = strconv.Atoi(confidenceStr)
-		if err != nil {
-			err = fmt.Errorf("confidence is not a number")
-			return
-		}
-		if advancedOption.Confidence < 0 || advancedOption.Confidence > 100 {
-			err = fmt.Errorf("confidence is not in the correct range")
-			return
-		}
-	}
-
-	advancedOption.PityFactor = 5
-	pityStr := req.URL.Query().Get("pity")
-	if pityStr != "" {
-		advancedOption.PityFactor, err = strconv.Atoi(pityStr)
-		if err != nil {
-			err = fmt.Errorf("pity factor is not a number")
-			return
-		}
-		if advancedOption.PityFactor < 0 || advancedOption.PityFactor > 100 {
-			err = fmt.Errorf("pity factor is not in the correct range")
-			return
-		}
-	}
-
-	advancedOption.MinimumFailure = 3
-	minFailStr := req.URL.Query().Get("minFail")
-	if minFailStr != "" {
-		advancedOption.MinimumFailure, err = strconv.Atoi(minFailStr)
-		if err != nil {
-			err = fmt.Errorf("min_fail is not a number")
-			return
-		}
-		if advancedOption.MinimumFailure < 0 {
-			err = fmt.Errorf("min_fail is not in the correct range")
-			return
-		}
-	}
-
-	advancedOption.IgnoreMissing = false
-	ignoreMissingStr := req.URL.Query().Get("ignoreMissing")
-	if ignoreMissingStr != "" {
-		advancedOption.IgnoreMissing, err = strconv.ParseBool(ignoreMissingStr)
-		if err != nil {
-			err = errors.WithMessage(err, "expected boolean for ignore missing")
-			return
-		}
-	}
-
-	advancedOption.IgnoreDisruption = true
-	ignoreDisruptionsStr := req.URL.Query().Get("ignoreDisruption")
-	if ignoreMissingStr != "" {
-		advancedOption.IgnoreDisruption, err = strconv.ParseBool(ignoreDisruptionsStr)
-		if err != nil {
-			err = errors.WithMessage(err, "expected boolean for ignore disruption")
-			return
-		}
-	}
-
-	forceRefreshStr := req.URL.Query().Get("forceRefresh")
-	if forceRefreshStr != "" {
-		cacheOption.ForceRefresh, err = strconv.ParseBool(forceRefreshStr)
-		if err != nil {
-			err = errors.WithMessage(err, "expected boolean for force refresh")
-			return
-		}
-	}
-	cacheOption.CRTimeRoundingFactor = s.crTimeRoundingFactor
-
-	return
 }
 
 func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
@@ -1650,6 +1518,12 @@ func (s *Server) Serve() {
 			Description:  "Reports test variants for component readiness from BigQuery",
 			Capabilities: []string{ComponentReadinessCapability},
 			HandlerFunc:  s.jsonComponentTestVariantsFromBigQuery,
+		},
+		{
+			EndpointPath: "/api/component_readiness/views",
+			Description:  "Lists all predefined server-side views over ComponentReadiness data",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonComponentReadinessViews,
 		},
 		{
 			EndpointPath: "/api/capabilities",
