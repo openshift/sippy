@@ -11,7 +11,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
-	"gopkg.in/yaml.v3"
 )
 
 func ParseComponentReportRequest(
@@ -65,36 +64,32 @@ func ParseComponentReportRequest(
 		// set params from view
 		variantOption = view.VariantOptions
 		advancedOption = view.AdvancedOptions
-		baseRelease = view.BaseRelease
-		sampleRelease = view.SampleRelease
+		baseRelease = apitype.ComponentReportRequestReleaseOptions{
+			Release: view.BaseRelease.Release,
+		}
+		sampleRelease = apitype.ComponentReportRequestReleaseOptions{
+			Release: view.SampleRelease.Release,
+		}
 		// Translate relative start/end times to actual time.Time:
-		if baseRelease.StartRelative != "" {
-			baseRelease.Start, err = util.ParseCRReleaseTime(baseRelease.Release, baseRelease.StartRelative, true, crTimeRoundingFactor)
-			if err != nil {
-				err = fmt.Errorf("base start time in wrong format")
-				return
-			}
+		baseRelease.Start, err = util.ParseCRReleaseTime(baseRelease.Release, view.BaseRelease.RelativeStart, true, crTimeRoundingFactor)
+		if err != nil {
+			err = fmt.Errorf("base start time in wrong format")
+			return
 		}
-		if baseRelease.EndRelative != "" {
-			baseRelease.End, err = util.ParseCRReleaseTime(baseRelease.Release, baseRelease.EndRelative, false, crTimeRoundingFactor)
-			if err != nil {
-				err = fmt.Errorf("base end time in wrong format")
-				return
-			}
+		baseRelease.End, err = util.ParseCRReleaseTime(baseRelease.Release, view.BaseRelease.RelativeEnd, false, crTimeRoundingFactor)
+		if err != nil {
+			err = fmt.Errorf("base end time in wrong format")
+			return
 		}
-		if sampleRelease.StartRelative != "" {
-			sampleRelease.Start, err = util.ParseCRReleaseTime(sampleRelease.Release, sampleRelease.StartRelative, true, crTimeRoundingFactor)
-			if err != nil {
-				err = fmt.Errorf("sample start time in wrong format")
-				return
-			}
+		sampleRelease.Start, err = util.ParseCRReleaseTime(sampleRelease.Release, view.SampleRelease.RelativeStart, true, crTimeRoundingFactor)
+		if err != nil {
+			err = fmt.Errorf("sample start time in wrong format")
+			return
 		}
-		if sampleRelease.EndRelative != "" {
-			sampleRelease.End, err = util.ParseCRReleaseTime(sampleRelease.Release, sampleRelease.EndRelative, false, crTimeRoundingFactor)
-			if err != nil {
-				err = fmt.Errorf("sample end time in wrong format")
-				return
-			}
+		sampleRelease.End, err = util.ParseCRReleaseTime(sampleRelease.Release, view.SampleRelease.RelativeEnd, false, crTimeRoundingFactor)
+		if err != nil {
+			err = fmt.Errorf("sample end time in wrong format")
+			return
 		}
 	} else {
 		baseRelease.Release = req.URL.Query().Get("baseRelease")
@@ -231,16 +226,6 @@ func ParseComponentReportRequest(
 		}
 	}
 	cacheOption.CRTimeRoundingFactor = crTimeRoundingFactor
-
-	tempView := apitype.ComponentReportView{
-		Name:            "4.17-main",
-		BaseRelease:     baseRelease,
-		SampleRelease:   sampleRelease,
-		VariantOptions:  variantOption,
-		AdvancedOptions: advancedOption,
-	}
-	bytes, _ := yaml.Marshal(tempView)
-	fmt.Printf("\n\n%s\n\n", string(bytes))
 
 	return
 }

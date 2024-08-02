@@ -804,12 +804,15 @@ type ComponentReportRequestReleaseOptions struct {
 	PullRequestOptions *PullRequestOptions `json:"pull_request_options,omitempty" yaml:"pull_request_options,omitempty"`
 	Start              time.Time           `json:"start,omitempty" yaml:"start,omitempty"`
 	End                time.Time           `json:"end,omitempty" yaml:"end,omitempty"`
+}
 
-	// StartRelative/EndRelative are a custom format for times relative to now/ga dates which can be used instead of
-	// fixed fully qualified times. These are primarily for views.
-
-	StartRelative string `json:"start_relative,omitempty" yaml:"start_relative,omitempty"`
-	EndRelative   string `json:"end_relative,omitempty" yaml:"end_relative,omitempty"`
+// ComponentReportRequestRelativeReleaseOptions is an unfortunate necessity for views where we do not have
+// a fixed time, rather a relative time to now/ga. It is translated to the above normal struct before use.
+type ComponentReportRequestRelativeReleaseOptions struct {
+	Release            string              `json:"release" yaml:"release"`
+	PullRequestOptions *PullRequestOptions `json:"pull_request_options,omitempty" yaml:"pull_request_options,omitempty"`
+	RelativeStart      string              `json:"start,omitempty" yaml:"start,omitempty"`
+	RelativeEnd        string              `json:"end,omitempty" yaml:"end,omitempty"`
 }
 
 type ComponentReportRequestTestIdentificationOptions struct {
@@ -830,11 +833,11 @@ type ComponentReportRequestVariantOptions struct {
 // ComponentReportView is a server side construct representing a predefined view over the data.
 // Useful for defining the primary view of what we deem required for considering the release ready.
 type ComponentReportView struct {
-	Name            string                                `json:"name" yaml:"name"`
-	BaseRelease     ComponentReportRequestReleaseOptions  `json:"base_release" yaml:"base_release"`
-	SampleRelease   ComponentReportRequestReleaseOptions  `json:"sample_release" yaml:"sample_release"`
-	VariantOptions  ComponentReportRequestVariantOptions  `json:"variant_options" yaml:"variant_options"`
-	AdvancedOptions ComponentReportRequestAdvancedOptions `json:"advanced_options" yaml:"advanced_options"`
+	Name            string                                       `json:"name" yaml:"name"`
+	BaseRelease     ComponentReportRequestRelativeReleaseOptions `json:"base_release" yaml:"base_release"`
+	SampleRelease   ComponentReportRequestRelativeReleaseOptions `json:"sample_release" yaml:"sample_release"`
+	VariantOptions  ComponentReportRequestVariantOptions         `json:"variant_options" yaml:"variant_options"`
+	AdvancedOptions ComponentReportRequestAdvancedOptions        `json:"advanced_options" yaml:"advanced_options"`
 }
 
 type ComponentReportRequestAdvancedOptions struct {

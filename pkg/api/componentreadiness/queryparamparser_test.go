@@ -36,15 +36,15 @@ func TestParseComponentReportRequest(t *testing.T) {
 
 	view417main := apitype.ComponentReportView{
 		Name: "4.17-main",
-		BaseRelease: apitype.ComponentReportRequestReleaseOptions{
-			Release: "4.16",
-			Start:   time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
-			End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
+		BaseRelease: apitype.ComponentReportRequestRelativeReleaseOptions{
+			Release:       "4.16",
+			RelativeStart: "ga-30d",
+			RelativeEnd:   "ga",
 		},
-		SampleRelease: apitype.ComponentReportRequestReleaseOptions{
-			Release: "4.17",
-			Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
-			End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
+		SampleRelease: apitype.ComponentReportRequestRelativeReleaseOptions{
+			Release:       "4.17",
+			RelativeStart: "now-7d",
+			RelativeEnd:   "now",
 		},
 		VariantOptions: apitype.ComponentReportRequestVariantOptions{
 			ColumnGroupBy:     defaultColumnGroupByVariants,
@@ -63,6 +63,10 @@ func TestParseComponentReportRequest(t *testing.T) {
 	views := []apitype.ComponentReportView{
 		view417main,
 	}
+
+	now := time.Now().UTC()
+	//nowRoundDown := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	nowRoundUp := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
 
 	tests := []struct {
 		name string
@@ -130,8 +134,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				IgnoreDisruption: true,
 			},
 			cacheOption: cache.RequestOptions{
-				ForceRefresh:         false,
-				CRTimeRoundingFactor: 4 * time.Hour,
+				ForceRefresh: false,
 			},
 		},
 		{
@@ -150,13 +153,13 @@ func TestParseComponentReportRequest(t *testing.T) {
 			},
 			baseRelease: apitype.ComponentReportRequestReleaseOptions{
 				Release: "4.16",
-				Start:   time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
-				End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
+				Start:   time.Date(2024, time.May, 28, 0, 0, 0, 0, time.UTC),
+				End:     time.Date(2024, time.June, 27, 23, 59, 59, 0, time.UTC),
 			},
 			sampleRelease: apitype.ComponentReportRequestReleaseOptions{
 				Release: "4.17",
-				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
-				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
+				Start:   time.Date(2024, time.July, 26, 0, 0, 0, 0, time.UTC),
+				End:     nowRoundUp,
 			},
 			testIDOption: apitype.ComponentReportRequestTestIdentificationOptions{},
 			advancedOption: apitype.ComponentReportRequestAdvancedOptions{
@@ -167,8 +170,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				IgnoreDisruption: true,
 			},
 			cacheOption: cache.RequestOptions{
-				ForceRefresh:         false,
-				CRTimeRoundingFactor: 4 * time.Hour,
+				ForceRefresh: false,
 			},
 		},
 		{
@@ -199,7 +201,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
 			baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
-				ParseComponentReportRequest(views, req, allJobVariants, 4*time.Hour)
+				ParseComponentReportRequest(views, req, allJobVariants, time.Duration(0))
+
 			if tc.errMessage != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errMessage)
