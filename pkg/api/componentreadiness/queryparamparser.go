@@ -67,6 +67,35 @@ func ParseComponentReportRequest(
 		advancedOption = view.AdvancedOptions
 		baseRelease = view.BaseRelease
 		sampleRelease = view.SampleRelease
+		// Translate relative start/end times to actual time.Time:
+		if baseRelease.StartRelative != "" {
+			baseRelease.Start, err = util.ParseCRReleaseTime(baseRelease.Release, baseRelease.StartRelative, true, crTimeRoundingFactor)
+			if err != nil {
+				err = fmt.Errorf("base start time in wrong format")
+				return
+			}
+		}
+		if baseRelease.EndRelative != "" {
+			baseRelease.End, err = util.ParseCRReleaseTime(baseRelease.Release, baseRelease.EndRelative, false, crTimeRoundingFactor)
+			if err != nil {
+				err = fmt.Errorf("base end time in wrong format")
+				return
+			}
+		}
+		if sampleRelease.StartRelative != "" {
+			sampleRelease.Start, err = util.ParseCRReleaseTime(sampleRelease.Release, sampleRelease.StartRelative, true, crTimeRoundingFactor)
+			if err != nil {
+				err = fmt.Errorf("sample start time in wrong format")
+				return
+			}
+		}
+		if sampleRelease.EndRelative != "" {
+			sampleRelease.End, err = util.ParseCRReleaseTime(sampleRelease.Release, sampleRelease.EndRelative, false, crTimeRoundingFactor)
+			if err != nil {
+				err = fmt.Errorf("sample end time in wrong format")
+				return
+			}
+		}
 	} else {
 		baseRelease.Release = req.URL.Query().Get("baseRelease")
 		if baseRelease.Release == "" {

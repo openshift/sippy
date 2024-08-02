@@ -804,6 +804,12 @@ type ComponentReportRequestReleaseOptions struct {
 	PullRequestOptions *PullRequestOptions `json:"pull_request_options,omitempty" yaml:"pull_request_options,omitempty"`
 	Start              time.Time           `json:"start,omitempty" yaml:"start,omitempty"`
 	End                time.Time           `json:"end,omitempty" yaml:"end,omitempty"`
+
+	// StartRelative/EndRelative are a custom format for times relative to now/ga dates which can be used instead of
+	// fixed fully qualified times. These are primarily for views.
+
+	StartRelative string `json:"start_relative,omitempty" yaml:"start_relative,omitempty"`
+	EndRelative   string `json:"end_relative,omitempty" yaml:"end_relative,omitempty"`
 }
 
 type ComponentReportRequestTestIdentificationOptions struct {
