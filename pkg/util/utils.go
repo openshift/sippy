@@ -135,13 +135,13 @@ func ParseCRReleaseTime(release, timeStr string, isStart bool, crTimeRoundingFac
 			}
 		}
 		return relTime, nil
-	} else {
-		// Parse as a fully qualified timestamp:
-		var err error
-		relTime, err = time.Parse(time.RFC3339, timeStr)
-		if err != nil {
-			return relTime, err
-		}
+	}
+
+	// Parse as a fully qualified timestamp:
+	var err error
+	relTime, err = time.Parse(time.RFC3339, timeStr)
+	if err != nil {
+		return relTime, err
 	}
 
 	// Apply the rounding factor:

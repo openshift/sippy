@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 )
 
+// nolint:gocyclo
 func ParseComponentReportRequest(
 	views []apitype.ComponentReportView,
 	req *http.Request,

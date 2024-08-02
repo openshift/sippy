@@ -65,7 +65,6 @@ func TestParseComponentReportRequest(t *testing.T) {
 	}
 
 	now := time.Now().UTC()
-	//nowRoundDown := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	nowRoundUp := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
 
 	tests := []struct {
