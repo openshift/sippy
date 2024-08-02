@@ -43,6 +43,13 @@ func TestParseCRReleaseTime(t *testing.T) {
 			expectedTime: nowRoundUp,
 		},
 		{
+			name:           "now end date with cache rounding",
+			timeStr:        "now",
+			roundingFactor: 4 * time.Hour,
+			isStart:        false,
+			expectedTime:   now.Truncate(4 * time.Hour),
+		},
+		{
 			name:         "now-7d start date",
 			timeStr:      "now-7d",
 			isStart:      true,
@@ -60,6 +67,13 @@ func TestParseCRReleaseTime(t *testing.T) {
 			timeStr:      "ga",
 			isStart:      true,
 			expectedTime: time.Date(2024, 6, 27, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:        "missing ga start date",
+			release:     "3.1",
+			timeStr:     "ga",
+			isStart:     true,
+			expectedErr: true,
 		},
 		{
 			name:         "4.16 ga end date",

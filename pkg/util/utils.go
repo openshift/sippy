@@ -106,7 +106,6 @@ func ParseCRReleaseTime(release, timeStr string, isStart bool, crTimeRoundingFac
 	// Check if the time parses as our custom format for times relative to now/ga:
 	matches := releaseRelativeRE.FindStringSubmatch(timeStr)
 	if matches != nil {
-		fmt.Printf("%v\n", matches)
 		switch matches[1] {
 		case "now":
 			relTime = time.Now()
@@ -126,8 +125,16 @@ func ParseCRReleaseTime(release, timeStr string, isStart bool, crTimeRoundingFac
 			relTime = time.Date(relTime.Year(), relTime.Month(), relTime.Day(), 0, 0, 0, 0, time.UTC)
 
 		} else {
-			relTime = time.Date(relTime.Year(), relTime.Month(), relTime.Day(), 23, 59, 59, 0, time.UTC)
+			// Apply the rounding factor if using today:
+			now := time.Now().UTC()
+			if crTimeRoundingFactor > 0 && now.Format("2006-01-02") == relTime.Format("2006-01-02") {
+				relTime = now.Truncate(crTimeRoundingFactor)
+			} else {
+				// otherwise round up to end of day
+				relTime = time.Date(relTime.Year(), relTime.Month(), relTime.Day(), 23, 59, 59, 0, time.UTC)
+			}
 		}
+		return relTime, nil
 	} else {
 		// Parse as a fully qualified timestamp:
 		var err error
