@@ -40,8 +40,7 @@ func ParseComponentReportRequest(
 			err = fmt.Errorf("unknown view: %s", viewRequested)
 			return
 		}
-	}
-	if viewRequested != "" {
+
 		// the following params are not compatible with use of a view and will generate an error if combined with one:
 		if pErr := anyParamSpecified(req,
 			"baseRelease",
