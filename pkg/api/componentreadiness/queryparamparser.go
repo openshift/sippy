@@ -161,25 +161,25 @@ func ParseComponentReportRequest(
 		// TODO: if specified, allow these to override view defaults for start/end time.
 		// will need to relocate this outside this else.
 		timeStr := req.URL.Query().Get("baseStartTime")
-		baseRelease.Start, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
+		baseRelease.Start, err = util.ParseCRReleaseTime(baseRelease.Release, timeStr, true, crTimeRoundingFactor)
 		if err != nil {
 			err = fmt.Errorf("base start time in wrong format")
 			return
 		}
 		timeStr = req.URL.Query().Get("baseEndTime")
-		baseRelease.End, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
+		baseRelease.End, err = util.ParseCRReleaseTime(baseRelease.Release, timeStr, false, crTimeRoundingFactor)
 		if err != nil {
 			err = fmt.Errorf("base end time in wrong format")
 			return
 		}
 		timeStr = req.URL.Query().Get("sampleStartTime")
-		sampleRelease.Start, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
+		sampleRelease.Start, err = util.ParseCRReleaseTime(sampleRelease.Release, timeStr, true, crTimeRoundingFactor)
 		if err != nil {
 			err = fmt.Errorf("sample start time in wrong format")
 			return
 		}
 		timeStr = req.URL.Query().Get("sampleEndTime")
-		sampleRelease.End, err = util.ParseCRReleaseTime(timeStr, crTimeRoundingFactor)
+		sampleRelease.End, err = util.ParseCRReleaseTime(sampleRelease.Release, timeStr, false, crTimeRoundingFactor)
 		if err != nil {
 			err = fmt.Errorf("sample end time in wrong format")
 			return

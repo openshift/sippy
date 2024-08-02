@@ -2,6 +2,9 @@ package releaseloader
 
 import "time"
 
+// TODO: should be moved to a bigquery query, this was done because at the time it was still
+// possible to run sippy without bigquery. We believe that is no longer the case, so this could
+// be a live query.
 var GADateMap = map[string]time.Time{
 	"4.16": time.Date(2024, 6, 27, 0, 0, 0, 0, time.UTC),
 	"4.15": time.Date(2024, 2, 28, 0, 0, 0, 0, time.UTC),

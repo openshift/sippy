@@ -280,7 +280,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	today := now.Truncate(24 * time.Hour)
 	end := today.Add(24 * time.Hour).Add(-1 * time.Second)
 	if cacheOptions.CRTimeRoundingFactor > 0 {
-		end, _ = util.ParseCRReleaseTime(now.Format(time.RFC3339), cacheOptions.CRTimeRoundingFactor)
+		end, _ = util.ParseCRReleaseTime(baseRelease.Release, now.Format(time.RFC3339), false, cacheOptions.CRTimeRoundingFactor)
 	}
 	sampleRelease := apitype.ComponentReportRequestReleaseOptions{
 		Release: next,
