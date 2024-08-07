@@ -250,7 +250,7 @@ var (
 	metalRegex      = regexp.MustCompile(`(?i)-metal`)
 	microshiftRegex = regexp.MustCompile(`(?i)-microshift`)
 	// Variant for Heterogeneous
-	multiRegex   = regexp.MustCompile(`(?i)-heterogeneous`)
+	multiRegex   = regexp.MustCompile(`(?i)-heterogeneous|-multi-`)
 	nutanixRegex = regexp.MustCompile(`(?i)-nutanix`)
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
