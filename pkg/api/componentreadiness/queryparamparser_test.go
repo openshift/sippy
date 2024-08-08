@@ -67,6 +67,9 @@ func TestParseComponentReportRequest(t *testing.T) {
 	now := time.Now().UTC()
 	nowRoundUp := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
 
+	adjustDur := time.Duration(7) * 24 * time.Hour
+	nowMinus7Days := now.Add(-adjustDur)
+
 	tests := []struct {
 		name string
 
@@ -211,7 +214,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			},
 			sampleRelease: apitype.ComponentReportRequestReleaseOptions{
 				Release: "4.17",
-				Start:   time.Date(2024, time.July, 26, 0, 0, 0, 0, time.UTC),
+				Start:   time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
 				End:     nowRoundUp,
 			},
 			testIDOption: apitype.ComponentReportRequestTestIdentificationOptions{},
