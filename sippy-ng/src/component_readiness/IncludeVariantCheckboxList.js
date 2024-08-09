@@ -1,7 +1,7 @@
 import { CompReadyVarsContext } from './CompReadyVars'
-import CheckBoxList from './CheckboxList'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
+import VariantCheckboxList from './VariantCheckboxList'
 
 export default function IncludeVariantCheckBoxList(props) {
   const variantName = props.variantName
@@ -17,7 +17,7 @@ export default function IncludeVariantCheckBoxList(props) {
     setCheckedItems(newCheckedItems)
   }
   return (
-    <CheckBoxList
+    <VariantCheckboxList
       headerName={'Include ' + variantName}
       displayList={varsContext.allJobVariants[variantName]}
       checkedItems={checkedItems}

@@ -6,17 +6,16 @@ import {
   getUpdatedUrlParts,
 } from './CompReadyUtils'
 import { Fragment } from 'react'
-import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@mui/material/Button'
-import CheckBoxList from './CheckboxList'
-import CompReadyTestCell from './CompReadyTestCell'
+import GroupByCheckboxList from './GroupByCheckboxList'
 import IncludeVariantCheckBoxList from './IncludeVariantCheckboxList'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Tooltip from '@mui/material/Tooltip'
+import VariantCheckboxList from './VariantCheckboxList'
 
 export const useStyles = makeStyles((theme) => ({
   crRelease: {
@@ -53,7 +52,7 @@ export default function CompReadyMainInputs(props) {
   const varsContext = useContext(CompReadyVarsContext)
   const compReadyEnvOptions = (
     <div>
-      <CheckBoxList
+      <GroupByCheckboxList
         headerName="Group By"
         displayList={varsContext.dbGroupByVariants}
         checkedItems={varsContext.columnGroupByCheckedItems}
@@ -61,7 +60,7 @@ export default function CompReadyMainInputs(props) {
       />
       {Object.keys(varsContext.allJobVariants)
         .filter((key) => !checkBoxHiddenIncludeVariants.has(key))
-        .map((variant, i) => (
+        .map((variant) => (
           <IncludeVariantCheckBoxList key={variant} variantName={variant} />
         ))}
       <AdvancedOptions
