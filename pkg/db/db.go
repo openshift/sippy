@@ -37,7 +37,7 @@ type log2LogrusWriter struct {
 }
 
 func (w log2LogrusWriter) Printf(msg string, args ...interface{}) {
-	w.entry.Debugf(msg, args...)
+	w.entry.Infof(msg, args...)
 }
 
 func New(dsn string, logLevel gormlogger.LogLevel) (*DB, error) {
