@@ -17,24 +17,11 @@ import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import Typography from '@mui/material/Typography'
 
-export default function CheckBoxList(props) {
+export default function VariantCheckboxList(props) {
   const useStyles = makeStyles((theme) => ({
     formControl: {
       margin: theme.spacing(1),
       minWidth: '20px',
-    },
-    selectEmpty: {
-      marginTop: theme.spacing(2),
-    },
-    headerName: {
-      width: '220px',
-      padding: '0px',
-      margin: '0px',
-    },
-    summary: {
-      backgroundColor: 'rgb(0, 153, 255)',
-      margin: '0px !important',
-      padding: '0px',
     },
     gridCenter: {
       marginTop: theme.spacing(1),
@@ -61,7 +48,6 @@ export default function CheckBoxList(props) {
     }
   }
   const handleToggleCompare = () => {
-    console.log('Toggle Compare')
     setIsCompareMode(!isCompareMode)
   }
 
@@ -71,9 +57,9 @@ export default function CheckBoxList(props) {
       className={classes.formControl}
       component="fieldset"
     >
-      <Accordion className={classes.headerName}>
+      <Accordion className="checkboxlist-headerName">
         <AccordionSummary
-          className={classes.summary}
+          className="checkboxlist-summary"
           expandIcon={<ExpandMore />}
         >
           <Typography className="checkboxlist-label">
@@ -167,7 +153,7 @@ function VariantGroup(
   )
 }
 
-CheckBoxList.propTypes = VariantGroup.propTypes = {
+VariantCheckboxList.propTypes = VariantGroup.propTypes = {
   headerName: PropTypes.string,
   displayList: PropTypes.array,
   checkedItems: PropTypes.array,
