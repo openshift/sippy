@@ -25,6 +25,7 @@ export const CompReadyVarsContext = createContext()
 export const CompReadyVarsProvider = ({ children }) => {
   const [allJobVariants, setAllJobVariants] = useState([])
   const [views, setViews] = useState([])
+  const [view, setView] = useState([])
   const [isLoaded, setIsLoaded] = useState(false)
   const [fetchError, setFetchError] = useState('')
 
@@ -315,6 +316,7 @@ export const CompReadyVarsProvider = ({ children }) => {
       .then(([variants, views]) => {
         setAllJobVariants(variants.variants)
         setViews(views)
+        setView(views[0].name)
         setIsLoaded(true)
       })
       .catch((error) => {
@@ -382,6 +384,9 @@ export const CompReadyVarsProvider = ({ children }) => {
     <CompReadyVarsContext.Provider
       value={{
         allJobVariants,
+        views,
+        view,
+        setView,
         expandEnvironment,
         baseRelease,
         setBaseReleaseWithDates,

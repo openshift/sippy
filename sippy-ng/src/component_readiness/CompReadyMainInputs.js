@@ -5,6 +5,7 @@ import {
   formatLongDate,
   getUpdatedUrlParts,
 } from './CompReadyUtils'
+import { FormControl, Grid, InputLabel, MenuItem, Select } from '@mui/material'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
@@ -119,6 +120,25 @@ export default function CompReadyMainInputs(props) {
             <Fragment>Generate Report</Fragment>
           </Tooltip>
         </Button>
+      </div>
+
+      <div className={classes.crRelease}>
+        <FormControl variant="standard">
+          <InputLabel>View</InputLabel>
+          <Select
+            variant="standard"
+            value={varsContext.view}
+            onChange={(e) => {
+              varsContext.setView(e.target.value)
+            }}
+          >
+            {varsContext.views.map((v, index) => (
+              <MenuItem key={index} value={v.name}>
+                {v.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </div>
 
       <div className={classes.crRelease}>
