@@ -75,6 +75,10 @@ export function getJobVariantsUrl() {
   return process.env.REACT_APP_API_URL + '/api/job_variants'
 }
 
+export function getComponentReadinessViewsUrl() {
+  return process.env.REACT_APP_API_URL + '/api/component_readiness/views'
+}
+
 // Make one place to create the Component Readiness test_details api call
 export function getTestDetailsAPIUrl() {
   return process.env.REACT_APP_API_URL + '/api/component_readiness/test_details'

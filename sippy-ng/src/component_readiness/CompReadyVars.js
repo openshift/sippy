@@ -11,6 +11,7 @@ import {
   dateEndFormat,
   dateFormat,
   formatLongDate,
+  getComponentReadinessViewsUrl,
   getJobVariantsUrl,
   gotFetchError,
 } from './CompReadyUtils'
@@ -23,6 +24,7 @@ export const CompReadyVarsContext = createContext()
 
 export const CompReadyVarsProvider = ({ children }) => {
   const [allJobVariants, setAllJobVariants] = useState([])
+  const [views, setViews] = useState([])
   const [isLoaded, setIsLoaded] = useState(false)
   const [fetchError, setFetchError] = useState('')
 
@@ -290,21 +292,33 @@ export const CompReadyVarsProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    const apiCallStr = getJobVariantsUrl()
-    fetch(apiCallStr)
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.code < 200 || data.code >= 300) {
-          const errorMessage = data.message
-            ? `${data.message}`
+    const jobVariantsAPIURL = getJobVariantsUrl()
+    const viewsAPIURL = getComponentReadinessViewsUrl()
+    Promise.all([fetch(jobVariantsAPIURL), fetch(viewsAPIURL)])
+      .then(([variantsResp, viewsResp]) => {
+        if (variantsResp.code < 200 || variantsResp.code >= 300) {
+          const errorMessage = variantsResp.message
+            ? `${variantsResp.message}`
             : 'No error message'
-          throw new Error(`Return code = ${data.code} (${errorMessage})`)
+          throw new Error(
+            `Return code = ${variantsResp.code} (${errorMessage})`
+          )
         }
-        setAllJobVariants(data.variants)
+        if (viewsResp.code < 200 || viewsResp.code >= 300) {
+          const errorMessage = viewsResp.message
+            ? `${viewsResp.message}`
+            : 'No error message'
+          throw new Error(`Return code = ${viewsResp.code} (${errorMessage})`)
+        }
+        return Promise.all([variantsResp.json(), viewsResp.json()])
+      })
+      .then(([variants, views]) => {
+        setAllJobVariants(variants.variants)
+        setViews(views)
         setIsLoaded(true)
       })
       .catch((error) => {
-        setFetchError(`API call failed: ${apiCallStr}\n${error}`)
+        setFetchError(`API call failed: ${error}`)
       })
       .finally(() => {
         // Mark the attempt as finished whether successful or not.
