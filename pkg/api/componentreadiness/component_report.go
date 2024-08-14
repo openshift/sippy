@@ -204,7 +204,11 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsB
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return api.GetDataFromCacheOrGenerate[apitype.ComponentReport](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("ComponentReport~"), generator.GenerateReport, apitype.ComponentReport{})
+	return api.GetDataFromCacheOrGenerate[apitype.ComponentReport](
+		generator.client.Cache, generator.cacheOption,
+		generator.GetComponentReportCacheKey("ComponentReport~"),
+		generator.GenerateReport,
+		apitype.ComponentReport{})
 }
 
 // TODO: ComponentReport is inaccurate and overly verbose in this naming, at this point it's not really about a component
@@ -229,7 +233,12 @@ func GetComponentReportTestDetailsFromBigQuery(client *bqcachedclient.Client, pr
 		ComponentReportRequestAdvancedOptions:           advancedOption,
 	}
 
-	return api.GetDataFromCacheOrGenerate[apitype.ComponentReportTestDetails](generator.client.Cache, generator.cacheOption, generator.GetComponentReportCacheKey("TestDetailsReport~"), generator.GenerateTestDetailsReport, apitype.ComponentReportTestDetails{})
+	return api.GetDataFromCacheOrGenerate[apitype.ComponentReportTestDetails](
+		generator.client.Cache,
+		generator.cacheOption,
+		generator.GetComponentReportCacheKey("TestDetailsReport~"),
+		generator.GenerateTestDetailsReport,
+		apitype.ComponentReportTestDetails{})
 }
 
 // componentReportGenerator contains the information needed to generate a CR report. Do

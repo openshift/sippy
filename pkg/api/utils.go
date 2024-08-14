@@ -53,7 +53,11 @@ func GetPrefixedCacheKey(prefix string, cacheKey interface{}) CacheData {
 }
 
 // GetDataFromCacheOrGenerate attempts to find a cached record otherwise generates new data.
-func GetDataFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheData CacheData, generateFn func() (T, []error), defaultVal T) (T, []error) {
+func GetDataFromCacheOrGenerate[T any](
+	c cache.Cache, cacheOptions cache.RequestOptions, cacheData CacheData,
+	generateFn func() (T, []error),
+	defaultVal T,
+) (T, []error) {
 	if c != nil {
 		cacheKey, err := cacheData.GetCacheKey()
 		if err != nil {
