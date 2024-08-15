@@ -7,37 +7,26 @@ import {
   FormControl,
   FormControlLabel,
   FormGroup,
+  Tooltip,
 } from '@mui/material'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
-import React, { useState } from 'react'
+import React, { useContext, useState } from 'react'
 import Typography from '@mui/material/Typography'
 
-export default function CheckBoxList(props) {
+export default function GroupByCheckboxList(props) {
+  const varsContext = useContext(CompReadyVarsContext)
   const useStyles = makeStyles((theme) => ({
     formControl: {
       margin: theme.spacing(1),
       minWidth: '20px',
     },
-    selectEmpty: {
-      marginTop: theme.spacing(2),
-    },
-    headerName: {
-      width: '220px',
-      padding: '0px',
-      margin: '0px',
-    },
-    summary: {
-      backgroundColor: 'rgb(0, 153, 255)',
-      margin: '0px !important',
-      padding: '0px',
-    },
   }))
 
   const classes = useStyles()
-  const checkedItems = props.checkedItems
-  const setCheckedItems = props.setCheckedItems
+  const [checkedItems, setCheckedItems] = useState(props.checkedItems)
   const handleChange = (event) => {
     const item = event.target.name
     const isChecked = event.target.checked
@@ -56,9 +45,9 @@ export default function CheckBoxList(props) {
       className={classes.formControl}
       component="fieldset"
     >
-      <Accordion className={classes.headerName}>
+      <Accordion className="checkboxlist-headerName">
         <AccordionSummary
-          className={classes.summary}
+          className="checkboxlist-summary"
           expandIcon={<ExpandMore />}
         >
           <Typography className="checkboxlist-label">
@@ -67,19 +56,33 @@ export default function CheckBoxList(props) {
         </AccordionSummary>
         <AccordionDetails>
           <FormGroup>
-            {props.displayList.map((item) => (
-              <FormControlLabel
-                key={item}
-                control={
-                  <Checkbox
-                    checked={checkedItems.includes(item)}
-                    onChange={handleChange}
-                    name={item}
+            {props.displayList.map((item) => {
+              let isCompareMode = varsContext.variantCrossCompare.includes(item)
+              return (
+                <Tooltip
+                  key={item}
+                  title={
+                    isCompareMode
+                      ? 'Column grouping is disabled for this variant while selected for cross-comparison'
+                      : 'Separate columns by variants in group ' + item
+                  }
+                >
+                  <FormControlLabel
+                    key={item}
+                    disabled={isCompareMode}
+                    control={
+                      <Checkbox
+                        checked={checkedItems.includes(item)}
+                        disabled={isCompareMode}
+                        onChange={handleChange}
+                        name={item}
+                      />
+                    }
+                    label={item}
                   />
-                }
-                label={item}
-              />
-            ))}
+                </Tooltip>
+              )
+            })}
           </FormGroup>
         </AccordionDetails>
       </Accordion>
@@ -87,7 +90,7 @@ export default function CheckBoxList(props) {
   )
 }
 
-CheckBoxList.propTypes = {
+GroupByCheckboxList.propTypes = {
   headerName: PropTypes.string,
   displayList: PropTypes.array,
   checkedItems: PropTypes.array,

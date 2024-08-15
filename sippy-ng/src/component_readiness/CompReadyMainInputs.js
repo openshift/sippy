@@ -7,13 +7,11 @@ import {
 } from './CompReadyUtils'
 import { FormControl, Grid, InputLabel, MenuItem, Select } from '@mui/material'
 import { Fragment } from 'react'
-import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import { useHistory } from 'react-router-dom'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@mui/material/Button'
-import CheckBoxList from './CheckboxList'
-import CompReadyTestCell from './CompReadyTestCell'
+import GroupByCheckboxList from './GroupByCheckboxList'
 import IncludeVariantCheckBoxList from './IncludeVariantCheckboxList'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
@@ -56,7 +54,7 @@ export default function CompReadyMainInputs(props) {
   const history = useHistory()
   const compReadyEnvOptions = (
     <div>
-      <CheckBoxList
+      <GroupByCheckboxList
         headerName="Group By"
         displayList={varsContext.dbGroupByVariants}
         checkedItems={varsContext.columnGroupByCheckedItems}
@@ -64,8 +62,11 @@ export default function CompReadyMainInputs(props) {
       />
       {Object.keys(varsContext.allJobVariants)
         .filter((key) => !checkBoxHiddenIncludeVariants.has(key))
-        .map((variant, i) => (
-          <IncludeVariantCheckBoxList key={variant} variantName={variant} />
+        .map((variant) => (
+          <IncludeVariantCheckBoxList
+            key={variant}
+            variantGroupName={variant}
+          />
         ))}
       <AdvancedOptions
         headerName="Advanced"
@@ -112,28 +113,7 @@ export default function CompReadyMainInputs(props) {
           size="large"
           variant="contained"
           color="primary"
-          to={
-            '/component_readiness/main' +
-            getUpdatedUrlParts(
-              varsContext.baseRelease,
-              varsContext.baseStartTime,
-              varsContext.baseEndTime,
-              varsContext.sampleRelease,
-              varsContext.sampleStartTime,
-              varsContext.sampleEndTime,
-              varsContext.samplePROrg,
-              varsContext.samplePRRepo,
-              varsContext.samplePRNumber,
-              varsContext.columnGroupByCheckedItems,
-              varsContext.includeVariantsCheckedItems,
-              varsContext.dbGroupByVariants,
-              varsContext.confidence,
-              varsContext.pity,
-              varsContext.minFail,
-              varsContext.ignoreDisruption,
-              varsContext.ignoreMissing
-            )
-          }
+          to={'/component_readiness/main' + getUpdatedUrlParts(varsContext)}
           onClick={varsContext.handleGenerateReport}
         >
           <Tooltip
@@ -149,7 +129,8 @@ export default function CompReadyMainInputs(props) {
 
       <div className={classes.crRelease}>
         <ReleaseSelector
-          label="Release to Evaluate"
+          label="Sample Release"
+          tooltip="Release and dates to compare for regression against the basis (historical) release"
           version={varsContext.sampleRelease}
           onChange={varsContext.setSampleReleaseWithDates}
           startTime={formatLongDate(varsContext.sampleStartTime, dateFormat)}
@@ -168,7 +149,8 @@ export default function CompReadyMainInputs(props) {
       <div className={classes.crRelease}>
         <ReleaseSelector
           version={varsContext.baseRelease}
-          label="Historical Release"
+          label="Basis Release"
+          tooltip="Release and dates to specify a historical record of how tests have performed"
           onChange={varsContext.setBaseReleaseWithDates}
           startTime={formatLongDate(varsContext.baseStartTime, dateFormat)}
           setStartTime={varsContext.setBaseStartTime}

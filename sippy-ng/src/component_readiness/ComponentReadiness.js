@@ -266,25 +266,7 @@ export default function ComponentReadiness(props) {
     if (varsContext.view != null && varsContext.view !== '') {
       apiCallStr += '?view=' + varsContext.view
     } else {
-      apiCallStr += getUpdatedUrlParts(
-        varsContext.baseRelease,
-        varsContext.baseStartTime,
-        varsContext.baseEndTime,
-        varsContext.sampleRelease,
-        varsContext.sampleStartTime,
-        varsContext.sampleEndTime,
-        varsContext.samplePROrg,
-        varsContext.samplePRRepo,
-        varsContext.samplePRNumber,
-        varsContext.columnGroupByCheckedItems,
-        varsContext.includeVariantsCheckedItems,
-        varsContext.dbGroupByVariants,
-        varsContext.confidence,
-        varsContext.pity,
-        varsContext.minFail,
-        varsContext.ignoreDisruption,
-        varsContext.ignoreMissing
-      )
+      apiCallStr += getUpdatedUrlParts(varsContext)
     }
     return makeRFC3339Time(apiCallStr)
   }
@@ -398,25 +380,7 @@ export default function ComponentReadiness(props) {
                 path="/component_readiness/test_details"
                 render={(props) => {
                   // We need to pass the testId and testName
-                  const filterVals = getUpdatedUrlParts(
-                    varsContext.baseRelease,
-                    varsContext.baseStartTime,
-                    varsContext.baseEndTime,
-                    varsContext.sampleRelease,
-                    varsContext.sampleStartTime,
-                    varsContext.sampleEndTime,
-                    varsContext.samplePROrg,
-                    varsContext.samplePRRepo,
-                    varsContext.samplePRNumber,
-                    varsContext.columnGroupByCheckedItems,
-                    varsContext.includeVariantsCheckedItems,
-                    varsContext.dbGroupByVariants,
-                    varsContext.confidence,
-                    varsContext.pity,
-                    varsContext.minFail,
-                    varsContext.ignoreDisruption,
-                    varsContext.ignoreMissing
-                  )
+                  const filterVals = getUpdatedUrlParts(varsContext)
                   varsContext.setComponentParam(varsContext.component)
                   varsContext.setCapabilityParam(varsContext.capability)
                   setTestIdParam(testId)
@@ -439,25 +403,7 @@ export default function ComponentReadiness(props) {
                 path="/component_readiness/test"
                 render={(props) => {
                   // We need to pass the testId
-                  const filterVals = getUpdatedUrlParts(
-                    varsContext.baseRelease,
-                    varsContext.baseStartTime,
-                    varsContext.baseEndTime,
-                    varsContext.sampleRelease,
-                    varsContext.sampleStartTime,
-                    varsContext.sampleEndTime,
-                    varsContext.samplePROrg,
-                    varsContext.samplePRRepo,
-                    varsContext.samplePRNumber,
-                    varsContext.columnGroupByCheckedItems,
-                    varsContext.includeVariantsCheckedItems,
-                    varsContext.dbGroupByVariants,
-                    varsContext.confidence,
-                    varsContext.pity,
-                    varsContext.minFail,
-                    varsContext.ignoreDisruption,
-                    varsContext.ignoreMissing
-                  )
+                  const filterVals = getUpdatedUrlParts(varsContext)
                   varsContext.setComponentParam(varsContext.component)
                   varsContext.setCapabilityParam(varsContext.capability)
                   setTestIdParam(testId)
@@ -476,25 +422,7 @@ export default function ComponentReadiness(props) {
                 path="/component_readiness/env_test"
                 render={(props) => {
                   // We need to pass the environment and testId
-                  const filterVals = getUpdatedUrlParts(
-                    varsContext.baseRelease,
-                    varsContext.baseStartTime,
-                    varsContext.baseEndTime,
-                    varsContext.sampleRelease,
-                    varsContext.sampleStartTime,
-                    varsContext.sampleEndTime,
-                    varsContext.samplePROrg,
-                    varsContext.samplePRRepo,
-                    varsContext.samplePRNumber,
-                    varsContext.columnGroupByCheckedItems,
-                    varsContext.includeVariantsCheckedItems,
-                    varsContext.dbGroupByVariants,
-                    varsContext.confidence,
-                    varsContext.pity,
-                    varsContext.minFail,
-                    varsContext.ignoreDisruption,
-                    varsContext.ignoreMissing
-                  )
+                  const filterVals = getUpdatedUrlParts(varsContext)
                   varsContext.setComponentParam(varsContext.component)
                   varsContext.setCapabilityParam(varsContext.capability)
                   varsContext.setEnvironmentParam(varsContext.environment)
@@ -516,25 +444,7 @@ export default function ComponentReadiness(props) {
                 path="/component_readiness/capability"
                 render={(props) => {
                   // We need the component and capability from url
-                  const filterVals = getUpdatedUrlParts(
-                    varsContext.baseRelease,
-                    varsContext.baseStartTime,
-                    varsContext.baseEndTime,
-                    varsContext.sampleRelease,
-                    varsContext.sampleStartTime,
-                    varsContext.sampleEndTime,
-                    varsContext.samplePROrg,
-                    varsContext.samplePRRepo,
-                    varsContext.samplePRNumber,
-                    varsContext.columnGroupByCheckedItems,
-                    varsContext.includeVariantsCheckedItems,
-                    varsContext.dbGroupByVariants,
-                    varsContext.confidence,
-                    varsContext.pity,
-                    varsContext.minFail,
-                    varsContext.ignoreDisruption,
-                    varsContext.ignoreMissing
-                  )
+                  const filterVals = getUpdatedUrlParts(varsContext)
                   varsContext.setComponentParam(varsContext.component)
                   varsContext.setCapabilityParam(varsContext.capability)
                   return (
@@ -552,25 +462,7 @@ export default function ComponentReadiness(props) {
                 path="/component_readiness/env_capability"
                 render={(props) => {
                   // We need the component and capability and environment from url
-                  const filterVals = getUpdatedUrlParts(
-                    varsContext.baseRelease,
-                    varsContext.baseStartTime,
-                    varsContext.baseEndTime,
-                    varsContext.sampleRelease,
-                    varsContext.sampleStartTime,
-                    varsContext.sampleEndTime,
-                    varsContext.samplePROrg,
-                    varsContext.samplePRRepo,
-                    varsContext.samplePRNumber,
-                    varsContext.columnGroupByCheckedItems,
-                    varsContext.includeVariantsCheckedItems,
-                    varsContext.dbGroupByVariants,
-                    varsContext.confidence,
-                    varsContext.pity,
-                    varsContext.minFail,
-                    varsContext.ignoreDisruption,
-                    varsContext.ignoreMissing
-                  )
+                  const filterVals = getUpdatedUrlParts(varsContext)
                   return (
                     <CompReadyEnvCapability
                       key="capabilities"
@@ -586,25 +478,7 @@ export default function ComponentReadiness(props) {
               <Route
                 path="/component_readiness/capabilities"
                 render={(props) => {
-                  const filterVals = getUpdatedUrlParts(
-                    varsContext.baseRelease,
-                    varsContext.baseStartTime,
-                    varsContext.baseEndTime,
-                    varsContext.sampleRelease,
-                    varsContext.sampleStartTime,
-                    varsContext.sampleEndTime,
-                    varsContext.samplePROrg,
-                    varsContext.samplePRRepo,
-                    varsContext.samplePRNumber,
-                    varsContext.columnGroupByCheckedItems,
-                    varsContext.includeVariantsCheckedItems,
-                    varsContext.dbGroupByVariants,
-                    varsContext.confidence,
-                    varsContext.pity,
-                    varsContext.minFail,
-                    varsContext.ignoreDisruption,
-                    varsContext.ignoreMissing
-                  )
+                  const filterVals = getUpdatedUrlParts(varsContext)
                   return (
                     <CompReadyEnvCapabilities
                       filterVals={filterVals}
@@ -617,25 +491,7 @@ export default function ComponentReadiness(props) {
               <Route
                 path="/component_readiness/env_capabilities"
                 render={(props) => {
-                  const filterVals = getUpdatedUrlParts(
-                    varsContext.baseRelease,
-                    varsContext.baseStartTime,
-                    varsContext.baseEndTime,
-                    varsContext.sampleRelease,
-                    varsContext.sampleStartTime,
-                    varsContext.sampleEndTime,
-                    varsContext.samplePROrg,
-                    varsContext.samplePRRepo,
-                    varsContext.samplePRNumber,
-                    varsContext.columnGroupByCheckedItems,
-                    varsContext.includeVariantsCheckedItems,
-                    varsContext.dbGroupByVariants,
-                    varsContext.confidence,
-                    varsContext.pity,
-                    varsContext.minFail,
-                    varsContext.ignoreDisruption,
-                    varsContext.ignoreMissing
-                  )
+                  const filterVals = getUpdatedUrlParts(varsContext)
                   varsContext.setComponentParam(varsContext.component)
                   varsContext.setEnvironmentParam(varsContext.environment)
                   // We normally would get the environment and pass it but it doesn't work
@@ -652,25 +508,7 @@ export default function ComponentReadiness(props) {
               <Route
                 path={'/component_readiness/main'}
                 render={(props) => {
-                  const filterVals = getUpdatedUrlParts(
-                    varsContext.baseRelease,
-                    varsContext.baseStartTime,
-                    varsContext.baseEndTime,
-                    varsContext.sampleRelease,
-                    varsContext.sampleStartTime,
-                    varsContext.sampleEndTime,
-                    varsContext.samplePROrg,
-                    varsContext.samplePRRepo,
-                    varsContext.samplePRNumber,
-                    varsContext.columnGroupByCheckedItems,
-                    varsContext.includeVariantsCheckedItems,
-                    varsContext.dbGroupByVariants,
-                    varsContext.confidence,
-                    varsContext.pity,
-                    varsContext.minFail,
-                    varsContext.ignoreDisruption,
-                    varsContext.ignoreMissing
-                  )
+                  const filterVals = getUpdatedUrlParts(varsContext)
                   return (
                     <div className="cr-view">
                       <Sidebar />

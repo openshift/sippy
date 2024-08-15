@@ -1,10 +1,4 @@
-import {
-  alpha,
-  Checkbox,
-  FormControl,
-  InputBase,
-  Typography,
-} from '@mui/material'
+import { alpha, InputBase, Typography } from '@mui/material'
 import { format } from 'date-fns'
 import { styled } from '@mui/styles'
 import Alert from '@mui/material/Alert'
@@ -121,6 +115,7 @@ export function getStatusAndIcon(status, grayFactor = 0) {
       statusStr + 'SignificantImprovement detected (improved sample rate)'
     icon = (
       <img
+        alt="SignificantImprovement"
         src={heart}
         width="15px"
         height="15px"
@@ -300,60 +295,44 @@ export function formatLongDate(aLongDate, aDateFormat) {
     console.log('Error: unknown date format: ', typeof aLongDate)
     dateObj = new Date(aLongDate)
   }
-  const ret = format(dateObj, aDateFormat)
-  return ret
+  return format(dateObj, aDateFormat)
 }
 
 // These next set of variables are used for CompReadyMainInputs
 
 // Take the values needed to make an api call and return a string that can be used to
 // make that call.
-// TODO: pass varsContext entirely, instead of nearly every field on it in multiple places positionally
-export function getUpdatedUrlParts(
-  baseRelease,
-  baseStartTime,
-  baseEndTime,
-  sampleRelease,
-  sampleStartTime,
-  sampleEndTime,
-  samplePROrg,
-  samplePRRepo,
-  samplePRNumber,
-  columnGroupByCheckedItems,
-  includeVariantsCheckedItems,
-  dbGroupByVariants,
-  confidence,
-  pity,
-  minFail,
-  ignoreDisruption,
-  ignoreMissing
-) {
+export function getUpdatedUrlParts(vars) {
   const valuesMap = {
-    baseRelease: baseRelease,
-    baseStartTime: formatLongDate(baseStartTime, dateFormat),
-    baseEndTime: formatLongDate(baseEndTime, dateEndFormat),
-    sampleRelease: sampleRelease,
-    sampleStartTime: formatLongDate(sampleStartTime, dateFormat),
-    sampleEndTime: formatLongDate(sampleEndTime, dateEndFormat),
-    confidence: confidence,
-    pity: pity,
-    minFail: minFail,
-    ignoreDisruption: ignoreDisruption,
-    ignoreMissing: ignoreMissing,
-    //component: component,
+    baseRelease: vars.baseRelease,
+    baseStartTime: formatLongDate(vars.baseStartTime, dateFormat),
+    baseEndTime: formatLongDate(vars.baseEndTime, dateEndFormat),
+    sampleRelease: vars.sampleRelease,
+    sampleStartTime: formatLongDate(vars.sampleStartTime, dateFormat),
+    sampleEndTime: formatLongDate(vars.sampleEndTime, dateEndFormat),
+    confidence: vars.confidence,
+    pity: vars.pity,
+    minFail: vars.minFail,
+    ignoreDisruption: vars.ignoreDisruption,
+    ignoreMissing: vars.ignoreMissing,
+    //component: vars.component,
   }
 
-  if (samplePROrg && samplePRRepo && samplePRNumber) {
-    valuesMap.samplePROrg = samplePROrg
-    valuesMap.samplePRRepo = samplePRRepo
-    valuesMap.samplePRNumber = samplePRNumber
+  if (vars.samplePROrg && vars.samplePRRepo && vars.samplePRNumber) {
+    valuesMap.samplePROrg = vars.samplePROrg
+    valuesMap.samplePRRepo = vars.samplePRRepo
+    valuesMap.samplePRNumber = vars.samplePRNumber
   }
 
   // TODO: inject the PR vars into query params
 
+  function filterOutVariantCC(values) {
+    return values.filter((value) => !vars.variantCrossCompare.includes(value))
+  }
   const arraysMap = {
-    columnGroupBy: columnGroupByCheckedItems,
-    dbGroupBy: dbGroupByVariants,
+    columnGroupBy: filterOutVariantCC(vars.columnGroupByCheckedItems),
+    dbGroupBy: filterOutVariantCC(vars.dbGroupByVariants),
+    variantCrossCompare: vars.variantCrossCompare,
   }
 
   const queryParams = new URLSearchParams()
@@ -370,22 +349,34 @@ export function getUpdatedUrlParts(
     }
   })
 
-  // Render includeVariantsCheckedItems
-  Object.entries(includeVariantsCheckedItems).forEach(([key, values]) => {
-    values.forEach((value) => {
-      queryParams.append('includeVariant', key + ':' + value)
-    })
-  })
+  // Render selected variants
+  convertVariantItemsToParam(vars.includeVariantsCheckedItems).forEach(
+    (item) => {
+      queryParams.append('includeVariant', item)
+    }
+  )
+  Object.entries(vars.compareVariantsCheckedItems).forEach(
+    ([group, variants]) => {
+      console.log(group, variants)
+      // for UI purposes we may be holding compareVariants that aren't actually being compared, so they don't get wiped
+      // out just by toggling the "Compare" button. But for the parameters we will filter these out.
+      if (vars.variantCrossCompare.includes(group)) {
+        console.log('including', group, 'in compareVariants')
+        variants.forEach((variant) => {
+          queryParams.append('compareVariant', group + ':' + variant)
+        })
+      }
+    }
+  )
 
   // Stringify and put the begin param character.
   queryParams.sort() // ensure they always stay in sorted order to prevent url history changes
 
   // When using URLSearchParams to construct a query string, it follows the application/x-www-form-urlencoded format,
   // which uses + to represent space characters. The rest of Sippy uses the URI encoding tools in JS, which relies on
-  // %20 for spaces. This makes URL's change, which creates additional history entries, and breaks the back button.
+  // %20 for spaces. This makes URLs change, which creates additional history entries, and breaks the back button.
   const queryString = queryParams.toString().replace(/\+/g, '%20')
-  const retVal = `?${queryString}`
-  return retVal
+  return '?' + queryString
 }
 
 // sortQueryParams sorts a query parameters order so we don't screw up the history when they change
@@ -528,3 +519,30 @@ export const StyledInputBase = styled(InputBase)(({ theme }) => ({
     },
   },
 }))
+
+/** some functions for managing the variant parameters **/
+export const convertParamToVariantItems = (variantItemsParam) => {
+  let groupedVariants = {}
+  variantItemsParam.forEach((variant) => {
+    // each variant here should look like e.g. "Platform:aws"
+    let kv = variant.split(':')
+    if (kv.length === 2) {
+      if (kv[0] in groupedVariants) {
+        groupedVariants[kv[0]].push(kv[1])
+      } else {
+        groupedVariants[kv[0]] = [kv[1]]
+      }
+    }
+  })
+  return groupedVariants
+  // which now looks like {Platform: ["aws", "azure"], ...}
+}
+export const convertVariantItemsToParam = (groupedVariants) => {
+  let param = []
+  Object.keys(groupedVariants).forEach((group) => {
+    groupedVariants[group].forEach((variant) => {
+      param.push(group + ':' + variant)
+    })
+  })
+  return param
+}

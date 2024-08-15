@@ -157,7 +157,9 @@ function ReleaseSelector(props) {
       <Grid container justifyContent="center" alignItems="center">
         <Grid item md={12}>
           <FormControl variant="standard" className={classes.formControl}>
-            <InputLabel className={classes.label}>{label}</InputLabel>
+            <Tooltip title={props.tooltip}>
+              <InputLabel className={classes.label}>{label}</InputLabel>
+            </Tooltip>
             <Select variant="standard" value={version} onChange={onChange}>
               {Object.keys(versions).map((v) => (
                 <MenuItem key={v} value={v}>
@@ -277,6 +279,7 @@ ReleaseSelector.propTypes = {
   endTime: PropTypes.string,
   setEndTime: PropTypes.func,
   label: PropTypes.string,
+  tooltip: PropTypes.string,
   version: PropTypes.string,
   onChange: PropTypes.func,
   pullRequestSupport: PropTypes.bool,

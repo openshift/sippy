@@ -222,6 +222,14 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 				// Topology mismatches on Compact as the job cluster data reports ha.
 				jLog.Infof("variant mismatch: using %s from job name", k)
 				continue
+			case VariantNetworkStack:
+				// Discovered in https://issues.redhat.com/browse/TRT-1777
+				// 4.13+ gained cluster-data.json but it was not able to detect dualstack, so
+				// jobs in this range were categorized as ipv4 mistakenly. Once fixed, we'll
+				// want this to become conditional on release, i.e. use job name network stack
+				// if release <= 4.18 (assuming this is where it gets fixed)
+				jLog.Infof("variant mismatch: using %s from job name", k)
+				continue
 			default:
 				jLog.Infof("variant mismatch: using %s from job run variants file", k)
 				variants[k] = v
