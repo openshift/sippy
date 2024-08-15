@@ -1332,7 +1332,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
-			report := tc.generator.generateComponentTestDetailsReport(baseStats, sampleStats)
+			report := tc.generator.generateTestDetailsReport(baseStats, sampleStats)
 			assert.Equal(t, tc.expectedReport.RowIdentification, report.RowIdentification, "expected report row identification %+v, got %+v", tc.expectedReport.RowIdentification, report.RowIdentification)
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
 			assert.Equal(t, tc.expectedReport.BaseStats, report.BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.BaseStats, report.BaseStats)

@@ -740,7 +740,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	outputs, errs := componentreadiness.GetComponentReportTestDetailsFromBigQuery(
+	outputs, errs := componentreadiness.GetTestDetails(
 		s.bigQueryClient,
 		s.prowURL,
 		s.gcsBucket,
