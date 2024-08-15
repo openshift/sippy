@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/url"
 
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
 
-	"github.com/openshift/sippy/pkg/apis/api"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -15,7 +15,7 @@ type IntentionalRegression struct {
 	JiraComponent             string
 	TestID                    string
 	TestName                  string
-	Variant                   api.ComponentReportColumnIdentification
+	Variant                   crtype.ColumnIdentification
 	PreviousPassPercentage    int
 	PreviousSampleSize        int
 	RegressedPassPercentage   int
@@ -24,7 +24,7 @@ type IntentionalRegression struct {
 	ReasonToAllowInsteadOfFix string
 }
 
-func IntentionalRegressionFor(releaseString string, variant api.ComponentReportColumnIdentification, testID string) *IntentionalRegression {
+func IntentionalRegressionFor(releaseString string, variant crtype.ColumnIdentification, testID string) *IntentionalRegression {
 	var targetMap map[string]IntentionalRegression
 	switch release(releaseString) {
 	case release415:
@@ -53,13 +53,13 @@ var (
 
 type regressionKey struct {
 	TestID  string
-	Variant api.ComponentReportColumnIdentification
+	Variant crtype.ColumnIdentification
 }
 
-func keyFor(testID string, variant api.ComponentReportColumnIdentification) string {
+func keyFor(testID string, variant crtype.ColumnIdentification) string {
 	key := regressionKey{
 		TestID: testID,
-		Variant: api.ComponentReportColumnIdentification{
+		Variant: crtype.ColumnIdentification{
 			Variants: variant.Variants,
 		},
 	}

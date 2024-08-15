@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
@@ -61,7 +62,7 @@ func NewServer(
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
-	componentReadinessViews []apitype.ComponentReportView,
+	componentReadinessViews []crtype.View,
 ) *Server {
 
 	server := &Server{
@@ -118,7 +119,7 @@ type Server struct {
 	cache                   cache.Cache
 	crTimeRoundingFactor    time.Duration
 	capabilities            []string
-	componentReadinessViews []apitype.ComponentReportView
+	componentReadinessViews []crtype.View
 }
 
 func (s *Server) GetReportEnd() time.Time {

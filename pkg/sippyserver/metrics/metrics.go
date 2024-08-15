@@ -15,6 +15,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
 
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
@@ -254,7 +255,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	})
 	mostRecentGA := releases[len(releases)-1].Release
 	log.Debugf("most recent GA is %q", mostRecentGA)
-	baseRelease := apitype.ComponentReportRequestReleaseOptions{
+	baseRelease := crtype.RequestReleaseOptions{
 		Release: mostRecentGA,
 		// Match what Component Readiness UI "Generate Report" screen sends to API.
 		Start: releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, -27),
@@ -282,7 +283,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	if cacheOptions.CRTimeRoundingFactor > 0 {
 		end, _ = util.ParseCRReleaseTime(baseRelease.Release, now.Format(time.RFC3339), false, cacheOptions.CRTimeRoundingFactor)
 	}
-	sampleRelease := apitype.ComponentReportRequestReleaseOptions{
+	sampleRelease := crtype.RequestReleaseOptions{
 		Release: next,
 		Start:   today.AddDate(0, 0, -6),
 		End:     end,
@@ -296,7 +297,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	log.Infof("diff  : %2.2f days", numDays)      // should be 7 days (minus 1 second) rounded to 2 decimals
 	log.Infof("int   : %d seconds", int(numSecs)) // 604799 (7 days minus 1 second in seconds)
 
-	testIDOption := apitype.ComponentReportRequestTestIdentificationOptions{}
+	testIDOption := crtype.RequestTestIdentificationOptions{}
 
 	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(client, gcsBucket)
 	if len(errs) > 0 {
@@ -314,13 +315,13 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	if err != nil {
 		return err
 	}
-	variantOption := apitype.ComponentReportRequestVariantOptions{
+	variantOption := crtype.RequestVariantOptions{
 		ColumnGroupBy:     columnGroupByVariants,
 		DBGroupBy:         dbGroupByVariants,
 		RequestedVariants: map[string]string{},
 		IncludeVariants:   includeVariantsMap,
 	}
-	advancedOption := apitype.ComponentReportRequestAdvancedOptions{
+	advancedOption := crtype.RequestAdvancedOptions{
 		MinimumFailure:   componentreadiness.DefaultMinimumFailure,
 		Confidence:       componentreadiness.DefaultConfidence,
 		PityFactor:       componentreadiness.DefaultPityFactor,

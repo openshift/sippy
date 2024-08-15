@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
-	apitype "github.com/openshift/sippy/pkg/apis/api"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
@@ -15,21 +15,21 @@ import (
 
 // nolint:gocyclo
 func ParseComponentReportRequest(
-	views []apitype.ComponentReportView,
+	views []crtype.View,
 	req *http.Request,
-	allJobVariants apitype.JobVariants,
+	allJobVariants crtype.JobVariants,
 	crTimeRoundingFactor time.Duration) (
-	baseRelease apitype.ComponentReportRequestReleaseOptions,
-	sampleRelease apitype.ComponentReportRequestReleaseOptions,
-	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
-	variantOption apitype.ComponentReportRequestVariantOptions,
-	advancedOption apitype.ComponentReportRequestAdvancedOptions,
+	baseRelease crtype.RequestReleaseOptions,
+	sampleRelease crtype.RequestReleaseOptions,
+	testIDOption crtype.RequestTestIdentificationOptions,
+	variantOption crtype.RequestVariantOptions,
+	advancedOption crtype.RequestAdvancedOptions,
 	cacheOption cache.RequestOptions,
 	err error) {
 
 	// Check if the user specified a view, in which case only some query params can be used.
 	viewRequested := req.URL.Query().Get("view")
-	var view *apitype.ComponentReportView
+	var view *crtype.View
 	if viewRequested != "" {
 		for i, v := range views {
 			if v.Name == viewRequested {
@@ -64,10 +64,10 @@ func ParseComponentReportRequest(
 		// set params from view
 		variantOption = view.VariantOptions
 		advancedOption = view.AdvancedOptions
-		baseRelease = apitype.ComponentReportRequestReleaseOptions{
+		baseRelease = crtype.RequestReleaseOptions{
 			Release: view.BaseRelease.Release,
 		}
-		sampleRelease = apitype.ComponentReportRequestReleaseOptions{
+		sampleRelease = crtype.RequestReleaseOptions{
 			Release: view.SampleRelease.Release,
 		}
 		// Translate relative start/end times to actual time.Time:
@@ -108,7 +108,7 @@ func ParseComponentReportRequest(
 		samplePRRepo := req.URL.Query().Get("samplePRRepo")
 		samplePRNumber := req.URL.Query().Get("samplePRNumber")
 		if len(samplePROrg) > 0 && len(samplePRRepo) > 0 && len(samplePRNumber) > 0 {
-			sampleRelease.PullRequestOptions = &apitype.PullRequestOptions{
+			sampleRelease.PullRequestOptions = &crtype.PullRequestOptions{
 				Org:      samplePROrg,
 				Repo:     samplePRRepo,
 				PRNumber: samplePRNumber,
@@ -230,9 +230,9 @@ func ParseComponentReportRequest(
 	return
 }
 
-func parseVariantOptions(req *http.Request, allJobVariants apitype.JobVariants) (apitype.ComponentReportRequestVariantOptions, error) {
+func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants) (crtype.RequestVariantOptions, error) {
 	var err error
-	variantOption := apitype.ComponentReportRequestVariantOptions{}
+	variantOption := crtype.RequestVariantOptions{}
 	columnGroupBy := req.URL.Query().Get("columnGroupBy")
 	variantOption.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
 	if err != nil {
