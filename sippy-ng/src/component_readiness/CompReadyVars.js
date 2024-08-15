@@ -8,6 +8,8 @@ import {
   useQueryParam,
 } from 'use-query-params'
 import {
+  convertParamToVariantItems,
+  convertVariantItemsToParam,
   dateEndFormat,
   dateFormat,
   formatLongDate,
@@ -96,22 +98,6 @@ export const CompReadyVarsProvider = ({ children }) => {
     columnGroupByCheckedItemsParam = ['Platform', 'Architecture', 'Network'],
     setColumnGroupByCheckedItemsParam,
   ] = useQueryParam('columnGroupBy', ArrayParam)
-  const [
-    includeVariantsCheckedItemsParam = [
-      'Architecture:amd64',
-      'FeatureSet:default',
-      'Installer:ipi',
-      'Installer:upi',
-      'Owner:eng',
-      'Platform:aws',
-      'Platform:azure',
-      'Platform:gcp',
-      'Platform:metal',
-      'Platform:vsphere',
-      'Topology:ha',
-    ],
-    setIncludeVariantsCheckedItemsParam,
-  ] = useQueryParam('includeVariant', ArrayParam)
 
   const [confidenceParam = 95, setConfidenceParam] = useQueryParam(
     'confidence',
@@ -129,7 +115,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [ignoreDisruptionParam = false, setIgnoreDisruptionParam] =
     useQueryParam('ignoreDisruption', BooleanParam)
 
-  // Create the variables to be used for api calls; these are initilized to the
+  // Create the variables to be used for api calls; these are initialized to the
   // value of the variables that got their values from the URL.
   const [columnGroupByCheckedItems, setColumnGroupByCheckedItems] =
     React.useState(columnGroupByCheckedItemsParam)
@@ -192,38 +178,69 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleEndTime(formatLongDate(initialSampleEndTime, dateEndFormat))
   }
 
-  const convertIncludeVariantsCheckedItemsToParam = (
-    includeVariantsCheckedItems
-  ) => {
-    let param = []
-    Object.keys(includeVariantsCheckedItems).forEach((variant) => {
-      includeVariantsCheckedItems[variant].forEach((value) => {
-        param.push(variant + ':' + value)
-      })
-    })
-    return param
-  }
+  /********************************************************
+   * All things related to parameter selection for variants
+   ******************************************************** */
 
-  const convertParamToIncludeVariantsCheckedItems = (includeVariantParam) => {
-    let includeVariants = {}
-    includeVariantParam.forEach((variant) => {
-      let kv = variant.split(':')
-      if (kv.length == 2) {
-        if (kv[0] in includeVariants) {
-          includeVariants[kv[0]].push(kv[1])
-        } else {
-          includeVariants[kv[0]] = [kv[1]]
-        }
-      }
-    })
-    return includeVariants
-  }
-  const includeVariantsCheckedItems = convertParamToIncludeVariantsCheckedItems(
+  /** URL parameters for variants **/
+  // The variants that have been selected for inclusion in the basis and sample (unless they are in the cross-compare list)
+  const [
+    includeVariantsCheckedItemsParam = [
+      'Architecture:amd64',
+      'FeatureSet:default',
+      'Installer:ipi',
+      'Installer:upi',
+      'Owner:eng',
+      'Platform:aws',
+      'Platform:azure',
+      'Platform:gcp',
+      'Platform:metal',
+      'Platform:vsphere',
+      'Topology:ha',
+    ],
+    setIncludeVariantsCheckedItemsParam,
+  ] = useQueryParam('includeVariant', ArrayParam)
+  // The list of variant groups (e.g. "Architecture") that have been selected for cross-variant comparison
+  const [variantCrossCompareParam = [], setVariantCrossCompareParam] =
+    useQueryParam('variantCrossCompare', ArrayParam)
+  // The list of individual variants (e.g. "Architecture:arm64") that are checked for cross-variant comparison
+  const [
+    compareVariantsCheckedItemsParam = [],
+    setCompareVariantsCheckedItemsParam,
+  ] = useQueryParam('compareVariant', ArrayParam)
+
+  /** some state variables and related handlers for managing the display of variants in the UI **/
+  // The grouped variants that have been selected for inclusion in the basis and sample (unless they are in the cross-compare list)
+  const includeVariantsCheckedItems = convertParamToVariantItems(
     includeVariantsCheckedItemsParam
   )
   const replaceIncludeVariantsCheckedItems = (variant, checkedItems) => {
     includeVariantsCheckedItems[variant] = checkedItems
   }
+  // The grouped variants that have been selected for cross-comparison in the sample
+  const compareVariantsCheckedItems = convertParamToVariantItems(
+    compareVariantsCheckedItemsParam
+  )
+  const replaceCompareVariantsCheckedItems = (variant, checkedItems) => {
+    compareVariantsCheckedItems[variant] = checkedItems
+  }
+  // This is the list of variant groups (e.g. "Architecture") that have been selected for cross-variant comparison
+  const [variantCrossCompare, setVariantCrossCompare] = useState(
+    variantCrossCompareParam
+  )
+  // This is run when the user (un)selects a variant group (e.g. "Platform") for cross-variant comparison.
+  const updateVariantCrossCompare = (variantGroupName, isCompareMode) => {
+    setVariantCrossCompare(
+      isCompareMode
+        ? [...variantCrossCompare, variantGroupName]
+        : variantCrossCompare.filter((name) => name !== variantGroupName)
+    )
+  }
+
+  /********************************************************
+   * All things related to the "Advanced" section
+   ******************************************************** */
+
   const [confidence, setConfidence] = React.useState(confidenceParam)
   const [pity, setPity] = React.useState(pityParam)
   const [minFail, setMinFail] = React.useState(minFailParam)
@@ -237,6 +254,10 @@ export const CompReadyVarsProvider = ({ children }) => {
     ignoreDisruptionParam || true
   )
 
+  /******************************************************************************
+   * Parameters that are used to refine the query as the user drills down into CR
+   ****************************************************************************** */
+
   const [component, setComponent] = React.useState(componentParam)
   if (component != componentParam) {
     setComponent(componentParam)
@@ -249,6 +270,10 @@ export const CompReadyVarsProvider = ({ children }) => {
   if (capability != capabilityParam) {
     setCapability(capabilityParam)
   }
+
+  /******************************************************************************
+   * Generating the report parameters:
+   ****************************************************************************** */
 
   // dbGroupByVariants defines what variants are used for GroupBy in DB query
   const dbGroupByVariants = [
@@ -274,8 +299,12 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleEndTimeParam(formatLongDate(sampleEndTime, dateEndFormat))
     setColumnGroupByCheckedItemsParam(columnGroupByCheckedItems)
     setIncludeVariantsCheckedItemsParam(
-      convertIncludeVariantsCheckedItemsToParam(includeVariantsCheckedItems)
+      convertVariantItemsToParam(includeVariantsCheckedItems)
     )
+    setCompareVariantsCheckedItemsParam(
+      convertVariantItemsToParam(compareVariantsCheckedItems)
+    )
+    setVariantCrossCompareParam(variantCrossCompare)
     setConfidenceParam(confidence)
     setSamplePROrgParam(samplePROrg)
     setSamplePRRepoParam(samplePRRepo)
@@ -389,9 +418,13 @@ export const CompReadyVarsProvider = ({ children }) => {
         setSamplePRNumber,
         columnGroupByCheckedItems,
         setColumnGroupByCheckedItems,
-        includeVariantsCheckedItems,
         dbGroupByVariants,
+        includeVariantsCheckedItems,
         replaceIncludeVariantsCheckedItems,
+        compareVariantsCheckedItems,
+        replaceCompareVariantsCheckedItems,
+        variantCrossCompare,
+        updateVariantCrossCompare,
         confidence,
         setConfidence,
         pity,
