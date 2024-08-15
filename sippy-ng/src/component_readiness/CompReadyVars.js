@@ -25,7 +25,7 @@ export const CompReadyVarsContext = createContext()
 export const CompReadyVarsProvider = ({ children }) => {
   const [allJobVariants, setAllJobVariants] = useState([])
   const [views, setViews] = useState([])
-  const [view, setView] = useState([])
+  const [view, setView] = useQueryParam('view', StringParam)
   const [isLoaded, setIsLoaded] = useState(false)
   const [fetchError, setFetchError] = useState('')
 
@@ -268,7 +268,13 @@ export const CompReadyVarsProvider = ({ children }) => {
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
   const handleGenerateReport = (event) => {
+    console.log('handleGenerateReport was called')
     event.preventDefault()
+
+    // If the generate report button was pressed, views are out of the question and we're now
+    // fully qualifying all params:
+    setView('')
+
     setBaseReleaseParam(baseRelease)
     setBaseStartTimeParam(formatLongDate(baseStartTime, dateFormat))
     setBaseEndTimeParam(formatLongDate(baseEndTime, dateEndFormat))

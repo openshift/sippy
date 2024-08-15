@@ -9,6 +9,7 @@ import { FormControl, Grid, InputLabel, MenuItem, Select } from '@mui/material'
 import { Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
+import { useHistory } from 'react-router-dom'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@mui/material/Button'
 import CheckBoxList from './CheckboxList'
@@ -52,6 +53,7 @@ export default function CompReadyMainInputs(props) {
   ])
 
   const varsContext = useContext(CompReadyVarsContext)
+  const history = useHistory()
   const compReadyEnvOptions = (
     <div>
       <CheckBoxList
@@ -82,6 +84,29 @@ export default function CompReadyMainInputs(props) {
   )
   return (
     <Fragment>
+      <div className={classes.crRelease}>
+        <FormControl variant="standard">
+          <InputLabel>View</InputLabel>
+          <Select
+            variant="standard"
+            value={varsContext.view}
+            onChange={(e) => {
+              console.log('changed view to: ' + e.target.value)
+              varsContext.setView(e.target.value)
+              history.push('/component_readiness/main?view=' + e.target.value)
+              // TODO: submit form immediately on view change
+              // TODO: update all query param inputs below to match the selected view
+            }}
+          >
+            {varsContext.views.map((v, index) => (
+              <MenuItem key={index} value={v.name}>
+                {v.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </div>
+
       <div className="cr-report-button">
         <Button
           size="large"
@@ -114,31 +139,12 @@ export default function CompReadyMainInputs(props) {
           <Tooltip
             title={
               'Click here to generate a report that compares the release you wish to evaluate\
-               against a historical (previous) release'
+                           against a historical (previous) release using all the specific parameters specified'
             }
           >
-            <Fragment>Generate Report</Fragment>
+            <Fragment>Generate Custom Report</Fragment>
           </Tooltip>
         </Button>
-      </div>
-
-      <div className={classes.crRelease}>
-        <FormControl variant="standard">
-          <InputLabel>View</InputLabel>
-          <Select
-            variant="standard"
-            value={varsContext.view}
-            onChange={(e) => {
-              varsContext.setView(e.target.value)
-            }}
-          >
-            {varsContext.views.map((v, index) => (
-              <MenuItem key={index} value={v.name}>
-                {v.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
       </div>
 
       <div className={classes.crRelease}>
