@@ -26,6 +26,7 @@ import (
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
@@ -61,7 +62,7 @@ func NewServer(
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
-	componentReadinessViews []apitype.ComponentReportView,
+	componentReadinessViews []crtype.View,
 ) *Server {
 
 	server := &Server{
@@ -118,7 +119,7 @@ type Server struct {
 	cache                   cache.Cache
 	crTimeRoundingFactor    time.Duration
 	capabilities            []string
-	componentReadinessViews []apitype.ComponentReportView
+	componentReadinessViews []crtype.View
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -677,8 +678,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		})
 		return
 	}
-	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
-		componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
+	options, err := componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -691,12 +691,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		s.bigQueryClient,
 		s.prowURL,
 		s.gcsBucket,
-		baseRelease,
-		sampleRelease,
-		testIDOption,
-		variantOption,
-		advancedOption,
-		cacheOption,
+		options,
 	)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))
@@ -730,8 +725,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
-		componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
+	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -739,16 +733,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	outputs, errs := componentreadiness.GetComponentReportTestDetailsFromBigQuery(
-		s.bigQueryClient,
-		s.prowURL,
-		s.gcsBucket,
-		baseRelease,
-		sampleRelease,
-		testIDOption,
-		variantOption,
-		advancedOption,
-		cacheOption)
+	outputs, errs := componentreadiness.GetTestDetails(s.bigQueryClient, s.prowURL, s.gcsBucket, reqOptions)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
 		for _, err := range errs {

@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	apitype "github.com/openshift/sippy/pkg/apis/api"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
@@ -32,8 +32,8 @@ func (f *ComponentReadinessFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(&f.CRTimeRoundingFactor, "component-readiness-time-rounding-factor", defaultCRTimeRoundingFactor, factorUsage)
 }
 
-func (f *ComponentReadinessFlags) ParseViewsFile() []apitype.ComponentReportView {
-	crViews := []apitype.ComponentReportView{}
+func (f *ComponentReadinessFlags) ParseViewsFile() []crtype.View {
+	crViews := []crtype.View{}
 	if f.ComponentReadinessViewsFile != "" {
 		yamlFile, err := os.ReadFile(f.ComponentReadinessViewsFile)
 		if err != nil {
