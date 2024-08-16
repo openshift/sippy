@@ -2,6 +2,7 @@ package componentreport
 
 import (
 	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"math/big"
 	"time"
@@ -44,6 +45,16 @@ type RequestVariantOptions struct {
 	DBGroupBy         sets.String         `json:"db_group_by" yaml:"db_group_by"`
 	IncludeVariants   map[string][]string `json:"include_variants" yaml:"include_variants"`
 	RequestedVariants map[string]string   `json:"requested_variants" yaml:"requested_variants"`
+}
+
+// RequestOptions is a struct packaging all the options for a CR request.
+type RequestOptions struct {
+	BaseRelease    RequestReleaseOptions
+	SampleRelease  RequestReleaseOptions
+	TestIDOption   RequestTestIdentificationOptions
+	VariantOption  RequestVariantOptions
+	AdvancedOption RequestAdvancedOptions
+	CacheOption    cache.RequestOptions
 }
 
 // View is a server side construct representing a predefined view over the data.

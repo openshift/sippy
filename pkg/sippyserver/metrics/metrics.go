@@ -329,8 +329,17 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 		IgnoreDisruption: componentreadiness.DefaultIgnoreDisruption,
 	}
 
-	// Get report
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOptions)
+	// Get component readiness report
+	reportOpts := crtype.RequestOptions{
+		BaseRelease:    baseRelease,
+		SampleRelease:  sampleRelease,
+		TestIDOption:   testIDOption,
+		VariantOption:  variantOption,
+		AdvancedOption: advancedOption,
+		CacheOption:    cacheOptions,
+	}
+
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, reportOpts)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

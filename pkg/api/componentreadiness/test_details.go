@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
@@ -17,63 +17,59 @@ import (
 	"time"
 )
 
-func GetTestDetails(client *bigquery.Client, prowURL, gcsBucket string,
-	baseRelease, sampleRelease componentreport.RequestReleaseOptions,
-	testIDOption componentreport.RequestTestIdentificationOptions,
-	variantOption componentreport.RequestVariantOptions,
-	advancedOption componentreport.RequestAdvancedOptions,
-	cacheOption cache.RequestOptions) (componentreport.ReportTestDetails, []error) {
+func GetTestDetails(client *bigquery.Client, prowURL, gcsBucket string, reqOptions crtype.RequestOptions,
+) (crtype.ReportTestDetails, []error) {
 	generator := componentReportGenerator{
 		client:                           client,
 		prowURL:                          prowURL,
 		gcsBucket:                        gcsBucket,
-		cacheOption:                      cacheOption,
-		BaseRelease:                      baseRelease,
-		SampleRelease:                    sampleRelease,
-		RequestTestIdentificationOptions: testIDOption,
-		RequestVariantOptions:            variantOption,
-		RequestAdvancedOptions:           advancedOption,
+		cacheOption:                      reqOptions.CacheOption,
+		BaseRelease:                      reqOptions.BaseRelease,
+		SampleRelease:                    reqOptions.SampleRelease,
+		RequestTestIdentificationOptions: reqOptions.TestIDOption,
+		RequestVariantOptions:            reqOptions.VariantOption,
+		RequestAdvancedOptions:           reqOptions.AdvancedOption,
 	}
 
-	return api.GetDataFromCacheOrGenerate[componentreport.ReportTestDetails](
+	return api.GetDataFromCacheOrGenerate[crtype.ReportTestDetails](
 		generator.client.Cache,
 		generator.cacheOption,
 		generator.GetComponentReportCacheKey("TestDetailsReport~"),
 		generator.GenerateTestDetailsReport,
-		componentreport.ReportTestDetails{})
+		crtype.ReportTestDetails{})
 }
 
-func (c *componentReportGenerator) GenerateTestDetailsReport() (componentreport.ReportTestDetails, []error) {
+func (c *componentReportGenerator) GenerateTestDetailsReport() (crtype.ReportTestDetails, []error) {
 	if c.TestID == "" {
-		return componentreport.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
+		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
 	for _, v := range c.DBGroupBy.List() {
 		if _, ok := c.RequestedVariants[v]; !ok {
-			return componentreport.ReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing", v)}
+			return crtype.ReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing", v)}
 		}
 	}
 
 	componentJobRunTestReportStatus, errs := c.GenerateJobRunTestReportStatus()
 	if len(errs) > 0 {
-		return componentreport.ReportTestDetails{}, errs
+		return crtype.ReportTestDetails{}, errs
 	}
 	var err error
 	bqs := tracker.NewBigQueryRegressionStore(c.client)
 	c.openRegressions, err = bqs.ListCurrentRegressions(c.SampleRelease.Release)
 	if err != nil {
 		errs = append(errs, err)
-		return componentreport.ReportTestDetails{}, errs
+		return crtype.ReportTestDetails{}, errs
 	}
 	report := c.generateTestDetailsReport(componentJobRunTestReportStatus.BaseStatus, componentJobRunTestReportStatus.SampleStatus)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 	return report, nil
 }
 
-func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (componentreport.JobRunTestReportStatus, []error) {
+func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (crtype.JobRunTestReportStatus, []error) {
 	before := time.Now()
 	componentJobRunTestReportStatus, errs := c.getJobRunTestStatusFromBigQuery()
 	if len(errs) > 0 {
-		return componentreport.JobRunTestReportStatus{}, errs
+		return crtype.JobRunTestReportStatus{}, errs
 	}
 	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
 	now := time.Now()
@@ -83,7 +79,7 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (componentre
 
 // getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
 // This is for the bottom level most specific pages in component readiness.
-func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants componentreport.JobVariants, isSample bool) (string, string, []bigquery2.QueryParameter) {
+func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.JobVariants, isSample bool) (string, string, []bigquery2.QueryParameter) {
 	joinVariants := ""
 	for v := range allJobVariants.Variants {
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
@@ -155,7 +151,7 @@ type baseJobRunTestStatusGenerator struct {
 
 func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 	groupByQuery string,
-	queryParameters []bigquery2.QueryParameter) (map[string][]componentreport.JobRunTestStatusRow, []error) {
+	queryParameters []bigquery2.QueryParameter) (map[string][]crtype.JobRunTestStatusRow, []error) {
 	generator := baseJobRunTestStatusGenerator{
 		commonQuery:     commonQuery,
 		groupByQuery:    groupByQuery,
@@ -168,7 +164,7 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 		ComponentReportGenerator: c,
 	}
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[componentreport.JobRunTestReportStatus](generator.ComponentReportGenerator.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator), generator.queryTestStatus, componentreport.JobRunTestReportStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](generator.ComponentReportGenerator.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator), generator.queryTestStatus, crtype.JobRunTestReportStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -177,7 +173,7 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 	return componentReportTestStatus.BaseStatus, nil
 }
 
-func (b *baseJobRunTestStatusGenerator) queryTestStatus() (componentreport.JobRunTestReportStatus, []error) {
+func (b *baseJobRunTestStatusGenerator) queryTestStatus() (crtype.JobRunTestReportStatus, []error) {
 	baseString := b.commonQuery + ` AND branch = @BaseRelease`
 	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + b.groupByQuery)
 
@@ -198,7 +194,7 @@ func (b *baseJobRunTestStatusGenerator) queryTestStatus() (componentreport.JobRu
 	}...)
 
 	baseStatus, errs := b.ComponentReportGenerator.fetchJobRunTestStatus(baseQuery)
-	return componentreport.JobRunTestReportStatus{BaseStatus: baseStatus}, errs
+	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus}, errs
 }
 
 type sampleJobRunTestQueryGenerator struct {
@@ -210,7 +206,7 @@ type sampleJobRunTestQueryGenerator struct {
 
 func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 	groupByQuery string,
-	queryParameters []bigquery2.QueryParameter) (map[string][]componentreport.JobRunTestStatusRow, []error) {
+	queryParameters []bigquery2.QueryParameter) (map[string][]crtype.JobRunTestStatusRow, []error) {
 	generator := sampleJobRunTestQueryGenerator{
 		commonQuery:              commonQuery,
 		groupByQuery:             groupByQuery,
@@ -218,7 +214,7 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 		ComponentReportGenerator: c,
 	}
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[componentreport.JobRunTestReportStatus](c.client.Cache, c.cacheOption, api.GetPrefixedCacheKey("SampleJobRunTestStatus~", generator), generator.queryTestStatus, componentreport.JobRunTestReportStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](c.client.Cache, c.cacheOption, api.GetPrefixedCacheKey("SampleJobRunTestStatus~", generator), generator.queryTestStatus, crtype.JobRunTestReportStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -227,7 +223,7 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 	return componentReportTestStatus.SampleStatus, nil
 }
 
-func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (componentreport.JobRunTestReportStatus, []error) {
+func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (crtype.JobRunTestReportStatus, []error) {
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
 	// TODO
 	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
@@ -268,17 +264,17 @@ func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (componentreport.JobR
 
 	sampleStatus, errs := s.ComponentReportGenerator.fetchJobRunTestStatus(sampleQuery)
 
-	return componentreport.JobRunTestReportStatus{SampleStatus: sampleStatus}, errs
+	return crtype.JobRunTestReportStatus{SampleStatus: sampleStatus}, errs
 }
 
-func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (componentreport.JobRunTestReportStatus, []error) {
+func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (crtype.JobRunTestReportStatus, []error) {
 	allJobVariants, errs := GetJobVariantsFromBigQuery(c.client, c.gcsBucket)
 	if len(errs) > 0 {
 		logrus.Errorf("failed to get variants from bigquery")
-		return componentreport.JobRunTestReportStatus{}, errs
+		return crtype.JobRunTestReportStatus{}, errs
 	}
 	queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, false)
-	var baseStatus, sampleStatus map[string][]componentreport.JobRunTestStatusRow
+	var baseStatus, sampleStatus map[string][]crtype.JobRunTestStatusRow
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -299,21 +295,21 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (componentr
 		errs = append(errs, sampleErrs...)
 	}
 
-	return componentreport.JobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
+	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
 // generateTestDetailsReport handles the report generation for the lowest level test report including
 // breakdown by job as well as overall stats.
-func (c *componentReportGenerator) generateTestDetailsReport(baseStatus map[string][]componentreport.JobRunTestStatusRow,
-	sampleStatus map[string][]componentreport.JobRunTestStatusRow) componentreport.ReportTestDetails {
-	result := componentreport.ReportTestDetails{
-		ReportTestIdentification: componentreport.ReportTestIdentification{
-			RowIdentification: componentreport.RowIdentification{
+func (c *componentReportGenerator) generateTestDetailsReport(baseStatus map[string][]crtype.JobRunTestStatusRow,
+	sampleStatus map[string][]crtype.JobRunTestStatusRow) crtype.ReportTestDetails {
+	result := crtype.ReportTestDetails{
+		ReportTestIdentification: crtype.ReportTestIdentification{
+			RowIdentification: crtype.RowIdentification{
 				Component:  c.Component,
 				Capability: c.Capability,
 				TestID:     c.TestID,
 			},
-			ColumnIdentification: componentreport.ColumnIdentification{
+			ColumnIdentification: crtype.ColumnIdentification{
 				Variants: c.RequestedVariants,
 			},
 		},
@@ -325,7 +321,7 @@ func (c *componentReportGenerator) generateTestDetailsReport(baseStatus map[stri
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
 
 	for prowJob, baseStatsList := range baseStatus {
-		jobStats := componentreport.TestDetailsJobStats{
+		jobStats := crtype.TestDetailsJobStats{
 			JobName: prowJob,
 		}
 		perJobBaseFailure = 0
@@ -387,7 +383,7 @@ func (c *componentReportGenerator) generateTestDetailsReport(baseStatus map[stri
 		totalSampleFlake += perJobSampleFlake
 	}
 	for prowJob, sampleStatsList := range sampleStatus {
-		jobStats := componentreport.TestDetailsJobStats{
+		jobStats := crtype.TestDetailsJobStats{
 			JobName: prowJob,
 		}
 		perJobSampleFailure = 0
@@ -435,15 +431,15 @@ func (c *componentReportGenerator) generateTestDetailsReport(baseStatus map[stri
 	return result
 }
 
-func getJobRunStats(stats componentreport.JobRunTestStatusRow, prowURL, gcsBucket string) componentreport.TestDetailsJobRunStats {
+func getJobRunStats(stats crtype.JobRunTestStatusRow, prowURL, gcsBucket string) crtype.TestDetailsJobRunStats {
 	failure := getFailureCount(stats)
 	url := fmt.Sprintf("%s/view/gs/%s/", prowURL, gcsBucket)
 	subs := strings.Split(stats.FilePath, "/artifacts/")
 	if len(subs) > 1 {
 		url += subs[0]
 	}
-	jobRunStats := componentreport.TestDetailsJobRunStats{
-		TestStats: componentreport.TestDetailsTestStats{
+	jobRunStats := crtype.TestDetailsJobRunStats{
+		TestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  getSuccessRate(stats.SuccessCount, failure, stats.FlakeCount),
 			SuccessCount: stats.SuccessCount,
 			FailureCount: failure,

@@ -256,25 +256,23 @@ func TestParseComponentReportRequest(t *testing.T) {
 			// path/body are irrelevant at this point in time, we only parse query params in the func being tested
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
-			baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
-				ParseComponentReportRequest(views, req, allJobVariants, time.Duration(0))
+			options, err := ParseComponentReportRequest(views, req, allJobVariants, time.Duration(0))
 
 			if tc.errMessage != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errMessage)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tc.baseRelease, baseRelease)
-				assert.Equal(t, tc.sampleRelease, sampleRelease)
-				assert.Equal(t, tc.testIDOption, testIDOption)
-				assert.Equal(t, tc.variantOption, variantOption)
-				assert.Equal(t, tc.advancedOption, advancedOption)
-				assert.Equal(t, tc.cacheOption, cacheOption)
+				assert.Equal(t, tc.baseRelease, options.BaseRelease)
+				assert.Equal(t, tc.sampleRelease, options.SampleRelease)
+				assert.Equal(t, tc.testIDOption, options.TestIDOption)
+				assert.Equal(t, tc.variantOption, options.VariantOption)
+				assert.Equal(t, tc.advancedOption, options.AdvancedOption)
+				assert.Equal(t, tc.cacheOption, options.CacheOption)
 				if tc.errMessage != "" {
 					assert.Error(t, err)
 					assert.True(t, strings.Contains(err.Error(), tc.errMessage))
 				}
-				assert.Equal(t, tc.baseRelease, baseRelease)
 			}
 		})
 	}

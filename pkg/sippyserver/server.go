@@ -678,8 +678,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		})
 		return
 	}
-	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
-		componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
+	options, err := componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -692,12 +691,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		s.bigQueryClient,
 		s.prowURL,
 		s.gcsBucket,
-		baseRelease,
-		sampleRelease,
-		testIDOption,
-		variantOption,
-		advancedOption,
-		cacheOption,
+		options,
 	)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))
@@ -731,8 +725,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
-		componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
+	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -740,16 +733,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	outputs, errs := componentreadiness.GetTestDetails(
-		s.bigQueryClient,
-		s.prowURL,
-		s.gcsBucket,
-		baseRelease,
-		sampleRelease,
-		testIDOption,
-		variantOption,
-		advancedOption,
-		cacheOption)
+	outputs, errs := componentreadiness.GetTestDetails(s.bigQueryClient, s.prowURL, s.gcsBucket, reqOptions)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
 		for _, err := range errs {

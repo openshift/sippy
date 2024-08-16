@@ -184,24 +184,19 @@ func GetJobVariantsFromBigQuery(client *bqcachedclient.Client, gcsBucket string)
 	return api.GetDataFromCacheOrGenerate[crtype.JobVariants](client.Cache, cache.RequestOptions{}, api.GetPrefixedCacheKey("TestAllVariants~", generator), generator.GenerateJobVariants, crtype.JobVariants{})
 }
 
-func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsBucket string,
-	baseRelease, sampleRelease crtype.RequestReleaseOptions,
-	testIDOption crtype.RequestTestIdentificationOptions,
-	variantOption crtype.RequestVariantOptions,
-	advancedOption crtype.RequestAdvancedOptions,
-	cacheOption cache.RequestOptions,
+func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsBucket string, reqOptions crtype.RequestOptions,
 ) (crtype.ComponentReport, []error) {
 	generator := componentReportGenerator{
 		client:                           client,
 		prowURL:                          prowURL,
 		gcsBucket:                        gcsBucket,
-		cacheOption:                      cacheOption,
-		BaseRelease:                      baseRelease,
-		SampleRelease:                    sampleRelease,
+		cacheOption:                      reqOptions.CacheOption,
+		BaseRelease:                      reqOptions.BaseRelease,
+		SampleRelease:                    reqOptions.SampleRelease,
 		triagedIssues:                    nil,
-		RequestTestIdentificationOptions: testIDOption,
-		RequestVariantOptions:            variantOption,
-		RequestAdvancedOptions:           advancedOption,
+		RequestTestIdentificationOptions: reqOptions.TestIDOption,
+		RequestVariantOptions:            reqOptions.VariantOption,
+		RequestAdvancedOptions:           reqOptions.AdvancedOption,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
