@@ -266,6 +266,13 @@ func (s *Server) determineCapabilities() {
 	s.capabilities = capabilities
 }
 
+func failureResponse(w http.ResponseWriter, code int, message string) {
+	api.RespondWithJSON(code, w, map[string]interface{}{
+		"code":    code,
+		"message": message,
+	})
+}
+
 func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, s.capabilities)
 }
@@ -281,22 +288,19 @@ func (s *Server) jsonReleaseTagsReport(w http.ResponseWriter, req *http.Request)
 func (s *Server) jsonIncidentEvent(w http.ResponseWriter, req *http.Request) {
 	start, err := getISO8601Date("start", req)
 	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-			"message": "couldn't parse start param" + err.Error()})
+		failureResponse(w, http.StatusInternalServerError, "couldn't parse start param: "+err.Error())
 		return
 	}
 
 	end, err := getISO8601Date("end", req)
 	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-			"message": "couldn't parse start param" + err.Error()})
+		failureResponse(w, http.StatusInternalServerError, "couldn't parse end param: "+err.Error())
 		return
 	}
 
 	results, err := api.GetJIRAIncidentsFromDB(s.db, start, end)
 	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-			"message": "couldn't fetch events" + err.Error()})
+		failureResponse(w, http.StatusInternalServerError, "couldn't fetch events: "+err.Error())
 		return
 	}
 
@@ -308,29 +312,25 @@ func (s *Server) jsonReleaseTagsEvent(w http.ResponseWriter, req *http.Request) 
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "release_time", apitype.SortDescending)
 		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "couldn't parse filter opts " + err.Error()})
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
 			return
 		}
 
 		start, err := getISO8601Date("start", req)
 		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "couldn't parse start param" + err.Error()})
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse start param: "+err.Error())
 			return
 		}
 
 		end, err := getISO8601Date("end", req)
 		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "couldn't parse start param" + err.Error()})
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse end param: "+err.Error())
 			return
 		}
 
 		results, err := api.GetPayloadEvents(s.db, release, filterOpts, start, end)
 		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "couldn't parse start param" + err.Error()})
+			failureResponse(w, http.StatusInternalServerError, "couldn't get payload events: "+err.Error())
 			return
 		}
 
@@ -351,18 +351,15 @@ func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
 	if err != nil {
 		log.WithError(err).Error("error")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-			"message": "Error building job run report:" + err.Error()})
+		failureResponse(w, http.StatusInternalServerError, "Error building job run report: "+err.Error())
 		return
 	}
 
 	payloadJobRuns, err := api.ListPayloadJobRuns(s.db, filterOpts, release)
 	if err != nil {
 		log.WithError(err).Error("error listing payload job runs")
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, "error listing payload job runs: "+err.Error())
+		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, payloadJobRuns)
 }
@@ -374,32 +371,23 @@ func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request
 func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
 	if release == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Errorf(`"release" is required`),
-		})
+		failureResponse(w, http.StatusBadRequest, `"release" is required`)
 		return
 	}
 	stream := req.URL.Query().Get("stream")
-	if release == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Errorf(`"stream" is required`),
-		})
+	if stream == "" {
+		failureResponse(w, http.StatusBadRequest, `"stream" is required`)
 		return
 	}
 	arch := req.URL.Query().Get("arch")
-	if release == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Errorf(`"arch" is required`),
-		})
+	if arch == "" {
+		failureResponse(w, http.StatusBadRequest, `"arch" is required`)
 		return
 	}
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
 	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -412,8 +400,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 	result, err := api.GetPayloadStreamTestFailures(s.db, release, stream, arch, filterOpts, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-			"message": "Error analyzing payload: " + err.Error()})
+		failureResponse(w, http.StatusInternalServerError, "Error analyzing payload: "+err.Error())
 		return
 	}
 
@@ -425,10 +412,7 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Request) {
 	payload := req.URL.Query().Get("payload")
 	if payload == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Errorf(`"payload" is required`),
-		})
+		failureResponse(w, http.StatusBadRequest, `"payload" is required`)
 		return
 	}
 
@@ -440,8 +424,7 @@ func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Req
 	result, err := api.GetPayloadTestFailures(s.db, payload, logger)
 	if err != nil {
 		log.WithError(err).Error("error")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-			"message": "Error looking up test failures for payload: " + err.Error()})
+		failureResponse(w, http.StatusInternalServerError, "Error looking up test failures for payload: "+err.Error())
 		return
 	}
 
@@ -451,20 +434,14 @@ func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Req
 func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
 	release := req.URL.Query().Get("release")
 	if release == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": fmt.Errorf(`"release" is required`),
-		})
+		failureResponse(w, http.StatusBadRequest, `"release" is required`)
 		return
 	}
 
 	results, err := api.ReleaseHealthReports(s.db, release, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error generating release health report")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -478,10 +455,7 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 
 	if err != nil {
 		log.WithError(err).Error("error generating payload diff")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -491,24 +465,19 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "'test' is required.",
-		})
+		failureResponse(w, http.StatusBadRequest, "'test' is required.")
 		return
 	}
 	release := s.getReleaseOrFail(w, req)
 	if release != "" {
 		filters, err := filter.ExtractFilters(req)
 		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "couldn't parse filter opts " + err.Error()})
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
 			return
 		}
 		results, err := dbFN(s.db, filters, release, testName, s.GetReportEnd())
 		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": err.Error()})
+			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		api.RespondWithJSON(200, w, results)
@@ -530,10 +499,7 @@ func (s *Server) jsonTestAnalysisOverallFromDB(w http.ResponseWriter, req *http.
 func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "'test' is required.",
-		})
+		failureResponse(w, http.StatusBadRequest, "'test' is required.")
 		return
 	}
 
@@ -544,10 +510,7 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		log.WithError(err).Error("error querying test bugs from db")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying test bugs from db",
-		})
+		failureResponse(w, http.StatusInternalServerError, "error querying test bugs from db")
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, bugs)
@@ -561,29 +524,20 @@ func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Reques
 
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "'test' is required.",
-		})
+		failureResponse(w, http.StatusBadRequest, "'test' is required.")
 		return
 	}
 
 	filters, err := filter.ExtractFilters(req)
 	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error processing filter options",
-		})
+		failureResponse(w, http.StatusInternalServerError, "error processing filter options")
 		return
 	}
 
 	outputs, err := api.GetTestDurationsFromDB(s.db, release, testName, filters)
 	if err != nil {
 		log.WithError(err).Error("error querying test outputs from db")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying test outputs from db",
-		})
+		failureResponse(w, http.StatusInternalServerError, "error querying test outputs from db")
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -597,29 +551,20 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "'test' is required.",
-		})
+		failureResponse(w, http.StatusBadRequest, "'test' is required.")
 		return
 	}
 
 	filters, err := filter.ExtractFilters(req)
 	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error processing filter options",
-		})
+		failureResponse(w, http.StatusInternalServerError, "error processing filter options")
 		return
 	}
 
 	outputs, err := api.GetTestOutputsFromDB(s.db, release, testName, filters, 10)
 	if err != nil {
 		log.WithError(err).Error("error querying test outputs from db")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying test outputs from db",
-		})
+		failureResponse(w, http.StatusInternalServerError, "error querying test outputs from db")
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -627,10 +572,7 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 
 func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "component report API is only available when google-service-account-credential-file is configured",
-		})
+		failureResponse(w, http.StatusBadRequest, "component report API is only available when google-service-account-credential-file is configured")
 		return
 	}
 	outputs, errs := componentreadiness.GetComponentTestVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
@@ -639,10 +581,7 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 		for _, err := range errs {
 			log.Error(err.Error())
 		}
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": fmt.Sprintf("error querying test variants from big query: %v", errs),
-		})
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying test variants from big query: %v", errs))
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -650,10 +589,7 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 
 func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "job variants API is only available when google-service-account-credential-file is configured",
-		})
+		failureResponse(w, http.StatusBadRequest, "job variants API is only available when google-service-account-credential-file is configured")
 		return
 	}
 	outputs, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
@@ -662,10 +598,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 		for _, err := range errs {
 			log.Error(err.Error())
 		}
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": fmt.Sprintf("error querying job variants from big query: %v", errs),
-		})
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying job variants from big query: %v", errs))
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -674,10 +607,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
 	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -688,10 +618,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 	for i := range viewsCopy {
 		rro, err := componentreadiness.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
 		if err != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": err.Error(),
-			})
+			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		viewsCopy[i].BaseRelease.Start = rro.Start
@@ -699,10 +626,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 
 		rro, err = componentreadiness.GetViewReleaseOptions(allReleases, "sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
 		if err != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": err.Error(),
-			})
+			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		viewsCopy[i].SampleRelease.Start = rro.Start
@@ -713,38 +637,24 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
-		err := fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, "component report API is only available when google-service-account-credential-file is configured")
 		return
 	}
 	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
 	if len(errs) > 0 {
-		err := fmt.Errorf("failed to get variants from bigquery")
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, "failed to get variants from bigquery")
 		return
 	}
 
 	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -760,10 +670,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		for _, err := range errs {
 			log.Error(err.Error())
 		}
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": fmt.Sprintf("error querying component from big query: %v", errs),
-		})
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying component from big query: %v", errs))
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -772,36 +679,24 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
 		err := fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
 	if len(errs) > 0 {
 		err := fmt.Errorf("failed to get variants from bigquery")
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error(),
-		})
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, s.prowURL, s.gcsBucket, reqOptions)
@@ -810,10 +705,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		for _, err := range errs {
 			log.Error(err.Error())
 		}
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": fmt.Sprintf("error querying component test details from big query: %v", errs),
-		})
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying component test details from big query: %v", errs))
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -824,12 +716,12 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 
 	fil, err := filter.ExtractFilters(req)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
 		return
 	}
 	jobFilter, _, err := splitJobAndJobRunFilters(fil)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
 		return
 	}
 
@@ -840,20 +732,14 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 	jobIDs, err := query.ListFilteredJobIDs(s.db, release, jobFilter, start, boundary, end, limit, sortField, sort)
 	if err != nil {
 		log.WithError(err).Error("error querying jobs")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying jobs",
-		})
+		failureResponse(w, http.StatusInternalServerError, "error querying jobs")
 		return
 	}
 
 	bugs, err := query.LoadBugsForJobs(s.db, jobIDs, false)
 	if err != nil {
 		log.WithError(err).Error("error querying job bugs from db")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying job bugs from db",
-		})
+		failureResponse(w, http.StatusInternalServerError, "error querying job bugs from db")
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, bugs)
@@ -883,10 +769,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 	releases, err := api.GetReleases(req.Context(), s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying releases")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying releases",
-		})
+		failureResponse(w, http.StatusInternalServerError, "error querying releases")
 		return
 	}
 
@@ -907,10 +790,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 		res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
 		if res.Error != nil {
 			log.WithError(res.Error).Error("error querying last updated from db")
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-				"code":    http.StatusInternalServerError,
-				"message": "error querying last updated from db",
-			})
+			failureResponse(w, http.StatusInternalServerError, "error querying last updated from db")
 			return
 		}
 
@@ -933,10 +813,7 @@ func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request
 	results, err := api.GetBuildClusterHealthReport(s.db, start, boundary, end)
 	if err != nil {
 		log.WithError(err).Error("error querying build cluster health from db")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying build cluster health from db " + err.Error(),
-		})
+		failureResponse(w, http.StatusInternalServerError, "error querying build cluster health from db: "+err.Error())
 		return
 	}
 
@@ -952,10 +829,7 @@ func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http
 	results, err := api.GetBuildClusterHealthAnalysis(s.db, period)
 	if err != nil {
 		log.WithError(err).Error("error querying build cluster health from db")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
-			"code":    http.StatusInternalServerError,
-			"message": "error querying build cluster health from db " + err.Error(),
-		})
+		failureResponse(w, http.StatusInternalServerError, "error querying build cluster health from db: "+err.Error())
 		return
 	}
 
@@ -970,10 +844,7 @@ func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request) stri
 	release := req.URL.Query().Get("release")
 
 	if release == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    "400",
-			"message": "release is required",
-		})
+		failureResponse(w, http.StatusBadRequest, "release is required")
 		return release
 	}
 
@@ -1025,16 +896,14 @@ func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.R
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "premerge_job_failures", apitype.SortDescending)
 		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "couldn't parse filter opts " + err.Error()})
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
 			return
 		}
 
 		results, err := api.GetRepositoriesReportFromDB(s.db, release, filterOpts, s.GetReportEnd())
 		if err != nil {
 			log.WithError(err).Error("error")
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "Error fetching repositories " + err.Error()})
+			failureResponse(w, http.StatusInternalServerError, "Error fetching repositories: "+err.Error())
 			return
 		}
 
@@ -1047,16 +916,14 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "merged_at", apitype.SortDescending)
 		if err != nil {
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "couldn't parse filter opts " + err.Error()})
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
 			return
 		}
 
 		results, err := api.GetPullRequestsReportFromDB(s.db, release, filterOpts)
 		if err != nil {
 			log.WithError(err).Error("error")
-			api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError,
-				"message": "Error fetching pull requests" + err.Error()})
+			failureResponse(w, http.StatusInternalServerError, "Error fetching pull requests: "+err.Error())
 			return
 		}
 
@@ -1069,19 +936,19 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "timestamp", "desc")
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
 		return
 	}
 
 	pagination, err := getPaginationParams(req)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not parse pagination options: " + err.Error()})
+		failureResponse(w, http.StatusBadRequest, "Could not parse pagination options: "+err.Error())
 		return
 	}
 
 	result, err := api.JobsRunsReportFromDB(s.db, filterOpts, release, pagination, s.GetReportEnd())
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": err.Error()})
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -1111,10 +978,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 
 		jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
 		if err != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": "unable to parse prow_job_run_id: " + err.Error()})
-			return
+			failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
 		}
 
 		logger = logger.WithField("jobRunID", jobRunID)
@@ -1123,18 +987,14 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		jobRun, jobRunTestCount, err = api.FetchJobRun(s.db, jobRunID, logger)
 
 		if err != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-				"code": http.StatusBadRequest, "message": err.Error()})
+			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
 	} else {
 		err := json.NewDecoder(req.Body).Decode(&jobRun)
 		if err != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": fmt.Sprintf("error decoding prow job run json in request body: %s", err)})
-			return
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("error decoding prow job run json in request body: %s", err))
 		}
 
 		// validate the jobRun isn't empty
@@ -1162,10 +1022,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		job := &models.ProwJob{}
 		res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(job)
 		if res.Error != nil {
-			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-				"code":    http.StatusBadRequest,
-				"message": fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name)})
-			return
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name))
 		}
 		jobRun.ProwJob = *job
 
@@ -1176,10 +1033,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	logger.Infof("job run = %+v", *jobRun)
 	result, err := api.JobRunRiskAnalysis(s.db, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"))
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error()})
-		return
+		failureResponse(w, http.StatusBadRequest, err.Error())
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, result)
@@ -1194,25 +1048,18 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	logger := log.WithField("func", "jsonJobRunIntervals")
 
 	if s.gcsClient == nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "server not configured for GCS, unable to use this API"})
-		return
+		failureResponse(w, http.StatusBadRequest, "server not configured for GCS, unable to use this API")
 	}
 
 	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
 	if jobRunIDStr == "" {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code": http.StatusBadRequest, "message": "prow_job_run_id query parameter not specified"})
+		failureResponse(w, http.StatusBadRequest, "prow_job_run_id query parameter not specified")
 		return
 	}
 
 	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "unable to parse prow_job_run_id: " + err.Error()})
-		return
+		failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
 	}
 	logger = logger.WithField("jobRunID", jobRunID)
 
@@ -1244,10 +1091,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
 		intervalFile, logger.WithField("func", "JobRunIntervals"))
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": err.Error()})
-		return
+		failureResponse(w, http.StatusBadRequest, err.Error())
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, result)
@@ -1279,12 +1123,12 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 
 	fil, err := filter.ExtractFilters(req)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
 		return
 	}
 	jobFilter, jobRunsFilter, err := splitJobAndJobRunFilters(fil)
 	if err != nil {
-		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
+		failureResponse(w, http.StatusBadRequest, "Could not marshal query: "+err.Error())
 		return
 	}
 
@@ -1301,7 +1145,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 		start, boundary, end, limit, sortField, sort, period, s.GetReportEnd())
 	if err != nil {
 		log.WithError(err).Error("error in PrintJobAnalysisJSONFromDB")
-		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": err.Error()})
+		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
@@ -1314,7 +1158,7 @@ func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.R
 	}
 
 	return func(w http.ResponseWriter, req *http.Request) {
-		api.RespondWithJSON(http.StatusNotImplemented, w, map[string]string{"message": "This Sippy server is not capable of responding to this request."})
+		failureResponse(w, http.StatusNotImplemented, "This Sippy server is not capable of responding to this request.")
 	}
 }
 
