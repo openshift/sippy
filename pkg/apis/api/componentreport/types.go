@@ -1,11 +1,12 @@
 package componentreport
 
 import (
+	"math/big"
+	"time"
+
 	"cloud.google.com/go/bigquery"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util/sets"
-	"math/big"
-	"time"
 )
 
 // PullRequestOptions specifies a specific pull request to use as the

@@ -1,9 +1,14 @@
 package componentreadiness
 
 import (
-	bigquery2 "cloud.google.com/go/bigquery"
 	"fmt"
-	"github.com/glycerine/golang-fisher-exact"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
+	bigquery2 "cloud.google.com/go/bigquery"
+	fet "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -11,10 +16,6 @@ import (
 	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/sirupsen/logrus"
-	"sort"
-	"strings"
-	"sync"
-	"time"
 )
 
 func GetTestDetails(client *bigquery.Client, prowURL, gcsBucket string, reqOptions crtype.RequestOptions,
@@ -60,7 +61,7 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (crtype.ReportTes
 		errs = append(errs, err)
 		return crtype.ReportTestDetails{}, errs
 	}
-	report := c.generateTestDetailsReport(componentJobRunTestReportStatus.BaseStatus, componentJobRunTestReportStatus.SampleStatus)
+	report := c.internalGenerateTestDetailsReport(componentJobRunTestReportStatus.BaseStatus, componentJobRunTestReportStatus.SampleStatus)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 	return report, nil
 }
@@ -298,9 +299,9 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (crtype.Job
 	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
-// generateTestDetailsReport handles the report generation for the lowest level test report including
+// internalGenerateTestDetailsReport handles the report generation for the lowest level test report including
 // breakdown by job as well as overall stats.
-func (c *componentReportGenerator) generateTestDetailsReport(baseStatus map[string][]crtype.JobRunTestStatusRow,
+func (c *componentReportGenerator) internalGenerateTestDetailsReport(baseStatus map[string][]crtype.JobRunTestStatusRow,
 	sampleStatus map[string][]crtype.JobRunTestStatusRow) crtype.ReportTestDetails {
 	result := crtype.ReportTestDetails{
 		ReportTestIdentification: crtype.ReportTestIdentification{
