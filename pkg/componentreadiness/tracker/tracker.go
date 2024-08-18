@@ -8,7 +8,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
-	"github.com/openshift/sippy/pkg/apis/api"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -21,8 +21,8 @@ const (
 
 // RegressionStore is an underlying interface for where we store/load data on open test regressions.
 type RegressionStore interface {
-	ListCurrentRegressions(release string) ([]api.TestRegression, error)
-	OpenRegression(release string, newRegressedTest api.ComponentReportTestSummary) (*api.TestRegression, error)
+	ListCurrentRegressions(release string) ([]crtype.TestRegression, error)
+	OpenRegression(release string, newRegressedTest crtype.ReportTestSummary) (*crtype.TestRegression, error)
 	ReOpenRegression(regressionID string) error
 	CloseRegression(regressionID string, closedAt time.Time) error
 }
@@ -36,7 +36,7 @@ func NewBigQueryRegressionStore(client *sippybigquery.Client) RegressionStore {
 	return &BigQueryRegressionStore{client: client}
 }
 
-func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]api.TestRegression, error) {
+func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]crtype.TestRegression, error) {
 	// List open regressions (no closed date), or those that closed within the last two days. This is to prevent flapping
 	// and return more accurate opened dates when a test is falling in / out of the report.
 	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE release = @SampleRelease AND (closed IS NULL or closed > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY))",
@@ -53,7 +53,7 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]api
 	sampleQuery := bq.client.BQ.Query(queryString)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, params...)
 
-	regressions := make([]api.TestRegression, 0)
+	regressions := make([]crtype.TestRegression, 0)
 	log.Infof("Fetching current test regressions with:\n%s\nParameters:\n%+v\n",
 		sampleQuery.Q, sampleQuery.Parameters)
 
@@ -64,7 +64,7 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]api
 	}
 
 	for {
-		var regression api.TestRegression
+		var regression crtype.TestRegression
 		err := it.Next(&regression)
 		if err == iterator.Done {
 			break
@@ -78,9 +78,9 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]api
 	return regressions, nil
 
 }
-func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTest api.ComponentReportTestSummary) (*api.TestRegression, error) {
+func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTest crtype.ReportTestSummary) (*crtype.TestRegression, error) {
 	id := uuid.New()
-	newRegression := &api.TestRegression{
+	newRegression := &crtype.TestRegression{
 		Release:      release,
 		TestID:       newRegressedTest.TestID,
 		TestName:     newRegressedTest.TestName,
@@ -88,12 +88,12 @@ func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTe
 		Opened:       time.Now(),
 	}
 	for key, value := range newRegressedTest.Variants {
-		newRegression.Variants = append(newRegression.Variants, api.ComponentReportVariant{
+		newRegression.Variants = append(newRegression.Variants, crtype.Variant{
 			Key: key, Value: value,
 		})
 	}
 	inserter := bq.client.BQ.Dataset(bq.client.Dataset).Table(testRegressionsTable).Inserter()
-	items := []*api.TestRegression{
+	items := []*crtype.TestRegression{
 		newRegression,
 	}
 	if err := inserter.Put(context.TODO(), items); err != nil {
@@ -145,7 +145,7 @@ type RegressionTracker struct {
 	dryRun  bool
 }
 
-func (rt *RegressionTracker) SyncComponentReport(release string, report *api.ComponentReport) error {
+func (rt *RegressionTracker) SyncComponentReport(release string, report *crtype.ComponentReport) error {
 	regressions, err := rt.backend.ListCurrentRegressions(release)
 	if err != nil {
 		return err
@@ -154,7 +154,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 	rLog.Infof("loaded %d regressions from db", len(regressions))
 
 	// All regressions, both triaged and not:
-	allRegressedTests := []api.ComponentReportTestSummary{}
+	allRegressedTests := []crtype.ReportTestSummary{}
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
 			allRegressedTests = append(allRegressedTests, col.RegressedTests...)
@@ -162,12 +162,12 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
 			// a regression.
 			for _, triaged := range col.TriagedIncidents {
-				allRegressedTests = append(allRegressedTests, triaged.ComponentReportTestSummary)
+				allRegressedTests = append(allRegressedTests, triaged.ReportTestSummary)
 			}
 		}
 	}
 
-	matchedOpenRegressions := []api.TestRegression{} // all the matches we found, used to determine what had no match
+	matchedOpenRegressions := []crtype.TestRegression{} // all the matches we found, used to determine what had no match
 	for _, regTest := range allRegressedTests {
 		if openReg := FindOpenRegression(release, regTest.TestID, regTest.Variants, regressions); openReg != nil {
 			if openReg.Closed.Valid {
@@ -234,7 +234,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *api.Com
 func FindOpenRegression(release string,
 	testID string,
 	variants map[string]string,
-	regressions []api.TestRegression) *api.TestRegression {
+	regressions []crtype.TestRegression) *crtype.TestRegression {
 
 	for _, tr := range regressions {
 		if tr.Release != release {
@@ -260,7 +260,7 @@ func FindOpenRegression(release string,
 	return nil
 }
 
-func findVariant(variantName string, testReg api.TestRegression) string {
+func findVariant(variantName string, testReg crtype.TestRegression) string {
 	for _, v := range testReg.Variants {
 		if v.Key == variantName {
 			return v.Value

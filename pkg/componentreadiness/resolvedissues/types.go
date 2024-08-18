@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"sort"
 
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/openshift/sippy/pkg/variantregistry"
-
-	"github.com/openshift/sippy/pkg/apis/api"
 )
 
 var TriageMatchVariants = buildTriageMatchVariants([]string{variantregistry.VariantPlatform, variantregistry.VariantArch, variantregistry.VariantNetwork,
@@ -27,17 +26,17 @@ func buildTriageMatchVariants(in []string) sets.String {
 
 	return set
 }
-func TransformVariant(variant api.ComponentReportColumnIdentification) []api.ComponentReportVariant {
-	triagedVariants := []api.ComponentReportVariant{}
+func TransformVariant(variant crtype.ColumnIdentification) []crtype.Variant {
+	triagedVariants := []crtype.Variant{}
 	for name, value := range variant.Variants {
 		// For now, we only use the defined match variants
 		if TriageMatchVariants.Has(name) {
-			triagedVariants = append(triagedVariants, api.ComponentReportVariant{Key: name, Value: value})
+			triagedVariants = append(triagedVariants, crtype.Variant{Key: name, Value: value})
 		}
 	}
 	return triagedVariants
 }
-func KeyForTriagedIssue(testID string, variants []api.ComponentReportVariant) TriagedIssueKey {
+func KeyForTriagedIssue(testID string, variants []crtype.Variant) TriagedIssueKey {
 
 	triagedVariants := make(map[string]string)
 	// initialize missing defaults
@@ -92,9 +91,9 @@ func KeyForTriagedIssue(testID string, variants []api.ComponentReportVariant) Tr
 		}
 	}
 
-	matchVariants := make([]api.ComponentReportVariant, 0)
+	matchVariants := make([]crtype.Variant, 0)
 	for key, value := range triagedVariants {
-		matchVariants = append(matchVariants, api.ComponentReportVariant{Key: key, Value: value})
+		matchVariants = append(matchVariants, crtype.Variant{Key: key, Value: value})
 	}
 
 	sort.Slice(matchVariants,
@@ -128,13 +127,13 @@ type TriagedIssueKey struct {
 }
 
 type TriagedIncidentsForRelease struct {
-	Release          Release                                   `json:"release"`
-	TriagedIncidents map[TriagedIssueKey][]api.TriagedIncident `json:"triaged_incidents"`
+	Release          Release                                      `json:"release"`
+	TriagedIncidents map[TriagedIssueKey][]crtype.TriagedIncident `json:"triaged_incidents"`
 }
 
 func NewTriagedIncidentsForRelease(release Release) TriagedIncidentsForRelease {
 	return TriagedIncidentsForRelease{
 		Release:          release,
-		TriagedIncidents: map[TriagedIssueKey][]api.TriagedIncident{},
+		TriagedIncidents: map[TriagedIssueKey][]crtype.TriagedIncident{},
 	}
 }

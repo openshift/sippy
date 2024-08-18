@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	apitype "github.com/openshift/sippy/pkg/apis/api"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
@@ -53,7 +53,11 @@ func GetPrefixedCacheKey(prefix string, cacheKey interface{}) CacheData {
 }
 
 // GetDataFromCacheOrGenerate attempts to find a cached record otherwise generates new data.
-func GetDataFromCacheOrGenerate[T any](c cache.Cache, cacheOptions cache.RequestOptions, cacheData CacheData, generateFn func() (T, []error), defaultVal T) (T, []error) {
+func GetDataFromCacheOrGenerate[T any](
+	c cache.Cache, cacheOptions cache.RequestOptions, cacheData CacheData,
+	generateFn func() (T, []error),
+	defaultVal T,
+) (T, []error) {
 	if c != nil {
 		cacheKey, err := cacheData.GetCacheKey()
 		if err != nil {
@@ -133,7 +137,7 @@ func GetReleases(dbc *db.DB, bqc *bqclient.Client) ([]query.Release, error) {
 }
 
 // VariantsStringToSet converts comma separated variant string into a set
-func VariantsStringToSet(allJobVariants apitype.JobVariants, variantsString string) (sets.String, error) {
+func VariantsStringToSet(allJobVariants crtype.JobVariants, variantsString string) (sets.String, error) {
 	variantSet := sets.String{}
 	variants := strings.Split(variantsString, ",")
 	for _, v := range variants {
@@ -145,7 +149,7 @@ func VariantsStringToSet(allJobVariants apitype.JobVariants, variantsString stri
 	return variantSet, nil
 }
 
-func IncludeVariantsToMap(allJobVariants apitype.JobVariants, includeVariants []string) (map[string][]string, error) {
+func IncludeVariantsToMap(allJobVariants crtype.JobVariants, includeVariants []string) (map[string][]string, error) {
 	includeVariantsMap := map[string][]string{}
 	var err error
 	for _, includeVariant := range includeVariants {

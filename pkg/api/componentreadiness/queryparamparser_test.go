@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	apitype "github.com/openshift/sippy/pkg/apis/api"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +24,7 @@ var (
 
 func TestParseComponentReportRequest(t *testing.T) {
 
-	allJobVariants := apitype.JobVariants{Variants: map[string][]string{
+	allJobVariants := crtype.JobVariants{Variants: map[string][]string{
 		"Architecture": {"amd64", "arm64", "heterogeneous"},
 		"FeatureSet":   {"default", "techpreview"},
 		"Installer":    {"ipi", "upi"},
@@ -34,25 +34,25 @@ func TestParseComponentReportRequest(t *testing.T) {
 		"Upgrade":      {"micro", "minor", "none"},
 	}}
 
-	view417main := apitype.ComponentReportView{
+	view417main := crtype.View{
 		Name: "4.17-main",
-		BaseRelease: apitype.ComponentReportRequestRelativeReleaseOptions{
+		BaseRelease: crtype.RequestRelativeReleaseOptions{
 			Release:       "4.16",
 			RelativeStart: "ga-30d",
 			RelativeEnd:   "ga",
 		},
-		SampleRelease: apitype.ComponentReportRequestRelativeReleaseOptions{
+		SampleRelease: crtype.RequestRelativeReleaseOptions{
 			Release:       "4.17",
 			RelativeStart: "now-7d",
 			RelativeEnd:   "now",
 		},
-		VariantOptions: apitype.ComponentReportRequestVariantOptions{
+		VariantOptions: crtype.RequestVariantOptions{
 			ColumnGroupBy:     defaultColumnGroupByVariants,
 			DBGroupBy:         defaultDBGroupByVariants,
 			IncludeVariants:   includeVariants,
 			RequestedVariants: nil,
 		},
-		AdvancedOptions: apitype.ComponentReportRequestAdvancedOptions{
+		AdvancedOptions: crtype.RequestAdvancedOptions{
 			MinimumFailure:   3,
 			Confidence:       95,
 			PityFactor:       5,
@@ -60,7 +60,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			IgnoreDisruption: true,
 		},
 	}
-	views := []apitype.ComponentReportView{
+	views := []crtype.View{
 		view417main,
 	}
 
@@ -77,11 +77,11 @@ func TestParseComponentReportRequest(t *testing.T) {
 		queryParams [][]string
 
 		// expected outputs
-		baseRelease    apitype.ComponentReportRequestReleaseOptions
-		sampleRelease  apitype.ComponentReportRequestReleaseOptions
-		testIDOption   apitype.ComponentReportRequestTestIdentificationOptions
-		variantOption  apitype.ComponentReportRequestVariantOptions
-		advancedOption apitype.ComponentReportRequestAdvancedOptions
+		baseRelease    crtype.RequestReleaseOptions
+		sampleRelease  crtype.RequestReleaseOptions
+		testIDOption   crtype.RequestTestIdentificationOptions
+		variantOption  crtype.RequestVariantOptions
+		advancedOption crtype.RequestAdvancedOptions
 		cacheOption    cache.RequestOptions
 		errMessage     string
 	}{
@@ -107,7 +107,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Installer:ipi"},
 				{"includeVariant", "Installer:upi"},
 			},
-			variantOption: apitype.ComponentReportRequestVariantOptions{
+			variantOption: crtype.RequestVariantOptions{
 				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
 				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
@@ -117,18 +117,18 @@ func TestParseComponentReportRequest(t *testing.T) {
 				},
 				RequestedVariants: map[string]string{},
 			},
-			baseRelease: apitype.ComponentReportRequestReleaseOptions{
+			baseRelease: crtype.RequestReleaseOptions{
 				Release: "4.15",
 				Start:   time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
 				End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
 			},
-			sampleRelease: apitype.ComponentReportRequestReleaseOptions{
+			sampleRelease: crtype.RequestReleaseOptions{
 				Release: "4.16",
 				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
 				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
 			},
-			testIDOption: apitype.ComponentReportRequestTestIdentificationOptions{},
-			advancedOption: apitype.ComponentReportRequestAdvancedOptions{
+			testIDOption: crtype.RequestTestIdentificationOptions{},
+			advancedOption: crtype.RequestAdvancedOptions{
 				MinimumFailure:   3,
 				Confidence:       95,
 				PityFactor:       5,
@@ -161,7 +161,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Installer:ipi"},
 				{"includeVariant", "Installer:upi"},
 			},
-			variantOption: apitype.ComponentReportRequestVariantOptions{
+			variantOption: crtype.RequestVariantOptions{
 				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
 				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
@@ -171,18 +171,18 @@ func TestParseComponentReportRequest(t *testing.T) {
 				},
 				RequestedVariants: map[string]string{},
 			},
-			baseRelease: apitype.ComponentReportRequestReleaseOptions{
+			baseRelease: crtype.RequestReleaseOptions{
 				Release: "4.15",
 				Start:   time.Date(2024, time.January, 29, 0, 0, 0, 0, time.UTC),
 				End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
 			},
-			sampleRelease: apitype.ComponentReportRequestReleaseOptions{
+			sampleRelease: crtype.RequestReleaseOptions{
 				Release: "4.16",
 				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
 				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
 			},
-			testIDOption: apitype.ComponentReportRequestTestIdentificationOptions{},
-			advancedOption: apitype.ComponentReportRequestAdvancedOptions{
+			testIDOption: crtype.RequestTestIdentificationOptions{},
+			advancedOption: crtype.RequestAdvancedOptions{
 				MinimumFailure:   3,
 				Confidence:       95,
 				PityFactor:       5,
@@ -198,7 +198,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			queryParams: [][]string{
 				{"view", "4.17-main"},
 			},
-			variantOption: apitype.ComponentReportRequestVariantOptions{
+			variantOption: crtype.RequestVariantOptions{
 				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
 				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
@@ -207,18 +207,18 @@ func TestParseComponentReportRequest(t *testing.T) {
 					"Installer":    {"ipi", "upi"},
 				},
 			},
-			baseRelease: apitype.ComponentReportRequestReleaseOptions{
+			baseRelease: crtype.RequestReleaseOptions{
 				Release: "4.16",
 				Start:   time.Date(2024, time.May, 28, 0, 0, 0, 0, time.UTC),
 				End:     time.Date(2024, time.June, 27, 23, 59, 59, 0, time.UTC),
 			},
-			sampleRelease: apitype.ComponentReportRequestReleaseOptions{
+			sampleRelease: crtype.RequestReleaseOptions{
 				Release: "4.17",
 				Start:   time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
 				End:     nowRoundUp,
 			},
-			testIDOption: apitype.ComponentReportRequestTestIdentificationOptions{},
-			advancedOption: apitype.ComponentReportRequestAdvancedOptions{
+			testIDOption: crtype.RequestTestIdentificationOptions{},
+			advancedOption: crtype.RequestAdvancedOptions{
 				MinimumFailure:   3,
 				Confidence:       95,
 				PityFactor:       5,
@@ -256,25 +256,23 @@ func TestParseComponentReportRequest(t *testing.T) {
 			// path/body are irrelevant at this point in time, we only parse query params in the func being tested
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
-			baseRelease, sampleRelease, testIDOption, variantOption, advancedOption, cacheOption, err :=
-				ParseComponentReportRequest(views, req, allJobVariants, time.Duration(0))
+			options, err := ParseComponentReportRequest(views, req, allJobVariants, time.Duration(0))
 
 			if tc.errMessage != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tc.errMessage)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tc.baseRelease, baseRelease)
-				assert.Equal(t, tc.sampleRelease, sampleRelease)
-				assert.Equal(t, tc.testIDOption, testIDOption)
-				assert.Equal(t, tc.variantOption, variantOption)
-				assert.Equal(t, tc.advancedOption, advancedOption)
-				assert.Equal(t, tc.cacheOption, cacheOption)
+				assert.Equal(t, tc.baseRelease, options.BaseRelease)
+				assert.Equal(t, tc.sampleRelease, options.SampleRelease)
+				assert.Equal(t, tc.testIDOption, options.TestIDOption)
+				assert.Equal(t, tc.variantOption, options.VariantOption)
+				assert.Equal(t, tc.advancedOption, options.AdvancedOption)
+				assert.Equal(t, tc.cacheOption, options.CacheOption)
 				if tc.errMessage != "" {
 					assert.Error(t, err)
 					assert.True(t, strings.Contains(err.Error(), tc.errMessage))
 				}
-				assert.Equal(t, tc.baseRelease, baseRelease)
 			}
 		})
 	}

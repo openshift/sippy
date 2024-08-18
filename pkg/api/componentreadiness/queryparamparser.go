@@ -7,205 +7,68 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
-	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/apis/cache"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/pkg/errors"
 )
 
 // nolint:gocyclo
 func ParseComponentReportRequest(
-	views []apitype.ComponentReportView,
+	views []crtype.View,
 	req *http.Request,
-	allJobVariants apitype.JobVariants,
-	crTimeRoundingFactor time.Duration) (
-	baseRelease apitype.ComponentReportRequestReleaseOptions,
-	sampleRelease apitype.ComponentReportRequestReleaseOptions,
-	testIDOption apitype.ComponentReportRequestTestIdentificationOptions,
-	variantOption apitype.ComponentReportRequestVariantOptions,
-	advancedOption apitype.ComponentReportRequestAdvancedOptions,
-	cacheOption cache.RequestOptions,
-	err error) {
-
+	allJobVariants crtype.JobVariants,
+	crTimeRoundingFactor time.Duration,
+) (
+	opts crtype.RequestOptions,
+	err error,
+) {
 	// Check if the user specified a view, in which case only some query params can be used.
-	viewRequested := req.URL.Query().Get("view")
-	var view *apitype.ComponentReportView
-	if viewRequested != "" {
-		for i, v := range views {
-			if v.Name == viewRequested {
-				view = &views[i]
-				break
-			}
-		}
-		if view == nil {
-			err = fmt.Errorf("unknown view: %s", viewRequested)
-			return
-		}
+	view, err := getRequestedView(req, views)
+	if err != nil {
+		return
+	}
 
-		// the following params are not compatible with use of a view and will generate an error if combined with one:
-		if pErr := anyParamSpecified(req,
-			"baseRelease",
-			"sampleRelease",
-			"samplePROrg",
-			"samplePRRepo",
-			"samplePRNumber",
-			"columnGroupBy",
-			"dbGroupBy",
-			"includeVariant",
-			"confidence",
-			"pity",
-			"minFail",
-			"ignoreMissing",
-			"ignoreDisruption",
-		); pErr != nil {
-			err = pErr
-			return
-		}
+	if view != nil {
 		// set params from view
-		variantOption = view.VariantOptions
-		advancedOption = view.AdvancedOptions
-		baseRelease = apitype.ComponentReportRequestReleaseOptions{
-			Release: view.BaseRelease.Release,
-		}
-		sampleRelease = apitype.ComponentReportRequestReleaseOptions{
-			Release: view.SampleRelease.Release,
-		}
-		// Translate relative start/end times to actual time.Time:
-		baseRelease.Start, err = util.ParseCRReleaseTime(baseRelease.Release, view.BaseRelease.RelativeStart, true, crTimeRoundingFactor)
+		opts.VariantOption = view.VariantOptions
+		opts.AdvancedOption = view.AdvancedOptions
+		opts.BaseRelease, err = getViewReleaseOptions("basis", view.BaseRelease, crTimeRoundingFactor)
 		if err != nil {
-			err = fmt.Errorf("base start time in wrong format")
 			return
 		}
-		baseRelease.End, err = util.ParseCRReleaseTime(baseRelease.Release, view.BaseRelease.RelativeEnd, false, crTimeRoundingFactor)
+		opts.SampleRelease, err = getViewReleaseOptions("sample", view.SampleRelease, crTimeRoundingFactor)
 		if err != nil {
-			err = fmt.Errorf("base end time in wrong format")
-			return
-		}
-		sampleRelease.Start, err = util.ParseCRReleaseTime(sampleRelease.Release, view.SampleRelease.RelativeStart, true, crTimeRoundingFactor)
-		if err != nil {
-			err = fmt.Errorf("sample start time in wrong format")
-			return
-		}
-		sampleRelease.End, err = util.ParseCRReleaseTime(sampleRelease.Release, view.SampleRelease.RelativeEnd, false, crTimeRoundingFactor)
-		if err != nil {
-			err = fmt.Errorf("sample end time in wrong format")
 			return
 		}
 	} else {
-		baseRelease.Release = req.URL.Query().Get("baseRelease")
-		if baseRelease.Release == "" {
-			err = fmt.Errorf("missing base_release")
+		opts.BaseRelease.Release = req.URL.Query().Get("baseRelease")
+		if opts.BaseRelease.Release == "" {
+			err = fmt.Errorf("missing baseRelease")
 			return
 		}
 
-		sampleRelease.Release = req.URL.Query().Get("sampleRelease")
-		if sampleRelease.Release == "" {
-			err = fmt.Errorf("missing sample_release")
+		opts.SampleRelease.Release = req.URL.Query().Get("sampleRelease")
+		if opts.SampleRelease.Release == "" {
+			err = fmt.Errorf("missing sampleRelease")
 			return
 		}
 		// We only support pull request jobs as the sample, not the basis:
-		samplePROrg := req.URL.Query().Get("samplePROrg")
-		samplePRRepo := req.URL.Query().Get("samplePRRepo")
-		samplePRNumber := req.URL.Query().Get("samplePRNumber")
-		if len(samplePROrg) > 0 && len(samplePRRepo) > 0 && len(samplePRNumber) > 0 {
-			sampleRelease.PullRequestOptions = &apitype.PullRequestOptions{
-				Org:      samplePROrg,
-				Repo:     samplePRRepo,
-				PRNumber: samplePRNumber,
-			}
-		}
+		opts.SampleRelease.PullRequestOptions = parsePROptions(req)
 
-		variantOption, err = parseVariantOptions(req, allJobVariants)
-		if err != nil {
+		if opts.VariantOption, err = parseVariantOptions(req, allJobVariants); err != nil {
 			return
 		}
-
-		advancedOption.Confidence = 95
-		confidenceStr := req.URL.Query().Get("confidence")
-		if confidenceStr != "" {
-			advancedOption.Confidence, err = strconv.Atoi(confidenceStr)
-			if err != nil {
-				err = fmt.Errorf("confidence is not a number")
-				return
-			}
-			if advancedOption.Confidence < 0 || advancedOption.Confidence > 100 {
-				err = fmt.Errorf("confidence is not in the correct range")
-				return
-			}
-		}
-
-		advancedOption.PityFactor = 5
-		pityStr := req.URL.Query().Get("pity")
-		if pityStr != "" {
-			advancedOption.PityFactor, err = strconv.Atoi(pityStr)
-			if err != nil {
-				err = fmt.Errorf("pity factor is not a number")
-				return
-			}
-			if advancedOption.PityFactor < 0 || advancedOption.PityFactor > 100 {
-				err = fmt.Errorf("pity factor is not in the correct range")
-				return
-			}
-		}
-
-		advancedOption.MinimumFailure = 3
-		minFailStr := req.URL.Query().Get("minFail")
-		if minFailStr != "" {
-			advancedOption.MinimumFailure, err = strconv.Atoi(minFailStr)
-			if err != nil {
-				err = fmt.Errorf("min_fail is not a number")
-				return
-			}
-			if advancedOption.MinimumFailure < 0 {
-				err = fmt.Errorf("min_fail is not in the correct range")
-				return
-			}
-		}
-
-		advancedOption.IgnoreMissing = false
-		ignoreMissingStr := req.URL.Query().Get("ignoreMissing")
-		if ignoreMissingStr != "" {
-			advancedOption.IgnoreMissing, err = strconv.ParseBool(ignoreMissingStr)
-			if err != nil {
-				err = errors.WithMessage(err, "expected boolean for ignore missing")
-				return
-			}
-		}
-
-		advancedOption.IgnoreDisruption = true
-		ignoreDisruptionsStr := req.URL.Query().Get("ignoreDisruption")
-		if ignoreMissingStr != "" {
-			advancedOption.IgnoreDisruption, err = strconv.ParseBool(ignoreDisruptionsStr)
-			if err != nil {
-				err = errors.WithMessage(err, "expected boolean for ignore disruption")
-				return
-			}
+		if opts.AdvancedOption, err = parseAdvancedOptions(req); err != nil {
+			return
 		}
 
 		// TODO: if specified, allow these to override view defaults for start/end time.
 		// will need to relocate this outside this else.
-		timeStr := req.URL.Query().Get("baseStartTime")
-		baseRelease.Start, err = util.ParseCRReleaseTime(baseRelease.Release, timeStr, true, crTimeRoundingFactor)
+		opts.BaseRelease, err = parseDateRange(req, opts.BaseRelease, "baseStartTime", "baseEndTime", crTimeRoundingFactor)
 		if err != nil {
-			err = fmt.Errorf("base start time in wrong format")
 			return
 		}
-		timeStr = req.URL.Query().Get("baseEndTime")
-		baseRelease.End, err = util.ParseCRReleaseTime(baseRelease.Release, timeStr, false, crTimeRoundingFactor)
+		opts.SampleRelease, err = parseDateRange(req, opts.SampleRelease, "sampleStartTime", "sampleEndTime", crTimeRoundingFactor)
 		if err != nil {
-			err = fmt.Errorf("base end time in wrong format")
-			return
-		}
-		timeStr = req.URL.Query().Get("sampleStartTime")
-		sampleRelease.Start, err = util.ParseCRReleaseTime(sampleRelease.Release, timeStr, true, crTimeRoundingFactor)
-		if err != nil {
-			err = fmt.Errorf("sample start time in wrong format")
-			return
-		}
-		timeStr = req.URL.Query().Get("sampleEndTime")
-		sampleRelease.End, err = util.ParseCRReleaseTime(sampleRelease.Release, timeStr, false, crTimeRoundingFactor)
-		if err != nil {
-			err = fmt.Errorf("sample end time in wrong format")
 			return
 		}
 
@@ -213,26 +76,91 @@ func ParseComponentReportRequest(
 
 	// Params below this point can be used with and without views:
 
-	testIDOption.Component = req.URL.Query().Get("component")
-	testIDOption.Capability = req.URL.Query().Get("capability")
-	testIDOption.TestID = req.URL.Query().Get("testId")
-
-	forceRefreshStr := req.URL.Query().Get("forceRefresh")
-	if forceRefreshStr != "" {
-		cacheOption.ForceRefresh, err = strconv.ParseBool(forceRefreshStr)
-		if err != nil {
-			err = errors.WithMessage(err, "expected boolean for force refresh")
-			return
-		}
+	opts.TestIDOption = crtype.RequestTestIdentificationOptions{
+		Component:  req.URL.Query().Get("component"),
+		Capability: req.URL.Query().Get("capability"),
+		TestID:     req.URL.Query().Get("testId"),
 	}
-	cacheOption.CRTimeRoundingFactor = crTimeRoundingFactor
+
+	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
+	if err != nil {
+		return
+	}
+	opts.CacheOption.CRTimeRoundingFactor = crTimeRoundingFactor
 
 	return
 }
 
-func parseVariantOptions(req *http.Request, allJobVariants apitype.JobVariants) (apitype.ComponentReportRequestVariantOptions, error) {
+// getRequestedView returns the view requested per the view param, or nil if none.
+func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, error) {
+	viewRequested := req.URL.Query().Get("view")
+	if viewRequested == "" {
+		return nil, nil
+	}
+
+	// the following params are not compatible with use of a view and will generate an error if combined with one:
+	incompatible := []string{
+		"baseRelease", "sampleRelease", // release opts
+		"samplePROrg", "samplePRRepo", "samplePRNumber", // PR opts
+		"columnGroupBy", "dbGroupBy", // grouping
+		"includeVariant", // variants
+		"confidence", "pity", "minFail",
+		"ignoreMissing", "ignoreDisruption", // advanced opts
+	}
+	found := []string{}
+	for _, p := range incompatible {
+		if req.URL.Query().Get(p) != "" {
+			found = append(found, p)
+		}
+	}
+	if len(found) > 0 {
+		return nil, fmt.Errorf("params cannot be combined with view: %v", found)
+	}
+
+	// find the requested view name among our known views:
+	for _, view := range views {
+		if view.Name == viewRequested {
+			return &view, nil
+		}
+	}
+	return nil, fmt.Errorf("unknown view: %s", viewRequested)
+}
+
+// Translate relative start/end times to actual time.Time:
+func getViewReleaseOptions(
+	releaseType string,
+	viewRelease crtype.RequestRelativeReleaseOptions,
+	roundingFactor time.Duration,
+) (crtype.RequestReleaseOptions, error) {
+
 	var err error
-	variantOption := apitype.ComponentReportRequestVariantOptions{}
+	opts := crtype.RequestReleaseOptions{Release: viewRelease.Release}
+	opts.Start, err = util.ParseCRReleaseTime(opts.Release, viewRelease.RelativeStart, true, roundingFactor)
+	if err != nil {
+		return opts, fmt.Errorf(releaseType + " start time in wrong format")
+	}
+	opts.End, err = util.ParseCRReleaseTime(opts.Release, viewRelease.RelativeEnd, false, roundingFactor)
+	if err != nil {
+		return opts, fmt.Errorf(releaseType + " end time in wrong format")
+	}
+	return opts, nil
+}
+
+func parsePROptions(req *http.Request) *crtype.PullRequestOptions {
+	pro := crtype.PullRequestOptions{
+		Org:      req.URL.Query().Get("samplePROrg"),
+		Repo:     req.URL.Query().Get("samplePRRepo"),
+		PRNumber: req.URL.Query().Get("samplePRNumber"),
+	}
+	if pro.Org == "" || pro.Repo == "" || pro.PRNumber == "" {
+		return nil
+	}
+	return &pro
+}
+
+func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants) (crtype.RequestVariantOptions, error) {
+	var err error
+	variantOption := crtype.RequestVariantOptions{}
 	columnGroupBy := req.URL.Query().Get("columnGroupBy")
 	variantOption.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
 	if err != nil {
@@ -255,15 +183,81 @@ func parseVariantOptions(req *http.Request, allJobVariants apitype.JobVariants) 
 	return variantOption, err
 }
 
-func anyParamSpecified(req *http.Request, paramName ...string) error {
-	found := []string{}
-	for _, p := range paramName {
-		if req.URL.Query().Get(p) != "" {
-			found = append(found, p)
-		}
+func ParseIntArg(req *http.Request, name string, defaultVal int, validator func(int) bool) (int, error) {
+	param := req.URL.Query().Get(name)
+	if param == "" {
+		return defaultVal, nil
 	}
-	if len(found) > 0 {
-		return fmt.Errorf("params cannot be combined with view: %v", found)
+	val, err := strconv.Atoi(param)
+	if err != nil {
+		return val, fmt.Errorf(name + " is not an integer")
 	}
-	return nil
+	if !validator(val) {
+		return val, fmt.Errorf("confidence is not in the correct range")
+	}
+	return val, nil
+}
+
+func ParseBoolArg(req *http.Request, name string, defaultVal bool) (bool, error) {
+	param := req.URL.Query().Get(name)
+	if param == "" {
+		return defaultVal, nil
+	}
+	val, err := strconv.ParseBool(param)
+	if err != nil {
+		return val, fmt.Errorf(name + " is not a boolean")
+	}
+	return val, nil
+}
+
+func parseAdvancedOptions(req *http.Request) (advancedOption crtype.RequestAdvancedOptions, err error) {
+	advancedOption.Confidence, err = ParseIntArg(req, "confidence", 95,
+		func(v int) bool { return v >= 0 && v <= 100 })
+	if err != nil {
+		return advancedOption, err
+	}
+
+	advancedOption.PityFactor, err = ParseIntArg(req, "pity", 5,
+		func(v int) bool { return v >= 0 && v <= 100 })
+	if err != nil {
+		return advancedOption, err
+	}
+
+	advancedOption.MinimumFailure, err = ParseIntArg(req, "minFail", 3,
+		func(v int) bool { return v >= 0 })
+	if err != nil {
+		return advancedOption, err
+	}
+
+	advancedOption.IgnoreMissing, err = ParseBoolArg(req, "ignoreMissing", false)
+	if err != nil {
+		return advancedOption, err
+	}
+
+	advancedOption.IgnoreDisruption, err = ParseBoolArg(req, "ignoreDisruption", true)
+	if err != nil {
+		return advancedOption, err
+	}
+	return
+}
+
+func parseDateRange(req *http.Request,
+	releaseOpts crtype.RequestReleaseOptions,
+	startName string, endName string,
+	roundingFactor time.Duration,
+) (crtype.RequestReleaseOptions, error) {
+	var err error
+
+	timeStr := req.URL.Query().Get(startName)
+	releaseOpts.Start, err = util.ParseCRReleaseTime(releaseOpts.Release, timeStr, true, roundingFactor)
+	if err != nil {
+		return releaseOpts, fmt.Errorf(startName + " in wrong format")
+	}
+
+	timeStr = req.URL.Query().Get(endName)
+	releaseOpts.End, err = util.ParseCRReleaseTime(releaseOpts.Release, timeStr, false, roundingFactor)
+	if err != nil {
+		return releaseOpts, fmt.Errorf(endName + " in wrong format")
+	}
+	return releaseOpts, nil
 }
