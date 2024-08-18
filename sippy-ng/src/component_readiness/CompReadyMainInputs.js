@@ -95,8 +95,13 @@ export default function CompReadyMainInputs(props) {
               console.log('changed view to: ' + e.target.value)
               varsContext.setView(e.target.value)
               history.push('/component_readiness/main?view=' + e.target.value)
-              // TODO: submit form immediately on view change
               // TODO: update all query param inputs below to match the selected view
+              varsContext.views.forEach(function (item) {
+                if (item.name === e.target.value) {
+                  varsContext.setBaseRelease(item.base_release.release)
+                  varsContext.setSampleRelease(item.sample_release.release)
+                }
+              })
             }}
           >
             {varsContext.views.map((v, index) => (
