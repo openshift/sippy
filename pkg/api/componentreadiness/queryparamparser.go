@@ -31,11 +31,11 @@ func ParseComponentReportRequest(
 		// set params from view
 		opts.VariantOption = view.VariantOptions
 		opts.AdvancedOption = view.AdvancedOptions
-		opts.BaseRelease, err = getViewReleaseOptions("basis", view.BaseRelease, crTimeRoundingFactor)
+		opts.BaseRelease, err = GetViewReleaseOptions("basis", view.BaseRelease, crTimeRoundingFactor)
 		if err != nil {
 			return
 		}
-		opts.SampleRelease, err = getViewReleaseOptions("sample", view.SampleRelease, crTimeRoundingFactor)
+		opts.SampleRelease, err = GetViewReleaseOptions("sample", view.SampleRelease, crTimeRoundingFactor)
 		if err != nil {
 			return
 		}
@@ -127,7 +127,7 @@ func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, err
 }
 
 // Translate relative start/end times to actual time.Time:
-func getViewReleaseOptions(
+func GetViewReleaseOptions(
 	releaseType string,
 	viewRelease crtype.RequestRelativeReleaseOptions,
 	roundingFactor time.Duration,
@@ -137,11 +137,11 @@ func getViewReleaseOptions(
 	opts := crtype.RequestReleaseOptions{Release: viewRelease.Release}
 	opts.Start, err = util.ParseCRReleaseTime(opts.Release, viewRelease.RelativeStart, true, roundingFactor)
 	if err != nil {
-		return opts, fmt.Errorf(releaseType + " start time in wrong format")
+		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
 	}
 	opts.End, err = util.ParseCRReleaseTime(opts.Release, viewRelease.RelativeEnd, false, roundingFactor)
 	if err != nil {
-		return opts, fmt.Errorf(releaseType + " end time in wrong format")
+		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
 	}
 	return opts, nil
 }

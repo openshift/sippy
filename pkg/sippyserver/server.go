@@ -657,7 +657,34 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
-	api.RespondWithJSON(http.StatusOK, w, s.componentReadinessViews)
+	// deep copy the views and then we'll inject a fixed start/end time using the relative times
+	// the view is configured with, so the UI can pre-populate the pickers
+	viewsCopy := make([]crtype.View, len(s.componentReadinessViews))
+	copy(viewsCopy, s.componentReadinessViews)
+	for i := range viewsCopy {
+		rro, err := componentreadiness.GetViewReleaseOptions("basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+		viewsCopy[i].BaseRelease.Start = rro.Start
+		viewsCopy[i].BaseRelease.End = rro.End
+
+		rro, err = componentreadiness.GetViewReleaseOptions("sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+		viewsCopy[i].SampleRelease.Start = rro.Start
+		viewsCopy[i].SampleRelease.End = rro.End
+	}
+	api.RespondWithJSON(http.StatusOK, w, viewsCopy)
 }
 
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
