@@ -26,15 +26,14 @@ export default function GroupByCheckboxList(props) {
   }))
 
   const classes = useStyles()
-  const [checkedItems, setCheckedItems] = useState(props.checkedItems)
   const handleChange = (event) => {
     const item = event.target.name
     const isChecked = event.target.checked
     if (isChecked) {
-      setCheckedItems([...checkedItems, item])
+      props.setCheckedItems([...props.checkedItems, item])
     } else {
-      setCheckedItems(
-        checkedItems.filter((checkedItem) => checkedItem !== item)
+      props.setCheckedItems(
+        props.checkedItems.filter((checkedItem) => checkedItem !== item)
       )
     }
   }
@@ -72,7 +71,7 @@ export default function GroupByCheckboxList(props) {
                     disabled={isCompareMode}
                     control={
                       <Checkbox
-                        checked={checkedItems.includes(item)}
+                        checked={props.checkedItems.includes(item)}
                         disabled={isCompareMode}
                         onChange={handleChange}
                         name={item}
