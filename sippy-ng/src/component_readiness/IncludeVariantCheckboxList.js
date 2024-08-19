@@ -123,6 +123,18 @@ export default function IncludeVariantCheckBoxList(props) {
           {isCompareMode
             ? CompareVariantGroup(params)
             : IncludeVariantGroup(params)}
+          <Tooltip
+            title={'Compare with different variants for sample and basis'}
+          >
+            <Button
+              variant="contained"
+              color="primary"
+              className={classes.control}
+              onClick={handleToggleCompare}
+            >
+              {isCompareMode ? 'Cancel Compare' : 'Compare'}
+            </Button>
+          </Tooltip>
         </AccordionDetails>
       </Accordion>
     </FormControl>
