@@ -353,11 +353,9 @@ export function getUpdatedUrlParts(vars) {
   )
   Object.entries(vars.compareVariantsCheckedItems).forEach(
     ([group, variants]) => {
-      console.log(group, variants)
       // for UI purposes we may be holding compareVariants that aren't actually being compared, so they don't get wiped
       // out just by toggling the "Compare" button. But for the parameters we will filter these out.
       if (vars.variantCrossCompare.includes(group)) {
-        console.log('including', group, 'in compareVariants')
         variants.forEach((variant) => {
           queryParams.append('compareVariant', group + ':' + variant)
         })
