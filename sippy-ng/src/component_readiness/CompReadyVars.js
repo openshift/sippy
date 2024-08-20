@@ -327,6 +327,13 @@ export const CompReadyVarsProvider = ({ children }) => {
     setCapabilityParam(capability)
   }
 
+  // syncView updates all vars and thus their respective inputs to match a server side view that was
+  // just selected by the user.
+  const syncView = (view) => {
+    setBaseRelease(item.base_release.release)
+    setSampleRelease(item.sample_release.release)
+  }
+
   useEffect(() => {
     const jobVariantsAPIURL = getJobVariantsUrl()
     const viewsAPIURL = getComponentReadinessViewsUrl()
@@ -424,10 +431,8 @@ export const CompReadyVarsProvider = ({ children }) => {
         setView,
         expandEnvironment,
         baseRelease,
-        setBaseRelease,
         setBaseReleaseWithDates,
         sampleRelease,
-        setSampleRelease,
         setSampleReleaseWithDates,
         baseStartTime,
         setBaseStartTime,
@@ -469,6 +474,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         environment,
         setEnvironmentParam,
         handleGenerateReport,
+        syncView,
       }}
     >
       {children}

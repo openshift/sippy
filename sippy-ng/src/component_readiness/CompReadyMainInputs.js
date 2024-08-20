@@ -98,8 +98,7 @@ export default function CompReadyMainInputs(props) {
               // TODO: update all query param inputs below to match the selected view
               varsContext.views.forEach(function (item) {
                 if (item.name === e.target.value) {
-                  varsContext.setBaseRelease(item.base_release.release)
-                  varsContext.setSampleRelease(item.sample_release.release)
+                  varsContext.syncView(item)
                 }
               })
             }}
