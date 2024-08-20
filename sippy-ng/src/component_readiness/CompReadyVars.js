@@ -53,7 +53,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const now = new Date()
 
   // Sample is last 7 days by default
-  const initialSampleStartTime = new Date(now.getTime() - 6 * days)
+  const initialSampleStartTime = new Date(now.getTime() - 7 * days)
   const initialSampleEndTime = new Date(now.getTime())
 
   // Base is 28 days from the default base release's GA date
