@@ -1334,8 +1334,12 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
-			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
-			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+			var approvedRegression *regressionallowances.IntentionalRegression
+			if len(c.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
+				// look for corresponding regressions we can account for in the analysis
+				approvedRegression = regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
+				resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+			}
 			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
 			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
