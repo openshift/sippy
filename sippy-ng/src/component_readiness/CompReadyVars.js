@@ -330,8 +330,12 @@ export const CompReadyVarsProvider = ({ children }) => {
   // syncView updates all vars and thus their respective inputs to match a server side view that was
   // just selected by the user.
   const syncView = (view) => {
-    setBaseRelease(item.base_release.release)
-    setSampleRelease(item.sample_release.release)
+    setBaseRelease(view.base_release.release)
+    setBaseStartTime(formatLongDate(view.base_release.start, dateFormat))
+    setBaseEndTime(formatLongDate(view.base_release.end, dateFormat))
+    setSampleRelease(view.sample_release.release)
+    setSampleStartTime(formatLongDate(view.sample_release.start, dateFormat))
+    setSampleEndTime(formatLongDate(view.sample_release.end, dateFormat))
   }
 
   useEffect(() => {
