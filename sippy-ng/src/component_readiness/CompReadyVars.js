@@ -293,7 +293,6 @@ export const CompReadyVarsProvider = ({ children }) => {
   // This runs when someone pushes the "Generate Report" button.
   // We form an api string and then call the api.
   const handleGenerateReport = (event) => {
-    console.log('handleGenerateReport was called')
     event.preventDefault()
 
     // If the generate report button was pressed, views are out of the question and we're now
@@ -306,6 +305,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleReleaseParam(sampleRelease)
     setSampleStartTimeParam(formatLongDate(sampleStartTime, dateFormat))
     setSampleEndTimeParam(formatLongDate(sampleEndTime, dateEndFormat))
+
     setColumnGroupByCheckedItemsParam(columnGroupByCheckedItems)
     setIncludeVariantsCheckedItemsParam(
       convertVariantItemsToParam(includeVariantsCheckedItems)
@@ -336,6 +336,36 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleRelease(view.sample_release.release)
     setSampleStartTime(formatLongDate(view.sample_release.start, dateFormat))
     setSampleEndTime(formatLongDate(view.sample_release.end, dateFormat))
+
+    console.log('columnGroupBy: ' + columnGroupByCheckedItems[0])
+
+    // Build array of columns to group by given the view:
+    Object.keys(view.variant_options.column_group_by).forEach((variant) => {
+      console.log('columnGroupBy variant: ' + variant)
+    })
+    setColumnGroupByCheckedItems(
+      Object.keys(view.variant_options.column_group_by)
+    )
+
+    // TODO: dbGroupBy doesn't seem supported in the UI, what do we do with views?
+    // TODO: compare variants checked item params?
+    // TODO: variantCrossCompare
+
+    if (view.advanced_options.hasOwnProperty('confidence')) {
+      setConfidence(view.advanced_options.confidence)
+    }
+    if (view.advanced_options.hasOwnProperty('pity_factor')) {
+      setPity(view.advanced_options.pity_factor)
+    }
+    if (view.advanced_options.hasOwnProperty('minimum_failure')) {
+      setMinFail(view.advanced_options.minimum_failure)
+    }
+    if (view.advanced_options.hasOwnProperty('ignore_disruption')) {
+      setIgnoreDisruption(view.advanced_options.ignore_disruption)
+    }
+    if (view.advanced_options.hasOwnProperty('ignore_missing')) {
+      setIgnoreMissing(view.advanced_options.ignore_missing)
+    }
   }
 
   useEffect(() => {

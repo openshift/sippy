@@ -98,6 +98,8 @@ export default function CompReadyMainInputs(props) {
               // TODO: update all query param inputs below to match the selected view
               varsContext.views.forEach(function (item) {
                 if (item.name === e.target.value) {
+                  // Update all inputs to match the values of the selected view, allowing the user
+                  // to customize easily:
                   varsContext.syncView(item)
                 }
               })
