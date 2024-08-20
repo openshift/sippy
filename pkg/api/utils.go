@@ -178,3 +178,14 @@ func VariantListToMap(allJobVariants crtype.JobVariants, variants []string) (map
 	}
 	return variantsMap, err
 }
+
+// CleanseSQLName removes all non-alphanumeric characters from a string that could be used as a SQL name (table, column, etc)
+// This is useful for sanitizing dynamic queries built from user input.
+func CleanseSQLName(name string) string {
+	return strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			return r
+		}
+		return -1
+	}, name)
+}
