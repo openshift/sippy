@@ -139,6 +139,11 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 	for group, variant := range c.RequestedVariants {
 		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, api.CleanseSQLName(group), api.CleanseSQLName(variant))
 	}
+	if isSample {
+		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.CompareVariants, &commonParams)
+	} else {
+		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.IncludeVariants, &commonParams)
+	}
 	return queryString, groupString, commonParams
 }
 
