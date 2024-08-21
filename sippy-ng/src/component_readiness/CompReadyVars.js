@@ -288,7 +288,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   ]
 
   // This runs when someone pushes the "Generate Report" button.
-  // We form an api string and then call the api.
+  // It sets all parameters based on current state; this causes the URL to be updated and page to load with new params.
   const handleGenerateReport = (event) => {
     event.preventDefault()
     setBaseReleaseParam(baseRelease)
