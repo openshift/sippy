@@ -83,11 +83,14 @@ export default function CompReadyMainInputs(props) {
       ></AdvancedOptions>
     </div>
   )
-  return (
-    <Fragment>
+
+  // eslint-disable-next-line react/prop-types
+  function ViewPicker({ enabled }) {
+    if (!enabled) return null
+    return (
       <div className={classes.crRelease}>
         <FormControl variant="standard">
-          <InputLabel>View</InputLabel>
+          <InputLabel> View </InputLabel>
           <Select
             variant="standard"
             value={varsContext.view}
@@ -113,6 +116,12 @@ export default function CompReadyMainInputs(props) {
           </Select>
         </FormControl>
       </div>
+    )
+  }
+
+  return (
+    <Fragment>
+      <ViewPicker enabled={varsContext.views.length > 0} />
 
       <div className="cr-report-button">
         <Button
@@ -125,7 +134,7 @@ export default function CompReadyMainInputs(props) {
           <Tooltip
             title={
               'Click here to generate a report that compares the release you wish to evaluate\
-                           against a historical (previous) release using all the specific parameters specified'
+                                         against a historical (previous) release using all the specific parameters specified'
             }
           >
             <Fragment>Generate Custom Report</Fragment>

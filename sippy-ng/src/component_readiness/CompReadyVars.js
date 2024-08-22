@@ -392,7 +392,9 @@ export const CompReadyVarsProvider = ({ children }) => {
       .then(([variants, views]) => {
         setAllJobVariants(variants.variants)
         setViews(views)
-        setView(views[0].name)
+        if (views.length > 0) {
+          setView(views[0].name)
+        }
         setIsLoaded(true)
       })
       .catch((error) => {
