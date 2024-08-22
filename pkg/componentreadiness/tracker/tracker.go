@@ -21,8 +21,12 @@ const (
 
 // RegressionStore is an underlying interface for where we store/load data on open test regressions.
 type RegressionStore interface {
-	ListCurrentRegressions(release string) ([]crtype.TestRegression, error)
-	OpenRegression(release string, newRegressedTest crtype.ReportTestSummary) (*crtype.TestRegression, error)
+	// ListCurrentRegressionsForRelease returns *all* regressions for the given release. We operate on the assumption that
+	// only one view is allowed to have regression tracking enabled (i.e. 4.18-main) per release, which is validated
+	// when the views file is loaded. This is because we want to display regression tracking data on any report that shows
+	// a regressed test, so people using custom reporting can see what is regressed in main as well.
+	ListCurrentRegressionsForRelease(release string) ([]crtype.TestRegression, error)
+	OpenRegression(view crtype.View, newRegressedTest crtype.ReportTestSummary) (*crtype.TestRegression, error)
 	ReOpenRegression(regressionID string) error
 	CloseRegression(regressionID string, closedAt time.Time) error
 }
@@ -36,16 +40,16 @@ func NewBigQueryRegressionStore(client *sippybigquery.Client) RegressionStore {
 	return &BigQueryRegressionStore{client: client}
 }
 
-func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]crtype.TestRegression, error) {
+func (bq *BigQueryRegressionStore) ListCurrentRegressionsForRelease(release string) ([]crtype.TestRegression, error) {
 	// List open regressions (no closed date), or those that closed within the last two days. This is to prevent flapping
 	// and return more accurate opened dates when a test is falling in / out of the report.
-	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE release = @SampleRelease AND (closed IS NULL or closed > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY))",
+	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE release = @Release AND (closed IS NULL or closed > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 2 DAY))",
 		bq.client.Dataset, testRegressionsTable)
 
 	params := make([]bigquery.QueryParameter, 0)
 	params = append(params, []bigquery.QueryParameter{
 		{
-			Name:  "SampleRelease",
+			Name:  "Release",
 			Value: release,
 		},
 	}...)
@@ -78,10 +82,11 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(release string) ([]crt
 	return regressions, nil
 
 }
-func (bq *BigQueryRegressionStore) OpenRegression(release string, newRegressedTest crtype.ReportTestSummary) (*crtype.TestRegression, error) {
+func (bq *BigQueryRegressionStore) OpenRegression(view crtype.View, newRegressedTest crtype.ReportTestSummary) (*crtype.TestRegression, error) {
 	id := uuid.New()
 	newRegression := &crtype.TestRegression{
-		Release:      release,
+		View:         view.Name,
+		Release:      view.SampleRelease.Release,
 		TestID:       newRegressedTest.TestID,
 		TestName:     newRegressedTest.TestName,
 		RegressionID: id.String(),
@@ -132,10 +137,11 @@ func (bq *BigQueryRegressionStore) updateClosed(regressionID, closed string) err
 	return err
 }
 
-func NewRegressionTracker(backend RegressionStore, dryRun bool) *RegressionTracker {
+func NewRegressionTracker(backend RegressionStore, view crtype.View) *RegressionTracker {
 	return &RegressionTracker{
 		backend: backend,
-		dryRun:  dryRun,
+		view:    view,
+		dryRun:  false, // only for development
 	}
 }
 
@@ -143,14 +149,20 @@ func NewRegressionTracker(backend RegressionStore, dryRun bool) *RegressionTrack
 type RegressionTracker struct {
 	backend RegressionStore
 	dryRun  bool
+	// view is the server side view that has regression tracking enabled.
+	view crtype.View
 }
 
-func (rt *RegressionTracker) SyncComponentReport(release string, report *crtype.ComponentReport) error {
-	regressions, err := rt.backend.ListCurrentRegressions(release)
+func (rt *RegressionTracker) SyncComponentReport(report *crtype.ComponentReport) error {
+	regressions, err := rt.backend.ListCurrentRegressionsForRelease(rt.view.SampleRelease.Release)
 	if err != nil {
 		return err
 	}
-	rLog := log.WithField("func", "SyncComponentReport").WithField("dryRun", rt.dryRun)
+	rLog := log.WithFields(log.Fields{
+		"func":   "SyncComponentReport",
+		"dryRun": rt.dryRun,
+		"view":   rt.view,
+	})
 	rLog.Infof("loaded %d regressions from db", len(regressions))
 
 	// All regressions, both triaged and not:
@@ -169,7 +181,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *crtype.
 
 	matchedOpenRegressions := []crtype.TestRegression{} // all the matches we found, used to determine what had no match
 	for _, regTest := range allRegressedTests {
-		if openReg := FindOpenRegression(release, regTest.TestID, regTest.Variants, regressions); openReg != nil {
+		if openReg := FindOpenRegression(rt.view.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
 			if openReg.Closed.Valid {
 				// if the regression returned has a closed date, we found a recently closed
 				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
@@ -193,7 +205,7 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *crtype.
 			rLog.Infof("opening new regression: %v", regTest)
 			if !rt.dryRun {
 				// Open a new regression:
-				newReg, err := rt.backend.OpenRegression(release, regTest)
+				newReg, err := rt.backend.OpenRegression(rt.view, regTest)
 				if err != nil {
 					rLog.WithError(err).Errorf("error opening new regression for: %v", regTest)
 					return errors.Wrapf(err, "error opening new regression: %v", regTest)
@@ -231,13 +243,13 @@ func (rt *RegressionTracker) SyncComponentReport(release string, report *crtype.
 }
 
 // FindOpenRegression scans the list of open regressions for any that match the given test summary.
-func FindOpenRegression(release string,
+func FindOpenRegression(view string,
 	testID string,
 	variants map[string]string,
 	regressions []crtype.TestRegression) *crtype.TestRegression {
 
 	for _, tr := range regressions {
-		if tr.Release != release {
+		if tr.View != view {
 			continue
 		}
 		// We compare test ID not name, as names can change.

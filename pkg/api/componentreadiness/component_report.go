@@ -319,7 +319,7 @@ func (c *componentReportGenerator) GenerateReport() (crtype.ComponentReport, []e
 	}
 	bqs := tracker.NewBigQueryRegressionStore(c.client)
 	var err error
-	c.openRegressions, err = bqs.ListCurrentRegressions(c.SampleRelease.Release)
+	c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(c.SampleRelease.Release)
 	if err != nil {
 		errs = append(errs, err)
 		return crtype.ComponentReport{}, errs

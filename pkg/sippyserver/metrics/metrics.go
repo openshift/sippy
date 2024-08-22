@@ -2,27 +2,24 @@ package metrics
 
 import (
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-version"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
-	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	log "github.com/sirupsen/logrus"
-
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
+	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -97,15 +94,15 @@ var (
 	componentReadinessMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_component_readiness",
 		Help: "Regression score for components",
-	}, []string{"component", "network", "arch", "platform"})
+	}, []string{"view", "component", "network", "arch", "platform"})
 	componentReadinessUniqueRegressionsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_component_readiness_unique_regressions",
 		Help: "Number of unique tests regressed per component",
-	}, []string{"component"})
+	}, []string{"view", "component"})
 	componentReadinessTotalRegressionsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_component_readiness_total_regressions",
 		Help: "Number of regressions per component, includes tests multiple times when regressed on multiple NURP's",
-	}, []string{"component"})
+	}, []string{"view", "component"})
 	disruptionVsPrevGAMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: disruptionVsPrevGAMetricName,
 		Help: "Delta of percentiles now vs the 30 days prior to previous release GA date",
@@ -139,7 +136,7 @@ func getReleaseStatus(releases []query.Release, release string) string {
 // pinning the time just to be consistent
 func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string,
 	variantManager testidentification.VariantManager, reportEnd time.Time,
-	cacheOptions cache.RequestOptions, maintainRegressionTables bool) error {
+	cacheOptions cache.RequestOptions, views []crtype.View) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := api.GetReleases(dbc, bqc)
@@ -210,7 +207,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 
 	// BigQuery metrics
 	if bqc != nil {
-		if err := refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions, maintainRegressionTables); err != nil {
+		if err := refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions, views); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
 
@@ -225,7 +222,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 }
 
 func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, maintainRegressionTables bool) error {
+	cacheOptions cache.RequestOptions, views []crtype.View) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return nil
@@ -236,104 +233,43 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 		return nil
 	}
 
-	// Sort our known GA releases, and get the most recent one: that's our base release
-	type releaseInfo struct {
-		Version *version.Version
-		Release string
-	}
-	var releases []releaseInfo
-	for release := range releaseloader.GADateMap {
-		v, err := version.NewVersion(release)
-		if err != nil {
-			log.WithError(err).Error("unparseable release " + release)
-			return err
+	for _, view := range views {
+		if view.Metrics.Enabled || view.RegressionTracking.Enabled {
+			err := updateComponentReadinessTrackingForView(client, prowURL, gcsBucket, cacheOptions, view)
+			if err != nil {
+				return err
+			}
 		}
-		releases = append(releases, releaseInfo{v, release})
 	}
-	sort.Slice(releases, func(i, j int) bool {
-		return releases[i].Version.LessThan(releases[j].Version)
-	})
-	mostRecentGA := releases[len(releases)-1].Release
-	log.Debugf("most recent GA is %q", mostRecentGA)
-	baseRelease := crtype.RequestReleaseOptions{
-		Release: mostRecentGA,
-		// Match what Component Readiness UI "Generate Report" screen sends to API.
-		Start: releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, -27),
-		End:   releaseloader.GADateMap[mostRecentGA].AddDate(0, 0, 1).Add(-1 * time.Second),
-	}
+	return nil
+}
 
-	difference := baseRelease.End.Sub(baseRelease.Start)
-	numSecs := difference.Seconds()
-	numDays := numSecs / 24 / 3600
+// updateCompnentReadinessTrackingForView queries the report for the given view, and then updates metrics,
+// regression tracking, or both, depending on view configuration.
+func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, gcsBucket string,
+	cacheOptions cache.RequestOptions, view crtype.View) error {
 
-	log.Infof("Start : %s", baseRelease.Start.Format(time.RFC1123Z))
-	log.Infof("End   : %s", baseRelease.End.Format(time.RFC1123Z))
-	log.Infof("diff  : %2.2f days", numDays)      // should be 28 days (minus 1 second) rounded to 2 decimals
-	log.Infof("int   : %d seconds", int(numSecs)) // 2419199 (28 days minus 1 second in seconds)
+	logger := log.WithField("view", view.Name)
+	logger.Info("generating report for view")
 
-	// Get the next minor, that's our sample release
-	next, err := nextMinor(mostRecentGA)
-	if err != nil {
-		log.WithError(err).Error("couldn't calculate next minor")
-		return err
-	}
-	now := time.Now().UTC()
-	today := now.Truncate(24 * time.Hour)
-	end := today.Add(24 * time.Hour).Add(-1 * time.Second)
-	if cacheOptions.CRTimeRoundingFactor > 0 {
-		end, _ = util.ParseCRReleaseTime(baseRelease.Release, now.Format(time.RFC3339), false, cacheOptions.CRTimeRoundingFactor)
-	}
-	sampleRelease := crtype.RequestReleaseOptions{
-		Release: next,
-		Start:   today.AddDate(0, 0, -6),
-		End:     end,
-	}
-	difference = sampleRelease.End.Sub(sampleRelease.Start)
-	numSecs = difference.Seconds()
-	numDays = numSecs / 24 / 3600
-
-	log.Infof("Start : %s", sampleRelease.Start.Format(time.RFC1123Z))
-	log.Infof("End : %s", sampleRelease.End.Format(time.RFC1123Z))
-	log.Infof("diff  : %2.2f days", numDays)      // should be 7 days (minus 1 second) rounded to 2 decimals
-	log.Infof("int   : %d seconds", int(numSecs)) // 604799 (7 days minus 1 second in seconds)
-
-	testIDOption := crtype.RequestTestIdentificationOptions{}
-
-	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(client, gcsBucket)
-	if len(errs) > 0 {
-		return fmt.Errorf("failed to get variants from bigquery")
-	}
-	columnGroupByVariants, err := api.VariantsStringToSet(allJobVariants, componentreadiness.DefaultColumnGroupBy)
+	baseRelease, err := componentreadiness.GetViewReleaseOptions("basis", view.BaseRelease, cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
-	dbGroupByVariants, err := api.VariantsStringToSet(allJobVariants, componentreadiness.DefaultDBGroupBy)
+
+	sampleRelease, err := componentreadiness.GetViewReleaseOptions("sample", view.SampleRelease, cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
-	includeVariantsMap, err := api.VariantListToMap(allJobVariants, componentreadiness.DefaultIncludeVariants)
-	if err != nil {
-		return err
-	}
-	variantOption := crtype.RequestVariantOptions{
-		ColumnGroupBy:     columnGroupByVariants,
-		DBGroupBy:         dbGroupByVariants,
-		RequestedVariants: map[string]string{},
-		IncludeVariants:   includeVariantsMap,
-	}
-	advancedOption := crtype.RequestAdvancedOptions{
-		MinimumFailure:   componentreadiness.DefaultMinimumFailure,
-		Confidence:       componentreadiness.DefaultConfidence,
-		PityFactor:       componentreadiness.DefaultPityFactor,
-		IgnoreMissing:    componentreadiness.DefaultIgnoreMissing,
-		IgnoreDisruption: componentreadiness.DefaultIgnoreDisruption,
-	}
+
+	variantOption := view.VariantOptions
+	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
 	reportOpts := crtype.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
-		TestIDOption:   testIDOption,
+		TestIDOption:   crtype.RequestTestIdentificationOptions{},
 		VariantOption:  variantOption,
 		AdvancedOption: advancedOption,
 		CacheOption:    cacheOptions,
@@ -348,40 +284,48 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 		return fmt.Errorf("component report generation encountered errors: " + strings.Join(strErrors, "; "))
 	}
 
-	for _, row := range report.Rows {
-		totalRegressedTestsByComponent := 0
-		uniqueRegressedTestsByComponent := sets.NewString()
-		for _, col := range row.Columns {
-			// Calculate total number of regressions by component, this can include a test multiple times
-			// if it's regressed in multiple NURP's.
-			totalRegressedTestsByComponent += len(col.RegressedTests)
-			// Calculate total number of unique tests that are regressed by component
-			for _, regressedTest := range col.RegressedTests {
-				uniqueRegressedTestsByComponent.Insert(regressedTest.TestID)
+	if view.Metrics.Enabled {
+		logger.Info("publishing metrics for view")
+		for _, row := range report.Rows {
+			totalRegressedTestsByComponent := 0
+			uniqueRegressedTestsByComponent := sets.NewString()
+			for _, col := range row.Columns {
+				// Calculate total number of regressions by component, this can include a test multiple times
+				// if it's regressed in multiple NURP's.
+				totalRegressedTestsByComponent += len(col.RegressedTests)
+				// Calculate total number of unique tests that are regressed by component
+				for _, regressedTest := range col.RegressedTests {
+					uniqueRegressedTestsByComponent.Insert(regressedTest.TestID)
+				}
+				// TODO: why specific variants here?
+				networkLabel, ok := col.Variants["Network"]
+				if !ok {
+					networkLabel = ""
+				}
+				archLabel, ok := col.Variants["Architecture"]
+				if !ok {
+					archLabel = ""
+				}
+				platLabel, ok := col.Variants["Platform"]
+				if !ok {
+					platLabel = ""
+				}
+				componentReadinessMetric.WithLabelValues(view.Name, row.Component, networkLabel, archLabel, platLabel).Set(float64(col.Status))
 			}
-			networkLabel, ok := col.Variants["Network"]
-			if !ok {
-				networkLabel = ""
-			}
-			archLabel, ok := col.Variants["Architecture"]
-			if !ok {
-				archLabel = ""
-			}
-			platLabel, ok := col.Variants["Platform"]
-			if !ok {
-				platLabel = ""
-			}
-			componentReadinessMetric.WithLabelValues(row.Component, networkLabel, archLabel, platLabel).Set(float64(col.Status))
+			componentReadinessTotalRegressionsMetric.WithLabelValues(view.Name, row.Component).Set(float64(totalRegressedTestsByComponent))
+			componentReadinessUniqueRegressionsMetric.WithLabelValues(view.Name, row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
 		}
-		componentReadinessTotalRegressionsMetric.WithLabelValues(row.Component).Set(float64(totalRegressedTestsByComponent))
-		componentReadinessUniqueRegressionsMetric.WithLabelValues(row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
 	}
 
-	// Maintain the test regressions table for anything new or now no longer appearing:
-	regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client), !maintainRegressionTables)
-	err = regressionTracker.SyncComponentReport(sampleRelease.Release, &report)
-	if err != nil {
-		return errors.Wrap(err, "regression tracker reported an error")
+	if view.RegressionTracking.Enabled {
+		logger.Info("updating regression tracking for view")
+		// Maintain the test regressions table for anything new or now no longer appearing:
+		regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client),
+			view)
+		err = regressionTracker.SyncComponentReport(&report)
+		if err != nil {
+			return errors.Wrap(err, "regression tracker reported an error")
+		}
 	}
 
 	return nil

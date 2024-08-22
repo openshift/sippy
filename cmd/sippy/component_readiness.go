@@ -32,11 +32,12 @@ type ComponentReadinessFlags struct {
 	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 
-	Config                   string
-	LogLevel                 string
-	ListenAddr               string
-	MetricsAddr              string
-	RedisURL                 string
+	Config      string
+	LogLevel    string
+	ListenAddr  string
+	MetricsAddr string
+	RedisURL    string
+	// TODO: remove this, now a param on a view
 	MaintainRegressionTables bool
 }
 
@@ -83,6 +84,7 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
+	// TODO: deprecated, remove soon, does nothing
 	flagSet.BoolVar(&f.MaintainRegressionTables, "maintain-regression-tables", false, "Enable maintenance of open regressions table in bigquery.")
 }
 
@@ -155,6 +157,12 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		}
 	}
 
+	views, err := f.ComponentReadinessFlags.ParseViewsFile()
+	if err != nil {
+		log.WithError(err).Fatal("unable to load views")
+
+	}
+
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
 		f.ListenAddr,
@@ -170,7 +178,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		nil,
 		cacheClient,
 		f.ComponentReadinessFlags.CRTimeRoundingFactor,
-		f.ComponentReadinessFlags.ParseViewsFile(),
+		views,
 	)
 
 	if f.MetricsAddr != "" {
@@ -182,7 +190,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			nil,
 			time.Time{},
 			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-			f.MaintainRegressionTables)
+			views.ComponentReadiness)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -195,7 +203,15 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(nil, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, f.MaintainRegressionTables)
+					err := metrics.RefreshMetricsDB(
+						nil,
+						bigQueryClient,
+						f.ProwFlags.URL,
+						f.GoogleCloudFlags.StorageBucket,
+						nil,
+						time.Time{},
+						cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
+						views.ComponentReadiness)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}

@@ -71,6 +71,17 @@ type View struct {
 	SampleRelease   RequestRelativeReleaseOptions `json:"sample_release" yaml:"sample_release"`
 	VariantOptions  RequestVariantOptions         `json:"variant_options" yaml:"variant_options"`
 	AdvancedOptions RequestAdvancedOptions        `json:"advanced_options" yaml:"advanced_options"`
+
+	Metrics            ViewMetrics            `json:"metrics" yaml:"metrics"`
+	RegressionTracking ViewRegressionTracking `json:"regression_tracking" yaml:"regression_tracking"`
+}
+
+type ViewMetrics struct {
+	Enabled bool `json:"enabled" yaml:"enabled"`
+}
+
+type ViewRegressionTracking struct {
+	Enabled bool `json:"enabled" yaml:"enabled"`
 }
 
 type RequestAdvancedOptions struct {
@@ -303,6 +314,7 @@ type Variant struct {
 // TestRegression is used for rows in the test_regressions table and is used to track when we detect test
 // regressions opening and closing.
 type TestRegression struct {
+	View         string                 `bigquery:"view" json:"view"`
 	Release      string                 `bigquery:"release" json:"release"`
 	TestID       string                 `bigquery:"test_id" json:"test_id"`
 	TestName     string                 `bigquery:"test_name" json:"test_name"`
