@@ -442,7 +442,7 @@ export function getKeeperColumns(data, columnNames, redOnlyChecked) {
   return keepColumnList
 }
 
-export function mergeRegressedTests(data) {
+export function validateData(data) {
   if (!data || !data.rows || !data.rows[0] || !data.rows[0].component) {
     console.log(
       'data is one of: undefined, no rows, no rows[0], no row[0].component'
@@ -455,6 +455,66 @@ export function mergeRegressedTests(data) {
   if (data.rows[0].component === 'Cancelled') {
     console.log('got cancelled')
     return ['Cancelled']
+  }
+
+  return ['']
+}
+
+export function mergeTriagedIncidents(data) {
+  let ret = validateData(data)
+  if (ret[0] !== '') {
+    return ret
+  }
+
+  let groupedIncidents = new Map()
+
+  data.rows.forEach((row) => {
+    row.columns.forEach((column) => {
+      if (column.triaged_incidents && column.triaged_incidents.length > 0) {
+        column.triaged_incidents.forEach((incident) => {
+          if (incident.incidents && incident.incidents.length > 0) {
+            incident.incidents.forEach((i) => {
+              if (!groupedIncidents.has(i.incident_group_id)) {
+                groupedIncidents.set(i.incident_group_id, {
+                  issue: i.issue,
+                  incidents: [],
+                })
+              }
+              let incidentsGroup = groupedIncidents.get(i.incident_group_id)
+              incidentsGroup.incidents = incidentsGroup.incidents.concat(i)
+            })
+          }
+        })
+      }
+    })
+  })
+
+  // consider our sorting... time, jira, description...
+  // groupedIncidents.sort((a, b) => {
+  //   return (
+  //     a. .component.toLowerCase() < b.component.toLowerCase() ||
+  //     a.capability.toLowerCase() < b.capability.toLowerCase()
+  //   )
+  // })
+  // triagedIncidents = triagedIncidents.map((item, index) => ({
+  //   ...item,
+  //   id: index,
+  // }))
+
+  let arrayOfIncidents = Array.from(
+    groupedIncidents,
+    ([group_id, grouped_incidents]) => ({
+      group_id,
+      grouped_incidents,
+    })
+  )
+  return arrayOfIncidents
+}
+
+export function mergeRegressedTests(data) {
+  let ret = validateData(data)
+  if (ret[0] !== '') {
+    return ret
   }
 
   let regressedTests = []

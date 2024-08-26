@@ -1,4 +1,13 @@
-import { Button, Grid, Popover, Tooltip, Typography } from '@mui/material'
+import {
+  Box,
+  Button,
+  Grid,
+  Popover,
+  Tab,
+  Tabs,
+  Tooltip,
+  Typography,
+} from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
@@ -11,6 +20,7 @@ import Dialog from '@mui/material/Dialog'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
+import TriagedIncidentsPanel from './TriagedIncidentsPanel'
 
 // Construct a URL with all existing filters plus testId, environment, and testName.
 // This is the url used when you click inside a TableCell on page4 on the right.
@@ -45,7 +55,46 @@ function generateTestReport(
   return sortQueryParams(retUrl)
 }
 
+function tabProps(index) {
+  return {
+    id: `regressions-tab-${index}`,
+    'aria-controls': `regressions-tabpanel-${index}`,
+  }
+}
+
+RegressedTestsTabPanel.propTypes = {
+  children: PropTypes.node,
+  index: PropTypes.number.isRequired,
+  activeIndex: PropTypes.number.isRequired,
+}
+
+function RegressedTestsTabPanel(props) {
+  const { children, activeIndex, index, ...other } = props
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={activeIndex !== index}
+      id={`regressions-tabpanel-${index}`}
+      aria-labelledby={`regressions-tab-${index}`}
+      {...other}
+    >
+      {activeIndex === index && (
+        <Box sx={{ p: 3 }}>
+          <Typography>{children}</Typography>
+        </Box>
+      )}
+    </div>
+  )
+}
+
 export default function RegressedTestsModal(props) {
+  const [activeTabIndex, setActiveTabIndex] = React.useState(0)
+
+  const handleTabChange = (event, newValue) => {
+    setActiveTabIndex(newValue)
+  }
+
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
@@ -198,38 +247,47 @@ export default function RegressedTestsModal(props) {
         onClose={props.close}
       >
         <Grid className="regressed-tests-dialog">
-          <Typography
-            variant="h6"
-            style={{ marginTop: 20, marginBottom: 20, marginLeft: 20 }}
+          <Tabs
+            value={activeTabIndex}
+            onChange={handleTabChange}
+            aria-label="Regressed Tests Tabs"
           >
-            Regressed Tests
-          </Typography>
-          <DataGrid
-            sortModel={sortModel}
-            onSortModelChange={setSortModel}
-            components={{ Toolbar: GridToolbar }}
-            rows={props.regressedTests}
-            columns={columns}
-            getRowId={(row) =>
-              row.test_id +
-              row.component +
-              row.capability +
-              Object.keys(row.variants)
-                .map((key) => row.variants[key])
-                .join(' ')
-            }
-            pageSize={10}
-            rowHeight={60}
-            autoHeight={true}
-            checkboxSelection={false}
-            componentsProps={{
-              toolbar: {
-                columns: columns,
-                showQuickFilter: true,
-              },
-            }}
-          />
-
+            <Tab label="Regressed Tests" {...tabProps(0)} />
+            <Tab label="Triaged Incidents" {...tabProps(1)} />
+          </Tabs>
+          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={0}>
+            <DataGrid
+              sortModel={sortModel}
+              onSortModelChange={setSortModel}
+              components={{ Toolbar: GridToolbar }}
+              rows={props.regressedTests}
+              columns={columns}
+              getRowId={(row) =>
+                row.test_id +
+                row.component +
+                row.capability +
+                Object.keys(row.variants)
+                  .map((key) => row.variants[key])
+                  .join(' ')
+              }
+              pageSize={10}
+              rowHeight={60}
+              autoHeight={true}
+              checkboxSelection={false}
+              componentsProps={{
+                toolbar: {
+                  columns: columns,
+                  showQuickFilter: true,
+                },
+              }}
+            />
+          </RegressedTestsTabPanel>
+          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={1}>
+            <TriagedIncidentsPanel
+              regressedTests={props.regressedTests}
+              triagedIncidents={props.triagedIncidents}
+            />
+          </RegressedTestsTabPanel>
           <Button
             style={{ marginTop: 20, marginBottom: 20, marginLeft: 20 }}
             variant="contained"
@@ -262,6 +320,7 @@ export default function RegressedTestsModal(props) {
 
 RegressedTestsModal.propTypes = {
   regressedTests: PropTypes.array,
+  triagedIncidents: PropTypes.array,
   filterVals: PropTypes.string.isRequired,
   isOpen: PropTypes.bool,
   close: PropTypes.func,

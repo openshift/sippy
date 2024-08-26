@@ -21,6 +21,7 @@ import {
 import { Link } from 'react-router-dom'
 import {
   mergeRegressedTests,
+  mergeTriagedIncidents,
   Search,
   SearchIconWrapper,
   StyledInputBase,
@@ -48,6 +49,7 @@ export default function ComponentReadinessToolBar(props) {
   } = props
 
   const regressedTests = mergeRegressedTests(data)
+  const triagedIncidents = mergeTriagedIncidents(data)
 
   const linkToReport = () => {
     const currentUrl = new URL(window.location.href)
@@ -251,6 +253,7 @@ export default function ComponentReadinessToolBar(props) {
       </Popover>
       <RegressedTestsModal
         regressedTests={regressedTests}
+        triagedIncidents={triagedIncidents}
         filterVals={filterVals}
         isOpen={regressedTestDialog}
         close={closeRegressedTestsDialog}
