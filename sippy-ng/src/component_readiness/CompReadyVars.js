@@ -327,9 +327,36 @@ export const CompReadyVarsProvider = ({ children }) => {
     setCapabilityParam(capability)
   }
 
+  const clearAllQueryParams = () => {
+    // Because all our Param properties have state linked to the URL shown, if we select a view,
+    // we have to clear them all out otherwise we see the view, but the URL continues to
+    // show our last selected query params.
+    setBaseStartTimeParam(undefined)
+    setBaseEndTimeParam(undefined)
+    setBaseReleaseParam(undefined)
+
+    setSampleStartTimeParam(undefined)
+    setSampleEndTimeParam(undefined)
+    setSampleReleaseParam(undefined)
+
+    setColumnGroupByCheckedItemsParam(undefined)
+    setIncludeVariantsCheckedItemsParam(undefined)
+
+    setConfidenceParam(undefined)
+    setPityParam(undefined)
+    setMinFailParam(undefined)
+    setIgnoreDisruptionParam(undefined)
+    setIgnoreMissingParam(undefined)
+
+    setSamplePROrgParam(undefined)
+    setSamplePRRepoParam(undefined)
+    setSamplePRNumberParam(undefined)
+  }
+
   // syncView updates all vars and thus their respective inputs to match a server side view that was
   // just selected by the user.
   const syncView = (view) => {
+    clearAllQueryParams()
     setBaseRelease(view.base_release.release)
     setBaseStartTime(formatLongDate(view.base_release.start, dateFormat))
     setBaseEndTime(formatLongDate(view.base_release.end, dateFormat))
