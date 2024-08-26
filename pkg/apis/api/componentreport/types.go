@@ -31,9 +31,9 @@ type RequestReleaseOptions struct {
 // for the point in time when the request was made. This is used in the UI to pre-populate the
 // date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
-	RequestReleaseOptions `json:",inline" yaml:",inline"`
-	RelativeStart         string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
-	RelativeEnd           string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
+	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
