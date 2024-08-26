@@ -420,7 +420,12 @@ export const CompReadyVarsProvider = ({ children }) => {
         setAllJobVariants(variants.variants)
         setViews(views)
         if (views.length > 0) {
-          setView(views[0].name)
+          // Default view should be the first one in the list matching our defaultSampleRelease
+          views.forEach((view) => {
+            if (view.sample_release.release === defaultSampleRelease) {
+              setView(view.name)
+            }
+          })
         }
         setIsLoaded(true)
       })
