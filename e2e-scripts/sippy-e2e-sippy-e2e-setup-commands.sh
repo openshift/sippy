@@ -185,12 +185,12 @@ spec:
         imagePullPolicy: ${SIPPY_IMAGE_PULL_POLICY:-Always}
         resources:
           limits:
-            memory: 1G
+            memory: 3G
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy load --init-database --load-openshift-ci-bigquery    --log-level=debug --release 4.14 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
+          - /bin/sippy load --init-database --load-openshift-ci-bigquery    --log-level=debug --release 4.16 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred --component-readiness-views ./config/views.yaml
         env:
         - name: GCS_SA_JSON_PATH
           value: /tmp/secrets/gcs-cred
