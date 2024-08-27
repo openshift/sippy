@@ -3,15 +3,16 @@ import {
   Box,
   Button,
   Grid,
-  Paper,
   Popover,
   TableContainer,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import {
   cancelledDataTable,
   getColumns,
   getStatusAndIcon,
+  getSummaryDate,
   getTestDetailsAPIUrl,
   gotFetchError,
   makePageTitle,
@@ -19,12 +20,11 @@ import {
   noDataTable,
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
-import { CompReadyVarsContext } from './CompReadyVars'
-import { FileCopy, Help, InsertLink } from '@mui/icons-material'
+import { CompReadyVarsContext, VarsAtPageLoad } from './CompReadyVars'
+import { FileCopy, Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
-import { ReleasesContext } from '../App'
+import { ReleaseGADates } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
-import { Tooltip } from '@mui/material'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
 import CompReadyCancelled from './CompReadyCancelled'
@@ -64,8 +64,6 @@ export default function CompReadyTestReport(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
   const [showOnlyFailures, setShowOnlyFailures] = React.useState(false)
-  const [versions, setVersions] = React.useState({})
-  const releases = useContext(ReleasesContext)
 
   // Set the browser tab title
   document.title =
@@ -75,7 +73,8 @@ export default function CompReadyTestReport(props) {
   const safeCapability = safeEncodeURIComponent(capability)
   const safeTestId = safeEncodeURIComponent(testId)
 
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
+  const appVars = useContext(CompReadyVarsContext)
+  const { expandEnvironment } = appVars
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -143,25 +142,6 @@ export default function CompReadyTestReport(props) {
         setIsLoaded(true)
       })
   }, [])
-
-  useEffect(() => {
-    let tmpRelease = {}
-    releases.releases
-      .filter((aVersion) => {
-        // We won't process Presubmits or 3.11
-        return aVersion !== 'Presubmits' && aVersion != '3.11'
-      })
-      .forEach((r) => {
-        tmpRelease[r] = releases.ga_dates[r]
-      })
-    setVersions(tmpRelease)
-  }, [releases])
-
-  // this backhand way of recording the query dates keeps their display
-  // from re-rendering to match the controls until the controls update the report
-  const [loadedParams, setLoadedParams] = React.useState({})
-  const datesEnv = useContext(CompReadyVarsContext)
-  useEffect(() => setLoadedParams(datesEnv), [])
 
   if (fetchError !== '') {
     return gotFetchError(fetchError)
@@ -252,70 +232,6 @@ export default function CompReadyTestReport(props) {
   const sampleStartTime = params.get('sampleStartTime')
   const sampleEndTime = params.get('sampleEndTime')
 
-  // getSummaryDate attempts to translate a date into text relative to the version GA
-  // dates we know about.  If there are no versions, there is no translation.
-  const getSummaryDate = (from, to, version, versions) => {
-    const fromDate = new Date(from)
-    const toDate = new Date(to)
-
-    // Go through the versions map from latest release to earliest; ensure that
-    // the ordering is by version (e.g., 4.6 is considered earlier than 4.10).
-    const sortedVersions = Object.keys(versions).sort((a, b) => {
-      const itemA = parseInt(a.toString().replace(/\./g, ''))
-      const itemB = parseInt(b.toString().replace(/\./g, ''))
-      return itemB - itemA
-    })
-
-    if (!versions[version]) {
-      // Handle the case where GA date is undefined (implies under development and not GA)
-      const weeksBefore = Math.floor(
-        (toDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
-      )
-
-      // Calculate the difference between now and toDate in hours
-      const now = new Date()
-      const hoursDifference = Math.abs(now - toDate) / (1000 * 60 * 60)
-
-      if (hoursDifference <= 72) {
-        return weeksBefore
-          ? `Recent ${weeksBefore} week(s) of ${version}`
-          : null
-      } else {
-        // Convert toDate to human-readable format
-        const toDateFormatted = new Date(toDate).toLocaleDateString()
-        return weeksBefore
-          ? `${weeksBefore} week(s) before ${toDateFormatted} of ${version}`
-          : null
-      }
-    }
-
-    for (const version of sortedVersions) {
-      if (!versions[version]) {
-        // We already dealt with a version with no GA date above.
-        continue
-      }
-      const gaDateStr = versions[version]
-      const gaDate = new Date(gaDateStr)
-
-      // Widen the window by 20 weeks prior to GA (because releases seems to be that long) and give
-      // a buffer of 1 week after GA.
-      const twentyWeeksPreGA = new Date(gaDate.getTime())
-      twentyWeeksPreGA.setDate(twentyWeeksPreGA.getDate() - 20 * 7)
-      gaDate.setDate(gaDate.getDate() + 7)
-
-      if (fromDate >= twentyWeeksPreGA && toDate <= gaDate) {
-        // Calculate the time (in milliseconds) to weeks
-        const weeksBefore = Math.floor(
-          (gaDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
-        )
-        return weeksBefore
-          ? `About ${weeksBefore} week(s) before '${version}' GA date`
-          : null
-      }
-    }
-    return null
-  }
-
   const printParamsAndStats = (
     statsLabel,
     stats,
@@ -324,7 +240,7 @@ export default function CompReadyTestReport(props) {
     vCrossCompare,
     variantSelection
   ) => {
-    const summaryDate = getSummaryDate(from, to, stats.release, versions)
+    const summaryDate = getSummaryDate(from, to, stats.release, ReleaseGADates)
     return (
       <Fragment>
         {statsLabel} Release: <strong>{stats.release}</strong>
@@ -401,7 +317,11 @@ Flakes: ${stats.flake_count}`
           </Link>
         </Tooltip>
       </Box>
-      <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
+      <CompReadyPageTitle
+        pageTitle={pageTitle}
+        pageNumber={5}
+        apiCallStr={apiCallStr}
+      />
       <h3>
         <Link to="/component_readiness">
           / {environment} &gt; {component}
@@ -506,20 +426,20 @@ View the test details report at ${document.location.href}
           {printParamsAndStats(
             'Basis (historical)',
             data.base_stats,
-            loadedParams.baseStartTime.toString(),
-            loadedParams.baseEndTime.toString(),
-            loadedParams.variantCrossCompare,
-            loadedParams.includeVariantsCheckedItems
+            VarsAtPageLoad.baseStartTime.toString(),
+            VarsAtPageLoad.baseEndTime.toString(),
+            VarsAtPageLoad.variantCrossCompare,
+            VarsAtPageLoad.includeVariantsCheckedItems
           )}
         </Grid>
         <Grid item xs={6}>
           {printParamsAndStats(
             'Sample (being evaluated)',
             data.sample_stats,
-            loadedParams.sampleStartTime.toString(),
-            loadedParams.sampleEndTime.toString(),
-            loadedParams.variantCrossCompare,
-            loadedParams.compareVariantsCheckedItems
+            VarsAtPageLoad.sampleStartTime.toString(),
+            VarsAtPageLoad.sampleEndTime.toString(),
+            VarsAtPageLoad.variantCrossCompare,
+            VarsAtPageLoad.compareVariantsCheckedItems
           )}
         </Grid>
       </Grid>

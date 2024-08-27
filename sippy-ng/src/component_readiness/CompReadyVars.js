@@ -20,8 +20,21 @@ import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
 import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+
+// shared state storage for the whole app
 export const CompReadyVarsContext = createContext()
+// Use VarsAtPageLoad for describing report contents.
+// This is built according to initial params at page load and frozen to keep the display
+// of "what am I looking at" from re-rendering as the user changes the controls,
+// until they trigger a new report loading in a new page.
+export var VarsAtPageLoad = {}
 
 export const CompReadyVarsProvider = ({ children }) => {
   const [allJobVariants, setAllJobVariants] = useState([])
@@ -63,6 +76,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const initialBaseEndTime =
     getReleaseDate(defaultBaseRelease).getTime() + 1 * days - 1 * seconds
 
+  /*
   console.log('defaultBaseRelease: ', defaultBaseRelease)
   console.log(
     'initialBaseStartTime: ',
@@ -72,6 +86,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     'initialBaseEndTime: ',
     formatLongDate(initialBaseEndTime, dateEndFormat)
   )
+  */
 
   // Create the variables for the URL and set any initial values.
   const [baseReleaseParam = defaultBaseRelease, setBaseReleaseParam] =
@@ -379,6 +394,59 @@ export const CompReadyVarsProvider = ({ children }) => {
     console.log('Aborting /variant sippy API call')
   }
 
+  let vars = {
+    allJobVariants,
+    expandEnvironment,
+    baseRelease,
+    setBaseReleaseWithDates,
+    sampleRelease,
+    setSampleReleaseWithDates,
+    baseStartTime,
+    setBaseStartTime,
+    baseEndTime,
+    setBaseEndTime,
+    sampleStartTime,
+    setSampleStartTime,
+    sampleEndTime,
+    setSampleEndTime,
+    samplePROrg,
+    setSamplePROrg,
+    samplePRRepo,
+    setSamplePRRepo,
+    samplePRNumber,
+    setSamplePRNumber,
+    columnGroupByCheckedItems,
+    setColumnGroupByCheckedItems,
+    dbGroupByVariants,
+    includeVariantsCheckedItems,
+    replaceIncludeVariantsCheckedItems,
+    compareVariantsCheckedItems,
+    replaceCompareVariantsCheckedItems,
+    variantCrossCompare,
+    updateVariantCrossCompare,
+    confidence,
+    setConfidence,
+    pity,
+    setPity,
+    minFail,
+    setMinFail,
+    ignoreMissing,
+    setIgnoreMissing,
+    ignoreDisruption,
+    setIgnoreDisruption,
+    component,
+    setComponentParam,
+    capability,
+    setCapabilityParam,
+    environment,
+    setEnvironmentParam,
+    handleGenerateReport,
+  }
+  VarsAtPageLoad = useMemo(() => {
+    // console.log('inside useMemo', vars)
+    return Object.assign({}, vars)
+  }, [])
+
   if (fetchError != '') {
     return gotFetchError(fetchError)
   }
@@ -393,57 +461,9 @@ export const CompReadyVarsProvider = ({ children }) => {
       />
     )
   }
+
   return (
-    <CompReadyVarsContext.Provider
-      value={{
-        allJobVariants,
-        expandEnvironment,
-        baseRelease,
-        setBaseReleaseWithDates,
-        sampleRelease,
-        setSampleReleaseWithDates,
-        baseStartTime,
-        setBaseStartTime,
-        baseEndTime,
-        setBaseEndTime,
-        sampleStartTime,
-        setSampleStartTime,
-        sampleEndTime,
-        setSampleEndTime,
-        samplePROrg,
-        setSamplePROrg,
-        samplePRRepo,
-        setSamplePRRepo,
-        samplePRNumber,
-        setSamplePRNumber,
-        columnGroupByCheckedItems,
-        setColumnGroupByCheckedItems,
-        dbGroupByVariants,
-        includeVariantsCheckedItems,
-        replaceIncludeVariantsCheckedItems,
-        compareVariantsCheckedItems,
-        replaceCompareVariantsCheckedItems,
-        variantCrossCompare,
-        updateVariantCrossCompare,
-        confidence,
-        setConfidence,
-        pity,
-        setPity,
-        minFail,
-        setMinFail,
-        ignoreMissing,
-        setIgnoreMissing,
-        ignoreDisruption,
-        setIgnoreDisruption,
-        component,
-        setComponentParam,
-        capability,
-        setCapabilityParam,
-        environment,
-        setEnvironmentParam,
-        handleGenerateReport,
-      }}
-    >
+    <CompReadyVarsContext.Provider value={vars}>
       {children}
     </CompReadyVarsContext.Provider>
   )

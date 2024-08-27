@@ -602,3 +602,69 @@ export const convertVariantItemsToParam = (groupedVariants) => {
   })
   return param
 }
+
+// getSummaryDate attempts to translate a date into text relative to the version GA
+// dates we know about.  If there are no versions, there is no translation.
+export const getSummaryDate = (from, to, version, versions) => {
+  const fromDate = new Date(from)
+  const toDate = new Date(to)
+  console.log('getSummaryDate', from, fromDate, to, toDate, version, versions)
+
+  // Go through the versions map from latest release to earliest; ensure that
+  // the ordering is by version (e.g., 4.6 is considered earlier than 4.10).
+  const sortedVersions = Object.keys(versions).sort((a, b) => {
+    const itemA = parseInt(a.toString().replace(/\./g, ''))
+    const itemB = parseInt(b.toString().replace(/\./g, ''))
+    return itemB - itemA
+  })
+
+  if (!versions[version]) {
+    // Handle the case where GA date is undefined (implies under development and not GA)
+    const weeksBefore = Math.floor(
+      (toDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
+    )
+
+    // Calculate the difference between now and toDate in hours
+    const now = new Date()
+    const hoursDifference = Math.abs(now - toDate) / (1000 * 60 * 60)
+
+    console.log('GA undefined', weeksBefore, hoursDifference, now)
+    if (hoursDifference <= 72) {
+      return weeksBefore
+        ? `Recent ${weeksBefore} week(s) of ${version}`
+        : `Recent ${version}`
+    } else {
+      // Convert toDate to human-readable format
+      const toDateFormatted = new Date(toDate).toLocaleDateString()
+      return weeksBefore
+        ? `${weeksBefore} week(s) before ${toDateFormatted} of ${version}`
+        : `Less than a week before ${toDateFormatted} of ${version}`
+    }
+  }
+
+  for (const version of sortedVersions) {
+    if (!versions[version]) {
+      // We already dealt with a version with no GA date above.
+      continue
+    }
+    const gaDateStr = versions[version]
+    const gaDate = new Date(gaDateStr)
+
+    // Widen the window by 20 weeks prior to GA (because releases seems to be that long) and give
+    // a buffer of 1 week after GA.
+    const twentyWeeksPreGA = new Date(gaDate.getTime())
+    twentyWeeksPreGA.setDate(twentyWeeksPreGA.getDate() - 20 * 7)
+    gaDate.setDate(gaDate.getDate() + 7)
+
+    if (fromDate >= twentyWeeksPreGA && toDate <= gaDate) {
+      // Calculate the time (in milliseconds) to weeks
+      const weeksBefore = Math.floor(
+        (gaDate - fromDate) / (1000 * 60 * 60 * 24 * 7)
+      )
+      return weeksBefore
+        ? `About ${weeksBefore} week(s) before ${version} GA date`
+        : `Less than a week before ${version} GA date`
+    }
+  }
+  return `Specified dates in ${version}`
+}

@@ -39,7 +39,7 @@ import PayloadStream from './releases/PayloadStream'
 import PayloadStreams from './releases/PayloadStreams'
 import ProwJobRun from './prow_job_runs/ProwJobRun'
 import PullRequests from './pull_requests/PullRequests'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useEffect, useMemo } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
 import ReleasePayloadDetails from './releases/ReleasePayloadDetails'
 import ReleasePayloads from './releases/ReleasePayloads'
@@ -105,6 +105,9 @@ export const ReleasesContext = React.createContext({})
 export const CapabilitiesContext = React.createContext([])
 export const ReportEndContext = React.createContext('')
 const ColorModeContext = React.createContext({ toggleColorMode: () => {} })
+
+// ReleaseGADates is an object that maps each 4.y release to its GA date (if any)
+export var ReleaseGADates = {}
 
 const useStyles = makeStyles(() => ({
   root: {
@@ -188,7 +191,7 @@ export default function App(props) {
   const [lastUpdated, setLastUpdated] = React.useState(null)
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const [isLoaded, setLoaded] = React.useState(false)
-  const [releases, setReleases] = React.useState([])
+  const [releases, setReleases] = React.useState({ releases: [] })
   const [capabilities, setCapabilities] = React.useState([])
   const [reportDate, setReportDate] = React.useState([])
   const [fetchError, setFetchError] = React.useState('')
@@ -266,6 +269,19 @@ export default function App(props) {
   const handleDrawerClose = () => {
     setDrawerOpen(false)
   }
+
+  ReleaseGADates = useMemo(() => {
+    let gaDates = {}
+    releases.releases
+      .filter((aVersion) => {
+        // We won't process Presubmits or 3.11
+        return aVersion !== 'Presubmits' && aVersion != '3.11'
+      })
+      .forEach((r) => {
+        gaDates[r] = releases.ga_dates[r]
+      })
+    return gaDates
+  }, [releases])
 
   if (!isLoaded) {
     return <Typography>Loading...</Typography>
