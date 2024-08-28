@@ -17,6 +17,7 @@ import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Tooltip from '@mui/material/Tooltip'
+import ViewPicker from './ViewPicker'
 
 export const useStyles = makeStyles((theme) => ({
   crRelease: {
@@ -84,42 +85,12 @@ export default function CompReadyMainInputs(props) {
     </div>
   )
 
-  // eslint-disable-next-line react/prop-types
-  function ViewPicker({ enabled }) {
-    if (!enabled) return null
-    return (
-      <div className={classes.crRelease}>
-        <FormControl variant="standard">
-          <InputLabel> View </InputLabel>
-          <Select
-            variant="standard"
-            value={varsContext.view}
-            onChange={(e) => {
-              console.log('changed view to: ' + e.target.value)
-              varsContext.setView(e.target.value)
-              varsContext.views.forEach(function (item) {
-                if (item.name === e.target.value) {
-                  // Update all inputs to match the values of the selected view, allowing the user
-                  // to customize easily:
-                  varsContext.syncView(item)
-                }
-              })
-            }}
-          >
-            {varsContext.views.map((v, index) => (
-              <MenuItem key={index} value={v.name}>
-                {v.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </div>
-    )
-  }
-
   return (
     <Fragment>
-      <ViewPicker enabled={varsContext.views.length > 0} />
+      <ViewPicker
+        varsContext={varsContext}
+        enabled={varsContext.views.length > 0}
+      />
 
       <div className="cr-report-button">
         <Button
