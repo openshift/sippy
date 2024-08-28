@@ -41,5 +41,5 @@ export default function ViewPicker(props) {
 
 ViewPicker.propTypes = {
   enabled: PropTypes.bool,
-  varsContext: PropTypes.Object,
+  varsContext: PropTypes.object,
 }
