@@ -92,25 +92,6 @@ export default function CompReadyMainInputs(props) {
         enabled={varsContext.views.length > 0}
       />
 
-      <div className="cr-report-button">
-        <Button
-          size="large"
-          variant="contained"
-          color="primary"
-          to={'/component_readiness/main' + getUpdatedUrlParts(varsContext)}
-          onClick={varsContext.handleGenerateReport}
-        >
-          <Tooltip
-            title={
-              'Click here to generate a report that compares the release you wish to evaluate\
-                                         against a historical (previous) release using all the specific parameters specified'
-            }
-          >
-            <Fragment>Generate Custom Report</Fragment>
-          </Tooltip>
-        </Button>
-      </div>
-
       <div className={classes.crRelease}>
         <ReleaseSelector
           label="Sample Release"
@@ -142,6 +123,26 @@ export default function CompReadyMainInputs(props) {
           setEndTime={varsContext.setBaseEndTime}
         ></ReleaseSelector>
       </div>
+
+      <div className="cr-report-button">
+        <Button
+          size="large"
+          variant="contained"
+          color="primary"
+          to={'/component_readiness/main' + getUpdatedUrlParts(varsContext)}
+          onClick={varsContext.handleGenerateReport}
+        >
+          <Tooltip
+            title={
+              'Click here to generate a custom report that compares the release you wish to evaluate\
+                                                     against a historical (previous) release using all the specific parameters specified'
+            }
+          >
+            <Fragment>Generate Report</Fragment>
+          </Tooltip>
+        </Button>
+      </div>
+
       {props.isTestDetails ? '' : compReadyEnvOptions}
     </Fragment>
   )
