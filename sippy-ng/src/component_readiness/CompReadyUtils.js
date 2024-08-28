@@ -328,7 +328,6 @@ export function getUpdatedUrlParts(vars) {
   const arraysMap = {
     columnGroupBy: filterOutVariantCC(vars.columnGroupByCheckedItems),
     dbGroupBy: filterOutVariantCC(vars.dbGroupByVariants),
-    variantCrossCompare: vars.variantCrossCompare,
   }
 
   const queryParams = new URLSearchParams()
@@ -353,17 +352,18 @@ export function getUpdatedUrlParts(vars) {
   )
   Object.entries(vars.compareVariantsCheckedItems).forEach(
     ([group, variants]) => {
-      console.log(group, variants)
       // for UI purposes we may be holding compareVariants that aren't actually being compared, so they don't get wiped
       // out just by toggling the "Compare" button. But for the parameters we will filter these out.
       if (vars.variantCrossCompare.includes(group)) {
-        console.log('including', group, 'in compareVariants')
         variants.forEach((variant) => {
           queryParams.append('compareVariant', group + ':' + variant)
         })
       }
     }
   )
+  vars.variantCrossCompare.forEach((item) => {
+    queryParams.append('variantCrossCompare', item)
+  })
 
   // Stringify and put the begin param character.
   queryParams.sort() // ensure they always stay in sorted order to prevent url history changes

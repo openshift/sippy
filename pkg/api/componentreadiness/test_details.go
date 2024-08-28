@@ -81,12 +81,6 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus() (crtype.JobR
 // getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
 // This is for the bottom level most specific pages in component readiness.
 func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.JobVariants, isSample bool) (string, string, []bigquery2.QueryParameter) {
-	joinVariants := ""
-	for v := range allJobVariants.Variants {
-		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-			c.client.Dataset, v, v, v, v)
-	}
-
 	jobNameQueryPortion := normalJobNameCol
 	if c.SampleRelease.PullRequestOptions != nil && isSample {
 		jobNameQueryPortion = pullRequestDynamicJobNameCol
@@ -113,6 +107,12 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, c.client.Dataset))
 
+	joinVariants := ""
+	for variant := range allJobVariants.Variants {
+		v := api.CleanseSQLName(variant)
+		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+			c.client.Dataset, v, v, v, v)
+	}
 	queryString += joinVariants
 
 	groupString := `
@@ -136,10 +136,35 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 			Value: c.TestID,
 		},
 	}
-	for k, v := range c.RequestedVariants {
-		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
+	for group, variant := range c.RequestedVariants {
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, api.CleanseSQLName(group), api.CleanseSQLName(variant))
+	}
+	if isSample {
+		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.CompareVariants, &commonParams)
+	} else {
+		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.IncludeVariants, &commonParams)
 	}
 	return queryString, groupString, commonParams
+}
+
+// filterByCrossCompareVariants adds the where clause for any variants being cross-compared (which are not included in RequiredVariants).
+// As a side effect, it also appends any necessary parameters for the clause.
+func filterByCrossCompareVariants(crossCompare []string, variantGroups map[string][]string, params *[]bigquery2.QueryParameter) (whereClause string) {
+	if len(variantGroups) == 0 {
+		return // avoid possible nil pointer dereference
+	}
+	for _, group := range crossCompare {
+		if variants := variantGroups[group]; len(variants) > 0 {
+			group = api.CleanseSQLName(group)
+			paramName := "CrossVariants" + group
+			whereClause += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
+			*params = append(*params, bigquery2.QueryParameter{
+				Name:  paramName,
+				Value: variants,
+			})
+		}
+	}
+	return
 }
 
 type baseJobRunTestStatusGenerator struct {
@@ -165,13 +190,17 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 		ComponentReportGenerator: c,
 	}
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](generator.ComponentReportGenerator.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator), generator.queryTestStatus, crtype.JobRunTestReportStatus{})
+	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
+		generator.ComponentReportGenerator.client.Cache, generator.cacheOption,
+		api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator),
+		generator.queryTestStatus,
+		crtype.JobRunTestReportStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
 	}
 
-	return componentReportTestStatus.BaseStatus, nil
+	return jobRunTestStatus.BaseStatus, nil
 }
 
 func (b *baseJobRunTestStatusGenerator) queryTestStatus() (crtype.JobRunTestReportStatus, []error) {
@@ -207,7 +236,8 @@ type sampleJobRunTestQueryGenerator struct {
 
 func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 	groupByQuery string,
-	queryParameters []bigquery2.QueryParameter) (map[string][]crtype.JobRunTestStatusRow, []error) {
+	queryParameters []bigquery2.QueryParameter,
+) (map[string][]crtype.JobRunTestStatusRow, []error) {
 	generator := sampleJobRunTestQueryGenerator{
 		commonQuery:              commonQuery,
 		groupByQuery:             groupByQuery,
@@ -215,13 +245,17 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(commonQuery string,
 		ComponentReportGenerator: c,
 	}
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](c.client.Cache, c.cacheOption, api.GetPrefixedCacheKey("SampleJobRunTestStatus~", generator), generator.queryTestStatus, crtype.JobRunTestReportStatus{})
+	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
+		c.client.Cache, c.cacheOption,
+		api.GetPrefixedCacheKey("SampleJobRunTestStatus~", generator),
+		generator.queryTestStatus,
+		crtype.JobRunTestReportStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
 	}
 
-	return componentReportTestStatus.SampleStatus, nil
+	return jobRunTestStatus.SampleStatus, nil
 }
 
 func (s *sampleJobRunTestQueryGenerator) queryTestStatus() (crtype.JobRunTestReportStatus, []error) {
