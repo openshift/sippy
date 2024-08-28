@@ -61,7 +61,7 @@ type RequestOptions struct {
 	CacheOption    cache.RequestOptions
 }
 
-// View is a server side construct representing a predefined view over the data.
+// View is a server side construct representing a predefined view over the component readiness data.
 // Useful for defining the primary view of what we deem required for considering the release ready.
 type View struct {
 	Name            string                        `json:"name" yaml:"name"`

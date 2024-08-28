@@ -16,7 +16,7 @@ import (
 )
 
 // JobRunIntervals fetches intervals for a given job run by fetching from the prow job's GCS bucket path
-// contructed using the prow job name and jobID using one of these methods:
+// constructed using the prow job name and jobID using one of these methods:
 // 1) using a GCS path that was calculated and passed in (we can retrieve intervals immediately)
 // 2) looking up the url given the jobRunID and extracting the prow job name (we need to wait until the sippyDB is populated)
 // If the GCS path could not be calculated, it will be empty.
