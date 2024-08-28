@@ -11,7 +11,7 @@ export default function ViewPicker(props) {
   if (!props.enabled) return null
   return (
     <div className={classes.crRelease}>
-      <FormControl variant="standard">
+      <FormControl variant="standard" sx={{ minWidth: 100 }}>
         <InputLabel> View </InputLabel>
         <Select
           variant="standard"
