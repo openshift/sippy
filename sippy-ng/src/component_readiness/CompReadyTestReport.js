@@ -159,9 +159,9 @@ export default function CompReadyTestReport(props) {
 
   // this backhand way of recording the query dates keeps their display
   // from re-rendering to match the controls until the controls update the report
-  const [staticDates, setDates] = React.useState({})
+  const [loadedParams, setLoadedParams] = React.useState({})
   const datesEnv = useContext(CompReadyVarsContext)
-  useEffect(() => setDates(datesEnv), [])
+  useEffect(() => setLoadedParams(datesEnv), [])
 
   if (fetchError !== '') {
     return gotFetchError(fetchError)
@@ -316,21 +316,50 @@ export default function CompReadyTestReport(props) {
     return null
   }
 
-  const printStats = (statsLabel, stats, from, to) => {
+  const printParamsAndStats = (
+    statsLabel,
+    stats,
+    from,
+    to,
+    vCrossCompare,
+    variantSelection
+  ) => {
     const summaryDate = getSummaryDate(from, to, stats.release, versions)
     return (
       <Fragment>
         {statsLabel} Release: <strong>{stats.release}</strong>
-        <br />
-        &nbsp;&nbsp;Start Time: <strong>{from}</strong>
-        <br />
-        &nbsp;&nbsp;End Time: <strong>{to}</strong>
         {summaryDate && (
           <Fragment>
             <br />
             &nbsp;&nbsp;<strong>{summaryDate}</strong>
           </Fragment>
         )}
+        <br />
+        &nbsp;&nbsp;Start Time: <strong>{from}</strong>
+        <br />
+        &nbsp;&nbsp;End Time: <strong>{to}</strong>
+        <br />
+        {vCrossCompare && (
+          <Fragment>
+            <br />
+            &nbsp;&nbsp;Variant Cross Comparison:
+            <ul>
+              {vCrossCompare.map((group, idx) =>
+                variantSelection[group] ? (
+                  <li>
+                    {group}:&nbsp;
+                    <strong>{variantSelection[group].join(', ')}</strong>
+                  </li>
+                ) : (
+                  <li>
+                    {group}: <strong>(any)</strong>
+                  </li>
+                )
+              )}
+            </ul>
+          </Fragment>
+        )}
+        &nbsp;&nbsp;Statistics:
         <ul>
           <li>Success Rate: {(stats.success_rate * 100).toFixed(2)}%</li>
           <li>Successes: {stats.success_count}</li>
@@ -383,7 +412,7 @@ Flakes: ${stats.flake_count}`
         <h2>{testName}</h2>
       </div>
       <Grid container>
-        <Grid md={12}>
+        <Grid>
           <h2>Linked Bugs</h2>
           <BugTable testName={testName} />
           <Box
@@ -472,20 +501,28 @@ View the test details report at ${document.location.href}
           </TableRow>
         </TableBody>
       </Table>
-      <Box sx={{ marginTop: 5 }}>
-        {printStats(
-          'Sample (being evaluated)',
-          data.sample_stats,
-          staticDates.sampleStartTime.toString(),
-          staticDates.sampleEndTime.toString()
-        )}
-        {printStats(
-          'Base (historical)',
-          data.base_stats,
-          staticDates.baseStartTime.toString(),
-          staticDates.baseEndTime.toString()
-        )}
-      </Box>
+      <Grid container spacing={2} style={{ marginTop: '10px' }}>
+        <Grid item xs={6}>
+          {printParamsAndStats(
+            'Basis (historical)',
+            data.base_stats,
+            loadedParams.baseStartTime.toString(),
+            loadedParams.baseEndTime.toString(),
+            loadedParams.variantCrossCompare,
+            loadedParams.includeVariantsCheckedItems
+          )}
+        </Grid>
+        <Grid item xs={6}>
+          {printParamsAndStats(
+            'Sample (being evaluated)',
+            data.sample_stats,
+            loadedParams.sampleStartTime.toString(),
+            loadedParams.sampleEndTime.toString(),
+            loadedParams.variantCrossCompare,
+            loadedParams.compareVariantsCheckedItems
+          )}
+        </Grid>
+      </Grid>
       <div style={{ marginTop: '10px', marginBottom: '10px' }}>
         <label>
           <input

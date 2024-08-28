@@ -158,29 +158,56 @@ func parsePROptions(req *http.Request) *crtype.PullRequestOptions {
 	return &pro
 }
 
-func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants) (crtype.RequestVariantOptions, error) {
-	var err error
-	variantOption := crtype.RequestVariantOptions{}
+func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants) (opts crtype.RequestVariantOptions, err error) {
 	columnGroupBy := req.URL.Query().Get("columnGroupBy")
-	variantOption.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
+	opts.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
 	if err != nil {
-		return variantOption, err
+		return
 	}
 	dbGroupBy := req.URL.Query().Get("dbGroupBy")
-	variantOption.DBGroupBy, err = api.VariantsStringToSet(allJobVariants, dbGroupBy)
+	opts.DBGroupBy, err = api.VariantsStringToSet(allJobVariants, dbGroupBy)
 	if err != nil {
-		return variantOption, err
+		return
 	}
-	variantOption.RequestedVariants = map[string]string{}
+
+	opts.RequestedVariants = map[string]string{}
 	// Only the dbGroupBy variants can be specifically requested
-	for _, variant := range variantOption.DBGroupBy.List() {
+	for _, variant := range opts.DBGroupBy.List() {
 		if value := req.URL.Query().Get(variant); value != "" {
-			variantOption.RequestedVariants[variant] = value
+			opts.RequestedVariants[variant] = value
 		}
 	}
 	includeVariants := req.URL.Query()["includeVariant"]
-	variantOption.IncludeVariants, err = api.IncludeVariantsToMap(allJobVariants, includeVariants)
-	return variantOption, err
+	opts.IncludeVariants, err = api.VariantListToMap(allJobVariants, includeVariants)
+	if err != nil {
+		return
+	}
+	compareVariants, err := api.VariantListToMap(allJobVariants, req.URL.Query()["compareVariant"])
+	if err != nil {
+		return
+	}
+
+	opts.VariantCrossCompare = req.URL.Query()["variantCrossCompare"]
+	if len(opts.VariantCrossCompare) > 0 {
+		// when we are cross-comparing variants, we need to construct the compareVariants map from the parameters.
+		// the resulting compareVariants map is includeVariants...
+		opts.CompareVariants = map[string][]string{}
+		for group, variants := range opts.IncludeVariants {
+			opts.CompareVariants[group] = variants
+		}
+
+		// ...with overrides from compareVariant parameters.
+		for _, group := range opts.VariantCrossCompare {
+			if variants := compareVariants[group]; len(variants) > 0 {
+				opts.CompareVariants[group] = variants
+			} else {
+				// a group override without any variants listed means not to restrict the variants in this group.
+				// in that case we don't want any where clause for the group, so we just omit it from the map.
+				delete(opts.CompareVariants, group)
+			}
+		}
+	}
+	return
 }
 
 func ParseIntArg(req *http.Request, name string, defaultVal int, validator func(int) bool) (int, error) {

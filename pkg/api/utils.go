@@ -149,32 +149,43 @@ func VariantsStringToSet(allJobVariants crtype.JobVariants, variantsString strin
 	return variantSet, nil
 }
 
-func IncludeVariantsToMap(allJobVariants crtype.JobVariants, includeVariants []string) (map[string][]string, error) {
-	includeVariantsMap := map[string][]string{}
+func VariantListToMap(allJobVariants crtype.JobVariants, variants []string) (map[string][]string, error) {
+	variantsMap := map[string][]string{}
 	var err error
-	for _, includeVariant := range includeVariants {
-		kv := strings.Split(includeVariant, ":")
+	for _, variant := range variants {
+		kv := strings.Split(variant, ":")
 		if len(kv) != 2 {
-			err = fmt.Errorf("invalid includeVariant %s", includeVariant)
-			return includeVariantsMap, err
+			err = fmt.Errorf("invalid variant %s in list", variant)
+			return variantsMap, err
 		}
 		values, ok := allJobVariants.Variants[kv[0]]
 		if !ok {
-			err = fmt.Errorf("invalid variant name from includeVariant %s", includeVariant)
-			return includeVariantsMap, err
+			err = fmt.Errorf("invalid name from list variant %s", variant)
+			return variantsMap, err
 		}
 		found := false
 		for _, v := range values {
 			if v == kv[1] {
-				includeVariantsMap[kv[0]] = append(includeVariantsMap[kv[0]], kv[1])
+				variantsMap[kv[0]] = append(variantsMap[kv[0]], kv[1])
 				found = true
 				break
 			}
 		}
 		if !found {
-			err = fmt.Errorf("invalid variant value from includeVariant %s", includeVariant)
-			return includeVariantsMap, err
+			err = fmt.Errorf("invalid value from list variant %s", variant)
+			return variantsMap, err
 		}
 	}
-	return includeVariantsMap, err
+	return variantsMap, err
+}
+
+// CleanseSQLName removes all non-alphanumeric characters from a string that could be used as a SQL name (table, column, etc)
+// This is useful for sanitizing dynamic queries built from user input.
+func CleanseSQLName(name string) string {
+	return strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			return r
+		}
+		return -1
+	}, name)
 }

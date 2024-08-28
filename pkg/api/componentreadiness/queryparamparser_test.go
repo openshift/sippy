@@ -25,7 +25,7 @@ var (
 func TestParseComponentReportRequest(t *testing.T) {
 
 	allJobVariants := crtype.JobVariants{Variants: map[string][]string{
-		"Architecture": {"amd64", "arm64", "heterogeneous"},
+		"Architecture": {"amd64", "arm64", "s390x", "ppc64le", "heterogeneous"},
 		"FeatureSet":   {"default", "techpreview"},
 		"Installer":    {"ipi", "upi"},
 		"Network":      {"ovn", "sdn"},
@@ -64,8 +64,29 @@ func TestParseComponentReportRequest(t *testing.T) {
 			IgnoreDisruption: true,
 		},
 	}
+	// would like to test with a view that does define cross-compare variants
+	view417cross := view417main
+	view417cross.Name = "4.17-cross"
+	view417cross.VariantOptions = crtype.RequestVariantOptions{
+		VariantCrossCompare: []string{"Topology"},
+		IncludeVariants: map[string][]string{
+			"Architecture": []string{"amd64"},
+			"Installer":    []string{"ipi", "upi"},
+			"Topology":     []string{"ha"},
+		},
+		CompareVariants: map[string][]string{
+			"Architecture": []string{"amd64"},
+			"Installer":    []string{"ipi", "upi"},
+			"Topology":     []string{"single"},
+		},
+		// also remove Topology from columnGroupBy and dbGroupBy
+		ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
+		DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
+	}
+
 	views := []crtype.View{
 		view417main,
+		view417cross,
 	}
 
 	now := time.Now().UTC()
@@ -96,7 +117,6 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"baseRelease", "4.15"},
 				{"baseStartTime", "2024-02-01T00:00:00Z"},
 				{"confidence", "95"},
-				{"groupBy", "cloud,arch,network"},
 				{"columnGroupBy", "Platform,Architecture,Network"},
 				{"dbGroupBy", "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Installer"},
 				{"ignoreDisruption", "true"},
@@ -150,7 +170,6 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"baseRelease", "4.15"},
 				{"baseStartTime", "ga-30d"},
 				{"confidence", "95"},
-				{"groupBy", "cloud,arch,network"},
 				{"columnGroupBy", "Platform,Architecture,Network"},
 				{"dbGroupBy", "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Installer"},
 				{"ignoreDisruption", "true"},
@@ -210,6 +229,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 					"FeatureSet":   {"default", "techpreview"},
 					"Installer":    {"ipi", "upi"},
 				},
+				CompareVariants: nil, // the view is likely not to specify compare variants at all
 			},
 			baseRelease: crtype.RequestReleaseOptions{
 				Release: "4.16",
@@ -247,6 +267,111 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Topology:single"},
 			},
 			errMessage: "params cannot be combined with view",
+		},
+		{
+			name: "normal query params but with variant cross-compare",
+			queryParams: [][]string{
+				{"baseEndTime", "2024-02-28T23:59:59Z"},
+				{"baseRelease", "4.15"},
+				{"baseStartTime", "2024-02-01T00:00:00Z"},
+				{"columnGroupBy", "Platform,Network"},
+				{"dbGroupBy", "Platform,Network,FeatureSet,Upgrade,Installer"},
+				{"sampleEndTime", "2024-04-11T23:59:59Z"},
+				{"sampleRelease", "4.16"},
+				{"sampleStartTime", "2024-04-04T00:00:05Z"},
+				{"includeVariant", "Architecture:amd64"},
+				{"includeVariant", "Architecture:arm64"},
+				{"includeVariant", "Topology:ha"},
+				{"includeVariant", "FeatureSet:default"},
+				{"includeVariant", "Installer:ipi"},
+				{"includeVariant", "Installer:upi"},
+				{"variantCrossCompare", "Architecture"},
+				{"variantCrossCompare", "Topology"},
+				{"compareVariant", "Architecture:s390x"},
+				{"compareVariant", "Architecture:ppc64le"},
+				{"compareVariant", "Topology:single"},
+			},
+			variantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: sets.NewString("Platform", "Network"),
+				DBGroupBy:     sets.NewString("Platform", "Network", "FeatureSet", "Upgrade", "Installer"),
+				IncludeVariants: map[string][]string{
+					"Architecture": {"amd64", "arm64"},
+					"Topology":     {"ha"},
+					"FeatureSet":   {"default"},
+					"Installer":    {"ipi", "upi"},
+				},
+				CompareVariants: map[string][]string{
+					"Architecture": {"s390x", "ppc64le"},
+					"Topology":     {"single"},
+					"FeatureSet":   {"default"},
+					"Installer":    {"ipi", "upi"},
+				},
+				VariantCrossCompare: []string{"Architecture", "Topology"},
+				RequestedVariants:   map[string]string{},
+			},
+			baseRelease: crtype.RequestReleaseOptions{
+				Release: "4.15",
+				Start:   time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
+				End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
+			},
+			sampleRelease: crtype.RequestReleaseOptions{
+				Release: "4.16",
+				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
+				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
+			},
+			testIDOption: crtype.RequestTestIdentificationOptions{},
+			advancedOption: crtype.RequestAdvancedOptions{
+				MinimumFailure:   3,
+				Confidence:       95,
+				PityFactor:       5,
+				IgnoreMissing:    false,
+				IgnoreDisruption: true,
+			},
+			cacheOption: cache.RequestOptions{
+				ForceRefresh: false,
+			},
+		},
+		{
+			name: "cross-compare view",
+			queryParams: [][]string{
+				{"view", "4.17-cross"},
+			},
+			variantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
+				IncludeVariants: map[string][]string{
+					"Architecture": {"amd64"},
+					"Installer":    {"ipi", "upi"},
+					"Topology":     {"ha"},
+				},
+				VariantCrossCompare: []string{"Topology"},
+				CompareVariants: map[string][]string{
+					"Architecture": {"amd64"},
+					"Installer":    {"ipi", "upi"},
+					"Topology":     {"single"},
+				},
+			},
+			baseRelease: crtype.RequestReleaseOptions{
+				Release: "4.16",
+				Start:   time.Date(2024, time.May, 28, 0, 0, 0, 0, time.UTC),
+				End:     time.Date(2024, time.June, 27, 23, 59, 59, 0, time.UTC),
+			},
+			sampleRelease: crtype.RequestReleaseOptions{
+				Release: "4.17",
+				Start:   time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
+				End:     nowRoundUp,
+			},
+			testIDOption: crtype.RequestTestIdentificationOptions{},
+			advancedOption: crtype.RequestAdvancedOptions{
+				MinimumFailure:   3,
+				Confidence:       95,
+				PityFactor:       5,
+				IgnoreMissing:    false,
+				IgnoreDisruption: true,
+			},
+			cacheOption: cache.RequestOptions{
+				ForceRefresh: false,
+			},
 		},
 	}
 
