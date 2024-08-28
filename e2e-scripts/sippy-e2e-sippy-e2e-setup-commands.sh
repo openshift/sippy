@@ -190,7 +190,7 @@ spec:
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy load --init-database --load-openshift-ci-bigquery    --log-level=debug --release 4.14 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred --component-readiness-views ./config/views.yaml
+          - /bin/sippy load --init-database --load-openshift-ci-bigquery    --log-level=debug --release 4.16 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred --component-readiness-views ./config/views.yaml
         env:
         - name: GCS_SA_JSON_PATH
           value: /tmp/secrets/gcs-cred
@@ -219,9 +219,8 @@ ${KUBECTL_CMD} -n sippy-e2e describe job sippy-load-job
 
 # We set +e to avoid the script aborting before we can retrieve logs.
 set +e
-# This takes under 3 minutes so 5 minutes (300 seconds) should be plenty.
 
-echo "Waiting up to ${SIPPY_LOAD_TIMEOUT:=300s} for the sippy-load-job to complete..."
+echo "Waiting up to ${SIPPY_LOAD_TIMEOUT:=1200s} for the sippy-load-job to complete..."
 ${KUBECTL_CMD} -n sippy-e2e wait --for=condition=complete job/sippy-load-job --timeout ${SIPPY_LOAD_TIMEOUT}
 retVal=$?
 set -e
