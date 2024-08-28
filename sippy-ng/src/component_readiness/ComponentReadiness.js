@@ -239,6 +239,13 @@ export default function ComponentReadiness(props) {
 
   const varsContext = useContext(CompReadyVarsContext)
 
+  // Use varsAtPageLoad for describing report contents.
+  // This backhand way of recording app state (built according to initial params at page load) keeps
+  // the display of "what am I looking at" from re-rendering as the user changes the controls,
+  // until they trigger a new report loading in a new page.
+  const [varsAtPageLoad, setVarsAtPageLoad] = React.useState({})
+  useEffect(() => setVarsAtPageLoad(varsContext), [])
+
   const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
   const [testNameParam, setTestNameParam] = useQueryParam('testName', String)
 
@@ -383,7 +390,7 @@ export default function ComponentReadiness(props) {
   }
 
   const pageTitle = makePageTitle(
-    `Component Readiness for ${varsContext.sampleRelease} vs. ${varsContext.baseRelease}`,
+    `Component Readiness`,
     `page 1`,
     `rows: ${data && data.rows ? data.rows.length : 0}, columns: ${
       data && data.rows && data.rows[0] && data.rows[0].columns
@@ -550,6 +557,7 @@ export default function ComponentReadiness(props) {
                       <Sidebar />
                       <CompReadyPageTitle
                         pageTitle={pageTitle}
+                        pageNumber={1}
                         apiCallStr={showValuesForReport()}
                       />
                       {data === initialPageTable ? (

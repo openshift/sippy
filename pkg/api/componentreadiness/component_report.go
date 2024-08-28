@@ -413,15 +413,24 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtyp
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
 	}
 
-	for k, vs := range c.IncludeVariants {
+	variantGroups := c.IncludeVariants
+	// potentially cross-compare variants for the sample
+	if isSample && len(c.VariantCrossCompare) > 0 {
+		variantGroups = c.CompareVariants
+	}
+	if variantGroups == nil { // server-side view definitions may omit a variants map
+		variantGroups = map[string][]string{}
+	}
+
+	for group, variants := range variantGroups {
 		queryString += " AND ("
 		first := true
-		for _, v := range vs {
+		for _, variant := range variants {
 			if first {
-				queryString += fmt.Sprintf(`jv_%s.variant_value = '%s'`, k, v)
+				queryString += fmt.Sprintf(`jv_%s.variant_value = '%s'`, group, variant)
 				first = false
 			} else {
-				queryString += fmt.Sprintf(` OR jv_%s.variant_value = '%s'`, k, v)
+				queryString += fmt.Sprintf(` OR jv_%s.variant_value = '%s'`, group, variant)
 			}
 		}
 		queryString += ")"
@@ -534,7 +543,10 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 		ComponentReportGenerator: c,
 	}
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](c.client.Cache, c.cacheOption, api.GetPrefixedCacheKey("SampleTestStatus~", generator), generator.queryTestStatus, crtype.ReportTestStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](
+		c.client.Cache, c.cacheOption,
+		api.GetPrefixedCacheKey("SampleTestStatus~", generator),
+		generator.queryTestStatus, crtype.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -1322,8 +1334,12 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
-			approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
-			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+			var approvedRegression *regressionallowances.IntentionalRegression
+			if len(c.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
+				// look for corresponding regressions we can account for in the analysis
+				approvedRegression = regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
+				resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+			}
 			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
 			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,

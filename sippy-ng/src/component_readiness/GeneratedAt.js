@@ -14,7 +14,7 @@ export default function GeneratedAt(props) {
     <Box align="right">
       <Typography variant="caption">
         <Tooltip title={props.time}>
-          Generated {relativeTime(d, new Date())}
+          <span>Generated {relativeTime(d, new Date())}</span>
         </Tooltip>
       </Typography>
     </Box>

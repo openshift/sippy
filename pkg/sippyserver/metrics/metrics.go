@@ -311,7 +311,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 	if err != nil {
 		return err
 	}
-	includeVariantsMap, err := api.IncludeVariantsToMap(allJobVariants, componentreadiness.DefaultIncludeVariants)
+	includeVariantsMap, err := api.VariantListToMap(allJobVariants, componentreadiness.DefaultIncludeVariants)
 	if err != nil {
 		return err
 	}
