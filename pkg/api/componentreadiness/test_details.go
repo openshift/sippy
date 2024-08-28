@@ -308,20 +308,20 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (crtype.Job
 		logrus.Errorf("failed to get variants from bigquery")
 		return crtype.JobRunTestReportStatus{}, errs
 	}
-	queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, false)
 	var baseStatus, sampleStatus map[string][]crtype.JobRunTestStatusRow
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, false)
 		baseStatus, baseErrs = c.getBaseJobRunTestStatus(queryString, groupString, commonParams)
 	}()
 
-	queryString, groupString, commonParams = c.getTestDetailsQuery(allJobVariants, true)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, true)
 		sampleStatus, sampleErrs = c.getSampleJobRunTestStatus(queryString, groupString, commonParams)
 	}()
 	wg.Wait()
