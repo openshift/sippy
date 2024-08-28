@@ -341,6 +341,8 @@ export const CompReadyVarsProvider = ({ children }) => {
 
     setColumnGroupByCheckedItemsParam(undefined)
     setIncludeVariantsCheckedItemsParam(undefined)
+    setVariantCrossCompareParam(undefined)
+    setCompareVariantsCheckedItemsParam(undefined)
 
     setConfidenceParam(undefined)
     setPityParam(undefined)
