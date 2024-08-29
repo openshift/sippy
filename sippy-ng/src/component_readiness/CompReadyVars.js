@@ -63,16 +63,6 @@ export const CompReadyVarsProvider = ({ children }) => {
   const initialBaseEndTime =
     getReleaseDate(defaultBaseRelease).getTime() + 1 * days - 1 * seconds
 
-  console.log('defaultBaseRelease: ', defaultBaseRelease)
-  console.log(
-    'initialBaseStartTime: ',
-    formatLongDate(initialBaseStartTime, dateFormat)
-  )
-  console.log(
-    'initialBaseEndTime: ',
-    formatLongDate(initialBaseEndTime, dateEndFormat)
-  )
-
   // Create the variables for the URL and set any initial values.
   const [baseReleaseParam = defaultBaseRelease, setBaseReleaseParam] =
     useQueryParam('baseRelease', StringParam)
@@ -211,18 +201,20 @@ export const CompReadyVarsProvider = ({ children }) => {
 
   /** some state variables and related handlers for managing the display of variants in the UI **/
   // The grouped variants that have been selected for inclusion in the basis and sample (unless they are in the cross-compare list)
-  const includeVariantsCheckedItems = convertParamToVariantItems(
-    includeVariantsCheckedItemsParam
-  )
+  const [includeVariantsCheckedItems, setIncludeVariantsCheckedItems] =
+    useState(convertParamToVariantItems(includeVariantsCheckedItemsParam))
   const replaceIncludeVariantsCheckedItems = (variant, checkedItems) => {
     includeVariantsCheckedItems[variant] = checkedItems
+    // this state stuff seems redundant but when omitted, params don't update reliably
+    setIncludeVariantsCheckedItems(includeVariantsCheckedItems)
   }
   // The grouped variants that have been selected for cross-comparison in the sample
-  const compareVariantsCheckedItems = convertParamToVariantItems(
-    compareVariantsCheckedItemsParam
-  )
+  const [compareVariantsCheckedItems, setCompareVariantsCheckedItems] =
+    useState(convertParamToVariantItems(compareVariantsCheckedItemsParam))
   const replaceCompareVariantsCheckedItems = (variant, checkedItems) => {
     compareVariantsCheckedItems[variant] = checkedItems
+    // this state stuff seems redundant but when omitted, params don't update reliably
+    setCompareVariantsCheckedItems(compareVariantsCheckedItems)
   }
   // This is the list of variant groups (e.g. "Architecture") that have been selected for cross-variant comparison
   const [variantCrossCompare, setVariantCrossCompare] = useState(
