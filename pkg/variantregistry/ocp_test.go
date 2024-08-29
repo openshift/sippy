@@ -206,6 +206,31 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
+			job: "periodic-ci-openshift-cluster-control-plane-machine-set-operator-release-4.17-periodics-e2e-aws-arm",
+			variantsFile: map[string]string{
+				"Architecture": "amd64", // should be overruled by the job parsing.
+			},
+			expected: map[string]string{
+				VariantRelease:       "4.17",
+				VariantReleaseMajor:  "4",
+				VariantReleaseMinor:  "17",
+				VariantArch:          "arm64",
+				VariantInstaller:     "ipi",
+				VariantPlatform:      "aws",
+				VariantNetwork:       "ovn",
+				VariantNetworkStack:  "ipv4",
+				VariantOwner:         "eng",
+				VariantSuite:         "unknown",
+				VariantTopology:      "ha",
+				VariantUpgrade:       "none",
+				VariantAggregation:   "none",
+				VariantFeatureSet:    VariantDefaultValue,
+				VariantNetworkAccess: VariantDefaultValue,
+				VariantScheduler:     VariantDefaultValue,
+				VariantSecurityMode:  VariantDefaultValue,
+			},
+		},
+		{
 			job: "periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-ovn-powervs-capi-multi-p-p",
 			variantsFile: map[string]string{
 				"Architecture": "amd64", // should be overruled by the job parsing.

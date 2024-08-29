@@ -245,7 +245,7 @@ var (
 	// We're not sure what these aggregator jobs are but they exist as of right now:
 	aggregatorRegex = regexp.MustCompile(`(?i)aggregator-`)
 	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
-	arm64Regex      = regexp.MustCompile(`(?i)-arm64|-multi-a-a`)
+	arm64Regex      = regexp.MustCompile(`(?i)-arm64|-multi-a-a|-arm`)
 	assistedRegex   = regexp.MustCompile(`(?i)-assisted`)
 	awsRegex        = regexp.MustCompile(`(?i)-aws`)
 	azureRegex      = regexp.MustCompile(`(?i)-azure`)
