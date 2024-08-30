@@ -72,7 +72,6 @@ component_readiness:
         Network: {}
         Platform: {}
         Suite: {}
-        Topology: {}
         Upgrade: {}
       include_variants:
         Architecture:
