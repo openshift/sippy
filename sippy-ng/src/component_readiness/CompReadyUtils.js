@@ -1,5 +1,5 @@
 import { alpha, InputBase, Typography } from '@mui/material'
-import { format } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { styled } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import green from './green.svg'
@@ -295,7 +295,7 @@ export function formatLongDate(aLongDate, aDateFormat) {
     console.log('Error: unknown date format: ', typeof aLongDate)
     dateObj = new Date(aLongDate)
   }
-  return format(dateObj, aDateFormat)
+  return formatInTimeZone(dateObj, 'UTC', aDateFormat)
 }
 
 // These next set of variables are used for CompReadyMainInputs
