@@ -339,7 +339,7 @@ export default function CompReadyTestReport(props) {
         <br />
         &nbsp;&nbsp;End Time: <strong>{to}</strong>
         <br />
-        {vCrossCompare && (
+        {vCrossCompare && vCrossCompare.length ? (
           <Fragment>
             <br />
             &nbsp;&nbsp;Variant Cross Comparison:
@@ -358,8 +358,11 @@ export default function CompReadyTestReport(props) {
               )}
             </ul>
           </Fragment>
+        ) : (
+          ''
         )}
-        &nbsp;&nbsp;Statistics:
+        <br />
+        Statistics:
         <ul>
           <li>Success Rate: {(stats.success_rate * 100).toFixed(2)}%</li>
           <li>Successes: {stats.success_count}</li>
