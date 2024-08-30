@@ -285,7 +285,9 @@ var (
 	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
 	upgradeRegex            = regexp.MustCompile(`(?i)-upgrade`)
 	// some vsphere jobs do not have a trailing -version segment
-	vsphereRegex = regexp.MustCompile(`(?i)-vsphere`)
+	vsphereRegex   = regexp.MustCompile(`(?i)-vsphere`)
+	crunRegex      = regexp.MustCompile(`(?i)-crun`)
+	cgroupsv1Regex = regexp.MustCompile(`(?i)-cgroupsv1`)
 )
 
 const (
@@ -303,6 +305,8 @@ const (
 	VariantSuite            = "Suite"        // parallel / serial
 	VariantTopology         = "Topology"     // ha / single / compact / external
 	VariantUpgrade          = "Upgrade"
+	VariantContainerRuntime = "ContainerRuntime" // runc / crun
+	VariantCGroupMode       = "CGroupMode"       // v2 / v1
 	VariantRelease          = "Release"
 	VariantReleaseMinor     = "ReleaseMinor"
 	VariantReleaseMajor     = "ReleaseMajor"
@@ -434,6 +438,18 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantNetworkAccess] = "proxy"
 	} else {
 		variants[VariantNetworkAccess] = VariantDefaultValue
+	}
+
+	if crunRegex.MatchString(jobName) {
+		variants[VariantContainerRuntime] = "crun"
+	} else {
+		variants[VariantContainerRuntime] = "runc"
+	}
+
+	if cgroupsv1Regex.MatchString(jobName) {
+		variants[VariantCGroupMode] = "v1"
+	} else {
+		variants[VariantCGroupMode] = "v2"
 	}
 
 	if len(variants) == 0 {
