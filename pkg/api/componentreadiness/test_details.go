@@ -136,6 +136,25 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 			Value: c.TestID,
 		},
 	}
+
+	for k, vs := range c.IncludeVariants {
+		// only add in include variants that aren't part of the request or compare arrays
+		if _, ok := c.RequestedVariants[k]; ok {
+			continue
+		}
+		if _, ok := c.CompareVariants[k]; ok {
+			continue
+		}
+
+		group := api.CleanseSQLName(k)
+		paramName := "IncludeVariants" + group
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
+		commonParams = append(commonParams, bigquery2.QueryParameter{
+			Name:  paramName,
+			Value: vs,
+		})
+	}
+
 	for group, variant := range c.RequestedVariants {
 		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, api.CleanseSQLName(group), api.CleanseSQLName(variant))
 	}
