@@ -361,16 +361,19 @@ export const CompReadyVarsProvider = ({ children }) => {
     console.log('columnGroupBy: ' + columnGroupByCheckedItems[0])
 
     // Build array of columns to group by given the view:
-    Object.keys(view.variant_options.column_group_by).forEach((variant) => {
-      console.log('columnGroupBy variant: ' + variant)
-    })
     setColumnGroupByCheckedItems(
       Object.keys(view.variant_options.column_group_by)
     )
 
-    // TODO: dbGroupBy doesn't seem supported in the UI, what do we do with views?
-    // TODO: compare variants checked item params?
-    // TODO: variantCrossCompare
+    if (view.variant_options.hasOwnProperty('include_variants')) {
+      setIncludeVariantsCheckedItems(view.variant_options.include_variants)
+    }
+    if (view.variant_options.hasOwnProperty('variant_cross_compare')) {
+      setVariantCrossCompare(view.variant_options.variant_cross_compare)
+    }
+    if (view.variant_options.hasOwnProperty('compare_variants')) {
+      setCompareVariantsCheckedItems(view.variant_options.compare_variants)
+    }
 
     if (view.advanced_options.hasOwnProperty('confidence')) {
       setConfidence(view.advanced_options.confidence)

@@ -48,9 +48,9 @@ type RequestVariantOptions struct {
 	ColumnGroupBy       sets.String         `json:"column_group_by" yaml:"column_group_by"`
 	DBGroupBy           sets.String         `json:"db_group_by" yaml:"db_group_by"`
 	IncludeVariants     map[string][]string `json:"include_variants" yaml:"include_variants"`
-	CompareVariants     map[string][]string `json:"compare_variants" yaml:"compare_variants"`
-	VariantCrossCompare []string            `json:"variant_cross_compare" yaml:"variant_cross_compare"`
-	RequestedVariants   map[string]string   `json:"requested_variants" yaml:"requested_variants"`
+	CompareVariants     map[string][]string `json:"compare_variants,omitempty" yaml:"compare_variants,omitempty"`
+	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`
+	RequestedVariants   map[string]string   `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
 }
 
 // RequestOptions is a struct packaging all the options for a CR request.
