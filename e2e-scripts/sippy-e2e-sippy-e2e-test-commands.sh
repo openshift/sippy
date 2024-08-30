@@ -80,6 +80,8 @@ spec:
     - debug
     - --mode
     - ocp
+    - --views
+    - ./config/views.yaml
     env:
     - name: GCS_SA_JSON_PATH
       value: /tmp/secrets/gcs-cred
