@@ -43,7 +43,29 @@ func (f *ComponentReadinessFlags) ParseViewsFile() *api.SippyViews {
 		if err != nil {
 			log.WithError(err).Fatalf("unable to parse component readiness views from %s", f.ComponentReadinessViewsFile)
 		}
+
+		err = f.validateViews(vf)
+		if err != nil {
+			log.WithError(err).Fatal("invalid view definition found")
+		}
+
 		log.Infof("parsed views: %+v", vf)
 	}
 	return vf
+}
+
+func (f *ComponentReadinessFlags) validateViews(views *api.SippyViews) error {
+
+	for _, view := range views.ComponentReadiness {
+		// If using variant cross compare, those variants must not appear in the dbGroupBy:
+		if len(view.VariantOptions.VariantCrossCompare) > 0 {
+			for _, vcc := range view.VariantOptions.VariantCrossCompare {
+				if view.VariantOptions.DBGroupBy.Has(vcc) {
+					return fmt.Errorf("view %s db_group_by cannot contain variant being cross-compared: %s", view.Name, vcc)
+				}
+			}
+		}
+	}
+
+	return nil
 }

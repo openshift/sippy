@@ -103,7 +103,7 @@ func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, err
 		"baseRelease", "sampleRelease", // release opts
 		"samplePROrg", "samplePRRepo", "samplePRNumber", // PR opts
 		"columnGroupBy", "dbGroupBy", // grouping
-		"includeVariant", // variants
+		"includeVariant", "compareVariant", "variantCrossCompare", // variants
 		"confidence", "pity", "minFail",
 		"ignoreMissing", "ignoreDisruption", // advanced opts
 	}
