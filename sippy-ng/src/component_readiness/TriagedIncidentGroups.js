@@ -69,6 +69,5 @@ export default function TriagedIncidentGroups(props) {
 
 TriagedIncidentGroups.propTypes = {
   eventEmitter: PropTypes.object,
-  regressedTests: PropTypes.array,
   triagedIncidents: PropTypes.array,
 }

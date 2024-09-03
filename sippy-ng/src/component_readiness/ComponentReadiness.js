@@ -32,7 +32,6 @@ import {
   initialPageTable,
   makePageTitle,
   makeRFC3339Time,
-  mergeRegressedTests,
   noDataTable,
   Search,
   SearchIconWrapper,
