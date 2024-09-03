@@ -416,7 +416,8 @@ export const CompReadyVarsProvider = ({ children }) => {
       .then(([variants, views]) => {
         setAllJobVariants(variants.variants)
         setViews(views)
-        if (views.length > 0) {
+
+        if (views.length > 0 && shouldLoadDefaultView()) {
           // Default view should be the first one in the list matching our defaultSampleRelease
           views.forEach((view) => {
             if (view.sample_release.release === defaultSampleRelease) {
@@ -435,6 +436,12 @@ export const CompReadyVarsProvider = ({ children }) => {
         setIsLoaded(true)
       })
   }, [])
+
+  const shouldLoadDefaultView = () => {
+    console.log('view = ' + view + ' and base release = ' + baseReleaseParam)
+    // Attempt to decide if we should pre-select the default view, or if we were given params:
+    return view === undefined && baseReleaseParam === undefined
+  }
 
   // Take a string that is an "environment" (environment is a list of strings that describe
   // items in one or more of the lists above) and split it up so that it can be used in
