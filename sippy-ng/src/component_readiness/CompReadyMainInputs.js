@@ -89,7 +89,7 @@ export default function CompReadyMainInputs(props) {
     <Fragment>
       <ViewPicker
         varsContext={varsContext}
-        enabled={varsContext.views.length > 0}
+        enabled={varsContext.views.length > 0 && !props.isTestDetails}
       />
 
       <div className={classes.crRelease}>
