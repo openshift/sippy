@@ -421,6 +421,7 @@ export const CompReadyVarsProvider = ({ children }) => {
           views.forEach((view) => {
             if (view.sample_release.release === defaultSampleRelease) {
               setView(view.name)
+              syncView(view)
             }
           })
         }
