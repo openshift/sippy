@@ -20,14 +20,11 @@ import {
 } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import {
-  mergeRegressedTests,
-  mergeTriagedIncidents,
+  mergeRegressionData,
   Search,
   SearchIconWrapper,
   StyledInputBase,
 } from './CompReadyUtils'
-import BugButton from '../bugs/BugButton'
-import ComponentReadinessHelp from './ComponentReadinessHelp'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -48,8 +45,11 @@ export default function ComponentReadinessToolBar(props) {
     filterVals,
   } = props
 
-  const regressedTests = mergeRegressedTests(data)
-  const triagedIncidents = mergeTriagedIncidents(data)
+  let regressionData = mergeRegressionData(data)
+
+  const regressedTests = regressionData.length > 0 ? regressionData[0] : null
+  const allRegressedTests = regressionData.length > 1 ? regressionData[1] : null
+  const triagedIncidents = regressionData.length > 2 ? regressionData[2] : null
 
   const linkToReport = () => {
     const currentUrl = new URL(window.location.href)
@@ -253,6 +253,7 @@ export default function ComponentReadinessToolBar(props) {
       </Popover>
       <RegressedTestsModal
         regressedTests={regressedTests}
+        allRegressedTests={allRegressedTests}
         triagedIncidents={triagedIncidents}
         filterVals={filterVals}
         isOpen={regressedTestDialog}

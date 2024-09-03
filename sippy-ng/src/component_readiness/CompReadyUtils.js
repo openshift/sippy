@@ -460,17 +460,26 @@ export function validateData(data) {
   return ['']
 }
 
-export function mergeTriagedIncidents(data) {
+export function mergeRegressionData(data) {
   let ret = validateData(data)
   if (ret[0] !== '') {
     return ret
   }
 
   let groupedIncidents = new Map()
+  let regressedTests = []
+  let allRegressions = []
 
   data.rows.forEach((row) => {
     row.columns.forEach((column) => {
+      if (column.regressed_tests && column.regressed_tests.length > 0) {
+        regressedTests = regressedTests.concat(column.regressed_tests)
+        allRegressions = allRegressions.concat(column.regressed_tests)
+      }
+
       if (column.triaged_incidents && column.triaged_incidents.length > 0) {
+        allRegressions = allRegressions.concat(column.triaged_incidents)
+
         column.triaged_incidents.forEach((incident) => {
           if (incident.incidents && incident.incidents.length > 0) {
             incident.incidents.forEach((i) => {
@@ -481,47 +490,11 @@ export function mergeTriagedIncidents(data) {
                 })
               }
               let incidentsGroup = groupedIncidents.get(i.incident_group_id)
+              i.details = incident
               incidentsGroup.incidents = incidentsGroup.incidents.concat(i)
             })
           }
         })
-      }
-    })
-  })
-
-  // consider our sorting... time, jira, description...
-  // groupedIncidents.sort((a, b) => {
-  //   return (
-  //     a. .component.toLowerCase() < b.component.toLowerCase() ||
-  //     a.capability.toLowerCase() < b.capability.toLowerCase()
-  //   )
-  // })
-  // triagedIncidents = triagedIncidents.map((item, index) => ({
-  //   ...item,
-  //   id: index,
-  // }))
-
-  let arrayOfIncidents = Array.from(
-    groupedIncidents,
-    ([group_id, grouped_incidents]) => ({
-      group_id,
-      grouped_incidents,
-    })
-  )
-  return arrayOfIncidents
-}
-
-export function mergeRegressedTests(data) {
-  let ret = validateData(data)
-  if (ret[0] !== '') {
-    return ret
-  }
-
-  let regressedTests = []
-  data.rows.forEach((row) => {
-    row.columns.forEach((column) => {
-      if (column.regressed_tests && column.regressed_tests.length > 0) {
-        regressedTests = regressedTests.concat(column.regressed_tests)
       }
     })
   })
@@ -533,7 +506,23 @@ export function mergeRegressedTests(data) {
     )
   })
   regressedTests = regressedTests.map((item, index) => ({ ...item, id: index }))
-  return regressedTests
+
+  allRegressions.sort((a, b) => {
+    return (
+      a.component.toLowerCase() < b.component.toLowerCase() ||
+      a.capability.toLowerCase() < b.capability.toLowerCase()
+    )
+  })
+  allRegressions = allRegressions.map((item, index) => ({ ...item, id: index }))
+
+  let arrayOfIncidents = Array.from(
+    groupedIncidents,
+    ([group_id, grouped_incidents]) => ({
+      group_id,
+      grouped_incidents,
+    })
+  )
+  return [regressedTests, allRegressions, arrayOfIncidents]
 }
 
 export const Search = styled('div')(({ theme }) => ({

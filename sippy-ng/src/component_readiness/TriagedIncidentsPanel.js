@@ -14,7 +14,6 @@ export default function TriagedIncidentsPanel(props) {
       <Grid>
         <TriagedIncidentGroups
           eventEmitter={eventEmitter}
-          regressedTests={props.regressedTests}
           triagedIncidents={props.triagedIncidents}
         />
         <TriagedVariants eventEmitter={eventEmitter} />
@@ -25,8 +24,5 @@ export default function TriagedIncidentsPanel(props) {
 }
 
 TriagedIncidentsPanel.propTypes = {
-  /* regressedTests is currently a placeholder
-  for future work adding / updating incidents */
-  regressedTests: PropTypes.array,
   triagedIncidents: PropTypes.array,
 }

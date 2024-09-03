@@ -1,5 +1,7 @@
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
-import { Typography } from '@mui/material'
+import { formColumnName } from './CompReadyUtils'
+import { relativeTime } from '../helpers'
+import { Tooltip, Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
@@ -38,98 +40,67 @@ export default function TriagedVariants(props) {
   // define table columns
   const columns = [
     {
+      field: 'component',
+      headerName: 'Component',
+      flex: 20,
+      valueGetter: (params) => {
+        return params.row.details.component
+      },
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'capability',
+      headerName: 'Capability',
+      flex: 12,
+      valueGetter: (params) => {
+        return params.row.details.capability
+      },
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
       field: 'test_name',
-      valueGetter: (value) => {
-        return value.row.test_name
+      headerName: 'Test Name',
+      flex: 40,
+      valueGetter: (params) => {
+        return params.row.details.test_name
       },
-      headerName: 'Test',
-      flex: 20,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
-      field: 'architecture',
-      valueGetter: (value) => {
-        let showValue = 'Missing'
-        value.row.variants.forEach((variant) => {
-          if ('key' in variant && variant['key'] === 'Architecture') {
-            if ('value' in variant) {
-              showValue = variant['value']
-            }
-          }
-        })
-        return showValue
+      field: 'test_suite',
+      headerName: 'Test Suite',
+      flex: 15,
+      valueGetter: (params) => {
+        return params.row.details.test_suite
       },
-      headerName: 'Architecture',
-      flex: 20,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
-      field: 'network',
-      valueGetter: (value) => {
-        let showValue = 'Missing'
-        value.row.variants.forEach((variant) => {
-          if ('key' in variant && variant['key'] === 'Network') {
-            if ('value' in variant) {
-              showValue = variant['value']
-            }
-          }
-        })
-        return showValue
+      field: 'variants',
+      headerName: 'Variants',
+      flex: 30,
+      valueGetter: (params) => {
+        return formColumnName({ variants: params.row.details.variants })
       },
-      headerName: 'Network',
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'opened',
+      headerName: 'Regressed Since',
       flex: 12,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
-    },
-    {
-      field: 'platform',
-      valueGetter: (value) => {
-        let showValue = 'Missing'
-        value.row.variants.forEach((variant) => {
-          if ('key' in variant && variant['key'] === 'Platform') {
-            if ('value' in variant) {
-              showValue = variant['value']
-            }
-          }
-        })
-        return showValue
+      valueGetter: (params) => {
+        if (!params.row.details.opened) {
+          // For a regression we haven't yet detected:
+          return ''
+        }
+        const regressedSinceDate = new Date(params.row.details.opened)
+        return relativeTime(regressedSinceDate, new Date())
       },
-      headerName: 'Platform',
-      flex: 12,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
-    },
-    {
-      field: 'upgrade',
-      valueGetter: (value) => {
-        let showValue = 'Missing'
-        value.row.variants.forEach((variant) => {
-          if ('key' in variant && variant['key'] === 'Upgrade') {
-            if ('value' in variant) {
-              showValue = variant['value']
-            }
-          }
-        })
-        return showValue
-      },
-      headerName: 'Upgrade',
-      flex: 12,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
-    },
-    {
-      field: 'variant', // gets replaced with pantfusi
-      valueGetter: (value) => {
-        let showValue = 'Missing'
-        value.row.variants.forEach((variant) => {
-          if ('key' in variant && variant['key'] === 'Variant') {
-            if ('value' in variant) {
-              showValue = variant['value']
-            }
-          }
-        })
-        return showValue
-      },
-      headerName: 'Variant',
-      flex: 12,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      renderCell: (param) => (
+        <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">
+          <div className="regressed-since">{param.value}</div>
+        </Tooltip>
+      ),
     },
   ]
 
