@@ -1178,10 +1178,12 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 	inKey := resolvedissues.KeyForTriagedIssue(testID, resolvedissues.TransformVariant(variant))
 
 	triagedIncidents := releaseIncidents.TriagedIncidents[inKey]
+	relevantIncidents := []crtype.TriagedIncident{}
 
 	impactedJobRuns := sets.NewString() // because multiple issues could impact the same job run, be sure to count each job run only once
 	numJobRunsToSuppress := 0
 	for _, triagedIncident := range triagedIncidents {
+		startNumRunsSuppressed := numJobRunsToSuppress
 		for _, impactedJobRun := range triagedIncident.JobRuns {
 			if impactedJobRuns.Has(impactedJobRun.URL) {
 				continue
@@ -1199,9 +1201,18 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 				numJobRunsToSuppress++
 			}
 		}
+
+		if numJobRunsToSuppress > startNumRunsSuppressed {
+			relevantIncidents = append(relevantIncidents, triagedIncident)
+		}
 	}
 
-	return numJobRunsToSuppress, triagedIncidents
+	// if we didn't have any jobs that matched the compare time then return nil
+	if numJobRunsToSuppress == 0 {
+		relevantIncidents = nil
+	}
+
+	return numJobRunsToSuppress, relevantIncidents
 }
 
 func (t *triagedIncidentsGenerator) queryTriagedIssues() ([]crtype.TriagedIncident, []error) {
