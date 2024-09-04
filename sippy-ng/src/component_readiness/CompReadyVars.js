@@ -431,18 +431,29 @@ export const CompReadyVarsProvider = ({ children }) => {
         setAllJobVariants(variants.variants)
         setViews(views)
 
-        if (shouldLoadDefaultView()) {
-          // If we have views, default should be the first one in the list matching our defaultSampleRelease
-          if (views.length > 0) {
-            views.forEach((view) => {
-              if (view.sample_release.release === defaultSampleRelease) {
-                setView(view.name)
-                syncView(view)
+        if (views.length > 0) {
+          if (shouldLoadDefaultView()) {
+            // If we have views, default should be the first one in the list matching our defaultSampleRelease
+            views.forEach((v) => {
+              if (v.sample_release.release === defaultSampleRelease) {
+                setView(v.name)
+                syncView(v)
+              }
+            })
+          } else if (view !== undefined) {
+            // A view was defined, make sure we sync controls:
+            console.log(
+              'view query param was provided, syncing it: ' +
+                JSON.stringify(view)
+            )
+            views.forEach((v) => {
+              if (v.name === view) {
+                syncView(v)
               }
             })
           }
+          setIsLoaded(true)
         }
-        setIsLoaded(true)
       })
       .catch((error) => {
         setFetchError(`API call failed: ${error}`)
