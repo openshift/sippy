@@ -38,7 +38,11 @@ export default function TriagedIncidentGroups(props) {
       },
       headerName: 'Jira',
       flex: 12,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      renderCell: (param) => (
+        <a target="_blank" href={param.value} rel="noreferrer">
+          <div className="test-name">{param.value}</div>
+        </a>
+      ),
     },
   ]
 
