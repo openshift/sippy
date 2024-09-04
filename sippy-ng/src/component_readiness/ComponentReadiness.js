@@ -289,6 +289,18 @@ export default function ComponentReadiness(props) {
 
   const fetchData = (fresh) => {
     let formattedApiCallStr = showValuesForReport()
+
+    // prevent a slightly expensive duplicate request when user navs to /main with no query params,
+    // and we're still in the process of setting the default view to use
+    if (
+      varsContext.views !== undefined &&
+      varsContext.views.length > 0 &&
+      varsContext.view === undefined &&
+      varsContext.baseReleaseParam === undefined
+    ) {
+      return
+    }
+
     console.log('fetchData api call str: ' + formattedApiCallStr)
     if (fresh) {
       formattedApiCallStr += '&forceRefresh=true'
@@ -330,10 +342,6 @@ export default function ComponentReadiness(props) {
   }
 
   useEffect(() => {
-    if (!varsContext.isLoaded) {
-      console.log('skipping initial load as vars context is not ready yet')
-      return
-    }
     if (window.location.pathname.includes('/component_readiness/main')) {
       fetchData()
     } else {

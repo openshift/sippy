@@ -116,6 +116,7 @@ component_readiness:
             Architecture: {}
             Network: {}
             Platform: {}
+            Topology: {}
         db_group_by:
             Architecture: {}
             FeatureSet: {}

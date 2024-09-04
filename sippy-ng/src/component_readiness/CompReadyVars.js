@@ -372,8 +372,6 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSampleStartTime(formatLongDate(view.sample_release.start, dateFormat))
     setSampleEndTime(formatLongDate(view.sample_release.end, dateFormat))
 
-    console.log('columnGroupBy: ' + columnGroupByCheckedItems[0])
-
     // Build array of columns to group by given the view:
     setColumnGroupByCheckedItems(
       Object.keys(view.variant_options.column_group_by)
@@ -432,8 +430,9 @@ export const CompReadyVarsProvider = ({ children }) => {
         setViews(views)
 
         if (views.length > 0) {
+          // If no view was requested and we were not given fully qualified params,
+          // select the default view: (first in the list matching our default sample release)
           if (shouldLoadDefaultView()) {
-            // If we have views, default should be the first one in the list matching our defaultSampleRelease
             views.forEach((v) => {
               if (v.sample_release.release === defaultSampleRelease) {
                 setView(v.name)
@@ -441,19 +440,15 @@ export const CompReadyVarsProvider = ({ children }) => {
               }
             })
           } else if (view !== undefined) {
-            // A view was defined, make sure we sync controls:
-            console.log(
-              'view query param was provided, syncing it: ' +
-                JSON.stringify(view)
-            )
+            // A view query param was requested, sync the controls to match as soon as we receive our views list:
             views.forEach((v) => {
               if (v.name === view) {
                 syncView(v)
               }
             })
           }
-          setIsLoaded(true)
         }
+        setIsLoaded(true)
       })
       .catch((error) => {
         setFetchError(`API call failed: ${error}`)
@@ -465,7 +460,6 @@ export const CompReadyVarsProvider = ({ children }) => {
   }, [])
 
   const shouldLoadDefaultView = () => {
-    console.log('view = ' + view + ' and base release = ' + baseReleaseParam)
     // Attempt to decide if we should pre-select the default view, or if we were given params:
     return view === undefined && baseReleaseParam === undefined
   }
@@ -531,6 +525,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         setView,
         expandEnvironment,
         baseRelease,
+        baseReleaseParam,
         setBaseReleaseWithDates,
         sampleRelease,
         setSampleReleaseWithDates,
