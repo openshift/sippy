@@ -330,6 +330,10 @@ export default function ComponentReadiness(props) {
   }
 
   useEffect(() => {
+    if (!varsContext.isLoaded) {
+      console.log('skipping initial load as vars context is not ready yet')
+      return
+    }
     if (window.location.pathname.includes('/component_readiness/main')) {
       fetchData()
     } else {

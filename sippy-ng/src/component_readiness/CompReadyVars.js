@@ -67,51 +67,54 @@ export const CompReadyVarsProvider = ({ children }) => {
     getReleaseDate(defaultBaseRelease).getTime() + 1 * days - 1 * seconds
 
   // Create the variables for the URL and set any initial values.
-  const [baseReleaseParam = defaultBaseRelease, setBaseReleaseParam] =
-    useQueryParam('baseRelease', StringParam)
-  const [
-    baseStartTimeParam = formatLongDate(initialBaseStartTime, dateFormat),
-    setBaseStartTimeParam,
-  ] = useQueryParam('baseStartTime', StringParam)
-  const [
-    baseEndTimeParam = formatLongDate(initialBaseEndTime, dateEndFormat),
-    setBaseEndTimeParam,
-  ] = useQueryParam('baseEndTime', StringParam)
-  const [sampleReleaseParam = defaultSampleRelease, setSampleReleaseParam] =
-    useQueryParam('sampleRelease', StringParam)
-  const [
-    sampleStartTimeParam = formatLongDate(initialSampleStartTime, dateFormat),
-    setSampleStartTimeParam,
-  ] = useQueryParam('sampleStartTime', StringParam)
-  const [
-    sampleEndTimeParam = formatLongDate(initialSampleEndTime, dateEndFormat),
-    setSampleEndTimeParam,
-  ] = useQueryParam('sampleEndTime', StringParam)
-  const [
-    columnGroupByCheckedItemsParam = ['Platform', 'Architecture', 'Network'],
-    setColumnGroupByCheckedItemsParam,
-  ] = useQueryParam('columnGroupBy', ArrayParam)
+  const [baseReleaseParam, setBaseReleaseParam] = useQueryParam(
+    'baseRelease',
+    StringParam
+  )
+  const [baseStartTimeParam, setBaseStartTimeParam] = useQueryParam(
+    'baseStartTime',
+    StringParam
+  )
+  const [baseEndTimeParam, setBaseEndTimeParam] = useQueryParam(
+    'baseEndTime',
+    StringParam
+  )
+  const [sampleReleaseParam, setSampleReleaseParam] = useQueryParam(
+    'sampleRelease',
+    StringParam
+  )
+  const [sampleStartTimeParam, setSampleStartTimeParam] = useQueryParam(
+    'sampleStartTime',
+    StringParam
+  )
+  const [sampleEndTimeParam, setSampleEndTimeParam] = useQueryParam(
+    'sampleEndTime',
+    StringParam
+  )
+  const [columnGroupByCheckedItemsParam, setColumnGroupByCheckedItemsParam] =
+    useQueryParam('columnGroupBy', ArrayParam)
 
-  const [confidenceParam = 95, setConfidenceParam] = useQueryParam(
+  const [confidenceParam, setConfidenceParam] = useQueryParam(
     'confidence',
     NumberParam
   )
-  const [pityParam = 5, setPityParam] = useQueryParam('pity', NumberParam)
-  const [minFailParam = 3, setMinFailParam] = useQueryParam(
-    'minFail',
-    NumberParam
-  )
-  const [ignoreMissingParam = false, setIgnoreMissingParam] = useQueryParam(
+  const [pityParam, setPityParam] = useQueryParam('pity', NumberParam)
+  const [minFailParam, setMinFailParam] = useQueryParam('minFail', NumberParam)
+  const [ignoreMissingParam, setIgnoreMissingParam] = useQueryParam(
     'ignoreMissing',
     BooleanParam
   )
-  const [ignoreDisruptionParam = false, setIgnoreDisruptionParam] =
-    useQueryParam('ignoreDisruption', BooleanParam)
+  const [ignoreDisruptionParam, setIgnoreDisruptionParam] = useQueryParam(
+    'ignoreDisruption',
+    BooleanParam
+  )
 
   // Create the variables to be used for api calls; these are initialized to the
   // value of the variables that got their values from the URL.
   const [columnGroupByCheckedItems, setColumnGroupByCheckedItems] =
-    React.useState(columnGroupByCheckedItemsParam)
+    React.useState(
+      columnGroupByCheckedItemsParam || ['Platform', 'Architecture', 'Network']
+    )
 
   const [componentParam, setComponentParam] = useQueryParam(
     'component',
@@ -126,17 +129,28 @@ export const CompReadyVarsProvider = ({ children }) => {
     StringParam
   )
 
-  const [baseRelease, setBaseRelease] = React.useState(baseReleaseParam)
+  const [baseRelease, setBaseRelease] = React.useState(
+    baseReleaseParam || defaultBaseRelease
+  )
 
-  const [sampleRelease, setSampleRelease] = React.useState(sampleReleaseParam)
+  const [sampleRelease, setSampleRelease] = React.useState(
+    sampleReleaseParam || defaultSampleRelease
+  )
 
-  const [baseStartTime, setBaseStartTime] = React.useState(baseStartTimeParam)
+  const [baseStartTime, setBaseStartTime] = React.useState(
+    baseStartTimeParam || formatLongDate(initialBaseStartTime, dateFormat)
+  )
 
-  const [baseEndTime, setBaseEndTime] = React.useState(baseEndTimeParam)
+  const [baseEndTime, setBaseEndTime] = React.useState(
+    baseEndTimeParam || formatLongDate(initialBaseEndTime, dateEndFormat)
+  )
 
-  const [sampleStartTime, setSampleStartTime] =
-    React.useState(sampleStartTimeParam)
-  const [sampleEndTime, setSampleEndTime] = React.useState(sampleEndTimeParam)
+  const [sampleStartTime, setSampleStartTime] = React.useState(
+    sampleStartTimeParam || formatLongDate(initialSampleStartTime, dateFormat)
+  )
+  const [sampleEndTime, setSampleEndTime] = React.useState(
+    sampleEndTimeParam || formatLongDate(initialSampleEndTime, dateFormat)
+  )
 
   const [samplePROrgParam = '', setSamplePROrgParam] = useQueryParam(
     'samplePROrg',
@@ -236,9 +250,9 @@ export const CompReadyVarsProvider = ({ children }) => {
    * All things related to the "Advanced" section
    ******************************************************** */
 
-  const [confidence, setConfidence] = React.useState(confidenceParam)
-  const [pity, setPity] = React.useState(pityParam)
-  const [minFail, setMinFail] = React.useState(minFailParam)
+  const [confidence, setConfidence] = React.useState(confidenceParam || 95)
+  const [pity, setPity] = React.useState(pityParam || 5)
+  const [minFail, setMinFail] = React.useState(minFailParam || 3)
 
   // for the two boolean values here, we need the || false because otherwise
   // the value will be null.
@@ -417,14 +431,16 @@ export const CompReadyVarsProvider = ({ children }) => {
         setAllJobVariants(variants.variants)
         setViews(views)
 
-        if (views.length > 0 && shouldLoadDefaultView()) {
-          // Default view should be the first one in the list matching our defaultSampleRelease
-          views.forEach((view) => {
-            if (view.sample_release.release === defaultSampleRelease) {
-              setView(view.name)
-              syncView(view)
-            }
-          })
+        if (shouldLoadDefaultView()) {
+          // If we have views, default should be the first one in the list matching our defaultSampleRelease
+          if (views.length > 0) {
+            views.forEach((view) => {
+              if (view.sample_release.release === defaultSampleRelease) {
+                setView(view.name)
+                syncView(view)
+              }
+            })
+          }
         }
         setIsLoaded(true)
       })
@@ -548,6 +564,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         setEnvironmentParam,
         handleGenerateReport,
         syncView,
+        isLoaded,
       }}
     >
       {children}
