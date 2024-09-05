@@ -85,11 +85,21 @@ export default function CompReadyMainInputs(props) {
     </div>
   )
 
+  const shouldDisplayViewPicker = () => {
+    return (
+      varsContext.views.length > 0 &&
+      !props.isTestDetails &&
+      varsContext.environment === undefined &&
+      varsContext.capability === undefined &&
+      varsContext.component === undefined
+    )
+  }
+
   return (
     <Fragment>
       <ViewPicker
         varsContext={varsContext}
-        enabled={varsContext.views.length > 0 && !props.isTestDetails}
+        enabled={shouldDisplayViewPicker()}
       />
 
       <div className={classes.crRelease}>
