@@ -1,5 +1,5 @@
 import { alpha, InputBase, Typography } from '@mui/material'
-import { format } from 'date-fns'
+import { formatInTimeZone } from 'date-fns-tz'
 import { styled } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import green from './green.svg'
@@ -67,6 +67,10 @@ export function getAPIUrl() {
 
 export function getJobVariantsUrl() {
   return process.env.REACT_APP_API_URL + '/api/job_variants'
+}
+
+export function getComponentReadinessViewsUrl() {
+  return process.env.REACT_APP_API_URL + '/api/component_readiness/views'
 }
 
 // Make one place to create the Component Readiness test_details api call
@@ -279,10 +283,23 @@ export function makeRFC3339Time(aUrlStr) {
 // The given date can be either a long string (from the DatePicker),
 // a number (epoch time from when we initialized the start times), or
 // a Date object (when called from an event handler function).
+//
+// The format of the string can also vary, it could be an ISO8601 date from
+// the API list views (2024-08-29T00:00:00Z), or the format we use for query params
+// in component readiness (2024-09-05 23:59:59). It's very easy for these to parse into
+// local time in the browser, then get truncated to the wrong date. To make things more fun
+// unit tests will parse them as UTC. To work past this, the component readiness format gets
+// an appended Z to force to UTC when parsing, keeping the function working consistently. (for now)
+//
+// TODO: ISO8601 *everywhere* might be good, I suspect we're bypassing some cache rounding the
+// server tries to do.
 export function formatLongDate(aLongDate, aDateFormat) {
   let dateObj
   const typeOfLongDate = typeof aLongDate
   if (typeOfLongDate == 'string' || typeOfLongDate == 'number') {
+    if (typeOfLongDate == 'string' && !aLongDate.includes('Z')) {
+      aLongDate += 'Z'
+    }
     dateObj = new Date(aLongDate)
   } else if (typeOfLongDate == 'object') {
     dateObj = aLongDate
@@ -291,7 +308,8 @@ export function formatLongDate(aLongDate, aDateFormat) {
     console.log('Error: unknown date format: ', typeof aLongDate)
     dateObj = new Date(aLongDate)
   }
-  return format(dateObj, aDateFormat)
+  let retVal = formatInTimeZone(dateObj, 'UTC', aDateFormat)
+  return retVal
 }
 
 // These next set of variables are used for CompReadyMainInputs

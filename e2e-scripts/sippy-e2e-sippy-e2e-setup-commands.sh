@@ -185,7 +185,7 @@ spec:
         imagePullPolicy: ${SIPPY_IMAGE_PULL_POLICY:-Always}
         resources:
           limits:
-            memory: 1G
+            memory: 3G
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
@@ -219,9 +219,8 @@ ${KUBECTL_CMD} -n sippy-e2e describe job sippy-load-job
 
 # We set +e to avoid the script aborting before we can retrieve logs.
 set +e
-# This takes under 3 minutes so 5 minutes (300 seconds) should be plenty.
 
-echo "Waiting up to ${SIPPY_LOAD_TIMEOUT:=300s} for the sippy-load-job to complete..."
+echo "Waiting up to ${SIPPY_LOAD_TIMEOUT:=1200s} for the sippy-load-job to complete..."
 ${KUBECTL_CMD} -n sippy-e2e wait --for=condition=complete job/sippy-load-job --timeout ${SIPPY_LOAD_TIMEOUT}
 retVal=$?
 set -e

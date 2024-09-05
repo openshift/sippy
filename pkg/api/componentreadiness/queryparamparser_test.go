@@ -37,12 +37,16 @@ func TestParseComponentReportRequest(t *testing.T) {
 	view417main := crtype.View{
 		Name: "4.17-main",
 		BaseRelease: crtype.RequestRelativeReleaseOptions{
-			Release:       "4.16",
+			RequestReleaseOptions: crtype.RequestReleaseOptions{
+				Release: "4.16",
+			},
 			RelativeStart: "ga-30d",
 			RelativeEnd:   "ga",
 		},
 		SampleRelease: crtype.RequestRelativeReleaseOptions{
-			Release:       "4.17",
+			RequestReleaseOptions: crtype.RequestReleaseOptions{
+				Release: "4.17",
+			},
 			RelativeStart: "now-7d",
 			RelativeEnd:   "now",
 		},

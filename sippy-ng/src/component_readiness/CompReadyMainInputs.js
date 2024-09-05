@@ -5,8 +5,10 @@ import {
   formatLongDate,
   getUpdatedUrlParts,
 } from './CompReadyUtils'
+import { FormControl, Grid, InputLabel, MenuItem, Select } from '@mui/material'
 import { Fragment } from 'react'
 import { makeStyles, useTheme } from '@mui/styles'
+import { useHistory } from 'react-router-dom'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@mui/material/Button'
 import GroupByCheckboxList from './GroupByCheckboxList'
@@ -15,6 +17,7 @@ import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Tooltip from '@mui/material/Tooltip'
+import ViewPicker from './ViewPicker'
 
 export const useStyles = makeStyles((theme) => ({
   crRelease: {
@@ -49,6 +52,7 @@ export default function CompReadyMainInputs(props) {
   ])
 
   const varsContext = useContext(CompReadyVarsContext)
+  const history = useHistory()
   const compReadyEnvOptions = (
     <div>
       <GroupByCheckboxList
@@ -80,26 +84,23 @@ export default function CompReadyMainInputs(props) {
       ></AdvancedOptions>
     </div>
   )
+
+  const shouldDisplayViewPicker = () => {
+    return (
+      varsContext.views.length > 0 &&
+      !props.isTestDetails &&
+      varsContext.environment === undefined &&
+      varsContext.capability === undefined &&
+      varsContext.component === undefined
+    )
+  }
+
   return (
     <Fragment>
-      <div className="cr-report-button">
-        <Button
-          size="large"
-          variant="contained"
-          color="primary"
-          to={'/component_readiness/main' + getUpdatedUrlParts(varsContext)}
-          onClick={varsContext.handleGenerateReport}
-        >
-          <Tooltip
-            title={
-              'Click here to generate a report that compares the release you wish to evaluate\
-               against a historical (previous) release'
-            }
-          >
-            <Fragment>Generate Report</Fragment>
-          </Tooltip>
-        </Button>
-      </div>
+      <ViewPicker
+        varsContext={varsContext}
+        enabled={shouldDisplayViewPicker()}
+      />
 
       <div className={classes.crRelease}>
         <ReleaseSelector
@@ -132,6 +133,26 @@ export default function CompReadyMainInputs(props) {
           setEndTime={varsContext.setBaseEndTime}
         ></ReleaseSelector>
       </div>
+
+      <div className="cr-report-button">
+        <Button
+          size="large"
+          variant="contained"
+          color="primary"
+          to={'/component_readiness/main' + getUpdatedUrlParts(varsContext)}
+          onClick={varsContext.handleGenerateReport}
+        >
+          <Tooltip
+            title={
+              'Click here to generate a custom report that compares the release you wish to evaluate\
+                                                     against a historical (previous) release using all the specific parameters specified'
+            }
+          >
+            <Fragment>Generate Report</Fragment>
+          </Tooltip>
+        </Button>
+      </div>
+
       {props.isTestDetails ? '' : compReadyEnvOptions}
     </Fragment>
   )

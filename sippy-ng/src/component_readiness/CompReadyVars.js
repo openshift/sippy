@@ -13,6 +13,7 @@ import {
   dateEndFormat,
   dateFormat,
   formatLongDate,
+  getComponentReadinessViewsUrl,
   getJobVariantsUrl,
   gotFetchError,
 } from './CompReadyUtils'
@@ -25,6 +26,8 @@ export const CompReadyVarsContext = createContext()
 
 export const CompReadyVarsProvider = ({ children }) => {
   const [allJobVariants, setAllJobVariants] = useState([])
+  const [views, setViews] = useState([])
+  const [view, setView] = useQueryParam('view', StringParam)
   const [isLoaded, setIsLoaded] = useState(false)
   const [fetchError, setFetchError] = useState('')
 
@@ -64,51 +67,58 @@ export const CompReadyVarsProvider = ({ children }) => {
     getReleaseDate(defaultBaseRelease).getTime() + 1 * days - 1 * seconds
 
   // Create the variables for the URL and set any initial values.
-  const [baseReleaseParam = defaultBaseRelease, setBaseReleaseParam] =
-    useQueryParam('baseRelease', StringParam)
-  const [
-    baseStartTimeParam = formatLongDate(initialBaseStartTime, dateFormat),
-    setBaseStartTimeParam,
-  ] = useQueryParam('baseStartTime', StringParam)
-  const [
-    baseEndTimeParam = formatLongDate(initialBaseEndTime, dateEndFormat),
-    setBaseEndTimeParam,
-  ] = useQueryParam('baseEndTime', StringParam)
-  const [sampleReleaseParam = defaultSampleRelease, setSampleReleaseParam] =
-    useQueryParam('sampleRelease', StringParam)
-  const [
-    sampleStartTimeParam = formatLongDate(initialSampleStartTime, dateFormat),
-    setSampleStartTimeParam,
-  ] = useQueryParam('sampleStartTime', StringParam)
-  const [
-    sampleEndTimeParam = formatLongDate(initialSampleEndTime, dateEndFormat),
-    setSampleEndTimeParam,
-  ] = useQueryParam('sampleEndTime', StringParam)
-  const [
-    columnGroupByCheckedItemsParam = ['Platform', 'Architecture', 'Network'],
-    setColumnGroupByCheckedItemsParam,
-  ] = useQueryParam('columnGroupBy', ArrayParam)
+  const [baseReleaseParam, setBaseReleaseParam] = useQueryParam(
+    'baseRelease',
+    StringParam
+  )
+  const [baseStartTimeParam, setBaseStartTimeParam] = useQueryParam(
+    'baseStartTime',
+    StringParam
+  )
+  const [baseEndTimeParam, setBaseEndTimeParam] = useQueryParam(
+    'baseEndTime',
+    StringParam
+  )
+  const [sampleReleaseParam, setSampleReleaseParam] = useQueryParam(
+    'sampleRelease',
+    StringParam
+  )
+  const [sampleStartTimeParam, setSampleStartTimeParam] = useQueryParam(
+    'sampleStartTime',
+    StringParam
+  )
+  const [sampleEndTimeParam, setSampleEndTimeParam] = useQueryParam(
+    'sampleEndTime',
+    StringParam
+  )
 
-  const [confidenceParam = 95, setConfidenceParam] = useQueryParam(
+  // This is comma-separated in the URL, i.e. Platform,Network,Architecture
+  const [columnGroupByCheckedItemsParam, setColumnGroupByCheckedItemsParam] =
+    useQueryParam('columnGroupBy', StringParam)
+
+  const [confidenceParam, setConfidenceParam] = useQueryParam(
     'confidence',
     NumberParam
   )
-  const [pityParam = 5, setPityParam] = useQueryParam('pity', NumberParam)
-  const [minFailParam = 3, setMinFailParam] = useQueryParam(
-    'minFail',
-    NumberParam
-  )
-  const [ignoreMissingParam = false, setIgnoreMissingParam] = useQueryParam(
+  const [pityParam, setPityParam] = useQueryParam('pity', NumberParam)
+  const [minFailParam, setMinFailParam] = useQueryParam('minFail', NumberParam)
+  const [ignoreMissingParam, setIgnoreMissingParam] = useQueryParam(
     'ignoreMissing',
     BooleanParam
   )
-  const [ignoreDisruptionParam = false, setIgnoreDisruptionParam] =
-    useQueryParam('ignoreDisruption', BooleanParam)
+  const [ignoreDisruptionParam, setIgnoreDisruptionParam] = useQueryParam(
+    'ignoreDisruption',
+    BooleanParam
+  )
 
   // Create the variables to be used for api calls; these are initialized to the
   // value of the variables that got their values from the URL.
   const [columnGroupByCheckedItems, setColumnGroupByCheckedItems] =
-    React.useState(columnGroupByCheckedItemsParam)
+    React.useState(() =>
+      columnGroupByCheckedItemsParam
+        ? columnGroupByCheckedItemsParam.split(',')
+        : ['Platform', 'Architecture', 'Network']
+    )
 
   const [componentParam, setComponentParam] = useQueryParam(
     'component',
@@ -123,17 +133,28 @@ export const CompReadyVarsProvider = ({ children }) => {
     StringParam
   )
 
-  const [baseRelease, setBaseRelease] = React.useState(baseReleaseParam)
+  const [baseRelease, setBaseRelease] = React.useState(
+    baseReleaseParam || defaultBaseRelease
+  )
 
-  const [sampleRelease, setSampleRelease] = React.useState(sampleReleaseParam)
+  const [sampleRelease, setSampleRelease] = React.useState(
+    sampleReleaseParam || defaultSampleRelease
+  )
 
-  const [baseStartTime, setBaseStartTime] = React.useState(baseStartTimeParam)
+  const [baseStartTime, setBaseStartTime] = React.useState(
+    baseStartTimeParam || formatLongDate(initialBaseStartTime, dateFormat)
+  )
 
-  const [baseEndTime, setBaseEndTime] = React.useState(baseEndTimeParam)
+  const [baseEndTime, setBaseEndTime] = React.useState(
+    baseEndTimeParam || formatLongDate(initialBaseEndTime, dateEndFormat)
+  )
 
-  const [sampleStartTime, setSampleStartTime] =
-    React.useState(sampleStartTimeParam)
-  const [sampleEndTime, setSampleEndTime] = React.useState(sampleEndTimeParam)
+  const [sampleStartTime, setSampleStartTime] = React.useState(
+    sampleStartTimeParam || formatLongDate(initialSampleStartTime, dateFormat)
+  )
+  const [sampleEndTime, setSampleEndTime] = React.useState(
+    sampleEndTimeParam || formatLongDate(initialSampleEndTime, dateEndFormat)
+  )
 
   const [samplePROrgParam = '', setSamplePROrgParam] = useQueryParam(
     'samplePROrg',
@@ -233,9 +254,9 @@ export const CompReadyVarsProvider = ({ children }) => {
    * All things related to the "Advanced" section
    ******************************************************** */
 
-  const [confidence, setConfidence] = React.useState(confidenceParam)
-  const [pity, setPity] = React.useState(pityParam)
-  const [minFail, setMinFail] = React.useState(minFailParam)
+  const [confidence, setConfidence] = React.useState(confidenceParam || 95)
+  const [pity, setPity] = React.useState(pityParam || 5)
+  const [minFail, setMinFail] = React.useState(minFailParam || 3)
 
   // for the two boolean values here, we need the || false because otherwise
   // the value will be null.
@@ -283,12 +304,18 @@ export const CompReadyVarsProvider = ({ children }) => {
   // It sets all parameters based on current state; this causes the URL to be updated and page to load with new params.
   const handleGenerateReport = (event) => {
     event.preventDefault()
+
+    // If the generate report button was pressed, views are out of the question and we're now
+    // fully qualifying all params:
+    setView('')
+
     setBaseReleaseParam(baseRelease)
     setBaseStartTimeParam(formatLongDate(baseStartTime, dateFormat))
     setBaseEndTimeParam(formatLongDate(baseEndTime, dateEndFormat))
     setSampleReleaseParam(sampleRelease)
     setSampleStartTimeParam(formatLongDate(sampleStartTime, dateFormat))
     setSampleEndTimeParam(formatLongDate(sampleEndTime, dateEndFormat))
+
     setColumnGroupByCheckedItemsParam(columnGroupByCheckedItems)
     setIncludeVariantsCheckedItemsParam(
       convertVariantItemsToParam(includeVariantsCheckedItems)
@@ -310,28 +337,136 @@ export const CompReadyVarsProvider = ({ children }) => {
     setCapabilityParam(capability)
   }
 
+  const clearAllQueryParams = () => {
+    // Because all our Param properties have state linked to the URL shown, if we select a view,
+    // we have to clear them all out otherwise we see the view, but the URL continues to
+    // show our last selected query params.
+    setBaseStartTimeParam(undefined)
+    setBaseEndTimeParam(undefined)
+    setBaseReleaseParam(undefined)
+
+    setSampleStartTimeParam(undefined)
+    setSampleEndTimeParam(undefined)
+    setSampleReleaseParam(undefined)
+
+    setColumnGroupByCheckedItemsParam(undefined)
+    setIncludeVariantsCheckedItemsParam(undefined)
+    setVariantCrossCompareParam(undefined)
+    setCompareVariantsCheckedItemsParam(undefined)
+
+    setConfidenceParam(undefined)
+    setPityParam(undefined)
+    setMinFailParam(undefined)
+    setIgnoreDisruptionParam(undefined)
+    setIgnoreMissingParam(undefined)
+
+    setSamplePROrgParam(undefined)
+    setSamplePRRepoParam(undefined)
+    setSamplePRNumberParam(undefined)
+  }
+
+  // syncView updates all vars and thus their respective inputs to match a server side view that was
+  // just selected by the user.
+  const syncView = (view) => {
+    clearAllQueryParams()
+    setBaseRelease(view.base_release.release)
+    setBaseStartTime(formatLongDate(view.base_release.start, dateFormat))
+    setBaseEndTime(formatLongDate(view.base_release.end, dateFormat))
+    setSampleRelease(view.sample_release.release)
+    setSampleStartTime(formatLongDate(view.sample_release.start, dateFormat))
+    setSampleEndTime(formatLongDate(view.sample_release.end, dateFormat))
+
+    // Build array of columns to group by given the view:
+    setColumnGroupByCheckedItems(
+      Object.keys(view.variant_options.column_group_by)
+    )
+
+    if (view.variant_options.hasOwnProperty('include_variants')) {
+      setIncludeVariantsCheckedItems(view.variant_options.include_variants)
+    }
+    if (view.variant_options.hasOwnProperty('variant_cross_compare')) {
+      setVariantCrossCompare(view.variant_options.variant_cross_compare)
+    }
+    if (view.variant_options.hasOwnProperty('compare_variants')) {
+      setCompareVariantsCheckedItems(view.variant_options.compare_variants)
+    }
+
+    if (view.advanced_options.hasOwnProperty('confidence')) {
+      setConfidence(view.advanced_options.confidence)
+    }
+    if (view.advanced_options.hasOwnProperty('pity_factor')) {
+      setPity(view.advanced_options.pity_factor)
+    }
+    if (view.advanced_options.hasOwnProperty('minimum_failure')) {
+      setMinFail(view.advanced_options.minimum_failure)
+    }
+    if (view.advanced_options.hasOwnProperty('ignore_disruption')) {
+      setIgnoreDisruption(view.advanced_options.ignore_disruption)
+    }
+    if (view.advanced_options.hasOwnProperty('ignore_missing')) {
+      setIgnoreMissing(view.advanced_options.ignore_missing)
+    }
+  }
+
   useEffect(() => {
-    const apiCallStr = getJobVariantsUrl()
-    fetch(apiCallStr)
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.code < 200 || data.code >= 300) {
-          const errorMessage = data.message
-            ? `${data.message}`
+    const jobVariantsAPIURL = getJobVariantsUrl()
+    const viewsAPIURL = getComponentReadinessViewsUrl()
+    Promise.all([fetch(jobVariantsAPIURL), fetch(viewsAPIURL)])
+      .then(([variantsResp, viewsResp]) => {
+        if (variantsResp.code < 200 || variantsResp.code >= 300) {
+          const errorMessage = variantsResp.message
+            ? `${variantsResp.message}`
             : 'No error message'
-          throw new Error(`Return code = ${data.code} (${errorMessage})`)
+          throw new Error(
+            `Return code = ${variantsResp.code} (${errorMessage})`
+          )
         }
-        setAllJobVariants(data.variants)
+        if (viewsResp.code < 200 || viewsResp.code >= 300) {
+          const errorMessage = viewsResp.message
+            ? `${viewsResp.message}`
+            : 'No error message'
+          throw new Error(`Return code = ${viewsResp.code} (${errorMessage})`)
+        }
+        return Promise.all([variantsResp.json(), viewsResp.json()])
+      })
+      .then(([variants, views]) => {
+        setAllJobVariants(variants.variants)
+        setViews(views)
+
+        if (views.length > 0) {
+          // If no view was requested and we were not given fully qualified params,
+          // select the default view: (first in the list matching our default sample release)
+          if (shouldLoadDefaultView()) {
+            views.forEach((v) => {
+              if (v.sample_release.release === defaultSampleRelease) {
+                setView(v.name)
+                syncView(v)
+              }
+            })
+          } else if (view !== undefined) {
+            // A view query param was requested, sync the controls to match as soon as we receive our views list:
+            views.forEach((v) => {
+              if (v.name === view) {
+                syncView(v)
+              }
+            })
+          }
+        }
         setIsLoaded(true)
       })
       .catch((error) => {
-        setFetchError(`API call failed: ${apiCallStr}\n${error}`)
+        setFetchError(`API call failed: ${error}`)
       })
       .finally(() => {
         // Mark the attempt as finished whether successful or not.
         setIsLoaded(true)
       })
   }, [])
+
+  const shouldLoadDefaultView = () => {
+    // Attempt to decide if we should pre-select the default view, or if we were given params:
+    return view === undefined && baseReleaseParam === undefined
+  }
 
   // Take a string that is an "environment" (environment is a list of strings that describe
   // items in one or more of the lists above) and split it up so that it can be used in
@@ -389,8 +524,12 @@ export const CompReadyVarsProvider = ({ children }) => {
     <CompReadyVarsContext.Provider
       value={{
         allJobVariants,
+        views,
+        view,
+        setView,
         expandEnvironment,
         baseRelease,
+        baseReleaseParam,
         setBaseReleaseWithDates,
         sampleRelease,
         setSampleReleaseWithDates,
@@ -434,6 +573,8 @@ export const CompReadyVarsProvider = ({ children }) => {
         environment,
         setEnvironmentParam,
         handleGenerateReport,
+        syncView,
+        isLoaded,
       }}
     >
       {children}

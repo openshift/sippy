@@ -74,14 +74,16 @@ func GetDataFromCacheOrGenerate[T any](
 				log.WithFields(log.Fields{
 					"key":  string(cacheKey),
 					"type": reflect.TypeOf(defaultVal).String(),
-				}).Debugf("cache hit")
+				}).Infof("cache hit")
 				var cr T
 				if err := json.Unmarshal(res, &cr); err != nil {
 					return defaultVal, []error{errors.WithMessagef(err, "failed to unmarshal cached item.  cacheKey=%+v", cacheKey)}
 				}
 				return cr, nil
 			}
-			log.Infof("cache miss for cache key: %s", string(cacheKey))
+			log.WithFields(log.Fields{
+				"key": string(cacheKey),
+			}).Infof("cache miss")
 		}
 		result, errs := generateFn()
 		if len(errs) == 0 {

@@ -62,25 +62,25 @@ func NewServer(
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
-	componentReadinessViews []crtype.View,
+	views *apitype.SippyViews,
 ) *Server {
 
 	server := &Server{
-		mode:                    mode,
-		listenAddr:              listenAddr,
-		syntheticTestManager:    syntheticTestManager,
-		variantManager:          variantManager,
-		sippyNG:                 sippyNG,
-		static:                  static,
-		db:                      dbClient,
-		bigQueryClient:          bigQueryClient,
-		pinnedDateTime:          pinnedDateTime,
-		prowURL:                 prowURL,
-		gcsBucket:               gcsBucket,
-		gcsClient:               gcsClient,
-		cache:                   cacheClient,
-		crTimeRoundingFactor:    crTimeRoundingFactor,
-		componentReadinessViews: componentReadinessViews,
+		mode:                 mode,
+		listenAddr:           listenAddr,
+		syntheticTestManager: syntheticTestManager,
+		variantManager:       variantManager,
+		sippyNG:              sippyNG,
+		static:               static,
+		db:                   dbClient,
+		bigQueryClient:       bigQueryClient,
+		pinnedDateTime:       pinnedDateTime,
+		prowURL:              prowURL,
+		gcsBucket:            gcsBucket,
+		gcsClient:            gcsClient,
+		cache:                cacheClient,
+		crTimeRoundingFactor: crTimeRoundingFactor,
+		views:                views,
 	}
 
 	if bigQueryClient != nil {
@@ -103,23 +103,23 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 })
 
 type Server struct {
-	mode                    Mode
-	listenAddr              string
-	syntheticTestManager    synthetictests.SyntheticTestManager
-	variantManager          testidentification.VariantManager
-	sippyNG                 fs.FS
-	static                  fs.FS
-	httpServer              *http.Server
-	db                      *db.DB
-	bigQueryClient          *bigquery.Client
-	pinnedDateTime          *time.Time
-	gcsClient               *storage.Client
-	gcsBucket               string
-	prowURL                 string
-	cache                   cache.Cache
-	crTimeRoundingFactor    time.Duration
-	capabilities            []string
-	componentReadinessViews []crtype.View
+	mode                 Mode
+	listenAddr           string
+	syntheticTestManager synthetictests.SyntheticTestManager
+	variantManager       testidentification.VariantManager
+	sippyNG              fs.FS
+	static               fs.FS
+	httpServer           *http.Server
+	db                   *db.DB
+	bigQueryClient       *bigquery.Client
+	pinnedDateTime       *time.Time
+	gcsClient            *storage.Client
+	gcsBucket            string
+	prowURL              string
+	cache                cache.Cache
+	crTimeRoundingFactor time.Duration
+	capabilities         []string
+	views                *apitype.SippyViews
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -657,7 +657,34 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
-	api.RespondWithJSON(http.StatusOK, w, s.componentReadinessViews)
+	// deep copy the views and then we'll inject a fixed start/end time using the relative times
+	// the view is configured with, so the UI can pre-populate the pickers
+	viewsCopy := make([]crtype.View, len(s.views.ComponentReadiness))
+	copy(viewsCopy, s.views.ComponentReadiness)
+	for i := range viewsCopy {
+		rro, err := componentreadiness.GetViewReleaseOptions("basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+		viewsCopy[i].BaseRelease.Start = rro.Start
+		viewsCopy[i].BaseRelease.End = rro.End
+
+		rro, err = componentreadiness.GetViewReleaseOptions("sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
+		if err != nil {
+			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+				"code":    http.StatusBadRequest,
+				"message": err.Error(),
+			})
+			return
+		}
+		viewsCopy[i].SampleRelease.Start = rro.Start
+		viewsCopy[i].SampleRelease.End = rro.End
+	}
+	api.RespondWithJSON(http.StatusOK, w, viewsCopy)
 }
 
 func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
@@ -678,7 +705,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		})
 		return
 	}
-	options, err := componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
+	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -725,7 +752,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.componentReadinessViews, req, allJobVariants, s.crTimeRoundingFactor)
+	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,

@@ -1,28 +1,7 @@
 import './ComponentReadiness.css'
-import {
-  AppBar,
-  Badge,
-  Drawer,
-  FormControlLabel,
-  Grid,
-  Popover,
-  TableContainer,
-  Tooltip,
-  Typography,
-} from '@mui/material'
-import {
-  ArrayParam,
-  BooleanParam,
-  NumberParam,
-  SafeStringParam,
-  StringParam,
-  useQueryParam,
-} from 'use-query-params'
+import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
-  dateEndFormat,
-  dateFormat,
-  formatLongDate,
   formColumnName,
   getAPIUrl,
   getColumns,
@@ -33,51 +12,31 @@ import {
   makePageTitle,
   makeRFC3339Time,
   noDataTable,
-  Search,
-  SearchIconWrapper,
-  StyledInputBase,
 } from './CompReadyUtils'
-import { makeStyles, useTheme } from '@mui/styles'
-import { Route, Switch, useRouteMatch } from 'react-router-dom'
-import React, { Fragment, useContext, useEffect, useState } from 'react'
-import SwitchControl from '@mui/material/Switch'
-
-import {
-  Clear,
-  GridView,
-  InsertLink,
-  ViewColumn,
-  Widgets,
-} from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { grey } from '@mui/material/colors'
-import { ReleasesContext } from '../App'
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import clsx from 'clsx'
+import { Grid, TableContainer, Tooltip, Typography } from '@mui/material'
+import { makeStyles, useTheme } from '@mui/styles'
+import { Route, Switch, useRouteMatch } from 'react-router-dom'
 import ComponentReadinessHelp from './ComponentReadinessHelp'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyEnvCapabilities from './CompReadyEnvCapabilities'
 import CompReadyEnvCapability from './CompReadyEnvCapability'
 import CompReadyEnvCapabilityTest from './CompReadyEnvCapabilityTest'
-import CompReadyMainInputs from './CompReadyMainInputs'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
 import CompReadyTestReport from './CompReadyTestReport'
 import CopyPageURL from './CopyPageURL'
 import GeneratedAt from './GeneratedAt'
-import IconButton from '@mui/material/IconButton'
-import MenuIcon from '@mui/icons-material/Menu'
-import RegressedTestsModal from './RegressedTestsModal'
+import React, { Fragment, useContext, useEffect, useState } from 'react'
 import Sidebar from './Sidebar'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
-import Toolbar from '@mui/material/Toolbar'
 
 const drawerWidth = 240
 
@@ -302,9 +261,14 @@ export default function ComponentReadiness(props) {
   // Show the current state of the filter variables and the url.
   // Create API call string and return it.
   const showValuesForReport = () => {
-    const apiCallStr = getAPIUrl() + getUpdatedUrlParts(varsContext)
-    const formattedApiCallStr = makeRFC3339Time(apiCallStr)
-    return formattedApiCallStr
+    let apiCallStr = getAPIUrl()
+
+    if (varsContext.view != null && varsContext.view !== '') {
+      apiCallStr += '?view=' + varsContext.view
+    } else {
+      apiCallStr += getUpdatedUrlParts(varsContext)
+    }
+    return makeRFC3339Time(apiCallStr)
   }
 
   const columnNames = getColumns(data)
@@ -325,6 +289,19 @@ export default function ComponentReadiness(props) {
 
   const fetchData = (fresh) => {
     let formattedApiCallStr = showValuesForReport()
+
+    // prevent a slightly expensive duplicate request when user navs to /main with no query params,
+    // and we're still in the process of setting the default view to use
+    if (
+      varsContext.views !== undefined &&
+      varsContext.views.length > 0 &&
+      varsContext.view === undefined &&
+      varsContext.baseReleaseParam === undefined
+    ) {
+      return
+    }
+
+    console.log('fetchData api call str: ' + formattedApiCallStr)
     if (fresh) {
       formattedApiCallStr += '&forceRefresh=true'
     }

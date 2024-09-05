@@ -26,11 +26,14 @@ type RequestReleaseOptions struct {
 
 // RequestRelativeReleaseOptions is an unfortunate necessity for views where we do not have
 // a fixed time, rather a relative time to now/ga. It is translated to the above normal struct before use.
+//
+// When returned in the API, it should include the concrete start/end calculated from relative
+// for the point in time when the request was made. This is used in the UI to pre-populate the
+// date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
-	Release            string              `json:"release" yaml:"release"`
-	PullRequestOptions *PullRequestOptions `json:"pull_request_options,omitempty" yaml:"pull_request_options,omitempty"`
-	RelativeStart      string              `json:"start,omitempty" yaml:"start,omitempty"`
-	RelativeEnd        string              `json:"end,omitempty" yaml:"end,omitempty"`
+	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
+	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
@@ -45,9 +48,9 @@ type RequestVariantOptions struct {
 	ColumnGroupBy       sets.String         `json:"column_group_by" yaml:"column_group_by"`
 	DBGroupBy           sets.String         `json:"db_group_by" yaml:"db_group_by"`
 	IncludeVariants     map[string][]string `json:"include_variants" yaml:"include_variants"`
-	CompareVariants     map[string][]string `json:"compare_variants" yaml:"compare_variants"`
-	VariantCrossCompare []string            `json:"variant_cross_compare" yaml:"variant_cross_compare"`
-	RequestedVariants   map[string]string   `json:"requested_variants" yaml:"requested_variants"`
+	CompareVariants     map[string][]string `json:"compare_variants,omitempty" yaml:"compare_variants,omitempty"`
+	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`
+	RequestedVariants   map[string]string   `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
 }
 
 // RequestOptions is a struct packaging all the options for a CR request.
@@ -60,7 +63,7 @@ type RequestOptions struct {
 	CacheOption    cache.RequestOptions
 }
 
-// View is a server side construct representing a predefined view over the data.
+// View is a server side construct representing a predefined view over the component readiness data.
 // Useful for defining the primary view of what we deem required for considering the release ready.
 type View struct {
 	Name            string                        `json:"name" yaml:"name"`
