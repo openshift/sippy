@@ -149,7 +149,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     sampleStartTimeParam || formatLongDate(initialSampleStartTime, dateFormat)
   )
   const [sampleEndTime, setSampleEndTime] = React.useState(
-    sampleEndTimeParam || formatLongDate(initialSampleEndTime, dateFormat)
+    sampleEndTimeParam || formatLongDate(initialSampleEndTime, dateEndFormat)
   )
 
   const [samplePROrgParam = '', setSamplePROrgParam] = useQueryParam(
