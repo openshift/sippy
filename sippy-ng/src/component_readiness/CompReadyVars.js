@@ -91,8 +91,10 @@ export const CompReadyVarsProvider = ({ children }) => {
     'sampleEndTime',
     StringParam
   )
+
+  // This is comma-separated in the URL, i.e. Platform,Network,Architecture
   const [columnGroupByCheckedItemsParam, setColumnGroupByCheckedItemsParam] =
-    useQueryParam('columnGroupBy', ArrayParam)
+    useQueryParam('columnGroupBy', StringParam)
 
   const [confidenceParam, setConfidenceParam] = useQueryParam(
     'confidence',
@@ -112,8 +114,10 @@ export const CompReadyVarsProvider = ({ children }) => {
   // Create the variables to be used for api calls; these are initialized to the
   // value of the variables that got their values from the URL.
   const [columnGroupByCheckedItems, setColumnGroupByCheckedItems] =
-    React.useState(
-      columnGroupByCheckedItemsParam || ['Platform', 'Architecture', 'Network']
+    React.useState(() =>
+      columnGroupByCheckedItemsParam
+        ? columnGroupByCheckedItemsParam.split(',')
+        : ['Platform', 'Architecture', 'Network']
     )
 
   const [componentParam, setComponentParam] = useQueryParam(
