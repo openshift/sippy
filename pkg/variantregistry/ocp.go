@@ -521,6 +521,8 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 	// Platforms
 	if alibabaRegex.MatchString(jobName) {
 		platform = "alibaba"
+	} else if rosaRegex.MatchString(jobName) {
+		platform = "rosa" // keep above AWS as many ROSA jobs also mention AWS
 	} else if awsRegex.MatchString(jobName) {
 		platform = "aws"
 	} else if azureRegex.MatchString(jobName) {
@@ -537,8 +539,6 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 		platform = "openstack"
 	} else if ovirtRegex.MatchString(jobName) {
 		platform = "ovirt"
-	} else if rosaRegex.MatchString(jobName) {
-		platform = "rosa"
 	} else if vsphereRegex.MatchString(jobName) {
 		platform = "vsphere"
 	}
