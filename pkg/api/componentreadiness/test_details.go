@@ -368,8 +368,12 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(baseStatus 
 			},
 		},
 	}
+	var resolvedIssueCompensation int
 	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ColumnIdentification, c.TestID)
-	resolvedIssueCompensation, _ := c.triagedIncidentsFor(result.ReportTestIdentification)
+	// ignore triage if we have an intentional regression
+	if approvedRegression == nil {
+		resolvedIssueCompensation, _ = c.triagedIncidentsFor(result.ReportTestIdentification)
+	}
 
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int

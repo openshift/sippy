@@ -1349,7 +1349,10 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 			if len(c.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
 				// look for corresponding regressions we can account for in the analysis
 				approvedRegression = regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
-				resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+				// ignore triage if we have an intentional regression
+				if approvedRegression == nil {
+					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+				}
 			}
 			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
 			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
@@ -1426,6 +1429,15 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		return sortedColumns[i] < sortedColumns[j]
 	})
 
+	rows, err := buildReport(sortedRows, sortedColumns, aggregatedStatus)
+	if err != nil {
+		return crtype.ComponentReport{}, err
+	}
+	report.Rows = rows
+	return report, nil
+}
+
+func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.ColumnID, aggregatedStatus map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus) ([]crtype.ReportRow, error) {
 	// Now build the report
 	var regressionRows, goodRows []crtype.ReportRow
 	for _, rowID := range sortedRows {
@@ -1442,7 +1454,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 			var colIDStruct crtype.ColumnIdentification
 			err := json.Unmarshal([]byte(columnID), &colIDStruct)
 			if err != nil {
-				return crtype.ComponentReport{}, err
+				return nil, err
 			}
 			reportColumn := crtype.ReportColumn{ColumnIdentification: colIDStruct}
 			status, ok := columns[columnID]
@@ -1474,8 +1486,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 	}
 
 	regressionRows = append(regressionRows, goodRows...)
-	report.Rows = regressionRows
-	return report, nil
+	return regressionRows, nil
 }
 
 func buildTestID(stats crtype.TestStatus, testIdentificationStr string) (crtype.ReportTestIdentification, error) {
@@ -1632,17 +1643,17 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 				return testStats
 			}
 
-			// how do approvedRegressions and triagedRegressions interact?  If we triaged a regression we will
-			// show the triagedRegressionIcon even with the lowered effectivePityFactor
-			// do we want that or should we clear the triagedRegression status here?
-			if approvedRegression != nil && approvedRegression.RegressedPassPercentage < int(basisPassPercentage*100) {
-				// product owner chose a required pass percentage, so we all pity to cover that approved pass percent
-				// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
-				effectivePityFactor = int(basisPassPercentage*100) - approvedRegression.RegressedPassPercentage + c.PityFactor
+			if approvedRegression != nil && approvedRegression.RegressedFailures > 0 {
+				regressedPassPercentage := approvedRegression.RegressedPassPercentage()
+				if regressedPassPercentage < basisPassPercentage {
+					// product owner chose a required pass percentage, so we all pity to cover that approved pass percent
+					// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
+					effectivePityFactor = int(basisPassPercentage*100) - int(regressedPassPercentage*100) + c.PityFactor
 
-				if effectivePityFactor < c.PityFactor {
-					log.Errorf("effective pity factor for %+v is below zero: %d", approvedRegression, effectivePityFactor)
-					effectivePityFactor = c.PityFactor
+					if effectivePityFactor < c.PityFactor {
+						log.Errorf("effective pity factor for %+v is below zero: %d", approvedRegression, effectivePityFactor)
+						effectivePityFactor = c.PityFactor
+					}
 				}
 			}
 
