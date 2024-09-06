@@ -1,6 +1,6 @@
 ---
 component_readiness:
-  - name: 4.17-main
+  - name: 4.17-qe-main
     base_release:
       release: "4.16"
       relative_start: ga-30d
@@ -55,8 +55,8 @@ component_readiness:
     metrics:
       enabled: true
     regression_tracking:
-      enabled: true
-  - name: 4.18-main
+      enabled: false
+  - name: 4.18-qe-main
     base_release:
       release: "4.16"
       relative_start: now-30d
@@ -111,4 +111,4 @@ component_readiness:
     metrics:
       enabled: true
     regression_tracking:
-      enabled: true
+      enabled: false
