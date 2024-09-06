@@ -1,0 +1,114 @@
+---
+component_readiness:
+  - name: 4.17-main
+    base_release:
+      release: "4.16"
+      relative_start: ga-30d
+      relative_end: now
+    sample_release:
+      release: "4.17"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+          - rosa
+        Network:
+          - ovn
+        Owner:
+          - qe
+          - service-delivery
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - metal
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: true
+  - name: 4.18-main
+    base_release:
+      release: "4.16"
+      relative_start: now-30d
+      relative_end: now
+    sample_release:
+      release: "4.18"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+          - rosa
+        Network:
+          - ovn
+        Owner:
+          - qe
+          - service-delivery
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - metal
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: true
