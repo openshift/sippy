@@ -1345,10 +1345,11 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
-			var approvedRegression *regressionallowances.IntentionalRegression
+			var approvedRegression, baseRegression *regressionallowances.IntentionalRegression
 			if len(c.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
 				// look for corresponding regressions we can account for in the analysis
 				approvedRegression = regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
+				baseRegression = regressionallowances.IntentionalRegressionFor(c.BaseRelease.Release, testID.ColumnIdentification, testID.TestID)
 				// ignore triage if we have an intentional regression
 				if approvedRegression == nil {
 					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
@@ -1357,7 +1358,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
 			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
-				baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
+				baseStats.FlakeCount, approvedRegression, baseRegression, resolvedIssueCompensation)
 
 			if testStats.ReportStatus < crtype.MissingSample && testStats.ReportStatus > crtype.SignificantRegression {
 				// we are within the triage range
@@ -1532,7 +1533,7 @@ func getSuccessRate(success, failure, flake int) float64 {
 	return float64(success+flake) / float64(total)
 }
 
-func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) crtype.ReportTestStats {
+func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression, baseRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) crtype.ReportTestStats {
 	// preserve the initial sampleTotal so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
 	initialSampleTotal := sampleTotal
@@ -1550,6 +1551,15 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 		sampleFailure = 0
 	}
 	baseFailure := baseTotal - baseSuccess - baseFlake
+
+	if baseRegression != nil && baseRegression.PreviousPassPercentage() > float64(baseSuccess+baseFlake)/float64(baseTotal) {
+		// override with  the basis regression previous values
+		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
+		baseFailure = baseRegression.PreviousFailures
+		baseSuccess = baseRegression.PreviousSuccesses
+		baseFlake = baseRegression.PreviousFlakes
+		baseTotal = baseFailure + baseSuccess + baseFlake
+	}
 
 	status := crtype.MissingBasis
 	testStats := crtype.ReportTestStats{
@@ -1646,7 +1656,7 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 			if approvedRegression != nil && approvedRegression.RegressedFailures > 0 {
 				regressedPassPercentage := approvedRegression.RegressedPassPercentage()
 				if regressedPassPercentage < basisPassPercentage {
-					// product owner chose a required pass percentage, so we all pity to cover that approved pass percent
+					// product owner chose a required pass percentage, so we allow pity to cover that approved pass percent
 					// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
 					effectivePityFactor = int(basisPassPercentage*100) - int(regressedPassPercentage*100) + c.PityFactor
 
