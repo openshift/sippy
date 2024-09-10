@@ -1,0 +1,177 @@
+[
+ {
+  "JiraComponent": "Samples Operator",
+  "TestID": "Operator results:776d244e9df7ada04b8510480fb86902",
+  "TestName": "operator conditions openshift-samples",
+  "variant": {
+   "variants": {
+    "Architecture": "amd64",
+    "FeatureSet": "default",
+    "Installer": "ipi",
+    "Network": "ovn",
+    "Platform": "metal",
+    "Suite": "unknown",
+    "Topology": "ha",
+    "Upgrade": "micro"
+   }
+  },
+  "PreviousSuccesses": 166,
+  "PreviousFailures": 0,
+  "PreviousFlakes": 0,
+  "RegressedSuccesses": 57,
+  "RegressedFailures": 5,
+  "RegressedFlakes": 0,
+  "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-33255",
+  "ReasonToAllowInsteadOfFix": "Waiting for upstream fix to propagate"
+ },
+ {
+  "JiraComponent": "kube-apiserver",
+  "TestID": "Operator results:2bc3a57ebccf0bcb4d36d338809848c2",
+  "TestName": "operator conditions kube-apiserver",
+  "variant": {
+   "variants": {
+    "Architecture": "amd64",
+    "FeatureSet": "default",
+    "Installer": "ipi",
+    "Network": "ovn",
+    "Platform": "metal",
+    "Suite": "unknown",
+    "Topology": "ha",
+    "Upgrade": "none"
+   }
+  },
+  "PreviousSuccesses": 249,
+  "PreviousFailures": 1,
+  "PreviousFlakes": 0,
+  "RegressedSuccesses": 88,
+  "RegressedFailures": 7,
+  "RegressedFlakes": 0,
+  "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-33255",
+  "ReasonToAllowInsteadOfFix": "Waiting for upstream fix to propagate"
+ },
+ {
+  "JiraComponent": "Management Console",
+  "TestID": "Operator results:258e3ff8c9692c937596663377c10e29",
+  "TestName": "operator conditions console",
+  "variant": {
+   "variants": {
+    "Architecture": "amd64",
+    "FeatureSet": "default",
+    "Installer": "ipi",
+    "Network": "ovn",
+    "Platform": "metal",
+    "Suite": "unknown",
+    "Topology": "ha",
+    "Upgrade": "micro"
+   }
+  },
+  "PreviousSuccesses": 166,
+  "PreviousFailures": 0,
+  "PreviousFlakes": 0,
+  "RegressedSuccesses": 57,
+  "RegressedFailures": 5,
+  "RegressedFlakes": 0,
+  "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-33255",
+  "ReasonToAllowInsteadOfFix": "Waiting for upstream fix to propagate"
+ },
+ {
+  "JiraComponent": "Networking",
+  "TestID": "Operator results:4b5f6af893ad5577904fbaec3254506d",
+  "TestName": "operator conditions network",
+  "variant": {
+   "variants": {
+    "Architecture": "amd64",
+    "FeatureSet": "default",
+    "Installer": "ipi",
+    "Network": "ovn",
+    "Platform": "metal",
+    "Suite": "unknown",
+    "Topology": "ha",
+    "Upgrade": "micro"
+   }
+  },
+  "PreviousSuccesses": 166,
+  "PreviousFailures": 0,
+  "PreviousFlakes": 0,
+  "RegressedSuccesses": 57,
+  "RegressedFailures": 5,
+  "RegressedFlakes": 0,
+  "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-33255",
+  "ReasonToAllowInsteadOfFix": "Waiting for upstream fix to propagate"
+ },
+ {
+  "JiraComponent": "oauth-apiserver",
+  "TestID": "Operator results:466e1a49a33b63218495dc8201953194",
+  "TestName": "operator conditions authentication",
+  "variant": {
+   "variants": {
+    "Architecture": "amd64",
+    "FeatureSet": "default",
+    "Installer": "ipi",
+    "Network": "ovn",
+    "Platform": "metal",
+    "Suite": "unknown",
+    "Topology": "ha",
+    "Upgrade": "micro"
+   }
+  },
+  "PreviousSuccesses": 166,
+  "PreviousFailures": 0,
+  "PreviousFlakes": 0,
+  "RegressedSuccesses": 57,
+  "RegressedFailures": 5,
+  "RegressedFlakes": 0,
+  "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-33255",
+  "ReasonToAllowInsteadOfFix": "Waiting for upstream fix to propagate"
+ },
+ {
+  "JiraComponent": "OLM",
+  "TestID": "Operator results:55a75a8aa11231d0ca36a4d65644e1dd",
+  "TestName": "operator conditions operator-lifecycle-manager-packageserver",
+  "variant": {
+   "variants": {
+    "Architecture": "amd64",
+    "FeatureSet": "default",
+    "Installer": "ipi",
+    "Network": "ovn",
+    "Platform": "metal",
+    "Suite": "unknown",
+    "Topology": "ha",
+    "Upgrade": "micro"
+   }
+  },
+  "PreviousSuccesses": 166,
+  "PreviousFailures": 0,
+  "PreviousFlakes": 0,
+  "RegressedSuccesses": 57,
+  "RegressedFailures": 5,
+  "RegressedFlakes": 0,
+  "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-33255",
+  "ReasonToAllowInsteadOfFix": "Waiting for upstream fix to propagate"
+ },
+ {
+  "JiraComponent": "openshift-apiserver",
+  "TestID": "Operator results:a4dfe6caa55e94230b4ee0ff127b6d64",
+  "TestName": "operator conditions openshift-apiserver",
+  "variant": {
+   "variants": {
+    "Architecture": "amd64",
+    "FeatureSet": "default",
+    "Installer": "ipi",
+    "Network": "ovn",
+    "Platform": "metal",
+    "Suite": "unknown",
+    "Topology": "ha",
+    "Upgrade": "micro"
+   }
+  },
+  "PreviousSuccesses": 166,
+  "PreviousFailures": 0,
+  "PreviousFlakes": 0,
+  "RegressedSuccesses": 57,
+  "RegressedFailures": 5,
+  "RegressedFlakes": 0,
+  "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-33255",
+  "ReasonToAllowInsteadOfFix": "Waiting for upstream fix to propagate"
+ }
+]
