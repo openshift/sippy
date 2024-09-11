@@ -103,7 +103,7 @@ component_readiness:
       ignore_missing: false
       ignore_disruption: true
     metrics:
-      enabled: true
+      enabled: false
     regression_tracking:
       enabled: false
   - name: 4.17-main

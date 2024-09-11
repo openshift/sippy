@@ -94,15 +94,15 @@ var (
 	componentReadinessMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_component_readiness",
 		Help: "Regression score for components",
-	}, []string{"view", "component", "network", "arch", "platform"})
+	}, []string{"release", "releaseStatus", "view", "component", "network", "arch", "platform"})
 	componentReadinessUniqueRegressionsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_component_readiness_unique_regressions",
 		Help: "Number of unique tests regressed per component",
-	}, []string{"view", "component"})
+	}, []string{"release", "releaseStatus", "view", "component"})
 	componentReadinessTotalRegressionsMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_component_readiness_total_regressions",
 		Help: "Number of regressions per component, includes tests multiple times when regressed on multiple NURP's",
-	}, []string{"view", "component"})
+	}, []string{"release", "releaseStatus", "view", "component"})
 	disruptionVsPrevGAMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: disruptionVsPrevGAMetricName,
 		Help: "Delta of percentiles now vs the 30 days prior to previous release GA date",
@@ -207,7 +207,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 
 	// BigQuery metrics
 	if bqc != nil {
-		if err := refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions, views); err != nil {
+		if err := refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions, views, releases); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
 
@@ -222,7 +222,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 }
 
 func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, views []crtype.View) error {
+	cacheOptions cache.RequestOptions, views []crtype.View, releases []query.Release) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return nil
@@ -235,7 +235,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 
 	for _, view := range views {
 		if view.Metrics.Enabled || view.RegressionTracking.Enabled {
-			err := updateComponentReadinessTrackingForView(client, prowURL, gcsBucket, cacheOptions, view)
+			err := updateComponentReadinessTrackingForView(client, prowURL, gcsBucket, cacheOptions, view, releases)
 			if err != nil {
 				return err
 			}
@@ -247,7 +247,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 // updateCompnentReadinessTrackingForView queries the report for the given view, and then updates metrics,
 // regression tracking, or both, depending on view configuration.
 func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, view crtype.View) error {
+	cacheOptions cache.RequestOptions, view crtype.View, releases []query.Release) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
@@ -286,6 +286,8 @@ func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, g
 
 	if view.Metrics.Enabled {
 		logger.Info("publishing metrics for view")
+
+		releaseStatus := getReleaseStatus(releases, view.SampleRelease.Release)
 		for _, row := range report.Rows {
 			totalRegressedTestsByComponent := 0
 			uniqueRegressedTestsByComponent := sets.NewString()
@@ -310,10 +312,11 @@ func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, g
 				if !ok {
 					platLabel = ""
 				}
-				componentReadinessMetric.WithLabelValues(view.Name, row.Component, networkLabel, archLabel, platLabel).Set(float64(col.Status))
+				componentReadinessMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name,
+					row.Component, networkLabel, archLabel, platLabel).Set(float64(col.Status))
 			}
-			componentReadinessTotalRegressionsMetric.WithLabelValues(view.Name, row.Component).Set(float64(totalRegressedTestsByComponent))
-			componentReadinessUniqueRegressionsMetric.WithLabelValues(view.Name, row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
+			componentReadinessTotalRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(totalRegressedTestsByComponent))
+			componentReadinessUniqueRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
 		}
 	}
 
