@@ -1,0 +1,77 @@
+[
+  {
+    "JiraComponent": "Management Console",
+    "TestID": "openshift-tests:f9552d2b4b817d19bdcd666a7b8d1ece",
+    "TestName": "[bz-Management Console] clusteroperator/console should not change condition/Available",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-39580",
+    "ReasonToAllowInsteadOfFix": "TBD Reason",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "vsphere",
+        "FeatureSet": "default",
+        "Suite": "serial",
+        "Topology": "ha",
+        "Installer": "upi"
+      }
+    },
+    "PreviousSuccesses": 61,
+    "PreviousFailures": 0,
+    "PreviousFlakes": 1,
+    "RegressedSuccesses": 18,
+    "RegressedFailures": 3,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "Management Console",
+    "TestID": "openshift-tests:f9552d2b4b817d19bdcd666a7b8d1ece",
+    "TestName": "[bz-Management Console] clusteroperator/console should not change condition/Available",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-39580",
+    "ReasonToAllowInsteadOfFix": "TBD Reason",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "vsphere",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "upi"
+      }
+    },
+    "PreviousSuccesses": 68,
+    "PreviousFailures": 0,
+    "PreviousFlakes": 1,
+    "RegressedSuccesses": 27,
+    "RegressedFailures": 3,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "openshift-apiserver",
+    "TestID": "openshift-tests:e7f70b89f489bfa8d1e923c9832cdeff",
+    "TestName": "[bz-openshift-apiserver] clusteroperator/openshift-apiserver should not change condition/Available",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-23746",
+    "ReasonToAllowInsteadOfFix": "TBD Reason",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "vsphere",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 139,
+    "PreviousFailures": 0,
+    "PreviousFlakes": 1,
+    "RegressedSuccesses": 71,
+    "RegressedFailures": 4,
+    "RegressedFlakes": 0
+  }
+]
