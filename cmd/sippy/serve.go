@@ -124,6 +124,11 @@ func NewServeCommand() *cobra.Command {
 			pinnedDateTime := f.DBFlags.GetPinnedTime()
 
 			variantManager := f.ModeFlags.GetVariantManager(context.Background(), bigQueryClient)
+			views, err := f.ComponentReadinessFlags.ParseViewsFile()
+			if err != nil {
+				log.WithError(err).Fatal("unable to load views")
+
+			}
 
 			server := sippyserver.NewServer(
 				f.ModeFlags.GetServerMode(),
@@ -140,12 +145,20 @@ func NewServeCommand() *cobra.Command {
 				pinnedDateTime,
 				cacheClient,
 				f.ComponentReadinessFlags.CRTimeRoundingFactor,
-				f.ComponentReadinessFlags.ParseViewsFile(),
+				views,
 			)
 
 			if f.MetricsAddr != "" {
 				// Do an immediate metrics update
-				err = metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, variantManager, util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, f.MaintainRegressionTables)
+				err = metrics.RefreshMetricsDB(dbc,
+					bigQueryClient,
+					f.ProwFlags.URL,
+					f.GoogleCloudFlags.StorageBucket,
+					variantManager,
+					util.GetReportEnd(pinnedDateTime),
+					cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
+					views.ComponentReadiness,
+					f.MaintainRegressionTables)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}
@@ -158,7 +171,16 @@ func NewServeCommand() *cobra.Command {
 						select {
 						case <-ticker.C:
 							log.Info("tick")
-							err := metrics.RefreshMetricsDB(dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, variantManager, util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, f.MaintainRegressionTables)
+							err := metrics.RefreshMetricsDB(
+								dbc,
+								bigQueryClient,
+								f.ProwFlags.URL,
+								f.GoogleCloudFlags.StorageBucket,
+								variantManager,
+								util.GetReportEnd(pinnedDateTime),
+								cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
+								views.ComponentReadiness,
+								f.MaintainRegressionTables)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")
 							}

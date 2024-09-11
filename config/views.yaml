@@ -102,6 +102,10 @@ component_readiness:
       pity_factor: 5
       ignore_missing: false
       ignore_disruption: true
+    metrics:
+      enabled: false
+    regression_tracking:
+      enabled: false
   - name: 4.17-main
     base_release:
         release: "4.16"
@@ -200,3 +204,7 @@ component_readiness:
       pity_factor: 5
       ignore_missing: false
       ignore_disruption: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: false

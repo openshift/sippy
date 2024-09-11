@@ -56,7 +56,7 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (crtype.ReportTes
 	}
 	var err error
 	bqs := tracker.NewBigQueryRegressionStore(c.client)
-	c.openRegressions, err = bqs.ListCurrentRegressions(c.SampleRelease.Release)
+	c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(c.SampleRelease.Release)
 	if err != nil {
 		errs = append(errs, err)
 		return crtype.ReportTestDetails{}, errs

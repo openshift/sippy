@@ -32,11 +32,12 @@ type ComponentReadinessFlags struct {
 	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 
-	Config                   string
-	LogLevel                 string
-	ListenAddr               string
-	MetricsAddr              string
-	RedisURL                 string
+	Config      string
+	LogLevel    string
+	ListenAddr  string
+	MetricsAddr string
+	RedisURL    string
+	// TODO: remove this, now a param on a view
 	MaintainRegressionTables bool
 }
 
@@ -155,6 +156,12 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		}
 	}
 
+	views, err := f.ComponentReadinessFlags.ParseViewsFile()
+	if err != nil {
+		log.WithError(err).Fatal("unable to load views")
+
+	}
+
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
 		f.ListenAddr,
@@ -170,7 +177,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		nil,
 		cacheClient,
 		f.ComponentReadinessFlags.CRTimeRoundingFactor,
-		f.ComponentReadinessFlags.ParseViewsFile(),
+		views,
 	)
 
 	if f.MetricsAddr != "" {
@@ -182,6 +189,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			nil,
 			time.Time{},
 			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
+			views.ComponentReadiness,
 			f.MaintainRegressionTables)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
@@ -195,7 +203,16 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(nil, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, f.MaintainRegressionTables)
+					err := metrics.RefreshMetricsDB(
+						nil,
+						bigQueryClient,
+						f.ProwFlags.URL,
+						f.GoogleCloudFlags.StorageBucket,
+						nil,
+						time.Time{},
+						cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
+						views.ComponentReadiness,
+						f.MaintainRegressionTables)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}
