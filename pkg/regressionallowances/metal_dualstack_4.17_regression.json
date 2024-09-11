@@ -1,0 +1,27 @@
+[
+  {
+    "JiraComponent": "Networking / cluster-network-operator",
+    "TestID": "Operator results:4b5f6af893ad5577904fbaec3254506d",
+    "TestName": "operator conditions network",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-41811",
+    "ReasonToAllowInsteadOfFix": "TBD Reason - Explain why we can't address the issue before GA",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "metal",
+        "FeatureSet": "default",
+        "Suite": "parallel",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 22,
+    "PreviousFailures": 0,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 6,
+    "RegressedFailures": 4,
+    "RegressedFlakes": 0
+  }
+]

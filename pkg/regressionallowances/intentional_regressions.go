@@ -1,6 +1,7 @@
 package regressionallowances
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 )
@@ -62,13 +63,19 @@ import (
 // }
 // ]
 
+//go:embed metal_dualstack_4.17_regression.json
+var metal_dualstack_regressions4_17 []byte
+
 var (
 	release415 release = "4.15"
+	release417 release = "4.17"
 )
 
 //nolint:all
 func init() {
 	// importIntentionalRegressions(release415, regressions4_15)
+	importIntentionalRegressions(release417, metal_dualstack_regressions4_17)
+
 }
 
 func importIntentionalRegressions(releaseTarget release, jsonRegressions []byte) {
