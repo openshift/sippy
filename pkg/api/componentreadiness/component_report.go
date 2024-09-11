@@ -1345,16 +1345,20 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
-			var approvedRegression *regressionallowances.IntentionalRegression
+			var approvedRegression, baseRegression *regressionallowances.IntentionalRegression
 			if len(c.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
 				// look for corresponding regressions we can account for in the analysis
 				approvedRegression = regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
-				resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+				baseRegression = regressionallowances.IntentionalRegressionFor(c.BaseRelease.Release, testID.ColumnIdentification, testID.TestID)
+				// ignore triage if we have an intentional regression
+				if approvedRegression == nil {
+					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+				}
 			}
 			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
 			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
-				baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation)
+				baseStats.FlakeCount, approvedRegression, baseRegression, resolvedIssueCompensation)
 
 			if testStats.ReportStatus < crtype.MissingSample && testStats.ReportStatus > crtype.SignificantRegression {
 				// we are within the triage range
@@ -1426,6 +1430,15 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		return sortedColumns[i] < sortedColumns[j]
 	})
 
+	rows, err := buildReport(sortedRows, sortedColumns, aggregatedStatus)
+	if err != nil {
+		return crtype.ComponentReport{}, err
+	}
+	report.Rows = rows
+	return report, nil
+}
+
+func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.ColumnID, aggregatedStatus map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus) ([]crtype.ReportRow, error) {
 	// Now build the report
 	var regressionRows, goodRows []crtype.ReportRow
 	for _, rowID := range sortedRows {
@@ -1442,7 +1455,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 			var colIDStruct crtype.ColumnIdentification
 			err := json.Unmarshal([]byte(columnID), &colIDStruct)
 			if err != nil {
-				return crtype.ComponentReport{}, err
+				return nil, err
 			}
 			reportColumn := crtype.ReportColumn{ColumnIdentification: colIDStruct}
 			status, ok := columns[columnID]
@@ -1474,8 +1487,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 	}
 
 	regressionRows = append(regressionRows, goodRows...)
-	report.Rows = regressionRows
-	return report, nil
+	return regressionRows, nil
 }
 
 func buildTestID(stats crtype.TestStatus, testIdentificationStr string) (crtype.ReportTestIdentification, error) {
@@ -1521,8 +1533,41 @@ func getSuccessRate(success, failure, flake int) float64 {
 	return float64(success+flake) / float64(total)
 }
 
-func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) crtype.ReportTestStats {
-	// preserve the initial sampleTotal so we can check
+func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTriage bool) crtype.Status {
+	if (basisPassPercentage - samplePassPercentage) > 0.15 {
+		if isTriage {
+			return crtype.ExtremeTriagedRegression
+		}
+		return crtype.ExtremeRegression
+	}
+
+	if isTriage {
+		return crtype.SignificantTriagedRegression
+	}
+	return crtype.SignificantRegression
+}
+
+func (c *componentReportGenerator) getEffectivePityFactor(basisPassPercentage float64, approvedRegression *regressionallowances.IntentionalRegression) int {
+	if approvedRegression != nil && approvedRegression.RegressedFailures > 0 {
+		regressedPassPercentage := approvedRegression.RegressedPassPercentage()
+		if regressedPassPercentage < basisPassPercentage {
+			// product owner chose a required pass percentage, so we allow pity to cover that approved pass percent
+			// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
+			effectivePityFactor := int(basisPassPercentage*100) - int(regressedPassPercentage*100) + c.PityFactor
+
+			if effectivePityFactor < c.PityFactor {
+				log.Errorf("effective pity factor for %+v is below zero: %d", approvedRegression, effectivePityFactor)
+				effectivePityFactor = c.PityFactor
+			}
+
+			return effectivePityFactor
+		}
+	}
+	return c.PityFactor
+}
+
+func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression, baseRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) crtype.ReportTestStats {
+	// preserve the initial sampleTotal, so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
 	initialSampleTotal := sampleTotal
 	adjustedSampleTotal := sampleTotal - numberOfIgnoredSampleJobRuns
@@ -1539,6 +1584,15 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 		sampleFailure = 0
 	}
 	baseFailure := baseTotal - baseSuccess - baseFlake
+
+	if baseRegression != nil && baseRegression.PreviousPassPercentage() > float64(baseSuccess+baseFlake)/float64(baseTotal) {
+		// override with  the basis regression previous values
+		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
+		baseFailure = baseRegression.PreviousFailures
+		baseSuccess = baseRegression.PreviousSuccesses
+		baseFlake = baseRegression.PreviousFlakes
+		baseTotal = baseFailure + baseSuccess + baseFlake
+	}
 
 	status := crtype.MissingBasis
 	testStats := crtype.ReportTestStats{
@@ -1576,23 +1630,19 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 			// see if we had a significant regression prior to adjusting
 			basisPassPercentage := float64(baseSuccess+baseFlake) / float64(baseTotal)
 			initialPassPercentage := float64(sampleSuccess+sampleFlake) / float64(initialSampleTotal)
-			effectivePityFactor := c.PityFactor
+			effectivePityFactor := c.getEffectivePityFactor(basisPassPercentage, approvedRegression)
 
 			wasSignificant := false
 			// only consider wasSignificant if the sampleTotal has been changed and our sample
 			// pass percentage is below the basis
 			if initialSampleTotal > sampleTotal && initialPassPercentage < basisPassPercentage {
-				if basisPassPercentage-initialPassPercentage > float64(effectivePityFactor)/100 {
+				if basisPassPercentage-initialPassPercentage > float64(c.PityFactor)/100 {
 					wasSignificant, _ = c.fischerExactTest(requiredConfidence, initialSampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
 				}
 				// if it was significant without the adjustment use
 				// ExtremeTriagedRegression or SignificantTriagedRegression
 				if wasSignificant {
-					if (basisPassPercentage - initialPassPercentage) > 0.15 {
-						status = crtype.ExtremeTriagedRegression
-					} else {
-						status = crtype.SignificantTriagedRegression
-					}
+					status = getRegressionStatus(basisPassPercentage, initialPassPercentage, true)
 				}
 			}
 
@@ -1631,21 +1681,6 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 				testStats.FisherExact = fisherExact
 				return testStats
 			}
-
-			// how do approvedRegressions and triagedRegressions interact?  If we triaged a regression we will
-			// show the triagedRegressionIcon even with the lowered effectivePityFactor
-			// do we want that or should we clear the triagedRegression status here?
-			if approvedRegression != nil && approvedRegression.RegressedPassPercentage < int(basisPassPercentage*100) {
-				// product owner chose a required pass percentage, so we all pity to cover that approved pass percent
-				// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
-				effectivePityFactor = int(basisPassPercentage*100) - approvedRegression.RegressedPassPercentage + c.PityFactor
-
-				if effectivePityFactor < c.PityFactor {
-					log.Errorf("effective pity factor for %+v is below zero: %d", approvedRegression, effectivePityFactor)
-					effectivePityFactor = c.PityFactor
-				}
-			}
-
 			significant := false
 			improved := samplePassPercentage >= basisPassPercentage
 
@@ -1662,11 +1697,7 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 						status = crtype.SignificantImprovement
 					}
 				} else {
-					if (basisPassPercentage - samplePassPercentage) > 0.15 {
-						status = crtype.ExtremeRegression
-					} else {
-						status = crtype.SignificantRegression
-					}
+					status = getRegressionStatus(basisPassPercentage, samplePassPercentage, false)
 				}
 			}
 		}

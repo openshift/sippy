@@ -1501,7 +1501,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &componentReportGenerator{}
 
-			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, tt.numberOfIgnoredSamples)
+			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, nil, tt.numberOfIgnoredSamples)
 			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")
 			assert.Equalf(t, tt.expectedFischers, testStats.FisherExact, "assessComponentStatus expected fischers value not equal")
 		})

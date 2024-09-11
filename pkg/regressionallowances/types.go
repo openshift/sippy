@@ -16,20 +16,29 @@ type IntentionalRegression struct {
 	TestID                    string
 	TestName                  string
 	Variant                   crtype.ColumnIdentification
-	PreviousPassPercentage    int
-	PreviousSampleSize        int
-	RegressedPassPercentage   int
-	RegressedSampleSize       int
+	PreviousSuccesses         int
+	PreviousFailures          int
+	PreviousFlakes            int
+	RegressedSuccesses        int
+	RegressedFailures         int
+	RegressedFlakes           int
 	JiraBug                   string
 	ReasonToAllowInsteadOfFix string
 }
 
+type release string
+
+var intentionalRegressions = map[release]map[string]IntentionalRegression{}
+
+type regressionKey struct {
+	TestID  string
+	Variant crtype.ColumnIdentification
+}
+
 func IntentionalRegressionFor(releaseString string, variant crtype.ColumnIdentification, testID string) *IntentionalRegression {
 	var targetMap map[string]IntentionalRegression
-	switch release(releaseString) {
-	case release415:
-		targetMap = regressions415
-	default:
+	var ok bool
+	if targetMap, ok = intentionalRegressions[release(releaseString)]; !ok {
 		return nil
 	}
 
@@ -41,19 +50,16 @@ func IntentionalRegressionFor(releaseString string, variant crtype.ColumnIdentif
 	return nil
 }
 
-type release string
+func (i *IntentionalRegression) RegressedPassPercentage() float64 {
+	return passPercentage(i.RegressedSuccesses, i.RegressedFlakes, i.RegressedFailures)
+}
 
-var (
-	release415 release = "4.15"
-)
+func (i *IntentionalRegression) PreviousPassPercentage() float64 {
+	return passPercentage(i.PreviousSuccesses, i.PreviousFlakes, i.PreviousFailures)
+}
 
-var (
-	regressions415 = map[string]IntentionalRegression{}
-)
-
-type regressionKey struct {
-	TestID  string
-	Variant crtype.ColumnIdentification
+func passPercentage(successes, flakes, failures int) float64 {
+	return float64(successes+flakes) / float64(successes+flakes+failures)
 }
 
 func keyFor(testID string, variant crtype.ColumnIdentification) string {
@@ -86,17 +92,16 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	if len(in.TestName) == 0 {
 		return fmt.Errorf("testName must be specified")
 	}
-	if in.PreviousPassPercentage <= 0 {
-		return fmt.Errorf("previousPassPercentage must be specified")
+	// there must have been successes previously for there to be a regression now
+	if in.PreviousSuccesses <= 0 {
+		return fmt.Errorf("previousSuccesses must be specified")
 	}
-	if in.RegressedPassPercentage <= 0 {
-		return fmt.Errorf("regressedPassPercentage must be specified")
+	// there must be failures now for there to be a regression
+	if in.RegressedFailures <= 0 {
+		return fmt.Errorf("regressedFailures must be specified")
 	}
-	if in.PreviousSampleSize <= 0 {
-		return fmt.Errorf("previousSampleSize must be specified")
-	}
-	if in.RegressedSampleSize <= 0 {
-		return fmt.Errorf("regressedSampleSize must be specified")
+	if in.PreviousPassPercentage() <= in.RegressedPassPercentage() {
+		return fmt.Errorf("regressedPassPercentage must be less than previousPassPercentage")
 	}
 	if len(in.ReasonToAllowInsteadOfFix) == 0 {
 		return fmt.Errorf("reasonToAllowInsteadOfFix must be specified")
@@ -111,12 +116,10 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	}
 
 	var targetMap map[string]IntentionalRegression
-
-	switch release {
-	case release415:
-		targetMap = regressions415
-	default:
-		return fmt.Errorf("unknown release: %q", release)
+	var ok bool
+	if targetMap, ok = intentionalRegressions[release]; !ok {
+		targetMap = map[string]IntentionalRegression{}
+		intentionalRegressions[release] = targetMap
 	}
 
 	inKey := keyFor(in.TestID, in.Variant)
