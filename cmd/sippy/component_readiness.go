@@ -84,7 +84,6 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
-	// TODO: deprecated, remove soon, does nothing
 	flagSet.BoolVar(&f.MaintainRegressionTables, "maintain-regression-tables", false, "Enable maintenance of open regressions table in bigquery.")
 }
 
@@ -190,7 +189,8 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			nil,
 			time.Time{},
 			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-			views.ComponentReadiness)
+			views.ComponentReadiness,
+			f.MaintainRegressionTables)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -211,7 +211,8 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 						nil,
 						time.Time{},
 						cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-						views.ComponentReadiness)
+						views.ComponentReadiness,
+						f.MaintainRegressionTables)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}

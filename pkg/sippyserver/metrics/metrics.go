@@ -136,7 +136,7 @@ func getReleaseStatus(releases []query.Release, release string) string {
 // pinning the time just to be consistent
 func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string,
 	variantManager testidentification.VariantManager, reportEnd time.Time,
-	cacheOptions cache.RequestOptions, views []crtype.View) error {
+	cacheOptions cache.RequestOptions, views []crtype.View, maintainRegressionTables bool) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := api.GetReleases(dbc, bqc)
@@ -207,7 +207,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 
 	// BigQuery metrics
 	if bqc != nil {
-		if err := refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions, views, releases); err != nil {
+		if err := refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions, views, releases, maintainRegressionTables); err != nil {
 			log.WithError(err).Error("error refreshing component readiness metrics")
 		}
 
@@ -222,7 +222,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 }
 
 func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, views []crtype.View, releases []query.Release) error {
+	cacheOptions cache.RequestOptions, views []crtype.View, releases []query.Release, maintainRegressionTables bool) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return nil
@@ -235,7 +235,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 
 	for _, view := range views {
 		if view.Metrics.Enabled || view.RegressionTracking.Enabled {
-			err := updateComponentReadinessTrackingForView(client, prowURL, gcsBucket, cacheOptions, view, releases)
+			err := updateComponentReadinessTrackingForView(client, prowURL, gcsBucket, cacheOptions, view, releases, maintainRegressionTables)
 			if err != nil {
 				return err
 			}
@@ -247,7 +247,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 // updateCompnentReadinessTrackingForView queries the report for the given view, and then updates metrics,
 // regression tracking, or both, depending on view configuration.
 func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, view crtype.View, releases []query.Release) error {
+	cacheOptions cache.RequestOptions, view crtype.View, releases []query.Release, maintainRegressionTables bool) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
@@ -324,7 +324,7 @@ func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, g
 		logger.Info("updating regression tracking for view")
 		// Maintain the test regressions table for anything new or now no longer appearing:
 		regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client),
-			view)
+			view, !maintainRegressionTables)
 		err = regressionTracker.SyncComponentReport(&report)
 		if err != nil {
 			return errors.Wrap(err, "regression tracker reported an error")

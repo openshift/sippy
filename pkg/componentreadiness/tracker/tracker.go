@@ -85,7 +85,7 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressionsForRelease(release stri
 func (bq *BigQueryRegressionStore) OpenRegression(view crtype.View, newRegressedTest crtype.ReportTestSummary) (*crtype.TestRegression, error) {
 	id := uuid.New()
 	newRegression := &crtype.TestRegression{
-		View:         view.Name,
+		View:         bigquery.NullString{StringVal: view.Name},
 		Release:      view.SampleRelease.Release,
 		TestID:       newRegressedTest.TestID,
 		TestName:     newRegressedTest.TestName,
@@ -137,11 +137,11 @@ func (bq *BigQueryRegressionStore) updateClosed(regressionID, closed string) err
 	return err
 }
 
-func NewRegressionTracker(backend RegressionStore, view crtype.View) *RegressionTracker {
+func NewRegressionTracker(backend RegressionStore, view crtype.View, dryRun bool) *RegressionTracker {
 	return &RegressionTracker{
 		backend: backend,
 		view:    view,
-		dryRun:  false, // only for development
+		dryRun:  dryRun,
 	}
 }
 
@@ -249,7 +249,7 @@ func FindOpenRegression(view string,
 	regressions []crtype.TestRegression) *crtype.TestRegression {
 
 	for _, tr := range regressions {
-		if tr.View != view {
+		if !tr.View.Valid || tr.View.StringVal != view {
 			continue
 		}
 		// We compare test ID not name, as names can change.

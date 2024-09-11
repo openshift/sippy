@@ -314,7 +314,7 @@ type Variant struct {
 // TestRegression is used for rows in the test_regressions table and is used to track when we detect test
 // regressions opening and closing.
 type TestRegression struct {
-	View         string                 `bigquery:"view" json:"view"`
+	View         bigquery.NullString    `bigquery:"view" json:"view"`
 	Release      string                 `bigquery:"release" json:"release"`
 	TestID       string                 `bigquery:"test_id" json:"test_id"`
 	TestName     string                 `bigquery:"test_name" json:"test_name"`
