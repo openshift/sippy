@@ -2,7 +2,10 @@
 component_readiness:
   - name: 4.18-main
     base_release:
-      release: "4.16"
+      releases:
+        - "4.16"
+        - "4.15"
+        - "4.14"
       relative_start: now-30d
       relative_end: now
     sample_release:
@@ -47,6 +50,9 @@ component_readiness:
       pity_factor: 5
       ignore_missing: false
       ignore_disruption: true
+      enforce_new_test_pass_rate:
+        significant: 99
+        extreme: 95
     metrics:
       enabled: true
     regression_tracking:

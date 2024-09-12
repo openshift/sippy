@@ -177,10 +177,13 @@ type ReportTestSummary struct {
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
 type ReportTestStats struct {
 	// Status is an integer representing the severity of the regression.
-	ReportStatus Status                  `json:"status"`
-	FisherExact  float64                 `json:"fisher_exact"`
-	SampleStats  TestDetailsReleaseStats `json:"sample_stats"`
-	BaseStats    TestDetailsReleaseStats `json:"base_stats"`
+	ReportStatus Status `json:"status"`
+
+	// TODO: make optionally present in json
+	FisherExact float64                 `json:"fisher_exact"`
+	BaseStats   TestDetailsReleaseStats `json:"base_stats"`
+
+	SampleStats TestDetailsReleaseStats `json:"sample_stats"`
 }
 
 type ReportTestDetails struct {

@@ -434,6 +434,7 @@ Flakes: ${stats.flake_count}`
 
 {code}${testName}{code}
 
+# TODO: fisher_exact may not be defined
 ${probabilityStr(statusStr, data.fisher_exact)}
 ${printStatsText(
   'Sample (being evaluated)',

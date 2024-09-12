@@ -1398,6 +1398,10 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
+		// TODO: fallback to pass rate here
+		// TODO: be sure to accommodate all the triage/adjustments above as we normally would
+		// TODO: make this optional on api flag hooked up into views
+
 		testStats := crtype.ReportTestStats{ReportStatus: crtype.MissingBasis}
 		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus, allRows, allColumns, nil, c.openRegressions)
 	}

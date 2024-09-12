@@ -111,6 +111,7 @@ export default function RegressedTestsPanel(props) {
         </Tooltip>
       ),
     },
+    /* TODO: may not be defined */
     {
       field: 'fisher_exact',
       headerName: 'Certainty',
@@ -126,6 +127,7 @@ export default function RegressedTestsPanel(props) {
       ),
     },
     {
+      /* TODO: use 100% for new tests? */
       field: 'pass_rate_delta',
       headerName: 'Pass Rate Delta',
       flex: 8,
