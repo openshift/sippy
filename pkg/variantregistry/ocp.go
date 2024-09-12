@@ -272,7 +272,7 @@ var (
 	// proxy jobs do not have a trailing -version segment
 	ppc64leRegex            = regexp.MustCompile(`(?i)-ppc64le|-multi-p-p`)
 	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
-	qeRegex                 = regexp.MustCompile(`(?i)-openshift-tests-private`)
+	qeRegex                 = regexp.MustCompile(`(?i)-openshift-tests-private|-openshift-verification-tests|-openshift-distributed-tracing|-qe`)
 	rosaRegex               = regexp.MustCompile(`(?i)-rosa`)
 	cnfRegex                = regexp.MustCompile(`(?i)-telco5g`)
 	rtRegex                 = regexp.MustCompile(`(?i)-rt`)
@@ -406,12 +406,12 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 
 	if sdRegex.MatchString(jobName) {
 		variants[VariantOwner] = "service-delivery"
-	} else if qeRegex.MatchString(jobName) {
-		variants[VariantOwner] = "qe"
 	} else if cnfRegex.MatchString(jobName) {
 		variants[VariantOwner] = "cnf"
 	} else if perfScaleRegex.MatchString(jobName) {
 		variants[VariantOwner] = "perfscale"
+	} else if qeRegex.MatchString(jobName) {
+		variants[VariantOwner] = "qe" // Keep this below perfscale
 	} else {
 		variants[VariantOwner] = "eng"
 	}
@@ -521,6 +521,8 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 	// Platforms
 	if alibabaRegex.MatchString(jobName) {
 		platform = "alibaba"
+	} else if rosaRegex.MatchString(jobName) {
+		platform = "rosa" // keep above AWS as many ROSA jobs also mention AWS
 	} else if awsRegex.MatchString(jobName) {
 		platform = "aws"
 	} else if azureRegex.MatchString(jobName) {
@@ -537,8 +539,6 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 		platform = "openstack"
 	} else if ovirtRegex.MatchString(jobName) {
 		platform = "ovirt"
-	} else if rosaRegex.MatchString(jobName) {
-		platform = "rosa"
 	} else if vsphereRegex.MatchString(jobName) {
 		platform = "vsphere"
 	}
