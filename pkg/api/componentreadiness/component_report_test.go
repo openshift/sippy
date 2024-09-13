@@ -3,9 +3,10 @@ package componentreadiness
 
 import (
 	"encoding/json"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"strings"
 	"testing"
+
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/stretchr/testify/assert"
@@ -461,6 +462,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
+											Comparison:   crtype.FisherExact,
 											ReportStatus: crtype.ExtremeRegression,
 											FisherExact:  1.8251046156331867e-21,
 											SampleStats: crtype.TestDetailsReleaseStats{
@@ -492,6 +494,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
+											Comparison:   crtype.FisherExact,
 											ReportStatus: crtype.SignificantRegression,
 											FisherExact:  0.002621948654892275,
 											SampleStats: crtype.TestDetailsReleaseStats{
@@ -776,6 +779,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
+											Comparison:   crtype.FisherExact,
 											ReportStatus: crtype.SignificantRegression,
 											FisherExact:  0.07837082801914011,
 											SampleStats: crtype.TestDetailsReleaseStats{
@@ -1118,6 +1122,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
 				ReportTestStats: crtype.ReportTestStats{
+					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsOneHigh,
 					BaseStats:    baseReleaseStatsOneHigh,
 					FisherExact:  0.4807457902463764,
@@ -1160,6 +1165,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
 				ReportTestStats: crtype.ReportTestStats{
+					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsOneLow,
 					BaseStats:    baseReleaseStatsOneHigh,
 					FisherExact:  8.209711662216515e-28,
@@ -1202,6 +1208,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
 				ReportTestStats: crtype.ReportTestStats{
+					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsOneHigh,
 					BaseStats:    baseReleaseStatsOneLow,
 					FisherExact:  4.911246201592593e-22,
@@ -1252,6 +1259,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
 				ReportTestStats: crtype.ReportTestStats{
+					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsTwoHigh,
 					BaseStats:    baseReleaseStatsTwoHigh,
 					FisherExact:  0.4119831376606586,

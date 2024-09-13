@@ -173,11 +173,20 @@ type ReportTestSummary struct {
 	ReportTestStats
 }
 
+// Comparison is the type of comparison done for a test that has been marked red.
+type Comparison string
+
+const (
+	PassRate    Comparison = "pass_rate"
+	FisherExact Comparison = "fisher_exact"
+)
+
 // ReportTestStats is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
 type ReportTestStats struct {
 	// Status is an integer representing the severity of the regression.
-	ReportStatus Status `json:"status"`
+	ReportStatus Status     `json:"status"`
+	Comparison   Comparison `json:"comparison"`
 
 	// TODO: make optionally present in json
 	FisherExact float64                 `json:"fisher_exact"`

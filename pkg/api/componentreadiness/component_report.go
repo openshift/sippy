@@ -1600,6 +1600,7 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 
 	status := crtype.MissingBasis
 	testStats := crtype.ReportTestStats{
+		Comparison: crtype.FisherExact,
 		SampleStats: crtype.TestDetailsReleaseStats{
 			Release: c.SampleRelease.Release,
 			TestDetailsTestStats: crtype.TestDetailsTestStats{
@@ -1660,6 +1661,7 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 					}
 				}
 				return crtype.ReportTestStats{
+					Comparison:   crtype.FisherExact,
 					ReportStatus: status,
 					FisherExact:  fisherExact,
 				}
