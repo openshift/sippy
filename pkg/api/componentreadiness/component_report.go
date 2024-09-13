@@ -199,11 +199,17 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsB
 		RequestAdvancedOptions:           reqOptions.AdvancedOption,
 	}
 
-	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
-		generator.client.Cache, generator.cacheOption,
-		generator.GetComponentReportCacheKey("ComponentReport~"),
-		generator.GenerateReport,
-		crtype.ComponentReport{})
+	// TODO: return to caching, I want cached bigquery but not reports while developing
+	return generator.GenerateReport()
+
+	/*
+		return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
+			generator.client.Cache, generator.cacheOption,
+			generator.GetComponentReportCacheKey("ComponentReport~"),
+			generator.GenerateReport,
+			crtype.ComponentReport{})
+
+	*/
 }
 
 // componentReportGenerator contains the information needed to generate a CR report. Do
@@ -1400,9 +1406,35 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		}
 		// TODO: fallback to pass rate here
 		// TODO: be sure to accommodate all the triage/adjustments above as we normally would
-		// TODO: make this optional on api flag hooked up into views
 
-		testStats := crtype.ReportTestStats{ReportStatus: crtype.MissingBasis}
+		// TODO: make this optional on api flag hooked up into views
+		sampleFailure := sampleStats.TotalCount - sampleStats.SuccessCount - sampleStats.FlakeCount
+		successRate := getSuccessRate(sampleStats.SuccessCount, sampleFailure, sampleStats.FlakeCount)
+		var testStats crtype.ReportTestStats
+		if successRate < 0.99 {
+			rStatus := crtype.SignificantRegression
+			// TODO: minfailures should apply here too?
+			if successRate < 0.95 {
+				rStatus = crtype.ExtremeRegression
+			}
+			log.Warnf("new test under 99 percent: %v", sampleStats.TestName)
+			testStats = crtype.ReportTestStats{
+				ReportStatus: rStatus,
+				Comparison:   crtype.PassRate,
+				SampleStats: crtype.TestDetailsReleaseStats{
+					Release: c.SampleRelease.Release,
+					TestDetailsTestStats: crtype.TestDetailsTestStats{
+						SuccessRate:  successRate,
+						SuccessCount: sampleStats.SuccessCount,
+						FailureCount: sampleFailure,
+						FlakeCount:   sampleStats.FlakeCount,
+					},
+				},
+			}
+		} else {
+			testStats = crtype.ReportTestStats{ReportStatus: crtype.MissingBasis}
+		}
+
 		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus, allRows, allColumns, nil, c.openRegressions)
 	}
 
