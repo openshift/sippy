@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/apache/thrift/lib/go/thrift"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -464,7 +465,7 @@ func TestGenerateComponentReport(t *testing.T) {
 										ReportTestStats: crtype.ReportTestStats{
 											Comparison:   crtype.FisherExact,
 											ReportStatus: crtype.ExtremeRegression,
-											FisherExact:  1.8251046156331867e-21,
+											FisherExact:  thrift.Float64Ptr(1.8251046156331867e-21),
 											SampleStats: crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
 													SuccessRate:  0.51,
@@ -473,7 +474,7 @@ func TestGenerateComponentReport(t *testing.T) {
 													FlakeCount:   1,
 												},
 											},
-											BaseStats: crtype.TestDetailsReleaseStats{
+											BaseStats: &crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
 													SuccessRate:  0.91,
 													SuccessCount: 900,
@@ -496,7 +497,7 @@ func TestGenerateComponentReport(t *testing.T) {
 										ReportTestStats: crtype.ReportTestStats{
 											Comparison:   crtype.FisherExact,
 											ReportStatus: crtype.SignificantRegression,
-											FisherExact:  0.002621948654892275,
+											FisherExact:  thrift.Float64Ptr(0.002621948654892275),
 											SampleStats: crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
 													SuccessRate:  0.81,
@@ -505,7 +506,7 @@ func TestGenerateComponentReport(t *testing.T) {
 													FlakeCount:   1,
 												},
 											},
-											BaseStats: crtype.TestDetailsReleaseStats{
+											BaseStats: &crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
 													SuccessRate:  0.91,
 													SuccessCount: 900,
@@ -781,7 +782,7 @@ func TestGenerateComponentReport(t *testing.T) {
 										ReportTestStats: crtype.ReportTestStats{
 											Comparison:   crtype.FisherExact,
 											ReportStatus: crtype.SignificantRegression,
-											FisherExact:  0.07837082801914011,
+											FisherExact:  thrift.Float64Ptr(0.07837082801914011),
 											SampleStats: crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
 													SuccessRate:  0.86,
@@ -790,7 +791,7 @@ func TestGenerateComponentReport(t *testing.T) {
 													FlakeCount:   1,
 												},
 											},
-											BaseStats: crtype.TestDetailsReleaseStats{
+											BaseStats: &crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
 													SuccessRate:  0.91,
 													SuccessCount: 900,
@@ -1124,8 +1125,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				ReportTestStats: crtype.ReportTestStats{
 					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsOneHigh,
-					BaseStats:    baseReleaseStatsOneHigh,
-					FisherExact:  0.4807457902463764,
+					BaseStats:    &baseReleaseStatsOneHigh,
+					FisherExact:  thrift.Float64Ptr(.4807457902463764),
 					ReportStatus: crtype.NotSignificant,
 				},
 				JobStats: []crtype.TestDetailsJobStats{
@@ -1167,8 +1168,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				ReportTestStats: crtype.ReportTestStats{
 					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsOneLow,
-					BaseStats:    baseReleaseStatsOneHigh,
-					FisherExact:  8.209711662216515e-28,
+					BaseStats:    &baseReleaseStatsOneHigh,
+					FisherExact:  thrift.Float64Ptr(8.209711662216515e-28),
 					ReportStatus: crtype.ExtremeRegression,
 				},
 				JobStats: []crtype.TestDetailsJobStats{
@@ -1210,8 +1211,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				ReportTestStats: crtype.ReportTestStats{
 					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsOneHigh,
-					BaseStats:    baseReleaseStatsOneLow,
-					FisherExact:  4.911246201592593e-22,
+					BaseStats:    &baseReleaseStatsOneLow,
+					FisherExact:  thrift.Float64Ptr(4.911246201592593e-22),
 					ReportStatus: crtype.SignificantImprovement,
 				},
 				JobStats: []crtype.TestDetailsJobStats{
@@ -1261,8 +1262,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				ReportTestStats: crtype.ReportTestStats{
 					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsTwoHigh,
-					BaseStats:    baseReleaseStatsTwoHigh,
-					FisherExact:  0.4119831376606586,
+					BaseStats:    &baseReleaseStatsTwoHigh,
+					FisherExact:  thrift.Float64Ptr(0.4119831376606586),
 					ReportStatus: crtype.NotSignificant,
 				},
 				JobStats: []crtype.TestDetailsJobStats{
@@ -1345,7 +1346,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
 			assert.Equal(t, tc.expectedReport.BaseStats, report.BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.BaseStats, report.BaseStats)
 			assert.Equal(t, tc.expectedReport.SampleStats, report.SampleStats, "expected report sample stats %+v, got %+v", tc.expectedReport.SampleStats, report.SampleStats)
-			assert.Equal(t, tc.expectedReport.FisherExact, report.FisherExact, "expected fisher exact number %+v, got %+v", tc.expectedReport.FisherExact, report.FisherExact)
+			assert.Equal(t, *tc.expectedReport.FisherExact, *report.FisherExact, "expected fisher exact number %+v, got %+v", tc.expectedReport.FisherExact, report.FisherExact)
 			assert.Equal(t, tc.expectedReport.ReportStatus, report.ReportStatus, "expected report status %+v, got %+v", tc.expectedReport.ReportStatus, report.ReportStatus)
 			assert.Equal(t, len(tc.expectedReport.JobStats), len(report.JobStats), "expected len of job stats %+v, got %+v", len(tc.expectedReport.JobStats), report.JobStats)
 			for i := range tc.expectedReport.JobStats {
@@ -1511,7 +1512,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 
 			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, nil, tt.numberOfIgnoredSamples)
 			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")
-			assert.Equalf(t, tt.expectedFischers, testStats.FisherExact, "assessComponentStatus expected fischers value not equal")
+			assert.Equalf(t, tt.expectedFischers, *testStats.FisherExact, "assessComponentStatus expected fischers value not equal")
 		})
 	}
 }

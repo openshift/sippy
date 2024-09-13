@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
@@ -1631,6 +1632,15 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 	}
 
 	status := crtype.MissingBasis
+	baseStats := &crtype.TestDetailsReleaseStats{
+		Release: c.BaseRelease.Release,
+		TestDetailsTestStats: crtype.TestDetailsTestStats{
+			SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
+			SuccessCount: baseSuccess,
+			FailureCount: baseFailure,
+			FlakeCount:   baseFlake,
+		},
+	}
 	testStats := crtype.ReportTestStats{
 		Comparison: crtype.FisherExact,
 		SampleStats: crtype.TestDetailsReleaseStats{
@@ -1642,15 +1652,7 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 				FlakeCount:   sampleFlake,
 			},
 		},
-		BaseStats: crtype.TestDetailsReleaseStats{
-			Release: c.BaseRelease.Release,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
-				SuccessCount: baseSuccess,
-				FailureCount: baseFailure,
-				FlakeCount:   baseFlake,
-			},
-		},
+		BaseStats: baseStats,
 	}
 
 	fisherExact := 0.0
@@ -1695,7 +1697,7 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 				return crtype.ReportTestStats{
 					Comparison:   crtype.FisherExact,
 					ReportStatus: status,
-					FisherExact:  fisherExact,
+					FisherExact:  thrift.Float64Ptr(0.0),
 				}
 			}
 
@@ -1712,11 +1714,11 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 				// if we were below the threshold with the initialSampleTotal too then return not significant
 				if c.MinimumFailure != 0 && (initialSampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
 					testStats.ReportStatus = status
-					testStats.FisherExact = fisherExact
+					testStats.FisherExact = thrift.Float64Ptr(0.0)
 					return testStats
 				}
 				testStats.ReportStatus = status
-				testStats.FisherExact = fisherExact
+				testStats.FisherExact = thrift.Float64Ptr(0.0)
 				return testStats
 			}
 			significant := false
@@ -1742,7 +1744,7 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 	}
 
 	testStats.ReportStatus = status
-	testStats.FisherExact = fisherExact
+	testStats.FisherExact = thrift.Float64Ptr(fisherExact)
 	return testStats
 }
 

@@ -184,15 +184,20 @@ const (
 // ReportTestStats is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
 type ReportTestStats struct {
-	// Status is an integer representing the severity of the regression.
-	ReportStatus Status     `json:"status"`
-	Comparison   Comparison `json:"comparison"`
+	// ReportStatus is an integer representing the severity of the regression.
+	ReportStatus Status `json:"status"`
 
-	// TODO: make optionally present in json
-	FisherExact float64                 `json:"fisher_exact"`
-	BaseStats   TestDetailsReleaseStats `json:"base_stats"`
+	// Comparison indicates what mode was used to check this tests results in the sample.
+	Comparison Comparison `json:"comparison"`
 
-	SampleStats TestDetailsReleaseStats `json:"sample_stats"`
+	// Optional fields depending on the Comparison mode
+
+	// FisherExact indicates the confidence of a regression after applying Fisher's Exact Test.
+	FisherExact *float64 `json:"fisher_exact,omitempty"`
+
+	// BaseStats may not be present in the response.
+	BaseStats   *TestDetailsReleaseStats `json:"base_stats,omitempty"`
+	SampleStats TestDetailsReleaseStats  `json:"sample_stats"`
 }
 
 type ReportTestDetails struct {
