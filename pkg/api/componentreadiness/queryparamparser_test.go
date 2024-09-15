@@ -62,6 +62,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			PityFactor:       5,
 			IgnoreMissing:    false,
 			IgnoreDisruption: true,
+			IgnoreFallback:   true,
 		},
 	}
 	// would like to test with a view that does define cross-compare variants
@@ -158,6 +159,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -211,6 +213,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -248,6 +251,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -326,6 +330,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -368,6 +373,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -385,7 +391,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			// path/body are irrelevant at this point in time, we only parse query params in the func being tested
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
-			options, err := ParseComponentReportRequest(views, req, allJobVariants, time.Duration(0))
+			options, err := ParseComponentReportRequest(views, nil, req, allJobVariants, time.Duration(0))
 
 			if tc.errMessage != "" {
 				require.Error(t, err)

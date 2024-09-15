@@ -57,6 +57,7 @@ export default function CompCapTestRow(props) {
             component={component}
             capability={capability}
             testName={testName}
+            regressedTests={columnVal.regressed_tests}
           />
         ))}
       </TableRow>

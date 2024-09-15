@@ -1,9 +1,8 @@
 import './ComponentReadiness.css'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
+import { generateTestReport } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
-import { safeEncodeURIComponent } from '../helpers'
-import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -23,6 +22,7 @@ export default function CompReadyTestCell(props) {
     component,
     capability,
     testName,
+    regressedTests,
   } = props
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
@@ -46,32 +46,6 @@ export default function CompReadyTestCell(props) {
   )
 
   const { expandEnvironment } = useContext(CompReadyVarsContext)
-
-  // Construct a URL with all existing filters plus testId, environment, and testName.
-  // This is the url used when you click inside a TableCell on page4 on the right.
-  // We pass these arguments to the component that generates the test details report.
-  function generateTestReport(
-    testId,
-    environmentVal,
-    filterVals,
-    componentName,
-    capabilityName,
-    testName
-  ) {
-    const safeComponentName = safeEncodeURIComponent(componentName)
-    const safeTestId = safeEncodeURIComponent(testId)
-    const safeTestName = safeEncodeURIComponent(testName)
-    const retUrl =
-      '/component_readiness/test_details' +
-      filterVals +
-      `&testId=${safeTestId}` +
-      expandEnvironment(environmentVal) +
-      `&component=${safeComponentName}` +
-      `&capability=${capabilityName}` +
-      `&testName=${safeTestName}`
-
-    return sortQueryParams(retUrl)
-  }
 
   if (status === undefined) {
     return (
@@ -98,11 +72,12 @@ export default function CompReadyTestCell(props) {
         <Link
           to={generateTestReport(
             testId,
-            environment,
+            expandEnvironment(environment),
             filterVals,
             component,
             capability,
-            testName
+            testName,
+            regressedTests
           )}
         >
           <CompSeverityIcon status={status} />
@@ -120,4 +95,5 @@ CompReadyTestCell.propTypes = {
   component: PropTypes.string.isRequired,
   capability: PropTypes.string.isRequired,
   testName: PropTypes.string.isRequired,
+  regressedTests: PropTypes.object,
 }

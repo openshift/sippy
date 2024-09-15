@@ -151,3 +151,9 @@ func ParseCRReleaseTime(release, timeStr string, isStart bool, crTimeRoundingFac
 	}
 	return relTime, nil
 }
+
+func Prior30Days(gaDate *time.Time) time.Time {
+	// see if we can leverage ParseCRReleaseTime or other
+	// existing helper
+	return gaDate.Add(-1 * 30 * 24 * time.Hour)
+}

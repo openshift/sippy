@@ -705,7 +705,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		})
 		return
 	}
-	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, req, allJobVariants, s.crTimeRoundingFactor)
+	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, nil, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -752,7 +752,16 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, req, allJobVariants, s.crTimeRoundingFactor)
+	releases, errs := componentreadiness.GetReleaseDatesFromBigQuery(s.bigQueryClient)
+	if len(errs) > 0 {
+		err := fmt.Errorf("failed to get releases from bigquery")
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, releases, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,

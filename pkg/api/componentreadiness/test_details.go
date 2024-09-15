@@ -27,6 +27,7 @@ func GetTestDetails(client *bigquery.Client, prowURL, gcsBucket string, reqOptio
 		gcsBucket:                        gcsBucket,
 		cacheOption:                      reqOptions.CacheOption,
 		BaseRelease:                      reqOptions.BaseRelease,
+		BaseOverrideRelease:              reqOptions.BaseOverrideRelease,
 		SampleRelease:                    reqOptions.SampleRelease,
 		RequestTestIdentificationOptions: reqOptions.TestIDOption,
 		RequestVariantOptions:            reqOptions.VariantOption,
@@ -62,8 +63,33 @@ func (c *componentReportGenerator) GenerateTestDetailsReport() (crtype.ReportTes
 		errs = append(errs, err)
 		return crtype.ReportTestDetails{}, errs
 	}
-	report := c.internalGenerateTestDetailsReport(componentJobRunTestReportStatus.BaseStatus, componentJobRunTestReportStatus.SampleStatus)
-	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
+
+	var baseOverrideReport *crtype.ReportTestDetails
+	if c.BaseOverrideRelease.Release != "" && c.BaseOverrideRelease.Release != c.BaseRelease.Release {
+		// because internalGenerateTestDetailsReport modifies SampleStatus we need to copy it here
+		overrideSampleStatus := map[string][]crtype.JobRunTestStatusRow{}
+		for k, v := range componentJobRunTestReportStatus.SampleStatus {
+			overrideSampleStatus[k] = v
+		}
+
+		overrideReport := c.internalGenerateTestDetailsReport(componentJobRunTestReportStatus.BaseOverrideStatus, c.BaseOverrideRelease.Release, overrideSampleStatus)
+		// swap out the base dates for the override
+		overrideReport.BaseStats.Start = &c.BaseOverrideRelease.Start
+		overrideReport.BaseStats.End = &c.BaseOverrideRelease.End
+		baseOverrideReport = &overrideReport
+	}
+
+	report := c.internalGenerateTestDetailsReport(componentJobRunTestReportStatus.BaseStatus, c.BaseRelease.Release, componentJobRunTestReportStatus.SampleStatus)
+
+	if baseOverrideReport != nil {
+		baseOverrideReport.BaseOverrideReport = crtype.ReportTestOverride{
+			ReportTestStats: report.ReportTestStats,
+			JobStats:        report.JobStats,
+		}
+
+		return *baseOverrideReport, nil
+	}
+
 	return report, nil
 }
 
@@ -192,11 +218,17 @@ type baseJobRunTestStatusGenerator struct {
 	groupByQuery             string
 	queryParameters          []bigquery2.QueryParameter
 	cacheOption              cache.RequestOptions
+	BaseRelease              string
+	BaseStart                time.Time
+	BaseEnd                  time.Time
 	ComponentReportGenerator *componentReportGenerator
 }
 
 func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 	groupByQuery string,
+	baseRelease string,
+	baseStart time.Time,
+	baseEnd time.Time,
 	queryParameters []bigquery2.QueryParameter) (map[string][]crtype.JobRunTestStatusRow, []error) {
 	generator := baseJobRunTestStatusGenerator{
 		commonQuery:     commonQuery,
@@ -207,6 +239,9 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(commonQuery string,
 			// increase the time that base query is cached since it shouldn't be changing?
 			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
 		},
+		BaseRelease:              baseRelease,
+		BaseEnd:                  baseEnd,
+		BaseStart:                baseStart,
 		ComponentReportGenerator: c,
 	}
 
@@ -231,15 +266,15 @@ func (b *baseJobRunTestStatusGenerator) queryTestStatus() (crtype.JobRunTestRepo
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery2.QueryParameter{
 		{
 			Name:  "From",
-			Value: b.ComponentReportGenerator.BaseRelease.Start,
+			Value: b.BaseStart,
 		},
 		{
 			Name:  "To",
-			Value: b.ComponentReportGenerator.BaseRelease.End,
+			Value: b.BaseEnd,
 		},
 		{
 			Name:  "BaseRelease",
-			Value: b.ComponentReportGenerator.BaseRelease.Release,
+			Value: b.BaseRelease,
 		},
 	}...)
 
@@ -328,14 +363,24 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (crtype.Job
 		logrus.Errorf("failed to get variants from bigquery")
 		return crtype.JobRunTestReportStatus{}, errs
 	}
-	var baseStatus, sampleStatus map[string][]crtype.JobRunTestStatusRow
-	var baseErrs, sampleErrs []error
+	var baseStatus, baseOverrideStatus, sampleStatus map[string][]crtype.JobRunTestStatusRow
+	var baseErrs, baseOverrideErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
+
+	if c.BaseOverrideRelease.Release != "" && c.BaseOverrideRelease.Release != c.BaseRelease.Release {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, false)
+			baseOverrideStatus, baseOverrideErrs = c.getBaseJobRunTestStatus(queryString, groupString, c.BaseOverrideRelease.Release, c.BaseOverrideRelease.Start, c.BaseOverrideRelease.End, commonParams)
+		}()
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, false)
-		baseStatus, baseErrs = c.getBaseJobRunTestStatus(queryString, groupString, commonParams)
+		baseStatus, baseErrs = c.getBaseJobRunTestStatus(queryString, groupString, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End, commonParams)
 	}()
 
 	wg.Add(1)
@@ -345,17 +390,18 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery() (crtype.Job
 		sampleStatus, sampleErrs = c.getSampleJobRunTestStatus(queryString, groupString, commonParams)
 	}()
 	wg.Wait()
-	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
+	if len(baseErrs) != 0 || len(baseOverrideErrs) != 0 || len(sampleErrs) != 0 {
 		errs = append(errs, baseErrs...)
+		errs = append(errs, baseOverrideErrs...)
 		errs = append(errs, sampleErrs...)
 	}
 
-	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
+	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus, BaseOverrideStatus: baseOverrideStatus, SampleStatus: sampleStatus}, errs
 }
 
 // internalGenerateTestDetailsReport handles the report generation for the lowest level test report including
 // breakdown by job as well as overall stats.
-func (c *componentReportGenerator) internalGenerateTestDetailsReport(baseStatus map[string][]crtype.JobRunTestStatusRow,
+func (c *componentReportGenerator) internalGenerateTestDetailsReport(baseStatus map[string][]crtype.JobRunTestStatusRow, baseRelease string,
 	sampleStatus map[string][]crtype.JobRunTestStatusRow) crtype.ReportTestDetails {
 	result := crtype.ReportTestDetails{
 		ReportTestIdentification: crtype.ReportTestIdentification{
@@ -371,7 +417,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(baseStatus 
 	}
 	var resolvedIssueCompensation int
 	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ColumnIdentification, c.TestID)
-	baseRegression := regressionallowances.IntentionalRegressionFor(c.BaseRelease.Release, result.ColumnIdentification, c.TestID)
+	baseRegression := regressionallowances.IntentionalRegressionFor(baseRelease, result.ColumnIdentification, c.TestID)
 	// ignore triage if we have an intentional regression
 	if approvedRegression == nil {
 		resolvedIssueCompensation, _ = c.triagedIncidentsFor(result.ReportTestIdentification)
@@ -474,6 +520,23 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(baseStatus 
 		return result.JobStats[i].JobName < result.JobStats[j].JobName
 	})
 
+	// The hope is that this goes away
+	// once we agree we don't need to honor a higher intentional regression pass percentage
+	if baseRegression != nil && baseRegression.PreviousPassPercentage() > getSuccessRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
+		// override with  the basis regression previous values
+		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
+		baseRegressionPreviousRelease, err := previousRelease(baseRelease)
+		if err != nil {
+			logrus.WithError(err).Error("Failed to determine the previous release for baseRegression")
+		} else {
+			totalBaseFlake = baseRegression.PreviousFlakes
+			totalBaseSuccess = baseRegression.PreviousSuccesses
+			totalBaseFailure = baseRegression.PreviousFailures
+			baseRelease = baseRegressionPreviousRelease
+			logrus.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d, Failures: %d", baseRelease, totalBaseSuccess, totalBaseFlake, totalBaseFailure)
+		}
+	}
+
 	requiredConfidence := c.getRequiredConfidence(c.TestID, c.RequestedVariants)
 
 	result.ReportTestStats = c.assessComponentStatus(
@@ -485,8 +548,8 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(baseStatus 
 		totalBaseSuccess,
 		totalBaseFlake,
 		approvedRegression,
-		baseRegression,
 		resolvedIssueCompensation,
+		baseRelease,
 	)
 
 	return result
