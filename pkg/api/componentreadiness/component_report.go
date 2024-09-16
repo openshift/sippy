@@ -1362,7 +1362,10 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
 				}
 			}
+
+			// requiredConfidence is lowered for on-going regressions to prevent cells from flapping:
 			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
+
 			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
 				baseStats.FlakeCount, approvedRegression, baseRegression, resolvedIssueCompensation)
@@ -1412,13 +1415,11 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		sampleFailure := sampleStats.TotalCount - sampleStats.SuccessCount - sampleStats.FlakeCount
 		successRate := getSuccessRate(sampleStats.SuccessCount, sampleFailure, sampleStats.FlakeCount)
 		var testStats crtype.ReportTestStats
-		if successRate < 0.99 {
+		if successRate < 0.99 && sampleFailure >= c.MinimumFailure {
 			rStatus := crtype.SignificantRegression
-			// TODO: minfailures should apply here too?
 			if successRate < 0.95 {
 				rStatus = crtype.ExtremeRegression
 			}
-			log.Warnf("new test under 99 percent: %v", sampleStats.TestName)
 			testStats = crtype.ReportTestStats{
 				ReportStatus: rStatus,
 				Comparison:   crtype.PassRate,

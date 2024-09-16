@@ -190,14 +190,15 @@ type ReportTestStats struct {
 	// Comparison indicates what mode was used to check this tests results in the sample.
 	Comparison Comparison `json:"comparison"`
 
+	SampleStats TestDetailsReleaseStats `json:"sample_stats"`
+
 	// Optional fields depending on the Comparison mode
 
 	// FisherExact indicates the confidence of a regression after applying Fisher's Exact Test.
 	FisherExact *float64 `json:"fisher_exact,omitempty"`
 
 	// BaseStats may not be present in the response.
-	BaseStats   *TestDetailsReleaseStats `json:"base_stats,omitempty"`
-	SampleStats TestDetailsReleaseStats  `json:"sample_stats"`
+	BaseStats *TestDetailsReleaseStats `json:"base_stats,omitempty"`
 }
 
 type ReportTestDetails struct {
