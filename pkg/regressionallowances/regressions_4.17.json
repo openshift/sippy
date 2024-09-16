@@ -4,7 +4,7 @@
     "TestID": "openshift-tests:f9552d2b4b817d19bdcd666a7b8d1ece",
     "TestName": "[bz-Management Console] clusteroperator/console should not change condition/Available",
     "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-39580",
-    "ReasonToAllowInsteadOfFix": "TBD Reason",
+    "ReasonToAllowInsteadOfFix": "Test flaked in 4.16, became more strict in 4.17",
     "variant": {
       "variants": {
         "Network": "ovn",
@@ -29,7 +29,7 @@
     "TestID": "openshift-tests:f9552d2b4b817d19bdcd666a7b8d1ece",
     "TestName": "[bz-Management Console] clusteroperator/console should not change condition/Available",
     "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-39580",
-    "ReasonToAllowInsteadOfFix": "TBD Reason",
+    "ReasonToAllowInsteadOfFix": "Test flaked in 4.16, became more strict in 4.17",
     "variant": {
       "variants": {
         "Network": "ovn",
