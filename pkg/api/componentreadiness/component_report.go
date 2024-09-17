@@ -1190,7 +1190,6 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 	impactedJobRuns := sets.NewString() // because multiple issues could impact the same job run, be sure to count each job run only once
 	numJobRunsToSuppress := 0
 	for _, triagedIncident := range triagedIncidents {
-		startNumRunsSuppressed := numJobRunsToSuppress
 		for _, impactedJobRun := range triagedIncident.JobRuns {
 			if impactedJobRuns.Has(impactedJobRun.URL) {
 				continue
@@ -1209,7 +1208,7 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 			}
 		}
 
-		if numJobRunsToSuppress > startNumRunsSuppressed {
+		if numJobRunsToSuppress > 0 {
 			relevantIncidents = append(relevantIncidents, triagedIncident)
 		}
 	}
@@ -1347,7 +1346,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 
 		var testStats crtype.ReportTestStats
 		var triagedIncidents []crtype.TriagedIncident
-		var resolvedIssueCompensation int
+		var resolvedIssueCompensation int // triaged job run failures to ignore
 		sampleStats, ok := sampleStatus[testIdentification]
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
@@ -1370,7 +1369,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
 				baseStats.FlakeCount, approvedRegression, baseRegression, resolvedIssueCompensation)
 
-			if testStats.ReportStatus < crtype.MissingSample && testStats.ReportStatus > crtype.SignificantRegression {
+			if testStats.IsTriaged() {
 				// we are within the triage range
 				// do we want to show the triage icon or flip reportStatus
 				canClearReportStatus := true
@@ -1398,45 +1397,58 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		}
 		updateCellStatus(rowIdentifications, columnIdentifications, testID, testStats, aggregatedStatus, allRows, allColumns, triagedIncidents, c.openRegressions)
 	}
-	// Those sample ones are missing base stats
+	// Anything we saw in the basis was removed above, all that remains are tests with no basis, typically new
+	// tests, or tests that were renamed without submitting a rename to the test mapping repo.
 	for testIdentification, sampleStats := range sampleStatus {
 		testID, err := buildTestID(sampleStats, testIdentification)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
+		// TODO: fallback to pass rate here
+		// TODO: be sure to accommodate all the triage/adjustments above as we normally would
+		// TODO: make this optional on api flag hooked up into views
+
+		// Check for approved regressions, and triaged incidents, which may adjust our counts and pass rate:
+		var testStats crtype.ReportTestStats
+		var triagedIncidents []crtype.TriagedIncident
+		var resolvedIssueCompensation int // triaged job run failures to ignore
+		// look for corresponding regressions we can account for in the analysis
+		approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
+		baseRegression := regressionallowances.IntentionalRegressionFor(c.BaseRelease.Release, testID.ColumnIdentification, testID.TestID)
+		// ignore triage if we have an intentional regression
+		if approvedRegression == nil {
+			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+		}
+
+		requiredConfidence := 0 // irrelevant for pass rate comparison
+		testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
+			sampleStats.FlakeCount, 0, 0, 0, // pass 0s for base stats
+			approvedRegression, baseRegression, resolvedIssueCompensation)
+
+		if testStats.IsTriaged() {
+			// we are within the triage range
+			// do we want to show the triage icon or flip reportStatus
+			canClearReportStatus := true
+			for _, ti := range triagedIncidents {
+				if ti.Issue.Type != string(resolvedissues.TriageIssueTypeInfrastructure) {
+					// if a non Infrastructure regression isn't marked resolved or the resolution date is after the end of our sample query
+					// then we won't clear it.  Otherwise, we can.
+					if !ti.Issue.ResolutionDate.Valid || ti.Issue.ResolutionDate.Timestamp.After(c.SampleRelease.End) {
+						canClearReportStatus = false
+					}
+				}
+			}
+
+			// sanity check to make sure we aren't just defaulting to clear without any incidents (not likely)
+			if len(triagedIncidents) > 0 && canClearReportStatus {
+				testStats.ReportStatus = crtype.NotSignificant
+			}
+		}
+
 		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testIdentification, sampleStats)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		// TODO: fallback to pass rate here
-		// TODO: be sure to accommodate all the triage/adjustments above as we normally would
-
-		// TODO: make this optional on api flag hooked up into views
-		sampleFailure := sampleStats.TotalCount - sampleStats.SuccessCount - sampleStats.FlakeCount
-		successRate := getSuccessRate(sampleStats.SuccessCount, sampleFailure, sampleStats.FlakeCount)
-		var testStats crtype.ReportTestStats
-		if successRate < 0.99 && sampleFailure >= c.MinimumFailure {
-			rStatus := crtype.SignificantRegression
-			if successRate < 0.95 {
-				rStatus = crtype.ExtremeRegression
-			}
-			testStats = crtype.ReportTestStats{
-				ReportStatus: rStatus,
-				Comparison:   crtype.PassRate,
-				SampleStats: crtype.TestDetailsReleaseStats{
-					Release: c.SampleRelease.Release,
-					TestDetailsTestStats: crtype.TestDetailsTestStats{
-						SuccessRate:  successRate,
-						SuccessCount: sampleStats.SuccessCount,
-						FailureCount: sampleFailure,
-						FlakeCount:   sampleStats.FlakeCount,
-					},
-				},
-			}
-		} else {
-			testStats = crtype.ReportTestStats{ReportStatus: crtype.MissingBasis}
-		}
-
 		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus, allRows, allColumns, nil, c.openRegressions)
 	}
 
@@ -1604,7 +1616,18 @@ func (c *componentReportGenerator) getEffectivePityFactor(basisPassPercentage fl
 	return c.PityFactor
 }
 
-func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression, baseRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) crtype.ReportTestStats {
+func (c *componentReportGenerator) assessComponentStatus(
+	requiredConfidence,
+	sampleTotal,
+	sampleSuccess,
+	sampleFlake,
+	baseTotal,
+	baseSuccess,
+	baseFlake int,
+	approvedRegression,
+	baseRegression *regressionallowances.IntentionalRegression,
+	numberOfIgnoredSampleJobRuns int) crtype.ReportTestStats {
+
 	// preserve the initial sampleTotal, so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
 	initialSampleTotal := sampleTotal
@@ -1623,6 +1646,8 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 	}
 	baseFailure := baseTotal - baseSuccess - baseFlake
 
+	// If a regression for the *basis* release was detected, fall back to the previous basis pass percentages as defined
+	// in the regression itself. This is to prevent an approved regression in 4.16 from lowering the bar in 4.17.
 	if baseRegression != nil && baseRegression.PreviousPassPercentage() > float64(baseSuccess+baseFlake)/float64(baseTotal) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
@@ -1662,7 +1687,6 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 		if initialSampleTotal == 0 {
 			if c.IgnoreMissing {
 				status = crtype.NotSignificant
-
 			} else {
 				status = crtype.MissingSample
 			}
@@ -1712,12 +1736,6 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 
 			// did we remove enough failures that we are below the MinimumFailure threshold?
 			if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
-				// if we were below the threshold with the initialSampleTotal too then return not significant
-				if c.MinimumFailure != 0 && (initialSampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
-					testStats.ReportStatus = status
-					testStats.FisherExact = thrift.Float64Ptr(0.0)
-					return testStats
-				}
 				testStats.ReportStatus = status
 				testStats.FisherExact = thrift.Float64Ptr(0.0)
 				return testStats
@@ -1742,10 +1760,35 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 				}
 			}
 		}
+		testStats.ReportStatus = status
+		testStats.FisherExact = thrift.Float64Ptr(fisherExact)
+	} else {
+		// If we have no base stats, fall back to a raw pass rate comparison for this new or improperly renamed test:
+		successRate := getSuccessRate(sampleSuccess, sampleFailure, sampleFlake)
+		if successRate < 0.99 && sampleFailure >= c.MinimumFailure {
+			rStatus := crtype.SignificantRegression
+			if successRate < 0.95 {
+				rStatus = crtype.ExtremeRegression
+			}
+			testStats = crtype.ReportTestStats{
+				ReportStatus: rStatus,
+				Comparison:   crtype.PassRate,
+				SampleStats: crtype.TestDetailsReleaseStats{
+					Release: c.SampleRelease.Release,
+					TestDetailsTestStats: crtype.TestDetailsTestStats{
+						SuccessRate:  successRate,
+						SuccessCount: sampleSuccess,
+						FailureCount: sampleFailure,
+						FlakeCount:   sampleFlake,
+					},
+				},
+			}
+		} else {
+			testStats = crtype.ReportTestStats{ReportStatus: crtype.MissingBasis}
+		}
+
 	}
 
-	testStats.ReportStatus = status
-	testStats.FisherExact = thrift.Float64Ptr(fisherExact)
 	return testStats
 }
 

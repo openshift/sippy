@@ -103,6 +103,11 @@ type TestStatus struct {
 	FlakeCount   int      `json:"flake_count"`
 }
 
+func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
+	failures := ts.TotalCount - ts.SuccessCount - ts.FlakeCount
+	return ts.TotalCount, ts.SuccessCount, failures, ts.FlakeCount
+}
+
 type ReportTestStatus struct {
 	// BaseStatus represents the stable basis for the comparison. Maps TestIdentification serialized as a string, to test status.
 	BaseStatus map[string]TestStatus `json:"base_status"`
@@ -199,6 +204,11 @@ type ReportTestStats struct {
 
 	// BaseStats may not be present in the response.
 	BaseStats *TestDetailsReleaseStats `json:"base_stats,omitempty"`
+}
+
+// IsTriaged returns true if this tests status is within the triaged regression range.
+func (r ReportTestStats) IsTriaged() bool {
+	return r.ReportStatus < MissingSample && r.ReportStatus > SignificantRegression
 }
 
 type ReportTestDetails struct {

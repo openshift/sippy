@@ -1417,7 +1417,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 		baseFlake              int
 		numberOfIgnoredSamples int
 		expectedStatus         crtype.Status
-		expectedFischers       float64
+		expectedFischers       *float64
 	}{
 		{
 			name:                   "triaged still regular regression",
@@ -1429,7 +1429,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 2,
 			expectedStatus:         -4,
-			expectedFischers:       0.4827586206896551,
+			expectedFischers:       thrift.Float64Ptr(0.4827586206896551),
 		},
 		{
 			name:                   "triaged regular regression",
@@ -1441,7 +1441,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 2,
 			expectedStatus:         -2,
-			expectedFischers:       1,
+			expectedFischers:       thrift.Float64Ptr(1),
 		},
 		{
 			name:                   "regular regression",
@@ -1453,7 +1453,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 0,
 			expectedStatus:         -4,
-			expectedFischers:       0.2413793103448262,
+			expectedFischers:       thrift.Float64Ptr(0.2413793103448262),
 		},
 		{
 			name:                   "zero success",
@@ -1465,7 +1465,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 0,
 			expectedStatus:         -5,
-			expectedFischers:       6.446725037893782e-09,
+			expectedFischers:       thrift.Float64Ptr(6.446725037893782e-09),
 		},
 		{
 			name:                   "triaged, zero success",
@@ -1477,7 +1477,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 15,
 			expectedStatus:         -3,
-			expectedFischers:       0,
+			expectedFischers:       thrift.Float64Ptr(0),
 		},
 
 		{
@@ -1490,7 +1490,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 10,
 			expectedStatus:         -3,
-			expectedFischers:       1,
+			expectedFischers:       thrift.Float64Ptr(1),
 		},
 
 		{
@@ -1503,7 +1503,43 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 9,
 			expectedStatus:         -5,
-			expectedFischers:       0.285714285714284,
+			expectedFischers:       thrift.Float64Ptr(0.285714285714284),
+		},
+		{
+			name:                   "triaged, still extreme",
+			sampleTotal:            15,
+			sampleSuccess:          5,
+			sampleFlake:            0,
+			baseTotal:              15,
+			baseSuccess:            14,
+			baseFlake:              1,
+			numberOfIgnoredSamples: 9,
+			expectedStatus:         -5,
+			expectedFischers:       thrift.Float64Ptr(0.285714285714284),
+		},
+		{
+			name:                   "new test extreme regression",
+			sampleTotal:            15,
+			sampleSuccess:          13,
+			sampleFlake:            0,
+			baseTotal:              0,
+			baseSuccess:            0,
+			baseFlake:              0,
+			numberOfIgnoredSamples: 0,
+			expectedStatus:         -5,
+			expectedFischers:       nil,
+		},
+		{
+			name:                   "new test significant regression",
+			sampleTotal:            1000,
+			sampleSuccess:          985,
+			sampleFlake:            0,
+			baseTotal:              0,
+			baseSuccess:            0,
+			baseFlake:              0,
+			numberOfIgnoredSamples: 0,
+			expectedStatus:         -4,
+			expectedFischers:       nil,
 		},
 	}
 	for _, tt := range tests {
@@ -1512,7 +1548,12 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 
 			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, nil, tt.numberOfIgnoredSamples)
 			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")
-			assert.Equalf(t, tt.expectedFischers, *testStats.FisherExact, "assessComponentStatus expected fischers value not equal")
+			if tt.expectedFischers != nil {
+				assert.Equalf(t, *tt.expectedFischers, *testStats.FisherExact, "assessComponentStatus expected fischers value not equal")
+			} else {
+				assert.Nil(t, testStats.FisherExact)
+			}
+
 		})
 	}
 }
