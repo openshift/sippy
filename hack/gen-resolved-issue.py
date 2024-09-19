@@ -730,6 +730,23 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
         variants.append({"key": "Topology", "value": rt['variants']['Topology']})
         variants.append({"key": "Installer", "value": rt['variants']['Installer']})
 
+        ir_variants = {"Network": rt['variants']['Network'], 
+                       "Upgrade": rt['variants']['Upgrade'],
+                       "Architecture": rt['variants']['Architecture'],
+                       "Platform": rt['variants']['Platform'],
+                       "FeatureSet": rt['variants']['FeatureSet'],
+                       "Suite": rt['variants']['Suite'],
+                       "Topology": rt['variants']['Topology'],
+                       "Installer": rt['variants']['Installer']}
+        intentionalRegression = {}
+        intentionalRegression["JiraComponent"] = rt['component']
+        intentionalRegression["TestID"] = test_id
+        intentionalRegression["TestName"] = rt["test_name"]
+        intentionalRegression["JiraBug"] = "TBD BUG"
+        intentionalRegression["ReasonToAllowInsteadOfFix"] = "TBD Reason"
+        intentionalRegression["variant"]= {"variants": ir_variants}
+ 
+  
         # do we have an input file, if so check to see if we have an entry
         # for this test id
         # if we do see if we have a variant section
@@ -772,7 +789,7 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
         triaged_incident["TestId"] = test_id
         triaged_incident["TestName"] = test_name
 
-        if args.output_test_info_only != None and args.output_test_info_only and args.output_type == 'JSON':
+        if args.output_test_info_only != None and args.output_test_info_only and args.output_type == 'JSON' and not args.intentional_regressions:
             if record != None:
                 if "Variants" in record:
                     triaged_incident["Variants"] = record["Variants"]
@@ -801,74 +818,88 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
             time.sleep(10)
             continue
 
-
-        # test_release can't change since we only input one test_report_url
-        # currently require it as part of input args, though it could also be pulled out of json if provided
-        triaged_incident["Release"] = args.test_release
-
-        triaged_incident["GroupId"] = incident_group_id
-        issue = {}
-        issue["Type"] = issue_type
-        if len(issue_description) > 0:
-            issue["Description"] = issue_description
-        if len(issue_url) > 0:
-            issue["URL"] = issue_url
-        if issue_resolution_date != None:
-            issue["ResolutionDate"] = issue_resolution_date
-
-        triaged_incident["Issue"] = issue
-        triaged_incident["Variants"] = variants
-        triaged_incident["JobRuns"] = []
-
-        for job in json_data["job_stats"]:
-            if not 'sample_job_run_stats' in job:
+        if args.intentional_regressions:
+            #get the data from json_data
+            if "base_stats" not in json_data or "sample_stats" not in json_data:
                 continue
-            for sjr in job["sample_job_run_stats"]:
-                if sjr["test_stats"]["failure_count"] == 0:
-                    continue
-                prow_url = sjr["job_url"]
-                print("  Failed job run: %s" % prow_url)
 
-                # TODO: it would be ideal to check the actual test failure output for some search string or regex to make sure it's
-                # the issue we're mass attributing. This however would require parsing junit XML today.
+            intentionalRegression["PreviousSuccesses"] = json_data["base_stats"]["success_count"]
+            intentionalRegression["PreviousFailures"] = json_data["base_stats"]["failure_count"]
+            intentionalRegression["PreviousFlakes"] = json_data["base_stats"]["flake_count"]
 
-                # grab prowjob.json from artifacts with some assumptions about paths:
-                url_tokens = prow_url.split('/')
-                job_name, job_run = url_tokens[-2], url_tokens[-1]
-                artifacts_dir = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/logs/%s/%s/" % (job_name, job_run)
+            intentionalRegression["RegressedSuccesses"] = json_data["sample_stats"]["success_count"]
+            intentionalRegression["RegressedFailures"] = json_data["sample_stats"]["failure_count"]
+            intentionalRegression["RegressedFlakes"] = json_data["sample_stats"]["flake_count"]
 
-                # grab prowjob.json for the start time:
-                prow_job_json = fetch_json_data(artifacts_dir + 'prowjob.json')
-                start_time = prow_job_json["status"]["startTime"]
-                print("    Prow job start time: %s" % start_time)
-
-                completion_time = None
-                if "completionTime" in prow_job_json["status"]:
-                    completion_time = prow_job_json["status"]["completionTime"]
-
-                build_cluster =  prow_job_json["spec"]["cluster"]
-
-                if args.target_build_cluster != None and len(args.target_build_cluster) > 0:
-                    if build_cluster != args.target_build_cluster:
-                        continue  
-
-                if job_matches(record, prow_url, start_time, issue_resolution_date):
-                    # do we have any file matches defined, if so validate we have matches
-                    if files_match(artifacts_dir, file_matches):
-                        triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time, "CompletionTime": completion_time})
-
-        
-        # don't output empty job run incidents unless we expect to have all
-        # failures matched
-        if len(triaged_incident["JobRuns"]) == 0 and not args.match_all_job_runs:
-            continue
-
-        if args.output_type == 'JSON':
-            triaged_incidents.append(triaged_incident)
-            # add that to a list of incidents that we write in the end
+            triaged_incidents.append(intentionalRegression)
         else:
-            # write the record to bigquery
-            write_incident_record(triaged_incident, modified_time, target_modified_time)
+            # test_release can't change since we only input one test_report_url
+            # currently require it as part of input args, though it could also be pulled out of json if provided
+            triaged_incident["Release"] = args.test_release
+
+            triaged_incident["GroupId"] = incident_group_id
+            issue = {}
+            issue["Type"] = issue_type
+            if len(issue_description) > 0:
+                issue["Description"] = issue_description
+            if len(issue_url) > 0:
+                issue["URL"] = issue_url
+            if issue_resolution_date != None:
+                issue["ResolutionDate"] = issue_resolution_date
+
+            triaged_incident["Issue"] = issue
+            triaged_incident["Variants"] = variants
+            triaged_incident["JobRuns"] = []
+
+            for job in json_data["job_stats"]:
+                if not 'sample_job_run_stats' in job:
+                    continue
+                for sjr in job["sample_job_run_stats"]:
+                    if sjr["test_stats"]["failure_count"] == 0:
+                        continue
+                    prow_url = sjr["job_url"]
+                    print("  Failed job run: %s" % prow_url)
+
+                    # TODO: it would be ideal to check the actual test failure output for some search string or regex to make sure it's
+                    # the issue we're mass attributing. This however would require parsing junit XML today.
+
+                    # grab prowjob.json from artifacts with some assumptions about paths:
+                    url_tokens = prow_url.split('/')
+                    job_name, job_run = url_tokens[-2], url_tokens[-1]
+                    artifacts_dir = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/logs/%s/%s/" % (job_name, job_run)
+
+                    # grab prowjob.json for the start time:
+                    prow_job_json = fetch_json_data(artifacts_dir + 'prowjob.json')
+                    start_time = prow_job_json["status"]["startTime"]
+                    print("    Prow job start time: %s" % start_time)
+
+                    completion_time = None
+                    if "completionTime" in prow_job_json["status"]:
+                        completion_time = prow_job_json["status"]["completionTime"]
+
+                    build_cluster =  prow_job_json["spec"]["cluster"]
+
+                    if args.target_build_cluster != None and len(args.target_build_cluster) > 0:
+                        if build_cluster != args.target_build_cluster:
+                            continue  
+
+                    if job_matches(record, prow_url, start_time, issue_resolution_date):
+                        # do we have any file matches defined, if so validate we have matches
+                        if files_match(artifacts_dir, file_matches):
+                            triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time, "CompletionTime": completion_time})
+
+            
+            # don't output empty job run incidents unless we expect to have all
+            # failures matched
+            if len(triaged_incident["JobRuns"]) == 0 and not args.match_all_job_runs:
+                continue
+
+            if args.output_type == 'JSON':
+                triaged_incidents.append(triaged_incident)
+                # add that to a list of incidents that we write in the end
+            else:
+                # write the record to bigquery
+                write_incident_record(triaged_incident, modified_time, target_modified_time)
 
 
 if __name__ == '__main__':
@@ -922,6 +953,7 @@ if __name__ == '__main__':
     # capture just the test information and not job_runs or any other
     parser.add_argument("--output-test-info-only", help="When the incident record is JSON you can record only the test info and not job_runs, must be specified on the command line", type=bool, default=False)
 
+    parser.add_argument("--intentional-regressions", type=bool, default=False)
     args = parser.parse_args()
 
     # if we don't have an input file then we must have issue-type, test-id and test-name
@@ -971,6 +1003,8 @@ if __name__ == '__main__':
                 args.relative_sample_times = bool(arguments["RelativeSampleTimes"])
             if "FileMatches" in arguments and len(arguments["FileMatches"]) > 0:
                 args.file_matches = arguments["FileMatches"]
+            if "IntentionalRegressions" in arguments and len(arguments["IntentionalRegressions"]) > 0:
+                args.intentional_regressions = bool(arguments["IntentionalRegressions"])
 
             # if we have an input file and it doesn't specify the IncidentGroupId
             # update the file with the one we are assigning
@@ -1119,26 +1153,29 @@ if __name__ == '__main__':
 
 
     if args.output_type == 'JSON':
-        if args.match_all_job_runs:
-            triaged_incidents = find_matching_job_run_ids(triaged_incidents)
-            if triaged_incidents == NotFound:
-                print("Error: no remaining triaged incidents after matching job runs")
-                exit()
+        if args.intentional_regressions:
+            triage_output = triaged_incidents
+        else:   
+            if args.match_all_job_runs:
+                triaged_incidents = find_matching_job_run_ids(triaged_incidents)
+                if triaged_incidents == NotFound:
+                    print("Error: no remaining triaged incidents after matching job runs")
+                    exit()
 
-        triage_output = {"Arguments": {"TestRelease": args.test_release, "TestReportURL": args.test_report_url,
-                                    "IssueDescription": description, "IssueType": args.issue_type,
-                                    "IssueURL": issue_url, "OutputFile": output_file,
-                                    "IncidentGroupId": incident_group_id,
-                                    "TargetModifiedTime": target_modified_time},
-                                    "Tests": triaged_incidents}
-        if  args.job_run_start_time_max != None:
-            triage_output["Arguments"]["JobRunStartTimeMax"] = args.job_run_start_time_max
-        if  args.job_run_start_time_min != None:
-            triage_output["Arguments"]["JobRunStartTimeMin"] = args.job_run_start_time_min
-        if args.issue_resolution_date != None:
-            triage_output["Arguments"]["IssueResolutionDate"] = args.issue_resolution_date
-        if args.target_build_cluster != None:
-            triage_output["Arguments"]["TargetBuildCluster"] = args.target_build_cluster
+            triage_output = {"Arguments": {"TestRelease": args.test_release, "TestReportURL": args.test_report_url,
+                                        "IssueDescription": description, "IssueType": args.issue_type,
+                                        "IssueURL": issue_url, "OutputFile": output_file,
+                                        "IncidentGroupId": incident_group_id,
+                                        "TargetModifiedTime": target_modified_time},
+                                        "Tests": triaged_incidents}
+            if  args.job_run_start_time_max != None:
+                triage_output["Arguments"]["JobRunStartTimeMax"] = args.job_run_start_time_max
+            if  args.job_run_start_time_min != None:
+                triage_output["Arguments"]["JobRunStartTimeMin"] = args.job_run_start_time_min
+            if args.issue_resolution_date != None:
+                triage_output["Arguments"]["IssueResolutionDate"] = args.issue_resolution_date
+            if args.target_build_cluster != None:
+                triage_output["Arguments"]["TargetBuildCluster"] = args.target_build_cluster
 
         if len(output_file) > 0:
             with open(output_file, 'w') as incident_file:
