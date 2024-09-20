@@ -29,7 +29,7 @@
     "TestID": "openshift-tests:d6b41cee7afca1c2a0b52f9e6975425f",
     "TestName": "[bz-kube-apiserver][invariant] alert/KubeAPIErrorBudgetBurn should not be at or above info",
     "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-42083",
-    "ReasonToAllowInsteadOfFix": "TBD Reason",
+    "ReasonToAllowInsteadOfFix": "Degraded near the end of stabilization.  Investigation indicated not a release blocker.",
     "variant": {
       "variants": {
         "Network": "ovn",
