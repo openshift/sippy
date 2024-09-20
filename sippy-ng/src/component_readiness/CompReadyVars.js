@@ -208,6 +208,8 @@ export const CompReadyVarsProvider = ({ children }) => {
       'Platform:metal',
       'Platform:vsphere',
       'Topology:ha',
+      'CGroupMode:v2',
+      'ContainerRuntime:runc',
     ],
     setIncludeVariantsCheckedItemsParam,
   ] = useQueryParam('includeVariant', ArrayParam)

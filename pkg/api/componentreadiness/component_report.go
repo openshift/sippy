@@ -135,6 +135,8 @@ var (
 		"Platform:metal",
 		"Platform:vsphere",
 		"Topology:ha",
+		"CGroupMode:v2",
+		"ContainerRuntime:runc",
 	}
 	DefaultMinimumFailure   = 3
 	DefaultConfidence       = 95
