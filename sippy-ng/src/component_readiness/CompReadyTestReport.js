@@ -122,7 +122,7 @@ export default function CompReadyTestReport(props) {
       })
       .then((json) => {
         // If the basics are not present, consider it no data
-        if (!json.component || !json.sample_stats || !json.base_stats) {
+        if (!json.component || !json.sample_stats) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
         } else {
@@ -374,6 +374,10 @@ export default function CompReadyTestReport(props) {
   }
 
   const printStatsText = (statsLabel, stats, from, to) => {
+    if (stats === undefined) {
+      return `
+          Insufficient pass rate`
+    }
     return `
 ${statsLabel} Release: ${stats.release}
 Start Time: ${from}
@@ -492,30 +496,39 @@ View the test details report at ${document.location.href}
               <Tooltip title={statusStr}>{assessmentIcon}</Tooltip>
             </TableCell>
           </TableRow>
-          <TableRow>
-            <TableCell>Probability:</TableCell>
-            <TableCell>
-              {probabilityStr(statusStr, data.fisher_exact)}
-              <Tooltip
-                title={`Fisher Exact Number for this basis and sample = ${data.fisher_exact}`}
-              >
-                <InfoIcon />
-              </Tooltip>
-            </TableCell>
-          </TableRow>
+          {data.base_stats ? (
+            <TableRow>
+              <TableCell>Probability:</TableCell>
+              <TableCell>
+                {probabilityStr(statusStr, data.fisher_exact)}
+                <Tooltip
+                  title={`Fisher Exact Number for this basis and sample = ${data.fisher_exact}`}
+                >
+                  <InfoIcon />
+                </Tooltip>
+              </TableCell>
+            </TableRow>
+          ) : (
+            <TableRow>
+              <TableCell>Regression:</TableCell>
+              <TableCell>Pass rate of 99% required for this test</TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
       <Grid container spacing={2} style={{ marginTop: '10px' }}>
-        <Grid item xs={6}>
-          {printParamsAndStats(
-            'Basis (historical)',
-            data.base_stats,
-            loadedParams.baseStartTime.toString(),
-            loadedParams.baseEndTime.toString(),
-            loadedParams.variantCrossCompare,
-            loadedParams.includeVariantsCheckedItems
-          )}
-        </Grid>
+        {data.base_stats && (
+          <Grid item xs={6}>
+            {printParamsAndStats(
+              'Basis (historical)',
+              data.base_stats,
+              loadedParams.baseStartTime.toString(),
+              loadedParams.baseEndTime.toString(),
+              loadedParams.variantCrossCompare,
+              loadedParams.includeVariantsCheckedItems
+            )}
+          </Grid>
+        )}
         <Grid item xs={6}>
           {printParamsAndStats(
             'Sample (being evaluated)',
@@ -542,8 +555,8 @@ View the test details report at ${document.location.href}
           <TableHead>
             <TableRow>
               {tableCell('ProwJob Name', 0)}
-              {tableCell('Basis Info', 1)}
-              {tableCell('Basis Runs', 2)}
+              {data.base_stats && tableCell('Basis Info', 1)}
+              {data.base_stats && tableCell('Basis Runs', 2)}
               {tableCell('Sample Info', 3)}
               {tableCell('Sample Runs', 4)}
               {tableTooltipCell(

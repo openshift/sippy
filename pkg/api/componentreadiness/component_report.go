@@ -1397,6 +1397,7 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		}
 		updateCellStatus(rowIdentifications, columnIdentifications, testID, testStats, aggregatedStatus, allRows, allColumns, triagedIncidents, c.openRegressions)
 	}
+
 	// Anything we saw in the basis was removed above, all that remains are tests with no basis, typically new
 	// tests, or tests that were renamed without submitting a rename to the test mapping repo.
 	for testIdentification, sampleStats := range sampleStatus {

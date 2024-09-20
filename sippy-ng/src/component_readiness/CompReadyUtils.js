@@ -253,6 +253,8 @@ export function getColumns(data) {
   const firstColumn = data.rows[0].columns
   let columnNames = []
   firstColumn.forEach((column) => {
+    console.log('for data: ' + JSON.stringify(data))
+    console.log('checking column: ' + JSON.stringify(column))
     const columnValues = formColumnName(column)
     columnNames.push(columnValues)
   })
