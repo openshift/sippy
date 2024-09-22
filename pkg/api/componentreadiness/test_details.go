@@ -2,6 +2,7 @@ package componentreadiness
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -138,11 +139,11 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 	}
 
 	for k, vs := range c.IncludeVariants {
-		// only add in include variants that aren't part of the request or compare arrays
+		// only add in include variants that aren't part of the requested or cross-compared variants
 		if _, ok := c.RequestedVariants[k]; ok {
 			continue
 		}
-		if _, ok := c.CompareVariants[k]; ok {
+		if slices.Contains(c.VariantCrossCompare, k) {
 			continue
 		}
 
@@ -166,7 +167,7 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 	return queryString, groupString, commonParams
 }
 
-// filterByCrossCompareVariants adds the where clause for any variants being cross-compared (which are not included in RequiredVariants).
+// filterByCrossCompareVariants adds the where clause for any variants being cross-compared (which are not included in RequestedVariants).
 // As a side effect, it also appends any necessary parameters for the clause.
 func filterByCrossCompareVariants(crossCompare []string, variantGroups map[string][]string, params *[]bigquery2.QueryParameter) (whereClause string) {
 	if len(variantGroups) == 0 {
