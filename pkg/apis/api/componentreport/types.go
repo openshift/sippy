@@ -85,11 +85,13 @@ type ViewRegressionTracking struct {
 }
 
 type RequestAdvancedOptions struct {
-	MinimumFailure   int  `json:"minimum_failure" yaml:"minimum_failure"`
-	Confidence       int  `json:"confidence" yaml:"confidence"`
-	PityFactor       int  `json:"pity_factor" yaml:"pity_factor"`
-	IgnoreMissing    bool `json:"ignore_missing" yaml:"ignore_missing"`
-	IgnoreDisruption bool `json:"ignore_disruption" yaml:"ignore_disruption"`
+	MinimumFailure           int  `json:"minimum_failure" yaml:"minimum_failure"`
+	Confidence               int  `json:"confidence" yaml:"confidence"`
+	PityFactor               int  `json:"pity_factor" yaml:"pity_factor"`
+	PassRateRequiredNewTests int  `json:"pass_rate_required_new_tests" yaml:"pass_rate_required_new_tests"`
+	PassRateRequiredAllTests int  `json:"pass_rate_required_all_tests" yaml:"pass_rate_required_all_tests"`
+	IgnoreMissing            bool `json:"ignore_missing" yaml:"ignore_missing"`
+	IgnoreDisruption         bool `json:"ignore_disruption" yaml:"ignore_disruption"`
 }
 
 type TestStatus struct {

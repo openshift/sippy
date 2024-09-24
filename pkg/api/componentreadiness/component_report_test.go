@@ -1408,16 +1408,18 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 
 func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 	tests := []struct {
-		name                   string
-		sampleTotal            int
-		sampleSuccess          int
-		sampleFlake            int
-		baseTotal              int
-		baseSuccess            int
-		baseFlake              int
-		numberOfIgnoredSamples int
-		expectedStatus         crtype.Status
-		expectedFischers       *float64
+		name                        string
+		sampleTotal                 int
+		sampleSuccess               int
+		sampleFlake                 int
+		baseTotal                   int
+		baseSuccess                 int
+		baseFlake                   int
+		numberOfIgnoredSamples      int
+		requiredPassRateForNewTests int
+
+		expectedStatus   crtype.Status
+		expectedFischers *float64
 	}{
 		{
 			name:                   "triaged still regular regression",
@@ -1518,36 +1520,49 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			expectedFischers:       thrift.Float64Ptr(0.285714285714284),
 		},
 		{
-			name:             "new test no regression",
-			sampleTotal:      1000,
-			sampleSuccess:    999,
-			expectedStatus:   1,
-			expectedFischers: nil,
+			name:                        "new test no regression",
+			sampleTotal:                 1000,
+			sampleSuccess:               999,
+			requiredPassRateForNewTests: 99,
+			expectedStatus:              crtype.MissingBasis,
+			expectedFischers:            nil,
 		},
 		{
-			name:             "new test extreme regression",
-			sampleTotal:      15,
-			sampleSuccess:    13,
-			expectedStatus:   -5,
-			expectedFischers: nil,
+			name:                        "new test extreme regression",
+			sampleTotal:                 15,
+			sampleSuccess:               13,
+			requiredPassRateForNewTests: 99,
+			expectedStatus:              crtype.ExtremeRegression,
+			expectedFischers:            nil,
 		},
 		{
-			name:           "new test significant regression",
-			sampleTotal:    1000,
-			sampleSuccess:  985,
-			expectedStatus: -4,
+			name:                        "new test significant regression",
+			sampleTotal:                 1000,
+			sampleSuccess:               985,
+			requiredPassRateForNewTests: 99,
+			expectedStatus:              crtype.SignificantRegression,
 		},
 		{
-			name:                   "new test significant regression with triaged runs",
-			sampleTotal:            1000,
-			sampleSuccess:          985,
-			numberOfIgnoredSamples: 12,
-			expectedStatus:         1,
+			name:                        "new test significant regression with triaged runs",
+			sampleTotal:                 1000,
+			sampleSuccess:               985,
+			numberOfIgnoredSamples:      12,
+			requiredPassRateForNewTests: 99,
+			expectedStatus:              crtype.MissingBasis,
+		},
+		{
+			name:                        "new test all failures triaged",
+			sampleTotal:                 1000,
+			sampleSuccess:               988,
+			numberOfIgnoredSamples:      12,
+			requiredPassRateForNewTests: 99,
+			expectedStatus:              crtype.MissingBasis,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &componentReportGenerator{}
+			c.PassRateRequiredNewTests = tt.requiredPassRateForNewTests
 
 			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, nil, tt.numberOfIgnoredSamples)
 			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")

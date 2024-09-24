@@ -1763,12 +1763,19 @@ func (c *componentReportGenerator) assessComponentStatus(
 		}
 		testStats.ReportStatus = status
 		testStats.FisherExact = thrift.Float64Ptr(fisherExact)
-	} else {
+	} else if c.RequestAdvancedOptions.PassRateRequiredNewTests > 0 {
 		// If we have no base stats, fall back to a raw pass rate comparison for this new or improperly renamed test:
 		successRate := getSuccessRate(sampleSuccess, sampleFailure, sampleFlake)
-		if successRate < 0.99 && sampleFailure >= c.MinimumFailure {
+		requiredSuccessRate := float64(c.RequestAdvancedOptions.PassRateRequiredNewTests)
+
+		// Assume 5% less than our required pass rate (expect numbers above 90% to be used here) is an extreme regression.
+		// Breaks down at a required pass rate of 50% or so but I don't see anyone ever using that, and the exact status isn't
+		// incredibly important in any decisions.
+		severeRegressionSuccessRate := requiredSuccessRate - 5
+
+		if successRate*100 < float64(c.RequestAdvancedOptions.PassRateRequiredNewTests) && sampleFailure >= c.MinimumFailure {
 			rStatus := crtype.SignificantRegression
-			if successRate < 0.95 {
+			if successRate*100 < severeRegressionSuccessRate {
 				rStatus = crtype.ExtremeRegression
 			}
 			testStats = crtype.ReportTestStats{
