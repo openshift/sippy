@@ -1658,7 +1658,42 @@ func (c *componentReportGenerator) assessComponentStatus(
 		baseTotal = baseFailure + baseSuccess + baseFlake
 	}
 
-	status := crtype.MissingBasis
+	if baseTotal != 0 {
+		testStats := c.buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure, approvedRegression, initialSampleTotal)
+		return testStats
+	} else if c.RequestAdvancedOptions.PassRateRequiredNewTests > 0 {
+		// If we have no base stats, fall back to a raw pass rate comparison for this new or improperly renamed test:
+		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake)
+		return testStats
+	}
+
+	// Return a default non-regression test stats
+	return crtype.ReportTestStats{
+		Comparison: crtype.FisherExact,
+		SampleStats: crtype.TestDetailsReleaseStats{
+			Release: c.SampleRelease.Release,
+			TestDetailsTestStats: crtype.TestDetailsTestStats{
+				SuccessRate:  getSuccessRate(sampleSuccess, sampleFailure, sampleFlake),
+				SuccessCount: sampleSuccess,
+				FailureCount: sampleFailure,
+				FlakeCount:   sampleFlake,
+			},
+		},
+		BaseStats: &crtype.TestDetailsReleaseStats{
+			Release: c.BaseRelease.Release,
+			TestDetailsTestStats: crtype.TestDetailsTestStats{
+				SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
+				SuccessCount: baseSuccess,
+				FailureCount: baseFailure,
+				FlakeCount:   baseFlake,
+			},
+		},
+	}
+}
+
+func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence int, sampleTotal int, sampleSuccess int, sampleFlake int, sampleFailure, baseTotal int, baseSuccess int, baseFlake int, baseFailure int, approvedRegression *regressionallowances.IntentionalRegression, initialSampleTotal int) crtype.ReportTestStats {
+
+	fisherExact := 0.0
 	baseStats := &crtype.TestDetailsReleaseStats{
 		Release: c.BaseRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
@@ -1668,6 +1703,7 @@ func (c *componentReportGenerator) assessComponentStatus(
 			FlakeCount:   baseFlake,
 		},
 	}
+
 	testStats := crtype.ReportTestStats{
 		Comparison: crtype.FisherExact,
 		SampleStats: crtype.TestDetailsReleaseStats{
@@ -1681,123 +1717,118 @@ func (c *componentReportGenerator) assessComponentStatus(
 		},
 		BaseStats: baseStats,
 	}
-
-	fisherExact := 0.0
-	if baseTotal != 0 {
-		// if the unadjusted sample was 0 then nothing to do
-		if initialSampleTotal == 0 {
-			if c.IgnoreMissing {
-				status = crtype.NotSignificant
-			} else {
-				status = crtype.MissingSample
-			}
+	status := crtype.MissingBasis
+	// if the unadjusted sample was 0 then nothing to do
+	if initialSampleTotal == 0 {
+		if c.IgnoreMissing {
+			status = crtype.NotSignificant
 		} else {
-			// see if we had a significant regression prior to adjusting
-			basisPassPercentage := float64(baseSuccess+baseFlake) / float64(baseTotal)
-			initialPassPercentage := float64(sampleSuccess+sampleFlake) / float64(initialSampleTotal)
-			effectivePityFactor := c.getEffectivePityFactor(basisPassPercentage, approvedRegression)
+			status = crtype.MissingSample
+		}
+	} else {
+		// see if we had a significant regression prior to adjusting
+		basisPassPercentage := float64(baseSuccess+baseFlake) / float64(baseTotal)
+		initialPassPercentage := float64(sampleSuccess+sampleFlake) / float64(initialSampleTotal)
+		effectivePityFactor := c.getEffectivePityFactor(basisPassPercentage, approvedRegression)
 
-			wasSignificant := false
-			// only consider wasSignificant if the sampleTotal has been changed and our sample
-			// pass percentage is below the basis
-			if initialSampleTotal > sampleTotal && initialPassPercentage < basisPassPercentage {
-				if basisPassPercentage-initialPassPercentage > float64(c.PityFactor)/100 {
-					wasSignificant, _ = c.fischerExactTest(requiredConfidence, initialSampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
-				}
-				// if it was significant without the adjustment use
-				// ExtremeTriagedRegression or SignificantTriagedRegression
-				if wasSignificant {
-					status = getRegressionStatus(basisPassPercentage, initialPassPercentage, true)
-				}
+		wasSignificant := false
+		// only consider wasSignificant if the sampleTotal has been changed and our sample
+		// pass percentage is below the basis
+		if initialSampleTotal > sampleTotal && initialPassPercentage < basisPassPercentage {
+			if basisPassPercentage-initialPassPercentage > float64(c.PityFactor)/100 {
+				wasSignificant, _ = c.fischerExactTest(requiredConfidence, initialSampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
 			}
-
-			if sampleTotal == 0 {
-				if !wasSignificant {
-					if c.IgnoreMissing {
-						status = crtype.NotSignificant
-
-					} else {
-						status = crtype.MissingSample
-					}
-				}
-				return crtype.ReportTestStats{
-					Comparison:   crtype.FisherExact,
-					ReportStatus: status,
-					FisherExact:  thrift.Float64Ptr(0.0),
-				}
+			// if it was significant without the adjustment use
+			// ExtremeTriagedRegression or SignificantTriagedRegression
+			if wasSignificant {
+				status = getRegressionStatus(basisPassPercentage, initialPassPercentage, true)
 			}
+		}
 
-			// if we didn't detect a significant regression prior to adjusting set our default here
+		if sampleTotal == 0 {
 			if !wasSignificant {
-				status = crtype.NotSignificant
-			}
+				if c.IgnoreMissing {
+					status = crtype.NotSignificant
 
-			// now that we know sampleTotal is non zero
-			samplePassPercentage := float64(sampleSuccess+sampleFlake) / float64(sampleTotal)
-
-			// did we remove enough failures that we are below the MinimumFailure threshold?
-			if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
-				testStats.ReportStatus = status
-				testStats.FisherExact = thrift.Float64Ptr(0.0)
-				return testStats
-			}
-			significant := false
-			improved := samplePassPercentage >= basisPassPercentage
-
-			if improved {
-				// flip base and sample when improved
-				significant, fisherExact = c.fischerExactTest(requiredConfidence, baseTotal, baseSuccess, baseFlake, sampleTotal, sampleSuccess, sampleFlake)
-			} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
-				significant, fisherExact = c.fischerExactTest(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
-			}
-			if significant {
-				if improved {
-					// only show improvements if we are not dropping out triaged results
-					if initialSampleTotal == sampleTotal {
-						status = crtype.SignificantImprovement
-					}
 				} else {
-					status = getRegressionStatus(basisPassPercentage, samplePassPercentage, false)
+					status = crtype.MissingSample
 				}
 			}
-		}
-		testStats.ReportStatus = status
-		testStats.FisherExact = thrift.Float64Ptr(fisherExact)
-	} else if c.RequestAdvancedOptions.PassRateRequiredNewTests > 0 {
-		// If we have no base stats, fall back to a raw pass rate comparison for this new or improperly renamed test:
-		successRate := getSuccessRate(sampleSuccess, sampleFailure, sampleFlake)
-		requiredSuccessRate := float64(c.RequestAdvancedOptions.PassRateRequiredNewTests)
-
-		// Assume 5% less than our required pass rate (expect numbers above 90% to be used here) is an extreme regression.
-		// Breaks down at a required pass rate of 50% or so but I don't see anyone ever using that, and the exact status isn't
-		// incredibly important in any decisions.
-		severeRegressionSuccessRate := requiredSuccessRate - 5
-
-		if successRate*100 < float64(c.RequestAdvancedOptions.PassRateRequiredNewTests) && sampleFailure >= c.MinimumFailure {
-			rStatus := crtype.SignificantRegression
-			if successRate*100 < severeRegressionSuccessRate {
-				rStatus = crtype.ExtremeRegression
+			return crtype.ReportTestStats{
+				Comparison:   crtype.FisherExact,
+				ReportStatus: status,
+				FisherExact:  thrift.Float64Ptr(0.0),
 			}
-			testStats = crtype.ReportTestStats{
-				ReportStatus: rStatus,
-				Comparison:   crtype.PassRate,
-				SampleStats: crtype.TestDetailsReleaseStats{
-					Release: c.SampleRelease.Release,
-					TestDetailsTestStats: crtype.TestDetailsTestStats{
-						SuccessRate:  successRate,
-						SuccessCount: sampleSuccess,
-						FailureCount: sampleFailure,
-						FlakeCount:   sampleFlake,
-					},
-				},
-			}
-		} else {
-			testStats = crtype.ReportTestStats{ReportStatus: crtype.MissingBasis}
 		}
 
+		// if we didn't detect a significant regression prior to adjusting set our default here
+		if !wasSignificant {
+			status = crtype.NotSignificant
+		}
+
+		// now that we know sampleTotal is non zero
+		samplePassPercentage := float64(sampleSuccess+sampleFlake) / float64(sampleTotal)
+
+		// did we remove enough failures that we are below the MinimumFailure threshold?
+		if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess-sampleFlake) < c.MinimumFailure {
+			testStats.ReportStatus = status
+			testStats.FisherExact = thrift.Float64Ptr(0.0)
+			return testStats
+		}
+		significant := false
+		improved := samplePassPercentage >= basisPassPercentage
+
+		if improved {
+			// flip base and sample when improved
+			significant, fisherExact = c.fischerExactTest(requiredConfidence, baseTotal, baseSuccess, baseFlake, sampleTotal, sampleSuccess, sampleFlake)
+		} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
+			significant, fisherExact = c.fischerExactTest(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake)
+		}
+		if significant {
+			if improved {
+				// only show improvements if we are not dropping out triaged results
+				if initialSampleTotal == sampleTotal {
+					status = crtype.SignificantImprovement
+				}
+			} else {
+				status = getRegressionStatus(basisPassPercentage, samplePassPercentage, false)
+			}
+		}
 	}
-
+	testStats.ReportStatus = status
+	testStats.FisherExact = thrift.Float64Ptr(fisherExact)
 	return testStats
+}
+
+func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess int, sampleFailure int, sampleFlake int) crtype.ReportTestStats {
+	successRate := getSuccessRate(sampleSuccess, sampleFailure, sampleFlake)
+	requiredSuccessRate := float64(c.RequestAdvancedOptions.PassRateRequiredNewTests)
+
+	// Assume 5% less than our required pass rate (expect numbers above 90% to be used here) is an extreme regression.
+	// Breaks down at a required pass rate of 50% or so but I don't see anyone ever using that, and the exact status isn't
+	// incredibly important in any decisions.
+	severeRegressionSuccessRate := requiredSuccessRate - 5
+
+	if successRate*100 < float64(c.RequestAdvancedOptions.PassRateRequiredNewTests) && sampleFailure >= c.MinimumFailure {
+		rStatus := crtype.SignificantRegression
+		if successRate*100 < severeRegressionSuccessRate {
+			rStatus = crtype.ExtremeRegression
+		}
+		return crtype.ReportTestStats{
+			ReportStatus: rStatus,
+			Comparison:   crtype.PassRate,
+			SampleStats: crtype.TestDetailsReleaseStats{
+				Release: c.SampleRelease.Release,
+				TestDetailsTestStats: crtype.TestDetailsTestStats{
+					SuccessRate:  successRate,
+					SuccessCount: sampleSuccess,
+					FailureCount: sampleFailure,
+					FlakeCount:   sampleFlake,
+				},
+			},
+		}
+	}
+	return crtype.ReportTestStats{ReportStatus: crtype.MissingBasis}
 }
 
 func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (bool, float64) {
