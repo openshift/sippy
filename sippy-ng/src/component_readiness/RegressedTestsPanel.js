@@ -111,30 +111,18 @@ export default function RegressedTestsPanel(props) {
         </Tooltip>
       ),
     },
-    /* TODO: may not be defined */
     {
-      field: 'fisher_exact',
-      headerName: 'Certainty',
-      flex: 8,
-      valueGetter: (params) => {
-        if (!params.row.fisher_exact) {
-          return ''
-        }
-        return (100 - params.row.fisher_exact * 100).toFixed(1)
-      },
-      renderCell: (param) => (
-        <div className="fishers-exact">{param.value}%</div>
-      ),
-    },
-    {
-      /* TODO: use 100% for new tests? */
       field: 'pass_rate_delta',
       headerName: 'Pass Rate Delta',
-      flex: 8,
+      flex: 10,
       valueGetter: (params) => {
-        if (!params.row.sample_stats || !params.row.base_stats) {
+        if (!params.row.sample_stats) {
           return ''
         }
+        if (params.row.comparison === 'pass_rate') {
+          return 100 - (params.row.sample_stats.success_rate * 100).toFixed(0)
+        }
+        /* Otherwise we're dealing with fisher_exact comparison */
         return (
           (params.row.sample_stats.success_rate * 100).toFixed(0) -
           (params.row.base_stats.success_rate * 100).toFixed(0)
