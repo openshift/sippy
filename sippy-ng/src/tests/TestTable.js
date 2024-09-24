@@ -679,7 +679,7 @@ function TestTable(props) {
                   pathForJobRunsWithTestFlake(
                     props.release,
                     params.row.name,
-                    filterModel
+                    jobRunsFilter
                   ),
                   'timestamp',
                   'desc'
