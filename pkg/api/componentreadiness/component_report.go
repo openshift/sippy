@@ -1658,37 +1658,27 @@ func (c *componentReportGenerator) assessComponentStatus(
 		baseTotal = baseFailure + baseSuccess + baseFlake
 	}
 
-	if baseTotal != 0 {
-		testStats := c.buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure, approvedRegression, initialSampleTotal)
+	if baseTotal == 0 && c.RequestAdvancedOptions.PassRateRequiredNewTests > 0 {
+		// If we have no base stats, fall back to a raw pass rate comparison for new or improperly renamed tests:
+		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
+			float64(c.RequestAdvancedOptions.PassRateRequiredNewTests))
+		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
+		// status to be missing basis for the pre-existing Fisher Exact behavior:
+		if testStats.ReportStatus == crtype.NotSignificant && c.RequestAdvancedOptions.PassRateRequiredAllTests == 0 {
+			testStats.ReportStatus = crtype.MissingBasis
+		}
 		return testStats
-	} else if c.RequestAdvancedOptions.PassRateRequiredNewTests > 0 {
-		// If we have no base stats, fall back to a raw pass rate comparison for this new or improperly renamed test:
-		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake)
+	} else if c.RequestAdvancedOptions.PassRateRequiredAllTests > 0 {
+		log.Info("yes we were here")
+		// If requested, switch to pass rate only testing to see what does not meet the criteria:
+		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
+			float64(c.RequestAdvancedOptions.PassRateRequiredAllTests))
 		return testStats
 	}
 
-	// Return a default non-regression test stats
-	return crtype.ReportTestStats{
-		Comparison: crtype.FisherExact,
-		SampleStats: crtype.TestDetailsReleaseStats{
-			Release: c.SampleRelease.Release,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  getSuccessRate(sampleSuccess, sampleFailure, sampleFlake),
-				SuccessCount: sampleSuccess,
-				FailureCount: sampleFailure,
-				FlakeCount:   sampleFlake,
-			},
-		},
-		BaseStats: &crtype.TestDetailsReleaseStats{
-			Release: c.BaseRelease.Release,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
-				SuccessCount: baseSuccess,
-				FailureCount: baseFailure,
-				FlakeCount:   baseFlake,
-			},
-		},
-	}
+	// Otherwise we fall back to default behavior of Fishers Exact test:
+	testStats := c.buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure, approvedRegression, initialSampleTotal)
+	return testStats
 }
 
 func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence int, sampleTotal int, sampleSuccess int, sampleFlake int, sampleFailure, baseTotal int, baseSuccess int, baseFlake int, baseFailure int, approvedRegression *regressionallowances.IntentionalRegression, initialSampleTotal int) crtype.ReportTestStats {
@@ -1800,16 +1790,15 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence 
 	return testStats
 }
 
-func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess int, sampleFailure int, sampleFlake int) crtype.ReportTestStats {
+func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess int, sampleFailure int, sampleFlake int, requiredSuccessRate float64) crtype.ReportTestStats {
 	successRate := getSuccessRate(sampleSuccess, sampleFailure, sampleFlake)
-	requiredSuccessRate := float64(c.RequestAdvancedOptions.PassRateRequiredNewTests)
 
 	// Assume 5% less than our required pass rate (expect numbers above 90% to be used here) is an extreme regression.
 	// Breaks down at a required pass rate of 50% or so but I don't see anyone ever using that, and the exact status isn't
 	// incredibly important in any decisions.
 	severeRegressionSuccessRate := requiredSuccessRate - 5
 
-	if successRate*100 < float64(c.RequestAdvancedOptions.PassRateRequiredNewTests) && sampleFailure >= c.MinimumFailure {
+	if successRate*100 < requiredSuccessRate && sampleFailure >= c.MinimumFailure {
 		rStatus := crtype.SignificantRegression
 		if successRate*100 < severeRegressionSuccessRate {
 			rStatus = crtype.ExtremeRegression
@@ -1828,7 +1817,7 @@ func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess int, sam
 			},
 		}
 	}
-	return crtype.ReportTestStats{ReportStatus: crtype.MissingBasis}
+	return crtype.ReportTestStats{ReportStatus: crtype.NotSignificant}
 }
 
 func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (bool, float64) {

@@ -1417,6 +1417,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 		baseFlake                   int
 		numberOfIgnoredSamples      int
 		requiredPassRateForNewTests int
+		requiredPassRateForAllTests int
 
 		expectedStatus   crtype.Status
 		expectedFischers *float64
@@ -1558,11 +1559,48 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			requiredPassRateForNewTests: 99,
 			expectedStatus:              crtype.MissingBasis,
 		},
+		{
+			name:                        "pass rate mode significant regression",
+			sampleTotal:                 100,
+			sampleSuccess:               94,
+			sampleFlake:                 0,
+			baseTotal:                   100,
+			baseSuccess:                 94,
+			baseFlake:                   0,
+			numberOfIgnoredSamples:      0,
+			requiredPassRateForAllTests: 95,
+			expectedStatus:              crtype.SignificantRegression,
+		},
+		{
+			name:                        "pass rate mode extreme regression",
+			sampleTotal:                 100,
+			sampleSuccess:               70,
+			sampleFlake:                 0,
+			baseTotal:                   100,
+			baseSuccess:                 70,
+			baseFlake:                   0,
+			numberOfIgnoredSamples:      0,
+			requiredPassRateForAllTests: 95,
+			expectedStatus:              crtype.ExtremeRegression,
+		},
+		{
+			name:                        "pass rate mode no regression",
+			sampleTotal:                 100,
+			sampleSuccess:               97,
+			sampleFlake:                 0,
+			baseTotal:                   100,
+			baseSuccess:                 97,
+			baseFlake:                   0,
+			numberOfIgnoredSamples:      0,
+			requiredPassRateForAllTests: 95,
+			expectedStatus:              crtype.NotSignificant,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &componentReportGenerator{}
 			c.PassRateRequiredNewTests = tt.requiredPassRateForNewTests
+			c.PassRateRequiredAllTests = tt.requiredPassRateForAllTests
 
 			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, nil, tt.numberOfIgnoredSamples)
 			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")
