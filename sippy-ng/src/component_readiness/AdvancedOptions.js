@@ -21,11 +21,15 @@ export default function AdvancedOptions(props) {
     confidence,
     pity,
     minFail,
+    passRateNewTests,
+    passRateAllTests,
     ignoreMissing,
     ignoreDisruption,
     setConfidence,
     setPity,
     setMinFail,
+    setPassRateNewTests,
+    setPassRateAllTests,
     setIgnoreMissing,
     setIgnoreDisruption,
   } = props
@@ -60,6 +64,13 @@ export default function AdvancedOptions(props) {
   }
   const handleChangeMinFail = (event, newValue) => {
     setMinFail(newValue)
+  }
+  const handleChangePassRateNewTests = (event, newValue) => {
+    console.log('new tests')
+    setPassRateNewTests(newValue)
+  }
+  const handleChangePassRateAllTests = (event, newValue) => {
+    setPassRateAllTests(newValue)
   }
   const handleChangeIgnoreMissing = (event, newValue) => {
     setIgnoreMissing(newValue)
@@ -109,6 +120,22 @@ export default function AdvancedOptions(props) {
               min={0}
               max={20}
             />
+            <p>Require new tests pass rate: {passRateNewTests}</p>
+            <Slider
+              value={passRateNewTests}
+              onChange={handleChangePassRateNewTests}
+              aria-labelledby="my-slider"
+              min={0}
+              max={100}
+            />
+            <p>Require all tests pass rate: {passRateAllTests}</p>
+            <Slider
+              value={passRateAllTests}
+              onChange={handleChangePassRateAllTests}
+              aria-labelledby="my-slider"
+              min={0}
+              max={100}
+            />
             <p>Missing: {ignoreMissing ? 'ignore' : 'keep'}</p>
             <Switch
               checked={ignoreMissing}
@@ -135,11 +162,15 @@ AdvancedOptions.propTypes = {
   confidence: PropTypes.number.isRequired,
   pity: PropTypes.number.isRequired,
   minFail: PropTypes.number.isRequired,
+  passRateNewTests: PropTypes.number.isRequired,
+  passRateAllTests: PropTypes.number.isRequired,
   ignoreMissing: PropTypes.bool.isRequired,
   ignoreDisruption: PropTypes.bool.isRequired,
   setConfidence: PropTypes.func.isRequired,
   setPity: PropTypes.func.isRequired,
   setMinFail: PropTypes.func.isRequired,
+  setPassRateNewTests: PropTypes.func.isRequired,
+  setPassRateAllTests: PropTypes.func.isRequired,
   setIgnoreMissing: PropTypes.func.isRequired,
   setIgnoreDisruption: PropTypes.func.isRequired,
 }

@@ -102,6 +102,14 @@ export const CompReadyVarsProvider = ({ children }) => {
   )
   const [pityParam, setPityParam] = useQueryParam('pity', NumberParam)
   const [minFailParam, setMinFailParam] = useQueryParam('minFail', NumberParam)
+  const [passRateNewTestsParam, setPassRateNewTestsParam] = useQueryParam(
+    'passRateNewTests',
+    NumberParam
+  )
+  const [passRateAllTestsParam, setPassRateAllTestsParam] = useQueryParam(
+    'passRateAllTests',
+    NumberParam
+  )
   const [ignoreMissingParam, setIgnoreMissingParam] = useQueryParam(
     'ignoreMissing',
     BooleanParam
@@ -257,6 +265,12 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [confidence, setConfidence] = React.useState(confidenceParam || 95)
   const [pity, setPity] = React.useState(pityParam || 5)
   const [minFail, setMinFail] = React.useState(minFailParam || 3)
+  const [passRateNewTests, setPassRateNewTests] = React.useState(
+    passRateNewTestsParam || 0
+  )
+  const [passRateAllTests, setPassRateAllTests] = React.useState(
+    passRateAllTestsParam || 0
+  )
 
   // for the two boolean values here, we need the || false because otherwise
   // the value will be null.
@@ -330,6 +344,8 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSamplePRNumberParam(samplePRNumber)
     setPityParam(pity)
     setMinFailParam(minFail)
+    setPassRateNewTestsParam(passRateNewTests)
+    setPassRateAllTestsParam(passRateAllTests)
     setIgnoreDisruptionParam(ignoreDisruption)
     setIgnoreMissingParam(ignoreMissing)
     setComponentParam(component)
@@ -357,6 +373,8 @@ export const CompReadyVarsProvider = ({ children }) => {
     setConfidenceParam(undefined)
     setPityParam(undefined)
     setMinFailParam(undefined)
+    setPassRateNewTestsParam(undefined)
+    setPassRateAllTestsParam(undefined)
     setIgnoreDisruptionParam(undefined)
     setIgnoreMissingParam(undefined)
 
@@ -399,6 +417,12 @@ export const CompReadyVarsProvider = ({ children }) => {
     }
     if (view.advanced_options.hasOwnProperty('minimum_failure')) {
       setMinFail(view.advanced_options.minimum_failure)
+    }
+    if (view.advanced_options.hasOwnProperty('pass_rate_required_new_tests')) {
+      setPassRateNewTests(view.advanced_options.pass_rate_required_new_tests)
+    }
+    if (view.advanced_options.hasOwnProperty('pass_rate_required_all_tests')) {
+      setPassRateAllTests(view.advanced_options.pass_rate_required_all_tests)
     }
     if (view.advanced_options.hasOwnProperty('ignore_disruption')) {
       setIgnoreDisruption(view.advanced_options.ignore_disruption)
@@ -562,6 +586,10 @@ export const CompReadyVarsProvider = ({ children }) => {
         setPity,
         minFail,
         setMinFail,
+        passRateNewTests,
+        setPassRateNewTests,
+        passRateAllTests,
+        setPassRateAllTests,
         ignoreMissing,
         setIgnoreMissing,
         ignoreDisruption,

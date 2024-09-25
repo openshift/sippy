@@ -2,12 +2,9 @@
 component_readiness:
   - name: 4.18-main
     base_release:
-      releases:
-        - "4.16"
-        - "4.15"
-        - "4.14"
-      relative_start: now-30d
-      relative_end: now
+      release: "4.16"
+      relative_start: ga-30d
+      relative_end: ga
     sample_release:
       release: "4.18"
       relative_start: now-7d
@@ -57,6 +54,51 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
+  - name: 4.18-pass-rate-95
+    base_release:
+      release: "4.17"
+      relative_start: now-30d
+      relative_end: now
+    sample_release:
+      release: "4.18"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Owner:
+          - eng
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - metal
+          - vsphere
+        Topology:
+          - ha
+    advanced_options:
+      minimum_failure: 3
+      pass_rate_required_new_tests: 99
+      pass_rate_required_all_tests: 95
   - name: 4.18-ha-vs-single
     base_release:
       release: "4.18"

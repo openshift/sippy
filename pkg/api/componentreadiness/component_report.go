@@ -1669,7 +1669,6 @@ func (c *componentReportGenerator) assessComponentStatus(
 		}
 		return testStats
 	} else if c.RequestAdvancedOptions.PassRateRequiredAllTests > 0 {
-		log.Info("yes we were here")
 		// If requested, switch to pass rate only testing to see what does not meet the criteria:
 		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
 			float64(c.RequestAdvancedOptions.PassRateRequiredAllTests))
