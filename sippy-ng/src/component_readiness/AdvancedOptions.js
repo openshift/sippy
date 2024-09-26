@@ -13,6 +13,7 @@ import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import Slider from '@mui/material/Slider'
 import Switch from '@mui/material/Switch'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 export default function AdvancedOptions(props) {
@@ -66,11 +67,24 @@ export default function AdvancedOptions(props) {
     setMinFail(newValue)
   }
   const handleChangePassRateNewTests = (event, newValue) => {
-    console.log('new tests')
-    setPassRateNewTests(newValue)
+    let value = parseInt(event.target.value, 10)
+
+    if (value < 0) {
+      value = 0
+    } else if (value > 100) {
+      value = 100
+    }
+    setPassRateNewTests(value)
   }
   const handleChangePassRateAllTests = (event, newValue) => {
-    setPassRateAllTests(newValue)
+    let value = parseInt(event.target.value, 10)
+
+    if (value < 0) {
+      value = 0
+    } else if (value > 100) {
+      value = 100
+    }
+    setPassRateAllTests(value)
   }
   const handleChangeIgnoreMissing = (event, newValue) => {
     setIgnoreMissing(newValue)
@@ -120,21 +134,22 @@ export default function AdvancedOptions(props) {
               min={0}
               max={20}
             />
-            <p>Require new tests pass rate: {passRateNewTests}</p>
-            <Slider
+            <p>Require new tests pass rate:</p>
+            <TextField
               value={passRateNewTests}
+              type="number"
+              size="small"
               onChange={handleChangePassRateNewTests}
-              aria-labelledby="my-slider"
-              min={0}
-              max={100}
+              inputProps={{ min: 0, max: 100 }}
             />
-            <p>Require all tests pass rate: {passRateAllTests}</p>
-            <Slider
+
+            <p>Require all tests pass rate:</p>
+            <TextField
               value={passRateAllTests}
+              type="number"
+              size="small"
               onChange={handleChangePassRateAllTests}
-              aria-labelledby="my-slider"
-              min={0}
-              max={100}
+              inputProps={{ min: 0, max: 100 }}
             />
             <p>Missing: {ignoreMissing ? 'ignore' : 'keep'}</p>
             <Switch
