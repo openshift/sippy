@@ -200,17 +200,11 @@ func GetComponentReportFromBigQuery(client *bqcachedclient.Client, prowURL, gcsB
 		RequestAdvancedOptions:           reqOptions.AdvancedOption,
 	}
 
-	// TODO: return to caching, I want cached bigquery but not reports while developing
-	return generator.GenerateReport()
-
-	/*
-		return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
-			generator.client.Cache, generator.cacheOption,
-			generator.GetComponentReportCacheKey("ComponentReport~"),
-			generator.GenerateReport,
-			crtype.ComponentReport{})
-
-	*/
+	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
+		generator.client.Cache, generator.cacheOption,
+		generator.GetComponentReportCacheKey("ComponentReport~"),
+		generator.GenerateReport,
+		crtype.ComponentReport{})
 }
 
 // componentReportGenerator contains the information needed to generate a CR report. Do
@@ -1405,9 +1399,6 @@ func (c *componentReportGenerator) generateComponentTestReport(baseStatus map[st
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		// TODO: fallback to pass rate here
-		// TODO: be sure to accommodate all the triage/adjustments above as we normally would
-		// TODO: make this optional on api flag hooked up into views
 
 		// Check for approved regressions, and triaged incidents, which may adjust our counts and pass rate:
 		var testStats crtype.ReportTestStats
