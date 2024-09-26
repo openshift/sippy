@@ -1,0 +1,52 @@
+[
+  {
+    "JiraComponent": "Management Console",
+    "TestID": "openshift-tests:f9552d2b4b817d19bdcd666a7b8d1ece",
+    "TestName": "[bz-Management Console] clusteroperator/console should not change condition/Available",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-39580",
+    "ReasonToAllowInsteadOfFix": "Test flaked in 4.16, became more strict in 4.17. Condition/Available goes from true to false exactly once for an undetermined DNS issue, possibly attributable to misconfigured retry in console operator.  Seen only on Vsphere OVN UPI, not see on IPI.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "vsphere",
+        "FeatureSet": "default",
+        "Suite": "serial",
+        "Topology": "ha",
+        "Installer": "upi"
+      }
+    },
+    "PreviousSuccesses": 66,
+    "PreviousFailures": 0,
+    "PreviousFlakes": 1,
+    "RegressedSuccesses": 25,
+    "RegressedFailures": 3,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "Management Console",
+    "TestID": "openshift-tests:f9552d2b4b817d19bdcd666a7b8d1ece",
+    "TestName": "[bz-Management Console] clusteroperator/console should not change condition/Available",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-39580",
+    "ReasonToAllowInsteadOfFix": "Test flaked in 4.16, became more strict in 4.17. Condition/Available goes from true to false exactly once for an undetermined DNS issue, possibly attributable to misconfigured retry in console operator.  Seen only on Vsphere OVN UPI, not see on IPI.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "vsphere",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "upi"
+      }
+    },
+    "PreviousSuccesses": 72,
+    "PreviousFailures": 0,
+    "PreviousFlakes": 1,
+    "RegressedSuccesses": 35,
+    "RegressedFailures": 4,
+    "RegressedFlakes": 0
+  }
+]
