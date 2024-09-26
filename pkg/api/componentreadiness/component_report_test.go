@@ -1408,16 +1408,18 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 
 func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 	tests := []struct {
-		name                        string
-		sampleTotal                 int
-		sampleSuccess               int
-		sampleFlake                 int
-		baseTotal                   int
-		baseSuccess                 int
-		baseFlake                   int
-		numberOfIgnoredSamples      int
+		name                   string
+		sampleTotal            int
+		sampleSuccess          int
+		sampleFlake            int
+		baseTotal              int
+		baseSuccess            int
+		baseFlake              int
+		numberOfIgnoredSamples int
+
 		requiredPassRateForNewTests int
 		requiredPassRateForAllTests int
+		minFail                     int
 
 		expectedStatus   crtype.Status
 		expectedFischers *float64
@@ -1595,12 +1597,26 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			requiredPassRateForAllTests: 95,
 			expectedStatus:              crtype.NotSignificant,
 		},
+		{
+			name:                        "pass rate mode significant regression ignores minimum failures",
+			sampleTotal:                 20,
+			sampleSuccess:               18,
+			sampleFlake:                 0,
+			baseTotal:                   20,
+			baseSuccess:                 18,
+			baseFlake:                   0,
+			numberOfIgnoredSamples:      0,
+			requiredPassRateForAllTests: 95,
+			minFail:                     5,
+			expectedStatus:              crtype.SignificantRegression,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &componentReportGenerator{}
 			c.PassRateRequiredNewTests = tt.requiredPassRateForNewTests
 			c.PassRateRequiredAllTests = tt.requiredPassRateForAllTests
+			c.MinimumFailure = tt.minFail
 
 			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, nil, tt.numberOfIgnoredSamples)
 			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")

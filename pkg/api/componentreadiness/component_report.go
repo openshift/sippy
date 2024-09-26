@@ -1809,7 +1809,7 @@ func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess int, sam
 	// incredibly important in any decisions.
 	severeRegressionSuccessRate := requiredSuccessRate - 5
 
-	if successRate*100 < requiredSuccessRate && sampleFailure >= c.MinimumFailure {
+	if successRate*100 < requiredSuccessRate {
 		rStatus := crtype.SignificantRegression
 		if successRate*100 < severeRegressionSuccessRate {
 			rStatus = crtype.ExtremeRegression
