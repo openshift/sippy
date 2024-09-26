@@ -496,7 +496,7 @@ View the test details report at ${document.location.href}
               <Tooltip title={statusStr}>{assessmentIcon}</Tooltip>
             </TableCell>
           </TableRow>
-          {data.base_stats ? (
+          {data.comparison === 'fisher_exact' ? (
             <TableRow>
               <TableCell>Probability:</TableCell>
               <TableCell>
@@ -511,7 +511,9 @@ View the test details report at ${document.location.href}
           ) : (
             <TableRow>
               <TableCell>Regression:</TableCell>
-              <TableCell>Pass rate of 99% required for this test</TableCell>
+              <TableCell>
+                Insufficient pass rate for the parameters of this report
+              </TableCell>
             </TableRow>
           )}
         </TableBody>
@@ -555,8 +557,8 @@ View the test details report at ${document.location.href}
           <TableHead>
             <TableRow>
               {tableCell('ProwJob Name', 0)}
-              {data.base_stats && tableCell('Basis Info', 1)}
-              {data.base_stats && tableCell('Basis Runs', 2)}
+              {tableCell('Basis Info', 1)}
+              {tableCell('Basis Runs', 2)}
               {tableCell('Sample Info', 3)}
               {tableCell('Sample Runs', 4)}
               {tableTooltipCell(

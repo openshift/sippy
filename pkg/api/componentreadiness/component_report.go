@@ -1672,6 +1672,18 @@ func (c *componentReportGenerator) assessComponentStatus(
 		// If requested, switch to pass rate only testing to see what does not meet the criteria:
 		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
 			float64(c.RequestAdvancedOptions.PassRateRequiredAllTests))
+		// include base stats even though we didn't do fishers exact here, this is helpful
+		// for the test details page to give a visual on how the test behaved in the basis
+		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
+			Release: c.BaseRelease.Release,
+			TestDetailsTestStats: crtype.TestDetailsTestStats{
+				SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
+				SuccessCount: baseSuccess,
+				FailureCount: baseFailure,
+				FlakeCount:   baseFlake,
+			},
+		}
+
 		return testStats
 	}
 
