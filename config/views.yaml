@@ -47,9 +47,6 @@ component_readiness:
       pity_factor: 5
       ignore_missing: false
       ignore_disruption: true
-      enforce_new_test_pass_rate:
-        significant: 99
-        extreme: 95
     metrics:
       enabled: true
     regression_tracking:
