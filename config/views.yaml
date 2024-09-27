@@ -114,6 +114,66 @@ component_readiness:
       enabled: false
     regression_tracking:
       enabled: false
+  - name: 4.18-runc-vs-crun
+    base_release:
+      release: "4.18"
+      relative_start: now-7d
+      relative_end: now
+    sample_release:
+      release: "4.18"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Owner:
+          - eng
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - metal
+          - vsphere
+        Topology:
+          - ha
+        CGroupMode:
+          - v2
+        ContainerRuntime:
+          - runc
+      compare_variants:
+        ContainerRuntime:
+          - crun
+      variant_cross_compare:
+        - ContainerRuntime
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+    metrics:
+      enabled: false
+    regression_tracking:
+      enabled: false
   - name: 4.17-main
     base_release:
         release: "4.16"
