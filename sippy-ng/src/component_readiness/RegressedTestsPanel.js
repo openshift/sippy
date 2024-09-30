@@ -170,7 +170,10 @@ export default function RegressedTestsPanel(props) {
               params.row.test_name
             )}
           >
-            <CompSeverityIcon status={params.value} />
+            <CompSeverityIcon
+              comparison={params.row.comparison}
+              status={params.row.status}
+            />
           </Link>
         </div>
       ),

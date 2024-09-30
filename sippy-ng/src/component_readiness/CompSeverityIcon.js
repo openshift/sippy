@@ -8,9 +8,9 @@ import React from 'react'
 
 export default function CompSeverityIcon(props) {
   const theme = useTheme()
-  const { status, grayFactor, count } = props
+  const { comparison, status, grayFactor, count } = props
 
-  const [statusStr, icon] = getStatusAndIcon(status, grayFactor)
+  const [statusStr, icon] = getStatusAndIcon(comparison, status, grayFactor)
 
   const StyledBadge = withStyles((theme) => ({
     badge: {
@@ -37,6 +37,7 @@ export default function CompSeverityIcon(props) {
 
 CompSeverityIcon.propTypes = {
   status: PropTypes.number,
+  comparison: PropTypes.string,
   grayFactor: PropTypes.number,
   count: PropTypes.number,
 }

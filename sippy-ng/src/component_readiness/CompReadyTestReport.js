@@ -232,7 +232,10 @@ export default function CompReadyTestReport(props) {
     }
   }
 
-  const [statusStr, assessmentIcon] = getStatusAndIcon(data.status)
+  const [statusStr, assessmentIcon] = getStatusAndIcon(
+    data.comparison,
+    data.status
+  )
   const significanceTitle = `Test results for individual Prow Jobs may not be statistically
   significant, but when taken in aggregate, there may be a statistically
   significant difference compared to the historical basis
