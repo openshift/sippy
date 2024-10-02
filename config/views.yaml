@@ -2,7 +2,7 @@
 component_readiness:
   - name: 4.18-main
     base_release:
-      release: "4.17"
+      release: "4.16"
       relative_start: ga-30d
       relative_end: ga
     sample_release:
