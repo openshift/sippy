@@ -7,13 +7,12 @@ import (
 	"strings"
 	"time"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 )
@@ -122,20 +121,36 @@ func isStructWithNoPublicFields(v interface{}) bool {
 	return true
 }
 
-// GetReleases gets all the releases defined in the BQ Releases table if bqc is defined.
-// Otherwise, it falls back to get it from sippy DB
-func GetReleases(dbc *db.DB, bqc *bqclient.Client) ([]query.Release, error) {
-	if bqc != nil {
-		releases, err := GetReleasesFromBigQuery(bqc)
-		if err != nil {
-			log.WithError(err).Error("error getting releases from bigquery")
-			return releases, err
-		}
-		// Add special release Presubmits for prow jobs
-		releases = append(releases, query.Release{Release: releasePresubmits})
-		return releases, nil
+type releaseGenerator struct {
+	client *bqclient.Client
+}
+
+func (r *releaseGenerator) ListReleases() ([]v1.Release, []error) {
+	releases, err := GetReleasesFromBigQuery(r.client)
+	if err != nil {
+		log.WithError(err).Error("error getting releases from bigquery")
+		return releases, []error{err}
 	}
-	return query.ReleasesFromDB(dbc)
+	// Add special release Presubmits for prow jobs
+	releases = append(releases, v1.Release{Release: releasePresubmits})
+	return releases, nil
+}
+
+// GetReleases gets all the releases defined in the BQ Releases table.
+func GetReleases(bqc *bqclient.Client) ([]v1.Release, error) {
+	releaseGen := releaseGenerator{bqc}
+
+	var err error
+	rels, errs := GetDataFromCacheOrGenerate[[]v1.Release](
+		bqc.Cache,
+		cache.RequestOptions{},
+		GetPrefixedCacheKey("Releases~", v1.Release{}), // no cache options needed here, global list
+		releaseGen.ListReleases,
+		[]v1.Release{})
+	if len(errs) > 0 {
+		err = errs[0]
+	}
+	return rels, err
 }
 
 // VariantsStringToSet converts comma separated variant string into a set

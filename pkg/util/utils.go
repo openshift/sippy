@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
 
 type FailureGroupStats struct {
@@ -83,6 +83,11 @@ func URLForJob(dashboard, jobName string) *gourl.URL {
 	return url
 }
 
+func DatePtr(year int, month time.Month, day, hour, min, sec, nsec int, loc *time.Location) *time.Time {
+	d := time.Date(year, month, day, hour, min, sec, nsec, loc)
+	return &d
+}
+
 // releaseRelativeRE is a custom format we allow for times relative to now, or a releases ga date
 // (i.e. now-7d, ga-30d, ga, etc
 var releaseRelativeRE = regexp.MustCompile(`^(now|ga)(?:-([0-9]+)([d]))?$`)
@@ -99,9 +104,16 @@ var releaseRelativeRE = regexp.MustCompile(`^(now|ga)(?:-([0-9]+)([d]))?$`)
 // isStart indicates if a relative time string should round down (base/sample start time), or up (base/sample end time).
 // i.e. isStart=true, we would round down to 00:00:00 for the resulting times date.
 // For isStart=false we would round up to 23:59:59.
-func ParseCRReleaseTime(release, timeStr string, isStart bool, crTimeRoundingFactor time.Duration) (time.Time, error) {
+func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isStart bool, crTimeRoundingFactor time.Duration) (time.Time, error) {
 
 	var relTime time.Time
+
+	gaDateMap := map[string]time.Time{}
+	for _, r := range allReleases {
+		if r.GADate != nil {
+			gaDateMap[r.Release] = *r.GADate
+		}
+	}
 
 	// Check if the time parses as our custom format for times relative to now/ga:
 	matches := releaseRelativeRE.FindStringSubmatch(timeStr)
@@ -111,7 +123,7 @@ func ParseCRReleaseTime(release, timeStr string, isStart bool, crTimeRoundingFac
 			relTime = time.Now()
 		case "ga":
 			var ok bool
-			relTime, ok = releaseloader.GADateMap[release]
+			relTime, ok = gaDateMap[release]
 			if !ok {
 				return time.Time{}, fmt.Errorf("unable to find ga date for %s", release)
 			}

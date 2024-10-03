@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -29,7 +28,6 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -657,12 +655,21 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
+	allReleases, err := api.GetReleases(s.bigQueryClient)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
 	// deep copy the views and then we'll inject a fixed start/end time using the relative times
 	// the view is configured with, so the UI can pre-populate the pickers
 	viewsCopy := make([]crtype.View, len(s.views.ComponentReadiness))
 	copy(viewsCopy, s.views.ComponentReadiness)
 	for i := range viewsCopy {
-		rro, err := componentreadiness.GetViewReleaseOptions("basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
+		rro, err := componentreadiness.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
 		if err != nil {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
@@ -673,7 +680,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 		viewsCopy[i].BaseRelease.Start = rro.Start
 		viewsCopy[i].BaseRelease.End = rro.End
 
-		rro, err = componentreadiness.GetViewReleaseOptions("sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
+		rro, err = componentreadiness.GetViewReleaseOptions(allReleases, "sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
 		if err != nil {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
@@ -705,7 +712,17 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		})
 		return
 	}
-	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, req, allJobVariants, s.crTimeRoundingFactor)
+
+	allReleases, err := api.GetReleases(s.bigQueryClient)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -752,7 +769,16 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, req, allJobVariants, s.crTimeRoundingFactor)
+	allReleases, err := api.GetReleases(s.bigQueryClient)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -833,11 +859,10 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
 	gaDateMap := make(map[string]time.Time)
-	maps.Copy(gaDateMap, releaseloader.GADateMap)
 	response := apitype.Releases{
 		GADates: gaDateMap,
 	}
-	releases, err := api.GetReleases(s.db, s.bigQueryClient)
+	releases, err := api.GetReleases(s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying releases")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{

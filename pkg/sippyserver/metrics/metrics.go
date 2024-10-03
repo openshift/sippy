@@ -10,6 +10,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/openshift/sippy/pkg/filter"
@@ -121,7 +122,7 @@ var (
 	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "releaseStatus"})
 )
 
-func getReleaseStatus(releases []query.Release, release string) string {
+func getReleaseStatus(releases []v1.Release, release string) string {
 	releaseStatus := releaseStatusEOL
 	for _, r := range releases {
 		if r.Release == release && len(r.Status) != 0 {
@@ -139,7 +140,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 	cacheOptions cache.RequestOptions, views []crtype.View, maintainRegressionTables bool) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
-	releases, err := api.GetReleases(dbc, bqc)
+	releases, err := api.GetReleases(bqc)
 	if err != nil {
 		return err
 	}
@@ -147,14 +148,11 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 	// Local DB metrics
 	if dbc != nil {
 		promReportTypes := buildPromReportTypes(releases)
-		if err != nil {
-			return err
-		}
 
 		// Get last updated job run
 		var lastUpdated time.Time
 		if r := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated); r.Error != nil {
-			return errors.Wrapf(err, "could not fetch last updated time")
+			return errors.Wrapf(r.Error, "could not fetch last updated time")
 		}
 		hoursSinceLastUpdate.WithLabelValues().Set(time.Since(lastUpdated).Hours())
 
@@ -220,7 +218,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 }
 
 func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, views []crtype.View, releases []query.Release, maintainRegressionTables bool) {
+	cacheOptions cache.RequestOptions, views []crtype.View, releases []v1.Release, maintainRegressionTables bool) {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return
@@ -246,17 +244,17 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 // updateCompnentReadinessTrackingForView queries the report for the given view, and then updates metrics,
 // regression tracking, or both, depending on view configuration.
 func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, view crtype.View, releases []query.Release, maintainRegressionTables bool) error {
+	cacheOptions cache.RequestOptions, view crtype.View, releases []v1.Release, maintainRegressionTables bool) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
 
-	baseRelease, err := componentreadiness.GetViewReleaseOptions("basis", view.BaseRelease, cacheOptions.CRTimeRoundingFactor)
+	baseRelease, err := componentreadiness.GetViewReleaseOptions(releases, "basis", view.BaseRelease, cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
 
-	sampleRelease, err := componentreadiness.GetViewReleaseOptions("sample", view.SampleRelease, cacheOptions.CRTimeRoundingFactor)
+	sampleRelease, err := componentreadiness.GetViewReleaseOptions(releases, "sample", view.SampleRelease, cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
@@ -364,7 +362,7 @@ func refreshBuildClusterMetrics(dbc *db.DB, reportEnd time.Time) error {
 	return nil
 }
 
-func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []query.Release) {
+func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []v1.Release) {
 	for _, r := range releases {
 		results, err := api.ReleaseHealthReports(dbc, r.Release, reportEnd)
 		if err != nil {
@@ -427,7 +425,7 @@ func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []query.Rel
 // refreshDisruptionMetrics queries our BigQuery views for current release vs two weeks ago, and previous release GA.
 // Metrics are published for the delta for each NURP which can then be alerted on if certain thresholds are exceeded.
 // The previous GA view should have its release and GA date updated on each release GA.
-func refreshDisruptionMetrics(client *bqclient.Client, releases []query.Release) error {
+func refreshDisruptionMetrics(client *bqclient.Client, releases []v1.Release) error {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating disruption metrics as we don't have a bigquery client")
 		return nil
@@ -494,7 +492,7 @@ type promReportType struct {
 	period  string
 }
 
-func buildPromReportTypes(releases []query.Release) []promReportType {
+func buildPromReportTypes(releases []v1.Release) []promReportType {
 	var promReportTypes []promReportType
 
 	for _, release := range releases {
