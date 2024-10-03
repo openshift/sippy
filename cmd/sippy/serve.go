@@ -7,6 +7,12 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	resources "github.com/openshift/sippy"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -16,11 +22,6 @@ import (
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 type ServerFlags struct {
@@ -150,7 +151,9 @@ func NewServeCommand() *cobra.Command {
 
 			if f.MetricsAddr != "" {
 				// Do an immediate metrics update
-				err = metrics.RefreshMetricsDB(dbc,
+				err = metrics.RefreshMetricsDB(
+					context.Background(),
+					dbc,
 					bigQueryClient,
 					f.ProwFlags.URL,
 					f.GoogleCloudFlags.StorageBucket,
@@ -172,6 +175,7 @@ func NewServeCommand() *cobra.Command {
 						case <-ticker.C:
 							log.Info("tick")
 							err := metrics.RefreshMetricsDB(
+								context.Background(),
 								dbc,
 								bigQueryClient,
 								f.ProwFlags.URL,

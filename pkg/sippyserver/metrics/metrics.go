@@ -1,12 +1,18 @@
 package metrics
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -17,10 +23,6 @@ import (
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -135,12 +137,12 @@ func getReleaseStatus(releases []v1.Release, release string) string {
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string,
+func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string,
 	variantManager testidentification.VariantManager, reportEnd time.Time,
 	cacheOptions cache.RequestOptions, views []crtype.View, maintainRegressionTables bool) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
-	releases, err := api.GetReleases(bqc)
+	releases, err := api.GetReleases(context.Background(), bqc)
 	if err != nil {
 		return err
 	}
@@ -205,7 +207,8 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 
 	// BigQuery metrics
 	if bqc != nil {
-		refreshComponentReadinessMetrics(bqc, prowURL, gcsBucket, cacheOptions, views, releases, maintainRegressionTables)
+		refreshComponentReadinessMetrics(ctx, bqc, prowURL, gcsBucket, cacheOptions, views, releases,
+			maintainRegressionTables)
 
 		if err := refreshDisruptionMetrics(bqc, releases); err != nil {
 			log.WithError(err).Error("error refreshing disruption metrics")
@@ -217,7 +220,7 @@ func RefreshMetricsDB(dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket strin
 	return nil
 }
 
-func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucket string,
+func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Client, prowURL, gcsBucket string,
 	cacheOptions cache.RequestOptions, views []crtype.View, releases []v1.Release, maintainRegressionTables bool) {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
@@ -231,7 +234,8 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 
 	for _, view := range views {
 		if view.Metrics.Enabled || view.RegressionTracking.Enabled {
-			err := updateComponentReadinessTrackingForView(client, prowURL, gcsBucket, cacheOptions, view, releases, maintainRegressionTables)
+			err := updateComponentReadinessTrackingForView(ctx, client, prowURL, gcsBucket, cacheOptions, view,
+				releases, maintainRegressionTables)
 			log.WithError(err).Error("error")
 			if err != nil {
 				log.WithError(err).WithField("view", view.Name).Error("error refreshing metrics/regressions for view")
@@ -243,7 +247,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 
 // updateCompnentReadinessTrackingForView queries the report for the given view, and then updates metrics,
 // regression tracking, or both, depending on view configuration.
-func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, gcsBucket string,
+func updateComponentReadinessTrackingForView(ctx context.Context, client *bqclient.Client, prowURL, gcsBucket string,
 	cacheOptions cache.RequestOptions, view crtype.View, releases []v1.Release, maintainRegressionTables bool) error {
 
 	logger := log.WithField("view", view.Name)
@@ -272,7 +276,7 @@ func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, g
 		CacheOption:    cacheOptions,
 	}
 
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(client, prowURL, gcsBucket, reportOpts)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), client, prowURL, gcsBucket, reportOpts)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
@@ -322,7 +326,7 @@ func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, g
 		// Maintain the test regressions table for anything new or now no longer appearing:
 		regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client),
 			view, !maintainRegressionTables)
-		err = regressionTracker.SyncComponentReport(&report)
+		err = regressionTracker.SyncComponentReport(ctx, &report)
 		if err != nil {
 			return errors.Wrap(err, "regression tracker reported an error")
 		}
@@ -436,7 +440,7 @@ func refreshDisruptionMetrics(client *bqclient.Client, releases []v1.Release) er
 		return nil
 	}
 
-	disruptionReport, err := api.GetDisruptionVsPrevGAReportFromBigQuery(client)
+	disruptionReport, err := api.GetDisruptionVsPrevGAReportFromBigQuery(context.Background(), client)
 	if err != nil {
 		return fmt.Errorf("errors returned: %v", err)
 	}
@@ -460,7 +464,7 @@ func refreshDisruptionMetrics(client *bqclient.Client, releases []v1.Release) er
 			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, releaseStatus).Set(float64(row.Relevance))
 	}
 
-	disruptionReport, err = api.GetDisruptionVsTwoWeeksAgoReportFromBigQuery(client)
+	disruptionReport, err = api.GetDisruptionVsTwoWeeksAgoReportFromBigQuery(context.Background(), client)
 	if err != nil {
 		return fmt.Errorf("errors returned: %v", err)
 	}
