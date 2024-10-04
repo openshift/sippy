@@ -233,9 +233,9 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 
 	for _, view := range views {
 		if view.Metrics.Enabled || view.RegressionTracking.Enabled {
-			err := updateComponentReadinessTrackingForView(client, prowURL, gcsBucket, cacheOptions, view, releases, maintainRegressionTables)
-			log.WithError(err).Error("error")
+			err := UpdateComponentReadinessTrackingForView(client, prowURL, gcsBucket, cacheOptions, view, releases, maintainRegressionTables, true)
 			if err != nil {
+				log.WithError(err).Error("error")
 				log.WithError(err).WithField("view", view.Name).Error("error refreshing metrics/regressions for view")
 				// continue to next view
 			}
@@ -245,8 +245,7 @@ func refreshComponentReadinessMetrics(client *bqclient.Client, prowURL, gcsBucke
 
 // updateCompnentReadinessTrackingForView queries the report for the given view, and then updates metrics,
 // regression tracking, or both, depending on view configuration.
-func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, view crtype.View, releases []query.Release, maintainRegressionTables bool) error {
+func UpdateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, gcsBucket string, cacheOptions cache.RequestOptions, view crtype.View, releases []query.Release, maintainRegressionTables, publishMetrics bool) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
@@ -283,7 +282,7 @@ func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, g
 		return fmt.Errorf("component report generation encountered errors: " + strings.Join(strErrors, "; "))
 	}
 
-	if view.Metrics.Enabled {
+	if view.Metrics.Enabled && publishMetrics {
 		logger.Info("publishing metrics for view")
 
 		releaseStatus := getReleaseStatus(releases, view.SampleRelease.Release)
@@ -319,7 +318,7 @@ func updateComponentReadinessTrackingForView(client *bqclient.Client, prowURL, g
 		}
 	}
 
-	if view.RegressionTracking.Enabled {
+	if view.RegressionTracking.Enabled && maintainRegressionTables {
 		logger.Info("updating regression tracking for view")
 		// Maintain the test regressions table for anything new or now no longer appearing:
 		regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client),

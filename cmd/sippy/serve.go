@@ -32,9 +32,8 @@ type ServerFlags struct {
 	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 
-	ListenAddr               string
-	MetricsAddr              string
-	MaintainRegressionTables bool
+	ListenAddr  string
+	MetricsAddr string
 }
 
 func NewServerFlags() *ServerFlags {
@@ -62,7 +61,6 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
-	flagSet.BoolVar(&f.MaintainRegressionTables, "maintain-regression-tables", false, "Enable maintenance of open regressions table in bigquery.")
 }
 
 func (f *ServerFlags) Validate() error {
@@ -158,7 +156,7 @@ func NewServeCommand() *cobra.Command {
 					util.GetReportEnd(pinnedDateTime),
 					cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
 					views.ComponentReadiness,
-					f.MaintainRegressionTables)
+					false)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}
@@ -180,7 +178,7 @@ func NewServeCommand() *cobra.Command {
 								util.GetReportEnd(pinnedDateTime),
 								cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
 								views.ComponentReadiness,
-								f.MaintainRegressionTables)
+								false)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")
 							}
