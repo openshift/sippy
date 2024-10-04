@@ -76,11 +76,13 @@ export default function CompReadyMainInputs(props) {
         minFail={varsContext.minFail}
         ignoreMissing={varsContext.ignoreMissing}
         ignoreDisruption={varsContext.ignoreDisruption}
+        ignoreFallbackBasis={varsContext.ignoreFallbackBasis}
         setConfidence={varsContext.setConfidence}
         setPity={varsContext.setPity}
         setMinFail={varsContext.setMinFail}
         setIgnoreMissing={varsContext.setIgnoreMissing}
         setIgnoreDisruption={varsContext.setIgnoreDisruption}
+        setIgnoreFallbackBasis={varsContext.setIgnoreFallbackBasis}
       ></AdvancedOptions>
     </div>
   )

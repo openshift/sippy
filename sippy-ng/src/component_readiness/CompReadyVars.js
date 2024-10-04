@@ -110,6 +110,10 @@ export const CompReadyVarsProvider = ({ children }) => {
     'ignoreDisruption',
     BooleanParam
   )
+  const [ignoreFallbackBasisParam, setIgnoreFallbackBasisParam] = useQueryParam(
+    'ignoreFallbackBasis',
+    BooleanParam
+  )
 
   // Create the variables to be used for api calls; these are initialized to the
   // value of the variables that got their values from the URL.
@@ -269,6 +273,11 @@ export const CompReadyVarsProvider = ({ children }) => {
     ignoreDisruptionParam || true
   )
 
+  // why is ignoreFallbackBasisParam not pulled in via useQueryParam
+  const [ignoreFallbackBasis, setIgnoreFallbackBasis] = React.useState(
+    ignoreFallbackBasisParam || true
+  )
+
   /******************************************************************************
    * Parameters that are used to refine the query as the user drills down into CR
    ****************************************************************************** */
@@ -334,6 +343,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setMinFailParam(minFail)
     setIgnoreDisruptionParam(ignoreDisruption)
     setIgnoreMissingParam(ignoreMissing)
+    setIgnoreFallbackBasisParam(ignoreFallbackBasis)
     setComponentParam(component)
     setEnvironmentParam(environment)
     setCapabilityParam(capability)
@@ -361,6 +371,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setMinFailParam(undefined)
     setIgnoreDisruptionParam(undefined)
     setIgnoreMissingParam(undefined)
+    setIgnoreFallbackBasisParam(undefined)
 
     setSamplePROrgParam(undefined)
     setSamplePRRepoParam(undefined)
@@ -407,6 +418,9 @@ export const CompReadyVarsProvider = ({ children }) => {
     }
     if (view.advanced_options.hasOwnProperty('ignore_missing')) {
       setIgnoreMissing(view.advanced_options.ignore_missing)
+    }
+    if (view.advanced_options.hasOwnProperty('ignore_fallback')) {
+      setIgnoreFallbackBasis(view.advanced_options.ignore_fallback)
     }
   }
 
@@ -569,6 +583,8 @@ export const CompReadyVarsProvider = ({ children }) => {
         setIgnoreMissing,
         ignoreDisruption,
         setIgnoreDisruption,
+        ignoreFallbackBasis,
+        setIgnoreFallbackBasis,
         component,
         setComponentParam,
         capability,

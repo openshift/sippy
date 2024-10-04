@@ -14,6 +14,7 @@ import (
 // nolint:gocyclo
 func ParseComponentReportRequest(
 	views []crtype.View,
+	releases []crtype.Release,
 	req *http.Request,
 	allJobVariants crtype.JobVariants,
 	crTimeRoundingFactor time.Duration,
@@ -72,6 +73,35 @@ func ParseComponentReportRequest(
 			return
 		}
 
+		// default to no override
+		opts.BaseOverrideRelease.Release = opts.BaseRelease.Release
+		opts.BaseOverrideRelease.Start = opts.BaseRelease.Start
+		opts.BaseOverrideRelease.End = opts.BaseRelease.End
+
+		if !opts.AdvancedOption.IgnoreFallback {
+			// check to see if we have an individual test which is using a fallback release for basis
+			testBasisRelease := req.URL.Query().Get("testBasisRelease")
+			if len(testBasisRelease) > 0 && releases != nil {
+				// indicates we fell back to a previous release
+				// get that release and find the dates associated with it.
+				for _, release := range releases {
+					if release.Release == testBasisRelease {
+						// found the release so update if not already set
+						// if it is already the base release we don't update
+						// change dates
+						if opts.BaseRelease.Release != testBasisRelease {
+							opts.BaseOverrideRelease.Release = testBasisRelease
+
+							if release.GADate != nil && release.GA30DayPrior != nil {
+								opts.BaseOverrideRelease.End = *release.GADate
+								opts.BaseOverrideRelease.Start = *release.GA30DayPrior
+							}
+						}
+						break
+					}
+				}
+			}
+		}
 	}
 
 	// Params below this point can be used with and without views:
@@ -265,6 +295,12 @@ func parseAdvancedOptions(req *http.Request) (advancedOption crtype.RequestAdvan
 	if err != nil {
 		return advancedOption, err
 	}
+
+	advancedOption.IgnoreFallback, err = ParseBoolArg(req, "ignoreFallbackBasis", true)
+	if err != nil {
+		return advancedOption, err
+	}
+
 	return
 }
 
