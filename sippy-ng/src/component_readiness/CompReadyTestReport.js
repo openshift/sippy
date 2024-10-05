@@ -122,7 +122,7 @@ export default function CompReadyTestReport(props) {
       })
       .then((json) => {
         // If the basics are not present, consider it no data
-        if (!json.component || !json.sample_stats || !json.base_stats) {
+        if (!json.component || !json.sample_stats) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
         } else {
@@ -374,6 +374,10 @@ export default function CompReadyTestReport(props) {
   }
 
   const printStatsText = (statsLabel, stats, from, to) => {
+    if (stats === undefined) {
+      return `
+          Insufficient pass rate`
+    }
     return `
 ${statsLabel} Release: ${stats.release}
 Start Time: ${from}
@@ -434,6 +438,7 @@ Flakes: ${stats.flake_count}`
 
 {code}${testName}{code}
 
+# TODO: fisher_exact may not be defined
 ${probabilityStr(statusStr, data.fisher_exact)}
 ${printStatsText(
   'Sample (being evaluated)',
@@ -491,30 +496,41 @@ View the test details report at ${document.location.href}
               <Tooltip title={statusStr}>{assessmentIcon}</Tooltip>
             </TableCell>
           </TableRow>
-          <TableRow>
-            <TableCell>Probability:</TableCell>
-            <TableCell>
-              {probabilityStr(statusStr, data.fisher_exact)}
-              <Tooltip
-                title={`Fisher Exact Number for this basis and sample = ${data.fisher_exact}`}
-              >
-                <InfoIcon />
-              </Tooltip>
-            </TableCell>
-          </TableRow>
+          {data.comparison === 'fisher_exact' ? (
+            <TableRow>
+              <TableCell>Probability:</TableCell>
+              <TableCell>
+                {probabilityStr(statusStr, data.fisher_exact)}
+                <Tooltip
+                  title={`Fisher Exact Number for this basis and sample = ${data.fisher_exact}`}
+                >
+                  <InfoIcon />
+                </Tooltip>
+              </TableCell>
+            </TableRow>
+          ) : (
+            <TableRow>
+              <TableCell>Regression:</TableCell>
+              <TableCell>
+                Insufficient pass rate for the parameters of this report
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
       <Grid container spacing={2} style={{ marginTop: '10px' }}>
-        <Grid item xs={6}>
-          {printParamsAndStats(
-            'Basis (historical)',
-            data.base_stats,
-            loadedParams.baseStartTime.toString(),
-            loadedParams.baseEndTime.toString(),
-            loadedParams.variantCrossCompare,
-            loadedParams.includeVariantsCheckedItems
-          )}
-        </Grid>
+        {data.base_stats && (
+          <Grid item xs={6}>
+            {printParamsAndStats(
+              'Basis (historical)',
+              data.base_stats,
+              loadedParams.baseStartTime.toString(),
+              loadedParams.baseEndTime.toString(),
+              loadedParams.variantCrossCompare,
+              loadedParams.includeVariantsCheckedItems
+            )}
+          </Grid>
+        )}
         <Grid item xs={6}>
           {printParamsAndStats(
             'Sample (being evaluated)',

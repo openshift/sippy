@@ -253,6 +253,8 @@ export function getColumns(data) {
   const firstColumn = data.rows[0].columns
   let columnNames = []
   firstColumn.forEach((column) => {
+    console.log('for data: ' + JSON.stringify(data))
+    console.log('checking column: ' + JSON.stringify(column))
     const columnValues = formColumnName(column)
     columnNames.push(columnValues)
   })
@@ -327,6 +329,8 @@ export function getUpdatedUrlParts(vars) {
     confidence: vars.confidence,
     pity: vars.pity,
     minFail: vars.minFail,
+    passRateNewTests: vars.passRateNewTests,
+    passRateAllTests: vars.passRateAllTests,
     ignoreDisruption: vars.ignoreDisruption,
     ignoreMissing: vars.ignoreMissing,
     //component: vars.component,
