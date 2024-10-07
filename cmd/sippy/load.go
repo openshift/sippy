@@ -223,7 +223,7 @@ func NewLoadCommand() *cobra.Command {
 					if err != nil {
 						log.WithError(err).Fatal("unable to load views")
 					}
-					releases, err := api.GetReleases(dbc, bigQueryClient)
+					releases, err := api.GetReleases(bigQueryClient)
 					if err != nil {
 						log.WithError(err).Error("error querying releases")
 						return err

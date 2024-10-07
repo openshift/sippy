@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -480,8 +481,8 @@ func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {
 }
 
 // GetReleasesFromBigQuery gets all releases defined in the Releases table in BigQuery
-func GetReleasesFromBigQuery(client *bqcachedclient.Client) ([]query.Release, error) {
-	releases := []query.Release{}
+func GetReleasesFromBigQuery(client *bqcachedclient.Client) ([]v1.Release, error) {
+	releases := []v1.Release{}
 
 	queryString := "SELECT * FROM openshift-ci-data-analysis.ci_data.Releases ORDER BY DevelStartDate DESC"
 
@@ -502,7 +503,7 @@ func GetReleasesFromBigQuery(client *bqcachedclient.Client) ([]query.Release, er
 			log.WithError(err).Error("error parsing release row from bigquery")
 			return releases, err
 		}
-		release := query.Release{Release: r.Release, Status: r.ReleaseStatus.String()}
+		release := v1.Release{Release: r.Release, Status: r.ReleaseStatus.String()}
 		if r.GADate.Valid {
 			gaDate := r.GADate.Date.In(time.UTC)
 			release.GADate = &gaDate

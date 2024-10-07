@@ -1,22 +1,13 @@
 package query
 
 import (
-	"time"
-
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
 	log "github.com/sirupsen/logrus"
 )
 
-type Release struct {
-	Release string
-	// Status is the release status defined in the BigQuery Releases table. SQL does not have
-	// this field
-	Status string
-	GADate *time.Time
-}
-
-func ReleasesFromDB(dbClient *db.DB) ([]Release, error) {
-	var releases []Release
+func ReleasesFromDB(dbClient *db.DB) ([]v1.Release, error) {
+	var releases []v1.Release
 	// The string_to_array trick ensures releases are sorted in version order, descending
 	res := dbClient.DB.Raw(`
 		SELECT DISTINCT(release), case when position('.' in release) != 0 then string_to_array(release, '.')::int[] end as sortable_release

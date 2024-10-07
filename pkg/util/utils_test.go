@@ -4,11 +4,16 @@ import (
 	"testing"
 	"time"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestParseCRReleaseTime(t *testing.T) {
+	releases := []v1.Release{
+		{Release: "4.16", Status: "", GADate: DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
+	}
+
 	nowMinus7d := time.Now().Add(-7 * 24 * time.Hour).UTC()
 	nowMinus7dRoundDown := time.Date(nowMinus7d.Year(), nowMinus7d.Month(), nowMinus7d.Day(), 0, 0, 0, 0, time.UTC)
 	nowMinus7dRoundUp := time.Date(nowMinus7d.Year(), nowMinus7d.Month(), nowMinus7d.Day(), 23, 59, 59, 0, time.UTC)
@@ -100,7 +105,7 @@ func TestParseCRReleaseTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resultTime, err := ParseCRReleaseTime(tt.release, tt.timeStr, tt.isStart, tt.roundingFactor)
+			resultTime, err := ParseCRReleaseTime(releases, tt.release, tt.timeStr, tt.isStart, tt.roundingFactor)
 			if tt.expectedErr {
 				require.Error(t, err)
 			} else {
