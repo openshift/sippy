@@ -3,6 +3,7 @@ package metrics
 import (
 	"math"
 
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
@@ -10,7 +11,6 @@ import (
 	"github.com/openshift/sippy/pkg/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -38,19 +38,19 @@ var (
 )
 
 // refreshInstallSuccessMetrics publishes metrics for the install success test for specific variants we care about.
-func refreshInstallSuccessMetrics(dbc *db.DB, releases []query.Release) error {
+func refreshInstallSuccessMetrics(dbc *db.DB, releases []sippyv1.Release) error {
 	return refreshTestSuccessMetrics(dbc,
 		testidentification.NewInstallTestName, installSuccessMetric, installSuccessDeltaToPrevWeekMetric, append(testidentification.DefaultExcludedVariants, "upgrade-minor"), releases)
 }
 
 // refreshUpgradeSuccessMetrics publishes metrics for the install success test for specific variants we care about.
-func refreshUpgradeSuccessMetrics(dbc *db.DB, releases []query.Release) error {
+func refreshUpgradeSuccessMetrics(dbc *db.DB, releases []sippyv1.Release) error {
 	return refreshTestSuccessMetrics(dbc,
 		testidentification.UpgradeTestName, upgradeSuccessMetric, upgradeSuccessDeltaToPrevWeekMetric, testidentification.DefaultExcludedVariants, releases)
 }
 
 func refreshTestSuccessMetrics(dbc *db.DB, testName string, successMetric, successDeltaMetric *prometheus.GaugeVec,
-	excludedVariants []string, releases []query.Release) error {
+	excludedVariants []string, releases []sippyv1.Release) error {
 	for _, release := range releases {
 		for _, reportType := range []v1.ReportType{v1.CurrentReport, v1.TwoDayReport} {
 			_, testToVariantToResults, err := api.VariantTestsReport(dbc, release.Release, reportType,

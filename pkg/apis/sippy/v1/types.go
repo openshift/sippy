@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"time"
+
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
 
@@ -64,4 +66,10 @@ type FailureGroup struct {
 	Job          string `json:"job"`
 	URL          string `json:"url"`
 	TestFailures int    `json:"testFailures"`
+}
+
+type Release struct {
+	Release string
+	Status  string
+	GADate  *time.Time
 }
