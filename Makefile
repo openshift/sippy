@@ -31,9 +31,9 @@ test: builddir npm
 lint: builddir npm
 	# See https://github.com/facebook/create-react-app/issues/11174 about
 	# why we only audit production deps:
-	cd sippy-ng; npm audit --production
 	./hack/go-lint.sh run ./...
 	cd sippy-ng; npx eslint .
+	cd sippy-ng; npm audit --production
 
 npm:
 	# For debugging
