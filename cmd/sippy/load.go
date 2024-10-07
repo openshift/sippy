@@ -206,30 +206,11 @@ func NewLoadCommand() *cobra.Command {
 				}
 
 				if l == "regression-tracking" {
-					cacheClient, err := f.CacheFlags.GetCacheClient()
+					regLoader, err := f.regressionLoader(ctx)
 					if err != nil {
-						return errors.WithMessage(err, "couldn't get cache client")
-					}
-
-					bigQueryClient, err := bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, cacheClient)
-					if err != nil {
-						log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents regression tracking")
 						return err
 					}
-
-					cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
-
-					views, err := f.ComponentReadinessFlags.ParseViewsFile()
-					if err != nil {
-						log.WithError(err).Fatal("unable to load views")
-					}
-					releases, err := api.GetReleases(bigQueryClient)
-					if err != nil {
-						log.WithError(err).Error("error querying releases")
-						return err
-					}
-					regressionLoader := regressionloader.New(bigQueryClient, cacheOpts, views.ComponentReadiness, releases)
-					loaders = append(loaders, regressionLoader)
+					loaders = append(loaders, regLoader)
 				}
 
 			}
@@ -262,6 +243,33 @@ func NewLoadCommand() *cobra.Command {
 	f.BindFlags(cmd.Flags())
 
 	return cmd
+}
+
+func (f *LoadFlags) regressionLoader(ctx context.Context) (*regressionloader.RegressionLoader, error) {
+	cacheClient, err := f.CacheFlags.GetCacheClient()
+	if err != nil {
+		return nil, errors.WithMessage(err, "couldn't get cache client")
+	}
+
+	bigQueryClient, err := bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, cacheClient)
+	if err != nil {
+		log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents regression tracking")
+		return nil, err
+	}
+
+	cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
+
+	views, err := f.ComponentReadinessFlags.ParseViewsFile()
+	if err != nil {
+		log.WithError(err).Fatal("unable to load views")
+	}
+	releases, err := api.GetReleases(bigQueryClient)
+	if err != nil {
+		log.WithError(err).Error("error querying releases")
+		return nil, err
+	}
+	regressionLoader := regressionloader.New(bigQueryClient, cacheOpts, views.ComponentReadiness, releases)
+	return regressionLoader, nil
 }
 
 func (f *LoadFlags) jobVariantsLoader(ctx context.Context) (dataloader.DataLoader, error) {
