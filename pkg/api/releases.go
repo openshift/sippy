@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -481,13 +481,13 @@ func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {
 }
 
 // GetReleasesFromBigQuery gets all releases defined in the Releases table in BigQuery
-func GetReleasesFromBigQuery(client *bqcachedclient.Client) ([]v1.Release, error) {
+func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]v1.Release, error) {
 	releases := []v1.Release{}
 
 	queryString := "SELECT * FROM openshift-ci-data-analysis.ci_data.Releases ORDER BY DevelStartDate DESC"
 
 	q := client.BQ.Query(queryString)
-	it, err := q.Read(context.TODO())
+	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying releases data from bigquery")
 		return releases, err

@@ -29,10 +29,10 @@ test: builddir npm
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage --passWithNoTests
 
 lint: builddir npm
-	# See https://github.com/facebook/create-react-app/issues/11174 about
-	# why we only audit production deps:
 	./hack/go-lint.sh run ./...
 	cd sippy-ng; npx eslint .
+	# See https://github.com/facebook/create-react-app/issues/11174 about
+	# why we only audit production deps:
 	cd sippy-ng; npm audit --production
 
 npm:

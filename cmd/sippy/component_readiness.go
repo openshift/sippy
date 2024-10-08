@@ -183,7 +183,9 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 
 	if f.MetricsAddr != "" {
 		// Do an immediate metrics update
-		err = metrics.RefreshMetricsDB(nil,
+		err = metrics.RefreshMetricsDB(
+			context.Background(),
+			nil,
 			bigQueryClient,
 			f.ProwFlags.URL,
 			f.GoogleCloudFlags.StorageBucket,
@@ -205,6 +207,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				case <-ticker.C:
 					log.Info("tick")
 					err := metrics.RefreshMetricsDB(
+						context.Background(),
 						nil,
 						bigQueryClient,
 						f.ProwFlags.URL,
