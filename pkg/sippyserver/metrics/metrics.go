@@ -18,7 +18,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
@@ -233,8 +232,8 @@ func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Clie
 	}
 
 	for _, view := range views {
-		if view.Metrics.Enabled || view.RegressionTracking.Enabled {
-			err := UpdateComponentReadinessTrackingForView(ctx, client, prowURL, gcsBucket, cacheOptions, view, releases, maintainRegressionTables, true)
+		if view.Metrics.Enabled {
+			err := updateComponentReadinessMetricsForView(ctx, client, prowURL, gcsBucket, cacheOptions, view, releases)
 			if err != nil {
 				log.WithError(err).Error("error")
 				log.WithError(err).WithField("view", view.Name).Error("error refreshing metrics/regressions for view")
@@ -244,19 +243,20 @@ func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Clie
 	}
 }
 
-// UpdateCompnentReadinessTrackingForView queries the report for the given view, and then updates metrics,
-// regression tracking, or both, depending on view configuration.
-func UpdateComponentReadinessTrackingForView(ctx context.Context, client *bqclient.Client, prowURL, gcsBucket string, cacheOptions cache.RequestOptions, view crtype.View, releases []v1.Release, maintainRegressionTables, publishMetrics bool) error {
+// updateComponentReadinessTrackingForView queries the report for the given view, and then updates metrics.
+func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclient.Client, prowURL, gcsBucket string, cacheOptions cache.RequestOptions, view crtype.View, releases []v1.Release) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
 
-	baseRelease, err := componentreadiness.GetViewReleaseOptions(releases, "basis", view.BaseRelease, cacheOptions.CRTimeRoundingFactor)
+	baseRelease, err := componentreadiness.GetViewReleaseOptions(
+		releases, "basis", view.BaseRelease, cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
 
-	sampleRelease, err := componentreadiness.GetViewReleaseOptions(releases, "sample", view.SampleRelease, cacheOptions.CRTimeRoundingFactor)
+	sampleRelease, err := componentreadiness.GetViewReleaseOptions(
+		releases, "sample", view.SampleRelease, cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
@@ -274,7 +274,7 @@ func UpdateComponentReadinessTrackingForView(ctx context.Context, client *bqclie
 		CacheOption:    cacheOptions,
 	}
 
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), client, prowURL, gcsBucket, reportOpts)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(ctx, client, prowURL, gcsBucket, reportOpts)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
@@ -283,51 +283,38 @@ func UpdateComponentReadinessTrackingForView(ctx context.Context, client *bqclie
 		return fmt.Errorf("component report generation encountered errors: " + strings.Join(strErrors, "; "))
 	}
 
-	if view.Metrics.Enabled && publishMetrics {
-		logger.Info("publishing metrics for view")
+	logger.Info("publishing metrics for view")
 
-		releaseStatus := getReleaseStatus(releases, view.SampleRelease.Release)
-		for _, row := range report.Rows {
-			totalRegressedTestsByComponent := 0
-			uniqueRegressedTestsByComponent := sets.NewString()
-			for _, col := range row.Columns {
-				// Calculate total number of regressions by component, this can include a test multiple times
-				// if it's regressed in multiple NURP's.
-				totalRegressedTestsByComponent += len(col.RegressedTests)
-				// Calculate total number of unique tests that are regressed by component
-				for _, regressedTest := range col.RegressedTests {
-					uniqueRegressedTestsByComponent.Insert(regressedTest.TestID)
-				}
-				// TODO: why specific variants here?
-				networkLabel, ok := col.Variants["Network"]
-				if !ok {
-					networkLabel = ""
-				}
-				archLabel, ok := col.Variants["Architecture"]
-				if !ok {
-					archLabel = ""
-				}
-				platLabel, ok := col.Variants["Platform"]
-				if !ok {
-					platLabel = ""
-				}
-				componentReadinessMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name,
-					row.Component, networkLabel, archLabel, platLabel).Set(float64(col.Status))
+	releaseStatus := getReleaseStatus(releases, view.SampleRelease.Release)
+	for _, row := range report.Rows {
+		totalRegressedTestsByComponent := 0
+		uniqueRegressedTestsByComponent := sets.NewString()
+		for _, col := range row.Columns {
+			// Calculate total number of regressions by component, this can include a test multiple times
+			// if it's regressed in multiple NURP's.
+			totalRegressedTestsByComponent += len(col.RegressedTests)
+			// Calculate total number of unique tests that are regressed by component
+			for _, regressedTest := range col.RegressedTests {
+				uniqueRegressedTestsByComponent.Insert(regressedTest.TestID)
 			}
-			componentReadinessTotalRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(totalRegressedTestsByComponent))
-			componentReadinessUniqueRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
+			// TODO: why specific variants here?
+			networkLabel, ok := col.Variants["Network"]
+			if !ok {
+				networkLabel = ""
+			}
+			archLabel, ok := col.Variants["Architecture"]
+			if !ok {
+				archLabel = ""
+			}
+			platLabel, ok := col.Variants["Platform"]
+			if !ok {
+				platLabel = ""
+			}
+			componentReadinessMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name,
+				row.Component, networkLabel, archLabel, platLabel).Set(float64(col.Status))
 		}
-	}
-
-	if view.RegressionTracking.Enabled && maintainRegressionTables {
-		logger.Info("updating regression tracking for view")
-		// Maintain the test regressions table for anything new or now no longer appearing:
-		regressionTracker := tracker.NewRegressionTracker(tracker.NewBigQueryRegressionStore(client),
-			view, !maintainRegressionTables)
-		err = regressionTracker.SyncComponentReport(ctx, &report)
-		if err != nil {
-			return errors.Wrap(err, "regression tracker reported an error")
-		}
+		componentReadinessTotalRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(totalRegressedTestsByComponent))
+		componentReadinessUniqueRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
 	}
 
 	return nil

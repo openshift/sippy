@@ -1,23 +1,25 @@
-package tracker
+package componentreadiness
 
 import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/cache"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
-
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
-	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
 )
 
 const (
-	testRegressionsTable = "test_regressions"
+	testRegressionsTable = "test_regressions_dgoodwin_temp"
 )
 
 // RegressionStore is an underlying interface for where we store/load data on open test regressions.
@@ -138,32 +140,108 @@ func (bq *BigQueryRegressionStore) updateClosed(ctx context.Context, regressionI
 	return err
 }
 
-func NewRegressionTracker(backend RegressionStore, view crtype.View, dryRun bool) *RegressionTracker {
+func NewRegressionTracker(
+	bigqueryClient *sippybigquery.Client,
+	cacheOptions cache.RequestOptions,
+	releases []v1.Release,
+	backend RegressionStore,
+	views []crtype.View,
+	dryRun bool) *RegressionTracker {
+
 	return &RegressionTracker{
-		backend: backend,
-		view:    view,
-		dryRun:  dryRun,
+		bigqueryClient: bigqueryClient,
+		cacheOpts:      cacheOptions,
+		releases:       releases,
+		backend:        backend,
+		views:          views,
+		dryRun:         dryRun,
+		logger:         log.WithField("daemon", "regression-tracker"),
 	}
 }
 
 // RegressionTracker is the primary object for managing regression tracking logic.
 type RegressionTracker struct {
-	backend RegressionStore
-	dryRun  bool
-	// view is the server side view that has regression tracking enabled.
-	view crtype.View
+	backend        RegressionStore
+	bigqueryClient *sippybigquery.Client
+	cacheOpts      cache.RequestOptions
+	releases       []v1.Release
+	dryRun         bool
+	views          []crtype.View
+	logger         log.FieldLogger
 }
 
-func (rt *RegressionTracker) SyncComponentReport(ctx context.Context, report *crtype.ComponentReport) error {
-	regressions, err := rt.backend.ListCurrentRegressionsForRelease(ctx, rt.view.SampleRelease.Release)
+// Run iterates all views with regression tracking enabled and syncs the results of it's
+// component report to the regression tables in bigquery.
+func (rt *RegressionTracker) Run(ctx context.Context) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				rt.logger.Info("stopping RegressionTracker.Run")
+				return
+			default:
+				// Run the existing logic
+				for _, view := range rt.views {
+					if view.Metrics.Enabled || view.RegressionTracking.Enabled {
+						err := rt.syncRegressionsForView(ctx, view)
+						if err != nil {
+							log.WithError(err).WithField("view", view.Name).Error("error refreshing regressions for view")
+						}
+					}
+				}
+
+				// TODO:
+				rt.logger.Info("sleeping for two minutes")
+				time.Sleep(2 * time.Minute)
+			}
+		}
+	}()
+}
+
+func (rt *RegressionTracker) syncRegressionsForView(ctx context.Context, view crtype.View) error {
+	rLog := rt.logger.WithField("view", view.Name)
+
+	baseRelease, err := GetViewReleaseOptions(
+		rt.releases, "basis", view.BaseRelease, rt.cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
-	rLog := log.WithFields(log.Fields{
-		"func":   "SyncComponentReport",
-		"dryRun": rt.dryRun,
-		"view":   rt.view,
-	})
+
+	sampleRelease, err := GetViewReleaseOptions(
+		rt.releases, "sample", view.SampleRelease, rt.cacheOpts.CRTimeRoundingFactor)
+	if err != nil {
+		return err
+	}
+
+	variantOption := view.VariantOptions
+	advancedOption := view.AdvancedOptions
+
+	// Get component readiness report
+	reportOpts := crtype.RequestOptions{
+		BaseRelease:    baseRelease,
+		SampleRelease:  sampleRelease,
+		TestIDOption:   crtype.RequestTestIdentificationOptions{},
+		VariantOption:  variantOption,
+		AdvancedOption: advancedOption,
+		CacheOption:    rt.cacheOpts,
+	}
+
+	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
+	report, errs := GetComponentReportFromBigQuery(
+		context.Background(), rt.bigqueryClient, "", "", reportOpts)
+	if len(errs) > 0 {
+		var strErrors []string
+		for _, err := range errs {
+			strErrors = append(strErrors, err.Error())
+		}
+		return fmt.Errorf("component report generation encountered errors: " + strings.Join(strErrors, "; "))
+	}
+
+	// TODO: could move to one query for all regressions across all views in the parent run function
+	regressions, err := rt.backend.ListCurrentRegressionsForRelease(ctx, view.SampleRelease.Release)
+	if err != nil {
+		return err
+	}
 	rLog.Infof("loaded %d regressions from db", len(regressions))
 
 	// All regressions, both triaged and not:
@@ -182,7 +260,7 @@ func (rt *RegressionTracker) SyncComponentReport(ctx context.Context, report *cr
 
 	matchedOpenRegressions := []crtype.TestRegression{} // all the matches we found, used to determine what had no match
 	for _, regTest := range allRegressedTests {
-		if openReg := FindOpenRegression(rt.view.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
+		if openReg := FindOpenRegression(view.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
 			if openReg.Closed.Valid {
 				// if the regression returned has a closed date, we found a recently closed
 				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
@@ -206,7 +284,7 @@ func (rt *RegressionTracker) SyncComponentReport(ctx context.Context, report *cr
 			rLog.Infof("opening new regression: %v", regTest)
 			if !rt.dryRun {
 				// Open a new regression:
-				newReg, err := rt.backend.OpenRegression(ctx, rt.view, regTest)
+				newReg, err := rt.backend.OpenRegression(ctx, view, regTest)
 				if err != nil {
 					rLog.WithError(err).Errorf("error opening new regression for: %v", regTest)
 					return errors.Wrapf(err, "error opening new regression: %v", regTest)

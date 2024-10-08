@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/dataloader/regressionloader"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -119,12 +119,15 @@ func NewSippyDaemonCommand() *cobra.Command {
 				if err != nil {
 					log.WithError(err).Fatal("unable to load views")
 				}
-				releases, err := api.GetReleases(bigQueryClient)
+				releases, err := api.GetReleases(context.TODO(), bigQueryClient)
 				if err != nil {
 					log.WithError(err).Fatal("error querying releases")
 				}
-				regressionLoader := regressionloader.New(bigQueryClient, cacheOpts, views.ComponentReadiness, releases)
-				processes = append(processes, regressionLoader)
+				regressionTracker := componentreadiness.NewRegressionTracker(
+					bigQueryClient, cacheOpts, releases,
+					componentreadiness.NewBigQueryRegressionStore(bigQueryClient),
+					views.ComponentReadiness, false)
+				processes = append(processes, regressionTracker)
 
 			}
 
