@@ -1,6 +1,8 @@
 package regressionloader
 
 import (
+	"context"
+
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -28,11 +30,7 @@ func New(bqClient *bqclient.Client, cacheOpts cache.RequestOptions, views []crty
 	}
 }
 
-func (jl *RegressionLoader) Name() string {
-	return "regression"
-}
-
-func (jl *RegressionLoader) Load() {
+func (jl *RegressionLoader) Run(ctx context.Context) {
 	for _, view := range jl.views {
 		if view.Metrics.Enabled || view.RegressionTracking.Enabled {
 			// dummy prowURL and gcsBucket, these are only used for test details report, no need

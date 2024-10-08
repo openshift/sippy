@@ -5,6 +5,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/dataloader/regressionloader"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -20,25 +24,34 @@ import (
 var logLevel = "info"
 
 type SippyDaemonFlags struct {
+	BigQueryFlags    *flags.BigQueryFlags
 	DBFlags          *flags.PostgresFlags
 	GoogleCloudFlags *flags.GoogleCloudFlags
+	CacheFlags       *flags.CacheFlags
 
-	GithubCommenterFlags *flags.GithubCommenterFlags
-	MetricsAddr          string
+	GithubCommenterFlags    *flags.GithubCommenterFlags
+	ComponentReadinessFlags *flags.ComponentReadinessFlags
+	MetricsAddr             string
 }
 
 func NewSippyDaemonFlags() *SippyDaemonFlags {
 	return &SippyDaemonFlags{
-		DBFlags:              flags.NewPostgresDatabaseFlags(),
-		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
-		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
+		BigQueryFlags:           flags.NewBigQueryFlags(),
+		DBFlags:                 flags.NewPostgresDatabaseFlags(),
+		GithubCommenterFlags:    flags.NewGithubCommenterFlags(),
+		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
+		CacheFlags:              flags.NewCacheFlags(),
+		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 	}
 }
 
 func (f *SippyDaemonFlags) BindFlags(fs *pflag.FlagSet) {
+	f.BigQueryFlags.BindFlags(fs)
 	f.DBFlags.BindFlags(fs)
 	f.GithubCommenterFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
+	f.CacheFlags.BindFlags(fs)
+	f.ComponentReadinessFlags.BindFlags(fs)
 
 	fs.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 }
@@ -84,6 +97,35 @@ func NewSippyDaemonCommand() *cobra.Command {
 				processes = append(processes, sippyserver.NewWorkProcessor(dbc,
 					gcsClient.Bucket(f.GoogleCloudFlags.StorageBucket),
 					10, 5*time.Minute, 5*time.Second, ghCommenter, f.GithubCommenterFlags.CommentProcessingDryRun))
+			}
+
+			if f.ComponentReadinessFlags.ComponentReadinessViewsFile != "" {
+				cacheClient, err := f.CacheFlags.GetCacheClient()
+				if err != nil {
+					log.WithError(err).Fatal("couldn't get cache client")
+				}
+
+				bigQueryClient, err := bqcachedclient.New(context.TODO(),
+					f.GoogleCloudFlags.ServiceAccountCredentialFile,
+					f.BigQueryFlags.BigQueryProject,
+					f.BigQueryFlags.BigQueryDataset, cacheClient)
+				if err != nil {
+					log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents regression tracking")
+				}
+
+				cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
+
+				views, err := f.ComponentReadinessFlags.ParseViewsFile()
+				if err != nil {
+					log.WithError(err).Fatal("unable to load views")
+				}
+				releases, err := api.GetReleases(bigQueryClient)
+				if err != nil {
+					log.WithError(err).Fatal("error querying releases")
+				}
+				regressionLoader := regressionloader.New(bigQueryClient, cacheOpts, views.ComponentReadiness, releases)
+				processes = append(processes, regressionLoader)
+
 			}
 
 			daemonServer := sippyserver.NewDaemonServer(processes)

@@ -9,9 +9,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/openshift/sippy/pkg/api"
-	"github.com/openshift/sippy/pkg/apis/cache"
-	"github.com/openshift/sippy/pkg/dataloader/regressionloader"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -47,27 +44,25 @@ type LoadFlags struct {
 	Architectures []string
 	Releases      []string
 
-	BigQueryFlags           *flags.BigQueryFlags
-	CacheFlags              *flags.CacheFlags
-	ConfigFlags             *flags.ConfigFlags
-	DBFlags                 *flags.PostgresFlags
-	GithubCommenterFlags    *flags.GithubCommenterFlags
-	GoogleCloudFlags        *flags.GoogleCloudFlags
-	ModeFlags               *flags.ModeFlags
-	ComponentReadinessFlags *flags.ComponentReadinessFlags
-	JobVariantsInputFile    string
+	BigQueryFlags        *flags.BigQueryFlags
+	CacheFlags           *flags.CacheFlags
+	ConfigFlags          *flags.ConfigFlags
+	DBFlags              *flags.PostgresFlags
+	GithubCommenterFlags *flags.GithubCommenterFlags
+	GoogleCloudFlags     *flags.GoogleCloudFlags
+	ModeFlags            *flags.ModeFlags
+	JobVariantsInputFile string
 }
 
 func NewLoadFlags() *LoadFlags {
 	return &LoadFlags{
-		BigQueryFlags:           flags.NewBigQueryFlags(),
-		CacheFlags:              flags.NewCacheFlags(),
-		ConfigFlags:             flags.NewConfigFlags(),
-		DBFlags:                 flags.NewPostgresDatabaseFlags(),
-		GithubCommenterFlags:    flags.NewGithubCommenterFlags(),
-		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
-		ModeFlags:               flags.NewModeFlags(),
-		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
+		BigQueryFlags:        flags.NewBigQueryFlags(),
+		CacheFlags:           flags.NewCacheFlags(),
+		ConfigFlags:          flags.NewConfigFlags(),
+		DBFlags:              flags.NewPostgresDatabaseFlags(),
+		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
+		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
+		ModeFlags:            flags.NewModeFlags(),
 	}
 }
 
@@ -78,12 +73,11 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.GithubCommenterFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
 	f.ModeFlags.BindFlags(fs)
-	f.ComponentReadinessFlags.BindFlags(fs)
 	f.CacheFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
 	fs.BoolVar(&f.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
-	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "regression-tracking"}, "Which data sources to use for data loading")
+	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping"}, "Which data sources to use for data loading")
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
 	fs.StringVar(&f.JobVariantsInputFile, "job-variants-input-file", "expected-job-variants.json", "JSON input file for the job-variants loader")
@@ -205,14 +199,6 @@ func NewLoadCommand() *cobra.Command {
 					loaders = append(loaders, variantsLoader)
 				}
 
-				if l == "regression-tracking" {
-					regLoader, err := f.regressionLoader(ctx)
-					if err != nil {
-						return err
-					}
-					loaders = append(loaders, regLoader)
-				}
-
 			}
 
 			// Run loaders with the metrics wrapper
@@ -243,33 +229,6 @@ func NewLoadCommand() *cobra.Command {
 	f.BindFlags(cmd.Flags())
 
 	return cmd
-}
-
-func (f *LoadFlags) regressionLoader(ctx context.Context) (*regressionloader.RegressionLoader, error) {
-	cacheClient, err := f.CacheFlags.GetCacheClient()
-	if err != nil {
-		return nil, errors.WithMessage(err, "couldn't get cache client")
-	}
-
-	bigQueryClient, err := bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, cacheClient)
-	if err != nil {
-		log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents regression tracking")
-		return nil, err
-	}
-
-	cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
-
-	views, err := f.ComponentReadinessFlags.ParseViewsFile()
-	if err != nil {
-		log.WithError(err).Fatal("unable to load views")
-	}
-	releases, err := api.GetReleases(bigQueryClient)
-	if err != nil {
-		log.WithError(err).Error("error querying releases")
-		return nil, err
-	}
-	regressionLoader := regressionloader.New(bigQueryClient, cacheOpts, views.ComponentReadiness, releases)
-	return regressionLoader, nil
 }
 
 func (f *LoadFlags) jobVariantsLoader(ctx context.Context) (dataloader.DataLoader, error) {
