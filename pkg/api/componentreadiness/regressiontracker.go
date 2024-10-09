@@ -88,7 +88,7 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressionsForRelease(ctx context.
 func (bq *BigQueryRegressionStore) OpenRegression(ctx context.Context, view crtype.View, newRegressedTest crtype.ReportTestSummary) (*crtype.TestRegression, error) {
 	id := uuid.New()
 	newRegression := &crtype.TestRegression{
-		View:         bigquery.NullString{StringVal: view.Name},
+		View:         bigquery.NullString{StringVal: view.Name, Valid: true},
 		Release:      view.SampleRelease.Release,
 		TestID:       newRegressedTest.TestID,
 		TestName:     newRegressedTest.TestName,
@@ -182,7 +182,7 @@ func (rt *RegressionTracker) Run(ctx context.Context) {
 			default:
 				// Run the existing logic
 				for _, view := range rt.views {
-					if view.Metrics.Enabled || view.RegressionTracking.Enabled {
+					if view.RegressionTracking.Enabled {
 						err := rt.syncRegressionsForView(ctx, view)
 						if err != nil {
 							log.WithError(err).WithField("view", view.Name).Error("error refreshing regressions for view")
@@ -259,6 +259,7 @@ func (rt *RegressionTracker) syncRegressionsForView(ctx context.Context, view cr
 	}
 
 	matchedOpenRegressions := []crtype.TestRegression{} // all the matches we found, used to determine what had no match
+	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
 	for _, regTest := range allRegressedTests {
 		if openReg := FindOpenRegression(view.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
 			if openReg.Closed.Valid {
@@ -328,6 +329,7 @@ func FindOpenRegression(view string,
 	regressions []crtype.TestRegression) *crtype.TestRegression {
 
 	for _, tr := range regressions {
+
 		if !tr.View.Valid || tr.View.StringVal != view {
 			continue
 		}

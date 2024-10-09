@@ -228,7 +228,7 @@ component_readiness:
     metrics:
       enabled: true
     regression_tracking:
-      enabled: true
+      enabled: false
   - name: 4.16-main
     base_release:
       release: "4.15"
