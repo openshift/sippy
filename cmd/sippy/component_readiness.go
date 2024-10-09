@@ -2,9 +2,13 @@ package main
 
 import (
 	"context"
+	"flag"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"cloud.google.com/go/storage"
@@ -14,11 +18,14 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
+	prowflagutil "sigs.k8s.io/prow/pkg/flagutil"
 
 	resources "github.com/openshift/sippy"
+	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/componentreadiness/jiraintegrator"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/sippyserver"
@@ -31,12 +38,15 @@ type ComponentReadinessFlags struct {
 	CacheFlags              *flags.CacheFlags
 	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
+	JiraOptions             prowflagutil.JiraOptions
 
-	Config      string
-	LogLevel    string
-	ListenAddr  string
-	MetricsAddr string
-	RedisURL    string
+	Config        string
+	LogLevel      string
+	ListenAddr    string
+	MetricsAddr   string
+	RedisURL      string
+	SippyURL      string
+	IntegrateJira bool
 	// TODO: remove this, now a param on a view
 	MaintainRegressionTables bool
 }
@@ -65,6 +75,7 @@ func NewComponentReadinessCommand() *cobra.Command {
 			if err := f.Run(); err != nil {
 				return errors.WithMessage(err, "error running command")
 			}
+			cmd.Context()
 
 			return nil
 		},
@@ -81,13 +92,24 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.GoogleCloudFlags.BindFlags(flagSet)
 	f.ProwFlags.BindFlags(flagSet)
 	f.ComponentReadinessFlags.BindFlags(flagSet)
+	f.JiraOptions.AddFlags(flag.CommandLine)
+	flagSet.AddGoFlagSet(flag.CommandLine)
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 	flagSet.BoolVar(&f.MaintainRegressionTables, "maintain-regression-tables", false, "Enable maintenance of open regressions table in bigquery.")
+	flagSet.BoolVar(&f.IntegrateJira, "integrate-jira", false, "Enable automatic integration with Jira by using Component Readiness result.")
+	flagSet.StringVar(&f.SippyURL, "sippy-url", f.SippyURL, "The Sippy URL prefix to be used to generate sharable Sippy links")
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
+	err := f.JiraOptions.Validate(true)
+	if err != nil {
+		return err
+	}
+	if f.IntegrateJira && len(f.SippyURL) == 0 {
+		return fmt.Errorf("--sippy-url missing when --integrate-jira is specified")
+	}
 	return f.ProwFlags.Validate()
 }
 
@@ -180,6 +202,21 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		views,
 	)
 
+	ctx, cancelFn := context.WithCancel(context.Background())
+	defer cancelFn()
+	abortCh := make(chan os.Signal, 1)
+	go func() {
+		sig := <-abortCh
+		cancelFn()
+		switch sig {
+		case syscall.SIGINT:
+			os.Exit(130)
+		default:
+			os.Exit(0)
+		}
+	}()
+	signal.Notify(abortCh, syscall.SIGINT, syscall.SIGTERM)
+
 	if f.MetricsAddr != "" {
 		// Do an immediate metrics update
 		err = metrics.RefreshMetricsDB(nil,
@@ -197,7 +234,6 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 
 		// Refresh our metrics every 5 minutes:
 		ticker := time.NewTicker(5 * time.Minute)
-		quit := make(chan struct{})
 		go func() {
 			for {
 				select {
@@ -216,7 +252,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}
-				case <-quit:
+				case <-ctx.Done():
 					ticker.Stop()
 					return
 				}
@@ -231,6 +267,43 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				panic(err)
 			}
 		}()
+
+		if f.IntegrateJira {
+			jiraClient, err := f.JiraOptions.Client()
+			if err != nil {
+				return errors.WithMessage(err, "couldn't get jira client")
+			}
+			releases, err := api.GetReleases(nil, bigQueryClient)
+			if err != nil {
+				return errors.WithMessage(err, "couldn't get releases")
+			}
+			j, err := jiraintegrator.NewJiraIntegrator(jiraClient, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket,
+				cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness, releases, f.SippyURL)
+			if err != nil {
+				panic(err)
+			}
+
+			// Do an immediate jira integration
+			err = j.IntegrateJira()
+			if err != nil {
+				log.WithError(err).Error("error integrating with jira")
+			}
+			ticker := time.NewTicker(24 * time.Hour)
+			go func() {
+				for {
+					select {
+					case <-ticker.C:
+						err = j.IntegrateJira()
+						if err != nil {
+							log.WithError(err).Error("error integrating with jira")
+						}
+					case <-ctx.Done():
+						ticker.Stop()
+						return
+					}
+				}
+			}()
+		}
 	}
 
 	server.Serve()
