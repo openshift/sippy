@@ -179,17 +179,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 
 	if f.MetricsAddr != "" {
 		// Do an immediate metrics update
-		err = metrics.RefreshMetricsDB(
-			context.Background(),
-			nil,
-			bigQueryClient,
-			f.ProwFlags.URL,
-			f.GoogleCloudFlags.StorageBucket,
-			nil,
-			time.Time{},
-			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-			views.ComponentReadiness,
-			false)
+		err = metrics.RefreshMetricsDB(context.Background(), nil, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -202,17 +192,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(
-						context.Background(),
-						nil,
-						bigQueryClient,
-						f.ProwFlags.URL,
-						f.GoogleCloudFlags.StorageBucket,
-						nil,
-						time.Time{},
-						cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-						views.ComponentReadiness,
-						false)
+					err := metrics.RefreshMetricsDB(context.Background(), nil, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}

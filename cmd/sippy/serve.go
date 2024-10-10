@@ -149,17 +149,7 @@ func NewServeCommand() *cobra.Command {
 
 			if f.MetricsAddr != "" {
 				// Do an immediate metrics update
-				err = metrics.RefreshMetricsDB(
-					context.Background(),
-					dbc,
-					bigQueryClient,
-					f.ProwFlags.URL,
-					f.GoogleCloudFlags.StorageBucket,
-					variantManager,
-					util.GetReportEnd(pinnedDateTime),
-					cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-					views.ComponentReadiness,
-					false)
+				err = metrics.RefreshMetricsDB(context.Background(), dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, variantManager, util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}
@@ -172,17 +162,7 @@ func NewServeCommand() *cobra.Command {
 						select {
 						case <-ticker.C:
 							log.Info("tick")
-							err := metrics.RefreshMetricsDB(
-								context.Background(),
-								dbc,
-								bigQueryClient,
-								f.ProwFlags.URL,
-								f.GoogleCloudFlags.StorageBucket,
-								variantManager,
-								util.GetReportEnd(pinnedDateTime),
-								cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-								views.ComponentReadiness,
-								false)
+							err := metrics.RefreshMetricsDB(context.Background(), dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, variantManager, util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")
 							}

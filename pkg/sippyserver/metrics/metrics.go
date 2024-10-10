@@ -136,9 +136,7 @@ func getReleaseStatus(releases []v1.Release, release string) string {
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string,
-	variantManager testidentification.VariantManager, reportEnd time.Time,
-	cacheOptions cache.RequestOptions, views []crtype.View, maintainRegressionTables bool) error {
+func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crtype.View) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := api.GetReleases(context.Background(), bqc)
@@ -206,8 +204,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, pro
 
 	// BigQuery metrics
 	if bqc != nil {
-		refreshComponentReadinessMetrics(ctx, bqc, prowURL, gcsBucket, cacheOptions, views, releases,
-			maintainRegressionTables)
+		refreshComponentReadinessMetrics(ctx, bqc, prowURL, gcsBucket, cacheOptions, views, releases)
 
 		if err := refreshDisruptionMetrics(bqc, releases); err != nil {
 			log.WithError(err).Error("error refreshing disruption metrics")
@@ -220,7 +217,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, pro
 }
 
 func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, views []crtype.View, releases []v1.Release, maintainRegressionTables bool) {
+	cacheOptions cache.RequestOptions, views []crtype.View, releases []v1.Release) {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return

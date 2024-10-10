@@ -46,7 +46,6 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(ctx context.Context) (
 		bq.client.Dataset, testRegressionsTable, bq.client.Dataset, testRegressionsTable)
 
 	sampleQuery := bq.client.BQ.Query(queryString)
-	sampleQuery.Parameters = append(sampleQuery.Parameters)
 
 	regressions := make([]*crtype.TestRegression, 0)
 	log.Infof("Fetching current test regressions with: %s", sampleQuery.Q)
@@ -77,11 +76,7 @@ func (bq *BigQueryRegressionStore) ListCurrentRegressions(ctx context.Context) (
 // This is done because of the problems we've encountered using BigQuery to keep data updated. (streaming buffer delays)
 func (bq *BigQueryRegressionStore) SyncRegressions(ctx context.Context, allRegressions []*crtype.TestRegression) error {
 	inserter := bq.client.BQ.Dataset(bq.client.Dataset).Table(testRegressionsTable).Inserter()
-	if err := inserter.Put(ctx, allRegressions); err != nil {
-		return err
-	}
-	return nil
-
+	return inserter.Put(ctx, allRegressions)
 }
 
 func NewRegressionTracker(
@@ -127,7 +122,7 @@ func (rt *RegressionTracker) Run(ctx context.Context) error {
 	// Build out an entirely new regression snapshot containing all releases.
 	newRegressionSnapshot := []*crtype.TestRegression{}
 
-	// Single snapshot time used for opened on new regressions, as well as every record in teh new snapshot.
+	// Single snapshot time used for opened on new regressions, as well as every record in the new snapshot.
 	snapshotTime := time.Now()
 
 	rt.logger.Infof("loaded %d regressions from db for all releases from last snapshot", len(allRegressions))
@@ -240,16 +235,16 @@ func (rt *RegressionTracker) syncRegressionsForView(
 		if openReg := FindOpenRegression(view.Name, regTest.TestID, regTest.Variants, currentReleaseRegressions); openReg != nil {
 			// If we found an existing closed regression within the last two days, re-open it by nulling the closed
 			// timestamp to prevent churn.
-			if openReg.Closed.Valid && openReg.Closed.Timestamp.Sub(time.Now()) <= 48*time.Hour {
+			if openReg.Closed.Valid && time.Until(openReg.Closed.Timestamp) <= 48*time.Hour {
 				rLog.Infof("re-opening existing regression that was recently closed: %v", openReg)
 				openReg.Closed = bigquery.NullTimestamp{}
 				releaseRegressions = append(releaseRegressions, openReg)
-				opened += 1
+				opened++
 			} else {
 				rLog.WithFields(log.Fields{
 					"test": regTest.TestName,
 				}).Debugf("regression already exists, no action required: %v", openReg)
-				ongoing += 1
+				ongoing++
 
 			}
 			releaseRegressions = append(releaseRegressions, openReg)
@@ -271,7 +266,7 @@ func (rt *RegressionTracker) syncRegressionsForView(
 			}
 			rLog.Infof("created new regression: %+v", newRegression)
 			releaseRegressions = append(releaseRegressions, newRegression)
-			opened += 1
+			opened++
 		}
 	}
 
@@ -290,7 +285,7 @@ func (rt *RegressionTracker) syncRegressionsForView(
 			rLog.Infof("found a regression no longer appearing in the report which should be closed: %+v", regression)
 			regression.Closed = bigquery.NullTimestamp{Timestamp: snapshotTime, Valid: true}
 			releaseRegressions = append(releaseRegressions, regression)
-			closed += 1
+			closed++
 		}
 	}
 	rLog.WithFields(log.Fields{
