@@ -37,8 +37,6 @@ type ComponentReadinessFlags struct {
 	ListenAddr  string
 	MetricsAddr string
 	RedisURL    string
-	// TODO: remove this
-	MaintainRegressionTables bool
 }
 
 func NewComponentReadinessCommand() *cobra.Command {
@@ -84,8 +82,6 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
-	// TODO: remove soon, this is only left in for a chicken and egg problem with continuous-release-jobs, it's not used anymore.
-	flagSet.BoolVar(&f.MaintainRegressionTables, "maintain-regression-tables", false, "Enable maintenance of open regressions table in bigquery.")
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
