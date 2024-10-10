@@ -17,7 +17,6 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 )
 
@@ -59,12 +58,13 @@ func (c *componentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		return crtype.ReportTestDetails{}, errs
 	}
 	var err error
-	bqs := tracker.NewBigQueryRegressionStore(c.client)
-	c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(ctx, c.SampleRelease.Release)
+	bqs := NewBigQueryRegressionStore(c.client)
+	allRegressions, err := bqs.ListCurrentRegressions(ctx)
 	if err != nil {
 		errs = append(errs, err)
 		return crtype.ReportTestDetails{}, errs
 	}
+	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.SampleRelease.Release)
 	report := c.internalGenerateTestDetailsReport(ctx, componentJobRunTestReportStatus.BaseStatus, componentJobRunTestReportStatus.SampleStatus)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 	return report, nil

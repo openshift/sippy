@@ -283,4 +283,4 @@ component_readiness:
     metrics:
       enabled: true
     regression_tracking:
-      enabled: false
+      enabled: true
