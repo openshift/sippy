@@ -116,69 +116,61 @@ type RegressionTracker struct {
 
 // Run iterates all views with regression tracking enabled and syncs the results of it's
 // component report to the regression tables in bigquery.
-func (rt *RegressionTracker) Run(ctx context.Context) {
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				rt.logger.Info("stopping RegressionTracker.Run")
-				return
-			default:
-				// Grab the latest regression snapshot in the db across all releases and filter + pass them into each run.
-				allRegressions, err := rt.backend.ListCurrentRegressions(ctx)
-				if err != nil {
-					rt.logger.WithError(err).Error("error listing current regressions from bigquery")
-				}
+func (rt *RegressionTracker) Run(ctx context.Context) error {
+	// Grab the latest regression snapshot in the db across all releases and filter + pass them into each run.
+	allRegressions, err := rt.backend.ListCurrentRegressions(ctx)
+	if err != nil {
+		rt.logger.WithError(err).Error("error listing current regressions from bigquery")
+		return err
+	}
 
-				// Build out an entirely new regression snapshot containing all releases.
-				newRegressionSnapshot := []*crtype.TestRegression{}
+	// Build out an entirely new regression snapshot containing all releases.
+	newRegressionSnapshot := []*crtype.TestRegression{}
 
-				// Single snapshot time used for opened on new regressions, as well as every record in teh new snapshot.
-				snapshotTime := time.Now()
+	// Single snapshot time used for opened on new regressions, as well as every record in teh new snapshot.
+	snapshotTime := time.Now()
 
-				rt.logger.Infof("loaded %d regressions from db for all releases from last snapshot", len(allRegressions))
-				var updateNeeded bool
-				for _, view := range rt.views {
-					rLog := rt.logger.WithField("view", view.Name)
-					if view.RegressionTracking.Enabled {
-						releaseRegressions := FilterRegressionsForRelease(allRegressions, view.SampleRelease.Release)
-						rLog.Infof("filtered down to %d regressions for release %s", len(releaseRegressions), view.SampleRelease.Release)
-						newReleaseRegressions, modified, err := rt.syncRegressionsForView(ctx, rLog, snapshotTime, releaseRegressions, view)
-						if err != nil {
-							rLog.WithError(err).Error("error refreshing regressions for view")
-						}
-						rLog.WithField("before", len(releaseRegressions)).WithField("after", len(newReleaseRegressions)).Info("processed regressions for view")
-						newRegressionSnapshot = append(newRegressionSnapshot, newReleaseRegressions...)
-						if modified {
-							updateNeeded = true
-						}
-					}
-				}
-
-				for i := range newRegressionSnapshot {
-					newRegressionSnapshot[i].Snapshot = snapshotTime
-				}
-
-				if !updateNeeded {
-					rt.logger.Info("no regression changed needed, skipping new snapshot")
-				} else if !rt.dryRun {
-					rt.logger.WithField("snapshot", snapshotTime).Infof(
-						"syncing %d total regressions for all releases to bigquery", len(newRegressionSnapshot))
-					err = rt.backend.SyncRegressions(ctx, newRegressionSnapshot)
-					if err != nil {
-						rt.logger.WithError(err).Error("unable to sync to bigquery")
-					}
-				} else {
-					rt.logger.WithField("snapshot", snapshotTime).Warnf(
-						"SKIPPED syncing %d total regressions for all releases to bigquery due to dry-run flag",
-						len(newRegressionSnapshot))
-				}
-
-				rt.logger.Info("sleeping...")
-				time.Sleep(2 * time.Hour)
+	rt.logger.Infof("loaded %d regressions from db for all releases from last snapshot", len(allRegressions))
+	var updateNeeded bool
+	for _, view := range rt.views {
+		rLog := rt.logger.WithField("view", view.Name)
+		if view.RegressionTracking.Enabled {
+			releaseRegressions := FilterRegressionsForRelease(allRegressions, view.SampleRelease.Release)
+			rLog.Infof("filtered down to %d regressions for release %s", len(releaseRegressions), view.SampleRelease.Release)
+			newReleaseRegressions, modified, err := rt.syncRegressionsForView(ctx, rLog, snapshotTime, releaseRegressions, view)
+			if err != nil {
+				rLog.WithError(err).Error("error refreshing regressions for view")
+				return err
+			}
+			rLog.WithField("before", len(releaseRegressions)).WithField("after", len(newReleaseRegressions)).Info("processed regressions for view")
+			newRegressionSnapshot = append(newRegressionSnapshot, newReleaseRegressions...)
+			if modified {
+				updateNeeded = true
 			}
 		}
-	}()
+	}
+
+	for i := range newRegressionSnapshot {
+		newRegressionSnapshot[i].Snapshot = snapshotTime
+	}
+
+	if !updateNeeded {
+		rt.logger.Info("no regression changed needed, skipping new snapshot")
+	} else if !rt.dryRun {
+		rt.logger.WithField("snapshot", snapshotTime).Infof(
+			"syncing %d total regressions for all releases to bigquery", len(newRegressionSnapshot))
+		err = rt.backend.SyncRegressions(ctx, newRegressionSnapshot)
+		if err != nil {
+			rt.logger.WithError(err).Error("unable to sync to bigquery")
+			return err
+		}
+	} else {
+		rt.logger.WithField("snapshot", snapshotTime).Warnf(
+			"SKIPPED syncing %d total regressions for all releases to bigquery due to dry-run flag",
+			len(newRegressionSnapshot))
+	}
+
+	return nil
 }
 
 func (rt *RegressionTracker) syncRegressionsForView(
