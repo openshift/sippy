@@ -45,7 +45,6 @@ type LoadFlags struct {
 	Releases      []string
 
 	BigQueryFlags        *flags.BigQueryFlags
-	CacheFlags           *flags.CacheFlags
 	ConfigFlags          *flags.ConfigFlags
 	DBFlags              *flags.PostgresFlags
 	GithubCommenterFlags *flags.GithubCommenterFlags
@@ -57,7 +56,6 @@ type LoadFlags struct {
 func NewLoadFlags() *LoadFlags {
 	return &LoadFlags{
 		BigQueryFlags:        flags.NewBigQueryFlags(),
-		CacheFlags:           flags.NewCacheFlags(),
 		ConfigFlags:          flags.NewConfigFlags(),
 		DBFlags:              flags.NewPostgresDatabaseFlags(),
 		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
@@ -73,7 +71,6 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.GithubCommenterFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
 	f.ModeFlags.BindFlags(fs)
-	f.CacheFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
 	fs.BoolVar(&f.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")

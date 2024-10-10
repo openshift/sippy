@@ -232,7 +232,7 @@ type componentReportGenerator struct {
 	crtype.RequestTestIdentificationOptions
 	crtype.RequestVariantOptions
 	crtype.RequestAdvancedOptions
-	openRegressions []crtype.TestRegression
+	openRegressions []*crtype.TestRegression
 }
 
 func (c *componentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
@@ -327,11 +327,12 @@ func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	}
 	bqs := NewBigQueryRegressionStore(c.client)
 	var err error
-	c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(ctx, c.SampleRelease.Release)
+	allRegressions, err := bqs.ListCurrentRegressions(ctx)
 	if err != nil {
 		errs = append(errs, err)
 		return crtype.ComponentReport{}, errs
 	}
+	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.SampleRelease.Release)
 	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,
 		componentReportTestStatus.SampleStatus)
 	if err != nil {
@@ -944,7 +945,7 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 	testStats crtype.ReportTestStats,
 	existingCellStatus *cellStatus,
 	triagedIncidents []crtype.TriagedIncident,
-	openRegressions []crtype.TestRegression) cellStatus {
+	openRegressions []*crtype.TestRegression) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (testStats.ReportStatus < crtype.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
@@ -1002,7 +1003,7 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification,
 	allRows map[crtype.RowIdentification]struct{},
 	allColumns map[crtype.ColumnID]struct{},
 	triagedIncidents []crtype.TriagedIncident,
-	openRegressions []crtype.TestRegression) {
+	openRegressions []*crtype.TestRegression) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}
