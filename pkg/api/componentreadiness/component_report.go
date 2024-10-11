@@ -1451,7 +1451,7 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 		baseRegression := regressionallowances.IntentionalRegressionFor(c.BaseRelease.Release, testID.ColumnIdentification, testID.TestID)
 		// ignore triage if we have an intentional regression
 		if approvedRegression == nil {
-			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(testID)
+			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
 		}
 
 		requiredConfidence := 0 // irrelevant for pass rate comparison
