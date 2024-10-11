@@ -968,8 +968,8 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 			ReportTestStats:          testStats,
 		}
 		if len(openRegressions) > 0 {
-			release := openRegressions[0].Release // grab release from first regression, they were queried only for sample release
-			or := FindOpenRegression(release, rt.TestID, rt.Variants, openRegressions)
+			view := openRegressions[0].View // grab view from first regression, they were queried only for sample release
+			or := FindOpenRegression(view, rt.TestID, rt.Variants, openRegressions)
 			if or != nil {
 				rt.Opened = &or.Opened
 			}
@@ -983,8 +983,8 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 				ReportTestStats:          testStats,
 			}}
 		if len(openRegressions) > 0 {
-			release := openRegressions[0].Release
-			or := FindOpenRegression(release, ti.ReportTestSummary.TestID,
+			view := openRegressions[0].View // grab view from first regression, they were queried only for sample release
+			or := FindOpenRegression(view, ti.ReportTestSummary.TestID,
 				ti.ReportTestSummary.Variants, openRegressions)
 			if or != nil {
 				ti.ReportTestSummary.Opened = &or.Opened
@@ -1345,8 +1345,8 @@ func (c *componentReportGenerator) triagedIncidentsFor(ctx context.Context,
 // we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
 func (c *componentReportGenerator) getRequiredConfidence(testID string, variants map[string]string) int {
 	if len(c.openRegressions) > 0 {
-		release := c.openRegressions[0].Release // grab release from first regression, they were queried only for sample release
-		or := FindOpenRegression(release, testID, variants, c.openRegressions)
+		view := c.openRegressions[0].View // grab view from first regression, they were queried only for sample release
+		or := FindOpenRegression(view, testID, variants, c.openRegressions)
 		if or != nil {
 			log.Debugf("adjusting required regression confidence from %d to %d because %s (%v) has an open regression since %s",
 				c.RequestAdvancedOptions.Confidence,

@@ -229,7 +229,7 @@ func (rt *RegressionTracker) syncRegressionsForView(
 		}
 	}
 
-	rLog.Infof("syncing %d open regressions", len(regressedTestsReport))
+	rLog.Infof("found %d current regressions in the component report", len(regressedTestsReport))
 	var opened, closed, ongoing int
 	for _, regTest := range regressedTestsReport {
 		if openReg := FindOpenRegression(view.Name, regTest.TestID, regTest.Variants, currentReleaseRegressions); openReg != nil {
