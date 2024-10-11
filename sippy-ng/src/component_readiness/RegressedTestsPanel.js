@@ -112,25 +112,6 @@ export default function RegressedTestsPanel(props) {
       ),
     },
     {
-      field: 'pass_rate_delta',
-      headerName: 'Pass Rate Delta',
-      flex: 10,
-      valueGetter: (params) => {
-        if (!params.row.sample_stats) {
-          return ''
-        }
-        if (params.row.comparison === 'pass_rate') {
-          return 100 - (params.row.sample_stats.success_rate * 100).toFixed(0)
-        }
-        /* Otherwise we're dealing with fisher_exact comparison */
-        return (
-          (params.row.sample_stats.success_rate * 100).toFixed(0) -
-          (params.row.base_stats.success_rate * 100).toFixed(0)
-        )
-      },
-      renderCell: (param) => <div className="pass-rate">{param.value}%</div>,
-    },
-    {
       field: 'test_id',
       flex: 5,
       headerName: 'ID',
@@ -173,6 +154,7 @@ export default function RegressedTestsPanel(props) {
             <CompSeverityIcon
               comparison={params.row.comparison}
               status={params.row.status}
+              explanations={params.row.explanations}
             />
           </Link>
         </div>

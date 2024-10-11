@@ -1831,6 +1831,18 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence 
 	}
 	testStats.ReportStatus = status
 	testStats.FisherExact = thrift.Float64Ptr(fisherExact)
+
+	// If we have a regression, include explanations:
+	if testStats.ReportStatus <= crtype.SignificantTriagedRegression {
+		testStats.Explanations = []string{
+			fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)),
+			fmt.Sprintf("Fishers Exact probability of a regression: %.2f%%.", float64(100)-*testStats.FisherExact),
+			fmt.Sprintf("Test pass rate dropped from %.2f%% to %.2f%%.",
+				testStats.BaseStats.SuccessRate*float64(100),
+				testStats.SampleStats.SuccessRate*float64(100)),
+		}
+	}
+
 	return testStats
 }
 
@@ -1849,7 +1861,11 @@ func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess int, sam
 		}
 		return crtype.ReportTestStats{
 			ReportStatus: rStatus,
-			Comparison:   crtype.PassRate,
+			Explanations: []string{
+				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(rStatus)),
+				fmt.Sprintf("Test has a %.2f%% pass rate, but %.2f%% is required.", successRate*100, requiredSuccessRate),
+			},
+			Comparison: crtype.PassRate,
 			SampleStats: crtype.TestDetailsReleaseStats{
 				Release: c.SampleRelease.Release,
 				TestDetailsTestStats: crtype.TestDetailsTestStats{

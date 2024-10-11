@@ -109,8 +109,6 @@ export function gotFetchError(fetchError) {
 export function getStatusAndIcon(comparison, status, grayFactor = 0) {
   let icon = ''
 
-  console.log('getStatusAndIcon for ' + comparison + ' ' + status)
-
   let statusStr = status + ': '
 
   if (status >= 3) {
@@ -276,8 +274,6 @@ export function getColumns(data) {
   const firstColumn = data.rows[0].columns
   let columnNames = []
   firstColumn.forEach((column) => {
-    console.log('for data: ' + JSON.stringify(data))
-    console.log('checking column: ' + JSON.stringify(column))
     const columnValues = formColumnName(column)
     columnNames.push(columnValues)
   })

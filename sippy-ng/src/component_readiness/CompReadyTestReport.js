@@ -499,26 +499,10 @@ View the test details report at ${document.location.href}
               <Tooltip title={statusStr}>{assessmentIcon}</Tooltip>
             </TableCell>
           </TableRow>
-          {data.comparison === 'fisher_exact' ? (
-            <TableRow>
-              <TableCell>Probability:</TableCell>
-              <TableCell>
-                {probabilityStr(statusStr, data.fisher_exact)}
-                <Tooltip
-                  title={`Fisher Exact Number for this basis and sample = ${data.fisher_exact}`}
-                >
-                  <InfoIcon />
-                </Tooltip>
-              </TableCell>
-            </TableRow>
-          ) : (
-            <TableRow>
-              <TableCell>Regression:</TableCell>
-              <TableCell>
-                Insufficient pass rate for the parameters of this report
-              </TableCell>
-            </TableRow>
-          )}
+          <TableRow>
+            <TableCell>Explanations:</TableCell>
+            <TableCell>{data.explanations.join('\n')}</TableCell>
+          </TableRow>
         </TableBody>
       </Table>
       <Grid container spacing={2} style={{ marginTop: '10px' }}>

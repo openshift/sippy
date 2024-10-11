@@ -197,6 +197,9 @@ type ReportTestStats struct {
 	// Comparison indicates what mode was used to check this tests results in the sample.
 	Comparison Comparison `json:"comparison"`
 
+	// Explanations are human-readable details of why this test was marked regressed.
+	Explanations []string `json:"explanations"`
+
 	SampleStats TestDetailsReleaseStats `json:"sample_stats"`
 
 	// Optional fields depending on the Comparison mode
@@ -204,7 +207,7 @@ type ReportTestStats struct {
 	// FisherExact indicates the confidence of a regression after applying Fisher's Exact Test.
 	FisherExact *float64 `json:"fisher_exact,omitempty"`
 
-	// BaseStats may not be present in the response.
+	// BaseStats may not be present in the response, i.e. new tests regressed because of their pass rate.
 	BaseStats *TestDetailsReleaseStats `json:"base_stats,omitempty"`
 }
 
@@ -308,6 +311,22 @@ const (
 	// SignificantImprovement indicates improved sample rate
 	SignificantImprovement Status = 3
 )
+
+func StringForStatus(s Status) string {
+	switch s {
+	case ExtremeRegression:
+		return "Extreme"
+	case SignificantRegression:
+		return "Significant"
+	case ExtremeTriagedRegression:
+		return "ExtremeTriaged"
+	case SignificantTriagedRegression:
+		return "SignificantTriaged"
+	case MissingSample:
+		return "MissingSample"
+	}
+	return "Unknown"
+}
 
 type ReportResponse []ReportRow
 

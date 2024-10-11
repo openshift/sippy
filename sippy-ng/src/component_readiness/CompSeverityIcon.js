@@ -8,9 +8,14 @@ import React from 'react'
 
 export default function CompSeverityIcon(props) {
   const theme = useTheme()
-  const { comparison, status, grayFactor, count } = props
+  const { comparison, explanations, status, grayFactor, count } = props
 
   const [statusStr, icon] = getStatusAndIcon(comparison, status, grayFactor)
+
+  let toolTip = ''
+  if (explanations !== undefined) {
+    toolTip = explanations.join(' ')
+  }
 
   const StyledBadge = withStyles((theme) => ({
     badge: {
@@ -26,10 +31,10 @@ export default function CompSeverityIcon(props) {
     <div>
       {status < -1 && count > 1 ? (
         <StyledBadge badgeContent={count} color="error">
-          <Tooltip title={statusStr}>{icon}</Tooltip>
+          <Tooltip title={toolTip}>{icon}</Tooltip>
         </StyledBadge>
       ) : (
-        <Tooltip title={statusStr}>{icon}</Tooltip>
+        <Tooltip title={toolTip}>{icon}</Tooltip>
       )}
     </div>
   )
@@ -38,6 +43,7 @@ export default function CompSeverityIcon(props) {
 CompSeverityIcon.propTypes = {
   status: PropTypes.number,
   comparison: PropTypes.string,
+  explanations: PropTypes.array,
   grayFactor: PropTypes.number,
   count: PropTypes.number,
 }
