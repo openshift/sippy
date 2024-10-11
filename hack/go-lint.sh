@@ -19,8 +19,14 @@ else
     exit 1
   fi
 
+  # Check if running on Linux
+  VOLUME_OPTION=""
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    VOLUME_OPTION=":z"
+  fi
+
   $DOCKER run --rm \
-    --volume "${PWD}:/go/src/github.com/openshift/sippy:z" \
+    --volume "${PWD}:/go/src/github.com/openshift/sippy${VOLUME_OPTION}" \
     --workdir /go/src/github.com/openshift/sippy \
     docker.io/golangci/golangci-lint:v1.54.2 \
     golangci-lint "${@}"

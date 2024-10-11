@@ -7,6 +7,12 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+
 	resources "github.com/openshift/sippy"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -16,11 +22,6 @@ import (
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 )
 
 type ServerFlags struct {
@@ -32,9 +33,8 @@ type ServerFlags struct {
 	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 
-	ListenAddr               string
-	MetricsAddr              string
-	MaintainRegressionTables bool
+	ListenAddr  string
+	MetricsAddr string
 }
 
 func NewServerFlags() *ServerFlags {
@@ -62,7 +62,6 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
-	flagSet.BoolVar(&f.MaintainRegressionTables, "maintain-regression-tables", false, "Enable maintenance of open regressions table in bigquery.")
 }
 
 func (f *ServerFlags) Validate() error {
@@ -150,15 +149,7 @@ func NewServeCommand() *cobra.Command {
 
 			if f.MetricsAddr != "" {
 				// Do an immediate metrics update
-				err = metrics.RefreshMetricsDB(dbc,
-					bigQueryClient,
-					f.ProwFlags.URL,
-					f.GoogleCloudFlags.StorageBucket,
-					variantManager,
-					util.GetReportEnd(pinnedDateTime),
-					cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-					views.ComponentReadiness,
-					f.MaintainRegressionTables)
+				err = metrics.RefreshMetricsDB(context.Background(), dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, variantManager, util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}
@@ -171,16 +162,7 @@ func NewServeCommand() *cobra.Command {
 						select {
 						case <-ticker.C:
 							log.Info("tick")
-							err := metrics.RefreshMetricsDB(
-								dbc,
-								bigQueryClient,
-								f.ProwFlags.URL,
-								f.GoogleCloudFlags.StorageBucket,
-								variantManager,
-								util.GetReportEnd(pinnedDateTime),
-								cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-								views.ComponentReadiness,
-								f.MaintainRegressionTables)
+							err := metrics.RefreshMetricsDB(context.Background(), dbc, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, variantManager, util.GetReportEnd(pinnedDateTime), cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")
 							}

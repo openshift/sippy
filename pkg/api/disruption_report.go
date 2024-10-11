@@ -14,22 +14,22 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 )
 
-func GetDisruptionVsPrevGAReportFromBigQuery(client *bqcachedclient.Client) (apitype.DisruptionReport, []error) {
+func GetDisruptionVsPrevGAReportFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (apitype.DisruptionReport, []error) {
 	generator := disruptionReportGenerator{
 		client:   client.BQ,
 		ViewName: "BackendDisruptionPercentilesDeltaCurrentVsPrevGA",
 	}
 
-	return GetDataFromCacheOrGenerate[apitype.DisruptionReport](client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("", generator), generator.GenerateReport, apitype.DisruptionReport{})
+	return GetDataFromCacheOrGenerate[apitype.DisruptionReport](ctx, client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("", generator), generator.GenerateReport, apitype.DisruptionReport{})
 }
 
-func GetDisruptionVsTwoWeeksAgoReportFromBigQuery(client *bqcachedclient.Client) (apitype.DisruptionReport, []error) {
+func GetDisruptionVsTwoWeeksAgoReportFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (apitype.DisruptionReport, []error) {
 	generator := disruptionReportGenerator{
 		client:   client.BQ,
 		ViewName: "BackendDisruptionPercentilesDeltaCurrentVs14DaysAgo",
 	}
 
-	return GetDataFromCacheOrGenerate[apitype.DisruptionReport](client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("", generator), generator.GenerateReport, apitype.DisruptionReport{})
+	return GetDataFromCacheOrGenerate[apitype.DisruptionReport](ctx, client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("", generator), generator.GenerateReport, apitype.DisruptionReport{})
 }
 
 type disruptionReportGenerator struct {
@@ -37,9 +37,9 @@ type disruptionReportGenerator struct {
 	ViewName string
 }
 
-func (c *disruptionReportGenerator) GenerateReport() (apitype.DisruptionReport, []error) {
+func (c *disruptionReportGenerator) GenerateReport(ctx context.Context) (apitype.DisruptionReport, []error) {
 	before := time.Now()
-	disruptionReport, err := c.getDisruptionDeltasFromBigQuery()
+	disruptionReport, err := c.getDisruptionDeltasFromBigQuery(ctx)
 	if err != nil {
 		return apitype.DisruptionReport{}, []error{err}
 	}
@@ -48,7 +48,7 @@ func (c *disruptionReportGenerator) GenerateReport() (apitype.DisruptionReport, 
 	return disruptionReport, nil
 }
 
-func (c *disruptionReportGenerator) getDisruptionDeltasFromBigQuery() (apitype.DisruptionReport, error) {
+func (c *disruptionReportGenerator) getDisruptionDeltasFromBigQuery(ctx context.Context) (apitype.DisruptionReport, error) {
 	// We'll publish a metric for whatever is in the views, which need to be updated for each GA release:
 	queryString := fmt.Sprintf(`
 						SELECT *
@@ -56,7 +56,7 @@ func (c *disruptionReportGenerator) getDisruptionDeltasFromBigQuery() (apitype.D
 						WHERE LookbackDays = 3`, c.ViewName)
 
 	query := c.client.Query(queryString)
-	it, err := query.Read(context.TODO())
+	it, err := query.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying disruption data from bigquery")
 		return apitype.DisruptionReport{}, err

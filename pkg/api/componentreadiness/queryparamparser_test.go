@@ -9,6 +9,8 @@ import (
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -23,6 +25,11 @@ var (
 )
 
 func TestParseComponentReportRequest(t *testing.T) {
+
+	releases := []v1.Release{
+		{Release: "4.16", Status: "", GADate: util.DatePtr(2024, 6, 27, 0, 0, 0, 0, time.UTC)},
+		{Release: "4.15", Status: "", GADate: util.DatePtr(2024, 2, 28, 0, 0, 0, 0, time.UTC)},
+	}
 
 	allJobVariants := crtype.JobVariants{Variants: map[string][]string{
 		"Architecture": {"amd64", "arm64", "s390x", "ppc64le", "heterogeneous"},
@@ -385,7 +392,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			// path/body are irrelevant at this point in time, we only parse query params in the func being tested
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
-			options, err := ParseComponentReportRequest(views, req, allJobVariants, time.Duration(0))
+			options, err := ParseComponentReportRequest(views, releases, req, allJobVariants, time.Duration(0))
 
 			if tc.errMessage != "" {
 				require.Error(t, err)

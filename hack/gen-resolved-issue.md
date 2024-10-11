@@ -132,6 +132,11 @@ This can be used with the TestId wildcard (*) to match all regressed tests retur
 - `--output-type`: Write the incident record(s) as JSON or as DB record ['JSON', 'DB']; default='JSON'. When the output type is DB 'GOOGLE_APPLICATION_CREDENTIALS' environment variable must be specified.
 - `--output-test-info-only`: When the incident record is JSON, record only the test info and not job_runs, must be specified on the command line ['True', 'False'] default=False.
 
+
+### Intentional Regressions
+- `--intentional-regressions`:  This will generate JSON output in the form supported for [allowed regressions](https://github.com/jupierce/enhancements/blob/openshift-tests-extension/dev-guide/component-readiness.md) at GA time as documented in the dev-guide.
+
+
 ## Examples
 
 ### Basic Workflow Example

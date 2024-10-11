@@ -68,6 +68,88 @@ cd sippy-ng
 npm install
 ```
 
+## Dependency vulnerabilities
+
+To see if any of our NPM dependencies have an active CVE, run:
+
+```
+npm audit --production
+```
+
+This command is also run by `lint`, to make sure we don't ignore CVE's.
+
+All audit commands should be given the flags `--production` or
+`--omit=dev`. We only audit production, as that's what we deploy. See
+[this GitHub issue](https://github.com/facebook/create-react-app/issues/11174) for a
+discussion about npm vulnerabilities and why we omit development deps.
+
+In the ideal case, the only thing you'll need to run is
+
+```
+npm audit fix --production
+```
+
+Unfortunately it's somewhat common that you'll end up with challenges in
+dependency management. `npm` will tell you the problematic packages,
+like in the example below:
+
+```
+ cookie  <0.7.0
+cookie accepts cookie name, path, and domain with out of bounds characters - https://github.com/advisories/GHSA-pxg6-pf52-xh8x
+fix available via `npm audit fix --force`
+Will install react-cookie@1.0.5, which is a breaking change
+node_modules/cookie
+  universal-cookie  *
+  Depends on vulnerable versions of cookie
+  node_modules/react-cookie/node_modules/universal-cookie
+    react-cookie  >=2.0.1
+    Depends on vulnerable versions of universal-cookie
+    node_modules/react-cookie
+3 low severity vulnerabilities
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+```
+
+This output is telling us:
+
+- cookie less than 0.70 is vulernable to the linked CVE
+
+- we have at least one package that won't let us upgrade to 0.7.x
+
+- we can't fix it cleanly, but `--force` could by rolling back to react-cookie 1.0.5
+
+You could try to force the fix with `npm audit fix --force --production`, and
+review the results but it's usually not successful. In this case it
+wasn't, downgrading from react-cookie 6.x to 1.0.5 is not the appropriate
+way to go.  It's a red herring that it's trying to suggest such a path,
+most likely because 1.0.5 has loose depenedencies. You should avoid
+`--force`.
+
+You can ask npm for more details about how we are requiring cookie:
+
+```
+$ npm why cookie
+cookie@0.6.0
+node_modules/cookie
+  cookie@"^0.6.0" from universal-cookie@7.2.0
+  node_modules/universal-cookie
+    universal-cookie@"^7.0.0" from react-cookie@7.2.0
+    node_modules/react-cookie
+      react-cookie@"^7.2.0" from the root project
+```
+
+universal-cookie requires `^0.6.0`, but the fix for our CVE is in 0.7.0.
+You can look at their source repo to see if they have an issue open for
+the CVE. Likely, it's just a matter of waiting a few days for a fixed
+release. If you figure out which package needs to get updated, you can
+file an issue if there isn't one already to try to expedite the process.
+
+If the particular problematic package isn't going to be fixed -- most
+commonly because we're on an older version and changes won't be
+backported, we need to update and deal with the breaking changes. In
+this case universal-cookie 7.2.0 is the latest major release, so it
+was just a matter of having them allow cookie 0.7.x.
+
 ## Testing
 
 To run the tests run `npm test`.
