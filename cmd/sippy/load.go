@@ -180,11 +180,11 @@ func NewLoadCommand() *cobra.Command {
 					if err != nil {
 						return errors.WithMessage(err, "could not get bigquery client")
 					}
-					variantsyncer, err := variantsyncer.New(dbc, bqc)
+					vs, err := variantsyncer.New(dbc, bqc)
 					if err != nil {
 						return err
 					}
-					loaders = append(loaders, variantsyncer)
+					loaders = append(loaders, vs)
 				}
 
 				// Job Variants Loader from BigQuery

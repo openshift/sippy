@@ -22,7 +22,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
-	"github.com/openshift/sippy/pkg/componentreadiness/tracker"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -233,7 +232,7 @@ type componentReportGenerator struct {
 	crtype.RequestTestIdentificationOptions
 	crtype.RequestVariantOptions
 	crtype.RequestAdvancedOptions
-	openRegressions []crtype.TestRegression
+	openRegressions []*crtype.TestRegression
 }
 
 func (c *componentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
@@ -326,13 +325,14 @@ func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	if len(errs) > 0 {
 		return crtype.ComponentReport{}, errs
 	}
-	bqs := tracker.NewBigQueryRegressionStore(c.client)
+	bqs := NewBigQueryRegressionStore(c.client)
 	var err error
-	c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(ctx, c.SampleRelease.Release)
+	allRegressions, err := bqs.ListCurrentRegressions(ctx)
 	if err != nil {
 		errs = append(errs, err)
 		return crtype.ComponentReport{}, errs
 	}
+	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.SampleRelease.Release)
 	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,
 		componentReportTestStatus.SampleStatus)
 	if err != nil {
@@ -945,7 +945,7 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 	testStats crtype.ReportTestStats,
 	existingCellStatus *cellStatus,
 	triagedIncidents []crtype.TriagedIncident,
-	openRegressions []crtype.TestRegression) cellStatus {
+	openRegressions []*crtype.TestRegression) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (testStats.ReportStatus < crtype.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
@@ -968,8 +968,8 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 			ReportTestStats:          testStats,
 		}
 		if len(openRegressions) > 0 {
-			release := openRegressions[0].Release // grab release from first regression, they were queried only for sample release
-			or := tracker.FindOpenRegression(release, rt.TestID, rt.Variants, openRegressions)
+			view := openRegressions[0].View // grab view from first regression, they were queried only for sample release
+			or := FindOpenRegression(view, rt.TestID, rt.Variants, openRegressions)
 			if or != nil {
 				rt.Opened = &or.Opened
 			}
@@ -983,8 +983,8 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 				ReportTestStats:          testStats,
 			}}
 		if len(openRegressions) > 0 {
-			release := openRegressions[0].Release
-			or := tracker.FindOpenRegression(release, ti.ReportTestSummary.TestID,
+			view := openRegressions[0].View // grab view from first regression, they were queried only for sample release
+			or := FindOpenRegression(view, ti.ReportTestSummary.TestID,
 				ti.ReportTestSummary.Variants, openRegressions)
 			if or != nil {
 				ti.ReportTestSummary.Opened = &or.Opened
@@ -1003,7 +1003,7 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification,
 	allRows map[crtype.RowIdentification]struct{},
 	allColumns map[crtype.ColumnID]struct{},
 	triagedIncidents []crtype.TriagedIncident,
-	openRegressions []crtype.TestRegression) {
+	openRegressions []*crtype.TestRegression) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}
@@ -1345,8 +1345,8 @@ func (c *componentReportGenerator) triagedIncidentsFor(ctx context.Context,
 // we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
 func (c *componentReportGenerator) getRequiredConfidence(testID string, variants map[string]string) int {
 	if len(c.openRegressions) > 0 {
-		release := c.openRegressions[0].Release // grab release from first regression, they were queried only for sample release
-		or := tracker.FindOpenRegression(release, testID, variants, c.openRegressions)
+		view := c.openRegressions[0].View // grab view from first regression, they were queried only for sample release
+		or := FindOpenRegression(view, testID, variants, c.openRegressions)
 		if or != nil {
 			log.Debugf("adjusting required regression confidence from %d to %d because %s (%v) has an open regression since %s",
 				c.RequestAdvancedOptions.Confidence,
