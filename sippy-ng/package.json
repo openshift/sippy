@@ -31,10 +31,11 @@
     "query-string": "^4.3.4",
     "react": "^17.0.2",
     "react-chartjs-2": "^3.0.4",
-    "react-cookie": "^6.1.1",
+    "react-cookie": "^7.2.1",
     "react-dom": "^17.0.2",
     "react-router-dom": "^5.2.0",
     "timelines-chart": "^2.12.1",
+    "universal-cookie": "^7.2.1",
     "use-query-params": "^2.1.2"
   },
   "scripts": {
