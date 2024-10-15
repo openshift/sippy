@@ -1862,7 +1862,6 @@ func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess int, sam
 		return crtype.ReportTestStats{
 			ReportStatus: rStatus,
 			Explanations: []string{
-				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(rStatus)),
 				fmt.Sprintf("Test has a %.2f%% pass rate, but %.2f%% is required.", successRate*100, requiredSuccessRate),
 			},
 			Comparison: crtype.PassRate,
