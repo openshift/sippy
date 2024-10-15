@@ -213,25 +213,6 @@ export default function CompReadyTestReport(props) {
     setShowOnlyFailures(event.target.checked)
   }
 
-  const probabilityStr = (statusStr, fisherNumber) => {
-    if (
-      statusStr.includes('SignificantRegression') ||
-      statusStr.includes('ExtremeRegression')
-    ) {
-      return `Probability of significant regression: ${(
-        (1 - fisherNumber) *
-        100
-      ).toFixed(2)}%`
-    } else if (statusStr.includes('SignificantImprovement')) {
-      return `Probability of significant improvement: ${(
-        (1 - fisherNumber) *
-        100
-      ).toFixed(2)}%`
-    } else {
-      return 'There is no significant evidence of regression'
-    }
-  }
-
   const [statusStr, assessmentIcon] = getStatusAndIcon(
     data.comparison,
     data.status
@@ -441,8 +422,7 @@ Flakes: ${stats.flake_count}`
 
 {code}${testName}{code}
 
-# TODO: fisher_exact may not be defined
-${probabilityStr(statusStr, data.fisher_exact)}
+${data.explanations.join('\n')}
 ${printStatsText(
   'Sample (being evaluated)',
   data.sample_stats,
