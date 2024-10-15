@@ -1360,6 +1360,8 @@ func (c *componentReportGenerator) getRequiredConfidence(testID string, variants
 	return c.RequestAdvancedOptions.Confidence
 }
 
+// TODO: break this function down and remove this nolint
+// nolint:gocyclo
 func (c *componentReportGenerator) generateComponentTestReport(ctx context.Context,
 	baseStatus map[string]crtype.TestStatus,
 	sampleStatus map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
