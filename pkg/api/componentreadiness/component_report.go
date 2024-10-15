@@ -1725,7 +1725,7 @@ func (c *componentReportGenerator) assessComponentStatus(
 	return testStats
 }
 
-func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence int, sampleTotal int, sampleSuccess int, sampleFlake int, sampleFailure, baseTotal int, baseSuccess int, baseFlake int, baseFailure int, approvedRegression *regressionallowances.IntentionalRegression, initialSampleTotal int) crtype.ReportTestStats {
+func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure int, approvedRegression *regressionallowances.IntentionalRegression, initialSampleTotal int) crtype.ReportTestStats {
 
 	fisherExact := 0.0
 	baseStats := &crtype.TestDetailsReleaseStats{
@@ -1846,7 +1846,7 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence 
 	return testStats
 }
 
-func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess int, sampleFailure int, sampleFlake int, requiredSuccessRate float64) crtype.ReportTestStats {
+func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake int, requiredSuccessRate float64) crtype.ReportTestStats {
 	successRate := getSuccessRate(sampleSuccess, sampleFailure, sampleFlake)
 
 	// Assume 5% less than our required pass rate (expect numbers above 90% to be used here) is an extreme regression.
