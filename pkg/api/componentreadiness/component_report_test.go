@@ -464,7 +464,12 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison:   crtype.FisherExact,
+											Comparison: crtype.FisherExact,
+											Explanations: []string{
+												"Extreme regression detected.",
+												"Fishers Exact probability of a regression: 100.00%.",
+												"Test pass rate dropped from 91.00% to 51.00%.",
+											},
 											ReportStatus: crtype.ExtremeRegression,
 											FisherExact:  thrift.Float64Ptr(1.8251046156331867e-21),
 											SampleStats: crtype.TestDetailsReleaseStats{
@@ -496,7 +501,12 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison:   crtype.FisherExact,
+											Comparison: crtype.FisherExact,
+											Explanations: []string{
+												"Significant regression detected.",
+												"Fishers Exact probability of a regression: 100.00%.",
+												"Test pass rate dropped from 91.00% to 81.00%.",
+											},
 											ReportStatus: crtype.SignificantRegression,
 											FisherExact:  thrift.Float64Ptr(0.002621948654892275),
 											SampleStats: crtype.TestDetailsReleaseStats{
@@ -781,7 +791,12 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison:   crtype.FisherExact,
+											Comparison: crtype.FisherExact,
+											Explanations: []string{
+												"Significant regression detected.",
+												"Fishers Exact probability of a regression: 99.92%.",
+												"Test pass rate dropped from 91.00% to 86.00%.",
+											},
 											ReportStatus: crtype.SignificantRegression,
 											FisherExact:  thrift.Float64Ptr(0.07837082801914011),
 											SampleStats: crtype.TestDetailsReleaseStats{
