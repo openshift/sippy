@@ -1221,6 +1221,7 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 	impactedJobRuns := sets.NewString() // because multiple issues could impact the same job run, be sure to count each job run only once
 	numJobRunsToSuppress := 0
 	for _, triagedIncident := range triagedIncidents {
+		startNumRunsSuppressed := numJobRunsToSuppress
 		for _, impactedJobRun := range triagedIncident.JobRuns {
 			if impactedJobRuns.Has(impactedJobRun.URL) {
 				continue
@@ -1239,7 +1240,7 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 			}
 		}
 
-		if numJobRunsToSuppress > 0 {
+		if numJobRunsToSuppress > startNumRunsSuppressed {
 			relevantIncidents = append(relevantIncidents, triagedIncident)
 		}
 	}
