@@ -74,11 +74,15 @@ export default function CompReadyMainInputs(props) {
         confidence={varsContext.confidence}
         pity={varsContext.pity}
         minFail={varsContext.minFail}
+        passRateNewTests={varsContext.passRateNewTests}
+        passRateAllTests={varsContext.passRateAllTests}
         ignoreMissing={varsContext.ignoreMissing}
         ignoreDisruption={varsContext.ignoreDisruption}
         setConfidence={varsContext.setConfidence}
         setPity={varsContext.setPity}
         setMinFail={varsContext.setMinFail}
+        setPassRateNewTests={varsContext.setPassRateNewTests}
+        setPassRateAllTests={varsContext.setPassRateAllTests}
         setIgnoreMissing={varsContext.setIgnoreMissing}
         setIgnoreDisruption={varsContext.setIgnoreDisruption}
       ></AdvancedOptions>

@@ -85,11 +85,13 @@ type ViewRegressionTracking struct {
 }
 
 type RequestAdvancedOptions struct {
-	MinimumFailure   int  `json:"minimum_failure" yaml:"minimum_failure"`
-	Confidence       int  `json:"confidence" yaml:"confidence"`
-	PityFactor       int  `json:"pity_factor" yaml:"pity_factor"`
-	IgnoreMissing    bool `json:"ignore_missing" yaml:"ignore_missing"`
-	IgnoreDisruption bool `json:"ignore_disruption" yaml:"ignore_disruption"`
+	MinimumFailure           int  `json:"minimum_failure" yaml:"minimum_failure"`
+	Confidence               int  `json:"confidence" yaml:"confidence"`
+	PityFactor               int  `json:"pity_factor" yaml:"pity_factor"`
+	PassRateRequiredNewTests int  `json:"pass_rate_required_new_tests" yaml:"pass_rate_required_new_tests"`
+	PassRateRequiredAllTests int  `json:"pass_rate_required_all_tests" yaml:"pass_rate_required_all_tests"`
+	IgnoreMissing            bool `json:"ignore_missing" yaml:"ignore_missing"`
+	IgnoreDisruption         bool `json:"ignore_disruption" yaml:"ignore_disruption"`
 }
 
 type TestStatus struct {
@@ -101,6 +103,11 @@ type TestStatus struct {
 	TotalCount   int      `json:"total_count"`
 	SuccessCount int      `json:"success_count"`
 	FlakeCount   int      `json:"flake_count"`
+}
+
+func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
+	failures := ts.TotalCount - ts.SuccessCount - ts.FlakeCount
+	return ts.TotalCount, ts.SuccessCount, failures, ts.FlakeCount
 }
 
 type ReportTestStatus struct {
@@ -173,14 +180,40 @@ type ReportTestSummary struct {
 	ReportTestStats
 }
 
+// Comparison is the type of comparison done for a test that has been marked red.
+type Comparison string
+
+const (
+	PassRate    Comparison = "pass_rate"
+	FisherExact Comparison = "fisher_exact"
+)
+
 // ReportTestStats is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
 type ReportTestStats struct {
-	// Status is an integer representing the severity of the regression.
-	ReportStatus Status                  `json:"status"`
-	FisherExact  float64                 `json:"fisher_exact"`
-	SampleStats  TestDetailsReleaseStats `json:"sample_stats"`
-	BaseStats    TestDetailsReleaseStats `json:"base_stats"`
+	// ReportStatus is an integer representing the severity of the regression.
+	ReportStatus Status `json:"status"`
+
+	// Comparison indicates what mode was used to check this tests results in the sample.
+	Comparison Comparison `json:"comparison"`
+
+	// Explanations are human-readable details of why this test was marked regressed.
+	Explanations []string `json:"explanations"`
+
+	SampleStats TestDetailsReleaseStats `json:"sample_stats"`
+
+	// Optional fields depending on the Comparison mode
+
+	// FisherExact indicates the confidence of a regression after applying Fisher's Exact Test.
+	FisherExact *float64 `json:"fisher_exact,omitempty"`
+
+	// BaseStats may not be present in the response, i.e. new tests regressed because of their pass rate.
+	BaseStats *TestDetailsReleaseStats `json:"base_stats,omitempty"`
+}
+
+// IsTriaged returns true if this tests status is within the triaged regression range.
+func (r ReportTestStats) IsTriaged() bool {
+	return r.ReportStatus < MissingSample && r.ReportStatus > SignificantRegression
 }
 
 type ReportTestDetails struct {
@@ -278,6 +311,22 @@ const (
 	// SignificantImprovement indicates improved sample rate
 	SignificantImprovement Status = 3
 )
+
+func StringForStatus(s Status) string {
+	switch s {
+	case ExtremeRegression:
+		return "Extreme"
+	case SignificantRegression:
+		return "Significant"
+	case ExtremeTriagedRegression:
+		return "ExtremeTriaged"
+	case SignificantTriagedRegression:
+		return "SignificantTriaged"
+	case MissingSample:
+		return "MissingSample"
+	}
+	return "Unknown"
+}
 
 type ReportResponse []ReportRow
 

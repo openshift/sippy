@@ -13,6 +13,7 @@ import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import Slider from '@mui/material/Slider'
 import Switch from '@mui/material/Switch'
+import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 
 export default function AdvancedOptions(props) {
@@ -21,11 +22,15 @@ export default function AdvancedOptions(props) {
     confidence,
     pity,
     minFail,
+    passRateNewTests,
+    passRateAllTests,
     ignoreMissing,
     ignoreDisruption,
     setConfidence,
     setPity,
     setMinFail,
+    setPassRateNewTests,
+    setPassRateAllTests,
     setIgnoreMissing,
     setIgnoreDisruption,
   } = props
@@ -60,6 +65,26 @@ export default function AdvancedOptions(props) {
   }
   const handleChangeMinFail = (event, newValue) => {
     setMinFail(newValue)
+  }
+  const handleChangePassRateNewTests = (event, newValue) => {
+    let value = parseInt(event.target.value, 10)
+
+    if (value < 0) {
+      value = 0
+    } else if (value > 100) {
+      value = 100
+    }
+    setPassRateNewTests(value)
+  }
+  const handleChangePassRateAllTests = (event, newValue) => {
+    let value = parseInt(event.target.value, 10)
+
+    if (value < 0) {
+      value = 0
+    } else if (value > 100) {
+      value = 100
+    }
+    setPassRateAllTests(value)
   }
   const handleChangeIgnoreMissing = (event, newValue) => {
     setIgnoreMissing(newValue)
@@ -109,6 +134,23 @@ export default function AdvancedOptions(props) {
               min={0}
               max={20}
             />
+            <p>Require new tests pass rate:</p>
+            <TextField
+              value={passRateNewTests}
+              type="number"
+              size="small"
+              onChange={handleChangePassRateNewTests}
+              inputProps={{ min: 0, max: 100 }}
+            />
+
+            <p>Require all tests pass rate:</p>
+            <TextField
+              value={passRateAllTests}
+              type="number"
+              size="small"
+              onChange={handleChangePassRateAllTests}
+              inputProps={{ min: 0, max: 100 }}
+            />
             <p>Missing: {ignoreMissing ? 'ignore' : 'keep'}</p>
             <Switch
               checked={ignoreMissing}
@@ -135,11 +177,15 @@ AdvancedOptions.propTypes = {
   confidence: PropTypes.number.isRequired,
   pity: PropTypes.number.isRequired,
   minFail: PropTypes.number.isRequired,
+  passRateNewTests: PropTypes.number.isRequired,
+  passRateAllTests: PropTypes.number.isRequired,
   ignoreMissing: PropTypes.bool.isRequired,
   ignoreDisruption: PropTypes.bool.isRequired,
   setConfidence: PropTypes.func.isRequired,
   setPity: PropTypes.func.isRequired,
   setMinFail: PropTypes.func.isRequired,
+  setPassRateNewTests: PropTypes.func.isRequired,
+  setPassRateAllTests: PropTypes.func.isRequired,
   setIgnoreMissing: PropTypes.func.isRequired,
   setIgnoreDisruption: PropTypes.func.isRequired,
 }

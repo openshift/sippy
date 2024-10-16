@@ -122,7 +122,7 @@ export default function CompReadyTestReport(props) {
       })
       .then((json) => {
         // If the basics are not present, consider it no data
-        if (!json.component || !json.sample_stats || !json.base_stats) {
+        if (!json.component || !json.sample_stats) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
         } else {
@@ -213,26 +213,10 @@ export default function CompReadyTestReport(props) {
     setShowOnlyFailures(event.target.checked)
   }
 
-  const probabilityStr = (statusStr, fisherNumber) => {
-    if (
-      statusStr.includes('SignificantRegression') ||
-      statusStr.includes('ExtremeRegression')
-    ) {
-      return `Probability of significant regression: ${(
-        (1 - fisherNumber) *
-        100
-      ).toFixed(2)}%`
-    } else if (statusStr.includes('SignificantImprovement')) {
-      return `Probability of significant improvement: ${(
-        (1 - fisherNumber) *
-        100
-      ).toFixed(2)}%`
-    } else {
-      return 'There is no significant evidence of regression'
-    }
-  }
-
-  const [statusStr, assessmentIcon] = getStatusAndIcon(data.status)
+  const [statusStr, assessmentIcon] = getStatusAndIcon(
+    data.comparison,
+    data.status
+  )
   const significanceTitle = `Test results for individual Prow Jobs may not be statistically
   significant, but when taken in aggregate, there may be a statistically
   significant difference compared to the historical basis
@@ -374,6 +358,10 @@ export default function CompReadyTestReport(props) {
   }
 
   const printStatsText = (statsLabel, stats, from, to) => {
+    if (stats === undefined) {
+      return `
+          Insufficient pass rate`
+    }
     return `
 ${statsLabel} Release: ${stats.release}
 Start Time: ${from}
@@ -434,7 +422,7 @@ Flakes: ${stats.flake_count}`
 
 {code}${testName}{code}
 
-${probabilityStr(statusStr, data.fisher_exact)}
+${data.explanations.join('\n')}
 ${printStatsText(
   'Sample (being evaluated)',
   data.sample_stats,
@@ -492,29 +480,24 @@ View the test details report at ${document.location.href}
             </TableCell>
           </TableRow>
           <TableRow>
-            <TableCell>Probability:</TableCell>
-            <TableCell>
-              {probabilityStr(statusStr, data.fisher_exact)}
-              <Tooltip
-                title={`Fisher Exact Number for this basis and sample = ${data.fisher_exact}`}
-              >
-                <InfoIcon />
-              </Tooltip>
-            </TableCell>
+            <TableCell>Explanations:</TableCell>
+            <TableCell>{data.explanations.join('\n')}</TableCell>
           </TableRow>
         </TableBody>
       </Table>
       <Grid container spacing={2} style={{ marginTop: '10px' }}>
-        <Grid item xs={6}>
-          {printParamsAndStats(
-            'Basis (historical)',
-            data.base_stats,
-            loadedParams.baseStartTime.toString(),
-            loadedParams.baseEndTime.toString(),
-            loadedParams.variantCrossCompare,
-            loadedParams.includeVariantsCheckedItems
-          )}
-        </Grid>
+        {data.base_stats && (
+          <Grid item xs={6}>
+            {printParamsAndStats(
+              'Basis (historical)',
+              data.base_stats,
+              loadedParams.baseStartTime.toString(),
+              loadedParams.baseEndTime.toString(),
+              loadedParams.variantCrossCompare,
+              loadedParams.includeVariantsCheckedItems
+            )}
+          </Grid>
+        )}
         <Grid item xs={6}>
           {printParamsAndStats(
             'Sample (being evaluated)',

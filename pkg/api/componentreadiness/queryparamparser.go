@@ -106,7 +106,7 @@ func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, err
 		"samplePROrg", "samplePRRepo", "samplePRNumber", // PR opts
 		"columnGroupBy", "dbGroupBy", // grouping
 		"includeVariant", "compareVariant", "variantCrossCompare", // variants
-		"confidence", "pity", "minFail",
+		"confidence", "pity", "minFail", "passRateNewTests", "passRateAllTests",
 		"ignoreMissing", "ignoreDisruption", // advanced opts
 	}
 	found := []string{}
@@ -255,6 +255,18 @@ func parseAdvancedOptions(req *http.Request) (advancedOption crtype.RequestAdvan
 
 	advancedOption.MinimumFailure, err = ParseIntArg(req, "minFail", 3,
 		func(v int) bool { return v >= 0 })
+	if err != nil {
+		return advancedOption, err
+	}
+
+	advancedOption.PassRateRequiredNewTests, err = ParseIntArg(req, "passRateNewTests", 0,
+		func(v int) bool { return v >= 0 && v <= 100 })
+	if err != nil {
+		return advancedOption, err
+	}
+
+	advancedOption.PassRateRequiredAllTests, err = ParseIntArg(req, "passRateAllTests", 0,
+		func(v int) bool { return v >= 0 && v <= 100 })
 	if err != nil {
 		return advancedOption, err
 	}
