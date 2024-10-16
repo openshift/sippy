@@ -1451,7 +1451,6 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 		var resolvedIssueCompensation int // triaged job run failures to ignore
 		// look for corresponding regressions we can account for in the analysis
 		approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
-		baseRegression := regressionallowances.IntentionalRegressionFor(c.BaseRelease.Release, testID.ColumnIdentification, testID.TestID)
 		// ignore triage if we have an intentional regression
 		if approvedRegression == nil {
 			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
@@ -1460,7 +1459,7 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 		requiredConfidence := 0 // irrelevant for pass rate comparison
 		testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 			sampleStats.FlakeCount, 0, 0, 0, // pass 0s for base stats
-			approvedRegression, baseRegression, resolvedIssueCompensation)
+			approvedRegression, nil, resolvedIssueCompensation)
 
 		if testStats.IsTriaged() {
 			// we are within the triage range
