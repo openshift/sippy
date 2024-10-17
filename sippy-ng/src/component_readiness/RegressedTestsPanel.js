@@ -152,7 +152,6 @@ export default function RegressedTestsPanel(props) {
             )}
           >
             <CompSeverityIcon
-              comparison={params.row.comparison}
               status={params.row.status}
               explanations={params.row.explanations}
             />

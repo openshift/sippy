@@ -10,7 +10,6 @@ import React from 'react'
 import red from './regressed.svg'
 import red_3d from './extreme.svg'
 import red_3d_triaged from './extreme-triaged.svg'
-import red_pass_rate from './regressed-passrate.svg'
 import red_triaged from './regressed-triaged.svg'
 
 // Set to true for debug mode
@@ -106,7 +105,7 @@ export function gotFetchError(fetchError) {
 
 // getStatusAndIcon returns a status string and icon to display to denote a visual and textual
 // meaning of a 'status' value.  We optionally allow a grayscale mode for the red colors.
-export function getStatusAndIcon(comparison, status, grayFactor = 0) {
+export function getStatusAndIcon(status, grayFactor = 0) {
   let icon = ''
 
   let statusStr = status + ': '
@@ -199,16 +198,6 @@ export function getStatusAndIcon(comparison, status, grayFactor = 0) {
     icon = (
       <img width="15px" height="15px" src={red} alt="SignificantRegression" />
     )
-    if (comparison === 'pass_rate') {
-      icon = (
-        <img
-          width="15px"
-          height="15px"
-          src={red_pass_rate}
-          alt="SignificantRegression"
-        />
-      )
-    }
   } else if (status <= -5) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
@@ -220,16 +209,6 @@ export function getStatusAndIcon(comparison, status, grayFactor = 0) {
         alt="ExtremeRegression >15%"
       />
     )
-    if (comparison === 'pass_rate') {
-      icon = (
-        <img
-          width="15px"
-          height="15px"
-          src={red_pass_rate}
-          alt="SignificantRegression"
-        />
-      )
-    }
   }
 
   return [statusStr, icon]
