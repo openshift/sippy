@@ -69,6 +69,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			PityFactor:       5,
 			IgnoreMissing:    false,
 			IgnoreDisruption: true,
+			IgnoreFallback:   true,
 		},
 	}
 	// would like to test with a view that does define cross-compare variants
@@ -165,6 +166,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -218,6 +220,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -255,6 +258,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -333,6 +337,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -375,6 +380,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   true,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,

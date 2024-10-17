@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/openshift/sippy/pkg/util"
+
 	"cloud.google.com/go/bigquery"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/pkg/errors"
@@ -145,6 +147,13 @@ var (
 	DefaultIgnoreDisruption = true
 )
 
+func newFallbackReleases() crtype.FallbackReleases {
+	fb := crtype.FallbackReleases{
+		Releases: map[string]crtype.ReleaseTestMap{},
+	}
+	return fb
+}
+
 func getSingleColumnResultToSlice(ctx context.Context, query *bigquery.Query) ([]string, error) {
 	names := []string{}
 	it, err := query.Read(ctx)
@@ -177,6 +186,14 @@ func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedc
 
 	return api.GetDataFromCacheOrGenerate[crtype.TestVariants](ctx, client.Cache, cache.RequestOptions{},
 		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, crtype.TestVariants{})
+}
+
+func GetReleaseDatesFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]crtype.Release, []error) {
+	generator := componentReportGenerator{
+		client: client,
+	}
+
+	return api.GetDataFromCacheOrGenerate[[]crtype.Release](ctx, client.Cache, cache.RequestOptions{}, api.GetPrefixedCacheKey("CRReleaseDates~", generator), generator.GenerateReleaseDates, []crtype.Release{})
 }
 
 func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client,
@@ -222,14 +239,16 @@ func GetComponentReportFromBigQuery(ctx context.Context, client *bqcachedclient.
 // is marshalled for the cache key and should be changed when the object being
 // cached changes in a way that will no longer be compatible with any prior cached version.
 type componentReportGenerator struct {
-	ReportModified *time.Time
-	client         *bqcachedclient.Client
-	prowURL        string
-	gcsBucket      string
-	cacheOption    cache.RequestOptions
-	BaseRelease    crtype.RequestReleaseOptions
-	SampleRelease  crtype.RequestReleaseOptions
-	triagedIssues  *resolvedissues.TriagedIncidentsForRelease
+	ReportModified             *time.Time
+	client                     *bqcachedclient.Client
+	prowURL                    string
+	gcsBucket                  string
+	cacheOption                cache.RequestOptions
+	BaseRelease                crtype.RequestReleaseOptions
+	BaseOverrideRelease        crtype.RequestReleaseOptions
+	SampleRelease              crtype.RequestReleaseOptions
+	triagedIssues              *resolvedissues.TriagedIncidentsForRelease
+	cachedFallbackTestStatuses *crtype.FallbackReleases
 	crtype.RequestTestIdentificationOptions
 	crtype.RequestVariantOptions
 	crtype.RequestAdvancedOptions
@@ -265,6 +284,24 @@ func (c *componentReportGenerator) GenerateVariants(ctx context.Context) (crtype
 		Upgrade:  columns["upgrade"],
 		Variant:  columns["variants"],
 	}, errs
+}
+
+func (c *componentReportGenerator) GenerateReleaseDates(ctx context.Context) ([]crtype.Release, []error) {
+	releases, err := api.GetReleasesFromBigQuery(ctx, c.client)
+	if err != nil {
+		return nil, []error{err}
+	}
+	crReleases := []crtype.Release{}
+	for _, release := range releases {
+		crRelease := crtype.Release{Release: release.Release}
+		if release.GADate != nil {
+			prior := util.AdjustReleaseTime(*release.GADate, true, "30", c.cacheOption.CRTimeRoundingFactor)
+			crRelease.Start = &prior
+			crRelease.End = release.GADate
+		}
+		crReleases = append(crReleases, crRelease)
+	}
+	return crReleases, nil
 }
 
 func (c *componentReportGenerator) GenerateJobVariants(ctx context.Context) (crtype.JobVariants, []error) {
@@ -358,7 +395,7 @@ func (c *componentReportGenerator) GenerateComponentReportTestStatus(ctx context
 }
 
 // getCommonTestStatusQuery returns the common query for the higher level summary component summary.
-func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtype.JobVariants, isSample bool) (string, string, []bigquery.QueryParameter) {
+func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtype.JobVariants, isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
 	// See fetchTestStatus for where we dynamically handle these columns.
@@ -423,45 +460,49 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtyp
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
 	}
 
-	variantGroups := c.IncludeVariants
-	// potentially cross-compare variants for the sample
-	if isSample && len(c.VariantCrossCompare) > 0 {
-		variantGroups = c.CompareVariants
-	}
-	if variantGroups == nil { // server-side view definitions may omit a variants map
-		variantGroups = map[string][]string{}
-	}
-
-	for group, variants := range variantGroups {
-		queryString += " AND ("
-		first := true
-		for _, variant := range variants {
-			if first {
-				queryString += fmt.Sprintf(`jv_%s.variant_value = '%s'`, group, variant)
-				first = false
-			} else {
-				queryString += fmt.Sprintf(` OR jv_%s.variant_value = '%s'`, group, variant)
-			}
+	// fallback queries get all variants with no filtering
+	// so all tests are fetched then cached
+	if !isFallback {
+		variantGroups := c.IncludeVariants
+		// potentially cross-compare variants for the sample
+		if isSample && len(c.VariantCrossCompare) > 0 {
+			variantGroups = c.CompareVariants
 		}
-		queryString += ")"
-	}
+		if variantGroups == nil { // server-side view definitions may omit a variants map
+			variantGroups = map[string][]string{}
+		}
 
-	for k, v := range c.RequestedVariants {
-		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
-	}
-	if c.Capability != "" {
-		queryString += " AND @Capability in UNNEST(capabilities)"
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "Capability",
-			Value: c.Capability,
-		})
-	}
-	if c.TestID != "" {
-		queryString += ` AND cm.id = @TestId`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "TestId",
-			Value: c.TestID,
-		})
+		for group, variants := range variantGroups {
+			queryString += " AND ("
+			first := true
+			for _, variant := range variants {
+				if first {
+					queryString += fmt.Sprintf(`jv_%s.variant_value = '%s'`, group, variant)
+					first = false
+				} else {
+					queryString += fmt.Sprintf(` OR jv_%s.variant_value = '%s'`, group, variant)
+				}
+			}
+			queryString += ")"
+		}
+
+		for k, v := range c.RequestedVariants {
+			queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
+		}
+		if c.Capability != "" {
+			queryString += " AND @Capability in UNNEST(capabilities)"
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  "Capability",
+				Value: c.Capability,
+			})
+		}
+		if c.TestID != "" {
+			queryString += ` AND cm.id = @TestId`
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  "TestId",
+				Value: c.TestID,
+			})
+		}
 	}
 	return queryString, groupString, commonParams
 }
@@ -477,9 +518,8 @@ type baseQueryGenerator struct {
 
 // getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
 func (c *componentReportGenerator) getBaseQueryStatus(ctx context.Context,
-	allJobVariants crtype.JobVariants) (map[string]crtype.
-	TestStatus, []error) {
-	baseQuery, baseGrouping, baseParams := c.getCommonTestStatusQuery(allJobVariants, false)
+	allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
+	baseQuery, baseGrouping, baseParams := c.getCommonTestStatusQuery(allJobVariants, false, false)
 	generator := baseQueryGenerator{
 		client: c.client,
 		cacheOption: cache.RequestOptions{
@@ -501,6 +541,33 @@ func (c *componentReportGenerator) getBaseQueryStatus(ctx context.Context,
 	}
 
 	return componentReportTestStatus.BaseStatus, nil
+}
+
+func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Context, allJobVariants crtype.JobVariants, release string, start, end time.Time) []error {
+	baseQuery, baseGrouping, baseParams := c.getCommonTestStatusQuery(allJobVariants, false, true)
+	generator := fallbackTestQueryReleasesGenerator{
+		client: c.client,
+		cacheOption: cache.RequestOptions{
+			ForceRefresh: c.cacheOption.ForceRefresh,
+			// increase the time that base query is cached for since it shouldn't be changing?
+			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
+		},
+		commonQuery:     baseQuery,
+		groupByQuery:    baseGrouping,
+		BaseRelease:     release,
+		BaseStart:       start,
+		BaseEnd:         end,
+		queryParameters: baseParams,
+	}
+
+	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*crtype.FallbackReleases](ctx, c.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackReleases~", generator), generator.getTestFallbackReleases, &crtype.FallbackReleases{})
+
+	if len(errs) > 0 {
+		return errs
+	}
+
+	c.cachedFallbackTestStatuses = cachedFallbackTestStatuses
+	return nil
 }
 
 func (b *baseQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
@@ -547,7 +614,7 @@ type sampleQueryGenerator struct {
 // getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
 func (c *componentReportGenerator) getSampleQueryStatus(
 	ctx context.Context, allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := c.getCommonTestStatusQuery(allJobVariants, true)
+	commonQuery, groupByQuery, queryParameters := c.getCommonTestStatusQuery(allJobVariants, true, false)
 	generator := sampleQueryGenerator{
 		client:                   c.client,
 		commonQuery:              commonQuery,
@@ -619,6 +686,194 @@ func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Repo
 	return crtype.ReportTestStatus{SampleStatus: sampleStatus}, errs
 }
 
+type fallbackTestQueryReleasesGenerator struct {
+	client                     *bqcachedclient.Client
+	cacheOption                cache.RequestOptions
+	commonQuery                string
+	groupByQuery               string
+	queryParameters            []bigquery.QueryParameter
+	allJobVariants             crtype.JobVariants
+	BaseRelease                string
+	BaseStart                  time.Time
+	BaseEnd                    time.Time
+	CachedFallbackTestStatuses crtype.FallbackReleases
+}
+
+func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context.Context) (*crtype.FallbackReleases, []error) {
+	wg := sync.WaitGroup{}
+	f.CachedFallbackTestStatuses = newFallbackReleases()
+	releases, errs := GetReleaseDatesFromBigQuery(ctx, f.client)
+
+	if errs != nil {
+		return nil, errs
+	}
+
+	// currently gets current base plus previous 3
+	// current base is just for testing but use could be
+	// extended to no longer require the base query
+	var selectedReleases []*crtype.Release
+	fallbackRelease := f.BaseRelease
+
+	// Get base plus up to 3 fallback releases
+	for i := 0; i < 4; i++ {
+		var crRelease *crtype.Release
+
+		// currently fetching the baseRelease via fallback to
+		// perform validation of the test data
+		// this gets uncommented when ready
+		// and the section at the bottom removed
+		// fallbackRelease, err = previousRelease(fallbackRelease)
+		// if err != nil {
+		// 	log.WithError(err).Errorf("Failure determining fallback release for %s", fallbackRelease)
+		// 	continue
+		// }
+
+		for i := range releases {
+			if releases[i].Release == fallbackRelease {
+				crRelease = &releases[i]
+				break
+			}
+		}
+
+		if crRelease != nil {
+			selectedReleases = append(selectedReleases, crRelease)
+		}
+
+		// Attempt to get the previous release
+		// remove this section if / when we uncomment previousRelease call above
+		// to bypass getting the original base fallback results for validation
+		var err error
+		fallbackRelease, err = previousRelease(fallbackRelease)
+		if err != nil {
+			log.WithError(err).Errorf("failure determining fallback release for %s", fallbackRelease)
+			break // Stop attempting if previousRelease fails
+		}
+	}
+
+	for _, crRelease := range selectedReleases {
+
+		start := f.BaseStart
+		end := f.BaseEnd
+
+		// we want our base release validation to match the base release report dates
+		if crRelease.Release != f.BaseRelease && crRelease.End != nil && crRelease.Start != nil {
+			end = *crRelease.End
+			start = *crRelease.Start
+		}
+
+		wg.Add(1)
+		go func(queryRelease crtype.Release, queryStart, queryEnd time.Time) {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				log.Infof("Context canceled while fetching fallback base query status")
+				return
+			default:
+				stats, errs := f.getTestFallbackRelease(ctx, queryRelease.Release, queryStart, queryEnd)
+				if errs != nil && len(errs) > 0 {
+					log.Errorf("FallbackBaseQueryStatus for %s failed with: %v", queryRelease, errs)
+					return
+				}
+
+				f.updateTestStatuses(queryRelease, stats.BaseStatus)
+			}
+		}(*crRelease, start, end)
+	}
+	wg.Wait()
+
+	return &f.CachedFallbackTestStatuses, nil
+}
+
+func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.Release, updateStatuses map[string]crtype.TestStatus) {
+
+	var testStatuses crtype.ReleaseTestMap
+	var ok bool
+
+	if testStatuses, ok = f.CachedFallbackTestStatuses.Releases[release.Release]; !ok {
+		testStatuses = crtype.ReleaseTestMap{Release: release, Tests: map[string]crtype.TestStatus{}}
+		f.CachedFallbackTestStatuses.Releases[release.Release] = testStatuses
+	}
+
+	for key, value := range updateStatuses {
+		testStatuses.Tests[key] = value
+	}
+}
+
+type fallbackTestQueryGenerator struct {
+	client          *bqcachedclient.Client
+	cacheOption     cache.RequestOptions
+	commonQuery     string
+	groupByQuery    string
+	queryParameters []bigquery.QueryParameter
+	allJobVariants  crtype.JobVariants
+	BaseRelease     string
+	BaseStart       time.Time
+	BaseEnd         time.Time
+}
+
+func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.Context, release string, start, end time.Time) (crtype.ReportTestStatus, []error) {
+	generator := fallbackTestQueryGenerator{
+		client: f.client,
+		cacheOption: cache.RequestOptions{
+			ForceRefresh: f.cacheOption.ForceRefresh,
+			// increase the time that base query is cached for since it shouldn't be changing?
+			CRTimeRoundingFactor: f.cacheOption.CRTimeRoundingFactor,
+		},
+		commonQuery:     f.commonQuery,
+		groupByQuery:    f.groupByQuery,
+		BaseRelease:     release,
+		BaseStart:       start,
+		BaseEnd:         end,
+		queryParameters: f.queryParameters,
+	}
+
+	testStatuses, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator), generator.getTestFallbackRelease, crtype.ReportTestStatus{})
+
+	if len(errs) > 0 {
+		return crtype.ReportTestStatus{}, errs
+	}
+
+	return testStatuses, nil
+}
+
+func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (crtype.ReportTestStatus, []error) {
+	return f.getFallbackBaseQueryStatus(ctx, f.BaseRelease, f.BaseStart, f.BaseEnd)
+}
+
+func (f *fallbackTestQueryGenerator) getFallbackBaseQueryStatus(ctx context.Context, release string, start, end time.Time) (crtype.ReportTestStatus, []error) {
+	before := time.Now()
+	log.Infof("Starting Fallback (%s) QueryTestStatus", release)
+	errs := []error{}
+	baseString := f.commonQuery + ` AND branch = @BaseRelease`
+	baseQuery := f.client.BQ.Query(baseString + f.groupByQuery)
+
+	baseQuery.Parameters = append(baseQuery.Parameters, f.queryParameters...)
+	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
+		{
+			Name:  "From",
+			Value: start,
+		},
+		{
+			Name:  "To",
+			Value: end,
+		},
+		{
+			Name:  "BaseRelease",
+			Value: release,
+		},
+	}...)
+
+	baseStatus, baseErrs := fetchTestStatus(ctx, baseQuery)
+
+	if len(baseErrs) != 0 {
+		errs = append(errs, baseErrs...)
+	}
+
+	log.Infof("Fallback (%s) QueryTestStatus completed in %s with %d base results from db", release, time.Since(before), len(baseStatus))
+
+	return crtype.ReportTestStatus{BaseStatus: baseStatus}, errs
+}
+
 func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	before := time.Now()
 	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client, c.gcsBucket)
@@ -630,6 +885,21 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	var baseStatus, sampleStatus map[string]crtype.TestStatus
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
+
+	if !c.IgnoreFallback {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				log.Infof("Context canceled while fetching fallback query status")
+				return
+			default:
+				c.getFallbackBaseQueryStatus(ctx, allJobVariants, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End)
+			}
+		}()
+	}
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -882,6 +1152,12 @@ func (c *componentReportGenerator) normalizeProwJobName(prowName string) string 
 	if c.BaseRelease.Release != "" {
 		name = strings.ReplaceAll(name, c.BaseRelease.Release, "X.X")
 		if prev, err := previousRelease(c.BaseRelease.Release); err == nil {
+			name = strings.ReplaceAll(name, prev, "X.X")
+		}
+	}
+	if c.BaseOverrideRelease.Release != "" {
+		name = strings.ReplaceAll(name, c.BaseOverrideRelease.Release, "X.X")
+		if prev, err := previousRelease(c.BaseOverrideRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
@@ -1360,6 +1636,100 @@ func (c *componentReportGenerator) getRequiredConfidence(testID string, variants
 	return c.RequestAdvancedOptions.Confidence
 }
 
+func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, baseStats crtype.TestStatus) (crtype.TestStatus, string) {
+	var baseRegression *regressionallowances.IntentionalRegression
+	if len(c.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
+		// look for corresponding regressions we can account for in the analysis
+		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, testID.ColumnIdentification, testID.TestID)
+
+		// The hope is that this goes away
+		// once we agree we don't need to honor a higher intentional regression pass percentage
+		if baseRegression != nil && baseRegression.PreviousPassPercentage() > getTestStatusSuccessRate(baseStats) {
+			// override with  the basis regression previous values
+			// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
+			baseRegressionPreviousRelease, err := previousRelease(c.BaseRelease.Release)
+			if err != nil {
+				log.WithError(err).Error("Failed to determine the previous release for baseRegression")
+			} else {
+				// create a clone since we might be updating a cached item though the same regression would likely apply each time...
+				updatedStats := crtype.TestStatus{TestName: baseStats.TestName, TestSuite: baseStats.TestSuite, Capabilities: baseStats.Capabilities,
+					Component: baseStats.Component, Variants: baseStats.Variants,
+					FlakeCount:   baseRegression.PreviousFlakes,
+					SuccessCount: baseRegression.PreviousSuccesses,
+					TotalCount:   baseRegression.PreviousFailures + baseRegression.PreviousFlakes + baseRegression.PreviousSuccesses,
+				}
+				baseStats = updatedStats
+				baseRelease = baseRegressionPreviousRelease
+				log.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d, Total: %d", baseRelease, baseStats.SuccessCount, baseStats.FlakeCount, baseStats.TotalCount)
+			}
+		}
+	}
+
+	return baseStats, baseRelease
+}
+
+func (c *componentReportGenerator) matchBestBaseStats(testID crtype.ReportTestIdentification, testIdentification, baseRelease string, baseStats, sampleStats crtype.TestStatus, requiredConfidence int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) (crtype.TestStatus, string, crtype.ReportTestStats) {
+
+	// The hope is that this goes away
+	// once we agree we don't need to honor a higher intentional regression pass percentage
+	baseStats, baseRelease = c.matchBaseRegression(testID, baseRelease, baseStats)
+	baseStatsTotal := baseStats.TotalCount
+
+	baseTestStats := c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
+		sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
+		baseStats.FlakeCount, approvedRegression, numberOfIgnoredSampleJobRuns, baseRelease)
+
+	if c.IgnoreFallback {
+		return baseStats, baseRelease, baseTestStats
+	}
+
+	if c.cachedFallbackTestStatuses == nil {
+		log.Errorf("Invalid fallback test statuses")
+		return baseStats, baseRelease, baseTestStats
+	}
+
+	var priorRelease = baseRelease
+	var err error
+	for err == nil {
+		priorRelease, err = previousRelease(priorRelease)
+		if err == nil {
+			if cachedTestStatuses, ok := c.cachedFallbackTestStatuses.Releases[priorRelease]; ok {
+				if cTestStats, ok := cachedTestStatuses.Tests[testIdentification]; ok {
+
+					// what is our base total compared to the original base
+					// this happens when jobs shift like sdn -> ovn
+					// if we get below threshold that's a sign we are reducing our base signal
+					if float64(cTestStats.TotalCount/baseStatsTotal) < .6 {
+						log.Debugf("Fallback base total: %d to low for fallback analysis compared to original: %d", cTestStats.TotalCount, baseStatsTotal)
+						break
+					}
+
+					cTestStats, priorRelease = c.matchBaseRegression(testID, priorRelease, cTestStats)
+
+					priorTestStats := c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
+						sampleStats.FlakeCount, cTestStats.TotalCount, cTestStats.SuccessCount,
+						cTestStats.FlakeCount, approvedRegression, numberOfIgnoredSampleJobRuns, priorRelease)
+
+					if priorTestStats.ReportStatus < baseTestStats.ReportStatus {
+						baseStats = cTestStats
+						baseTestStats = priorTestStats
+						baseRelease = priorRelease
+					}
+				}
+			} else {
+				// if we miss on a prior release we stop
+				break
+			}
+		} else {
+			// explicit break for the for loop
+			break
+		}
+
+	}
+
+	return baseStats, baseRelease, baseTestStats
+}
+
 func (c *componentReportGenerator) generateComponentTestReport(ctx context.Context,
 	baseStatus map[string]crtype.TestStatus,
 	sampleStatus map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
@@ -1374,6 +1744,17 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 	allColumns := map[crtype.ColumnID]struct{}{}
 	// testID is used to identify the most regressed test. With this, we can
 	// create a shortcut link from any page to go straight to the most regressed test page.
+
+	// using the baseStatus range here makes it hard to do away with the baseQuery
+	// but if we did and just enumerated the sampleStatus instead
+	// we wouldn't need the base query each time
+	//
+	// understand we use this to find tests associated with base that we don't see now in sample
+	// meaning they have been renamed or removed
+	baseReleaseMatches := 0
+	baseReleaseMisses := 0
+	overridenBaseMatches := 0
+
 	for testIdentification, baseStats := range baseStatus {
 		testID, err := buildTestID(baseStats, testIdentification)
 		if err != nil {
@@ -1387,20 +1768,46 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
-			var approvedRegression, baseRegression *regressionallowances.IntentionalRegression
+			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
+			var approvedRegression *regressionallowances.IntentionalRegression
 			if len(c.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
 				// look for corresponding regressions we can account for in the analysis
 				approvedRegression = regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
-				baseRegression = regressionallowances.IntentionalRegressionFor(c.BaseRelease.Release, testID.ColumnIdentification, testID.TestID)
 				// ignore triage if we have an intentional regression
 				if approvedRegression == nil {
 					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
 				}
 			}
-			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
-			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
-				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
-				baseStats.FlakeCount, approvedRegression, baseRegression, resolvedIssueCompensation)
+
+			// this goes away and is just to validate
+			// that the fallback data for the base release
+			// isn't missing any tests
+			if c.cachedFallbackTestStatuses != nil {
+				// get fallback for the current base, make sure we don't have any misses'
+				if cachedTestStatuses, ok := c.cachedFallbackTestStatuses.Releases[c.BaseRelease.Release]; ok {
+					if cTestStats, ok := cachedTestStatuses.Tests[testIdentification]; ok {
+						// obviously we need more analysis here to determine if the
+						// previous release(s) stats should override
+						baseStats = cTestStats
+						baseReleaseMatches += 1
+					} else {
+						// log.Infof("Failed to find cache testId: %s - %v", baseStats.TestName, testIdentification)
+						baseReleaseMisses += 1
+					}
+				}
+
+			} else if !c.IgnoreFallback {
+				log.Error("Expected cached fallback statuses but was missing")
+			}
+
+			// this is where we look to see if a previous release has a higher pass rate
+			matchedBaseRelease := c.BaseRelease.Release
+			baseStats, matchedBaseRelease, testStats = c.matchBestBaseStats(testID, testIdentification, matchedBaseRelease, baseStats, sampleStats, requiredConfidence, approvedRegression, resolvedIssueCompensation)
+
+			if matchedBaseRelease != c.BaseRelease.Release {
+				log.Infof("Overrode base stats using release %s for Test: %s - %s", matchedBaseRelease, baseStats.TestName, testIdentification)
+				overridenBaseMatches += 1
+			}
 
 			if testStats.ReportStatus < crtype.MissingSample && testStats.ReportStatus > crtype.SignificantRegression {
 				// we are within the triage range
@@ -1430,6 +1837,9 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 		}
 		updateCellStatus(rowIdentifications, columnIdentifications, testID, testStats, aggregatedStatus, allRows, allColumns, triagedIncidents, c.openRegressions)
 	}
+
+	log.Infof("BaseStats: %d, baseMatches: %d, baseMisses: %d.  Overridden base stats: %d", len(baseStatus), baseReleaseMatches, baseReleaseMisses, overridenBaseMatches)
+
 	// Those sample ones are missing base stats
 	for testIdentification, sampleStats := range sampleStatus {
 		testID, err := buildTestID(sampleStats, testIdentification)
@@ -1567,6 +1977,10 @@ func getFailureCount(status crtype.JobRunTestStatusRow) int {
 	return failure
 }
 
+func getTestStatusSuccessRate(testStatus crtype.TestStatus) float64 {
+	return getSuccessRate(testStatus.SuccessCount, testStatus.TotalCount-testStatus.SuccessCount-testStatus.FlakeCount, testStatus.FlakeCount)
+}
+
 func getSuccessRate(success, failure, flake int) float64 {
 	total := success + failure + flake
 	if total == 0 {
@@ -1608,7 +2022,7 @@ func (c *componentReportGenerator) getEffectivePityFactor(basisPassPercentage fl
 	return c.PityFactor
 }
 
-func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression, baseRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) crtype.ReportTestStats {
+func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int, baseRelease string) crtype.ReportTestStats {
 	// preserve the initial sampleTotal, so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
 	initialSampleTotal := sampleTotal
@@ -1627,19 +2041,12 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 	}
 	baseFailure := baseTotal - baseSuccess - baseFlake
 
-	if baseRegression != nil && baseRegression.PreviousPassPercentage() > float64(baseSuccess+baseFlake)/float64(baseTotal) {
-		// override with  the basis regression previous values
-		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-		baseFailure = baseRegression.PreviousFailures
-		baseSuccess = baseRegression.PreviousSuccesses
-		baseFlake = baseRegression.PreviousFlakes
-		baseTotal = baseFailure + baseSuccess + baseFlake
-	}
-
 	status := crtype.MissingBasis
 	testStats := crtype.ReportTestStats{
 		SampleStats: crtype.TestDetailsReleaseStats{
 			Release: c.SampleRelease.Release,
+			Start:   &c.SampleRelease.Start,
+			End:     &c.SampleRelease.End,
 			TestDetailsTestStats: crtype.TestDetailsTestStats{
 				SuccessRate:  getSuccessRate(sampleSuccess, sampleFailure, sampleFlake),
 				SuccessCount: sampleSuccess,
@@ -1647,8 +2054,11 @@ func (c *componentReportGenerator) assessComponentStatus(requiredConfidence, sam
 				FlakeCount:   sampleFlake,
 			},
 		},
+
 		BaseStats: crtype.TestDetailsReleaseStats{
-			Release: c.BaseRelease.Release,
+			Release: baseRelease,
+			Start:   &c.BaseRelease.Start,
+			End:     &c.BaseRelease.End,
 			TestDetailsTestStats: crtype.TestDetailsTestStats{
 				SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
 				SuccessCount: baseSuccess,
