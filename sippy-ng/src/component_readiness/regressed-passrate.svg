@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg data-name="Layer 1" version="1.1" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+ <path d="M-.03-.03H64V64H-.03z" fill="#e31017"/>
+ <g stroke="#000" stroke-width=".5">
+  <line x1="21.33" x2="21.33" y2="64"/>
+  <line x1="42.66" x2="42.66" y2="64"/>
+  <line x2="64" y1="21.33" y2="21.33"/>
+  <line x2="64" y1="42.66" y2="42.66"/>
+ </g>
+ <text transform="scale(.94306 1.0604)" x="33" y="36" dominant-baseline="middle" fill="#ffccaa" font-size="64px" stroke-width=".5" text-anchor="middle">%</text>
+</svg>

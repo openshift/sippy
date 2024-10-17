@@ -8,12 +8,14 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 )
 
 // nolint:gocyclo
 func ParseComponentReportRequest(
 	views []crtype.View,
+	releases []v1.Release,
 	req *http.Request,
 	allJobVariants crtype.JobVariants,
 	crTimeRoundingFactor time.Duration,
@@ -31,11 +33,11 @@ func ParseComponentReportRequest(
 		// set params from view
 		opts.VariantOption = view.VariantOptions
 		opts.AdvancedOption = view.AdvancedOptions
-		opts.BaseRelease, err = GetViewReleaseOptions("basis", view.BaseRelease, crTimeRoundingFactor)
+		opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor)
 		if err != nil {
 			return
 		}
-		opts.SampleRelease, err = GetViewReleaseOptions("sample", view.SampleRelease, crTimeRoundingFactor)
+		opts.SampleRelease, err = GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor)
 		if err != nil {
 			return
 		}
@@ -63,11 +65,11 @@ func ParseComponentReportRequest(
 
 		// TODO: if specified, allow these to override view defaults for start/end time.
 		// will need to relocate this outside this else.
-		opts.BaseRelease, err = parseDateRange(req, opts.BaseRelease, "baseStartTime", "baseEndTime", crTimeRoundingFactor)
+		opts.BaseRelease, err = parseDateRange(releases, req, opts.BaseRelease, "baseStartTime", "baseEndTime", crTimeRoundingFactor)
 		if err != nil {
 			return
 		}
-		opts.SampleRelease, err = parseDateRange(req, opts.SampleRelease, "sampleStartTime", "sampleEndTime", crTimeRoundingFactor)
+		opts.SampleRelease, err = parseDateRange(releases, req, opts.SampleRelease, "sampleStartTime", "sampleEndTime", crTimeRoundingFactor)
 		if err != nil {
 			return
 		}
@@ -104,7 +106,7 @@ func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, err
 		"samplePROrg", "samplePRRepo", "samplePRNumber", // PR opts
 		"columnGroupBy", "dbGroupBy", // grouping
 		"includeVariant", "compareVariant", "variantCrossCompare", // variants
-		"confidence", "pity", "minFail",
+		"confidence", "pity", "minFail", "passRateNewTests", "passRateAllTests",
 		"ignoreMissing", "ignoreDisruption", // advanced opts
 	}
 	found := []string{}
@@ -128,6 +130,7 @@ func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, err
 
 // Translate relative start/end times to actual time.Time:
 func GetViewReleaseOptions(
+	releases []v1.Release,
 	releaseType string,
 	viewRelease crtype.RequestRelativeReleaseOptions,
 	roundingFactor time.Duration,
@@ -135,11 +138,11 @@ func GetViewReleaseOptions(
 
 	var err error
 	opts := crtype.RequestReleaseOptions{Release: viewRelease.Release}
-	opts.Start, err = util.ParseCRReleaseTime(opts.Release, viewRelease.RelativeStart, true, roundingFactor)
+	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeStart, true, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
 	}
-	opts.End, err = util.ParseCRReleaseTime(opts.Release, viewRelease.RelativeEnd, false, roundingFactor)
+	opts.End, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeEnd, false, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
 	}
@@ -256,6 +259,18 @@ func parseAdvancedOptions(req *http.Request) (advancedOption crtype.RequestAdvan
 		return advancedOption, err
 	}
 
+	advancedOption.PassRateRequiredNewTests, err = ParseIntArg(req, "passRateNewTests", 0,
+		func(v int) bool { return v >= 0 && v <= 100 })
+	if err != nil {
+		return advancedOption, err
+	}
+
+	advancedOption.PassRateRequiredAllTests, err = ParseIntArg(req, "passRateAllTests", 0,
+		func(v int) bool { return v >= 0 && v <= 100 })
+	if err != nil {
+		return advancedOption, err
+	}
+
 	advancedOption.IgnoreMissing, err = ParseBoolArg(req, "ignoreMissing", false)
 	if err != nil {
 		return advancedOption, err
@@ -268,7 +283,7 @@ func parseAdvancedOptions(req *http.Request) (advancedOption crtype.RequestAdvan
 	return
 }
 
-func parseDateRange(req *http.Request,
+func parseDateRange(allReleases []v1.Release, req *http.Request,
 	releaseOpts crtype.RequestReleaseOptions,
 	startName string, endName string,
 	roundingFactor time.Duration,
@@ -276,13 +291,13 @@ func parseDateRange(req *http.Request,
 	var err error
 
 	timeStr := req.URL.Query().Get(startName)
-	releaseOpts.Start, err = util.ParseCRReleaseTime(releaseOpts.Release, timeStr, true, roundingFactor)
+	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, true, roundingFactor)
 	if err != nil {
 		return releaseOpts, fmt.Errorf(startName + " in wrong format")
 	}
 
 	timeStr = req.URL.Query().Get(endName)
-	releaseOpts.End, err = util.ParseCRReleaseTime(releaseOpts.Release, timeStr, false, roundingFactor)
+	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, false, roundingFactor)
 	if err != nil {
 		return releaseOpts, fmt.Errorf(endName + " in wrong format")
 	}

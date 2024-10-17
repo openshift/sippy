@@ -41,6 +41,7 @@ func main() {
 		NewLoadJobVariantsCommand(),
 		NewComponentReadinessCommand(),
 		NewAutomateJiraCommand(),
+		NewTrackRegressionsCommand(),
 	)
 
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",

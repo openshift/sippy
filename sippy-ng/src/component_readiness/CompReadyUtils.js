@@ -327,6 +327,8 @@ export function getUpdatedUrlParts(vars) {
     confidence: vars.confidence,
     pity: vars.pity,
     minFail: vars.minFail,
+    passRateNewTests: vars.passRateNewTests,
+    passRateAllTests: vars.passRateAllTests,
     ignoreDisruption: vars.ignoreDisruption,
     ignoreMissing: vars.ignoreMissing,
     //component: vars.component,

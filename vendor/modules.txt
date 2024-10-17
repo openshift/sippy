@@ -94,6 +94,9 @@ github.com/apache/arrow/go/v14/internal/bitutils
 github.com/apache/arrow/go/v14/internal/hashing
 github.com/apache/arrow/go/v14/internal/json
 github.com/apache/arrow/go/v14/internal/utils
+# github.com/apache/thrift v0.17.0
+## explicit; go 1.18
+github.com/apache/thrift/lib/go/thrift
 # github.com/aws/aws-sdk-go v1.38.49
 ## explicit; go 1.11
 github.com/aws/aws-sdk-go/aws

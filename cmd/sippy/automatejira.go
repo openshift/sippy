@@ -125,7 +125,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("unable to load views")
 			}
-			releases, err := api.GetReleases(nil, bigQueryClient)
+			releases, err := api.GetReleases(context.Background(), bigQueryClient)
 			if err != nil {
 				log.WithError(err).Fatal("error querying releases")
 			}
@@ -135,7 +135,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 				return errors.WithMessage(err, "couldn't get jira client")
 			}
 
-			allVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(bigQueryClient, f.GoogleCloudFlags.StorageBucket)
+			allVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(ctx, bigQueryClient, f.GoogleCloudFlags.StorageBucket)
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get variants from bigquery")
 			}

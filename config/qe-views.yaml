@@ -41,7 +41,6 @@ component_readiness:
           - aws
           - azure
           - gcp
-          - metal
           - rosa
           - vsphere
         Topology:
@@ -97,7 +96,6 @@ component_readiness:
           - aws
           - azure
           - gcp
-          - metal
           - rosa
           - vsphere
         Topology:

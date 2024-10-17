@@ -51,8 +51,6 @@ func (f *ComponentReadinessFlags) ParseViewsFile() (*api.SippyViews, error) {
 		if err != nil {
 			log.WithError(err).Fatal("invalid view definition found")
 		}
-
-		log.Infof("parsed views: %+v", vf)
 	}
 	return vf, nil
 }

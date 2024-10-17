@@ -1,10 +1,10 @@
 package sippyserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -13,23 +13,21 @@ import (
 	"sync"
 	"time"
 
-	"github.com/openshift/sippy/pkg/api/componentreadiness"
-	"gorm.io/gorm"
-
 	"cloud.google.com/go/storage"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
+	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -84,7 +82,7 @@ func NewServer(
 	}
 
 	if bigQueryClient != nil {
-		go componentreadiness.GetComponentTestVariantsFromBigQuery(bigQueryClient, gcsBucket)
+		go componentreadiness.GetComponentTestVariantsFromBigQuery(context.Background(), bigQueryClient, gcsBucket)
 	}
 
 	return server
@@ -618,7 +616,7 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 		})
 		return
 	}
-	outputs, errs := componentreadiness.GetComponentTestVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	outputs, errs := componentreadiness.GetComponentTestVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying test variants from big query:", len(errs))
 		for _, err := range errs {
@@ -641,7 +639,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 		})
 		return
 	}
-	outputs, errs := componentreadiness.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	outputs, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying job variants from big query:", len(errs))
 		for _, err := range errs {
@@ -657,12 +655,21 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
 	// deep copy the views and then we'll inject a fixed start/end time using the relative times
 	// the view is configured with, so the UI can pre-populate the pickers
 	viewsCopy := make([]crtype.View, len(s.views.ComponentReadiness))
 	copy(viewsCopy, s.views.ComponentReadiness)
 	for i := range viewsCopy {
-		rro, err := componentreadiness.GetViewReleaseOptions("basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
+		rro, err := componentreadiness.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
 		if err != nil {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
@@ -673,7 +680,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 		viewsCopy[i].BaseRelease.Start = rro.Start
 		viewsCopy[i].BaseRelease.End = rro.End
 
-		rro, err = componentreadiness.GetViewReleaseOptions("sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
+		rro, err = componentreadiness.GetViewReleaseOptions(allReleases, "sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
 		if err != nil {
 			api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 				"code":    http.StatusBadRequest,
@@ -696,7 +703,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		})
 		return
 	}
-	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
 	if len(errs) > 0 {
 		err := fmt.Errorf("failed to get variants from bigquery")
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -705,7 +712,17 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		})
 		return
 	}
-	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, req, allJobVariants, s.crTimeRoundingFactor)
+
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -715,6 +732,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	}
 
 	outputs, errs := componentreadiness.GetComponentReportFromBigQuery(
+		req.Context(),
 		s.bigQueryClient,
 		s.prowURL,
 		s.gcsBucket,
@@ -743,7 +761,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(s.bigQueryClient, s.gcsBucket)
+	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
 	if len(errs) > 0 {
 		err := fmt.Errorf("failed to get variants from bigquery")
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -752,7 +770,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, req, allJobVariants, s.crTimeRoundingFactor)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
 	if err != nil {
 		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
 			"code":    http.StatusBadRequest,
@@ -760,7 +778,16 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		})
 		return
 	}
-	outputs, errs := componentreadiness.GetTestDetails(s.bigQueryClient, s.prowURL, s.gcsBucket, reqOptions)
+
+	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": err.Error(),
+		})
+		return
+	}
+	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, s.prowURL, s.gcsBucket, reqOptions)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
 		for _, err := range errs {
@@ -831,13 +858,12 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 	}
 }
 
-func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, _ *http.Request) {
+func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Request) {
 	gaDateMap := make(map[string]time.Time)
-	maps.Copy(gaDateMap, releaseloader.GADateMap)
 	response := apitype.Releases{
 		GADates: gaDateMap,
 	}
-	releases, err := api.GetReleases(s.db, s.bigQueryClient)
+	releases, err := api.GetReleases(req.Context(), s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying releases")
 		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{

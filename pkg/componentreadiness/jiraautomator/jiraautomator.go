@@ -14,8 +14,8 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
@@ -59,7 +59,7 @@ type JiraAutomator struct {
 	bqClient     *bqclient.Client
 	cacheOptions cache.RequestOptions
 	views        []crtype.View
-	releases     []query.Release
+	releases     []v1.Release
 	sippyURL     string
 	// variantBasedComponentRegressionThreshold defines a threshold for the number of red cells in a column.
 	// When the number of red cells of a column is over this threshold, a jira card will be created for the
@@ -70,7 +70,7 @@ type JiraAutomator struct {
 }
 
 func NewJiraAutomator(jiraClient jirautil.Client, bqClient *bqclient.Client, cacheOptions cache.RequestOptions, views []crtype.View,
-	releases []query.Release, sippyURL, jiraAccount string, componentWhiteList sets.String, variantBasedComponentRegressionThreshold map[Variant]int) (JiraAutomator, error) {
+	releases []v1.Release, sippyURL, jiraAccount string, componentWhiteList sets.String, variantBasedComponentRegressionThreshold map[Variant]int) (JiraAutomator, error) {
 	j := JiraAutomator{
 		jiraClient:                               jiraClient,
 		bqClient:                                 bqClient,
@@ -98,12 +98,12 @@ func NewJiraAutomator(jiraClient jirautil.Client, bqClient *bqclient.Client, cac
 }
 
 func (j JiraAutomator) getRequestOptionForView(view crtype.View) (crtype.RequestOptions, error) {
-	baseRelease, err := componentreadiness.GetViewReleaseOptions("basis", view.BaseRelease, j.cacheOptions.CRTimeRoundingFactor)
+	baseRelease, err := componentreadiness.GetViewReleaseOptions(j.releases, "basis", view.BaseRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return crtype.RequestOptions{}, err
 	}
 
-	sampleRelease, err := componentreadiness.GetViewReleaseOptions("sample", view.SampleRelease, j.cacheOptions.CRTimeRoundingFactor)
+	sampleRelease, err := componentreadiness.GetViewReleaseOptions(j.releases, "sample", view.SampleRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return crtype.RequestOptions{}, err
 	}
@@ -130,7 +130,7 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 	}
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(j.bqClient, "", "", reportOpts)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, "", "", reportOpts)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
@@ -314,16 +314,16 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 			// Only show stats for the worst regression
 			if i == 0 {
 				description += fmt.Sprintf("\n h4. Most Regressed Test:\n{code}%s{code}\n", test.TestName)
-				description += getProbabilityString(test.ReportStatus, test.FisherExact)
+				description += getProbabilityString(test.ReportStatus, *test.FisherExact)
 				description += getStatsString("Sample (being evaluated)", test.SampleStats, view.SampleRelease.RelativeStart, view.SampleRelease.RelativeEnd)
-				description += getStatsString("Base (historical)", test.BaseStats, view.BaseRelease.RelativeStart, view.BaseRelease.RelativeEnd)
+				description += getStatsString("Base (historical)", *test.BaseStats, view.BaseRelease.RelativeStart, view.BaseRelease.RelativeEnd)
 				if len(tests) > 1 {
 					description += fmt.Sprintf("\n h4. Other Regressed Tests:\n")
 					description += fmt.Sprintf("\nThe following tests are also regressed in the same component readiness report. They might not be related to the most regressed test above. We only create one issue per component and therefore group them here. Feel free to create new issues if they are unrelated.\n")
 				}
 			} else {
 				description += fmt.Sprintf("{code}%s{code}\n", test.TestName)
-				description += getProbabilityString(test.ReportStatus, test.FisherExact)
+				description += getProbabilityString(test.ReportStatus, *test.FisherExact)
 			}
 		}
 		if linkedIssue != nil {

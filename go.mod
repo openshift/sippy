@@ -10,6 +10,7 @@ require (
 	cloud.google.com/go/storage v1.40.0
 	github.com/anaskhan96/soup v1.2.5
 	github.com/andygrunwald/go-jira v1.14.0
+	github.com/apache/thrift v0.17.0
 	github.com/glycerine/golang-fisher-exact v0.0.0-20230401153517-53168ae38651
 	github.com/google/go-github/v45 v45.2.0
 	github.com/google/uuid v1.6.0
@@ -26,6 +27,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/tcnksm/go-gitconfig v0.1.2
 	github.com/tidwall/gjson v1.9.4
+	github.com/trivago/tgo v1.0.7
 	golang.org/x/oauth2 v0.20.0
 	google.golang.org/api v0.181.0
 	gopkg.in/redis.v5 v5.2.9
@@ -126,7 +128,6 @@ require (
 	github.com/tektoncd/pipeline v0.61.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
-	github.com/trivago/tgo v1.0.7 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0 // indirect

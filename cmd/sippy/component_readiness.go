@@ -37,8 +37,6 @@ type ComponentReadinessFlags struct {
 	ListenAddr  string
 	MetricsAddr string
 	RedisURL    string
-	// TODO: remove this, now a param on a view
-	MaintainRegressionTables bool
 }
 
 func NewComponentReadinessCommand() *cobra.Command {
@@ -85,7 +83,6 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
-	flagSet.BoolVar(&f.MaintainRegressionTables, "maintain-regression-tables", false, "Enable maintenance of open regressions table in bigquery.")
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
@@ -183,15 +180,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 
 	if f.MetricsAddr != "" {
 		// Do an immediate metrics update
-		err = metrics.RefreshMetricsDB(nil,
-			bigQueryClient,
-			f.ProwFlags.URL,
-			f.GoogleCloudFlags.StorageBucket,
-			nil,
-			time.Time{},
-			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-			views.ComponentReadiness,
-			f.MaintainRegressionTables)
+		err = metrics.RefreshMetricsDB(context.Background(), nil, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -204,16 +193,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(
-						nil,
-						bigQueryClient,
-						f.ProwFlags.URL,
-						f.GoogleCloudFlags.StorageBucket,
-						nil,
-						time.Time{},
-						cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
-						views.ComponentReadiness,
-						f.MaintainRegressionTables)
+					err := metrics.RefreshMetricsDB(context.Background(), nil, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}
