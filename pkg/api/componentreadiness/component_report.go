@@ -1851,12 +1851,15 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake int, requiredSuccessRate float64) crtype.ReportTestStats {
 	successRate := getSuccessRate(sampleSuccess, sampleFailure, sampleFlake)
 
-	// Assume 5% less than our required pass rate (expect numbers above 90% to be used here) is an extreme regression.
-	// Breaks down at a required pass rate of 50% or so but I don't see anyone ever using that, and the exact status isn't
-	// incredibly important in any decisions.
-	severeRegressionSuccessRate := requiredSuccessRate - 5
+	// Assume 2x our allowed failure rate = an extreme regression.
+	// i.e. if we require 90%, extreme is anything below 80%
+	//      if we require 95%, extreme is anything below 90%
+	severeRegressionSuccessRate := requiredSuccessRate - (100 - requiredSuccessRate)
 
-	if successRate*100 < requiredSuccessRate {
+	// Require 7 runs in the sample (typically 1 week) for us to consider a pass rate requirement for a new test:
+	sufficientRuns := (sampleSuccess + sampleFailure + sampleFlake) >= 7
+
+	if sufficientRuns && successRate*100 < requiredSuccessRate {
 		rStatus := crtype.SignificantRegression
 		if successRate*100 < severeRegressionSuccessRate {
 			rStatus = crtype.ExtremeRegression
