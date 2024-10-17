@@ -1,5 +1,30 @@
 package v1
 
+const (
+	StatusNew            = "New"
+	StatusAssigned       = "ASSIGNED"
+	StatusPost           = "POST"
+	StatusInProgress     = "In Progress"
+	StatusOnQA           = "ON_QA"
+	StatusVerified       = "Verified"
+	StatusReleasePending = "Release Pending"
+	StatusClosed         = "Closed"
+	StatusModified       = "MODIFIED"
+)
+
+const (
+	ProjectKeyOCPBugs = "OCPBUGS"
+)
+
+const (
+	LabelJiraAutomator = "Regression"
+)
+
+const (
+	CustomFieldReleaseBlockerName          = "customfield_12319743"
+	CustomFieldReleaseBlockerValueApproved = "Approved"
+)
+
 type Issue struct {
 	Expand    string    `json:"expand"`
 	ID        string    `json:"id"`

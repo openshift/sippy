@@ -1,4 +1,4 @@
-package jiraintegrator
+package jiraautomator
 
 import (
 	"context"
@@ -13,56 +13,73 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db/query"
+	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
 	jirautil "sigs.k8s.io/prow/pkg/jira"
 )
 
 const (
-	jiraProjectKey                             = "OCPBUGS"
-	jiraCreator                                = "'kenzhang@redhat.com'"
-	jiraLabelIngregration                      = "Regression"
-	jiraCustomFieldReleaseBlockerName          = "customfield_12319743"
-	jiraCustomFieldReleaseBlockerValueApproved = "Approved"
-
-	jiraStatusNew        = "New"
-	jiraStatusInProgress = "In Progress"
-	jiraStatusAssigned   = "Assigned"
-	jiraStatusModified   = "Modified"
-	jiraStatusQA         = "QA"
-	jiraStatusVerified   = "Verified"
-	jiraStatusClosed     = "Closed"
-
 	releaseStatusDevelopment = "Development"
 
-	// fixCheckMinimumDays defines the minimum days (since fix date) we need to wait to verify a fix.
+	// fixCheckWaitPeriod defines the minimum days (since fix date) we need to wait to verify a fix.
 	// Typically, it takes multiple days to have sufficient data available to make this determination.
-	fixCheckMinimumDays = 3 * time.Hour * 24
+	fixCheckWaitPeriod = 3 * time.Hour * 24
 )
 
-type JiraIntegrator struct {
+type Variant struct {
+	Name  string
+	Value string
+}
+
+const (
+	jiraComponentBareMetal = "Bare Metal Hardware Provisioning"
+	// what component is for vsphere?
+	jiraComponentVSphere = "Test Framework"
+)
+
+// variantBasedComponents maps variants to jira components. This is used to group a column of red cells
+// to a jira component.
+var variantBasedComponents = map[Variant]string{
+	{
+		Name:  "Platform",
+		Value: "metal",
+	}: jiraComponentBareMetal,
+	{
+		Name:  "Platform",
+		Value: "vsphere",
+	}: jiraComponentVSphere,
+}
+
+type JiraAutomator struct {
 	jiraClient   jirautil.Client
 	bqClient     *bqclient.Client
-	prowURL      string
-	gcsBucket    string
 	cacheOptions cache.RequestOptions
 	views        []crtype.View
 	releases     []query.Release
 	sippyURL     string
+	// variantBasedComponentRegressionThreshold defines a threshold for the number of red cells in a column.
+	// When the number of red cells of a column is over this threshold, a jira card will be created for the
+	// Variant (column) based jira component. No other jira cards will be created per component row.
+	variantBasedComponentRegressionThreshold map[Variant]int
+	componentWhiteList                       sets.String
+	jiraAccount                              string
 }
 
-func NewJiraIntegrator(jiraClient jirautil.Client, bqClient *bqclient.Client, prowURL, gcsBucket string,
-	cacheOptions cache.RequestOptions, views []crtype.View, releases []query.Release, sippyURL string) (JiraIntegrator, error) {
-	j := JiraIntegrator{
-		jiraClient:   jiraClient,
-		bqClient:     bqClient,
-		prowURL:      prowURL,
-		gcsBucket:    gcsBucket,
-		cacheOptions: cacheOptions,
-		releases:     releases,
-		sippyURL:     sippyURL,
+func NewJiraAutomator(jiraClient jirautil.Client, bqClient *bqclient.Client, cacheOptions cache.RequestOptions, views []crtype.View,
+	releases []query.Release, sippyURL, jiraAccount string, componentWhiteList sets.String, variantBasedComponentRegressionThreshold map[Variant]int) (JiraAutomator, error) {
+	j := JiraAutomator{
+		jiraClient:                               jiraClient,
+		bqClient:                                 bqClient,
+		cacheOptions:                             cacheOptions,
+		releases:                                 releases,
+		sippyURL:                                 sippyURL,
+		variantBasedComponentRegressionThreshold: variantBasedComponentRegressionThreshold,
+		componentWhiteList:                       componentWhiteList,
+		jiraAccount:                              jiraAccount,
 	}
 	if bqClient == nil || bqClient.BQ == nil {
 		return j, fmt.Errorf("we don't have a bigquery client for jira integrator")
@@ -73,14 +90,14 @@ func NewJiraIntegrator(jiraClient jirautil.Client, bqClient *bqclient.Client, pr
 	}
 
 	for _, v := range views {
-		if v.JiraIntegration.Enabled {
+		if v.AutomateJira.Enabled {
 			j.views = append(j.views, v)
 		}
 	}
 	return j, nil
 }
 
-func (j JiraIntegrator) getRequestOptionForView(view crtype.View) (crtype.RequestOptions, error) {
+func (j JiraAutomator) getRequestOptionForView(view crtype.View) (crtype.RequestOptions, error) {
 	baseRelease, err := componentreadiness.GetViewReleaseOptions("basis", view.BaseRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return crtype.RequestOptions{}, err
@@ -106,13 +123,14 @@ func (j JiraIntegrator) getRequestOptionForView(view crtype.View) (crtype.Reques
 	return reportOpts, nil
 }
 
-func (j JiraIntegrator) getComponentReportForView(view crtype.View) (crtype.ComponentReport, error) {
+func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.ComponentReport, error) {
 	reportOpts, err := j.getRequestOptionForView(view)
 	if err != nil {
 		return crtype.ComponentReport{}, fmt.Errorf("failed to get request option for view %s with error %v", view.Name, err)
 	}
 
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(j.bqClient, j.prowURL, j.gcsBucket, reportOpts)
+	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(j.bqClient, "", "", reportOpts)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
@@ -145,28 +163,28 @@ func getStatsString(prefix string, stats crtype.TestDetailsReleaseStats, from, e
 }
 
 // getExistingIssuesForComponent gets existing issues for a component based on
-// (a) have Regression label defined by jiraLabelIngregration
+// (a) have Regression label defined by LabelJiraAutomator
 // (b) has the "Affects Version/s" set to the sample version,
 // (c) were reported by the CR JIRA service account
 // Issues will be ordered by creation time
-func (j JiraIntegrator) getExistingIssuesForComponent(view crtype.View, component string) ([]jira.Issue, error) {
+func (j JiraAutomator) getExistingIssuesForComponent(view crtype.View, component string) ([]jira.Issue, error) {
 	searchOptions := jira.SearchOptions{
 		MaxResults: 1,
 		Fields: []string{
 			"key",
 			"status",
 			"resolutiondate",
-			jiraCustomFieldReleaseBlockerName,
+			jiratype.CustomFieldReleaseBlockerName,
 			"unknowns",
 		},
 	}
-	jqlQuery := fmt.Sprintf("project=%s&&component='%s'&&creator=%s&&affectedVersion=%s&&labels in (%s) ORDER BY createdDate",
-		jiraProjectKey, component, jiraCreator, view.SampleRelease.Release, jiraLabelIngregration)
+	jqlQuery := fmt.Sprintf("project=%s&&component='%s'&&creator='%s'&&affectedVersion=%s&&labels in (%s) ORDER BY createdDate",
+		jiratype.ProjectKeyOCPBugs, component, j.jiraAccount, view.SampleRelease.Release, jiratype.LabelJiraAutomator)
 	issues, _, err := j.jiraClient.SearchWithContext(context.Background(), jqlQuery, &searchOptions)
 	return issues, err
 }
 
-func (j JiraIntegrator) isPreRelease(release string) bool {
+func (j JiraAutomator) isPreRelease(release string) bool {
 	for _, r := range j.releases {
 		if r.Release == release {
 			if r.Status == releaseStatusDevelopment {
@@ -186,11 +204,11 @@ func isReleaseBlockerApproved(existing *jira.Issue) bool {
 		Value    string `json:"value"`
 	}
 	var obj *releaseBlockerField
-	err := jirautil.GetUnknownField(jiraCustomFieldReleaseBlockerName, existing, func() interface{} {
+	err := jirautil.GetUnknownField(jiratype.CustomFieldReleaseBlockerName, existing, func() interface{} {
 		obj = &releaseBlockerField{}
 		return obj
 	})
-	if err == nil && obj.Value == jiraCustomFieldReleaseBlockerValueApproved {
+	if err == nil && obj.Value == jiratype.CustomFieldReleaseBlockerValueApproved {
 		return true
 	}
 	return false
@@ -199,7 +217,7 @@ func isReleaseBlockerApproved(existing *jira.Issue) bool {
 // updateExistingJiraIssue updates existing issue by
 // a. adding a new comment containing a CR link with the most recently analyzed time window where the regression is still manifesting.
 // b. if pre-release, label the ticket as a Release Blocker if someone removed it
-func (j JiraIntegrator) updateExistingJiraIssue(view crtype.View, existing *jira.Issue) error {
+func (j JiraAutomator) updateExistingJiraIssue(view crtype.View, existing *jira.Issue) error {
 	absUrl, _, err := j.getComponentReadinessURLsForView(view)
 	if err != nil {
 		return err
@@ -224,7 +242,7 @@ func (j JiraIntegrator) updateExistingJiraIssue(view crtype.View, existing *jira
 
 // getComponentReadinessURLsForView generates two URL, one with absolute timing params at this moment this is called
 // and one with view.
-func (j JiraIntegrator) getComponentReadinessURLsForView(view crtype.View) (string, string, error) {
+func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (string, string, error) {
 	reportOpts, err := j.getRequestOptionForView(view)
 	if err != nil {
 		return "", "", err
@@ -286,10 +304,10 @@ func (j JiraIntegrator) getComponentReadinessURLsForView(view crtype.View) (stri
 
 // createNewJiraIssueForRegressions creates new issue for components by
 // a. setting the ticket's Affects Version/s= sample version.
-// b  adding the Regression label defined by jiraLabelIngregration.
+// b  adding the Regression label defined by LabelJiraAutomator.
 // c. setting a description with links to CR
 // d. for pre-release, setting "Release Blocker" label to Approved
-func (j JiraIntegrator) createNewJiraIssueForRegressions(view crtype.View, component string, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) (*jira.Issue, error) {
+func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, component string, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) (*jira.Issue, error) {
 	if len(tests) > 0 {
 		description := `Component Readiness has found a potential regression in the following tests:`
 		for i, test := range tests {
@@ -322,7 +340,7 @@ func (j JiraIntegrator) createNewJiraIssueForRegressions(view crtype.View, compo
 		description += fmt.Sprintf("\n- Click [here|%s] to access the component readiness page generated at the time this issue was created.\n", absUrl)
 		description += fmt.Sprintf("\n- Click [here|%s] to access the component readiness page that will be generated at the time when it is clicked. This is useful for developers to verify their fixes.\n", viewUrl)
 
-		summary := fmt.Sprintf("Regression with test %s", tests[0].TestName)
+		summary := fmt.Sprintf("Component Readiness: %s test regressed", component)
 		issue := jira.Issue{
 			Fields: &jira.IssueFields{
 				Description: description,
@@ -330,7 +348,7 @@ func (j JiraIntegrator) createNewJiraIssueForRegressions(view crtype.View, compo
 					Name: "Bug",
 				},
 				Project: jira.Project{
-					Key: jiraProjectKey,
+					Key: jiratype.ProjectKeyOCPBugs,
 				},
 				Components: []*jira.Component{
 					{
@@ -343,7 +361,7 @@ func (j JiraIntegrator) createNewJiraIssueForRegressions(view crtype.View, compo
 						Name: view.SampleRelease.Release,
 					},
 				},
-				Labels: []string{jiraLabelIngregration},
+				Labels: []string{jiratype.LabelJiraAutomator},
 			},
 		}
 		created, err := j.jiraClient.CreateIssue(&issue)
@@ -356,10 +374,10 @@ func (j JiraIntegrator) createNewJiraIssueForRegressions(view crtype.View, compo
 	return nil, nil
 }
 
-func (j JiraIntegrator) updateReleaseBlocker(issue *jira.Issue, release string) (*jira.Issue, error) {
+func (j JiraAutomator) updateReleaseBlocker(issue *jira.Issue, release string) (*jira.Issue, error) {
 	if j.isPreRelease(release) {
 		unknowns := tcontainer.NewMarshalMap()
-		unknowns[jiraCustomFieldReleaseBlockerName] = map[string]string{"value": jiraCustomFieldReleaseBlockerValueApproved}
+		unknowns[jiratype.CustomFieldReleaseBlockerName] = map[string]string{"value": jiratype.CustomFieldReleaseBlockerValueApproved}
 		issue := jira.Issue{
 			Key: issue.Key,
 			Fields: &jira.IssueFields{
@@ -371,12 +389,55 @@ func (j JiraIntegrator) updateReleaseBlocker(issue *jira.Issue, release string) 
 	return issue, nil
 }
 
-func (j JiraIntegrator) getComponentRegressedTestsFromReport(report crtype.ComponentReport) map[string][]crtype.ReportTestSummary {
+// groupRegressedTestsByComponents groups the regressed tests in the report by components.
+// It also takes into consideration a special column grouping. The idea is if a certain column variant (e.g. metal) has more
+// red cells, we will not want to create a jira card for all the components affected. Instead, we will just create
+// one jira card for metal platform.
+func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentReport) (map[string][]crtype.ReportTestSummary, error) {
 	componentRegressedTests := map[string][]crtype.ReportTestSummary{}
+	columnToRegressionCount := map[string]int{}
+	columnToVariantsToThreshold := map[string]map[Variant]int{}
+	// First we count the number of red cells for each column
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
-			for _, test := range col.RegressedTests {
-				componentRegressedTests[test.Component] = append(componentRegressedTests[test.Component], test)
+			if len(col.RegressedTests) > 0 {
+				columnKeyBytes, err := json.Marshal(col.ColumnIdentification)
+				if err != nil {
+					return componentRegressedTests, err
+				}
+				columnID := string(columnKeyBytes)
+				columnToRegressionCount[columnID]++
+
+				// find all the defined variantBasedComponentRegressionThreshold this column is relevant to
+				for k, n := range col.Variants {
+					v := Variant{Name: k, Value: n}
+					if threshold, ok := j.variantBasedComponentRegressionThreshold[v]; ok {
+						columnToVariantsToThreshold[columnID] = map[Variant]int{v: threshold}
+					}
+				}
+			}
+		}
+	}
+	for _, row := range report.Rows {
+		for _, col := range row.Columns {
+			columnKeyBytes, err := json.Marshal(col.ColumnIdentification)
+			if err != nil {
+				return componentRegressedTests, err
+			}
+			columnID := string(columnKeyBytes)
+			useVariantBasedComponent := false
+			if variantToThreshold, ok := columnToVariantsToThreshold[columnID]; ok {
+				for variant, threshold := range variantToThreshold {
+					if threshold < columnToRegressionCount[columnID] {
+						if component, ok := variantBasedComponents[variant]; ok {
+							componentRegressedTests[component] = append(componentRegressedTests[component], col.RegressedTests...)
+							useVariantBasedComponent = true
+						}
+					}
+				}
+			}
+			if !useVariantBasedComponent {
+				componentRegressedTests[row.Component] = append(componentRegressedTests[row.Component], col.RegressedTests...)
 			}
 		}
 	}
@@ -386,10 +447,10 @@ func (j JiraIntegrator) getComponentRegressedTestsFromReport(report crtype.Compo
 		})
 		componentRegressedTests[component] = tests
 	}
-	return componentRegressedTests
+	return componentRegressedTests, nil
 }
 
-func (j JiraIntegrator) integrateJiraForView(view crtype.View) error {
+func (j JiraAutomator) integrateJiraForView(view crtype.View) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("jira integration for view")
@@ -399,11 +460,20 @@ func (j JiraIntegrator) integrateJiraForView(view crtype.View) error {
 		logger.WithError(err).Error("error getting report for view")
 	}
 
-	componentRegressedTests := j.getComponentRegressedTestsFromReport(report)
+	componentRegressedTests, err := j.groupRegressedTestsByComponents(report)
+	if err != nil {
+		logger.WithError(err).Error("error getting regressed tests from report")
+	}
 	for component, tests := range componentRegressedTests {
+		if component != "Test Framework" {
+			continue
+		}
 		// fetch jira bugs
 		// resetting this to our component to test
 		component = "Test Framework"
+		if j.componentWhiteList.Len() > 0 && !j.componentWhiteList.Has(component) {
+			continue
+		}
 		issues, err := j.getExistingIssuesForComponent(view, component)
 		if err != nil {
 			log.WithError(err).Error("error getting existing jira issues")
@@ -418,13 +488,13 @@ func (j JiraIntegrator) integrateJiraForView(view crtype.View) error {
 		} else {
 			selected := issues[0]
 			switch selected.Fields.Status.Name {
-			case jiraStatusNew, jiraStatusInProgress, jiraStatusAssigned, jiraStatusModified:
+			case jiratype.StatusNew, jiratype.StatusInProgress, jiratype.StatusAssigned, jiratype.StatusModified:
 				// New/Assigned/In Progress/Modified
 				err := j.updateExistingJiraIssue(view, &selected)
 				if err != nil {
 					log.WithError(err).Error("error updating jira issue with comment")
 				}
-			case jiraStatusQA, jiraStatusVerified, jiraStatusClosed:
+			case jiratype.StatusOnQA, jiratype.StatusVerified, jiratype.StatusClosed:
 				// QA/Verified/Closed
 				resolutionDate := time.Time(selected.Fields.Resolutiondate)
 				if view.SampleRelease.Start.After(resolutionDate) {
@@ -485,7 +555,7 @@ func (j JiraIntegrator) integrateJiraForView(view crtype.View) error {
 						}
 					} else {
 						// This means scope report contains all tests from current report, verify fix
-						if resolutionDate.Add(fixCheckMinimumDays).Before(view.SampleRelease.End) {
+						if resolutionDate.Add(fixCheckWaitPeriod).Before(view.SampleRelease.End) {
 							fixView := view
 							fixView.TestIDOption.Component = component
 							fixView.SampleRelease.RelativeStart = resolutionDate.Format(time.RFC3339)
@@ -493,7 +563,10 @@ func (j JiraIntegrator) integrateJiraForView(view crtype.View) error {
 							if err != nil {
 								logger.WithError(err).Error("error getting report for fix check")
 							}
-							regressedTests := j.getComponentRegressedTestsFromReport(fixReport)
+							regressedTests, err := j.groupRegressedTestsByComponents(fixReport)
+							if err != nil {
+								logger.WithError(err).Error("error getting regressed tests from report")
+							}
 							if tests, ok := regressedTests[component]; ok {
 								_, err := j.createNewJiraIssueForRegressions(fixView, component, tests, nil)
 								if err != nil {
@@ -511,7 +584,7 @@ func (j JiraIntegrator) integrateJiraForView(view crtype.View) error {
 	return nil
 }
 
-func (j JiraIntegrator) IntegrateJira() error {
+func (j JiraAutomator) Run() error {
 	log.Infof("Start integrating component readiness regressions with Jira")
 	for _, view := range j.views {
 		err := j.integrateJiraForView(view)

@@ -40,6 +40,7 @@ func main() {
 		NewRefreshCommand(),
 		NewLoadJobVariantsCommand(),
 		NewComponentReadinessCommand(),
+		NewAutomateJiraCommand(),
 	)
 
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
