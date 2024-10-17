@@ -1592,10 +1592,10 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 		{
 			name:                        "pass rate mode extreme regression",
 			sampleTotal:                 100,
-			sampleSuccess:               70,
+			sampleSuccess:               89,
 			sampleFlake:                 0,
 			baseTotal:                   100,
-			baseSuccess:                 70,
+			baseSuccess:                 89,
 			baseFlake:                   0,
 			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
@@ -1625,6 +1625,24 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			requiredPassRateForAllTests: 95,
 			minFail:                     5,
 			expectedStatus:              crtype.SignificantRegression,
+		},
+		{
+			name:                        "pass rate mode insufficient runs to trigger",
+			sampleTotal:                 6,
+			sampleSuccess:               0,
+			sampleFlake:                 0,
+			numberOfIgnoredSamples:      0,
+			requiredPassRateForAllTests: 95,
+			expectedStatus:              crtype.NotSignificant,
+		},
+		{
+			name:                        "pass rate mode barely sufficient runs to trigger",
+			sampleTotal:                 7,
+			sampleSuccess:               6,
+			sampleFlake:                 0,
+			numberOfIgnoredSamples:      0,
+			requiredPassRateForAllTests: 95,
+			expectedStatus:              crtype.ExtremeRegression,
 		},
 	}
 	for _, tt := range tests {
