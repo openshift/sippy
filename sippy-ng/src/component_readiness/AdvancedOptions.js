@@ -26,6 +26,7 @@ export default function AdvancedOptions(props) {
     passRateAllTests,
     ignoreMissing,
     ignoreDisruption,
+    ignoreFallbackBasis,
     setConfidence,
     setPity,
     setMinFail,
@@ -33,6 +34,7 @@ export default function AdvancedOptions(props) {
     setPassRateAllTests,
     setIgnoreMissing,
     setIgnoreDisruption,
+    setIgnoreFallbackBasis,
   } = props
 
   const useStyles = makeStyles((theme) => ({
@@ -91,6 +93,10 @@ export default function AdvancedOptions(props) {
   }
   const handleChangeIgnoreDisruption = (event, newValue) => {
     setIgnoreDisruption(newValue)
+  }
+
+  const handleChangeIgnoreFallbackBasis = (event, newValue) => {
+    setIgnoreFallbackBasis(newValue)
   }
 
   return (
@@ -165,6 +171,13 @@ export default function AdvancedOptions(props) {
               name="ignoreDisruption"
               color="primary"
             />
+            <p>Fallback Basis: {ignoreFallbackBasis ? 'ignore' : 'keep'}</p>
+            <Switch
+              checked={ignoreFallbackBasis}
+              onChange={handleChangeIgnoreFallbackBasis}
+              name="ignoreFallbackBasis"
+              color="primary"
+            />
           </FormGroup>
         </AccordionDetails>
       </Accordion>
@@ -181,6 +194,7 @@ AdvancedOptions.propTypes = {
   passRateAllTests: PropTypes.number.isRequired,
   ignoreMissing: PropTypes.bool.isRequired,
   ignoreDisruption: PropTypes.bool.isRequired,
+  ignoreFallbackBasis: PropTypes.bool.isRequired,
   setConfidence: PropTypes.func.isRequired,
   setPity: PropTypes.func.isRequired,
   setMinFail: PropTypes.func.isRequired,
@@ -188,4 +202,5 @@ AdvancedOptions.propTypes = {
   setPassRateAllTests: PropTypes.func.isRequired,
   setIgnoreMissing: PropTypes.func.isRequired,
   setIgnoreDisruption: PropTypes.func.isRequired,
+  setIgnoreFallbackBasis: PropTypes.func.isRequired,
 }

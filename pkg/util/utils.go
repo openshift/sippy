@@ -128,25 +128,7 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 				return time.Time{}, fmt.Errorf("unable to find ga date for %s", release)
 			}
 		}
-		// Now adjust by number of days:
-		adjustDays, _ := strconv.ParseInt(matches[2], 10, 64)
-		adjustDur := time.Duration(adjustDays) * 24 * time.Hour
-		relTime = relTime.Add(-adjustDur)
-		// Now round to start/end of day as appropriate:
-		if isStart {
-			relTime = time.Date(relTime.Year(), relTime.Month(), relTime.Day(), 0, 0, 0, 0, time.UTC)
-
-		} else {
-			// Apply the rounding factor if using today:
-			now := time.Now().UTC()
-			if crTimeRoundingFactor > 0 && now.Format("2006-01-02") == relTime.Format("2006-01-02") {
-				relTime = now.Truncate(crTimeRoundingFactor)
-			} else {
-				// otherwise round up to end of day
-				relTime = time.Date(relTime.Year(), relTime.Month(), relTime.Day(), 23, 59, 59, 0, time.UTC)
-			}
-		}
-		return relTime, nil
+		return AdjustReleaseTime(relTime, isStart, matches[2], crTimeRoundingFactor), nil
 	}
 
 	// Parse as a fully qualified timestamp:
@@ -162,4 +144,26 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 		relTime = now.Truncate(crTimeRoundingFactor)
 	}
 	return relTime, nil
+}
+
+func AdjustReleaseTime(relTime time.Time, isStart bool, daysAdjustment string, crTimeRoundingFactor time.Duration) time.Time {
+	// adjust by number of days:
+	adjustDays, _ := strconv.ParseInt(daysAdjustment, 10, 64)
+	adjustDur := time.Duration(adjustDays) * 24 * time.Hour
+	relTime = relTime.Add(-adjustDur)
+	// Now round to start/end of day as appropriate:
+	if isStart {
+		relTime = time.Date(relTime.Year(), relTime.Month(), relTime.Day(), 0, 0, 0, 0, time.UTC)
+
+	} else {
+		// Apply the rounding factor if using today:
+		now := time.Now().UTC()
+		if crTimeRoundingFactor > 0 && now.Format("2006-01-02") == relTime.Format("2006-01-02") {
+			relTime = now.Truncate(crTimeRoundingFactor)
+		} else {
+			// otherwise round up to end of day
+			relTime = time.Date(relTime.Year(), relTime.Month(), relTime.Day(), 23, 59, 59, 0, time.UTC)
+		}
+	}
+	return relTime
 }
