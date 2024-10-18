@@ -115,6 +115,7 @@ const (
 					ELSE jobs.prowjob_job_name
 		    	END AS variant_registry_job_name,
 `
+	fallbackQueryTimeRoundingOverride = 12 * time.Hour
 )
 
 type GeneratorType string
@@ -550,8 +551,9 @@ func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Contex
 		client: c.client,
 		cacheOption: cache.RequestOptions{
 			ForceRefresh: c.cacheOption.ForceRefresh,
-			// increase the time that base query is cached for since it shouldn't be changing?
-			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
+			// increase the time that fallback queries are cached for
+			// could formalize as input flag
+			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
 		},
 		commonQuery:     baseQuery,
 		groupByQuery:    baseGrouping,
@@ -818,7 +820,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.
 		cacheOption: cache.RequestOptions{
 			ForceRefresh: f.cacheOption.ForceRefresh,
 			// increase the time that base query is cached for since it shouldn't be changing?
-			CRTimeRoundingFactor: f.cacheOption.CRTimeRoundingFactor,
+			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
 		},
 		commonQuery:     f.commonQuery,
 		groupByQuery:    f.groupByQuery,
@@ -1804,7 +1806,7 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 						// obviously we need more analysis here to determine if the
 						// previous release(s) stats should override
 						baseStats = cTestStats
-						baseReleaseMatches += 1
+						baseReleaseMatches++
 					} else {
 						baseReleaseMisses++
 					}
