@@ -31,6 +31,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 		{Release: "4.15", Status: "", GADate: util.DatePtr(2024, 2, 28, 0, 0, 0, 0, time.UTC)},
 	}
 
+	ignoreFallbackDefault := false
+
 	allJobVariants := crtype.JobVariants{Variants: map[string][]string{
 		"Architecture": {"amd64", "arm64", "s390x", "ppc64le", "heterogeneous"},
 		"FeatureSet":   {"default", "techpreview"},
@@ -69,6 +71,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			PityFactor:       5,
 			IgnoreMissing:    false,
 			IgnoreDisruption: true,
+			IgnoreFallback:   ignoreFallbackDefault,
 		},
 	}
 	// would like to test with a view that does define cross-compare variants
@@ -165,6 +168,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   ignoreFallbackDefault,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -218,6 +222,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   ignoreFallbackDefault,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -255,6 +260,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   ignoreFallbackDefault,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -333,6 +339,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   ignoreFallbackDefault,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
@@ -375,6 +382,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				PityFactor:       5,
 				IgnoreMissing:    false,
 				IgnoreDisruption: true,
+				IgnoreFallback:   ignoreFallbackDefault,
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
