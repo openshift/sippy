@@ -1637,6 +1637,11 @@ func (c *componentReportGenerator) getRequiredConfidence(testID string, variants
 	return c.RequestAdvancedOptions.Confidence
 }
 
+// matchBaseRegression returns a testStatus that reflects the allowances specified
+// in an intentional regression that accepted a lower threshold but maintains the higher
+// threshold when used as a basis.  It will ignore intentional regressions if we are relying
+// on fallback to find the highest threshold.  It will return the original testStatus if there
+// is no intentional regression or the testStatus has a higher threshold
 func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, baseStats crtype.TestStatus) (crtype.TestStatus, string) {
 	var baseRegression *regressionallowances.IntentionalRegression
 	if c.IgnoreFallback && len(c.VariantCrossCompare) == 0 {
@@ -1670,6 +1675,9 @@ func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 	return baseStats, baseRelease
 }
 
+// matchBestBaseStats returns the testStatus, release and reportTestStatus
+// that has the highest threshold across the basis release and previous releases included
+// in fallback comparison
 func (c *componentReportGenerator) matchBestBaseStats(testID crtype.ReportTestIdentification, testIdentification, baseRelease string, baseStats, sampleStats crtype.TestStatus, requiredConfidence int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) (crtype.TestStatus, string, crtype.ReportTestStats) {
 
 	// The hope is that this goes away
@@ -2257,6 +2265,10 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 			fmt.Sprintf("Test pass rate dropped from %.2f%% to %.2f%%.",
 				testStats.BaseStats.SuccessRate*float64(100),
 				testStats.SampleStats.SuccessRate*float64(100)),
+		}
+		// check for override
+		if baseRelease != c.BaseRelease.Release {
+			testStats.Explanations = append(testStats.Explanations, fmt.Sprintf("Overrode base stats using release %s", baseRelease))
 		}
 	}
 
