@@ -771,7 +771,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 				return
 			default:
 				stats, errs := f.getTestFallbackRelease(ctx, queryRelease.Release, queryStart, queryEnd)
-				if errs != nil && len(errs) > 0 {
+				if len(errs) > 0 {
 					log.Errorf("FallbackBaseQueryStatus for %s failed with: %v", queryRelease, errs)
 					return
 				}
@@ -1638,7 +1638,7 @@ func (c *componentReportGenerator) getRequiredConfidence(testID string, variants
 }
 
 func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, baseStats crtype.TestStatus) (crtype.TestStatus, string) {
-	var baseRegression *regressionallowances.IntentionalRegression = nil
+	var baseRegression *regressionallowances.IntentionalRegression
 	if c.IgnoreFallback && len(c.VariantCrossCompare) == 0 {
 		// only really makes sense when not cross-comparing variants:
 		// look for corresponding regressions we can account for in the analysis
@@ -1693,40 +1693,42 @@ func (c *componentReportGenerator) matchBestBaseStats(testID crtype.ReportTestId
 	var priorRelease = baseRelease
 	var err error
 	for err == nil {
+		var cachedTestStatuses crtype.ReleaseTestMap
+		var cTestStats crtype.TestStatus
+		ok := false
 		priorRelease, err = previousRelease(priorRelease)
-		if err == nil {
-			if cachedTestStatuses, ok := c.cachedFallbackTestStatuses.Releases[priorRelease]; ok {
-				if cTestStats, ok := cachedTestStatuses.Tests[testIdentification]; ok {
-
-					// what is our base total compared to the original base
-					// this happens when jobs shift like sdn -> ovn
-					// if we get below threshold that's a sign we are reducing our base signal
-					if float64(cTestStats.TotalCount/baseStatsTotal) < .6 {
-						log.Debugf("Fallback base total: %d to low for fallback analysis compared to original: %d", cTestStats.TotalCount, baseStatsTotal)
-						break
-					}
-
-					cTestStats, priorRelease = c.matchBaseRegression(testID, priorRelease, cTestStats)
-
-					priorTestStats := c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
-						sampleStats.FlakeCount, cTestStats.TotalCount, cTestStats.SuccessCount,
-						cTestStats.FlakeCount, approvedRegression, numberOfIgnoredSampleJobRuns, priorRelease, cachedTestStatuses.Start, cachedTestStatuses.End)
-
-					if priorTestStats.ReportStatus < baseTestStats.ReportStatus {
-						baseStats = cTestStats
-						baseTestStats = priorTestStats
-						baseRelease = priorRelease
-					}
-				}
-			} else {
-				// if we miss on a prior release we stop
-				break
-			}
-		} else {
-			// explicit break for the for loop
-			break
+		// if we fail to determine the previous release then stop
+		if err != nil {
+			return baseStats, baseRelease, baseTestStats
 		}
+		// if we hit a missing release then stop
+		if cachedTestStatuses, ok = c.cachedFallbackTestStatuses.Releases[priorRelease]; !ok {
+			return baseStats, baseRelease, baseTestStats
+		}
+		// it's ok if we don't have a testIdentification for this release
+		// we likely won't have it for earlier releases either, but we can keep going
+		if cTestStats, ok = cachedTestStatuses.Tests[testIdentification]; ok {
 
+			// what is our base total compared to the original base
+			// this happens when jobs shift like sdn -> ovn
+			// if we get below threshold that's a sign we are reducing our base signal
+			if float64(cTestStats.TotalCount/baseStatsTotal) < .6 {
+				log.Debugf("Fallback base total: %d to low for fallback analysis compared to original: %d", cTestStats.TotalCount, baseStatsTotal)
+				return baseStats, baseRelease, baseTestStats
+			}
+
+			cTestStats, priorRelease = c.matchBaseRegression(testID, priorRelease, cTestStats)
+
+			priorTestStats := c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
+				sampleStats.FlakeCount, cTestStats.TotalCount, cTestStats.SuccessCount,
+				cTestStats.FlakeCount, approvedRegression, numberOfIgnoredSampleJobRuns, priorRelease, cachedTestStatuses.Start, cachedTestStatuses.End)
+
+			if priorTestStats.ReportStatus < baseTestStats.ReportStatus {
+				baseStats = cTestStats
+				baseTestStats = priorTestStats
+				baseRelease = priorRelease
+			}
+		}
 	}
 
 	return baseStats, baseRelease, baseTestStats
@@ -1796,8 +1798,7 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 						baseStats = cTestStats
 						baseReleaseMatches += 1
 					} else {
-						// log.Infof("Failed to find cache testId: %s - %v", baseStats.TestName, testIdentification)
-						baseReleaseMisses += 1
+						baseReleaseMisses++
 					}
 				}
 
@@ -1811,7 +1812,7 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 
 			if matchedBaseRelease != c.BaseRelease.Release {
 				log.Infof("Overrode base stats using release %s for Test: %s - %s", matchedBaseRelease, baseStats.TestName, testIdentification)
-				overriddenBaseMatches += 1
+				overriddenBaseMatches++
 			}
 
 			if testStats.IsTriaged() {

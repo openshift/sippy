@@ -95,7 +95,7 @@ func ParseComponentReportRequest(
 
 							if release.GADate != nil {
 								opts.BaseOverrideRelease.End = *release.GADate
-								opts.BaseOverrideRelease.Start = util.AdjustReleaseTime(opts.BaseOverrideRelease.End, true, "30", crTimeRoundingFactor) // util.Prior30Days(release.GADate)
+								opts.BaseOverrideRelease.Start = util.AdjustReleaseTime(opts.BaseOverrideRelease.End, true, "30", crTimeRoundingFactor)
 							}
 						}
 						break

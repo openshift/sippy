@@ -446,7 +446,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	}
 	var resolvedIssueCompensation int
 	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ColumnIdentification, c.TestID)
-	var baseRegression *regressionallowances.IntentionalRegression = nil
+	var baseRegression *regressionallowances.IntentionalRegression
 	// if we are ignoring fallback then honor the settings for the baseRegression
 	// otherwise let fallback determine the threshold
 	if c.IgnoreFallback {
