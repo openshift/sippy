@@ -101,6 +101,8 @@ func GetDataFromCacheOrGenerate[T any](
 				} else {
 					log.Debugf("cache set for cache key: %s", string(cacheKey))
 				}
+			} else {
+				log.WithError(err).Errorf("Failed to marshall cache item: %v", result)
 			}
 		}
 		return result, errs
