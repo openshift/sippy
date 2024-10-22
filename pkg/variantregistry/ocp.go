@@ -288,6 +288,7 @@ var (
 	vsphereRegex   = regexp.MustCompile(`(?i)-vsphere`)
 	crunRegex      = regexp.MustCompile(`(?i)-crun`)
 	cgroupsv1Regex = regexp.MustCompile(`(?i)-cgroupsv1`)
+	virtRegex      = regexp.MustCompile("(?i)-virt|-cnv|-kubevirt")
 )
 
 const (
@@ -313,7 +314,9 @@ const (
 	VariantFromRelease      = "FromRelease"
 	VariantFromReleaseMinor = "FromReleaseMinor"
 	VariantFromReleaseMajor = "FromReleaseMajor"
+	VariantLayeredProduct   = "LayeredProduct"
 	VariantDefaultValue     = "default"
+	VariantNoValue          = "none"
 )
 
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
@@ -322,7 +325,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	if aggregatedRegex.MatchString(jobName) || aggregatorRegex.MatchString(jobName) {
 		variants[VariantAggregation] = "aggregated"
 	} else {
-		variants[VariantAggregation] = "none"
+		variants[VariantAggregation] = VariantNoValue
 	}
 
 	release, fromRelease := extractReleases(jobName)
@@ -350,7 +353,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 			variants[VariantUpgrade] = "micro"
 		}
 	} else {
-		variants[VariantUpgrade] = "none"
+		variants[VariantUpgrade] = VariantNoValue
 		// Wipe out the FromRelease if it's not an upgrade job.
 		delete(variants, VariantFromRelease)
 		delete(variants, VariantFromReleaseMajor)
@@ -450,6 +453,12 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantCGroupMode] = "v1"
 	} else {
 		variants[VariantCGroupMode] = "v2"
+	}
+
+	if virtRegex.MatchString(jobName) {
+		variants[VariantLayeredProduct] = "virt"
+	} else {
+		variants[VariantLayeredProduct] = VariantNoValue
 	}
 
 	if len(variants) == 0 {
