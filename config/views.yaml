@@ -60,6 +60,8 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
+    automate_jira:
+      enabled: true
   - name: 4.18-ha-vs-single
     base_release:
       release: "4.18"
@@ -118,6 +120,8 @@ component_readiness:
     metrics:
       enabled: false
     regression_tracking:
+      enabled: false
+    automate_jira:
       enabled: false
   - name: 4.18-runc-vs-crun
     base_release:
@@ -179,6 +183,8 @@ component_readiness:
       enabled: false
     regression_tracking:
       enabled: false
+    automate_jira:
+      enabled: false
   - name: 4.17-main
     base_release:
         release: "4.16"
@@ -236,6 +242,8 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
+    automate_jira:
+      enabled: false
   - name: 4.16-main
     base_release:
       release: "4.15"
@@ -291,3 +299,5 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
+    automate_jira:
+      enabled: false
