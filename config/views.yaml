@@ -14,6 +14,7 @@ component_readiness:
         Architecture: {}
         Network: {}
         Platform: {}
+        Topology: {}
       db_group_by:
         Architecture: {}
         FeatureSet: {}
@@ -31,6 +32,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        Network:
+          - ovn
         Owner:
           - eng
         Platform:
@@ -41,6 +44,7 @@ component_readiness:
           - vsphere
         Topology:
           - ha
+          - microshift
         CGroupMode:
           - v2
         ContainerRuntime:
@@ -208,6 +212,8 @@ component_readiness:
                 - upi
             Owner:
                 - eng
+            Network:
+                - ovn
             Platform:
                 - aws
                 - azure
