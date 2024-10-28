@@ -128,6 +128,7 @@ func (jl *JiraLoader) componentLoader() {
 	var components []v1jira.Component
 	err = json.Unmarshal(body, &components)
 	if err != nil {
+		log.Infof("JIRA Component Request Body Length: %d\n\n%s\n\n", len(body), body)
 		jl.errors = append(jl.errors, err)
 		return
 	}
