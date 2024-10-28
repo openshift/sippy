@@ -250,6 +250,7 @@ var (
 	awsRegex        = regexp.MustCompile(`(?i)-aws`)
 	azureRegex      = regexp.MustCompile(`(?i)-azure`)
 	compactRegex    = regexp.MustCompile(`(?i)-compact`)
+	cpuPartitioning = regexp.MustCompile(`(?i)-cpu-partitioning`)
 	etcdScaling     = regexp.MustCompile(`(?i)-etcd-scaling`)
 	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
 	hypershiftRegex = regexp.MustCompile(`(?i)-hypershift`)
@@ -304,6 +305,8 @@ const (
 	VariantScheduler        = "Scheduler"    // realtime / standard
 	VariantSecurityMode     = "SecurityMode" // fips / default
 	VariantSuite            = "Suite"        // parallel / serial
+	VariantProcedure        = "Procedure"    // for jobs that do a specific procedure on the cluster (etcd scaling, cpu partitioning, etc.), and then optionally run conformance
+	VariantRarelyRun        = "RarelyRun"    // for rarely run (weekly) jobs that we'll scan for longer time ranges to include in component readiness
 	VariantTopology         = "Topology"     // ha / single / compact / external
 	VariantUpgrade          = "Upgrade"
 	VariantContainerRuntime = "ContainerRuntime" // runc / crun
@@ -405,6 +408,17 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantSuite] = "parallel"
 	} else {
 		variants[VariantSuite] = "unknown" // parallel perhaps but lots of jobs aren't running out suites
+	}
+
+	if etcdScaling.MatchString(jobName) {
+		variants[VariantProcedure] = "etcd-scaling"
+		variants[VariantRarelyRun] = "true"
+	} else if cpuPartitioning.MatchString(jobName) {
+		variants[VariantProcedure] = "cpu-partitioning"
+		variants[VariantRarelyRun] = "true"
+	} else {
+		variants[VariantProcedure] = "none"
+		variants[VariantRarelyRun] = "false" // exclude jobs from this by default
 	}
 
 	if sdRegex.MatchString(jobName) {
