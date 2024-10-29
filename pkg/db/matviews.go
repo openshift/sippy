@@ -12,7 +12,7 @@ const replaceTimeNow = "|||TIMENOW|||"
 const timestampFormat = "2006-01-02 15:04:05"
 
 // TODO: for historical sippy we need to specify the pinnedDate and not use NOW
-var PostgresMatViews = []PostgresMaterializedView{
+var PostgresMatViews = []PostgresView{
 	{
 		Name:         "prow_test_report_7d_matview",
 		Definition:   testReportMatView,
@@ -74,7 +74,15 @@ var PostgresMatViews = []PostgresMaterializedView{
 	},
 }
 
-type PostgresMaterializedView struct {
+// PostgresViews are regular, non-materialized views:
+var PostgresViews = []PostgresView{
+	{
+		Name:       "prow_test_analysis_by_variant_14d_view",
+		Definition: testAnalysisByVariantView,
+	},
+}
+
+type PostgresView struct {
 	// Name is the name of the materialized view in postgres.
 	Name string
 	// Definition is the material view definition.
@@ -118,6 +126,36 @@ func syncPostgresMaterializedViews(db *gorm.DB, reportEnd *time.Time) error {
 		index := fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s(%s)", indexName, pmv.Name, strings.Join(pmv.IndexColumns, ","))
 		dropSQL = fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName)
 		if _, err := syncSchema(db, hashTypeMatViewIndex, indexName, index, dropSQL, matViewUpdated); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func syncPostgresViews(db *gorm.DB, reportEnd *time.Time) error {
+
+	// initialize outside our loop
+	reportEndFmt := "NOW()"
+
+	if reportEnd != nil {
+		reportEndFmt = "TO_TIMESTAMP('" + reportEnd.UTC().Format(timestampFormat) + "', 'YYYY-MM-DD HH24:MI:SS')"
+	}
+
+	for _, pmv := range PostgresViews {
+		// Sync view:
+		viewDef := pmv.Definition
+		for k, v := range pmv.ReplaceStrings {
+			viewDef = strings.ReplaceAll(viewDef, k, v)
+		}
+
+		// This has to occur after the replaceAll above as they might contain the REPLACE_TIME_NOW constant as well
+		viewDef = strings.ReplaceAll(viewDef, replaceTimeNow, reportEndFmt)
+
+		dropSQL := fmt.Sprintf("DROP VIEW IF EXISTS %s", pmv.Name)
+		schema := fmt.Sprintf("CREATE OR REPLACE VIEW %s AS %s", pmv.Name, viewDef)
+		_, err := syncSchema(db, hashTypeView, pmv.Name, schema, dropSQL, false)
+		if err != nil {
 			return err
 		}
 	}
@@ -260,6 +298,28 @@ WHERE
     prow_job_run_tests.created_at > (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
 GROUP BY
     tests.name, tests.id, date(prow_job_runs."timestamp"), unnest(prow_jobs.variants), prow_jobs.release
+`
+
+// TODO: replaces the matview above
+const testAnalysisByVariantView = `
+SELECT
+	byjob.test_id AS test_id,
+	byjob.test_name AS test_name,
+	byjob.date AS date,
+	unnest(prow_jobs.variants) AS variant,
+	prow_jobs.release,
+	SUM(runs) as runs,
+	SUM(passes) as passes,
+	SUM(flakes) as flakes,
+	SUM(failures) as failures
+FROM
+	prow_test_analysis_by_job_14d_matview byjob
+	JOIN tests ON tests.id = byjob.test_id
+	JOIN prow_jobs ON prow_jobs.name = byjob.job_name
+WHERE
+	byjob.date >= (now() - '15 days'::interval)
+GROUP BY
+	tests.name, tests.id, byjob.test_id, byjob.test_name, date, unnest(prow_jobs.variants), prow_jobs.release
 `
 
 const testAnalysisByJobMatView = `
