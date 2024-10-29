@@ -8,6 +8,19 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
+func GetPayloadDiff(db *gorm.DB, fromPayload, toPayload string) ([]models.ReleasePullRequest, error) {
+	results := make([]models.ReleasePullRequest, 0)
+	result := db.Raw(`SELECT url,pull_request_id,name,description,bug_url FROM release_pull_requests 
+		WHERE id IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?)) 
+		AND id NOT IN ( SELECT release_pull_request_id FROM release_tag_pull_requests WHERE release_tag_id IN (SELECT id FROM release_tags WHERE release_tag =?)) ORDER BY url`, toPayload, fromPayload).Scan(&results)
+
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return results, nil
+}
+
 // GetLastAcceptedByArchitectureAndStream returns the last accepted payload for each architecture/stream combo.
 func GetLastAcceptedByArchitectureAndStream(db *gorm.DB, release string, reportEnd time.Time) ([]models.ReleaseTag, error) {
 	results := make([]models.ReleaseTag, 0)

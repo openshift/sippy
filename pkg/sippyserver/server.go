@@ -471,6 +471,23 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
+func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
+	fromPayload := req.URL.Query().Get("fromPayload")
+	toPayload := req.URL.Query().Get("toPayload")
+	results, err := api.GetPayloadDiffPullRequests(s.db, fromPayload, toPayload)
+
+	if err != nil {
+		log.WithError(err).Error("error generating payload diff")
+		api.RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
+			"code":    http.StatusInternalServerError,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
+}
+
 func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
 	testName := req.URL.Query().Get("test")
 	if testName == "" {
@@ -1616,6 +1633,12 @@ func (s *Server) Serve() {
 			Description:  "Analysis of test failures in payloads",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonGetPayloadTestFailures,
+		},
+		{
+			EndpointPath: "/api/payloads/diff",
+			Description:  "Reports pull requests that differ between payloads",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonPayloadDiff,
 		},
 	}
 
