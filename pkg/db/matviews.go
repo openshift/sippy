@@ -288,7 +288,7 @@ FROM
 	JOIN tests ON tests.id = byjob.test_id
 	JOIN prow_jobs ON prow_jobs.name = byjob.job_name
 WHERE
-	byjob.date >= (now() - '15 days'::interval)
+	byjob.date >= (|||TIMENOW||| - '15 days'::interval)
 GROUP BY
 	tests.name, tests.id, byjob.test_id, byjob.test_name, date, unnest(prow_jobs.variants), prow_jobs.release
 `
