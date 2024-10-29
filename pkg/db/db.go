@@ -18,6 +18,7 @@ type SchemaHashType string
 
 const (
 	hashTypeMatView      SchemaHashType = "matview"
+	hashTypeView         SchemaHashType = "view"
 	hashTypeMatViewIndex SchemaHashType = "matview_index"
 	hashTypeFunction     SchemaHashType = "function"
 )
@@ -146,6 +147,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	}
 
 	if err := syncPostgresMaterializedViews(d.DB, reportEnd); err != nil {
+		return err
+	}
+
+	if err := syncPostgresViews(d.DB, reportEnd); err != nil {
 		return err
 	}
 

@@ -151,7 +151,7 @@ func GetTestAnalysisByVariantFromDB(dbc *db.DB, filters *filter.Filter, release,
 		results["overall"] = overall
 	}
 
-	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_matview").
+	vq := dbc.DB.Table("prow_test_analysis_by_variant_14d_view").
 		Where("release = ?", release).
 		Where("test_name = ?", testName).
 		Where("date <= ?", reportEnd).
