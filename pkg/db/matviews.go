@@ -34,11 +34,6 @@ var PostgresMatViews = []PostgresView{
 		},
 	},
 	{
-		Name:         "prow_test_analysis_by_variant_14d_matview",
-		Definition:   testAnalysisByVariantMatView,
-		IndexColumns: []string{"test_id", "test_name", "date", "variant", "release"},
-	},
-	{
 		Name:         "prow_test_analysis_by_job_14d_matview",
 		Definition:   testAnalysisByJobMatView,
 		IndexColumns: []string{"test_id", "test_name", "date", "job_name"},
@@ -277,30 +272,6 @@ GROUP BY
     tests.id, tests.name, jira_components.name, jira_components.id, suites.name, open_bugs.open_bugs, prow_jobs.variants, prow_jobs.release
 `
 
-const testAnalysisByVariantMatView = `
-SELECT
-    tests.id AS test_id,
-    tests.name AS test_name,
-    tests.watchlist,
-    date(prow_job_runs."timestamp") AS date,
-    unnest(prow_jobs.variants) AS variant,
-    prow_jobs.release,
-    COUNT(*) FILTER (WHERE prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS runs,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS passes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS flakes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS failures
-FROM
-    prow_job_run_tests
-    JOIN tests ON tests.id = prow_job_run_tests.test_id
-    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
-    JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
-WHERE
-    prow_job_run_tests.created_at > (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
-GROUP BY
-    tests.name, tests.id, date(prow_job_runs."timestamp"), unnest(prow_jobs.variants), prow_jobs.release
-`
-
-// TODO: replaces the matview above
 const testAnalysisByVariantView = `
 SELECT
 	byjob.test_id AS test_id,
