@@ -86,6 +86,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	if err := d.DB.AutoMigrate(&models.TestAnalysisByJobForDate{}); err != nil {
+		return err
+	}
+
 	if err := d.DB.AutoMigrate(&models.ProwJobRun{}); err != nil {
 		return err
 	}
