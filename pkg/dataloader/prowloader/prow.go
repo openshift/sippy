@@ -366,17 +366,25 @@ ORDER BY
 		log.Infof("got row %+v", row)
 		psqlDate := pgtype.Date{}
 		psqlDate.Set(row.Date.String())
+		test, ok := testCache[row.TestName]
+		if !ok {
+			log.WithField("testName", row.TestName).Warning("test not found in cache")
+			continue
+		}
+		// we have to infer failures due to the bigquery query we leveraged:
+		failures := row.Runs - row.Passes - row.Flakes
+
 		// convert to a db row for postgres insertion:
 		psqlRow := models.TestAnalysisByJobForDate{
 			Date:     psqlDate,
-			TestID:   0,
-			Release:  "",
-			TestName: "",
-			JobName:  "",
-			Runs:     0,
-			Passes:   0,
-			Flakes:   0,
-			Failures: 0,
+			TestID:   test.ID,
+			Release:  row.Release,
+			TestName: row.TestName,
+			JobName:  row.JobName,
+			Runs:     row.Runs,
+			Passes:   row.Passes,
+			Flakes:   row.Flakes,
+			Failures: failures,
 		}
 		log.Infof("creating psql row %+v", psqlRow)
 
