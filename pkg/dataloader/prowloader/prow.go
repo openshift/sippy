@@ -151,6 +151,18 @@ func (pl *ProwLoader) Errors() []error {
 
 func (pl *ProwLoader) Load() {
 	start := time.Now()
+
+	// TODO: move to after normal import
+	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
+	if err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
+	}
+
+	if true {
+		log.Fatal("TODO exiting early")
+		return
+	}
+
 	log.Infof("started loading prow jobs to DB...")
 
 	// Update unmerged PR statuses in case any have merged
@@ -179,16 +191,6 @@ func (pl *ProwLoader) Load() {
 			pl.errors = append(pl.errors, errors.Wrap(err, "error decoding job JSON data from prow"))
 			return
 		}
-	}
-
-	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
-	if err != nil {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
-	}
-
-	if true {
-		log.Fatal("TODO exiting early")
-		return
 	}
 
 	queue := make(chan *prow.ProwJob)
@@ -260,7 +262,7 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 
 	// Figure out our last imported daily summary.
 	var lastDailySummary time.Time
-	row := pl.dbc.DB.Table("test_analysis_by_job_for_dates").Select("MAX(date)").Row()
+	row := pl.dbc.DB.Table("test_analysis_by_job_by_dates").Select("MAX(date)").Row()
 	err := row.Scan(&lastDailySummary)
 	if err != nil || lastDailySummary.IsZero() {
 		log.WithError(err).Warn("no last summary found (new database?), importing last two weeks")
@@ -275,9 +277,7 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 	}
 	log.Infof("loaded test cache for ID lookup with %d entries", len(testCache))
 
-	// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
-	// as the default UTC correctly.
-	// Annotations and labels can be queried here if we need them.
+	// TODO: swap in configurable data sets
 	query := pl.bigQueryClient.Query(`WITH
   deduped_testcases AS (
   SELECT
@@ -351,7 +351,7 @@ ORDER BY
 		return err
 	}
 
-	count := 0
+	insertRows := []models.TestAnalysisByJobByDate{}
 	for {
 		row := tempBQTestAnalysisByJobForDate{}
 		err := it.Next(&row)
@@ -375,8 +375,8 @@ ORDER BY
 		failures := row.Runs - row.Passes - row.Flakes
 
 		// convert to a db row for postgres insertion:
-		psqlRow := models.TestAnalysisByJobForDate{
-			Date:     psqlDate,
+		psqlRow := models.TestAnalysisByJobByDate{
+			Date:     row.Date.In(time.UTC),
 			TestID:   test.ID,
 			Release:  row.Release,
 			TestName: row.TestName,
@@ -387,50 +387,14 @@ ORDER BY
 			Failures: failures,
 		}
 		log.Infof("creating psql row %+v", psqlRow)
-
-		/*
-			var refs *prow.Refs
-			if bqjr.PRNumber.StringVal != "" {
-				prNumber, err := strconv.Atoi(bqjr.PRNumber.StringVal)
-				if err != nil {
-					log.WithError(err).Errorf("Invalid pull request number from big query fetch prow jobs")
-				} else {
-					refs = &prow.Refs{Org: bqjr.PROrg.StringVal, Repo: bqjr.PRRepo.StringVal}
-					pulls := make([]prow.Pull, 0)
-					pull := prow.Pull{Number: prNumber, SHA: bqjr.PRSha.StringVal, Author: bqjr.PRAuthor.StringVal}
-					refs.Pulls = append(pulls, pull)
-				}
-			} else if bqjr.Type == "presubmit" {
-				log.Warningf("Presubmit job found without matching PR data for: %s", bqjr.JobName)
-			}
-			// Convert to a prow.ProwJob:
-			// If we read in an invalid StartTime, skip this job but put out an error.
-			if !bqjr.StartTime.Valid {
-				log.WithField("job", bqjr.JobName).Error("invalid start time for prowjob")
-				// Do not return an error as that will cause the job to fail.
-				continue
-			}
-			prowJobs[bqjr.BuildID] = prow.ProwJob{
-				Spec: prow.ProwJobSpec{
-					Type:    bqjr.Type,
-					Cluster: bqjr.Cluster,
-					Job:     bqjr.JobName,
-					Refs:    refs,
-				},
-				Status: prow.ProwJobStatus{
-					StartTime:      bqjr.StartTime.Timestamp,
-					CompletionTime: &bqjr.CompletionTime,
-					State:          prow.ProwJobState(bqjr.State),
-					URL:            bqjr.URL,
-					BuildID:        bqjr.BuildID,
-				},
-			}
-
-		*/
-		count++
+		insertRows = append(insertRows, psqlRow)
 	}
-
-	return nil
+	log.Infof("inserting %d rows", len(insertRows))
+	err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 1000).Error
+	if err != nil {
+		log.WithError(err).Error("error inserting rows")
+	}
+	return err
 }
 
 func (pl *ProwLoader) processProwJob(ctx context.Context, pj *prow.ProwJob) error {

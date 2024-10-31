@@ -117,13 +117,10 @@ type Suite struct {
 	Name string `gorm:"uniqueIndex"`
 }
 
-// TestAnalysisRow models our materialize view for test results by date, and job+variant.
-// The only one of the Variant/JobName fields will be used depending on which view
-// we're querying.
-type TestAnalysisByJobForDate struct {
-	Date     pgtype.Date `gorm:"index:test_release_date"`
-	TestID   uint        `gorm:"index:test_release_date"`
-	Release  string      `gorm:"index:test_release_date"`
+type TestAnalysisByJobByDate struct {
+	Date     time.Time `gorm:"index:test_release_date,unique"`
+	TestID   uint      `gorm:"index:test_release_date,unique"`
+	Release  string    `gorm:"index:test_release_date,unique"`
 	TestName string
 	JobName  string
 	Runs     int
