@@ -15,10 +15,12 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgtype"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
@@ -239,6 +241,20 @@ func prowJobsProducer(ctx context.Context, queue chan *prow.ProwJob, jobs []prow
 		}
 	}
 }
+
+// tempBQTestAnalysisByJobForDate is a dupe type to work around date parsing issues.
+type tempBQTestAnalysisByJobForDate struct {
+	Date     civil.Date
+	TestID   uint
+	Release  string
+	TestName string
+	JobName  string
+	Runs     int
+	Passes   int
+	Flakes   int
+	Failures int
+}
+
 func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 
 	// Figure out our last imported daily summary.
@@ -251,57 +267,97 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 	}
 	log.Infof("Loading test analysis by job daily summaries since: %s", lastDailySummary.UTC().Format(time.RFC3339))
 
-	/*
-		errs := []error{}
-		// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
-		// as the default UTC correctly.
-		// Annotations and labels can be queried here if we need them.
-		query := pl.bigQueryClient.Query(`SELECT
-				prowjob_job_name,
-				prowjob_state,
-				prowjob_build_id,
-				prowjob_type,
-				prowjob_cluster,
-				prowjob_url,
-				pr_sha,
-				pr_author,
-				pr_number,
-				org,
-				repo,
-				TIMESTAMP(prowjob_start) AS prowjob_start_ts,
-				TIMESTAMP(prowjob_completion) AS prowjob_completion_ts ` +
-			"FROM `ci_analysis_us.jobs` " +
-			`WHERE TIMESTAMP(prowjob_completion) > @queryFrom
-		       AND prowjob_url IS NOT NULL
-		       ORDER BY prowjob_start_ts`)
-		query.Parameters = []bigquery.QueryParameter{
-			{
-				Name:  "queryFrom",
-				Value: lastProwJobRun,
-			},
+	// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
+	// as the default UTC correctly.
+	// Annotations and labels can be queried here if we need them.
+	query := pl.bigQueryClient.Query(`WITH
+  deduped_testcases AS (
+  SELECT
+    junit.*,
+    ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY CASE WHEN flake_count > 0 THEN 0 WHEN success_val > 0 THEN 1 ELSE 2 END ) AS row_num,
+    jobs. prowjob_job_name AS variant_registry_job_name,
+    jobs.org,
+    jobs.repo,
+    jobs.pr_number,
+    jobs.pr_sha,
+    CASE
+      WHEN flake_count > 0 THEN 0
+      ELSE success_val
+  END
+    AS adjusted_success_val,
+    CASE
+      WHEN flake_count > 0 THEN 1
+      ELSE 0
+  END
+    AS adjusted_flake_count
+  FROM
+    openshift-gce-devel.ci_analysis_us.junit
+  INNER JOIN
+    openshift-gce-devel.ci_analysis_us.jobs jobs
+  ON
+    junit.prowjob_build_id = jobs.prowjob_build_id
+    AND DATE(jobs.prowjob_start) >= DATE(@From)
+    AND DATE(jobs.prowjob_start) <= DATE(@To)
+  WHERE
+    DATE(junit.modified_time) >= DATE(@From)
+    AND DATE(junit.modified_time) <= DATE(@To)
+    AND test_name = 'install should succeed: overall'
+    AND junit.prowjob_name = 'periodic-ci-openshift-release-master-nightly-4.18-upgrade-from-stable-4.17-e2e-metal-ipi-ovn-upgrade'
+    AND skipped = FALSE )
+SELECT
+  test_name,
+  DATE(modified_time) AS date,
+  prowjob_name AS job_name,
+  branch AS release,
+  COUNT(*) AS runs,
+  SUM(adjusted_success_val) AS passes,
+  SUM(adjusted_flake_count) AS flakes,
+FROM
+  deduped_testcases
+WHERE
+  row_num = 1
+  AND branch = '4.18'
+GROUP BY
+  test_name,
+  date,
+  release,
+  prowjob_name
+ORDER BY
+  date,
+  test_name,
+  prowjob_name
+`)
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "From",
+			Value: "2024-10-25",
+		},
+		{
+			Name:  "To",
+			Value: "2024-10-30",
+		},
+	}
+	it, err := query.Read(context.TODO())
+	if err != nil {
+		log.WithError(err).Error("error querying test analysis from bigquery")
+		return err
+	}
+
+	count := 0
+	for {
+		row := tempBQTestAnalysisByJobForDate{}
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
 		}
-		it, err := query.Read(context.TODO())
 		if err != nil {
-			errs = append(errs, err)
-			log.WithError(err).Error("error querying jobs from bigquery")
-			return []prow.ProwJob{}, errs
+			log.WithError(err).Error("error parsing prowjob from bigquery")
+			return err
+			//continue
 		}
+		log.Infof("got row %+v", row)
 
-		// Using a set since sometimes bigquery has multiple copies of the same prow job
-		prowJobs := map[string]prow.ProwJob{}
-		count := 0
-		for {
-			bqjr := bigqueryProwJobRun{}
-			err := it.Next(&bqjr)
-			if err == iterator.Done {
-				break
-			}
-			if err != nil {
-				log.WithError(err).Error("error parsing prowjob from bigquery")
-				errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
-				continue
-			}
-
+		/*
 			var refs *prow.Refs
 			if bqjr.PRNumber.StringVal != "" {
 				prNumber, err := strconv.Atoi(bqjr.PRNumber.StringVal)
@@ -338,18 +394,11 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 					BuildID:        bqjr.BuildID,
 				},
 			}
-			count++
-		}
 
-		var prowJobsList []prow.ProwJob
-		for _, job := range prowJobs {
-			prowJobsList = append(prowJobsList, job)
-		}
+		*/
+		count++
+	}
 
-		log.Infof("found %d jobs (%d dupes) in bigquery since last import (roughly)", len(prowJobs), count-len(prowJobs))
-		return prowJobsList, errs
-
-	*/
 	return nil
 }
 
