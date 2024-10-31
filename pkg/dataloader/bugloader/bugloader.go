@@ -100,7 +100,7 @@ func (bl *BugLoader) Load() {
 	}
 
 	// Fetch bugs<->job mapping from bigquery
-	jobCache, err := loadProwJobCache(bl.dbc)
+	jobCache, err := query.LoadProwJobCache(bl.dbc)
 	if err != nil {
 		bl.errors = append(bl.errors, err)
 		return
@@ -277,22 +277,6 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 	}
 
 	return bugs, nil
-}
-
-func loadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
-	prowJobCache := map[string]*models.ProwJob{}
-	var allJobs []*models.ProwJob
-	res := dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
-	if res.Error != nil {
-		return map[string]*models.ProwJob{}, res.Error
-	}
-	for _, j := range allJobs {
-		if _, ok := prowJobCache[j.Name]; !ok {
-			prowJobCache[j.Name] = j
-		}
-	}
-	log.Infof("job cache created with %d entries from database", len(prowJobCache))
-	return prowJobCache, nil
 }
 
 func updateWatchlist(dbc *db.DB) []error {

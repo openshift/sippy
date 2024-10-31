@@ -121,8 +121,8 @@ type TestAnalysisByJobByDate struct {
 	Date     time.Time `gorm:"index:test_release_date,unique"`
 	TestID   uint      `gorm:"index:test_release_date,unique"`
 	Release  string    `gorm:"index:test_release_date,unique"`
+	JobName  string    `gorm:"index:test_release_date,unique"`
 	TestName string
-	JobName  string
 	Runs     int
 	Passes   int
 	Flakes   int

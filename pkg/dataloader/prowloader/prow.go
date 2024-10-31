@@ -272,7 +272,8 @@ func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time) (string, s
 
 	// If this is a new db, do an initial larger import:
 	if lastDailySummary.IsZero() {
-		fromStr := yesterday8HrsAgo.Add(-14 * 24 * time.Hour).Format("2006-01-02")
+		//fromStr := yesterday8HrsAgo.Add(-1 * 24 * time.Hour).Format("2006-01-02")
+		fromStr := toStr
 		return fromStr, toStr, true
 	}
 
@@ -291,25 +292,29 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 	// Figure out our last imported daily summary.
 	var lastDailySummary time.Time
 	row := pl.dbc.DB.Table("test_analysis_by_job_by_dates").Select("MAX(date)").Row()
-	err := row.Scan(&lastDailySummary)
-	if err != nil || lastDailySummary.IsZero() {
-		log.WithError(err).Warn("no last summary found (new database?), importing last two weeks")
-		lastDailySummary = time.Now().Add(-14 * 24 * time.Hour)
-	}
+
+	// Ignoring error, the function below handles the zero time if needed: (new db)
+	row.Scan(&lastDailySummary)
+
 	from, to, updateRequired := getTestAnalysisByJobFromToDates(lastDailySummary, time.Now())
 	if !updateRequired {
 		log.Info("test analysis summary already completed today")
 		return nil
 	}
 
-	log.Infof("Loading test analysis by job daily summaries for: %s -> %s", from, to)
+	jobCache, err := query.LoadProwJobCache(pl.dbc)
+	if err != nil {
+		log.WithError(err).Error("error loading job cache")
+		return err
+	}
 
 	testCache, err := query.LoadTestCache(pl.dbc, []string{})
 	if err != nil {
 		log.WithError(err).Error("error loading test cache")
 		return err
 	}
-	log.Infof("loaded test cache for ID lookup with %d entries", len(testCache))
+
+	log.Infof("Loading test analysis by job daily summaries for: %s -> %s", from, to)
 
 	// TODO: swap in configurable data sets
 	query := pl.bigQueryClient.Query(`WITH
@@ -343,8 +348,6 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
   WHERE
     DATE(junit.modified_time) >= DATE(@From)
     AND DATE(junit.modified_time) <= DATE(@To)
-    AND test_name = 'install should succeed: overall'
-    AND junit.prowjob_name = 'periodic-ci-openshift-release-master-nightly-4.18-upgrade-from-stable-4.17-e2e-metal-ipi-ovn-upgrade'
     AND skipped = FALSE )
 SELECT
   test_name,
@@ -358,7 +361,6 @@ FROM
   deduped_testcases
 WHERE
   row_num = 1
-  AND branch = '4.18'
 GROUP BY
   test_name,
   date,
@@ -395,14 +397,17 @@ ORDER BY
 		if err != nil {
 			log.WithError(err).Error("error parsing prowjob from bigquery")
 			return err
-			//continue
 		}
-		log.Infof("got row %+v", row)
 		psqlDate := pgtype.Date{}
 		psqlDate.Set(row.Date.String())
+
+		// Skip jobs and tests we don't know about in our postgres db:
 		test, ok := testCache[row.TestName]
 		if !ok {
-			log.WithField("testName", row.TestName).Warning("test not found in cache")
+			continue
+		}
+
+		if _, ok := jobCache[row.JobName]; !ok {
 			continue
 		}
 		// we have to infer failures due to the bigquery query we leveraged:
@@ -420,11 +425,10 @@ ORDER BY
 			Flakes:   row.Flakes,
 			Failures: failures,
 		}
-		log.Infof("creating psql row %+v", psqlRow)
 		insertRows = append(insertRows, psqlRow)
 	}
 	log.Infof("inserting %d rows", len(insertRows))
-	err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 1000).Error
+	err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 2000).Error
 	if err != nil {
 		log.WithError(err).Error("error inserting rows")
 	}
