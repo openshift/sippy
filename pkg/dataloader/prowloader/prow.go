@@ -296,8 +296,13 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 		log.WithError(err).Warn("no last summary found (new database?), importing last two weeks")
 		lastDailySummary = time.Now().Add(-14 * 24 * time.Hour)
 	}
-	lastDailySummaryDate := lastDailySummary.UTC().Format("2006-01-02")
-	log.Infof("Loading test analysis by job daily summaries since: %s", lastDailySummaryDate)
+	from, to, updateRequired := getTestAnalysisByJobFromToDates(lastDailySummary, time.Now())
+	if !updateRequired {
+		log.Info("test analysis summary already completed today")
+		return nil
+	}
+
+	log.Infof("Loading test analysis by job daily summaries for: %s -> %s", from, to)
 
 	testCache, err := query.LoadTestCache(pl.dbc, []string{})
 	if err != nil {
@@ -367,11 +372,11 @@ ORDER BY
 	query.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: "2024-10-25",
+			Value: from,
 		},
 		{
 			Name:  "To",
-			Value: "2024-10-30",
+			Value: to,
 		},
 	}
 	it, err := query.Read(context.TODO())
