@@ -258,6 +258,34 @@ type tempBQTestAnalysisByJobForDate struct {
 	Failures int
 }
 
+// getTestAnalysisByJobFromToDates uses the last daily report date to calculate the
+// date range we should request from bigquery for import. We don't want to import
+// the prior day if jobs are still running, so if we're not at least 8 hours into
+// the current day (UTC), we will keep waiting to import yesterday. Once we cross
+// that threshold we will import. (assume hourly imports)
+// If our most recent import is yesterday, we're done for the day.
+// If the lastDailySummary is empty, this implies a new database, and we'll do an initial
+// bulk load.
+func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time) (string, string, bool) {
+	yesterday8HrsAgo := now.UTC().Add(-32 * time.Hour)
+	toStr := yesterday8HrsAgo.Format("2006-01-02")
+
+	// If this is a new db, do an initial larger import:
+	if lastDailySummary.IsZero() {
+		fromStr := yesterday8HrsAgo.Add(-14 * 24 * time.Hour).Format("2006-01-02")
+		return fromStr, toStr, true
+	}
+
+	ldsStr := lastDailySummary.UTC().Format("2006-01-02")
+	if ldsStr == toStr {
+		return "", "", false
+	}
+	nextDayStr := lastDailySummary.UTC().Add(24 * time.Hour).Format("2006-01-02")
+
+	return nextDayStr, toStr, true
+
+}
+
 func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 
 	// Figure out our last imported daily summary.
@@ -268,7 +296,8 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 		log.WithError(err).Warn("no last summary found (new database?), importing last two weeks")
 		lastDailySummary = time.Now().Add(-14 * 24 * time.Hour)
 	}
-	log.Infof("Loading test analysis by job daily summaries since: %s", lastDailySummary.UTC().Format(time.RFC3339))
+	lastDailySummaryDate := lastDailySummary.UTC().Format("2006-01-02")
+	log.Infof("Loading test analysis by job daily summaries since: %s", lastDailySummaryDate)
 
 	testCache, err := query.LoadTestCache(pl.dbc, []string{})
 	if err != nil {
