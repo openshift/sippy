@@ -8,10 +8,10 @@ import (
 
 	bqgo "cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -89,7 +89,7 @@ func (bl *BugLoader) Load() {
 	dbExpectedBugs := make([]*models.Bug, 0)
 
 	// Fetch bugs<->test mapping from bigquery
-	testCache, err := loadTestCache(bl.dbc, []string{})
+	testCache, err := query.LoadTestCache(bl.dbc, []string{})
 	if err != nil {
 		bl.errors = append(bl.errors, err)
 		return
@@ -279,33 +279,6 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 	return bugs, nil
 }
 
-func loadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
-	// Cache all tests by name to their ID, used for the join object.
-	testCache := map[string]*models.Test{}
-	q := dbc.DB.Model(&models.Test{})
-	for _, p := range preloads {
-		q = q.Preload(p)
-	}
-
-	// Kube exceeds 60000 tests, more than postgres can load at once:
-	testsBatch := []*models.Test{}
-	res := q.FindInBatches(&testsBatch, 5000, func(tx *gorm.DB, batch int) error {
-		for _, idn := range testsBatch {
-			if _, ok := testCache[idn.Name]; !ok {
-				testCache[idn.Name] = idn
-			}
-		}
-		return nil
-	})
-
-	if res.Error != nil {
-		return map[string]*models.Test{}, res.Error
-	}
-
-	log.Infof("test cache created with %d entries from database", len(testCache))
-	return testCache, nil
-}
-
 func loadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
 	prowJobCache := map[string]*models.ProwJob{}
 	var allJobs []*models.ProwJob
@@ -324,7 +297,7 @@ func loadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
 
 func updateWatchlist(dbc *db.DB) []error {
 	// Load the test cache, we'll iterate every test and see if it should be in the watchlist or not:
-	testCache, err := loadTestCache(dbc, []string{"Bugs"})
+	testCache, err := query.LoadTestCache(dbc, []string{"Bugs"})
 	if err != nil {
 		return []error{errors.Wrap(err, "error loading test class for UpdateWatchList")}
 	}

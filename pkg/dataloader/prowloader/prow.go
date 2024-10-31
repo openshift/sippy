@@ -18,6 +18,7 @@ import (
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgtype"
+	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -247,8 +248,8 @@ type tempBQTestAnalysisByJobForDate struct {
 	Date     civil.Date
 	TestID   uint
 	Release  string
-	TestName string
-	JobName  string
+	TestName string `bigquery:"test_name"`
+	JobName  string `bigquery:"job_name"`
 	Runs     int
 	Passes   int
 	Flakes   int
@@ -259,13 +260,20 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 
 	// Figure out our last imported daily summary.
 	var lastDailySummary time.Time
-	row := pl.dbc.DB.Table("test_analysis_by_job_for_dates").Select("max('date')").Row()
+	row := pl.dbc.DB.Table("test_analysis_by_job_for_dates").Select("MAX(date)").Row()
 	err := row.Scan(&lastDailySummary)
 	if err != nil || lastDailySummary.IsZero() {
 		log.WithError(err).Warn("no last summary found (new database?), importing last two weeks")
 		lastDailySummary = time.Now().Add(-14 * 24 * time.Hour)
 	}
 	log.Infof("Loading test analysis by job daily summaries since: %s", lastDailySummary.UTC().Format(time.RFC3339))
+
+	testCache, err := query.LoadTestCache(pl.dbc, []string{})
+	if err != nil {
+		log.WithError(err).Error("error loading test cache")
+		return err
+	}
+	log.Infof("loaded test cache for ID lookup with %d entries", len(testCache))
 
 	// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
 	// as the default UTC correctly.
@@ -356,6 +364,21 @@ ORDER BY
 			//continue
 		}
 		log.Infof("got row %+v", row)
+		psqlDate := pgtype.Date{}
+		psqlDate.Set(row.Date.String())
+		// convert to a db row for postgres insertion:
+		psqlRow := models.TestAnalysisByJobForDate{
+			Date:     psqlDate,
+			TestID:   0,
+			Release:  "",
+			TestName: "",
+			JobName:  "",
+			Runs:     0,
+			Passes:   0,
+			Flakes:   0,
+			Failures: 0,
+		}
+		log.Infof("creating psql row %+v", psqlRow)
 
 		/*
 			var refs *prow.Refs
