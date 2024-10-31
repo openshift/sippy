@@ -178,6 +178,16 @@ func (pl *ProwLoader) Load() {
 		}
 	}
 
+	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
+	if err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
+	}
+
+	if true {
+		log.Fatal("TODO exiting early")
+		return
+	}
+
 	queue := make(chan *prow.ProwJob)
 	errsCh := make(chan error, len(prowJobs))
 	total := len(prowJobs)
@@ -228,6 +238,119 @@ func prowJobsProducer(ctx context.Context, queue chan *prow.ProwJob, jobs []prow
 			return
 		}
 	}
+}
+func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
+
+	// Figure out our last imported daily summary.
+	var lastDailySummary time.Time
+	row := pl.dbc.DB.Table("test_analysis_by_job_for_dates").Select("max('date')").Row()
+	err := row.Scan(&lastDailySummary)
+	if err != nil || lastDailySummary.IsZero() {
+		log.WithError(err).Warn("no last summary found (new database?), importing last two weeks")
+		lastDailySummary = time.Now().Add(-14 * 24 * time.Hour)
+	}
+	log.Infof("Loading test analysis by job daily summaries since: %s", lastDailySummary.UTC().Format(time.RFC3339))
+
+	/*
+		errs := []error{}
+		// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
+		// as the default UTC correctly.
+		// Annotations and labels can be queried here if we need them.
+		query := pl.bigQueryClient.Query(`SELECT
+				prowjob_job_name,
+				prowjob_state,
+				prowjob_build_id,
+				prowjob_type,
+				prowjob_cluster,
+				prowjob_url,
+				pr_sha,
+				pr_author,
+				pr_number,
+				org,
+				repo,
+				TIMESTAMP(prowjob_start) AS prowjob_start_ts,
+				TIMESTAMP(prowjob_completion) AS prowjob_completion_ts ` +
+			"FROM `ci_analysis_us.jobs` " +
+			`WHERE TIMESTAMP(prowjob_completion) > @queryFrom
+		       AND prowjob_url IS NOT NULL
+		       ORDER BY prowjob_start_ts`)
+		query.Parameters = []bigquery.QueryParameter{
+			{
+				Name:  "queryFrom",
+				Value: lastProwJobRun,
+			},
+		}
+		it, err := query.Read(context.TODO())
+		if err != nil {
+			errs = append(errs, err)
+			log.WithError(err).Error("error querying jobs from bigquery")
+			return []prow.ProwJob{}, errs
+		}
+
+		// Using a set since sometimes bigquery has multiple copies of the same prow job
+		prowJobs := map[string]prow.ProwJob{}
+		count := 0
+		for {
+			bqjr := bigqueryProwJobRun{}
+			err := it.Next(&bqjr)
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.WithError(err).Error("error parsing prowjob from bigquery")
+				errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
+				continue
+			}
+
+			var refs *prow.Refs
+			if bqjr.PRNumber.StringVal != "" {
+				prNumber, err := strconv.Atoi(bqjr.PRNumber.StringVal)
+				if err != nil {
+					log.WithError(err).Errorf("Invalid pull request number from big query fetch prow jobs")
+				} else {
+					refs = &prow.Refs{Org: bqjr.PROrg.StringVal, Repo: bqjr.PRRepo.StringVal}
+					pulls := make([]prow.Pull, 0)
+					pull := prow.Pull{Number: prNumber, SHA: bqjr.PRSha.StringVal, Author: bqjr.PRAuthor.StringVal}
+					refs.Pulls = append(pulls, pull)
+				}
+			} else if bqjr.Type == "presubmit" {
+				log.Warningf("Presubmit job found without matching PR data for: %s", bqjr.JobName)
+			}
+			// Convert to a prow.ProwJob:
+			// If we read in an invalid StartTime, skip this job but put out an error.
+			if !bqjr.StartTime.Valid {
+				log.WithField("job", bqjr.JobName).Error("invalid start time for prowjob")
+				// Do not return an error as that will cause the job to fail.
+				continue
+			}
+			prowJobs[bqjr.BuildID] = prow.ProwJob{
+				Spec: prow.ProwJobSpec{
+					Type:    bqjr.Type,
+					Cluster: bqjr.Cluster,
+					Job:     bqjr.JobName,
+					Refs:    refs,
+				},
+				Status: prow.ProwJobStatus{
+					StartTime:      bqjr.StartTime.Timestamp,
+					CompletionTime: &bqjr.CompletionTime,
+					State:          prow.ProwJobState(bqjr.State),
+					URL:            bqjr.URL,
+					BuildID:        bqjr.BuildID,
+				},
+			}
+			count++
+		}
+
+		var prowJobsList []prow.ProwJob
+		for _, job := range prowJobs {
+			prowJobsList = append(prowJobsList, job)
+		}
+
+		log.Infof("found %d jobs (%d dupes) in bigquery since last import (roughly)", len(prowJobs), count-len(prowJobs))
+		return prowJobsList, errs
+
+	*/
+	return nil
 }
 
 func (pl *ProwLoader) processProwJob(ctx context.Context, pj *prow.ProwJob) error {

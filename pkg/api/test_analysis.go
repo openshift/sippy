@@ -29,7 +29,7 @@ func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, t
 			to_date((date at time zone 'UTC')::text, 'YYYY-MM-DD'::text)::text as date,
 			'overall' as group,
 			SUM(runs) as runs,
-			SUM(passes) as passes,
+			SUM(passes) as ,
 			SUM(flakes) as flakes,
 			SUM(failures) as failures,
 			SUM(passes) * 100.0 / NULLIF(SUM(runs), 0) AS pass_percentage,

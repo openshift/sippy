@@ -121,9 +121,9 @@ type Suite struct {
 // The only one of the Variant/JobName fields will be used depending on which view
 // we're querying.
 type TestAnalysisByJobForDate struct {
-	Date     time.Time `gorm:"index:test_release_date"`
-	TestID   uint      `gorm:"index:test_release_date"`
-	Release  string    `gorm:"index:test_release_date"`
+	Date     pgtype.Date `gorm:"index:test_release_date"`
+	TestID   uint        `gorm:"index:test_release_date"`
+	Release  string      `gorm:"index:test_release_date"`
 	TestName string
 	JobName  string
 	Runs     int
