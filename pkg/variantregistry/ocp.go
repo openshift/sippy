@@ -327,6 +327,7 @@ const (
 	VariantNoValue          = "none"
 )
 
+// nolint:gocyclo
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
 	variants := map[string]string{}
 
