@@ -428,10 +428,13 @@ ORDER BY
 		insertRows = append(insertRows, psqlRow)
 	}
 	log.Infof("inserting %d rows", len(insertRows))
-	err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 2000).Error
-	if err != nil {
-		log.WithError(err).Error("error inserting rows")
-	}
+	err = pl.dbc.DB.Transaction(func(tx *gorm.DB) error {
+		err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 2000).Error
+		if err != nil {
+			log.WithError(err).Error("error inserting rows")
+		}
+		return err
+	})
 	return err
 }
 
