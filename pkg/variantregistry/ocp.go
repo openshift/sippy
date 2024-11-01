@@ -11,6 +11,8 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/hashicorp/go-version"
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -23,6 +25,7 @@ import (
 type OCPVariantLoader struct {
 	BigQueryClient  *bigquery.Client
 	bkt             *storage.BucketHandle
+	config          *v1.SippyConfig
 	bigQueryProject string
 	bigQueryDataSet string
 	bigQueryTable   string
@@ -34,12 +37,14 @@ func NewOCPVariantLoader(
 	bigQueryDataSet string,
 	bigQueryTable string,
 	gcsClient *storage.Client,
-	gcsBucket string) *OCPVariantLoader {
+	gcsBucket string,
+	config *v1.SippyConfig) *OCPVariantLoader {
 
 	bkt := gcsClient.Bucket(gcsBucket)
 	return &OCPVariantLoader{
 		BigQueryClient:  bigQueryClient,
 		bkt:             bkt,
+		config:          config,
 		bigQueryProject: bigQueryProject,
 		bigQueryDataSet: bigQueryDataSet,
 		bigQueryTable:   bigQueryTable,
@@ -306,7 +311,7 @@ const (
 	VariantSecurityMode     = "SecurityMode" // fips / default
 	VariantSuite            = "Suite"        // parallel / serial
 	VariantProcedure        = "Procedure"    // for jobs that do a specific procedure on the cluster (etcd scaling, cpu partitioning, etc.), and then optionally run conformance
-	VariantRarelyRun        = "RarelyRun"    // for rarely run (weekly) jobs that we'll scan for longer time ranges to include in component readiness
+	VariantJobTier          = "JobTier"      // specifies rare, blocking, informing, standard jobs
 	VariantTopology         = "Topology"     // ha / single / compact / external
 	VariantUpgrade          = "Upgrade"
 	VariantContainerRuntime = "ContainerRuntime" // runc / crun
@@ -412,13 +417,21 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 
 	if etcdScaling.MatchString(jobName) {
 		variants[VariantProcedure] = "etcd-scaling"
-		variants[VariantRarelyRun] = "true"
+		variants[VariantJobTier] = "rare"
 	} else if cpuPartitioning.MatchString(jobName) {
 		variants[VariantProcedure] = "cpu-partitioning"
-		variants[VariantRarelyRun] = "true"
+		variants[VariantJobTier] = "rare"
 	} else {
-		variants[VariantProcedure] = "none"
-		variants[VariantRarelyRun] = "false" // exclude jobs from this by default
+		variants[VariantProcedure] = VariantNoValue
+
+		// Set tier to informing/blocking as appropriate
+		if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
+			variants[VariantJobTier] = "blocking"
+		} else if util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName) {
+			variants[VariantJobTier] = "informing"
+		} else {
+			variants[VariantJobTier] = "standard"
+		}
 	}
 
 	if sdRegex.MatchString(jobName) {
