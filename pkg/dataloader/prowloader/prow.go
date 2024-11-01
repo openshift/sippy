@@ -267,6 +267,9 @@ type tempBQTestAnalysisByJobForDate struct {
 // If the lastDailySummary is empty, this implies a new database, and we'll do an initial
 // bulk load.
 func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time) (string, string, bool) {
+	if true {
+		return "2024-10-15", "2024-10-23", true
+	}
 	yesterday8HrsAgo := now.UTC().Add(-32 * time.Hour)
 	toStr := yesterday8HrsAgo.Format("2006-01-02")
 
