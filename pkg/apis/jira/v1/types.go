@@ -17,7 +17,7 @@ const (
 )
 
 const (
-	LabelJiraAutomator = "Regression"
+	LabelJiraAutomator = "ComponentAutomatedRegression"
 )
 
 const (

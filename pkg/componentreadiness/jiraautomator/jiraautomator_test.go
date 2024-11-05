@@ -305,7 +305,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 		},
 	}
 	j := JiraAutomator{
-		variantBasedComponentRegressionThreshold: map[Variant]int{
+		columnThresholds: map[Variant]int{
 			{
 				Name:  "Platform",
 				Value: "metal",

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -61,25 +62,27 @@ type JiraAutomator struct {
 	views        []crtype.View
 	releases     []v1.Release
 	sippyURL     string
-	// variantBasedComponentRegressionThreshold defines a threshold for the number of red cells in a column.
+	// columnThresholds defines a threshold for the number of red cells in a column.
 	// When the number of red cells of a column is over this threshold, a jira card will be created for the
 	// Variant (column) based jira component. No other jira cards will be created per component row.
-	variantBasedComponentRegressionThreshold map[Variant]int
-	componentWhiteList                       sets.String
-	jiraAccount                              string
+	columnThresholds  map[Variant]int
+	includeComponents sets.String
+	jiraAccount       string
+	dryRun            bool
 }
 
 func NewJiraAutomator(jiraClient jirautil.Client, bqClient *bqclient.Client, cacheOptions cache.RequestOptions, views []crtype.View,
-	releases []v1.Release, sippyURL, jiraAccount string, componentWhiteList sets.String, variantBasedComponentRegressionThreshold map[Variant]int) (JiraAutomator, error) {
+	releases []v1.Release, sippyURL, jiraAccount string, includeComponents sets.String, columnThresholds map[Variant]int, dryRun bool) (JiraAutomator, error) {
 	j := JiraAutomator{
-		jiraClient:                               jiraClient,
-		bqClient:                                 bqClient,
-		cacheOptions:                             cacheOptions,
-		releases:                                 releases,
-		sippyURL:                                 sippyURL,
-		variantBasedComponentRegressionThreshold: variantBasedComponentRegressionThreshold,
-		componentWhiteList:                       componentWhiteList,
-		jiraAccount:                              jiraAccount,
+		jiraClient:        jiraClient,
+		bqClient:          bqClient,
+		cacheOptions:      cacheOptions,
+		releases:          releases,
+		sippyURL:          sippyURL,
+		columnThresholds:  columnThresholds,
+		includeComponents: includeComponents,
+		jiraAccount:       jiraAccount,
+		dryRun:            dryRun,
 	}
 	if bqClient == nil || bqClient.BQ == nil {
 		return j, fmt.Errorf("we don't have a bigquery client for jira integrator")
@@ -141,27 +144,6 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 	return report, nil
 }
 
-func getProbabilityString(status crtype.Status, fisherExact float64) string {
-	if status == crtype.SignificantRegression || status == crtype.ExtremeRegression {
-		return fmt.Sprintf("Probability of significant regression: %.2f%%\n\n", (1-fisherExact)*100)
-	} else if status == crtype.SignificantImprovement {
-		return fmt.Sprintf("Probability of significant improvement: %.2f%%\n\n", (1-fisherExact)*100)
-	}
-	return "There is no significant evidence of regression\n\n"
-}
-
-func getStatsString(prefix string, stats crtype.TestDetailsReleaseStats, from, end string) string {
-	return fmt.Sprintf(prefix+" Release: %s\n"+
-		"\tStart Time: %s\n"+
-		"\tEnd Time: %s\n"+
-		"\tSuccess Rate: %.2f%%\n"+
-		"\tSuccesses: %d\n"+
-		"\tFailures: %d\n"+
-		"\tFlakes: %d\n\n",
-		stats.Release, from, end, stats.SuccessRate*100, stats.SuccessCount, stats.FailureCount, stats.FlakeCount,
-	)
-}
-
 // getExistingIssuesForComponent gets existing issues for a component based on
 // (a) have Regression label defined by LabelJiraAutomator
 // (b) has the "Affects Version/s" set to the sample version,
@@ -218,23 +200,26 @@ func isReleaseBlockerApproved(existing *jira.Issue) bool {
 // a. adding a new comment containing a CR link with the most recently analyzed time window where the regression is still manifesting.
 // b. if pre-release, label the ticket as a Release Blocker if someone removed it
 func (j JiraAutomator) updateExistingJiraIssue(view crtype.View, existing *jira.Issue) error {
-	absUrl, _, err := j.getComponentReadinessURLsForView(view)
+	absURL, _, err := j.getComponentReadinessURLsForView(view)
 	if err != nil {
 		return err
 	}
-	comment := fmt.Sprintf(`This bug is still seen in component readiness. Here is [the current link|%s] for your convenience`, absUrl)
+	comment := fmt.Sprintf(`This bug is still seen in component readiness. Here is [the current link|%s] for your convenience`, absURL)
 
-	_, err = j.jiraClient.AddComment(existing.ID, &jira.Comment{Body: comment})
-	if err != nil {
-		return err
+	if j.dryRun {
+		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+		fmt.Fprintf(os.Stdout, "\nUpdating issue %s with comment\n%s", existing.ID, comment)
+		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+	} else {
+		_, err = j.jiraClient.AddComment(existing.ID, &jira.Comment{Body: comment})
+		if err != nil {
+			return err
+		}
 	}
 
 	// Set Release Blocker
 	if !isReleaseBlockerApproved(existing) {
-		_, err = j.updateReleaseBlocker(existing, view.SampleRelease.Release)
-		if err != nil {
-			return err
-		}
+		return j.updateReleaseBlocker(existing, view.SampleRelease.Release)
 	}
 
 	return nil
@@ -307,38 +292,31 @@ func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (strin
 // b  adding the Regression label defined by LabelJiraAutomator.
 // c. setting a description with links to CR
 // d. for pre-release, setting "Release Blocker" label to Approved
-func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, component string, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) (*jira.Issue, error) {
+func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, component string, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) error {
 	if len(tests) > 0 {
 		description := `Component Readiness has found a potential regression in the following tests:`
-		for i, test := range tests {
-			// Only show stats for the worst regression
-			if i == 0 {
-				description += fmt.Sprintf("\n h4. Most Regressed Test:\n{code}%s{code}\n", test.TestName)
-				description += getProbabilityString(test.ReportStatus, *test.FisherExact)
-				description += getStatsString("Sample (being evaluated)", test.SampleStats, view.SampleRelease.RelativeStart, view.SampleRelease.RelativeEnd)
-				description += getStatsString("Base (historical)", *test.BaseStats, view.BaseRelease.RelativeStart, view.BaseRelease.RelativeEnd)
-				if len(tests) > 1 {
-					description += fmt.Sprintf("\n h4. Other Regressed Tests:\n")
-					description += fmt.Sprintf("\nThe following tests are also regressed in the same component readiness report. They might not be related to the most regressed test above. We only create one issue per component and therefore group them here. Feel free to create new issues if they are unrelated.\n")
-				}
-			} else {
-				description += fmt.Sprintf("{code}%s{code}\n", test.TestName)
-				description += getProbabilityString(test.ReportStatus, *test.FisherExact)
-			}
+		for _, test := range tests {
+			description += fmt.Sprintf("{code}%s{code}\n", test.TestName)
+			description += strings.Join(test.Explanations, "\n")
 		}
 		if linkedIssue != nil {
-			description += fmt.Sprintf("\n h4. Potentially Related Issues:\n")
+			description += "\n h4. Potentially Related Issues:\n"
 			description += fmt.Sprintf("\n* This regression might be related to [%s|%s]. Feel free to link it if found related.\n", linkedIssue.Key, linkedIssue.Self)
 		}
 
-		absUrl, viewUrl, err := j.getComponentReadinessURLsForView(view)
+		absURL, viewURL, err := j.getComponentReadinessURLsForView(view)
 		if err != nil {
-			return nil, err
+			return err
 		}
-		description += fmt.Sprintf("\n h4. Useful Component Readiness Links:\n")
-		description += fmt.Sprintf("\nWe are proving the following two links for your convenience:\n")
-		description += fmt.Sprintf("\n- Click [here|%s] to access the component readiness page generated at the time this issue was created.\n", absUrl)
-		description += fmt.Sprintf("\n- Click [here|%s] to access the component readiness page that will be generated at the time when it is clicked. This is useful for developers to verify their fixes.\n", viewUrl)
+		description += "\n h4. Useful Component Readiness Links:\n"
+		description += "\nWe are proving the following two links for your convenience:\n"
+		description += fmt.Sprintf("\n- Click [here|%s] to access a snapshot of the component readiness page at the time this issue was generated.\n", absURL)
+		description += fmt.Sprintf("\n- Click [here|%s] to access the component readiness page with latest data. This is useful for developers to verify their fixes.\n", viewURL)
+
+		description += "\n h4. Workflow Requirement:\n"
+		description += "\n This is an automatically generated Jira card against the component based on stats generated from component readiness dashboard. Please follow the following requirements when dealing with this card:\n"
+		description += "\n * Please use this card as a placeholder for all the regressed tests for your component. A separate issue should be created for each regressed test and linked to this issue. Please only close this issue when all known regressed tests are believed fixed.\n"
+		description += "\n * Please do not remove 'Release Blocker' label. The bot will automatically add it back if any regressed tests continue showing for the component.\n"
 
 		summary := fmt.Sprintf("Component Readiness: %s test regressed", component)
 		issue := jira.Issue{
@@ -364,17 +342,119 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 				Labels: []string{jiratype.LabelJiraAutomator},
 			},
 		}
-		created, err := j.jiraClient.CreateIssue(&issue)
-		if err != nil {
-			return created, err
+		if j.dryRun {
+			issueStr, err := json.MarshalIndent(issue, "", "  ")
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+			fmt.Fprintf(os.Stdout, "Creating the following jira issue\n%s", issueStr)
+			fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+		} else {
+			created, err := j.jiraClient.CreateIssue(&issue)
+			if err != nil {
+				return err
+			}
+			// Set Release Blocker field. Jira does not allow setting those during creation. So do it in separate step.
+			return j.updateReleaseBlocker(created, view.SampleRelease.Release)
 		}
-		// Set Release Blocker field. Jira does not allow setting those during creation. So do it in separate step.
-		return j.updateReleaseBlocker(created, view.SampleRelease.Release)
 	}
-	return nil, nil
+	return nil
 }
 
-func (j JiraAutomator) updateReleaseBlocker(issue *jira.Issue, release string) (*jira.Issue, error) {
+func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crtype.View, component string, tests []crtype.ReportTestSummary) error {
+	switch issue.Fields.Status.Name {
+	case jiratype.StatusNew, jiratype.StatusInProgress, jiratype.StatusAssigned, jiratype.StatusModified:
+		// New/Assigned/In Progress/Modified
+		err := j.updateExistingJiraIssue(view, &issue)
+		if err != nil {
+			return err
+		}
+	case jiratype.StatusOnQA, jiratype.StatusVerified, jiratype.StatusClosed:
+		// QA/Verified/Closed
+		resolutionDate := time.Time(issue.Fields.Resolutiondate)
+		if view.SampleRelease.Start.After(resolutionDate) {
+			// Existing issue does not cover current regression
+			err := j.createNewJiraIssueForRegressions(view, component, tests, nil)
+			if err != nil {
+				return err
+			}
+		} else {
+			// Overlap between current analysis and jira card fix. Do two more analysis:
+			// a. Scope Check: Run with a sample start date of resolutionDate-2 weeks and end resolutionDate.
+			//    If current analysis contains new tests not covered by scope check, create new card.
+			// b. Fix Check: Run with a sample start date of resolutionDate and the original end date. Only
+			//    do this after a reasonable number of days has passed.
+			scopeView := view
+			scopeView.TestIDOption.Component = component
+			scopeView.SampleRelease.RelativeStart = resolutionDate.Add(-14 * time.Hour * 24).Format(time.RFC3339)
+			scopeView.SampleRelease.RelativeEnd = resolutionDate.Format(time.RFC3339)
+			scopeReport, err := j.getComponentReportForView(scopeView)
+			if err != nil {
+				return err
+			}
+
+			// Identify tests only appearing in current report, not scope report
+			scopeRegressedTests := map[crtype.RowIdentification]map[crtype.ColumnID]crtype.ReportTestSummary{}
+			for _, row := range scopeReport.Rows {
+				for _, col := range row.Columns {
+					for _, test := range col.RegressedTests {
+						if _, ok := scopeRegressedTests[test.RowIdentification]; !ok {
+							scopeRegressedTests[row.RowIdentification] = map[crtype.ColumnID]crtype.ReportTestSummary{}
+						}
+						columnKeyBytes, err := json.Marshal(test.ColumnIdentification)
+						if err != nil {
+							return err
+						}
+						scopeRegressedTests[test.RowIdentification][crtype.ColumnID(columnKeyBytes)] = test
+					}
+				}
+			}
+			newTests := []crtype.ReportTestSummary{}
+			for _, test := range tests {
+				columnKeyBytes, err := json.Marshal(test.ColumnIdentification)
+				if err != nil {
+					return err
+				}
+				_, ok := scopeRegressedTests[test.RowIdentification]
+				if !ok {
+					newTests = append(newTests, test)
+				} else if _, ok := scopeRegressedTests[test.RowIdentification][crtype.ColumnID(columnKeyBytes)]; !ok {
+					newTests = append(newTests, test)
+				}
+			}
+			if len(newTests) > 0 {
+				// Any tests not covered by scope check is considered new
+				err := j.createNewJiraIssueForRegressions(view, component, newTests, &issue)
+				if err != nil {
+					return err
+				}
+			} else if resolutionDate.Add(fixCheckWaitPeriod).Before(view.SampleRelease.End) {
+				// This means scope report contains all tests from current report, verify fix
+				fixView := view
+				fixView.TestIDOption.Component = component
+				fixView.SampleRelease.RelativeStart = resolutionDate.Format(time.RFC3339)
+				fixReport, err := j.getComponentReportForView(fixView)
+				if err != nil {
+					return err
+				}
+				regressedTests, err := j.groupRegressedTestsByComponents(fixReport)
+				if err != nil {
+					return err
+				}
+				if tests, ok := regressedTests[component]; ok {
+					err := j.createNewJiraIssueForRegressions(fixView, component, tests, nil)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (j JiraAutomator) updateReleaseBlocker(issue *jira.Issue, release string) error {
 	if j.isPreRelease(release) {
 		unknowns := tcontainer.NewMarshalMap()
 		unknowns[jiratype.CustomFieldReleaseBlockerName] = map[string]string{"value": jiratype.CustomFieldReleaseBlockerValueApproved}
@@ -384,9 +464,16 @@ func (j JiraAutomator) updateReleaseBlocker(issue *jira.Issue, release string) (
 				Unknowns: unknowns,
 			},
 		}
-		return j.jiraClient.UpdateIssue(&issue)
+		if j.dryRun {
+			fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+			fmt.Fprintf(os.Stdout, "Updating Release Blocker for %s", issue.ID)
+			fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+		} else {
+			_, err := j.jiraClient.UpdateIssue(&issue)
+			return err
+		}
 	}
-	return issue, nil
+	return nil
 }
 
 // groupRegressedTestsByComponents groups the regressed tests in the report by components.
@@ -400,20 +487,21 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 	// First we count the number of red cells for each column
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
-			if len(col.RegressedTests) > 0 {
-				columnKeyBytes, err := json.Marshal(col.ColumnIdentification)
-				if err != nil {
-					return componentRegressedTests, err
-				}
-				columnID := string(columnKeyBytes)
-				columnToRegressionCount[columnID]++
+			if len(col.RegressedTests) == 0 {
+				continue
+			}
+			columnKeyBytes, err := json.Marshal(col.ColumnIdentification)
+			if err != nil {
+				return componentRegressedTests, err
+			}
+			columnID := string(columnKeyBytes)
+			columnToRegressionCount[columnID]++
 
-				// find all the defined variantBasedComponentRegressionThreshold this column is relevant to
-				for k, n := range col.Variants {
-					v := Variant{Name: k, Value: n}
-					if threshold, ok := j.variantBasedComponentRegressionThreshold[v]; ok {
-						columnToVariantsToThreshold[columnID] = map[Variant]int{v: threshold}
-					}
+			// find all the defined columnThresholds this column is relevant to
+			for k, n := range col.Variants {
+				v := Variant{Name: k, Value: n}
+				if threshold, ok := j.columnThresholds[v]; ok {
+					columnToVariantsToThreshold[columnID] = map[Variant]int{v: threshold}
 				}
 			}
 		}
@@ -450,28 +538,25 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 	return componentRegressedTests, nil
 }
 
-func (j JiraAutomator) integrateJiraForView(view crtype.View) error {
+func (j JiraAutomator) automateJirasForView(view crtype.View) error {
 
 	logger := log.WithField("view", view.Name)
-	logger.Info("jira integration for view")
+	logger.Info("automate jiras for view")
 
 	report, err := j.getComponentReportForView(view)
 	if err != nil {
 		logger.WithError(err).Error("error getting report for view")
+		return err
 	}
 
 	componentRegressedTests, err := j.groupRegressedTestsByComponents(report)
 	if err != nil {
 		logger.WithError(err).Error("error getting regressed tests from report")
+		return err
 	}
 	for component, tests := range componentRegressedTests {
-		if component != "Test Framework" {
-			continue
-		}
 		// fetch jira bugs
-		// resetting this to our component to test
-		component = "Test Framework"
-		if j.componentWhiteList.Len() > 0 && !j.componentWhiteList.Has(component) {
+		if j.includeComponents.Len() > 0 && !j.includeComponents.Has(component) {
 			continue
 		}
 		issues, err := j.getExistingIssuesForComponent(view, component)
@@ -481,117 +566,29 @@ func (j JiraAutomator) integrateJiraForView(view crtype.View) error {
 
 		// No existing issues, create new one
 		if len(issues) == 0 {
-			_, err := j.createNewJiraIssueForRegressions(view, component, tests, nil)
+			err := j.createNewJiraIssueForRegressions(view, component, tests, nil)
 			if err != nil {
 				log.WithError(err).Error("error creating jira issue")
 			}
 		} else {
 			selected := issues[0]
-			switch selected.Fields.Status.Name {
-			case jiratype.StatusNew, jiratype.StatusInProgress, jiratype.StatusAssigned, jiratype.StatusModified:
-				// New/Assigned/In Progress/Modified
-				err := j.updateExistingJiraIssue(view, &selected)
-				if err != nil {
-					log.WithError(err).Error("error updating jira issue with comment")
-				}
-			case jiratype.StatusOnQA, jiratype.StatusVerified, jiratype.StatusClosed:
-				// QA/Verified/Closed
-				resolutionDate := time.Time(selected.Fields.Resolutiondate)
-				if view.SampleRelease.Start.After(resolutionDate) {
-					// Existing issue does not cover current regression
-					_, err := j.createNewJiraIssueForRegressions(view, component, tests, nil)
-					if err != nil {
-						log.WithError(err).Error("error creating jira issue")
-					}
-				} else {
-					// Overlap between current analysis and jira card fix. Do two more analysis:
-					// a. Scope Check: Run with a sample start date of resolutionDate-2 weeks and end resolutionDate.
-					//    If current analysis contains new tests not covered by scope check, create new card.
-					// b. Fix Check: Run with a sample start date of resolutionDate and the original end date. Only
-					//    do this after a reasonable number of days has passed.
-					scopeView := view
-					scopeView.TestIDOption.Component = component
-					scopeView.SampleRelease.RelativeStart = resolutionDate.Add(-14 * time.Hour * 24).Format(time.RFC3339)
-					scopeView.SampleRelease.RelativeEnd = resolutionDate.Format(time.RFC3339)
-					scopeReport, err := j.getComponentReportForView(scopeView)
-					if err != nil {
-						logger.WithError(err).Error("error getting report for scope check")
-					}
-
-					// Identify tests only appearing in current report, not scope report
-					scopeRegressedTests := map[crtype.RowIdentification]map[crtype.ColumnID]crtype.ReportTestSummary{}
-					for _, row := range scopeReport.Rows {
-						for _, col := range row.Columns {
-							for _, test := range col.RegressedTests {
-								if _, ok := scopeRegressedTests[test.RowIdentification]; !ok {
-									scopeRegressedTests[row.RowIdentification] = map[crtype.ColumnID]crtype.ReportTestSummary{}
-								}
-								columnKeyBytes, err := json.Marshal(test.ColumnIdentification)
-								if err != nil {
-									return err
-								}
-								scopeRegressedTests[test.RowIdentification][crtype.ColumnID(columnKeyBytes)] = test
-							}
-						}
-					}
-					newTests := []crtype.ReportTestSummary{}
-					for _, test := range tests {
-						columnKeyBytes, err := json.Marshal(test.ColumnIdentification)
-						if err != nil {
-							return err
-						}
-						_, ok := scopeRegressedTests[test.RowIdentification]
-						if !ok {
-							newTests = append(newTests, test)
-						} else if _, ok := scopeRegressedTests[test.RowIdentification][crtype.ColumnID(columnKeyBytes)]; !ok {
-							newTests = append(newTests, test)
-						}
-					}
-					if len(newTests) > 0 {
-						// Any tests not covered by scope check is considered new
-						_, err := j.createNewJiraIssueForRegressions(view, component, newTests, &selected)
-						if err != nil {
-							log.WithError(err).Error("error creating jira issue")
-						}
-					} else {
-						// This means scope report contains all tests from current report, verify fix
-						if resolutionDate.Add(fixCheckWaitPeriod).Before(view.SampleRelease.End) {
-							fixView := view
-							fixView.TestIDOption.Component = component
-							fixView.SampleRelease.RelativeStart = resolutionDate.Format(time.RFC3339)
-							fixReport, err := j.getComponentReportForView(fixView)
-							if err != nil {
-								logger.WithError(err).Error("error getting report for fix check")
-							}
-							regressedTests, err := j.groupRegressedTestsByComponents(fixReport)
-							if err != nil {
-								logger.WithError(err).Error("error getting regressed tests from report")
-							}
-							if tests, ok := regressedTests[component]; ok {
-								_, err := j.createNewJiraIssueForRegressions(fixView, component, tests, nil)
-								if err != nil {
-									log.WithError(err).Error("error creating jira issue")
-								}
-							}
-						}
-					}
-				}
+			err := j.updateJiraIssueForRegressions(selected, view, component, tests)
+			if err != nil {
+				log.WithError(err).Error("error updating jira issue")
 			}
 		}
-		// test code. Only process one component for testing purposes
-		break
 	}
 	return nil
 }
 
 func (j JiraAutomator) Run() error {
-	log.Infof("Start integrating component readiness regressions with Jira")
+	log.Infof("Start automating jiras for component readiness regressions")
 	for _, view := range j.views {
-		err := j.integrateJiraForView(view)
+		err := j.automateJirasForView(view)
 		if err != nil {
 			return err
 		}
 	}
-	log.Infof("Done integrating component readiness regressions with Jira")
+	log.Infof("Done automating jiras for component readiness regressions")
 	return nil
 }

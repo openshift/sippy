@@ -24,17 +24,18 @@ import (
 )
 
 type AutomateJiraFlags struct {
-	BigQueryFlags                                *flags.BigQueryFlags
-	GoogleCloudFlags                             *flags.GoogleCloudFlags
-	CacheFlags                                   *flags.CacheFlags
-	ComponentReadinessFlags                      *flags.ComponentReadinessFlags
-	JiraOptions                                  prowflagutil.JiraOptions
-	SippyURL                                     string
-	ComponentWhiteListStr                        string
-	ComponentWhiteList                           sets.String
-	VariantBasedComponentRegressionThresholdStrs []string
-	VariantBasedComponentRegressionThresholds    map[jiraautomator.Variant]int
-	JiraAccount                                  string
+	BigQueryFlags           *flags.BigQueryFlags
+	GoogleCloudFlags        *flags.GoogleCloudFlags
+	CacheFlags              *flags.CacheFlags
+	ComponentReadinessFlags *flags.ComponentReadinessFlags
+	JiraOptions             prowflagutil.JiraOptions
+	SippyURL                string
+	IncludeComponentsStr    string
+	IncludeComponents       sets.String
+	ColumnThresholdStrs     []string
+	ColumnThresholds        map[jiraautomator.Variant]int
+	JiraAccount             string
+	DryRun                  bool
 }
 
 func NewAutomateJiraFlags() *AutomateJiraFlags {
@@ -43,7 +44,7 @@ func NewAutomateJiraFlags() *AutomateJiraFlags {
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
-		VariantBasedComponentRegressionThresholds: map[jiraautomator.Variant]int{},
+		ColumnThresholds:        map[jiraautomator.Variant]int{},
 	}
 }
 
@@ -55,9 +56,10 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	f.JiraOptions.AddFlags(flag.CommandLine)
 	fs.AddGoFlagSet(flag.CommandLine)
 	fs.StringVar(&f.SippyURL, "sippy-url", f.SippyURL, "The Sippy URL prefix to be used to generate sharable Sippy links")
-	fs.StringVar(&f.ComponentWhiteListStr, "component-white-list", f.ComponentWhiteListStr, "The whitelist of comma seperated jira components to file issues against")
-	fs.StringArrayVar(&f.VariantBasedComponentRegressionThresholdStrs, "variant-based-component-regression-threshold", f.VariantBasedComponentRegressionThresholdStrs, "A list of variants which we will check for a column of red cells in component readiness report. If the number of red cells of a relevant column is over the threshold, we will a create jira card for the component corresponding to the specified variant (e.g. Bare Metal Hardware Provisioning for metal platform. The format of string is [variant]:[value]:[threshold] (e.g. Platform:metal:3)")
+	fs.StringVar(&f.IncludeComponentsStr, "include-components", f.IncludeComponentsStr, "The list of comma separated jira components to file issues against. If this is not defined, all components will be candidates.")
+	fs.StringArrayVar(&f.ColumnThresholdStrs, "column-threshold", f.ColumnThresholdStrs, "A threshold of red cell counts over which a jira issue will be created against a component corresponding to an interesting variant of a column (e.g. Bare Metal Hardware Provisioning for metal platform). The format of the threshold string is [variant]:[value]:[threshold] (e.g. Platform:metal:3).")
 	fs.StringVar(&f.JiraAccount, "jira-account", f.JiraAccount, "The jira account used to automate jira")
+	fs.BoolVar(&f.DryRun, "dry-run", f.DryRun, "Print the tasks of automating jiras without real interaction with jira.")
 }
 
 func (f *AutomateJiraFlags) Validate(allVariants crtype.JobVariants) error {
@@ -67,8 +69,8 @@ func (f *AutomateJiraFlags) Validate(allVariants crtype.JobVariants) error {
 	if len(f.JiraAccount) == 0 {
 		return fmt.Errorf("--jira-account is required")
 	}
-	f.ComponentWhiteList = sets.NewString(strings.Split(f.ComponentWhiteListStr, ",")...)
-	for _, variantThreshold := range f.VariantBasedComponentRegressionThresholdStrs {
+	f.IncludeComponents = sets.NewString(strings.Split(f.IncludeComponentsStr, ",")...)
+	for _, variantThreshold := range f.ColumnThresholdStrs {
 		vt := strings.Split(variantThreshold, ":")
 		if len(vt) != 3 {
 			return fmt.Errorf("--variant-based-component-regression-threshold %s is in wrong format", variantThreshold)
@@ -90,7 +92,7 @@ func (f *AutomateJiraFlags) Validate(allVariants crtype.JobVariants) error {
 		if err != nil {
 			return fmt.Errorf("--variant-based-component-regression-threshold %s has wrong threshold %s", variantThreshold, vt[2])
 		}
-		f.VariantBasedComponentRegressionThresholds[jiraautomator.Variant{Name: vt[0], Value: vt[1]}] = t
+		f.ColumnThresholds[jiraautomator.Variant{Name: vt[0], Value: vt[1]}] = t
 	}
 	return f.JiraOptions.Validate(true)
 }
@@ -143,7 +145,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 				return errors.WithMessage(err, "error validating options")
 			}
 
-			j, err := jiraautomator.NewJiraAutomator(jiraClient, bigQueryClient, cacheOpts, views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount, f.ComponentWhiteList, f.VariantBasedComponentRegressionThresholds)
+			j, err := jiraautomator.NewJiraAutomator(jiraClient, bigQueryClient, cacheOpts, views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount, f.IncludeComponents, f.ColumnThresholds, f.DryRun)
 			if err != nil {
 				panic(err)
 			}
