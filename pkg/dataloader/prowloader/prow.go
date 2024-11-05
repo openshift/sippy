@@ -268,7 +268,7 @@ type tempBQTestAnalysisByJobForDate struct {
 // bulk load.
 func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time) (string, string, bool) {
 	if true {
-		return "2024-10-15", "2024-10-23", true
+		return "2024-10-10", "2024-10-14", true
 	}
 	yesterday8HrsAgo := now.UTC().Add(-32 * time.Hour)
 	toStr := yesterday8HrsAgo.Format("2006-01-02")
