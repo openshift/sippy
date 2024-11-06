@@ -1859,7 +1859,7 @@ func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleF
 	// Require 7 runs in the sample (typically 1 week) for us to consider a pass rate requirement for a new test:
 	sufficientRuns := (sampleSuccess + sampleFailure + sampleFlake) >= 7
 
-	if sufficientRuns && successRate*100 < requiredSuccessRate {
+	if sufficientRuns && successRate*100 < requiredSuccessRate && sampleFailure >= c.MinimumFailure {
 		rStatus := crtype.SignificantRegression
 		if successRate*100 < severeRegressionSuccessRate {
 			rStatus = crtype.ExtremeRegression

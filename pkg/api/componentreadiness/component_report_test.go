@@ -1614,7 +1614,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			expectedStatus:              crtype.NotSignificant,
 		},
 		{
-			name:                        "pass rate mode significant regression ignores minimum failures",
+			name:                        "pass rate mode significant regression under minimum failures",
 			sampleTotal:                 20,
 			sampleSuccess:               18,
 			sampleFlake:                 0,
@@ -1624,6 +1624,19 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
 			minFail:                     5,
+			expectedStatus:              crtype.NotSignificant,
+		},
+		{
+			name:                        "pass rate mode significant regression over minimum failures",
+			sampleTotal:                 20,
+			sampleSuccess:               18,
+			sampleFlake:                 0,
+			baseTotal:                   20,
+			baseSuccess:                 18,
+			baseFlake:                   0,
+			numberOfIgnoredSamples:      0,
+			requiredPassRateForAllTests: 95,
+			minFail:                     1,
 			expectedStatus:              crtype.SignificantRegression,
 		},
 		{
