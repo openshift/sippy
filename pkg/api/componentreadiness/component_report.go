@@ -36,6 +36,8 @@ const (
 	// an open regression.
 	openRegressionConfidenceAdjustment = 5
 
+	explanationNoRegression = "No significant regressions found"
+
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
 	//
@@ -1751,7 +1753,8 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 				FlakeCount:   sampleFlake,
 			},
 		},
-		BaseStats: baseStats,
+		BaseStats:    baseStats,
+		Explanations: []string{explanationNoRegression},
 	}
 	status := crtype.MissingBasis
 	// if the unadjusted sample was 0 then nothing to do
@@ -1794,6 +1797,7 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 				Comparison:   crtype.FisherExact,
 				ReportStatus: status,
 				FisherExact:  thrift.Float64Ptr(0.0),
+				Explanations: []string{explanationNoRegression},
 			}
 		}
 
@@ -1881,7 +1885,10 @@ func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleF
 			},
 		}
 	}
-	return crtype.ReportTestStats{ReportStatus: crtype.NotSignificant}
+	return crtype.ReportTestStats{
+		ReportStatus: crtype.NotSignificant,
+		Explanations: []string{explanationNoRegression},
+	}
 }
 
 func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleTotal, sampleSuccess, sampleFlake, baseTotal, baseSuccess, baseFlake int) (bool, float64) {
