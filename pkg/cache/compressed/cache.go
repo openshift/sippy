@@ -5,6 +5,8 @@ import (
 	"compress/gzip"
 	"context"
 
+	log "github.com/sirupsen/logrus"
+
 	// simple checksum usage for validation
 	"crypto/md5" // nolint:gosec
 	"fmt"
@@ -47,12 +49,24 @@ func (c Cache) Get(ctx context.Context, key string) ([]byte, error) {
 }
 
 func (c Cache) Set(ctx context.Context, key string, content []byte, duration time.Duration) error {
+	startLen := len(content)
+	if startLen <= 0 {
+		log.Warningf("Key: %s data size is 0", key)
+		return nil
+	}
+
+	startSz := float64(startLen) / float64(1024)
+
 	// append the checksum
 	data, checksum, err := compress(content)
 	if err != nil {
 		return err
 	}
 	data = append(data, checksum[:]...)
+	afterSz := float64(len(data)) / float64(1024)
+	ratio := 100.0 - (afterSz / startSz)
+
+	log.Infof("Compressed cache start size: %.2fk, after compression: %.2fk.  Ratio: %.2f%%", startSz, afterSz, ratio)
 
 	// add our own prefix
 	return c.Cache.Set(ctx, cachePrefix+key, data, duration)

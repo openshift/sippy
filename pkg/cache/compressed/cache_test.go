@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 type PseudoCache struct {
@@ -23,52 +25,29 @@ func TestPseudoCache(t *testing.T) {
 	data := "It is useful mainly in compressed network protocols, to ensure that a remote reader has enough data to reconstruct a packet. Flush does not return until the data has been written. If the underlying writer returns an error, Flush returns that error. "
 
 	cache, err := NewCompressedCache(&PseudoCache{cache: make(map[string][]byte)})
-
-	if err != nil {
-		t.Fatalf("Failed to create compression cache")
-	}
+	assert.Nil(t, err, "Failed to create compression cache: %v", err)
 
 	err = cache.Set(context.TODO(), "testKey", []byte(data), time.Hour)
-	if err != nil {
-		t.Fatalf("Failed to set cache data")
-	}
+	assert.Nil(t, err, "Failed to set cache data: %v", err)
 
 	cacheData, err := cache.Get(context.TODO(), "testKey")
-	if err != nil {
-		t.Fatalf("Failed to get cache data")
-	}
+	assert.Nil(t, err, "Failed to get cache data: %v", err)
 
 	validation := string(cacheData)
-	if data != validation {
-		t.Fatalf("Invalid uncompressed data returned: %s", validation)
-	}
-
+	assert.Equal(t, data, validation)
 }
 
 func TestCompression(t *testing.T) {
 	data := "It is useful mainly in compressed network protocols, to ensure that a remote reader has enough data to reconstruct a packet. Flush does not return until the data has been written. If the underlying writer returns an error, Flush returns that error. "
 
 	compressed, checksum, err := compress([]byte(data))
-	if err != nil {
-		t.Fatalf("Compression failed: %v", err)
-	}
-
-	if compressed == nil {
-		t.Fatal("Invalid compressed content")
-	}
+	assert.Nil(t, err, "Compression failed: %v", err)
+	assert.NotNil(t, compressed, "Invalid compressed content")
 
 	uncompressed, err := uncompress(compressed, checksum)
-
-	if err != nil {
-		t.Fatalf("Compression failed: %v", err)
-	}
-
-	if uncompressed == nil {
-		t.Fatal("Invalid compressed content")
-	}
+	assert.Nil(t, err, "Uncompression failed: %v", err)
+	assert.NotNil(t, uncompressed, "Invalid uncompressed content")
 
 	validation := string(uncompressed)
-	if data != validation {
-		t.Fatalf("Invalid uncompressed data returned: %s", validation)
-	}
+	assert.Equal(t, data, validation)
 }

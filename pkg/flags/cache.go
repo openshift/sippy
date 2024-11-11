@@ -16,7 +16,7 @@ import (
 // CacheFlags holds caching configuration information for Sippy.
 type CacheFlags struct {
 	RedisURL                   string
-	PersistentCacheDuration    time.Duration
+	PersistentCacheDurationMax time.Duration
 	EnablePersistentCacheWrite bool
 	EnablePersistentCaching    bool
 }
@@ -36,10 +36,10 @@ func (f *CacheFlags) BindFlags(fs *pflag.FlagSet) {
 		false,
 		"Enable pesisted cache storage")
 
-	fs.DurationVar(&f.PersistentCacheDuration,
-		"persistent-cache-duration",
+	fs.DurationVar(&f.PersistentCacheDurationMax,
+		"persistent-cache-duration-max",
 		time.Hour*24,
-		"Duration before a cache item is considered expired")
+		"Maximum duration before a cache item is considered expired")
 
 	// if we are running main sippy in RO we can't persist to bigquery
 	// we can have regression tracking priming the cache
@@ -61,7 +61,7 @@ func (f *CacheFlags) GetCacheClient() (cache.Cache, error) {
 
 func (f *CacheFlags) GetPersistentCacheClient(bqclient *bigquery.Client) (cache.Cache, error) {
 	if f.EnablePersistentCaching {
-		return bigquerycache.NewBigQueryCache(bqclient, f.PersistentCacheDuration, !f.EnablePersistentCacheWrite)
+		return bigquerycache.NewBigQueryCache(bqclient, f.PersistentCacheDurationMax, !f.EnablePersistentCacheWrite)
 	}
 
 	return nil, nil

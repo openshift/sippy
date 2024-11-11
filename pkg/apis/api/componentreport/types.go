@@ -69,6 +69,10 @@ type RequestVariantOptions struct {
 }
 
 // RequestOptions is a struct packaging all the options for a CR request.
+// BaseOverrideRelease is the counterpart to RequestAdvancedOptions.IncludeMultiReleaseAnalysis
+// When multi release analysis is enabled we 'fallback' to the release that has the highest
+// threshold for indicating a regression.  If a release prior to the selected BasRelease has a
+// higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
 type RequestOptions struct {
 	BaseRelease         RequestReleaseOptions
 	BaseOverrideRelease RequestReleaseOptions

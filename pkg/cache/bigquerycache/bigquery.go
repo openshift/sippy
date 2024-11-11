@@ -23,6 +23,20 @@ const (
 	chunkSize       = 7000000 // ~7MB to stay under the max row limit
 )
 
+// Cache implementation that supports storing data to a bigquery table
+// Introduced to handle large data structures that are costly in time and query costs
+// as well as considered largely static allowing for longer storage between queries
+//
+// Additionally the concept of the cache being read only supports separate processes
+// writing cached data and reading.  In a case where one process will write the cache data
+// it should have a shorter expiration duration in the Cache initialization via input parameter.
+// This duration is separate from the Duration passed in the Set call
+// and can be used to cause new entries to be written to the backend table before they are considered expired.
+// If a cache item has a 7 day duration passed in on the cache Set call
+// and the read only cache process is configured with a maximum 10 day duration for all cache items
+// the process that writes to the cache could be configured with a 1 day maximum duration that would cause
+// it to ignore any entries older than 24 hours and perform a new query and update the cache once a day.
+// Providing regular cache updates to the read only process and allowing for outages as well.
 type Cache struct {
 	client     *sippybq.Client
 	readOnly   bool
@@ -35,8 +49,7 @@ func NewBigQueryCache(client *sippybq.Client, expiration time.Duration, readOnly
 		readOnly:   readOnly,
 		expiration: expiration,
 	}
-
-	return &compressed.Cache{Cache: c}, nil
+	return compressed.NewCompressedCache(c)
 }
 
 type CacheRecord struct {
