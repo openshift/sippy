@@ -413,11 +413,15 @@ Flakes: ${stats.flake_count}`
           >
             <BugButton
               testName={testName}
+              component={component}
+              capability={capability}
               jiraComponentID={data.jira_component_id}
               labels={['component-regression']}
-              context={`Component Readiness has found a potential regression in the following test:
+              context={`
+(_Feel free to update this bug's summary to be more specific._)
+Component Readiness has found a potential regression in the following test:
 
-{code}${testName}{code}
+{code:none}${testName}{code}
 
 ${data.explanations.join('\n')}
 ${printStatsText(
@@ -433,7 +437,7 @@ ${printStatsText(
   baseEndTime
 )}
 
-View the test details report at ${document.location.href}
+View the [test details report|${document.location.href}] for additional context.
             `}
             />
             <Button

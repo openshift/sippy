@@ -14,25 +14,27 @@ export default function BugButton(props) {
   const classes = useStyles()
   const [open, setOpen] = useState(false)
 
-  const text = `The following test is failing:
+  const text = `
+The following test is failing more than expected:
   
-  ${props.testName}
+{code:none}${props.testName}{code}
   
-Additional context here:
-  
-  ${document.location.href}`
+See the [sippy test details|${document.location.href}] for additional context.
+  `
+
+  const summary = `Component Readiness: [${props.component}] [${props.capability}] test regressed`
 
   const handleClick = () => {
-    let message = text
-    if (props.context) {
-      message = props.context
-    }
+    let message = props.context || text
     let url = `https://issues.redhat.com/secure/CreateIssueDetails!init.jspa?pid=12332330&priority=10200&issuetype=1&description=${safeEncodeURIComponent(
       message
     )}`
 
     if (props.jiraComponentID) {
       url += `&components=${props.jiraComponentID}`
+    }
+    if (props.component) {
+      url += `&summary=${safeEncodeURIComponent(summary)}`
     }
 
     if (Array.isArray(props.labels) && props.labels.length > 0) {
@@ -58,6 +60,8 @@ Additional context here:
 
 BugButton.propTypes = {
   jiraComponentID: PropTypes.string,
+  component: PropTypes.string,
+  capability: PropTypes.string,
   context: PropTypes.string,
   labels: PropTypes.array,
   testName: PropTypes.string.isRequired,
