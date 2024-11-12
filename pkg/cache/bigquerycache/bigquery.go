@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+
 	"cloud.google.com/go/bigquery"
 	uuid2 "github.com/google/uuid"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -18,9 +21,42 @@ import (
 // Maximum row size 	10 MB 	Exceeding this value causes invalid errors.
 // HTTP request size limit 	10 MB Exceeding this value causes invalid errors.
 const (
-	cachedTable     = "cached_data"
-	partitionColumn = "modified_time"
-	chunkSize       = 7000000 // ~7MB to stay under the max row limit
+	cachedTable                = "cached_data"
+	partitionColumn            = "modified_time"
+	chunkSize                  = 7000000 // ~7MB to stay under the max row limit
+	persistentCacheWarmMiss    = "sippy_persistent_warm_cache_miss"
+	persistentCacheBackendMiss = "sippy_persistent_backend_cache_miss"
+	persistentCacheGet         = "sippy_persistent_cache_get"
+	persistentCacheBackendGet  = "sippy_persistent_backend_cache_get"
+	persistentCacheReadOnlySet = "sippy_persistent_cache_read_only_set"
+	persistentCacheBackendSet  = "sippy_persistent_cache_backend_set"
+)
+
+var (
+	persistentCacheWarmMissMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: persistentCacheWarmMiss,
+		Help: "Number of persistent cache gets that were not in the warm cache.",
+	}, []string{})
+	persistentCacheBackendMissMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: persistentCacheBackendMiss,
+		Help: "Number of persistent cache gets that were not in the backend cache.",
+	}, []string{})
+	persistentCacheGetMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: persistentCacheGet,
+		Help: "Number of persistent cache get requests.",
+	}, []string{})
+	persistentCacheBackendGetMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: persistentCacheBackendGet,
+		Help: "Number of persistent cache get that query the backend cache.",
+	}, []string{})
+	persistentCacheReadOnlySetMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: persistentCacheReadOnlySet,
+		Help: "Number of persistent cache set calls for a read only client.",
+	}, []string{})
+	persistentCacheBackendSetMetric = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: persistentCacheBackendSet,
+		Help: "Number of persistent cache backend set calls.",
+	}, []string{})
 )
 
 // Cache implementation that supports storing data to a bigquery table
@@ -71,6 +107,8 @@ type CacheRecord struct {
 
 func (c Cache) Get(ctx context.Context, key string, duration time.Duration) ([]byte, error) {
 
+	persistentCacheGetMetric.WithLabelValues().Inc()
+
 	// if we have it in our warm cache use it
 	if c.client.Cache != nil {
 		data, err := c.client.Cache.Get(ctx, key, duration)
@@ -79,12 +117,17 @@ func (c Cache) Get(ctx context.Context, key string, duration time.Duration) ([]b
 		} else if data != nil {
 			return data, nil
 		}
+
+		// we have a cache but didn't return so inc the miss
+		persistentCacheWarmMissMetric.WithLabelValues().Inc()
 	}
 
 	// don't look in big query unless it meets our minExpiration threshold
 	if duration < c.minExpiration {
 		return nil, nil
 	}
+
+	persistentCacheBackendGetMetric.WithLabelValues().Inc()
 
 	before := time.Now()
 	defer func(key string, before time.Time) {
@@ -140,11 +183,15 @@ func (c Cache) Get(ctx context.Context, key string, duration time.Duration) ([]b
 
 	// if we have a warm cache, and we had a cache miss we should update it now
 	// we don't have the exact duration so we diff the expiration value and now
-	if data != nil && c.client.Cache != nil {
-		err = c.client.Cache.Set(ctx, key, data, time.Until(metadataRecord.Expiration))
-		if err != nil {
-			logrus.WithError(err).Warn("Error updating warm cache during get")
+	if data != nil {
+		if c.client.Cache != nil {
+			err = c.client.Cache.Set(ctx, key, data, time.Until(metadataRecord.Expiration))
+			if err != nil {
+				logrus.WithError(err).Warn("Error updating warm cache during get")
+			}
 		}
+	} else {
+		persistentCacheBackendMissMetric.WithLabelValues().Inc()
 	}
 
 	return data, nil
@@ -171,9 +218,12 @@ func (c Cache) Set(ctx context.Context, key string, content []byte, duration tim
 		// valuable to see how often this gets called
 		// hope is that it wouldn't get called at all
 		// if our process for updating the cache is running properly
+		persistentCacheReadOnlySetMetric.WithLabelValues().Inc()
 		logrus.Debugf("Set called in readonly mode for: %s", key)
 		return nil
 	}
+
+	persistentCacheBackendSetMetric.WithLabelValues().Inc()
 	before := time.Now()
 	defer func(key string, before time.Time) {
 		logrus.Infof("BigQuery Cache Set completed in %s for %s", time.Since(before), key)
