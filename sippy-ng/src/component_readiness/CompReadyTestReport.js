@@ -330,13 +330,13 @@ Flakes: ${stats.flake_count}`
             }}
           >
             {data.base_stats ? (
-            <BugButton
-              testName={testName}
-              component={component}
-              capability={capability}
-              jiraComponentID={data.jira_component_id}
-              labels={['component-regression']}
-              context={`
+              <BugButton
+                testName={testName}
+                component={component}
+                capability={capability}
+                jiraComponentID={data.jira_component_id}
+                labels={['component-regression']}
+                context={`
 (_Feel free to update this bug's summary to be more specific._)
 Component Readiness has found a potential regression in the following test:
 
@@ -360,13 +360,13 @@ View the [test details report|${document.location.href}] for additional context.
             `}
               />
             ) : (
-                <BugButton
-                    testName={testName}
-                    component={component}
-                    capability={capability}
-                    jiraComponentID={data.jira_component_id}
-                    labels={['component-regression']}
-                    context={`
+              <BugButton
+                testName={testName}
+                component={component}
+                capability={capability}
+                jiraComponentID={data.jira_component_id}
+                labels={['component-regression']}
+                context={`
 (_Feel free to update this bug's summary to be more specific._)
 Component Readiness has found a potential regression in the following test:
 

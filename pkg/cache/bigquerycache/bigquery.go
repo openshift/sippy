@@ -219,7 +219,7 @@ func (c Cache) Set(ctx context.Context, key string, content []byte, duration tim
 		// hope is that it wouldn't get called at all
 		// if our process for updating the cache is running properly
 		persistentCacheReadOnlySetMetric.WithLabelValues().Inc()
-		logrus.Debugf("Set called in readonly mode for: %s", key)
+		logrus.Warnf("Set called in readonly mode for: %s", key)
 		return nil
 	}
 
