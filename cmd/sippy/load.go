@@ -286,7 +286,7 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 	var githubClient *github.Client
 	for _, l := range f.Loaders {
 		if l == "github" {
-			githubClient = github.New(ctx)
+			githubClient = github.New(ctx, github.OpenshiftOrg)
 			break
 		}
 	}
