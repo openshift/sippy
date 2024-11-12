@@ -99,13 +99,8 @@ func NewServeCommand() *cobra.Command {
 					return errors.WithMessage(err, "couldn't get bigquery client")
 				}
 
-				if bigQueryClient != nil {
-					persistentCacheClient, err := f.CacheFlags.GetPersistentCacheClient(bigQueryClient)
-					if err != nil {
-						log.WithError(err).Warn("couldn't get persistent cache client")
-					} else {
-						bigQueryClient.PersistentCache = persistentCacheClient
-					}
+				if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
+					bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 				}
 
 				gcsClient, err = gcs.NewGCSClient(context.TODO(),

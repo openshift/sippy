@@ -29,9 +29,9 @@ func NewCompressedCache(c cache.Cache) (*Cache, error) {
 	}, nil
 }
 
-func (c Cache) Get(ctx context.Context, key string) ([]byte, error) {
+func (c Cache) Get(ctx context.Context, key string, duration time.Duration) ([]byte, error) {
 	// add our own prefix to the key
-	b, err := c.Cache.Get(ctx, cachePrefix+key)
+	b, err := c.Cache.Get(ctx, cachePrefix+key, duration)
 	if err != nil {
 		return nil, err
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 type Cache interface {
-	Get(ctx context.Context, key string) ([]byte, error)
+	Get(ctx context.Context, key string, duration time.Duration) ([]byte, error)
 	Set(ctx context.Context, key string, content []byte, duration time.Duration) error
 }
 

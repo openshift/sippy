@@ -24,30 +24,38 @@ const (
 )
 
 // Cache implementation that supports storing data to a bigquery table
-// Introduced to handle large data structures that are costly in time and query costs
-// as well as considered largely static allowing for longer storage between queries
+// Introduced to handle large data structures that are costly in time and $$
+// as well as considered largely static, allowing for longer storage between queries
 //
 // Additionally the concept of the cache being read only supports separate processes
 // writing cached data and reading.  In a case where one process will write the cache data
-// it should have a shorter expiration duration in the Cache initialization via input parameter.
+// it should have a shorter maxExpiration duration in the Cache initialization via input parameter.
 // This duration is separate from the Duration passed in the Set call
 // and can be used to cause new entries to be written to the backend table before they are considered expired.
-// If a cache item has a 7 day duration passed in on the cache Set call
+// If a cache item has a 7 day duration passed in on the Set call
 // and the read only cache process is configured with a maximum 10 day duration for all cache items
-// the process that writes to the cache could be configured with a 1 day maximum duration that would cause
+// the process that writes to the cache could be configured with a 1 (or more) day maximum duration that would cause
 // it to ignore any entries older than 24 hours and perform a new query and update the cache once a day.
 // Providing regular cache updates to the read only process and allowing for outages as well.
+//
+// minExpiration is the minimum duration that will be written to the bigquery cache table
+// items that are cached with a Set duration shorter than minExpiration will skip the biqquery
+// caching and rely on the main caching layer.  The minExpiration is also used to determine if a Get
+// that misses the main caching layer should check the bigquery cache table.  If the duration is below the min
+// it will not check for an entry but instead return a miss.
 type Cache struct {
-	client     *sippybq.Client
-	readOnly   bool
-	expiration time.Duration
+	client        *sippybq.Client
+	readOnly      bool
+	maxExpiration time.Duration
+	minExpiration time.Duration
 }
 
-func NewBigQueryCache(client *sippybq.Client, expiration time.Duration, readOnly bool) (cache.Cache, error) {
+func NewBigQueryCache(client *sippybq.Client, maxExpiration, minExpiration time.Duration, readOnly bool) (cache.Cache, error) {
 	c := &Cache{
-		client:     client,
-		readOnly:   readOnly,
-		expiration: expiration,
+		client:        client,
+		readOnly:      readOnly,
+		maxExpiration: maxExpiration,
+		minExpiration: minExpiration,
 	}
 	return compressed.NewCompressedCache(c)
 }
@@ -61,16 +69,21 @@ type CacheRecord struct {
 	ChunkIndex int       `bigquery:"chunk_index"`
 }
 
-func (c Cache) Get(ctx context.Context, key string) ([]byte, error) {
+func (c Cache) Get(ctx context.Context, key string, duration time.Duration) ([]byte, error) {
 
 	// if we have it in our warm cache use it
 	if c.client.Cache != nil {
-		data, err := c.client.Cache.Get(ctx, key)
+		data, err := c.client.Cache.Get(ctx, key, duration)
 		if err != nil {
 			logrus.Debugf("Failure retrieving %s from warm cache %v", key, err)
 		} else if data != nil {
 			return data, nil
 		}
+	}
+
+	// don't look in big query unless it meets our minExpiration threshold
+	if duration < c.minExpiration {
+		return nil, nil
 	}
 
 	before := time.Now()
@@ -80,7 +93,7 @@ func (c Cache) Get(ctx context.Context, key string) ([]byte, error) {
 
 	// get the most recent modified time for this key along with uuid and checksum
 	// limit the columns so we don't query too much data
-	cacheQuery := fmt.Sprintf("SELECT modified_time, expiration, uuid FROM `%s.%s` WHERE `%s` > TIMESTAMP(\"%s\") AND `%s` > TIMESTAMP(\"%s\") AND %s = '%s' order by %s desc limit 1", c.client.Dataset, cachedTable, partitionColumn, time.Now().Add(-1*c.expiration).Format(time.RFC3339), "expiration", time.Now().Format(time.RFC3339), "key", key, partitionColumn)
+	cacheQuery := fmt.Sprintf("SELECT modified_time, expiration, uuid FROM `%s.%s` WHERE `%s` > TIMESTAMP(\"%s\") AND `%s` > TIMESTAMP(\"%s\") AND %s = '%s' order by %s desc limit 1", c.client.Dataset, cachedTable, partitionColumn, time.Now().Add(-1*c.maxExpiration).Format(time.RFC3339), "expiration", time.Now().Format(time.RFC3339), "key", key, partitionColumn)
 
 	query := c.client.BQ.Query(cacheQuery)
 
@@ -146,6 +159,11 @@ func (c Cache) Set(ctx context.Context, key string, content []byte, duration tim
 		if err != nil {
 			logrus.WithError(err).Errorf("Failure setting %s for warm cache", key)
 		}
+	}
+
+	// don't save to big query unless it meets our minExpiration threshold
+	if duration < c.minExpiration {
+		return nil
 	}
 
 	// read only applies to bigquery only (I think)

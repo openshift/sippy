@@ -117,7 +117,8 @@ const (
 					ELSE jobs.prowjob_job_name
 		    	END AS variant_registry_job_name,
 `
-	fallbackQueryTimeRoundingOverride = 12 * time.Hour
+	// consider fallback data good for 7 days
+	fallbackQueryTimeRoundingOverride = 24 * 7 * time.Hour
 )
 
 type GeneratorType string
@@ -554,7 +555,6 @@ func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Contex
 		cacheOption: cache.RequestOptions{
 			ForceRefresh: c.cacheOption.ForceRefresh,
 			// increase the time that fallback queries are cached for
-			// could formalize as input flag
 			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
 		},
 		commonQuery:     baseQuery,
@@ -565,13 +565,7 @@ func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Contex
 		queryParameters: baseParams,
 	}
 
-	// default to main cache
-	// but if defined will use persistent cache
-	fcache := c.client.Cache
-	if c.client.PersistentCache != nil {
-		fcache = c.client.PersistentCache
-	}
-	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*crtype.FallbackReleases](ctx, fcache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackReleases~", generator), generator.getTestFallbackReleases, &crtype.FallbackReleases{})
+	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*crtype.FallbackReleases](ctx, c.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackReleases~", generator), generator.getTestFallbackReleases, &crtype.FallbackReleases{})
 
 	if len(errs) > 0 {
 		return errs
@@ -827,7 +821,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.
 		client: f.client,
 		cacheOption: cache.RequestOptions{
 			ForceRefresh: f.cacheOption.ForceRefresh,
-			// increase the time that base query is cached for since it shouldn't be changing?
+			// increase the time that base query is cached for since it shouldn't be changing
 			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
 		},
 		commonQuery:     f.commonQuery,
@@ -838,13 +832,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.
 		queryParameters: f.queryParameters,
 	}
 
-	// default to main cache
-	// but if defined will use persistent cache
-	fcache := f.client.Cache
-	if f.client.PersistentCache != nil {
-		fcache = f.client.PersistentCache
-	}
-	testStatuses, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, fcache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator), generator.getTestFallbackRelease, crtype.ReportTestStatus{})
+	testStatuses, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator), generator.getTestFallbackRelease, crtype.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return crtype.ReportTestStatus{}, errs

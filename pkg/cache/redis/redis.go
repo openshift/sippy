@@ -28,7 +28,7 @@ func NewRedisCache(url string) (*Cache, error) {
 	}, nil
 }
 
-func (c Cache) Get(_ context.Context, key string) ([]byte, error) {
+func (c Cache) Get(_ context.Context, key string, _ time.Duration) ([]byte, error) {
 	before := time.Now()
 	defer func(key string, before time.Time) {
 		logrus.Infof("Redis Cache Get completed in %s for %s", time.Since(before), key)

@@ -12,11 +12,11 @@ type PseudoCache struct {
 	cache map[string][]byte
 }
 
-func (c *PseudoCache) Get(ctx context.Context, key string) ([]byte, error) {
+func (c *PseudoCache) Get(_ context.Context, key string, _ time.Duration) ([]byte, error) {
 	return c.cache[key], nil
 }
 
-func (c *PseudoCache) Set(ctx context.Context, key string, content []byte, duration time.Duration) error {
+func (c *PseudoCache) Set(_ context.Context, key string, content []byte, _ time.Duration) error {
 	c.cache[key] = content
 	return nil
 }
@@ -30,7 +30,7 @@ func TestPseudoCache(t *testing.T) {
 	err = cache.Set(context.TODO(), "testKey", []byte(data), time.Hour)
 	assert.Nil(t, err, "Failed to set cache data: %v", err)
 
-	cacheData, err := cache.Get(context.TODO(), "testKey")
+	cacheData, err := cache.Get(context.TODO(), "testKey", time.Hour)
 	assert.Nil(t, err, "Failed to get cache data: %v", err)
 
 	validation := string(cacheData)

@@ -152,13 +152,8 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
 		}
 
-		if bigQueryClient != nil {
-			persistentCacheClient, err := f.CacheFlags.GetPersistentCacheClient(bigQueryClient)
-			if err != nil {
-				log.WithError(err).Warn("couldn't get persistent cache client")
-			} else {
-				bigQueryClient.PersistentCache = persistentCacheClient
-			}
+		if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
+			bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 		}
 	}
 

@@ -1692,7 +1692,7 @@ func (s *Server) cached(duration time.Duration, handler func(w http.ResponseWrit
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		content, err := s.cache.Get(context.TODO(), r.RequestURI)
+		content, err := s.cache.Get(context.TODO(), r.RequestURI, duration)
 		if err != nil { // cache miss
 			log.WithError(err).Debugf("cache miss: could not fetch data from cache for %q", r.RequestURI)
 		} else if content != nil && respondFromCache(content, w, r) == nil { // cache hit
