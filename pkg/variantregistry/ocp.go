@@ -293,6 +293,7 @@ var (
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex   = regexp.MustCompile(`(?i)-vsphere`)
 	crunRegex      = regexp.MustCompile(`(?i)-crun`)
+	runcRegex      = regexp.MustCompile(`(?i)-runc`)
 	cgroupsv1Regex = regexp.MustCompile(`(?i)-cgroupsv1`)
 	virtRegex      = regexp.MustCompile("(?i)-virt|-cnv|-kubevirt")
 )
@@ -471,11 +472,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantNetworkAccess] = VariantDefaultValue
 	}
 
-	if crunRegex.MatchString(jobName) {
-		variants[VariantContainerRuntime] = "crun"
-	} else {
-		variants[VariantContainerRuntime] = "runc"
-	}
+	variants[VariantContainerRuntime] = determineContainerRuntime(jLog, jobName, fromRelease)
 
 	if cgroupsv1Regex.MatchString(jobName) {
 		variants[VariantCGroupMode] = "v1"
@@ -645,6 +642,26 @@ func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
 			return "ovn"
 		} else {
 			return "sdn"
+		}
+	}
+}
+
+func determineContainerRuntime(jLog logrus.FieldLogger, jobName, release string) string {
+	if crunRegex.MatchString(jobName) {
+		return "crun"
+	} else if runcRegex.MatchString(jobName) {
+		return "runc"
+	} else {
+		// If no explicit version, guess based on release
+		crunBecomesDefault, _ := version.NewVersion("4.18")
+		releaseVersion, err := version.NewVersion(release)
+		if err != nil {
+			jLog.Warning("could not determine container runtime type")
+			return ""
+		} else if releaseVersion.GreaterThanOrEqual(crunBecomesDefault) {
+			return "crun"
+		} else {
+			return "runc"
 		}
 	}
 }
