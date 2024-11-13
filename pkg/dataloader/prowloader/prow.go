@@ -266,28 +266,48 @@ type tempBQTestAnalysisByJobForDate struct {
 // If our most recent import is yesterday, we're done for the day.
 // If the lastDailySummary is empty, this implies a new database, and we'll do an initial
 // bulk load.
-func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time) (string, string, bool) {
-	if true {
-		return "2024-10-10", "2024-10-14", true
-	}
-	yesterday8HrsAgo := now.UTC().Add(-32 * time.Hour)
-	toStr := yesterday8HrsAgo.Format("2006-01-02")
+//
+// Returns a slice of day strings YYYY-MM-DD in ascending order. We'll import a day at
+// a time, with a separate transaction for each. If something goes wrong we can fail and
+// pick up at that date the next time.
+//
+// At present in prod, each day takes about 20 minutes
+func getTestAnalysisByJobFromToDates(lastDailySummary, now time.Time) []string {
+	to := now.UTC().Add(-32 * time.Hour)
 
 	// If this is a new db, do an initial larger import:
 	if lastDailySummary.IsZero() {
-		//fromStr := yesterday8HrsAgo.Add(-1 * 24 * time.Hour).Format("2006-01-02")
-		fromStr := toStr
-		return fromStr, toStr, true
+		from := to.Add(-14 * 24 * time.Hour)
+		return DaysBetween(from, to)
 	}
 
 	ldsStr := lastDailySummary.UTC().Format("2006-01-02")
-	if ldsStr == toStr {
-		return "", "", false
+	if ldsStr == to.Format("2006-01-02") {
+		return []string{}
 	}
-	nextDayStr := lastDailySummary.UTC().Add(24 * time.Hour).Format("2006-01-02")
+	from := lastDailySummary.UTC().Add(24 * time.Hour)
+	return DaysBetween(from, to)
+}
 
-	return nextDayStr, toStr, true
+// DaysBetween returns a slice of strings representing each day in YYYY-MM-DD format between two dates
+func DaysBetween(start, end time.Time) []string {
+	var days []string
 
+	// Normalize times to midnight to count full days
+	start = start.Truncate(24 * time.Hour)
+	end = end.Truncate(24 * time.Hour)
+
+	// Ensure start is before or equal to end
+	if end.Before(start) {
+		start, end = end, start
+	}
+
+	// Iterate from start to end date
+	for d := start; !d.After(end); d = d.Add(24 * time.Hour) {
+		days = append(days, d.Format("2006-01-02"))
+	}
+
+	return days
 }
 
 func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
@@ -299,11 +319,12 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 	// Ignoring error, the function below handles the zero time if needed: (new db)
 	row.Scan(&lastDailySummary)
 
-	from, to, updateRequired := getTestAnalysisByJobFromToDates(lastDailySummary, time.Now())
-	if !updateRequired {
+	importDates := getTestAnalysisByJobFromToDates(lastDailySummary, time.Now())
+	if len(importDates) == 0 {
 		log.Info("test analysis summary already completed today")
 		return nil
 	}
+	log.Infof("importing test analysis by job for dates: %v", importDates)
 
 	jobCache, err := query.LoadProwJobCache(pl.dbc)
 	if err != nil {
@@ -317,10 +338,13 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 		return err
 	}
 
-	log.Infof("Loading test analysis by job daily summaries for: %s -> %s", from, to)
+	for _, dateToImport := range importDates {
+		dLog := log.WithField("date", dateToImport)
 
-	// TODO: swap in configurable data sets
-	query := pl.bigQueryClient.Query(`WITH
+		dLog.Infof("Loading test analysis by job daily summaries")
+
+		// TODO: swap in configurable data sets
+		query := pl.bigQueryClient.Query(`WITH
   deduped_testcases AS (
   SELECT
     junit.*,
@@ -346,11 +370,9 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
     openshift-gce-devel.ci_analysis_us.jobs jobs
   ON
     junit.prowjob_build_id = jobs.prowjob_build_id
-    AND DATE(jobs.prowjob_start) >= DATE(@From)
-    AND DATE(jobs.prowjob_start) <= DATE(@To)
+    AND DATE(jobs.prowjob_start) = DATE(@DateToImport)
   WHERE
-    DATE(junit.modified_time) >= DATE(@From)
-    AND DATE(junit.modified_time) <= DATE(@To)
+    DATE(junit.modified_time) = DATE(@DateToImport)
     AND skipped = FALSE )
 SELECT
   test_name,
@@ -374,71 +396,73 @@ ORDER BY
   test_name,
   prowjob_name
 `)
-	query.Parameters = []bigquery.QueryParameter{
-		{
-			Name:  "From",
-			Value: from,
-		},
-		{
-			Name:  "To",
-			Value: to,
-		},
-	}
-	it, err := query.Read(context.TODO())
-	if err != nil {
-		log.WithError(err).Error("error querying test analysis from bigquery")
-		return err
-	}
-
-	insertRows := []models.TestAnalysisByJobByDate{}
-	for {
-		row := tempBQTestAnalysisByJobForDate{}
-		err := it.Next(&row)
-		if err == iterator.Done {
-			break
+		query.Parameters = []bigquery.QueryParameter{
+			{
+				Name:  "DateToImport",
+				Value: dateToImport,
+			},
 		}
+		it, err := query.Read(context.TODO())
 		if err != nil {
-			log.WithError(err).Error("error parsing prowjob from bigquery")
+			dLog.WithError(err).Error("error querying test analysis from bigquery")
 			return err
 		}
-		psqlDate := pgtype.Date{}
-		psqlDate.Set(row.Date.String())
 
-		// Skip jobs and tests we don't know about in our postgres db:
-		test, ok := testCache[row.TestName]
-		if !ok {
-			continue
-		}
+		insertRows := []models.TestAnalysisByJobByDate{}
+		for {
+			row := tempBQTestAnalysisByJobForDate{}
+			err := it.Next(&row)
+			if err == iterator.Done {
+				break
+			}
+			if err != nil {
+				log.WithError(err).Error("error parsing prowjob from bigquery")
+				return err
+			}
+			psqlDate := pgtype.Date{}
+			psqlDate.Set(row.Date.String())
 
-		if _, ok := jobCache[row.JobName]; !ok {
-			continue
-		}
-		// we have to infer failures due to the bigquery query we leveraged:
-		failures := row.Runs - row.Passes - row.Flakes
+			// Skip jobs and tests we don't know about in our postgres db:
+			test, ok := testCache[row.TestName]
+			if !ok {
+				continue
+			}
 
-		// convert to a db row for postgres insertion:
-		psqlRow := models.TestAnalysisByJobByDate{
-			Date:     row.Date.In(time.UTC),
-			TestID:   test.ID,
-			Release:  row.Release,
-			TestName: row.TestName,
-			JobName:  row.JobName,
-			Runs:     row.Runs,
-			Passes:   row.Passes,
-			Flakes:   row.Flakes,
-			Failures: failures,
+			if _, ok := jobCache[row.JobName]; !ok {
+				continue
+			}
+			// we have to infer failures due to the bigquery query we leveraged:
+			failures := row.Runs - row.Passes - row.Flakes
+
+			// convert to a db row for postgres insertion:
+			psqlRow := models.TestAnalysisByJobByDate{
+				Date:     row.Date.In(time.UTC),
+				TestID:   test.ID,
+				Release:  row.Release,
+				TestName: row.TestName,
+				JobName:  row.JobName,
+				Runs:     row.Runs,
+				Passes:   row.Passes,
+				Flakes:   row.Flakes,
+				Failures: failures,
+			}
+			insertRows = append(insertRows, psqlRow)
 		}
-		insertRows = append(insertRows, psqlRow)
-	}
-	log.Infof("inserting %d rows", len(insertRows))
-	err = pl.dbc.DB.Transaction(func(tx *gorm.DB) error {
-		err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 2000).Error
+		st := time.Now()
+		dLog.Infof("inserting %d rows", len(insertRows))
+		err = pl.dbc.DB.Transaction(func(tx *gorm.DB) error {
+			err = pl.dbc.DB.WithContext(ctx).CreateInBatches(insertRows, 2000).Error
+			if err != nil {
+				log.WithError(err).Error("error inserting rows")
+			}
+			return err
+		})
 		if err != nil {
-			log.WithError(err).Error("error inserting rows")
+			return err
 		}
-		return err
-	})
-	return err
+		dLog.Infof("insert complete after %s", time.Since(st))
+	}
+	return nil
 }
 
 func (pl *ProwLoader) processProwJob(ctx context.Context, pj *prow.ProwJob) error {
