@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -310,6 +311,21 @@ func DaysBetween(start, end time.Time) []string {
 	return days
 }
 
+// NextDay takes a date string in YYYY-MM-DD format and returns the date string for the following day.
+func NextDay(dateStr string) (string, error) {
+	// Parse the input date string
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return "", fmt.Errorf("invalid date format: %v", err)
+	}
+
+	// Add one day to the parsed date
+	nextDay := date.Add(24 * time.Hour)
+
+	// Format the next day back to YYYY-MM-DD
+	return nextDay.Format("2006-01-02"), nil
+}
+
 func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 
 	// Figure out our last imported daily summary.
@@ -342,9 +358,24 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 		dLog := log.WithField("date", dateToImport)
 
 		dLog.Infof("Loading test analysis by job daily summaries")
+		nextDay, err := NextDay(dateToImport)
+		if err != nil {
+			return errors.Wrapf(err, "error parsing next day from %s", dateToImport)
+		}
+
+		// create a partition for this date
+		partitionSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS test_analysis_by_job_by_dates_%s PARTITION OF test_analysis_by_job_by_dates
+    		FOR VALUES FROM ('%s') TO ('%s');`, strings.ReplaceAll(dateToImport, "-", "_"), dateToImport, nextDay)
+		dLog.Info(partitionSQL)
+
+		if res := pl.dbc.DB.Exec(partitionSQL); res.Error != nil {
+			log.WithError(res.Error).Error("error creating partition")
+			return res.Error
+		}
+		dLog.Info("partition created")
 
 		// TODO: swap in configurable data sets
-		query := pl.bigQueryClient.Query(`WITH
+		q := pl.bigQueryClient.Query(`WITH
   deduped_testcases AS (
   SELECT
     junit.*,
@@ -396,13 +427,13 @@ ORDER BY
   test_name,
   prowjob_name
 `)
-		query.Parameters = []bigquery.QueryParameter{
+		q.Parameters = []bigquery.QueryParameter{
 			{
 				Name:  "DateToImport",
 				Value: dateToImport,
 			},
 		}
-		it, err := query.Read(context.TODO())
+		it, err := q.Read(context.TODO())
 		if err != nil {
 			dLog.WithError(err).Error("error querying test analysis from bigquery")
 			return err
