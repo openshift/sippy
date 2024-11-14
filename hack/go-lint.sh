@@ -28,6 +28,6 @@ else
   $DOCKER run --rm \
     --volume "${PWD}:/go/src/github.com/openshift/sippy${VOLUME_OPTION}" \
     --workdir /go/src/github.com/openshift/sippy \
-    docker.io/golangci/golangci-lint:v1.54.2 \
+    docker.io/golangci/golangci-lint:v1.56.2 \
     golangci-lint "${@}"
 fi

@@ -142,7 +142,7 @@ func New(ctx context.Context, org GitHubOrg) *Client {
 
 // we could use the app token to look up github app installation ids at https://api.github.com/app/installations
 // but it's not like they will change, so we can just hard code them, for one less thing to go wrong
-var installationIdForOrg = map[GitHubOrg]int64{
+var installationIDForOrg = map[GitHubOrg]int64{
 	OpenshiftOrg:    56889436,
 	OpenshiftEngOrg: 56889451,
 }
@@ -150,7 +150,7 @@ var installationIdForOrg = map[GitHubOrg]int64{
 func newGHAuthClient(ctx context.Context, org GitHubOrg) *http.Client {
 	if tokenSource := newAppTokenSource(); tokenSource != nil {
 		// create an org-specific self-renewing token source
-		installationTokenSource := ghauth.NewInstallationTokenSource(installationIdForOrg[org], tokenSource, ghauth.WithContext(ctx))
+		installationTokenSource := ghauth.NewInstallationTokenSource(installationIDForOrg[org], tokenSource, ghauth.WithContext(ctx))
 		log.Infof("using GitHub App credentials for org %s", org)
 		return oauth2.NewClient(ctx, installationTokenSource)
 	}
