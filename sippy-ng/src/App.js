@@ -11,6 +11,7 @@ import {
 import { cyan, green, orange, red } from '@mui/material/colors'
 import { DarkMode, LightMode } from '@mui/icons-material'
 import {
+  findFirstNonGARelease,
   getReportStartDate,
   getUrlWithoutParams,
   relativeTime,
@@ -272,14 +273,12 @@ export default function App(props) {
   }
 
   let landingPage = ''
+  let defaultRelease = findFirstNonGARelease(releases)
   if (fetchError !== '') {
     landingPage = <Alert severity="error">{fetchError}</Alert>
-  } else if (releases?.releases?.length > 0) {
+  } else if (defaultRelease.length > 0) {
     landingPage = (
-      <ReleaseOverview
-        key={releases.releases[0]}
-        release={releases.releases[0]}
-      />
+      <ReleaseOverview key={defaultRelease} release={defaultRelease} />
     )
   } else {
     landingPage = 'No releases found! Have you configured Sippy correctly?'
