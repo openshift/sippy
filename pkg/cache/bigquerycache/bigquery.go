@@ -73,6 +73,9 @@ var (
 // the process that writes to the cache could be configured with a 1 (or more) day maximum duration that would cause
 // it to ignore any entries older than 24 hours and perform a new query and update the cache once a day.
 // Providing regular cache updates to the read only process and allowing for outages as well.
+// To ensure that the persisted cache is being updated properly in this scenario forcePersistentLookup = true
+// should be set to skip any warm cache lookup, which doesn't check the maxExpiration value, and validate the
+// contents in the persistent backend or update the cache values, including any warm cache.
 //
 // minExpiration is the minimum duration that will be written to the bigquery cache table
 // items that are cached with a Set duration shorter than minExpiration will skip the biqquery
@@ -80,18 +83,20 @@ var (
 // that misses the main caching layer should check the bigquery cache table.  If the duration is below the min
 // it will not check for an entry but instead return a miss.
 type Cache struct {
-	client        *sippybq.Client
-	readOnly      bool
-	maxExpiration time.Duration
-	minExpiration time.Duration
+	client                *sippybq.Client
+	readOnly              bool
+	maxExpiration         time.Duration
+	minExpiration         time.Duration
+	forcePersistentLookup bool
 }
 
-func NewBigQueryCache(client *sippybq.Client, maxExpiration, minExpiration time.Duration, readOnly bool) (cache.Cache, error) {
+func NewBigQueryCache(client *sippybq.Client, maxExpiration, minExpiration time.Duration, readOnly, forcePersistentLookup bool) (cache.Cache, error) {
 	c := &Cache{
-		client:        client,
-		readOnly:      readOnly,
-		maxExpiration: maxExpiration,
-		minExpiration: minExpiration,
+		client:                client,
+		readOnly:              readOnly,
+		maxExpiration:         maxExpiration,
+		minExpiration:         minExpiration,
+		forcePersistentLookup: forcePersistentLookup,
 	}
 	return compressed.NewCompressedCache(c)
 }
@@ -110,7 +115,7 @@ func (c Cache) Get(ctx context.Context, key string, duration time.Duration) ([]b
 	persistentCacheGetMetric.WithLabelValues().Inc()
 
 	// if we have it in our warm cache use it
-	if c.client.Cache != nil {
+	if c.client.Cache != nil && (duration < c.minExpiration || !c.forcePersistentLookup) {
 		data, err := c.client.Cache.Get(ctx, key, duration)
 		if err != nil {
 			logrus.Debugf("Failure retrieving %s from warm cache %v", key, err)

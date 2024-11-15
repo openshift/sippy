@@ -22,6 +22,7 @@ type CacheFlags struct {
 	PersistentCacheDurationMin time.Duration
 	EnablePersistentCacheWrite bool
 	EnablePersistentCaching    bool
+	ForcePersistentLookup      bool
 }
 
 func NewCacheFlags() *CacheFlags {
@@ -37,7 +38,12 @@ func (f *CacheFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&f.EnablePersistentCaching,
 		"enable-persistent-cache",
 		false,
-		"Enable pesisted cache storage")
+		"Enable persisted cache storage")
+
+	fs.BoolVar(&f.ForcePersistentLookup,
+		"force-persistent-cache-lookup",
+		false,
+		"Skips any intermediate caching like redis and queries the persisted cache")
 
 	fs.DurationVar(&f.PersistentCacheDurationMax,
 		"persistent-cache-duration-max",
@@ -74,7 +80,7 @@ func (f *CacheFlags) GetPersistentCacheClient(bqclient *bigquery.Client) (cache.
 			BQ:      bqclient.BQ,
 			Cache:   bqclient.Cache,
 			Dataset: bqclient.Dataset,
-		}, f.PersistentCacheDurationMax, f.PersistentCacheDurationMin, !f.EnablePersistentCacheWrite)
+		}, f.PersistentCacheDurationMax, f.PersistentCacheDurationMin, !f.EnablePersistentCacheWrite, f.ForcePersistentLookup)
 	}
 
 	return nil, nil
