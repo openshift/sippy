@@ -335,3 +335,21 @@ export function parseVariantName(variantName) {
     variant,
   }
 }
+
+export function findFirstNonGARelease(releases) {
+  if (
+    releases === undefined ||
+    releases.releases === undefined ||
+    releases.releases.length <= 0 ||
+    releases.ga_dates === undefined
+  ) {
+    return ''
+  }
+  let firstNonGA = releases.releases[0]
+  releases.releases.forEach((r) => {
+    if (r.includes('.') && releases.ga_dates[r] === undefined) {
+      firstNonGA = r
+    }
+  })
+  return firstNonGA
+}
