@@ -11,9 +11,10 @@ import (
 )
 
 type Client struct {
-	BQ      *bigquery.Client
-	Cache   cache.Cache
-	Dataset string
+	BQ              *bigquery.Client
+	Cache           cache.Cache
+	PersistentCache cache.Cache
+	Dataset         string
 }
 
 func New(ctx context.Context, credentialFile, project, dataset string, c cache.Cache) (*Client, error) {

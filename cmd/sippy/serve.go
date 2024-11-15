@@ -99,6 +99,15 @@ func NewServeCommand() *cobra.Command {
 					return errors.WithMessage(err, "couldn't get bigquery client")
 				}
 
+				if bigQueryClient != nil {
+					persistentCacheClient, err := f.CacheFlags.GetPersistentCacheClient(bigQueryClient)
+					if err != nil {
+						log.WithError(err).Warn("couldn't get persistent cache client")
+					} else {
+						bigQueryClient.PersistentCache = persistentCacheClient
+					}
+				}
+
 				gcsClient, err = gcs.NewGCSClient(context.TODO(),
 					f.GoogleCloudFlags.ServiceAccountCredentialFile,
 					f.GoogleCloudFlags.OAuthClientCredentialFile,
@@ -176,7 +185,7 @@ func NewServeCommand() *cobra.Command {
 				// Serve our metrics endpoint for prometheus to scrape
 				go func() {
 					http.Handle("/metrics", promhttp.Handler())
-					err := http.ListenAndServe(f.MetricsAddr, nil) //nolint
+					err := http.ListenAndServe(f.MetricsAddr, nil) // nolint
 					if err != nil {
 						panic(err)
 					}

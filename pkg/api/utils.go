@@ -71,7 +71,7 @@ func GetDataFromCacheOrGenerate[T any](
 		}
 
 		if !cacheOptions.ForceRefresh {
-			if res, err := c.Get(string(cacheKey)); err == nil {
+			if res, err := c.Get(ctx, string(cacheKey)); err == nil {
 				log.WithFields(log.Fields{
 					"key":  string(cacheKey),
 					"type": reflect.TypeOf(defaultVal).String(),
@@ -96,7 +96,7 @@ func GetDataFromCacheOrGenerate[T any](
 					// Only cache until the next rounding duration
 					cacheDuration = now.Truncate(cacheOptions.CRTimeRoundingFactor).Add(cacheOptions.CRTimeRoundingFactor).Sub(now)
 				}
-				if err := c.Set(string(cacheKey), cr, cacheDuration); err != nil {
+				if err := c.Set(ctx, string(cacheKey), cr, cacheDuration); err != nil {
 					log.WithError(err).Warningf("couldn't persist new item to cache")
 				} else {
 					log.Debugf("cache set for cache key: %s", string(cacheKey))
