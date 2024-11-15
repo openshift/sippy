@@ -284,7 +284,7 @@ SELECT
 	SUM(flakes) as flakes,
 	SUM(failures) as failures
 FROM
-	prow_test_analysis_by_job_14d_matview byjob
+	test_analysis_by_job_by_dates byjob
 	JOIN tests ON tests.id = byjob.test_id
 	JOIN prow_jobs ON prow_jobs.name = byjob.job_name
 WHERE
