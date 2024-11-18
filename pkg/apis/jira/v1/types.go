@@ -1,5 +1,9 @@
 package v1
 
+const (
+	LabelJiraAutomator = "ComponentAutomatedRegression"
+)
+
 type Issue struct {
 	Expand    string    `json:"expand"`
 	ID        string    `json:"id"`
