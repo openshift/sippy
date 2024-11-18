@@ -34,11 +34,6 @@ var PostgresMatViews = []PostgresView{
 		},
 	},
 	{
-		Name:         "prow_test_analysis_by_job_14d_matview",
-		Definition:   testAnalysisByJobMatView,
-		IndexColumns: []string{"test_id", "test_name", "date", "job_name"},
-	},
-	{
 		Name:         "prow_job_runs_report_matview",
 		Definition:   jobRunsReportMatView,
 		IndexColumns: []string{"id"},
