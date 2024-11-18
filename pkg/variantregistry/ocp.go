@@ -621,9 +621,8 @@ func determineArchitecture(jobName string) string {
 		return "s390x"
 	} else if multiRegex.MatchString(jobName) {
 		return "heterogeneous"
-	} else {
-		return "amd64"
 	}
+	return "amd64"
 }
 
 func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
@@ -631,19 +630,17 @@ func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
 		return "ovn"
 	} else if sdnRegex.MatchString(jobName) {
 		return "sdn"
-	} else {
-		// If no explicit version, guess based on release
-		ovnBecomesDefault, _ := version.NewVersion("4.12")
-		releaseVersion, err := version.NewVersion(release)
-		if err != nil {
-			jLog.Warning("could not determine network type")
-			return ""
-		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
-			return "ovn"
-		} else {
-			return "sdn"
-		}
 	}
+	// If no explicit version, guess based on release
+	ovnBecomesDefault, _ := version.NewVersion("4.12")
+	releaseVersion, err := version.NewVersion(release)
+	if err != nil {
+		jLog.Warning("could not determine network type")
+		return ""
+	} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
+		return "ovn"
+	}
+	return "sdn"
 }
 
 func determineContainerRuntime(jLog logrus.FieldLogger, jobName, release string) string {
@@ -651,17 +648,15 @@ func determineContainerRuntime(jLog logrus.FieldLogger, jobName, release string)
 		return "crun"
 	} else if runcRegex.MatchString(jobName) {
 		return "runc"
-	} else {
-		// If no explicit version, guess based on release
-		crunBecomesDefault, _ := version.NewVersion("4.18")
-		releaseVersion, err := version.NewVersion(release)
-		if err != nil {
-			jLog.Warning("could not determine container runtime type")
-			return ""
-		} else if releaseVersion.GreaterThanOrEqual(crunBecomesDefault) {
-			return "crun"
-		} else {
-			return "runc"
-		}
 	}
+	// If no explicit version, guess based on release
+	crunBecomesDefault, _ := version.NewVersion("4.18")
+	releaseVersion, err := version.NewVersion(release)
+	if err != nil {
+		jLog.Warning("could not determine container runtime type")
+		return ""
+	} else if releaseVersion.GreaterThanOrEqual(crunBecomesDefault) {
+		return "crun"
+	}
+	return "runc"
 }

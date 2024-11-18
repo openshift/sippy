@@ -44,16 +44,16 @@ func ProwJobSimilarName(dbc *db.DB, rootName, release string) ([]models.ProwJob,
 	return jobs, nil
 }
 
-func ProwJobRunIds(dbc *db.DB, prowJobID uint) ([]uint, error) {
-	jobIds := make([]uint, 0)
+func ProwJobRunIDs(dbc *db.DB, prowJobID uint) ([]uint, error) {
+	jobIDs := make([]uint, 0)
 	q := dbc.DB.Raw(`SELECT id 
 	FROM prow_job_runs WHERE prow_job_id = ?`, prowJobID)
 	if q.Error != nil {
 		return nil, q.Error
 	}
-	q.Scan(&jobIds)
+	q.Scan(&jobIDs)
 
-	return jobIds, nil
+	return jobIDs, nil
 }
 
 func ProwJobHistoricalTestCounts(dbc *db.DB, prowJobID uint) (int, error) {

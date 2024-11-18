@@ -60,7 +60,7 @@ func NewSippyDaemonCommand() *cobra.Command {
 					return err
 				}
 
-				githubClient := github.New(context.TODO())
+				githubClient := github.New(context.TODO(), github.OpenshiftOrg)
 				ghCommenter, err := commenter.NewGitHubCommenter(githubClient,
 					dbc, f.GithubCommenterFlags.ExcludeReposCommenting, f.GithubCommenterFlags.IncludeReposCommenting)
 				if err != nil {
