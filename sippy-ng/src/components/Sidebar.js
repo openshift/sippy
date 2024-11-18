@@ -62,7 +62,14 @@ export default function Sidebar(props) {
           tmpOpen[index] = true
         }
       } else {
-        tmpOpen[0] = true
+        let defaultIndex = 0
+        if (props.defaultRelease != undefined) {
+          defaultIndex = props.releases.indexOf(props.defaultRelease)
+          if (defaultIndex < 0) {
+            defaultIndex = 0
+          }
+        }
+        tmpOpen[defaultIndex] = true
       }
       setOpen(tmpOpen)
     }
@@ -454,4 +461,5 @@ export default function Sidebar(props) {
 
 Sidebar.propTypes = {
   releases: PropTypes.array,
+  defaultRelease: PropTypes.string,
 }
