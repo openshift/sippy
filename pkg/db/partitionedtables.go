@@ -53,6 +53,6 @@ CREATE TABLE IF NOT EXISTS test_analysis_by_job_by_dates (
      flakes bigint,
      failures bigint
  ) PARTITION BY RANGE (date);
-CREATE UNIQUE INDEX test_release_date
+CREATE UNIQUE INDEX IF NOT EXISTS test_release_date
 ON test_analysis_by_job_by_dates (date, test_id, release, job_name);
 `
