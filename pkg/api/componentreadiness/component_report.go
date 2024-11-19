@@ -719,19 +719,15 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 	var selectedReleases []*crtype.Release
 	fallbackRelease := f.BaseRelease
 
-	// Get base plus up to 3 fallback releases
-	for i := 0; i < 4; i++ {
+	// Get up to 3 fallback releases
+	for i := 0; i < 3; i++ {
 		var crRelease *crtype.Release
 
-		// currently fetching the baseRelease via fallback to
-		// perform validation of the test data
-		// this gets uncommented when ready
-		// and the section at the bottom removed
-		// fallbackRelease, err = previousRelease(fallbackRelease)
-		// if err != nil {
-		// 	log.WithError(err).Errorf("Failure determining fallback release for %s", fallbackRelease)
-		// 	continue
-		// }
+		fallbackRelease, err := previousRelease(fallbackRelease)
+		if err != nil {
+			log.WithError(err).Errorf("Failure determining fallback release for %s", fallbackRelease)
+			break
+		}
 
 		for i := range releases {
 			if releases[i].Release == fallbackRelease {
@@ -742,16 +738,6 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 
 		if crRelease != nil {
 			selectedReleases = append(selectedReleases, crRelease)
-		}
-
-		// Attempt to get the previous release
-		// remove this section if / when we uncomment previousRelease call above
-		// to bypass getting the original base fallback results for validation
-		var err error
-		fallbackRelease, err = previousRelease(fallbackRelease)
-		if err != nil {
-			log.WithError(err).Errorf("failure determining fallback release for %s", fallbackRelease)
-			break // Stop attempting if previousRelease fails
 		}
 	}
 
@@ -1796,26 +1782,6 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 				if approvedRegression == nil {
 					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
 				}
-			}
-
-			// this goes away and is just to validate
-			// that the fallback data for the base release
-			// isn't missing any tests
-			if c.cachedFallbackTestStatuses != nil {
-				// get fallback for the current base, make sure we don't have any misses'
-				if cachedTestStatuses, ok := c.cachedFallbackTestStatuses.Releases[c.BaseRelease.Release]; ok {
-					if cTestStats, ok := cachedTestStatuses.Tests[testIdentification]; ok {
-						// obviously we need more analysis here to determine if the
-						// previous release(s) stats should override
-						baseStats = cTestStats
-						baseReleaseMatches++
-					} else {
-						baseReleaseMisses++
-					}
-				}
-
-			} else if c.IncludeMultiReleaseAnalysis {
-				log.Error("Expected cached fallback statuses but was missing")
 			}
 
 			// this is where we look to see if a previous release has a higher pass rate
