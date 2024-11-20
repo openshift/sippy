@@ -1,13 +1,14 @@
 package cache
 
 import (
+	"context"
 	"net/http"
 	"time"
 )
 
 type Cache interface {
-	Get(key string) ([]byte, error)
-	Set(key string, content []byte, duration time.Duration) error
+	Get(ctx context.Context, key string, duration time.Duration) ([]byte, error)
+	Set(ctx context.Context, key string, content []byte, duration time.Duration) error
 }
 
 type APIResponse struct {

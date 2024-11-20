@@ -1692,7 +1692,7 @@ func (s *Server) cached(duration time.Duration, handler func(w http.ResponseWrit
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		content, err := s.cache.Get(r.RequestURI)
+		content, err := s.cache.Get(context.TODO(), r.RequestURI, duration)
 		if err != nil { // cache miss
 			log.WithError(err).Debugf("cache miss: could not fetch data from cache for %q", r.RequestURI)
 		} else if content != nil && respondFromCache(content, w, r) == nil { // cache hit
@@ -1741,7 +1741,7 @@ func recordResponse(c cache.Cache, duration time.Duration, w http.ResponseWriter
 		log.WithError(err).Warningf("couldn't marshal api response")
 	}
 
-	if err := c.Set(r.RequestURI, apiResponseBytes, duration); err != nil {
+	if err := c.Set(context.TODO(), r.RequestURI, apiResponseBytes, duration); err != nil {
 		log.WithError(err).Warningf("could not cache page")
 	}
 	if _, err := w.Write(content); err != nil {

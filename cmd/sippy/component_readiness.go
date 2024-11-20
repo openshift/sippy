@@ -151,6 +151,10 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		if err != nil {
 			log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
 		}
+
+		if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
+			bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
+		}
 	}
 
 	views, err := f.ComponentReadinessFlags.ParseViewsFile()
@@ -206,7 +210,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		// Serve our metrics endpoint for prometheus to scrape
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
-			err := http.ListenAndServe(f.MetricsAddr, nil) //nolint
+			err := http.ListenAndServe(f.MetricsAddr, nil) // nolint
 			if err != nil {
 				panic(err)
 			}

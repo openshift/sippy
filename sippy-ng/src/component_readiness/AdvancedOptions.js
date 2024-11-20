@@ -5,6 +5,7 @@ import {
   AccordionSummary,
   FormControl,
   FormGroup,
+  Tooltip,
 } from '@mui/material'
 import { ExpandMore } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
@@ -26,6 +27,7 @@ export default function AdvancedOptions(props) {
     passRateAllTests,
     ignoreMissing,
     ignoreDisruption,
+    includeMultiReleaseAnalysis,
     setConfidence,
     setPity,
     setMinFail,
@@ -33,6 +35,7 @@ export default function AdvancedOptions(props) {
     setPassRateAllTests,
     setIgnoreMissing,
     setIgnoreDisruption,
+    setIncludeMultiReleaseAnalysis,
   } = props
 
   const useStyles = makeStyles((theme) => ({
@@ -91,6 +94,10 @@ export default function AdvancedOptions(props) {
   }
   const handleChangeIgnoreDisruption = (event, newValue) => {
     setIgnoreDisruption(newValue)
+  }
+
+  const handleChangeIncludeMultiReleaseAnalysis = (event, newValue) => {
+    setIncludeMultiReleaseAnalysis(newValue)
   }
 
   return (
@@ -165,6 +172,18 @@ export default function AdvancedOptions(props) {
               name="ignoreDisruption"
               color="primary"
             />
+            <Tooltip title="Enable analysis across multiple prior releases">
+              <p>
+                Historical release analysis:{' '}
+                {includeMultiReleaseAnalysis ? 'include' : 'exclude'}
+              </p>
+              <Switch
+                checked={includeMultiReleaseAnalysis}
+                onChange={handleChangeIncludeMultiReleaseAnalysis}
+                name="includeMultiReleaseAnalysis"
+                color="primary"
+              />
+            </Tooltip>
           </FormGroup>
         </AccordionDetails>
       </Accordion>
@@ -181,6 +200,7 @@ AdvancedOptions.propTypes = {
   passRateAllTests: PropTypes.number.isRequired,
   ignoreMissing: PropTypes.bool.isRequired,
   ignoreDisruption: PropTypes.bool.isRequired,
+  includeMultiReleaseAnalysis: PropTypes.bool.isRequired,
   setConfidence: PropTypes.func.isRequired,
   setPity: PropTypes.func.isRequired,
   setMinFail: PropTypes.func.isRequired,
@@ -188,4 +208,5 @@ AdvancedOptions.propTypes = {
   setPassRateAllTests: PropTypes.func.isRequired,
   setIgnoreMissing: PropTypes.func.isRequired,
   setIgnoreDisruption: PropTypes.func.isRequired,
+  setIncludeMultiReleaseAnalysis: PropTypes.func.isRequired,
 }
