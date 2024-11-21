@@ -116,6 +116,19 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 		jobNameQueryPortion = pullRequestDynamicJobNameCol
 	}
 
+	// TODO: this is a temporary hack while we explore if rarely run jobs approach is actually going to work.
+	// A scheduled query is copying rarely run job results to a separate much smaller table every day, so we can
+	// query 3 months without spending a fortune. If this proves to work, we will work out a system of processing
+	// this as generically as we can, but it will be difficult.
+	junitTable := defaultJunitTable
+	for k, v := range c.IncludeVariants {
+		if k == "JobTier" {
+			if slices.Contains(v, "rare") {
+				junitTable = rarelyRunJunitTable
+			}
+		}
+	}
+
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
 						FROM %s.component_mapping cm
@@ -135,7 +148,7 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 						SUM(adjusted_flake_count) AS flake_count,
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, c.client.Dataset))
+`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, junitTable, c.client.Dataset))
 
 	joinVariants := ""
 	for variant := range allJobVariants.Variants {
