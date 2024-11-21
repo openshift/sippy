@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -1521,12 +1522,37 @@ func logRequestHandler(h http.Handler) http.Handler {
 		start := time.Now()
 		h.ServeHTTP(w, r)
 		log.WithFields(log.Fields{
-			"uri":     r.URL.String(),
-			"method":  r.Method,
-			"elapsed": time.Since(start),
+			"uri":       r.URL.String(),
+			"method":    r.Method,
+			"elapsed":   time.Since(start),
+			"requestor": getRequestorIP(r),
 		}).Info("responded to request")
 	}
 	return http.HandlerFunc(fn)
+}
+
+func getRequestorIP(r *http.Request) string {
+	xff := r.Header.Get("X-Forwarded-For")
+	if xff != "" {
+		// X-Forwarded-For may contain a list of IPs, the first one is the client's IP
+		parts := strings.Split(xff, ",")
+		clientIP := strings.TrimSpace(parts[0])
+		if net.ParseIP(clientIP) != nil {
+			return clientIP
+		}
+	}
+
+	xri := r.Header.Get("X-Real-IP")
+	if xri != "" && net.ParseIP(xri) != nil {
+		return xri
+	}
+
+	remoteIP, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err == nil && net.ParseIP(remoteIP) != nil {
+		return remoteIP
+	}
+
+	return "unknown"
 }
 
 func (s *Server) cached(duration time.Duration, handler func(w http.ResponseWriter, r *http.Request)) func(http.ResponseWriter, *http.Request) {
