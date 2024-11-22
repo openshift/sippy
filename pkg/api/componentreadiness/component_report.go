@@ -580,6 +580,7 @@ func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Contex
 		BaseStart:       start,
 		BaseEnd:         end,
 		queryParameters: baseParams,
+		lock:            &sync.Mutex{},
 	}
 
 	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*crtype.FallbackReleases](ctx, c.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackReleases~", generator), generator.getTestFallbackReleases, &crtype.FallbackReleases{})
@@ -719,6 +720,7 @@ type fallbackTestQueryReleasesGenerator struct {
 	BaseStart                  time.Time
 	BaseEnd                    time.Time
 	CachedFallbackTestStatuses crtype.FallbackReleases
+	lock                       *sync.Mutex
 }
 
 func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context.Context) (*crtype.FallbackReleases, []error) {
@@ -796,7 +798,10 @@ func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.R
 
 	var testStatuses crtype.ReleaseTestMap
 	var ok bool
-
+	// since we  can be called for multiple releases and
+	// we update the map below we need to block concurrent map writes
+	f.lock.Lock()
+	defer f.lock.Unlock()
 	if testStatuses, ok = f.CachedFallbackTestStatuses.Releases[release.Release]; !ok {
 		testStatuses = crtype.ReleaseTestMap{Release: release, Tests: map[string]crtype.TestStatus{}}
 		f.CachedFallbackTestStatuses.Releases[release.Release] = testStatuses
