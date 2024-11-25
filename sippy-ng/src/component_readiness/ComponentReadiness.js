@@ -320,7 +320,11 @@ export default function ComponentReadiness(props) {
         return response.json()
       })
       .then((json) => {
-        if (Object.keys(json).length === 0 || json.rows.length === 0) {
+        if (
+          Object.keys(json).length === 0 ||
+          json.rows === undefined ||
+          json.rows.length === 0
+        ) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
         } else {
