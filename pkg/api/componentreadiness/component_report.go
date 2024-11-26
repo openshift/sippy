@@ -128,31 +128,11 @@ const (
 type GeneratorType string
 
 var (
-	// Default filters, these are also hardcoded in the UI. Both must be updated.
-	// TODO: TRT-1237 should centralize these configurations for consumption by both the front and backends
+	// Default parameters, these are also hardcoded in the UI. Both must be updated.
+	// TODO: centralize these configurations for consumption by both the front and backends
 
-	DefaultColumnGroupBy   = "Platform,Architecture,Network"
-	DefaultDBGroupBy       = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
-	DefaultIncludeVariants = []string{
-		"Architecture:amd64",
-		"FeatureSet:default",
-		"Installer:ipi",
-		"Installer:upi",
-		"Owner:eng",
-		"Platform:aws",
-		"Platform:azure",
-		"Platform:gcp",
-		"Platform:metal",
-		"Platform:vsphere",
-		"Topology:ha",
-		"CGroupMode:v2",
-		"ContainerRuntime:runc",
-	}
-	DefaultMinimumFailure   = 3
-	DefaultConfidence       = 95
-	DefaultPityFactor       = 5
-	DefaultIgnoreMissing    = false
-	DefaultIgnoreDisruption = true
+	DefaultColumnGroupBy = "Platform,Architecture,Network"
+	DefaultDBGroupBy     = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
 )
 
 func newFallbackReleases() crtype.FallbackReleases {
