@@ -403,6 +403,16 @@ func (c *componentReportGenerator) GenerateComponentReportTestStatus(ctx context
 	return componentReportTestStatus, nil
 }
 
+// sortedKeys is a helper that sorts the keys of a variant group map for consistent ordering.
+func sortedKeys[T any](it map[string]T) []string {
+	keys := make([]string, 0, len(it))
+	for k := range it {
+		keys = append(keys, k)
+	}
+	sort.StringSlice(keys).Sort()
+	return keys
+}
+
 // getCommonTestStatusQuery returns the common query for the higher level summary component summary.
 func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtype.JobVariants, isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
@@ -411,7 +421,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtyp
 	selectVariants := ""
 	joinVariants := ""
 	groupByVariants := ""
-	for v := range allJobVariants.Variants {
+	for _, v := range sortedKeys(allJobVariants.Variants) {
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
@@ -494,7 +504,8 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtyp
 			variantGroups = map[string][]string{}
 		}
 
-		for group, variants := range variantGroups {
+		for _, group := range sortedKeys(variantGroups) {
+			variants := variantGroups[group]
 			queryString += " AND ("
 			first := true
 			for _, variant := range variants {
@@ -508,8 +519,9 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtyp
 			queryString += ")"
 		}
 
-		for k, v := range c.RequestedVariants {
-			queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, k, v)
+		for _, group := range sortedKeys(c.RequestedVariants) {
+			variant := c.RequestedVariants[group]
+			queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, group, variant)
 		}
 		if c.Capability != "" {
 			queryString += " AND @Capability in UNNEST(capabilities)"
