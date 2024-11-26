@@ -151,7 +151,7 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 `, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, junitTable, c.client.Dataset))
 
 	joinVariants := ""
-	for variant := range allJobVariants.Variants {
+	for _, variant := range sortedKeys(allJobVariants.Variants) {
 		v := api.CleanseSQLName(variant)
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
@@ -180,25 +180,27 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 		},
 	}
 
-	for k, vs := range c.IncludeVariants {
+	for _, key := range sortedKeys(c.IncludeVariants) {
 		// only add in include variants that aren't part of the requested or cross-compared variants
-		if _, ok := c.RequestedVariants[k]; ok {
+
+		if _, ok := c.RequestedVariants[key]; ok {
 			continue
 		}
-		if slices.Contains(c.VariantCrossCompare, k) {
+		if slices.Contains(c.VariantCrossCompare, key) {
 			continue
 		}
 
-		group := api.CleanseSQLName(k)
+		group := api.CleanseSQLName(key)
 		paramName := "IncludeVariants" + group
 		queryString += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
 		commonParams = append(commonParams, bigquery2.QueryParameter{
 			Name:  paramName,
-			Value: vs,
+			Value: c.IncludeVariants[key],
 		})
 	}
 
-	for group, variant := range c.RequestedVariants {
+	for _, group := range sortedKeys(c.RequestedVariants) {
+		variant := c.RequestedVariants[group]
 		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, api.CleanseSQLName(group), api.CleanseSQLName(variant))
 	}
 	if isSample {
@@ -215,6 +217,7 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	if len(variantGroups) == 0 {
 		return // avoid possible nil pointer dereference
 	}
+	sort.StringSlice(crossCompare).Sort()
 	for _, group := range crossCompare {
 		if variants := variantGroups[group]; len(variants) > 0 {
 			group = api.CleanseSQLName(group)
