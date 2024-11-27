@@ -288,29 +288,6 @@ GROUP BY
 	tests.name, tests.id, byjob.test_id, byjob.test_name, date, unnest(prow_jobs.variants), prow_jobs.release
 `
 
-const testAnalysisByJobMatView = `
-SELECT
-    tests.id AS test_id,
-    tests.name AS test_name,
-    tests.watchlist,
-    date(prow_job_runs."timestamp") AS date,
-    prow_jobs.release,
-    prow_jobs.name AS job_name,
-    COUNT(*) FILTER (WHERE prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS runs,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS passes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS flakes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS failures
-FROM
-    prow_job_run_tests
-    JOIN tests ON tests.id = prow_job_run_tests.test_id
-    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
-    JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
-WHERE
-    prow_job_run_tests.created_at > (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
-GROUP BY
-    tests.name, tests.id, date(prow_job_runs."timestamp"), prow_jobs.release, prow_jobs.name
-`
-
 const prowJobFailedTestsMatView = `
 SELECT date_trunc('|||BY|||'::text, prow_job_runs."timestamp") AS period,
    prow_job_runs.prow_job_id,
