@@ -153,17 +153,6 @@ func (pl *ProwLoader) Errors() []error {
 func (pl *ProwLoader) Load() {
 	start := time.Now()
 
-	// TODO: move to after normal import
-	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
-	if err != nil {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
-	}
-
-	if true {
-		log.Fatal("TODO exiting early")
-		return
-	}
-
 	log.Infof("started loading prow jobs to DB...")
 
 	// Update unmerged PR statuses in case any have merged
@@ -227,6 +216,11 @@ func (pl *ProwLoader) Load() {
 	close(errsCh)
 	for err := range errsCh {
 		pl.errors = append(pl.errors, err)
+	}
+
+	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
+	if err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
 	}
 
 	if len(pl.errors) > 0 {
