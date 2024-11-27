@@ -327,7 +327,11 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 	row := pl.dbc.DB.Table("test_analysis_by_job_by_dates").Select("MAX(date)").Row()
 
 	// Ignoring error, the function below handles the zero time if needed: (new db)
-	row.Scan(&lastDailySummary)
+	err := row.Scan(&lastDailySummary)
+	if err != nil {
+		log.WithError(err).Error("error reading daily test analysis by job")
+		return err
+	}
 
 	importDates := getTestAnalysisByJobFromToDates(lastDailySummary, time.Now())
 	if len(importDates) == 0 {
@@ -445,7 +449,10 @@ ORDER BY
 				return err
 			}
 			psqlDate := pgtype.Date{}
-			psqlDate.Set(row.Date.String())
+			err = psqlDate.Set(row.Date.String())
+			if err != nil {
+				return err
+			}
 
 			// Skip jobs and tests we don't know about in our postgres db:
 			test, ok := testCache[row.TestName]
