@@ -115,6 +115,19 @@ export default function RegressedTestsPanel(props) {
       ),
     },
     {
+      field: 'last_failure',
+      headerName: 'Last Failure',
+      flex: 12,
+      valueGetter: (params) => {
+        if (!params.row.last_failure) {
+          return ''
+        }
+        const lastFailureDate = new Date(params.row.last_failure)
+        return relativeTime(lastFailureDate, new Date())
+      },
+      renderCell: (param) => <div className="last-failure">{param.value}</div>,
+    },
+    {
       field: 'test_id',
       flex: 5,
       headerName: 'ID',
