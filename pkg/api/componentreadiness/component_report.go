@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/util"
 
 	"cloud.google.com/go/bigquery"
@@ -444,6 +445,7 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtyp
 						COUNT(cm.id) AS total_count,
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
+						MAX(CASE WHEN adjusted_success_val = 0 THEN modified_time ELSE NULL END) AS last_failure,
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities,
 					FROM (%s)
@@ -1098,6 +1100,17 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 			cts.SuccessCount = int(row[i].(int64))
 		case col == "flake_count":
 			cts.FlakeCount = int(row[i].(int64))
+		case col == "last_failure":
+			// ignore when we cant parse, its usually null
+			var err error
+			if row[i] != nil {
+				layout := "2006-01-02T15:04:05"
+				lftCivilDT := row[i].(civil.DateTime)
+				cts.LastFailure, err = time.Parse(layout, lftCivilDT.String())
+				if err != nil {
+					log.WithError(err).Error("error parsing last failure time from bigquery")
+				}
+			}
 		case col == "component":
 			cts.Component = row[i].(string)
 		case col == "capabilities":
@@ -1806,6 +1819,9 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 				log.Infof("Overrode base stats using release %s for Test: %s - %s", matchedBaseRelease, baseStats.TestName, testIdentification)
 				overriddenBaseMatches++
 			}
+			if !sampleStats.LastFailure.IsZero() {
+				testStats.LastFailure = &sampleStats.LastFailure
+			}
 
 			if testStats.IsTriaged() {
 				// we are within the triage range
@@ -1880,6 +1896,10 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 			if len(triagedIncidents) > 0 && canClearReportStatus {
 				testStats.ReportStatus = crtype.NotSignificant
 			}
+		}
+		if !sampleStats.LastFailure.IsZero() {
+			lastFailure := sampleStats.LastFailure
+			testStats.LastFailure = &lastFailure
 		}
 
 		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testIdentification, sampleStats)

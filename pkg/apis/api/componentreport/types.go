@@ -116,14 +116,15 @@ type RequestAdvancedOptions struct {
 }
 
 type TestStatus struct {
-	TestName     string   `json:"test_name"`
-	TestSuite    string   `json:"test_suite"`
-	Component    string   `json:"component"`
-	Capabilities []string `json:"capabilities"`
-	Variants     []string `json:"variants"`
-	TotalCount   int      `json:"total_count"`
-	SuccessCount int      `json:"success_count"`
-	FlakeCount   int      `json:"flake_count"`
+	TestName     string    `json:"test_name"`
+	TestSuite    string    `json:"test_suite"`
+	Component    string    `json:"component"`
+	Capabilities []string  `json:"capabilities"`
+	Variants     []string  `json:"variants"`
+	TotalCount   int       `json:"total_count"`
+	SuccessCount int       `json:"success_count"`
+	FlakeCount   int       `json:"flake_count"`
+	LastFailure  time.Time `json:"last_failure"`
 }
 
 func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
@@ -230,6 +231,9 @@ type ReportTestStats struct {
 
 	// BaseStats may not be present in the response, i.e. new tests regressed because of their pass rate.
 	BaseStats *TestDetailsReleaseStats `json:"base_stats,omitempty"`
+
+	// LastFailure is the last time the regressed test failed.
+	LastFailure *time.Time `json:"last_failure"`
 }
 
 // IsTriaged returns true if this tests status is within the triaged regression range.
