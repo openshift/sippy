@@ -169,7 +169,7 @@ def match_existing_incident(variants, issue_type, issue_url, existing_results, n
                         st = jobRun["start_time"]
                         ct = None
                         if "completion_time" in jobRun and jobRun["completion_time"] != None:
-                            ct = jobRun["completion_time"]                        
+                            ct = jobRun["completion_time"]
                             ct = hack_for_rfc_3339(f"{ct}")
 
                         complete_jobs.append({"url": jobRun["url"], "start_time":  hack_for_rfc_3339(f"{st}"), "completion_time": ct})
@@ -296,7 +296,7 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
                 updateJobRuns += f", TIMESTAMP('{jobCompletionTime}') AS completion_time"
 
         q = f"UPDATE `{TABLE_KEY}` SET job_runs=ARRAY(SELECT AS STRUCT * FROM ({updateJobRuns})), attributions=ARRAY(SELECT AS STRUCT * FROM({updateAttributions})), modified_time='{modified_time}'"
-       
+
         q += f", issue.start_date=TIMESTAMP('{earliestStartTime}')"
         if resolution_date != None:
             q += f", issue.resolution_date=TIMESTAMP('{resolution_date}')"
@@ -338,7 +338,7 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
         earliestStartTime = None
         for jr in job_runs:
             startTime = datetime.fromisoformat(hack_for_rfc_3339(jr["StartTime"]))
-            
+
             completionTime = None
             if "CompletionTime" in jr and jr["CompletionTime"] != None:
                 completionTime = jr["CompletionTime"]
@@ -382,13 +382,13 @@ def write_incident_record (triaged_incident, modified_time, target_modified_time
             print(f"Errors creating the incident: {errors}")
         else :
             print("Incident created")
-    
+
 def files_match(artifacts_dir, file_matches):
     # file matches will be a relative filePath with a list of regexes to compare
     # may have limitations for large files...
     if not file_matches or not file_matches["MatchDefinitions"]:
         return True
-    
+
     match_definitions = file_matches["MatchDefinitions"]
     and_gate = False
     if "MatchGate" in match_definitions:
@@ -426,8 +426,8 @@ def files_match(artifacts_dir, file_matches):
                 return False
         else:
             if not and_gate:
-                return True        
-    
+                return True
+
     # if we aren't an and gate and we didn't hit a match then return false
     # if we are and and gate and didn't hit a miss then true
     if not and_gate:
@@ -459,7 +459,7 @@ def find_file_match(file_url, patterns, contentType, and_gate):
                     if not and_gate:
                         return True
 
-            # if we got here and we are and gated then we didn't have any misses 
+            # if we got here and we are and gated then we didn't have any misses
             if and_gate:
                 return True
             # if we aren't and gated and we didn't get a match return false
@@ -709,8 +709,10 @@ def find_matching_job_run_ids(incidents):
 
     return updated_incidents
 
-def triage_regressions(regressed_tests, triaged_incidents, issue_url):
+def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_cell, total_cells):
+    i = 0
     for rt in regressed_tests:
+        i += 1
 
         # test_ids can span variants
         # if we input a file we have to check to see if any variants are included with the test_id
@@ -730,7 +732,7 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
         variants.append({"key": "Topology", "value": rt['variants']['Topology']})
         variants.append({"key": "Installer", "value": rt['variants']['Installer']})
 
-        ir_variants = {"Network": rt['variants']['Network'], 
+        ir_variants = {"Network": rt['variants']['Network'],
                        "Upgrade": rt['variants']['Upgrade'],
                        "Architecture": rt['variants']['Architecture'],
                        "Platform": rt['variants']['Platform'],
@@ -745,8 +747,8 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
         intentionalRegression["JiraBug"] = "TBD BUG"
         intentionalRegression["ReasonToAllowInsteadOfFix"] = "TBD Reason"
         intentionalRegression["variant"]= {"variants": ir_variants}
- 
-  
+
+
         # do we have an input file, if so check to see if we have an entry
         # for this test id
         # if we do see if we have a variant section
@@ -779,7 +781,7 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
         issue_type, issue_description, issue_url, issue_resolution_date = issue_details(record, args.issue_type, description, issue_url, args.issue_resolution_date)
 
         print
-        print("REGRESSION: %s" % rt["test_name"])
+        print("REGRESSION: %s (%d/%d) (cell %d/%d)" % (rt["test_name"], i, len(regressed_tests), current_cell, total_cells))
         print
         component = rt['component']
         capability = rt['capability']
@@ -804,7 +806,7 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
         test_details_url = args.test_report_url.replace('/api/component_readiness?', '/api/component_readiness/test_details?')
         #DBOptions
         dbGroupBy = f"&Platform={rt['variants']['Platform']}&Architecture={rt['variants']['Architecture']}&Network={rt['variants']['Network']}&Topology={rt['variants']['Topology']}&FeatureSet={rt['variants']['FeatureSet']}&Upgrade={rt['variants']['Upgrade']}&Suite={rt['variants']['Suite']}&Installer={rt['variants']['Installer']}"
-        
+
         test_details_url += '&component=%s&capability=%s&testId=%s%s' % (component, capability, test_id, dbGroupBy)
         print("  Querying test details: %s" % test_details_url)
 
@@ -858,7 +860,6 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
                     if sjr["test_stats"]["failure_count"] == 0:
                         continue
                     prow_url = sjr["job_url"]
-                    print("  Failed job run: %s" % prow_url)
 
                     # TODO: it would be ideal to check the actual test failure output for some search string or regex to make sure it's
                     # the issue we're mass attributing. This however would require parsing junit XML today.
@@ -871,7 +872,6 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
                     # grab prowjob.json for the start time:
                     prow_job_json = fetch_json_data(artifacts_dir + 'prowjob.json')
                     start_time = prow_job_json["status"]["startTime"]
-                    print("    Prow job start time: %s" % start_time)
 
                     completion_time = None
                     if "completionTime" in prow_job_json["status"]:
@@ -881,14 +881,15 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url):
 
                     if args.target_build_cluster != None and len(args.target_build_cluster) > 0:
                         if build_cluster != args.target_build_cluster:
-                            continue  
+                            continue
 
                     if job_matches(record, prow_url, start_time, issue_resolution_date):
                         # do we have any file matches defined, if so validate we have matches
                         if files_match(artifacts_dir, file_matches):
+                            print("  matched failed job run: %s (%s) " % (prow_url, start_time))
                             triaged_incident["JobRuns"].append({"URL": prow_url, "StartTime": start_time, "CompletionTime": completion_time})
 
-            
+
             # don't output empty job run incidents unless we expect to have all
             # failures matched
             if len(triaged_incident["JobRuns"]) == 0 and not args.match_all_job_runs:
@@ -992,7 +993,7 @@ if __name__ == '__main__':
             if "TargetModifiedTime" in arguments and len(arguments["TargetModifiedTime"]) > 0:
                 args.target_modified_time = arguments["TargetModifiedTime"]
             if "TargetBuildCluster" in arguments and len(arguments["TargetBuildCluster"]) > 0:
-                args.target_build_cluster = arguments["TargetBuildCluster"]    
+                args.target_build_cluster = arguments["TargetBuildCluster"]
             if "JobRunStartTimeMax" in arguments and len(arguments["JobRunStartTimeMax"]) > 0:
                 args.job_run_start_time_max = arguments["JobRunStartTimeMax"]
             if "JobRunStartTimeMin" in arguments and len(arguments["JobRunStartTimeMin"]) > 0:
@@ -1024,7 +1025,7 @@ if __name__ == '__main__':
             file_matches = args.file_matches
         except Exception as e:
             print(f"Failed to load json file matches: {e}")
-            exit()                
+            exit()
 
     if args.test_report_url == None or len(args.test_report_url) == 0:
         # if we are loading incidents from a file we don't need the URL
@@ -1053,19 +1054,19 @@ if __name__ == '__main__':
                 endTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleEndTime"][0]))
             if "sampleStartTime" in params:
                 print("Original sample start time: " + params["sampleStartTime"][0])
-                startTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleStartTime"][0]))    
-            
+                startTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleStartTime"][0]))
+
             if not startTime == None and not endTime == None:
-                diff = endTime - startTime                
+                diff = endTime - startTime
                 newSampleEndTime = modified_time.replace(hour=23, minute=59, second=59)
                 newSampleStartTime = newSampleEndTime - diff
                 newSampleStartTimeParam, newSampleEndTimeParam = rfc_3339_start_end_times(newSampleStartTime, newSampleEndTime)
                 params["sampleStartTime"][0] = newSampleStartTimeParam
                 params["sampleEndTime"][0] = newSampleEndTimeParam
-                
+
                 print("Updated sample end time: " + params["sampleEndTime"][0])
                 print("Updated sample start time: " + params["sampleStartTime"][0])
-                
+
                 query_new = urlencode(params, doseq=True)
                 parsed=o._replace(query=query_new)
                 url_new = (parsed.geturl())
@@ -1121,7 +1122,7 @@ if __name__ == '__main__':
             issue_resolution_date = datetime.fromisoformat(hack_for_rfc_3339(args.issue_resolution_date))
         except ValueError:
             print("Invalid issue resolution date: " + args.issue_resolution_date)
-            exit()        
+            exit()
 
     print(f"\nIssue URL: {issue_url}")
     print(f"\nIssue Description: {description}")
@@ -1142,20 +1143,30 @@ if __name__ == '__main__':
         top_lvl_report = fetch_json_data(args.test_report_url)
         triaged_incidents = []
 
+        total_regressed_cells = 0
         for row in top_lvl_report['rows']:
             for col in row['columns']:
+                if 'regressed_tests' in col or 'triaged_incidents' in col:
+                    total_regressed_cells += 1
+        print("Scanning %d total regressed cells" % total_regressed_cells)
+
+        current_cell = 0
+        for row in top_lvl_report['rows']:
+            for col in row['columns']:
+                if 'regressed_tests' in col or 'triaged_incidents' in col:
+                    current_cell += 1
                 if 'regressed_tests' in col:
                     regressed_tests = col['regressed_tests']
-                    triage_regressions(regressed_tests, triaged_incidents, issue_url)
+                    triage_regressions(regressed_tests, triaged_incidents, issue_url, current_cell, total_regressed_cells)
                 if 'triaged_incidents' in col:
                     regressed_tests = col['triaged_incidents']
-                    triage_regressions(regressed_tests, triaged_incidents, issue_url)
+                    triage_regressions(regressed_tests, triaged_incidents, issue_url, current_cell, total_regressed_cells)
 
 
     if args.output_type == 'JSON':
         if args.intentional_regressions:
             triage_output = triaged_incidents
-        else:   
+        else:
             if args.match_all_job_runs:
                 triaged_incidents = find_matching_job_run_ids(triaged_incidents)
                 if triaged_incidents == NotFound:
