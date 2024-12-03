@@ -36,23 +36,34 @@ type Variant struct {
 	Value string
 }
 
+type JiraComponent struct {
+	Project  string
+	Component string
+}
+
 const (
 	jiraComponentBareMetal = "Bare Metal Hardware Provisioning"
 	// what component is for vsphere?
 	jiraComponentVSphere = "Test Framework"
 )
 
-// variantBasedComponents maps variants to jira components. This is used to group a column of red cells
+// variantToJiraComponents maps variants to jira components. This is used to group a column of red cells
 // to a jira component.
-var variantBasedComponents = map[Variant]string{
+var variantToJiraComponents = map[Variant]JiraComponent{
 	{
 		Name:  "Platform",
 		Value: "metal",
-	}: jiraComponentBareMetal,
+	}: {
+		Project:   jiratype.ProjectKeyOCPBugs,
+		Component: jiraComponentBareMetal,
+	},
 	{
 		Name:  "Platform",
 		Value: "vsphere",
-	}: jiraComponentVSphere,
+	}: {
+		Project:   jiratype.ProjectKeyOCPBugs,
+		Component: jiraComponentVSphere,
+	},
 }
 
 type JiraAutomator struct {
@@ -149,7 +160,7 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 // (b) has the "Affects Version/s" set to the sample version,
 // (c) were reported by the CR JIRA service account
 // Issues will be ordered by creation time
-func (j JiraAutomator) getExistingIssuesForComponent(view crtype.View, component string) ([]jira.Issue, error) {
+func (j JiraAutomator) getExistingIssuesForComponent(view crtype.View, component JiraComponent) ([]jira.Issue, error) {
 	searchOptions := jira.SearchOptions{
 		MaxResults: 1,
 		Fields: []string{
@@ -161,7 +172,7 @@ func (j JiraAutomator) getExistingIssuesForComponent(view crtype.View, component
 		},
 	}
 	jqlQuery := fmt.Sprintf("project=%s&&component='%s'&&creator='%s'&&affectedVersion=%s&&labels in (%s) ORDER BY createdDate",
-		jiratype.ProjectKeyOCPBugs, component, j.jiraAccount, view.SampleRelease.Release, jiratype.LabelJiraAutomator)
+		component.Project, component.Component, j.jiraAccount, view.SampleRelease.Release, jiratype.LabelJiraAutomator)
 	issues, _, err := j.jiraClient.SearchWithContext(context.Background(), jqlQuery, &searchOptions)
 	return issues, err
 }
@@ -292,7 +303,7 @@ func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (strin
 // b  adding the Regression label defined by LabelJiraAutomator.
 // c. setting a description with links to CR
 // d. for pre-release, setting "Release Blocker" label to Approved
-func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, component string, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) error {
+func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, component JiraComponent, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) error {
 	if len(tests) > 0 {
 		description := `Component Readiness has found a potential regression in the following tests:`
 		for _, test := range tests {
@@ -326,11 +337,11 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 					Name: "Bug",
 				},
 				Project: jira.Project{
-					Key: jiratype.ProjectKeyOCPBugs,
+					Key: component.Project,
 				},
 				Components: []*jira.Component{
 					{
-						Name: component,
+						Name: component.Component,
 					},
 				},
 				Summary: summary,
@@ -362,7 +373,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 	return nil
 }
 
-func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crtype.View, component string, tests []crtype.ReportTestSummary) error {
+func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crtype.View, component JiraComponent, tests []crtype.ReportTestSummary) error {
 	switch issue.Fields.Status.Name {
 	case jiratype.StatusNew, jiratype.StatusInProgress, jiratype.StatusAssigned, jiratype.StatusModified:
 		// New/Assigned/In Progress/Modified
@@ -386,7 +397,7 @@ func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crty
 			// b. Fix Check: Run with a sample start date of resolutionDate and the original end date. Only
 			//    do this after a reasonable number of days has passed.
 			scopeView := view
-			scopeView.TestIDOption.Component = component
+			scopeView.TestIDOption.Component = component.Component
 			scopeView.SampleRelease.RelativeStart = resolutionDate.Add(-14 * time.Hour * 24).Format(time.RFC3339)
 			scopeView.SampleRelease.RelativeEnd = resolutionDate.Format(time.RFC3339)
 			scopeReport, err := j.getComponentReportForView(scopeView)
@@ -432,7 +443,7 @@ func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crty
 			} else if resolutionDate.Add(fixCheckWaitPeriod).Before(view.SampleRelease.End) {
 				// This means scope report contains all tests from current report, verify fix
 				fixView := view
-				fixView.TestIDOption.Component = component
+				fixView.TestIDOption.Component = component.Component
 				fixView.SampleRelease.RelativeStart = resolutionDate.Format(time.RFC3339)
 				fixReport, err := j.getComponentReportForView(fixView)
 				if err != nil {
@@ -480,8 +491,8 @@ func (j JiraAutomator) updateReleaseBlocker(issue *jira.Issue, release string) e
 // It also takes into consideration a special column grouping. The idea is if a certain column variant (e.g. metal) has more
 // red cells, we will not want to create a jira card for all the components affected. Instead, we will just create
 // one jira card for metal platform.
-func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentReport) (map[string][]crtype.ReportTestSummary, error) {
-	componentRegressedTests := map[string][]crtype.ReportTestSummary{}
+func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentReport) (map[JiraComponent][]crtype.ReportTestSummary, error) {
+	componentRegressedTests := map[JiraComponent][]crtype.ReportTestSummary{}
 	columnToRegressionCount := map[string]int{}
 	columnToVariantsToThreshold := map[string]map[Variant]int{}
 	// First we count the number of red cells for each column
@@ -517,7 +528,7 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 			if variantToThreshold, ok := columnToVariantsToThreshold[columnID]; ok {
 				for variant, threshold := range variantToThreshold {
 					if threshold < columnToRegressionCount[columnID] {
-						if component, ok := variantBasedComponents[variant]; ok {
+						if component, ok := variantToJiraComponents[variant]; ok {
 							componentRegressedTests[component] = append(componentRegressedTests[component], col.RegressedTests...)
 							useVariantBasedComponent = true
 						}
@@ -525,7 +536,8 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 				}
 			}
 			if !useVariantBasedComponent {
-				componentRegressedTests[row.Component] = append(componentRegressedTests[row.Component], col.RegressedTests...)
+				j := JiraComponent{Project: jiratype.ProjectKeyOCPBugs, Component: row.Component}
+				componentRegressedTests[j] = append(componentRegressedTests[j], col.RegressedTests...)
 			}
 		}
 	}
@@ -556,7 +568,7 @@ func (j JiraAutomator) automateJirasForView(view crtype.View) error {
 	}
 	for component, tests := range componentRegressedTests {
 		// fetch jira bugs
-		if j.includeComponents.Len() > 0 && !j.includeComponents.Has(component) {
+		if j.includeComponents.Len() > 0 && !j.includeComponents.Has(component.Project+":"+component.Component) {
 			continue
 		}
 		issues, err := j.getExistingIssuesForComponent(view, component)

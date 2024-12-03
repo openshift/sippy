@@ -12,6 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/jiraautomator"
 	"github.com/openshift/sippy/pkg/flags"
@@ -31,11 +32,12 @@ type AutomateJiraFlags struct {
 	JiraOptions             prowflagutil.JiraOptions
 	SippyURL                string
 	IncludeComponentsStr    string
-	IncludeComponents       sets.String
-	ColumnThresholdStrs     []string
-	ColumnThresholds        map[jiraautomator.Variant]int
-	JiraAccount             string
-	DryRun                  bool
+	// IncludeComponents is a set of string in the format of jiraProject:jiraComponent
+	IncludeComponents   sets.String
+	ColumnThresholdStrs []string
+	ColumnThresholds    map[jiraautomator.Variant]int
+	JiraAccount         string
+	DryRun              bool
 }
 
 func NewAutomateJiraFlags() *AutomateJiraFlags {
@@ -56,7 +58,7 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	f.JiraOptions.AddFlags(flag.CommandLine)
 	fs.AddGoFlagSet(flag.CommandLine)
 	fs.StringVar(&f.SippyURL, "sippy-url", f.SippyURL, "The Sippy URL prefix to be used to generate sharable Sippy links")
-	fs.StringVar(&f.IncludeComponentsStr, "include-components", f.IncludeComponentsStr, "The list of comma separated jira components to file issues against. If this is not defined, all components will be candidates.")
+	fs.StringVar(&f.IncludeComponentsStr, "include-components", f.IncludeComponentsStr, "The list of comma separated jira components to file issues against. Each component consists of project and component separated by colon. If this is not defined, all components will be candidates.")
 	fs.StringArrayVar(&f.ColumnThresholdStrs, "column-threshold", f.ColumnThresholdStrs, "A threshold of red cell counts over which a jira issue will be created against a component corresponding to an interesting variant of a column (e.g. Bare Metal Hardware Provisioning for metal platform). The format of the threshold string is [variant]:[value]:[threshold] (e.g. Platform:metal:3).")
 	fs.StringVar(&f.JiraAccount, "jira-account", f.JiraAccount, "The jira account used to automate jira")
 	fs.BoolVar(&f.DryRun, "dry-run", f.DryRun, "Print the tasks of automating jiras without real interaction with jira.")
@@ -69,7 +71,19 @@ func (f *AutomateJiraFlags) Validate(allVariants crtype.JobVariants) error {
 	if len(f.JiraAccount) == 0 {
 		return fmt.Errorf("--jira-account is required")
 	}
-	f.IncludeComponents = sets.NewString(strings.Split(f.IncludeComponentsStr, ",")...)
+	f.IncludeComponents = sets.NewString()
+	if len(f.IncludeComponentsStr) > 0 {
+		components := strings.Split(f.IncludeComponentsStr, ",")
+		for _, c := range components {
+			parts := strings.Split(c, ":")
+			if len(parts) < 2 {
+				f.IncludeComponents.Insert(jiratype.ProjectKeyOCPBugs + ":" + c)
+			} else {
+				f.IncludeComponents.Insert(c)
+			}
+		}
+
+	}
 	for _, variantThreshold := range f.ColumnThresholdStrs {
 		vt := strings.Split(variantThreshold, ":")
 		if len(vt) != 3 {
