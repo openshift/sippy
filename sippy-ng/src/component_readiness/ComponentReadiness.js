@@ -199,9 +199,16 @@ export default function ComponentReadiness(props) {
 
   const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
   const [testNameParam, setTestNameParam] = useQueryParam('testName', String)
+  const [testBasisReleaseParam, setTestBasisReleaseParam] = useQueryParam(
+    'testBasisRelease',
+    String
+  )
 
   const [testId, setTestId] = React.useState(testIdParam)
   const [testName, setTestName] = React.useState(testNameParam)
+  const [testBasisRelease, setTestBasisRelease] = React.useState(
+    testBasisReleaseParam
+  )
 
   const { path, url } = useRouteMatch()
 
@@ -397,6 +404,7 @@ export default function ComponentReadiness(props) {
                   varsContext.setCapabilityParam(varsContext.capability)
                   setTestIdParam(testId)
                   setTestNameParam(testName)
+                  setTestBasisReleaseParam(testBasisRelease)
                   varsContext.setEnvironmentParam(varsContext.environment)
                   return (
                     <CompReadyTestReport
@@ -407,6 +415,7 @@ export default function ComponentReadiness(props) {
                       environment={varsContext.environment}
                       testId={testId}
                       testName={testName}
+                      testBasisRelease={testBasisRelease}
                     ></CompReadyTestReport>
                   )
                 }}

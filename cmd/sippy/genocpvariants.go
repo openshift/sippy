@@ -21,6 +21,7 @@ import (
 type LoadVariantsFlags struct {
 	BigQueryFlags     *flags.BigQueryFlags
 	GoogleCloudFlags  *flags.GoogleCloudFlags
+	ConfigFlags       *flags.ConfigFlags
 	OutputFile        string
 	Mode              string
 	BigqueryJobsTable string
@@ -30,12 +31,14 @@ func NewLoadVariantsFlags() *LoadVariantsFlags {
 	return &LoadVariantsFlags{
 		BigQueryFlags:    flags.NewBigQueryFlags(),
 		GoogleCloudFlags: flags.NewGoogleCloudFlags(),
+		ConfigFlags:      flags.NewConfigFlags(),
 	}
 }
 
 func (f *LoadVariantsFlags) BindFlags(fs *pflag.FlagSet) {
 	f.BigQueryFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
+	f.ConfigFlags.BindFlags(fs)
 	fs.StringVar(&f.OutputFile, "o", "expected-job-variants.json", "Output json file for job variant data")
 	fs.StringVar(&f.Mode, "mode", "ocp", "Implementation of job variant generator")
 	fs.StringVar(&f.BigqueryJobsTable, "bigquery-jobs-table", "jobs", "Jobs table to load job names from")
@@ -52,6 +55,12 @@ func NewLoadJobVariantsCommand() *cobra.Command {
 			// Cancel syncing after 4 hours
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*4)
 			defer cancel()
+
+			config, err := f.ConfigFlags.GetConfig()
+			if err != nil {
+				return err
+			}
+
 			bigQueryClient, err := bigquery.NewClient(ctx, f.BigQueryFlags.BigQueryProject,
 				option.WithCredentialsFile(f.GoogleCloudFlags.ServiceAccountCredentialFile))
 			if err != nil {
@@ -72,10 +81,14 @@ func NewLoadJobVariantsCommand() *cobra.Command {
 			switch f.Mode {
 			case "ocp":
 
-				jvs := variantregistry.NewOCPVariantLoader(bigQueryClient, f.BigQueryFlags.BigQueryProject,
-					f.BigQueryFlags.BigQueryDataset, f.BigqueryJobsTable,
+				jvs := variantregistry.NewOCPVariantLoader(
+					bigQueryClient,
+					f.BigQueryFlags.BigQueryProject,
+					f.BigQueryFlags.BigQueryDataset,
+					f.BigqueryJobsTable,
 					gcsClient,
-					f.GoogleCloudFlags.StorageBucket)
+					f.GoogleCloudFlags.StorageBucket,
+					config)
 				expectedVariants, err := jvs.LoadExpectedJobVariants(context.TODO())
 				if err != nil {
 					return err

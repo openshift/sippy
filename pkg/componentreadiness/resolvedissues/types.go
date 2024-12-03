@@ -1,6 +1,7 @@
 package resolvedissues
 
 import (
+	"encoding/json"
 	"fmt"
 	"sort"
 
@@ -110,8 +111,8 @@ func KeyForTriagedIssue(testID string, variants []crtype.Variant) TriagedIssueKe
 	}
 
 	return TriagedIssueKey{
-		testID:   testID,
-		variants: vKey,
+		TestID:   testID,
+		Variants: vKey,
 	}
 }
 
@@ -122,8 +123,19 @@ const TriageIssueTypeInfrastructure TriageIssueType = "Infrastructure"
 type Release string
 
 type TriagedIssueKey struct {
-	testID   string
-	variants string
+	TestID   string
+	Variants string
+}
+
+// implement encoding.TextMarshaler for json map key marshalling support
+func (s TriagedIssueKey) MarshalText() (text []byte, err error) {
+	type t TriagedIssueKey
+	return json.Marshal(t(s))
+}
+
+func (s *TriagedIssueKey) UnmarshalText(text []byte) error {
+	type t TriagedIssueKey
+	return json.Unmarshal(text, (*t)(s))
 }
 
 type TriagedIncidentsForRelease struct {

@@ -70,8 +70,16 @@ func GetDataFromCacheOrGenerate[T any](
 			panic(fmt.Sprintf("cache key is empty for %s", reflect.TypeOf(defaultVal)))
 		}
 
+		// require cacheDuration for persistence logic
+		cacheDuration := defaultCacheDuration
+		if cacheOptions.CRTimeRoundingFactor > 0 {
+			now := time.Now().UTC()
+			// Only cache until the next rounding duration
+			cacheDuration = now.Truncate(cacheOptions.CRTimeRoundingFactor).Add(cacheOptions.CRTimeRoundingFactor).Sub(now)
+		}
+
 		if !cacheOptions.ForceRefresh {
-			if res, err := c.Get(string(cacheKey)); err == nil {
+			if res, err := c.Get(ctx, string(cacheKey), cacheDuration); err == nil {
 				log.WithFields(log.Fields{
 					"key":  string(cacheKey),
 					"type": reflect.TypeOf(defaultVal).String(),
@@ -90,17 +98,13 @@ func GetDataFromCacheOrGenerate[T any](
 		if len(errs) == 0 {
 			cr, err := json.Marshal(result)
 			if err == nil {
-				cacheDuration := defaultCacheDuration
-				if cacheOptions.CRTimeRoundingFactor > 0 {
-					now := time.Now().UTC()
-					// Only cache until the next rounding duration
-					cacheDuration = now.Truncate(cacheOptions.CRTimeRoundingFactor).Add(cacheOptions.CRTimeRoundingFactor).Sub(now)
-				}
-				if err := c.Set(string(cacheKey), cr, cacheDuration); err != nil {
+				if err := c.Set(ctx, string(cacheKey), cr, cacheDuration); err != nil {
 					log.WithError(err).Warningf("couldn't persist new item to cache")
 				} else {
 					log.Debugf("cache set for cache key: %s", string(cacheKey))
 				}
+			} else {
+				log.WithError(err).Errorf("Failed to marshall cache item: %v", result)
 			}
 		}
 		return result, errs

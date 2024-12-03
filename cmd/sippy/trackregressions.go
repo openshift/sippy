@@ -62,6 +62,10 @@ func NewTrackRegressionsCommand() *cobra.Command {
 				log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents regression tracking")
 			}
 
+			if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
+				bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
+			}
+
 			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
 
 			views, err := f.ComponentReadinessFlags.ParseViewsFile()

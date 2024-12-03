@@ -14,6 +14,7 @@ component_readiness:
         Architecture: {}
         Network: {}
         Platform: {}
+        Topology: {}
       db_group_by:
         Architecture: {}
         FeatureSet: {}
@@ -31,6 +32,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        Network:
+          - ovn
         Owner:
           - eng
         Platform:
@@ -41,10 +44,12 @@ component_readiness:
           - vsphere
         Topology:
           - ha
+          - microshift
         CGroupMode:
           - v2
         ContainerRuntime:
           - runc
+          - crun
     advanced_options:
       minimum_failure: 3
       confidence: 95
@@ -102,6 +107,7 @@ component_readiness:
           - v2
         ContainerRuntime:
           - runc
+          - crun
       compare_variants:
         Topology:
           - single
@@ -180,6 +186,66 @@ component_readiness:
     regression_tracking:
       enabled: false
     automate_jira:
+      enabled: true
+  - name: 4.18-rarely-run-jobs
+    base_release:
+      release: "4.17"
+      relative_start: ga-1d
+      relative_end: ga
+    sample_release:
+      release: "4.18"
+      # need to look much further back for rarely run jobs
+      relative_start: now-90d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+        Topology: {}
+        Procedure: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+        Procedure: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Network:
+          - ovn
+        Owner:
+          - eng
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - metal
+          - vsphere
+        Topology:
+          - ha
+        JobTier:
+          - rare
+    advanced_options:
+      minimum_failure: 2
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+      pass_rate_required_all_tests: 90
+    metrics:
+      enabled: false
+    regression_tracking:
       enabled: false
   - name: 4.17-main
     base_release:
@@ -214,6 +280,8 @@ component_readiness:
                 - upi
             Owner:
                 - eng
+            Network:
+                - ovn
             Platform:
                 - aws
                 - azure

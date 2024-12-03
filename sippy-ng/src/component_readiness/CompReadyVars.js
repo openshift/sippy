@@ -19,10 +19,23 @@ import {
 } from './CompReadyUtils'
 import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
+import { useLocation } from 'react-router-dom'
 import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 export const CompReadyVarsContext = createContext()
+
+let params = null
+
+function getDefaultIncludeMultiReleaseAnalysis() {
+  if (params != null) {
+    let fallback = params.get('includeMultiReleaseAnalysis')
+    if (fallback != undefined) {
+      return fallback
+    }
+  }
+  return false
+}
 
 export const CompReadyVarsProvider = ({ children }) => {
   const [allJobVariants, setAllJobVariants] = useState([])
@@ -31,6 +44,8 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [isLoaded, setIsLoaded] = useState(false)
   const [fetchError, setFetchError] = useState('')
 
+  let location = useLocation()
+  params = new URLSearchParams(location.search)
   const releases = useContext(ReleasesContext)
 
   // Find the most recent GA
@@ -118,6 +133,10 @@ export const CompReadyVarsProvider = ({ children }) => {
     'ignoreDisruption',
     BooleanParam
   )
+  const [
+    includeMultiReleaseAnalysisParam,
+    setIncludeMultiReleaseAnalysisParam,
+  ] = useQueryParam('includeMultiReleaseAnalysis', BooleanParam)
 
   // Create the variables to be used for api calls; these are initialized to the
   // value of the variables that got their values from the URL.
@@ -283,6 +302,11 @@ export const CompReadyVarsProvider = ({ children }) => {
     ignoreDisruptionParam || true
   )
 
+  const [includeMultiReleaseAnalysis, setIncludeMultiReleaseAnalysis] =
+    React.useState(
+      includeMultiReleaseAnalysisParam ||
+        Boolean(getDefaultIncludeMultiReleaseAnalysis())
+    )
   /******************************************************************************
    * Parameters that are used to refine the query as the user drills down into CR
    ****************************************************************************** */
@@ -350,6 +374,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setPassRateAllTestsParam(passRateAllTests)
     setIgnoreDisruptionParam(ignoreDisruption)
     setIgnoreMissingParam(ignoreMissing)
+    setIncludeMultiReleaseAnalysisParam(includeMultiReleaseAnalysis)
     setComponentParam(component)
     setEnvironmentParam(environment)
     setCapabilityParam(capability)
@@ -379,6 +404,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setPassRateAllTestsParam(undefined)
     setIgnoreDisruptionParam(undefined)
     setIgnoreMissingParam(undefined)
+    setIncludeMultiReleaseAnalysisParam(undefined)
 
     setSamplePROrgParam(undefined)
     setSamplePRRepoParam(undefined)
@@ -431,6 +457,13 @@ export const CompReadyVarsProvider = ({ children }) => {
     }
     if (view.advanced_options.hasOwnProperty('ignore_missing')) {
       setIgnoreMissing(view.advanced_options.ignore_missing)
+    }
+    if (
+      view.advanced_options.hasOwnProperty('include_multi_release_analysis')
+    ) {
+      setIncludeMultiReleaseAnalysis(
+        view.advanced_options.include_multi_release_analysis
+      )
     }
   }
 
@@ -597,6 +630,8 @@ export const CompReadyVarsProvider = ({ children }) => {
         setIgnoreMissing,
         ignoreDisruption,
         setIgnoreDisruption,
+        includeMultiReleaseAnalysis,
+        setIncludeMultiReleaseAnalysis,
         component,
         setComponentParam,
         capability,

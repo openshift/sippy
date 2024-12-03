@@ -1,5 +1,6 @@
 import { alpha, InputBase, Typography } from '@mui/material'
 import { formatInTimeZone } from 'date-fns-tz'
+import { safeEncodeURIComponent } from '../helpers'
 import { styled } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import green from './green.svg'
@@ -331,6 +332,7 @@ export function getUpdatedUrlParts(vars) {
     passRateAllTests: vars.passRateAllTests,
     ignoreDisruption: vars.ignoreDisruption,
     ignoreMissing: vars.ignoreMissing,
+    includeMultiReleaseAnalysis: vars.includeMultiReleaseAnalysis,
     //component: vars.component,
   }
 
@@ -610,4 +612,41 @@ export const convertVariantItemsToParam = (groupedVariants) => {
     })
   })
   return param
+}
+
+// Construct a URL with all existing filters plus testId, environment, and testName.
+// This is the url used when you click inside a TableCell on page4 on the right.
+// We pass these arguments to the component that generates the test details report.
+export function generateTestReport(
+  testId,
+  environmentVal,
+  filterVals,
+  componentName,
+  capabilityName,
+  testName,
+  regressedTests
+) {
+  let testBasisRelease = ''
+  if (
+    typeof regressedTests != 'undefined' &&
+    regressedTests.length > 0 &&
+    typeof regressedTests[0].base_stats != 'undefined'
+  ) {
+    testBasisRelease = regressedTests[0].base_stats.release
+  }
+  const safeComponentName = safeEncodeURIComponent(componentName)
+  const safeTestId = safeEncodeURIComponent(testId)
+  const safeTestName = safeEncodeURIComponent(testName)
+  const safeTestBasisRelease = safeEncodeURIComponent(testBasisRelease)
+  const retUrl =
+    '/component_readiness/test_details' +
+    filterVals +
+    `&testBasisRelease=${safeTestBasisRelease}` +
+    `&testId=${safeTestId}` +
+    environmentVal +
+    `&component=${safeComponentName}` +
+    `&capability=${capabilityName}` +
+    `&testName=${safeTestName}`
+
+  return sortQueryParams(retUrl)
 }

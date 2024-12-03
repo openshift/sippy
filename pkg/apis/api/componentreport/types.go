@@ -9,6 +9,21 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
+type Release struct {
+	Release string
+	End     *time.Time
+	Start   *time.Time
+}
+
+type ReleaseTestMap struct {
+	Release
+	Tests map[string]TestStatus
+}
+
+type FallbackReleases struct {
+	Releases map[string]ReleaseTestMap
+}
+
 // PullRequestOptions specifies a specific pull request to use as the
 // basis or (more often) sample for the report.
 type PullRequestOptions struct {
@@ -54,13 +69,18 @@ type RequestVariantOptions struct {
 }
 
 // RequestOptions is a struct packaging all the options for a CR request.
+// BaseOverrideRelease is the counterpart to RequestAdvancedOptions.IncludeMultiReleaseAnalysis
+// When multi release analysis is enabled we 'fallback' to the release that has the highest
+// threshold for indicating a regression.  If a release prior to the selected BasRelease has a
+// higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
 type RequestOptions struct {
-	BaseRelease    RequestReleaseOptions
-	SampleRelease  RequestReleaseOptions
-	TestIDOption   RequestTestIdentificationOptions
-	VariantOption  RequestVariantOptions
-	AdvancedOption RequestAdvancedOptions
-	CacheOption    cache.RequestOptions
+	BaseRelease         RequestReleaseOptions
+	BaseOverrideRelease RequestReleaseOptions
+	SampleRelease       RequestReleaseOptions
+	TestIDOption        RequestTestIdentificationOptions
+	VariantOption       RequestVariantOptions
+	AdvancedOption      RequestAdvancedOptions
+	CacheOption         cache.RequestOptions
 }
 
 // View is a server side construct representing a predefined view over the component readiness data.
@@ -91,13 +111,14 @@ type AutomateJira struct {
 }
 
 type RequestAdvancedOptions struct {
-	MinimumFailure           int  `json:"minimum_failure" yaml:"minimum_failure"`
-	Confidence               int  `json:"confidence" yaml:"confidence"`
-	PityFactor               int  `json:"pity_factor" yaml:"pity_factor"`
-	PassRateRequiredNewTests int  `json:"pass_rate_required_new_tests" yaml:"pass_rate_required_new_tests"`
-	PassRateRequiredAllTests int  `json:"pass_rate_required_all_tests" yaml:"pass_rate_required_all_tests"`
-	IgnoreMissing            bool `json:"ignore_missing" yaml:"ignore_missing"`
-	IgnoreDisruption         bool `json:"ignore_disruption" yaml:"ignore_disruption"`
+	MinimumFailure              int  `json:"minimum_failure" yaml:"minimum_failure"`
+	Confidence                  int  `json:"confidence" yaml:"confidence"`
+	PityFactor                  int  `json:"pity_factor" yaml:"pity_factor"`
+	PassRateRequiredNewTests    int  `json:"pass_rate_required_new_tests" yaml:"pass_rate_required_new_tests"`
+	PassRateRequiredAllTests    int  `json:"pass_rate_required_all_tests" yaml:"pass_rate_required_all_tests"`
+	IgnoreMissing               bool `json:"ignore_missing" yaml:"ignore_missing"`
+	IgnoreDisruption            bool `json:"ignore_disruption" yaml:"ignore_disruption"`
+	IncludeMultiReleaseAnalysis bool `json:"include_multi_release_analysis" yaml:"include_multi_release_analysis"`
 }
 
 type TestStatus struct {
@@ -222,17 +243,25 @@ func (r ReportTestStats) IsTriaged() bool {
 	return r.ReportStatus < MissingSample && r.ReportStatus > SignificantRegression
 }
 
+type ReportTestOverride struct {
+	ReportTestStats
+	JobStats []TestDetailsJobStats `json:"job_stats,omitempty"`
+}
+
 type ReportTestDetails struct {
 	ReportTestIdentification
 	ReportTestStats
-	JiraComponent   string                `json:"jira_component"`
-	JiraComponentID *big.Rat              `json:"jira_component_id"`
-	JobStats        []TestDetailsJobStats `json:"job_stats,omitempty"`
-	GeneratedAt     *time.Time            `json:"generated_at"`
+	BaseOverrideReport ReportTestOverride    `json:"base_override_report"`
+	JiraComponent      string                `json:"jira_component"`
+	JiraComponentID    *big.Rat              `json:"jira_component_id"`
+	JobStats           []TestDetailsJobStats `json:"job_stats,omitempty"`
+	GeneratedAt        *time.Time            `json:"generated_at"`
 }
 
 type TestDetailsReleaseStats struct {
 	Release string `json:"release"`
+	Start   *time.Time
+	End     *time.Time
 	TestDetailsTestStats
 }
 
@@ -292,9 +321,10 @@ type JobRunTestStatusRow struct {
 }
 
 type JobRunTestReportStatus struct {
-	BaseStatus   map[string][]JobRunTestStatusRow `json:"base_status"`
-	SampleStatus map[string][]JobRunTestStatusRow `json:"sample_status"`
-	GeneratedAt  *time.Time                       `json:"generated_at"`
+	BaseStatus         map[string][]JobRunTestStatusRow `json:"base_status"`
+	BaseOverrideStatus map[string][]JobRunTestStatusRow `json:"base_override_status"`
+	SampleStatus       map[string][]JobRunTestStatusRow `json:"sample_status"`
+	GeneratedAt        *time.Time                       `json:"generated_at"`
 }
 
 const (
