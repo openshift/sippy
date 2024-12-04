@@ -180,9 +180,10 @@ func GetViewReleaseOptions(
 
 func parsePROptions(req *http.Request) *crtype.PullRequestOptions {
 	pro := crtype.PullRequestOptions{
-		Org:      req.URL.Query().Get("samplePROrg"),
-		Repo:     req.URL.Query().Get("samplePRRepo"),
-		PRNumber: req.URL.Query().Get("samplePRNumber"),
+		// github's namespaces happen to be the same as SQL naming
+		Org:      api.CleanseParameter(req.URL.Query().Get("samplePROrg")),
+		Repo:     api.CleanseParameter(req.URL.Query().Get("samplePRRepo")),
+		PRNumber: api.CleanseParameter(req.URL.Query().Get("samplePRNumber")),
 	}
 	if pro.Org == "" || pro.Repo == "" || pro.PRNumber == "" {
 		return nil
