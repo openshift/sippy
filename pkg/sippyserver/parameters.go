@@ -9,8 +9,8 @@ import (
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/filter"
-
 	"github.com/openshift/sippy/pkg/util"
+	"github.com/openshift/sippy/pkg/util/param"
 )
 
 const (
@@ -19,12 +19,12 @@ const (
 )
 
 func getISO8601Date(paramName string, req *http.Request) (*time.Time, error) {
-	param := req.URL.Query().Get(paramName)
-	if param == "" {
+	valueStr := req.URL.Query().Get(paramName)
+	if valueStr == "" {
 		return nil, nil
 	}
 
-	date, err := time.Parse("2006-01-02T15:04:05Z", param)
+	date, err := time.Parse("2006-01-02T15:04:05Z", valueStr)
 	if err != nil {
 		return nil, err
 	}
@@ -48,11 +48,11 @@ func getPeriodDates(defaultPeriod string, req *http.Request, reportEnd time.Time
 }
 
 func getDateParam(paramName string, req *http.Request) *time.Time {
-	param := req.URL.Query().Get(paramName)
-	if param != "" {
-		t, err := time.Parse("2006-01-02", param)
+	valueStr := req.URL.Query().Get(paramName)
+	if valueStr != "" {
+		t, err := time.Parse("2006-01-02", valueStr)
 		if err != nil {
-			log.WithError(err).Warningf("error decoding %q param: %s", param, err.Error())
+			log.WithError(err).Warningf("error decoding %q param: %s", valueStr, err.Error())
 			return nil
 		}
 		return &t
@@ -62,7 +62,7 @@ func getDateParam(paramName string, req *http.Request) *time.Time {
 }
 
 func getPeriod(req *http.Request, defaultValue string) string {
-	period := req.URL.Query().Get("period")
+	period := param.SafeRead(req, "period")
 	if period == "" {
 		return defaultValue
 	}
@@ -101,8 +101,8 @@ func getPaginationParams(req *http.Request) (*apitype.Pagination, error) {
 }
 
 func getSortParams(req *http.Request) (string, apitype.Sort) {
-	sortField := req.URL.Query().Get("sortField")
-	sort := apitype.Sort(req.URL.Query().Get("sort"))
+	sortField := param.SafeRead(req, "sortField")
+	sort := apitype.Sort(param.SafeRead(req, "sort"))
 	if sortField == "" {
 		sortField = defaultSortField
 	}

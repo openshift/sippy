@@ -13,6 +13,7 @@ import (
 	"gorm.io/gorm/clause"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	apiparam "github.com/openshift/sippy/pkg/util/param"
 )
 
 // LinkOperator determines how to chain multiple filters together, 'AND' and 'OR'
@@ -261,8 +262,8 @@ func FilterOptionsFromRequest(req *http.Request, defaultSortField string, defaul
 		filterOpts.Limit = limit
 	}
 
-	sortField := req.URL.Query().Get("sortField")
-	sort := apitype.Sort(req.URL.Query().Get("sort"))
+	sortField := apiparam.SafeRead(req, "sortField")
+	sort := apitype.Sort(apiparam.SafeRead(req, "sort"))
 	if sortField == "" {
 		sortField = defaultSortField
 	}
@@ -280,7 +281,7 @@ func ExtractFilters(req *http.Request) (*Filter, error) {
 	queryFilter := req.URL.Query().Get("filter")
 	if queryFilter != "" {
 		if err := json.Unmarshal([]byte(queryFilter), filter); err != nil {
-			return nil, fmt.Errorf("could not marshal filter: %w", err)
+			return nil, fmt.Errorf("could not unmarshal filter: %w", err)
 		}
 	}
 

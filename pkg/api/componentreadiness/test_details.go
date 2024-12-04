@@ -18,6 +18,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/regressionallowances"
+	"github.com/openshift/sippy/pkg/util/param"
 )
 
 func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBucket string, reqOptions crtype.RequestOptions,
@@ -152,7 +153,7 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 
 	joinVariants := ""
 	for _, variant := range sortedKeys(allJobVariants.Variants) {
-		v := api.CleanseSQLName(variant)
+		v := param.Cleanse(variant) // should be clean anyway, but just to make sure
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
@@ -190,7 +191,7 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 			continue
 		}
 
-		group := api.CleanseSQLName(key)
+		group := param.Cleanse(key)
 		paramName := "IncludeVariants" + group
 		queryString += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
 		commonParams = append(commonParams, bigquery2.QueryParameter{
@@ -200,8 +201,13 @@ func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.Job
 	}
 
 	for _, group := range sortedKeys(c.RequestedVariants) {
-		variant := c.RequestedVariants[group]
-		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, api.CleanseSQLName(group), api.CleanseSQLName(variant))
+		group = param.Cleanse(group) // should be clean anyway, but just to make sure
+		paramName := "IncludeVariantValue" + group
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
+		commonParams = append(commonParams, bigquery2.QueryParameter{
+			Name:  paramName,
+			Value: c.RequestedVariants[group],
+		})
 	}
 	if isSample {
 		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.CompareVariants, &commonParams)
@@ -220,7 +226,7 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	sort.StringSlice(crossCompare).Sort()
 	for _, group := range crossCompare {
 		if variants := variantGroups[group]; len(variants) > 0 {
-			group = api.CleanseSQLName(group)
+			group = param.Cleanse(group)
 			paramName := "CrossVariants" + group
 			whereClause += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
 			*params = append(*params, bigquery2.QueryParameter{

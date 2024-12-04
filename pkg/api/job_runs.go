@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
+	"github.com/openshift/sippy/pkg/util/param"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -29,8 +30,8 @@ const (
 var nonDeterministicRiskLevels = []int{apitype.FailureRiskLevelUnknown.Level, apitype.FailureRiskLevelIncompleteTests.Level, apitype.FailureRiskLevelMissingData.Level}
 
 func (runs apiRunResults) sort(req *http.Request) apiRunResults {
-	sortField := req.URL.Query().Get("sortField")
-	sort := apitype.Sort(req.URL.Query().Get("sort"))
+	sortField := param.SafeRead(req, "sortField")
+	sort := apitype.Sort(param.SafeRead(req, "sort"))
 
 	if sortField == "" {
 		sortField = "test_failures"

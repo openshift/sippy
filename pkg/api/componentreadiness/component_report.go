@@ -28,6 +28,7 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
 	"github.com/openshift/sippy/pkg/regressionallowances"
+	"github.com/openshift/sippy/pkg/util/param"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -403,10 +404,12 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtyp
 	joinVariants := ""
 	groupByVariants := ""
 	for _, v := range sortedKeys(allJobVariants.Variants) {
+		v = param.Cleanse(v) // should be clean already, but just in case
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
 	for _, v := range c.DBGroupBy.List() {
+		v = param.Cleanse(v)                                                        // should be clean already, but just in case
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
@@ -487,23 +490,23 @@ func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtyp
 		}
 
 		for _, group := range sortedKeys(variantGroups) {
-			variants := variantGroups[group]
-			queryString += " AND ("
-			first := true
-			for _, variant := range variants {
-				if first {
-					queryString += fmt.Sprintf(`jv_%s.variant_value = '%s'`, group, variant)
-					first = false
-				} else {
-					queryString += fmt.Sprintf(` OR jv_%s.variant_value = '%s'`, group, variant)
-				}
-			}
-			queryString += ")"
+			group = param.Cleanse(group) // should be clean already, but just to make sure
+			paramName := fmt.Sprintf("variantGroup_%s", group)
+			queryString += fmt.Sprintf(" AND (jv_%s.variant_value in UNNEST(@%s))", group, paramName)
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  paramName,
+				Value: variantGroups[group],
+			})
 		}
 
 		for _, group := range sortedKeys(c.RequestedVariants) {
-			variant := c.RequestedVariants[group]
-			queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, group, variant)
+			group = param.Cleanse(group) // should be clean already, but just to make sure
+			paramName := fmt.Sprintf("ReqVariant_%s", group)
+			queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  paramName,
+				Value: c.RequestedVariants[group],
+			})
 		}
 		if c.Capability != "" {
 			queryString += " AND @Capability in UNNEST(capabilities)"
