@@ -36,6 +36,7 @@ import (
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
+	"github.com/openshift/sippy/pkg/util/param"
 )
 
 // Mode defines the server mode of operation, OpenShift or upstream Kubernetes.
@@ -309,7 +310,7 @@ func (s *Server) jsonIncidentEvent(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonReleaseTagsEvent(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "release_time", apitype.SortDescending)
 		if err != nil {
@@ -348,7 +349,6 @@ func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request
 	// in the release, but this may not make sense. Likely this API call should be
 	// moved away from filters and possible support for multiple payloads at once to
 	// URL encoded single payload.
-	release := req.URL.Query().Get("release")
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "id", apitype.SortDescending)
 	if err != nil {
 		log.WithError(err).Error("error")
@@ -356,7 +356,7 @@ func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request
 		return
 	}
 
-	payloadJobRuns, err := api.ListPayloadJobRuns(s.db, filterOpts, release)
+	payloadJobRuns, err := api.ListPayloadJobRuns(s.db, filterOpts, param.SafeRead(req, "release"))
 	if err != nil {
 		log.WithError(err).Error("error listing payload job runs")
 		failureResponse(w, http.StatusBadRequest, "error listing payload job runs: "+err.Error())
@@ -370,19 +370,16 @@ func (s *Server) jsonListPayloadJobRuns(w http.ResponseWriter, req *http.Request
 // if we could boil the go logic for building this down into a query, it could become another matview and then
 // could be run quickly, assembling into the health api much more easily
 func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request) {
-	release := req.URL.Query().Get("release")
+	release := s.getParamOrFail(w, req, "release")
 	if release == "" {
-		failureResponse(w, http.StatusBadRequest, `"release" is required`)
 		return
 	}
-	stream := req.URL.Query().Get("stream")
+	stream := s.getParamOrFail(w, req, "stream")
 	if stream == "" {
-		failureResponse(w, http.StatusBadRequest, `"stream" is required`)
 		return
 	}
-	arch := req.URL.Query().Get("arch")
+	arch := s.getParamOrFail(w, req, "arch")
 	if arch == "" {
-		failureResponse(w, http.StatusBadRequest, `"arch" is required`)
 		return
 	}
 
@@ -411,9 +408,8 @@ func (s *Server) jsonGetPayloadAnalysis(w http.ResponseWriter, req *http.Request
 // jsonGetPayloadTestFailures is an api to fetch information about what tests failed across all jobs in a specific
 // payload.
 func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Request) {
-	payload := req.URL.Query().Get("payload")
+	payload := s.getParamOrFail(w, req, "payload")
 	if payload == "" {
-		failureResponse(w, http.StatusBadRequest, `"payload" is required`)
 		return
 	}
 
@@ -433,9 +429,8 @@ func (s *Server) jsonGetPayloadTestFailures(w http.ResponseWriter, req *http.Req
 }
 
 func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Request) {
-	release := req.URL.Query().Get("release")
+	release := s.getParamOrFail(w, req, "release")
 	if release == "" {
-		failureResponse(w, http.StatusBadRequest, `"release" is required`)
 		return
 	}
 
@@ -450,8 +445,8 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 }
 
 func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
-	fromPayload := req.URL.Query().Get("fromPayload")
-	toPayload := req.URL.Query().Get("toPayload")
+	fromPayload := param.SafeRead(req, "fromPayload")
+	toPayload := param.SafeRead(req, "toPayload")
 	results, err := api.GetPayloadDiffPullRequests(s.db, fromPayload, toPayload)
 
 	if err != nil {
@@ -464,12 +459,11 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
-	testName := req.URL.Query().Get("test")
+	testName := s.getParamOrFail(w, req, "test")
 	if testName == "" {
-		failureResponse(w, http.StatusBadRequest, "'test' is required.")
 		return
 	}
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		filters, err := filter.ExtractFilters(req)
 		if err != nil {
@@ -498,9 +492,8 @@ func (s *Server) jsonTestAnalysisOverallFromDB(w http.ResponseWriter, req *http.
 }
 
 func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
-	testName := req.URL.Query().Get("test")
+	testName := s.getParamOrFail(w, req, "test")
 	if testName == "" {
-		failureResponse(w, http.StatusBadRequest, "'test' is required.")
 		return
 	}
 
@@ -518,14 +511,13 @@ func (s *Server) jsonTestBugsFromDB(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release == "" {
 		return
 	}
 
-	testName := req.URL.Query().Get("test")
+	testName := s.getParamOrFail(w, req, "test")
 	if testName == "" {
-		failureResponse(w, http.StatusBadRequest, "'test' is required.")
 		return
 	}
 
@@ -545,14 +537,13 @@ func (s *Server) jsonTestDurationsFromDB(w http.ResponseWriter, req *http.Reques
 }
 
 func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release == "" {
 		return
 	}
 
-	testName := req.URL.Query().Get("test")
+	testName := s.getParamOrFail(w, req, "test")
 	if testName == "" {
-		failureResponse(w, http.StatusBadRequest, "'test' is required.")
 		return
 	}
 
@@ -713,7 +704,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 }
 
 func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getRelease(req)
+	release := param.SafeRead(req, "release")
 
 	fil, err := filter.ExtractFilters(req)
 	if err != nil {
@@ -747,7 +738,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		api.PrintTestsJSONFromDB(release, w, req, s.db)
 	}
@@ -756,7 +747,7 @@ func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request)
 func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	// Filter to test names containing this query param:
 	testSubstring := req.URL.Query()["test"]
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		api.PrintTestsDetailsJSONFromDB(w, release, testSubstring, s.db)
 	}
@@ -802,7 +793,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetReportEnd())
 	}
@@ -822,10 +813,7 @@ func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request
 }
 
 func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http.Request) {
-	period := req.URL.Query().Get("period")
-	if period == "" {
-		period = api.PeriodDay
-	}
+	period := getPeriod(req, api.PeriodDay)
 
 	results, err := api.GetBuildClusterHealthAnalysis(s.db, period)
 	if err != nil {
@@ -837,24 +825,17 @@ func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http
 	api.RespondWithJSON(200, w, results)
 }
 
-func (s *Server) getRelease(req *http.Request) string {
-	return req.URL.Query().Get("release")
-}
-
-func (s *Server) getReleaseOrFail(w http.ResponseWriter, req *http.Request) string {
-	release := req.URL.Query().Get("release")
-
+func (s *Server) getParamOrFail(w http.ResponseWriter, req *http.Request, name string) string {
+	release := param.SafeRead(req, name)
 	if release == "" {
-		failureResponse(w, http.StatusBadRequest, "release is required")
-		return release
+		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("param '%s' is required", name))
 	}
-
 	return release
 }
 
 func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
-	jobName := req.URL.Query().Get("job")
+	release := s.getParamOrFail(w, req, "release")
+	jobName := s.getParamOrFail(w, req, "job")
 	if release != "" && jobName != "" {
 		err := api.PrintJobDetailsReportFromDB(w, req, s.db, release, jobName, s.GetReportEnd())
 		if err != nil {
@@ -872,28 +853,28 @@ func (s *Server) printReportDate(w http.ResponseWriter, req *http.Request) {
 }
 
 func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		api.PrintCanaryTestsFromDB(release, w, s.db)
 	}
 }
 
 func (s *Server) jsonVariantsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		api.PrintVariantReportFromDB(w, req, s.db, release, s.GetReportEnd())
 	}
 }
 
 func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		api.PrintJobsReportFromDB(w, req, s.db, release, s.GetReportEnd())
 	}
 }
 
 func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "premerge_job_failures", apitype.SortDescending)
 		if err != nil {
@@ -913,7 +894,7 @@ func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getReleaseOrFail(w, req)
+	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		filterOpts, err := filter.FilterOptionsFromRequest(req, "merged_at", apitype.SortDescending)
 		if err != nil {
@@ -933,7 +914,7 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getRelease(req)
+	release := param.SafeRead(req, "release")
 
 	filterOpts, err := filter.FilterOptionsFromRequest(req, "timestamp", "desc")
 	if err != nil {
@@ -1052,9 +1033,8 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		failureResponse(w, http.StatusBadRequest, "server not configured for GCS, unable to use this API")
 	}
 
-	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
+	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
 	if jobRunIDStr == "" {
-		failureResponse(w, http.StatusBadRequest, "prow_job_run_id query parameter not specified")
 		return
 	}
 
@@ -1064,11 +1044,10 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	}
 	logger = logger.WithField("jobRunID", jobRunID)
 
-	jobName := req.URL.Query().Get("job_name")
-	repoInfo := req.URL.Query().Get("repo_info")
-	pullNumber := req.URL.Query().Get("pull_number")
-
-	intervalFile := req.URL.Query().Get("file")
+	jobName := param.SafeRead(req, "job_name")
+	repoInfo := param.SafeRead(req, "repo_info")
+	pullNumber := param.SafeRead(req, "pull_number")
+	intervalFile := param.SafeRead(req, "file")
 
 	// Attempt to calculate a GCS path based on a passed in jobName.
 	var gcsPath string
@@ -1120,7 +1099,7 @@ func isValidProwJobRun(jobRun *models.ProwJobRun) (bool, string) {
 }
 
 func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getRelease(req)
+	release := param.SafeRead(req, "release")
 
 	fil, err := filter.ExtractFilters(req)
 	if err != nil {
@@ -1136,11 +1115,7 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	start, boundary, end := getPeriodDates("default", req, s.GetReportEnd())
 	limit := getLimitParam(req)
 	sortField, sort := getSortParams(req)
-
-	period := req.URL.Query().Get("period")
-	if period == "" {
-		period = api.PeriodDay
-	}
+	period := getPeriod(req, api.PeriodDay)
 
 	results, err := api.PrintJobAnalysisJSONFromDB(s.db, release, jobFilter, jobRunsFilter,
 		start, boundary, end, limit, sortField, sort, period, s.GetReportEnd())
