@@ -232,7 +232,8 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	return
 }
 
-type baseJobRunTestStatusGenerator struct {
+// baseTestDetailsQueryGenerator generates the query we use for the basis on the test details page.
+type baseTestDetailsQueryGenerator struct {
 	commonQuery              string
 	groupByQuery             string
 	queryParameters          []bigquery2.QueryParameter
@@ -249,7 +250,7 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(ctx context.Context, 
 	baseStart time.Time,
 	baseEnd time.Time,
 	queryParameters []bigquery2.QueryParameter) (map[string][]crtype.JobRunTestStatusRow, []error) {
-	generator := baseJobRunTestStatusGenerator{
+	generator := baseTestDetailsQueryGenerator{
 		commonQuery:     commonQuery,
 		groupByQuery:    groupByQuery,
 		queryParameters: queryParameters,
@@ -278,7 +279,7 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(ctx context.Context, 
 	return jobRunTestStatus.BaseStatus, nil
 }
 
-func (b *baseJobRunTestStatusGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+func (b *baseTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 	baseString := b.commonQuery + ` AND branch = @BaseRelease`
 	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + b.groupByQuery)
 
@@ -302,7 +303,8 @@ func (b *baseJobRunTestStatusGenerator) queryTestStatus(ctx context.Context) (cr
 	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus}, errs
 }
 
-type sampleJobRunTestQueryGenerator struct {
+// sampleTestDetailsQueryGenerator generates the query we use for the sample on the test details page.
+type sampleTestDetailsQueryGenerator struct {
 	commonQuery              string
 	groupByQuery             string
 	queryParameters          []bigquery2.QueryParameter
@@ -313,7 +315,7 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(ctx context.Context
 	groupByQuery string,
 	queryParameters []bigquery2.QueryParameter,
 ) (map[string][]crtype.JobRunTestStatusRow, []error) {
-	generator := sampleJobRunTestQueryGenerator{
+	generator := sampleTestDetailsQueryGenerator{
 		commonQuery:              commonQuery,
 		groupByQuery:             groupByQuery,
 		queryParameters:          queryParameters,
@@ -334,7 +336,7 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(ctx context.Context
 	return jobRunTestStatus.SampleStatus, nil
 }
 
-func (s *sampleJobRunTestQueryGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+func (s *sampleTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
 	// TODO
 	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
