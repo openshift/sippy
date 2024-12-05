@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -384,161 +383,11 @@ func (c *componentReportGenerator) GenerateComponentReportTestStatus(ctx context
 	return componentReportTestStatus, nil
 }
 
-// sortedKeys is a helper that sorts the keys of a variant group map for consistent ordering.
-func sortedKeys[T any](it map[string]T) []string {
-	keys := make([]string, 0, len(it))
-	for k := range it {
-		keys = append(keys, k)
-	}
-	sort.StringSlice(keys).Sort()
-	return keys
-}
-
-// getCommonTestStatusQuery returns the common query for the higher level summary component summary.
-func (c *componentReportGenerator) getCommonTestStatusQuery(allJobVariants crtype.JobVariants, isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
-	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
-	// Variants will be returned as columns with names like: variant_[VariantName]
-	// See fetchTestStatus for where we dynamically handle these columns.
-	selectVariants := ""
-	joinVariants := ""
-	groupByVariants := ""
-	for _, v := range sortedKeys(allJobVariants.Variants) {
-		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-			c.client.Dataset, v, v, v, v)
-	}
-	for _, v := range c.DBGroupBy.List() {
-		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
-		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
-	}
-
-	jobNameQueryPortion := normalJobNameCol
-	if c.SampleRelease.PullRequestOptions != nil && isSample {
-		jobNameQueryPortion = pullRequestDynamicJobNameCol
-	}
-
-	// TODO: this is a temporary hack while we explore if rarely run jobs approach is actually going to work.
-	// A scheduled query is copying rarely run job results to a separate much smaller table every day, so we can
-	// query 3 months without spending a fortune. If this proves to work, we will work out a system of processing
-	// this as generically as we can, but it will be difficult.
-	junitTable := defaultJunitTable
-	for k, v := range c.IncludeVariants {
-		if k == "JobTier" {
-			if slices.Contains(v, "rare") {
-				junitTable = rarelyRunJunitTable
-			}
-		}
-	}
-
-	// WARNING: returning additional columns from this query will require explicit parsing in deserializeRowToTestStatus
-	// TODO: jira_component and jira_component_id appear to not be used? Could save bigquery costs if we remove them.
-	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
-						SELECT *
-						FROM %s.component_mapping cm
-						WHERE created_at = (
-								SELECT MAX(created_at)
-								FROM %s.component_mapping))
-					SELECT
-						ANY_VALUE(test_name) AS test_name,
-						ANY_VALUE(testsuite) AS test_suite,
-						cm.id as test_id,
-						%s
-						COUNT(cm.id) AS total_count,
-						SUM(adjusted_success_val) AS success_count,
-						SUM(adjusted_flake_count) AS flake_count,
-						MAX(CASE WHEN adjusted_success_val = 0 THEN modified_time ELSE NULL END) AS last_failure,
-						ANY_VALUE(cm.component) AS component,
-						ANY_VALUE(cm.capabilities) AS capabilities,
-					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`,
-		c.client.Dataset, c.client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, junitTable, c.client.Dataset))
-
-	queryString += joinVariants
-
-	groupString := fmt.Sprintf(`
-					GROUP BY
-						%s
-						cm.id `, groupByVariants)
-
-	queryString += `WHERE cm.staff_approved_obsolete = false AND 
-						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%') 
-						AND NOT REGEXP_CONTAINS(variant_registry_job_name, @IgnoredJobs)`
-
-	commonParams := []bigquery.QueryParameter{
-		{
-			Name:  "IgnoredJobs",
-			Value: ignoredJobsRegexp,
-		},
-	}
-	if c.IgnoreDisruption {
-		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
-	}
-
-	// fallback queries get all variants with no filtering
-	// so all tests are fetched then cached
-	if !isFallback {
-		variantGroups := c.IncludeVariants
-		// potentially cross-compare variants for the sample
-		if isSample && len(c.VariantCrossCompare) > 0 {
-			variantGroups = c.CompareVariants
-		}
-		if variantGroups == nil { // server-side view definitions may omit a variants map
-			variantGroups = map[string][]string{}
-		}
-
-		for _, group := range sortedKeys(variantGroups) {
-			variants := variantGroups[group]
-			queryString += " AND ("
-			first := true
-			for _, variant := range variants {
-				if first {
-					queryString += fmt.Sprintf(`jv_%s.variant_value = '%s'`, group, variant)
-					first = false
-				} else {
-					queryString += fmt.Sprintf(` OR jv_%s.variant_value = '%s'`, group, variant)
-				}
-			}
-			queryString += ")"
-		}
-
-		for _, group := range sortedKeys(c.RequestedVariants) {
-			variant := c.RequestedVariants[group]
-			queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, group, variant)
-		}
-		if c.Capability != "" {
-			queryString += " AND @Capability in UNNEST(capabilities)"
-			commonParams = append(commonParams, bigquery.QueryParameter{
-				Name:  "Capability",
-				Value: c.Capability,
-			})
-		}
-		if c.TestID != "" {
-			queryString += ` AND cm.id = @TestId`
-			commonParams = append(commonParams, bigquery.QueryParameter{
-				Name:  "TestId",
-				Value: c.TestID,
-			})
-		}
-	}
-	return queryString, groupString, commonParams
-}
-
 // getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
 func (c *componentReportGenerator) getBaseQueryStatus(ctx context.Context,
 	allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
-	baseQuery, baseGrouping, baseParams := c.getCommonTestStatusQuery(allJobVariants, false, false)
-	generator := baseQueryGenerator{
-		client: c.client,
-		cacheOption: cache.RequestOptions{
-			ForceRefresh: c.cacheOption.ForceRefresh,
-			// increase the time that base query is cached for since it shouldn't be changing?
-			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
-		},
-		commonQuery:              baseQuery,
-		groupByQuery:             baseGrouping,
-		queryParameters:          baseParams,
-		ComponentReportGenerator: c,
-	}
+
+	generator := NewBaseQueryGenerator(c, allJobVariants)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, c.client.Cache,
 		generator.cacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.queryTestStatus, crtype.ReportTestStatus{})
@@ -550,25 +399,16 @@ func (c *componentReportGenerator) getBaseQueryStatus(ctx context.Context,
 	return componentReportTestStatus.BaseStatus, nil
 }
 
-func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Context, allJobVariants crtype.JobVariants, release string, start, end time.Time) []error {
-	baseQuery, baseGrouping, baseParams := c.getCommonTestStatusQuery(allJobVariants, false, true)
-	generator := fallbackTestQueryReleasesGenerator{
-		client: c.client,
-		cacheOption: cache.RequestOptions{
-			ForceRefresh: c.cacheOption.ForceRefresh,
-			// increase the time that fallback queries are cached for
-			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
-		},
-		commonQuery:     baseQuery,
-		groupByQuery:    baseGrouping,
-		BaseRelease:     release,
-		BaseStart:       start,
-		BaseEnd:         end,
-		queryParameters: baseParams,
-		lock:            &sync.Mutex{},
-	}
+func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Context,
+	allJobVariants crtype.JobVariants,
+	release string, start, end time.Time) []error {
+	generator := NewFallbackTestQueryReleasesGenerator(c, allJobVariants, release, start, end)
 
-	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*crtype.FallbackReleases](ctx, c.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackReleases~", generator), generator.getTestFallbackReleases, &crtype.FallbackReleases{})
+	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*crtype.FallbackReleases](
+		ctx, c.client.Cache, generator.cacheOption,
+		api.GetPrefixedCacheKey("FallbackReleases~", generator),
+		generator.getTestFallbackReleases,
+		&crtype.FallbackReleases{})
 
 	if len(errs) > 0 {
 		return errs
@@ -576,6 +416,23 @@ func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Contex
 
 	c.cachedFallbackTestStatuses = cachedFallbackTestStatuses
 	return nil
+}
+
+// getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
+func (c *componentReportGenerator) getSampleQueryStatus(
+	ctx context.Context, allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
+	generator := NewSampleQueryGenerator(c, allJobVariants)
+
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
+		c.client.Cache, c.cacheOption,
+		api.GetPrefixedCacheKey("SampleTestStatus~", generator),
+		generator.queryTestStatus, crtype.ReportTestStatus{})
+
+	if len(errs) > 0 {
+		return nil, errs
+	}
+
+	return componentReportTestStatus.SampleStatus, nil
 }
 
 func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
@@ -639,7 +496,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		}
 
 	*/
-	// Perform additional parallel queries for any table overrides based on the included variants,
+	// TODO: Perform additional parallel queries for any table overrides based on the included variants,
 	// and merge the results.
 
 	wg.Wait()
@@ -725,44 +582,6 @@ func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	columns = append(columns, crtype.ColumnID(columnKeyBytes))
 
 	return rows, columns, nil
-}
-
-func fetchTestStatus(ctx context.Context, query *bigquery.Query) (map[string]crtype.TestStatus, []error) {
-	errs := []error{}
-	status := map[string]crtype.TestStatus{}
-	log.Infof("Fetching test status with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
-
-	it, err := query.Read(ctx)
-	if err != nil {
-		log.WithError(err).Error("error querying test status from bigquery")
-		errs = append(errs, err)
-		return status, errs
-	}
-
-	for {
-		var row []bigquery.Value
-
-		err := it.Next(&row)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.WithError(err).Error("error parsing component from bigquery")
-			errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
-			continue
-		}
-
-		testIDStr, testStatus, err := deserializeRowToTestStatus(row, it.Schema)
-		if err != nil {
-			err2 := errors.Wrap(err, "error deserializing row from bigquery")
-			log.Error(err2.Error())
-			errs = append(errs, err2)
-			continue
-		}
-
-		status[testIDStr] = testStatus
-	}
-	return status, errs
 }
 
 // deserializeRowToTestStatus deserializes a single row into a testID string and matching status.
