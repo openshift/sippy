@@ -84,14 +84,14 @@ func (f *AutomateJiraFlags) Validate(allVariants crtype.JobVariants) error {
 		}
 
 	}
-	for _, variantThreshold := range f.ColumnThresholdStrs {
-		vt := strings.Split(variantThreshold, ":")
+	for _, columnThreshold := range f.ColumnThresholdStrs {
+		vt := strings.Split(columnThreshold, ":")
 		if len(vt) != 3 {
-			return fmt.Errorf("--variant-based-component-regression-threshold %s is in wrong format", variantThreshold)
+			return fmt.Errorf("--column-threshold %s is in wrong format", columnThreshold)
 		}
 		vs, ok := allVariants.Variants[vt[0]]
 		if !ok {
-			return fmt.Errorf("--variant-based-component-regression-threshold %s has wrong variant name %s", variantThreshold, vt[0])
+			return fmt.Errorf("--column-threshold %s has wrong variant name %s", columnThreshold, vt[0])
 		}
 		found := false
 		for _, v := range vs {
@@ -100,11 +100,11 @@ func (f *AutomateJiraFlags) Validate(allVariants crtype.JobVariants) error {
 			}
 		}
 		if !found {
-			return fmt.Errorf("--variant-based-component-regression-threshold %s has wrong variant value %s", variantThreshold, vt[1])
+			return fmt.Errorf("--column-threshold %s has wrong variant value %s", columnThreshold, vt[1])
 		}
 		t, err := strconv.Atoi(vt[2])
 		if err != nil {
-			return fmt.Errorf("--variant-based-component-regression-threshold %s has wrong threshold %s", variantThreshold, vt[2])
+			return fmt.Errorf("--column-threshold %s has wrong threshold %s", columnThreshold, vt[2])
 		}
 		f.ColumnThresholds[jiraautomator.Variant{Name: vt[0], Value: vt[1]}] = t
 	}
@@ -155,11 +155,15 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get variants from bigquery")
 			}
+			variantToJiraComponents, err := jiraautomator.GetVariantJiraMap(ctx, bigQueryClient)
+			if err != nil {
+				return fmt.Errorf("failed to get variant to jira components mapping from bigquery")
+			}
 			if err := f.Validate(allVariants); err != nil {
 				return errors.WithMessage(err, "error validating options")
 			}
 
-			j, err := jiraautomator.NewJiraAutomator(jiraClient, bigQueryClient, cacheOpts, views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount, f.IncludeComponents, f.ColumnThresholds, f.DryRun)
+			j, err := jiraautomator.NewJiraAutomator(jiraClient, bigQueryClient, cacheOpts, views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount, f.IncludeComponents, f.ColumnThresholds, f.DryRun, variantToJiraComponents)
 			if err != nil {
 				panic(err)
 			}

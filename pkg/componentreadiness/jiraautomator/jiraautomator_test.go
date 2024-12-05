@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,7 +45,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 	tests := []struct {
 		name           string
 		report         crtype.ComponentReport
-		expectedResult map[string][]crtype.ReportTestSummary
+		expectedResult map[JiraComponent][]crtype.ReportTestSummary
 	}{
 		{
 			name: "component to regressed tests by component only",
@@ -128,8 +129,8 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: map[string][]crtype.ReportTestSummary{
-				"component 1": {
+			expectedResult: map[JiraComponent][]crtype.ReportTestSummary{
+				{Project: "OCPBUGS", Component: "component 1"}: {
 					{
 						ReportTestIdentification: crtype.ReportTestIdentification{
 							RowIdentification: crtype.RowIdentification{
@@ -157,7 +158,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 						},
 					},
 				},
-				"component 2": {
+				{Project: "OCPBUGS", Component: "component 2"}: {
 					{
 						ReportTestIdentification: crtype.ReportTestIdentification{
 							RowIdentification: crtype.RowIdentification{
@@ -256,8 +257,8 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 					},
 				},
 			},
-			expectedResult: map[string][]crtype.ReportTestSummary{
-				"component 1": {
+			expectedResult: map[JiraComponent][]crtype.ReportTestSummary{
+				{Project: "OCPBUGS", Component: "component 1"}: {
 					{
 						ReportTestIdentification: crtype.ReportTestIdentification{
 							RowIdentification: crtype.RowIdentification{
@@ -272,8 +273,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 						},
 					},
 				},
-				"component 2": nil,
-				"Bare Metal Hardware Provisioning": {
+				{Project: "OCPBUGS", Component: "Bare Metal Hardware Provisioning"}: {
 					{
 						ReportTestIdentification: crtype.ReportTestIdentification{
 							RowIdentification: crtype.RowIdentification{
@@ -310,6 +310,15 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 				Name:  "Platform",
 				Value: "metal",
 			}: 1,
+		},
+		variantToJiraComponents: map[Variant]JiraComponent{
+			{
+				Name:  "Platform",
+				Value: "metal",
+			}: {
+				Project:   jiratype.ProjectKeyOCPBugs,
+				Component: "Bare Metal Hardware Provisioning",
+			},
 		},
 	}
 	for _, tc := range tests {

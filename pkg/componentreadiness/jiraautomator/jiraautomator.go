@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
+	"google.golang.org/api/iterator"
 	jirautil "sigs.k8s.io/prow/pkg/jira"
 )
 
@@ -37,33 +38,8 @@ type Variant struct {
 }
 
 type JiraComponent struct {
-	Project  string
+	Project   string
 	Component string
-}
-
-const (
-	jiraComponentBareMetal = "Bare Metal Hardware Provisioning"
-	// what component is for vsphere?
-	jiraComponentVSphere = "Test Framework"
-)
-
-// variantToJiraComponents maps variants to jira components. This is used to group a column of red cells
-// to a jira component.
-var variantToJiraComponents = map[Variant]JiraComponent{
-	{
-		Name:  "Platform",
-		Value: "metal",
-	}: {
-		Project:   jiratype.ProjectKeyOCPBugs,
-		Component: jiraComponentBareMetal,
-	},
-	{
-		Name:  "Platform",
-		Value: "vsphere",
-	}: {
-		Project:   jiratype.ProjectKeyOCPBugs,
-		Component: jiraComponentVSphere,
-	},
 }
 
 type JiraAutomator struct {
@@ -76,24 +52,26 @@ type JiraAutomator struct {
 	// columnThresholds defines a threshold for the number of red cells in a column.
 	// When the number of red cells of a column is over this threshold, a jira card will be created for the
 	// Variant (column) based jira component. No other jira cards will be created per component row.
-	columnThresholds  map[Variant]int
-	includeComponents sets.String
-	jiraAccount       string
-	dryRun            bool
+	columnThresholds        map[Variant]int
+	includeComponents       sets.String
+	jiraAccount             string
+	dryRun                  bool
+	variantToJiraComponents map[Variant]JiraComponent
 }
 
 func NewJiraAutomator(jiraClient jirautil.Client, bqClient *bqclient.Client, cacheOptions cache.RequestOptions, views []crtype.View,
-	releases []v1.Release, sippyURL, jiraAccount string, includeComponents sets.String, columnThresholds map[Variant]int, dryRun bool) (JiraAutomator, error) {
+	releases []v1.Release, sippyURL, jiraAccount string, includeComponents sets.String, columnThresholds map[Variant]int, dryRun bool, variantToJiraComponents map[Variant]JiraComponent) (JiraAutomator, error) {
 	j := JiraAutomator{
-		jiraClient:        jiraClient,
-		bqClient:          bqClient,
-		cacheOptions:      cacheOptions,
-		releases:          releases,
-		sippyURL:          sippyURL,
-		columnThresholds:  columnThresholds,
-		includeComponents: includeComponents,
-		jiraAccount:       jiraAccount,
-		dryRun:            dryRun,
+		jiraClient:              jiraClient,
+		bqClient:                bqClient,
+		cacheOptions:            cacheOptions,
+		releases:                releases,
+		sippyURL:                sippyURL,
+		columnThresholds:        columnThresholds,
+		includeComponents:       includeComponents,
+		jiraAccount:             jiraAccount,
+		dryRun:                  dryRun,
+		variantToJiraComponents: variantToJiraComponents,
 	}
 	if bqClient == nil || bqClient.BQ == nil {
 		return j, fmt.Errorf("we don't have a bigquery client for jira integrator")
@@ -329,7 +307,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 		description += "\n * Please use this card as a placeholder for all the regressed tests for your component. A separate issue should be created for each regressed test and linked to this issue. Please only close this issue when all known regressed tests are believed fixed.\n"
 		description += "\n * Please do not remove 'Release Blocker' label. The bot will automatically add it back if any regressed tests continue showing for the component.\n"
 
-		summary := fmt.Sprintf("Component Readiness: %s test regressed", component)
+		summary := fmt.Sprintf("Component Readiness: %s test regressed", component.Component)
 		issue := jira.Issue{
 			Fields: &jira.IssueFields{
 				Description: description,
@@ -353,15 +331,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 				Labels: []string{jiratype.LabelJiraAutomator},
 			},
 		}
-		if j.dryRun {
-			issueStr, err := json.MarshalIndent(issue, "", "  ")
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(os.Stdout, "\n====================================================================\n")
-			fmt.Fprintf(os.Stdout, "Creating the following jira issue\n%s", issueStr)
-			fmt.Fprintf(os.Stdout, "\n====================================================================\n")
-		} else {
+		if !j.dryRun {
 			created, err := j.jiraClient.CreateIssue(&issue)
 			if err != nil {
 				return err
@@ -369,6 +339,13 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 			// Set Release Blocker field. Jira does not allow setting those during creation. So do it in separate step.
 			return j.updateReleaseBlocker(created, view.SampleRelease.Release)
 		}
+		issueStr, err := json.MarshalIndent(issue, "", "  ")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+		fmt.Fprintf(os.Stdout, "Creating the following jira issue\n%s", issueStr)
+		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
 	}
 	return nil
 }
@@ -475,14 +452,13 @@ func (j JiraAutomator) updateReleaseBlocker(issue *jira.Issue, release string) e
 				Unknowns: unknowns,
 			},
 		}
-		if j.dryRun {
-			fmt.Fprintf(os.Stdout, "\n====================================================================\n")
-			fmt.Fprintf(os.Stdout, "Updating Release Blocker for %s", issue.ID)
-			fmt.Fprintf(os.Stdout, "\n====================================================================\n")
-		} else {
+		if !j.dryRun {
 			_, err := j.jiraClient.UpdateIssue(&issue)
 			return err
 		}
+		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+		fmt.Fprintf(os.Stdout, "Updating Release Blocker for %s", issue.ID)
+		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
 	}
 	return nil
 }
@@ -519,6 +495,9 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 	}
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
+			if len(col.RegressedTests) == 0 {
+				continue
+			}
 			columnKeyBytes, err := json.Marshal(col.ColumnIdentification)
 			if err != nil {
 				return componentRegressedTests, err
@@ -528,7 +507,7 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 			if variantToThreshold, ok := columnToVariantsToThreshold[columnID]; ok {
 				for variant, threshold := range variantToThreshold {
 					if threshold < columnToRegressionCount[columnID] {
-						if component, ok := variantToJiraComponents[variant]; ok {
+						if component, ok := j.variantToJiraComponents[variant]; ok {
 							componentRegressedTests[component] = append(componentRegressedTests[component], col.RegressedTests...)
 							useVariantBasedComponent = true
 						}
@@ -536,8 +515,8 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 				}
 			}
 			if !useVariantBasedComponent {
-				j := JiraComponent{Project: jiratype.ProjectKeyOCPBugs, Component: row.Component}
-				componentRegressedTests[j] = append(componentRegressedTests[j], col.RegressedTests...)
+				jc := JiraComponent{Project: jiratype.ProjectKeyOCPBugs, Component: row.Component}
+				componentRegressedTests[jc] = append(componentRegressedTests[jc], col.RegressedTests...)
 			}
 		}
 	}
@@ -603,4 +582,30 @@ func (j JiraAutomator) Run() error {
 	}
 	log.Infof("Done automating jiras for component readiness regressions")
 	return nil
+}
+
+func GetVariantJiraMap(ctx context.Context, bqClient *bqclient.Client) (map[Variant]JiraComponent, error) {
+	result := map[Variant]JiraComponent{}
+
+	queryString := "SELECT * FROM openshift-gce-devel.ci_analysis_us.variant_mapping_latest"
+	q := bqClient.BQ.Query(queryString)
+	it, err := q.Read(ctx)
+	if err != nil {
+		log.WithError(err).Error("error querying variant mapping data from bigquery")
+		return result, err
+	}
+
+	for {
+		r := v1.VariantMapping{}
+		err := it.Next(&r)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing variant mapping row from bigquery")
+			return result, err
+		}
+		result[Variant{Name: r.VariantName, Value: r.VariantValue}] = JiraComponent{Project: r.JiraProject, Component: r.JiraComponent}
+	}
+	return result, nil
 }

@@ -3,6 +3,7 @@ package v1
 import (
 	"time"
 
+	"cloud.google.com/go/civil"
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
 
@@ -72,4 +73,32 @@ type Release struct {
 	Release string
 	Status  string
 	GADate  *time.Time
+}
+
+type VariantMapping struct {
+	// APIVersion specifies the schema version, in case we ever need to make
+	// changes to the bigquery table that are not simple column additions.
+	APIVersion string `bigquery:"apiVersion"`
+
+	// Kind is a string value representing the resource this object represents.
+	Kind string `bigquery:"kind"`
+
+	// Product is the layer product name, to support the possibility of multiple
+	// component readiness dashboards. Generally leave this blank.
+	Product string `bigquery:"product"`
+
+	// JiraProject specifies the JIRA project that this variant belongs to.
+	JiraProject string `bigquery:"jira_project"`
+
+	// JiraComponent specifies the JIRA component that this variant belongs to.
+	JiraComponent string `bigquery:"jira_component"`
+
+	// VariantName defines the name of the variant
+	VariantName string `bigquery:"variant_name"`
+
+	// VariantValue defines the value of the variant
+	VariantValue string `bigquery:"variant_value"`
+
+	// CreatedAt is the time this particular record was created.
+	CreatedAt civil.DateTime `bigquery:"created_at" json:"-"`
 }

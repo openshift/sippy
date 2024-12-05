@@ -186,7 +186,7 @@ component_readiness:
     regression_tracking:
       enabled: false
     automate_jira:
-      enabled: true
+      enabled: false
   - name: 4.18-rarely-run-jobs
     base_release:
       release: "4.17"
@@ -246,6 +246,8 @@ component_readiness:
     metrics:
       enabled: false
     regression_tracking:
+      enabled: false
+    automate_jira:
       enabled: false
   - name: 4.17-main
     base_release:
