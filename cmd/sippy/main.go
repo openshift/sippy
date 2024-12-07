@@ -40,6 +40,7 @@ func main() {
 		NewRefreshCommand(),
 		NewLoadJobVariantsCommand(),
 		NewComponentReadinessCommand(),
+		NewAutomateJiraCommand(),
 		NewTrackRegressionsCommand(),
 	)
 
