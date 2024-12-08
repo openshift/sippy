@@ -34,11 +34,6 @@ var PostgresMatViews = []PostgresView{
 		},
 	},
 	{
-		Name:         "prow_test_analysis_by_job_14d_matview",
-		Definition:   testAnalysisByJobMatView,
-		IndexColumns: []string{"test_id", "test_name", "date", "job_name"},
-	},
-	{
 		Name:         "prow_job_runs_report_matview",
 		Definition:   jobRunsReportMatView,
 		IndexColumns: []string{"id"},
@@ -284,36 +279,13 @@ SELECT
 	SUM(flakes) as flakes,
 	SUM(failures) as failures
 FROM
-	prow_test_analysis_by_job_14d_matview byjob
+	test_analysis_by_job_by_dates byjob
 	JOIN tests ON tests.id = byjob.test_id
 	JOIN prow_jobs ON prow_jobs.name = byjob.job_name
 WHERE
 	byjob.date >= (|||TIMENOW||| - '15 days'::interval)
 GROUP BY
 	tests.name, tests.id, byjob.test_id, byjob.test_name, date, unnest(prow_jobs.variants), prow_jobs.release
-`
-
-const testAnalysisByJobMatView = `
-SELECT
-    tests.id AS test_id,
-    tests.name AS test_name,
-    tests.watchlist,
-    date(prow_job_runs."timestamp") AS date,
-    prow_jobs.release,
-    prow_jobs.name AS job_name,
-    COUNT(*) FILTER (WHERE prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS runs,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 1 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS passes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 13 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS flakes,
-    COUNT(*) FILTER (WHERE prow_job_run_tests.status = 12 AND prow_job_runs."timestamp" >= (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" <= |||TIMENOW|||) AS failures
-FROM
-    prow_job_run_tests
-    JOIN tests ON tests.id = prow_job_run_tests.test_id
-    JOIN prow_job_runs ON prow_job_runs.id = prow_job_run_tests.prow_job_run_id
-    JOIN prow_jobs ON prow_jobs.id = prow_job_runs.prow_job_id
-WHERE
-    prow_job_run_tests.created_at > (|||TIMENOW||| - '14 days'::interval) AND prow_job_runs."timestamp" > (|||TIMENOW||| - '14 days'::interval)
-GROUP BY
-    tests.name, tests.id, date(prow_job_runs."timestamp"), prow_jobs.release, prow_jobs.name
 `
 
 const prowJobFailedTestsMatView = `
