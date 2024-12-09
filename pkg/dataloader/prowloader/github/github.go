@@ -11,6 +11,7 @@ import (
 	"time"
 
 	gh "github.com/google/go-github/v45/github"
+	ghauth "github.com/jferrl/go-githubauth"
 	log "github.com/sirupsen/logrus"
 	"github.com/tcnksm/go-gitconfig"
 	"golang.org/x/oauth2"
@@ -20,6 +21,14 @@ const commentIDRegex = `META\s*=\s*{(?P<meta>[^}]*)`
 
 // if we have fewer than this threshold remaining we will report rate limited
 const rateLimitThreshold = 500
+
+const GitHubAppID = 1046118
+
+// openshift github orgs that our app has access to
+type GitHubOrg string
+
+const OpenshiftOrg = GitHubOrg("openshift")
+const OpenshiftEngOrg = GitHubOrg("openshift-eng")
 
 type prlocator struct {
 	org    string
@@ -51,36 +60,13 @@ type Client struct {
 	commentMetaRegEx    *regexp.Regexp
 }
 
-func New(ctx context.Context) *Client {
+func New(ctx context.Context, org GitHubOrg) *Client {
 	client := &Client{
 		ctx:         ctx,
 		cache:       make(map[prlocator]*PREntry),
 		closedCache: make(map[string]map[string]map[int]*gh.PullRequest),
 	}
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		log.Infof("No GitHub token environment variable, checking git config")
-		var err error
-		token, err = gitconfig.GithubToken()
-		if err != nil {
-			log.WithError(err).Warningf("unable to retrieve GitHub token from git config")
-		}
-	}
-
-	var ghc *gh.Client
-
-	if token != "" {
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{
-				AccessToken: token,
-			},
-		)
-		tc := oauth2.NewClient(client.ctx, ts)
-		ghc = gh.NewClient(tc)
-	} else {
-		log.Warningf("using unathenticated GitHub client, requests will be rate-limited")
-		ghc = gh.NewClient(nil)
-	}
+	ghc := gh.NewClient(newGHAuthClient(client.ctx, org))
 
 	client.prFetch = func(org, repo string, number int) (*gh.PullRequest, error) {
 		pr, _, err := ghc.PullRequests.Get(client.ctx, org, repo, number)
@@ -152,6 +138,60 @@ func New(ctx context.Context) *Client {
 	client.commentMetaRegEx = regexp.MustCompile(commentIDRegex)
 
 	return client
+}
+
+// we could use the app token to look up github app installation ids at https://api.github.com/app/installations
+// but it's not like they will change, so we can just hard code them, for one less thing to go wrong
+var installationIDForOrg = map[GitHubOrg]int64{
+	OpenshiftOrg:    56889436,
+	OpenshiftEngOrg: 56889451,
+}
+
+func newGHAuthClient(ctx context.Context, org GitHubOrg) *http.Client {
+	if tokenSource := newAppTokenSource(); tokenSource != nil {
+		// create an org-specific self-renewing token source
+		installationTokenSource := ghauth.NewInstallationTokenSource(installationIDForOrg[org], tokenSource, ghauth.WithContext(ctx))
+		log.Infof("using GitHub App credentials for org %s", org)
+		return oauth2.NewClient(ctx, installationTokenSource)
+	}
+
+	// no app creds, try to use a personal access token
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		log.Infof("No GitHub token environment variable, checking git config")
+		var err error
+		token, err = gitconfig.GithubToken()
+		if err != nil {
+			log.WithError(err).Warningf("unable to retrieve GitHub token from git config")
+		}
+	}
+	if token != "" {
+		log.Infof("using GitHub access token for org %s", org)
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: token},
+		)
+		return oauth2.NewClient(ctx, ts)
+	}
+
+	// make a no-auth client if no token is available
+	log.Warningf("using unathenticated GitHub client, requests will be rate-limited")
+	return nil
+}
+
+func newAppTokenSource() oauth2.TokenSource {
+	// check that the environment variables are set
+	privateKey := os.Getenv("GITHUB_APP_CLIENT_KEY")
+	if privateKey == "" {
+		log.Warn("missing GITHUB_APP_CLIENT_KEY, will not authenticate as GitHub App")
+		return nil
+	}
+	// create top-level token source for the application
+	appTokenSource, err := ghauth.NewApplicationTokenSource(GitHubAppID, []byte(privateKey))
+	if err != nil {
+		log.Errorf("Error creating application token source: %s", err)
+		return nil
+	}
+	return appTokenSource
 }
 
 func (c *Client) IsPrRecentlyMerged(org, repo string, number int) (*time.Time, *string, error) {

@@ -12,8 +12,10 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 
 	"github.com/openshift/sippy/pkg/apis/api"
+	jira "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 const (
@@ -212,8 +214,15 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 	if res.Error != nil {
 		return results, res.Error
 	}
-	log.Infof("found %d bugs for test", len(test.Bugs))
-	return test.Bugs, nil
+	// issues with LabelJiraAutomator are placeholders for multiple tests. Filter them out.
+	for _, b := range test.Bugs {
+		if !util.StrSliceContains(b.Labels, jira.LabelJiraAutomator) {
+			results = append(results, b)
+		}
+	}
+	log.Infof("found %d bugs for test %s", len(results), testName)
+
+	return results, nil
 }
 
 // TestsByNURPAndStandardDeviation returns a test report for every test in the db matching the given substrings, separated by variant.

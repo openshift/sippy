@@ -1,16 +1,20 @@
 module github.com/openshift/sippy
 
-go 1.18
+go 1.22
 
 require (
+	cloud.google.com/go v0.110.2
 	cloud.google.com/go/bigquery v1.52.0
 	cloud.google.com/go/storage v1.30.1
 	github.com/anaskhan96/soup v1.2.5
 	github.com/andygrunwald/go-jira v1.14.0
+	github.com/apache/thrift v0.16.0
 	github.com/glycerine/golang-fisher-exact v0.0.0-20230401153517-53168ae38651
 	github.com/google/go-github/v45 v45.2.0
+	github.com/google/uuid v1.3.0
 	github.com/hashicorp/go-version v1.6.0
 	github.com/jackc/pgtype v1.8.1
+	github.com/jferrl/go-githubauth v1.1.0
 	github.com/lib/pq v1.10.2
 	github.com/montanaflynn/stats v0.6.6
 	github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a
@@ -18,10 +22,11 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.7.0
+	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	github.com/tcnksm/go-gitconfig v0.1.2
 	github.com/tidwall/gjson v1.9.4
-	golang.org/x/oauth2 v0.8.0
+	golang.org/x/oauth2 v0.23.0
 	google.golang.org/api v0.126.0
 	gopkg.in/redis.v5 v5.2.9
 	gopkg.in/yaml.v3 v3.0.1
@@ -30,13 +35,10 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.110.2 // indirect
-	cloud.google.com/go/compute v1.19.3 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	cloud.google.com/go/iam v1.1.0 // indirect
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/apache/arrow/go/v12 v12.0.0 // indirect
-	github.com/apache/thrift v0.16.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -45,14 +47,15 @@ require (
 	github.com/glycerine/gostat v0.0.0-20160815084721-ccc4a6d847f9 // indirect
 	github.com/goccy/go-json v0.9.11 // indirect
 	github.com/golang-jwt/jwt v3.2.1+incompatible // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/flatbuffers v2.0.8+incompatible // indirect
-	github.com/google/go-cmp v0.5.9 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
+	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/s2a-go v0.1.4 // indirect
-	github.com/google/uuid v1.3.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/googleapis/gax-go/v2 v2.11.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
@@ -82,7 +85,6 @@ require (
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/skelterjohn/go.matrix v0.0.0-20130517144113-daa59528eefd // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.0 // indirect
 	github.com/trivago/tgo v1.0.7 // indirect

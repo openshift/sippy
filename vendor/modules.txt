@@ -15,10 +15,7 @@ cloud.google.com/go/bigquery/internal
 cloud.google.com/go/bigquery/internal/query
 cloud.google.com/go/bigquery/storage/apiv1
 cloud.google.com/go/bigquery/storage/apiv1/storagepb
-# cloud.google.com/go/compute v1.19.3
-## explicit; go 1.19
-cloud.google.com/go/compute/internal
-# cloud.google.com/go/compute/metadata v0.2.3
+# cloud.google.com/go/compute/metadata v0.3.0
 ## explicit; go 1.19
 cloud.google.com/go/compute/metadata
 # cloud.google.com/go/iam v1.1.0
@@ -104,6 +101,9 @@ github.com/goccy/go-json/internal/runtime
 # github.com/golang-jwt/jwt v3.2.1+incompatible
 ## explicit
 github.com/golang-jwt/jwt
+# github.com/golang-jwt/jwt/v5 v5.2.1
+## explicit; go 1.18
+github.com/golang-jwt/jwt/v5
 # github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
 ## explicit
 github.com/golang/groupcache/lru
@@ -121,7 +121,7 @@ github.com/golang/snappy
 # github.com/google/flatbuffers v2.0.8+incompatible
 ## explicit
 github.com/google/flatbuffers/go
-# github.com/google/go-cmp v0.5.9
+# github.com/google/go-cmp v0.6.0
 ## explicit; go 1.13
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
@@ -131,6 +131,9 @@ github.com/google/go-cmp/cmp/internal/value
 # github.com/google/go-github/v45 v45.2.0
 ## explicit; go 1.17
 github.com/google/go-github/v45/github
+# github.com/google/go-github/v62 v62.0.0
+## explicit; go 1.21
+github.com/google/go-github/v62/github
 # github.com/google/go-querystring v1.1.0
 ## explicit; go 1.10
 github.com/google/go-querystring/query
@@ -205,6 +208,9 @@ github.com/jackc/pgtype
 github.com/jackc/pgx/v4
 github.com/jackc/pgx/v4/internal/sanitize
 github.com/jackc/pgx/v4/stdlib
+# github.com/jferrl/go-githubauth v1.1.0
+## explicit; go 1.22
+github.com/jferrl/go-githubauth
 # github.com/jinzhu/inflection v1.0.0
 ## explicit
 github.com/jinzhu/inflection
@@ -379,12 +385,15 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
-# golang.org/x/oauth2 v0.8.0
-## explicit; go 1.17
+# golang.org/x/oauth2 v0.23.0
+## explicit; go 1.18
 golang.org/x/oauth2
 golang.org/x/oauth2/authhandler
 golang.org/x/oauth2/google
-golang.org/x/oauth2/google/internal/externalaccount
+golang.org/x/oauth2/google/externalaccount
+golang.org/x/oauth2/google/internal/externalaccountauthorizeduser
+golang.org/x/oauth2/google/internal/impersonate
+golang.org/x/oauth2/google/internal/stsexchange
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt

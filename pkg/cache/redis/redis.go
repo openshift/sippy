@@ -1,7 +1,10 @@
 package redis
 
 import (
+	"context"
 	"time"
+
+	"github.com/sirupsen/logrus"
 
 	r "gopkg.in/redis.v5"
 )
@@ -25,10 +28,18 @@ func NewRedisCache(url string) (*Cache, error) {
 	}, nil
 }
 
-func (c Cache) Get(key string) ([]byte, error) {
+func (c Cache) Get(_ context.Context, key string, _ time.Duration) ([]byte, error) {
+	before := time.Now()
+	defer func(key string, before time.Time) {
+		logrus.Infof("Redis Cache Get completed in %s for %s", time.Since(before), key)
+	}(key, before)
 	return c.client.Get(prefix + key).Bytes()
 }
 
-func (c Cache) Set(key string, content []byte, duration time.Duration) error {
+func (c Cache) Set(_ context.Context, key string, content []byte, duration time.Duration) error {
+	before := time.Now()
+	defer func(key string, before time.Time) {
+		logrus.Infof("Redis Cache Set completed in %s for %s", time.Since(before), key)
+	}(key, before)
 	return c.client.Set(prefix+key, content, duration).Err()
 }

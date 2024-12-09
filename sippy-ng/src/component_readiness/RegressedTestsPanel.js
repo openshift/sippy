@@ -19,13 +19,15 @@ function generateTestReport(
   filterVals,
   componentName,
   capabilityName,
-  testName
+  testName,
+  testBasisRelease
 ) {
   const environmentVal = formColumnName({ variants: variants })
   const { expandEnvironment } = useContext(CompReadyVarsContext)
   const safeComponentName = safeEncodeURIComponent(componentName)
   const safeTestId = safeEncodeURIComponent(testId)
   const safeTestName = safeEncodeURIComponent(testName)
+  const safeTestBasisRelease = safeEncodeURIComponent(testBasisRelease)
   let variantsUrl = ''
   Object.entries(variants).forEach(([key, value]) => {
     variantsUrl += '&' + key + '=' + safeEncodeURIComponent(value)
@@ -33,6 +35,7 @@ function generateTestReport(
   const retUrl =
     '/component_readiness/test_details' +
     filterVals +
+    `&testBasisRelease=${safeTestBasisRelease}` +
     `&testId=${safeTestId}` +
     expandEnvironment(environmentVal) +
     `&component=${safeComponentName}` +
@@ -112,6 +115,19 @@ export default function RegressedTestsPanel(props) {
       ),
     },
     {
+      field: 'last_failure',
+      headerName: 'Last Failure',
+      flex: 12,
+      valueGetter: (params) => {
+        if (!params.row.last_failure) {
+          return ''
+        }
+        const lastFailureDate = new Date(params.row.last_failure)
+        return relativeTime(lastFailureDate, new Date())
+      },
+      renderCell: (param) => <div className="last-failure">{param.value}</div>,
+    },
+    {
       field: 'test_id',
       flex: 5,
       headerName: 'ID',
@@ -148,7 +164,8 @@ export default function RegressedTestsPanel(props) {
               props.filterVals,
               params.row.component,
               params.row.capability,
-              params.row.test_name
+              params.row.test_name,
+              params.row.base_stats ? params.row.base_stats.release : ''
             )}
           >
             <CompSeverityIcon

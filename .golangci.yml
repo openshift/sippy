@@ -7,7 +7,7 @@ linters:
   enable:
     - errcheck
     - exportloopref
-    - goconst
+    # - goconst  # [lmeyer] I cannot see a way to configure this sanely
     - gocritic
     - gocyclo
     - gofmt

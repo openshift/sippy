@@ -11,6 +11,8 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/hashicorp/go-version"
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -23,6 +25,7 @@ import (
 type OCPVariantLoader struct {
 	BigQueryClient  *bigquery.Client
 	bkt             *storage.BucketHandle
+	config          *v1.SippyConfig
 	bigQueryProject string
 	bigQueryDataSet string
 	bigQueryTable   string
@@ -34,12 +37,14 @@ func NewOCPVariantLoader(
 	bigQueryDataSet string,
 	bigQueryTable string,
 	gcsClient *storage.Client,
-	gcsBucket string) *OCPVariantLoader {
+	gcsBucket string,
+	config *v1.SippyConfig) *OCPVariantLoader {
 
 	bkt := gcsClient.Bucket(gcsBucket)
 	return &OCPVariantLoader{
 		BigQueryClient:  bigQueryClient,
 		bkt:             bkt,
+		config:          config,
 		bigQueryProject: bigQueryProject,
 		bigQueryDataSet: bigQueryDataSet,
 		bigQueryTable:   bigQueryTable,
@@ -250,6 +255,7 @@ var (
 	awsRegex        = regexp.MustCompile(`(?i)-aws`)
 	azureRegex      = regexp.MustCompile(`(?i)-azure`)
 	compactRegex    = regexp.MustCompile(`(?i)-compact`)
+	cpuPartitioning = regexp.MustCompile(`(?i)-cpu-partitioning`)
 	etcdScaling     = regexp.MustCompile(`(?i)-etcd-scaling`)
 	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
 	hypershiftRegex = regexp.MustCompile(`(?i)-hypershift`)
@@ -287,6 +293,7 @@ var (
 	// some vsphere jobs do not have a trailing -version segment
 	vsphereRegex   = regexp.MustCompile(`(?i)-vsphere`)
 	crunRegex      = regexp.MustCompile(`(?i)-crun`)
+	runcRegex      = regexp.MustCompile(`(?i)-runc`)
 	cgroupsv1Regex = regexp.MustCompile(`(?i)-cgroupsv1`)
 	virtRegex      = regexp.MustCompile("(?i)-virt|-cnv|-kubevirt")
 )
@@ -304,6 +311,8 @@ const (
 	VariantScheduler        = "Scheduler"    // realtime / standard
 	VariantSecurityMode     = "SecurityMode" // fips / default
 	VariantSuite            = "Suite"        // parallel / serial
+	VariantProcedure        = "Procedure"    // for jobs that do a specific procedure on the cluster (etcd scaling, cpu partitioning, etc.), and then optionally run conformance
+	VariantJobTier          = "JobTier"      // specifies rare, blocking, informing, standard jobs
 	VariantTopology         = "Topology"     // ha / single / compact / external
 	VariantUpgrade          = "Upgrade"
 	VariantContainerRuntime = "ContainerRuntime" // runc / crun
@@ -319,6 +328,7 @@ const (
 	VariantNoValue          = "none"
 )
 
+// nolint:gocyclo
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
 	variants := map[string]string{}
 
@@ -407,6 +417,25 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantSuite] = "unknown" // parallel perhaps but lots of jobs aren't running out suites
 	}
 
+	if etcdScaling.MatchString(jobName) {
+		variants[VariantProcedure] = "etcd-scaling"
+		variants[VariantJobTier] = "rare"
+	} else if cpuPartitioning.MatchString(jobName) {
+		variants[VariantProcedure] = "cpu-partitioning"
+		variants[VariantJobTier] = "rare"
+	} else {
+		variants[VariantProcedure] = VariantNoValue
+
+		// Set tier to informing/blocking as appropriate
+		if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
+			variants[VariantJobTier] = "blocking"
+		} else if util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName) {
+			variants[VariantJobTier] = "informing"
+		} else {
+			variants[VariantJobTier] = "standard"
+		}
+	}
+
 	if sdRegex.MatchString(jobName) {
 		variants[VariantOwner] = "service-delivery"
 	} else if cnfRegex.MatchString(jobName) {
@@ -443,11 +472,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantNetworkAccess] = VariantDefaultValue
 	}
 
-	if crunRegex.MatchString(jobName) {
-		variants[VariantContainerRuntime] = "crun"
-	} else {
-		variants[VariantContainerRuntime] = "runc"
-	}
+	variants[VariantContainerRuntime] = determineContainerRuntime(jLog, jobName, fromRelease)
 
 	if cgroupsv1Regex.MatchString(jobName) {
 		variants[VariantCGroupMode] = "v1"
@@ -596,9 +621,8 @@ func determineArchitecture(jobName string) string {
 		return "s390x"
 	} else if multiRegex.MatchString(jobName) {
 		return "heterogeneous"
-	} else {
-		return "amd64"
 	}
+	return "amd64"
 }
 
 func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
@@ -606,17 +630,33 @@ func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
 		return "ovn"
 	} else if sdnRegex.MatchString(jobName) {
 		return "sdn"
-	} else {
-		// If no explicit version, guess based on release
-		ovnBecomesDefault, _ := version.NewVersion("4.12")
-		releaseVersion, err := version.NewVersion(release)
-		if err != nil {
-			jLog.Warning("could not determine network type")
-			return ""
-		} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
-			return "ovn"
-		} else {
-			return "sdn"
-		}
 	}
+	// If no explicit version, guess based on release
+	ovnBecomesDefault, _ := version.NewVersion("4.12")
+	releaseVersion, err := version.NewVersion(release)
+	if err != nil {
+		jLog.Warning("could not determine network type")
+		return ""
+	} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
+		return "ovn"
+	}
+	return "sdn"
+}
+
+func determineContainerRuntime(jLog logrus.FieldLogger, jobName, release string) string {
+	if crunRegex.MatchString(jobName) {
+		return "crun"
+	} else if runcRegex.MatchString(jobName) {
+		return "runc"
+	}
+	// If no explicit version, guess based on release
+	crunBecomesDefault, _ := version.NewVersion("4.18")
+	releaseVersion, err := version.NewVersion(release)
+	if err != nil {
+		jLog.Warning("could not determine container runtime type")
+		return ""
+	} else if releaseVersion.GreaterThanOrEqual(crunBecomesDefault) {
+		return "crun"
+	}
+	return "runc"
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/stretchr/testify/assert"
@@ -479,6 +480,8 @@ func TestGenerateComponentReport(t *testing.T) {
 													FailureCount: 49,
 													FlakeCount:   1,
 												},
+												Start: &time.Time{},
+												End:   &time.Time{},
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
@@ -487,6 +490,8 @@ func TestGenerateComponentReport(t *testing.T) {
 													FailureCount: 90,
 													FlakeCount:   10,
 												},
+												Start: &time.Time{},
+												End:   &time.Time{},
 											},
 										},
 									},
@@ -516,6 +521,8 @@ func TestGenerateComponentReport(t *testing.T) {
 													FailureCount: 19,
 													FlakeCount:   1,
 												},
+												Start: &time.Time{},
+												End:   &time.Time{},
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
@@ -524,6 +531,8 @@ func TestGenerateComponentReport(t *testing.T) {
 													FailureCount: 90,
 													FlakeCount:   10,
 												},
+												Start: &time.Time{},
+												End:   &time.Time{},
 											},
 										},
 									},
@@ -806,6 +815,8 @@ func TestGenerateComponentReport(t *testing.T) {
 													FailureCount: 14,
 													FlakeCount:   1,
 												},
+												Start: &time.Time{},
+												End:   &time.Time{},
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
@@ -814,6 +825,8 @@ func TestGenerateComponentReport(t *testing.T) {
 													FailureCount: 90,
 													FlakeCount:   10,
 												},
+												Start: &time.Time{},
+												End:   &time.Time{},
 											},
 										},
 									},
@@ -1039,6 +1052,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			FailureCount: 18,
 			FlakeCount:   8,
 		},
+		Start: &time.Time{},
+		End:   &time.Time{},
 	}
 	baseReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.BaseRelease.Release,
@@ -1048,6 +1063,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			FailureCount: 200,
 			FlakeCount:   100,
 		},
+		Start: &time.Time{},
+		End:   &time.Time{},
 	}
 	sampleTestStatsHigh := crtype.TestDetailsTestStats{
 		SuccessRate:  0.9203539823008849,
@@ -1081,6 +1098,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			FailureCount: 9,
 			FlakeCount:   4,
 		},
+		Start: &time.Time{},
+		End:   &time.Time{},
 	}
 	baseReleaseStatsOneHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.BaseRelease.Release,
@@ -1090,6 +1109,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			FailureCount: 100,
 			FlakeCount:   50,
 		},
+		Start: &time.Time{},
+		End:   &time.Time{},
 	}
 	sampleReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.SampleRelease.Release,
@@ -1099,6 +1120,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			FailureCount: 59,
 			FlakeCount:   4,
 		},
+		Start: &time.Time{},
+		End:   &time.Time{},
 	}
 	baseReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.BaseRelease.Release,
@@ -1108,6 +1131,8 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			FailureCount: 600,
 			FlakeCount:   50,
 		},
+		Start: &time.Time{},
+		End:   &time.Time{},
 	}
 	tests := []struct {
 		name                    string
@@ -1357,7 +1382,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
-			report := tc.generator.internalGenerateTestDetailsReport(context.TODO(), baseStats, sampleStats)
+			report := tc.generator.internalGenerateTestDetailsReport(context.TODO(), baseStats, "", nil, nil, sampleStats)
 			assert.Equal(t, tc.expectedReport.RowIdentification, report.RowIdentification, "expected report row identification %+v, got %+v", tc.expectedReport.RowIdentification, report.RowIdentification)
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
 			assert.Equal(t, tc.expectedReport.BaseStats, report.BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.BaseStats, report.BaseStats)
@@ -1614,7 +1639,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			expectedStatus:              crtype.NotSignificant,
 		},
 		{
-			name:                        "pass rate mode significant regression ignores minimum failures",
+			name:                        "pass rate mode significant regression under minimum failures",
 			sampleTotal:                 20,
 			sampleSuccess:               18,
 			sampleFlake:                 0,
@@ -1624,6 +1649,19 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
 			minFail:                     5,
+			expectedStatus:              crtype.NotSignificant,
+		},
+		{
+			name:                        "pass rate mode significant regression over minimum failures",
+			sampleTotal:                 20,
+			sampleSuccess:               18,
+			sampleFlake:                 0,
+			baseTotal:                   20,
+			baseSuccess:                 18,
+			baseFlake:                   0,
+			numberOfIgnoredSamples:      0,
+			requiredPassRateForAllTests: 95,
+			minFail:                     1,
 			expectedStatus:              crtype.SignificantRegression,
 		},
 		{
@@ -1652,7 +1690,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			c.PassRateRequiredAllTests = tt.requiredPassRateForAllTests
 			c.MinimumFailure = tt.minFail
 
-			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, nil, tt.numberOfIgnoredSamples)
+			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, tt.numberOfIgnoredSamples, "dummyRelease", nil, nil)
 			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")
 			if tt.expectedFischers != nil {
 				assert.Equalf(t, *tt.expectedFischers, *testStats.FisherExact, "assessComponentStatus expected fischers value not equal")
