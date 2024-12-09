@@ -19,6 +19,7 @@ import (
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgtype"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -53,7 +54,7 @@ type ProwLoader struct {
 	bktName                 string
 	errors                  []error
 	githubClient            *github.Client
-	bigQueryClient          *bigquery.Client
+	bigQueryClient          *bqcachedclient.Client
 	maxConcurrency          int
 	prowJobCache            map[string]*models.ProwJob
 	prowJobCacheLock        sync.RWMutex
@@ -75,7 +76,7 @@ func New(
 	ctx context.Context,
 	dbc *db.DB,
 	gcsClient *storage.Client,
-	bigQueryClient *bigquery.Client,
+	bigQueryClient *bqcachedclient.Client,
 	gcsBucket string,
 	githubClient *github.Client,
 	variantManager testidentification.VariantManager,
@@ -375,8 +376,7 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 		dLog.Info("partition created")
 		dLog.Warn(pl.releases)
 
-		// TODO: swap in configurable data sets
-		q := pl.bigQueryClient.Query(`WITH
+		q := pl.bigQueryClient.BQ.Query(fmt.Sprintf(`WITH
   deduped_testcases AS (
   SELECT
     junit.*,
@@ -397,9 +397,9 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
   END
     AS adjusted_flake_count
   FROM
-    openshift-gce-devel.ci_analysis_us.junit
+    %s.junit
   INNER JOIN
-    openshift-gce-devel.ci_analysis_us.jobs jobs
+    %s.jobs jobs
   ON
     junit.prowjob_build_id = jobs.prowjob_build_id
     AND DATE(jobs.prowjob_start) = DATE(@DateToImport)
@@ -428,7 +428,7 @@ ORDER BY
   date,
   test_name,
   prowjob_name
-`)
+`, pl.bigQueryClient.Dataset, pl.bigQueryClient.Dataset))
 		q.Parameters = []bigquery.QueryParameter{
 			{
 				Name:  "DateToImport",
