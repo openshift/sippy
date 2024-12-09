@@ -373,6 +373,7 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 			return res.Error
 		}
 		dLog.Info("partition created")
+		dLog.Warn(pl.releases)
 
 		// TODO: swap in configurable data sets
 		q := pl.bigQueryClient.Query(`WITH
@@ -417,6 +418,7 @@ FROM
   deduped_testcases
 WHERE
   row_num = 1
+  AND branch IN UNNEST(@Releases)
 GROUP BY
   test_name,
   date,
@@ -431,6 +433,10 @@ ORDER BY
 			{
 				Name:  "DateToImport",
 				Value: dateToImport,
+			},
+			{
+				Name:  "Releases",
+				Value: pl.releases,
 			},
 		}
 		it, err := q.Read(context.TODO())
