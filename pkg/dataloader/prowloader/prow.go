@@ -154,17 +154,6 @@ func (pl *ProwLoader) Errors() []error {
 func (pl *ProwLoader) Load() {
 	start := time.Now()
 
-	// TODO: move to after normal import
-	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
-	if err != nil {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
-	}
-
-	if true {
-		log.Fatal("TODO exiting early")
-		return
-	}
-
 	log.Infof("started loading prow jobs to DB...")
 
 	// Update unmerged PR statuses in case any have merged
@@ -228,6 +217,13 @@ func (pl *ProwLoader) Load() {
 	close(errsCh)
 	for err := range errsCh {
 		pl.errors = append(pl.errors, err)
+	}
+
+	// load the test analysis by job data into tables partitioned by day, letting bigquery do the
+	// heavy lifting for us.
+	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
+	if err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
 	}
 
 	if len(pl.errors) > 0 {
@@ -327,6 +323,10 @@ func NextDay(dateStr string) (string, error) {
 	return nextDay.Format("2006-01-02"), nil
 }
 
+// loadDailyTestAnalysisByJob loads test analysis data into partitioned tables in postgres, one per
+// day. The data is calculated by querying bigquery to do the heavy lifting for us. Each day is committed
+// transactionally so the process is safe to interrupt and resume later. The process takes about 20 minutes
+// per day at the time of writing, so an initial load for all releases can be quite time consuming.
 func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 
 	// Figure out our last imported daily summary.
@@ -439,7 +439,7 @@ ORDER BY
 				Value: pl.releases,
 			},
 		}
-		it, err := q.Read(context.TODO())
+		it, err := q.Read(ctx)
 		if err != nil {
 			dLog.WithError(err).Error("error querying test analysis from bigquery")
 			return err
