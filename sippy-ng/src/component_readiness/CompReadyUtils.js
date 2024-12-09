@@ -30,6 +30,7 @@ export const initialPageTable = {
           empty: 'None',
           status: 3, // Let's start with success
           regressed_tests: [],
+          variants: [],
         },
       ],
     },
@@ -43,6 +44,7 @@ export const noDataTable = {
         {
           empty: 'None',
           status: 3, // Let's start with success
+          variants: [],
         },
       ],
     },
@@ -56,6 +58,7 @@ export const cancelledDataTable = {
         {
           empty: 'None',
           status: 3, // Let's start with success
+          variants: [],
         },
       ],
     },
