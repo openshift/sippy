@@ -13,6 +13,7 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/util/param"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -357,6 +358,7 @@ func getCommonTestStatusQuery(c *componentReportGenerator, allJobVariants crtype
 			c.client.Dataset, v, v, v, v)
 	}
 	for _, v := range c.DBGroupBy.List() {
+		v = param.Cleanse(v)
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
@@ -437,23 +439,23 @@ func getCommonTestStatusQuery(c *componentReportGenerator, allJobVariants crtype
 		}
 
 		for _, group := range sortedKeys(variantGroups) {
-			variants := variantGroups[group]
-			queryString += " AND ("
-			first := true
-			for _, variant := range variants {
-				if first {
-					queryString += fmt.Sprintf(`jv_%s.variant_value = '%s'`, group, variant)
-					first = false
-				} else {
-					queryString += fmt.Sprintf(` OR jv_%s.variant_value = '%s'`, group, variant)
-				}
-			}
-			queryString += ")"
+			group = param.Cleanse(group) // should be clean already, but just to make sure
+			paramName := fmt.Sprintf("variantGroup_%s", group)
+			queryString += fmt.Sprintf(" AND (jv_%s.variant_value in UNNEST(@%s))", group, paramName)
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  paramName,
+				Value: variantGroups[group],
+			})
 		}
 
 		for _, group := range sortedKeys(c.RequestedVariants) {
-			variant := c.RequestedVariants[group]
-			queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, group, variant)
+			group = param.Cleanse(group) // should be clean already, but just to make sure
+			paramName := fmt.Sprintf("ReqVariant_%s", group)
+			queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  paramName,
+				Value: c.RequestedVariants[group],
+			})
 		}
 		if c.Capability != "" {
 			queryString += " AND @Capability in UNNEST(capabilities)"
@@ -517,7 +519,7 @@ func getTestDetailsQuery(c *componentReportGenerator, allJobVariants crtype.JobV
 
 	joinVariants := ""
 	for _, variant := range sortedKeys(allJobVariants.Variants) {
-		v := api.CleanseSQLName(variant)
+		v := param.Cleanse(variant) // should be clean anyway, but just to make sure
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			c.client.Dataset, v, v, v, v)
 	}
@@ -555,7 +557,7 @@ func getTestDetailsQuery(c *componentReportGenerator, allJobVariants crtype.JobV
 			continue
 		}
 
-		group := api.CleanseSQLName(key)
+		group := param.Cleanse(key)
 		paramName := "IncludeVariants" + group
 		queryString += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
 		commonParams = append(commonParams, bigquery.QueryParameter{
@@ -565,8 +567,13 @@ func getTestDetailsQuery(c *componentReportGenerator, allJobVariants crtype.JobV
 	}
 
 	for _, group := range sortedKeys(c.RequestedVariants) {
-		variant := c.RequestedVariants[group]
-		queryString += fmt.Sprintf(` AND jv_%s.variant_value = '%s'`, api.CleanseSQLName(group), api.CleanseSQLName(variant))
+		group = param.Cleanse(group) // should be clean anyway, but just to make sure
+		paramName := "IncludeVariantValue" + group
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  paramName,
+			Value: c.RequestedVariants[group],
+		})
 	}
 	if isSample {
 		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.CompareVariants, &commonParams)
