@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"time"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
@@ -50,7 +49,7 @@ func PrintJobAnalysisJSONFromDB(
 	sums := make([]resultSum, 0)
 	prowJobRunsFiltered := jobRunsFilter.ToSQL(dbc.DB.Table("prow_job_runs"), apitype.JobRun{})
 	sumResults := dbc.DB.Table("(?) as prow_job_runs", prowJobRunsFiltered).
-		Select(fmt.Sprintf(`date_trunc('%s', timestamp)        AS period,
+		Select(`date_trunc(?, timestamp)        AS period,
 	           count(*)                                              AS total_runs,
 	           sum(case when overall_result = 'S' then 1 else 0 end) AS "S",
 	           sum(case when overall_result = 'F' then 1 else 0 end) AS "F",
@@ -60,10 +59,10 @@ func PrintJobAnalysisJSONFromDB(
 	           sum(case when overall_result = 'N' then 1 else 0 end) AS "N",
 	           sum(case when overall_result = 'n' then 1 else 0 end) AS "n",
 	           sum(case when overall_result = 'R' then 1 else 0 end) AS "R",
-	           sum(case when overall_result = 'A' then 1 else 0 end) AS "A"`, period)).
+	           sum(case when overall_result = 'A' then 1 else 0 end) AS "A"`, period).
 		Joins("INNER JOIN prow_jobs ON prow_job_runs.prow_job_id = prow_jobs.id").
 		Where("prow_jobs.id IN ?", jobs).
-		Group(fmt.Sprintf(`date_trunc('%s', timestamp)`, period))
+		Group("period")
 
 	sumResults.Scan(&sums)
 
