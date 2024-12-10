@@ -160,11 +160,12 @@ func GetReleases(ctx context.Context, bqc *bqclient.Client) ([]v1.Release, error
 	return rels, err
 }
 
-// VariantsStringToSet converts comma separated variant string into a set
+// VariantsStringToSet converts comma separated variant string into a set; also validates that the variants are known
 func VariantsStringToSet(allJobVariants crtype.JobVariants, variantsString string) (sets.String, error) {
 	variantSet := sets.String{}
 	variants := strings.Split(variantsString, ",")
 	for _, v := range variants {
+		// ensure the variant is one we've recorded in BQ, not just some random string
 		if _, ok := allJobVariants.Variants[v]; !ok {
 			return variantSet, fmt.Errorf("invalid variant %s in variants string %s", v, variantsString)
 		}
@@ -173,6 +174,8 @@ func VariantsStringToSet(allJobVariants crtype.JobVariants, variantsString strin
 	return variantSet, nil
 }
 
+// VariantListToMap collects a list of variants like "Architecture:amd64" into a map [Architecture -> amd64];
+// it also validates that the variants are known
 func VariantListToMap(allJobVariants crtype.JobVariants, variants []string) (map[string][]string, error) {
 	variantsMap := map[string][]string{}
 	var err error
@@ -182,6 +185,7 @@ func VariantListToMap(allJobVariants crtype.JobVariants, variants []string) (map
 			err = fmt.Errorf("invalid variant %s in list", variant)
 			return variantsMap, err
 		}
+		// ensure the variant name/value is one we've recorded in BQ, not just some random string
 		values, ok := allJobVariants.Variants[kv[0]]
 		if !ok {
 			err = fmt.Errorf("invalid name from list variant %s", variant)
@@ -201,15 +205,4 @@ func VariantListToMap(allJobVariants crtype.JobVariants, variants []string) (map
 		}
 	}
 	return variantsMap, err
-}
-
-// CleanseSQLName removes all non-alphanumeric characters from a string that could be used as a SQL name (table, column, etc)
-// This is useful for sanitizing dynamic queries built from user input.
-func CleanseSQLName(name string) string {
-	return strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
-			return r
-		}
-		return -1
-	}, name)
 }

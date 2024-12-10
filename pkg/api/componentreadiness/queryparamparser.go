@@ -10,6 +10,7 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
+	"github.com/openshift/sippy/pkg/util/param"
 )
 
 // nolint:gocyclo
@@ -42,13 +43,13 @@ func ParseComponentReportRequest(
 			return
 		}
 	} else {
-		opts.BaseRelease.Release = req.URL.Query().Get("baseRelease")
+		opts.BaseRelease.Release = param.SafeRead(req, "baseRelease")
 		if opts.BaseRelease.Release == "" {
 			err = fmt.Errorf("missing baseRelease")
 			return
 		}
 
-		opts.SampleRelease.Release = req.URL.Query().Get("sampleRelease")
+		opts.SampleRelease.Release = param.SafeRead(req, "sampleRelease")
 		if opts.SampleRelease.Release == "" {
 			err = fmt.Errorf("missing sampleRelease")
 			return
@@ -81,7 +82,7 @@ func ParseComponentReportRequest(
 
 		if opts.AdvancedOption.IncludeMultiReleaseAnalysis {
 			// check to see if we have an individual test which is using a fallback release for basis
-			testBasisRelease := req.URL.Query().Get("testBasisRelease")
+			testBasisRelease := param.SafeRead(req, "testBasisRelease")
 			if len(testBasisRelease) > 0 && releases != nil {
 				// indicates we fell back to a previous release
 				// get that release and find the dates associated with it.
@@ -108,6 +109,7 @@ func ParseComponentReportRequest(
 	// Params below this point can be used with and without views:
 
 	opts.TestIDOption = crtype.RequestTestIdentificationOptions{
+		// these are semi-freeform and only used in lookup keys, so don't need validation
 		Component:  req.URL.Query().Get("component"),
 		Capability: req.URL.Query().Get("capability"),
 		TestID:     req.URL.Query().Get("testId"),
@@ -124,7 +126,7 @@ func ParseComponentReportRequest(
 
 // getRequestedView returns the view requested per the view param, or nil if none.
 func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, error) {
-	viewRequested := req.URL.Query().Get("view")
+	viewRequested := req.URL.Query().Get("view") // used only to lookup by view name
 	if viewRequested == "" {
 		return nil, nil
 	}
@@ -180,9 +182,9 @@ func GetViewReleaseOptions(
 
 func parsePROptions(req *http.Request) *crtype.PullRequestOptions {
 	pro := crtype.PullRequestOptions{
-		Org:      req.URL.Query().Get("samplePROrg"),
-		Repo:     req.URL.Query().Get("samplePRRepo"),
-		PRNumber: req.URL.Query().Get("samplePRNumber"),
+		Org:      param.SafeRead(req, "samplePROrg"),
+		Repo:     param.SafeRead(req, "samplePRRepo"),
+		PRNumber: param.SafeRead(req, "samplePRNumber"),
 	}
 	if pro.Org == "" || pro.Repo == "" || pro.PRNumber == "" {
 		return nil
@@ -243,11 +245,11 @@ func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants) (
 }
 
 func ParseIntArg(req *http.Request, name string, defaultVal int, validator func(int) bool) (int, error) {
-	param := req.URL.Query().Get(name)
-	if param == "" {
+	valueStr := req.URL.Query().Get(name)
+	if valueStr == "" {
 		return defaultVal, nil
 	}
-	val, err := strconv.Atoi(param)
+	val, err := strconv.Atoi(valueStr)
 	if err != nil {
 		return val, fmt.Errorf(name + " is not an integer")
 	}
@@ -258,11 +260,11 @@ func ParseIntArg(req *http.Request, name string, defaultVal int, validator func(
 }
 
 func ParseBoolArg(req *http.Request, name string, defaultVal bool) (bool, error) {
-	param := req.URL.Query().Get(name)
-	if param == "" {
+	valueStr := req.URL.Query().Get(name)
+	if valueStr == "" {
 		return defaultVal, nil
 	}
-	val, err := strconv.ParseBool(param)
+	val, err := strconv.ParseBool(valueStr)
 	if err != nil {
 		return val, fmt.Errorf(name + " is not a boolean")
 	}

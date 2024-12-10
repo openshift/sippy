@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/html/installhtml"
+	"github.com/openshift/sippy/pkg/util/param"
 )
 
 const (
@@ -70,8 +71,8 @@ func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Fi
 type testsAPIResult []apitype.Test
 
 func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {
-	sortField := req.URL.Query().Get("sortField")
-	sort := req.URL.Query().Get("sort")
+	sortField := param.SafeRead(req, "sortField")
+	sort := param.SafeRead(req, "sort")
 
 	if sortField == "" {
 		sortField = "current_pass_percentage"
