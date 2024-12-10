@@ -179,9 +179,9 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		`%s CROSS JOIN %s.%s.%s j WHERE j.name != "upgrade" AND (STRPOS(t.summary, j.name) > 0 OR STRPOS(t.description, j.name) > 0 OR STRPOS(t.comment, j.name) > 0)`,
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
 	log.Debugf(querySQL)
-	query := bl.bqc.BQ.Query(querySQL)
+	q := bl.bqc.BQ.Query(querySQL)
 
-	it, err := query.Read(ctx)
+	it, err := q.Read(ctx)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to execute query")
 	}
@@ -233,9 +233,9 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 		`%s CROSS JOIN (SELECT DISTINCT prowjob_job_name AS name FROM openshift-gce-devel.ci_analysis_us.jobs WHERE prowjob_job_name IS NOT NULL AND prowjob_job_name != "") j WHERE (STRPOS(t.summary, j.name) > 0 OR STRPOS(t.description, j.name) > 0 OR STRPOS(t.comment, j.name) > 0)`,
 		TicketDataQuery)
 	log.Debugf(querySQL)
-	query := bl.bqc.BQ.Query(querySQL)
+	q := bl.bqc.BQ.Query(querySQL)
 
-	it, err := query.Read(ctx)
+	it, err := q.Read(ctx)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to execute query")
 	}
