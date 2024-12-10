@@ -16,6 +16,7 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/regressionallowances"
+	"github.com/openshift/sippy/pkg/util/param"
 )
 
 func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBucket string, reqOptions crtype.RequestOptions,
@@ -115,7 +116,7 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	sort.StringSlice(crossCompare).Sort()
 	for _, group := range crossCompare {
 		if variants := variantGroups[group]; len(variants) > 0 {
-			group = api.CleanseSQLName(group)
+			group = param.Cleanse(group)
 			paramName := "CrossVariants" + group
 			whereClause += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
 			*params = append(*params, bigquery2.QueryParameter{

@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
+	"github.com/openshift/sippy/pkg/util/param"
 
 	v1sippyprocessing "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 )
@@ -25,8 +26,8 @@ const periodTwoDay = "twoDay"
 const currentPassPercentage = "current_pass_percentage"
 
 func (jobs jobsAPIResult) sort(req *http.Request) jobsAPIResult {
-	sortField := req.URL.Query().Get("sortField")
-	sort := apitype.Sort(req.URL.Query().Get("sort"))
+	sortField := param.SafeRead(req, "sortField")
+	sort := apitype.Sort(param.SafeRead(req, "sort"))
 
 	if sortField == "" {
 		sortField = currentPassPercentage
