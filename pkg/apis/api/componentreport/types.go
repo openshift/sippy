@@ -161,20 +161,6 @@ type ReportRow struct {
 	Columns []ReportColumn `json:"columns,omitempty"`
 }
 
-// JunitTableOverride is used to perform additional report sample queries, potentially redirected to a
-// different bigquery table, or using a different sample start time.
-type JunitTableOverride struct {
-	VariantKey   string `json:"variant_key"`
-	VariantValue string `json:"variant_value"`
-	// TableName is an alternative table to look for query results for this variant. If empty, we will
-	// use the default table.
-	TableName string `json:"table_name"`
-	// RelativeStartOffset will be used to alter the lookback for the sample query
-	// when this variant is included in the report and we redirect to another table.
-	// If empty, we will use the requests sample start time.
-	RelativeStartOffset string `json:"relative_start_offset"`
-}
-
 type RowIdentification struct {
 	Component  string `json:"component"`
 	Capability string `json:"capability,omitempty"`

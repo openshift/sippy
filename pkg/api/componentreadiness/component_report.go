@@ -484,21 +484,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 
 	}()
 
-	// TODO: temporary hardcode these overrides, move to a new config file later.
-	/*
-		junitTableOverrides := []crtype.JunitTableOverride{
-			{
-				VariantKey:          "JobTier",
-				VariantValue:        "rare",
-				TableName:           "junit_rarely_run",
-				RelativeStartOffset: "90d",
-			},
-		}
-
-	*/
-	// TODO: Perform additional parallel queries for any table overrides based on the included variants,
-	// and merge the results.
-
 	wg.Wait()
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
 		errs = append(errs, baseErrs...)
