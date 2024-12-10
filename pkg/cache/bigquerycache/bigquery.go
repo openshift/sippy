@@ -139,52 +139,14 @@ func (c Cache) Get(ctx context.Context, key string, duration time.Duration) ([]b
 		logrus.Infof("BigQuery Cache Get completed in %s for %s", time.Since(before), key)
 	}(key, before)
 
-	// get the most recent modified time for this key along with uuid and checksum
-	// limit the columns so we don't query too much data
-	cacheQuery := fmt.Sprintf("SELECT modified_time, expiration, uuid FROM `%s.%s` WHERE `%s` > TIMESTAMP(\"%s\") AND `%s` > TIMESTAMP(\"%s\") AND %s = '%s' order by %s desc limit 1", c.client.Dataset, cachedTable, partitionColumn, time.Now().Add(-1*c.maxExpiration).Format(time.RFC3339), "expiration", time.Now().Format(time.RFC3339), "key", key, partitionColumn)
-
-	query := c.client.BQ.Query(cacheQuery)
-
-	metadataRecord := CacheRecord{}
-
-	it, err := query.Read(ctx)
+	metadataRecord, err := c.findCacheEntry(ctx, key)
 	if err != nil {
 		return nil, err
 	}
-
-	err = it.Next(&metadataRecord)
+	data, err := c.getFullCacheRecords(ctx, key, metadataRecord)
 	if err != nil {
 		return nil, err
 	}
-
-	// that gives us the modified time
-	// we have to add a +/- 5 second grace as exact match doesn't work
-	// now get the data
-	cacheQuery = fmt.Sprintf("SELECT * FROM `%s.%s` WHERE `%s` > TIMESTAMP(\"%s\") AND `%s` < TIMESTAMP(\"%s\")  AND %s = '%s' AND %s = '%s' order by %s asc", c.client.Dataset, cachedTable, partitionColumn, metadataRecord.Modified.Add(-5*time.Second).Format(time.RFC3339), partitionColumn, metadataRecord.Modified.Add(5*time.Second).Format(time.RFC3339), "key", key, "uuid", metadataRecord.UUID, "chunk_index")
-
-	query = c.client.BQ.Query(cacheQuery)
-
-	record := CacheRecord{}
-	var records [][]byte
-
-	it, err = query.Read(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	for {
-		err = it.Next(&record)
-		if err != nil {
-			if err == iterator.Done {
-				break
-			}
-			return nil, err
-		}
-		records = append(records, record.Data)
-	}
-
-	// we should have the records, now assemble them into a single array
-	data := unchunk(records)
 
 	// if we have a warm cache, and we had a cache miss we should update it now
 	// we don't have the exact duration so we diff the expiration value and now
@@ -199,6 +161,96 @@ func (c Cache) Get(ctx context.Context, key string, duration time.Duration) ([]b
 		persistentCacheBackendMissMetric.WithLabelValues().Inc()
 	}
 
+	return data, nil
+}
+
+func (c Cache) findCacheEntry(ctx context.Context, key string) (CacheRecord, error) {
+	// get the most recent modified time for this key along with uuid and checksum
+	// limit the columns so we don't query too much data
+	query := c.client.BQ.Query(fmt.Sprintf(
+		"SELECT modified_time, expiration, uuid FROM `%s.%s` "+
+			`WHERE %s > TIMESTAMP(@expByNowTime)
+		  AND expiration > TIMESTAMP(@expTime)
+		  AND key = @keyParam
+		ORDER BY %s DESC LIMIT 1`,
+		c.client.Dataset, cachedTable,
+		partitionColumn, partitionColumn))
+	query.Parameters = []bigquery.QueryParameter{
+		{ // limit partitions to those that could contain un-expired entries
+			Name:  "expByNowTime",
+			Value: time.Now().Add(-1 * c.maxExpiration).Format(time.RFC3339),
+		},
+		{ // entry itself is not already expired
+			Name:  "expTime",
+			Value: time.Now().Format(time.RFC3339),
+		},
+		{
+			Name:  "keyParam",
+			Value: key,
+		},
+	}
+
+	metadataRecord := CacheRecord{}
+
+	it, err := query.Read(ctx)
+	if err != nil {
+		return metadataRecord, err
+	}
+
+	err = it.Next(&metadataRecord)
+	return metadataRecord, err
+}
+
+func (c Cache) getFullCacheRecords(ctx context.Context, key string, metadataRecord CacheRecord) ([]byte, error) {
+	// metadataRecord gave us the modified time; now get the data
+	// we have to add a +/- 5 second grace as exact match doesn't work
+	query := c.client.BQ.Query(fmt.Sprintf(
+		"SELECT * FROM `%s.%s` "+
+			`WHERE %s BETWEEN TIMESTAMP(@tsLower) AND TIMESTAMP(@tsUpper)
+		       AND key = @keyParam
+		       AND uuid = @uuidParam
+		     ORDER BY chunk_index ASC`,
+		c.client.Dataset, cachedTable, partitionColumn,
+	))
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "tsLower",
+			Value: metadataRecord.Modified.Add(-5 * time.Second).Format(time.RFC3339),
+		},
+		{
+			Name:  "tsUpper",
+			Value: metadataRecord.Modified.Add(5 * time.Second).Format(time.RFC3339),
+		},
+		{
+			Name:  "keyParam",
+			Value: key,
+		},
+		{
+			Name:  "uuidParam",
+			Value: metadataRecord.UUID,
+		},
+	}
+
+	it, err := query.Read(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	record := CacheRecord{}
+	var records [][]byte
+	for {
+		err = it.Next(&record)
+		if err != nil {
+			if err == iterator.Done {
+				break
+			}
+			return nil, err
+		}
+		records = append(records, record.Data)
+	}
+
+	// we should have the records, now assemble them into a single array
+	data := unchunk(records)
 	return data, nil
 }
 
