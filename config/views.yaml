@@ -29,6 +29,7 @@ component_readiness:
           - amd64
         FeatureSet:
           - default
+          - techpreview
         Installer:
           - ipi
           - upi
