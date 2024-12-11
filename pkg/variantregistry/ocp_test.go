@@ -16,6 +16,34 @@ func TestVariantSyncer(t *testing.T) {
 		expected     map[string]string
 	}{
 		{
+			job:          "periodic-ci-redhat-chaos-prow-scripts-main-cr-4.19-nightly-krkn-hub-aws",
+			variantsFile: map[string]string{},
+			expected: map[string]string{
+				VariantRelease:          "4.19",
+				VariantReleaseMajor:     "4",
+				VariantReleaseMinor:     "19",
+				VariantArch:             "amd64",
+				VariantInstaller:        "ipi",
+				VariantPlatform:         "aws",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "chaos",
+				VariantTopology:         "ha",
+				VariantSuite:            "unknown",
+				VariantUpgrade:          VariantNoValue,
+				VariantProcedure:        "none",
+				VariantJobTier:          "standard",
+				VariantAggregation:      VariantNoValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantFeatureSet:       VariantDefaultValue,
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantContainerRuntime: "crun",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
+			},
+		},
+		{
 			job:          "periodic-ci-openshift-osde2e-main-nightly-4.17-conformance-rosa-classic-sts",
 			variantsFile: map[string]string{},
 			expected: map[string]string{
