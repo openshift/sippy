@@ -319,7 +319,7 @@ export default function Sidebar(props) {
                                 ],
                                 linkOperator: 'and',
                               }),
-                              'current_pass_percentage',
+                              'net_improvement', // sort by tests that have recently regressed the most
                               'asc'
                             )}
                             className={classes.nested}
