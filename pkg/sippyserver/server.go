@@ -1271,6 +1271,7 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/tests",
 			Description:  "Reports on tests",
 			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestsReportFromDB,
 		},
 		{
@@ -1305,6 +1306,7 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/tests/bugs",
 			Description:  "Reports bugs in tests",
 			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestBugsFromDB,
 		},
 		{
