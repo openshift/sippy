@@ -23,7 +23,7 @@ type CountByDate struct {
 
 func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, testName string, reportEnd time.Time) (map[string][]CountByDate, error) {
 	var rows []CountByDate
-	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
+	jq := dbc.DB.Table("test_analysis_by_job_by_dates").
 		Select(`test_id,
 			test_name,
 			to_date((date at time zone 'UTC')::text, 'YYYY-MM-DD'::text)::text as date,
@@ -36,10 +36,11 @@ func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, t
 			SUM(flakes) * 100.0 / NULLIF(SUM(runs), 0) AS flake_percentage,
 			SUM(failures) * 100.0 / NULLIF(SUM(runs), 0) AS fail_percentage`).
 		Joins("JOIN prow_jobs on prow_jobs.name = job_name").
-		Where("prow_test_analysis_by_job_14d_matview.release = ?", release).
+		Where("test_analysis_by_job_by_dates.release = ?", release).
 		Where("test_name = ?", testName).
+		Where("date >= ?", time.Now().Add(24*14*time.Hour)).
 		Order("date ASC").
-		Group("date, test_id, test_name, prow_test_analysis_by_job_14d_matview.release")
+		Group("date, test_id, test_name, test_analysis_by_job_by_dates.release")
 
 	var allowedVariants, blockedVariants []string
 	if filters != nil {
@@ -85,7 +86,7 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 		results["overall"] = overall
 	}
 
-	jq := dbc.DB.Table("prow_test_analysis_by_job_14d_matview").
+	jq := dbc.DB.Table("test_analysis_by_job_by_dates").
 		Select(`test_id,
 			test_name,
 			to_date((date at time zone 'UTC')::text, 'YYYY-MM-DD'::text)::text as date,
@@ -103,6 +104,7 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 		Where("prow_jobs.release = ?", release).
 		Where("test_name = ?", testName).
 		Where("date <= ?", reportEnd).
+		Where("date >= ?", reportEnd.Add(24*14*time.Hour)).
 		Order("date ASC")
 
 	var allowedVariants, blockedVariants []string
