@@ -192,7 +192,7 @@ func (c Cache) findCacheEntry(ctx context.Context, key string) (CacheRecord, err
 
 	metadataRecord := CacheRecord{}
 
-	it, err := query.Read(ctx)
+	it, err := sippybq.LoggedRead(ctx, query)
 	if err != nil {
 		return metadataRecord, err
 	}

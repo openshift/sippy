@@ -5,6 +5,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/option"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -32,4 +33,10 @@ func New(ctx context.Context, credentialFile, project, dataset string, c cache.C
 		Cache:   c,
 		Dataset: dataset,
 	}, nil
+}
+
+// LoggedRead is a wrapper around the bigquery Read method that logs the query being executed
+func LoggedRead(ctx context.Context, q *bigquery.Query) (*bigquery.RowIterator, error) {
+	log.Debugf("Querying BQ with Parameters: %v\n%v", q.Parameters, q.QueryConfig.Q)
+	return q.Read(ctx)
 }
