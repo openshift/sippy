@@ -344,7 +344,7 @@ export default function ReleaseOverview(props) {
                     BOOKMARKS.NO_AGGREGATED,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                     BOOKMARKS.NO_STEP_GRAPH
-                  )}&sortField=net_working_improvement&sort=asc`}
+                  )}&sortField=net_improvement&sort=asc`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
                 >
@@ -357,7 +357,7 @@ export default function ReleaseOverview(props) {
                 <Container size="xl">
                   <TestTable
                     hideControls={true}
-                    sortField="net_working_improvement"
+                    sortField="net_improvement"
                     sort="asc"
                     limit={10}
                     rowsPerPageOptions={[5]}
@@ -368,6 +368,7 @@ export default function ReleaseOverview(props) {
                         BOOKMARKS.NO_AGGREGATED,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
+                        BOOKMARKS.NO_100_FLAKE,
                       ],
                     }}
                     pageSize={5}
@@ -384,12 +385,13 @@ export default function ReleaseOverview(props) {
                   component={Link}
                   to={`/tests/${
                     props.release
-                  }?period=twoDay&sortField=net_working_improvement&sort=asc&${queryForBookmark(
+                  }?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(
                     BOOKMARKS.RUN_2,
                     BOOKMARKS.NO_NEVER_STABLE,
                     BOOKMARKS.NO_AGGREGATED,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                    BOOKMARKS.NO_STEP_GRAPH
+                    BOOKMARKS.NO_STEP_GRAPH,
+                    BOOKMARKS.NO_100_FLAKE
                   )}`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
@@ -402,7 +404,7 @@ export default function ReleaseOverview(props) {
                 <Container size="xl">
                   <TestTable
                     hideControls={true}
-                    sortField="net_working_improvement"
+                    sortField="net_improvement"
                     sort="asc"
                     limit={10}
                     rowsPerPageOptions={[5]}
@@ -434,9 +436,10 @@ export default function ReleaseOverview(props) {
                     BOOKMARKS.NO_AGGREGATED,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                     BOOKMARKS.NO_STEP_GRAPH,
-                    BOOKMARKS.HIGH_DELTA_FROM_WORKING_AVERAGE,
-                    BOOKMARKS.HIGH_STANDARD_DEVIATION
-                  )}&sortField=delta_from_working_average&sort=asc`}
+                    BOOKMARKS.HIGH_DELTA_FROM_PASSING_AVERAGE,
+                    BOOKMARKS.HIGH_STANDARD_DEVIATION,
+                    BOOKMARKS.NO_100_FLAKE
+                  )}&sortField=delta_from_passing_average&sort=asc`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
                 >
@@ -455,7 +458,7 @@ export default function ReleaseOverview(props) {
                     collapse={false}
                     overall={false}
                     hideControls={true}
-                    sortField="delta_from_working_average"
+                    sortField="delta_from_passing_average"
                     sort="asc"
                     limit={10}
                     rowsPerPageOptions={[5]}
@@ -466,8 +469,9 @@ export default function ReleaseOverview(props) {
                         BOOKMARKS.NO_AGGREGATED,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
-                        BOOKMARKS.HIGH_DELTA_FROM_WORKING_AVERAGE,
+                        BOOKMARKS.HIGH_DELTA_FROM_PASSING_AVERAGE,
                         BOOKMARKS.HIGH_STANDARD_DEVIATION,
+                        BOOKMARKS.NO_100_FLAKE,
                       ],
                     }}
                     pageSize={5}
@@ -487,8 +491,9 @@ export default function ReleaseOverview(props) {
                     BOOKMARKS.NO_NEVER_STABLE,
                     BOOKMARKS.NO_AGGREGATED,
                     BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                    BOOKMARKS.NO_STEP_GRAPH
-                  )}&sortField=current_working_percentage&sort=asc`}
+                    BOOKMARKS.NO_STEP_GRAPH,
+                    BOOKMARKS.NO_100_FLAKE
+                  )}&sortField=current_pass_percentage&sort=asc`}
                   style={{ textAlign: 'center' }}
                   variant="h5"
                 >
@@ -501,7 +506,7 @@ export default function ReleaseOverview(props) {
                 <Container size="xl">
                   <TestTable
                     hideControls={true}
-                    sortField="current_working_percentage"
+                    sortField="current_pass_percentage"
                     sort="asc"
                     limit={10}
                     rowsPerPageOptions={[5]}
@@ -512,6 +517,7 @@ export default function ReleaseOverview(props) {
                         BOOKMARKS.NO_AGGREGATED,
                         BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                         BOOKMARKS.NO_STEP_GRAPH,
+                        BOOKMARKS.NO_100_FLAKE,
                       ],
                     }}
                     pageSize={5}

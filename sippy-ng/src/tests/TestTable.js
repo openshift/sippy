@@ -995,14 +995,14 @@ TestTable.defaultProps = {
   hideControls: false,
   pageSize: 25,
   period: 'default',
-  view: 'Working',
+  view: 'Passing',
   rowsPerPageOptions: [5, 10, 25, 50, 100],
   briefTable: false,
   simpleLoading: false,
   filterModel: {
     items: [],
   },
-  sortField: 'current_working_percentage',
+  sortField: 'current_pass_percentage',
   sort: 'asc',
 }
 

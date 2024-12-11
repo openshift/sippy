@@ -92,7 +92,7 @@ export default function Tests(props) {
                           linkOperator: 'and',
                         }
                       ),
-                      'current_working_percentage',
+                      'current_pass_percentage',
                       'asc'
                     )}
                   />

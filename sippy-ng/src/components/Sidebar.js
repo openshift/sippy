@@ -313,10 +313,11 @@ export default function Sidebar(props) {
                                   BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                                   BOOKMARKS.NO_STEP_GRAPH,
                                   BOOKMARKS.NO_OPENSHIFT_TESTS_SHOULD_WORK,
+                                  BOOKMARKS.NO_100_FLAKE,
                                 ],
                                 linkOperator: 'and',
                               }),
-                              'current_working_percentage',
+                              'current_pass_percentage',
                               'asc'
                             )}
                             className={classes.nested}
