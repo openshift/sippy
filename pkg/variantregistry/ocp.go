@@ -80,6 +80,7 @@ WITH RecentSuccessfulJobs AS (
         prowjob_state = 'success' AND
         (prowjob_job_name LIKE 'periodic-ci-openshift-%%'
           OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
           OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
@@ -97,6 +98,7 @@ ON j.prowjob_job_name = r.prowjob_job_name
 WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
       ((j.prowjob_job_name LIKE 'periodic-ci-openshift-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
         OR j.prowjob_job_name LIKE 'release-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
       OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
@@ -275,6 +277,7 @@ var (
 	ipv6Regex      = regexp.MustCompile(`(?i)-ipv6`)
 	dualStackRegex = regexp.MustCompile(`(?i)-dualstack`)
 	perfScaleRegex = regexp.MustCompile(`(?i)-perfscale`)
+	chaosRegex     = regexp.MustCompile(`(?i)-chaos-`)
 	// proxy jobs do not have a trailing -version segment
 	ppc64leRegex            = regexp.MustCompile(`(?i)-ppc64le|-multi-p-p`)
 	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
@@ -442,6 +445,8 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantOwner] = "cnf"
 	} else if perfScaleRegex.MatchString(jobName) {
 		variants[VariantOwner] = "perfscale"
+	} else if chaosRegex.MatchString(jobName) {
+		variants[VariantOwner] = "chaos"
 	} else if qeRegex.MatchString(jobName) {
 		variants[VariantOwner] = "qe" // Keep this below perfscale
 	} else {
