@@ -119,7 +119,8 @@ function FeatureGates(props) {
           Feature Gates for {props.release}
         </Typography>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Click on a row to view tests for that feature gate.
+          Click on a row to view tests for that feature gate. Row color is based
+          on number of tests only; a feature gate should have at least 5 tests.
         </Alert>
         {fetchError && (
           <Typography color="error" align="center">
