@@ -855,7 +855,7 @@ type SippyViews struct {
 }
 
 type FeatureGate struct {
-	Id              int    `json:"id"`
+	ID              int    `json:"id"`
 	Type            string `json:"type"`
 	FeatureGate     string `json:"feature_gate"`
 	Release         string `json:"release"`
