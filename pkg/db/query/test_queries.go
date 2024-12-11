@@ -57,7 +57,14 @@ const (
 
 	QueryTestSummarizer = QueryTestFields + "," + QueryTestPercentages
 
-	QueryTestAnalysis = "select current_successes, current_runs, current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage from ( select sum(runs) as current_runs, sum(passes) as current_successes from test_analysis_by_job_by_dates where test_name = '%s' AND job_name in (%s))t"
+	QueryTestAnalysis = `
+        select current_successes, current_runs,
+               current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage
+        from (
+            select sum(runs) as current_runs, sum(passes) as current_successes
+            from test_analysis_by_job_by_dates 
+            where test_name = ? AND job_name IN ?
+        ) t`
 )
 
 func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {

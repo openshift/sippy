@@ -192,7 +192,7 @@ func findReleaseMatchJobNames(dbc *db.DB, jobRun *models.ProwJobRun, compareRele
 						}
 
 						totalJobRunsCount += len(jobIDs)
-						allJobNames = append(allJobNames, "'"+job.Name+"'")
+						allJobNames = append(allJobNames, job.Name)
 					}
 				}
 
@@ -336,19 +336,16 @@ type testResultsByVariantsFunc func(testName string, release, suite string, vari
 // jobNamesTestResultFunc looks to match job runs based on the jobnames
 func jobNamesTestResultFunc(dbc *db.DB) testResultsByJobNameFunc {
 	return func(testName string, jobNames []string) (*apitype.Test, error) {
-
 		if len(jobNames) == 0 {
 			return nil, nil
 		}
 
-		sql := fmt.Sprintf(query.QueryTestAnalysis, testName, strings.Join(jobNames, ","))
-		testReport := apitype.Test{}
-		q := dbc.DB.Raw(sql)
-
+		q := dbc.DB.Raw(query.QueryTestAnalysis, testName, jobNames)
 		if q.Error != nil {
 			return nil, q.Error
 		}
 
+		testReport := apitype.Test{}
 		q.First(&testReport)
 		testReport.Name = testName
 		return &testReport, nil
