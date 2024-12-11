@@ -212,6 +212,12 @@ export function pathForTestByVariant(release, test) {
   )
 }
 
+export function pathForTestSubstringByVariant(release, test) {
+  return (
+    `/tests/${release}/details?` + single(filterFor('name', 'contains', test))
+  )
+}
+
 export function pathForTestsWithFilter(release, filter) {
   if (!filter || filter.items === []) {
     return `/tests/${release}`

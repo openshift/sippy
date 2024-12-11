@@ -1,4 +1,5 @@
 import {
+  Apps,
   AppsOutage,
   BugReport,
   Code,
@@ -7,6 +8,7 @@ import {
   ExpandMore,
   Favorite,
   FileCopyOutlined,
+  Flare,
   GitHub,
   NotificationsActive,
 } from '@mui/icons-material'
@@ -313,10 +315,11 @@ export default function Sidebar(props) {
                                   BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
                                   BOOKMARKS.NO_STEP_GRAPH,
                                   BOOKMARKS.NO_OPENSHIFT_TESTS_SHOULD_WORK,
+                                  BOOKMARKS.NO_100_FLAKE,
                                 ],
                                 linkOperator: 'and',
                               }),
-                              'current_working_percentage',
+                              'net_improvement', // sort by tests that have recently regressed the most
                               'asc'
                             )}
                             className={classes.nested}
@@ -328,6 +331,28 @@ export default function Sidebar(props) {
                               <ListItemText primary="Tests" />
                             </StyledListItemButton>
                           </ListItem>
+
+                          <CapabilitiesContext.Consumer>
+                            {(value) => {
+                              if (value.includes('openshift_releases')) {
+                                return (
+                                  <ListItem
+                                    key={'release-feature-gates-' + index}
+                                    component={Link}
+                                    to={'/feature_gates/' + release}
+                                    className={classes.nested}
+                                  >
+                                    <StyledListItemButton>
+                                      <ListItemIcon>
+                                        <Apps />
+                                      </ListItemIcon>
+                                      <ListItemText primary="Feature Gates" />
+                                    </StyledListItemButton>
+                                  </ListItem>
+                                )
+                              }
+                            }}
+                          </CapabilitiesContext.Consumer>
 
                           <CapabilitiesContext.Consumer>
                             {(value) => {

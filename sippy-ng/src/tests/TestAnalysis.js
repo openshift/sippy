@@ -142,17 +142,17 @@ export function TestAnalysis(props) {
             <SummaryCard
               key="test-summary"
               threshold={TEST_THRESHOLDS}
-              name="Overall"
+              name="7 Day Overall"
               success={test.current_successes}
               flakes={test.current_flakes}
               caption={
                 <Fragment>
                   <Tooltip title={`${test.current_runs} runs`}>
-                    <span>{test.current_working_percentage.toFixed(2)}%</span>
+                    <span>{test.current_pass_percentage.toFixed(2)}%</span>
                   </Tooltip>
                   <PassRateIcon improvement={test.net_improvement} />
                   <Tooltip title={`${test.previous_runs} runs`}>
-                    <span>{test.previous_working_percentage.toFixed(2)}%</span>
+                    <span>{test.previous_pass_percentage.toFixed(2)}%</span>
                   </Tooltip>
                 </Fragment>
               }
@@ -295,7 +295,7 @@ export function TestAnalysis(props) {
                 hideControls={true}
                 collapse={false}
                 release={props.release}
-                sortField="delta_from_working_average"
+                sortField="delta_from_passing_average"
                 sort="asc"
                 filterModel={filterModel}
               />

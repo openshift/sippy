@@ -1,3 +1,9 @@
+export const FEATURE_GATE_TEST_THRESHOLDS = {
+  success: 5,
+  warning: 2,
+  error: 1,
+}
+
 export const MERGE_FAILURE_THERSHOLDS = {
   success: 1.5,
   warning: 2,
@@ -120,13 +126,13 @@ export const BOOKMARKS = {
     operatorValue: 'contains',
     value: 'step graph.',
   },
-  HIGH_DELTA_FROM_WORKING_AVERAGE: {
-    columnField: 'delta_from_working_average',
+  HIGH_DELTA_FROM_PASSING_AVERAGE: {
+    columnField: 'delta_from_passing_average',
     operatorValue: '<=',
     value: '20',
   },
   HIGH_STANDARD_DEVIATION: {
-    columnField: 'working_standard_deviation',
+    columnField: 'passing_standard_deviation',
     operatorValue: '>',
     value: '1',
   },
@@ -134,6 +140,12 @@ export const BOOKMARKS = {
     columnField: 'watchlist',
     operatorValue: 'equals',
     value: 'true',
+  },
+  NO_100_FLAKE: {
+    columnField: 'current_flake_percentage',
+    not: true,
+    operatorValue: 'equals',
+    value: '100',
   },
   NO_OPENSHIFT_TESTS_SHOULD_WORK: {
     columnField: 'name',
