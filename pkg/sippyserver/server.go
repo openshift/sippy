@@ -458,6 +458,18 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
+func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
+	release := s.getParamOrFail(w, req, "release")
+	if release != "" {
+		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, gates)
+	}
+}
+
 func (s *Server) jsonTestAnalysis(w http.ResponseWriter, req *http.Request, dbFN func(*db.DB, *filter.Filter, string, string, time.Time) (map[string][]api.CountByDate, error)) {
 	testName := s.getParamOrFail(w, req, "test")
 	if testName == "" {
@@ -1461,6 +1473,12 @@ func (s *Server) Serve() {
 			Description:  "Reports pull requests that differ between payloads",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonPayloadDiff,
+		},
+		{
+			EndpointPath: "/api/feature_gates",
+			Description:  "Reports feature gates and their test counts for a particular release",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonFeatureGates,
 		},
 	}
 

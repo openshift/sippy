@@ -9,6 +9,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
+
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -851,4 +852,12 @@ type ReleaseRow struct {
 
 type SippyViews struct {
 	ComponentReadiness []crtype.View `json:"component_readiness" yaml:"component_readiness"`
+}
+
+type FeatureGate struct {
+	Id              int    `json:"id"`
+	Type            string `json:"type"`
+	FeatureGate     string `json:"feature_gate"`
+	Release         string `json:"release"`
+	UniqueTestCount int64  `json:"unique_test_count"`
 }

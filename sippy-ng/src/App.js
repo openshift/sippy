@@ -31,6 +31,7 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@mui/material/Drawer'
+import FeatureGates from './tests/FeatureGates'
 import IconButton from '@mui/material/IconButton'
 import Install from './releases/Install'
 import Jobs from './jobs/Jobs'
@@ -468,6 +469,16 @@ export default function App(props) {
                               title={
                                 'Job results for ' + props.match.params.release
                               }
+                              release={props.match.params.release}
+                            />
+                          )}
+                        />
+
+                        <Route
+                          path="/feature_gates/:release"
+                          render={(props) => (
+                            <FeatureGates
+                              key={'jobs-' + props.match.params.release}
                               release={props.match.params.release}
                             />
                           )}

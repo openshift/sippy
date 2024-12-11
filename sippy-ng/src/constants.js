@@ -1,3 +1,9 @@
+export const FEATURE_GATE_TEST_THRESHOLDS = {
+  success: 5,
+  warning: 2,
+  error: 1,
+}
+
 export const MERGE_FAILURE_THERSHOLDS = {
   success: 1.5,
   warning: 2,
