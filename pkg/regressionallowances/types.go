@@ -50,16 +50,16 @@ func IntentionalRegressionFor(releaseString string, variant crtype.ColumnIdentif
 	return nil
 }
 
-func (i *IntentionalRegression) RegressedPassPercentage() float64 {
-	return passPercentage(i.RegressedSuccesses, i.RegressedFlakes, i.RegressedFailures)
+func (i *IntentionalRegression) RegressedSuccessPercentage() float64 {
+	return successPercentage(i.RegressedSuccesses, i.RegressedFlakes, i.RegressedFailures)
 }
 
-func (i *IntentionalRegression) PreviousPassPercentage() float64 {
-	return passPercentage(i.PreviousSuccesses, i.PreviousFlakes, i.PreviousFailures)
+func (i *IntentionalRegression) PreviousSuccessPercentage() float64 {
+	return successPercentage(i.PreviousSuccesses, i.PreviousFlakes, i.PreviousFailures)
 }
 
-func passPercentage(successes, flakes, failures int) float64 {
-	return float64(successes+flakes) / float64(successes+flakes+failures)
+func successPercentage(successes, flakes, failures int) float64 {
+	return float64(successes) / float64(successes+flakes+failures)
 }
 
 func keyFor(testID string, variant crtype.ColumnIdentification) string {
@@ -100,7 +100,7 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	if in.RegressedFailures <= 0 {
 		return fmt.Errorf("regressedFailures must be specified")
 	}
-	if in.PreviousPassPercentage() <= in.RegressedPassPercentage() {
+	if in.PreviousSuccessPercentage() <= in.RegressedSuccessPercentage() {
 		return fmt.Errorf("regressedPassPercentage must be less than previousPassPercentage")
 	}
 	if len(in.ReasonToAllowInsteadOfFix) == 0 {
