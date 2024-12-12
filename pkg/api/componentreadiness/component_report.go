@@ -626,7 +626,7 @@ func (c *componentReportGenerator) normalizeProwJobName(prowName string) string 
 	return name
 }
 
-func (c *componentReportGenerator) fetchJobRunTestStatus(ctx context.Context,
+func (c *componentReportGenerator) fetchJobRunTestStatusResults(ctx context.Context,
 	query *bigquery.Query) (map[string][]crtype.
 	JobRunTestStatusRow, []error) {
 	errs := []error{}

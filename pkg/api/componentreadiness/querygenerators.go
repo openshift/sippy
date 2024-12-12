@@ -151,7 +151,7 @@ func (b *baseQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Report
 		},
 	}...)
 
-	baseStatus, baseErrs := fetchTestStatus(ctx, baseQuery)
+	baseStatus, baseErrs := fetchTestStatusResults(ctx, baseQuery)
 
 	if len(baseErrs) != 0 {
 		errs = append(errs, baseErrs...)
@@ -220,7 +220,7 @@ func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Repo
 		}...)
 	}
 
-	sampleStatus, sampleErrs := fetchTestStatus(ctx, sampleQuery)
+	sampleStatus, sampleErrs := fetchTestStatusResults(ctx, sampleQuery)
 
 	if len(sampleErrs) != 0 {
 		errs = append(errs, sampleErrs...)
@@ -419,7 +419,7 @@ func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context)
 		},
 	}...)
 
-	baseStatus, baseErrs := fetchTestStatus(ctx, baseQuery)
+	baseStatus, baseErrs := fetchTestStatusResults(ctx, baseQuery)
 
 	if len(baseErrs) != 0 {
 		errs = append(errs, baseErrs...)
@@ -434,7 +434,7 @@ func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context)
 func getCommonTestStatusQuery(c *componentReportGenerator, allJobVariants crtype.JobVariants, isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
-	// See fetchTestStatus for where we dynamically handle these columns.
+	// See fetchTestStatusResults for where we dynamically handle these columns.
 	selectVariants := ""
 	joinVariants := ""
 	groupByVariants := ""
@@ -668,7 +668,7 @@ func getTestDetailsQuery(c *componentReportGenerator, allJobVariants crtype.JobV
 	return queryString, groupString, commonParams
 }
 
-func fetchTestStatus(ctx context.Context, query *bigquery.Query) (map[string]crtype.TestStatus, []error) {
+func fetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]crtype.TestStatus, []error) {
 	errs := []error{}
 	status := map[string]crtype.TestStatus{}
 	log.Infof("Fetching test status with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
@@ -763,7 +763,7 @@ func (b *baseTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (cr
 		},
 	}...)
 
-	baseStatus, errs := b.ComponentReportGenerator.fetchJobRunTestStatus(ctx, baseQuery)
+	baseStatus, errs := b.ComponentReportGenerator.fetchJobRunTestStatusResults(ctx, baseQuery)
 	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus}, errs
 }
 
@@ -821,7 +821,7 @@ func (s *sampleTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (
 		}...)
 	}
 
-	sampleStatus, errs := s.ComponentReportGenerator.fetchJobRunTestStatus(ctx, sampleQuery)
+	sampleStatus, errs := s.ComponentReportGenerator.fetchJobRunTestStatusResults(ctx, sampleQuery)
 
 	return crtype.JobRunTestReportStatus{SampleStatus: sampleStatus}, errs
 }
