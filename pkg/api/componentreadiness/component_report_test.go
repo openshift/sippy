@@ -469,13 +469,13 @@ func TestGenerateComponentReport(t *testing.T) {
 											Explanations: []string{
 												"Extreme regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
-												"Test pass rate dropped from 91.00% to 51.00%.",
+												"Test pass rate dropped from 90.00% to 50.00%.",
 											},
 											ReportStatus: crtype.ExtremeRegression,
-											FisherExact:  thrift.Float64Ptr(1.8251046156331867e-21),
+											FisherExact:  thrift.Float64Ptr(1.0800451094957381e-20),
 											SampleStats: crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
-													SuccessRate:  0.51,
+													SuccessRate:  0.5,
 													SuccessCount: 50,
 													FailureCount: 49,
 													FlakeCount:   1,
@@ -485,7 +485,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
-													SuccessRate:  0.91,
+													SuccessRate:  0.9,
 													SuccessCount: 900,
 													FailureCount: 90,
 													FlakeCount:   10,
@@ -510,13 +510,13 @@ func TestGenerateComponentReport(t *testing.T) {
 											Explanations: []string{
 												"Significant regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
-												"Test pass rate dropped from 91.00% to 81.00%.",
+												"Test pass rate dropped from 90.00% to 80.00%.",
 											},
 											ReportStatus: crtype.SignificantRegression,
-											FisherExact:  thrift.Float64Ptr(0.002621948654892275),
+											FisherExact:  thrift.Float64Ptr(0.0035097810890055117),
 											SampleStats: crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
-													SuccessRate:  0.81,
+													SuccessRate:  0.8,
 													SuccessCount: 80,
 													FailureCount: 19,
 													FlakeCount:   1,
@@ -526,7 +526,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
-													SuccessRate:  0.91,
+													SuccessRate:  0.9,
 													SuccessCount: 900,
 													FailureCount: 90,
 													FlakeCount:   10,
@@ -803,14 +803,14 @@ func TestGenerateComponentReport(t *testing.T) {
 											Comparison: crtype.FisherExact,
 											Explanations: []string{
 												"Significant regression detected.",
-												"Fishers Exact probability of a regression: 99.92%.",
-												"Test pass rate dropped from 91.00% to 86.00%.",
+												"Fishers Exact probability of a regression: 99.91%.",
+												"Test pass rate dropped from 90.00% to 85.00%.",
 											},
 											ReportStatus: crtype.SignificantRegression,
-											FisherExact:  thrift.Float64Ptr(0.07837082801914011),
+											FisherExact:  thrift.Float64Ptr(0.08691691297597291),
 											SampleStats: crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
-													SuccessRate:  0.86,
+													SuccessRate:  0.85,
 													SuccessCount: 85,
 													FailureCount: 14,
 													FlakeCount:   1,
@@ -820,7 +820,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
 												TestDetailsTestStats: crtype.TestDetailsTestStats{
-													SuccessRate:  0.91,
+													SuccessRate:  0.9,
 													SuccessCount: 900,
 													FailureCount: 90,
 													FlakeCount:   10,
@@ -1047,7 +1047,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	sampleReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.SampleRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  0.9203539823008849,
+			SuccessRate:  0.8849557522123894,
 			SuccessCount: 200,
 			FailureCount: 18,
 			FlakeCount:   8,
@@ -1058,7 +1058,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	baseReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.BaseRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  0.9130434782608695,
+			SuccessRate:  0.8695652173913043,
 			SuccessCount: 2000,
 			FailureCount: 200,
 			FlakeCount:   100,
@@ -1067,25 +1067,25 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		End:   &time.Time{},
 	}
 	sampleTestStatsHigh := crtype.TestDetailsTestStats{
-		SuccessRate:  0.9203539823008849,
+		SuccessRate:  0.8849557522123894,
 		SuccessCount: 100,
 		FailureCount: 9,
 		FlakeCount:   4,
 	}
 	baseTestStatsHigh := crtype.TestDetailsTestStats{
-		SuccessRate:  0.9130434782608695,
+		SuccessRate:  0.8695652173913043,
 		SuccessCount: 1000,
 		FailureCount: 100,
 		FlakeCount:   50,
 	}
 	sampleTestStatsLow := crtype.TestDetailsTestStats{
-		SuccessRate:  0.4778761061946903,
+		SuccessRate:  0.4424778761061947,
 		SuccessCount: 50,
 		FailureCount: 59,
 		FlakeCount:   4,
 	}
 	baseTestStatsLow := crtype.TestDetailsTestStats{
-		SuccessRate:  0.4782608695652174,
+		SuccessRate:  0.43478260869565216,
 		SuccessCount: 500,
 		FailureCount: 600,
 		FlakeCount:   50,
@@ -1093,7 +1093,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	sampleReleaseStatsOneHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.SampleRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  0.9203539823008849,
+			SuccessRate:  0.8849557522123894,
 			SuccessCount: 100,
 			FailureCount: 9,
 			FlakeCount:   4,
@@ -1104,7 +1104,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	baseReleaseStatsOneHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.BaseRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  0.9130434782608695,
+			SuccessRate:  0.8695652173913043,
 			SuccessCount: 1000,
 			FailureCount: 100,
 			FlakeCount:   50,
@@ -1115,7 +1115,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	sampleReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.SampleRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  0.4778761061946903,
+			SuccessRate:  0.4424778761061947,
 			SuccessCount: 50,
 			FailureCount: 59,
 			FlakeCount:   4,
@@ -1126,7 +1126,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	baseReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.BaseRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  0.4782608695652174,
+			SuccessRate:  0.43478260869565216,
 			SuccessCount: 500,
 			FailureCount: 600,
 			FlakeCount:   50,
@@ -1167,7 +1167,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsOneHigh,
 					BaseStats:    &baseReleaseStatsOneHigh,
-					FisherExact:  thrift.Float64Ptr(.4807457902463764),
+					FisherExact:  thrift.Float64Ptr(.3855339600702252),
 					ReportStatus: crtype.NotSignificant,
 				},
 				JobStats: []crtype.TestDetailsJobStats{
@@ -1210,7 +1210,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsOneLow,
 					BaseStats:    &baseReleaseStatsOneHigh,
-					FisherExact:  thrift.Float64Ptr(8.209711662216515e-28),
+					FisherExact:  thrift.Float64Ptr(1.578744193894023e-23),
 					ReportStatus: crtype.ExtremeRegression,
 				},
 				JobStats: []crtype.TestDetailsJobStats{
@@ -1253,7 +1253,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsOneHigh,
 					BaseStats:    &baseReleaseStatsOneLow,
-					FisherExact:  thrift.Float64Ptr(4.911246201592593e-22),
+					FisherExact:  thrift.Float64Ptr(1.1432798197374639e-21),
 					ReportStatus: crtype.SignificantImprovement,
 				},
 				JobStats: []crtype.TestDetailsJobStats{
@@ -1304,7 +1304,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					Comparison:   crtype.FisherExact,
 					SampleStats:  sampleReleaseStatsTwoHigh,
 					BaseStats:    &baseReleaseStatsTwoHigh,
-					FisherExact:  thrift.Float64Ptr(0.4119831376606586),
+					FisherExact:  thrift.Float64Ptr(0.2947440354649036),
 					ReportStatus: crtype.NotSignificant,
 				},
 				JobStats: []crtype.TestDetailsJobStats{
@@ -1475,7 +1475,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 2,
 			expectedStatus:         -4,
-			expectedFischers:       thrift.Float64Ptr(0.4827586206896551),
+			expectedFischers:       thrift.Float64Ptr(0.7413793103448156),
 		},
 		{
 			name:                   "triaged regular regression",
@@ -1487,7 +1487,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 2,
 			expectedStatus:         -2,
-			expectedFischers:       thrift.Float64Ptr(1),
+			expectedFischers:       thrift.Float64Ptr(0.5357142857142791),
 		},
 		{
 			name:                   "regular regression",
@@ -1499,7 +1499,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 0,
 			expectedStatus:         -4,
-			expectedFischers:       thrift.Float64Ptr(0.2413793103448262),
+			expectedFischers:       thrift.Float64Ptr(0.49999999999999056),
 		},
 		{
 			name:                   "zero success",
@@ -1511,7 +1511,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 0,
 			expectedStatus:         -5,
-			expectedFischers:       thrift.Float64Ptr(6.446725037893782e-09),
+			expectedFischers:       thrift.Float64Ptr(1.0314760060630056e-07),
 		},
 		{
 			name:                   "triaged, zero success",
@@ -1536,7 +1536,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseFlake:              1,
 			numberOfIgnoredSamples: 10,
 			expectedStatus:         -3,
-			expectedFischers:       thrift.Float64Ptr(1),
+			expectedFischers:       thrift.Float64Ptr(0.7500000000000008),
 		},
 
 		{
@@ -1547,21 +1547,9 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseTotal:              15,
 			baseSuccess:            14,
 			baseFlake:              1,
-			numberOfIgnoredSamples: 9,
+			numberOfIgnoredSamples: 8,
 			expectedStatus:         -5,
-			expectedFischers:       thrift.Float64Ptr(0.285714285714284),
-		},
-		{
-			name:                   "triaged, still extreme",
-			sampleTotal:            15,
-			sampleSuccess:          5,
-			sampleFlake:            0,
-			baseTotal:              15,
-			baseSuccess:            14,
-			baseFlake:              1,
-			numberOfIgnoredSamples: 9,
-			expectedStatus:         -5,
-			expectedFischers:       thrift.Float64Ptr(0.285714285714284),
+			expectedFischers:       thrift.Float64Ptr(0.2272727272727263),
 		},
 		{
 			name:                        "new test no regression",

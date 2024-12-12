@@ -317,9 +317,9 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		jobStats.SampleStats.FlakeCount = perJobSampleFlake
 		jobStats.SampleStats.FailureCount = perJobSampleFailure
 		jobStats.SampleStats.SuccessRate = getSuccessRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
-		_, _, r, _ := fet.FisherExactTest(perJobSampleFailure,
+		_, _, r, _ := fet.FisherExactTest(perJobSampleFailure+perJobSampleFlake,
 			perJobSampleSuccess,
-			perJobBaseFailure,
+			perJobBaseFailure+perJobBaseFlake,
 			perJobSampleSuccess)
 		jobStats.Significant = r < 1-float64(c.Confidence)/100
 
@@ -350,8 +350,8 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		jobStats.SampleStats.FailureCount = perJobSampleFailure
 		jobStats.SampleStats.SuccessRate = getSuccessRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
 		result.JobStats = append(result.JobStats, jobStats)
-		_, _, r, _ := fet.FisherExactTest(perJobSampleFailure,
-			perJobSampleSuccess+perJobSampleFlake,
+		_, _, r, _ := fet.FisherExactTest(perJobSampleFailure+perJobSampleFlake,
+			perJobSampleSuccess,
 			0,
 			0)
 		jobStats.Significant = r < 1-float64(c.Confidence)/100
@@ -366,7 +366,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 
 	// The hope is that this goes away
 	// once we agree we don't need to honor a higher intentional regression pass percentage
-	if baseRegression != nil && baseRegression.PreviousPassPercentage() > getSuccessRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
+	if baseRegression != nil && baseRegression.PreviousSuccessPercentage() > getSuccessRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
 		baseRegressionPreviousRelease, err := previousRelease(baseRelease)
@@ -377,7 +377,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 			totalBaseSuccess = baseRegression.PreviousSuccesses
 			totalBaseFailure = baseRegression.PreviousFailures
 			baseRelease = baseRegressionPreviousRelease
-			logrus.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d, Failures: %d", baseRelease, totalBaseSuccess, totalBaseFlake, totalBaseFailure)
+			logrus.Infof("BaseRegression - PreviousSuccessPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d, Failures: %d", baseRelease, totalBaseSuccess, totalBaseFlake, totalBaseFailure)
 		}
 	}
 
