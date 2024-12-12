@@ -63,6 +63,7 @@ func NewComponentReadinessCommand() *cobra.Command {
 			if err := f.Run(); err != nil {
 				return errors.WithMessage(err, "error running command")
 			}
+			cmd.Context()
 
 			return nil
 		},
@@ -215,6 +216,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				panic(err)
 			}
 		}()
+
 	}
 
 	server.Serve()
