@@ -26,7 +26,7 @@ type baseQueryGenerator struct {
 	ComponentReportGenerator *componentReportGenerator
 }
 
-func NewBaseQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVariants) baseQueryGenerator {
+func newBaseQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVariants) baseQueryGenerator {
 	generator := baseQueryGenerator{
 		client:      c.client,
 		allVariants: allVariants,
@@ -83,7 +83,7 @@ type sampleQueryGenerator struct {
 	ComponentReportGenerator *componentReportGenerator
 }
 
-func NewSampleQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVariants) sampleQueryGenerator {
+func newSampleQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVariants) sampleQueryGenerator {
 	generator := sampleQueryGenerator{
 		client:                   c.client,
 		allVariants:              allVariants,
@@ -160,7 +160,7 @@ type fallbackTestQueryReleasesGenerator struct {
 	ComponentReportGenerator   *componentReportGenerator
 }
 
-func NewFallbackTestQueryReleasesGenerator(c *componentReportGenerator, allVariants crtype.JobVariants,
+func newFallbackTestQueryReleasesGenerator(c *componentReportGenerator, allVariants crtype.JobVariants,
 	release string, start, end time.Time) fallbackTestQueryReleasesGenerator {
 	generator := fallbackTestQueryReleasesGenerator{
 		client:      c.client,
@@ -270,7 +270,7 @@ func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.R
 }
 
 func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.Context, release string, start, end time.Time) (crtype.ReportTestStatus, []error) {
-	generator := NewFallbackBaseQueryGenerator(f.ComponentReportGenerator, f.allVariants, release, start, end)
+	generator := newFallbackBaseQueryGenerator(f.ComponentReportGenerator, f.allVariants, release, start, end)
 
 	testStatuses, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator), generator.getTestFallbackRelease, crtype.ReportTestStatus{})
 
@@ -291,7 +291,7 @@ type fallbackTestQueryGenerator struct {
 	ComponentReportGenerator *componentReportGenerator
 }
 
-func NewFallbackBaseQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVariants,
+func newFallbackBaseQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVariants,
 	baseRelease string, baseStart, baseEnd time.Time) fallbackTestQueryGenerator {
 	generator := fallbackTestQueryGenerator{
 		ComponentReportGenerator: c,
@@ -641,7 +641,7 @@ type baseTestDetailsQueryGenerator struct {
 	ComponentReportGenerator *componentReportGenerator
 }
 
-func NewBaseTestDetailsQueryGenerator(c *componentReportGenerator, allJobVariants crtype.JobVariants,
+func newBaseTestDetailsQueryGenerator(c *componentReportGenerator, allJobVariants crtype.JobVariants,
 	baseRelease string, baseStart time.Time, baseEnd time.Time) *baseTestDetailsQueryGenerator {
 	return &baseTestDetailsQueryGenerator{
 		allJobVariants: allJobVariants,
@@ -688,7 +688,7 @@ type sampleTestDetailsQueryGenerator struct {
 	ComponentReportGenerator *componentReportGenerator
 }
 
-func NewSampleTestDetailsQueryGenerator(c *componentReportGenerator, allJobVariants crtype.JobVariants) *sampleTestDetailsQueryGenerator {
+func newSampleTestDetailsQueryGenerator(c *componentReportGenerator, allJobVariants crtype.JobVariants) *sampleTestDetailsQueryGenerator {
 	return &sampleTestDetailsQueryGenerator{
 		allJobVariants:           allJobVariants,
 		ComponentReportGenerator: c,

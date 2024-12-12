@@ -387,7 +387,7 @@ func (c *componentReportGenerator) GenerateComponentReportTestStatus(ctx context
 func (c *componentReportGenerator) getBaseQueryStatus(ctx context.Context,
 	allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
 
-	generator := NewBaseQueryGenerator(c, allJobVariants)
+	generator := newBaseQueryGenerator(c, allJobVariants)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, c.client.Cache,
 		generator.cacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.queryTestStatus, crtype.ReportTestStatus{})
@@ -402,7 +402,7 @@ func (c *componentReportGenerator) getBaseQueryStatus(ctx context.Context,
 func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Context,
 	allJobVariants crtype.JobVariants,
 	release string, start, end time.Time) []error {
-	generator := NewFallbackTestQueryReleasesGenerator(c, allJobVariants, release, start, end)
+	generator := newFallbackTestQueryReleasesGenerator(c, allJobVariants, release, start, end)
 
 	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*crtype.FallbackReleases](
 		ctx, c.client.Cache, generator.cacheOption,
@@ -421,7 +421,7 @@ func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Contex
 // getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
 func (c *componentReportGenerator) getSampleQueryStatus(
 	ctx context.Context, allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
-	generator := NewSampleQueryGenerator(c, allJobVariants)
+	generator := newSampleQueryGenerator(c, allJobVariants)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
 		c.client.Cache, c.cacheOption,

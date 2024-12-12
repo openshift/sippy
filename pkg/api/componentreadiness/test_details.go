@@ -135,7 +135,7 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(
 	baseStart time.Time,
 	baseEnd time.Time) (map[string][]crtype.JobRunTestStatusRow, []error) {
 
-	generator := NewBaseTestDetailsQueryGenerator(
+	generator := newBaseTestDetailsQueryGenerator(
 		c,
 		allJobVariants,
 		baseRelease,
@@ -159,7 +159,7 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(
 
 func (c *componentReportGenerator) getSampleJobRunTestStatus(ctx context.Context, allJobVariants crtype.JobVariants) (map[string][]crtype.JobRunTestStatusRow, []error) {
 
-	generator := NewSampleTestDetailsQueryGenerator(c, allJobVariants)
+	generator := newSampleTestDetailsQueryGenerator(c, allJobVariants)
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
 		ctx,
