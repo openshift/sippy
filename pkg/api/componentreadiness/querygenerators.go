@@ -19,6 +19,91 @@ import (
 	"google.golang.org/api/iterator"
 )
 
+const (
+	defaultJunitTable   = "junit"
+	rarelyRunJunitTable = "junit_rarely_run_jobs"
+
+	// This query de-dupes the test results. There are multiple issues present in
+	// our data set:
+	//
+	// 1. Some test suites in OpenShift retry, resulting in potentially multiple
+	//    failures for the same test in a job.  Component Readiness is currently
+	//    counting these as separate failures, resulting in an outsized impact on
+	//    our statistical analysis.
+	//
+	// 2. There is a second bug where successful test cases are sometimes
+	//    recorded by openshift-tests more than once, it's tracked by
+	//    https://issues.redhat.com/browse/OCPBUGS-16039
+	//
+	// 3. Flaked tests also have rows for the failures, so we need to ensure we only collect the flakes.
+	//
+	// 4. Flaked tests appear to be able to have success_val as 0 or 1.
+	//
+	// So, this sorts the data, partitioning by the 3-tuple of file_path/test_name/testsuite -
+	// preferring flakes, then successes, then failures, and we get the first row of each
+	// partition.
+	dedupedJunitTable = `
+		WITH deduped_testcases AS (
+			SELECT  
+				junit.*,
+				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY
+					CASE
+						WHEN flake_count > 0 THEN 0
+						WHEN success_val > 0 THEN 1
+						ELSE 2
+					END) AS row_num,
+%s
+				jobs.org,
+				jobs.repo,
+				jobs.pr_number,
+				jobs.pr_sha,
+				CASE
+					WHEN flake_count > 0 THEN 0
+					ELSE success_val
+				END AS adjusted_success_val,
+				CASE
+					WHEN flake_count > 0 THEN 1
+					ELSE 0
+				END AS adjusted_flake_count
+			FROM
+				%s.%s AS junit
+			INNER JOIN %s.jobs  jobs ON 
+				junit.prowjob_build_id = jobs.prowjob_build_id 
+				AND jobs.prowjob_start >= DATETIME(@From)
+				AND jobs.prowjob_start < DATETIME(@To)
+			WHERE modified_time >= DATETIME(@From)
+			AND modified_time < DATETIME(@To)
+			AND skipped = false
+		)
+		SELECT * FROM deduped_testcases WHERE row_num = 1`
+
+	// normalJobNameCol simply uses the prow job name for regular (non-pull-request) component reports.
+	normalJobNameCol = `
+				jobs.prowjob_job_name AS variant_registry_job_name,
+`
+	// pullRequestDynamicJobNameCol is used for pull-request component reports and will use the releaseJobName
+	// annotation for /payload jobs if it exists, otherwise the normal prow job name. This is done as /payload
+	// jobs get custom job names which will not be in the variant registry.
+	pullRequestDynamicJobNameCol = `
+				CASE
+					WHEN EXISTS (
+						SELECT 1
+						FROM UNNEST(jobs.prowjob_annotations) AS annotation
+						WHERE annotation LIKE 'releaseJobName=%%'
+					) THEN (
+						SELECT
+						SPLIT(SPLIT(annotation, 'releaseJobName=')[OFFSET(1)], ',')[SAFE_OFFSET(0)]
+						FROM UNNEST(jobs.prowjob_annotations) AS annotation	
+						WHERE annotation LIKE 'releaseJobName=%%'
+						LIMIT 1
+					)
+					ELSE jobs.prowjob_job_name
+		    	END AS variant_registry_job_name,
+`
+	// consider fallback data good for 7 days
+	fallbackQueryTimeRoundingOverride = 24 * 7 * time.Hour
+)
+
 type baseQueryGenerator struct {
 	client                   *bqcachedclient.Client
 	cacheOption              cache.RequestOptions
