@@ -57,9 +57,9 @@ component_readiness:
       enabled: false
   - name: 4.18-qe-main
     base_release:
-      release: "4.16"
-      relative_start: now-30d
-      relative_end: now
+      release: "4.17"
+      relative_start: ga-30d
+      relative_end: ga
     sample_release:
       release: "4.18"
       relative_start: now-7d
