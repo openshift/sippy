@@ -3,6 +3,7 @@ package componentreadiness
 import (
 	"context"
 	"fmt"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/openshift/sippy/pkg/util/param"
@@ -107,6 +109,114 @@ func (c *componentReportGenerator) GenerateJobRunTestReportStatus(ctx context.Co
 	return componentJobRunTestReportStatus, nil
 }
 
+// getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
+// This is for the bottom level most specific pages in component readiness.
+func (c *componentReportGenerator) getTestDetailsQuery(allJobVariants crtype.JobVariants, isSample bool) (string, string, []bigquery2.QueryParameter) {
+	jobNameQueryPortion := normalJobNameCol
+	if c.SampleRelease.PullRequestOptions != nil && isSample {
+		jobNameQueryPortion = pullRequestDynamicJobNameCol
+	}
+
+	// TODO: this is a temporary hack while we explore if rarely run jobs approach is actually going to work.
+	// A scheduled query is copying rarely run job results to a separate much smaller table every day, so we can
+	// query 3 months without spending a fortune. If this proves to work, we will work out a system of processing
+	// this as generically as we can, but it will be difficult.
+	junitTable := defaultJunitTable
+	for k, v := range c.IncludeVariants {
+		if k == "JobTier" {
+			if slices.Contains(v, "rare") {
+				junitTable = rarelyRunJunitTable
+			}
+		}
+	}
+
+	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
+						SELECT *
+						FROM %s.component_mapping cm
+						WHERE created_at = (
+								SELECT MAX(created_at)
+								FROM %s.component_mapping))
+					SELECT
+						ANY_VALUE(test_name) AS test_name,
+						ANY_VALUE(testsuite) AS test_suite,
+						file_path,
+						ANY_VALUE(variant_registry_job_name) AS prowjob_name,
+						ANY_VALUE(cm.jira_component) AS jira_component,
+						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
+						COUNT(*) AS total_count,
+						ANY_VALUE(cm.capabilities) as capabilities,
+						SUM(adjusted_success_val) AS success_count,
+						SUM(adjusted_flake_count) AS flake_count,
+					FROM (%s)
+					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
+`, c.client.Dataset, c.client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, junitTable, c.client.Dataset))
+
+	joinVariants := ""
+	for _, variant := range sortedKeys(allJobVariants.Variants) {
+		v := param.Cleanse(variant) // should be clean anyway, but just to make sure
+		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+			c.client.Dataset, v, v, v, v)
+	}
+	queryString += joinVariants
+
+	groupString := `
+					GROUP BY
+						file_path,
+						modified_time
+					ORDER BY
+						modified_time `
+	queryString += `
+					WHERE
+						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
+						AND NOT REGEXP_CONTAINS(variant_registry_job_name, @IgnoredJobs)
+						AND cm.id = @TestId `
+	commonParams := []bigquery2.QueryParameter{
+		{
+			Name:  "IgnoredJobs",
+			Value: ignoredJobsRegexp,
+		},
+		{
+			Name:  "TestId",
+			Value: c.TestID,
+		},
+	}
+
+	for _, key := range sortedKeys(c.IncludeVariants) {
+		// only add in include variants that aren't part of the requested or cross-compared variants
+
+		if _, ok := c.RequestedVariants[key]; ok {
+			continue
+		}
+		if slices.Contains(c.VariantCrossCompare, key) {
+			continue
+		}
+
+		group := param.Cleanse(key)
+		paramName := "IncludeVariants" + group
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
+		commonParams = append(commonParams, bigquery2.QueryParameter{
+			Name:  paramName,
+			Value: c.IncludeVariants[key],
+		})
+	}
+
+	for _, group := range sortedKeys(c.RequestedVariants) {
+		group = param.Cleanse(group) // should be clean anyway, but just to make sure
+		paramName := "IncludeVariantValue" + group
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
+		commonParams = append(commonParams, bigquery2.QueryParameter{
+			Name:  paramName,
+			Value: c.RequestedVariants[group],
+		})
+	}
+	if isSample {
+		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.CompareVariants, &commonParams)
+	} else {
+		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.IncludeVariants, &commonParams)
+	}
+	return queryString, groupString, commonParams
+}
+
 // filterByCrossCompareVariants adds the where clause for any variants being cross-compared (which are not included in RequestedVariants).
 // As a side effect, it also appends any necessary parameters for the clause.
 func filterByCrossCompareVariants(crossCompare []string, variantGroups map[string][]string, params *[]bigquery2.QueryParameter) (whereClause string) {
@@ -128,20 +238,37 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	return
 }
 
-func (c *componentReportGenerator) getBaseJobRunTestStatus(
-	ctx context.Context,
-	allJobVariants crtype.JobVariants,
+type baseJobRunTestStatusGenerator struct {
+	commonQuery              string
+	groupByQuery             string
+	queryParameters          []bigquery2.QueryParameter
+	cacheOption              cache.RequestOptions
+	BaseRelease              string
+	BaseStart                time.Time
+	BaseEnd                  time.Time
+	ComponentReportGenerator *componentReportGenerator
+}
+
+func (c *componentReportGenerator) getBaseJobRunTestStatus(ctx context.Context, commonQuery string,
+	groupByQuery string,
 	baseRelease string,
 	baseStart time.Time,
-	baseEnd time.Time) (map[string][]crtype.JobRunTestStatusRow, []error) {
-
-	generator := newBaseTestDetailsQueryGenerator(
-		c,
-		allJobVariants,
-		baseRelease,
-		baseEnd,
-		baseStart,
-	)
+	baseEnd time.Time,
+	queryParameters []bigquery2.QueryParameter) (map[string][]crtype.JobRunTestStatusRow, []error) {
+	generator := baseJobRunTestStatusGenerator{
+		commonQuery:     commonQuery,
+		groupByQuery:    groupByQuery,
+		queryParameters: queryParameters,
+		cacheOption: cache.RequestOptions{
+			ForceRefresh: c.cacheOption.ForceRefresh,
+			// increase the time that base query is cached since it shouldn't be changing?
+			CRTimeRoundingFactor: c.cacheOption.CRTimeRoundingFactor,
+		},
+		BaseRelease:              baseRelease,
+		BaseEnd:                  baseEnd,
+		BaseStart:                baseStart,
+		ComponentReportGenerator: c,
+	}
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
 		ctx,
@@ -157,9 +284,47 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(
 	return jobRunTestStatus.BaseStatus, nil
 }
 
-func (c *componentReportGenerator) getSampleJobRunTestStatus(ctx context.Context, allJobVariants crtype.JobVariants) (map[string][]crtype.JobRunTestStatusRow, []error) {
+func (b *baseJobRunTestStatusGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+	baseString := b.commonQuery + ` AND branch = @BaseRelease`
+	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + b.groupByQuery)
 
-	generator := newSampleTestDetailsQueryGenerator(c, allJobVariants)
+	baseQuery.Parameters = append(baseQuery.Parameters, b.queryParameters...)
+	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery2.QueryParameter{
+		{
+			Name:  "From",
+			Value: b.BaseStart,
+		},
+		{
+			Name:  "To",
+			Value: b.BaseEnd,
+		},
+		{
+			Name:  "BaseRelease",
+			Value: b.BaseRelease,
+		},
+	}...)
+
+	baseStatus, errs := b.ComponentReportGenerator.fetchJobRunTestStatus(ctx, baseQuery)
+	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus}, errs
+}
+
+type sampleJobRunTestQueryGenerator struct {
+	commonQuery              string
+	groupByQuery             string
+	queryParameters          []bigquery2.QueryParameter
+	ComponentReportGenerator *componentReportGenerator
+}
+
+func (c *componentReportGenerator) getSampleJobRunTestStatus(ctx context.Context, commonQuery string,
+	groupByQuery string,
+	queryParameters []bigquery2.QueryParameter,
+) (map[string][]crtype.JobRunTestStatusRow, []error) {
+	generator := sampleJobRunTestQueryGenerator{
+		commonQuery:              commonQuery,
+		groupByQuery:             groupByQuery,
+		queryParameters:          queryParameters,
+		ComponentReportGenerator: c,
+	}
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
 		ctx,
@@ -173,6 +338,50 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(ctx context.Context
 	}
 
 	return jobRunTestStatus.SampleStatus, nil
+}
+
+func (s *sampleJobRunTestQueryGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+	sampleString := s.commonQuery + ` AND branch = @SampleRelease`
+	// TODO
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleString += `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
+	}
+	sampleQuery := s.ComponentReportGenerator.client.BQ.Query(sampleString + s.groupByQuery)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, s.queryParameters...)
+	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery2.QueryParameter{
+		{
+			Name:  "From",
+			Value: s.ComponentReportGenerator.SampleRelease.Start,
+		},
+		{
+			Name:  "To",
+			Value: s.ComponentReportGenerator.SampleRelease.End,
+		},
+		{
+			Name:  "SampleRelease",
+			Value: s.ComponentReportGenerator.SampleRelease.Release,
+		},
+	}...)
+	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
+		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery2.QueryParameter{
+			{
+				Name:  "Org",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Org,
+			},
+			{
+				Name:  "Repo",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.Repo,
+			},
+			{
+				Name:  "PRNumber",
+				Value: s.ComponentReportGenerator.SampleRelease.PullRequestOptions.PRNumber,
+			},
+		}...)
+	}
+
+	sampleStatus, errs := s.ComponentReportGenerator.fetchJobRunTestStatus(ctx, sampleQuery)
+
+	return crtype.JobRunTestReportStatus{SampleStatus: sampleStatus}, errs
 }
 
 func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
@@ -194,7 +403,8 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 				logrus.Infof("Context canceled while fetching base job run test status")
 				return
 			default:
-				baseOverrideStatus, baseOverrideErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.BaseOverrideRelease.Release, c.BaseOverrideRelease.Start, c.BaseOverrideRelease.End)
+				queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, false)
+				baseOverrideStatus, baseOverrideErrs = c.getBaseJobRunTestStatus(ctx, queryString, groupString, c.BaseOverrideRelease.Release, c.BaseOverrideRelease.Start, c.BaseOverrideRelease.End, commonParams)
 			}
 		}()
 	}
@@ -207,7 +417,8 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			logrus.Infof("Context canceled while fetching base job run test status")
 			return
 		default:
-			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End)
+			queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, false)
+			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, queryString, groupString, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End, commonParams)
 		}
 
 	}()
@@ -220,7 +431,8 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			logrus.Infof("Context canceled while fetching sample job run test status")
 			return
 		default:
-			sampleStatus, sampleErrs = c.getSampleJobRunTestStatus(ctx, allJobVariants)
+			queryString, groupString, commonParams := c.getTestDetailsQuery(allJobVariants, true)
+			sampleStatus, sampleErrs = c.getSampleJobRunTestStatus(ctx, queryString, groupString, commonParams)
 		}
 
 	}()
