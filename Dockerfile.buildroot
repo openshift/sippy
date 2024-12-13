@@ -10,8 +10,15 @@ RUN curl -Lso /tmp/golangci-lint.rpm \
       dnf module enable nodejs:18 -y && \
       dnf install -y \
         git \
-        go \
         make \
         npm \
         /tmp/golangci-lint.rpm && \
-      rm /tmp/golangci-lint.rpm
+      rm /tmp/golangci-lint.rpm && \
+    curl -Lso /tmp/golang.linux-amd64.tar.gz \
+          "https://go.dev/dl/go${GOLANG_VERSION}.linux-amd64.tar.gz" && \
+      rm -rf /usr/local/go && tar -C /usr/local -xzf /tmp/golang.linux-amd64.tar.gz && \
+      echo $PATH && \
+      export PATH=/usr/local/go/bin:$PATH && \
+      echo $PATH && \
+      rm /tmp/golang.linux-amd64.tar.gz && sh
+
