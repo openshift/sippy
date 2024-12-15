@@ -267,7 +267,7 @@ var (
 	cpuPartitioning = regexp.MustCompile(`(?i)-cpu-partitioning`)
 	etcdScaling     = regexp.MustCompile(`(?i)-etcd-scaling`)
 	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
-	hypershiftRegex = regexp.MustCompile(`(?i)-hypershift`)
+	hypershiftRegex = regexp.MustCompile(`(?i)(-hypershift|-hcp|_hcp)`)
 	upiRegex        = regexp.MustCompile(`(?i)-upi`)
 	libvirtRegex    = regexp.MustCompile(`(?i)-libvirt`)
 	metalRegex      = regexp.MustCompile(`(?i)-metal`)

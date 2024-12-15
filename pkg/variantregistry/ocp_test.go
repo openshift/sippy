@@ -3,9 +3,10 @@ package variantregistry
 import (
 	"testing"
 
-	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 )
 
 func TestVariantSyncer(t *testing.T) {
@@ -44,8 +45,10 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job:          "periodic-ci-openshift-osde2e-main-nightly-4.17-conformance-rosa-classic-sts",
-			variantsFile: map[string]string{},
+			job: "periodic-ci-openshift-osde2e-main-nightly-4.17-conformance-rosa-classic-sts",
+			variantsFile: map[string]string{
+				"Platform": "aws", // should be ignored
+			},
 			expected: map[string]string{
 				VariantRelease:          "4.17",
 				VariantReleaseMajor:     "4",
@@ -99,6 +102,36 @@ func TestVariantSyncer(t *testing.T) {
 				VariantScheduler:        VariantDefaultValue,
 				"Foo":                   "bar",
 				VariantContainerRuntime: "runc",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
+			},
+		},
+		{
+			job: "periodic-ci-openshift-release-master-nightly-4.19-e2e-rosa-sts-ovn",
+			variantsFile: map[string]string{
+				"Platform": "aws", // should be ignored
+			},
+			expected: map[string]string{
+				VariantRelease:          "4.19",
+				VariantReleaseMajor:     "4",
+				VariantReleaseMinor:     "19",
+				VariantArch:             "amd64",
+				VariantInstaller:        "rosa",
+				VariantPlatform:         "rosa",
+				VariantProcedure:        "none",
+				VariantJobTier:          "standard",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "service-delivery",
+				VariantTopology:         "ha",
+				VariantSuite:            "unknown",
+				VariantUpgrade:          VariantNoValue,
+				VariantAggregation:      VariantNoValue,
+				VariantFeatureSet:       VariantDefaultValue,
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantContainerRuntime: "crun",
 				VariantCGroupMode:       "v2",
 				VariantLayeredProduct:   VariantNoValue,
 			},
