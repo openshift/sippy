@@ -11,11 +11,12 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/hashicorp/go-version"
-	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/util"
 
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
@@ -220,6 +221,12 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 			})
 
 			switch k {
+			case VariantPlatform:
+				// ROSA is identified as AWS, but we want to keep it in a separate bucket
+				if jnv == "rosa" {
+					continue
+				}
+				variants[k] = v
 			case VariantArch:
 				// Job name identification wins for arch, heterogenous jobs can show cluster data with
 				// amd64 as it's read from a single node.
@@ -260,7 +267,7 @@ var (
 	cpuPartitioning = regexp.MustCompile(`(?i)-cpu-partitioning`)
 	etcdScaling     = regexp.MustCompile(`(?i)-etcd-scaling`)
 	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
-	hypershiftRegex = regexp.MustCompile(`(?i)-hypershift`)
+	hypershiftRegex = regexp.MustCompile(`(?i)(-hypershift|-hcp|_hcp)`)
 	upiRegex        = regexp.MustCompile(`(?i)-upi`)
 	libvirtRegex    = regexp.MustCompile(`(?i)-libvirt`)
 	metalRegex      = regexp.MustCompile(`(?i)-metal`)
