@@ -35,7 +35,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 	// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
 	// as the default UTC correctly.
 	// Annotations and labels can be queried here if we need them.
-	query := pl.bigQueryClient.BQ.Query(`SELECT
+	query := pl.bigQueryClient.Query(`SELECT
 			prowjob_job_name,
 			prowjob_state,
 			prowjob_build_id,

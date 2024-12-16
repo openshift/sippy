@@ -8,10 +8,10 @@ import (
 
 	bqgo "cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
-	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -89,7 +89,7 @@ func (bl *BugLoader) Load() {
 	dbExpectedBugs := make([]*models.Bug, 0)
 
 	// Fetch bugs<->test mapping from bigquery
-	testCache, err := query.LoadTestCache(bl.dbc, []string{})
+	testCache, err := loadTestCache(bl.dbc, []string{})
 	if err != nil {
 		bl.errors = append(bl.errors, err)
 		return
@@ -100,7 +100,7 @@ func (bl *BugLoader) Load() {
 	}
 
 	// Fetch bugs<->job mapping from bigquery
-	jobCache, err := query.LoadProwJobCache(bl.dbc)
+	jobCache, err := loadProwJobCache(bl.dbc)
 	if err != nil {
 		bl.errors = append(bl.errors, err)
 		return
@@ -179,9 +179,9 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		`%s CROSS JOIN %s.%s.%s j WHERE j.name != "upgrade" AND (STRPOS(t.summary, j.name) > 0 OR STRPOS(t.description, j.name) > 0 OR STRPOS(t.comment, j.name) > 0)`,
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
 	log.Debugf(querySQL)
-	q := bl.bqc.BQ.Query(querySQL)
+	query := bl.bqc.BQ.Query(querySQL)
 
-	it, err := q.Read(ctx)
+	it, err := query.Read(ctx)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to execute query")
 	}
@@ -233,9 +233,9 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 		`%s CROSS JOIN (SELECT DISTINCT prowjob_job_name AS name FROM openshift-gce-devel.ci_analysis_us.jobs WHERE prowjob_job_name IS NOT NULL AND prowjob_job_name != "") j WHERE (STRPOS(t.summary, j.name) > 0 OR STRPOS(t.description, j.name) > 0 OR STRPOS(t.comment, j.name) > 0)`,
 		TicketDataQuery)
 	log.Debugf(querySQL)
-	q := bl.bqc.BQ.Query(querySQL)
+	query := bl.bqc.BQ.Query(querySQL)
 
-	it, err := q.Read(ctx)
+	it, err := query.Read(ctx)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed to execute query")
 	}
@@ -279,9 +279,52 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 	return bugs, nil
 }
 
+func loadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
+	// Cache all tests by name to their ID, used for the join object.
+	testCache := map[string]*models.Test{}
+	q := dbc.DB.Model(&models.Test{})
+	for _, p := range preloads {
+		q = q.Preload(p)
+	}
+
+	// Kube exceeds 60000 tests, more than postgres can load at once:
+	testsBatch := []*models.Test{}
+	res := q.FindInBatches(&testsBatch, 5000, func(tx *gorm.DB, batch int) error {
+		for _, idn := range testsBatch {
+			if _, ok := testCache[idn.Name]; !ok {
+				testCache[idn.Name] = idn
+			}
+		}
+		return nil
+	})
+
+	if res.Error != nil {
+		return map[string]*models.Test{}, res.Error
+	}
+
+	log.Infof("test cache created with %d entries from database", len(testCache))
+	return testCache, nil
+}
+
+func loadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
+	prowJobCache := map[string]*models.ProwJob{}
+	var allJobs []*models.ProwJob
+	res := dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
+	if res.Error != nil {
+		return map[string]*models.ProwJob{}, res.Error
+	}
+	for _, j := range allJobs {
+		if _, ok := prowJobCache[j.Name]; !ok {
+			prowJobCache[j.Name] = j
+		}
+	}
+	log.Infof("job cache created with %d entries from database", len(prowJobCache))
+	return prowJobCache, nil
+}
+
 func updateWatchlist(dbc *db.DB) []error {
 	// Load the test cache, we'll iterate every test and see if it should be in the watchlist or not:
-	testCache, err := query.LoadTestCache(dbc, []string{"Bugs"})
+	testCache, err := loadTestCache(dbc, []string{"Bugs"})
 	if err != nil {
 		return []error{errors.Wrap(err, "error loading test class for UpdateWatchList")}
 	}

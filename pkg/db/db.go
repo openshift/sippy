@@ -150,10 +150,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
-	if err := syncPartitionedTables(d.DB); err != nil {
-		return err
-	}
-
 	if err := syncPostgresViews(d.DB, reportEnd); err != nil {
 		return err
 	}

@@ -301,7 +301,7 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		ctx,
 		dbc,
 		gcsClient,
-		bigQueryClient,
+		bigQueryClient.BQ,
 		f.GoogleCloudFlags.StorageBucket,
 		githubClient,
 		f.ModeFlags.GetVariantManager(ctx, bigQueryClient),
