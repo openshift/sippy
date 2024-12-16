@@ -12,6 +12,22 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 )
 
+func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
+	prowJobCache := map[string]*models.ProwJob{}
+	var allJobs []*models.ProwJob
+	res := dbc.DB.Model(&models.ProwJob{}).Find(&allJobs)
+	if res.Error != nil {
+		return map[string]*models.ProwJob{}, res.Error
+	}
+	for _, j := range allJobs {
+		if _, ok := prowJobCache[j.Name]; !ok {
+			prowJobCache[j.Name] = j
+		}
+	}
+	log.Infof("job cache created with %d entries from database", len(prowJobCache))
+	return prowJobCache, nil
+}
+
 func JobRunTestCount(dbc *db.DB, jobRunID int64) (int, error) {
 	var prowJobRunTestCount int
 	var tests []models.ProwJobRunTest
