@@ -34,6 +34,11 @@ var PostgresMatViews = []PostgresView{
 		},
 	},
 	{
+		Name:         "prow_test_analysis_by_job_14d_matview",
+		Definition:   testAnalysisByJobMatView,
+		IndexColumns: []string{"test_id", "test_name", "date", "job_name"},
+	},
+	{
 		Name:         "prow_job_runs_report_matview",
 		Definition:   jobRunsReportMatView,
 		IndexColumns: []string{"id"},
@@ -279,7 +284,7 @@ SELECT
 	SUM(flakes) as flakes,
 	SUM(failures) as failures
 FROM
-	test_analysis_by_job_by_dates byjob
+	prow_test_analysis_by_job_14d_matview byjob
 	JOIN tests ON tests.id = byjob.test_id
 	JOIN prow_jobs ON prow_jobs.name = byjob.job_name
 WHERE
