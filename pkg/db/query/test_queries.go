@@ -57,8 +57,35 @@ const (
 
 	QueryTestSummarizer = QueryTestFields + "," + QueryTestPercentages
 
-	QueryTestAnalysis = "select current_successes, current_runs, current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage from ( select sum(runs) as current_runs, sum(passes) as current_successes from prow_test_analysis_by_job_14d_matview where test_name = '%s' AND job_name in (%s))t"
+	QueryTestAnalysis = "select current_successes, current_runs, current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage from ( select sum(runs) as current_runs, sum(passes) as current_successes from test_analysis_by_job_by_dates where test_name = '%s' AND job_name in (%s))t"
 )
+
+func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
+	// Cache all tests by name to their ID, used for the join object.
+	testCache := map[string]*models.Test{}
+	q := dbc.DB.Model(&models.Test{})
+	for _, p := range preloads {
+		q = q.Preload(p)
+	}
+
+	// Kube exceeds 60000 tests, more than postgres can load at once:
+	testsBatch := []*models.Test{}
+	res := q.FindInBatches(&testsBatch, 5000, func(tx *gorm.DB, batch int) error {
+		for _, idn := range testsBatch {
+			if _, ok := testCache[idn.Name]; !ok {
+				testCache[idn.Name] = idn
+			}
+		}
+		return nil
+	})
+
+	if res.Error != nil {
+		return map[string]*models.Test{}, res.Error
+	}
+
+	log.Infof("test cache created with %d entries from database", len(testCache))
+	return testCache, nil
+}
 
 // TestReportsByVariant returns a test report for every test in the db matching the given substrings, separated by variant.
 func TestReportsByVariant(
