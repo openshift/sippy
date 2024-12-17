@@ -33,15 +33,18 @@ component_readiness:
         Installer:
           - ipi
           - upi
+          - rosa
         Network:
           - ovn
         Owner:
           - eng
+          - service-delivery
         Platform:
           - aws
           - azure
           - gcp
           - metal
+          - rosa
           - vsphere
         Topology:
           - ha
