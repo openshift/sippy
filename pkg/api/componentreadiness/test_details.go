@@ -139,8 +139,8 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(
 		c,
 		allJobVariants,
 		baseRelease,
-		baseEnd,
 		baseStart,
+		baseEnd,
 	)
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
