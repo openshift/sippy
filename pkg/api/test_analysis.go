@@ -38,7 +38,7 @@ func GetTestAnalysisOverallFromDB(dbc *db.DB, filters *filter.Filter, release, t
 		Joins("JOIN prow_jobs on prow_jobs.name = job_name").
 		Where("test_analysis_by_job_by_dates.release = ?", release).
 		Where("test_name = ?", testName).
-		Where("date >= ?", time.Now().Add(24*14*time.Hour)).
+		Where("date >= ?", time.Now().Add(-24*14*time.Hour)).
 		Order("date ASC").
 		Group("date, test_id, test_name, test_analysis_by_job_by_dates.release")
 
@@ -104,7 +104,7 @@ func GetTestAnalysisByJobFromDB(dbc *db.DB, filters *filter.Filter, release, tes
 		Where("prow_jobs.release = ?", release).
 		Where("test_name = ?", testName).
 		Where("date <= ?", reportEnd).
-		Where("date >= ?", reportEnd.Add(24*14*time.Hour)).
+		Where("date >= ?", reportEnd.Add(-24*14*time.Hour)).
 		Order("date ASC")
 
 	var allowedVariants, blockedVariants []string
