@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 
@@ -57,7 +58,14 @@ const (
 
 	QueryTestSummarizer = QueryTestFields + "," + QueryTestPercentages
 
-	QueryTestAnalysis = "select current_successes, current_runs, current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage from ( select sum(runs) as current_runs, sum(passes) as current_successes from test_analysis_by_job_by_dates where test_name = '%s' AND job_name in (%s))t"
+	QueryTestAnalysis = `
+        select current_successes, current_runs,
+               current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage
+        from (
+            select sum(runs) as current_runs, sum(passes) as current_successes
+            from test_analysis_by_job_by_dates 
+            where test_name = ? AND job_name IN ?
+        ) t`
 )
 
 func LoadTestCache(dbc *db.DB, preloads []string) (map[string]*models.Test, error) {
@@ -97,11 +105,6 @@ func TestReportsByVariant(
 ) ([]api.Test, error) {
 	now := time.Now()
 
-	excludeVariantsQuery := ""
-	for _, ev := range excludeVariants {
-		excludeVariantsQuery += fmt.Sprintf(" AND NOT ('%s'=any(variants))", ev)
-	}
-
 	testSubstringFilter := strings.Join(testSubStrings, "|")
 	testSubstringFilter = strings.ReplaceAll(testSubstringFilter, "[", "\\[")
 	testSubstringFilter = strings.ReplaceAll(testSubstringFilter, "]", "\\]")
@@ -122,7 +125,8 @@ WITH results AS (
            sum(previous_flakes)    AS previous_flakes,
            unnest(variants)        AS variant
     FROM prow_test_report_7d_matview
-	WHERE release = @release AND name ~* @testsubstrings %s
+	WHERE release = @release AND name ~* @testsubstrings
+          AND NOT(@excluded && variants)
     GROUP BY name, release, variant
 )
 SELECT *,
@@ -133,15 +137,16 @@ SELECT *,
        (current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement
 FROM results;
 `
-
-	q = fmt.Sprintf(q, excludeVariantsQuery)
-
 	if reportType == v1.TwoDayReport {
 		q = strings.ReplaceAll(q, "prow_test_report_7d_matview", "prow_test_report_2d_matview")
 	}
-	r := dbc.DB.Raw(q,
+
+	qParams := []interface{}{
+		sql.Named("excluded", pq.Array(excludeVariants)),
 		sql.Named("release", release),
-		sql.Named("testsubstrings", testSubstringFilter)).Scan(&testReports)
+		sql.Named("testsubstrings", testSubstringFilter),
+	}
+	r := dbc.DB.Raw(q, qParams...).Scan(&testReports)
 	if r.Error != nil {
 		log.Error(r.Error)
 		return testReports, r.Error
@@ -162,11 +167,6 @@ func TestReportExcludeVariants(
 ) (api.Test, error) {
 	now := time.Now()
 
-	excludeVariantsQuery := ""
-	for _, ev := range excludeVariants {
-		excludeVariantsQuery += fmt.Sprintf(" AND NOT ('%s'=any(variants))", ev)
-	}
-
 	// Query and group by variant:
 	var testReport api.Test
 	q := `WITH results AS (
@@ -181,14 +181,18 @@ func TestReportExcludeVariants(
            sum(previous_failures)  AS previous_failures,
            sum(previous_flakes)    AS previous_flakes
     FROM prow_test_report_7d_matview
-    WHERE release = @release AND name = @testname %s
+    WHERE release = @release AND name = @testname
+          AND NOT(@excluded && variants)
     GROUP BY name, release
-) SELECT *, ` + QueryTestPercentages + ` FROM results;`
+) SELECT *, %s FROM results;`
 
-	q = fmt.Sprintf(q, excludeVariantsQuery)
-	r := dbc.DB.Raw(q,
+	q = fmt.Sprintf(q, QueryTestPercentages)
+	qParams := []interface{}{
+		sql.Named("excluded", pq.Array(excludeVariants)),
 		sql.Named("release", release),
-		sql.Named("testname", testName)).First(&testReport)
+		sql.Named("testname", testName),
+	}
+	r := dbc.DB.Raw(q, qParams...).First(&testReport)
 	if r.Error != nil {
 		log.Error(r.Error)
 		return testReport, r.Error
