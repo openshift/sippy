@@ -77,6 +77,26 @@ export default function TestPassRateCharts(props) {
     )
   }
 
+  // In rare cases, for the time being, tests being in sippy but not bigquery junit tables will
+  // get no analysis here due to optimzations that were made as we try to bring the two data sources together.
+  // For these few tests, we currently will just show no analysis.
+  if (groupedData == null || groupedData['overall'] == null) {
+    return (
+      <Fragment>
+        <Grid item md={12}>
+          <Card className="test-failure-card" elevation={5}>
+            <Typography variant="h5">
+              Pass Rate By{' '}
+              {props.grouping.charAt(0).toUpperCase() +
+                props.grouping.substr(1).toLowerCase()}
+            </Typography>
+            <Typography>No analysis available for this test.</Typography>
+          </Card>
+        </Grid>
+      </Fragment>
+    )
+  }
+
   const colors = scale('Set2')
     .mode('lch')
     .colors(Object.keys(groupedData).length)
