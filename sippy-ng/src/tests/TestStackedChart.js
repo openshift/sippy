@@ -71,6 +71,19 @@ export function TestStackedChart(props) {
     )
   }
 
+  if (analysis == null) {
+    return (
+      <Fragment>
+        <Grid item md={12}>
+          <Card className="test-failure-card" elevation={5}>
+            <Typography variant="h5">Overall Results</Typography>
+            <Typography>No analysis available for this test.</Typography>
+          </Card>
+        </Grid>
+      </Fragment>
+    )
+  }
+
   let daySet = new Set()
   analysis.forEach((dt) => {
     daySet.add(dt.date)
