@@ -89,6 +89,8 @@ func GetDataFromCacheOrGenerate[T any](
 					return defaultVal, []error{errors.WithMessagef(err, "failed to unmarshal cached item.  cacheKey=%+v", cacheKey)}
 				}
 				return cr, nil
+			} else if strings.Contains(err.Error(), "connection refused") {
+				log.WithError(err).Fatalf("redis URL specified but got connection refused, exiting due to cost issues in this configuration")
 			}
 			log.WithFields(log.Fields{
 				"key": string(cacheKey),
@@ -99,6 +101,9 @@ func GetDataFromCacheOrGenerate[T any](
 			cr, err := json.Marshal(result)
 			if err == nil {
 				if err := c.Set(ctx, string(cacheKey), cr, cacheDuration); err != nil {
+					if strings.Contains(err.Error(), "connection refused") {
+						log.WithError(err).Fatalf("redis URL specified but got connection refused, exiting due to cost issues in this configuration")
+					}
 					log.WithError(err).Warningf("couldn't persist new item to cache")
 				} else {
 					log.Debugf("cache set for cache key: %s", string(cacheKey))
