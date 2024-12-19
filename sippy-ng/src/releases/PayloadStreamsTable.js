@@ -107,7 +107,7 @@ function PayloadStreamsTable(props) {
   ]
 
   const [fetchError, setFetchError] = React.useState('')
-  const [isLoaded, seGtLoaded] = React.useState(false)
+  const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
