@@ -335,6 +335,7 @@ export function getUpdatedUrlParts(vars) {
     passRateAllTests: vars.passRateAllTests,
     ignoreDisruption: vars.ignoreDisruption,
     ignoreMissing: vars.ignoreMissing,
+    flakeAsFailure: vars.flakeAsFailure,
     includeMultiReleaseAnalysis: vars.includeMultiReleaseAnalysis,
     //component: vars.component,
   }

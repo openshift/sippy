@@ -27,6 +27,7 @@ export default function AdvancedOptions(props) {
     passRateAllTests,
     ignoreMissing,
     ignoreDisruption,
+    flakeAsFailure,
     includeMultiReleaseAnalysis,
     setConfidence,
     setPity,
@@ -35,6 +36,7 @@ export default function AdvancedOptions(props) {
     setPassRateAllTests,
     setIgnoreMissing,
     setIgnoreDisruption,
+    setFlakeAsFailure,
     setIncludeMultiReleaseAnalysis,
   } = props
 
@@ -94,6 +96,9 @@ export default function AdvancedOptions(props) {
   }
   const handleChangeIgnoreDisruption = (event, newValue) => {
     setIgnoreDisruption(newValue)
+  }
+  const handleChangeFlakeAsFailure = (event, newValue) => {
+    setFlakeAsFailure(newValue)
   }
 
   const handleChangeIncludeMultiReleaseAnalysis = (event, newValue) => {
@@ -172,6 +177,13 @@ export default function AdvancedOptions(props) {
               name="ignoreDisruption"
               color="primary"
             />
+            <p>Flake As: {flakeAsFailure ? 'failure' : 'success'}</p>
+            <Switch
+              checked={flakeAsFailure}
+              onChange={handleChangeFlakeAsFailure}
+              name="flakeAsFailure"
+              color="primary"
+            />
             <Tooltip title="Enable analysis across multiple prior releases">
               <p>
                 Historical release analysis:{' '}
@@ -200,6 +212,7 @@ AdvancedOptions.propTypes = {
   passRateAllTests: PropTypes.number.isRequired,
   ignoreMissing: PropTypes.bool.isRequired,
   ignoreDisruption: PropTypes.bool.isRequired,
+  flakeAsFailure: PropTypes.bool.isRequired,
   includeMultiReleaseAnalysis: PropTypes.bool.isRequired,
   setConfidence: PropTypes.func.isRequired,
   setPity: PropTypes.func.isRequired,
@@ -208,5 +221,6 @@ AdvancedOptions.propTypes = {
   setPassRateAllTests: PropTypes.func.isRequired,
   setIgnoreMissing: PropTypes.func.isRequired,
   setIgnoreDisruption: PropTypes.func.isRequired,
+  setFlakeAsFailure: PropTypes.func.isRequired,
   setIncludeMultiReleaseAnalysis: PropTypes.func.isRequired,
 }

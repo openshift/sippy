@@ -78,6 +78,7 @@ export default function CompReadyMainInputs(props) {
         passRateAllTests={varsContext.passRateAllTests}
         ignoreMissing={varsContext.ignoreMissing}
         ignoreDisruption={varsContext.ignoreDisruption}
+        flakeAsFailure={varsContext.flakeAsFailure}
         includeMultiReleaseAnalysis={varsContext.includeMultiReleaseAnalysis}
         setConfidence={varsContext.setConfidence}
         setPity={varsContext.setPity}
@@ -86,6 +87,7 @@ export default function CompReadyMainInputs(props) {
         setPassRateAllTests={varsContext.setPassRateAllTests}
         setIgnoreMissing={varsContext.setIgnoreMissing}
         setIgnoreDisruption={varsContext.setIgnoreDisruption}
+        setFlakeAsFailure={varsContext.setFlakeAsFailure}
         setIncludeMultiReleaseAnalysis={
           varsContext.setIncludeMultiReleaseAnalysis
         }

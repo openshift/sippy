@@ -627,8 +627,7 @@ func (c *componentReportGenerator) normalizeProwJobName(prowName string) string 
 }
 
 func (c *componentReportGenerator) fetchJobRunTestStatusResults(ctx context.Context,
-	query *bigquery.Query) (map[string][]crtype.
-	JobRunTestStatusRow, []error) {
+	query *bigquery.Query) (map[string][]crtype.JobRunTestStatusRow, []error) {
 	errs := []error{}
 	status := map[string][]crtype.JobRunTestStatusRow{}
 	log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
@@ -911,9 +910,7 @@ type triagedIncidentsGenerator struct {
 	SampleRelease  crtype.RequestReleaseOptions
 }
 
-func (t *triagedIncidentsGenerator) generateTriagedIssuesFor(ctx context.Context) (resolvedissues.
-	TriagedIncidentsForRelease,
-	[]error) {
+func (t *triagedIncidentsGenerator) generateTriagedIssuesFor(ctx context.Context) (resolvedissues.TriagedIncidentsForRelease, []error) {
 	before := time.Now()
 	incidents, errs := t.queryTriagedIssues(ctx)
 
@@ -1102,7 +1099,7 @@ func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, testID.ColumnIdentification, testID.TestID)
 
 		// This could go away if we remove the option for ignoring fallback
-		if baseRegression != nil && baseRegression.PreviousSuccessPercentage() > getTestStatusSuccessRate(baseStats) {
+		if baseRegression != nil && baseRegression.PreviousPassPercentage(c.FlakeAsFailure) > c.getTestStatusSuccessRate(baseStats) {
 			// override with  the basis regression previous values
 			// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
 			baseRegressionPreviousRelease, err := previousRelease(c.BaseRelease.Release)
@@ -1118,7 +1115,7 @@ func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 				}
 				baseStats = updatedStats
 				baseRelease = baseRegressionPreviousRelease
-				log.Infof("BaseRegression - PreviousSuccessPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d, Total: %d", baseRelease, baseStats.SuccessCount, baseStats.FlakeCount, baseStats.TotalCount)
+				log.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d, Total: %d", baseRelease, baseStats.SuccessCount, baseStats.FlakeCount, baseStats.TotalCount)
 			}
 		}
 	}
@@ -1466,16 +1463,19 @@ func getFailureCount(status crtype.JobRunTestStatusRow) int {
 	return failure
 }
 
-func getTestStatusSuccessRate(testStatus crtype.TestStatus) float64 {
-	return getSuccessRate(testStatus.SuccessCount, testStatus.TotalCount-testStatus.SuccessCount-testStatus.FlakeCount, testStatus.FlakeCount)
+func (c *componentReportGenerator) getTestStatusSuccessRate(testStatus crtype.TestStatus) float64 {
+	return c.getPassRate(testStatus.SuccessCount, testStatus.TotalCount-testStatus.SuccessCount-testStatus.FlakeCount, testStatus.FlakeCount)
 }
 
-func getSuccessRate(success, failure, flake int) float64 {
+func (c *componentReportGenerator) getPassRate(success, failure, flake int) float64 {
 	total := success + failure + flake
 	if total == 0 {
 		return 0.0
 	}
-	return float64(success) / float64(total)
+	if c.FlakeAsFailure {
+		return float64(success) / float64(total)
+	}
+	return float64(success+flake) / float64(total)
 }
 
 func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTriage bool) crtype.Status {
@@ -1494,7 +1494,7 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTr
 
 func (c *componentReportGenerator) getEffectivePityFactor(basisPassPercentage float64, approvedRegression *regressionallowances.IntentionalRegression) int {
 	if approvedRegression != nil && approvedRegression.RegressedFailures > 0 {
-		regressedPassPercentage := approvedRegression.RegressedSuccessPercentage()
+		regressedPassPercentage := approvedRegression.RegressedPassPercentage(c.FlakeAsFailure)
 		if regressedPassPercentage < basisPassPercentage {
 			// product owner chose a required pass percentage, so we allow pity to cover that approved pass percent
 			// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
@@ -1569,7 +1569,7 @@ func (c *componentReportGenerator) assessComponentStatus(
 			Start:   baseStart,
 			End:     baseEnd,
 			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
+				SuccessRate:  c.getPassRate(baseSuccess, baseFailure, baseFlake),
 				SuccessCount: baseSuccess,
 				FailureCount: baseFailure,
 				FlakeCount:   baseFlake,
@@ -1592,7 +1592,7 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 		Start:   baseStart,
 		End:     baseEnd,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  getSuccessRate(baseSuccess, baseFailure, baseFlake),
+			SuccessRate:  c.getPassRate(baseSuccess, baseFailure, baseFlake),
 			SuccessCount: baseSuccess,
 			FailureCount: baseFailure,
 			FlakeCount:   baseFlake,
@@ -1606,7 +1606,7 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 			Start:   &c.SampleRelease.Start,
 			End:     &c.SampleRelease.End,
 			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  getSuccessRate(sampleSuccess, sampleFailure, sampleFlake),
+				SuccessRate:  c.getPassRate(sampleSuccess, sampleFailure, sampleFlake),
 				SuccessCount: sampleSuccess,
 				FailureCount: sampleFailure,
 				FlakeCount:   sampleFlake,
@@ -1625,8 +1625,14 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 		}
 	} else {
 		// see if we had a significant regression prior to adjusting
-		basisPassPercentage := float64(baseSuccess) / float64(baseTotal)
-		initialPassPercentage := float64(sampleSuccess) / float64(initialSampleTotal)
+		basePass := baseSuccess + baseFlake
+		samplePass := sampleSuccess + sampleFlake
+		if c.FlakeAsFailure {
+			basePass = baseSuccess
+			samplePass = sampleSuccess
+		}
+		basisPassPercentage := float64(basePass) / float64(baseTotal)
+		initialPassPercentage := float64(samplePass) / float64(initialSampleTotal)
 		effectivePityFactor := c.getEffectivePityFactor(basisPassPercentage, approvedRegression)
 
 		wasSignificant := false
@@ -1634,7 +1640,7 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 		// pass percentage is below the basis
 		if initialSampleTotal > sampleTotal && initialPassPercentage < basisPassPercentage {
 			if basisPassPercentage-initialPassPercentage > float64(c.PityFactor)/100 {
-				wasSignificant, _ = c.fischerExactTest(requiredConfidence, initialSampleTotal, sampleSuccess, baseTotal, baseSuccess)
+				wasSignificant, _ = c.fischerExactTest(requiredConfidence, initialSampleTotal-samplePass, samplePass, baseTotal-basePass, basePass)
 			}
 			// if it was significant without the adjustment use
 			// ExtremeTriagedRegression or SignificantTriagedRegression
@@ -1666,10 +1672,10 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 		}
 
 		// now that we know sampleTotal is non zero
-		samplePassPercentage := float64(sampleSuccess) / float64(sampleTotal)
+		samplePassPercentage := float64(samplePass) / float64(sampleTotal)
 
 		// did we remove enough failures that we are below the MinimumFailure threshold?
-		if c.MinimumFailure != 0 && (sampleTotal-sampleSuccess) < c.MinimumFailure {
+		if c.MinimumFailure != 0 && (sampleTotal-samplePass) < c.MinimumFailure {
 			testStats.ReportStatus = status
 			testStats.FisherExact = thrift.Float64Ptr(0.0)
 			return testStats
@@ -1679,9 +1685,9 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 
 		if improved {
 			// flip base and sample when improved
-			significant, fisherExact = c.fischerExactTest(requiredConfidence, baseTotal, baseSuccess, sampleTotal, sampleSuccess)
+			significant, fisherExact = c.fischerExactTest(requiredConfidence, baseTotal-basePass, basePass, sampleTotal-samplePass, samplePass)
 		} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
-			significant, fisherExact = c.fischerExactTest(requiredConfidence, sampleTotal, sampleSuccess, baseTotal, baseSuccess)
+			significant, fisherExact = c.fischerExactTest(requiredConfidence, sampleTotal-samplePass, samplePass, baseTotal-basePass, basePass)
 		}
 		if significant {
 			if improved {
@@ -1716,7 +1722,7 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 }
 
 func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake int, requiredSuccessRate float64) crtype.ReportTestStats {
-	successRate := getSuccessRate(sampleSuccess, sampleFailure, sampleFlake)
+	successRate := c.getPassRate(sampleSuccess, sampleFailure, sampleFlake)
 
 	// Assume 2x our allowed failure rate = an extreme regression.
 	// i.e. if we require 90%, extreme is anything below 80%
@@ -1756,10 +1762,10 @@ func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleF
 	}
 }
 
-func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleTotal, sampleSuccess, baseTotal, baseSuccess int) (bool, float64) {
-	_, _, r, _ := fischer.FisherExactTest(sampleTotal-sampleSuccess,
+func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleFailure, sampleSuccess, baseFailure, baseSuccess int) (bool, float64) {
+	_, _, r, _ := fischer.FisherExactTest(sampleFailure,
 		sampleSuccess,
-		baseTotal-baseSuccess,
+		baseFailure,
 		baseSuccess)
 	return r < 1-float64(confidenceRequired)/100, r
 }
