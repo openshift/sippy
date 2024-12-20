@@ -259,8 +259,10 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount i
 		// hack since we don't currently get the jobRunTestCount for 4.12 jobs.
 		// If the jobRunTestCount is 0 and we are pre 4.13 set the jobRunTestCount to the historicalCount
 		preSupportVersion, _ := version.NewVersion("4.12")
-		currentVersion, _ := version.NewVersion(compareRelease)
-		if preSupportVersion.GreaterThanOrEqual(currentVersion) {
+		currentVersion, err := version.NewVersion(compareRelease)
+		if err != nil {
+			logger.WithError(err).Errorf("Failed to parse release '%s' for prow job %d", compareRelease, jobRun.ProwJob.ID)
+		} else if preSupportVersion.GreaterThanOrEqual(currentVersion) {
 			jobRunTestCount = historicalCount
 		}
 	}
@@ -280,22 +282,25 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount i
 
 	if totalJobRuns < 20 {
 		// go back to the prior release and get more jobIds to compare against
-		currentVersion, _ := version.NewVersion(compareRelease)
-		majminor := currentVersion.Segments()
-		// 4.14 is returned as 4,14,0
-		if len(majminor) == 3 && majminor[1] > 0 {
-			majminor[1]--
-			priorRelease := fmt.Sprintf("%d.%d", majminor[0], majminor[1])
-			priorJobNames, _, err := findReleaseMatchJobNames(dbc, jobRun, priorRelease, logger)
+		if currentVersion, err := version.NewVersion(compareRelease); err != nil {
+			logger.WithError(err).Errorf("Failed to parse release '%s' for prow job %d", compareRelease, jobRun.ProwJob.ID)
+		} else {
+			majminor := currentVersion.Segments()
+			// 4.14 is returned as 4,14,0
+			if len(majminor) == 3 && majminor[1] > 0 {
+				majminor[1]--
+				priorRelease := fmt.Sprintf("%d.%d", majminor[0], majminor[1])
+				priorJobNames, _, err := findReleaseMatchJobNames(dbc, jobRun, priorRelease, logger)
 
-			if err != nil {
-				// since this is for the prior release we won't return the never-stable error in this case
-				if err.Error() != "never-stable" {
-					logger.WithError(err).Errorf("Failed to find matching jobIds for: %s", jobRun.ProwJob.Name)
+				if err != nil {
+					// since this is for the prior release we won't return the never-stable error in this case
+					if err.Error() != "never-stable" {
+						logger.WithError(err).Errorf("Failed to find matching jobIds for: %s", jobRun.ProwJob.Name)
+					}
 				}
-			}
 
-			jobNames = append(jobNames, priorJobNames...)
+				jobNames = append(jobNames, priorJobNames...)
+			}
 		}
 	}
 
