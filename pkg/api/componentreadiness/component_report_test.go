@@ -1360,7 +1360,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 						JobName:     prowJob1,
 						SampleStats: sampleTestStatsLow,
 						BaseStats:   baseTestStatsHigh,
-						Significant: false,
+						Significant: true,
 					},
 				},
 			},

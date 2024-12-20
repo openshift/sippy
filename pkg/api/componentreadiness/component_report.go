@@ -1099,7 +1099,7 @@ func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, testID.ColumnIdentification, testID.TestID)
 
 		// This could go away if we remove the option for ignoring fallback
-		if baseRegression != nil && baseRegression.PreviousPassPercentage(c.FlakeAsFailure) > c.getTestStatusSuccessRate(baseStats) {
+		if baseRegression != nil && baseRegression.PreviousPassPercentage(c.FlakeAsFailure) > c.getTestStatusPassRate(baseStats) {
 			// override with  the basis regression previous values
 			// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
 			baseRegressionPreviousRelease, err := previousRelease(c.BaseRelease.Release)
@@ -1463,7 +1463,7 @@ func getFailureCount(status crtype.JobRunTestStatusRow) int {
 	return failure
 }
 
-func (c *componentReportGenerator) getTestStatusSuccessRate(testStatus crtype.TestStatus) float64 {
+func (c *componentReportGenerator) getTestStatusPassRate(testStatus crtype.TestStatus) float64 {
 	return c.getPassRate(testStatus.SuccessCount, testStatus.TotalCount-testStatus.SuccessCount-testStatus.FlakeCount, testStatus.FlakeCount)
 }
 

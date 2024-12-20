@@ -319,14 +319,18 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		jobStats.SampleStats.SuccessRate = c.getPassRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
 		perceivedSampleFailure := perJobSampleFailure
 		perceivedBaseFailure := perJobBaseFailure
+		perceivedSampleSuccess := perJobSampleSuccess + perJobSampleFlake
+		perceivedBaseSuccess := perJobBaseSuccess + perJobBaseFlake
 		if c.FlakeAsFailure {
 			perceivedSampleFailure = perJobSampleFailure + perJobSampleFlake
-			perJobBaseFailure = perJobBaseFailure + perJobBaseFlake
+			perceivedBaseFailure = perJobBaseFailure + perJobBaseFlake
+			perceivedSampleSuccess = perJobSampleSuccess
+			perceivedBaseSuccess = perJobBaseSuccess
 		}
 		_, _, r, _ := fet.FisherExactTest(perceivedSampleFailure,
-			perJobSampleSuccess,
+			perceivedSampleSuccess,
 			perceivedBaseFailure,
-			perJobSampleSuccess)
+			perceivedBaseSuccess)
 		jobStats.Significant = r < 1-float64(c.Confidence)/100
 
 		result.JobStats = append(result.JobStats, jobStats)
@@ -357,11 +361,13 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		jobStats.SampleStats.SuccessRate = c.getPassRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
 		result.JobStats = append(result.JobStats, jobStats)
 		perceivedSampleFailure := perJobSampleFailure
+		perceivedSampleSuccess := perJobSampleSuccess + perJobSampleFlake
 		if c.FlakeAsFailure {
 			perceivedSampleFailure = perJobSampleFailure + perJobSampleFlake
+			perceivedSampleSuccess = perJobSampleSuccess
 		}
 		_, _, r, _ := fet.FisherExactTest(perceivedSampleFailure,
-			perJobSampleSuccess,
+			perceivedSampleSuccess,
 			0,
 			0)
 		jobStats.Significant = r < 1-float64(c.Confidence)/100
