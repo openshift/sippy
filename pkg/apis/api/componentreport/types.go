@@ -118,6 +118,7 @@ type RequestAdvancedOptions struct {
 	PassRateRequiredAllTests    int  `json:"pass_rate_required_all_tests" yaml:"pass_rate_required_all_tests"`
 	IgnoreMissing               bool `json:"ignore_missing" yaml:"ignore_missing"`
 	IgnoreDisruption            bool `json:"ignore_disruption" yaml:"ignore_disruption"`
+	FlakeAsFailure              bool `json:"flake_as_failure" yaml:"flake_as_failure"`
 	IncludeMultiReleaseAnalysis bool `json:"include_multi_release_analysis" yaml:"include_multi_release_analysis"`
 }
 
