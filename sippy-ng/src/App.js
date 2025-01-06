@@ -285,6 +285,19 @@ export default function App(props) {
     landingPage = 'No releases found! Have you configured Sippy correctly?'
   }
 
+  /* eslint-disable react/prop-types */
+  const redirectIfLatest = (props, component) => {
+    const { release } = props.match.params
+    if (release === 'latest') {
+      const newPath = props.location.pathname.replace(
+        '/latest',
+        '/' + defaultRelease
+      )
+      return <Redirect to={newPath} />
+    }
+    return component
+  }
+
   const startDate = getReportStartDate(reportDate)
   return (
     <ColorModeContext.Provider value={colorMode}>
@@ -388,129 +401,172 @@ export default function App(props) {
                       <Switch>
                         <Route
                           path="/release/:release/tags/:tag"
-                          render={(props) => (
-                            <ReleasePayloadDetails
-                              key={
-                                'release-details-' + props.match.params.release
-                              }
-                              release={props.match.params.release}
-                              releaseTag={props.match.params.tag}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <ReleasePayloadDetails
+                                key={
+                                  'release-details-' +
+                                  props.match.params.release
+                                }
+                                release={props.match.params.release}
+                                releaseTag={props.match.params.tag}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/release/:release/streams/:arch/:stream"
-                          render={(props) => (
-                            <PayloadStream
-                              release={props.match.params.release}
-                              arch={props.match.params.arch}
-                              stream={props.match.params.stream}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <PayloadStream
+                                release={props.match.params.release}
+                                arch={props.match.params.arch}
+                                stream={props.match.params.stream}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/release/:release/streams"
-                          render={(props) => (
-                            <PayloadStreams
-                              key={
-                                'release-streams-' + props.match.params.release
-                              }
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <PayloadStreams
+                                key={
+                                  'release-streams-' +
+                                  props.match.params.release
+                                }
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/release/:release/tags"
-                          render={(props) => (
-                            <ReleasePayloads
-                              key={'release-tags-' + props.match.params.release}
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              <ReleasePayloads
+                                key={
+                                  'release-tags-' + props.match.params.release
+                                }
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/release/:release"
-                          render={(props) => (
-                            <ReleaseOverview
-                              key={
-                                'release-overview-' + props.match.params.release
-                              }
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <ReleaseOverview
+                                key={
+                                  'release-overview-' +
+                                  props.match.params.release
+                                }
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/variants/:release/:variant"
-                          render={(props) => (
-                            <VariantStatus
-                              release={props.match.params.release}
-                              variant={props.match.params.variant}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <VariantStatus
+                                release={props.match.params.release}
+                                variant={props.match.params.variant}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/jobs/:release/analysis"
-                          render={(props) => (
-                            <JobAnalysis release={props.match.params.release} />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <JobAnalysis
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/jobs/:release"
-                          render={(props) => (
-                            <Jobs
-                              key={'jobs-' + props.match.params.release}
-                              title={
-                                'Job results for ' + props.match.params.release
-                              }
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <Jobs
+                                key={'jobs-' + props.match.params.release}
+                                title={
+                                  'Job results for ' +
+                                  props.match.params.release
+                                }
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/feature_gates/:release"
-                          render={(props) => (
-                            <FeatureGates
-                              key={'jobs-' + props.match.params.release}
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <FeatureGates
+                                key={'jobs-' + props.match.params.release}
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/tests/:release/analysis"
-                          render={(props) => (
-                            <TestAnalysis
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <TestAnalysis
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/tests/:release"
-                          render={(props) => (
-                            <Tests
-                              key={'tests-' + props.match.params.release}
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <Tests
+                                key={'tests-' + props.match.params.release}
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/upgrade/:release"
-                          render={(props) => (
-                            <Upgrades
-                              key={'upgrades-' + props.match.params.release}
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <Upgrades
+                                key={'upgrades-' + props.match.params.release}
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
@@ -528,12 +584,15 @@ export default function App(props) {
 
                         <Route
                           path="/install/:release"
-                          render={(props) => (
-                            <Install
-                              key={'install-' + props.match.params.release}
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <Install
+                                key={'install-' + props.match.params.release}
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
@@ -553,32 +612,41 @@ export default function App(props) {
 
                         <Route
                           path="/repositories/:release/:org/:repo"
-                          render={(props) => (
-                            <RepositoryDetails
-                              release={props.match.params.release}
-                              org={props.match.params.org}
-                              repo={props.match.params.repo}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <RepositoryDetails
+                                release={props.match.params.release}
+                                org={props.match.params.org}
+                                repo={props.match.params.repo}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/repositories/:release"
-                          render={(props) => (
-                            <Repositories
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <Repositories
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
                           path="/pull_requests/:release"
-                          render={(props) => (
-                            <PullRequests
-                              key={'pr-' + props.match.params.release}
-                              release={props.match.params.release}
-                            />
-                          )}
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <PullRequests
+                                key={'pr-' + props.match.params.release}
+                                release={props.match.params.release}
+                              />
+                            )
+                          }
                         />
 
                         <Route
