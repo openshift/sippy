@@ -373,11 +373,15 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				log.Infof("Context canceled while fetching fallback query status")
 				return
 			default:
+				// TODO: how does rarely run impact here?
 				c.getFallbackBaseQueryStatus(ctx, allJobVariants, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End)
 			}
 		}()
 	}
 
+	// TODO: hack in the variant modifications, we dont want our rarely run variant overrides to appear in basis,
+	// but can we assume this always? is a variant override implicitly rarely run, and implicitly pass rate comparison
+	// only? not really. perhaps make that part of the override struct.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -400,6 +404,8 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		}
 
 	}()
+
+	// TODO here we fork additional sample queries for the overrides and merge back in
 
 	wg.Wait()
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
@@ -628,7 +634,7 @@ func (c *componentReportGenerator) normalizeProwJobName(prowName string) string 
 
 func (c *componentReportGenerator) fetchJobRunTestStatusResults(ctx context.Context,
 	query *bigquery.Query) (map[string][]crtype.
-	JobRunTestStatusRow, []error) {
+JobRunTestStatusRow, []error) {
 	errs := []error{}
 	status := map[string][]crtype.JobRunTestStatusRow{}
 	log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
@@ -912,7 +918,7 @@ type triagedIncidentsGenerator struct {
 }
 
 func (t *triagedIncidentsGenerator) generateTriagedIssuesFor(ctx context.Context) (resolvedissues.
-	TriagedIncidentsForRelease,
+TriagedIncidentsForRelease,
 	[]error) {
 	before := time.Now()
 	incidents, errs := t.queryTriagedIssues(ctx)
