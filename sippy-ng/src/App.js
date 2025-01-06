@@ -14,14 +14,15 @@ import {
   findFirstNonGARelease,
   getReportStartDate,
   getUrlWithoutParams,
+  pathForTestSubstringByVariant,
   relativeTime,
 } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
+import { Link, Redirect, Route, Switch } from 'react-router-dom'
 import { makeStyles, styled } from '@mui/styles'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5'
-import { Redirect, Route, Switch } from 'react-router-dom'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
 import Alert from '@mui/material/Alert'
@@ -513,6 +514,22 @@ export default function App(props) {
                                   props.match.params.release
                                 }
                                 release={props.match.params.release}
+                              />
+                            )
+                          }
+                        />
+
+                        <Route
+                          path="/feature_gates/:release/:feature_gate"
+                          render={(props) =>
+                            redirectIfLatest(
+                              props,
+                              <Redirect
+                                to={pathForTestSubstringByVariant(
+                                  props.match.params.release,
+                                  'FeatureGate:' +
+                                    props.match.params.feature_gate
+                                )}
                               />
                             )
                           }
