@@ -47,8 +47,8 @@ type RequestReleaseOptions struct {
 // date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
 	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
-	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
-	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	RelativeStart         string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd           string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
@@ -447,4 +447,12 @@ type TriageJobRun struct {
 	URL           string                 `bigquery:"url" json:"url"`
 	StartTime     time.Time              `bigquery:"start_time" json:"start_time"`
 	CompletedTime bigquery.NullTimestamp `bigquery:"completed_time" json:"completed_time"`
+}
+
+// VariantJunitTableOverride is used to pull in junit results from a different table, if the given variant
+// is included in your query. (i.e. rarely run jobs support)
+type VariantJunitTableOverride struct {
+	VariantName  string `json:"variant_name"`
+	VariantValue string `json:"variant_value"`
+	TableName    string `bigquery:"table_name" json:"table_name"`
 }
