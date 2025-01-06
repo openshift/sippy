@@ -13,6 +13,7 @@ import (
 
 	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/util"
+	"github.com/openshift/sippy/pkg/variantregistry"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/thrift/lib/go/thrift"
@@ -116,6 +117,13 @@ func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Clie
 func GetComponentReportFromBigQuery(ctx context.Context, client *bqcachedclient.Client, prowURL, gcsBucket string,
 	reqOptions crtype.RequestOptions,
 ) (crtype.ComponentReport, []error) {
+	// TODO: hardcoded for now, move to a server side generic sippy config file
+	junitTableOverrides := []*crtype.VariantJunitTableOverride{
+		{
+			VariantName:  variantregistry.VariantJobTier,
+			VariantValue: "rare",
+		},
+	}
 	generator := componentReportGenerator{
 		client:                           client,
 		prowURL:                          prowURL,
@@ -127,6 +135,7 @@ func GetComponentReportFromBigQuery(ctx context.Context, client *bqcachedclient.
 		RequestTestIdentificationOptions: reqOptions.TestIDOption,
 		RequestVariantOptions:            reqOptions.VariantOption,
 		RequestAdvancedOptions:           reqOptions.AdvancedOption,
+		variantJunitTableOverrides:       junitTableOverrides,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
@@ -157,7 +166,8 @@ type componentReportGenerator struct {
 	crtype.RequestTestIdentificationOptions
 	crtype.RequestVariantOptions
 	crtype.RequestAdvancedOptions
-	openRegressions []*crtype.TestRegression
+	openRegressions            []*crtype.TestRegression
+	variantJunitTableOverrides []*crtype.VariantJunitTableOverride
 }
 
 func (c *componentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
