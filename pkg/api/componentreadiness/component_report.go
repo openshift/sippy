@@ -347,8 +347,8 @@ func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Contex
 
 // getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
 func (c *componentReportGenerator) getSampleQueryStatus(
-	ctx context.Context, allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
-	generator := newSampleQueryGenerator(c, allJobVariants)
+	ctx context.Context, allJobVariants crtype.JobVariants, includeVariants map[string][]string, junitTable string) (map[string]crtype.TestStatus, []error) {
+	generator := newSampleQueryGenerator(c, allJobVariants, includeVariants, junitTable)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
 		c.client.Cache, c.cacheOption,
@@ -410,7 +410,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		case <-ctx.Done():
 			return
 		default:
-			sampleStatus, sampleErrs = c.getSampleQueryStatus(ctx, allJobVariants)
+			sampleStatus, sampleErrs = c.getSampleQueryStatus(ctx, allJobVariants, c.IncludeVariants, defaultJunitTable)
 		}
 
 	}()

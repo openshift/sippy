@@ -128,7 +128,7 @@ func newBaseQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVa
 func (b *baseQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
 
 	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(b.ComponentReportGenerator,
-		b.allVariants, false, false)
+		b.allVariants, defaultJunitTable, false, false)
 
 	before := time.Now()
 	errs := []error{}
@@ -166,20 +166,35 @@ type sampleQueryGenerator struct {
 	client                   *bqcachedclient.Client
 	allVariants              crtype.JobVariants
 	ComponentReportGenerator *componentReportGenerator
+	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
+	// pull its data from. It is a public field as we want it included in the cache
+	// key to differentiate this request from other sample queries that might be using a junit table override.
+	// Normally, this would just be the default junit table, but in some cases we pull from other tables. (rarely run jobs)
+	JunitTable string
+	// IncludeVariants is a potentially slightly adjusted copy of the ComponentReportGenerator, used in conjunction with
+	// junit table overrides to tweak the query.
+	IncludeVariants map[string][]string
 }
 
-func newSampleQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVariants) sampleQueryGenerator {
+func newSampleQueryGenerator(
+	c *componentReportGenerator,
+	allVariants crtype.JobVariants,
+	includeVariants map[string][]string,
+	junitTable string) sampleQueryGenerator {
+
 	generator := sampleQueryGenerator{
 		client:                   c.client,
 		allVariants:              allVariants,
 		ComponentReportGenerator: c,
+		JunitTable:               junitTable,
+		IncludeVariants:          includeVariants,
 	}
 	return generator
 }
 
 func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(s.ComponentReportGenerator,
-		s.allVariants, true, false)
+		s.allVariants, defaultJunitTable, true, false)
 
 	before := time.Now()
 	errs := []error{}
@@ -396,7 +411,7 @@ func newFallbackBaseQueryGenerator(c *componentReportGenerator, allVariants crty
 
 func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(f.ComponentReportGenerator,
-		f.allVariants, false, true)
+		f.allVariants, defaultJunitTable, false, true)
 	before := time.Now()
 	log.Infof("Starting Fallback (%s) QueryTestStatus", f.BaseRelease)
 	errs := []error{}
@@ -431,7 +446,11 @@ func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context)
 }
 
 // getCommonTestStatusQuery returns the common query for the higher level summary component summary.
-func getCommonTestStatusQuery(c *componentReportGenerator, allJobVariants crtype.JobVariants, isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
+func getCommonTestStatusQuery(
+	c *componentReportGenerator,
+	allJobVariants crtype.JobVariants,
+	junitTable string,
+	isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
 	// See fetchTestStatusResults for where we dynamically handle these columns.
@@ -457,7 +476,7 @@ func getCommonTestStatusQuery(c *componentReportGenerator, allJobVariants crtype
 	// A scheduled query is copying rarely run job results to a separate much smaller table every day, so we can
 	// query 3 months without spending a fortune. If this proves to work, we will work out a system of processing
 	// this as generically as we can, but it will be difficult.
-	junitTable := defaultJunitTable
+	// TODO: remove this TODO
 	for k, v := range c.IncludeVariants {
 		if k == "JobTier" {
 			if slices.Contains(v, "rare") {
