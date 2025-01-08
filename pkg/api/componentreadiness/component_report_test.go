@@ -56,6 +56,20 @@ var (
 		},
 		RequestAdvancedOptions: defaultAdvancedOption,
 	}
+	flakeFailAdvancedOption = crtype.RequestAdvancedOptions{
+		Confidence:     95,
+		PityFactor:     5,
+		MinimumFailure: 3,
+		FlakeAsFailure: true,
+	}
+	flakeFailComponentReportGenerator = componentReportGenerator{
+		gcsBucket: "test-platform-results",
+		RequestVariantOptions: crtype.RequestVariantOptions{
+			ColumnGroupBy: defaultColumnGroupByVariants,
+			DBGroupBy:     defaultDBGroupByVariants,
+		},
+		RequestAdvancedOptions: flakeFailAdvancedOption,
+	}
 	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
 	groupByInstallerComponentReportGenerator = componentReportGenerator{
 		gcsBucket: "test-platform-results",
@@ -993,6 +1007,134 @@ func TestGenerateComponentReport(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:      "top page test with both improvement and regression flake as failure",
+			generator: flakeFailComponentReportGenerator,
+			baseStatus: map[string]crtype.TestStatus{
+				string(awsAMD64OVNTestBytes):  awsAMD64OVNBaseTestStats90Percent,
+				string(awsAMD64OVN2TestBytes): awsAMD64OVN2BaseTestStats90Percent,
+				string(awsAMD64SDNTestBytes):  awsAMD64SDNBaseTestStats50Percent,
+			},
+			sampleStatus: map[string]crtype.TestStatus{
+				string(awsAMD64OVNTestBytes):  awsAMD64OVNSampleTestStats50Percent,
+				string(awsAMD64OVN2TestBytes): awsAMD64OVN2SampleTestStats80Percent,
+				string(awsAMD64SDNTestBytes):  awsAMD64SDNSampleTestStats90Percent,
+			},
+			expectedReport: crtype.ComponentReport{
+				Rows: []crtype.ReportRow{
+					{
+						RowIdentification: rowComponent1,
+						Columns: []crtype.ReportColumn{
+							{
+								ColumnIdentification: columnAWSAMD64OVN,
+								Status:               crtype.ExtremeRegression,
+								RegressedTests: []crtype.ReportTestSummary{
+									{
+										ReportTestIdentification: crtype.ReportTestIdentification{
+											RowIdentification: crtype.RowIdentification{
+												TestName: awsAMD64OVNBaseTestStats90Percent.TestName,
+												TestID:   awsAMD64OVNTest.TestID,
+											},
+											ColumnIdentification: crtype.ColumnIdentification{
+												Variants: awsAMD64OVNTest.Variants,
+											},
+										},
+										ReportTestStats: crtype.ReportTestStats{
+											Comparison: crtype.FisherExact,
+											Explanations: []string{
+												"Extreme regression detected.",
+												"Fishers Exact probability of a regression: 100.00%.",
+												"Test pass rate dropped from 90.00% to 50.00%.",
+											},
+											ReportStatus: crtype.ExtremeRegression,
+											FisherExact:  thrift.Float64Ptr(1.0800451094957381e-20),
+											SampleStats: crtype.TestDetailsReleaseStats{
+												TestDetailsTestStats: crtype.TestDetailsTestStats{
+													SuccessRate:  0.5,
+													SuccessCount: 50,
+													FailureCount: 49,
+													FlakeCount:   1,
+												},
+												Start: &time.Time{},
+												End:   &time.Time{},
+											},
+											BaseStats: &crtype.TestDetailsReleaseStats{
+												TestDetailsTestStats: crtype.TestDetailsTestStats{
+													SuccessRate:  0.9,
+													SuccessCount: 900,
+													FailureCount: 90,
+													FlakeCount:   10,
+												},
+												Start: &time.Time{},
+												End:   &time.Time{},
+											},
+										},
+									},
+									{
+										ReportTestIdentification: crtype.ReportTestIdentification{
+											RowIdentification: crtype.RowIdentification{
+												TestName: awsAMD64OVN2BaseTestStats90Percent.TestName,
+												TestID:   awsAMD64OVN2Test.TestID,
+											},
+											ColumnIdentification: crtype.ColumnIdentification{
+												Variants: awsAMD64OVN2Test.Variants,
+											},
+										},
+										ReportTestStats: crtype.ReportTestStats{
+											Comparison: crtype.FisherExact,
+											Explanations: []string{
+												"Significant regression detected.",
+												"Fishers Exact probability of a regression: 100.00%.",
+												"Test pass rate dropped from 90.00% to 80.00%.",
+											},
+											ReportStatus: crtype.SignificantRegression,
+											FisherExact:  thrift.Float64Ptr(0.0035097810890055117),
+											SampleStats: crtype.TestDetailsReleaseStats{
+												TestDetailsTestStats: crtype.TestDetailsTestStats{
+													SuccessRate:  0.8,
+													SuccessCount: 80,
+													FailureCount: 19,
+													FlakeCount:   1,
+												},
+												Start: &time.Time{},
+												End:   &time.Time{},
+											},
+											BaseStats: &crtype.TestDetailsReleaseStats{
+												TestDetailsTestStats: crtype.TestDetailsTestStats{
+													SuccessRate:  0.9,
+													SuccessCount: 900,
+													FailureCount: 90,
+													FlakeCount:   10,
+												},
+												Start: &time.Time{},
+												End:   &time.Time{},
+											},
+										},
+									},
+								},
+							},
+							{
+								ColumnIdentification: columnAWSAMD64SDN,
+								Status:               crtype.MissingBasisAndSample,
+							},
+						},
+					},
+					{
+						RowIdentification: rowComponent2,
+						Columns: []crtype.ReportColumn{
+							{
+								ColumnIdentification: columnAWSAMD64OVN,
+								Status:               crtype.MissingBasisAndSample,
+							},
+							{
+								ColumnIdentification: columnAWSAMD64SDN,
+								Status:               crtype.SignificantImprovement,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
@@ -1218,7 +1360,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 						JobName:     prowJob1,
 						SampleStats: sampleTestStatsLow,
 						BaseStats:   baseTestStatsHigh,
-						Significant: false,
+						Significant: true,
 					},
 				},
 			},

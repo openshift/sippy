@@ -312,6 +312,11 @@ func parseAdvancedOptions(req *http.Request) (advancedOption crtype.RequestAdvan
 		return advancedOption, err
 	}
 
+	advancedOption.FlakeAsFailure, err = ParseBoolArg(req, "flakeAsFailure", false)
+	if err != nil {
+		return advancedOption, err
+	}
+
 	advancedOption.IncludeMultiReleaseAnalysis, err = ParseBoolArg(req, "includeMultiReleaseAnalysis", false)
 	if err != nil {
 		return advancedOption, err
