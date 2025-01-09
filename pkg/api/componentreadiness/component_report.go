@@ -122,6 +122,7 @@ func GetComponentReportFromBigQuery(ctx context.Context, client *bqcachedclient.
 		{
 			VariantName:  variantregistry.VariantJobTier,
 			VariantValue: "rare",
+			TableName:    "junit_rarely_run_jobs",
 		},
 	}
 	generator := componentReportGenerator{
@@ -362,11 +363,13 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 	return componentReportTestStatus.SampleStatus, nil
 }
 
+// GetTestStatusFromBigQuery orchestrates the actual fetching of junit test run data for both basis and sample.
 func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	before := time.Now()
+	fLog := log.WithField("func", "getTestStatusFromBigQuery")
 	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client, c.gcsBucket)
 	if len(errs) > 0 {
-		log.Errorf("failed to get variants from bigquery")
+		fLog.Errorf("failed to get variants from bigquery")
 		return crtype.ReportTestStatus{}, errs
 	}
 
@@ -374,13 +377,19 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 
+	// channels for status as we may collect status from multiple queries run in separate goroutines
+	statusCh := make(chan map[string]crtype.TestStatus)
+	statusErrCh := make(chan error)
+	statusDoneCh := make(chan struct{})     // To signal when all processing is done
+	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
+
 	if c.IncludeMultiReleaseAnalysis {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
-				log.Infof("Context canceled while fetching fallback query status")
+				fLog.Infof("Context canceled while fetching fallback query status")
 				return
 			default:
 				// TODO: how does rarely run impact here?
@@ -410,20 +419,137 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		case <-ctx.Done():
 			return
 		default:
-			sampleStatus, sampleErrs = c.getSampleQueryStatus(ctx, allJobVariants, c.IncludeVariants, defaultJunitTable)
+			includeVariants := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.IncludeVariants)
+			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
+			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, defaultJunitTable)
+			fLog.Infof("received %d test statuses and %d errors", len(status), len(errs))
+			statusCh <- status
+			for _, err := range errs {
+				statusErrCh <- err
+			}
 		}
 
 	}()
 
-	// TODO here we fork additional sample queries for the overrides and merge back in
+	// fork additional sample queries for the overrides
+	for i, or := range c.variantJunitTableOverrides {
+		if !containsOverriddenVariant(c.IncludeVariants, or.VariantName, or.VariantValue) {
+			continue
+		}
+		// only do this additional query if the specified override variant is actually included in this request
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				includeVariants := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
+				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
+				status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, or.TableName)
+				fLog.Infof("received %d test statuses and %d errors", len(status), len(errs))
+				statusCh <- status
+				for _, err := range errs {
+					statusErrCh <- err
+				}
+			}
 
-	wg.Wait()
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(statusCh)
+		close(statusErrCh)
+	}()
+
+	go func() {
+
+		for status := range statusCh {
+			fLog.Warnf("Got %d test statuses", len(status))
+			for k, v := range status {
+				if sampleStatus == nil {
+					sampleStatus = make(map[string]crtype.TestStatus)
+				}
+				sampleStatus[k] = v
+			}
+		}
+		close(statusDoneCh)
+	}()
+
+	go func() {
+		for err := range statusErrCh {
+			sampleErrs = append(sampleErrs, err)
+		}
+		close(statusErrsDoneCh)
+	}()
+
+	<-statusDoneCh
+	<-statusErrsDoneCh
+	fLog.Infof("total test statuses: %d", len(sampleStatus))
+
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
 		errs = append(errs, baseErrs...)
 		errs = append(errs, sampleErrs...)
 	}
-	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
+	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db",
+		time.Since(before), len(sampleStatus), len(baseStatus))
 	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
+}
+
+// copyIncludeVariantsAndRemoveOverrides is used when VariantJunitTableOverrides are in play, and we'll be merging in
+// some results from separate junit tables. In this case, when we do the normal default query, we want to remove those
+// overridden variants just in case, to make sure no results slip in that shouldn't be there.
+//
+// An index into the overrides slice can be provided if we're copying the include variants for that subquery. This is
+// just to be careful for any future cases where we might have multiple overrides in play, and want to make sure we
+// don't accidentally pull data for one, from the others junit table.
+func copyIncludeVariantsAndRemoveOverrides(
+	overrides []*crtype.VariantJunitTableOverride,
+	currOverride int, // index into the overrides if we're copying for that specific override query
+	includeVariants map[string][]string) map[string][]string {
+
+	cp := make(map[string][]string)
+	for key, values := range includeVariants {
+		newSlice := []string{}
+		for _, v := range values {
+			if !shouldSkipVariant(overrides, currOverride, key, v) {
+				newSlice = append(newSlice, v)
+			}
+
+		}
+		if len(newSlice) > 0 {
+			cp[key] = newSlice
+		}
+	}
+	return cp
+}
+
+func shouldSkipVariant(overrides []*crtype.VariantJunitTableOverride, currOverride int, key, value string) bool {
+	for i, override := range overrides {
+		// if we're building a list of include variants for an override, then don't skip that variants inclusion
+		if i == currOverride {
+			return false
+		}
+		if override.VariantName == key && override.VariantValue == value {
+			return true
+		}
+	}
+	return false
+}
+
+func containsOverriddenVariant(includeVariants map[string][]string, key, value string) bool {
+	for k, v := range includeVariants {
+		if k != key {
+			return false
+		}
+		for _, vv := range v {
+			if vv != value {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 var componentAndCapabilityGetter func(test crtype.TestIdentification, stats crtype.TestStatus) (string, []string)

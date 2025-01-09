@@ -4,6 +4,7 @@ package componentreadiness
 import (
 	"context"
 	"encoding/json"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -1698,6 +1699,99 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 				assert.Nil(t, testStats.FisherExact)
 			}
 
+		})
+	}
+}
+
+func TestCopyIncludeVariantsAndRemoveOverrides(t *testing.T) {
+	tests := []struct {
+		name            string
+		overrides       []*crtype.VariantJunitTableOverride
+		currOverride    int
+		includeVariants map[string][]string
+		expected        map[string][]string
+	}{
+		{
+			name:         "No overrides, no variants removed",
+			overrides:    []*crtype.VariantJunitTableOverride{},
+			currOverride: -1,
+			includeVariants: map[string][]string{
+				"key1": {"value1", "value2"},
+				"key2": {"value3"},
+			},
+			expected: map[string][]string{
+				"key1": {"value1", "value2"},
+				"key2": {"value3"},
+			},
+		},
+		{
+			name: "Single override removes matching variant",
+			overrides: []*crtype.VariantJunitTableOverride{
+				{VariantName: "key1", VariantValue: "value1"},
+			},
+			currOverride: -1,
+			includeVariants: map[string][]string{
+				"key1": {"value1", "value2"},
+				"key2": {"value3"},
+			},
+			expected: map[string][]string{
+				"key1": {"value2"},
+				"key2": {"value3"},
+			},
+		},
+		{
+			name: "Override does not remove its own variant",
+			overrides: []*crtype.VariantJunitTableOverride{
+				{VariantName: "key1", VariantValue: "value1"},
+			},
+			currOverride: 0,
+			includeVariants: map[string][]string{
+				"key1": {"value1", "value2"},
+				"key2": {"value3"},
+			},
+			expected: map[string][]string{
+				"key1": {"value1", "value2"},
+				"key2": {"value3"},
+			},
+		},
+		{
+			name: "Multiple overrides remove multiple variants",
+			overrides: []*crtype.VariantJunitTableOverride{
+				{VariantName: "key1", VariantValue: "value1"},
+				{VariantName: "key2", VariantValue: "value3"},
+			},
+			currOverride: -1,
+			includeVariants: map[string][]string{
+				"key1": {"value1", "value2"},
+				"key2": {"value3", "value4"},
+			},
+			expected: map[string][]string{
+				"key1": {"value2"},
+				"key2": {"value4"},
+			},
+		},
+		{
+			name: "All variants removed",
+			overrides: []*crtype.VariantJunitTableOverride{
+				{VariantName: "key1", VariantValue: "value1"},
+				{VariantName: "key1", VariantValue: "value2"},
+				{VariantName: "key2", VariantValue: "value3"},
+			},
+			currOverride: -1,
+			includeVariants: map[string][]string{
+				"key1": {"value1", "value2"},
+				"key2": {"value3"},
+			},
+			expected: map[string][]string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := copyIncludeVariantsAndRemoveOverrides(tt.overrides, tt.currOverride, tt.includeVariants)
+			if !reflect.DeepEqual(result, tt.expected) {
+				t.Errorf("expected %v, got %v", tt.expected, result)
+			}
 		})
 	}
 }
