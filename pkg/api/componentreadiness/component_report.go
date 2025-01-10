@@ -300,12 +300,10 @@ func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 }
 
 func (c *componentReportGenerator) GenerateComponentReportTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	before := time.Now()
 	componentReportTestStatus, errs := c.getTestStatusFromBigQuery(ctx)
 	if len(errs) > 0 {
 		return crtype.ReportTestStatus{}, errs
 	}
-	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
 	now := time.Now()
 	componentReportTestStatus.GeneratedAt = &now
 	return componentReportTestStatus, nil
@@ -392,7 +390,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				fLog.Infof("Context canceled while fetching fallback query status")
 				return
 			default:
-				// TODO: how does rarely run impact here?
+				// TODO: how does rarely run impact here? all basis, so perhaps not at all.
 				c.getFallbackBaseQueryStatus(ctx, allJobVariants, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End)
 			}
 		}()
@@ -422,7 +420,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 			includeVariants := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.IncludeVariants)
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
 			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, defaultJunitTable)
-			fLog.Infof("received %d test statuses and %d errors", len(status), len(errs))
+			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			statusCh <- status
 			for _, err := range errs {
 				statusErrCh <- err
@@ -447,7 +445,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				includeVariants := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
 				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
 				status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, or.TableName)
-				fLog.Infof("received %d test statuses and %d errors", len(status), len(errs))
+				fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
 				statusCh <- status
 				for _, err := range errs {
 					statusErrCh <- err
@@ -466,7 +464,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	go func() {
 
 		for status := range statusCh {
-			fLog.Warnf("Got %d test statuses", len(status))
 			for k, v := range status {
 				if sampleStatus == nil {
 					sampleStatus = make(map[string]crtype.TestStatus)
@@ -541,15 +538,15 @@ func shouldSkipVariant(overrides []*crtype.VariantJunitTableOverride, currOverri
 func containsOverriddenVariant(includeVariants map[string][]string, key, value string) bool {
 	for k, v := range includeVariants {
 		if k != key {
-			return false
+			continue
 		}
 		for _, vv := range v {
-			if vv != value {
-				return false
+			if vv == value {
+				return true
 			}
 		}
 	}
-	return true
+	return false
 }
 
 var componentAndCapabilityGetter func(test crtype.TestIdentification, stats crtype.TestStatus) (string, []string)

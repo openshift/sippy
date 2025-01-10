@@ -194,7 +194,7 @@ func newSampleQueryGenerator(
 
 func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(s.ComponentReportGenerator,
-		s.allVariants, defaultJunitTable, true, false)
+		s.allVariants, s.JunitTable, true, false)
 
 	before := time.Now()
 	errs := []error{}
