@@ -122,7 +122,7 @@ func GetComponentReportFromBigQuery(ctx context.Context, client *bqcachedclient.
 		{
 			VariantName:  variantregistry.VariantJobTier,
 			VariantValue: "rare",
-			TableName:    "junit_rarely_run_jobs",
+			TableName:    rarelyRunJunitTable,
 		},
 	}
 	generator := componentReportGenerator{

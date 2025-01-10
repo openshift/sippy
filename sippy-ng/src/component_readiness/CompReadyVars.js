@@ -338,6 +338,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     'Upgrade',
     'Suite',
     'Installer',
+    'JobTier',
   ]
 
   // This runs when someone pushes the "Generate Report" button.

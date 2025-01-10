@@ -472,19 +472,6 @@ func getCommonTestStatusQuery(
 		jobNameQueryPortion = pullRequestDynamicJobNameCol
 	}
 
-	// TODO: this is a temporary hack while we explore if rarely run jobs approach is actually going to work.
-	// A scheduled query is copying rarely run job results to a separate much smaller table every day, so we can
-	// query 3 months without spending a fortune. If this proves to work, we will work out a system of processing
-	// this as generically as we can, but it will be difficult.
-	// TODO: remove this TODO
-	for k, v := range c.IncludeVariants {
-		if k == "JobTier" {
-			if slices.Contains(v, "rare") {
-				junitTable = rarelyRunJunitTable
-			}
-		}
-	}
-
 	// WARNING: returning additional columns from this query will require explicit parsing in deserializeRowToTestStatus
 	// TODO: jira_component and jira_component_id appear to not be used? Could save bigquery costs if we remove them.
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
@@ -591,6 +578,7 @@ func getTestDetailsQuery(c *componentReportGenerator, allJobVariants crtype.JobV
 	// A scheduled query is copying rarely run job results to a separate much smaller table every day, so we can
 	// query 3 months without spending a fortune. If this proves to work, we will work out a system of processing
 	// this as generically as we can, but it will be difficult.
+	// TODO: remove and pass junit table in
 	junitTable := defaultJunitTable
 	for k, v := range c.IncludeVariants {
 		if k == "JobTier" {
