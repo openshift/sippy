@@ -226,6 +226,10 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 				if jnv == "rosa" {
 					continue
 				}
+				// OSD GCP is identified as GCP, but we want to keep it in a separate bucket
+				if jnv == "osd-gcp" {
+					continue
+				}
 				variants[k] = v
 			case VariantArch:
 				// Job name identification wins for arch, heterogenous jobs can show cluster data with
@@ -277,6 +281,7 @@ var (
 	nutanixRegex = regexp.MustCompile(`(?i)-nutanix`)
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
+	osdGcpRegex    = regexp.MustCompile(`(?i)-osd-ccs-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
 	sdRegex        = regexp.MustCompile(`(?i)-osd|-rosa`)
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
@@ -529,8 +534,6 @@ func determineInstallation(jobName string) string {
 		return "hypershift"
 	} else if upiRegex.MatchString(jobName) {
 		return "upi"
-	} else if rosaRegex.MatchString(jobName) {
-		return "rosa"
 	}
 
 	return "ipi" // assume ipi by default
@@ -573,6 +576,8 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 		platform = "aws"
 	} else if azureRegex.MatchString(jobName) {
 		platform = "azure"
+	} else if osdGcpRegex.MatchString(jobName) {
+		platform = "osd-gcp"
 	} else if gcpRegex.MatchString(jobName) {
 		platform = "gcp"
 	} else if libvirtRegex.MatchString(jobName) {
