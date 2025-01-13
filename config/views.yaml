@@ -66,6 +66,64 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
+  - name: 4.19-x86-vs-arm
+    base_release:
+      release: "4.19"
+      relative_start: now-7d
+      relative_end: now
+    sample_release:
+      release: "4.19"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Network: {}
+        Platform: {}
+      db_group_by:
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Owner:
+          - eng
+        Platform:
+          - aws
+          - azure
+          - gcp
+        Topology:
+          - ha
+        CGroupMode:
+          - v2
+        ContainerRuntime:
+          - runc
+          - crun
+      compare_variants:
+        Architecture:
+          - arm64
+      variant_cross_compare:
+        - Architecture
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+      flake_as_failure: false
+    metrics:
+      enabled: false
+    regression_tracking:
+      enabled: false
   - name: 4.19-ha-vs-single
     base_release:
       release: "4.19"
@@ -116,67 +174,6 @@ component_readiness:
           - single
       variant_cross_compare:
         - Topology
-    advanced_options:
-      minimum_failure: 3
-      confidence: 95
-      pity_factor: 5
-      ignore_missing: false
-      ignore_disruption: true
-      flake_as_failure: false
-    metrics:
-      enabled: false
-    regression_tracking:
-      enabled: false
-  - name: 4.19-runc-vs-crun
-    base_release:
-      release: "4.19"
-      relative_start: now-7d
-      relative_end: now
-    sample_release:
-      release: "4.19"
-      relative_start: now-7d
-      relative_end: now
-    variant_options:
-      column_group_by:
-        Architecture: {}
-        Network: {}
-        Platform: {}
-      db_group_by:
-        Architecture: {}
-        FeatureSet: {}
-        Installer: {}
-        Network: {}
-        Platform: {}
-        Suite: {}
-        Topology: {}
-        Upgrade: {}
-      include_variants:
-        Architecture:
-          - amd64
-        FeatureSet:
-          - default
-        Installer:
-          - ipi
-          - upi
-        Owner:
-          - eng
-        Platform:
-          - aws
-          - azure
-          - gcp
-          - metal
-          - vsphere
-        Topology:
-          - ha
-        CGroupMode:
-          - v2
-        ContainerRuntime:
-          - runc
-      compare_variants:
-        ContainerRuntime:
-          - crun
-      variant_cross_compare:
-        - ContainerRuntime
     advanced_options:
       minimum_failure: 3
       confidence: 95
@@ -363,69 +360,6 @@ component_readiness:
           - single
       variant_cross_compare:
         - Topology
-    advanced_options:
-      minimum_failure: 3
-      confidence: 95
-      pity_factor: 5
-      ignore_missing: false
-      ignore_disruption: true
-      flake_as_failure: false
-    metrics:
-      enabled: false
-    regression_tracking:
-      enabled: false
-    automate_jira:
-      enabled: false
-  - name: 4.18-runc-vs-crun
-    base_release:
-      release: "4.18"
-      relative_start: now-7d
-      relative_end: now
-    sample_release:
-      release: "4.18"
-      relative_start: now-7d
-      relative_end: now
-    variant_options:
-      column_group_by:
-        Architecture: {}
-        Network: {}
-        Platform: {}
-      db_group_by:
-        Architecture: {}
-        FeatureSet: {}
-        Installer: {}
-        Network: {}
-        Platform: {}
-        Suite: {}
-        Topology: {}
-        Upgrade: {}
-      include_variants:
-        Architecture:
-          - amd64
-        FeatureSet:
-          - default
-        Installer:
-          - ipi
-          - upi
-        Owner:
-          - eng
-        Platform:
-          - aws
-          - azure
-          - gcp
-          - metal
-          - vsphere
-        Topology:
-          - ha
-        CGroupMode:
-          - v2
-        ContainerRuntime:
-          - runc
-      compare_variants:
-        ContainerRuntime:
-          - crun
-      variant_cross_compare:
-        - ContainerRuntime
     advanced_options:
       minimum_failure: 3
       confidence: 95
