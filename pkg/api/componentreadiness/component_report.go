@@ -464,9 +464,16 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	go func() {
 
 		for status := range statusCh {
+			fLog.Infof("received %d test statuses over channel", len(status))
 			for k, v := range status {
 				if sampleStatus == nil {
+					fLog.Warnf("initializing sampleStatus map")
 					sampleStatus = make(map[string]crtype.TestStatus)
+				}
+				if v2, ok := sampleStatus[k]; ok {
+					fLog.Warnf("sampleStatus already had key: %+v", k)
+					fLog.Warnf("sampleStatus new value: %+v", v)
+					fLog.Warnf("sampleStatus old value: %+v", v2)
 				}
 				sampleStatus[k] = v
 			}

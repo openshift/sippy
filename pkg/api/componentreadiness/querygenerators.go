@@ -128,7 +128,7 @@ func newBaseQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVa
 func (b *baseQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
 
 	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(b.ComponentReportGenerator,
-		b.allVariants, defaultJunitTable, false, false)
+		b.allVariants, b.ComponentReportGenerator.IncludeVariants, defaultJunitTable, false, false)
 
 	before := time.Now()
 	errs := []error{}
@@ -194,7 +194,7 @@ func newSampleQueryGenerator(
 
 func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(s.ComponentReportGenerator,
-		s.allVariants, s.JunitTable, true, false)
+		s.allVariants, s.IncludeVariants, s.JunitTable, true, false)
 
 	before := time.Now()
 	errs := []error{}
@@ -411,7 +411,7 @@ func newFallbackBaseQueryGenerator(c *componentReportGenerator, allVariants crty
 
 func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(f.ComponentReportGenerator,
-		f.allVariants, defaultJunitTable, false, true)
+		f.allVariants, f.ComponentReportGenerator.IncludeVariants, defaultJunitTable, false, true)
 	before := time.Now()
 	log.Infof("Starting Fallback (%s) QueryTestStatus", f.BaseRelease)
 	errs := []error{}
@@ -449,6 +449,7 @@ func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context)
 func getCommonTestStatusQuery(
 	c *componentReportGenerator,
 	allJobVariants crtype.JobVariants,
+	includeVariants map[string][]string,
 	junitTable string,
 	isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
@@ -520,7 +521,7 @@ func getCommonTestStatusQuery(
 	// fallback queries get all variants with no filtering
 	// so all tests are fetched then cached
 	if !isFallback {
-		variantGroups := c.IncludeVariants
+		variantGroups := includeVariants
 		// potentially cross-compare variants for the sample
 		if isSample && len(c.VariantCrossCompare) > 0 {
 			variantGroups = c.CompareVariants
