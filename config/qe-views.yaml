@@ -31,7 +31,6 @@ component_readiness:
         Installer:
           - ipi
           - upi
-          - rosa
         Network:
           - ovn
         Owner:
@@ -86,7 +85,6 @@ component_readiness:
         Installer:
           - ipi
           - upi
-          - rosa
         Network:
           - ovn
         Owner:
