@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/civil"
+
 	"github.com/openshift/sippy/pkg/util"
 
 	"cloud.google.com/go/bigquery"
@@ -32,8 +33,6 @@ import (
 
 const (
 	triagedIncidentsTableID = "triaged_incidents"
-
-	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
 
 	// openRegressionConfidenceAdjustment is subtracted from the requested confidence for regressed tests that have
 	// an open regression.
@@ -1784,18 +1783,11 @@ func (c *componentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx cont
 					FROM
 						%s.junit %s
 					WHERE
-						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
-						AND modified_time > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 60 DAY)
+						modified_time > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 60 DAY)
 					ORDER BY
 						name`, field, c.client.Dataset, unnest)
 
 	query := c.client.BQ.Query(queryString)
-	query.Parameters = []bigquery.QueryParameter{
-		{
-			Name:  "IgnoredJobs",
-			Value: ignoredJobsRegexp,
-		},
-	}
 
 	return getSingleColumnResultToSlice(ctx, query)
 }

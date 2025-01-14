@@ -311,6 +311,9 @@ var (
 	runcRegex      = regexp.MustCompile(`(?i)-runc`)
 	cgroupsv1Regex = regexp.MustCompile(`(?i)-cgroupsv1`)
 	virtRegex      = regexp.MustCompile("(?i)-virt|-cnv|-kubevirt")
+
+	// JobTier:excluded matchers
+	excludedJobsRegex = regexp.MustCompile(`(?i)-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`)
 )
 
 const (
@@ -442,12 +445,16 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		variants[VariantProcedure] = VariantNoValue
 
 		// Set tier to informing/blocking as appropriate
-		if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
+		if excludedJobsRegex.MatchString(jobName) {
+			variants[VariantJobTier] = "excluded"
+		} else if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
 			variants[VariantJobTier] = "blocking"
 		} else if util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName) {
 			variants[VariantJobTier] = "informing"
-		} else {
+		} else if v.config.Releases[release].Jobs[jobName] {
 			variants[VariantJobTier] = "standard"
+		} else {
+			variants[VariantJobTier] = "excluded"
 		}
 	}
 
