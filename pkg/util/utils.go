@@ -90,11 +90,11 @@ func DatePtr(year int, month time.Month, day, hour, min, sec, nsec int, loc *tim
 
 // releaseRelativeRE is a custom format we allow for times relative to now, or a releases ga date
 // (i.e. now-7d, ga-30d, ga, etc
-var releaseRelativeRE = regexp.MustCompile(`^(now|ga)(?:-([0-9]+)([d]))?$`)
+var releaseRelativeRE = regexp.MustCompile(`^(now|ga|end)(?:-([0-9]+)([d]))?$`)
 
 // ParseCRReleaseTime parses the time for component readiness. The string can be a fully qualified
 // RFC8339 string, or a custom "relative to now/ga" string we support for views. (examples: now, now-7d,
-// ga, ga-30d)
+// ga, ga-30d, end-90d)
 //
 // It then adjusts the time based on a rounding factor if queried for "today". This is essentially a cache window used to keep
 // results consistent as various sub-queries are run for components/features. If the round factor of
@@ -104,7 +104,9 @@ var releaseRelativeRE = regexp.MustCompile(`^(now|ga)(?:-([0-9]+)([d]))?$`)
 // isStart indicates if a relative time string should round down (base/sample start time), or up (base/sample end time).
 // i.e. isStart=true, we would round down to 00:00:00 for the resulting times date.
 // For isStart=false we would round up to 23:59:59.
-func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isStart bool, crTimeRoundingFactor time.Duration) (time.Time, error) {
+//
+// endTime must be specified if your timeStr uses the end directive. (end-90d) Otherwise it is not required or used.
+func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isStart bool, endTime *time.Time, crTimeRoundingFactor time.Duration) (time.Time, error) {
 
 	var relTime time.Time
 
@@ -127,6 +129,14 @@ func ParseCRReleaseTime(allReleases []v1.Release, release, timeStr string, isSta
 			if !ok {
 				return time.Time{}, fmt.Errorf("unable to find ga date for %s", release)
 			}
+		case "end":
+			if endTime == nil {
+				return time.Time{}, fmt.Errorf("caller provided no end time for %s", timeStr)
+			}
+			if !isStart {
+				return time.Time{}, fmt.Errorf("cannot calculate a relative end date for an end date: %s", timeStr)
+			}
+			relTime = *endTime
 		}
 		return AdjustReleaseTime(relTime, isStart, matches[2], crTimeRoundingFactor), nil
 	}

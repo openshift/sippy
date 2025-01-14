@@ -20,11 +20,15 @@ func TestParseCRReleaseTime(t *testing.T) {
 	now := time.Now().UTC()
 	nowRoundDown := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	nowRoundUp := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
+
+	jan142025 := time.Date(2025, 1, 14, 0, 0, 0, 0, time.UTC)
+
 	tests := []struct {
 		name           string
 		timeStr        string
 		release        string
 		isStart        bool
+		endTime        *time.Time
 		roundingFactor time.Duration
 		expectedTime   time.Time
 		expectedErr    bool
@@ -95,17 +99,33 @@ func TestParseCRReleaseTime(t *testing.T) {
 			expectedTime: time.Date(2024, 5, 28, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			name:         "4.16 ga-30d end date",
+			name:         "end-90d",
 			release:      "4.16",
-			timeStr:      "ga-30d",
-			isStart:      false,
-			expectedTime: time.Date(2024, 5, 28, 23, 59, 59, 0, time.UTC),
+			timeStr:      "end-90d",
+			endTime:      &jan142025,
+			isStart:      true,
+			expectedTime: time.Date(2024, 10, 16, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name:        "end-90d for end date",
+			release:     "4.16",
+			timeStr:     "end-90d",
+			endTime:     &jan142025,
+			isStart:     false,
+			expectedErr: true,
+		},
+		{
+			name:        "end-90d with no end date provided",
+			release:     "4.16",
+			timeStr:     "end-90d",
+			isStart:     true,
+			expectedErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			resultTime, err := ParseCRReleaseTime(releases, tt.release, tt.timeStr, tt.isStart, tt.roundingFactor)
+			resultTime, err := ParseCRReleaseTime(releases, tt.release, tt.timeStr, tt.isStart, tt.endTime, tt.roundingFactor)
 			if tt.expectedErr {
 				require.Error(t, err)
 			} else {

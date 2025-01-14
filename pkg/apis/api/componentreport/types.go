@@ -455,4 +455,8 @@ type VariantJunitTableOverride struct {
 	VariantName  string `json:"variant_name"`
 	VariantValue string `json:"variant_value"`
 	TableName    string `bigquery:"table_name" json:"table_name"`
+	// RelativeStart is used to allow the rarely run functionality to ignore the report start date, and instead use
+	// a much longer one for rarely run jobs. In practice, it will be based off the report end date.
+	// As with views, this is specified as
+	RelativeStart string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
 }

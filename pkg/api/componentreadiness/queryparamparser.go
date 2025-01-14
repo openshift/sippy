@@ -169,11 +169,11 @@ func GetViewReleaseOptions(
 
 	var err error
 	opts := crtype.RequestReleaseOptions{Release: viewRelease.Release}
-	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeStart, true, roundingFactor)
+	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeStart, true, nil, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
 	}
-	opts.End, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeEnd, false, roundingFactor)
+	opts.End, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeEnd, false, nil, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
 	}
@@ -328,13 +328,13 @@ func parseDateRange(allReleases []v1.Release, req *http.Request,
 	var err error
 
 	timeStr := req.URL.Query().Get(startName)
-	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, true, roundingFactor)
+	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, true, nil, roundingFactor)
 	if err != nil {
 		return releaseOpts, fmt.Errorf(startName + " in wrong format")
 	}
 
 	timeStr = req.URL.Query().Get(endName)
-	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, false, roundingFactor)
+	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, false, nil, roundingFactor)
 	if err != nil {
 		return releaseOpts, fmt.Errorf(endName + " in wrong format")
 	}
