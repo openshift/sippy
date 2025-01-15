@@ -1015,12 +1015,23 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 
 		jobRunTestCount = jobRun.TestCount
 
-		// We don't expect the caller to fully populate the ProwJob, just it's name,
+		// We don't expect the caller to fully populate the ProwJob, just its name;
 		// override the input by looking up the actual ProwJob so we have access to release and variants.
 		job := &models.ProwJob{}
 		res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(job)
 		if res.Error != nil {
-			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name))
+			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				// sippy does not import all jobs to its prow_jobs table; for context see
+				// https://redhat-internal.slack.com/archives/C02K89U2EV8/p1736972504210699
+				// for example, PR jobs on GA releases are excluded, and various other jobs
+				errMsg := fmt.Sprintf("ProwJob '%s' is not included in imported jobs so risk analysis will not run.", jobRun.ProwJob.Name)
+				result := apitype.ProwJobRunRiskAnalysis{
+					OverallRisk: apitype.JobFailureRisk{Level: apitype.FailureRiskLevelUnknown, Reasons: []string{errMsg}},
+				}
+				api.RespondWithJSON(http.StatusOK, w, result)
+			} else {
+				failureResponse(w, http.StatusBadRequest, fmt.Sprintf("unable to find ProwJob '%s': %v", jobRun.ProwJob.Name, res.Error))
+			}
 			return
 		}
 		jobRun.ProwJob = *job
