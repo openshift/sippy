@@ -975,6 +975,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
+			return
 		}
 
 		logger = logger.WithField("jobRunID", jobRunID)
@@ -991,6 +992,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		err := json.NewDecoder(req.Body).Decode(&jobRun)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("error decoding prow job run json in request body: %s", err))
+			return
 		}
 
 		// validate the jobRun isn't empty
@@ -1019,6 +1021,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(job)
 		if res.Error != nil {
 			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name))
+			return
 		}
 		jobRun.ProwJob = *job
 
@@ -1030,6 +1033,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	result, err := api.JobRunRiskAnalysis(s.db, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, result)
@@ -1045,6 +1049,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 
 	if s.gcsClient == nil {
 		failureResponse(w, http.StatusBadRequest, "server not configured for GCS, unable to use this API")
+		return
 	}
 
 	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
@@ -1055,6 +1060,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
+		return
 	}
 	logger = logger.WithField("jobRunID", jobRunID)
 
@@ -1086,6 +1092,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		intervalFile, logger.WithField("func", "JobRunIntervals"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, result)
