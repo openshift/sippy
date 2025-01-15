@@ -837,12 +837,14 @@ func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http
 	api.RespondWithJSON(200, w, results)
 }
 
+// getParamOrFail returns the parameter requested; if it's empty, it also issues a failure response as a convenience
+// (this does not complete the request; caller still must check for empty string and return up the stack accordingly)
 func (s *Server) getParamOrFail(w http.ResponseWriter, req *http.Request, name string) string {
-	release := param.SafeRead(req, name)
-	if release == "" {
+	value := param.SafeRead(req, name)
+	if value == "" {
 		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("param '%s' is required", name))
 	}
-	return release
+	return value
 }
 
 func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
