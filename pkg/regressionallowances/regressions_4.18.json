@@ -1,0 +1,52 @@
+[
+  {
+    "JiraComponent": "kube-apiserver",
+    "TestID": "openshift-tests:d6b41cee7afca1c2a0b52f9e6975425f",
+    "TestName": "[bz-kube-apiserver][invariant] alert/KubeAPIErrorBudgetBurn should not be at or above info",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-42083",
+    "ReasonToAllowInsteadOfFix": "Degraded enough to trip test near the end of stabilization. Still no root cause determined, and the team is still actively investigating. We are marking this as not a blocker because we did not see signals indicating that this does not stabilize after install is completed, although that has not yet been confirmed.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "azure",
+        "FeatureSet": "default",
+        "Suite": "serial",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 74,
+    "PreviousFailures": 0,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 20,
+    "RegressedFailures": 3,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "kube-apiserver",
+    "TestID": "openshift-tests-upgrade:d6b41cee7afca1c2a0b52f9e6975425f",
+    "TestName": "[bz-kube-apiserver][invariant] alert/KubeAPIErrorBudgetBurn should not be at or above info",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-42083",
+    "ReasonToAllowInsteadOfFix": "Degraded enough to trip test near the end of stabilization. Still no root cause determined, and the team is still actively investigating. We are marking this as not a blocker because we did not see signals indicating that this does not stabilize after install is completed, although that has not yet been confirmed.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "micro",
+        "Architecture": "amd64",
+        "Platform": "azure",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 735,
+    "PreviousFailures": 3,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 211,
+    "RegressedFailures": 16,
+    "RegressedFlakes": 0
+  }
+]
