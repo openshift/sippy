@@ -15,3 +15,4 @@ RUN curl -Lso /tmp/golangci-lint.rpm \
         npm \
         /tmp/golangci-lint.rpm && \
       rm /tmp/golangci-lint.rpm
+RUN go install gotest.tools/gotestsum@latest && mv /root/go/bin/gotestsum /usr/bin
