@@ -148,7 +148,6 @@ func GetComponentReportFromBigQuery(
 		RequestVariantOptions:            reqOptions.VariantOption,
 		RequestAdvancedOptions:           reqOptions.AdvancedOption,
 		variantJunitTableOverrides:       junitTableOverrides,
-		timeRoundingFactor:               timeRoundingFactor,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
@@ -181,7 +180,6 @@ type componentReportGenerator struct {
 	crtype.RequestAdvancedOptions
 	openRegressions            []*crtype.TestRegression
 	variantJunitTableOverrides []*crtype.VariantJunitTableOverride
-	timeRoundingFactor         time.Duration
 }
 
 func (c *componentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
@@ -465,7 +463,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
 				end := c.SampleRelease.End
 				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
-					true, &c.SampleRelease.End, c.timeRoundingFactor)
+					true, &c.SampleRelease.End, c.cacheOption.CRTimeRoundingFactor)
 				if err != nil {
 					statusErrCh <- err
 					return
@@ -800,7 +798,7 @@ func (c *componentReportGenerator) normalizeProwJobName(prowName string) string 
 
 func (c *componentReportGenerator) fetchJobRunTestStatusResults(ctx context.Context,
 	query *bigquery.Query) (map[string][]crtype.
-	JobRunTestStatusRow, []error) {
+JobRunTestStatusRow, []error) {
 	errs := []error{}
 	status := map[string][]crtype.JobRunTestStatusRow{}
 	log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
@@ -1084,7 +1082,7 @@ type triagedIncidentsGenerator struct {
 }
 
 func (t *triagedIncidentsGenerator) generateTriagedIssuesFor(ctx context.Context) (resolvedissues.
-	TriagedIncidentsForRelease,
+TriagedIncidentsForRelease,
 	[]error) {
 	before := time.Now()
 	incidents, errs := t.queryTriagedIssues(ctx)
