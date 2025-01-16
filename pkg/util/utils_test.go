@@ -100,7 +100,6 @@ func TestParseCRReleaseTime(t *testing.T) {
 		},
 		{
 			name:         "end-90d",
-			release:      "4.16",
 			timeStr:      "end-90d",
 			endTime:      &jan142025,
 			isStart:      true,
@@ -108,7 +107,6 @@ func TestParseCRReleaseTime(t *testing.T) {
 		},
 		{
 			name:        "end-90d for end date",
-			release:     "4.16",
 			timeStr:     "end-90d",
 			endTime:     &jan142025,
 			isStart:     false,
@@ -116,7 +114,6 @@ func TestParseCRReleaseTime(t *testing.T) {
 		},
 		{
 			name:        "end-90d with no end date provided",
-			release:     "4.16",
 			timeStr:     "end-90d",
 			isStart:     true,
 			expectedErr: true,

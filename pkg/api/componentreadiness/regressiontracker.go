@@ -206,7 +206,7 @@ func (rt *RegressionTracker) syncRegressionsForView(
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
 	report, errs := GetComponentReportFromBigQuery(
-		ctx, rt.bigqueryClient, "", "", reportOpts)
+		ctx, rt.bigqueryClient, "", "", reportOpts, 4*time.Hour)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

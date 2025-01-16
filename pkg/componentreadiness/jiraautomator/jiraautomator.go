@@ -59,8 +59,19 @@ type JiraAutomator struct {
 	variantToJiraComponents map[Variant]JiraComponent
 }
 
-func NewJiraAutomator(jiraClient jirautil.Client, bqClient *bqclient.Client, cacheOptions cache.RequestOptions, views []crtype.View,
-	releases []v1.Release, sippyURL, jiraAccount string, includeComponents sets.String, columnThresholds map[Variant]int, dryRun bool, variantToJiraComponents map[Variant]JiraComponent) (JiraAutomator, error) {
+func NewJiraAutomator(
+	jiraClient jirautil.Client,
+	bqClient *bqclient.Client,
+	cacheOptions cache.RequestOptions,
+	views []crtype.View,
+	releases []v1.Release,
+	sippyURL, jiraAccount string,
+	includeComponents sets.String,
+	columnThresholds map[Variant]int,
+	dryRun bool,
+	variantToJiraComponents map[Variant]JiraComponent,
+) (JiraAutomator, error) {
+
 	j := JiraAutomator{
 		jiraClient:              jiraClient,
 		bqClient:                bqClient,
@@ -122,7 +133,7 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 	}
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, "", "", reportOpts)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, "", "", reportOpts, j.cacheOptions.CRTimeRoundingFactor)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

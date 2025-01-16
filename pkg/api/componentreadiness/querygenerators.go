@@ -174,12 +174,16 @@ type sampleQueryGenerator struct {
 	// IncludeVariants is a potentially slightly adjusted copy of the ComponentReportGenerator, used in conjunction with
 	// junit table overrides to tweak the query.
 	IncludeVariants map[string][]string
+
+	Start time.Time
+	End   time.Time
 }
 
 func newSampleQueryGenerator(
 	c *componentReportGenerator,
 	allVariants crtype.JobVariants,
 	includeVariants map[string][]string,
+	start, end time.Time,
 	junitTable string) sampleQueryGenerator {
 
 	generator := sampleQueryGenerator{
@@ -188,6 +192,8 @@ func newSampleQueryGenerator(
 		ComponentReportGenerator: c,
 		JunitTable:               junitTable,
 		IncludeVariants:          includeVariants,
+		Start:                    start,
+		End:                      end,
 	}
 	return generator
 }
@@ -207,11 +213,11 @@ func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Repo
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: s.ComponentReportGenerator.SampleRelease.Start,
+			Value: s.Start,
 		},
 		{
 			Name:  "To",
-			Value: s.ComponentReportGenerator.SampleRelease.End,
+			Value: s.End,
 		},
 		{
 			Name:  "SampleRelease",

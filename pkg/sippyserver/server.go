@@ -668,6 +668,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		s.prowURL,
 		s.gcsBucket,
 		options,
+		s.crTimeRoundingFactor,
 	)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))

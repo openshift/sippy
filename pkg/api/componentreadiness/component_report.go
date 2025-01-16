@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/civil"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/variantregistry"
 
@@ -83,6 +84,10 @@ func getSingleColumnResultToSlice(ctx context.Context, query *bigquery.Query) ([
 	return names, nil
 }
 
+// TODO: in several of the below functions we instantiate an entire componentReportGenerator
+// to fetch some small piece of data. These look like they should be broken out. The partial
+// instantiation of a complex object is risky in terms of bugs and maintenance.
+
 func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client,
 	gcsBucket string) (crtype.TestVariants, []error) {
 	generator := componentReportGenerator{
@@ -114,15 +119,21 @@ func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Clie
 		api.GetPrefixedCacheKey("TestAllVariants~", generator), generator.GenerateJobVariants, crtype.JobVariants{})
 }
 
-func GetComponentReportFromBigQuery(ctx context.Context, client *bqcachedclient.Client, prowURL, gcsBucket string,
+func GetComponentReportFromBigQuery(
+	ctx context.Context,
+	client *bqcachedclient.Client,
+	prowURL, gcsBucket string,
 	reqOptions crtype.RequestOptions,
+	timeRoundingFactor time.Duration,
 ) (crtype.ComponentReport, []error) {
+
 	// TODO: hardcoded for now, move to a server side generic sippy config file
 	junitTableOverrides := []*crtype.VariantJunitTableOverride{
 		{
-			VariantName:  variantregistry.VariantJobTier,
-			VariantValue: "rare",
-			TableName:    rarelyRunJunitTable,
+			VariantName:   variantregistry.VariantJobTier,
+			VariantValue:  "rare",
+			TableName:     rarelyRunJunitTable,
+			RelativeStart: "end-90d",
 		},
 	}
 	generator := componentReportGenerator{
@@ -137,6 +148,7 @@ func GetComponentReportFromBigQuery(ctx context.Context, client *bqcachedclient.
 		RequestVariantOptions:            reqOptions.VariantOption,
 		RequestAdvancedOptions:           reqOptions.AdvancedOption,
 		variantJunitTableOverrides:       junitTableOverrides,
+		timeRoundingFactor:               timeRoundingFactor,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
@@ -169,6 +181,7 @@ type componentReportGenerator struct {
 	crtype.RequestAdvancedOptions
 	openRegressions            []*crtype.TestRegression
 	variantJunitTableOverrides []*crtype.VariantJunitTableOverride
+	timeRoundingFactor         time.Duration
 }
 
 func (c *componentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
@@ -346,8 +359,13 @@ func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Contex
 
 // getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
 func (c *componentReportGenerator) getSampleQueryStatus(
-	ctx context.Context, allJobVariants crtype.JobVariants, includeVariants map[string][]string, junitTable string) (map[string]crtype.TestStatus, []error) {
-	generator := newSampleQueryGenerator(c, allJobVariants, includeVariants, junitTable)
+	ctx context.Context,
+	allJobVariants crtype.JobVariants,
+	includeVariants map[string][]string,
+	start, end time.Time,
+	junitTable string) (map[string]crtype.TestStatus, []error) {
+
+	generator := newSampleQueryGenerator(c, allJobVariants, includeVariants, start, end, junitTable)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
 		c.client.Cache, c.cacheOption,
@@ -419,7 +437,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		default:
 			includeVariants := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.IncludeVariants)
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
-			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, defaultJunitTable)
+			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.SampleRelease.Start, c.SampleRelease.End, defaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			statusCh <- status
 			for _, err := range errs {
@@ -444,7 +462,15 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 			default:
 				includeVariants := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
 				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
-				status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, or.TableName)
+				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
+				end := c.SampleRelease.End
+				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
+					true, &c.SampleRelease.End, c.timeRoundingFactor)
+				if err != nil {
+					statusErrCh <- err
+					return
+				}
+				status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, start, end, or.TableName)
 				fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
 				statusCh <- status
 				for _, err := range errs {
@@ -774,7 +800,7 @@ func (c *componentReportGenerator) normalizeProwJobName(prowName string) string 
 
 func (c *componentReportGenerator) fetchJobRunTestStatusResults(ctx context.Context,
 	query *bigquery.Query) (map[string][]crtype.
-JobRunTestStatusRow, []error) {
+	JobRunTestStatusRow, []error) {
 	errs := []error{}
 	status := map[string][]crtype.JobRunTestStatusRow{}
 	log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
@@ -1058,7 +1084,7 @@ type triagedIncidentsGenerator struct {
 }
 
 func (t *triagedIncidentsGenerator) generateTriagedIssuesFor(ctx context.Context) (resolvedissues.
-TriagedIncidentsForRelease,
+	TriagedIncidentsForRelease,
 	[]error) {
 	before := time.Now()
 	incidents, errs := t.queryTriagedIssues(ctx)
