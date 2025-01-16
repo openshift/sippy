@@ -7,4 +7,4 @@ filters:
   ".*":
     approvers:
       - deads2k # for the code to manage them
-      - cuppett # to approve intentional regressions in the OCP product.
+      - nstielau # to approve intentional regressions in the OCP product.
