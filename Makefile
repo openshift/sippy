@@ -25,7 +25,13 @@ sippy-daemon: builddir
 	go build -mod=vendor ./cmd/sippy-daemon/...
 
 test: builddir npm
-	go test -v ./pkg/...
+ifeq ($(ARTIFACT_DIR),)
+	@echo "ARTIFACT_DIR is not defined. Using default JUnit file location."
+	gotestsum --junitfile ./junit.xml ./pkg/...
+else
+	@echo "ARTIFACT_DIR is defined. Using $(ARTIFACT_DIR)/junit.xml."
+	gotestsum --junitfile $(ARTIFACT_DIR)/junit.xml ./pkg/...
+endif
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage --passWithNoTests
 
 lint: builddir npm
