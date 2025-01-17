@@ -1,9 +1,9 @@
 package util
 
 import (
-	"fmt"
 	"testing"
 
+	log "github.com/sirupsen/logrus"
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
@@ -17,15 +17,20 @@ func BayesianCalculation(priorPasses, priorFailures, successes, failures int) (f
 	alphaPrior := float64(priorPasses) + smoothing
 	betaPrior := float64(priorFailures) + smoothing
 
-	// New evidence weighting factor:
-	newEvidenceWeight := 1.5
+	// New evidence weighting factor, dynamic as we want to weight our PR heavily even when given
+	// a massive historical sample, as we're suspicious of increased failure rates in our our
+	// alpha/beta posterior.
+	newEvidenceWeight := float64(priorPasses+priorFailures) / 20.0
+	if newEvidenceWeight < 1.0 {
+		newEvidenceWeight = 1.0 // Ensure a minimum weight
+	}
 
 	// Update prior with new evidence
 	alphaPosterior := alphaPrior + float64(successes)*newEvidenceWeight
 	betaPosterior := betaPrior + float64(failures)*newEvidenceWeight
 
-	// Define thresholds for pass rate drop (e.g., below 95% considered regression)
-	threshold := 0.95
+	// Define thresholds for pass rate drop, worse than it was historically:
+	threshold := (float64(priorPasses) / float64(priorPasses+priorFailures)) - 0.05
 
 	// Use the Beta distribution from Gonum
 	betaDist := distuv.Beta{Alpha: alphaPosterior, Beta: betaPosterior}
@@ -36,22 +41,18 @@ func BayesianCalculation(priorPasses, priorFailures, successes, failures int) (f
 	// Calculate the probability the pass rate is above the threshold (flake hypothesis)
 	probFlake := 1.0 - probRegression
 
+	log.Infof("historical %d pass %d fail, new data %d pass %d fail, probability pass rate is now below %.3f: %.3f",
+		priorPasses, priorFailures, successes, failures, threshold, probRegression)
+
 	return probFlake, probRegression
 }
 
 func Test_Bayes(t *testing.T) {
 
-	// Historical pass rate data:
-	priorPasses, priorFailures := 98, 2
+	BayesianCalculation(30, 0, 8, 2)
+	BayesianCalculation(30, 1, 9, 1)
+	BayesianCalculation(29, 5, 8, 2)
+	BayesianCalculation(2000, 3, 0, 1)
+	BayesianCalculation(2000, 3, 1, 2)
 
-	// New evidence from the PR: 1 pass, 2 failures
-	successes := 1
-	failures := 2
-
-	// Calculate probabilities
-	probFlake, probRegression := BayesianCalculation(priorPasses, priorFailures, successes, failures)
-
-	// Display the results
-	fmt.Printf("Probability of flake: %.4f\n", probFlake)
-	fmt.Printf("Probability of regression: %.4f\n", probRegression)
 }
