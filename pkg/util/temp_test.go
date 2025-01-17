@@ -8,7 +8,7 @@ import (
 )
 
 // BayesianCalculation calculates the probabilities of the flake vs regression hypotheses.
-func BayesianCalculation(priorPasses, priorFailures int, successes, failures int) (float64, float64) {
+func BayesianCalculation(priorPasses, priorFailures, successes, failures int) (float64, float64) {
 
 	// Historical data (prior): passes + a smoothing factor
 	// Rather than adding 1 for Laplace smoothing, we add 0.5 to increase the
