@@ -1,4 +1,4 @@
-package util
+package bayes
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 )
 
 // BayesianCalculation calculates the probabilities of the flake vs regression hypotheses.
-func BayesianCalculation(priorPasses, priorFailures, successes, failures int) (float64, float64) {
+func BayesianCalculation(priorPasses, priorFailures, samplePasses, sampleFailures int) (float64, float64) {
 
 	// Historical data (prior): passes + a smoothing factor
 	// Rather than adding 1 for Laplace smoothing, we add 0.5 to increase the
@@ -26,8 +26,8 @@ func BayesianCalculation(priorPasses, priorFailures, successes, failures int) (f
 	}
 
 	// Update prior with new evidence
-	alphaPosterior := alphaPrior + float64(successes)*newEvidenceWeight
-	betaPosterior := betaPrior + float64(failures)*newEvidenceWeight
+	alphaPosterior := alphaPrior + float64(samplePasses)*newEvidenceWeight
+	betaPosterior := betaPrior + float64(sampleFailures)*newEvidenceWeight
 
 	// Define thresholds for pass rate drop, worse than it was historically:
 	threshold := (float64(priorPasses) / float64(priorPasses+priorFailures)) - 0.05
@@ -42,7 +42,7 @@ func BayesianCalculation(priorPasses, priorFailures, successes, failures int) (f
 	probFlake := 1.0 - probRegression
 
 	log.Infof("historical %d pass %d fail, new data %d pass %d fail, probability pass rate is now below %.3f: %.3f",
-		priorPasses, priorFailures, successes, failures, threshold, probRegression)
+		priorPasses, priorFailures, samplePasses, sampleFailures, threshold, probRegression)
 
 	return probFlake, probRegression
 }
@@ -51,6 +51,7 @@ func Test_Bayes(t *testing.T) {
 
 	BayesianCalculation(30, 0, 8, 2)
 	BayesianCalculation(30, 1, 9, 1)
+	BayesianCalculation(30, 1, 5, 5)
 	BayesianCalculation(29, 5, 8, 2)
 	BayesianCalculation(2000, 3, 0, 1)
 	BayesianCalculation(2000, 3, 1, 2)
