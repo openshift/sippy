@@ -25,6 +25,10 @@ component_readiness:
         Topology: {}
         Upgrade: {}
       include_variants:
+        JobTier:
+          - informing
+          - blocking
+          - standard
         Architecture:
           - amd64
         FeatureSet:
@@ -88,6 +92,10 @@ component_readiness:
         Topology: {}
         Upgrade: {}
       include_variants:
+        JobTier:
+          - informing
+          - blocking
+          - standard
         Architecture:
           - amd64
         FeatureSet:
@@ -147,6 +155,10 @@ component_readiness:
         Suite: {}
         Upgrade: {}
       include_variants:
+        JobTier:
+          - informing
+          - blocking
+          - standard
         Architecture:
           - amd64
         FeatureSet:
@@ -271,6 +283,10 @@ component_readiness:
         Topology: {}
         Upgrade: {}
       include_variants:
+        JobTier:
+          - informing
+          - blocking
+          - standard
         Architecture:
           - amd64
         FeatureSet:
@@ -333,6 +349,10 @@ component_readiness:
         Suite: {}
         Upgrade: {}
       include_variants:
+        JobTier:
+          - informing
+          - blocking
+          - standard
         Architecture:
           - amd64
         FeatureSet:
@@ -460,6 +480,10 @@ component_readiness:
             Topology: {}
             Upgrade: {}
         include_variants:
+            JobTier:
+                - informing
+                - blocking
+                - standard
             Architecture:
                 - amd64
             FeatureSet:
@@ -520,6 +544,10 @@ component_readiness:
         Topology: {}
         Upgrade: {}
       include_variants:
+        JobTier:
+          - informing
+          - blocking
+          - standard
         Architecture:
           - amd64
         FeatureSet:

@@ -271,7 +271,10 @@ export function filterFor(column, operator, value) {
 }
 
 export function withoutUnstable() {
-  return [not(filterFor('variants', 'contains', 'never-stable'))]
+  return [
+    not(filterFor('variants', 'contains', 'never-stable')),
+    not(filterFor('variants', 'contains', 'JobTier:excluded')),
+  ]
 }
 
 export function multiple(...filters) {
