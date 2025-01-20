@@ -66,14 +66,15 @@ import (
 //go:embed regressions_4.17.json
 var regressions4_17 []byte
 
+//go:embed regressions_4.18.json
+var regressions4_18 []byte
+
 var (
-	release415 release = "4.15"
 	release417 release = "4.17"
 )
 
 //nolint:all
 func init() {
-	// importIntentionalRegressions(release415, regressions4_15)
 	importIntentionalRegressions(release417, regressions4_17)
 }
 
