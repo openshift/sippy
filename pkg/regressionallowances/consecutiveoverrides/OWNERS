@@ -1,0 +1,12 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+# Disable inheritance as this is an api owners file
+# This directory is only needed to authorize the same test being in two consecutive
+# release regression files in the directory above. In this scenario, an additional
+# approve is required.
+options:
+  no_parent_owners: true
+filters:
+  ".*":
+    approvers:
+      - deads2k #

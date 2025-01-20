@@ -79,6 +79,14 @@ func keyFor(testID string, variant crtype.ColumnIdentification) string {
 	return string(k)
 }
 
+func parseRegressionKey(key string) (regressionKey, error) {
+	var result regressionKey
+	if err := json.Unmarshal([]byte(key), &result); err != nil {
+		return regressionKey{}, err
+	}
+	return result, nil
+}
+
 func mustAddIntentionalRegression(release release, in IntentionalRegression) {
 	if err := addIntentionalRegression(release, in); err != nil {
 		panic(err)
