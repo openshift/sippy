@@ -10,11 +10,10 @@ import (
 // BayesianSafetyCheck determines if a PR is safe to merge based on historical data,
 // other PR results, and environment-specific issues.
 func BayesianSafetyCheck(
-	historicalPasses, historicalFailures int,
-	otherPrPasses, otherPrFailures int, otherPrWeight float64,
-	envPasses, envFailures int, envWeight float64,
-	prPasses, prFailures int, prWeight float64,
-	thresholdDrop float64,
+	historicalPasses, historicalFailures int,                  // simple historical data over the past x weeks
+	otherPrPasses, otherPrFailures int, otherPrWeight float64, // recent data we'll weight more heavily to catch on-going incidents
+	prPasses, prFailures int,                                  // results from this PR
+	thresholdDrop float64,                                     // returns our confidence the test pass rate has dropped more than this amount
 ) (float64, float64) {
 
 	// Laplace smoothing for historical data
@@ -26,16 +25,23 @@ func BayesianSafetyCheck(
 	alphaOtherPr := float64(otherPrPasses)*otherPrWeight + smoothing
 	betaOtherPr := float64(otherPrFailures)*otherPrWeight + smoothing
 
-	alphaEnv := float64(envPasses)*envWeight + smoothing
-	betaEnv := float64(envFailures)*envWeight + smoothing
-
 	// Combine priors
-	alphaCombined := alphaHistorical + alphaOtherPr + alphaEnv
-	betaCombined := betaHistorical + betaOtherPr + betaEnv
+	alphaCombined := alphaHistorical + alphaOtherPr
+	betaCombined := betaHistorical + betaOtherPr
+
+	// New evidence weighting factor.
+	// This is tricky, if we have say 1000 runs in the historical data, no PR can generate enough information
+	// to possibly have the model think it could be a regression. We have to weight our PR samples to model
+	// our intuition. Because it can depend on the amount of historical data, we do this dynamically based on
+	// how much data we're up against.
+	newEvidenceWeight := float64(historicalPasses+historicalFailures+otherPrFailures+otherPrFailures) / 20.0
+	if newEvidenceWeight < 1.0 {
+		newEvidenceWeight = 1.0 // Ensure a minimum weight
+	}
 
 	// Adjust combined prior with PR results
-	alphaPosterior := alphaCombined + float64(prPasses)*prWeight
-	betaPosterior := betaCombined + float64(prFailures)*prWeight
+	alphaPosterior := alphaCombined + float64(prPasses)*newEvidenceWeight
+	betaPosterior := betaCombined + float64(prFailures)*newEvidenceWeight
 
 	// Define threshold for pass rate drop
 	historicalRate := float64(historicalPasses) / float64(historicalPasses+historicalFailures)
@@ -48,39 +54,37 @@ func BayesianSafetyCheck(
 	probRegression := betaDist.CDF(threshold)
 	probSafe := 1.0 - probRegression
 
-	log.Printf("PR Results: %d passes, %d failures | Probability regression: %.3f, Probability safe: %.3f",
-		prPasses, prFailures, probRegression, probSafe)
+	log.Infof("Historical %d/%d, Recent Jobs %d/%d, This PR: %d/%d failures = Probability regression: %.3f, Probability safe: %.3f",
+		historicalPasses, historicalFailures+historicalPasses,
+		otherPrPasses, otherPrFailures+otherPrPasses,
+		prPasses, prFailures+prPasses, probRegression, probSafe)
 
 	return probSafe, probRegression
 }
 
 // Example usage
 func Test_PRSafetyCheck(t *testing.T) {
-	historicalPasses := 1000
-	historicalFailures := 10
-	otherPrPasses := 200
-	otherPrFailures := 5
-	envPasses := 150
-	envFailures := 10
-	prPasses := 8
-	prFailures := 2
+	BayesianSafetyCheck(
+		1000, 10,
+		20, 2, 3.0,
+		1, 1,
+		0.05)
+	BayesianSafetyCheck(
+		29, 1,
+		5, 0, 3.0,
+		1, 1,
+		0.05)
+	BayesianSafetyCheck(
+		29, 1,
+		20, 0, 3.0,
+		9, 1,
+		0.05)
 
-	// Example weights
-	otherPrWeight := 3.0
-	envWeight := 2.0
-	prWeight := 5.0
-
-	// Allowable drop in pass rate
-	thresholdDrop := 0.05
-
-	probSafe, probRegression := BayesianSafetyCheck(
-		historicalPasses, historicalFailures,
-		otherPrPasses, otherPrFailures, otherPrWeight,
-		envPasses, envFailures, envWeight,
-		prPasses, prFailures, prWeight,
-		thresholdDrop,
-	)
-
-	log.Infof("Probability of PR being safe to merge: %.3f", probSafe)
-	log.Infof("Probability of regression: %.3f", probRegression)
+	// Now lets model strong high pass rate historical data, but this test is failing outside our PR in recent runs,
+	// be that other PRs or periodics:
+	BayesianSafetyCheck(
+		1000, 10,
+		20, 5, 1000,
+		1, 1,
+		0.05)
 }
