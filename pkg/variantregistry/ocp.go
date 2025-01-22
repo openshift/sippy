@@ -261,21 +261,22 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 var (
 	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
 	// We're not sure what these aggregator jobs are but they exist as of right now:
-	aggregatorRegex = regexp.MustCompile(`(?i)aggregator-`)
-	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
-	arm64Regex      = regexp.MustCompile(`(?i)-arm64|-multi-a-a|-arm`)
-	assistedRegex   = regexp.MustCompile(`(?i)-assisted`)
-	awsRegex        = regexp.MustCompile(`(?i)-aws`)
-	azureRegex      = regexp.MustCompile(`(?i)-azure`)
-	compactRegex    = regexp.MustCompile(`(?i)-compact`)
-	cpuPartitioning = regexp.MustCompile(`(?i)-cpu-partitioning`)
-	etcdScaling     = regexp.MustCompile(`(?i)-etcd-scaling`)
-	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
-	hypershiftRegex = regexp.MustCompile(`(?i)(-hypershift|-hcp|_hcp)`)
-	upiRegex        = regexp.MustCompile(`(?i)-upi`)
-	libvirtRegex    = regexp.MustCompile(`(?i)-libvirt`)
-	metalRegex      = regexp.MustCompile(`(?i)-metal`)
-	microshiftRegex = regexp.MustCompile(`(?i)-microshift`)
+	aggregatorRegex       = regexp.MustCompile(`(?i)aggregator-`)
+	automatedReleaseRegex = regexp.MustCompile(`(?i)automated-release`)
+	alibabaRegex          = regexp.MustCompile(`(?i)-alibaba`)
+	arm64Regex            = regexp.MustCompile(`(?i)-arm64|-multi-a-a|-arm`)
+	assistedRegex         = regexp.MustCompile(`(?i)-assisted`)
+	awsRegex              = regexp.MustCompile(`(?i)-aws`)
+	azureRegex            = regexp.MustCompile(`(?i)-azure`)
+	compactRegex          = regexp.MustCompile(`(?i)-compact`)
+	cpuPartitioning       = regexp.MustCompile(`(?i)-cpu-partitioning`)
+	etcdScaling           = regexp.MustCompile(`(?i)-etcd-scaling`)
+	fipsRegex             = regexp.MustCompile(`(?i)-fips`)
+	hypershiftRegex       = regexp.MustCompile(`(?i)(-hypershift|-hcp|_hcp)`)
+	upiRegex              = regexp.MustCompile(`(?i)-upi`)
+	libvirtRegex          = regexp.MustCompile(`(?i)-libvirt`)
+	metalRegex            = regexp.MustCompile(`(?i)-metal`)
+	microshiftRegex       = regexp.MustCompile(`(?i)-microshift`)
 	// Variant for Heterogeneous
 	multiRegex   = regexp.MustCompile(`(?i)-heterogeneous|-multi-`)
 	nutanixRegex = regexp.MustCompile(`(?i)-nutanix`)
@@ -438,6 +439,9 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	} else if cpuPartitioning.MatchString(jobName) {
 		variants[VariantProcedure] = "cpu-partitioning"
 		variants[VariantJobTier] = "rare"
+	} else if automatedReleaseRegex.MatchString(jobName) {
+		variants[VariantProcedure] = "automated-release"
+		variants[VariantJobTier] = "standard"
 	} else {
 		variants[VariantProcedure] = VariantNoValue
 
