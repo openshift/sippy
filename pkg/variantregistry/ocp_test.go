@@ -195,9 +195,33 @@ func TestVariantSyncer(t *testing.T) {
 		},
 		{
 			job: "periodic-ci-openshift-release-master-nightly-4.16-e2e-aws-ovn-single-node-serial",
-			variantsFile: map[string]string{
-				"Topology": "single", // should be ignored
+			expected: map[string]string{
+				VariantRelease:          "4.16",
+				VariantReleaseMajor:     "4",
+				VariantReleaseMinor:     "16",
+				VariantArch:             "amd64",
+				VariantInstaller:        "ipi",
+				VariantPlatform:         "aws",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "eng",
+				VariantTopology:         "single",
+				VariantSuite:            "serial",
+				VariantUpgrade:          VariantNoValue,
+				VariantAggregation:      VariantNoValue,
+				VariantProcedure:        "none",
+				VariantJobTier:          "standard",
+				VariantFeatureSet:       VariantDefaultValue,
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantContainerRuntime: "runc",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
 			},
+		},
+		{
+			job: "periodic-ci-openshift-release-master-nightly-4.16-e2e-aws-ovn-sno-serial",
 			expected: map[string]string{
 				VariantRelease:          "4.16",
 				VariantReleaseMajor:     "4",
