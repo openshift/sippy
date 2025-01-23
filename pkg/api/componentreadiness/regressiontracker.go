@@ -9,13 +9,14 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/iterator"
+
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"google.golang.org/api/iterator"
 )
 
 const (
@@ -193,12 +194,13 @@ func (rt *RegressionTracker) syncRegressionsForView(
 
 	variantOption := view.VariantOptions
 	advancedOption := view.AdvancedOptions
+	testIdOption := view.TestIDOption
 
 	// Get component readiness report
 	reportOpts := crtype.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
-		TestIDOption:   crtype.RequestTestIdentificationOptions{},
+		TestIDOption:   testIdOption,
 		VariantOption:  variantOption,
 		AdvancedOption: advancedOption,
 		CacheOption:    rt.cacheOpts,

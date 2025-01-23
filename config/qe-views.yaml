@@ -9,6 +9,8 @@ component_readiness:
       release: "4.17"
       relative_start: now-7d
       relative_end: now
+    test_id_options:
+      capability: LEVEL0
     variant_options:
       column_group_by:
         Architecture: {}

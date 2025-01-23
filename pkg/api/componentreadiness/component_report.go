@@ -407,7 +407,45 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		errs = append(errs, sampleErrs...)
 	}
 	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
+
+	// Because base and sample status are cached in bigquery, we do filtering on capability and component in go code
+	if c.RequestTestIdentificationOptions.Capability != "" {
+		baseStatus = filterByCapability(baseStatus, c.RequestTestIdentificationOptions.Capability)
+		sampleStatus = filterByCapability(sampleStatus, c.RequestTestIdentificationOptions.Capability)
+	}
+
+	if c.RequestTestIdentificationOptions.Component != "" {
+		baseStatus = filterByComponent(baseStatus, c.RequestTestIdentificationOptions.Component)
+		sampleStatus = filterByComponent(sampleStatus, c.RequestTestIdentificationOptions.Component)
+	}
+
 	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
+}
+
+func filterByComponent(status map[string]crtype.TestStatus, component string) map[string]crtype.TestStatus {
+	filteredStatusMap := make(map[string]crtype.TestStatus)
+	for k, v := range status {
+		if v.Component == component {
+			filteredStatusMap[k] = v
+		}
+	}
+
+	return filteredStatusMap
+}
+
+func filterByCapability(status map[string]crtype.TestStatus, capability string) map[string]crtype.TestStatus {
+	filteredStatusMap := make(map[string]crtype.TestStatus)
+outerLoop:
+	for k, v := range status {
+		for _, c := range v.Capabilities {
+			if c == capability {
+				filteredStatusMap[k] = v
+				continue outerLoop
+			}
+		}
+	}
+
+	return filteredStatusMap
 }
 
 var componentAndCapabilityGetter func(test crtype.TestIdentification, stats crtype.TestStatus) (string, []string)
