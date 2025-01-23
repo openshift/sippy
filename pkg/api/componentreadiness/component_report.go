@@ -11,10 +11,8 @@ import (
 	"sync"
 	"time"
 
-	"cloud.google.com/go/civil"
-	"github.com/openshift/sippy/pkg/util"
-
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/pkg/errors"
@@ -27,6 +25,7 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
 	"github.com/openshift/sippy/pkg/regressionallowances"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -1623,7 +1622,7 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 		} else {
 			status = crtype.MissingSample
 		}
-	} else {
+	} else if baseTotal != 0 {
 		// see if we had a significant regression prior to adjusting
 		basePass := baseSuccess + baseFlake
 		samplePass := sampleSuccess + sampleFlake
