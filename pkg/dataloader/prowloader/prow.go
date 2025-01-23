@@ -1137,6 +1137,9 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, te
 	testOutputMetadataExtractor := TestFailureMetadataExtractor{}
 
 	for _, tc := range suite.TestCases {
+		if testidentification.IsIgnoredTest(tc.Name) {
+			continue
+		}
 		status := sippyprocessingv1.TestStatusFailure
 		var failureOutput *models.ProwJobRunTestOutput
 		if tc.SkipMessage != nil {
