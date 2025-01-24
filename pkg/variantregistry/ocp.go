@@ -301,7 +301,7 @@ var (
 	s390xRegex              = regexp.MustCompile(`(?i)-s390x|-multi-z-z`)
 	sdnRegex                = regexp.MustCompile(`(?i)-sdn`)
 	serialRegex             = regexp.MustCompile(`(?i)-serial`)
-	singleNodeRegex         = regexp.MustCompile(`(?i)-single-node`)
+	singleNodeRegex         = regexp.MustCompile(`(?i)-single-node|-sno-`)
 	techpreview             = regexp.MustCompile(`(?i)-techpreview`)
 	upgradeMinorRegex       = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
 	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
