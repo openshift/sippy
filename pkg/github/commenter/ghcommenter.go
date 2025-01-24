@@ -113,7 +113,7 @@ func (ghc *GitHubCommenter) IsRepoIncluded(org, repo string) bool {
 	}
 
 	// remove anything not included
-	// if don't we have any includedRepos defined
+	// if we don't have any includedRepos defined
 	// then everything not excluded is included
 	if ghc.includeRepos == nil {
 		return true
@@ -127,85 +127,76 @@ func (ghc *GitHubCommenter) IsRepoIncluded(org, repo string) bool {
 	return val.Has(repo)
 }
 
-func (ghc *GitHubCommenter) UpdatePendingCommentRecords(org, repo string, number int, sha string, commentType models.CommentType, mergedAt *time.Time, pjPath string) {
+func (ghc *GitHubCommenter) UpdatePendingCommentRecords(org, repo string, prNumber int, sha string, commentType models.CommentType, mergedAt *time.Time, pjPath string) {
 	if !ghc.IsRepoIncluded(org, repo) {
 		return
 	}
 
 	logger := log.WithField("org", org).
 		WithField("repo", repo).
-		WithField("number", number).
+		WithField("number", prNumber).
 		WithField("sha", sha)
 
 	// here we should be getting the cached PREntry
-	prEntry, err := ghc.githubClient.GetPREntry(org, repo, number)
+	prEntry, err := ghc.githubClient.GetPREntry(org, repo, prNumber)
 
 	if err != nil {
 		logger.WithError(err).Error("Error getting the PREntry for updating comment records")
 		return
 	}
-
 	if prEntry == nil || prEntry.SHA == "" {
 		logger.Error("Invalid PREntry SHA")
 		return
 	}
-
 	if pjPath == "" {
 		logger.Error("Missing prow job path")
 		return
 	}
 
-	prNumber := fmt.Sprintf("%d", number)
-	var prRoot string
-
-	position := strings.Index(pjPath, prNumber)
-	if position > -1 {
-		prRoot = pjPath[:position+len(prNumber)+1]
-	}
-
-	if prRoot == "" {
-		logger.Error("Missing prow job root")
+	// find the storage path prefix up through the PR number
+	prNumberPath := fmt.Sprintf("/%d/", prNumber)
+	position := strings.Index(pjPath, prNumberPath)
+	if position < 0 {
+		logger.Errorf("Prow job path %s does not contain PR number %s", pjPath, prNumberPath)
 		return
 	}
+	prRoot := pjPath[:position] + prNumberPath
 
-	// get all existing comment entries for this comment type and org/repo/number
-	// if we are merged remove them all, if not then remove any that aren't the current sha
-	// if we have a match for the current sha save it so we don't try to create a new one
+	// get any pending DB comment entries for this comment type and org/repo/number.
+	// if PR has merged, remove them all; if not then remove any that aren't the current sha.
+	// if an entry exists for the current sha, keep it rather than create a new one.
 	foundExistingPRC := false
 	pullRequestComments := make([]models.PullRequestComment, 0)
 	res := ghc.dbc.DB.Table("pull_request_comments").
-		Where("org = ? AND repo = ? AND pull_number = ? AND comment_type = ?", org, repo, number, commentType).
+		Where("org = ? AND repo = ? AND pull_number = ? AND comment_type = ?", org, repo, prNumber, commentType).
 		Scan(&pullRequestComments)
 
 	if res.Error != nil {
 		logger.WithError(res.Error).Error("could not query existing pre submit comment records")
 	} else {
-		for _, cmtupdt := range pullRequestComments {
-			// if we already exist but have not been merged then
-			// we don't have to create a new record
-			if cmtupdt.SHA == prEntry.SHA && mergedAt == nil {
+		for _, prc := range pullRequestComments {
+			// if entry already exists for an unmerged PR just leave it for processing
+			if prc.SHA == prEntry.SHA && mergedAt == nil {
 				foundExistingPRC = true
 				continue
 			}
 
-			// otherwise we either aren't the latest sha or we have merged so clear
-			clearRecord := cmtupdt
-			ghc.ClearPendingRecord(clearRecord.Org, clearRecord.Repo, clearRecord.PullNumber, clearRecord.SHA, commentType, &clearRecord)
+			// otherwise entry is either not for the latest sha or PR has merged, so clear it out
+			prcCopy := prc
+			ghc.ClearPendingRecord(prc.Org, prc.Repo, prc.PullNumber, prc.SHA, commentType, &prcCopy)
 		}
 	}
 
-	// if we didn't find the record, this is the most recent sha and not merged then record an entry for it
+	// if we didn't find an entry, this is the most recent sha, and PR is not merged, then record an entry for it
 	if !foundExistingPRC && sha == prEntry.SHA && mergedAt == nil {
-
-		var pullRequestComment = &models.PullRequestComment{}
-		pullRequestComment.CommentType = int(commentType)
-		pullRequestComment.PullNumber = number
-		pullRequestComment.SHA = sha
-		pullRequestComment.Org = org
-		pullRequestComment.Repo = repo
-		pullRequestComment.ProwJobRoot = prRoot
-
-		res = ghc.dbc.DB.Create(&pullRequestComment)
+		res = ghc.dbc.DB.Create(&models.PullRequestComment{
+			CommentType: int(commentType),
+			PullNumber:  prNumber,
+			SHA:         sha,
+			Org:         org,
+			Repo:        repo,
+			ProwJobRoot: prRoot,
+		})
 
 		if res.Error != nil {
 			logger.WithError(res.Error).Error("Could not create comment record")
