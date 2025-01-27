@@ -805,7 +805,7 @@ function createTimelineData(
     if (!item.to) {
       endDate = latest
     }
-    let label = item.displayLocator
+    let label = escapeRegex(item.displayLocator)
     let sub = ''
     let section = data[label]
     if (!section) {
