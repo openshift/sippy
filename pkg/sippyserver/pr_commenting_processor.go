@@ -783,50 +783,24 @@ func (aw *AnalysisWorker) buildProwJobMap(logger *log.Entry, prJobRoot string) (
 }
 
 func (aw *AnalysisWorker) getRiskSummary(jobRunID, jobRunIDPath string, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) (api.RiskSummary, *api.ProwJobRunRiskAnalysis) {
+	logger := log.WithField("jobRunIDPath", jobRunIDPath).WithField("func", "getRiskSummary")
 
-	var riskSummary api.RiskSummary
-	var riskAnalysis *api.ProwJobRunRiskAnalysis
-	jobRunIntID, err := strconv.ParseInt(jobRunID, 10, 64)
-
-	if err != nil {
+	if jobRunIntID, err := strconv.ParseInt(jobRunID, 10, 64); err != nil {
 		log.WithError(err).Errorf("Failed to parse jobRunId id: %s for: %s", jobRunID, jobRunIDPath)
-
-		// skip the db lookup and go right to gcs
-		riskSummary, riskAnalysis = aw.getGCSOverallRiskLevel(jobRunIDPath)
-	} else {
-
-		// lookup prowjob and run count
-		logger := log.WithField("jobRunID", jobRunIntID)
-		jobRun, jobRunTestCount, err := jobQueries.FetchJobRun(aw.dbc, jobRunIntID, logger)
-
-		if err != nil {
-
-			// RecordNotFound can be expected if the jobRunId job isn't in sippy yet
-			// so don't log an error
-			if !errors.Is(err, gorm.ErrRecordNotFound) {
-				logger.WithError(err).Errorf("Error fetching job run for: %s", jobRunIDPath)
-			}
-
-			// in all failure cases fall back to gcs
-			riskSummary, riskAnalysis = aw.getGCSOverallRiskLevel(jobRunIDPath)
-
-		} else {
-
-			// get the riskanalysis directly from jobqueries
-			ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"))
-
-			if err != nil {
-				logger.WithError(err).Errorf("Error querying risk analysis for: %s", jobRunIDPath)
-				riskSummary, riskAnalysis = aw.getGCSOverallRiskLevel(jobRunIDPath)
-			} else {
-				// query succeeded so set riskAnalysis
-				riskAnalysis = &ra
-				riskSummary = buildRiskSummary(riskAnalysis, priorRiskAnalysis)
-			}
+	} else if jobRun, jobRunTestCount, err := jobQueries.FetchJobRun(aw.dbc, jobRunIntID, logger); err != nil {
+		// RecordNotFound can be expected if the jobRunId job isn't in sippy yet. log any other error
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			logger.WithError(err).Errorf("Error fetching job run for: %s", jobRunIDPath)
 		}
+	} else if ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, jobRun, jobRunTestCount, logger); err != nil {
+		logger.WithError(err).Errorf("Error querying risk analysis for: %s", jobRunIDPath)
+	} else {
+		// query succeeded so use the riskAnalysis we got
+		return buildRiskSummary(&ra, priorRiskAnalysis), &ra
 	}
 
-	return riskSummary, riskAnalysis
+	// in all failure cases fall back to looking directly at gcs content
+	return aw.getGCSOverallRiskLevel(jobRunIDPath)
 }
 
 func buildRiskSummary(riskAnalysis, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) api.RiskSummary {
