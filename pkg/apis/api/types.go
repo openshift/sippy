@@ -822,6 +822,7 @@ type DisruptionReportRow struct {
 	Topology                 string  `json:"topology"`
 	Architecture             string  `json:"architecture"`
 	Relevance                int     `json:"relevance"`
+	FeatureSet               string  `json:"feature_set"`
 }
 
 type ReleaseRow struct {

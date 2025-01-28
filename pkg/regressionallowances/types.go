@@ -50,15 +50,18 @@ func IntentionalRegressionFor(releaseString string, variant crtype.ColumnIdentif
 	return nil
 }
 
-func (i *IntentionalRegression) RegressedPassPercentage() float64 {
-	return passPercentage(i.RegressedSuccesses, i.RegressedFlakes, i.RegressedFailures)
+func (i *IntentionalRegression) RegressedPassPercentage(flakeAsFailure bool) float64 {
+	return passPercentage(flakeAsFailure, i.RegressedSuccesses, i.RegressedFlakes, i.RegressedFailures)
 }
 
-func (i *IntentionalRegression) PreviousPassPercentage() float64 {
-	return passPercentage(i.PreviousSuccesses, i.PreviousFlakes, i.PreviousFailures)
+func (i *IntentionalRegression) PreviousPassPercentage(flakeAsFailure bool) float64 {
+	return passPercentage(flakeAsFailure, i.PreviousSuccesses, i.PreviousFlakes, i.PreviousFailures)
 }
 
-func passPercentage(successes, flakes, failures int) float64 {
+func passPercentage(flakeAsFailure bool, successes, flakes, failures int) float64 {
+	if flakeAsFailure {
+		return float64(successes) / float64(successes+flakes+failures)
+	}
 	return float64(successes+flakes) / float64(successes+flakes+failures)
 }
 
@@ -74,6 +77,14 @@ func keyFor(testID string, variant crtype.ColumnIdentification) string {
 		log.WithError(err).Errorf("error marshalling regressionKey")
 	}
 	return string(k)
+}
+
+func parseRegressionKey(key string) (regressionKey, error) {
+	var result regressionKey
+	if err := json.Unmarshal([]byte(key), &result); err != nil {
+		return regressionKey{}, err
+	}
+	return result, nil
 }
 
 func mustAddIntentionalRegression(release release, in IntentionalRegression) {
@@ -100,7 +111,7 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	if in.RegressedFailures <= 0 {
 		return fmt.Errorf("regressedFailures must be specified")
 	}
-	if in.PreviousPassPercentage() <= in.RegressedPassPercentage() {
+	if in.PreviousPassPercentage(false) <= in.RegressedPassPercentage(false) {
 		return fmt.Errorf("regressedPassPercentage must be less than previousPassPercentage")
 	}
 	if len(in.ReasonToAllowInsteadOfFix) == 0 {

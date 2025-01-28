@@ -838,12 +838,14 @@ func (s *Server) jsonBuildClusterHealthAnalysis(w http.ResponseWriter, req *http
 	api.RespondWithJSON(200, w, results)
 }
 
+// getParamOrFail returns the parameter requested; if it's empty, it also issues a failure response as a convenience
+// (this does not complete the request; caller still must check for empty string and return up the stack accordingly)
 func (s *Server) getParamOrFail(w http.ResponseWriter, req *http.Request, name string) string {
-	release := param.SafeRead(req, name)
-	if release == "" {
+	value := param.SafeRead(req, name)
+	if value == "" {
 		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("param '%s' is required", name))
 	}
-	return release
+	return value
 }
 
 func (s *Server) jsonJobsDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
@@ -974,6 +976,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
+			return
 		}
 
 		logger = logger.WithField("jobRunID", jobRunID)
@@ -990,6 +993,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		err := json.NewDecoder(req.Body).Decode(&jobRun)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("error decoding prow job run json in request body: %s", err))
+			return
 		}
 
 		// validate the jobRun isn't empty
@@ -1012,12 +1016,24 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 
 		jobRunTestCount = jobRun.TestCount
 
-		// We don't expect the caller to fully populate the ProwJob, just it's name,
+		// We don't expect the caller to fully populate the ProwJob, just its name;
 		// override the input by looking up the actual ProwJob so we have access to release and variants.
 		job := &models.ProwJob{}
 		res := s.db.DB.Where("name = ?", jobRun.ProwJob.Name).First(job)
 		if res.Error != nil {
-			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("unable to find ProwJob: %s", jobRun.ProwJob.Name))
+			if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+				// sippy does not import all jobs to its prow_jobs table; for context see
+				// https://redhat-internal.slack.com/archives/C02K89U2EV8/p1736972504210699
+				// for example, PR jobs on GA releases are excluded, and various other jobs
+				errMsg := fmt.Sprintf("ProwJob '%s' is not included in imported jobs so risk analysis will not run.", jobRun.ProwJob.Name)
+				result := apitype.ProwJobRunRiskAnalysis{
+					OverallRisk: apitype.JobFailureRisk{Level: apitype.FailureRiskLevelUnknown, Reasons: []string{errMsg}},
+				}
+				api.RespondWithJSON(http.StatusOK, w, result)
+			} else {
+				failureResponse(w, http.StatusBadRequest, fmt.Sprintf("unable to find ProwJob '%s': %v", jobRun.ProwJob.Name, res.Error))
+			}
+			return
 		}
 		jobRun.ProwJob = *job
 
@@ -1029,6 +1045,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	result, err := api.JobRunRiskAnalysis(s.db, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, result)
@@ -1044,6 +1061,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 
 	if s.gcsClient == nil {
 		failureResponse(w, http.StatusBadRequest, "server not configured for GCS, unable to use this API")
+		return
 	}
 
 	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
@@ -1054,6 +1072,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
+		return
 	}
 	logger = logger.WithField("jobRunID", jobRunID)
 
@@ -1085,6 +1104,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		intervalFile, logger.WithField("func", "JobRunIntervals"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, result)

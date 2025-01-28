@@ -133,6 +133,10 @@ export const CompReadyVarsProvider = ({ children }) => {
     'ignoreDisruption',
     BooleanParam
   )
+  const [flakeAsFailureParam, setFlakeAsFailureParam] = useQueryParam(
+    'flakeAsFailure',
+    BooleanParam
+  )
   const [
     includeMultiReleaseAnalysisParam,
     setIncludeMultiReleaseAnalysisParam,
@@ -302,6 +306,10 @@ export const CompReadyVarsProvider = ({ children }) => {
     ignoreDisruptionParam || true
   )
 
+  const [flakeAsFailure, setFlakeAsFailure] = React.useState(
+    flakeAsFailureParam || false
+  )
+
   const [includeMultiReleaseAnalysis, setIncludeMultiReleaseAnalysis] =
     React.useState(
       includeMultiReleaseAnalysisParam ||
@@ -375,6 +383,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setPassRateAllTestsParam(passRateAllTests)
     setIgnoreDisruptionParam(ignoreDisruption)
     setIgnoreMissingParam(ignoreMissing)
+    setFlakeAsFailureParam(flakeAsFailure)
     setIncludeMultiReleaseAnalysisParam(includeMultiReleaseAnalysis)
     setComponentParam(component)
     setEnvironmentParam(environment)
@@ -405,6 +414,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setPassRateAllTestsParam(undefined)
     setIgnoreDisruptionParam(undefined)
     setIgnoreMissingParam(undefined)
+    setFlakeAsFailureParam(undefined)
     setIncludeMultiReleaseAnalysisParam(undefined)
 
     setSamplePROrgParam(undefined)
@@ -458,6 +468,9 @@ export const CompReadyVarsProvider = ({ children }) => {
     }
     if (view.advanced_options.hasOwnProperty('ignore_missing')) {
       setIgnoreMissing(view.advanced_options.ignore_missing)
+    }
+    if (view.advanced_options.hasOwnProperty('flake_as_failure')) {
+      setFlakeAsFailure(view.advanced_options.flake_as_failure)
     }
     if (
       view.advanced_options.hasOwnProperty('include_multi_release_analysis')
@@ -631,6 +644,8 @@ export const CompReadyVarsProvider = ({ children }) => {
         setIgnoreMissing,
         ignoreDisruption,
         setIgnoreDisruption,
+        flakeAsFailure,
+        setFlakeAsFailure,
         includeMultiReleaseAnalysis,
         setIncludeMultiReleaseAnalysis,
         component,

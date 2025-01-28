@@ -226,6 +226,10 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 				if jnv == "rosa" {
 					continue
 				}
+				// OSD GCP is identified as GCP, but we want to keep it in a separate bucket
+				if jnv == "osd-gcp" {
+					continue
+				}
 				variants[k] = v
 			case VariantArch:
 				// Job name identification wins for arch, heterogenous jobs can show cluster data with
@@ -257,26 +261,28 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 var (
 	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
 	// We're not sure what these aggregator jobs are but they exist as of right now:
-	aggregatorRegex = regexp.MustCompile(`(?i)aggregator-`)
-	alibabaRegex    = regexp.MustCompile(`(?i)-alibaba`)
-	arm64Regex      = regexp.MustCompile(`(?i)-arm64|-multi-a-a|-arm`)
-	assistedRegex   = regexp.MustCompile(`(?i)-assisted`)
-	awsRegex        = regexp.MustCompile(`(?i)-aws`)
-	azureRegex      = regexp.MustCompile(`(?i)-azure`)
-	compactRegex    = regexp.MustCompile(`(?i)-compact`)
-	cpuPartitioning = regexp.MustCompile(`(?i)-cpu-partitioning`)
-	etcdScaling     = regexp.MustCompile(`(?i)-etcd-scaling`)
-	fipsRegex       = regexp.MustCompile(`(?i)-fips`)
-	hypershiftRegex = regexp.MustCompile(`(?i)(-hypershift|-hcp|_hcp)`)
-	upiRegex        = regexp.MustCompile(`(?i)-upi`)
-	libvirtRegex    = regexp.MustCompile(`(?i)-libvirt`)
-	metalRegex      = regexp.MustCompile(`(?i)-metal`)
-	microshiftRegex = regexp.MustCompile(`(?i)-microshift`)
+	aggregatorRegex       = regexp.MustCompile(`(?i)aggregator-`)
+	automatedReleaseRegex = regexp.MustCompile(`(?i)automated-release`)
+	alibabaRegex          = regexp.MustCompile(`(?i)-alibaba`)
+	arm64Regex            = regexp.MustCompile(`(?i)-arm64|-multi-a-a|-arm`)
+	assistedRegex         = regexp.MustCompile(`(?i)-assisted`)
+	awsRegex              = regexp.MustCompile(`(?i)-aws`)
+	azureRegex            = regexp.MustCompile(`(?i)-azure`)
+	compactRegex          = regexp.MustCompile(`(?i)-compact`)
+	cpuPartitioning       = regexp.MustCompile(`(?i)-cpu-partitioning`)
+	etcdScaling           = regexp.MustCompile(`(?i)-etcd-scaling`)
+	fipsRegex             = regexp.MustCompile(`(?i)-fips`)
+	hypershiftRegex       = regexp.MustCompile(`(?i)(-hypershift|-hcp|_hcp)`)
+	upiRegex              = regexp.MustCompile(`(?i)-upi`)
+	libvirtRegex          = regexp.MustCompile(`(?i)-libvirt`)
+	metalRegex            = regexp.MustCompile(`(?i)-metal`)
+	microshiftRegex       = regexp.MustCompile(`(?i)-microshift`)
 	// Variant for Heterogeneous
 	multiRegex   = regexp.MustCompile(`(?i)-heterogeneous|-multi-`)
 	nutanixRegex = regexp.MustCompile(`(?i)-nutanix`)
 	// 3.11 gcp jobs don't have a trailing -version segment
 	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
+	osdGcpRegex    = regexp.MustCompile(`(?i)-osd-ccs-gcp`)
 	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
 	sdRegex        = regexp.MustCompile(`(?i)-osd|-rosa`)
 	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
@@ -295,7 +301,7 @@ var (
 	s390xRegex              = regexp.MustCompile(`(?i)-s390x|-multi-z-z`)
 	sdnRegex                = regexp.MustCompile(`(?i)-sdn`)
 	serialRegex             = regexp.MustCompile(`(?i)-serial`)
-	singleNodeRegex         = regexp.MustCompile(`(?i)-single-node`)
+	singleNodeRegex         = regexp.MustCompile(`(?i)-single-node|-sno-`)
 	techpreview             = regexp.MustCompile(`(?i)-techpreview`)
 	upgradeMinorRegex       = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
 	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
@@ -433,6 +439,9 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	} else if cpuPartitioning.MatchString(jobName) {
 		variants[VariantProcedure] = "cpu-partitioning"
 		variants[VariantJobTier] = "rare"
+	} else if automatedReleaseRegex.MatchString(jobName) {
+		variants[VariantProcedure] = "automated-release"
+		variants[VariantJobTier] = "standard"
 	} else {
 		variants[VariantProcedure] = VariantNoValue
 
@@ -529,8 +538,6 @@ func determineInstallation(jobName string) string {
 		return "hypershift"
 	} else if upiRegex.MatchString(jobName) {
 		return "upi"
-	} else if rosaRegex.MatchString(jobName) {
-		return "rosa"
 	}
 
 	return "ipi" // assume ipi by default
@@ -573,6 +580,8 @@ func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobN
 		platform = "aws"
 	} else if azureRegex.MatchString(jobName) {
 		platform = "azure"
+	} else if osdGcpRegex.MatchString(jobName) {
+		platform = "osd-gcp"
 	} else if gcpRegex.MatchString(jobName) {
 		platform = "gcp"
 	} else if libvirtRegex.MatchString(jobName) {

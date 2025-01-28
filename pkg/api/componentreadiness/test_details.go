@@ -288,7 +288,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 				result.JiraComponentID = baseStats.JiraComponentID
 			}
 
-			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, getJobRunStats(baseStats, c.prowURL, c.gcsBucket))
+			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, c.getJobRunStats(baseStats, c.prowURL, c.gcsBucket))
 			perJobBaseSuccess += baseStats.SuccessCount
 			perJobBaseFlake += baseStats.FlakeCount
 			perJobBaseFailure += getFailureCount(baseStats)
@@ -302,7 +302,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 					result.JiraComponentID = sampleStats.JiraComponentID
 				}
 
-				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, getJobRunStats(sampleStats, c.prowURL, c.gcsBucket))
+				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats, c.prowURL, c.gcsBucket))
 				perJobSampleSuccess += sampleStats.SuccessCount
 				perJobSampleFlake += sampleStats.FlakeCount
 				perJobSampleFailure += getFailureCount(sampleStats)
@@ -312,15 +312,25 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		jobStats.BaseStats.SuccessCount = perJobBaseSuccess
 		jobStats.BaseStats.FlakeCount = perJobBaseFlake
 		jobStats.BaseStats.FailureCount = perJobBaseFailure
-		jobStats.BaseStats.SuccessRate = getSuccessRate(perJobBaseSuccess, perJobBaseFailure, perJobBaseFlake)
+		jobStats.BaseStats.SuccessRate = c.getPassRate(perJobBaseSuccess, perJobBaseFailure, perJobBaseFlake)
 		jobStats.SampleStats.SuccessCount = perJobSampleSuccess
 		jobStats.SampleStats.FlakeCount = perJobSampleFlake
 		jobStats.SampleStats.FailureCount = perJobSampleFailure
-		jobStats.SampleStats.SuccessRate = getSuccessRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
-		_, _, r, _ := fet.FisherExactTest(perJobSampleFailure,
-			perJobSampleSuccess,
-			perJobBaseFailure,
-			perJobSampleSuccess)
+		jobStats.SampleStats.SuccessRate = c.getPassRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
+		perceivedSampleFailure := perJobSampleFailure
+		perceivedBaseFailure := perJobBaseFailure
+		perceivedSampleSuccess := perJobSampleSuccess + perJobSampleFlake
+		perceivedBaseSuccess := perJobBaseSuccess + perJobBaseFlake
+		if c.FlakeAsFailure {
+			perceivedSampleFailure = perJobSampleFailure + perJobSampleFlake
+			perceivedBaseFailure = perJobBaseFailure + perJobBaseFlake
+			perceivedSampleSuccess = perJobSampleSuccess
+			perceivedBaseSuccess = perJobBaseSuccess
+		}
+		_, _, r, _ := fet.FisherExactTest(perceivedSampleFailure,
+			perceivedSampleSuccess,
+			perceivedBaseFailure,
+			perceivedBaseSuccess)
 		jobStats.Significant = r < 1-float64(c.Confidence)/100
 
 		result.JobStats = append(result.JobStats, jobStats)
@@ -340,7 +350,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		perJobSampleSuccess = 0
 		perJobSampleFlake = 0
 		for _, sampleStats := range sampleStatsList {
-			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, getJobRunStats(sampleStats, c.prowURL, c.gcsBucket))
+			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats, c.prowURL, c.gcsBucket))
 			perJobSampleSuccess += sampleStats.SuccessCount
 			perJobSampleFlake += sampleStats.FlakeCount
 			perJobSampleFailure += getFailureCount(sampleStats)
@@ -348,10 +358,16 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		jobStats.SampleStats.SuccessCount = perJobSampleSuccess
 		jobStats.SampleStats.FlakeCount = perJobSampleFlake
 		jobStats.SampleStats.FailureCount = perJobSampleFailure
-		jobStats.SampleStats.SuccessRate = getSuccessRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
+		jobStats.SampleStats.SuccessRate = c.getPassRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
 		result.JobStats = append(result.JobStats, jobStats)
-		_, _, r, _ := fet.FisherExactTest(perJobSampleFailure,
-			perJobSampleSuccess+perJobSampleFlake,
+		perceivedSampleFailure := perJobSampleFailure
+		perceivedSampleSuccess := perJobSampleSuccess + perJobSampleFlake
+		if c.FlakeAsFailure {
+			perceivedSampleFailure = perJobSampleFailure + perJobSampleFlake
+			perceivedSampleSuccess = perJobSampleSuccess
+		}
+		_, _, r, _ := fet.FisherExactTest(perceivedSampleFailure,
+			perceivedSampleSuccess,
 			0,
 			0)
 		jobStats.Significant = r < 1-float64(c.Confidence)/100
@@ -366,7 +382,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 
 	// The hope is that this goes away
 	// once we agree we don't need to honor a higher intentional regression pass percentage
-	if baseRegression != nil && baseRegression.PreviousPassPercentage() > getSuccessRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
+	if baseRegression != nil && baseRegression.PreviousPassPercentage(c.FlakeAsFailure) > c.getPassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
 		baseRegressionPreviousRelease, err := previousRelease(baseRelease)
@@ -401,7 +417,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	return result
 }
 
-func getJobRunStats(stats crtype.JobRunTestStatusRow, prowURL, gcsBucket string) crtype.TestDetailsJobRunStats {
+func (c *componentReportGenerator) getJobRunStats(stats crtype.JobRunTestStatusRow, prowURL, gcsBucket string) crtype.TestDetailsJobRunStats {
 	failure := getFailureCount(stats)
 	url := fmt.Sprintf("%s/view/gs/%s/", prowURL, gcsBucket)
 	subs := strings.Split(stats.FilePath, "/artifacts/")
@@ -410,7 +426,7 @@ func getJobRunStats(stats crtype.JobRunTestStatusRow, prowURL, gcsBucket string)
 	}
 	jobRunStats := crtype.TestDetailsJobRunStats{
 		TestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  getSuccessRate(stats.SuccessCount, failure, stats.FlakeCount),
+			SuccessRate:  c.getPassRate(stats.SuccessCount, failure, stats.FlakeCount),
 			SuccessCount: stats.SuccessCount,
 			FailureCount: failure,
 			FlakeCount:   stats.FlakeCount,

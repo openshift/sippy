@@ -952,14 +952,18 @@ function TestTable(props) {
             rowClass.push(classes['overall'])
           }
 
-          let className =
-            'row-percent-' +
-            Math.round(params.row[gridView.view.rowColor.field])
+          // Force the test tables to extremes; it's an up or down thing. Either a test
+          // is good enough, or it's not.  Green is > 95%, otherwise it's red.  For flakes
+          // (inverted) it's 5% or less is green.
+          let adjustedPercentage =
+            params.row[gridView.view.rowColor.field] >= 95 ? 100 : 0
           if (gridView.view.rowColor.inverted) {
-            className =
-              'row-percent-' +
-              (100 - Math.round(params.row[gridView.view.rowColor.field]))
+            adjustedPercentage =
+              params.row[gridView.view.rowColor.field] < 5 ? 100 : 0
           }
+
+          let className = 'row-percent-' + adjustedPercentage
+
           rowClass.push(classes[className])
 
           return rowClass.join(' ')
