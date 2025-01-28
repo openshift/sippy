@@ -432,7 +432,11 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		case <-ctx.Done():
 			return
 		default:
-			includeVariants := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.IncludeVariants)
+			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.IncludeVariants)
+			if skipQuery {
+				fLog.Infof("skipping default status query as all values for a variant were overridden")
+				return
+			}
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
 			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.SampleRelease.Start, c.SampleRelease.End, defaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
@@ -457,7 +461,11 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 			case <-ctx.Done():
 				return
 			default:
-				includeVariants := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
+				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
+				if skipQuery {
+					fLog.Infof("skipping override status query as all values for a variant were overridden")
+					return
+				}
 				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
 				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
 				end := c.SampleRelease.End
@@ -531,10 +539,12 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 // An index into the overrides slice can be provided if we're copying the include variants for that subquery. This is
 // just to be careful for any future cases where we might have multiple overrides in play, and want to make sure we
 // don't accidentally pull data for one, from the others junit table.
+//
+// Return includes a bool which may indicate to skip the query entirely because we've overriden all values for a variant.
 func copyIncludeVariantsAndRemoveOverrides(
 	overrides []*crtype.VariantJunitTableOverride,
 	currOverride int, // index into the overrides if we're copying for that specific override query
-	includeVariants map[string][]string) map[string][]string {
+	includeVariants map[string][]string) (map[string][]string, bool) {
 
 	cp := make(map[string][]string)
 	for key, values := range includeVariants {
@@ -547,9 +557,23 @@ func copyIncludeVariantsAndRemoveOverrides(
 		}
 		if len(newSlice) > 0 {
 			cp[key] = newSlice
+		} else {
+			// If we overrode a value for a variant, and no other values are specified for that
+			// variant, we want to skip this query entirely.
+			// i.e. if we include JobTier blocking, informing, and rare, we still want to do the default
+			// query for blocking and informing even though rare was overridden.
+			// However if we specify only JobTier rare, this leaves no JobTier's left in the default query resulting
+			// in a normal query without considering JobTier and thus duplicate results we don't want. In this case,
+			// we want to skip the default.
+			//
+			// TODO: With two overridden variants in one query, we could easily get into a problem
+			// where no results are returned, because we AND the include variants. If JobTier rare is in table1, and
+			// Foo=bar is in table2, both queries would be skipped because neither contains data for the other and we're
+			// doing an AND. For now, I think this is a limitation we'll have to live with.
+			return cp, true
 		}
 	}
-	return cp
+	return cp, false
 }
 
 func shouldSkipVariant(overrides []*crtype.VariantJunitTableOverride, currOverride int, key, value string) bool {

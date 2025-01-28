@@ -1847,11 +1847,12 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 
 func TestCopyIncludeVariantsAndRemoveOverrides(t *testing.T) {
 	tests := []struct {
-		name            string
-		overrides       []*crtype.VariantJunitTableOverride
-		currOverride    int
-		includeVariants map[string][]string
-		expected        map[string][]string
+		name              string
+		overrides         []*crtype.VariantJunitTableOverride
+		currOverride      int
+		includeVariants   map[string][]string
+		expected          map[string][]string
+		expectedSkipQuery bool
 	}{
 		{
 			name:         "No overrides, no variants removed",
@@ -1924,13 +1925,15 @@ func TestCopyIncludeVariantsAndRemoveOverrides(t *testing.T) {
 				"key1": {"value1", "value2"},
 				"key2": {"value3"},
 			},
-			expected: map[string][]string{},
+			expected:          map[string][]string{},
+			expectedSkipQuery: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := copyIncludeVariantsAndRemoveOverrides(tt.overrides, tt.currOverride, tt.includeVariants)
+			result, skipQuery := copyIncludeVariantsAndRemoveOverrides(tt.overrides, tt.currOverride, tt.includeVariants)
+			assert.Equal(t, tt.expectedSkipQuery, skipQuery)
 			if !reflect.DeepEqual(result, tt.expected) {
 				t.Errorf("expected %v, got %v", tt.expected, result)
 			}
