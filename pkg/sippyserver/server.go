@@ -1041,7 +1041,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	}
 
 	logger.Infof("job run = %+v", *jobRun)
-	result, err := api.JobRunRiskAnalysis(s.db, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"))
+	result, err := api.JobRunRiskAnalysis(s.db, s.bigQueryClient, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"), false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return

@@ -252,7 +252,7 @@ func TestRunJobAnalysis(t *testing.T) {
 				}
 			}
 
-			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", 5, 5, false, tc.jobNames, log.WithField("jobRunID", "test"), testResultsJobNamesLookupFunc, testResultsVariantsLookupFunc)
+			result, err := runJobRunAnalysis(nil, fakeProwJobRun, "4.12", 5, 5, false, tc.jobNames, log.WithField("jobRunID", "test"), testResultsJobNamesLookupFunc, testResultsVariantsLookupFunc, false)
 
 			require.NoError(t, err)
 			assert.Equal(t, len(tc.expectedTestRisks), len(result.Tests))
