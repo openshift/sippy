@@ -283,12 +283,17 @@ func (c *componentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 	return variants, nil
 }
 
+// GenerateReport is the main entry point for generation of a component readiness report.
 func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.ComponentReport, []error) {
 	before := time.Now()
-	componentReportTestStatus, errs := c.GenerateComponentReportTestStatus(ctx)
+
+	// query all test pass/fail counts from bigquery, both sample and basis
+	componentReportTestStatus, errs := c.getTestStatusFromBigQuery(ctx)
 	if len(errs) > 0 {
 		return crtype.ComponentReport{}, errs
 	}
+
+	// prepare some information needed to generate the report:
 	bqs := NewBigQueryRegressionStore(c.client)
 	var err error
 	allRegressions, err := bqs.ListCurrentRegressions(ctx)
@@ -297,6 +302,8 @@ func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 		return crtype.ComponentReport{}, errs
 	}
 	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.SampleRelease.Release)
+
+	// perform analysis and generate report:
 	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,
 		componentReportTestStatus.SampleStatus)
 	if err != nil {
@@ -307,16 +314,6 @@ func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	log.Infof("GenerateReport completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
 
 	return report, nil
-}
-
-func (c *componentReportGenerator) GenerateComponentReportTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	componentReportTestStatus, errs := c.getTestStatusFromBigQuery(ctx)
-	if len(errs) > 0 {
-		return crtype.ReportTestStatus{}, errs
-	}
-	now := time.Now()
-	componentReportTestStatus.GeneratedAt = &now
-	return componentReportTestStatus, nil
 }
 
 // getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
@@ -376,7 +373,8 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 	return componentReportTestStatus.SampleStatus, nil
 }
 
-// GetTestStatusFromBigQuery orchestrates the actual fetching of junit test run data for both basis and sample.
+// getTestStatusFromBigQuery orchestrates the actual fetching of junit test run data for both basis and sample.
+// goroutines are used to concurrently request the data for basis, sample, and various other edge cases.
 func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	before := time.Now()
 	fLog := log.WithField("func", "getTestStatusFromBigQuery")
@@ -529,7 +527,8 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	}
 	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db",
 		time.Since(before), len(sampleStatus), len(baseStatus))
-	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
+	now := time.Now()
+	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
 }
 
 // copyIncludeVariantsAndRemoveOverrides is used when VariantJunitTableOverrides are in play, and we'll be merging in
