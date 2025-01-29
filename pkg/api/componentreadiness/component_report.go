@@ -569,7 +569,7 @@ func copyIncludeVariantsAndRemoveOverrides(
 			// TODO: With two overridden variants in one query, we could easily get into a problem
 			// where no results are returned, because we AND the include variants. If JobTier rare is in table1, and
 			// Foo=bar is in table2, both queries would be skipped because neither contains data for the other and we're
-			// doing an AND. For now, I think this is a limitation we'll have to live with.
+			// doing an AND. For now, I think this is a limitation we'll have to live with
 			return cp, true
 		}
 	}

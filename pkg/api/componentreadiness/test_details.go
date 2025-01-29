@@ -10,6 +10,8 @@ import (
 
 	bigquery2 "cloud.google.com/go/bigquery"
 	fet "github.com/glycerine/golang-fisher-exact"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -49,7 +51,7 @@ func (c *componentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	}
 	for _, v := range c.DBGroupBy.List() {
 		if _, ok := c.RequestedVariants[v]; !ok {
-			return crtype.ReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing", v)}
+			return crtype.ReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v", v, c.RequestedVariants)}
 		}
 	}
 
@@ -157,9 +159,14 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(
 	return jobRunTestStatus.BaseStatus, nil
 }
 
-func (c *componentReportGenerator) getSampleJobRunTestStatus(ctx context.Context, allJobVariants crtype.JobVariants) (map[string][]crtype.JobRunTestStatusRow, []error) {
+func (c *componentReportGenerator) getSampleJobRunTestStatus(
+	ctx context.Context,
+	allJobVariants crtype.JobVariants,
+	includeVariants map[string][]string,
+	start, end time.Time,
+	junitTable string) (map[string][]crtype.JobRunTestStatusRow, []error) {
 
-	generator := newSampleTestDetailsQueryGenerator(c, allJobVariants)
+	generator := newSampleTestDetailsQueryGenerator(c, allJobVariants, includeVariants, start, end, junitTable)
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
 		ctx,
@@ -176,6 +183,7 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(ctx context.Context
 }
 
 func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+	fLog := logrus.WithField("func", "getJobRunTestStatusFromBigQuery")
 	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client, c.gcsBucket)
 	if len(errs) > 0 {
 		logrus.Errorf("failed to get variants from bigquery")
@@ -184,6 +192,12 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 	var baseStatus, baseOverrideStatus, sampleStatus map[string][]crtype.JobRunTestStatusRow
 	var baseErrs, baseOverrideErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
+
+	// channels for status as we may collect status from multiple queries run in separate goroutines
+	statusCh := make(chan map[string][]crtype.JobRunTestStatusRow)
+	statusErrCh := make(chan error)
+	statusDoneCh := make(chan struct{})     // To signal when all processing is done
+	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
 	if c.BaseOverrideRelease.Release != "" && c.BaseOverrideRelease.Release != c.BaseRelease.Release {
 		wg.Add(1)
@@ -220,15 +234,101 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			logrus.Infof("Context canceled while fetching sample job run test status")
 			return
 		default:
-			sampleStatus, sampleErrs = c.getSampleJobRunTestStatus(ctx, allJobVariants)
+			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.IncludeVariants)
+			if skipQuery {
+				fLog.Infof("skipping default status query as all values for a variant were overridden")
+				return
+			}
+			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
+			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
+				c.SampleRelease.Start, c.SampleRelease.End, defaultJunitTable)
+			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
+			statusCh <- status
+			for _, err := range errs {
+				statusErrCh <- err
+			}
 		}
 
 	}()
-	wg.Wait()
-	if len(baseErrs) != 0 || len(baseOverrideErrs) != 0 || len(sampleErrs) != 0 {
+
+	// fork additional sample queries for the overrides
+	for i, or := range c.variantJunitTableOverrides {
+		if !containsOverriddenVariant(c.IncludeVariants, or.VariantName, or.VariantValue) {
+			continue
+		}
+		// only do this additional query if the specified override variant is actually included in this request
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
+				if skipQuery {
+					fLog.Infof("skipping override status query as all values for a variant were overridden")
+					return
+				}
+				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
+				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
+				end := c.SampleRelease.End
+				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
+					true, &c.SampleRelease.End, c.cacheOption.CRTimeRoundingFactor)
+				if err != nil {
+					statusErrCh <- err
+					return
+				}
+				status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
+					start, end, or.TableName)
+				fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
+				statusCh <- status
+				for _, err := range errs {
+					statusErrCh <- err
+				}
+			}
+
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(statusCh)
+		close(statusErrCh)
+	}()
+
+	go func() {
+
+		for status := range statusCh {
+			fLog.Infof("received %d test statuses over channel", len(status))
+			for k, v := range status {
+				if sampleStatus == nil {
+					fLog.Warnf("initializing sampleStatus map")
+					sampleStatus = make(map[string][]crtype.JobRunTestStatusRow)
+				}
+				if v2, ok := sampleStatus[k]; ok {
+					fLog.Warnf("sampleStatus already had key: %+v", k)
+					fLog.Warnf("sampleStatus new value: %+v", v)
+					fLog.Warnf("sampleStatus old value: %+v", v2)
+				}
+				sampleStatus[k] = v
+			}
+		}
+		close(statusDoneCh)
+	}()
+
+	go func() {
+		for err := range statusErrCh {
+			sampleErrs = append(sampleErrs, err)
+		}
+		close(statusErrsDoneCh)
+	}()
+
+	<-statusDoneCh
+	<-statusErrsDoneCh
+	fLog.Infof("total test statuses: %d", len(sampleStatus))
+	if len(baseErrs) != 0 || len(baseOverrideErrs) != 0 {
 		errs = append(errs, baseErrs...)
 		errs = append(errs, baseOverrideErrs...)
-		errs = append(errs, sampleErrs...)
 	}
 
 	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus, BaseOverrideStatus: baseOverrideStatus, SampleStatus: sampleStatus}, errs

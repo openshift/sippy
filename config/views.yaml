@@ -212,6 +212,7 @@ component_readiness:
         Topology: {}
         Upgrade: {}
         Procedure: {}
+        JobTier: {}
       include_variants:
         Architecture:
           - amd64

@@ -575,24 +575,16 @@ func getCommonTestStatusQuery(
 
 // getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
 // This is for the bottom level most specific pages in component readiness.
-func getTestDetailsQuery(c *componentReportGenerator, allJobVariants crtype.JobVariants, isSample bool) (string, string, []bigquery.QueryParameter) {
+func getTestDetailsQuery(
+	c *componentReportGenerator,
+	allJobVariants crtype.JobVariants,
+	includeVariants map[string][]string,
+	junitTable string,
+	isSample bool) (string, string, []bigquery.QueryParameter) {
+
 	jobNameQueryPortion := normalJobNameCol
 	if c.SampleRelease.PullRequestOptions != nil && isSample {
 		jobNameQueryPortion = pullRequestDynamicJobNameCol
-	}
-
-	// TODO: this is a temporary hack while we explore if rarely run jobs approach is actually going to work.
-	// A scheduled query is copying rarely run job results to a separate much smaller table every day, so we can
-	// query 3 months without spending a fortune. If this proves to work, we will work out a system of processing
-	// this as generically as we can, but it will be difficult.
-	// TODO: remove and pass junit table in
-	junitTable := defaultJunitTable
-	for k, v := range c.IncludeVariants {
-		if k == "JobTier" {
-			if slices.Contains(v, "rare") {
-				junitTable = rarelyRunJunitTable
-			}
-		}
 	}
 
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
@@ -646,7 +638,7 @@ func getTestDetailsQuery(c *componentReportGenerator, allJobVariants crtype.JobV
 		},
 	}
 
-	for _, key := range sortedKeys(c.IncludeVariants) {
+	for _, key := range sortedKeys(includeVariants) {
 		// only add in include variants that aren't part of the requested or cross-compared variants
 
 		if _, ok := c.RequestedVariants[key]; ok {
@@ -677,7 +669,7 @@ func getTestDetailsQuery(c *componentReportGenerator, allJobVariants crtype.JobV
 	if isSample {
 		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.CompareVariants, &commonParams)
 	} else {
-		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, c.IncludeVariants, &commonParams)
+		queryString += filterByCrossCompareVariants(c.VariantCrossCompare, includeVariants, &commonParams)
 	}
 	return queryString, groupString, commonParams
 }
@@ -757,7 +749,8 @@ func newBaseTestDetailsQueryGenerator(c *componentReportGenerator, allJobVariant
 }
 
 func (b *baseTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(b.ComponentReportGenerator, b.allJobVariants, false)
+	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(b.ComponentReportGenerator, b.allJobVariants,
+		b.ComponentReportGenerator.IncludeVariants, defaultJunitTable, false)
 	baseString := commonQuery + ` AND branch = @BaseRelease`
 	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + groupByQuery)
 
@@ -785,18 +778,40 @@ func (b *baseTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (cr
 type sampleTestDetailsQueryGenerator struct {
 	allJobVariants           crtype.JobVariants
 	ComponentReportGenerator *componentReportGenerator
+
+	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
+	// pull its data from. It is a public field as we want it included in the cache
+	// key to differentiate this request from other sample queries that might be using a junit table override.
+	// Normally, this would just be the default junit table, but in some cases we pull from other tables. (rarely run jobs)
+	JunitTable string
+	// IncludeVariants is a potentially slightly adjusted copy of the ComponentReportGenerator, used in conjunction with
+	// junit table overrides to tweak the query.
+	IncludeVariants map[string][]string
+
+	Start time.Time
+	End   time.Time
 }
 
-func newSampleTestDetailsQueryGenerator(c *componentReportGenerator, allJobVariants crtype.JobVariants) *sampleTestDetailsQueryGenerator {
+func newSampleTestDetailsQueryGenerator(
+	c *componentReportGenerator,
+	allJobVariants crtype.JobVariants,
+	includeVariants map[string][]string,
+	start, end time.Time,
+	junitTable string) *sampleTestDetailsQueryGenerator {
 	return &sampleTestDetailsQueryGenerator{
 		allJobVariants:           allJobVariants,
 		ComponentReportGenerator: c,
+		IncludeVariants:          includeVariants,
+		Start:                    start,
+		End:                      end,
+		JunitTable:               junitTable,
 	}
 }
 
 func (s *sampleTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(s.ComponentReportGenerator, s.allJobVariants, true)
+	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(s.ComponentReportGenerator, s.allJobVariants,
+		s.IncludeVariants, s.JunitTable, true)
 
 	sampleString := commonQuery + ` AND branch = @SampleRelease`
 	if s.ComponentReportGenerator.SampleRelease.PullRequestOptions != nil {
@@ -807,11 +822,11 @@ func (s *sampleTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{
 			Name:  "From",
-			Value: s.ComponentReportGenerator.SampleRelease.Start,
+			Value: s.Start,
 		},
 		{
 			Name:  "To",
-			Value: s.ComponentReportGenerator.SampleRelease.End,
+			Value: s.End,
 		},
 		{
 			Name:  "SampleRelease",

@@ -47,8 +47,8 @@ type RequestReleaseOptions struct {
 // date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
 	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
-	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
-	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	RelativeStart         string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd           string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
@@ -65,7 +65,8 @@ type RequestVariantOptions struct {
 	IncludeVariants     map[string][]string `json:"include_variants" yaml:"include_variants"`
 	CompareVariants     map[string][]string `json:"compare_variants,omitempty" yaml:"compare_variants,omitempty"`
 	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`
-	RequestedVariants   map[string]string   `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
+	// RequestedVariants are used for filtering the test details view down to a specific set. Unused in the main component report.
+	RequestedVariants map[string]string `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
 }
 
 // RequestOptions is a struct packaging all the options for a CR request.
