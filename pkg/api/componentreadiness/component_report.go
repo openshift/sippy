@@ -287,13 +287,14 @@ func (c *componentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.ComponentReport, []error) {
 	before := time.Now()
 
-	// query all test pass/fail counts from bigquery, both sample and basis
+	// Load all test pass/fail counts from bigquery, both sample and basis
 	componentReportTestStatus, errs := c.getTestStatusFromBigQuery(ctx)
 	if len(errs) > 0 {
 		return crtype.ComponentReport{}, errs
 	}
 
-	// prepare some information needed to generate the report:
+	// Load current regression data from bigquery, used to enhance the response with information such as how long
+	// this regression has been appearing in a tracked view.
 	bqs := NewBigQueryRegressionStore(c.client)
 	var err error
 	allRegressions, err := bqs.ListCurrentRegressions(ctx)
@@ -1317,8 +1318,14 @@ func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 
 // matchBestBaseStats returns the testStatus, release and reportTestStatus
 // that has the highest threshold across the basis release and previous releases included
-// in fallback comparison
-func (c *componentReportGenerator) matchBestBaseStats(testID crtype.ReportTestIdentification, testIdentification, baseRelease string, baseStats, sampleStats crtype.TestStatus, requiredConfidence int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) (crtype.TestStatus, string, crtype.ReportTestStats) {
+// in fallback comparison.
+func (c *componentReportGenerator) matchBestBaseStats(
+	testID crtype.ReportTestIdentification,
+	testIdentification, baseRelease string,
+	baseStats, sampleStats crtype.TestStatus,
+	requiredConfidence int,
+	approvedRegression *regressionallowances.IntentionalRegression,
+	numberOfIgnoredSampleJobRuns int) (crtype.TestStatus, string, crtype.ReportTestStats) {
 
 	// The hope is that this goes away
 	// once we agree we don't need to honor a higher intentional regression pass percentage
@@ -1712,7 +1719,7 @@ func (c *componentReportGenerator) assessComponentStatus(
 	baseSuccess,
 	baseFlake int,
 	approvedRegression *regressionallowances.IntentionalRegression,
-	numberOfIgnoredSampleJobRuns int,
+	numberOfIgnoredSampleJobRuns int, // count for triaged failures we can safely omit and ignore
 	baseRelease string,
 	baseStart,
 	baseEnd *time.Time) crtype.ReportTestStats {
