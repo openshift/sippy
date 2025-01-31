@@ -136,6 +136,7 @@ func FetchJobRun(dbc *db.DB, jobRunID int64, logger *log.Entry) (*models.ProwJob
 // if we don't have enough data from the current compareRelease we fall back to include the previous release as well
 func findReleaseMatchJobNames(dbc *db.DB, jobRun *models.ProwJobRun, compareRelease string, logger *log.Entry) ([]string, int, error) {
 	segments := strings.Split(jobRun.ProwJob.Name, "-")
+	logger = logger.WithField("func", "findReleaseMatchJobNames")
 
 	// if we don't find enough jobs to match against we can try the prior release
 	// and see if it has enough, think about cutover to a new release, etc.
@@ -224,7 +225,7 @@ func joinSegments(segments []string, start int, separator string) string {
 // JobRunRiskAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
 // risk level for each failed test, and the job run overall.
 func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount int, logger *log.Entry) (apitype.ProwJobRunRiskAnalysis, error) {
-
+	logger = logger.WithField("func", "JobRunRiskAnalysis")
 	// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
 	// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
 	// master, so it should be safe to assume the latest compareRelease in the db.
@@ -329,8 +330,7 @@ func JobRunRiskAnalysis(dbc *db.DB, jobRun *models.ProwJobRun, jobRunTestCount i
 		}
 	}
 
-	return runJobRunAnalysis(jobRun, compareRelease, jobRunTestCount, historicalCount, neverStableJob, jobNames, logger.WithField("func", "runJobRunAnalysis"),
-		jobNamesTestResultFunc(dbc), variantsTestResultFunc(dbc))
+	return runJobRunAnalysis(jobRun, compareRelease, jobRunTestCount, historicalCount, neverStableJob, jobNames, logger, jobNamesTestResultFunc(dbc), variantsTestResultFunc(dbc))
 }
 
 // testResultsByJobNameFunc is used for injecting db responses in unit tests.
@@ -414,6 +414,7 @@ func variantsTestResultFunc(dbc *db.DB) testResultsByVariantsFunc {
 func runJobRunAnalysis(jobRun *models.ProwJobRun, compareRelease string, jobRunTestCount int, historicalRunTestCount int, neverStableJob bool, jobNames []string, logger *log.Entry,
 	testResultsJobNameFunc testResultsByJobNameFunc, testResultsVariantsFunc testResultsByVariantsFunc) (apitype.ProwJobRunRiskAnalysis, error) {
 
+	logger = logger.WithField("func", "runJobRunAnalysis")
 	logger.Info("loaded prow job run for analysis")
 	logger.Infof("this job run has %d failed tests", len(jobRun.Tests))
 
