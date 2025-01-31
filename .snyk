@@ -1,0 +1,18 @@
+# References:
+# https://docs.snyk.io/scan-applications/snyk-code/using-snyk-code-from-the-cli/excluding-directories-and-files-from-the-snyk-code-cli-test
+# https://docs.snyk.io/snyk-cli/commands/ignore
+
+# used for byte compression decompression validation
+# Path: pkg/cache/compressed/cache.go, line 77
+# Info: The MD5 hash (used in crypto.md5.Sum) is insecure. Consider changing it to a secure hash algorithm
+
+# Returns warning message from release controller
+# Path: sippy-ng/src/releases/ReleaseOverview.js, line 110
+#Info: Unsanitized input from a React useState value flows into __html, where it is used to dynamically construct the HTML page on client side. This may result in a DOM Based Cross-Site Scripting attack (DOMXSS).
+exclude:
+  global:
+    - vendor/**
+    - "**/*_test.go"
+    - gen-resolved-issue.py
+    - pkg/cache/compressed/cache.go
+    - sippy-ng/src/releases/ReleaseOverview.js
