@@ -1,5 +1,61 @@
 ---
 component_readiness:
+  - name: 4.17-qe-level0
+    base_release:
+      release: "4.17"
+      relative_start: "2025-01-06T00:00:00Z"
+      relative_end: "2025-01-20T23:59:59Z"
+    sample_release:
+      release: "4.17"
+      relative_start: now-7d
+      relative_end: now
+    test_id_options:
+      capability: LEVEL0
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Network:
+          - ovn
+        Owner:
+          - qe
+          - service-delivery
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: false
   - name: 4.17-qe-main
     base_release:
       release: "4.16"
