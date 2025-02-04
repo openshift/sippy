@@ -20,8 +20,7 @@ import (
 )
 
 const (
-	defaultJunitTable   = "junit"
-	rarelyRunJunitTable = "junit_rarely_run_jobs"
+	defaultJunitTable = "junit"
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:

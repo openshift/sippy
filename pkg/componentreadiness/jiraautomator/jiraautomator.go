@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
@@ -52,11 +53,12 @@ type JiraAutomator struct {
 	// columnThresholds defines a threshold for the number of red cells in a column.
 	// When the number of red cells of a column is over this threshold, a jira card will be created for the
 	// Variant (column) based jira component. No other jira cards will be created per component row.
-	columnThresholds        map[Variant]int
-	includeComponents       sets.String
-	jiraAccount             string
-	dryRun                  bool
-	variantToJiraComponents map[Variant]JiraComponent
+	columnThresholds           map[Variant]int
+	includeComponents          sets.String
+	jiraAccount                string
+	dryRun                     bool
+	variantToJiraComponents    map[Variant]JiraComponent
+	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 }
 
 func NewJiraAutomator(
@@ -70,19 +72,21 @@ func NewJiraAutomator(
 	columnThresholds map[Variant]int,
 	dryRun bool,
 	variantToJiraComponents map[Variant]JiraComponent,
+	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (JiraAutomator, error) {
 
 	j := JiraAutomator{
-		jiraClient:              jiraClient,
-		bqClient:                bqClient,
-		cacheOptions:            cacheOptions,
-		releases:                releases,
-		sippyURL:                sippyURL,
-		columnThresholds:        columnThresholds,
-		includeComponents:       includeComponents,
-		jiraAccount:             jiraAccount,
-		dryRun:                  dryRun,
-		variantToJiraComponents: variantToJiraComponents,
+		jiraClient:                 jiraClient,
+		bqClient:                   bqClient,
+		cacheOptions:               cacheOptions,
+		releases:                   releases,
+		sippyURL:                   sippyURL,
+		columnThresholds:           columnThresholds,
+		includeComponents:          includeComponents,
+		jiraAccount:                jiraAccount,
+		dryRun:                     dryRun,
+		variantToJiraComponents:    variantToJiraComponents,
+		variantJunitTableOverrides: variantJunitTableOverrides,
 	}
 	if bqClient == nil || bqClient.BQ == nil {
 		return j, fmt.Errorf("we don't have a bigquery client for jira integrator")
@@ -133,7 +137,7 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 	}
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, "", "", reportOpts, j.cacheOptions.CRTimeRoundingFactor)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, "", "", reportOpts, j.variantJunitTableOverrides)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

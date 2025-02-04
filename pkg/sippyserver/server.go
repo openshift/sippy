@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -63,6 +64,7 @@ func NewServer(
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
 	views *apitype.SippyViews,
+	config *v1.SippyConfig,
 ) *Server {
 
 	server := &Server{
@@ -81,6 +83,7 @@ func NewServer(
 		cache:                cacheClient,
 		crTimeRoundingFactor: crTimeRoundingFactor,
 		views:                views,
+		config:               config,
 	}
 
 	if bigQueryClient != nil {
@@ -120,6 +123,7 @@ type Server struct {
 	crTimeRoundingFactor time.Duration
 	capabilities         []string
 	views                *apitype.SippyViews
+	config               *v1.SippyConfig
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -668,7 +672,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		s.prowURL,
 		s.gcsBucket,
 		options,
-		s.crTimeRoundingFactor,
+		s.config.ComponentReadinessConfig.VariantJunitTableOverrides,
 	)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))

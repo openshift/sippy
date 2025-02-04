@@ -15,8 +15,8 @@ import (
 	"cloud.google.com/go/civil"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/variantregistry"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -123,18 +123,9 @@ func GetComponentReportFromBigQuery(
 	client *bqcachedclient.Client,
 	prowURL, gcsBucket string,
 	reqOptions crtype.RequestOptions,
-	timeRoundingFactor time.Duration,
+	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (crtype.ComponentReport, []error) {
 
-	// TODO: hardcoded for now, move to a server side generic sippy config file
-	junitTableOverrides := []*crtype.VariantJunitTableOverride{
-		{
-			VariantName:   variantregistry.VariantJobTier,
-			VariantValue:  "rare",
-			TableName:     rarelyRunJunitTable,
-			RelativeStart: "end-90d",
-		},
-	}
 	generator := componentReportGenerator{
 		client:                           client,
 		prowURL:                          prowURL,
@@ -146,7 +137,7 @@ func GetComponentReportFromBigQuery(
 		RequestTestIdentificationOptions: reqOptions.TestIDOption,
 		RequestVariantOptions:            reqOptions.VariantOption,
 		RequestAdvancedOptions:           reqOptions.AdvancedOption,
-		variantJunitTableOverrides:       junitTableOverrides,
+		variantJunitTableOverrides:       variantJunitTableOverrides,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
@@ -178,7 +169,7 @@ type componentReportGenerator struct {
 	crtype.RequestVariantOptions
 	crtype.RequestAdvancedOptions
 	openRegressions            []*crtype.TestRegression
-	variantJunitTableOverrides []*crtype.VariantJunitTableOverride
+	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 }
 
 func (c *componentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
@@ -542,7 +533,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 //
 // Return includes a bool which may indicate to skip the query entirely because we've overriden all values for a variant.
 func copyIncludeVariantsAndRemoveOverrides(
-	overrides []*crtype.VariantJunitTableOverride,
+	overrides []configv1.VariantJunitTableOverride,
 	currOverride int, // index into the overrides if we're copying for that specific override query
 	includeVariants map[string][]string) (map[string][]string, bool) {
 
@@ -576,7 +567,7 @@ func copyIncludeVariantsAndRemoveOverrides(
 	return cp, false
 }
 
-func shouldSkipVariant(overrides []*crtype.VariantJunitTableOverride, currOverride int, key, value string) bool {
+func shouldSkipVariant(overrides []configv1.VariantJunitTableOverride, currOverride int, key, value string) bool {
 	for i, override := range overrides {
 		// if we're building a list of include variants for an override, then don't skip that variants inclusion
 		if i == currOverride {

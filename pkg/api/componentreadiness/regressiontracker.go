@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/pkg/errors"
@@ -85,28 +86,31 @@ func NewRegressionTracker(
 	releases []v1.Release,
 	backend RegressionStore,
 	views []crtype.View,
+	overrides []configv1.VariantJunitTableOverride,
 	dryRun bool) *RegressionTracker {
 
 	return &RegressionTracker{
-		bigqueryClient: bigqueryClient,
-		cacheOpts:      cacheOptions,
-		releases:       releases,
-		backend:        backend,
-		views:          views,
-		dryRun:         dryRun,
-		logger:         log.WithField("daemon", "regression-tracker"),
+		bigqueryClient:             bigqueryClient,
+		cacheOpts:                  cacheOptions,
+		releases:                   releases,
+		backend:                    backend,
+		views:                      views,
+		variantJunitTableOverrides: overrides,
+		dryRun:                     dryRun,
+		logger:                     log.WithField("daemon", "regression-tracker"),
 	}
 }
 
 // RegressionTracker is the primary object for managing regression tracking logic.
 type RegressionTracker struct {
-	backend        RegressionStore
-	bigqueryClient *sippybigquery.Client
-	cacheOpts      cache.RequestOptions
-	releases       []v1.Release
-	dryRun         bool
-	views          []crtype.View
-	logger         log.FieldLogger
+	backend                    RegressionStore
+	bigqueryClient             *sippybigquery.Client
+	cacheOpts                  cache.RequestOptions
+	releases                   []v1.Release
+	dryRun                     bool
+	views                      []crtype.View
+	logger                     log.FieldLogger
+	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 }
 
 // Run iterates all views with regression tracking enabled and syncs the results of it's
@@ -206,7 +210,7 @@ func (rt *RegressionTracker) syncRegressionsForView(
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
 	report, errs := GetComponentReportFromBigQuery(
-		ctx, rt.bigqueryClient, "", "", reportOpts, 4*time.Hour)
+		ctx, rt.bigqueryClient, "", "", reportOpts, rt.variantJunitTableOverrides)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
