@@ -89,7 +89,7 @@ export function relativeDuration(secondsAgo) {
 
 export function escapeRegex(str) {
   if (str === undefined) {
-    return str
+    return ''
   }
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
