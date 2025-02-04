@@ -3,7 +3,6 @@ import { CapabilitiesContext } from '../App'
 import { Card, Container, Tooltip, Typography } from '@mui/material'
 import { dayFilter, JobStackedChart } from '../jobs/JobStackedChart'
 import {
-  escapeRegex,
   getReportStartDate,
   pathForJobsWithFilter,
   queryForBookmark,
