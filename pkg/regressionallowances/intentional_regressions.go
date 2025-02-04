@@ -71,11 +71,13 @@ var regressions4_18 []byte
 
 var (
 	release417 release = "4.17"
+	release418 release = "4.18"
 )
 
 //nolint:all
 func init() {
 	importIntentionalRegressions(release417, regressions4_17)
+	importIntentionalRegressions(release418, regressions4_18)
 }
 
 func importIntentionalRegressions(releaseTarget release, jsonRegressions []byte) {
