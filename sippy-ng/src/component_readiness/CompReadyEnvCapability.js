@@ -13,8 +13,8 @@ import {
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
+import { escapeRegex, safeEncodeURIComponent } from '../helpers'
 import { Link } from 'react-router-dom'
-import { safeEncodeURIComponent } from '../helpers'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'
 import CompReadyCancelled from './CompReadyCancelled'
 import CompReadyPageTitle from './CompReadyPageTitle'
@@ -221,7 +221,7 @@ export default function CompReadyEnvCapability(props) {
               </TableCell>
               {columnNames
                 .filter((column, idx) =>
-                  column.match(new RegExp(searchColumnRegex, 'i'))
+                  column.match(new RegExp(escapeRegex(searchColumnRegex), 'i'))
                 )
                 .map((column, idx) => {
                   if (column !== 'Name') {
@@ -247,7 +247,7 @@ export default function CompReadyEnvCapability(props) {
               Object.keys(data.rows)
                 .filter((rowIndex) =>
                   data.rows[rowIndex].test_name.match(
-                    new RegExp(searchRowRegex, 'i')
+                    new RegExp(escapeRegex(searchRowRegex), 'i')
                   )
                 )
                 .filter((rowIndex) =>
@@ -257,7 +257,7 @@ export default function CompReadyEnvCapability(props) {
                         (column) =>
                           column.status <= -2 &&
                           formColumnName(column).match(
-                            new RegExp(searchColumnRegex, 'i')
+                            new RegExp(escapeRegex(searchColumnRegex), 'i')
                           )
                       )
                     : true
@@ -272,7 +272,7 @@ export default function CompReadyEnvCapability(props) {
                       results={data.rows[componentIndex].columns.filter(
                         (column, idx) =>
                           formColumnName(column).match(
-                            new RegExp(searchColumnRegex, 'i')
+                            new RegExp(escapeRegex(searchColumnRegex), 'i')
                           )
                       )}
                       columnNames={columnNames}

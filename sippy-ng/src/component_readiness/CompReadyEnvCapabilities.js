@@ -12,8 +12,8 @@ import {
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
+import { escapeRegex, safeEncodeURIComponent } from '../helpers'
 import { Link } from 'react-router-dom'
-import { safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
 import CompCapRow from './CompCapRow'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'
@@ -222,7 +222,7 @@ export default function CompReadyEnvCapabilities(props) {
               </TableCell>
               {columnNames
                 .filter((column, idx) =>
-                  column.match(new RegExp(searchColumnRegex, 'i'))
+                  column.match(new RegExp(escapeRegex(searchColumnRegex), 'i'))
                 )
                 .map((column, idx) => {
                   if (column !== 'Name') {
@@ -248,7 +248,7 @@ export default function CompReadyEnvCapabilities(props) {
               Object.keys(data.rows)
                 .filter((rowIndex) =>
                   data.rows[rowIndex].capability.match(
-                    new RegExp(searchRowRegex, 'i')
+                    new RegExp(escapeRegex(searchRowRegex), 'i')
                   )
                 )
                 .filter((rowIndex) =>
@@ -258,7 +258,7 @@ export default function CompReadyEnvCapabilities(props) {
                         (column) =>
                           column.status <= -2 &&
                           formColumnName(column).match(
-                            new RegExp(searchColumnRegex, 'i')
+                            new RegExp(escapeRegex(searchColumnRegex), 'i')
                           )
                       )
                     : true
@@ -271,7 +271,7 @@ export default function CompReadyEnvCapabilities(props) {
                       results={data.rows[componentIndex].columns.filter(
                         (column, idx) =>
                           formColumnName(column).match(
-                            new RegExp(searchColumnRegex, 'i')
+                            new RegExp(escapeRegex(searchColumnRegex), 'i')
                           )
                       )}
                       columnNames={columnNames}

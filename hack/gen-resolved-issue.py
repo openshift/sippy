@@ -404,7 +404,7 @@ def files_match(artifacts_dir, file_matches):
         # get the file path, prepend the artifacts_dir
         # load the file
         # search for each Match
-        file_url = artifacts_dir + file["FilePath"]
+        file_url = artifacts_dir + re.escape(file["FilePath"])
         contentType = None
         if "ContentType" in file:
             contentType = file["ContentType"]
@@ -417,7 +417,7 @@ def files_match(artifacts_dir, file_matches):
 
         patterns = []
         for match in file["Matches"]:
-            pattern = re.compile(match)
+            pattern = re.compile(re.escape(match))
             patterns.append(pattern)
 
         if not find_file_match(file_url, patterns, contentType, file_and_gate):
@@ -709,7 +709,7 @@ def find_matching_job_run_ids(incidents):
 
     return updated_incidents
 
-def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_cell, total_cells):
+def triage_regressions(regressed_tests, triaged_incidents, issue_url, current_cell, total_cells):
     i = 0
     for rt in regressed_tests:
         i += 1
@@ -902,6 +902,8 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_c
                 # write the record to bigquery
                 write_incident_record(triaged_incident, modified_time, target_modified_time)
 
+def escapeInput(input):
+    return re.escape(input)
 
 if __name__ == '__main__':
 
@@ -975,21 +977,21 @@ if __name__ == '__main__':
         if "Arguments" in triage_data_file:
             arguments = triage_data_file["Arguments"]
             if "TestRelease" in arguments and len(arguments["TestRelease"]) > 0:
-                args.test_release = arguments["TestRelease"]
+                args.test_release = escapeInput(arguments["TestRelease"])
             if "TestReportURL" in arguments and len(arguments["TestReportURL"]) > 0:
-                args.test_report_url = arguments["TestReportURL"]
+                args.test_report_url = escapeInput(arguments["TestReportURL"])
             if "IssueDescription" in arguments and len(arguments["IssueDescription"]) > 0:
-                args.issue_description = arguments["IssueDescription"]
+                args.issue_description = escapeInput(arguments["IssueDescription"])
             if "IssueType" in arguments and len(arguments["IssueType"]) > 0:
-                args.issue_type = arguments["IssueType"]
+                args.issue_type = escapeInput(arguments["IssueType"])
             if "IssueURL" in arguments and len(arguments["IssueURL"]) > 0:
-                args.issue_url = arguments["IssueURL"]
+                args.issue_url = escapeInput(arguments["IssueURL"])
             if "IssueResolutionDate" in arguments and len(arguments["IssueResolutionDate"]) > 0:
-                args.issue_resolution_date = arguments["IssueResolutionDate"]
+                args.issue_resolution_date = escapeInput(arguments["IssueResolutionDate"])
             if "OutputFile" in arguments and len(arguments["OutputFile"]) > 0:
-                args.output_file = arguments["OutputFile"]
+                args.output_file = escapeInput(arguments["OutputFile"])
             if "OutputType" in arguments and len(arguments["OutputType"]) > 0:
-                args.output_type = arguments["OutputType"]
+                args.output_type = escapeInput(arguments["OutputType"])
             if "TargetModifiedTime" in arguments and len(arguments["TargetModifiedTime"]) > 0:
                 args.target_modified_time = arguments["TargetModifiedTime"]
             if "TargetBuildCluster" in arguments and len(arguments["TargetBuildCluster"]) > 0:
@@ -1010,7 +1012,7 @@ if __name__ == '__main__':
             # if we have an input file and it doesn't specify the IncidentGroupId
             # update the file with the one we are assigning
             if "IncidentGroupId" in arguments and len(arguments["IncidentGroupId"]) > 0:
-                args.assign_incident_group_id = arguments["IncidentGroupId"]
+                args.assign_incident_group_id = escapeInput(arguments["IncidentGroupId"])
             else:
                 arguments["IncidentGroupId"] = incident_group_id
                 filename = args.input_file.strip("'")
