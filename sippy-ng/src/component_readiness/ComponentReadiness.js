@@ -14,6 +14,7 @@ import {
   noDataTable,
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
+import { escapeRegex } from '../helpers'
 import { grey } from '@mui/material/colors'
 import { Grid, TableContainer, Tooltip, Typography } from '@mui/material'
 import { makeStyles, useTheme } from '@mui/styles'
@@ -588,7 +589,10 @@ export default function ComponentReadiness(props) {
                                     .filter(
                                       (column, idx) =>
                                         column.match(
-                                          new RegExp(searchColumnRegex, 'i')
+                                          new RegExp(
+                                            escapeRegex(searchColumnRegex),
+                                            'i'
+                                          )
                                         ) && keepColumnsList[idx]
                                     )
 
@@ -622,7 +626,10 @@ export default function ComponentReadiness(props) {
                                 {Object.keys(data.rows)
                                   .filter((componentIndex) =>
                                     data.rows[componentIndex].component.match(
-                                      new RegExp(searchRowRegex, 'i')
+                                      new RegExp(
+                                        escapeRegex(searchRowRegex),
+                                        'i'
+                                      )
                                     )
                                   )
                                   .filter((componentIndex) =>
@@ -632,7 +639,10 @@ export default function ComponentReadiness(props) {
                                           (column) =>
                                             column.status <= -2 &&
                                             formColumnName(column).match(
-                                              new RegExp(searchColumnRegex, 'i')
+                                              new RegExp(
+                                                escapeRegex(searchColumnRegex),
+                                                'i'
+                                              )
                                             )
                                         )
                                       : true
@@ -648,13 +658,19 @@ export default function ComponentReadiness(props) {
                                       ].columns.filter(
                                         (column, idx) =>
                                           formColumnName(column).match(
-                                            new RegExp(searchColumnRegex, 'i')
+                                            new RegExp(
+                                              escapeRegex(searchColumnRegex),
+                                              'i'
+                                            )
                                           ) && keepColumnsList[idx]
                                       )}
                                       columnNames={columnNames.filter(
                                         (column, idx) =>
                                           column.match(
-                                            new RegExp(searchColumnRegex, 'i')
+                                            new RegExp(
+                                              escapeRegex(searchColumnRegex),
+                                              'i'
+                                            )
                                           ) && keepColumnsList[idx]
                                       )}
                                       grayFactor={redOnlyChecked ? 100 : 0}

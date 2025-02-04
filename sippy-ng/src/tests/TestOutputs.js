@@ -107,7 +107,7 @@ export function TestOutputs(props) {
                       style={{ justifyContent: 'center' }}
                       target="_blank"
                       startIcon={<DirectionsBoat />}
-                      href={v.url}
+                      href={encodeURI(v.url)}
                     />
                   </Tooltip>
                 </TableCell>
