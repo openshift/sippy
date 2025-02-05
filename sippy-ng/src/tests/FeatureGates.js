@@ -1,11 +1,8 @@
 import { Container, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
-import { FEATURE_GATE_TEST_THRESHOLDS } from '../constants'
-import { generateClasses } from '../datagrid/utils'
 import { Link, useHistory } from 'react-router-dom'
 import { pathForTestSubstringByVariant, SafeJSONParam } from '../helpers'
 import { useQueryParam, withDefault } from 'use-query-params'
-import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -15,7 +12,7 @@ import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 /**
  * Feature gates is the landing page for feature gates.
  */
-function FeatureGates(props) {
+export default function FeatureGates(props) {
   const history = useHistory()
 
   const { classes } = props
@@ -134,9 +131,6 @@ function FeatureGates(props) {
             columns={columns}
             pageSize={25}
             autoHeight={true}
-            getRowClassName={(params) =>
-              classes['row-percent-' + Math.round(params.row.unique_test_count)]
-            }
             rowsPerPageOptions={[10, 25, 50]}
             sortModel={sortModel} // Controlled sortModel
             onSortModelChange={(newModel) => setSortModel(newModel)}
@@ -170,7 +164,3 @@ FeatureGates.propTypes = {
   classes: PropTypes.object,
   release: PropTypes.string.isRequired,
 }
-
-export default withStyles(generateClasses(FEATURE_GATE_TEST_THRESHOLDS))(
-  FeatureGates
-)
