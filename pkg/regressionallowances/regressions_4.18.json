@@ -1,1 +1,428 @@
-[]
+[
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:0c0cc3c8ed00082e1c8c423d61129c21",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should fail to install a non-existing cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "micro",
+        "Architecture": "amd64",
+        "Platform": "aws",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:0c0cc3c8ed00082e1c8c423d61129c21",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should fail to install a non-existing cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "aws",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:0c0cc3c8ed00082e1c8c423d61129c21",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should fail to install a non-existing cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "gcp",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:0c0cc3c8ed00082e1c8c423d61129c21",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should fail to install a non-existing cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "metal",
+        "FeatureSet": "default",
+        "Suite": "parallel",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:0c0cc3c8ed00082e1c8c423d61129c21",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should fail to install a non-existing cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "micro",
+        "Architecture": "amd64",
+        "Platform": "metal",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:0c0cc3c8ed00082e1c8c423d61129c21",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should fail to install a non-existing cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "metal",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:0c0cc3c8ed00082e1c8c423d61129c21",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should fail to install a non-existing cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "vsphere",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:0c0cc3c8ed00082e1c8c423d61129c21",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should fail to install a non-existing cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "vsphere",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "upi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:f8c9a96afcf430ac6c28ef3e6f414644",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should install a cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "micro",
+        "Architecture": "amd64",
+        "Platform": "aws",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:f8c9a96afcf430ac6c28ef3e6f414644",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should install a cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "aws",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },    
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:f8c9a96afcf430ac6c28ef3e6f414644",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should install a cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "azure",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },    
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:f8c9a96afcf430ac6c28ef3e6f414644",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should install a cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "gcp",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },    
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:f8c9a96afcf430ac6c28ef3e6f414644",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should install a cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "metal",
+        "FeatureSet": "default",
+        "Suite": "parallel",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:f8c9a96afcf430ac6c28ef3e6f414644",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should install a cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "micro",
+        "Architecture": "amd64",
+        "Platform": "metal",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },    
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:f8c9a96afcf430ac6c28ef3e6f414644",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should install a cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "metal",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },    
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:f8c9a96afcf430ac6c28ef3e6f414644",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should install a cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "vsphere",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  },    
+  {
+    "JiraComponent": "OLM",
+    "TestID": "openshift-tests:f8c9a96afcf430ac6c28ef3e6f414644",
+    "TestName": "[sig-olmv1][OCPFeatureGate:NewOLM][Skipped:Disconnected] OLMv1 operator installation should install a cluster extension [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49860",
+    "ReasonToAllowInsteadOfFix": "The OLMv1 subsystem is new to OCP 4.18. Operator-controller is encountering flakiness when connecting to catalogd securely. The catalogd TLS service certificate is unable to be verified by the service-ca. Manifest changes in certificate loading and extra logs were added to determine the cause of the errors.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "vsphere",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "upi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 90,
+    "RegressedFailures": 10,
+    "RegressedFlakes": 0
+  }
+]
