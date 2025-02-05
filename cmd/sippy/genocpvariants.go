@@ -14,10 +14,9 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/variantregistry"
-
-	"github.com/openshift/sippy/pkg/flags"
 )
 
 type LoadVariantsFlags struct {
