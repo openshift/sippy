@@ -1,1 +1,51 @@
-{}
+{    
+   "JiraComponent": "kube-apiserver",
+   "TestID": "openshift-tests:d6b41cee7afca1c2a0b52f9e6975425f",
+   "TestName": "[bz-kube-apiserver][invariant] alert/KubeAPIErrorBudgetBurn should not be at or above info",
+   "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-42083",
+   "ReasonToAllowInsteadOfFix": "TBD.",
+   "variant": {
+     "variants": {
+       "Network": "ovn",
+       "Upgrade": "none",
+       "Architecture": "amd64",
+       "Platform": "metal",
+       "FeatureSet": "default",
+       "Suite": "parallel",
+       "Topology": "ha",
+       "Installer": "ipi"
+     }
+   },
+   "PreviousSuccesses": 133,
+   "PreviousFailures": 0,
+   "PreviousFlakes": 0,
+   "RegressedSuccesses": 39,
+   "RegressedFailures": 5,
+   "RegressedFlakes": 0
+ },
+ {
+   "JiraComponent": "kube-apiserver",
+   "TestID": "openshift-tests:9ff4e9b171ea809e0d6faf721b2fe737",
+   "TestName": "[sig-arch][Late] operators should not create watch channels very often [apigroup:apiserver.openshift.io] [Suite:openshift/conformance/parallel]",
+   "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-42087",
+   "ReasonToAllowInsteadOfFix": "TBD",
+   "variant": {
+     "variants": {
+       "Network": "ovn",
+       "Upgrade": "none",
+       "Architecture": "amd64",
+       "Platform": "metal",
+       "FeatureSet": "default",
+       "Suite": "parallel",
+       "Topology": "ha",
+       "Installer": "ipi"
+     }
+   },
+   "PreviousSuccesses": 133,
+   "PreviousFailures": 0,
+   "PreviousFlakes": 0,
+   "RegressedSuccesses": 39,
+   "RegressedFailures": 5,
+   "RegressedFlakes": 0
+ }
+
