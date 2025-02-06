@@ -951,6 +951,11 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
+// jsonDisabledEndpoint is used to disable an API endpoint temporarily.
+func (s *Server) jsonDisabledEndpoint(w http.ResponseWriter, _ *http.Request) {
+	failureResponse(w, http.StatusTeapot, "This API is currently disabled.")
+}
+
 // jsonJobRunRiskAnalysis is an API to make a guess at the severity of failures in a prow job run, based on historical
 // pass rates for each failed test, on-going incidents, and other factors.
 //
@@ -962,7 +967,6 @@ func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Reques
 // be stored in the job run artifacts, then imported with the job run, and will ultimately be the
 // data that is returned by the get by ID version.
 func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request) {
-
 	logger := log.WithField("func", "jsonJobRunRiskAnalysis")
 
 	jobRun := &models.ProwJobRun{}
@@ -1253,7 +1257,7 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/jobs/runs/risk_analysis",
 			Description:  "Analyzes risks of job runs",
 			Capabilities: []string{LocalDBCapability},
-			HandlerFunc:  s.jsonJobRunRiskAnalysis,
+			HandlerFunc:  s.jsonDisabledEndpoint, // disabled, was: s.jsonJobRunRiskAnalysis
 		},
 		{
 			EndpointPath: "/api/jobs/runs/intervals",
