@@ -102,6 +102,15 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
 })
 
+// endpointResponseMetrics tracks endpoint response times and http status. The _count metric in
+// the histogram can be used to track rate of requests. Excluding the endpoint and status can
+// also be used to track global request rates.
+var endpointResponseMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	Name:    "sippy_api_endpoint_response_millis",
+	Help:    "Milliseconds to respond to requests by endpoint, method, and response status",
+	Buckets: []float64{100, 200, 500, 1000, 5000, 10000, 30000, 60000, 300000},
+}, []string{"endpoint", "method", "status", "statusCode"})
+
 type Server struct {
 	mode                 Mode
 	listenAddr           string
@@ -1517,6 +1526,7 @@ func (s *Server) Serve() {
 	// wrap mux with our logger. this will
 	handler = logRequestHandler(handler)
 	// ... potentially add more middleware handlers
+	handler = apiRequestMetricsHandler(handler)
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
@@ -1543,6 +1553,37 @@ func logRequestHandler(h http.Handler) http.Handler {
 			"requestor": getRequestorIP(r),
 		}).Info("responded to request")
 	}
+	return http.HandlerFunc(fn)
+}
+
+// responseWriterInterceptor allows us to grab the http response code to include as a metric label
+type responseWriterInterceptor struct {
+	http.ResponseWriter
+	statusCode int
+	once       sync.Once
+}
+
+func (rw *responseWriterInterceptor) WriteHeader(code int) {
+	// Ensure we only set the status code once
+	rw.once.Do(func() {
+		rw.statusCode = code
+	})
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+// apiRequestMetricsHandler maintains the metric for api requests, status and response time
+// to individual endpoints.
+func apiRequestMetricsHandler(h http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		rw := &responseWriterInterceptor{ResponseWriter: w, statusCode: http.StatusOK}
+		h.ServeHTTP(rw, r)
+		elapsed := time.Since(start).Milliseconds()
+		endpointResponseMetric.WithLabelValues(r.URL.Path, r.Method,
+			http.StatusText(rw.statusCode), strconv.Itoa(rw.statusCode)).Observe(float64(elapsed))
+	}
+
 	return http.HandlerFunc(fn)
 }
 
