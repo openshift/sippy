@@ -92,7 +92,6 @@ func VariantTestsReport(dbc *db.DB, release string, reportType v1.ReportType,
 
 		switch {
 		case testNames.Has(tr.Name) || prefixMatches || subStringMatches:
-			log.Infof("Found test %s for variant %s", tr.Name, tr.Variant)
 			variantColumns.Insert(tr.Variant)
 			if _, ok := tests[tr.Name]; !ok {
 				tests[tr.Name] = map[string]apitype.Test{}
