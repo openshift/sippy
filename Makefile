@@ -59,3 +59,7 @@ e2e:
 
 images:
 	$(DOCKER) build .
+
+update-variants:
+	UPDATE_SNAPSHOT=1 go test ./pkg/variantregistry -run 'TestVariantsSnapshot'
+	UPDATE_SNAPSHOT=1 go test ./pkg/variantregistry -run 'TestVariantsSnapshot'

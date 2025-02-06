@@ -1,12 +1,16 @@
 package variantregistry
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 )
 
 func TestVariantSyncer(t *testing.T) {
@@ -1049,5 +1053,68 @@ func TestVariantSyncer(t *testing.T) {
 					test.job,
 					test.variantsFile))
 		})
+	}
+}
+
+func TestVariantsSnapshot(t *testing.T) {
+	cfgFlags := &configflags.ConfigFlags{
+		Path: "../../config/openshift.yaml",
+	}
+	cfg, err := cfgFlags.GetConfig()
+	assert.NoError(t, err)
+
+	log := logrus.WithField("test", "TestVariantsSnapshot")
+
+	newVariants := map[string]map[string]string{}
+	variantSyncer := OCPVariantLoader{config: cfg}
+	for _, releaseCfg := range cfg.Releases {
+		for job := range releaseCfg.Jobs {
+			newVariants[job] = variantSyncer.IdentifyVariants(log, job)
+		}
+	}
+
+	oldVariants := map[string]map[string]string{}
+	oldVariantsYAML, err := os.ReadFile("variants.yaml")
+	assert.NoError(t, err)
+	yaml.Unmarshal(oldVariantsYAML, &oldVariants)
+
+	// Iterate only over jobs that exist in both old and new
+	for job := range oldVariants {
+		newVars, exists := newVariants[job]
+		if !exists {
+			continue // Ignore removed jobs
+		}
+
+		t.Run(job, func(t *testing.T) {
+			var changes []string
+			oldVars := oldVariants[job]
+
+			// Compare variant keys and values
+			for key, newValue := range newVars {
+				if oldValue, ok := oldVars[key]; ok && oldValue != newValue {
+					changes = append(changes, "Changed variant: "+key+" ("+oldValue+" → "+newValue+")")
+				}
+			}
+
+			// Check for removed variants
+			for key := range oldVars {
+				if _, ok := newVars[key]; !ok {
+					changes = append(changes, "Removed variant: "+key)
+				}
+			}
+
+			if len(changes) > 0 {
+				t.Logf("Changes for job %s:\n%s", job, strings.Join(changes, "\n"))
+				t.Fail()
+			}
+		})
+	}
+
+	// If UPDATE_SNAPSHOT env is set, update the snapshot
+	if os.Getenv("UPDATE_SNAPSHOT") != "" {
+		y, err := yaml.Marshal(newVariants)
+		assert.NoError(t, err)
+		err = os.WriteFile("variants.yaml", y, 0644)
+		assert.NoError(t, err)
 	}
 }
