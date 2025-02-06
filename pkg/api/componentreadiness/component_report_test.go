@@ -4,12 +4,14 @@ package componentreadiness
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/apache/thrift/lib/go/thrift"
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/stretchr/testify/assert"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -1530,7 +1532,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
 			assert.Equal(t, tc.expectedReport.BaseStats, report.BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.BaseStats, report.BaseStats)
 			assert.Equal(t, tc.expectedReport.SampleStats, report.SampleStats, "expected report sample stats %+v, got %+v", tc.expectedReport.SampleStats, report.SampleStats)
-			assert.Equal(t, *tc.expectedReport.FisherExact, *report.FisherExact, "expected fisher exact number %+v, got %+v", tc.expectedReport.FisherExact, report.FisherExact)
+			assert.Equal(t, fmt.Sprintf("%.4f", *tc.expectedReport.FisherExact), fmt.Sprintf("%.4f", *report.FisherExact), "expected fisher exact number %+v, got %+v", tc.expectedReport.FisherExact, report.FisherExact)
 			assert.Equal(t, tc.expectedReport.ReportStatus, report.ReportStatus, "expected report status %+v, got %+v", tc.expectedReport.ReportStatus, report.ReportStatus)
 			assert.Equal(t, len(tc.expectedReport.JobStats), len(report.JobStats), "expected len of job stats %+v, got %+v", len(tc.expectedReport.JobStats), report.JobStats)
 			for i := range tc.expectedReport.JobStats {
@@ -1836,7 +1838,11 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, tt.numberOfIgnoredSamples, "dummyRelease", nil, nil)
 			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")
 			if tt.expectedFischers != nil {
-				assert.Equalf(t, *tt.expectedFischers, *testStats.FisherExact, "assessComponentStatus expected fischers value not equal")
+				// Mac and Linux do not matchup on floating point precision, so lets approximate the comparison:
+				assert.Equalf(t,
+					fmt.Sprintf("%.4f", *tt.expectedFischers),
+					fmt.Sprintf("%.4f", *testStats.FisherExact),
+					"assessComponentStatus expected fischers value not equal")
 			} else {
 				assert.Nil(t, testStats.FisherExact)
 			}
@@ -1848,7 +1854,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 func TestCopyIncludeVariantsAndRemoveOverrides(t *testing.T) {
 	tests := []struct {
 		name              string
-		overrides         []*crtype.VariantJunitTableOverride
+		overrides         []v1.VariantJunitTableOverride
 		currOverride      int
 		includeVariants   map[string][]string
 		expected          map[string][]string
@@ -1856,7 +1862,7 @@ func TestCopyIncludeVariantsAndRemoveOverrides(t *testing.T) {
 	}{
 		{
 			name:         "No overrides, no variants removed",
-			overrides:    []*crtype.VariantJunitTableOverride{},
+			overrides:    []v1.VariantJunitTableOverride{},
 			currOverride: -1,
 			includeVariants: map[string][]string{
 				"key1": {"value1", "value2"},
@@ -1869,7 +1875,7 @@ func TestCopyIncludeVariantsAndRemoveOverrides(t *testing.T) {
 		},
 		{
 			name: "Single override removes matching variant",
-			overrides: []*crtype.VariantJunitTableOverride{
+			overrides: []v1.VariantJunitTableOverride{
 				{VariantName: "key1", VariantValue: "value1"},
 			},
 			currOverride: -1,
@@ -1884,7 +1890,7 @@ func TestCopyIncludeVariantsAndRemoveOverrides(t *testing.T) {
 		},
 		{
 			name: "Override does not remove its own variant",
-			overrides: []*crtype.VariantJunitTableOverride{
+			overrides: []v1.VariantJunitTableOverride{
 				{VariantName: "key1", VariantValue: "value1"},
 			},
 			currOverride: 0,
@@ -1899,7 +1905,7 @@ func TestCopyIncludeVariantsAndRemoveOverrides(t *testing.T) {
 		},
 		{
 			name: "Multiple overrides remove multiple variants",
-			overrides: []*crtype.VariantJunitTableOverride{
+			overrides: []v1.VariantJunitTableOverride{
 				{VariantName: "key1", VariantValue: "value1"},
 				{VariantName: "key2", VariantValue: "value3"},
 			},
@@ -1915,7 +1921,7 @@ func TestCopyIncludeVariantsAndRemoveOverrides(t *testing.T) {
 		},
 		{
 			name: "All variants removed",
-			overrides: []*crtype.VariantJunitTableOverride{
+			overrides: []v1.VariantJunitTableOverride{
 				{VariantName: "key1", VariantValue: "value1"},
 				{VariantName: "key1", VariantValue: "value2"},
 				{VariantName: "key2", VariantValue: "value3"},
