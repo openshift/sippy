@@ -64,7 +64,7 @@ const (
         from (
             select sum(runs) as current_runs, sum(passes) as current_successes
             from test_analysis_by_job_by_dates 
-            where test_name = ? AND job_name IN ?
+            where date >= ? AND test_name = ? AND job_name IN ?
         ) t`
 )
 
