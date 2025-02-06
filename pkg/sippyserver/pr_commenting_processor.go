@@ -22,6 +22,7 @@ import (
 	jobQueries "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/prow"
+	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -58,6 +59,11 @@ var (
 		Help:    "Tracks the call made to query db and add items to the pending work queue",
 		Buckets: prometheus.LinearBuckets(0, 500, 10),
 	}, []string{"type"})
+
+	riskAnalysisPRTestRiskMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "sippy_risk_analysis_pr_test_risk",
+		Help: "Tracks the risk level of high risk PRs",
+	}, []string{"org", "repo", "pr", "job", "jobID", "test"})
 )
 
 type RiskAnalysisEntry struct {
@@ -72,8 +78,9 @@ type RiskAnalysisEntry struct {
 // commentUpdaterRate: the minimum duration between adding a comment before we begin work on adding the next
 // ghCommenter: the commenting implmentation
 // dryRunOnly: default is true to prevent unintended commenting when running locally or in a test deployment
-func NewWorkProcessor(dbc *db.DB, gcsBucket *storage.BucketHandle, commentAnalysisWorkers int, commentAnalysisRate, commentUpdaterRate time.Duration, ghCommenter *commenter.GitHubCommenter, dryRunOnly bool) *WorkProcessor {
+func NewWorkProcessor(dbc *db.DB, gcsBucket *storage.BucketHandle, commentAnalysisWorkers int, bigQueryClient *bigquery.Client, commentAnalysisRate, commentUpdaterRate time.Duration, ghCommenter *commenter.GitHubCommenter, dryRunOnly bool) *WorkProcessor {
 	wp := &WorkProcessor{dbc: dbc, gcsBucket: gcsBucket, ghCommenter: ghCommenter,
+		bigQueryClient:         bigQueryClient,
 		commentAnalysisRate:    commentAnalysisRate,
 		commentUpdaterRate:     commentUpdaterRate,
 		commentAnalysisWorkers: commentAnalysisWorkers,
@@ -89,6 +96,7 @@ type WorkProcessor struct {
 	dbc                    *db.DB
 	gcsBucket              *storage.BucketHandle
 	ghCommenter            *commenter.GitHubCommenter
+	bigQueryClient         *bigquery.Client
 	dryRunOnly             bool
 }
 
@@ -111,6 +119,7 @@ type CommentWorker struct {
 type AnalysisWorker struct {
 	dbc                 *db.DB
 	gcsBucket           *storage.BucketHandle
+	bigQueryClient      *bigquery.Client
 	riskAnalysisLocator *regexp.Regexp
 	pendingAnalysis     chan models.PullRequestComment
 	pendingComments     chan PendingComment
@@ -168,7 +177,7 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 	defer close(pendingWork)
 
 	for i := 0; i < wp.commentAnalysisWorkers; i++ {
-		analysisWorker := AnalysisWorker{riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(), dbc: wp.dbc, gcsBucket: wp.gcsBucket, pendingAnalysis: pendingWork, pendingComments: pendingComments}
+		analysisWorker := AnalysisWorker{riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(), dbc: wp.dbc, gcsBucket: wp.gcsBucket, bigQueryClient: wp.bigQueryClient, pendingAnalysis: pendingWork, pendingComments: pendingComments}
 		go analysisWorker.Run()
 	}
 
@@ -474,6 +483,7 @@ func (aw *AnalysisWorker) processRiskAnalysisComment(prPendingComment models.Pul
 		sortedAnalysis := make(RiskAnalysisEntryList, 0)
 		for k, v := range analysis {
 			sortedAnalysis = append(sortedAnalysis, RiskAnalysisEntry{k, v})
+			setRiskAnalysisHighRiskMetrics(prPendingComment.Org, prPendingComment.Repo, strconv.Itoa(prPendingComment.PullNumber), k, v.URL, v)
 		}
 		sort.Sort(sortedAnalysis)
 
@@ -493,6 +503,16 @@ func (aw *AnalysisWorker) processRiskAnalysisComment(prPendingComment models.Pul
 	log.Debugf("Adding comment to pendingComments: %s/%s/%s", pendingComment.org, pendingComment.repo, pendingComment.sha)
 	aw.pendingComments <- pendingComment
 	log.Debugf("Comment added to pendingComments: %s/%s/%s", pendingComment.org, pendingComment.repo, pendingComment.sha)
+}
+
+func setRiskAnalysisHighRiskMetrics(org, repo, number, jobName, jobID string, summary RiskAnalysisSummary) {
+	for _, testSummary := range summary.TestRiskAnalysis {
+		if summary.RiskLevel == api.FailureRiskLevelHigh {
+			riskAnalysisPRTestRiskMetric.WithLabelValues(org, repo, number, jobName, jobID, testSummary.Name).Set(float64(testSummary.Risk.Level.Level))
+		} else {
+			riskAnalysisPRTestRiskMetric.DeleteLabelValues(org, repo, number, jobName, jobID, testSummary.Name)
+		}
+	}
 }
 
 func buildComment(sortedAnalysis RiskAnalysisEntryList, sha string) string {
@@ -792,7 +812,7 @@ func (aw *AnalysisWorker) getRiskSummary(jobRunID, jobRunIDPath string, priorRis
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.WithError(err).Errorf("Error fetching job run for: %s", jobRunIDPath)
 		}
-	} else if ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, jobRun, jobRunTestCount, logger); err != nil {
+	} else if ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, aw.bigQueryClient, jobRun, jobRunTestCount, logger, true); err != nil {
 		logger.WithError(err).Errorf("Error querying risk analysis for: %s", jobRunIDPath)
 	} else {
 		// query succeeded so use the riskAnalysis we got
