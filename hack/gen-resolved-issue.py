@@ -822,12 +822,15 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_c
 
         if args.intentional_regressions:
             #get the data from json_data
+            # default to 95% pass rate if not
             if "base_stats" not in json_data or "sample_stats" not in json_data:
-                continue
-
-            intentionalRegression["PreviousSuccesses"] = json_data["base_stats"]["success_count"]
-            intentionalRegression["PreviousFailures"] = json_data["base_stats"]["failure_count"]
-            intentionalRegression["PreviousFlakes"] = json_data["base_stats"]["flake_count"]
+                 intentionalRegression["PreviousSuccesses"] = 95
+                 intentionalRegression["PreviousFailures"] = 5
+                 intentionalRegression["PreviousFlakes"] = 0
+            else:
+                intentionalRegression["PreviousSuccesses"] = json_data["base_stats"]["success_count"]
+                intentionalRegression["PreviousFailures"] = json_data["base_stats"]["failure_count"]
+                intentionalRegression["PreviousFlakes"] = json_data["base_stats"]["flake_count"]
 
             intentionalRegression["RegressedSuccesses"] = json_data["sample_stats"]["success_count"]
             intentionalRegression["RegressedFailures"] = json_data["sample_stats"]["failure_count"]
