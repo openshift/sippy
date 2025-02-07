@@ -3,6 +3,7 @@ package variantregistry
 import (
 	"context"
 	"fmt"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,6 +15,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"gopkg.in/yaml.v3"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
@@ -29,6 +31,8 @@ type OCPVariantLoader struct {
 	bigQueryProject string
 	bigQueryDataSet string
 	bigQueryTable   string
+	existing        map[string]map[string]string
+	overrides       map[string]map[string]string
 }
 
 func NewOCPVariantLoader(
@@ -40,11 +44,29 @@ func NewOCPVariantLoader(
 	gcsBucket string,
 	config *v1.SippyConfig) *OCPVariantLoader {
 
-	bkt := gcsClient.Bucket(gcsBucket)
+	var existing map[string]map[string]string
+	existingYaml, err := os.ReadFile("snapshot.yaml")
+	if err != nil {
+		panic(errors.Wrap(err, "unable to read snapshot.yaml"))
+	}
+	yaml.Unmarshal(existingYaml, &existing)
+
+	var overrides map[string]map[string]string
+	overridesYaml, err := os.ReadFile("overrides.yaml")
+	if err != nil {
+		panic(errors.Wrap(err, "unable to read overrides.yaml"))
+	}
+	yaml.Unmarshal(overridesYaml, &overrides)
+
+	var bkt *storage.BucketHandle
+	if gcsBucket != "" {
+		bkt = gcsClient.Bucket(gcsBucket)
+	}
 	return &OCPVariantLoader{
 		BigQueryClient:  bigQueryClient,
 		bkt:             bkt,
 		config:          config,
+		overrides:       overrides,
 		bigQueryProject: bigQueryProject,
 		bigQueryDataSet: bigQueryDataSet,
 		bigQueryTable:   bigQueryTable,
@@ -186,7 +208,6 @@ var fileVariantsToIgnore = map[string]bool{
 }
 
 func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobName string, variantFile map[string]string) map[string]string {
-
 	// Calculate variants based on job name:
 	variants := v.IdentifyVariants(jLog, jobName)
 
@@ -254,6 +275,14 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 		}
 	}
 
+	// Handle explicit overrides
+	if overrides, ok := v.overrides[jobName]; ok {
+		for name, value := range overrides {
+			logrus.WithField("job", jobName).Infof("variant override %s:%s", name, value)
+			variants[name] = value
+		}
+	}
+
 	return variants
 }
 
@@ -297,7 +326,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	variants := map[string]string{}
 
 	for _, setter := range []func(jLog logrus.FieldLogger, variants map[string]string, jobName string){
-		setRelease, // Keep release first, other setters may look up release info in variants map
+		v.setRelease, // Keep release first, other setters may look up release info in variants map
 		setAggregation,
 		setPlatform,
 		setInstaller,
@@ -314,7 +343,8 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		setCGroupMode,
 		setLayeredProduct,
 		setContainerRuntime,
-		v.setJobTierAndProcedure, // Keep this near last, it relies on other variants like owner
+		setProcedure,
+		v.setJobTier, // Keep this near last, it relies on other variants like owner
 	} {
 		setter(jLog, variants, jobName)
 	}
@@ -494,7 +524,14 @@ func setNetworkStack(_ logrus.FieldLogger, variants map[string]string, jobName s
 	variants[VariantNetworkStack] = "ipv4"
 }
 
-func setRelease(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	// Prefer core release from sippy config
+	for version, release := range v.config.Releases {
+		if _, ok := release.Jobs[jobName]; ok {
+			variants[VariantRelease] = version
+		}
+	}
+
 	release, fromRelease := extractReleases(jobName)
 	releaseMajorMinor := strings.Split(release, ".")
 	if release != "" {
@@ -526,6 +563,85 @@ func setRelease(_ logrus.FieldLogger, variants map[string]string, jobName string
 		delete(variants, VariantFromReleaseMajor)
 		delete(variants, VariantFromReleaseMinor)
 	}
+}
+
+func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	// Excluded jobs:
+	jobTierPatterns := []struct {
+		substring string
+		jobTier   string
+	}{
+		{"-okd", "excluded"},
+		{"-recovery", "excluded"},
+		{"aggregator-", "excluded"},
+		{"alibaba", "excluded"},
+		{"-disruptive", "excluded"},
+		{"-rollback", "excluded"},
+		{"-out-of-change", "excluded"},
+		{"-sno-fips-recert", "excluded"},
+
+		// Rarely run
+		{"-cpu-partitioning", "rare"},
+		{"-etcd-scaling", "rare"},
+
+		{"-automated-release", "standard"},
+	}
+
+	for _, jobTierPattern := range jobTierPatterns {
+		if strings.Contains(jobNameLower, jobTierPattern.substring) {
+			variants[VariantJobTier] = jobTierPattern.jobTier
+			return
+		}
+	}
+
+	// Special case for "qe" owner - always excluded except specific jobs
+	if variants[VariantOwner] == "qe" {
+		variants[VariantJobTier] = "excluded"
+		return
+	}
+
+	// Determine job tier from release configuration
+	release := variants[VariantRelease]
+	if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
+		variants[VariantJobTier] = "blocking"
+	} else if util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName) {
+		variants[VariantJobTier] = "informing"
+	} else if v.config.Releases[release].Jobs[jobName] {
+		variants[VariantJobTier] = "standard"
+	} else if existingVariants, ok := v.existing[jobName]; ok && existingVariants[VariantJobTier] != "" {
+		// Use the existing tier for this job -- its how we control never-before-seen jobs
+		// always get "candidate" below.  If they've been promoted by overrides, its preserved
+		// here.
+		variants[VariantJobTier] = existingVariants[VariantJobTier]
+	} else {
+		variants[VariantJobTier] = "candidate"
+	}
+}
+
+func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	// Job procedure patterns
+	procedurePatterns := []struct {
+		substring string
+		procedure string
+	}{
+		{"-etcd-scaling", "etcd-scaling"},
+		{"-cpu-partitioning", "cpu-partitioning"},
+		{"-automated-release", "automated-release"},
+	}
+
+	for _, entry := range procedurePatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantProcedure] = entry.procedure
+			return
+		}
+	}
+
+	// Default procedure
+	variants[VariantProcedure] = VariantNoValue
 }
 
 func (v *OCPVariantLoader) setJobTierAndProcedure(_ logrus.FieldLogger, variants map[string]string, jobName string) {

@@ -1,0 +1,5 @@
+---
+#job:
+#   variant_name: variant_value
+periodic-ci-openshift-release-master-nightly-4.10-upgrade-from-stable-4.9-e2e-metal-ipi-upgrade:
+  JobTier: standard

@@ -87,6 +87,7 @@ func TestVariantSyncer(t *testing.T) {
 	tests := []struct {
 		job          string
 		variantsFile map[string]string
+		overrides    map[string]map[string]string
 		expected     map[string]string
 	}{
 		{
@@ -727,6 +728,11 @@ func TestVariantSyncer(t *testing.T) {
 		},
 		{
 			job: "periodic-ci-openshift-with-no-release-info",
+			overrides: map[string]map[string]string{
+				"periodic-ci-openshift-with-no-release-info": {
+					VariantJobTier: "standard",
+				},
+			},
 			expected: map[string]string{
 				VariantArch:             "amd64",
 				VariantInstaller:        "ipi",
@@ -738,7 +744,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantUpgrade:          VariantNoValue,
 				VariantAggregation:      VariantNoValue,
 				VariantProcedure:        "none",
-				VariantJobTier:          "excluded",
+				VariantJobTier:          "standard",
 				VariantFeatureSet:       VariantDefaultValue,
 				VariantNetworkAccess:    VariantDefaultValue,
 				VariantScheduler:        VariantDefaultValue,
@@ -873,7 +879,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantInstaller:        "ipi",
 				VariantPlatform:         "aws",
 				VariantProcedure:        "none",
-				VariantJobTier:          "excluded",
+				VariantJobTier:          "candidate",
 				VariantNetwork:          "ovn",
 				VariantNetworkStack:     "ipv4",
 				VariantOwner:            "perfscale",
@@ -1145,6 +1151,8 @@ func TestVariantSyncer(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.job, func(t *testing.T) {
+			variantSyncer.overrides = test.overrides
+
 			assert.Equal(t, test.expected,
 				variantSyncer.CalculateVariantsForJob(
 					logrus.WithField("source", "TestVariantSyncer"),
@@ -1169,52 +1177,49 @@ func TestVariantsSnapshot(t *testing.T) {
 
 	// Re-generate all the variants
 	newVariants := map[string]map[string]string{}
-	variantSyncer := OCPVariantLoader{config: cfg}
+	variantSyncer := NewOCPVariantLoader(nil, "", "", "", nil, "", cfg)
 	for _, releaseCfg := range cfg.Releases {
 		for job := range releaseCfg.Jobs {
-			newVariants[job] = variantSyncer.IdentifyVariants(log, job)
+			newVariants[job] = variantSyncer.CalculateVariantsForJob(log, job, nil)
 		}
 	}
 
 	// Load the old variants
 	oldVariants := map[string]map[string]string{}
-	oldVariantsYAML, err := os.ReadFile("variants.yaml")
+	oldVariantsYAML, err := os.ReadFile("snapshot.yaml")
 	assert.NoError(t, err)
 	yaml.Unmarshal(oldVariantsYAML, &oldVariants)
 
 	// Iterate only over jobs that exist in both old and new
 	anyFail := 0
-	for job := range oldVariants {
-		newVars, exists := newVariants[job]
-		if !exists {
-			continue // Ignore removed jobs
+	for job, newVars := range newVariants {
+		oldVars, exists := oldVariants[job]
+		if exists {
+			t.Run(job, func(t *testing.T) {
+				var changes []string
+
+				// Check for added, changed, and removed variants
+				for key, newValue := range newVars {
+					if oldValue, ok := oldVars[key]; !ok {
+						changes = append(changes, fmt.Sprintf("Added %s:%s", key, newValue))
+					} else if oldValue != newValue {
+						changes = append(changes, fmt.Sprintf("Changed %s (%s -> %s)", key, oldValue, newValue))
+					}
+				}
+
+				for key := range oldVars {
+					if _, ok := newVars[key]; !ok {
+						changes = append(changes, "Removed "+key)
+					}
+				}
+
+				if len(changes) > 0 {
+					t.Logf("%s:\n%s", job, strings.Join(changes, "\n"))
+					t.Fail()
+					anyFail++
+				}
+			})
 		}
-
-		t.Run(job, func(t *testing.T) {
-			var changes []string
-			oldVars := oldVariants[job]
-
-			// Check for added, changed, and removed variants
-			for key, newValue := range newVars {
-				if oldValue, ok := oldVars[key]; !ok {
-					changes = append(changes, fmt.Sprintf("Added %s:%s", key, newValue))
-				} else if oldValue != newValue {
-					changes = append(changes, fmt.Sprintf("Changed %s (%s -> %s)", key, oldValue, newValue))
-				}
-			}
-
-			for key := range oldVars {
-				if _, ok := newVars[key]; !ok {
-					changes = append(changes, "Removed "+key)
-				}
-			}
-
-			if len(changes) > 0 {
-				t.Logf("%s:\n%s", job, strings.Join(changes, "\n"))
-				t.Fail()
-				anyFail++
-			}
-		})
 	}
 
 	if anyFail > 0 {
@@ -1225,7 +1230,7 @@ func TestVariantsSnapshot(t *testing.T) {
 	if os.Getenv("UPDATE_SNAPSHOT") != "" {
 		y, err := yaml.Marshal(newVariants)
 		assert.NoError(t, err)
-		err = os.WriteFile("variants.yaml", y, 0644)
+		err = os.WriteFile("snapshot.yaml", y, 0644)
 		assert.NoError(t, err)
 	}
 }
