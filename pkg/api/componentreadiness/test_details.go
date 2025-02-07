@@ -264,6 +264,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			case <-ctx.Done():
 				return
 			default:
+				i := i // var shadow, as we're capturing i in the func()
 				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
 				if skipQuery {
 					fLog.Infof("skipping override status query as all values for a variant were overridden")

@@ -395,15 +395,11 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				fLog.Infof("Context canceled while fetching fallback query status")
 				return
 			default:
-				// TODO: how does rarely run impact here? all basis, so perhaps not at all.
 				c.getFallbackBaseQueryStatus(ctx, allJobVariants, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End)
 			}
 		}()
 	}
 
-	// TODO: hack in the variant modifications, we dont want our rarely run variant overrides to appear in basis,
-	// but can we assume this always? is a variant override implicitly rarely run, and implicitly pass rate comparison
-	// only? not really. perhaps make that part of the override struct.
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -531,7 +527,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 // just to be careful for any future cases where we might have multiple overrides in play, and want to make sure we
 // don't accidentally pull data for one, from the others junit table.
 //
-// Return includes a bool which may indicate to skip the query entirely because we've overriden all values for a variant.
+// Return includes a bool which may indicate to skip the query entirely because we've overridden all values for a variant.
 func copyIncludeVariantsAndRemoveOverrides(
 	overrides []configv1.VariantJunitTableOverride,
 	currOverride int, // index into the overrides if we're copying for that specific override query
