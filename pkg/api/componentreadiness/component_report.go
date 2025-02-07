@@ -53,13 +53,6 @@ var (
 	DefaultDBGroupBy     = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
 )
 
-func newFallbackReleases() crtype.FallbackReleases {
-	fb := crtype.FallbackReleases{
-		Releases: map[string]crtype.ReleaseTestMap{},
-	}
-	return fb
-}
-
 func getSingleColumnResultToSlice(ctx context.Context, query *bigquery.Query) ([]string, error) {
 	names := []string{}
 	it, err := query.Read(ctx)
@@ -83,13 +76,13 @@ func getSingleColumnResultToSlice(ctx context.Context, query *bigquery.Query) ([
 	return names, nil
 }
 
-// TODO: in several of the below functions we instantiate an entire componentReportGenerator
+// TODO: in several of the below functions we instantiate an entire ComponentReportGenerator
 // to fetch some small piece of data. These look like they should be broken out. The partial
 // instantiation of a complex object is risky in terms of bugs and maintenance.
 
 func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client,
 	gcsBucket string) (crtype.TestVariants, []error) {
-	generator := componentReportGenerator{
+	generator := ComponentReportGenerator{
 		client:    client,
 		gcsBucket: gcsBucket,
 	}
@@ -99,7 +92,7 @@ func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedc
 }
 
 func GetReleaseDatesFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]crtype.Release, []error) {
-	generator := componentReportGenerator{
+	generator := ComponentReportGenerator{
 		client: client,
 	}
 
@@ -109,7 +102,7 @@ func GetReleaseDatesFromBigQuery(ctx context.Context, client *bqcachedclient.Cli
 func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client,
 	gcsBucket string) (crtype.JobVariants,
 	[]error) {
-	generator := componentReportGenerator{
+	generator := ComponentReportGenerator{
 		client:    client,
 		gcsBucket: gcsBucket,
 	}
@@ -126,7 +119,7 @@ func GetComponentReportFromBigQuery(
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (crtype.ComponentReport, []error) {
 
-	generator := componentReportGenerator{
+	generator := ComponentReportGenerator{
 		client:                           client,
 		prowURL:                          prowURL,
 		gcsBucket:                        gcsBucket,
@@ -148,23 +141,22 @@ func GetComponentReportFromBigQuery(
 		crtype.ComponentReport{})
 }
 
-// componentReportGenerator contains the information needed to generate a CR report. Do
+// ComponentReportGenerator contains the information needed to generate a CR report. Do
 // not add public fields to this struct if they are not valid as a cache key.
 // GeneratorVersion is used to indicate breaking changes in the versions of
 // the cached data.  It is used when the struct
 // is marshalled for the cache key and should be changed when the object being
 // cached changes in a way that will no longer be compatible with any prior cached version.
-type componentReportGenerator struct {
-	ReportModified             *time.Time
-	client                     *bqcachedclient.Client
-	prowURL                    string
-	gcsBucket                  string
-	cacheOption                cache.RequestOptions
-	BaseRelease                crtype.RequestReleaseOptions
-	BaseOverrideRelease        crtype.RequestReleaseOptions
-	SampleRelease              crtype.RequestReleaseOptions
-	triagedIssues              *resolvedissues.TriagedIncidentsForRelease
-	cachedFallbackTestStatuses *crtype.FallbackReleases
+type ComponentReportGenerator struct {
+	ReportModified      *time.Time
+	client              *bqcachedclient.Client
+	prowURL             string
+	gcsBucket           string
+	cacheOption         cache.RequestOptions
+	BaseRelease         crtype.RequestReleaseOptions
+	BaseOverrideRelease crtype.RequestReleaseOptions
+	SampleRelease       crtype.RequestReleaseOptions
+	triagedIssues       *resolvedissues.TriagedIncidentsForRelease
 	crtype.RequestTestIdentificationOptions
 	crtype.RequestVariantOptions
 	crtype.RequestAdvancedOptions
@@ -172,7 +164,7 @@ type componentReportGenerator struct {
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 }
 
-func (c *componentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
+func (c *ComponentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
 	// Make sure we have initialized the report modified field
 	if c.ReportModified == nil {
 		c.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.cacheOption)
@@ -180,7 +172,7 @@ func (c *componentReportGenerator) GetComponentReportCacheKey(ctx context.Contex
 	return api.GetPrefixedCacheKey(prefix, c)
 }
 
-func (c *componentReportGenerator) GenerateVariants(ctx context.Context) (crtype.TestVariants, []error) {
+func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype.TestVariants, []error) {
 	errs := []error{}
 	columns := make(map[string][]string)
 
@@ -203,7 +195,7 @@ func (c *componentReportGenerator) GenerateVariants(ctx context.Context) (crtype
 	}, errs
 }
 
-func (c *componentReportGenerator) GenerateReleaseDates(ctx context.Context) ([]crtype.Release, []error) {
+func (c *ComponentReportGenerator) GenerateReleaseDates(ctx context.Context) ([]crtype.Release, []error) {
 	releases, err := api.GetReleasesFromBigQuery(ctx, c.client)
 	if err != nil {
 		return nil, []error{err}
@@ -221,7 +213,7 @@ func (c *componentReportGenerator) GenerateReleaseDates(ctx context.Context) ([]
 	return crReleases, nil
 }
 
-func (c *componentReportGenerator) GenerateJobVariants(ctx context.Context) (crtype.JobVariants, []error) {
+func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crtype.JobVariants, []error) {
 	errs := []error{}
 	variants := crtype.JobVariants{Variants: map[string][]string{}}
 	queryString := fmt.Sprintf(`SELECT variant_name, ARRAY_AGG(DISTINCT variant_value ORDER BY variant_value) AS variant_values
@@ -275,7 +267,7 @@ func (c *componentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 }
 
 // GenerateReport is the main entry point for generation of a component readiness report.
-func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.ComponentReport, []error) {
+func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.ComponentReport, []error) {
 	before := time.Now()
 
 	// Load all test pass/fail counts from bigquery, both sample and basis
@@ -309,7 +301,7 @@ func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 }
 
 // getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
-func (c *componentReportGenerator) getBaseQueryStatus(ctx context.Context,
+func (c *ComponentReportGenerator) getBaseQueryStatus(ctx context.Context,
 	allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
 
 	generator := newBaseQueryGenerator(c, allJobVariants)
@@ -324,27 +316,8 @@ func (c *componentReportGenerator) getBaseQueryStatus(ctx context.Context,
 	return componentReportTestStatus.BaseStatus, nil
 }
 
-func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Context,
-	allJobVariants crtype.JobVariants,
-	release string, start, end time.Time) []error {
-	generator := newFallbackTestQueryReleasesGenerator(c, allJobVariants, release, start, end)
-
-	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*crtype.FallbackReleases](
-		ctx, c.client.Cache, generator.cacheOption,
-		api.GetPrefixedCacheKey("FallbackReleases~", generator),
-		generator.getTestFallbackReleases,
-		&crtype.FallbackReleases{})
-
-	if len(errs) > 0 {
-		return errs
-	}
-
-	c.cachedFallbackTestStatuses = cachedFallbackTestStatuses
-	return nil
-}
-
 // getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
-func (c *componentReportGenerator) getSampleQueryStatus(
+func (c *ComponentReportGenerator) getSampleQueryStatus(
 	ctx context.Context,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
@@ -367,7 +340,7 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 
 // getTestStatusFromBigQuery orchestrates the actual fetching of junit test run data for both basis and sample.
 // goroutines are used to concurrently request the data for basis, sample, and various other edge cases.
-func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
+func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	before := time.Now()
 	fLog := log.WithField("func", "getTestStatusFromBigQuery")
 	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client, c.gcsBucket)
@@ -387,17 +360,6 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
 	if c.IncludeMultiReleaseAnalysis {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				fLog.Infof("Context canceled while fetching fallback query status")
-				return
-			default:
-				c.getFallbackBaseQueryStatus(ctx, allJobVariants, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End)
-			}
-		}()
 	}
 
 	wg.Add(1)
@@ -424,7 +386,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				return
 			}
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
-			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.SampleRelease.Start, c.SampleRelease.End, defaultJunitTable)
+			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.SampleRelease.Start, c.SampleRelease.End, DefaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			statusCh <- status
 			for _, err := range errs {
@@ -598,7 +560,7 @@ func testToComponentAndCapability(_ TestWithVariantsKey, stats crtype.TestStatus
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
-func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string, stats crtype.TestStatus) ([]crtype.RowIdentification, []crtype.ColumnID, error) {
+func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string, stats crtype.TestStatus) ([]crtype.RowIdentification, []crtype.ColumnID, error) {
 	var test TestWithVariantsKey
 	columnGroupByVariants := c.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
@@ -766,7 +728,7 @@ func getMinor(in string) (int, error) {
 	return int(minor), err
 }
 
-func previousRelease(release string) (string, error) {
+func PreviousRelease(release string) (string, error) {
 	prev := release
 	var err error
 	var major, minor int
@@ -779,23 +741,23 @@ func previousRelease(release string) (string, error) {
 	return prev, err
 }
 
-func (c *componentReportGenerator) normalizeProwJobName(prowName string) string {
+func (c *ComponentReportGenerator) normalizeProwJobName(prowName string) string {
 	name := prowName
 	if c.BaseRelease.Release != "" {
 		name = strings.ReplaceAll(name, c.BaseRelease.Release, "X.X")
-		if prev, err := previousRelease(c.BaseRelease.Release); err == nil {
+		if prev, err := PreviousRelease(c.BaseRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
 	if c.BaseOverrideRelease.Release != "" {
 		name = strings.ReplaceAll(name, c.BaseOverrideRelease.Release, "X.X")
-		if prev, err := previousRelease(c.BaseOverrideRelease.Release); err == nil {
+		if prev, err := PreviousRelease(c.BaseOverrideRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
 	if c.SampleRelease.Release != "" {
 		name = strings.ReplaceAll(name, c.SampleRelease.Release, "X.X")
-		if prev, err := previousRelease(c.SampleRelease.Release); err == nil {
+		if prev, err := PreviousRelease(c.SampleRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
@@ -806,7 +768,7 @@ func (c *componentReportGenerator) normalizeProwJobName(prowName string) string 
 	return name
 }
 
-func (c *componentReportGenerator) fetchJobRunTestStatusResults(ctx context.Context,
+func (c *ComponentReportGenerator) fetchJobRunTestStatusResults(ctx context.Context,
 	query *bigquery.Query) (map[string][]crtype.JobRunTestStatusRow, []error) {
 	errs := []error{}
 	status := map[string][]crtype.JobRunTestStatusRow{}
@@ -946,7 +908,7 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification,
 	}
 }
 
-func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(ctx context.Context,
+func (c *ComponentReportGenerator) getTriagedIssuesFromBigQuery(ctx context.Context,
 	testID crtype.ReportTestIdentification) (
 	int, []crtype.TriagedIncident, []error) {
 	generator := triagedIncidentsGenerator{
@@ -974,7 +936,7 @@ func (c *componentReportGenerator) getTriagedIssuesFromBigQuery(ctx context.Cont
 	return impactedRuns, triagedIncidents, nil
 }
 
-func (c *componentReportGenerator) GetLastReportModifiedTime(ctx context.Context, client *bqcachedclient.Client,
+func (c *ComponentReportGenerator) GetLastReportModifiedTime(ctx context.Context, client *bqcachedclient.Client,
 	options cache.RequestOptions) *time.Time {
 
 	if c.ReportModified == nil {
@@ -1001,7 +963,7 @@ func (c *componentReportGenerator) GetLastReportModifiedTime(ctx context.Context
 			LastModifiedStartTime: &initLastModifiedTime,
 		}
 
-		// this gets called a lot, so we want to set it once on the componentReportGenerator
+		// this gets called a lot, so we want to set it once on the ComponentReportGenerator
 		lastModifiedTime, errs := api.GetDataFromCacheOrGenerate[*time.Time](ctx, generator.client.Cache,
 			generator.cacheOption, api.GetPrefixedCacheKey("TriageLastModified~", generator), generator.generateTriagedIssuesLastModifiedTime, generator.LastModifiedStartTime)
 
@@ -1218,7 +1180,7 @@ func (t *triagedIncidentsGenerator) fetchTriagedIssues(ctx context.Context,
 	return incidents, errs
 }
 
-func (c *componentReportGenerator) triagedIncidentsFor(ctx context.Context,
+func (c *ComponentReportGenerator) triagedIncidentsFor(ctx context.Context,
 	testID crtype.ReportTestIdentification) (int,
 	[]crtype.TriagedIncident) {
 	// handle test case / missing client
@@ -1248,7 +1210,7 @@ func (c *componentReportGenerator) triagedIncidentsFor(ctx context.Context,
 //
 // ie. if the request was for 95% confidence, but we see that a test has an open regression (meaning at some point recently
 // we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
-func (c *componentReportGenerator) getRequiredConfidence(testID string, variants map[string]string) int {
+func (c *ComponentReportGenerator) getRequiredConfidence(testID string, variants map[string]string) int {
 	if len(c.openRegressions) > 0 {
 		view := c.openRegressions[0].View // grab view from first regression, they were queried only for sample release
 		or := FindOpenRegression(view, testID, variants, c.openRegressions)
@@ -1270,7 +1232,7 @@ func (c *componentReportGenerator) getRequiredConfidence(testID string, variants
 // threshold when used as a basis.  It will ignore intentional regressions if we are relying
 // on fallback to find the highest threshold.  It will return the original testStatus if there
 // is no intentional regression or the testStatus has a higher threshold
-func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, baseStats crtype.TestStatus) (crtype.TestStatus, string) {
+func (c *ComponentReportGenerator) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, baseStats crtype.TestStatus) (crtype.TestStatus, string) {
 	var baseRegression *regressionallowances.IntentionalRegression
 	if !c.IncludeMultiReleaseAnalysis && len(c.VariantCrossCompare) == 0 {
 		// only really makes sense when not cross-comparing variants:
@@ -1282,7 +1244,7 @@ func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 		if baseRegression != nil && baseRegression.PreviousPassPercentage(c.FlakeAsFailure) > c.getTestStatusPassRate(baseStats) {
 			// override with  the basis regression previous values
 			// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-			baseRegressionPreviousRelease, err := previousRelease(c.BaseRelease.Release)
+			baseRegressionPreviousRelease, err := PreviousRelease(c.BaseRelease.Release)
 			if err != nil {
 				log.WithError(err).Error("Failed to determine the previous release for baseRegression")
 			} else {
@@ -1306,7 +1268,7 @@ func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 // matchBestBaseStats returns the testStatus, release and reportTestStatus
 // that has the highest threshold across the basis release and previous releases included
 // in fallback comparison.
-func (c *componentReportGenerator) matchBestBaseStats(
+func (c *ComponentReportGenerator) matchBestBaseStats(
 	testID crtype.ReportTestIdentification,
 	testKeyStr, baseRelease string,
 	baseStats, sampleStats crtype.TestStatus,
@@ -1338,7 +1300,7 @@ func (c *componentReportGenerator) matchBestBaseStats(
 		var cachedTestStatuses crtype.ReleaseTestMap
 		var cTestStats crtype.TestStatus
 		ok := false
-		priorRelease, err = previousRelease(priorRelease)
+		priorRelease, err = PreviousRelease(priorRelease)
 		// if we fail to determine the previous release then stop
 		if err != nil {
 			return baseStats, baseRelease, baseTestStats
@@ -1378,7 +1340,7 @@ func (c *componentReportGenerator) matchBestBaseStats(
 
 // TODO: break this function down and remove this nolint
 // nolint:gocyclo
-func (c *componentReportGenerator) generateComponentTestReport(ctx context.Context,
+func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Context,
 	baseStatus map[string]crtype.TestStatus,
 	sampleStatus map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
 	report := crtype.ComponentReport{
@@ -1647,11 +1609,11 @@ func getFailureCount(status crtype.JobRunTestStatusRow) int {
 	return failure
 }
 
-func (c *componentReportGenerator) getTestStatusPassRate(testStatus crtype.TestStatus) float64 {
+func (c *ComponentReportGenerator) getTestStatusPassRate(testStatus crtype.TestStatus) float64 {
 	return c.getPassRate(testStatus.SuccessCount, testStatus.TotalCount-testStatus.SuccessCount-testStatus.FlakeCount, testStatus.FlakeCount)
 }
 
-func (c *componentReportGenerator) getPassRate(success, failure, flake int) float64 {
+func (c *ComponentReportGenerator) getPassRate(success, failure, flake int) float64 {
 	total := success + failure + flake
 	if total == 0 {
 		return 0.0
@@ -1676,7 +1638,7 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTr
 	return crtype.SignificantRegression
 }
 
-func (c *componentReportGenerator) getEffectivePityFactor(basisPassPercentage float64, approvedRegression *regressionallowances.IntentionalRegression) int {
+func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage float64, approvedRegression *regressionallowances.IntentionalRegression) int {
 	if approvedRegression != nil && approvedRegression.RegressedFailures > 0 {
 		regressedPassPercentage := approvedRegression.RegressedPassPercentage(c.FlakeAsFailure)
 		if regressedPassPercentage < basisPassPercentage {
@@ -1695,7 +1657,7 @@ func (c *componentReportGenerator) getEffectivePityFactor(basisPassPercentage fl
 	return c.PityFactor
 }
 
-func (c *componentReportGenerator) assessComponentStatus(
+func (c *ComponentReportGenerator) assessComponentStatus(
 	requiredConfidence,
 	sampleTotal,
 	sampleSuccess,
@@ -1768,7 +1730,7 @@ func (c *componentReportGenerator) assessComponentStatus(
 	return testStats
 }
 
-func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure int, approvedRegression *regressionallowances.IntentionalRegression, initialSampleTotal int, baseRelease string, baseStart, baseEnd *time.Time) crtype.ReportTestStats {
+func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure int, approvedRegression *regressionallowances.IntentionalRegression, initialSampleTotal int, baseRelease string, baseStart, baseEnd *time.Time) crtype.ReportTestStats {
 
 	fisherExact := 0.0
 	baseStats := &crtype.TestDetailsReleaseStats{
@@ -1905,7 +1867,7 @@ func (c *componentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 	return testStats
 }
 
-func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake int, requiredSuccessRate float64) crtype.ReportTestStats {
+func (c *ComponentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake int, requiredSuccessRate float64) crtype.ReportTestStats {
 	successRate := c.getPassRate(sampleSuccess, sampleFailure, sampleFlake)
 
 	// Assume 2x our allowed failure rate = an extreme regression.
@@ -1946,7 +1908,7 @@ func (c *componentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleF
 	}
 }
 
-func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleFailure, sampleSuccess, baseFailure, baseSuccess int) (bool, float64) {
+func (c *ComponentReportGenerator) fischerExactTest(confidenceRequired, sampleFailure, sampleSuccess, baseFailure, baseSuccess int) (bool, float64) {
 	_, _, r, _ := fischer.FisherExactTest(sampleFailure,
 		sampleSuccess,
 		baseFailure,
@@ -1954,7 +1916,7 @@ func (c *componentReportGenerator) fischerExactTest(confidenceRequired, sampleFa
 	return r < 1-float64(confidenceRequired)/100, r
 }
 
-func (c *componentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx context.Context, field string,
+func (c *ComponentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx context.Context, field string,
 	nested bool) ([]string,
 	error) {
 	unnest := ""

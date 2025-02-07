@@ -23,7 +23,7 @@ import (
 
 func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBucket string, reqOptions crtype.RequestOptions,
 ) (crtype.ReportTestDetails, []error) {
-	generator := componentReportGenerator{
+	generator := ComponentReportGenerator{
 		client:                           client,
 		prowURL:                          prowURL,
 		gcsBucket:                        gcsBucket,
@@ -45,7 +45,7 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBu
 		crtype.ReportTestDetails{})
 }
 
-func (c *componentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (crtype.ReportTestDetails, []error) {
+func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (crtype.ReportTestDetails, []error) {
 	if c.TestID == "" {
 		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
@@ -97,7 +97,7 @@ func (c *componentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	return report, nil
 }
 
-func (c *componentReportGenerator) GenerateJobRunTestReportStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+func (c *ComponentReportGenerator) GenerateJobRunTestReportStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 	before := time.Now()
 	componentJobRunTestReportStatus, errs := c.getJobRunTestStatusFromBigQuery(ctx)
 	if len(errs) > 0 {
@@ -130,7 +130,7 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	return
 }
 
-func (c *componentReportGenerator) getBaseJobRunTestStatus(
+func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	ctx context.Context,
 	allJobVariants crtype.JobVariants,
 	baseRelease string,
@@ -159,7 +159,7 @@ func (c *componentReportGenerator) getBaseJobRunTestStatus(
 	return jobRunTestStatus.BaseStatus, nil
 }
 
-func (c *componentReportGenerator) getSampleJobRunTestStatus(
+func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 	ctx context.Context,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
@@ -182,7 +182,7 @@ func (c *componentReportGenerator) getSampleJobRunTestStatus(
 	return jobRunTestStatus.SampleStatus, nil
 }
 
-func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 	fLog := logrus.WithField("func", "getJobRunTestStatusFromBigQuery")
 	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client, c.gcsBucket)
 	if len(errs) > 0 {
@@ -241,7 +241,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			}
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
 			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
-				c.SampleRelease.Start, c.SampleRelease.End, defaultJunitTable)
+				c.SampleRelease.Start, c.SampleRelease.End, DefaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			statusCh <- status
 			for _, err := range errs {
@@ -337,7 +337,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 
 // internalGenerateTestDetailsReport handles the report generation for the lowest level test report including
 // breakdown by job as well as overall stats.
-func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context.Context,
+func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context.Context,
 	baseStatus map[string][]crtype.JobRunTestStatusRow,
 	baseRelease string,
 	baseStart,
@@ -486,7 +486,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	if baseRegression != nil && baseRegression.PreviousPassPercentage(c.FlakeAsFailure) > c.getPassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-		baseRegressionPreviousRelease, err := previousRelease(baseRelease)
+		baseRegressionPreviousRelease, err := PreviousRelease(baseRelease)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to determine the previous release for baseRegression")
 		} else {
@@ -518,7 +518,7 @@ func (c *componentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	return result
 }
 
-func (c *componentReportGenerator) getJobRunStats(stats crtype.JobRunTestStatusRow, prowURL, gcsBucket string) crtype.TestDetailsJobRunStats {
+func (c *ComponentReportGenerator) getJobRunStats(stats crtype.JobRunTestStatusRow, prowURL, gcsBucket string) crtype.TestDetailsJobRunStats {
 	failure := getFailureCount(stats)
 	url := fmt.Sprintf("%s/view/gs/%s/", prowURL, gcsBucket)
 	subs := strings.Split(stats.FilePath, "/artifacts/")

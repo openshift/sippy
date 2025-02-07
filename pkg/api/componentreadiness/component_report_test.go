@@ -51,7 +51,7 @@ var (
 	}
 	defaultColumnGroupByVariants    = sets.NewString(strings.Split(DefaultColumnGroupBy, ",")...)
 	defaultDBGroupByVariants        = sets.NewString(strings.Split(DefaultDBGroupBy, ",")...)
-	defaultComponentReportGenerator = componentReportGenerator{
+	defaultComponentReportGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
 		RequestVariantOptions: crtype.RequestVariantOptions{
 			ColumnGroupBy: defaultColumnGroupByVariants,
@@ -65,7 +65,7 @@ var (
 		MinimumFailure: 3,
 		FlakeAsFailure: true,
 	}
-	flakeFailComponentReportGenerator = componentReportGenerator{
+	flakeFailComponentReportGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
 		RequestVariantOptions: crtype.RequestVariantOptions{
 			ColumnGroupBy: defaultColumnGroupByVariants,
@@ -74,7 +74,7 @@ var (
 		RequestAdvancedOptions: flakeFailAdvancedOption,
 	}
 	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
-	groupByInstallerComponentReportGenerator = componentReportGenerator{
+	groupByInstallerComponentReportGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
 		RequestVariantOptions: crtype.RequestVariantOptions{
 			ColumnGroupBy: installerColumnGroupByVariants,
@@ -82,7 +82,7 @@ var (
 		},
 		RequestAdvancedOptions: defaultAdvancedOption,
 	}
-	componentPageGenerator = componentReportGenerator{
+	componentPageGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
 		RequestTestIdentificationOptions: crtype.RequestTestIdentificationOptions{
 			Component: "component 2",
@@ -93,7 +93,7 @@ var (
 		},
 		RequestAdvancedOptions: defaultAdvancedOption,
 	}
-	capabilityPageGenerator = componentReportGenerator{
+	capabilityPageGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
 		RequestTestIdentificationOptions: crtype.RequestTestIdentificationOptions{
 			Component:  "component 2",
@@ -105,7 +105,7 @@ var (
 		},
 		RequestAdvancedOptions: defaultAdvancedOption,
 	}
-	testPageGenerator = componentReportGenerator{
+	testPageGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
 		RequestTestIdentificationOptions: crtype.RequestTestIdentificationOptions{
 			Component:  "component 2",
@@ -118,7 +118,7 @@ var (
 		},
 		RequestAdvancedOptions: defaultAdvancedOption,
 	}
-	testDetailsGenerator = componentReportGenerator{
+	testDetailsGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
 		RequestTestIdentificationOptions: crtype.RequestTestIdentificationOptions{
 			Component:  "component 1",
@@ -398,7 +398,7 @@ func TestGenerateComponentReport(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		generator      componentReportGenerator
+		generator      ComponentReportGenerator
 		baseStatus     map[string]crtype.TestStatus
 		sampleStatus   map[string]crtype.TestStatus
 		expectedReport crtype.ComponentReport
@@ -779,7 +779,7 @@ func TestGenerateComponentReport(t *testing.T) {
 		},
 		{
 			name: "top page test confidence 90 result in regression",
-			generator: componentReportGenerator{
+			generator: ComponentReportGenerator{
 				RequestVariantOptions: crtype.RequestVariantOptions{
 					ColumnGroupBy: defaultColumnGroupByVariants,
 				},
@@ -873,7 +873,7 @@ func TestGenerateComponentReport(t *testing.T) {
 		},
 		{
 			name: "top page test confidence 90 pity 10 result in no regression",
-			generator: componentReportGenerator{
+			generator: ComponentReportGenerator{
 				RequestVariantOptions: crtype.RequestVariantOptions{
 					ColumnGroupBy: defaultColumnGroupByVariants,
 				},
@@ -1281,7 +1281,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	tests := []struct {
 		name                    string
-		generator               componentReportGenerator
+		generator               ComponentReportGenerator
 		baseRequiredJobStats    []requiredJobStats
 		sampleRequiredJobStats  []requiredJobStats
 		expectedReport          crtype.ReportTestDetails
@@ -1579,7 +1579,7 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &componentReportGenerator{}
+			c := &ComponentReportGenerator{}
 			if tt.baseRelease != "" {
 				c.BaseRelease = crtype.RequestReleaseOptions{Release: tt.baseRelease}
 			}
@@ -1830,7 +1830,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &componentReportGenerator{}
+			c := &ComponentReportGenerator{}
 			c.PassRateRequiredNewTests = tt.requiredPassRateForNewTests
 			c.PassRateRequiredAllTests = tt.requiredPassRateForAllTests
 			c.MinimumFailure = tt.minFail

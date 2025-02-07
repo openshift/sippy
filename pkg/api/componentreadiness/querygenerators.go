@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"slices"
 	"sort"
-	"sync"
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/openshift/sippy/pkg/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -20,7 +18,7 @@ import (
 )
 
 const (
-	defaultJunitTable = "junit"
+	DefaultJunitTable = "junit"
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
@@ -99,18 +97,16 @@ const (
 					ELSE jobs.prowjob_job_name
 		    	END AS variant_registry_job_name,
 `
-	// consider fallback data good for 7 days
-	fallbackQueryTimeRoundingOverride = 24 * 7 * time.Hour
 )
 
 type baseQueryGenerator struct {
 	client                   *bqcachedclient.Client
 	cacheOption              cache.RequestOptions
 	allVariants              crtype.JobVariants
-	ComponentReportGenerator *componentReportGenerator
+	ComponentReportGenerator *ComponentReportGenerator
 }
 
-func newBaseQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVariants) baseQueryGenerator {
+func newBaseQueryGenerator(c *ComponentReportGenerator, allVariants crtype.JobVariants) baseQueryGenerator {
 	generator := baseQueryGenerator{
 		client:      c.client,
 		allVariants: allVariants,
@@ -126,8 +122,8 @@ func newBaseQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVa
 
 func (b *baseQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(b.ComponentReportGenerator,
-		b.allVariants, b.ComponentReportGenerator.IncludeVariants, defaultJunitTable, false, false)
+	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(b.ComponentReportGenerator,
+		b.allVariants, b.ComponentReportGenerator.IncludeVariants, DefaultJunitTable, false, false)
 
 	before := time.Now()
 	errs := []error{}
@@ -164,7 +160,7 @@ func (b *baseQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Report
 type sampleQueryGenerator struct {
 	client                   *bqcachedclient.Client
 	allVariants              crtype.JobVariants
-	ComponentReportGenerator *componentReportGenerator
+	ComponentReportGenerator *ComponentReportGenerator
 	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
 	// pull its data from. It is a public field as we want it included in the cache
 	// key to differentiate this request from other sample queries that might be using a junit table override.
@@ -179,7 +175,7 @@ type sampleQueryGenerator struct {
 }
 
 func newSampleQueryGenerator(
-	c *componentReportGenerator,
+	c *ComponentReportGenerator,
 	allVariants crtype.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time,
@@ -198,7 +194,7 @@ func newSampleQueryGenerator(
 }
 
 func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(s.ComponentReportGenerator,
+	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(s.ComponentReportGenerator,
 		s.allVariants, s.IncludeVariants, s.JunitTable, true, false)
 
 	before := time.Now()
@@ -251,208 +247,9 @@ func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Repo
 	return crtype.ReportTestStatus{SampleStatus: sampleStatus}, errs
 }
 
-// fallbackTestQueryReleasesGenerator iterates the configured number of past releases, querying base status for
-// each, which can then be used to return the best basis data from those past releases for comparison.
-type fallbackTestQueryReleasesGenerator struct {
-	client                     *bqcachedclient.Client
-	cacheOption                cache.RequestOptions
-	allVariants                crtype.JobVariants
-	BaseRelease                string
-	BaseStart                  time.Time
-	BaseEnd                    time.Time
-	CachedFallbackTestStatuses crtype.FallbackReleases
-	lock                       *sync.Mutex
-	ComponentReportGenerator   *componentReportGenerator
-}
-
-func newFallbackTestQueryReleasesGenerator(c *componentReportGenerator, allVariants crtype.JobVariants,
-	release string, start, end time.Time) fallbackTestQueryReleasesGenerator {
-	generator := fallbackTestQueryReleasesGenerator{
-		client:      c.client,
-		allVariants: allVariants,
-		cacheOption: cache.RequestOptions{
-			ForceRefresh: c.cacheOption.ForceRefresh,
-			// increase the time that fallback queries are cached for
-			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
-		},
-		BaseRelease:              release,
-		BaseStart:                start,
-		BaseEnd:                  end,
-		lock:                     &sync.Mutex{},
-		ComponentReportGenerator: c,
-	}
-	return generator
-
-}
-
-func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context.Context) (*crtype.FallbackReleases, []error) {
-	wg := sync.WaitGroup{}
-	f.CachedFallbackTestStatuses = newFallbackReleases()
-	releases, errs := GetReleaseDatesFromBigQuery(ctx, f.client)
-
-	if errs != nil {
-		return nil, errs
-	}
-
-	// currently gets current base plus previous 3
-	// current base is just for testing but use could be
-	// extended to no longer require the base query
-	var selectedReleases []*crtype.Release
-	fallbackRelease := f.BaseRelease
-
-	// Get up to 3 fallback releases
-	for i := 0; i < 3; i++ {
-		var crRelease *crtype.Release
-
-		fallbackRelease, err := previousRelease(fallbackRelease)
-		if err != nil {
-			log.WithError(err).Errorf("Failure determining fallback release for %s", fallbackRelease)
-			break
-		}
-
-		for i := range releases {
-			if releases[i].Release == fallbackRelease {
-				crRelease = &releases[i]
-				break
-			}
-		}
-
-		if crRelease != nil {
-			selectedReleases = append(selectedReleases, crRelease)
-		}
-	}
-
-	for _, crRelease := range selectedReleases {
-
-		start := f.BaseStart
-		end := f.BaseEnd
-
-		// we want our base release validation to match the base release report dates
-		if crRelease.Release != f.BaseRelease && crRelease.End != nil && crRelease.Start != nil {
-			end = *crRelease.End
-			start = *crRelease.Start
-		}
-
-		wg.Add(1)
-		go func(queryRelease crtype.Release, queryStart, queryEnd time.Time) {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				log.Infof("Context canceled while fetching fallback base query status")
-				return
-			default:
-				stats, errs := f.getTestFallbackRelease(ctx, queryRelease.Release, queryStart, queryEnd)
-				if len(errs) > 0 {
-					log.Errorf("FallbackBaseQueryStatus for %s failed with: %v", queryRelease, errs)
-					return
-				}
-
-				f.updateTestStatuses(queryRelease, stats.BaseStatus)
-			}
-		}(*crRelease, start, end)
-	}
-	wg.Wait()
-
-	return &f.CachedFallbackTestStatuses, nil
-}
-
-func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.Release, updateStatuses map[string]crtype.TestStatus) {
-
-	var testStatuses crtype.ReleaseTestMap
-	var ok bool
-	// since we  can be called for multiple releases and
-	// we update the map below we need to block concurrent map writes
-	f.lock.Lock()
-	defer f.lock.Unlock()
-	if testStatuses, ok = f.CachedFallbackTestStatuses.Releases[release.Release]; !ok {
-		testStatuses = crtype.ReleaseTestMap{Release: release, Tests: map[string]crtype.TestStatus{}}
-		f.CachedFallbackTestStatuses.Releases[release.Release] = testStatuses
-	}
-
-	for key, value := range updateStatuses {
-		testStatuses.Tests[key] = value
-	}
-}
-
-func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.Context, release string, start, end time.Time) (crtype.ReportTestStatus, []error) {
-	generator := newFallbackBaseQueryGenerator(f.ComponentReportGenerator, f.allVariants, release, start, end)
-
-	testStatuses, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator), generator.getTestFallbackRelease, crtype.ReportTestStatus{})
-
-	if len(errs) > 0 {
-		return crtype.ReportTestStatus{}, errs
-	}
-
-	return testStatuses, nil
-}
-
-type fallbackTestQueryGenerator struct {
-	client                   *bqcachedclient.Client
-	cacheOption              cache.RequestOptions
-	allVariants              crtype.JobVariants
-	BaseRelease              string
-	BaseStart                time.Time
-	BaseEnd                  time.Time
-	ComponentReportGenerator *componentReportGenerator
-}
-
-func newFallbackBaseQueryGenerator(c *componentReportGenerator, allVariants crtype.JobVariants,
-	baseRelease string, baseStart, baseEnd time.Time) fallbackTestQueryGenerator {
-	generator := fallbackTestQueryGenerator{
-		ComponentReportGenerator: c,
-		client:                   c.client,
-		allVariants:              allVariants,
-		cacheOption: cache.RequestOptions{
-			ForceRefresh: c.cacheOption.ForceRefresh,
-			// increase the time that base query is cached for since it shouldn't be changing
-			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
-		},
-		BaseRelease: baseRelease,
-		BaseStart:   baseStart,
-		BaseEnd:     baseEnd,
-	}
-	return generator
-}
-
-func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := getCommonTestStatusQuery(f.ComponentReportGenerator,
-		f.allVariants, f.ComponentReportGenerator.IncludeVariants, defaultJunitTable, false, true)
-	before := time.Now()
-	log.Infof("Starting Fallback (%s) QueryTestStatus", f.BaseRelease)
-	errs := []error{}
-	baseString := commonQuery + ` AND branch = @BaseRelease`
-	baseQuery := f.client.BQ.Query(baseString + groupByQuery)
-
-	baseQuery.Parameters = append(baseQuery.Parameters, queryParameters...)
-	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
-		{
-			Name:  "From",
-			Value: f.BaseStart,
-		},
-		{
-			Name:  "To",
-			Value: f.BaseEnd,
-		},
-		{
-			Name:  "BaseRelease",
-			Value: f.BaseRelease,
-		},
-	}...)
-
-	baseStatus, baseErrs := fetchTestStatusResults(ctx, baseQuery)
-
-	if len(baseErrs) != 0 {
-		errs = append(errs, baseErrs...)
-	}
-
-	log.Infof("Fallback (%s) QueryTestStatus completed in %s with %d base results from db", f.BaseRelease, time.Since(before), len(baseStatus))
-
-	return crtype.ReportTestStatus{BaseStatus: baseStatus}, errs
-}
-
-// getCommonTestStatusQuery returns the common query for the higher level summary component summary.
-func getCommonTestStatusQuery(
-	c *componentReportGenerator,
+// BuildCommonTestStatusQuery returns the common query for the higher level summary component summary.
+func BuildCommonTestStatusQuery(
+	c *ComponentReportGenerator,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
 	junitTable string,
@@ -575,7 +372,7 @@ func getCommonTestStatusQuery(
 // getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
 // This is for the bottom level most specific pages in component readiness.
 func getTestDetailsQuery(
-	c *componentReportGenerator,
+	c *ComponentReportGenerator,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
 	junitTable string,
@@ -728,10 +525,10 @@ type baseTestDetailsQueryGenerator struct {
 	BaseRelease              string
 	BaseStart                time.Time
 	BaseEnd                  time.Time
-	ComponentReportGenerator *componentReportGenerator
+	ComponentReportGenerator *ComponentReportGenerator
 }
 
-func newBaseTestDetailsQueryGenerator(c *componentReportGenerator, allJobVariants crtype.JobVariants,
+func newBaseTestDetailsQueryGenerator(c *ComponentReportGenerator, allJobVariants crtype.JobVariants,
 	baseRelease string, baseStart time.Time, baseEnd time.Time) *baseTestDetailsQueryGenerator {
 	return &baseTestDetailsQueryGenerator{
 		allJobVariants: allJobVariants,
@@ -749,7 +546,7 @@ func newBaseTestDetailsQueryGenerator(c *componentReportGenerator, allJobVariant
 
 func (b *baseTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(b.ComponentReportGenerator, b.allJobVariants,
-		b.ComponentReportGenerator.IncludeVariants, defaultJunitTable, false)
+		b.ComponentReportGenerator.IncludeVariants, DefaultJunitTable, false)
 	baseString := commonQuery + ` AND branch = @BaseRelease`
 	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + groupByQuery)
 
@@ -776,7 +573,7 @@ func (b *baseTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (cr
 // sampleTestDetailsQueryGenerator generates the query we use for the sample on the test details page.
 type sampleTestDetailsQueryGenerator struct {
 	allJobVariants           crtype.JobVariants
-	ComponentReportGenerator *componentReportGenerator
+	ComponentReportGenerator *ComponentReportGenerator
 
 	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
 	// pull its data from. It is a public field as we want it included in the cache
@@ -792,7 +589,7 @@ type sampleTestDetailsQueryGenerator struct {
 }
 
 func newSampleTestDetailsQueryGenerator(
-	c *componentReportGenerator,
+	c *ComponentReportGenerator,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time,
