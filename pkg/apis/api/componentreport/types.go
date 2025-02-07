@@ -142,26 +142,16 @@ func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
 	return ts.TotalCount, ts.SuccessCount, failures, ts.FlakeCount
 }
 
-// ReportTestStatus contains the mapping of all test keys (serialized with TestIdentification, variants + testID)
+// ReportTestStatus contains the mapping of all test keys (serialized with TestWithVariantsKey, variants + testID)
 // It is also an internal type used to pass data from bigquery onwards to report generation, and does not get serialized
 // as an API response.
 type ReportTestStatus struct {
-	// BaseStatus represents the stable basis for the comparison. Maps TestIdentification serialized as a string, to test status.
+	// BaseStatus represents the stable basis for the comparison. Maps TestWithVariantsKey serialized as a string, to test status.
 	BaseStatus map[string]TestStatus `json:"base_status"`
 
-	// SampleSatus represents the sample for the comparison. Maps TestIdentification serialized as a string, to test status.
+	// SampleSatus represents the sample for the comparison. Maps TestWithVariantsKey serialized as a string, to test status.
 	SampleStatus map[string]TestStatus `json:"sample_status"`
 	GeneratedAt  *time.Time            `json:"generated_at"`
-}
-
-// TestIdentification TODO: we need to get Network/Upgrade/Arch/Platform/FlatVariants off this struct as the actual variants will be dynamic.
-// However making it a map will likely break anything using this struct as a map key.
-// We may need to serialize it to a predictable string? Serialize as JSON string perhaps? Will fields be predictably ordered? Seems like go maps are always alphabetical.
-type TestIdentification struct {
-	TestID string `json:"test_id"`
-
-	// Proposed, need to serialize to use as map key
-	Variants map[string]string `json:"variants"`
 }
 
 type ComponentReport struct {

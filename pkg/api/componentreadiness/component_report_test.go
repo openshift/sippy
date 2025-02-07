@@ -18,7 +18,7 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-func fakeComponentAndCapabilityGetter(test crtype.TestIdentification, stats crtype.TestStatus) (string, []string) {
+func fakeComponentAndCapabilityGetter(test TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
 	name := stats.TestName
 	known := map[string]struct {
 		component    string
@@ -149,7 +149,7 @@ func filterColumnIDByDefault(id crtype.ColumnIdentification) crtype.ColumnIdenti
 }
 
 func TestGenerateComponentReport(t *testing.T) {
-	awsAMD64OVNTest := crtype.TestIdentification{
+	awsAMD64OVNTest := TestWithVariantsKey{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -166,7 +166,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64OVNTest")
 	}
-	awsAMD64SDNTest := crtype.TestIdentification{
+	awsAMD64SDNTest := TestWithVariantsKey{
 		TestID: "2",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -183,7 +183,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64SDNTest")
 	}
-	awsAMD64SDNInstallerUPITest := crtype.TestIdentification{
+	awsAMD64SDNInstallerUPITest := TestWithVariantsKey{
 		TestID: "2",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -200,7 +200,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64SDNInstallerUPITest")
 	}
-	awsAMD64OVN2Test := crtype.TestIdentification{
+	awsAMD64OVN2Test := TestWithVariantsKey{
 		TestID: "3",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -213,7 +213,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64OVN2Test")
 	}
-	awsAMD64OVNInstallerIPITest := crtype.TestIdentification{
+	awsAMD64OVNInstallerIPITest := TestWithVariantsKey{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",

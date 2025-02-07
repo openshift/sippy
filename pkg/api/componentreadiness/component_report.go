@@ -590,16 +590,16 @@ func containsOverriddenVariant(includeVariants map[string][]string, key, value s
 	return false
 }
 
-var componentAndCapabilityGetter func(test crtype.TestIdentification, stats crtype.TestStatus) (string, []string)
+var componentAndCapabilityGetter func(test TestWithVariantsKey, stats crtype.TestStatus) (string, []string)
 
-func testToComponentAndCapability(_ crtype.TestIdentification, stats crtype.TestStatus) (string, []string) {
+func testToComponentAndCapability(_ TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
 	return stats.Component, stats.Capabilities
 }
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
 func (c *componentReportGenerator) getRowColumnIdentifications(testIDStr string, stats crtype.TestStatus) ([]crtype.RowIdentification, []crtype.ColumnID, error) {
-	var test crtype.TestIdentification
+	var test TestWithVariantsKey
 	columnGroupByVariants := c.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
 	if c.TestID != "" {
@@ -694,7 +694,7 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 	// INFO[2024-04-22T13:31:23.124-03:00] jira_component_id = 12367602000000000/1000000000
 	// INFO[2024-04-22T13:31:23.124-03:00] test_name = [sig-storage] [Serial] Volume metrics Ephemeral should create volume metrics in Volume Manager [Suite:openshift/conformance/serial] [Suite:k8s]
 	// INFO[2024-04-22T13:31:23.124-03:00] test_suite = openshift-tests
-	tid := crtype.TestIdentification{
+	tid := TestWithVariantsKey{
 		Variants: map[string]string{},
 	}
 	cts := crtype.TestStatus{}
@@ -1308,7 +1308,7 @@ func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 // in fallback comparison.
 func (c *componentReportGenerator) matchBestBaseStats(
 	testID crtype.ReportTestIdentification,
-	testIdentification, baseRelease string,
+	testKeyStr, baseRelease string,
 	baseStats, sampleStats crtype.TestStatus,
 	requiredConfidence int,
 	approvedRegression *regressionallowances.IntentionalRegression,
@@ -1347,9 +1347,9 @@ func (c *componentReportGenerator) matchBestBaseStats(
 		if cachedTestStatuses, ok = c.cachedFallbackTestStatuses.Releases[priorRelease]; !ok {
 			return baseStats, baseRelease, baseTestStats
 		}
-		// it's ok if we don't have a testIdentification for this release
+		// it's ok if we don't have a testKeyStr for this release
 		// we likely won't have it for earlier releases either, but we can keep going
-		if cTestStats, ok = cachedTestStatuses.Tests[testIdentification]; ok {
+		if cTestStats, ok = cachedTestStatuses.Tests[testKeyStr]; ok {
 
 			// what is our base total compared to the original base
 			// this happens when jobs shift like sdn -> ovn
@@ -1403,8 +1403,8 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 	baseReleaseMisses := 0
 	overriddenBaseMatches := 0
 
-	for testIdentification, baseStats := range baseStatus {
-		testID, err := buildTestID(baseStats, testIdentification)
+	for testKey, baseStats := range baseStatus {
+		testID, err := buildTestID(baseStats, testKey)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
@@ -1412,7 +1412,7 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 		var testStats crtype.ReportTestStats
 		var triagedIncidents []crtype.TriagedIncident
 		var resolvedIssueCompensation int // triaged job run failures to ignore
-		sampleStats, ok := sampleStatus[testIdentification]
+		sampleStats, ok := sampleStatus[testKey]
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
@@ -1430,10 +1430,10 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 
 			// this is where we look to see if a previous release has a higher pass rate
 			matchedBaseRelease := c.BaseRelease.Release
-			baseStats, matchedBaseRelease, testStats = c.matchBestBaseStats(testID, testIdentification, matchedBaseRelease, baseStats, sampleStats, requiredConfidence, approvedRegression, resolvedIssueCompensation)
+			baseStats, matchedBaseRelease, testStats = c.matchBestBaseStats(testID, testKey, matchedBaseRelease, baseStats, sampleStats, requiredConfidence, approvedRegression, resolvedIssueCompensation)
 
 			if matchedBaseRelease != c.BaseRelease.Release {
-				log.Infof("Overrode base stats using release %s for Test: %s - %s", matchedBaseRelease, baseStats.TestName, testIdentification)
+				log.Infof("Overrode base stats using release %s for Test: %s - %s", matchedBaseRelease, baseStats.TestName, testKey)
 				overriddenBaseMatches++
 			}
 			if !sampleStats.LastFailure.IsZero() {
@@ -1460,9 +1460,9 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 				}
 			}
 		}
-		delete(sampleStatus, testIdentification)
+		delete(sampleStatus, testKey)
 
-		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testIdentification, baseStats)
+		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKey, baseStats)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
@@ -1473,8 +1473,8 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 
 	// Anything we saw in the basis was removed above, all that remains are tests with no basis, typically new
 	// tests, or tests that were renamed without submitting a rename to the test mapping repo.
-	for testIdentification, sampleStats := range sampleStatus {
-		testID, err := buildTestID(sampleStats, testIdentification)
+	for testKey, sampleStats := range sampleStatus {
+		testID, err := buildTestID(sampleStats, testKey)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
@@ -1519,7 +1519,7 @@ func (c *componentReportGenerator) generateComponentTestReport(ctx context.Conte
 			testStats.LastFailure = &lastFailure
 		}
 
-		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testIdentification, sampleStats)
+		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testKey, sampleStats)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
@@ -1614,13 +1614,11 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 	return regressionRows, nil
 }
 
-func buildTestID(stats crtype.TestStatus, testIdentificationStr string) (crtype.ReportTestIdentification, error) {
-	// TODO: function needs a rename, there's a lot of references to test ID/identification around.
-	var testIdentification crtype.TestIdentification
-	// TODO: is this too slow?
-	err := json.Unmarshal([]byte(testIdentificationStr), &testIdentification)
+func buildTestID(stats crtype.TestStatus, testKeyStr string) (crtype.ReportTestIdentification, error) {
+	var testKey TestWithVariantsKey
+	err := json.Unmarshal([]byte(testKeyStr), &testKey)
 	if err != nil {
-		log.WithError(err).Errorf("trying to unmarshel %s", testIdentificationStr)
+		log.WithError(err).Errorf("trying to unmarshel %s", testKeyStr)
 		return crtype.ReportTestIdentification{}, err
 	}
 	testID := crtype.ReportTestIdentification{
@@ -1628,10 +1626,10 @@ func buildTestID(stats crtype.TestStatus, testIdentificationStr string) (crtype.
 			Component: stats.Component,
 			TestName:  stats.TestName,
 			TestSuite: stats.TestSuite,
-			TestID:    testIdentification.TestID,
+			TestID:    testKey.TestID,
 		},
 		ColumnIdentification: crtype.ColumnIdentification{
-			Variants: testIdentification.Variants,
+			Variants: testKey.Variants,
 		},
 	}
 	// Take the first cap for now. When we reach to a cell with specific capability, we will override the value.

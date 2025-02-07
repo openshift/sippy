@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +32,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 			"Network":      "ovn",
 		},
 	}
-	awsAMD64OVNTest := crtype.TestIdentification{
+	awsAMD64OVNTest := componentreadiness.TestWithVariantsKey{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",
