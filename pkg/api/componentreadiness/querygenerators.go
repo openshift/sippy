@@ -146,7 +146,7 @@ func (b *baseQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Report
 		},
 	}...)
 
-	baseStatus, baseErrs := fetchTestStatusResults(ctx, baseQuery)
+	baseStatus, baseErrs := FetchTestStatusResults(ctx, baseQuery)
 
 	if len(baseErrs) != 0 {
 		errs = append(errs, baseErrs...)
@@ -236,7 +236,7 @@ func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Repo
 		}...)
 	}
 
-	sampleStatus, sampleErrs := fetchTestStatusResults(ctx, sampleQuery)
+	sampleStatus, sampleErrs := FetchTestStatusResults(ctx, sampleQuery)
 
 	if len(sampleErrs) != 0 {
 		errs = append(errs, sampleErrs...)
@@ -256,7 +256,7 @@ func BuildCommonTestStatusQuery(
 	isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
-	// See fetchTestStatusResults for where we dynamically handle these columns.
+	// See FetchTestStatusResults for where we dynamically handle these columns.
 	selectVariants := ""
 	joinVariants := ""
 	groupByVariants := ""
@@ -470,7 +470,7 @@ func getTestDetailsQuery(
 	return queryString, groupString, commonParams
 }
 
-func fetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]crtype.TestStatus, []error) {
+func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]crtype.TestStatus, []error) {
 	errs := []error{}
 	status := map[string]crtype.TestStatus{}
 	log.Infof("Fetching test status with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)

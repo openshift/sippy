@@ -15,6 +15,8 @@ import (
 	"cloud.google.com/go/civil"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/releasefallback"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
@@ -119,6 +121,18 @@ func GetComponentReportFromBigQuery(
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (crtype.ComponentReport, []error) {
 
+	middleware := []middleware.Middleware{}
+	if reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
+		middleware = append(middleware,
+			releasefallback.NewReleaseFallbackMiddleware(
+				client, reqOptions.CacheOption, allJobVariants, c))
+	}
+
+	// TODO: generator is used as a cache key, public fields get included when we serialize it.
+	// This muddles cache key with actual public/private fields and complicates use of the object
+	// in other packages. Cache key to me looks like it should just be RequestOptions. With exception
+	// of cacheOptions which are private, we are otherwise just breaking apart RequestOptions.
+	// Watch out for BaseOverrideRelease which is not included here today. May only be used on test details...
 	generator := ComponentReportGenerator{
 		client:                           client,
 		prowURL:                          prowURL,
@@ -162,6 +176,7 @@ type ComponentReportGenerator struct {
 	crtype.RequestAdvancedOptions
 	openRegressions            []*crtype.TestRegression
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
+	middlewares                []*middleware.Middleware
 }
 
 func (c *ComponentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
@@ -354,12 +369,14 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	wg := sync.WaitGroup{}
 
 	// channels for status as we may collect status from multiple queries run in separate goroutines
-	statusCh := make(chan map[string]crtype.TestStatus)
+	sampleStatusCh := make(chan map[string]crtype.TestStatus)
 	statusErrCh := make(chan error)
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
-	if c.IncludeMultiReleaseAnalysis {
+	// Invoke the Query phase for each of our configured middlewares:
+	for _, middleware := range middleware {
+		middleware.Query(ctx, &wg)
 	}
 
 	wg.Add(1)
@@ -388,7 +405,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
 			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.SampleRelease.Start, c.SampleRelease.End, DefaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
-			statusCh <- status
+			sampleStatusCh <- status
 			for _, err := range errs {
 				statusErrCh <- err
 			}
@@ -425,7 +442,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				}
 				status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, start, end, or.TableName)
 				fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
-				statusCh <- status
+				sampleStatusCh <- status
 				for _, err := range errs {
 					statusErrCh <- err
 				}
@@ -436,13 +453,13 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 
 	go func() {
 		wg.Wait()
-		close(statusCh)
+		close(sampleStatusCh)
 		close(statusErrCh)
 	}()
 
 	go func() {
 
-		for status := range statusCh {
+		for status := range sampleStatusCh {
 			fLog.Infof("received %d test statuses over channel", len(status))
 			for k, v := range status {
 				if sampleStatus == nil {
