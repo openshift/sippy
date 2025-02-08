@@ -11,11 +11,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"cloud.google.com/go/civil"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/releasefallback"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -35,8 +34,6 @@ import (
 
 const (
 	triagedIncidentsTableID = "triaged_incidents"
-
-	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
 
 	// openRegressionConfidenceAdjustment is subtracted from the requested confidence for regressed tests that have
 	// an open regression.
@@ -118,9 +115,12 @@ func GetComponentReportFromBigQuery(
 	// TODO: Should middleware constructors do the interpretation of the request
 	// and decide if they want to take part? Return nil if not?
 	if reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
-		middleware = append(middleware,
-			releasefallback.NewReleaseFallbackMiddleware(
-				client, reqOptions.CacheOption, c))
+		/*
+			middleware = append(middleware,
+				releasefallback.NewReleaseFallbackMiddleware(
+					client, reqOptions.CacheOption, c))
+
+		*/
 	}
 
 	// TODO: generator is used as a cache key, public fields get included when we serialize it.
@@ -287,10 +287,10 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 func (c *ComponentReportGenerator) getBaseQueryStatus(ctx context.Context,
 	allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
 
-	generator := NewBaseQueryGenerator(c.client, c.ReqOptions, allJobVariants)
+	generator := query.NewBaseQueryGenerator(c.client, c.ReqOptions, allJobVariants)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, c.client.Cache,
-		generator.ReqOptions.CacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.queryTestStatus, crtype.ReportTestStatus{})
+		generator.ReqOptions.CacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.QueryTestStatus, crtype.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -307,12 +307,12 @@ func (c *ComponentReportGenerator) getSampleQueryStatus(
 	start, end time.Time,
 	junitTable string) (map[string]crtype.TestStatus, []error) {
 
-	generator := NewSampleQueryGenerator(c.client, c.ReqOptions, allJobVariants, includeVariants, start, end, junitTable)
+	generator := query.NewSampleQueryGenerator(c.client, c.ReqOptions, allJobVariants, includeVariants, start, end, junitTable)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
 		c.client.Cache, c.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey("SampleTestStatus~", generator),
-		generator.queryTestStatus, crtype.ReportTestStatus{})
+		generator.QueryTestStatus, crtype.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -343,9 +343,12 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
 	// Invoke the Query phase for each of our configured middlewares:
-	for _, middleware := range middleware {
-		middleware.Query(ctx, &wg, allJobVariants)
-	}
+	/*
+		for _, middleware := range middleware {
+			middleware.Query(ctx, &wg, allJobVariants)
+		}
+
+	*/
 
 	wg.Add(1)
 	go func() {
@@ -371,7 +374,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				return
 			}
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
-			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, DefaultJunitTable)
+			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			sampleStatusCh <- status
 			for _, err := range errs {
@@ -537,16 +540,16 @@ func containsOverriddenVariant(includeVariants map[string][]string, key, value s
 	return false
 }
 
-var componentAndCapabilityGetter func(test TestWithVariantsKey, stats crtype.TestStatus) (string, []string)
+var componentAndCapabilityGetter func(test crtype.TestWithVariantsKey, stats crtype.TestStatus) (string, []string)
 
-func testToComponentAndCapability(_ TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
+func testToComponentAndCapability(_ crtype.TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
 	return stats.Component, stats.Capabilities
 }
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
 func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string, stats crtype.TestStatus) ([]crtype.RowIdentification, []crtype.ColumnID, error) {
-	var test TestWithVariantsKey
+	var test crtype.TestWithVariantsKey
 	columnGroupByVariants := c.ReqOptions.VariantOption.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
 	if c.ReqOptions.TestIDOption.TestID != "" {
@@ -611,90 +614,6 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	columns = append(columns, crtype.ColumnID(columnKeyBytes))
 
 	return rows, columns, nil
-}
-
-// deserializeRowToTestStatus deserializes a single row into a testID string and matching status.
-// This is where we handle the dynamic variant_ columns, parsing these into a map on the test identification.
-// Other fixed columns we expect are serialized directly to their appropriate columns.
-func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (string, crtype.TestStatus, error) {
-	if len(row) != len(schema) {
-		log.Infof("row is %+v, schema is %+v", row, schema)
-		return "", crtype.TestStatus{}, fmt.Errorf("number of values in row doesn't match schema length")
-	}
-
-	// Expect:
-	//
-	// INFO[2024-04-22T13:31:23.123-03:00] test_id = openshift-tests:75895eeec137789cab3570a252306058
-	// INFO[2024-04-22T13:31:23.123-03:00] variants = [standard]
-	// INFO[2024-04-22T13:31:23.123-03:00] variant_Network = ovn
-	// INFO[2024-04-22T13:31:23.123-03:00] variant_Upgrade = none
-	// INFO[2024-04-22T13:31:23.123-03:00] variant_Architecture = amd64
-	// INFO[2024-04-22T13:31:23.123-03:00] variant_Platform = gcp
-	// INFO[2024-04-22T13:31:23.123-03:00] flat_variants = fips,serial
-	// INFO[2024-04-22T13:31:23.123-03:00] variants = [fips serial]
-	// INFO[2024-04-22T13:31:23.123-03:00] total_count = %!s(int64=1)
-	// INFO[2024-04-22T13:31:23.123-03:00] success_count = %!s(int64=1)
-	// INFO[2024-04-22T13:31:23.123-03:00] flake_count = %!s(int64=0)
-	// INFO[2024-04-22T13:31:23.124-03:00] component = Cluster Version Operator
-	// INFO[2024-04-22T13:31:23.124-03:00] capabilities = [Other]
-	// INFO[2024-04-22T13:31:23.124-03:00] jira_component = Cluster Version Operator
-	// INFO[2024-04-22T13:31:23.124-03:00] jira_component_id = 12367602000000000/1000000000
-	// INFO[2024-04-22T13:31:23.124-03:00] test_name = [sig-storage] [Serial] Volume metrics Ephemeral should create volume metrics in Volume Manager [Suite:openshift/conformance/serial] [Suite:k8s]
-	// INFO[2024-04-22T13:31:23.124-03:00] test_suite = openshift-tests
-	tid := TestWithVariantsKey{
-		Variants: map[string]string{},
-	}
-	cts := crtype.TestStatus{}
-	for i, fieldSchema := range schema {
-		col := fieldSchema.Name
-		// Some rows we know what to expect, others are dynamic (variants) and go into the map.
-		switch {
-		case col == "test_id":
-			tid.TestID = row[i].(string)
-		case col == "test_name":
-			cts.TestName = row[i].(string)
-		case col == "test_suite":
-			cts.TestSuite = row[i].(string)
-		case col == "total_count":
-			cts.TotalCount = int(row[i].(int64))
-		case col == "success_count":
-			cts.SuccessCount = int(row[i].(int64))
-		case col == "flake_count":
-			cts.FlakeCount = int(row[i].(int64))
-		case col == "last_failure":
-			// ignore when we cant parse, its usually null
-			var err error
-			if row[i] != nil {
-				layout := "2006-01-02T15:04:05"
-				lftCivilDT := row[i].(civil.DateTime)
-				cts.LastFailure, err = time.Parse(layout, lftCivilDT.String())
-				if err != nil {
-					log.WithError(err).Error("error parsing last failure time from bigquery")
-				}
-			}
-		case col == "component":
-			cts.Component = row[i].(string)
-		case col == "capabilities":
-			capArr := row[i].([]bigquery.Value)
-			cts.Capabilities = make([]string, len(capArr))
-			for i := range capArr {
-				cts.Capabilities[i] = capArr[i].(string)
-			}
-		case strings.HasPrefix(col, "variant_"):
-			variantName := col[len("variant_"):]
-			if row[i] != nil {
-				tid.Variants[variantName] = row[i].(string)
-			}
-		default:
-			log.Warnf("ignoring column in query: %s", col)
-		}
-	}
-
-	// Create a string representation of the test ID so we can use it as a map key throughout:
-	// TODO: json better? reversible if we do...
-	testIDBytes, err := json.Marshal(tid)
-
-	return string(testIDBytes), cts, err
 }
 
 type cellStatus struct {
@@ -1182,10 +1101,13 @@ func (c *ComponentReportGenerator) matchBestBaseStats(
 		return baseStats, baseRelease, baseTestStats
 	}
 
-	if c.cachedFallbackTestStatuses == nil {
-		log.Errorf("Invalid fallback test statuses")
-		return baseStats, baseRelease, baseTestStats
-	}
+	/*
+		if c.cachedFallbackTestStatuses == nil {
+			log.Errorf("Invalid fallback test statuses")
+			return baseStats, baseRelease, baseTestStats
+		}
+
+	*/
 
 	var priorRelease = baseRelease
 	var err error
@@ -1199,9 +1121,13 @@ func (c *ComponentReportGenerator) matchBestBaseStats(
 			return baseStats, baseRelease, baseTestStats
 		}
 		// if we hit a missing release then stop
-		if cachedTestStatuses, ok = c.cachedFallbackTestStatuses.Releases[priorRelease]; !ok {
-			return baseStats, baseRelease, baseTestStats
-		}
+		/*
+			if cachedTestStatuses, ok = c.cachedFallbackTestStatuses.Releases[priorRelease]; !ok {
+				return baseStats, baseRelease, baseTestStats
+			}
+
+		*/
+
 		// it's ok if we don't have a testKeyStr for this release
 		// we likely won't have it for earlier releases either, but we can keep going
 		if cTestStats, ok = cachedTestStatuses.Tests[testKeyStr]; ok {
@@ -1470,7 +1396,7 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 }
 
 func buildTestID(stats crtype.TestStatus, testKeyStr string) (crtype.ReportTestIdentification, error) {
-	var testKey TestWithVariantsKey
+	var testKey crtype.TestWithVariantsKey
 	err := json.Unmarshal([]byte(testKeyStr), &testKey)
 	if err != nil {
 		log.WithError(err).Errorf("trying to unmarshel %s", testKeyStr)
@@ -1828,15 +1754,15 @@ func (c *ComponentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx cont
 					ORDER BY
 						name`, field, c.client.Dataset, unnest)
 
-	query := c.client.BQ.Query(queryString)
-	query.Parameters = []bigquery.QueryParameter{
+	q := c.client.BQ.Query(queryString)
+	q.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "IgnoredJobs",
-			Value: ignoredJobsRegexp,
+			Value: query.IgnoredJobsRegexp,
 		},
 	}
 
-	return getSingleColumnResultToSlice(ctx, query)
+	return getSingleColumnResultToSlice(ctx, q)
 }
 
 func init() {

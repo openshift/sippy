@@ -18,7 +18,7 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-func fakeComponentAndCapabilityGetter(test TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
+func fakeComponentAndCapabilityGetter(test crtype.TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
 	name := stats.TestName
 	known := map[string]struct {
 		component    string
@@ -149,7 +149,7 @@ func filterColumnIDByDefault(id crtype.ColumnIdentification) crtype.ColumnIdenti
 }
 
 func TestGenerateComponentReport(t *testing.T) {
-	awsAMD64OVNTest := TestWithVariantsKey{
+	awsAMD64OVNTest := crtype.TestWithVariantsKey{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -166,7 +166,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64OVNTest")
 	}
-	awsAMD64SDNTest := TestWithVariantsKey{
+	awsAMD64SDNTest := crtype.TestWithVariantsKey{
 		TestID: "2",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -183,7 +183,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64SDNTest")
 	}
-	awsAMD64SDNInstallerUPITest := TestWithVariantsKey{
+	awsAMD64SDNInstallerUPITest := crtype.TestWithVariantsKey{
 		TestID: "2",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -200,7 +200,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64SDNInstallerUPITest")
 	}
-	awsAMD64OVN2Test := TestWithVariantsKey{
+	awsAMD64OVN2Test := crtype.TestWithVariantsKey{
 		TestID: "3",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -213,7 +213,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64OVN2Test")
 	}
-	awsAMD64OVNInstallerIPITest := TestWithVariantsKey{
+	awsAMD64OVNInstallerIPITest := crtype.TestWithVariantsKey{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",

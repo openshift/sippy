@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	log "github.com/sirupsen/logrus"
@@ -258,11 +257,11 @@ func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions crt
 }
 
 func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := componentreadiness.BuildCommonTestStatusQuery(
-		f.client.BQ,
+	commonQuery, groupByQuery, queryParameters := query.BuildCommonTestStatusQuery(
+		f.client,
 		f.ReqOptions,
 		f.allVariants, f.ReqOptions.VariantOption.IncludeVariants,
-		componentreadiness.DefaultJunitTable, false, true)
+		query.DefaultJunitTable, false, true)
 	before := time.Now()
 	log.Infof("Starting Fallback (%s) QueryTestStatus", f.BaseRelease)
 	errs := []error{}
@@ -285,7 +284,7 @@ func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context)
 		},
 	}...)
 
-	baseStatus, baseErrs := componentreadiness.FetchTestStatusResults(ctx, baseQuery)
+	baseStatus, baseErrs := query.FetchTestStatusResults(ctx, baseQuery)
 
 	if len(baseErrs) != 0 {
 		errs = append(errs, baseErrs...)

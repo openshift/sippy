@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	bigquery2 "cloud.google.com/go/bigquery"
 	fet "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
@@ -19,7 +19,6 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/regressionallowances"
-	"github.com/openshift/sippy/pkg/util/param"
 )
 
 func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBucket string, reqOptions crtype.RequestOptions,
@@ -104,27 +103,6 @@ func (c *ComponentReportGenerator) GenerateJobRunTestReportStatus(ctx context.Co
 	return componentJobRunTestReportStatus, nil
 }
 
-// filterByCrossCompareVariants adds the where clause for any variants being cross-compared (which are not included in RequestedVariants).
-// As a side effect, it also appends any necessary parameters for the clause.
-func filterByCrossCompareVariants(crossCompare []string, variantGroups map[string][]string, params *[]bigquery2.QueryParameter) (whereClause string) {
-	if len(variantGroups) == 0 {
-		return // avoid possible nil pointer dereference
-	}
-	sort.StringSlice(crossCompare).Sort()
-	for _, group := range crossCompare {
-		if variants := variantGroups[group]; len(variants) > 0 {
-			group = param.Cleanse(group)
-			paramName := "CrossVariants" + group
-			whereClause += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
-			*params = append(*params, bigquery2.QueryParameter{
-				Name:  paramName,
-				Value: variants,
-			})
-		}
-	}
-	return
-}
-
 func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	ctx context.Context,
 	allJobVariants crtype.JobVariants,
@@ -132,8 +110,9 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	baseStart time.Time,
 	baseEnd time.Time) (map[string][]crtype.JobRunTestStatusRow, []error) {
 
-	generator := newBaseTestDetailsQueryGenerator(
-		c,
+	generator := query.NewBaseTestDetailsQueryGenerator(
+		c.client,
+		c.ReqOptions,
 		allJobVariants,
 		baseRelease,
 		baseStart,
@@ -142,9 +121,9 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
 		ctx,
-		generator.ComponentReportGenerator.client.Cache, generator.cacheOption,
+		c.client.Cache, c.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator),
-		generator.queryTestStatus,
+		generator.QueryTestStatus,
 		crtype.JobRunTestReportStatus{})
 
 	if len(errs) > 0 {
@@ -161,13 +140,15 @@ func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 	start, end time.Time,
 	junitTable string) (map[string][]crtype.JobRunTestStatusRow, []error) {
 
-	generator := newSampleTestDetailsQueryGenerator(c, allJobVariants, includeVariants, start, end, junitTable)
+	generator := query.NewSampleTestDetailsQueryGenerator(
+		c.client, c.ReqOptions,
+		allJobVariants, includeVariants, start, end, junitTable)
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
 		ctx,
 		c.client.Cache, c.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey("SampleJobRunTestStatus~", generator),
-		generator.queryTestStatus,
+		generator.QueryTestStatus,
 		crtype.JobRunTestReportStatus{})
 
 	if len(errs) > 0 {
@@ -236,7 +217,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			}
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
 			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
-				c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, DefaultJunitTable)
+				c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			statusCh <- status
 			for _, err := range errs {

@@ -1,13 +1,16 @@
-package componentreadiness
+package query
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"sort"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -19,6 +22,8 @@ import (
 
 const (
 	DefaultJunitTable = "junit"
+
+	IgnoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
@@ -117,9 +122,9 @@ func NewBaseQueryGenerator(
 	return generator
 }
 
-func (b *baseQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
+func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(b.client.BQ,
+	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(b.client,
 		b.ReqOptions,
 		b.allVariants,
 		b.ReqOptions.VariantOption.IncludeVariants,
@@ -194,8 +199,8 @@ func NewSampleQueryGenerator(
 	return generator
 }
 
-func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(s.client.BQ, s.ReqOptions,
+func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
+	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(s.client, s.ReqOptions,
 		s.allVariants, s.IncludeVariants, s.JunitTable, true, false)
 
 	before := time.Now()
@@ -250,7 +255,7 @@ func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Repo
 
 // BuildCommonTestStatusQuery returns the common query for the higher level summary component summary.
 func BuildCommonTestStatusQuery(
-	client *bigquery.Client,
+	client *bqcachedclient.Client,
 	reqOptions crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
@@ -315,7 +320,7 @@ func BuildCommonTestStatusQuery(
 	commonParams := []bigquery.QueryParameter{
 		{
 			Name:  "IgnoredJobs",
-			Value: ignoredJobsRegexp,
+			Value: IgnoredJobsRegexp,
 		},
 	}
 	if reqOptions.AdvancedOption.IgnoreDisruption {
@@ -374,7 +379,7 @@ func BuildCommonTestStatusQuery(
 // getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
 // This is for the bottom level most specific pages in component readiness.
 func getTestDetailsQuery(
-	client bqcachedclient.Client,
+	client *bqcachedclient.Client,
 	c crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
@@ -429,7 +434,7 @@ func getTestDetailsQuery(
 	commonParams := []bigquery.QueryParameter{
 		{
 			Name:  "IgnoredJobs",
-			Value: ignoredJobsRegexp,
+			Value: IgnoredJobsRegexp,
 		},
 		{
 			Name:  "TestId",
@@ -473,6 +478,27 @@ func getTestDetailsQuery(
 	return queryString, groupString, commonParams
 }
 
+// filterByCrossCompareVariants adds the where clause for any variants being cross-compared (which are not included in RequestedVariants).
+// As a side effect, it also appends any necessary parameters for the clause.
+func filterByCrossCompareVariants(crossCompare []string, variantGroups map[string][]string, params *[]bigquery.QueryParameter) (whereClause string) {
+	if len(variantGroups) == 0 {
+		return // avoid possible nil pointer dereference
+	}
+	sort.StringSlice(crossCompare).Sort()
+	for _, group := range crossCompare {
+		if variants := variantGroups[group]; len(variants) > 0 {
+			group = param.Cleanse(group)
+			paramName := "CrossVariants" + group
+			whereClause += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
+			*params = append(*params, bigquery.QueryParameter{
+				Name:  paramName,
+				Value: variants,
+			})
+		}
+	}
+	return
+}
+
 func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]crtype.TestStatus, []error) {
 	errs := []error{}
 	status := map[string]crtype.TestStatus{}
@@ -511,6 +537,90 @@ func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[str
 	return status, errs
 }
 
+// deserializeRowToTestStatus deserializes a single row into a testID string and matching status.
+// This is where we handle the dynamic variant_ columns, parsing these into a map on the test identification.
+// Other fixed columns we expect are serialized directly to their appropriate columns.
+func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (string, crtype.TestStatus, error) {
+	if len(row) != len(schema) {
+		log.Infof("row is %+v, schema is %+v", row, schema)
+		return "", crtype.TestStatus{}, fmt.Errorf("number of values in row doesn't match schema length")
+	}
+
+	// Expect:
+	//
+	// INFO[2024-04-22T13:31:23.123-03:00] test_id = openshift-tests:75895eeec137789cab3570a252306058
+	// INFO[2024-04-22T13:31:23.123-03:00] variants = [standard]
+	// INFO[2024-04-22T13:31:23.123-03:00] variant_Network = ovn
+	// INFO[2024-04-22T13:31:23.123-03:00] variant_Upgrade = none
+	// INFO[2024-04-22T13:31:23.123-03:00] variant_Architecture = amd64
+	// INFO[2024-04-22T13:31:23.123-03:00] variant_Platform = gcp
+	// INFO[2024-04-22T13:31:23.123-03:00] flat_variants = fips,serial
+	// INFO[2024-04-22T13:31:23.123-03:00] variants = [fips serial]
+	// INFO[2024-04-22T13:31:23.123-03:00] total_count = %!s(int64=1)
+	// INFO[2024-04-22T13:31:23.123-03:00] success_count = %!s(int64=1)
+	// INFO[2024-04-22T13:31:23.123-03:00] flake_count = %!s(int64=0)
+	// INFO[2024-04-22T13:31:23.124-03:00] component = Cluster Version Operator
+	// INFO[2024-04-22T13:31:23.124-03:00] capabilities = [Other]
+	// INFO[2024-04-22T13:31:23.124-03:00] jira_component = Cluster Version Operator
+	// INFO[2024-04-22T13:31:23.124-03:00] jira_component_id = 12367602000000000/1000000000
+	// INFO[2024-04-22T13:31:23.124-03:00] test_name = [sig-storage] [Serial] Volume metrics Ephemeral should create volume metrics in Volume Manager [Suite:openshift/conformance/serial] [Suite:k8s]
+	// INFO[2024-04-22T13:31:23.124-03:00] test_suite = openshift-tests
+	tid := crtype.TestWithVariantsKey{
+		Variants: map[string]string{},
+	}
+	cts := crtype.TestStatus{}
+	for i, fieldSchema := range schema {
+		col := fieldSchema.Name
+		// Some rows we know what to expect, others are dynamic (variants) and go into the map.
+		switch {
+		case col == "test_id":
+			tid.TestID = row[i].(string)
+		case col == "test_name":
+			cts.TestName = row[i].(string)
+		case col == "test_suite":
+			cts.TestSuite = row[i].(string)
+		case col == "total_count":
+			cts.TotalCount = int(row[i].(int64))
+		case col == "success_count":
+			cts.SuccessCount = int(row[i].(int64))
+		case col == "flake_count":
+			cts.FlakeCount = int(row[i].(int64))
+		case col == "last_failure":
+			// ignore when we cant parse, its usually null
+			var err error
+			if row[i] != nil {
+				layout := "2006-01-02T15:04:05"
+				lftCivilDT := row[i].(civil.DateTime)
+				cts.LastFailure, err = time.Parse(layout, lftCivilDT.String())
+				if err != nil {
+					log.WithError(err).Error("error parsing last failure time from bigquery")
+				}
+			}
+		case col == "component":
+			cts.Component = row[i].(string)
+		case col == "capabilities":
+			capArr := row[i].([]bigquery.Value)
+			cts.Capabilities = make([]string, len(capArr))
+			for i := range capArr {
+				cts.Capabilities[i] = capArr[i].(string)
+			}
+		case strings.HasPrefix(col, "variant_"):
+			variantName := col[len("variant_"):]
+			if row[i] != nil {
+				tid.Variants[variantName] = row[i].(string)
+			}
+		default:
+			log.Warnf("ignoring column in query: %s", col)
+		}
+	}
+
+	// Create a string representation of the test ID so we can use it as a map key throughout:
+	// TODO: json better? reversible if we do...
+	testIDBytes, err := json.Marshal(tid)
+
+	return string(testIDBytes), cts, err
+}
+
 // sortedKeys is a helper that sorts the keys of a variant group map for consistent ordering.
 func sortedKeys[T any](it map[string]T) []string {
 	keys := make([]string, 0, len(it))
@@ -523,16 +633,15 @@ func sortedKeys[T any](it map[string]T) []string {
 
 // baseTestDetailsQueryGenerator generates the query we use for the basis on the test details page.
 type baseTestDetailsQueryGenerator struct {
-	client                   bqcachedclient.Client
-	reqOptions               crtype.RequestOptions
-	allJobVariants           crtype.JobVariants
-	BaseRelease              string
-	BaseStart                time.Time
-	BaseEnd                  time.Time
-	ComponentReportGenerator *ComponentReportGenerator
+	client         *bqcachedclient.Client
+	reqOptions     crtype.RequestOptions
+	allJobVariants crtype.JobVariants
+	BaseRelease    string
+	BaseStart      time.Time
+	BaseEnd        time.Time
 }
 
-func newBaseTestDetailsQueryGenerator(client bqcachedclient.Client,
+func NewBaseTestDetailsQueryGenerator(client *bqcachedclient.Client,
 	reqOptions crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	baseRelease string, baseStart time.Time, baseEnd time.Time) *baseTestDetailsQueryGenerator {
@@ -547,14 +656,14 @@ func newBaseTestDetailsQueryGenerator(client bqcachedclient.Client,
 	}
 }
 
-func (b *baseTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(
 		b.client,
 		b.reqOptions,
 		b.allJobVariants,
 		b.reqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
 	baseString := commonQuery + ` AND branch = @BaseRelease`
-	baseQuery := b.ComponentReportGenerator.client.BQ.Query(baseString + groupByQuery)
+	baseQuery := b.client.BQ.Query(baseString + groupByQuery)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, queryParameters...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
@@ -579,7 +688,7 @@ func (b *baseTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (cr
 // sampleTestDetailsQueryGenerator generates the query we use for the sample on the test details page.
 type sampleTestDetailsQueryGenerator struct {
 	allJobVariants crtype.JobVariants
-	client         bqcachedclient.Client
+	client         *bqcachedclient.Client
 	reqOptions     crtype.RequestOptions
 
 	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
@@ -595,8 +704,8 @@ type sampleTestDetailsQueryGenerator struct {
 	End   time.Time
 }
 
-func newSampleTestDetailsQueryGenerator(
-	client bqcachedclient.Client,
+func NewSampleTestDetailsQueryGenerator(
+	client *bqcachedclient.Client,
 	reqOptions crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
@@ -613,7 +722,7 @@ func newSampleTestDetailsQueryGenerator(
 	}
 }
 
-func (s *sampleTestDetailsQueryGenerator) queryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 
 	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(
 		s.client,
