@@ -24,34 +24,28 @@ import (
 func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBucket string, reqOptions crtype.RequestOptions,
 ) (crtype.ReportTestDetails, []error) {
 	generator := ComponentReportGenerator{
-		client:                           client,
-		prowURL:                          prowURL,
-		gcsBucket:                        gcsBucket,
-		cacheOption:                      reqOptions.CacheOption,
-		BaseRelease:                      reqOptions.BaseRelease,
-		BaseOverrideRelease:              reqOptions.BaseOverrideRelease,
-		SampleRelease:                    reqOptions.SampleRelease,
-		RequestTestIdentificationOptions: reqOptions.TestIDOption,
-		RequestVariantOptions:            reqOptions.VariantOption,
-		RequestAdvancedOptions:           reqOptions.AdvancedOption,
+		client:     client,
+		prowURL:    prowURL,
+		gcsBucket:  gcsBucket,
+		ReqOptions: reqOptions,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ReportTestDetails](
 		ctx,
 		generator.client.Cache,
-		generator.cacheOption,
+		generator.ReqOptions.CacheOption,
 		generator.GetComponentReportCacheKey(ctx, "TestDetailsReport~"),
 		generator.GenerateTestDetailsReport,
 		crtype.ReportTestDetails{})
 }
 
 func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (crtype.ReportTestDetails, []error) {
-	if c.TestID == "" {
+	if c.ReqOptions.TestIDOption.TestID == "" {
 		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
-	for _, v := range c.DBGroupBy.List() {
-		if _, ok := c.RequestedVariants[v]; !ok {
-			return crtype.ReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v", v, c.RequestedVariants)}
+	for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
+		if _, ok := c.ReqOptions.VariantOption.RequestedVariants[v]; !ok {
+			return crtype.ReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v", v, c.ReqOptions.VariantOption.RequestedVariants)}
 		}
 	}
 
@@ -68,21 +62,21 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	}
 
 	var baseOverrideReport *crtype.ReportTestDetails
-	if c.BaseOverrideRelease.Release != "" && c.BaseOverrideRelease.Release != c.BaseRelease.Release {
+	if c.ReqOptions.BaseOverrideRelease.Release != "" && c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
 		// because internalGenerateTestDetailsReport modifies SampleStatus we need to copy it here
 		overrideSampleStatus := map[string][]crtype.JobRunTestStatusRow{}
 		for k, v := range componentJobRunTestReportStatus.SampleStatus {
 			overrideSampleStatus[k] = v
 		}
 
-		overrideReport := c.internalGenerateTestDetailsReport(ctx, componentJobRunTestReportStatus.BaseOverrideStatus, c.BaseOverrideRelease.Release, &c.BaseOverrideRelease.Start, &c.BaseOverrideRelease.End, overrideSampleStatus)
+		overrideReport := c.internalGenerateTestDetailsReport(ctx, componentJobRunTestReportStatus.BaseOverrideStatus, c.ReqOptions.BaseOverrideRelease.Release, &c.ReqOptions.BaseOverrideRelease.Start, &c.ReqOptions.BaseOverrideRelease.End, overrideSampleStatus)
 		// swap out the base dates for the override
 		overrideReport.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 		baseOverrideReport = &overrideReport
 	}
 
-	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.SampleRelease.Release)
-	report := c.internalGenerateTestDetailsReport(ctx, componentJobRunTestReportStatus.BaseStatus, c.BaseRelease.Release, &c.BaseRelease.Start, &c.BaseRelease.End, componentJobRunTestReportStatus.SampleStatus)
+	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.ReqOptions.SampleRelease.Release)
+	report := c.internalGenerateTestDetailsReport(ctx, componentJobRunTestReportStatus.BaseStatus, c.ReqOptions.BaseRelease.Release, &c.ReqOptions.BaseRelease.Start, &c.ReqOptions.BaseRelease.End, componentJobRunTestReportStatus.SampleStatus)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
 	if baseOverrideReport != nil {
@@ -170,7 +164,7 @@ func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
 		ctx,
-		c.client.Cache, c.cacheOption,
+		c.client.Cache, c.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey("SampleJobRunTestStatus~", generator),
 		generator.queryTestStatus,
 		crtype.JobRunTestReportStatus{})
@@ -199,7 +193,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
-	if c.BaseOverrideRelease.Release != "" && c.BaseOverrideRelease.Release != c.BaseRelease.Release {
+	if c.ReqOptions.BaseOverrideRelease.Release != "" && c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -208,7 +202,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 				logrus.Infof("Context canceled while fetching base job run test status")
 				return
 			default:
-				baseOverrideStatus, baseOverrideErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.BaseOverrideRelease.Release, c.BaseOverrideRelease.Start, c.BaseOverrideRelease.End)
+				baseOverrideStatus, baseOverrideErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.BaseOverrideRelease.Release, c.ReqOptions.BaseOverrideRelease.Start, c.ReqOptions.BaseOverrideRelease.End)
 			}
 		}()
 	}
@@ -221,7 +215,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			logrus.Infof("Context canceled while fetching base job run test status")
 			return
 		default:
-			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End)
+			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.BaseRelease.Release, c.ReqOptions.BaseRelease.Start, c.ReqOptions.BaseRelease.End)
 		}
 
 	}()
@@ -234,14 +228,14 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			logrus.Infof("Context canceled while fetching sample job run test status")
 			return
 		default:
-			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.IncludeVariants)
+			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
 			if skipQuery {
 				fLog.Infof("skipping default status query as all values for a variant were overridden")
 				return
 			}
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
 			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
-				c.SampleRelease.Start, c.SampleRelease.End, DefaultJunitTable)
+				c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, DefaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			statusCh <- status
 			for _, err := range errs {
@@ -253,7 +247,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 
 	// fork additional sample queries for the overrides
 	for i, or := range c.variantJunitTableOverrides {
-		if !containsOverriddenVariant(c.IncludeVariants, or.VariantName, or.VariantValue) {
+		if !containsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
 			continue
 		}
 		// only do this additional query if the specified override variant is actually included in this request
@@ -265,16 +259,16 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 				return
 			default:
 				i := i // var shadow, as we're capturing i in the func()
-				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
+				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.ReqOptions.VariantOption.IncludeVariants)
 				if skipQuery {
 					fLog.Infof("skipping override status query as all values for a variant were overridden")
 					return
 				}
 				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
 				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
-				end := c.SampleRelease.End
+				end := c.ReqOptions.SampleRelease.End
 				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
-					true, &c.SampleRelease.End, c.cacheOption.CRTimeRoundingFactor)
+					true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
 				if err != nil {
 					statusErrCh <- err
 					return
@@ -346,22 +340,22 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	result := crtype.ReportTestDetails{
 		ReportTestIdentification: crtype.ReportTestIdentification{
 			RowIdentification: crtype.RowIdentification{
-				Component:  c.Component,
-				Capability: c.Capability,
-				TestID:     c.TestID,
+				Component:  c.ReqOptions.TestIDOption.Component,
+				Capability: c.ReqOptions.TestIDOption.Capability,
+				TestID:     c.ReqOptions.TestIDOption.TestID,
 			},
 			ColumnIdentification: crtype.ColumnIdentification{
-				Variants: c.RequestedVariants,
+				Variants: c.ReqOptions.VariantOption.RequestedVariants,
 			},
 		},
 	}
 	var resolvedIssueCompensation int
-	approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, result.ColumnIdentification, c.TestID)
+	approvedRegression := regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, result.ColumnIdentification, c.ReqOptions.TestIDOption.TestID)
 	var baseRegression *regressionallowances.IntentionalRegression
 	// if we are ignoring fallback then honor the settings for the baseRegression
 	// otherwise let fallback determine the threshold
-	if !c.IncludeMultiReleaseAnalysis {
-		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, result.ColumnIdentification, c.TestID)
+	if !c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
+		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, result.ColumnIdentification, c.ReqOptions.TestIDOption.TestID)
 	}
 	// ignore triage if we have an intentional regression
 	if approvedRegression == nil {
@@ -422,7 +416,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		perceivedBaseFailure := perJobBaseFailure
 		perceivedSampleSuccess := perJobSampleSuccess + perJobSampleFlake
 		perceivedBaseSuccess := perJobBaseSuccess + perJobBaseFlake
-		if c.FlakeAsFailure {
+		if c.ReqOptions.AdvancedOption.FlakeAsFailure {
 			perceivedSampleFailure = perJobSampleFailure + perJobSampleFlake
 			perceivedBaseFailure = perJobBaseFailure + perJobBaseFlake
 			perceivedSampleSuccess = perJobSampleSuccess
@@ -432,7 +426,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 			perceivedSampleSuccess,
 			perceivedBaseFailure,
 			perceivedBaseSuccess)
-		jobStats.Significant = r < 1-float64(c.Confidence)/100
+		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
 
 		result.JobStats = append(result.JobStats, jobStats)
 
@@ -463,7 +457,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		result.JobStats = append(result.JobStats, jobStats)
 		perceivedSampleFailure := perJobSampleFailure
 		perceivedSampleSuccess := perJobSampleSuccess + perJobSampleFlake
-		if c.FlakeAsFailure {
+		if c.ReqOptions.AdvancedOption.FlakeAsFailure {
 			perceivedSampleFailure = perJobSampleFailure + perJobSampleFlake
 			perceivedSampleSuccess = perJobSampleSuccess
 		}
@@ -471,7 +465,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 			perceivedSampleSuccess,
 			0,
 			0)
-		jobStats.Significant = r < 1-float64(c.Confidence)/100
+		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
 
 		totalSampleFailure += perJobSampleFailure
 		totalSampleSuccess += perJobSampleSuccess
@@ -483,7 +477,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 
 	// The hope is that this goes away
 	// once we agree we don't need to honor a higher intentional regression pass percentage
-	if baseRegression != nil && baseRegression.PreviousPassPercentage(c.FlakeAsFailure) > c.getPassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
+	if baseRegression != nil && baseRegression.PreviousPassPercentage(c.ReqOptions.AdvancedOption.FlakeAsFailure) > c.getPassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
 		baseRegressionPreviousRelease, err := PreviousRelease(baseRelease)
@@ -498,7 +492,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		}
 	}
 
-	requiredConfidence := c.getRequiredConfidence(c.TestID, c.RequestedVariants)
+	requiredConfidence := c.getRequiredConfidence(c.ReqOptions.TestIDOption.TestID, c.ReqOptions.VariantOption.RequestedVariants)
 
 	result.ReportTestStats = c.assessComponentStatus(
 		requiredConfidence,

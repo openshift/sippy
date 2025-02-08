@@ -137,23 +137,18 @@ func GetComponentReportFromBigQuery(
 	// of cacheOptions which are private, we are otherwise just breaking apart RequestOptions.
 	// Watch out for BaseOverrideRelease which is not included here today. May only be used on test details...
 	generator := ComponentReportGenerator{
-		client:                           client,
-		prowURL:                          prowURL,
-		gcsBucket:                        gcsBucket,
-		cacheOption:                      reqOptions.CacheOption,
-		BaseRelease:                      reqOptions.BaseRelease,
-		SampleRelease:                    reqOptions.SampleRelease,
-		triagedIssues:                    nil,
-		RequestTestIdentificationOptions: reqOptions.TestIDOption,
-		RequestVariantOptions:            reqOptions.VariantOption,
-		RequestAdvancedOptions:           reqOptions.AdvancedOption,
-		variantJunitTableOverrides:       variantJunitTableOverrides,
-		middlewares:                      middleware,
+		client:                     client,
+		prowURL:                    prowURL,
+		gcsBucket:                  gcsBucket,
+		ReqOptions:                 reqOptions,
+		triagedIssues:              nil,
+		variantJunitTableOverrides: variantJunitTableOverrides,
+		middlewares:                middleware,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
-		generator.client.Cache, generator.cacheOption,
+		generator.client.Cache, generator.ReqOptions.CacheOption,
 		generator.GetComponentReportCacheKey(ctx, "ComponentReport~"),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
@@ -166,18 +161,12 @@ func GetComponentReportFromBigQuery(
 // is marshalled for the cache key and should be changed when the object being
 // cached changes in a way that will no longer be compatible with any prior cached version.
 type ComponentReportGenerator struct {
-	ReportModified      *time.Time
-	client              *bqcachedclient.Client
-	prowURL             string
-	gcsBucket           string
-	cacheOption         cache.RequestOptions
-	BaseRelease         crtype.RequestReleaseOptions
-	BaseOverrideRelease crtype.RequestReleaseOptions
-	SampleRelease       crtype.RequestReleaseOptions
-	triagedIssues       *resolvedissues.TriagedIncidentsForRelease
-	crtype.RequestTestIdentificationOptions
-	crtype.RequestVariantOptions
-	crtype.RequestAdvancedOptions
+	ReportModified             *time.Time
+	client                     *bqcachedclient.Client
+	prowURL                    string
+	gcsBucket                  string
+	triagedIssues              *resolvedissues.TriagedIncidentsForRelease
+	ReqOptions                 crtype.RequestOptions
 	openRegressions            []*crtype.TestRegression
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 	middlewares                []middleware.Middleware
@@ -186,7 +175,7 @@ type ComponentReportGenerator struct {
 func (c *ComponentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
 	// Make sure we have initialized the report modified field
 	if c.ReportModified == nil {
-		c.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.cacheOption)
+		c.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption)
 	}
 	return api.GetPrefixedCacheKey(prefix, c)
 }
@@ -223,7 +212,7 @@ func (c *ComponentReportGenerator) GenerateReleaseDates(ctx context.Context) ([]
 	for _, release := range releases {
 		crRelease := crtype.Release{Release: release.Release}
 		if release.GADate != nil {
-			prior := util.AdjustReleaseTime(*release.GADate, true, "30", c.cacheOption.CRTimeRoundingFactor)
+			prior := util.AdjustReleaseTime(*release.GADate, true, "30", c.ReqOptions.CacheOption.CRTimeRoundingFactor)
 			crRelease.Start = &prior
 			crRelease.End = release.GADate
 		}
@@ -304,7 +293,7 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 		errs = append(errs, err)
 		return crtype.ComponentReport{}, errs
 	}
-	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.SampleRelease.Release)
+	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.ReqOptions.SampleRelease.Release)
 
 	// perform analysis and generate report:
 	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,
@@ -346,7 +335,7 @@ func (c *ComponentReportGenerator) getSampleQueryStatus(
 	generator := newSampleQueryGenerator(c, allJobVariants, includeVariants, start, end, junitTable)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
-		c.client.Cache, c.cacheOption,
+		c.client.Cache, c.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey("SampleTestStatus~", generator),
 		generator.queryTestStatus, crtype.ReportTestStatus{})
 
@@ -401,13 +390,13 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		case <-ctx.Done():
 			return
 		default:
-			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.IncludeVariants)
+			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
 			if skipQuery {
 				fLog.Infof("skipping default status query as all values for a variant were overridden")
 				return
 			}
 			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
-			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.SampleRelease.Start, c.SampleRelease.End, DefaultJunitTable)
+			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, DefaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			sampleStatusCh <- status
 			for _, err := range errs {
@@ -419,7 +408,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 
 	// fork additional sample queries for the overrides
 	for i, or := range c.variantJunitTableOverrides {
-		if !containsOverriddenVariant(c.IncludeVariants, or.VariantName, or.VariantValue) {
+		if !containsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
 			continue
 		}
 		// only do this additional query if the specified override variant is actually included in this request
@@ -430,16 +419,16 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 			case <-ctx.Done():
 				return
 			default:
-				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
+				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.ReqOptions.VariantOption.IncludeVariants)
 				if skipQuery {
 					fLog.Infof("skipping override status query as all values for a variant were overridden")
 					return
 				}
 				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
 				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
-				end := c.SampleRelease.End
+				end := c.ReqOptions.SampleRelease.End
 				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
-					true, &c.SampleRelease.End, c.cacheOption.CRTimeRoundingFactor)
+					true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
 				if err != nil {
 					statusErrCh <- err
 					return
@@ -583,10 +572,10 @@ func testToComponentAndCapability(_ TestWithVariantsKey, stats crtype.TestStatus
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
 func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string, stats crtype.TestStatus) ([]crtype.RowIdentification, []crtype.ColumnID, error) {
 	var test TestWithVariantsKey
-	columnGroupByVariants := c.ColumnGroupBy
+	columnGroupByVariants := c.ReqOptions.VariantOption.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
-	if c.TestID != "" {
-		columnGroupByVariants = c.DBGroupBy
+	if c.ReqOptions.TestIDOption.TestID != "" {
+		columnGroupByVariants = c.ReqOptions.VariantOption.DBGroupBy
 	}
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIDStr), &test)
@@ -597,26 +586,26 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	component, capabilities := componentAndCapabilityGetter(test, stats)
 	rows := []crtype.RowIdentification{}
 	// First Page with no component requested
-	if c.Component == "" {
+	if c.ReqOptions.TestIDOption.Component == "" {
 		rows = append(rows, crtype.RowIdentification{Component: component})
-	} else if c.Component == component {
+	} else if c.ReqOptions.TestIDOption.Component == component {
 		// Exact test match
-		if c.TestID != "" {
+		if c.ReqOptions.TestIDOption.TestID != "" {
 			row := crtype.RowIdentification{
 				Component: component,
 				TestID:    test.TestID,
 				TestName:  stats.TestName,
 				TestSuite: stats.TestSuite,
 			}
-			if c.Capability != "" {
-				row.Capability = c.Capability
+			if c.ReqOptions.TestIDOption.Capability != "" {
+				row.Capability = c.ReqOptions.TestIDOption.Capability
 			}
 			rows = append(rows, row)
 		} else {
 			for _, capability := range capabilities {
 				// Exact capability match only produces one row
-				if c.Capability != "" {
-					if c.Capability == capability {
+				if c.ReqOptions.TestIDOption.Capability != "" {
+					if c.ReqOptions.TestIDOption.Capability == capability {
 						row := crtype.RowIdentification{
 							Component:  component,
 							TestID:     test.TestID,
@@ -764,21 +753,21 @@ func PreviousRelease(release string) (string, error) {
 
 func (c *ComponentReportGenerator) normalizeProwJobName(prowName string) string {
 	name := prowName
-	if c.BaseRelease.Release != "" {
-		name = strings.ReplaceAll(name, c.BaseRelease.Release, "X.X")
-		if prev, err := PreviousRelease(c.BaseRelease.Release); err == nil {
+	if c.ReqOptions.BaseRelease.Release != "" {
+		name = strings.ReplaceAll(name, c.ReqOptions.BaseRelease.Release, "X.X")
+		if prev, err := PreviousRelease(c.ReqOptions.BaseRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
-	if c.BaseOverrideRelease.Release != "" {
-		name = strings.ReplaceAll(name, c.BaseOverrideRelease.Release, "X.X")
-		if prev, err := PreviousRelease(c.BaseOverrideRelease.Release); err == nil {
+	if c.ReqOptions.BaseOverrideRelease.Release != "" {
+		name = strings.ReplaceAll(name, c.ReqOptions.BaseOverrideRelease.Release, "X.X")
+		if prev, err := PreviousRelease(c.ReqOptions.BaseOverrideRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
-	if c.SampleRelease.Release != "" {
-		name = strings.ReplaceAll(name, c.SampleRelease.Release, "X.X")
-		if prev, err := PreviousRelease(c.SampleRelease.Release); err == nil {
+	if c.ReqOptions.SampleRelease.Release != "" {
+		name = strings.ReplaceAll(name, c.ReqOptions.SampleRelease.Release, "X.X")
+		if prev, err := PreviousRelease(c.ReqOptions.SampleRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
@@ -933,10 +922,10 @@ func (c *ComponentReportGenerator) getTriagedIssuesFromBigQuery(ctx context.Cont
 	testID crtype.ReportTestIdentification) (
 	int, []crtype.TriagedIncident, []error) {
 	generator := triagedIncidentsGenerator{
-		ReportModified: c.GetLastReportModifiedTime(ctx, c.client, c.cacheOption),
+		ReportModified: c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption),
 		client:         c.client,
-		cacheOption:    c.cacheOption,
-		SampleRelease:  c.SampleRelease,
+		cacheOption:    c.ReqOptions.CacheOption,
+		SampleRelease:  c.ReqOptions.SampleRelease,
 	}
 
 	// we want to fetch this once per generator instance which should be once per UI load
@@ -952,7 +941,7 @@ func (c *ComponentReportGenerator) getTriagedIssuesFromBigQuery(ctx context.Cont
 		}
 		c.triagedIssues = &releaseTriagedIncidents
 	}
-	impactedRuns, triagedIncidents := triagedIssuesFor(c.triagedIssues, testID.ColumnIdentification, testID.TestID, c.SampleRelease.Start, c.SampleRelease.End)
+	impactedRuns, triagedIncidents := triagedIssuesFor(c.triagedIssues, testID.ColumnIdentification, testID.TestID, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
 
 	return impactedRuns, triagedIncidents, nil
 }
@@ -1237,15 +1226,15 @@ func (c *ComponentReportGenerator) getRequiredConfidence(testID string, variants
 		or := FindOpenRegression(view, testID, variants, c.openRegressions)
 		if or != nil {
 			log.Debugf("adjusting required regression confidence from %d to %d because %s (%v) has an open regression since %s",
-				c.RequestAdvancedOptions.Confidence,
-				c.RequestAdvancedOptions.Confidence-openRegressionConfidenceAdjustment,
+				c.ReqOptions.AdvancedOption.Confidence,
+				c.ReqOptions.AdvancedOption.Confidence-openRegressionConfidenceAdjustment,
 				testID,
 				variants,
 				or.Opened)
-			return c.RequestAdvancedOptions.Confidence /*- openRegressionConfidenceAdjustment*/
+			return c.ReqOptions.AdvancedOption.Confidence /*- openRegressionConfidenceAdjustment*/
 		}
 	}
-	return c.RequestAdvancedOptions.Confidence
+	return c.ReqOptions.AdvancedOption.Confidence
 }
 
 // matchBaseRegression returns a testStatus that reflects the allowances specified
@@ -1255,17 +1244,17 @@ func (c *ComponentReportGenerator) getRequiredConfidence(testID string, variants
 // is no intentional regression or the testStatus has a higher threshold
 func (c *ComponentReportGenerator) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, baseStats crtype.TestStatus) (crtype.TestStatus, string) {
 	var baseRegression *regressionallowances.IntentionalRegression
-	if !c.IncludeMultiReleaseAnalysis && len(c.VariantCrossCompare) == 0 {
+	if !c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis && len(c.ReqOptions.VariantOption.VariantCrossCompare) == 0 {
 		// only really makes sense when not cross-comparing variants:
 		// look for corresponding regressions we can account for in the analysis
 		// only if we are ignoring fallback, otherwise we will let fallback determine the threshold
 		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, testID.ColumnIdentification, testID.TestID)
 
 		// This could go away if we remove the option for ignoring fallback
-		if baseRegression != nil && baseRegression.PreviousPassPercentage(c.FlakeAsFailure) > c.getTestStatusPassRate(baseStats) {
+		if baseRegression != nil && baseRegression.PreviousPassPercentage(c.ReqOptions.AdvancedOption.FlakeAsFailure) > c.getTestStatusPassRate(baseStats) {
 			// override with  the basis regression previous values
 			// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-			baseRegressionPreviousRelease, err := PreviousRelease(c.BaseRelease.Release)
+			baseRegressionPreviousRelease, err := PreviousRelease(c.ReqOptions.BaseRelease.Release)
 			if err != nil {
 				log.WithError(err).Error("Failed to determine the previous release for baseRegression")
 			} else {
@@ -1306,7 +1295,7 @@ func (c *ComponentReportGenerator) matchBestBaseStats(
 		sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
 		baseStats.FlakeCount, approvedRegression, numberOfIgnoredSampleJobRuns, baseRelease, nil, nil)
 
-	if !c.IncludeMultiReleaseAnalysis {
+	if !c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
 		return baseStats, baseRelease, baseTestStats
 	}
 
@@ -1402,9 +1391,9 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			// requiredConfidence is lowered for on-going regressions to prevent cells from flapping:
 			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
 			var approvedRegression *regressionallowances.IntentionalRegression
-			if len(c.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
+			if len(c.ReqOptions.VariantOption.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
 				// look for corresponding regressions we can account for in the analysis
-				approvedRegression = regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
+				approvedRegression = regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
 				// ignore triage if we have an intentional regression
 				if approvedRegression == nil {
 					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
@@ -1412,10 +1401,10 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			}
 
 			// this is where we look to see if a previous release has a higher pass rate
-			matchedBaseRelease := c.BaseRelease.Release
+			matchedBaseRelease := c.ReqOptions.BaseRelease.Release
 			baseStats, matchedBaseRelease, testStats = c.matchBestBaseStats(testID, testKey, matchedBaseRelease, baseStats, sampleStats, requiredConfidence, approvedRegression, resolvedIssueCompensation)
 
-			if matchedBaseRelease != c.BaseRelease.Release {
+			if matchedBaseRelease != c.ReqOptions.BaseRelease.Release {
 				log.Infof("Overrode base stats using release %s for Test: %s - %s", matchedBaseRelease, baseStats.TestName, testKey)
 				overriddenBaseMatches++
 			}
@@ -1431,7 +1420,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 					if ti.Issue.Type != string(resolvedissues.TriageIssueTypeInfrastructure) {
 						// if a non Infrastructure regression isn't marked resolved or the resolution date is after the end of our sample query
 						// then we won't clear it.  Otherwise, we can.
-						if !ti.Issue.ResolutionDate.Valid || ti.Issue.ResolutionDate.Timestamp.After(c.SampleRelease.End) {
+						if !ti.Issue.ResolutionDate.Valid || ti.Issue.ResolutionDate.Timestamp.After(c.ReqOptions.SampleRelease.End) {
 							canClearReportStatus = false
 						}
 					}
@@ -1467,7 +1456,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		var triagedIncidents []crtype.TriagedIncident
 		var resolvedIssueCompensation int // triaged job run failures to ignore
 		// look for corresponding regressions we can account for in the analysis
-		approvedRegression := regressionallowances.IntentionalRegressionFor(c.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
+		approvedRegression := regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
 		// ignore triage if we have an intentional regression
 		if approvedRegression == nil {
 			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
@@ -1486,7 +1475,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				if ti.Issue.Type != string(resolvedissues.TriageIssueTypeInfrastructure) {
 					// if a non Infrastructure regression isn't marked resolved or the resolution date is after the end of our sample query
 					// then we won't clear it.  Otherwise, we can.
-					if !ti.Issue.ResolutionDate.Valid || ti.Issue.ResolutionDate.Timestamp.After(c.SampleRelease.End) {
+					if !ti.Issue.ResolutionDate.Valid || ti.Issue.ResolutionDate.Timestamp.After(c.ReqOptions.SampleRelease.End) {
 						canClearReportStatus = false
 					}
 				}
@@ -1639,7 +1628,7 @@ func (c *ComponentReportGenerator) getPassRate(success, failure, flake int) floa
 	if total == 0 {
 		return 0.0
 	}
-	if c.FlakeAsFailure {
+	if c.ReqOptions.AdvancedOption.FlakeAsFailure {
 		return float64(success) / float64(total)
 	}
 	return float64(success+flake) / float64(total)
@@ -1661,21 +1650,21 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTr
 
 func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage float64, approvedRegression *regressionallowances.IntentionalRegression) int {
 	if approvedRegression != nil && approvedRegression.RegressedFailures > 0 {
-		regressedPassPercentage := approvedRegression.RegressedPassPercentage(c.FlakeAsFailure)
+		regressedPassPercentage := approvedRegression.RegressedPassPercentage(c.ReqOptions.AdvancedOption.FlakeAsFailure)
 		if regressedPassPercentage < basisPassPercentage {
 			// product owner chose a required pass percentage, so we allow pity to cover that approved pass percent
 			// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
-			effectivePityFactor := int(basisPassPercentage*100) - int(regressedPassPercentage*100) + c.PityFactor
+			effectivePityFactor := int(basisPassPercentage*100) - int(regressedPassPercentage*100) + c.ReqOptions.AdvancedOption.PityFactor
 
-			if effectivePityFactor < c.PityFactor {
+			if effectivePityFactor < c.ReqOptions.AdvancedOption.PityFactor {
 				log.Errorf("effective pity factor for %+v is below zero: %d", approvedRegression, effectivePityFactor)
-				effectivePityFactor = c.PityFactor
+				effectivePityFactor = c.ReqOptions.AdvancedOption.PityFactor
 			}
 
 			return effectivePityFactor
 		}
 	}
-	return c.PityFactor
+	return c.ReqOptions.AdvancedOption.PityFactor
 }
 
 func (c *ComponentReportGenerator) assessComponentStatus(
@@ -1694,8 +1683,8 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 
 	// if we don't have a valid set of start and end dates we default to the baseRelease values
 	if baseStart == nil || baseEnd == nil {
-		baseStart = &c.BaseRelease.Start
-		baseEnd = &c.BaseRelease.End
+		baseStart = &c.ReqOptions.BaseRelease.Start
+		baseEnd = &c.ReqOptions.BaseRelease.End
 	}
 	// preserve the initial sampleTotal, so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
@@ -1715,20 +1704,20 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 	}
 	baseFailure := baseTotal - baseSuccess - baseFlake
 
-	if baseTotal == 0 && c.RequestAdvancedOptions.PassRateRequiredNewTests > 0 {
+	if baseTotal == 0 && c.ReqOptions.AdvancedOption.PassRateRequiredNewTests > 0 {
 		// If we have no base stats, fall back to a raw pass rate comparison for new or improperly renamed tests:
 		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
-			float64(c.RequestAdvancedOptions.PassRateRequiredNewTests))
+			float64(c.ReqOptions.AdvancedOption.PassRateRequiredNewTests))
 		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
 		// status to be missing basis for the pre-existing Fisher Exact behavior:
-		if testStats.ReportStatus == crtype.NotSignificant && c.RequestAdvancedOptions.PassRateRequiredAllTests == 0 {
+		if testStats.ReportStatus == crtype.NotSignificant && c.ReqOptions.AdvancedOption.PassRateRequiredAllTests == 0 {
 			testStats.ReportStatus = crtype.MissingBasis
 		}
 		return testStats
-	} else if c.RequestAdvancedOptions.PassRateRequiredAllTests > 0 {
+	} else if c.ReqOptions.AdvancedOption.PassRateRequiredAllTests > 0 {
 		// If requested, switch to pass rate only testing to see what does not meet the criteria:
 		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
-			float64(c.RequestAdvancedOptions.PassRateRequiredAllTests))
+			float64(c.ReqOptions.AdvancedOption.PassRateRequiredAllTests))
 		// include base stats even though we didn't do fishers exact here, this is helpful
 		// for the test details page to give a visual on how the test behaved in the basis
 		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
@@ -1769,9 +1758,9 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 	testStats := crtype.ReportTestStats{
 		Comparison: crtype.FisherExact,
 		SampleStats: crtype.TestDetailsReleaseStats{
-			Release: c.SampleRelease.Release,
-			Start:   &c.SampleRelease.Start,
-			End:     &c.SampleRelease.End,
+			Release: c.ReqOptions.SampleRelease.Release,
+			Start:   &c.ReqOptions.SampleRelease.Start,
+			End:     &c.ReqOptions.SampleRelease.End,
 			TestDetailsTestStats: crtype.TestDetailsTestStats{
 				SuccessRate:  c.getPassRate(sampleSuccess, sampleFailure, sampleFlake),
 				SuccessCount: sampleSuccess,
@@ -1785,7 +1774,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 	status := crtype.MissingBasis
 	// if the unadjusted sample was 0 then nothing to do
 	if initialSampleTotal == 0 {
-		if c.IgnoreMissing {
+		if c.ReqOptions.AdvancedOption.IgnoreMissing {
 			status = crtype.NotSignificant
 		} else {
 			status = crtype.MissingSample
@@ -1794,7 +1783,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 		// see if we had a significant regression prior to adjusting
 		basePass := baseSuccess + baseFlake
 		samplePass := sampleSuccess + sampleFlake
-		if c.FlakeAsFailure {
+		if c.ReqOptions.AdvancedOption.FlakeAsFailure {
 			basePass = baseSuccess
 			samplePass = sampleSuccess
 		}
@@ -1806,7 +1795,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 		// only consider wasSignificant if the sampleTotal has been changed and our sample
 		// pass percentage is below the basis
 		if initialSampleTotal > sampleTotal && initialPassPercentage < basisPassPercentage {
-			if basisPassPercentage-initialPassPercentage > float64(c.PityFactor)/100 {
+			if basisPassPercentage-initialPassPercentage > float64(c.ReqOptions.AdvancedOption.PityFactor)/100 {
 				wasSignificant, _ = c.fischerExactTest(requiredConfidence, initialSampleTotal-samplePass, samplePass, baseTotal-basePass, basePass)
 			}
 			// if it was significant without the adjustment use
@@ -1818,7 +1807,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 
 		if sampleTotal == 0 {
 			if !wasSignificant {
-				if c.IgnoreMissing {
+				if c.ReqOptions.AdvancedOption.IgnoreMissing {
 					status = crtype.NotSignificant
 
 				} else {
@@ -1842,7 +1831,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 		samplePassPercentage := float64(samplePass) / float64(sampleTotal)
 
 		// did we remove enough failures that we are below the MinimumFailure threshold?
-		if c.MinimumFailure != 0 && (sampleTotal-samplePass) < c.MinimumFailure {
+		if c.ReqOptions.AdvancedOption.MinimumFailure != 0 && (sampleTotal-samplePass) < c.ReqOptions.AdvancedOption.MinimumFailure {
 			testStats.ReportStatus = status
 			testStats.FisherExact = thrift.Float64Ptr(0.0)
 			return testStats
@@ -1880,7 +1869,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 				testStats.SampleStats.SuccessRate*float64(100)),
 		}
 		// check for override
-		if baseRelease != c.BaseRelease.Release {
+		if baseRelease != c.ReqOptions.BaseRelease.Release {
 			testStats.Explanations = append(testStats.Explanations, fmt.Sprintf("Overrode base stats using release %s", baseRelease))
 		}
 	}
@@ -1899,7 +1888,7 @@ func (c *ComponentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleF
 	// Require 7 runs in the sample (typically 1 week) for us to consider a pass rate requirement for a new test:
 	sufficientRuns := (sampleSuccess + sampleFailure + sampleFlake) >= 7
 
-	if sufficientRuns && successRate*100 < requiredSuccessRate && sampleFailure >= c.MinimumFailure {
+	if sufficientRuns && successRate*100 < requiredSuccessRate && sampleFailure >= c.ReqOptions.AdvancedOption.MinimumFailure {
 		rStatus := crtype.SignificantRegression
 		if successRate*100 < severeRegressionSuccessRate {
 			rStatus = crtype.ExtremeRegression
@@ -1911,9 +1900,9 @@ func (c *ComponentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleF
 			},
 			Comparison: crtype.PassRate,
 			SampleStats: crtype.TestDetailsReleaseStats{
-				Release: c.SampleRelease.Release,
-				Start:   &c.SampleRelease.Start,
-				End:     &c.SampleRelease.End,
+				Release: c.ReqOptions.SampleRelease.Release,
+				Start:   &c.ReqOptions.SampleRelease.Start,
+				End:     &c.ReqOptions.SampleRelease.End,
 				TestDetailsTestStats: crtype.TestDetailsTestStats{
 					SuccessRate:  successRate,
 					SuccessCount: sampleSuccess,
