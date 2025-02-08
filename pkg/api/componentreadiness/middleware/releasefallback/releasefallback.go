@@ -24,14 +24,13 @@ const (
 
 func NewReleaseFallbackMiddleware(client *bqcachedclient.Client,
 	cacheOption cache.RequestOptions,
-	allJobVariants crtype.JobVariants,
-	reportGenerator *componentreadiness.ComponentReportGenerator) *ReleaseFallback {
+	reqOptions crtype.RequestOptions,
+) *ReleaseFallback {
 	return &ReleaseFallback{
-		client:          client,
-		cacheOption:     cacheOption,
-		log:             log.WithField("middleware", "ReleaseFallback"),
-		allJobVariants:  allJobVariants,
-		reportGenerator: reportGenerator,
+		client:      client,
+		cacheOption: cacheOption,
+		log:         log.WithField("middleware", "ReleaseFallback"),
+		reqOptions:  reqOptions,
 	}
 }
 
@@ -48,12 +47,11 @@ type ReleaseFallback struct {
 	client                     *bqcachedclient.Client
 	cachedFallbackTestStatuses *crtype.FallbackReleases
 	log                        log.FieldLogger
-	allJobVariants             crtype.JobVariants
 	cacheOption                cache.RequestOptions
-	reportGenerator            *componentreadiness.ComponentReportGenerator
+	reqOptions                 crtype.RequestOptions
 }
 
-func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup) {
+func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -63,10 +61,10 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup) {
 			return
 		default:
 			// TODO: should we pass the same wg through rather than using another?
-			r.getFallbackBaseQueryStatus(ctx, r.allJobVariants, r.reportGenerator.BaseRelease.Release, r.reportGenerator.BaseRelease.Start, r.reportGenerator.BaseRelease.End)
+			r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reportGenerator.BaseRelease.Release, r.reportGenerator.BaseRelease.Start, r.reportGenerator.BaseRelease.End)
 		}
 	}()
-	return
+	return nil
 }
 
 func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
@@ -99,13 +97,12 @@ type fallbackTestQueryReleasesGenerator struct {
 	BaseEnd                    time.Time
 	CachedFallbackTestStatuses crtype.FallbackReleases
 	lock                       *sync.Mutex
-	ComponentReportGenerator   *componentreadiness.ComponentReportGenerator
+	ReqOptions                 crtype.RequestOptions
 }
 
 func newFallbackTestQueryReleasesGenerator(
 	client *bqcachedclient.Client,
-	cacheOption cache.RequestOptions,
-	c *componentreadiness.ComponentReportGenerator,
+	reqOptions crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	release string, start, end time.Time) fallbackTestQueryReleasesGenerator {
 
@@ -113,15 +110,15 @@ func newFallbackTestQueryReleasesGenerator(
 		client:         client,
 		allJobVariants: allJobVariants,
 		cacheOption: cache.RequestOptions{
-			ForceRefresh: cacheOption.ForceRefresh,
+			ForceRefresh: reqOptions.CacheOption.ForceRefresh,
 			// increase the time that fallback queries are cached for
 			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
 		},
-		BaseRelease:              release,
-		BaseStart:                start,
-		BaseEnd:                  end,
-		lock:                     &sync.Mutex{},
-		ComponentReportGenerator: c,
+		BaseRelease: release,
+		BaseStart:   start,
+		BaseEnd:     end,
+		lock:        &sync.Mutex{},
+		ReqOptions:  reqOptions,
 	}
 	return generator
 
@@ -219,7 +216,7 @@ func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.R
 func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.Context,
 	client *bqcachedclient.Client, cacheOption cache.RequestOptions,
 	release string, start, end time.Time) (crtype.ReportTestStatus, []error) {
-	generator := newFallbackBaseQueryGenerator(client, cacheOption, f.ComponentReportGenerator, f.allJobVariants, release, start, end)
+	generator := newFallbackBaseQueryGenerator(client, f.ReqOptions, f.allJobVariants, release, start, end)
 
 	testStatuses, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator), generator.getTestFallbackRelease, crtype.ReportTestStatus{})
 
@@ -231,23 +228,23 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.
 }
 
 type fallbackTestQueryGenerator struct {
-	client                   *bqcachedclient.Client
-	cacheOption              cache.RequestOptions
-	allVariants              crtype.JobVariants
-	BaseRelease              string
-	BaseStart                time.Time
-	BaseEnd                  time.Time
-	ComponentReportGenerator *componentreadiness.ComponentReportGenerator
+	client      *bqcachedclient.Client
+	cacheOption cache.RequestOptions
+	allVariants crtype.JobVariants
+	BaseRelease string
+	BaseStart   time.Time
+	BaseEnd     time.Time
+	ReqOptions  crtype.RequestOptions
 }
 
-func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, cacheOption cache.RequestOptions, c *componentreadiness.ComponentReportGenerator, allVariants crtype.JobVariants,
+func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions crtype.RequestOptions, allVariants crtype.JobVariants,
 	baseRelease string, baseStart, baseEnd time.Time) fallbackTestQueryGenerator {
 	generator := fallbackTestQueryGenerator{
-		ComponentReportGenerator: c,
-		client:                   client,
-		allVariants:              allVariants,
+		client:      client,
+		allVariants: allVariants,
+		ReqOptions:  reqOptions,
 		cacheOption: cache.RequestOptions{
-			ForceRefresh: cacheOption.ForceRefresh,
+			ForceRefresh: reqOptions.CacheOption.ForceRefresh,
 			// increase the time that base query is cached for since it shouldn't be changing
 			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
 		},

@@ -122,7 +122,7 @@ func newBaseQueryGenerator(c *ComponentReportGenerator, allVariants crtype.JobVa
 
 func (b *baseQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(b.ComponentReportGenerator,
+	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(b.client.BQ,
 		b.allVariants, b.ComponentReportGenerator.IncludeVariants, DefaultJunitTable, false, false)
 
 	before := time.Now()
@@ -194,7 +194,7 @@ func newSampleQueryGenerator(
 }
 
 func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(s.ComponentReportGenerator,
+	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(s.ComponentReportGenerator.client,
 		s.allVariants, s.IncludeVariants, s.JunitTable, true, false)
 
 	before := time.Now()
@@ -249,7 +249,8 @@ func (s *sampleQueryGenerator) queryTestStatus(ctx context.Context) (crtype.Repo
 
 // BuildCommonTestStatusQuery returns the common query for the higher level summary component summary.
 func BuildCommonTestStatusQuery(
-	c *ComponentReportGenerator,
+	client *bigquery.Client,
+	reqOptions crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
 	junitTable string,
@@ -262,16 +263,16 @@ func BuildCommonTestStatusQuery(
 	groupByVariants := ""
 	for _, v := range sortedKeys(allJobVariants.Variants) {
 		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
-			c.client.Dataset, v, v, v, v)
+			client.Dataset, v, v, v, v)
 	}
-	for _, v := range c.DBGroupBy.List() {
+	for _, v := range reqOptions.VariantOption.DBGroupBy.List() {
 		v = param.Cleanse(v)
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
 
 	jobNameQueryPortion := normalJobNameCol
-	if c.SampleRelease.PullRequestOptions != nil && isSample {
+	if reqOptions.SampleRelease.PullRequestOptions != nil && isSample {
 		jobNameQueryPortion = pullRequestDynamicJobNameCol
 	}
 
@@ -297,7 +298,7 @@ func BuildCommonTestStatusQuery(
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `,
-		c.client.Dataset, c.client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, c.client.Dataset, junitTable, c.client.Dataset))
+		client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset))
 
 	queryString += joinVariants
 
@@ -316,7 +317,7 @@ func BuildCommonTestStatusQuery(
 			Value: ignoredJobsRegexp,
 		},
 	}
-	if c.IgnoreDisruption {
+	if reqOptions.AdvancedOption.IgnoreDisruption {
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
 	}
 
@@ -325,8 +326,8 @@ func BuildCommonTestStatusQuery(
 	if !isFallback {
 		variantGroups := includeVariants
 		// potentially cross-compare variants for the sample
-		if isSample && len(c.VariantCrossCompare) > 0 {
-			variantGroups = c.CompareVariants
+		if isSample && len(reqOptions.VariantOption.VariantCrossCompare) > 0 {
+			variantGroups = reqOptions.VariantOption.CompareVariants
 		}
 		if variantGroups == nil { // server-side view definitions may omit a variants map
 			variantGroups = map[string][]string{}
@@ -342,27 +343,27 @@ func BuildCommonTestStatusQuery(
 			})
 		}
 
-		for _, group := range sortedKeys(c.RequestedVariants) {
+		for _, group := range sortedKeys(reqOptions.VariantOption.RequestedVariants) {
 			group = param.Cleanse(group) // should be clean already, but just to make sure
 			paramName := fmt.Sprintf("ReqVariant_%s", group)
 			queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
 			commonParams = append(commonParams, bigquery.QueryParameter{
 				Name:  paramName,
-				Value: c.RequestedVariants[group],
+				Value: reqOptions.VariantOption.RequestedVariants[group],
 			})
 		}
-		if c.Capability != "" {
+		if reqOptions.TestIDOption.Capability != "" {
 			queryString += " AND @Capability in UNNEST(capabilities)"
 			commonParams = append(commonParams, bigquery.QueryParameter{
 				Name:  "Capability",
-				Value: c.Capability,
+				Value: reqOptions.TestIDOption.Capability,
 			})
 		}
-		if c.TestID != "" {
+		if reqOptions.TestIDOption.TestID != "" {
 			queryString += ` AND cm.id = @TestId`
 			commonParams = append(commonParams, bigquery.QueryParameter{
 				Name:  "TestId",
-				Value: c.TestID,
+				Value: reqOptions.TestIDOption.TestID,
 			})
 		}
 	}

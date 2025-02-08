@@ -122,10 +122,13 @@ func GetComponentReportFromBigQuery(
 ) (crtype.ComponentReport, []error) {
 
 	middleware := []middleware.Middleware{}
+	// Initialize all our middleware applicable to this request.
+	// TODO: Should middleware constructors do the interpretation of the request
+	// and decide if they want to take part? Return nil if not?
 	if reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
 		middleware = append(middleware,
 			releasefallback.NewReleaseFallbackMiddleware(
-				client, reqOptions.CacheOption, allJobVariants, c))
+				client, reqOptions.CacheOption, c))
 	}
 
 	// TODO: generator is used as a cache key, public fields get included when we serialize it.
@@ -145,6 +148,7 @@ func GetComponentReportFromBigQuery(
 		RequestVariantOptions:            reqOptions.VariantOption,
 		RequestAdvancedOptions:           reqOptions.AdvancedOption,
 		variantJunitTableOverrides:       variantJunitTableOverrides,
+		middlewares:                      middleware,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
@@ -176,7 +180,7 @@ type ComponentReportGenerator struct {
 	crtype.RequestAdvancedOptions
 	openRegressions            []*crtype.TestRegression
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
-	middlewares                []*middleware.Middleware
+	middlewares                []middleware.Middleware
 }
 
 func (c *ComponentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
@@ -376,7 +380,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 
 	// Invoke the Query phase for each of our configured middlewares:
 	for _, middleware := range middleware {
-		middleware.Query(ctx, &wg)
+		middleware.Query(ctx, &wg, allJobVariants)
 	}
 
 	wg.Add(1)
