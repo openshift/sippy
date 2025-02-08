@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -288,10 +287,10 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 func (c *ComponentReportGenerator) getBaseQueryStatus(ctx context.Context,
 	allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
 
-	generator := newBaseQueryGenerator(c, allJobVariants)
+	generator := NewBaseQueryGenerator(c.client, c.ReqOptions, allJobVariants)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, c.client.Cache,
-		generator.cacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.queryTestStatus, crtype.ReportTestStatus{})
+		generator.ReqOptions.CacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.queryTestStatus, crtype.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -308,7 +307,7 @@ func (c *ComponentReportGenerator) getSampleQueryStatus(
 	start, end time.Time,
 	junitTable string) (map[string]crtype.TestStatus, []error) {
 
-	generator := newSampleQueryGenerator(c, allJobVariants, includeVariants, start, end, junitTable)
+	generator := NewSampleQueryGenerator(c.client, c.ReqOptions, allJobVariants, includeVariants, start, end, junitTable)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
 		c.client.Cache, c.ReqOptions.CacheOption,
@@ -696,69 +695,6 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 	testIDBytes, err := json.Marshal(tid)
 
 	return string(testIDBytes), cts, err
-}
-
-func (c *ComponentReportGenerator) normalizeProwJobName(prowName string) string {
-	name := prowName
-	if c.ReqOptions.BaseRelease.Release != "" {
-		name = strings.ReplaceAll(name, c.ReqOptions.BaseRelease.Release, "X.X")
-		if prev, err := utils.PreviousRelease(c.ReqOptions.BaseRelease.Release); err == nil {
-			name = strings.ReplaceAll(name, prev, "X.X")
-		}
-	}
-	if c.ReqOptions.BaseOverrideRelease.Release != "" {
-		name = strings.ReplaceAll(name, c.ReqOptions.BaseOverrideRelease.Release, "X.X")
-		if prev, err := utils.PreviousRelease(c.ReqOptions.BaseOverrideRelease.Release); err == nil {
-			name = strings.ReplaceAll(name, prev, "X.X")
-		}
-	}
-	if c.ReqOptions.SampleRelease.Release != "" {
-		name = strings.ReplaceAll(name, c.ReqOptions.SampleRelease.Release, "X.X")
-		if prev, err := utils.PreviousRelease(c.ReqOptions.SampleRelease.Release); err == nil {
-			name = strings.ReplaceAll(name, prev, "X.X")
-		}
-	}
-	// Some jobs encode frequency in their name, which can change
-	re := regexp.MustCompile(`-f\d+`)
-	name = re.ReplaceAllString(name, "-fXX")
-
-	return name
-}
-
-func (c *ComponentReportGenerator) fetchJobRunTestStatusResults(ctx context.Context,
-	query *bigquery.Query) (map[string][]crtype.JobRunTestStatusRow, []error) {
-	errs := []error{}
-	status := map[string][]crtype.JobRunTestStatusRow{}
-	log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
-
-	it, err := query.Read(ctx)
-	if err != nil {
-		log.WithError(err).Error("error querying job run test status from bigquery")
-		errs = append(errs, err)
-		return status, errs
-	}
-
-	for {
-		testStatus := crtype.JobRunTestStatusRow{}
-		err := it.Next(&testStatus)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.WithError(err).Error("error parsing component from bigquery")
-			errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
-			continue
-		}
-		prowName := c.normalizeProwJobName(testStatus.ProwJob)
-		rows, ok := status[prowName]
-		if !ok {
-			status[prowName] = []crtype.JobRunTestStatusRow{testStatus}
-		} else {
-			rows = append(rows, testStatus)
-			status[prowName] = rows
-		}
-	}
-	return status, errs
 }
 
 type cellStatus struct {
