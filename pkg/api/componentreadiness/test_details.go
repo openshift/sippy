@@ -10,6 +10,7 @@ import (
 
 	bigquery2 "cloud.google.com/go/bigquery"
 	fet "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/sirupsen/logrus"
@@ -480,7 +481,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	if baseRegression != nil && baseRegression.PreviousPassPercentage(c.ReqOptions.AdvancedOption.FlakeAsFailure) > c.getPassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-		baseRegressionPreviousRelease, err := PreviousRelease(baseRelease)
+		baseRegressionPreviousRelease, err := utils.PreviousRelease(baseRelease)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to determine the previous release for baseRegression")
 		} else {

@@ -7,6 +7,8 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -61,7 +63,7 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 			return
 		default:
 			// TODO: should we pass the same wg through rather than using another?
-			r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reportGenerator.BaseRelease.Release, r.reportGenerator.BaseRelease.Start, r.reportGenerator.BaseRelease.End)
+			r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Release, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
 		}
 	}()
 	return nil
@@ -70,7 +72,7 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	allJobVariants crtype.JobVariants,
 	release string, start, end time.Time) []error {
-	generator := newFallbackTestQueryReleasesGenerator(r.client, r.cacheOption, r.reportGenerator, allJobVariants, release, start, end)
+	generator := newFallbackTestQueryReleasesGenerator(r.client, r.reqOptions, allJobVariants, release, start, end)
 
 	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*crtype.FallbackReleases](
 		ctx, r.client.Cache, generator.cacheOption,
@@ -127,7 +129,7 @@ func newFallbackTestQueryReleasesGenerator(
 func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context.Context) (*crtype.FallbackReleases, []error) {
 	wg := sync.WaitGroup{}
 	f.CachedFallbackTestStatuses = newFallbackReleases()
-	releases, errs := componentreadiness.GetReleaseDatesFromBigQuery(ctx, f.client)
+	releases, errs := query.GetReleaseDatesFromBigQuery(ctx, f.client, f.ReqOptions)
 
 	if errs != nil {
 		return nil, errs
@@ -143,7 +145,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 	for i := 0; i < 3; i++ {
 		var crRelease *crtype.Release
 
-		fallbackRelease, err := componentreadiness.PreviousRelease(fallbackRelease)
+		fallbackRelease, err := utils.PreviousRelease(fallbackRelease)
 		if err != nil {
 			log.WithError(err).Errorf("Failure determining fallback release for %s", fallbackRelease)
 			break
@@ -257,8 +259,9 @@ func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions crt
 
 func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := componentreadiness.BuildCommonTestStatusQuery(
-		f.ComponentReportGenerator,
-		f.allVariants, f.ComponentReportGenerator.IncludeVariants,
+		f.client.BQ,
+		f.ReqOptions,
+		f.allVariants, f.ReqOptions.VariantOption.IncludeVariants,
 		componentreadiness.DefaultJunitTable, false, true)
 	before := time.Now()
 	log.Infof("Starting Fallback (%s) QueryTestStatus", f.BaseRelease)

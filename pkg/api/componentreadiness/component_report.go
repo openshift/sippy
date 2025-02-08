@@ -17,6 +17,7 @@ import (
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/releasefallback"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
@@ -93,14 +94,6 @@ func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedc
 		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, crtype.TestVariants{})
 }
 
-func GetReleaseDatesFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]crtype.Release, []error) {
-	generator := ComponentReportGenerator{
-		client: client,
-	}
-
-	return api.GetDataFromCacheOrGenerate[[]crtype.Release](ctx, client.Cache, cache.RequestOptions{}, api.GetPrefixedCacheKey("CRReleaseDates~", generator), generator.GenerateReleaseDates, []crtype.Release{})
-}
-
 func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client,
 	gcsBucket string) (crtype.JobVariants,
 	[]error) {
@@ -149,6 +142,7 @@ func GetComponentReportFromBigQuery(
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		generator.client.Cache, generator.ReqOptions.CacheOption,
+		// TODO: how are we not specifying anything specific for cache key?
 		generator.GetComponentReportCacheKey(ctx, "ComponentReport~"),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
@@ -201,24 +195,6 @@ func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype
 		Upgrade:  columns["upgrade"],
 		Variant:  columns["variants"],
 	}, errs
-}
-
-func (c *ComponentReportGenerator) GenerateReleaseDates(ctx context.Context) ([]crtype.Release, []error) {
-	releases, err := api.GetReleasesFromBigQuery(ctx, c.client)
-	if err != nil {
-		return nil, []error{err}
-	}
-	crReleases := []crtype.Release{}
-	for _, release := range releases {
-		crRelease := crtype.Release{Release: release.Release}
-		if release.GADate != nil {
-			prior := util.AdjustReleaseTime(*release.GADate, true, "30", c.ReqOptions.CacheOption.CRTimeRoundingFactor)
-			crRelease.Start = &prior
-			crRelease.End = release.GADate
-		}
-		crReleases = append(crReleases, crRelease)
-	}
-	return crReleases, nil
 }
 
 func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crtype.JobVariants, []error) {
@@ -722,52 +698,23 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 	return string(testIDBytes), cts, err
 }
 
-func getMajor(in string) (int, error) {
-	major, err := strconv.ParseInt(strings.Split(in, ".")[0], 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return int(major), err
-}
-
-func getMinor(in string) (int, error) {
-	minor, err := strconv.ParseInt(strings.Split(in, ".")[1], 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return int(minor), err
-}
-
-func PreviousRelease(release string) (string, error) {
-	prev := release
-	var err error
-	var major, minor int
-	if major, err = getMajor(release); err == nil {
-		if minor, err = getMinor(release); err == nil && minor > 0 {
-			prev = fmt.Sprintf("%d.%d", major, minor-1)
-		}
-	}
-
-	return prev, err
-}
-
 func (c *ComponentReportGenerator) normalizeProwJobName(prowName string) string {
 	name := prowName
 	if c.ReqOptions.BaseRelease.Release != "" {
 		name = strings.ReplaceAll(name, c.ReqOptions.BaseRelease.Release, "X.X")
-		if prev, err := PreviousRelease(c.ReqOptions.BaseRelease.Release); err == nil {
+		if prev, err := utils.PreviousRelease(c.ReqOptions.BaseRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
 	if c.ReqOptions.BaseOverrideRelease.Release != "" {
 		name = strings.ReplaceAll(name, c.ReqOptions.BaseOverrideRelease.Release, "X.X")
-		if prev, err := PreviousRelease(c.ReqOptions.BaseOverrideRelease.Release); err == nil {
+		if prev, err := utils.PreviousRelease(c.ReqOptions.BaseOverrideRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
 	if c.ReqOptions.SampleRelease.Release != "" {
 		name = strings.ReplaceAll(name, c.ReqOptions.SampleRelease.Release, "X.X")
-		if prev, err := PreviousRelease(c.ReqOptions.SampleRelease.Release); err == nil {
+		if prev, err := utils.PreviousRelease(c.ReqOptions.SampleRelease.Release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
@@ -1254,7 +1201,7 @@ func (c *ComponentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 		if baseRegression != nil && baseRegression.PreviousPassPercentage(c.ReqOptions.AdvancedOption.FlakeAsFailure) > c.getTestStatusPassRate(baseStats) {
 			// override with  the basis regression previous values
 			// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-			baseRegressionPreviousRelease, err := PreviousRelease(c.ReqOptions.BaseRelease.Release)
+			baseRegressionPreviousRelease, err := utils.PreviousRelease(c.ReqOptions.BaseRelease.Release)
 			if err != nil {
 				log.WithError(err).Error("Failed to determine the previous release for baseRegression")
 			} else {
@@ -1310,7 +1257,7 @@ func (c *ComponentReportGenerator) matchBestBaseStats(
 		var cachedTestStatuses crtype.ReleaseTestMap
 		var cTestStats crtype.TestStatus
 		ok := false
-		priorRelease, err = PreviousRelease(priorRelease)
+		priorRelease, err = utils.PreviousRelease(priorRelease)
 		// if we fail to determine the previous release then stop
 		if err != nil {
 			return baseStats, baseRelease, baseTestStats
