@@ -1417,14 +1417,7 @@ func (c *ComponentReportGenerator) getTestStatusPassRate(testStatus crtype.TestS
 }
 
 func (c *ComponentReportGenerator) getPassRate(success, failure, flake int) float64 {
-	total := success + failure + flake
-	if total == 0 {
-		return 0.0
-	}
-	if c.ReqOptions.AdvancedOption.FlakeAsFailure {
-		return float64(success) / float64(total)
-	}
-	return float64(success+flake) / float64(total)
+	return utils.CalculatePassRate(c.ReqOptions, success, failure, flake)
 }
 
 func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTriage bool) crtype.Status {
@@ -1460,6 +1453,10 @@ func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage fl
 	return c.ReqOptions.AdvancedOption.PityFactor
 }
 
+// TODO: this will eventually become the analyze step on a Middleware, or possibly a separate
+// set of objects relating to analysis, as there's not a lot of overlap between the analyzers
+// (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
+// cross variant compare, rarely run jobs, etc.)
 func (c *ComponentReportGenerator) assessComponentStatus(
 	requiredConfidence,
 	sampleTotal,
