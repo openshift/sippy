@@ -192,7 +192,7 @@ func (c *ReleaseFallback) matchBestBaseStats(
 				// the report, and ultimately the UI.
 				baseStats.Release = &cachedReleaseTestStatuses.Release
 				baseRelease = priorRelease
-				c.log.Infof("Overrode base stats (%.2f) using release %s (%.2f) for test: %s - %s",
+				c.log.Infof("Overrode base stats (%.4f) using release %s (%.4f) for test: %s - %s",
 					basePassRate, baseStats.Release.Release, cPassRate, baseStats.TestName, testKeyStr)
 			}
 		}

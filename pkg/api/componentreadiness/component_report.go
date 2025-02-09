@@ -1087,7 +1087,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			requiredConfidence := c.getRequiredConfidence(testKey.TestID, testKey.Variants)
 			var approvedRegression *regressionallowances.IntentionalRegression
 			if len(c.ReqOptions.VariantOption.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
-				// TODO: move triage compenstation to a middleware with a Transform
+				// TODO: move triage compensation to a middleware with a Transform
 				// look for corresponding regressions we can account for in the analysis
 				approvedRegression = regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, testKey.ColumnIdentification, testKey.TestID)
 				// ignore triage if we have an intentional regression
@@ -1104,7 +1104,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				baseStart = baseStats.Release.Start
 				baseEnd = baseStats.Release.End
 			}
-			testStats := c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
+			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
 				baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation, matchedBaseRelease, baseStart, baseEnd)
 
