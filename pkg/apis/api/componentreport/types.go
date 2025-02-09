@@ -135,6 +135,9 @@ type TestStatus struct {
 	SuccessCount int       `json:"success_count"`
 	FlakeCount   int       `json:"flake_count"`
 	LastFailure  time.Time `json:"last_failure"`
+	// Release provides info on the release this test status was pulled from for base TestStatus.
+	// If nil, assume the base/sample release from the request options. (used for ReleaseFallback)
+	Release *Release `json:"release"`
 }
 
 func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/regressionallowances"
@@ -22,17 +23,15 @@ const (
 	fallbackQueryTimeRoundingOverride = 24 * 7 * time.Hour
 )
 
-//var _ middleware.Middleware = ReleaseFallback{}
+var _ middleware.Middleware = &ReleaseFallback{}
 
 func NewReleaseFallbackMiddleware(client *bqcachedclient.Client,
-	cacheOption cache.RequestOptions,
 	reqOptions crtype.RequestOptions,
 ) *ReleaseFallback {
 	return &ReleaseFallback{
-		client:      client,
-		cacheOption: cacheOption,
-		log:         log.WithField("middleware", "ReleaseFallback"),
-		reqOptions:  reqOptions,
+		client:     client,
+		log:        log.WithField("middleware", "ReleaseFallback"),
+		reqOptions: reqOptions,
 	}
 }
 
@@ -49,12 +48,12 @@ type ReleaseFallback struct {
 	client                     *bqcachedclient.Client
 	cachedFallbackTestStatuses *crtype.FallbackReleases
 	log                        log.FieldLogger
-	cacheOption                cache.RequestOptions
 	reqOptions                 crtype.RequestOptions
 }
 
 func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants) error {
 	wg.Add(1)
+	var errs []error
 	go func() {
 		defer wg.Done()
 		select {
@@ -63,24 +62,29 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 			return
 		default:
 			// TODO: should we pass the same wg through rather than using another?
-			r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Release, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
+			errs = r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Release, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
 		}
 	}()
+	if len(errs) > 0 {
+		return errs[0]
+	}
 	return nil
 }
 
 // Transform iterates the base status looking for any statuses that had a better pass rate in the prior releases
 // we queried earlier.
 func (c *ReleaseFallback) Transform(baseStatus, sampleStatus map[string]crtype.TestStatus) (map[string]crtype.TestStatus, map[string]crtype.TestStatus, error) {
-	/*
-		for testKeyStr, baseStats := range baseStatus {
-			testKey, err := utils.DeserializeTestKey(baseStats, testKeyStr)
-			if err != nil {
-				return nil, nil, err
-			}
+	for testKeyStr, baseStats := range baseStatus {
+		testKey, err := utils.DeserializeTestKey(baseStats, testKeyStr)
+		if err != nil {
+			return nil, nil, err
 		}
+		newBaseStatus := c.matchBestBaseStats(testKey, testKeyStr, c.reqOptions.BaseRelease.Release, baseStats)
+		if newBaseStatus.Release != nil && newBaseStatus.Release.Release != c.reqOptions.BaseRelease.Release {
+			baseStatus[testKeyStr] = newBaseStatus
+		}
+	}
 
-	*/
 	return baseStatus, sampleStatus, nil
 }
 
@@ -131,56 +135,49 @@ func (c *ReleaseFallback) matchBaseRegression(testID crtype.ReportTestIdentifica
 func (c *ReleaseFallback) matchBestBaseStats(
 	testID crtype.ReportTestIdentification,
 	testKeyStr, baseRelease string,
-	baseStats crtype.TestStatus) (crtype.TestStatus, string) { // TODO: dont return a release, stamp it on the TestStatus
+	baseStats crtype.TestStatus) crtype.TestStatus {
 
 	// The hope is that this goes away
 	// once we agree we don't need to honor a higher intentional regression pass percentage
 	baseStats, baseRelease = c.matchBaseRegression(testID, baseRelease, baseStats)
 
-	/*
-		baseTestStats := c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
-			sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
-			baseStats.FlakeCount, approvedRegression, numberOfIgnoredSampleJobRuns, baseRelease, nil, nil)
-
-	*/
-
 	if !c.reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
-		return baseStats, baseRelease
+		return baseStats
 	}
 
 	if c.cachedFallbackTestStatuses == nil {
-		log.Errorf("Invalid fallback test statuses")
-		return baseStats, baseRelease
+		c.log.Errorf("Invalid fallback test statuses")
+		return baseStats
 	}
 
 	var priorRelease = baseRelease
 	var err error
 	for err == nil {
-		var cachedTestStatuses crtype.ReleaseTestMap
+		var cachedReleaseTestStatuses crtype.ReleaseTestMap
 		var cTestStats crtype.TestStatus
 		ok := false
 		priorRelease, err = utils.PreviousRelease(priorRelease)
 		// if we fail to determine the previous release then stop
 		if err != nil {
-			return baseStats, baseRelease
+			return baseStats
 		}
 
 		// if we hit a missing release then stop
-		if cachedTestStatuses, ok = c.cachedFallbackTestStatuses.Releases[priorRelease]; !ok {
-			return baseStats, baseRelease
+		if cachedReleaseTestStatuses, ok = c.cachedFallbackTestStatuses.Releases[priorRelease]; !ok {
+			return baseStats
 		}
 
 		// it's ok if we don't have a testKeyStr for this release
 		// we likely won't have it for earlier releases either, but we can keep going
-		if cTestStats, ok = cachedTestStatuses.Tests[testKeyStr]; ok {
+		if cTestStats, ok = cachedReleaseTestStatuses.Tests[testKeyStr]; ok {
 
 			// what is our base total compared to the original base
 			// this happens when jobs shift like sdn -> ovn
 			// if we get below threshold that's a sign we are reducing our base signal
 			if float64(cTestStats.TotalCount)/float64(baseStats.TotalCount) < .6 {
-				log.Debugf("Fallback base total: %d to low for fallback analysis compared to original: %d",
+				c.log.Debugf("Fallback base total: %d to low for fallback analysis compared to original: %d",
 					cTestStats.TotalCount, baseStats.TotalCount)
-				return baseStats, baseRelease
+				return baseStats
 			}
 			_, success, fail, flake := baseStats.GetTotalSuccessFailFlakeCounts()
 			basePassRate := utils.CalculatePassRate(c.reqOptions, success, fail, flake)
@@ -190,25 +187,18 @@ func (c *ReleaseFallback) matchBestBaseStats(
 			cPassRate := utils.CalculatePassRate(c.reqOptions, success, fail, flake)
 			if cPassRate > basePassRate {
 				baseStats = cTestStats
+				// If we swapped out base stats for better ones from a prior release, we need to communicate
+				// this back to the core report generator so it can include the adjusted release/start/end dates in
+				// the report, and ultimately the UI.
+				baseStats.Release = &cachedReleaseTestStatuses.Release
 				baseRelease = priorRelease
+				c.log.Infof("Overrode base stats (%.2f) using release %s (%.2f) for test: %s - %s",
+					basePassRate, baseStats.Release.Release, cPassRate, baseStats.TestName, testKeyStr)
 			}
-
-			/*
-				priorTestStats := c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
-					sampleStats.FlakeCount, cTestStats.TotalCount, cTestStats.SuccessCount,
-					cTestStats.FlakeCount, approvedRegression, numberOfIgnoredSampleJobRuns, priorRelease, cachedTestStatuses.Start, cachedTestStatuses.End)
-
-						if priorTestStats.ReportStatus < baseTestStats.ReportStatus {
-							baseStats = cTestStats
-							baseTestStats = priorTestStats
-							baseRelease = priorRelease
-						}
-			*/
-
 		}
 	}
 
-	return baseStats, baseRelease
+	return baseStats
 }
 
 func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
