@@ -265,6 +265,7 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	var err error
 	allRegressions, err := bqs.ListCurrentRegressions(ctx)
 	if err != nil {
+		log.WithError(err).Error("error listing current regressions")
 		errs = append(errs, err)
 		return crtype.ComponentReport{}, errs
 	}
@@ -274,6 +275,7 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,
 		componentReportTestStatus.SampleStatus)
 	if err != nil {
+		log.WithError(err).Error("error generating report")
 		errs = append(errs, err)
 		return crtype.ComponentReport{}, errs
 	}
@@ -370,10 +372,10 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		default:
 			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
 			if skipQuery {
-				fLog.Infof("skipping default status query as all values for a variant were overridden")
+				fLog.Infof("skipping default sample query as all values for a variant were overridden")
 				return
 			}
-			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
+			fLog.Infof("running default sample query with includeVariants: %+v", includeVariants)
 			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			sampleStatusCh <- status
@@ -399,10 +401,10 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 			default:
 				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.ReqOptions.VariantOption.IncludeVariants)
 				if skipQuery {
-					fLog.Infof("skipping override status query as all values for a variant were overridden")
+					fLog.Infof("skipping override sample query as all values for a variant were overridden")
 					return
 				}
-				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
+				fLog.Infof("running override sample query for %+v with includeVariants: %+v", or, includeVariants)
 				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
 				end := c.ReqOptions.SampleRelease.End
 				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
@@ -1104,10 +1106,10 @@ func (c *ComponentReportGenerator) matchBestBaseStats(
 	/*
 		if c.cachedFallbackTestStatuses == nil {
 			log.Errorf("Invalid fallback test statuses")
-			return baseStats, baseRelease, baseTestStats
-		}
-
 	*/
+	if true {
+		return baseStats, baseRelease, baseTestStats
+	}
 
 	var priorRelease = baseRelease
 	var err error
@@ -1165,7 +1167,6 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 	report := crtype.ComponentReport{
 		Rows: []crtype.ReportRow{},
 	}
-
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
 	aggregatedStatus := map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
@@ -1211,7 +1212,15 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 
 			// this is where we look to see if a previous release has a higher pass rate
 			matchedBaseRelease := c.ReqOptions.BaseRelease.Release
-			baseStats, matchedBaseRelease, testStats = c.matchBestBaseStats(testID, testKey, matchedBaseRelease, baseStats, sampleStats, requiredConfidence, approvedRegression, resolvedIssueCompensation)
+			baseStats, matchedBaseRelease, testStats = c.matchBestBaseStats(
+				testID,
+				testKey,
+				matchedBaseRelease,
+				baseStats,
+				sampleStats,
+				requiredConfidence,
+				approvedRegression,
+				resolvedIssueCompensation)
 
 			if matchedBaseRelease != c.ReqOptions.BaseRelease.Release {
 				log.Infof("Overrode base stats using release %s for Test: %s - %s", matchedBaseRelease, baseStats.TestName, testKey)
