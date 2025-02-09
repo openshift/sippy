@@ -874,6 +874,21 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_c
 
                     # grab prowjob.json for the start time:
                     prow_job_json = fetch_json_data(artifacts_dir + 'prowjob.json')
+
+                    # sometimes we get 502 from prow
+                    # don't want to lose what we have in memory so continue on
+                    if prow_job_json is None:
+                        print("Error: no prowjob.json data returned from %s" % artifacts_dir)
+                        continue
+
+                    if prow_job_json["status"] is None:
+                        print("Error: no prowjob status returned for %s" % artifacts_dir)
+                        continue
+
+                    if prow_job_json["status"]["startTime"] is None:
+                        print("Error: no prowjob starttime returned for %s" % artifacts_dir)
+                        continue
+
                     start_time = prow_job_json["status"]["startTime"]
 
                     completion_time = None
