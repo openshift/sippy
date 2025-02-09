@@ -68,6 +68,21 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 	return nil
 }
 
+// Transform iterates the base status looking for any statuses that had a better pass rate in the prior releases
+// we queried earlier.
+func (c *ReleaseFallback) Transform(baseStatus, sampleStatus map[string]crtype.TestStatus) (map[string]crtype.TestStatus, map[string]crtype.TestStatus, error) {
+	/*
+		for testKeyStr, baseStats := range baseStatus {
+			testKey, err := utils.DeserializeTestKey(baseStats, testKeyStr)
+			if err != nil {
+				return nil, nil, err
+			}
+		}
+
+	*/
+	return baseStatus, sampleStatus, nil
+}
+
 func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	allJobVariants crtype.JobVariants,
 	release string, start, end time.Time) []error {

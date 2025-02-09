@@ -1,12 +1,14 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/sirupsen/logrus"
 )
 
 func PreviousRelease(release string) (string, error) {
@@ -63,4 +65,32 @@ func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOpt
 	name = re.ReplaceAllString(name, "-fXX")
 
 	return name
+}
+
+// DeserializeTestKey helps us workaround the limitations of a struct as a map key, where
+// we instead serialize a very small struct to json for a unit test key that includes test
+// ID and a specific set of variants. This function deserializes back to a struct.
+func DeserializeTestKey(stats componentreport.TestStatus, testKeyStr string) (componentreport.ReportTestIdentification, error) {
+	var testKey componentreport.TestWithVariantsKey
+	err := json.Unmarshal([]byte(testKeyStr), &testKey)
+	if err != nil {
+		logrus.WithError(err).Errorf("trying to unmarshel %s", testKeyStr)
+		return componentreport.ReportTestIdentification{}, err
+	}
+	testID := componentreport.ReportTestIdentification{
+		RowIdentification: componentreport.RowIdentification{
+			Component: stats.Component,
+			TestName:  stats.TestName,
+			TestSuite: stats.TestSuite,
+			TestID:    testKey.TestID,
+		},
+		ColumnIdentification: componentreport.ColumnIdentification{
+			Variants: testKey.Variants,
+		},
+	}
+	// Take the first cap for now. When we reach to a cell with specific capability, we will override the value.
+	if len(stats.Capabilities) > 0 {
+		testID.Capability = stats.Capabilities[0]
+	}
+	return testID, nil
 }

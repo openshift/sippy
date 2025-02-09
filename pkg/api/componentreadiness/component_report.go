@@ -1181,40 +1181,40 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 	//
 	// understand we use this to find tests associated with base that we don't see now in sample
 	// meaning they have been renamed or removed
-	baseReleaseMatches := 0
-	baseReleaseMisses := 0
+	baseReleaseMatches := 0 // TODO: never updated?
+	baseReleaseMisses := 0  // TODO: never updated?
 	overriddenBaseMatches := 0
 
-	for testKey, baseStats := range baseStatus {
-		testID, err := buildTestID(baseStats, testKey)
+	for testKeyStr, baseStats := range baseStatus {
+		testKey, err := utils.DeserializeTestKey(baseStats, testKeyStr)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
 
-		var testStats crtype.ReportTestStats
+		var testStats crtype.ReportTestStats // This is the actual stats we return over the API
 		var triagedIncidents []crtype.TriagedIncident
 		var resolvedIssueCompensation int // triaged job run failures to ignore
-		sampleStats, ok := sampleStatus[testKey]
+		sampleStats, ok := sampleStatus[testKeyStr]
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
 			// requiredConfidence is lowered for on-going regressions to prevent cells from flapping:
-			requiredConfidence := c.getRequiredConfidence(testID.TestID, testID.Variants)
+			requiredConfidence := c.getRequiredConfidence(testKey.TestID, testKey.Variants)
 			var approvedRegression *regressionallowances.IntentionalRegression
 			if len(c.ReqOptions.VariantOption.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
 				// look for corresponding regressions we can account for in the analysis
-				approvedRegression = regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
+				approvedRegression = regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, testKey.ColumnIdentification, testKey.TestID)
 				// ignore triage if we have an intentional regression
 				if approvedRegression == nil {
-					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
+					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testKey)
 				}
 			}
 
 			// this is where we look to see if a previous release has a higher pass rate
 			matchedBaseRelease := c.ReqOptions.BaseRelease.Release
 			baseStats, matchedBaseRelease, testStats = c.matchBestBaseStats(
-				testID,
 				testKey,
+				testKeyStr,
 				matchedBaseRelease,
 				baseStats,
 				sampleStats,
@@ -1223,7 +1223,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				resolvedIssueCompensation)
 
 			if matchedBaseRelease != c.ReqOptions.BaseRelease.Release {
-				log.Infof("Overrode base stats using release %s for Test: %s - %s", matchedBaseRelease, baseStats.TestName, testKey)
+				log.Infof("Overrode base stats using release %s for Test: %s - %s", matchedBaseRelease, baseStats.TestName, testKeyStr)
 				overriddenBaseMatches++
 			}
 			if !sampleStats.LastFailure.IsZero() {
@@ -1250,13 +1250,13 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				}
 			}
 		}
-		delete(sampleStatus, testKey)
+		delete(sampleStatus, testKeyStr)
 
-		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKey, baseStats)
+		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, baseStats)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentifications, testID, testStats, aggregatedStatus, allRows, allColumns, triagedIncidents, c.openRegressions)
+		updateCellStatus(rowIdentifications, columnIdentifications, testKey, testStats, aggregatedStatus, allRows, allColumns, triagedIncidents, c.openRegressions)
 	}
 
 	log.Infof("BaseStats: %d, baseMatches: %d, baseMisses: %d.  Overridden base stats: %d", len(baseStatus), baseReleaseMatches, baseReleaseMisses, overriddenBaseMatches)
@@ -1264,7 +1264,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 	// Anything we saw in the basis was removed above, all that remains are tests with no basis, typically new
 	// tests, or tests that were renamed without submitting a rename to the test mapping repo.
 	for testKey, sampleStats := range sampleStatus {
-		testID, err := buildTestID(sampleStats, testKey)
+		testID, err := utils.DeserializeTestKey(sampleStats, testKey)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
@@ -1402,31 +1402,6 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 
 	regressionRows = append(regressionRows, goodRows...)
 	return regressionRows, nil
-}
-
-func buildTestID(stats crtype.TestStatus, testKeyStr string) (crtype.ReportTestIdentification, error) {
-	var testKey crtype.TestWithVariantsKey
-	err := json.Unmarshal([]byte(testKeyStr), &testKey)
-	if err != nil {
-		log.WithError(err).Errorf("trying to unmarshel %s", testKeyStr)
-		return crtype.ReportTestIdentification{}, err
-	}
-	testID := crtype.ReportTestIdentification{
-		RowIdentification: crtype.RowIdentification{
-			Component: stats.Component,
-			TestName:  stats.TestName,
-			TestSuite: stats.TestSuite,
-			TestID:    testKey.TestID,
-		},
-		ColumnIdentification: crtype.ColumnIdentification{
-			Variants: testKey.Variants,
-		},
-	}
-	// Take the first cap for now. When we reach to a cell with specific capability, we will override the value.
-	if len(stats.Capabilities) > 0 {
-		testID.Capability = stats.Capabilities[0]
-	}
-	return testID, nil
 }
 
 func getFailureCount(status crtype.JobRunTestStatusRow) int {

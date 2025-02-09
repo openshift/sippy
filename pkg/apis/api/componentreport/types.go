@@ -216,6 +216,7 @@ const (
 // ReportTestStats is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
 // Important type returned by the API.
+// TODO: compare with TestStatus we use internally, see if we can converge?
 type ReportTestStats struct {
 	// ReportStatus is an integer representing the severity of the regression.
 	ReportStatus Status `json:"status"`
