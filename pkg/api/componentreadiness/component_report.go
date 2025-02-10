@@ -1041,7 +1041,7 @@ func (c *ComponentReportGenerator) getRequiredConfidence(testID string, variants
 				testID,
 				variants,
 				or.Opened)
-			return c.ReqOptions.AdvancedOption.Confidence /*- openRegressionConfidenceAdjustment*/
+			return c.ReqOptions.AdvancedOption.Confidence - openRegressionConfidenceAdjustment
 		}
 	}
 	return c.ReqOptions.AdvancedOption.Confidence
