@@ -1188,7 +1188,8 @@ func TestVariantsSnapshot(t *testing.T) {
 	oldVariants := map[string]map[string]string{}
 	oldVariantsYAML, err := os.ReadFile("snapshot.yaml")
 	assert.NoError(t, err)
-	yaml.Unmarshal(oldVariantsYAML, &oldVariants)
+	err = yaml.Unmarshal(oldVariantsYAML, &oldVariants)
+	assert.NoError(t, err)
 
 	// Iterate only over jobs that exist in both old and new
 	anyFail := 0
@@ -1230,7 +1231,7 @@ func TestVariantsSnapshot(t *testing.T) {
 	if os.Getenv("UPDATE_SNAPSHOT") != "" {
 		y, err := yaml.Marshal(newVariants)
 		assert.NoError(t, err)
-		err = os.WriteFile("snapshot.yaml", y, 0644)
+		err = os.WriteFile("snapshot.yaml", y, 0o600)
 		assert.NoError(t, err)
 	}
 }

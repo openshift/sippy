@@ -49,14 +49,18 @@ func NewOCPVariantLoader(
 	if err != nil {
 		panic(errors.Wrap(err, "unable to read snapshot.yaml"))
 	}
-	yaml.Unmarshal(existingYaml, &existing)
+	if err := yaml.Unmarshal(existingYaml, &existing); err != nil {
+		panic(errors.Wrap(err, "unable to unmarshal snapshot.yaml"))
+	}
 
 	var overrides map[string]map[string]string
 	overridesYaml, err := os.ReadFile("overrides.yaml")
 	if err != nil {
 		panic(errors.Wrap(err, "unable to read overrides.yaml"))
 	}
-	yaml.Unmarshal(overridesYaml, &overrides)
+	if err := yaml.Unmarshal(overridesYaml, &overrides); err != nil {
+		panic(errors.Wrap(err, "unable to unmarshal overrides.yaml"))
+	}
 
 	var bkt *storage.BucketHandle
 	if gcsBucket != "" {
