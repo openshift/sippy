@@ -159,6 +159,11 @@ ORDER BY j.prowjob_job_name;
 			log.WithError(err).Error("error parsing prowjob name from bigquery")
 			return nil, err
 		}
+
+		if isIgnoredJob(jlr.JobName) {
+			continue
+		}
+
 		clusterData := map[string]string{}
 		jLog := log.WithField("job", jlr.JobName)
 		if jlr.URL.Valid {
@@ -998,4 +1003,19 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 			return
 		}
 	}
+}
+
+func isIgnoredJob(jobName string) bool {
+	// Some CI jobs don't have stable variants because they move between OCP release versions, or other
+	// reasons
+	ignoredJobSubstrings := []string{
+		"periodic-ci-openshift-hive-master-",
+	}
+	for _, entry := range ignoredJobSubstrings {
+		if strings.Contains(jobName, entry) {
+			return true
+		}
+	}
+
+	return false
 }

@@ -1180,6 +1180,10 @@ func TestVariantsSnapshot(t *testing.T) {
 	variantSyncer := NewOCPVariantLoader(nil, "", "", "", nil, "", cfg)
 	for _, releaseCfg := range cfg.Releases {
 		for job := range releaseCfg.Jobs {
+			if isIgnoredJob(job) {
+				continue
+			}
+		
 			newVariants[job] = variantSyncer.CalculateVariantsForJob(log, job, nil)
 		}
 	}
