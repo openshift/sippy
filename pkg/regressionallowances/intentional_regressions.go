@@ -3,7 +3,6 @@ package regressionallowances
 import (
 	_ "embed"
 	"encoding/json"
-	"fmt"
 )
 
 // embed regressions415.json
@@ -71,11 +70,13 @@ var regressions4_18 []byte
 
 var (
 	release417 release = "4.17"
+	release418 release = "4.18"
 )
 
 //nolint:all
 func init() {
 	importIntentionalRegressions(release417, regressions4_17)
+	importIntentionalRegressions(release418, regressions4_18)
 }
 
 func importIntentionalRegressions(releaseTarget release, jsonRegressions []byte) {
@@ -85,10 +86,6 @@ func importIntentionalRegressions(releaseTarget release, jsonRegressions []byte)
 
 	if err != nil {
 		panic(err)
-	}
-
-	if len(regressions) == 0 {
-		panic(fmt.Sprintf("Empty IntentionalRegressions for %s", releaseTarget))
 	}
 
 	for _, regression := range regressions {

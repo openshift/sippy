@@ -16,6 +16,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { CircularProgress } from '@mui/material'
+import { escapeRegex } from '../helpers'
 import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
@@ -573,7 +574,7 @@ function filterIntervals(
 ) {
   let re = null
   if (filterText) {
-    re = new RegExp(filterText)
+    re = new RegExp(escapeRegex(filterText))
   }
 
   return _.filter(eventIntervals, function (eventInterval) {
@@ -804,7 +805,7 @@ function createTimelineData(
     if (!item.to) {
       endDate = latest
     }
-    let label = item.displayLocator
+    let label = escapeRegex(item.displayLocator)
     let sub = ''
     let section = data[label]
     if (!section) {
