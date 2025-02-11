@@ -59,3 +59,8 @@ e2e:
 
 images:
 	$(DOCKER) build .
+
+update-variants:
+	UPDATE_SNAPSHOT=1 go test -count 1 ./pkg/variantregistry -run 'TestVariantsSnapshot' || true; \
+	echo "Checking snapshot was updated..."; \
+	UPDATE_SNAPSHOT=1 go test -count 1 ./pkg/variantregistry -run 'TestVariantsSnapshot'

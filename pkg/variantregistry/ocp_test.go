@@ -1,19 +1,93 @@
 package variantregistry
 
 import (
+	"fmt"
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 )
 
+var testConfig = &v1.SippyConfig{
+	Releases: map[string]v1.ReleaseConfig{
+		"4.19": {
+			Jobs: map[string]bool{
+				"periodic-ci-redhat-chaos-prow-scripts-main-cr-4.19-nightly-krkn-hub-aws": true,
+				"periodic-ci-openshift-release-master-nightly-4.19-e2e-osd-ccs-gcp":       true,
+				"periodic-ci-openshift-release-master-nightly-4.19-e2e-rosa-sts-ovn":      true,
+			},
+			BlockingJobs:  []string{},
+			InformingJobs: []string{},
+		},
+		"4.18": {
+			Jobs: map[string]bool{
+				"periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-virt-ovn-runc-techpreview":                        true,
+				"periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-from-stable-4.13-e2e-aws-sdn-upgrade": true,
+				"periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-virt-ovn-techpreview":                             true,
+				"periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-ovn-crun":                                         true,
+				"periodic-ci-openshift-release-master-nightly-4.18-e2e-aws-ovn-cgroupsv1":                                    true,
+			},
+		},
+		"4.17": {
+			Jobs: map[string]bool{
+				"periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-virt-ovn-techpreview":                      true,
+				"periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn-cgroupsv1":                             true,
+				"periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn-cgroupsv1-crun":                        true,
+				"periodic-ci-openshift-release-master-nightly-4.17-e2e-telco5g":                                       true,
+				"periodic-ci-openshift-osde2e-main-nightly-4.17-conformance-rosa-classic-sts":                         true,
+				"periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-aws-ovn-multi-x-ax":                      true,
+				"periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-aws-ovn-multi-a-a":                       true,
+				"periodic-ci-openshift-cluster-control-plane-machine-set-operator-release-4.17-periodics-e2e-aws-arm": true,
+				"periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-ovn-powervs-capi-multi-p-p":              true,
+				"periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-ovn-remote-libvirt-multi-z-z":            true,
+			},
+			BlockingJobs:  []string{},
+			InformingJobs: []string{},
+		},
+		"4.16": {
+			Jobs: map[string]bool{
+				"periodic-ci-openshift-release-master-ci-4.16-e2e-aws-ovn-upgrade-out-of-change":                                      true,
+				"periodic-ci-openshift-release-master-nightly-4.16-upgrade-from-stable-4.15-e2e-metal-ipi-upgrade-ovn-ipv6":           true,
+				"release-openshift-origin-installer-e2e-aws-upgrade-4.13-to-4.14-to-4.15-to-4.16-ci":                                  true,
+				"periodic-ci-openshift-release-master-nightly-4.16-e2e-metal-ovn-assisted":                                            true,
+				"periodic-ci-openshift-release-master-nightly-4.16-e2e-gcp-ovn-fips":                                                  true,
+				"periodic-ci-openshift-hypershift-release-4.16-periodics-e2e-aws-ovn-conformance":                                     true,
+				"periodic-ci-openshift-release-master-nightly-4.16-e2e-aws-ovn-single-node-serial":                                    true,
+				"periodic-ci-openshift-release-master-nightly-4.16-e2e-aws-ovn-sno-serial":                                            true,
+				"periodic-ci-openshift-release-master-nightly-4.16-e2e-metal-ipi-ovn-dualstack":                                       true,
+				"periodic-ci-openshift-release-master-nightly-4.16-e2e-vsphere-ovn-upi-serial":                                        true,
+				"periodic-ci-openshift-release-master-nightly-4.16-e2e-aws-ovn-proxy":                                                 true,
+				"periodic-ci-openshift-release-master-nightly-4.16-e2e-no-network-plugin-no-variant-file":                             true,
+				"periodic-ci-openshift-multiarch-master-nightly-4.16-upgrade-from-nightly-4.15-ocp-e2e-upgrade-gcp-ovn-heterogeneous": true,
+				"periodic-ci-openshift-release-master-nightly-4.16-e2e-metal-ipi-sdn-bm-upgrade":                                      true,
+			},
+			BlockingJobs: []string{},
+		},
+		"4.15": {
+			Jobs: map[string]bool{
+				"periodic-ci-openshift-release-master-ci-4.15-upgrade-from-stable-4.14-from-stable-4.13-e2e-aws-sdn-upgrade": true,
+			},
+		},
+		"4.11": {
+			Jobs: map[string]bool{
+				"periodic-ci-openshift-release-master-nightly-4.11-e2e-no-network-plugin-no-variant-file": true,
+			},
+		},
+	},
+}
+
 func TestVariantSyncer(t *testing.T) {
-	variantSyncer := OCPVariantLoader{config: &v1.SippyConfig{}}
+	variantSyncer := OCPVariantLoader{config: testConfig}
 	tests := []struct {
 		job          string
 		variantsFile map[string]string
+		overrides    map[string]map[string]string
 		expected     map[string]string
 	}{
 		{
@@ -654,10 +728,16 @@ func TestVariantSyncer(t *testing.T) {
 		},
 		{
 			job: "periodic-ci-openshift-with-no-release-info",
+			overrides: map[string]map[string]string{
+				"periodic-ci-openshift-with-no-release-info": {
+					VariantJobTier: "standard",
+				},
+			},
 			expected: map[string]string{
 				VariantArch:             "amd64",
 				VariantInstaller:        "ipi",
 				VariantNetworkStack:     "ipv4",
+				VariantNetwork:          "ovn",
 				VariantOwner:            "eng",
 				VariantSuite:            "unknown",
 				VariantTopology:         "ha",
@@ -669,7 +749,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantNetworkAccess:    VariantDefaultValue,
 				VariantScheduler:        VariantDefaultValue,
 				VariantSecurityMode:     VariantDefaultValue,
-				VariantContainerRuntime: "",
+				VariantContainerRuntime: "runc",
 				VariantCGroupMode:       "v2",
 				VariantLayeredProduct:   VariantNoValue,
 			},
@@ -744,7 +824,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantInstaller:        "ipi",
 				VariantPlatform:         "aws",
 				VariantProcedure:        "none",
-				VariantJobTier:          "standard",
+				VariantJobTier:          "excluded",
 				VariantNetwork:          "ovn",
 				VariantNetworkStack:     "ipv4",
 				VariantOwner:            "eng",
@@ -799,7 +879,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantInstaller:        "ipi",
 				VariantPlatform:         "aws",
 				VariantProcedure:        "none",
-				VariantJobTier:          "standard",
+				VariantJobTier:          "candidate",
 				VariantNetwork:          "ovn",
 				VariantNetworkStack:     "ipv4",
 				VariantOwner:            "perfscale",
@@ -985,6 +1065,34 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
+			job:          "periodic-ci-openshift-openshift-tests-private-release-4.17-amd64-nightly-aws-ipi-localzone-fips-f360-destructive",
+			variantsFile: map[string]string{},
+			expected: map[string]string{
+				VariantRelease:          "4.17",
+				VariantReleaseMajor:     "4",
+				VariantReleaseMinor:     "17",
+				VariantArch:             "amd64",
+				VariantInstaller:        "ipi",
+				VariantPlatform:         "aws",
+				VariantProcedure:        VariantNoValue,
+				VariantJobTier:          "excluded",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "qe",
+				VariantTopology:         "ha",
+				VariantSuite:            "unknown",
+				VariantUpgrade:          VariantNoValue,
+				VariantAggregation:      VariantNoValue,
+				VariantSecurityMode:     "fips",
+				VariantFeatureSet:       "default",
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantContainerRuntime: "runc",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
+			},
+		},
+		{
 			job:          "periodic-ci-openshift-openshift-tests-private-release-4.17-automated-release-aws-ipi-f999",
 			variantsFile: map[string]string{},
 			expected: map[string]string{
@@ -1043,11 +1151,91 @@ func TestVariantSyncer(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.job, func(t *testing.T) {
+			variantSyncer.overrides = test.overrides
+
 			assert.Equal(t, test.expected,
 				variantSyncer.CalculateVariantsForJob(
 					logrus.WithField("source", "TestVariantSyncer"),
 					test.job,
 					test.variantsFile))
 		})
+	}
+}
+
+// TestVariantsSnapshot regenerates variants against the OCP config, and then compares against
+// a previously taken snapshot. If variants changed, it will fail and report an error. You can
+// run `make update-variants` to update and accept the changes. This lets you easily see the impact
+// of modifying the OCP variant syncer.
+func TestVariantsSnapshot(t *testing.T) {
+	cfgFlags := &configflags.ConfigFlags{
+		Path: "../../config/openshift.yaml",
+	}
+	cfg, err := cfgFlags.GetConfig()
+	assert.NoError(t, err)
+
+	log := logrus.WithField("test", "TestVariantsSnapshot")
+
+	// Re-generate all the variants
+	newVariants := map[string]map[string]string{}
+	variantSyncer := NewOCPVariantLoader(nil, "", "", "", nil, "", cfg)
+	for _, releaseCfg := range cfg.Releases {
+		for job := range releaseCfg.Jobs {
+			if isIgnoredJob(job) {
+				continue
+			}
+		
+			newVariants[job] = variantSyncer.CalculateVariantsForJob(log, job, nil)
+		}
+	}
+
+	// Load the old variants
+	oldVariants := map[string]map[string]string{}
+	oldVariantsYAML, err := os.ReadFile("snapshot.yaml")
+	assert.NoError(t, err)
+	err = yaml.Unmarshal(oldVariantsYAML, &oldVariants)
+	assert.NoError(t, err)
+
+	// Iterate only over jobs that exist in both old and new
+	anyFail := 0
+	for job, newVars := range newVariants {
+		oldVars, exists := oldVariants[job]
+		if exists {
+			t.Run(job, func(t *testing.T) {
+				var changes []string
+
+				// Check for added, changed, and removed variants
+				for key, newValue := range newVars {
+					if oldValue, ok := oldVars[key]; !ok {
+						changes = append(changes, fmt.Sprintf("Added %s:%s", key, newValue))
+					} else if oldValue != newValue {
+						changes = append(changes, fmt.Sprintf("Changed %s (%s -> %s)", key, oldValue, newValue))
+					}
+				}
+
+				for key := range oldVars {
+					if _, ok := newVars[key]; !ok {
+						changes = append(changes, "Removed "+key)
+					}
+				}
+
+				if len(changes) > 0 {
+					t.Logf("%s:\n%s", job, strings.Join(changes, "\n"))
+					t.Fail()
+					anyFail++
+				}
+			})
+		}
+	}
+
+	if anyFail > 0 {
+		t.Logf("****** Run `make update-variants` to update the snapshot and accept these changes.")
+	}
+
+	// If UPDATE_SNAPSHOT env is set, update the snapshot
+	if os.Getenv("UPDATE_SNAPSHOT") != "" {
+		y, err := yaml.Marshal(newVariants)
+		assert.NoError(t, err)
+		err = os.WriteFile("snapshot.yaml", y, 0o600)
+		assert.NoError(t, err)
 	}
 }

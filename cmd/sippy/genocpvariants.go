@@ -8,20 +8,21 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
-	"github.com/openshift/sippy/pkg/variantregistry"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"google.golang.org/api/option"
 
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/flags"
+	"github.com/openshift/sippy/pkg/flags/configflags"
+	"github.com/openshift/sippy/pkg/variantregistry"
 )
 
 type LoadVariantsFlags struct {
 	BigQueryFlags     *flags.BigQueryFlags
 	GoogleCloudFlags  *flags.GoogleCloudFlags
-	ConfigFlags       *flags.ConfigFlags
+	ConfigFlags       *configflags.ConfigFlags
 	OutputFile        string
 	Mode              string
 	BigqueryJobsTable string
@@ -31,7 +32,7 @@ func NewLoadVariantsFlags() *LoadVariantsFlags {
 	return &LoadVariantsFlags{
 		BigQueryFlags:    flags.NewBigQueryFlags(),
 		GoogleCloudFlags: flags.NewGoogleCloudFlags(),
-		ConfigFlags:      flags.NewConfigFlags(),
+		ConfigFlags:      configflags.NewConfigFlags(),
 	}
 }
 
