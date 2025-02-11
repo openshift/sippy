@@ -16,7 +16,9 @@ import (
 	"google.golang.org/api/option"
 
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/dataloader/featuregateloader"
 	"github.com/openshift/sippy/pkg/dataloader/variantsyncer"
+	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/variantregistry"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -32,7 +34,6 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/github/commenter"
-	"github.com/openshift/sippy/pkg/sippyserver"
 )
 
 type LoadFlags struct {
@@ -196,6 +197,11 @@ func NewLoadCommand() *cobra.Command {
 					loaders = append(loaders, variantsLoader)
 				}
 
+				// Feature gates
+				if l == "feature-gates" {
+					fgLoader := featuregateloader.New(dbc)
+					loaders = append(loaders, fgLoader)
+				}
 			}
 
 			// Run loaders with the metrics wrapper

@@ -8,29 +8,32 @@ import (
 
 func GetFeatureGatesFromDB(dbc *gorm.DB, release string) ([]api.FeatureGate, error) {
 	// Define the query with release filtering
-	query := `
-		SELECT
-			ROW_NUMBER() OVER (ORDER BY release, match[1], match[2]) AS id,
-			match[1] AS type,
-			match[2] AS feature_gate,
-			release,
-			COUNT(DISTINCT name) AS unique_test_count
-		FROM (
-			SELECT 
-				regexp_matches(name, '\[(FeatureGate|OCPFeatureGate):([^\]]+)\]', 'g') AS match,
-				release,
-				name
-			FROM prow_test_report_7d_matview
-			WHERE release = ?
-		) subquery
-		WHERE match IS NOT NULL
-		GROUP BY match[1], match[2], release
-		ORDER BY release, type, feature_gate
-	`
+	query := `WITH matched_tests AS (
+				SELECT
+					name,
+					release,
+					regexp_matches(name, '\[(FeatureGate|OCPFeatureGate):([^\]]+)\]') AS match
+				FROM prow_test_report_7d_matview
+				WHERE release = ? 
+			)
+			SELECT
+				ROW_NUMBER() OVER (ORDER BY fg.feature_gate) AS id,
+				fg.feature_gate,
+				fg.release,
+				COUNT(DISTINCT mt.name) AS unique_test_count,
+				ARRAY_AGG(DISTINCT fg.feature_set || ':' || fg.topology) AS enabled
+			FROM feature_gates fg
+			LEFT JOIN matched_tests mt
+				ON fg.feature_gate = mt.match[2]
+			WHERE fg.release = ?
+			AND fg.status = 'enabled'
+			GROUP BY fg.feature_gate, fg.release
+			ORDER BY fg.feature_gate;
+`
 
-	var results []api.FeatureGate
+	results := make([]api.FeatureGate, 0)
 	// Execute the query, passing in the release filter
-	if err := dbc.Raw(query, release).Scan(&results).Error; err != nil {
+	if err := dbc.Raw(query, release, release).Scan(&results).Error; err != nil {
 		return nil, err
 	}
 

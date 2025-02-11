@@ -856,9 +856,9 @@ type SippyViews struct {
 }
 
 type FeatureGate struct {
-	ID              int    `json:"id"`
-	Type            string `json:"type"`
-	FeatureGate     string `json:"feature_gate"`
-	Release         string `json:"release"`
-	UniqueTestCount int64  `json:"unique_test_count"`
+	ID              int            `json:"id"`
+	FeatureGate     string         `json:"feature_gate"`
+	Release         string         `json:"release"`
+	UniqueTestCount int64          `json:"unique_test_count"`
+	Enabled         pq.StringArray `json:"enabled" gorm:"type:text[]"`
 }

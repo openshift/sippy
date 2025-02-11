@@ -1,4 +1,4 @@
-import { Container, Typography } from '@mui/material'
+import { Container, Tooltip, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { Link, useHistory } from 'react-router-dom'
 import { pathForTestSubstringByVariant, SafeJSONParam } from '../helpers'
@@ -45,14 +45,8 @@ export default function FeatureGates(props) {
   const columns = [
     {
       field: 'id',
+      filterable: false,
       hide: true,
-    },
-    {
-      field: 'type',
-      headerName: 'Type',
-      width: 150,
-      renderCell: (params) =>
-        params.value === 'OCPFeatureGate' ? 'OpenShift' : 'Kubernetes',
     },
     { field: 'feature_gate', headerName: 'Feature Gate', width: 300 },
     {
@@ -64,10 +58,21 @@ export default function FeatureGates(props) {
         return <Link to={linkForFGTests(params)}>{params.value}</Link>
       },
     },
+    {
+      field: 'enabled',
+      headerName: 'Enabled',
+      type: 'array',
+      width: 500,
+      renderCell: (params) => (
+        <div style={{ whiteSpace: 'pre' }}>
+          {params.value ? params.value.join('\n') : ''}
+        </div>
+      ),
+    },
   ]
 
   const linkForFGTests = (params) => {
-    const fgAnnotation = `[${params.row.type}:${params.row.feature_gate}]`
+    const fgAnnotation = `FeatureGate:${params.row.feature_gate}]`
     return pathForTestSubstringByVariant(props.release, fgAnnotation)
   }
 
@@ -93,7 +98,7 @@ export default function FeatureGates(props) {
       })
       .catch((error) => {
         setFetchError(
-          'Could not retrieve tests ' + props.release + ', ' + error
+          'Could not retrieve feature gates ' + props.release + ', ' + error
         )
       })
   }
@@ -116,8 +121,8 @@ export default function FeatureGates(props) {
           Feature Gates for {props.release}
         </Typography>
         <Alert severity="info" sx={{ mb: 2 }}>
-          Click on a row to view tests for that feature gate. Row color is based
-          on number of tests only; a feature gate should have at least 5 tests.
+          Click on a row to view tests by variant for that feature gate. Note,
+          we only count tests that have had runs in the last 7 days.
         </Alert>
         {fetchError && (
           <Typography color="error" align="center">
@@ -130,6 +135,7 @@ export default function FeatureGates(props) {
             rows={rows}
             columns={columns}
             pageSize={25}
+            getRowHeight={() => 'auto'}
             autoHeight={true}
             rowsPerPageOptions={[10, 25, 50]}
             sortModel={sortModel} // Controlled sortModel
