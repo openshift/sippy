@@ -14,6 +14,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
+	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/releasefallback"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
@@ -245,6 +246,7 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	// Initialize all our middleware applicable to this request.
 	// TODO: Should middleware constructors do the interpretation of the request
 	// and decide if they want to take part? Return nil if not?
+	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
 	}

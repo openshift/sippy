@@ -9,7 +9,6 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	"github.com/openshift/sippy/pkg/regressionallowances"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -88,47 +87,6 @@ func (c *ReleaseFallback) Transform(baseStatus, sampleStatus map[string]crtype.T
 	return baseStatus, sampleStatus, nil
 }
 
-// matchBaseRegression returns a testStatus that reflects the allowances specified
-// in an intentional regression that accepted a lower threshold but maintains the higher
-// threshold when used as a basis.  It will ignore intentional regressions if we are relying
-// on fallback to find the highest threshold.  It will return the original testStatus if there
-// is no intentional regression or the testStatus has a higher threshold
-// TODO: this should be broken out into it's own middleware, run prior to ReleaseFallback
-func (c *ReleaseFallback) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, baseStats crtype.TestStatus) (crtype.TestStatus, string) {
-	var baseRegression *regressionallowances.IntentionalRegression
-	if !c.reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis && len(c.reqOptions.VariantOption.VariantCrossCompare) == 0 {
-		// only really makes sense when not cross-comparing variants:
-		// look for corresponding regressions we can account for in the analysis
-		// only if we are ignoring fallback, otherwise we will let fallback determine the threshold
-		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, testID.ColumnIdentification, testID.TestID)
-
-		// This could go away if we remove the option for ignoring fallback
-		_, success, fail, flake := baseStats.GetTotalSuccessFailFlakeCounts()
-		basePassRate := utils.CalculatePassRate(c.reqOptions, success, fail, flake)
-		if baseRegression != nil && baseRegression.PreviousPassPercentage(c.reqOptions.AdvancedOption.FlakeAsFailure) > basePassRate {
-			// override with  the basis regression previous values
-			// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-			baseRegressionPreviousRelease, err := utils.PreviousRelease(c.reqOptions.BaseRelease.Release)
-			if err != nil {
-				log.WithError(err).Error("Failed to determine the previous release for baseRegression")
-			} else {
-				// create a clone since we might be updating a cached item though the same regression would likely apply each time...
-				updatedStats := crtype.TestStatus{TestName: baseStats.TestName, TestSuite: baseStats.TestSuite, Capabilities: baseStats.Capabilities,
-					Component: baseStats.Component, Variants: baseStats.Variants,
-					FlakeCount:   baseRegression.PreviousFlakes,
-					SuccessCount: baseRegression.PreviousSuccesses,
-					TotalCount:   baseRegression.PreviousFailures + baseRegression.PreviousFlakes + baseRegression.PreviousSuccesses,
-				}
-				baseStats = updatedStats
-				baseRelease = baseRegressionPreviousRelease
-				log.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d, Total: %d", baseRelease, baseStats.SuccessCount, baseStats.FlakeCount, baseStats.TotalCount)
-			}
-		}
-	}
-
-	return baseStats, baseRelease
-}
-
 // matchBestBaseStats returns the testStatus, release and reportTestStatus
 // that has the highest threshold across the basis release and previous releases included
 // in fallback comparison.
@@ -136,10 +94,6 @@ func (c *ReleaseFallback) matchBestBaseStats(
 	testID crtype.ReportTestIdentification,
 	testKeyStr, baseRelease string,
 	baseStats crtype.TestStatus) crtype.TestStatus {
-
-	// The hope is that this goes away
-	// once we agree we don't need to honor a higher intentional regression pass percentage
-	baseStats, baseRelease = c.matchBaseRegression(testID, baseRelease, baseStats)
 
 	if !c.reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
 		return baseStats
@@ -182,7 +136,6 @@ func (c *ReleaseFallback) matchBestBaseStats(
 			_, success, fail, flake := baseStats.GetTotalSuccessFailFlakeCounts()
 			basePassRate := utils.CalculatePassRate(c.reqOptions, success, fail, flake)
 
-			cTestStats, priorRelease = c.matchBaseRegression(testID, priorRelease, cTestStats)
 			_, success, fail, flake = cTestStats.GetTotalSuccessFailFlakeCounts()
 			cPassRate := utils.CalculatePassRate(c.reqOptions, success, fail, flake)
 			if cPassRate > basePassRate {
