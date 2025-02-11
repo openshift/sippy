@@ -1,13 +1,78 @@
+import { BOOKMARKS } from '../constants'
 import { Container, Tooltip, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { Link, useHistory } from 'react-router-dom'
-import { pathForTestSubstringByVariant, SafeJSONParam } from '../helpers'
-import { useQueryParam, withDefault } from 'use-query-params'
+import {
+  NumberParam,
+  StringParam,
+  useQueryParam,
+  withDefault,
+} from 'use-query-params'
+import {
+  pathForTestSubstringByVariant,
+  safeEncodeURIComponent,
+  SafeJSONParam,
+} from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment, useEffect, useRef } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
+
+const bookmarks = [
+  {
+    name: 'Default:Hypershift',
+    model: [
+      {
+        columnField: 'enabled',
+        operatorValue: 'contains',
+        value: 'Default:Hypershift',
+      },
+    ],
+  },
+  {
+    name: 'Default:SelfManagedHA',
+    model: [
+      {
+        columnField: 'enabled',
+        operatorValue: 'contains',
+        value: 'Default:SelfManagedHA',
+      },
+    ],
+  },
+  {
+    name: 'TechPreview:SelfManagedHA',
+    model: [
+      {
+        columnField: 'enabled',
+        operatorValue: 'contains',
+        value: 'TechPreviewNoUpgrade:SelfManagedHA',
+      },
+      {
+        columnField: 'enabled',
+        not: true,
+        operatorValue: 'contains',
+        value: 'Default:SelfManagedHA',
+      },
+    ],
+  },
+  {
+    name: 'TechPreview:Hypershift',
+    model: [
+      {
+        columnField: 'enabled',
+        operatorValue: 'contains',
+        value: 'TechPreviewNoUpgrade:Hypershift',
+      },
+      {
+        columnField: 'enabled',
+        not: true,
+        operatorValue: 'contains',
+        value: 'Default:Hypershift',
+      },
+    ],
+  },
+]
 
 /**
  * Feature gates is the landing page for feature gates.
@@ -20,14 +85,36 @@ export default function FeatureGates(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel, setFilterModel] = useQueryParam(
-    'filterModel',
-    withDefault(SafeJSONParam, { items: [] })
+  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+    'filters',
+    SafeJSONParam
   )
 
-  const [sortModel, setSortModel] = React.useState([
-    { field: 'unique_test_count', sort: 'asc' }, // Default sort
-  ])
+  const [sortField = props.sortField, setSortField] = useQueryParam(
+    'sortField',
+    StringParam
+  )
+
+  const [pageSize = props.pageSize, setPageSize] = useQueryParam(
+    'pageSize',
+    NumberParam
+  )
+
+  const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
+
+  const updateSortModel = (model) => {
+    if (model.length === 0) {
+      return
+    }
+
+    if (sort !== model[0].sort) {
+      setSort(model[0].sort)
+    }
+
+    if (sortField !== model[0].field) {
+      setSortField(model[0].field)
+    }
+  }
 
   const requestSearch = (searchValue) => {
     const currentFilters = filterModel
@@ -35,11 +122,34 @@ export default function FeatureGates(props) {
       (f) => f.columnField !== 'feature_gate'
     )
     currentFilters.items.push({
+      id: 99,
       columnField: 'feature_gate',
       operatorValue: 'contains',
       value: searchValue,
     })
     setFilterModel(currentFilters)
+  }
+
+  const addFilters = (filter) => {
+    const currentFilters = filterModel.items.filter((item) => {
+      for (let i = 0; i < filter.length; i++) {
+        if (filter[i].columnField === item.columnField) {
+          return false
+        }
+      }
+
+      return item.value !== ''
+    })
+
+    filter.forEach((item) => {
+      if (item.value && item.value !== '') {
+        currentFilters.push(item)
+      }
+    })
+    setFilterModel({
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
+    })
   }
 
   const columns = [
@@ -77,10 +187,20 @@ export default function FeatureGates(props) {
   }
 
   const fetchData = () => {
+    let queryString = ''
+    if (filterModel && filterModel.items.length > 0) {
+      queryString +=
+        '&filter=' + safeEncodeURIComponent(JSON.stringify(filterModel))
+    }
+
+    queryString += '&sortField=' + safeEncodeURIComponent(sortField)
+    queryString += '&sort=' + safeEncodeURIComponent(sort)
+
     fetch(
       process.env.REACT_APP_API_URL +
         '/api/feature_gates?release=' +
-        props.release
+        props.release +
+        queryString
     )
       .then((response) => {
         if (response.status !== 200) {
@@ -111,7 +231,7 @@ export default function FeatureGates(props) {
   useEffect(() => {
     fetchData()
     document.title = `Sippy > ${props.release} > Feature Gates`
-  }, [])
+  }, [filterModel, sort, sortField])
 
   return (
     <Fragment>
@@ -134,12 +254,21 @@ export default function FeatureGates(props) {
             components={{ Toolbar: GridToolbar }}
             rows={rows}
             columns={columns}
-            pageSize={25}
             getRowHeight={() => 'auto'}
             autoHeight={true}
             rowsPerPageOptions={[10, 25, 50]}
-            sortModel={sortModel} // Controlled sortModel
-            onSortModelChange={(newModel) => setSortModel(newModel)}
+            sortModel={[
+              {
+                field: sortField,
+                sort: sort,
+              },
+            ]}
+            pageSize={pageSize}
+            onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+            sortingOrder={['desc', 'asc']}
+            filterMode="server"
+            sortingMode="server"
+            onSortModelChange={(m) => updateSortModel(m)}
             sx={{
               '& .MuiDataGrid-row:hover': {
                 cursor: 'pointer', // Change cursor on hover
@@ -150,11 +279,17 @@ export default function FeatureGates(props) {
             onRowClick={onRowClick}
             componentsProps={{
               toolbar: {
+                bookmarks: bookmarks,
                 columns: columns,
-                filterModel: filterModel,
-                setFilterModel: setFilterModel,
                 clearSearch: () => requestSearch(''),
                 doSearch: requestSearch,
+                addFilters: (m) => addFilters(m),
+                filterModel: filterModel,
+                setFilterModel: setFilterModel,
+                downloadDataFunc: () => {
+                  return rows
+                },
+                downloadFilePrefix: 'feature-gates',
               },
             }}
           />
@@ -166,7 +301,22 @@ export default function FeatureGates(props) {
   )
 }
 
+FeatureGates.defaultProps = {
+  pageSize: 25,
+  rowsPerPageOptions: [5, 10, 25, 50, 100],
+  filterModel: {
+    items: [],
+  },
+  sortField: 'unique_test_count',
+  sort: 'asc',
+}
+
 FeatureGates.propTypes = {
   classes: PropTypes.object,
   release: PropTypes.string.isRequired,
+  pageSize: PropTypes.number,
+  filterModel: PropTypes.object,
+  sort: PropTypes.string,
+  sortField: PropTypes.string,
+  rowsPerPageOptions: PropTypes.array,
 }
