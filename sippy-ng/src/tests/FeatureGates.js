@@ -1,4 +1,3 @@
-import { BOOKMARKS } from '../constants'
 import { Container, Tooltip, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { Link, useHistory } from 'react-router-dom'
@@ -19,61 +18,6 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useRef } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
-const bookmarks = [
-  {
-    name: 'Default:Hypershift',
-    model: [
-      {
-        columnField: 'enabled',
-        operatorValue: 'contains',
-        value: 'Default:Hypershift',
-      },
-    ],
-  },
-  {
-    name: 'Default:SelfManagedHA',
-    model: [
-      {
-        columnField: 'enabled',
-        operatorValue: 'contains',
-        value: 'Default:SelfManagedHA',
-      },
-    ],
-  },
-  {
-    name: 'TechPreview:SelfManagedHA',
-    model: [
-      {
-        columnField: 'enabled',
-        operatorValue: 'contains',
-        value: 'TechPreviewNoUpgrade:SelfManagedHA',
-      },
-      {
-        columnField: 'enabled',
-        not: true,
-        operatorValue: 'contains',
-        value: 'Default:SelfManagedHA',
-      },
-    ],
-  },
-  {
-    name: 'TechPreview:Hypershift',
-    model: [
-      {
-        columnField: 'enabled',
-        operatorValue: 'contains',
-        value: 'TechPreviewNoUpgrade:Hypershift',
-      },
-      {
-        columnField: 'enabled',
-        not: true,
-        operatorValue: 'contains',
-        value: 'Default:Hypershift',
-      },
-    ],
-  },
-]
-
 /**
  * Feature gates is the landing page for feature gates.
  */
@@ -85,10 +29,137 @@ export default function FeatureGates(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [rows, setRows] = React.useState([])
 
-  const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
+  const defaultFilterModel = React.useMemo(() => {
+    if (!props.release) return { items: [] }
+
+    const [major, minor] = props.release.split('.').map(Number)
+
+    return {
+      items: [
+        {
+          columnField: 'enabled',
+          not: true,
+          operatorValue: 'contains',
+          value: 'Default:Hypershift',
+        },
+        {
+          columnField: 'enabled',
+          not: true,
+          operatorValue: 'contains',
+          value: 'Default:SelfManagedHA',
+        },
+        {
+          columnField: 'first_seen_in_major',
+          operatorValue: '=',
+          value: String(major),
+        },
+        {
+          columnField: 'first_seen_in_minor',
+          operatorValue: '>=',
+          value: String(Math.max(minor - 2, 15)), // don't go below 4.15
+        },
+      ],
+    }
+  }, [props.release])
+
+  const staleFeatureGates = React.useMemo(() => {
+    if (!props.release) return []
+
+    const [major, minor] = props.release.split('.').map(Number)
+
+    return [
+      {
+        columnField: 'enabled',
+        not: true,
+        operatorValue: 'contains',
+        value: 'Default:Hypershift',
+      },
+      {
+        columnField: 'enabled',
+        not: true,
+        operatorValue: 'contains',
+        value: 'Default:SelfManagedHA',
+      },
+      {
+        columnField: 'first_seen_in_major',
+        operatorValue: '=',
+        value: String(major),
+      },
+      {
+        columnField: 'first_seen_in_minor',
+        operatorValue: '<=',
+        value: String(Math.max(minor - 2, 15)),
+      },
+    ]
+  }, [props.release])
+
+  const [filterModel = defaultFilterModel, setFilterModel] = useQueryParam(
     'filters',
     SafeJSONParam
   )
+
+  const bookmarks = [
+    {
+      name: 'Recent techpreview/devpreview features',
+      model: defaultFilterModel.items,
+    },
+    {
+      name: 'Stale features (unpromoted in > 2 releases)',
+      model: staleFeatureGates,
+    },
+    {
+      name: 'Default:Hypershift',
+      model: [
+        {
+          columnField: 'enabled',
+          operatorValue: 'contains',
+          value: 'Default:Hypershift',
+        },
+      ],
+    },
+    {
+      name: 'Default:SelfManagedHA',
+      model: [
+        {
+          columnField: 'enabled',
+          operatorValue: 'contains',
+          value: 'Default:SelfManagedHA',
+        },
+      ],
+    },
+    {
+      name: 'TechPreview:SelfManagedHA',
+      model: [
+        {
+          columnField: 'enabled',
+          operatorValue: 'contains',
+          value: 'TechPreviewNoUpgrade:SelfManagedHA',
+        },
+        {
+          columnField: 'enabled',
+          not: true,
+          operatorValue: 'contains',
+          value: 'Default:SelfManagedHA',
+        },
+      ],
+    },
+    {
+      name: 'TechPreview:Hypershift',
+      model: [
+        {
+          columnField: 'enabled',
+          operatorValue: 'contains',
+          value: 'TechPreviewNoUpgrade:Hypershift',
+        },
+        {
+          columnField: 'enabled',
+          not: true,
+          operatorValue: 'contains',
+          value: 'Default:Hypershift',
+        },
+      ],
+    },
+  ]
 
   const [sortField = props.sortField, setSortField] = useQueryParam(
     'sortField',
@@ -158,12 +229,12 @@ export default function FeatureGates(props) {
       filterable: false,
       hide: true,
     },
-    { field: 'feature_gate', headerName: 'Feature Gate', width: 300 },
+    { field: 'feature_gate', headerName: 'Feature Gate', flex: 3 },
     {
       field: 'unique_test_count',
-      headerName: 'Unique Test Count',
+      headerName: 'Test Count',
       type: 'number',
-      width: 200,
+      flex: 2,
       renderCell: (params) => {
         return <Link to={linkForFGTests(params)}>{params.value}</Link>
       },
@@ -172,12 +243,30 @@ export default function FeatureGates(props) {
       field: 'enabled',
       headerName: 'Enabled',
       type: 'array',
-      width: 500,
+      flex: 4,
       renderCell: (params) => (
         <div style={{ whiteSpace: 'pre' }}>
           {params.value ? params.value.join('\n') : ''}
         </div>
       ),
+    },
+    {
+      field: 'first_seen_in',
+      headerName: 'First seen in',
+      type: 'string',
+      flex: 2,
+    },
+    {
+      field: 'first_seen_in_major',
+      headerName: 'First seen in major',
+      type: 'number',
+      hide: true,
+    },
+    {
+      field: 'first_seen_in_minor',
+      headerName: 'First seen in minor',
+      type: 'number',
+      hide: true,
     },
   ]
 
@@ -227,6 +316,10 @@ export default function FeatureGates(props) {
     console.log('clicked')
     history.push(linkForFGTests(params))
   }
+
+  useEffect(() => {
+    setLoaded(false)
+  }, [filterModel])
 
   useEffect(() => {
     fetchData()
@@ -304,9 +397,6 @@ export default function FeatureGates(props) {
 FeatureGates.defaultProps = {
   pageSize: 25,
   rowsPerPageOptions: [5, 10, 25, 50, 100],
-  filterModel: {
-    items: [],
-  },
   sortField: 'unique_test_count',
   sort: 'asc',
 }
@@ -315,7 +405,6 @@ FeatureGates.propTypes = {
   classes: PropTypes.object,
   release: PropTypes.string.isRequired,
   pageSize: PropTypes.number,
-  filterModel: PropTypes.object,
   sort: PropTypes.string,
   sortField: PropTypes.string,
   rowsPerPageOptions: PropTypes.array,
