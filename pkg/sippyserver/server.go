@@ -464,7 +464,12 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
-		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release)
+		filterOpts, err := filter.FilterOptionsFromRequest(req, "unique_test_count", apitype.SortAscending)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			return
+		}
+		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release, filterOpts)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
 			return
