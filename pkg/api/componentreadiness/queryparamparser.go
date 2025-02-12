@@ -33,6 +33,7 @@ func ParseComponentReportRequest(
 	if view != nil {
 		// set params from view
 		opts.VariantOption = view.VariantOptions
+		opts.TestIDOption = view.TestIDOption
 		opts.AdvancedOption = view.AdvancedOptions
 		opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor)
 		if err != nil {
@@ -107,12 +108,16 @@ func ParseComponentReportRequest(
 	}
 
 	// Params below this point can be used with and without views:
+	if opts.TestIDOption.Component == "" {
+		opts.TestIDOption.Component = req.URL.Query().Get("component")
+	}
 
-	opts.TestIDOption = crtype.RequestTestIdentificationOptions{
-		// these are semi-freeform and only used in lookup keys, so don't need validation
-		Component:  req.URL.Query().Get("component"),
-		Capability: req.URL.Query().Get("capability"),
-		TestID:     req.URL.Query().Get("testId"),
+	if opts.TestIDOption.Capability == "" {
+		opts.TestIDOption.Capability = req.URL.Query().Get("capability")
+	}
+
+	if opts.TestIDOption.TestID == "" {
+		opts.TestIDOption.TestID = req.URL.Query().Get("testId")
 	}
 
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
