@@ -43,6 +43,7 @@ var testSuites = []string{
 	"hypershift-e2e",
 	"metal infra",
 	"step graph",
+	"telco-verification",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {
