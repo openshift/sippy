@@ -9,6 +9,7 @@ import (
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	v2 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -392,7 +393,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			// path/body are irrelevant at this point in time, we only parse query params in the func being tested
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
-			options, err := ParseComponentReportRequest(views, releases, req, allJobVariants, time.Duration(0))
+			options, err := ParseComponentReportRequest(views, releases, req, allJobVariants, time.Duration(0), []v2.VariantJunitTableOverride{})
 
 			if tc.errMessage != "" {
 				require.Error(t, err)
