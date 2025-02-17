@@ -1,1 +1,26 @@
-[]
+[{
+    "JiraComponent": "Etcd",
+    "TestID": "Operator results:45d55df296fbbfa7144600dce70c1182",
+    "TestName": "Operator results.operator conditions etcd",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-50587",
+    "ReasonToAllowInsteadOfFix": "This is caused by a race between the installer controller and node status controller. The code/API level flaw is that we have a multi-writer field that we didn't catch until now.  The race requires multiple updates and cache updates to happen in a specific sequence that is common, but not guaranteed.  In our testing we can see this race unblock itself multiple times in three hours. This makes the revision rollout extremely slow (this is bad), but not permanently stuck.Since removing masters is a rare activity and since the system unsticks itself eventually, we will ship 4.18.0 with this problem and correct it in a close following z-stream update.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "azure",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 355,
+    "PreviousFailures": 1,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 81,
+    "RegressedFailures": 5,
+    "RegressedFlakes": 0
+  }
+]
