@@ -33,6 +33,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Network:
           - ovn
         Owner:
@@ -95,6 +97,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Owner:
           - eng
         Platform:
@@ -154,6 +158,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Owner:
           - eng
         Platform:
@@ -220,6 +226,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Network:
           - ovn
         Owner:
@@ -278,6 +286,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Network:
           - ovn
         Owner:
@@ -340,6 +350,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Owner:
           - eng
         Platform:
@@ -408,6 +420,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Network:
           - ovn
         Owner:
