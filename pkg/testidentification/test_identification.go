@@ -4,8 +4,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -228,34 +226,4 @@ func IsIgnoredTest(testName string) bool {
 // the test name changed from "Overall" to "[jobName|testGridTabName].Overall", and for now we need to support both.
 func IsOverallTest(testName string) bool {
 	return testName == "Overall" || strings.HasSuffix(testName, ".Overall")
-}
-
-var (
-	pathologicalEventsRE = regexp.MustCompile("events should not repeat pathologically$")
-	upgradeAlertsRE      = regexp.MustCompile("Check if alerts are firing during or after upgrade success")
-	conformanceAlertsRE  = regexp.MustCompile("Alerts shouldn't report any unexpected alerts in firing or pending state")
-)
-
-const watchlistLabel = "sippy-watchlist"
-
-// IsTestOnWatchlist returns true if the test matches one of our hardcoded regexes, or
-// has an associated bug with the sippy-watchlist label.
-func IsTestOnWatchlist(test *models.Test) bool {
-	watchlistREs := []*regexp.Regexp{
-		pathologicalEventsRE,
-		upgradeAlertsRE,
-		conformanceAlertsRE,
-	}
-	for _, re := range watchlistREs {
-		if re.MatchString(test.Name) {
-			return true
-		}
-
-		for _, bug := range test.Bugs {
-			if util.StrSliceContains(bug.Labels, watchlistLabel) {
-				return true
-			}
-		}
-	}
-	return false
 }

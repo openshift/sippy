@@ -706,10 +706,6 @@ function TestTable(props) {
       headerName: 'Current runs',
       type: 'number',
     },
-    watchlist: {
-      field: 'watchlist',
-      headerName: 'Watchlist',
-    },
     current_failures: {
       field: 'current_failures',
       headerName: 'Current failures',
