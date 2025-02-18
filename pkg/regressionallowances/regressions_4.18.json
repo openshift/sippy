@@ -1,1 +1,27 @@
-[]
+[
+  {
+    "JiraComponent": "Cloud Compute / KubeVirt Provider",
+    "TestID": "openshift-tests:d68fdddf124137721dac033868806a9e",
+    "TestName": "[sig-auth] all workloads in ns/openshift-cnv must set the 'openshift.io/required-scc' annotation",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-49657",
+    "ReasonToAllowInsteadOfFix": "We've learned about this issue too late and there is a work in progress of closing the remaining gaps.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "aws",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 0,
+    "PreviousFailures": 8,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 0,
+    "RegressedFailures": 0,
+    "RegressedFlakes": 0
+  }
+]
