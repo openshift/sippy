@@ -10,6 +10,7 @@ import (
 
 	bigquery2 "cloud.google.com/go/bigquery"
 	fet "github.com/glycerine/golang-fisher-exact"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/sirupsen/logrus"
@@ -258,13 +259,12 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 		}
 		// only do this additional query if the specified override variant is actually included in this request
 		wg.Add(1)
-		go func() {
+		go func(i int, or configv1.VariantJunitTableOverride) {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				i := i // var shadow, as we're capturing i in the func()
 				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
 				if skipQuery {
 					fLog.Infof("skipping override status query as all values for a variant were overridden")
@@ -288,7 +288,7 @@ func (c *componentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 				}
 			}
 
-		}()
+		}(i, or)
 	}
 
 	go func() {

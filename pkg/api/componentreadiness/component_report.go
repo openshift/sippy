@@ -441,7 +441,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		}
 		// only do this additional query if the specified override variant is actually included in this request
 		wg.Add(1)
-		go func() {
+		go func(i int, or configv1.VariantJunitTableOverride) {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
@@ -469,7 +469,7 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				}
 			}
 
-		}()
+		}(i, or)
 	}
 
 	go func() {
@@ -542,9 +542,7 @@ func copyIncludeVariantsAndRemoveOverrides(
 			}
 
 		}
-		if len(newSlice) > 0 {
-			cp[key] = newSlice
-		} else {
+		if len(newSlice) == 0 {
 			// If we overrode a value for a variant, and no other values are specified for that
 			// variant, we want to skip this query entirely.
 			// i.e. if we include JobTier blocking, informing, and rare, we still want to do the default
@@ -559,6 +557,7 @@ func copyIncludeVariantsAndRemoveOverrides(
 			// doing an AND. For now, I think this is a limitation we'll have to live with
 			return cp, true
 		}
+		cp[key] = newSlice
 	}
 	return cp, false
 }
