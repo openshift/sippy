@@ -401,7 +401,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		}
 		// only do this additional query if the specified override variant is actually included in this request
 		wg.Add(1)
-		go func() {
+		go func(i int, or configv1.VariantJunitTableOverride) {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
@@ -429,7 +429,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 				}
 			}
 
-		}()
+		}(i, or)
 	}
 
 	go func() {
@@ -502,9 +502,7 @@ func copyIncludeVariantsAndRemoveOverrides(
 			}
 
 		}
-		if len(newSlice) > 0 {
-			cp[key] = newSlice
-		} else {
+		if len(newSlice) == 0 {
 			// If we overrode a value for a variant, and no other values are specified for that
 			// variant, we want to skip this query entirely.
 			// i.e. if we include JobTier blocking, informing, and rare, we still want to do the default
@@ -519,6 +517,7 @@ func copyIncludeVariantsAndRemoveOverrides(
 			// doing an AND. For now, I think this is a limitation we'll have to live with
 			return cp, true
 		}
+		cp[key] = newSlice
 	}
 	return cp, false
 }
@@ -1378,6 +1377,12 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 
 	if baseTotal == 0 && c.ReqOptions.AdvancedOption.PassRateRequiredNewTests > 0 {
 		// If we have no base stats, fall back to a raw pass rate comparison for new or improperly renamed tests:
+		// Swap out sample with approvedRegression if we have it
+		if approvedRegression != nil {
+			sampleFailure = approvedRegression.PreviousFailures
+			sampleFlake = approvedRegression.PreviousFlakes
+			sampleSuccess = approvedRegression.PreviousSuccesses
+		}
 		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
 			float64(c.ReqOptions.AdvancedOption.PassRateRequiredNewTests))
 		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
@@ -1388,6 +1393,12 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 		return testStats
 	} else if c.ReqOptions.AdvancedOption.PassRateRequiredAllTests > 0 {
 		// If requested, switch to pass rate only testing to see what does not meet the criteria:
+		// Swap out sample with approvedRegression if we have it
+		if approvedRegression != nil {
+			sampleFailure = approvedRegression.PreviousFailures
+			sampleFlake = approvedRegression.PreviousFlakes
+			sampleSuccess = approvedRegression.PreviousSuccesses
+		}
 		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
 			float64(c.ReqOptions.AdvancedOption.PassRateRequiredAllTests))
 		// include base stats even though we didn't do fishers exact here, this is helpful

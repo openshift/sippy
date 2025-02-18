@@ -21,6 +21,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
+	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
+	"github.com/slok/go-http-metrics/middleware"
+	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -465,7 +468,12 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
-		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release)
+		filterOpts, err := filter.FilterOptionsFromRequest(req, "unique_test_count", apitype.SortAscending)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			return
+		}
+		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release, filterOpts)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
 			return
@@ -1523,7 +1531,14 @@ func (s *Server) Serve() {
 	var handler http.Handler = serveMux
 	// wrap mux with our logger. this will
 	handler = logRequestHandler(handler)
-	// ... potentially add more middleware handlers
+
+	// Middleware for http metrics
+	metricsMiddleware := middleware.New(middleware.Config{
+		Recorder: metrics.NewRecorder(metrics.Config{
+			DurationBuckets: []float64{.1, .25, .5, 1, 2.5, 5, 10, 30, 60, 120, 300},
+		}),
+	})
+	handler = middlewarestd.Handler("", metricsMiddleware, handler)
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
