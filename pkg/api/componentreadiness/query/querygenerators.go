@@ -23,7 +23,7 @@ import (
 const (
 	DefaultJunitTable = "junit"
 
-	IgnoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
+	IgnoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert|-bgp-`
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
