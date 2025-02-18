@@ -856,9 +856,60 @@ type SippyViews struct {
 }
 
 type FeatureGate struct {
-	ID              int    `json:"id"`
-	Type            string `json:"type"`
-	FeatureGate     string `json:"feature_gate"`
-	Release         string `json:"release"`
-	UniqueTestCount int64  `json:"unique_test_count"`
+	ID               int            `json:"id"`
+	FeatureGate      string         `json:"feature_gate"`
+	Release          string         `json:"release"`
+	UniqueTestCount  int64          `json:"unique_test_count"`
+	FirstSeenIn      string         `json:"first_seen_in"`
+	FirstSeenInMajor int64          `json:"first_seen_in_major"`
+	FirstSeenInMinor int64          `json:"first_seen_in_minor"`
+	Enabled          pq.StringArray `json:"enabled" gorm:"type:text[]"`
+}
+
+func (fg FeatureGate) GetFieldType(param string) ColumnType {
+	switch param {
+	case "id":
+		return ColumnTypeNumerical
+	case "enabled":
+		return ColumnTypeArray
+	case "unique_test_count", "first_seen_in_major", "first_seen_in_minor":
+		return ColumnTypeNumerical
+	default:
+		return ColumnTypeString
+	}
+}
+
+func (fg FeatureGate) GetStringValue(param string) (string, error) {
+	switch param {
+	case "feature_gate":
+		return fg.FeatureGate, nil
+	case "release":
+		return fg.Release, nil
+	case "first_seen_in":
+		return fg.FirstSeenIn, nil
+	default:
+		return "", fmt.Errorf("unknown string field %s", param)
+	}
+}
+
+func (fg FeatureGate) GetNumericalValue(param string) (float64, error) {
+	switch param {
+	case "id":
+		return float64(fg.ID), nil
+	case "first_seen_in_major":
+		return float64(fg.FirstSeenInMajor), nil
+	case "first_seen_in_minor":
+		return float64(fg.FirstSeenInMinor), nil
+	default:
+		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (fg FeatureGate) GetArrayValue(param string) ([]string, error) {
+	switch param {
+	case "enabled":
+		return fg.Enabled, nil
+	default:
+		return nil, fmt.Errorf("unknown array value field %s", param)
+	}
 }

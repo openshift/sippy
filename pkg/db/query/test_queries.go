@@ -199,7 +199,7 @@ func TestReportExcludeVariants(
 	}
 
 	elapsed := time.Since(now)
-	log.Infof("TestReportExcludeVariants completed in %s", elapsed)
+	log.Infof("TestReportExcludeVariants completed in %s for release %s and test %q", elapsed, release, testName)
 	return testReport, nil
 }
 

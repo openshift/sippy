@@ -302,7 +302,7 @@ var (
 	sdnRegex                = regexp.MustCompile(`(?i)-sdn`)
 	serialRegex             = regexp.MustCompile(`(?i)-serial`)
 	singleNodeRegex         = regexp.MustCompile(`(?i)-single-node|-sno-`)
-	techpreview             = regexp.MustCompile(`(?i)-techpreview`)
+	techpreview             = regexp.MustCompile(`(?i)-techpreview|-tp-`)
 	upgradeMinorRegex       = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
 	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
 	upgradeRegex            = regexp.MustCompile(`(?i)-upgrade`)
