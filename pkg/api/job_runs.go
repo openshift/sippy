@@ -345,7 +345,9 @@ func jobNamesTestResultFunc(dbc *db.DB) testResultsByJobNameFunc {
 			return nil, nil
 		}
 
-		q := dbc.DB.Raw(query.QueryTestAnalysis, testName, jobNames)
+		analyzeSince := time.Now().Add(-14 * 24 * time.Hour)
+
+		q := dbc.DB.Raw(query.QueryTestAnalysis, analyzeSince, testName, jobNames)
 		if q.Error != nil {
 			return nil, q.Error
 		}

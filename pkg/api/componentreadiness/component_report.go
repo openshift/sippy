@@ -32,7 +32,7 @@ import (
 const (
 	triagedIncidentsTableID = "triaged_incidents"
 
-	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert`
+	ignoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert|-bgp-`
 
 	// openRegressionConfidenceAdjustment is subtracted from the requested confidence for regressed tests that have
 	// an open regression.
@@ -1549,6 +1549,12 @@ func (c *componentReportGenerator) assessComponentStatus(
 
 	if baseTotal == 0 && c.RequestAdvancedOptions.PassRateRequiredNewTests > 0 {
 		// If we have no base stats, fall back to a raw pass rate comparison for new or improperly renamed tests:
+		// Swap out sample with approvedRegression if we have it
+		if approvedRegression != nil {
+			sampleFailure = approvedRegression.PreviousFailures
+			sampleFlake = approvedRegression.PreviousFlakes
+			sampleSuccess = approvedRegression.PreviousSuccesses
+		}
 		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
 			float64(c.RequestAdvancedOptions.PassRateRequiredNewTests))
 		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
@@ -1559,6 +1565,12 @@ func (c *componentReportGenerator) assessComponentStatus(
 		return testStats
 	} else if c.RequestAdvancedOptions.PassRateRequiredAllTests > 0 {
 		// If requested, switch to pass rate only testing to see what does not meet the criteria:
+		// Swap out sample with approvedRegression if we have it
+		if approvedRegression != nil {
+			sampleFailure = approvedRegression.PreviousFailures
+			sampleFlake = approvedRegression.PreviousFlakes
+			sampleSuccess = approvedRegression.PreviousSuccesses
+		}
 		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
 			float64(c.RequestAdvancedOptions.PassRateRequiredAllTests))
 		// include base stats even though we didn't do fishers exact here, this is helpful

@@ -463,6 +463,7 @@ func setFeatureSet(_ logrus.FieldLogger, variants map[string]string, jobName str
 		feature   string
 	}{
 		{"-techpreview", "techpreview"},
+		{"-tp-", "techpreview"},
 	}
 
 	variants[VariantFeatureSet] = VariantDefaultValue
