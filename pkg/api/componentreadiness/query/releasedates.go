@@ -4,20 +4,19 @@ import (
 	"context"
 
 	"github.com/openshift/sippy/pkg/api"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetReleaseDatesFromBigQuery(ctx context.Context, client *bigquery.Client, reqOptions crtype.RequestOptions) ([]componentreport.Release, []error) {
+func GetReleaseDatesFromBigQuery(ctx context.Context, client *bigquery.Client, reqOptions crtype.RequestOptions) ([]crtype.Release, []error) {
 	queries := &releaseDateQuerier{client: client, reqOptions: reqOptions}
-	return api.GetDataFromCacheOrGenerate[[]componentreport.Release](ctx,
+	return api.GetDataFromCacheOrGenerate[[]crtype.Release](ctx,
 		client.Cache,
 		cache.RequestOptions{},
 		api.GetPrefixedCacheKey("CRReleaseDates~", reqOptions),
-		queries.QueryReleaseDates, []componentreport.Release{})
+		queries.QueryReleaseDates, []crtype.Release{})
 }
 
 type releaseDateQuerier struct {

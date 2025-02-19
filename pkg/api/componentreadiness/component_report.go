@@ -54,9 +54,9 @@ var (
 	DefaultDBGroupBy     = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
 )
 
-func getSingleColumnResultToSlice(ctx context.Context, query *bigquery.Query) ([]string, error) {
+func getSingleColumnResultToSlice(ctx context.Context, q *bigquery.Query) ([]string, error) {
 	names := []string{}
-	it, err := query.Read(ctx)
+	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying test status from bigquery")
 		return names, err
@@ -194,8 +194,8 @@ func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 						variant_value!=""
 					GROUP BY
 						variant_name`, c.client.Dataset)
-	query := c.client.BQ.Query(queryString)
-	it, err := query.Read(ctx)
+	q := c.client.BQ.Query(queryString)
+	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Errorf("error querying variants from bigquery for %s", queryString)
 		return variants, []error{err}
@@ -352,8 +352,8 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
 	// Invoke the Query phase for each of our configured middlewares:
-	for _, middleware := range c.middlewares {
-		err := middleware.Query(ctx, &wg, allJobVariants)
+	for _, mw := range c.middlewares {
+		err := mw.Query(ctx, &wg, allJobVariants)
 		if err != nil {
 			errCh <- err
 		}
@@ -840,11 +840,11 @@ func (t *triagedIncidentsModifiedTimeGenerator) queryTriagedIssuesLastModified(c
 }
 
 func (t *triagedIncidentsModifiedTimeGenerator) fetchLastModified(ctx context.Context,
-	query *bigquery.Query) (*time.Time,
+	q *bigquery.Query) (*time.Time,
 	[]error) {
-	log.Infof("Fetching triaged incidents last modified time with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
+	log.Infof("Fetching triaged incidents last modified time with:\n%s\nParameters:\n%+v\n", q.Q, q.Parameters)
 
-	it, err := query.Read(ctx)
+	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying triaged incidents last modified time from bigquery")
 		return nil, []error{err}
@@ -972,13 +972,13 @@ func (t *triagedIncidentsGenerator) queryTriagedIssues(ctx context.Context) ([]c
 }
 
 func (t *triagedIncidentsGenerator) fetchTriagedIssues(ctx context.Context,
-	query *bigquery.Query) ([]crtype.TriagedIncident,
+	q *bigquery.Query) ([]crtype.TriagedIncident,
 	[]error) {
 	errs := make([]error, 0)
 	incidents := make([]crtype.TriagedIncident, 0)
-	log.Infof("Fetching triaged incidents with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
+	log.Infof("Fetching triaged incidents with:\n%s\nParameters:\n%+v\n", q.Q, q.Parameters)
 
-	it, err := query.Read(ctx)
+	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying triaged incidents from bigquery")
 		errs = append(errs, err)

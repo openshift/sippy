@@ -29,8 +29,8 @@ func Test_Transform(t *testing.T) {
 	test1KeyStr := string(test1KeyBytes)
 	assert.NoError(t, err)
 
-	start418 := time.Date(2025, 02, 1, 0, 0, 0, 0, time.UTC)
-	end418 := time.Date(2025, 03, 1, 0, 0, 0, 0, time.UTC)
+	start418 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+	end418 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
 	release418 := crtype.Release{
 		Release: "4.18",
 		Start:   &start418,
@@ -144,16 +144,18 @@ func Test_Transform(t *testing.T) {
 			},
 		},
 	}
-	for _, test := range tests {
+	for i, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			rfb := NewReleaseFallbackMiddleware(nil, test.reqOpts)
-			rfb.cachedFallbackTestStatuses = &test.fallbackReleases
+			rfb.cachedFallbackTestStatuses = &tests[i].fallbackReleases
 			baseStatus, _, err := rfb.Transform(test.baseStatus, map[string]crtype.TestStatus{})
 			assert.NoError(t, err)
 			assert.Equal(t, test.expectedStatus, baseStatus)
 		})
 	}
 }
+
+//nolint:unparam
 func buildTestStatus(testName string, variants []string, total, success, flake int, release *crtype.Release) crtype.TestStatus {
 	return crtype.TestStatus{
 		TestName:     testName,

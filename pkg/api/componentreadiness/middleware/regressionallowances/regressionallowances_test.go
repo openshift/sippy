@@ -96,6 +96,7 @@ func Test_Transform(t *testing.T) {
 	}
 }
 
+//nolint:unparam
 func buildTestStatus(testName string, variants []string, total, success, flake int, release *crtype.Release) crtype.TestStatus {
 	return crtype.TestStatus{
 		TestName:     testName,
