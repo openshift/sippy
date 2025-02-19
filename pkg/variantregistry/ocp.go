@@ -578,29 +578,38 @@ func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]
 func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	jobNameLower := strings.ToLower(jobName)
 
-	// Excluded jobs:
 	jobTierPatterns := []struct {
 		substring string
+		prefix    string
 		jobTier   string
 	}{
-		{"-okd", "excluded"},
-		{"-recovery", "excluded"},
-		{"aggregator-", "excluded"},
-		{"alibaba", "excluded"},
-		{"-disruptive", "excluded"},
-		{"-rollback", "excluded"},
-		{"-out-of-change", "excluded"},
-		{"-sno-fips-recert", "excluded"},
+		{substring: "-okd", jobTier: "excluded"},
+		{substring: "-recovery", jobTier: "excluded"},
+		{substring: "aggregator-", jobTier: "excluded"},
+		{substring: "alibaba", jobTier: "excluded"},
+		{substring: "-disruptive", jobTier: "excluded"},
+		{substring: "-rollback", jobTier: "excluded"},
+		{substring: "-out-of-change", jobTier: "excluded"},
+		{substring: "-sno-fips-recert", jobTier: "excluded"},
 
 		// Rarely run
-		{"-cpu-partitioning", "rare"},
-		{"-etcd-scaling", "rare"},
+		{substring: "-cpu-partitioning", jobTier: "rare"},
+		{substring: "-etcd-scaling", jobTier: "rare"},
 
-		{"-automated-release", "standard"},
+		// QE Jobs
+		{substring: "-automated-release", jobTier: "standard"},
 	}
-
 	for _, jobTierPattern := range jobTierPatterns {
-		if strings.Contains(jobNameLower, jobTierPattern.substring) {
+		if jobTierPattern.jobTier == "" {
+			panic("jobTier must not be empty")
+		}
+
+		if jobTierPattern.substring != "" && strings.Contains(jobNameLower, jobTierPattern.substring) {
+			variants[VariantJobTier] = jobTierPattern.jobTier
+			return
+		}
+
+		if jobTierPattern.prefix != "" && strings.HasPrefix(jobNameLower, jobTierPattern.prefix) {
 			variants[VariantJobTier] = jobTierPattern.jobTier
 			return
 		}
@@ -612,19 +621,17 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		return
 	}
 
-	// Determine job tier from release configuration
 	release := variants[VariantRelease]
 	if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
 		variants[VariantJobTier] = "blocking"
+		return
 	} else if util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName) {
 		variants[VariantJobTier] = "informing"
+		return
 	} else if v.config.Releases[release].Jobs[jobName] {
+		variants[VariantJobTier] = "standard" // TODO: remove me
+	} else if isSpecialStandardJobTier(jobName) {
 		variants[VariantJobTier] = "standard"
-	} else if existingVariants, ok := v.existing[jobName]; ok && existingVariants[VariantJobTier] != "" {
-		// Use the existing tier for this job -- its how we control never-before-seen jobs
-		// always get "candidate" below.  If they've been promoted by overrides, its preserved
-		// here.
-		variants[VariantJobTier] = existingVariants[VariantJobTier]
 	} else {
 		variants[VariantJobTier] = "candidate"
 	}
@@ -952,5 +959,30 @@ func isIgnoredJob(jobName string) bool {
 		}
 	}
 
+	return false
+}
+
+// isSpecialStandardJobTier ported from https://github.com/openshift/ci-tools/blob/master/pkg/util/testgrid.go
+func isSpecialStandardJobTier(jobName string) bool {
+	testGridInformingPrefixes := []string{
+		"periodic-ci-ComplianceAsCode-",
+		"periodic-ci-openshift-cloud-credential-operator-",
+		"periodic-ci-openshift-cluster-control-plane-machine-set-operator-",
+		"periodic-ci-openshift-cluster-etcd-operator-",
+		"periodic-ci-openshift-ovn-kubernetes-release-",
+		"periodic-ci-openshift-hypershift-main-periodics-",
+		"periodic-ci-openshift-multiarch",
+		"periodic-ci-openshift-release-master-ci-",
+		"periodic-ci-openshift-release-master-nightly-",
+		"periodic-ci-openshift-release-master-okd-",
+		"periodic-ci-shiftstack-ci-release-",
+		"promote-release-openshift-",
+		"release-openshift-",
+	}
+	for _, prefix := range testGridInformingPrefixes {
+		if strings.HasPrefix(jobName, prefix) {
+			return true
+		}
+	}
 	return false
 }

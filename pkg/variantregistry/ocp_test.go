@@ -1019,7 +1019,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantInstaller:        "ipi",
 				VariantPlatform:         "gcp",
 				VariantProcedure:        "none",
-				VariantJobTier:          "standard",
+				VariantJobTier:          "excluded",
 				VariantNetwork:          "ovn",
 				VariantNetworkStack:     "ipv4",
 				VariantOwner:            "qe",
@@ -1211,7 +1211,7 @@ func TestVariantsSnapshot(t *testing.T) {
 			if isIgnoredJob(job) {
 				continue
 			}
-		
+
 			newVariants[job] = variantSyncer.CalculateVariantsForJob(log, job, nil)
 		}
 	}
