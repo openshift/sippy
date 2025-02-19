@@ -18,6 +18,7 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/featuregateloader"
 	"github.com/openshift/sippy/pkg/dataloader/variantsyncer"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/variantregistry"
 
@@ -46,7 +47,7 @@ type LoadFlags struct {
 	Releases      []string
 
 	BigQueryFlags        *flags.BigQueryFlags
-	ConfigFlags          *flags.ConfigFlags
+	ConfigFlags          *configflags.ConfigFlags
 	DBFlags              *flags.PostgresFlags
 	GithubCommenterFlags *flags.GithubCommenterFlags
 	GoogleCloudFlags     *flags.GoogleCloudFlags
@@ -57,7 +58,7 @@ type LoadFlags struct {
 func NewLoadFlags() *LoadFlags {
 	return &LoadFlags{
 		BigQueryFlags:        flags.NewBigQueryFlags(),
-		ConfigFlags:          flags.NewConfigFlags(),
+		ConfigFlags:          configflags.NewConfigFlags(),
 		DBFlags:              flags.NewPostgresDatabaseFlags(),
 		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
 		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
