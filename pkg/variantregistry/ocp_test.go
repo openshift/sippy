@@ -2,6 +2,7 @@ package variantregistry
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"testing"
 
@@ -658,23 +659,22 @@ func TestVariantSyncer(t *testing.T) {
 		{
 			job: "periodic-ci-openshift-with-no-release-info",
 			expected: map[string]string{
-				VariantArch:             "amd64",
-				VariantInstaller:        "ipi",
-				VariantNetworkStack:     "ipv4",
-				VariantOwner:            "eng",
-				VariantSuite:            "unknown",
-				VariantTopology:         "ha",
-				VariantUpgrade:          VariantNoValue,
-				VariantAggregation:      VariantNoValue,
-				VariantProcedure:        "none",
-				VariantJobTier:          "standard",
-				VariantFeatureSet:       VariantDefaultValue,
-				VariantNetworkAccess:    VariantDefaultValue,
-				VariantScheduler:        VariantDefaultValue,
-				VariantSecurityMode:     VariantDefaultValue,
-				VariantContainerRuntime: "",
-				VariantCGroupMode:       "v2",
-				VariantLayeredProduct:   VariantNoValue,
+				VariantArch:           "amd64",
+				VariantInstaller:      "ipi",
+				VariantNetworkStack:   "ipv4",
+				VariantOwner:          "eng",
+				VariantSuite:          "unknown",
+				VariantTopology:       "ha",
+				VariantUpgrade:        VariantNoValue,
+				VariantAggregation:    VariantNoValue,
+				VariantProcedure:      "none",
+				VariantJobTier:        "standard",
+				VariantFeatureSet:     VariantDefaultValue,
+				VariantNetworkAccess:  VariantDefaultValue,
+				VariantScheduler:      VariantDefaultValue,
+				VariantSecurityMode:   VariantDefaultValue,
+				VariantCGroupMode:     "v2",
+				VariantLayeredProduct: VariantNoValue,
 			},
 		},
 		{
@@ -1101,6 +1101,9 @@ func TestVariantsSnapshot(t *testing.T) {
 	oldVariants, err := snapshot.Load("snapshot.yaml")
 	assert.NoError(t, err)
 
+	// Map to collect changes
+	summary := make(map[string][]string)
+
 	// Iterate only over jobs that exist in both old and new
 	anyFail := 0
 	for job, newVars := range newVariants {
@@ -1112,15 +1115,21 @@ func TestVariantsSnapshot(t *testing.T) {
 				// Check for added, changed, and removed variants
 				for key, newValue := range newVars {
 					if oldValue, ok := oldVars[key]; !ok {
-						changes = append(changes, fmt.Sprintf("Added %s:%s", key, newValue))
+						changeMsg := fmt.Sprintf("Added %s:%s", key, newValue)
+						changes = append(changes, changeMsg)
+						summary[changeMsg] = append(summary[changeMsg], job)
 					} else if oldValue != newValue {
-						changes = append(changes, fmt.Sprintf("Changed %s (%s -> %s)", key, oldValue, newValue))
+						changeMsg := fmt.Sprintf("Changed %s (%s -> %s)", key, oldValue, newValue)
+						changes = append(changes, changeMsg)
+						summary[changeMsg] = append(summary[changeMsg], job)
 					}
 				}
 
 				for key := range oldVars {
 					if _, ok := newVars[key]; !ok {
-						changes = append(changes, "Removed "+key)
+						changeMsg := fmt.Sprintf("Removed %s (was %q)", key, oldVars[key])
+						changes = append(changes, changeMsg)
+						summary[changeMsg] = append(summary[changeMsg], job)
 					}
 				}
 
@@ -1133,7 +1142,13 @@ func TestVariantsSnapshot(t *testing.T) {
 		}
 	}
 
+	// Print summary
 	if anyFail > 0 {
-		t.Logf("****** Run `make update-variants` to update the snapshot and accept these changes.")
+		t.Logf("\nSummary of changes:")
+		for change, jobs := range summary {
+			sort.Strings(jobs)
+			t.Logf("%s\n   - %s", change, strings.Join(jobs, "\n   - "))
+		}
+		t.Logf("\n****** Run `make update-variants` to update the snapshot and accept these changes.")
 	}
 }

@@ -16,10 +16,9 @@ import (
 	"google.golang.org/api/iterator"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
-	"github.com/openshift/sippy/pkg/util"
-
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/util"
 )
 
 // OCPVariantLoader generates a mapping of job names to their variant map for all known jobs.
@@ -41,7 +40,10 @@ func NewOCPVariantLoader(
 	gcsBucket string,
 	config *v1.SippyConfig) *OCPVariantLoader {
 
-	bkt := gcsClient.Bucket(gcsBucket)
+	var bkt *storage.BucketHandle
+	if gcsBucket != "" {
+		bkt = gcsClient.Bucket(gcsBucket)
+	}
 	return &OCPVariantLoader{
 		BigQueryClient:  bigQueryClient,
 		bkt:             bkt,
@@ -134,6 +136,11 @@ ORDER BY j.prowjob_job_name;
 			log.WithError(err).Error("error parsing prowjob name from bigquery")
 			return nil, err
 		}
+
+		if isIgnoredJob(jlr.JobName) {
+			continue
+		}
+
 		clusterData := map[string]string{}
 		jLog := log.WithField("job", jlr.JobName)
 		if jlr.URL.Valid {
@@ -187,7 +194,6 @@ var fileVariantsToIgnore = map[string]bool{
 }
 
 func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobName string, variantFile map[string]string) map[string]string {
-
 	// Calculate variants based on job name:
 	variants := v.IdentifyVariants(jLog, jobName)
 
@@ -259,59 +265,9 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 }
 
 var (
-	aggregatedRegex = regexp.MustCompile(`(?i)aggregated-`)
-	// We're not sure what these aggregator jobs are but they exist as of right now:
-	aggregatorRegex       = regexp.MustCompile(`(?i)aggregator-`)
-	automatedReleaseRegex = regexp.MustCompile(`(?i)automated-release`)
-	alibabaRegex          = regexp.MustCompile(`(?i)-alibaba`)
-	arm64Regex            = regexp.MustCompile(`(?i)-arm64|-multi-a-a|-arm`)
-	assistedRegex         = regexp.MustCompile(`(?i)-assisted`)
-	awsRegex              = regexp.MustCompile(`(?i)-aws`)
-	azureRegex            = regexp.MustCompile(`(?i)-azure`)
-	compactRegex          = regexp.MustCompile(`(?i)-compact`)
-	cpuPartitioning       = regexp.MustCompile(`(?i)-cpu-partitioning`)
-	etcdScaling           = regexp.MustCompile(`(?i)-etcd-scaling`)
-	fipsRegex             = regexp.MustCompile(`(?i)-fips`)
-	hypershiftRegex       = regexp.MustCompile(`(?i)(-hypershift|-hcp|_hcp)`)
-	upiRegex              = regexp.MustCompile(`(?i)-upi`)
-	libvirtRegex          = regexp.MustCompile(`(?i)-libvirt`)
-	metalRegex            = regexp.MustCompile(`(?i)-metal`)
-	microshiftRegex       = regexp.MustCompile(`(?i)-microshift`)
-	// Variant for Heterogeneous
-	multiRegex   = regexp.MustCompile(`(?i)-heterogeneous|-multi-`)
-	nutanixRegex = regexp.MustCompile(`(?i)-nutanix`)
-	// 3.11 gcp jobs don't have a trailing -version segment
-	gcpRegex       = regexp.MustCompile(`(?i)-gcp`)
-	osdGcpRegex    = regexp.MustCompile(`(?i)-osd-ccs-gcp`)
-	openstackRegex = regexp.MustCompile(`(?i)-openstack`)
-	sdRegex        = regexp.MustCompile(`(?i)-osd|-rosa`)
-	ovirtRegex     = regexp.MustCompile(`(?i)-ovirt`)
-	ovnRegex       = regexp.MustCompile(`(?i)-ovn`)
-	ipv6Regex      = regexp.MustCompile(`(?i)-ipv6`)
-	dualStackRegex = regexp.MustCompile(`(?i)-dualstack`)
-	perfScaleRegex = regexp.MustCompile(`(?i)-perfscale`)
-	chaosRegex     = regexp.MustCompile(`(?i)-chaos-`)
-	// proxy jobs do not have a trailing -version segment
-	ppc64leRegex            = regexp.MustCompile(`(?i)-ppc64le|-multi-p-p`)
-	proxyRegex              = regexp.MustCompile(`(?i)-proxy`)
-	qeRegex                 = regexp.MustCompile(`(?i)-openshift-tests-private|-openshift-verification-tests|-openshift-distributed-tracing|-qe`)
-	rosaRegex               = regexp.MustCompile(`(?i)-rosa`)
-	cnfRegex                = regexp.MustCompile(`(?i)-telco5g`)
-	rtRegex                 = regexp.MustCompile(`(?i)-rt`)
-	s390xRegex              = regexp.MustCompile(`(?i)-s390x|-multi-z-z`)
-	sdnRegex                = regexp.MustCompile(`(?i)-sdn`)
-	serialRegex             = regexp.MustCompile(`(?i)-serial`)
-	singleNodeRegex         = regexp.MustCompile(`(?i)-single-node|-sno-`)
-	techpreview             = regexp.MustCompile(`(?i)-techpreview|-tp-`)
 	upgradeMinorRegex       = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
 	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
 	upgradeRegex            = regexp.MustCompile(`(?i)-upgrade`)
-	// some vsphere jobs do not have a trailing -version segment
-	vsphereRegex   = regexp.MustCompile(`(?i)-vsphere`)
-	crunRegex      = regexp.MustCompile(`(?i)-crun`)
-	runcRegex      = regexp.MustCompile(`(?i)-runc`)
-	cgroupsv1Regex = regexp.MustCompile(`(?i)-cgroupsv1`)
-	virtRegex      = regexp.MustCompile("(?i)-virt|-cnv|-kubevirt")
 )
 
 const (
@@ -344,14 +300,217 @@ const (
 	VariantNoValue          = "none"
 )
 
-// nolint:gocyclo
 func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
 	variants := map[string]string{}
 
-	if aggregatedRegex.MatchString(jobName) || aggregatorRegex.MatchString(jobName) {
-		variants[VariantAggregation] = "aggregated"
-	} else {
-		variants[VariantAggregation] = VariantNoValue
+	for _, setter := range []func(jLog logrus.FieldLogger, variants map[string]string, jobName string){
+		v.setRelease, // Keep release first, other setters may look up release info in variants map
+		setAggregation,
+		setPlatform,
+		setInstaller,
+		setArchitecture,
+		setNetwork,
+		setTopology,
+		setNetworkStack,
+		setSuite,
+		setOwner,
+		setSecurityMode,
+		setFeatureSet,
+		setScheduler,
+		setNetworkAccess,
+		setCGroupMode,
+		setLayeredProduct,
+		setContainerRuntime,
+		setProcedure,
+		v.setJobTier, // Keep this near last, it relies on other variants like owner
+	} {
+		setter(jLog, variants, jobName)
+	}
+
+	if len(variants) == 0 {
+		jLog.WithField("job", jobName).Warn("unable to determine any variants for job")
+		return map[string]string{}
+	}
+
+	return variants
+}
+
+func setAggregation(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	aggregationPatterns := []struct {
+		substring   string
+		aggregation string
+	}{
+		{"aggregated-", "aggregated"},
+		{"aggregator-", "aggregated"},
+	}
+
+	variants[VariantAggregation] = VariantNoValue
+	for _, entry := range aggregationPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantAggregation] = entry.aggregation
+			return
+		}
+	}
+}
+
+func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	ownerPatterns := []struct {
+		substring string
+		owner     string
+	}{
+		{"-osd", "service-delivery"},
+		{"-rosa", "service-delivery"},
+		{"-telco5g", "cnf"},
+		{"-perfscale", "perfscale"},
+		{"-chaos-", "chaos"},
+		{"-qe", "qe"}, // Keep this one below perfscale
+		{"-openshift-tests-private", "qe"},
+		{"-openshift-verification-tests", "qe"},
+		{"-openshift-distributed-tracing", "qe"},
+	}
+
+	for _, entry := range ownerPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantOwner] = entry.owner
+			return
+		}
+	}
+
+	variants[VariantOwner] = "eng"
+}
+
+func setSuite(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	suitePatterns := []struct {
+		substring string
+		suite     string
+	}{
+		{"-serial", "serial"},
+		{"-etcd-scaling", "etcd-scaling"},
+		{"conformance", "parallel"}, // Jobs with "conformance" but no explicit serial are probably parallel
+	}
+
+	for _, entry := range suitePatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantSuite] = entry.suite
+			return
+		}
+	}
+
+	variants[VariantSuite] = "unknown" // Default case for jobs not running suites
+}
+
+func setSecurityMode(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	securityPatterns := []struct {
+		substring string
+		mode      string
+	}{
+		{"-fips", "fips"},
+	}
+
+	variants[VariantSecurityMode] = VariantDefaultValue
+	for _, entry := range securityPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantSecurityMode] = entry.mode
+			return
+		}
+	}
+}
+
+func setFeatureSet(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	featurePatterns := []struct {
+		substring string
+		feature   string
+	}{
+		{"-techpreview", "techpreview"},
+		{"-tp-", "techpreview"},
+	}
+
+	variants[VariantFeatureSet] = VariantDefaultValue
+	for _, entry := range featurePatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantFeatureSet] = entry.feature
+			return
+		}
+	}
+}
+
+func setScheduler(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	schedulerPatterns := []struct {
+		substring string
+		scheduler string
+	}{
+		{"-rt", "realtime"},
+	}
+
+	variants[VariantScheduler] = VariantDefaultValue
+	for _, entry := range schedulerPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantScheduler] = entry.scheduler
+			return
+		}
+	}
+}
+
+func setNetworkAccess(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	networkPatterns := []struct {
+		substring string
+		access    string
+	}{
+		{"-proxy", "proxy"},
+		{"-metal-ipi-ovn-ipv6", "disconnected"},
+	}
+
+	variants[VariantNetworkAccess] = VariantDefaultValue
+	for _, entry := range networkPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantNetworkAccess] = entry.access
+			return
+		}
+	}
+}
+
+func setNetworkStack(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	networkPatterns := []struct {
+		substring string
+		stack     string
+	}{
+		{"-dualstack", "dual"},
+		{"-ipv6", "ipv6"},
+	}
+
+	for _, entry := range networkPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantNetworkStack] = entry.stack
+			return
+		}
+	}
+
+	variants[VariantNetworkStack] = "ipv4"
+}
+
+func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	// Prefer core release from sippy config -- only if the job name references the release. Too many jobs
+	// are attached to "master" and move between releases.
+	for version, release := range v.config.Releases {
+		if _, ok := release.Jobs[jobName]; ok && strings.Contains(jobName, version) {
+			variants[VariantRelease] = version
+		}
 	}
 
 	release, fromRelease := extractReleases(jobName)
@@ -385,162 +544,111 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		delete(variants, VariantFromReleaseMajor)
 		delete(variants, VariantFromReleaseMinor)
 	}
+}
 
-	// Platform
-	determinePlatform(jLog, variants, jobName)
+func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
 
-	// Installation
-	install := determineInstallation(jobName)
-	if install != "" {
-		variants[VariantInstaller] = install
+	// Excluded jobs:
+	jobTierPatterns := []struct {
+		substring string
+		jobTier   string
+	}{
+		// Rarely run
+		{"-cpu-partitioning", "rare"},
+		{"-etcd-scaling", "rare"},
 	}
 
-	// Architecture
-	arch := determineArchitecture(jobName)
-	if arch != "" {
-		variants[VariantArch] = arch
-	}
-
-	// Network
-	network := determineNetwork(jLog, jobName, fromRelease)
-	if network != "" {
-		variants[VariantNetwork] = network
-	}
-
-	// Topology
-	topology := determineTopology(jobName)
-	if topology != "" {
-		variants[VariantTopology] = topology
-	}
-
-	if dualStackRegex.MatchString(jobName) {
-		variants[VariantNetworkStack] = "dual"
-	} else if ipv6Regex.MatchString(jobName) {
-		variants[VariantNetworkStack] = "ipv6"
-	} else {
-		variants[VariantNetworkStack] = "ipv4"
-	}
-
-	// TODO: suite may not be the right word here
-	if serialRegex.MatchString(jobName) {
-		variants[VariantSuite] = "serial"
-	} else if etcdScaling.MatchString(jobName) {
-		variants[VariantSuite] = "etcd-scaling"
-	} else if strings.Contains(jobName, "conformance") {
-		// jobs with "conformance" that don't explicitly mention serial are probably parallel
-		variants[VariantSuite] = "parallel"
-	} else {
-		variants[VariantSuite] = "unknown" // parallel perhaps but lots of jobs aren't running out suites
-	}
-
-	if etcdScaling.MatchString(jobName) {
-		variants[VariantProcedure] = "etcd-scaling"
-		variants[VariantJobTier] = "rare"
-	} else if cpuPartitioning.MatchString(jobName) {
-		variants[VariantProcedure] = "cpu-partitioning"
-		variants[VariantJobTier] = "rare"
-	} else if automatedReleaseRegex.MatchString(jobName) {
-		variants[VariantProcedure] = "automated-release"
-		variants[VariantJobTier] = "standard"
-	} else {
-		variants[VariantProcedure] = VariantNoValue
-
-		// Set tier to informing/blocking as appropriate
-		if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
-			variants[VariantJobTier] = "blocking"
-		} else if util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName) {
-			variants[VariantJobTier] = "informing"
-		} else {
-			variants[VariantJobTier] = "standard"
+	for _, jobTierPattern := range jobTierPatterns {
+		if strings.Contains(jobNameLower, jobTierPattern.substring) {
+			variants[VariantJobTier] = jobTierPattern.jobTier
+			return
 		}
 	}
 
-	if sdRegex.MatchString(jobName) {
-		variants[VariantOwner] = "service-delivery"
-	} else if cnfRegex.MatchString(jobName) {
-		variants[VariantOwner] = "cnf"
-	} else if perfScaleRegex.MatchString(jobName) {
-		variants[VariantOwner] = "perfscale"
-	} else if chaosRegex.MatchString(jobName) {
-		variants[VariantOwner] = "chaos"
-	} else if qeRegex.MatchString(jobName) {
-		variants[VariantOwner] = "qe" // Keep this below perfscale
+	// Determine job tier from release configuration
+	release := variants[VariantRelease]
+	if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
+		variants[VariantJobTier] = "blocking"
+	} else if util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName) {
+		variants[VariantJobTier] = "informing"
 	} else {
-		variants[VariantOwner] = "eng"
+		variants[VariantJobTier] = "standard"
 	}
-
-	if fipsRegex.MatchString(jobName) {
-		variants[VariantSecurityMode] = "fips"
-	} else {
-		variants[VariantSecurityMode] = VariantDefaultValue
-	}
-
-	if techpreview.MatchString(jobName) {
-		variants[VariantFeatureSet] = "techpreview"
-	} else {
-		variants[VariantFeatureSet] = VariantDefaultValue
-	}
-
-	if rtRegex.MatchString(jobName) {
-		variants[VariantScheduler] = "realtime"
-	} else {
-		variants[VariantScheduler] = VariantDefaultValue
-	}
-
-	if proxyRegex.MatchString(jobName) {
-		variants[VariantNetworkAccess] = "proxy"
-	} else {
-		variants[VariantNetworkAccess] = VariantDefaultValue
-	}
-
-	variants[VariantContainerRuntime] = determineContainerRuntime(jLog, jobName, fromRelease)
-
-	if cgroupsv1Regex.MatchString(jobName) {
-		variants[VariantCGroupMode] = "v1"
-	} else {
-		variants[VariantCGroupMode] = "v2"
-	}
-
-	if virtRegex.MatchString(jobName) {
-		variants[VariantLayeredProduct] = "virt"
-	} else {
-		variants[VariantLayeredProduct] = VariantNoValue
-	}
-
-	if len(variants) == 0 {
-		jLog.WithField("job", jobName).Warn("unable to determine any variants for job")
-		return map[string]string{}
-	}
-
-	return variants
 }
 
-func determineTopology(jobName string) string {
-	// Topology
-	// external == hypershift hosted control plane
-	if singleNodeRegex.MatchString(jobName) {
-		return "single" // previously single-node
-	} else if hypershiftRegex.MatchString(jobName) {
-		return "external"
-	} else if compactRegex.MatchString(jobName) {
-		return "compact"
-	} else if microshiftRegex.MatchString(jobName) { // No jobs for this in 4.15 - 4.16 that I can see.
-		return "microshift"
+func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	// Job procedure patterns
+	procedurePatterns := []struct {
+		substring string
+		procedure string
+	}{
+		{"-etcd-scaling", "etcd-scaling"},
+		{"-cpu-partitioning", "cpu-partitioning"},
+		{"-automated-release", "automated-release"},
 	}
 
-	return "ha"
+	for _, entry := range procedurePatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantProcedure] = entry.procedure
+			return
+		}
+	}
+
+	// Default procedure
+	variants[VariantProcedure] = VariantNoValue
 }
 
-func determineInstallation(jobName string) string {
-	if assistedRegex.MatchString(jobName) {
-		return "assisted"
-	} else if hypershiftRegex.MatchString(jobName) {
-		return "hypershift"
-	} else if upiRegex.MatchString(jobName) {
-		return "upi"
+func setTopology(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	topologyPatterns := []struct {
+		substring string
+		topology  string
+	}{
+		{"-sno-", "single"},        // Previously single-node
+		{"-single-node", "single"}, // Alternative format
+		{"-hypershift", "external"},
+		{"-hcp", "external"},
+		{"_hcp", "external"},
+		{"-compact", "compact"},
+		{"-microshift", "microshift"},
 	}
 
-	return "ipi" // assume ipi by default
+	for _, entry := range topologyPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantTopology] = entry.topology
+			return
+		}
+	}
+
+	variants[VariantTopology] = "ha" // Default to "ha"
+}
+
+func setInstaller(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	installationPatterns := []struct {
+		substring string
+		installer string
+	}{
+		{"-assisted", "assisted"},
+		{"-hypershift", "hypershift"},
+		{"-hcp", "hypershift"},
+		{"_hcp", "hypershift"},
+		{"-upi", "upi"},
+	}
+
+	for _, entry := range installationPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantInstaller] = entry.installer
+			return
+		}
+	}
+
+	variants[VariantInstaller] = "ipi" // Assume ipi by default
 }
 
 // isMultiUpgrade checks if this is a multi-minor upgrade by examining the delta between the release minor
@@ -568,41 +676,34 @@ func isMultiUpgrade(release, fromRelease string) bool {
 	return false
 }
 
-func determinePlatform(jLog logrus.FieldLogger, variants map[string]string, jobName string) {
-	platform := ""
-
-	// Platforms
-	if alibabaRegex.MatchString(jobName) {
-		platform = "alibaba"
-	} else if rosaRegex.MatchString(jobName) {
-		platform = "rosa" // keep above AWS as many ROSA jobs also mention AWS
-	} else if awsRegex.MatchString(jobName) {
-		platform = "aws"
-	} else if azureRegex.MatchString(jobName) {
-		platform = "azure"
-	} else if osdGcpRegex.MatchString(jobName) {
-		platform = "osd-gcp"
-	} else if gcpRegex.MatchString(jobName) {
-		platform = "gcp"
-	} else if libvirtRegex.MatchString(jobName) {
-		platform = "libvirt"
-	} else if metalRegex.MatchString(jobName) {
-		platform = "metal"
-	} else if nutanixRegex.MatchString(jobName) {
-		platform = "nutanix"
-	} else if openstackRegex.MatchString(jobName) {
-		platform = "openstack"
-	} else if ovirtRegex.MatchString(jobName) {
-		platform = "ovirt"
-	} else if vsphereRegex.MatchString(jobName) {
-		platform = "vsphere"
+func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName string) {
+	// Order matters here: patterns must be checked in a specific sequence
+	platformPatterns := []struct {
+		substring string
+		platform  string
+	}{
+		{"-rosa", "rosa"}, // Keep above AWS as many ROSA jobs also mention AWS
+		{"-aws", "aws"},
+		{"-alibaba", "alibaba"},
+		{"-azure", "azure"},
+		{"-osd-ccs-gcp", "osd-gcp"},
+		{"-gcp", "gcp"},
+		{"-libvirt", "libvirt"},
+		{"-metal", "metal"},
+		{"-nutanix", "nutanix"},
+		{"-openstack", "openstack"},
+		{"-ovirt", "ovirt"},
+		{"-vsphere", "vsphere"},
 	}
 
-	if platform == "" {
-		jLog.WithField("jobName", jobName).Warn("unable to determine platform from job name")
-		return // do not set a platform if unknown
+	for _, entry := range platformPatterns {
+		if strings.Contains(jobName, entry.substring) {
+			variants[VariantPlatform] = entry.platform
+			return
+		}
 	}
-	variants[VariantPlatform] = platform
+
+	jLog.WithField("jobName", jobName).Warn("unable to determine platform from job name")
 }
 
 func extractReleases(jobName string) (release, fromRelease string) {
@@ -633,51 +734,157 @@ func extractReleases(jobName string) (release, fromRelease string) {
 
 	return release, fromRelease
 }
-func determineArchitecture(jobName string) string {
-	if arm64Regex.MatchString(jobName) {
-		return "arm64"
-	} else if ppc64leRegex.MatchString(jobName) {
-		return "ppc64le"
-	} else if s390xRegex.MatchString(jobName) {
-		return "s390x"
-	} else if multiRegex.MatchString(jobName) {
-		return "heterogeneous"
+
+func setArchitecture(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	architecturePatterns := []struct {
+		substring    string
+		architecture string
+	}{
+		{"-arm64", "arm64"},
+		{"-multi-a-a", "arm64"},
+		{"-arm", "arm64"},
+		{"-ppc64le", "ppc64le"},
+		{"-multi-p-p", "ppc64le"},
+		{"-s390x", "s390x"},
+		{"-multi-z-z", "s390x"},
+		{"-heterogeneous", "heterogeneous"},
+		{"-multi-", "heterogeneous"},
 	}
-	return "amd64"
+
+	for _, entry := range architecturePatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantArch] = entry.architecture
+			return
+		}
+	}
+
+	variants[VariantArch] = "amd64"
 }
 
-func determineNetwork(jLog logrus.FieldLogger, jobName, release string) string {
-	if ovnRegex.MatchString(jobName) {
-		return "ovn"
-	} else if sdnRegex.MatchString(jobName) {
-		return "sdn"
+func setNetwork(jLog logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	networkPatterns := []struct {
+		substring string
+		network   string
+	}{
+		{"-ovn", "ovn"},
+		{"-sdn", "sdn"},
 	}
-	// If no explicit version, guess based on release
+
+	// Check jobName for explicit network type
+	for _, entry := range networkPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantNetwork] = entry.network
+			return
+		}
+	}
+
+	// Get release version from variants
+	release, exists := variants[VariantFromRelease]
+	if !exists {
+		release, exists = variants[VariantRelease] // fall back to main release for non-upgrade jobs
+	}
+	if !exists {
+		jLog.Warning("release version not found, unable to guess container runtime")
+	}
+
+	// Determine network based on release
 	ovnBecomesDefault, _ := version.NewVersion("4.12")
 	releaseVersion, err := version.NewVersion(release)
 	if err != nil {
-		jLog.Warning("could not determine network type")
-		return ""
-	} else if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
-		return "ovn"
+		jLog.WithField("release", release).Warning("could not parse release version, unable to guess network type")
+		return
 	}
-	return "sdn"
+
+	if releaseVersion.GreaterThanOrEqual(ovnBecomesDefault) {
+		variants[VariantNetwork] = "ovn"
+	} else {
+		variants[VariantNetwork] = "sdn"
+	}
 }
 
-func determineContainerRuntime(jLog logrus.FieldLogger, jobName, release string) string {
-	if crunRegex.MatchString(jobName) {
-		return "crun"
-	} else if runcRegex.MatchString(jobName) {
-		return "runc"
+func setContainerRuntime(jLog logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	runtimePatterns := []struct {
+		substring string
+		runtime   string
+	}{
+		{"-crun", "crun"},
+		{"-runc", "runc"},
 	}
-	// If no explicit version, guess based on release
+
+	// Check jobName for explicit container runtime
+	for _, entry := range runtimePatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantContainerRuntime] = entry.runtime
+			return
+		}
+	}
+
+	// Get release version from variants
+	release, exists := variants[VariantFromRelease]
+	if !exists {
+		release, exists = variants[VariantRelease] // fall back to main release for non-upgrade jobs
+	}
+	if !exists {
+		jLog.Warning("release version not found, unable to guess container runtime")
+	}
+
+	// Determine container runtime based on release
 	crunBecomesDefault, _ := version.NewVersion("4.18")
 	releaseVersion, err := version.NewVersion(release)
 	if err != nil {
-		jLog.Warning("could not determine container runtime type")
-		return ""
-	} else if releaseVersion.GreaterThanOrEqual(crunBecomesDefault) {
-		return "crun"
+		jLog.WithField("release", release).Warning("could not parse release version for container runtime type")
+		return
 	}
-	return "runc"
+
+	if releaseVersion.GreaterThanOrEqual(crunBecomesDefault) {
+		variants[VariantContainerRuntime] = "crun"
+	} else {
+		variants[VariantContainerRuntime] = "runc"
+	}
+}
+
+func setCGroupMode(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	cgroupPatterns := []struct {
+		substring string
+		mode      string
+	}{
+		{"-cgroupsv1", "v1"},
+	}
+
+	variants[VariantCGroupMode] = "v2" // Default to v2
+	for _, entry := range cgroupPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantCGroupMode] = entry.mode
+			return
+		}
+	}
+}
+
+func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	layeredProductPatterns := []struct {
+		substring string
+		product   string
+	}{
+		{"-virt", "virt"},
+		{"-cnv", "virt"},
+		{"-kubevirt", "virt"},
+	}
+
+	variants[VariantLayeredProduct] = VariantNoValue
+	for _, entry := range layeredProductPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantLayeredProduct] = entry.product
+			return
+		}
+	}
 }
