@@ -38,10 +38,10 @@ func main() {
 		NewLoadCommand(),
 		NewSnapshotCommand(),
 		NewRefreshCommand(),
-		NewLoadJobVariantsCommand(),
 		NewComponentReadinessCommand(),
 		NewAutomateJiraCommand(),
 		NewTrackRegressionsCommand(),
+		NewVariantsCommand(),
 	)
 
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",

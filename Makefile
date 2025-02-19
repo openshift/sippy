@@ -59,3 +59,6 @@ e2e:
 
 images:
 	$(DOCKER) build .
+
+update-variants: sippy
+	./sippy variants snapshot --config ./config/openshift.yaml

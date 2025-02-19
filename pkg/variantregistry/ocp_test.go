@@ -1,12 +1,15 @@
 package variantregistry
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 )
 
 func TestVariantSyncer(t *testing.T) {
@@ -1077,5 +1080,60 @@ func TestVariantSyncer(t *testing.T) {
 					test.job,
 					test.variantsFile))
 		})
+	}
+}
+
+// TestVariantsSnapshot regenerates variants against the OCP config, and then compares against
+// a previously taken snapshot. If variants changed, it will fail and report an error. You can
+// run `make update-variants` to update and accept the changes. This lets you easily see the impact
+// of modifying the OCP variant syncer.
+func TestVariantsSnapshot(t *testing.T) {
+	cfgFlags := &configflags.ConfigFlags{
+		Path: "../../config/openshift.yaml",
+	}
+	cfg, err := cfgFlags.GetConfig()
+	assert.NoError(t, err)
+
+	log := logrus.WithField("test", "TestVariantsSnapshot")
+
+	snapshot := NewVariantSnapshot(cfg, log)
+	newVariants := snapshot.Identify()
+	oldVariants, err := snapshot.Load("snapshot.yaml")
+	assert.NoError(t, err)
+
+	// Iterate only over jobs that exist in both old and new
+	anyFail := 0
+	for job, newVars := range newVariants {
+		oldVars, exists := oldVariants[job]
+		if exists {
+			t.Run(job, func(t *testing.T) {
+				var changes []string
+
+				// Check for added, changed, and removed variants
+				for key, newValue := range newVars {
+					if oldValue, ok := oldVars[key]; !ok {
+						changes = append(changes, fmt.Sprintf("Added %s:%s", key, newValue))
+					} else if oldValue != newValue {
+						changes = append(changes, fmt.Sprintf("Changed %s (%s -> %s)", key, oldValue, newValue))
+					}
+				}
+
+				for key := range oldVars {
+					if _, ok := newVars[key]; !ok {
+						changes = append(changes, "Removed "+key)
+					}
+				}
+
+				if len(changes) > 0 {
+					t.Logf("%s:\n%s", job, strings.Join(changes, "\n"))
+					t.Fail()
+					anyFail++
+				}
+			})
+		}
+	}
+
+	if anyFail > 0 {
+		t.Logf("****** Run `make update-variants` to update the snapshot and accept these changes.")
 	}
 }
