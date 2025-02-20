@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -31,7 +32,7 @@ type ComponentReadinessFlags struct {
 	CacheFlags              *flags.CacheFlags
 	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
-	ConfigFlags             *flags.ConfigFlags
+	ConfigFlags             *configflags.ConfigFlags
 
 	Config      string
 	LogLevel    string
@@ -51,7 +52,7 @@ func NewComponentReadinessCommand() *cobra.Command {
 		BigQueryFlags:           flags.NewBigQueryFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
-		ConfigFlags:             flags.NewConfigFlags(),
+		ConfigFlags:             configflags.NewConfigFlags(),
 	}
 
 	cmd := &cobra.Command{

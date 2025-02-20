@@ -74,36 +74,11 @@ export default function Tests(props) {
                     component={Link}
                     to={url + '/details' + search}
                   />
-                  <Tab
-                    label="Watchlist"
-                    value="watchlist"
-                    component={Link}
-                    sx={{ padding: '6px 12px !important' }}
-                    to={withSort(
-                      pathForAPIWithFilter(
-                        `/tests/${props.release}/watchlist`,
-                        {
-                          items: [
-                            BOOKMARKS.RUN_7,
-                            BOOKMARKS.NO_NEVER_STABLE,
-                            BOOKMARKS.NO_AGGREGATED,
-                            BOOKMARKS.WATCHLIST,
-                          ],
-                          linkOperator: 'and',
-                        }
-                      ),
-                      'current_pass_percentage',
-                      'asc'
-                    )}
-                  />
                 </Tabs>
               </Paper>
             </Box>
             <Switch>
               <Route path={path + '/details'}>
-                <TestTable release={props.release} collapse={false} />
-              </Route>
-              <Route path={path + '/watchlist'}>
                 <TestTable release={props.release} collapse={false} />
               </Route>
               <Route exact path={path}>

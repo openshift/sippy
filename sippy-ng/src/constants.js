@@ -136,11 +136,6 @@ export const BOOKMARKS = {
     operatorValue: '>',
     value: '1',
   },
-  WATCHLIST: {
-    columnField: 'watchlist',
-    operatorValue: 'equals',
-    value: 'true',
-  },
   NO_100_FLAKE: {
     columnField: 'current_flake_percentage',
     not: true,

@@ -237,7 +237,6 @@ WITH open_bugs AS (
 SELECT
     tests.id,
     tests.name,
-    tests.watchlist, 
     suites.name AS suite_name,
     jira_components.name AS jira_component,
     jira_components.id AS jira_component_id,   
@@ -292,7 +291,6 @@ const testAnalysisByJobMatView = `
 SELECT
     tests.id AS test_id,
     tests.name AS test_name,
-    tests.watchlist,
     date(prow_job_runs."timestamp") AS date,
     prow_jobs.release,
     prow_jobs.name AS job_name,
