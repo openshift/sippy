@@ -257,7 +257,7 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 		return crtype.ComponentReport{}, errs
 	}
 
-	// Allow all middleware a chance to transform the base/sample TestStatuses before we analyze:
+	// Allow all middlware a chance to transform the base/sample TestStatuses before we analyze:
 	var err error
 	for _, mw := range c.middlewares {
 		componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus, err =

@@ -40,7 +40,6 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBu
 		crtype.ReportTestDetails{})
 }
 
-// GenerateTestDetailsReport is the main entry point for generation of a test details report.
 func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (crtype.ReportTestDetails, []error) {
 	if c.ReqOptions.TestIDOption.TestID == "" {
 		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
@@ -304,12 +303,6 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 	<-statusDoneCh
 	<-statusErrsDoneCh
 	fLog.Infof("total test statuses: %d", len(sampleStatus))
-	for k, v := range sampleStatus {
-		fLog.Infof("sampleStatus: %s", k)
-		for _, row := range v {
-			fLog.Infof(" %+v", row)
-		}
-	}
 	if len(baseErrs) != 0 || len(baseOverrideErrs) != 0 {
 		errs = append(errs, baseErrs...)
 		errs = append(errs, baseOverrideErrs...)
