@@ -16,6 +16,7 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/jiraautomator"
 	"github.com/openshift/sippy/pkg/flags"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -29,7 +30,7 @@ type AutomateJiraFlags struct {
 	GoogleCloudFlags        *flags.GoogleCloudFlags
 	CacheFlags              *flags.CacheFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
-	ConfigFlags             *flags.ConfigFlags
+	ConfigFlags             *configflags.ConfigFlags
 	JiraOptions             prowflagutil.JiraOptions
 	SippyURL                string
 	IncludeComponentsStr    string
@@ -47,7 +48,7 @@ func NewAutomateJiraFlags() *AutomateJiraFlags {
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
-		ConfigFlags:             flags.NewConfigFlags(),
+		ConfigFlags:             configflags.NewConfigFlags(),
 		ColumnThresholds:        map[jiraautomator.Variant]int{},
 	}
 }

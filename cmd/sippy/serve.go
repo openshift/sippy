@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -32,7 +33,7 @@ type ServerFlags struct {
 	ModeFlags               *flags.ModeFlags
 	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
-	ConfigFlags             *flags.ConfigFlags
+	ConfigFlags             *configflags.ConfigFlags
 
 	ListenAddr  string
 	MetricsAddr string
@@ -47,7 +48,7 @@ func NewServerFlags() *ServerFlags {
 		ModeFlags:               flags.NewModeFlags(),
 		ProwFlags:               flags.NewProwFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
-		ConfigFlags:             flags.NewConfigFlags(),
+		ConfigFlags:             configflags.NewConfigFlags(),
 		ListenAddr:              ":8080",
 		MetricsAddr:             ":2112",
 	}

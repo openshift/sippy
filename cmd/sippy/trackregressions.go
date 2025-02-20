@@ -8,6 +8,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -20,7 +21,7 @@ type TrackRegressionFlags struct {
 	GoogleCloudFlags        *flags.GoogleCloudFlags
 	CacheFlags              *flags.CacheFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
-	ConfigFlags             *flags.ConfigFlags
+	ConfigFlags             *configflags.ConfigFlags
 }
 
 func NewTrackRegressionFlags() *TrackRegressionFlags {
@@ -29,7 +30,7 @@ func NewTrackRegressionFlags() *TrackRegressionFlags {
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
-		ConfigFlags:             flags.NewConfigFlags(),
+		ConfigFlags:             configflags.NewConfigFlags(),
 	}
 }
 
