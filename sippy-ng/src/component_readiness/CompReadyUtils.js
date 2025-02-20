@@ -337,7 +337,14 @@ export function getUpdatedUrlParts(vars) {
     ignoreMissing: vars.ignoreMissing,
     flakeAsFailure: vars.flakeAsFailure,
     includeMultiReleaseAnalysis: vars.includeMultiReleaseAnalysis,
-    //component: vars.component,
+  }
+
+  if (vars.capability) {
+    valuesMap.capability = vars.capability
+  }
+
+  if (vars.component) {
+    valuesMap.component = vars.component
   }
 
   if (vars.samplePROrg && vars.samplePRRepo && vars.samplePRNumber) {
