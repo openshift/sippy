@@ -41,6 +41,8 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBu
 }
 
 func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (crtype.ReportTestDetails, []error) {
+	c.initializeMiddleware()
+
 	if c.ReqOptions.TestIDOption.TestID == "" {
 		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
@@ -50,11 +52,27 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		}
 	}
 
-	componentJobRunTestReportStatus, errs := c.GenerateJobRunTestReportStatus(ctx)
+	before := time.Now()
+
+	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
+	componentJobRunTestReportStatus, errs := c.getJobRunTestStatusFromBigQuery(ctx)
 	if len(errs) > 0 {
 		return crtype.ReportTestDetails{}, errs
 	}
+
+	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
+	now := time.Now()
+	componentJobRunTestReportStatus.GeneratedAt = &now
+
+	// Allow all middleware a chance to transform the job run test statuses:
 	var err error
+	for _, mw := range c.middlewares {
+		err = mw.TransformTestDetails(&componentJobRunTestReportStatus)
+		if err != nil {
+			return crtype.ReportTestDetails{}, []error{err}
+		}
+	}
+
 	bqs := NewBigQueryRegressionStore(c.client)
 	allRegressions, err := bqs.ListCurrentRegressions(ctx)
 	if err != nil {
@@ -81,6 +99,10 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
 	if baseOverrideReport != nil {
+		// WARNING: when the request has a base release override, we're returning a "base override report" which is
+		// actually the default base report, the naming conventions don't match across inputs and outputs.
+		// i.e. you request baseRelease 4.18 with baseReleaseOverride 4.17, we return a baseOverrideReport as
+		// 4.18 and the normal report is 4.17
 		baseOverrideReport.BaseOverrideReport = crtype.ReportTestOverride{
 			ReportTestStats: report.ReportTestStats,
 			JobStats:        report.JobStats,
@@ -90,18 +112,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	}
 
 	return report, nil
-}
-
-func (c *ComponentReportGenerator) GenerateJobRunTestReportStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
-	before := time.Now()
-	componentJobRunTestReportStatus, errs := c.getJobRunTestStatusFromBigQuery(ctx)
-	if len(errs) > 0 {
-		return crtype.JobRunTestReportStatus{}, errs
-	}
-	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
-	now := time.Now()
-	componentJobRunTestReportStatus.GeneratedAt = &now
-	return componentJobRunTestReportStatus, nil
 }
 
 func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
@@ -166,28 +176,19 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 		logrus.Errorf("failed to get variants from bigquery")
 		return crtype.JobRunTestReportStatus{}, errs
 	}
-	var baseStatus, baseOverrideStatus, sampleStatus map[string][]crtype.JobRunTestStatusRow
+	var baseStatus, sampleStatus map[string][]crtype.JobRunTestStatusRow
 	var baseErrs, baseOverrideErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 
 	// channels for status as we may collect status from multiple queries run in separate goroutines
 	statusCh := make(chan map[string][]crtype.JobRunTestStatusRow)
-	statusErrCh := make(chan error)
+	errCh := make(chan error)
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
-	if c.ReqOptions.BaseOverrideRelease.Release != "" && c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				logrus.Infof("Context canceled while fetching base job run test status")
-				return
-			default:
-				baseOverrideStatus, baseOverrideErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.BaseOverrideRelease.Release, c.ReqOptions.BaseOverrideRelease.Start, c.ReqOptions.BaseOverrideRelease.End)
-			}
-		}()
+	// Invoke the Query phase for each of our configured middlewares:
+	for _, mw := range c.middlewares {
+		mw.QueryTestDetails(ctx, &wg, errCh, allJobVariants)
 	}
 
 	wg.Add(1)
@@ -222,7 +223,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
 			statusCh <- status
 			for _, err := range errs {
-				statusErrCh <- err
+				errCh <- err
 			}
 		}
 
@@ -252,15 +253,15 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
 					true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
 				if err != nil {
-					statusErrCh <- err
+					errCh <- err
 					return
 				}
 				status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
 					start, end, or.TableName)
-				fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
+				fLog.Infof("received %d job run test statuses and %d errors from override query", len(status), len(errs))
 				statusCh <- status
 				for _, err := range errs {
-					statusErrCh <- err
+					errCh <- err
 				}
 			}
 
@@ -270,13 +271,13 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 	go func() {
 		wg.Wait()
 		close(statusCh)
-		close(statusErrCh)
+		close(errCh)
 	}()
 
 	go func() {
 
 		for status := range statusCh {
-			fLog.Infof("received %d test statuses over channel", len(status))
+			fLog.Infof("received %d job run test statuses over channel", len(status))
 			for k, v := range status {
 				if sampleStatus == nil {
 					fLog.Warnf("initializing sampleStatus map")
@@ -294,7 +295,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 	}()
 
 	go func() {
-		for err := range statusErrCh {
+		for err := range errCh {
 			sampleErrs = append(sampleErrs, err)
 		}
 		close(statusErrsDoneCh)
@@ -308,7 +309,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 		errs = append(errs, baseOverrideErrs...)
 	}
 
-	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus, BaseOverrideStatus: baseOverrideStatus, SampleStatus: sampleStatus}, errs
+	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
 // internalGenerateTestDetailsReport handles the report generation for the lowest level test report including

@@ -237,19 +237,22 @@ func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 	return variants, nil
 }
 
-// GenerateReport is the main entry point for generation of a component readiness report.
-func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.ComponentReport, []error) {
-	before := time.Now()
-
+func (c *ComponentReportGenerator) initializeMiddleware() {
 	// TODO: move to a constructor or similar
 	c.middlewares = []middleware.Middleware{}
 	// Initialize all our middleware applicable to this request.
 	// TODO: Should middleware constructors do the interpretation of the request
 	// and decide if they want to take part? Return nil if not?
 	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
-	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
+	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis || c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
 	}
+}
+
+// GenerateReport is the main entry point for generation of a component readiness report.
+func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.ComponentReport, []error) {
+	before := time.Now()
+	c.initializeMiddleware()
 
 	// Load all test pass/fail counts from bigquery, both sample and basis
 	componentReportTestStatus, errs := c.getTestStatusFromBigQuery(ctx)
@@ -260,8 +263,7 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	// Allow all middlware a chance to transform the base/sample TestStatuses before we analyze:
 	var err error
 	for _, mw := range c.middlewares {
-		componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus, err =
-			mw.Transform(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus)
+		err = mw.Transform(&componentReportTestStatus)
 		if err != nil {
 			return crtype.ComponentReport{}, []error{err}
 		}
