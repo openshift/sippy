@@ -17,7 +17,6 @@ import (
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/testidentification"
 )
 
 const (
@@ -161,11 +160,6 @@ func (bl *BugLoader) Load() {
 		bl.errors = append(bl.errors, err)
 	}
 	log.Infof("deleted %d stale bugs", res.RowsAffected)
-
-	// Update watch list
-	if err := updateWatchlist(bl.dbc); err != nil {
-		bl.errors = append(bl.errors, err...)
-	}
 }
 
 // getTestBugMappings looks for jira cards that contain a test name from the ci-test-mapping database in bigquery.  We
@@ -277,29 +271,6 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 	}
 
 	return bugs, nil
-}
-
-func updateWatchlist(dbc *db.DB) []error {
-	// Load the test cache, we'll iterate every test and see if it should be in the watchlist or not:
-	testCache, err := query.LoadTestCache(dbc, []string{"Bugs"})
-	if err != nil {
-		return []error{errors.Wrap(err, "error loading test class for UpdateWatchList")}
-	}
-
-	errs := []error{}
-	for testName, test := range testCache {
-		expected := testidentification.IsTestOnWatchlist(test)
-		if test.Watchlist != expected {
-			log.WithFields(log.Fields{"old": test.Watchlist, "new": expected}).Infof("test watchlist status changed for %s", testName)
-			test.Watchlist = expected
-			res := dbc.DB.Save(test)
-			if res.Error != nil {
-				log.WithError(err).Errorf("error updating test watchlist status for: %s", testName)
-				errs = append(errs, errors.Wrapf(err, "error updating test watchlist status for: %s", testName))
-			}
-		}
-	}
-	return errs
 }
 
 // ConvertBigQueryBugToModel converts a BigQuery bug representation to the model's Bug struct.
