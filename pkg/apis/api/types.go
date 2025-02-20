@@ -3,7 +3,6 @@ package api
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -492,7 +491,6 @@ type Test struct {
 	FlakeAverage             float64 `json:"flake_average,omitempty"`
 	FlakeStandardDeviation   float64 `json:"flake_standard_deviation,omitempty"`
 	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty"`
-	Watchlist                bool    `json:"watchlist"`
 
 	Tags     []string `json:"tags" gorm:"type:text[]"`
 	OpenBugs int      `json:"open_bugs"`
@@ -508,8 +506,6 @@ func (test Test) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "variants":
 		return ColumnTypeArray
-	case "watchlist":
-		return ColumnTypeString
 	default:
 		return ColumnTypeNumerical
 	}
@@ -521,8 +517,6 @@ func (test Test) GetStringValue(param string) (string, error) {
 		return test.Name, nil
 	case "variant":
 		return test.Variant, nil
-	case "watchlist":
-		return strconv.FormatBool(test.Watchlist), nil
 	default:
 		return "", fmt.Errorf("unknown string field %s", param)
 	}
