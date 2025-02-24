@@ -224,7 +224,7 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 			results = append(results, b)
 		}
 	}
-	log.Infof("found %d bugs for test %s", len(results), testName)
+	log.Debugf("LoadBugsForTest found %d bugs for test '%s'", len(results), testName)
 
 	return results, nil
 }

@@ -3,8 +3,12 @@ package sippyserver
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -86,4 +90,92 @@ func TestMatchPriorRiskAnalysisTest(t *testing.T) {
 
 		})
 	}
+}
+
+func TestAnalysisWorker(t *testing.T) {
+	// initialize AnalysisWorker
+	dbc := getDbHandle(t)
+	gcsBucket := getGcsBucket(t)
+	logrus.SetLevel(logrus.InfoLevel)
+
+	pendingComments := make(chan PendingComment, 5)
+	defer close(pendingComments)
+	pendingWork := make(chan models.PullRequestComment, 1)
+	defer close(pendingWork)
+
+	ntw := StandardNewTestsWorker(dbc)
+	analysisWorker := AnalysisWorker{
+		riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(),
+		dbc:                 dbc,
+		gcsBucket:           gcsBucket,
+		pendingAnalysis:     pendingWork,
+		pendingComments:     pendingComments,
+		newTestsWorker:      ntw,
+	}
+
+	prPendingComment := models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 29512, SHA: "8849ed78d4c51e2add729a68a2cbf8551c6d60c9", ProwJobRoot: "pr-logs/pull/29512/"} // PR constructed for testing new-test analysis
+	analysisWorker.processPendingPrComment(prPendingComment)
+
+	pc := <-pendingComments
+	logrus.Infof("Pending comment: %+v", pc)
+	assert.Contains(t, pc.comment, "New Test Risks for", "comment should report on risks")
+	assert.Contains(t, pc.comment, "new test that failed 2 time(s)", "comment should report on risks")
+	assert.Contains(t, pc.comment, "- *\"a passed test that has never been seen before\"* [Total:", "comment should summarize new tests")
+}
+
+// not a real test, this is just a way to run the analysis worker on specific PRs and see the result
+func TestRunCommentAnalysis(t *testing.T) {
+	pendingComments := make(chan PendingComment, 5)
+	defer close(pendingComments)
+	pendingWork := make(chan models.PullRequestComment, 1)
+	defer close(pendingWork)
+
+	dbc := getDbHandle(t)
+	analysisWorker := AnalysisWorker{
+		riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(),
+		dbc:                 dbc,
+		gcsBucket:           getGcsBucket(t),
+		pendingAnalysis:     pendingWork,
+		pendingComments:     pendingComments,
+		newTestsWorker:      StandardNewTestsWorker(dbc),
+	}
+
+	tests := map[string]struct {
+		prPendingComment models.PullRequestComment
+		logLevel         logrus.Level
+	}{
+		"28075": {
+			prPendingComment: models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 28075, SHA: "79d237196d93eb92ed58c66497d8718259264226", ProwJobRoot: "pr-logs/pull/28075/"},
+			logLevel:         logrus.DebugLevel,
+		},
+		"has RA comment already": {
+			prPendingComment: models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 29474, SHA: "58a8615189ebd164a1ce87ffe9b078965a9f4b14", ProwJobRoot: "pr-logs/pull/29474/"},
+			logLevel:         logrus.InfoLevel,
+		},
+	}
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			logrus.SetLevel(tc.logLevel)
+			analysisWorker.processPendingPrComment(tc.prPendingComment)
+
+			select {
+			case pc := <-pendingComments:
+				logrus.Infof("Pending comment: %+v", pc)
+				print(pc.comment)
+			case <-time.After(2 * time.Minute):
+				logrus.Warn("Timed out waiting for pending comment (see debug logs)")
+				// often a PR still has active jobs so no comment is coming
+			}
+		})
+	}
+}
+
+func TestRASort(t *testing.T) {
+	foo := []RiskAnalysisSummary{
+		{Name: "foo"},
+		{Name: "bar"},
+		{Name: "baz"},
+	}
+	SortByJobNameRA(foo) // really a test of whether slices.SortFunc sorts a param in place
+	assert.Equal(t, "bar", foo[0].Name)
 }
