@@ -8,6 +8,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -20,6 +21,7 @@ type TrackRegressionFlags struct {
 	GoogleCloudFlags        *flags.GoogleCloudFlags
 	CacheFlags              *flags.CacheFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
+	ConfigFlags             *configflags.ConfigFlags
 }
 
 func NewTrackRegressionFlags() *TrackRegressionFlags {
@@ -28,6 +30,7 @@ func NewTrackRegressionFlags() *TrackRegressionFlags {
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
+		ConfigFlags:             configflags.NewConfigFlags(),
 	}
 }
 
@@ -36,6 +39,7 @@ func (f *TrackRegressionFlags) BindFlags(fs *pflag.FlagSet) {
 	f.GoogleCloudFlags.BindFlags(fs)
 	f.CacheFlags.BindFlags(fs)
 	f.ComponentReadinessFlags.BindFlags(fs)
+	f.ConfigFlags.BindFlags(fs)
 }
 
 func NewTrackRegressionsCommand() *cobra.Command {
@@ -62,6 +66,11 @@ func NewTrackRegressionsCommand() *cobra.Command {
 				log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents regression tracking")
 			}
 
+			config, err := f.ConfigFlags.GetConfig()
+			if err != nil {
+				log.WithError(err).Warn("error reading config file")
+			}
+
 			if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
 				bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 			}
@@ -79,7 +88,9 @@ func NewTrackRegressionsCommand() *cobra.Command {
 			regressionTracker := componentreadiness.NewRegressionTracker(
 				bigQueryClient, cacheOpts, releases,
 				componentreadiness.NewBigQueryRegressionStore(bigQueryClient),
-				views.ComponentReadiness, false)
+				views.ComponentReadiness,
+				config.ComponentReadinessConfig.VariantJunitTableOverrides,
+				false)
 			return regressionTracker.Run(ctx)
 		},
 	}

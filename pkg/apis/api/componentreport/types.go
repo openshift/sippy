@@ -65,7 +65,8 @@ type RequestVariantOptions struct {
 	IncludeVariants     map[string][]string `json:"include_variants" yaml:"include_variants"`
 	CompareVariants     map[string][]string `json:"compare_variants,omitempty" yaml:"compare_variants,omitempty"`
 	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`
-	RequestedVariants   map[string]string   `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
+	// RequestedVariants are used for filtering the test details view down to a specific set. Unused in the main component report.
+	RequestedVariants map[string]string `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
 }
 
 // RequestOptions is a struct packaging all the options for a CR request.
@@ -122,6 +123,8 @@ type RequestAdvancedOptions struct {
 	IncludeMultiReleaseAnalysis bool `json:"include_multi_release_analysis" yaml:"include_multi_release_analysis"`
 }
 
+// TestStatus is an internal type used to pass data bigquery onwards to the actual
+// report generation. It is not serialized over the API.
 type TestStatus struct {
 	TestName     string    `json:"test_name"`
 	TestSuite    string    `json:"test_suite"`
@@ -139,6 +142,9 @@ func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
 	return ts.TotalCount, ts.SuccessCount, failures, ts.FlakeCount
 }
 
+// ReportTestStatus contains the mapping of all test keys (serialized with TestIdentification, variants + testID)
+// It is also an internal type used to pass data from bigquery onwards to report generation, and does not get serialized
+// as an API response.
 type ReportTestStatus struct {
 	// BaseStatus represents the stable basis for the comparison. Maps TestIdentification serialized as a string, to test status.
 	BaseStatus map[string]TestStatus `json:"base_status"`
@@ -219,6 +225,7 @@ const (
 
 // ReportTestStats is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
+// Important type returned by the API.
 type ReportTestStats struct {
 	// ReportStatus is an integer representing the severity of the regression.
 	ReportStatus Status `json:"status"`

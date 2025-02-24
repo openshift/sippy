@@ -15,6 +15,8 @@ import (
 	"cloud.google.com/go/civil"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -81,6 +83,10 @@ func getSingleColumnResultToSlice(ctx context.Context, query *bigquery.Query) ([
 	return names, nil
 }
 
+// TODO: in several of the below functions we instantiate an entire componentReportGenerator
+// to fetch some small piece of data. These look like they should be broken out. The partial
+// instantiation of a complex object is risky in terms of bugs and maintenance.
+
 func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client,
 	gcsBucket string) (crtype.TestVariants, []error) {
 	generator := componentReportGenerator{
@@ -112,9 +118,14 @@ func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Clie
 		api.GetPrefixedCacheKey("TestAllVariants~", generator), generator.GenerateJobVariants, crtype.JobVariants{})
 }
 
-func GetComponentReportFromBigQuery(ctx context.Context, client *bqcachedclient.Client, prowURL, gcsBucket string,
+func GetComponentReportFromBigQuery(
+	ctx context.Context,
+	client *bqcachedclient.Client,
+	prowURL, gcsBucket string,
 	reqOptions crtype.RequestOptions,
+	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (crtype.ComponentReport, []error) {
+
 	generator := componentReportGenerator{
 		client:                           client,
 		prowURL:                          prowURL,
@@ -126,6 +137,7 @@ func GetComponentReportFromBigQuery(ctx context.Context, client *bqcachedclient.
 		RequestTestIdentificationOptions: reqOptions.TestIDOption,
 		RequestVariantOptions:            reqOptions.VariantOption,
 		RequestAdvancedOptions:           reqOptions.AdvancedOption,
+		variantJunitTableOverrides:       variantJunitTableOverrides,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
@@ -156,7 +168,8 @@ type componentReportGenerator struct {
 	crtype.RequestTestIdentificationOptions
 	crtype.RequestVariantOptions
 	crtype.RequestAdvancedOptions
-	openRegressions []*crtype.TestRegression
+	openRegressions            []*crtype.TestRegression
+	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 }
 
 func (c *componentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
@@ -261,12 +274,18 @@ func (c *componentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 	return variants, nil
 }
 
+// GenerateReport is the main entry point for generation of a component readiness report.
 func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.ComponentReport, []error) {
 	before := time.Now()
-	componentReportTestStatus, errs := c.GenerateComponentReportTestStatus(ctx)
+
+	// Load all test pass/fail counts from bigquery, both sample and basis
+	componentReportTestStatus, errs := c.getTestStatusFromBigQuery(ctx)
 	if len(errs) > 0 {
 		return crtype.ComponentReport{}, errs
 	}
+
+	// Load current regression data from bigquery, used to enhance the response with information such as how long
+	// this regression has been appearing in a tracked view.
 	bqs := NewBigQueryRegressionStore(c.client)
 	var err error
 	allRegressions, err := bqs.ListCurrentRegressions(ctx)
@@ -275,6 +294,8 @@ func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 		return crtype.ComponentReport{}, errs
 	}
 	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.SampleRelease.Release)
+
+	// perform analysis and generate report:
 	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,
 		componentReportTestStatus.SampleStatus)
 	if err != nil {
@@ -285,18 +306,6 @@ func (c *componentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	log.Infof("GenerateReport completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
 
 	return report, nil
-}
-
-func (c *componentReportGenerator) GenerateComponentReportTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	before := time.Now()
-	componentReportTestStatus, errs := c.getTestStatusFromBigQuery(ctx)
-	if len(errs) > 0 {
-		return crtype.ReportTestStatus{}, errs
-	}
-	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
-	now := time.Now()
-	componentReportTestStatus.GeneratedAt = &now
-	return componentReportTestStatus, nil
 }
 
 // getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
@@ -336,8 +345,13 @@ func (c *componentReportGenerator) getFallbackBaseQueryStatus(ctx context.Contex
 
 // getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
 func (c *componentReportGenerator) getSampleQueryStatus(
-	ctx context.Context, allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
-	generator := newSampleQueryGenerator(c, allJobVariants)
+	ctx context.Context,
+	allJobVariants crtype.JobVariants,
+	includeVariants map[string][]string,
+	start, end time.Time,
+	junitTable string) (map[string]crtype.TestStatus, []error) {
+
+	generator := newSampleQueryGenerator(c, allJobVariants, includeVariants, start, end, junitTable)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
 		c.client.Cache, c.cacheOption,
@@ -351,11 +365,14 @@ func (c *componentReportGenerator) getSampleQueryStatus(
 	return componentReportTestStatus.SampleStatus, nil
 }
 
+// getTestStatusFromBigQuery orchestrates the actual fetching of junit test run data for both basis and sample.
+// goroutines are used to concurrently request the data for basis, sample, and various other edge cases.
 func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	before := time.Now()
+	fLog := log.WithField("func", "getTestStatusFromBigQuery")
 	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client, c.gcsBucket)
 	if len(errs) > 0 {
-		log.Errorf("failed to get variants from bigquery")
+		fLog.Errorf("failed to get variants from bigquery")
 		return crtype.ReportTestStatus{}, errs
 	}
 
@@ -363,13 +380,19 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 
+	// channels for status as we may collect status from multiple queries run in separate goroutines
+	statusCh := make(chan map[string]crtype.TestStatus)
+	statusErrCh := make(chan error)
+	statusDoneCh := make(chan struct{})     // To signal when all processing is done
+	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
+
 	if c.IncludeMultiReleaseAnalysis {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
-				log.Infof("Context canceled while fetching fallback query status")
+				fLog.Infof("Context canceled while fetching fallback query status")
 				return
 			default:
 				c.getFallbackBaseQueryStatus(ctx, allJobVariants, c.BaseRelease.Release, c.BaseRelease.Start, c.BaseRelease.End)
@@ -395,18 +418,175 @@ func (c *componentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		case <-ctx.Done():
 			return
 		default:
-			sampleStatus, sampleErrs = c.getSampleQueryStatus(ctx, allJobVariants)
+			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.IncludeVariants)
+			if skipQuery {
+				fLog.Infof("skipping default status query as all values for a variant were overridden")
+				return
+			}
+			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
+			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.SampleRelease.Start, c.SampleRelease.End, defaultJunitTable)
+			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
+			statusCh <- status
+			for _, err := range errs {
+				statusErrCh <- err
+			}
 		}
 
 	}()
 
-	wg.Wait()
+	// fork additional sample queries for the overrides
+	for i, or := range c.variantJunitTableOverrides {
+		if !containsOverriddenVariant(c.IncludeVariants, or.VariantName, or.VariantValue) {
+			continue
+		}
+		// only do this additional query if the specified override variant is actually included in this request
+		wg.Add(1)
+		go func(i int, or configv1.VariantJunitTableOverride) {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.IncludeVariants)
+				if skipQuery {
+					fLog.Infof("skipping override status query as all values for a variant were overridden")
+					return
+				}
+				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
+				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
+				end := c.SampleRelease.End
+				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
+					true, &c.SampleRelease.End, c.cacheOption.CRTimeRoundingFactor)
+				if err != nil {
+					statusErrCh <- err
+					return
+				}
+				status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, start, end, or.TableName)
+				fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
+				statusCh <- status
+				for _, err := range errs {
+					statusErrCh <- err
+				}
+			}
+
+		}(i, or)
+	}
+
+	go func() {
+		wg.Wait()
+		close(statusCh)
+		close(statusErrCh)
+	}()
+
+	go func() {
+
+		for status := range statusCh {
+			fLog.Infof("received %d test statuses over channel", len(status))
+			for k, v := range status {
+				if sampleStatus == nil {
+					fLog.Warnf("initializing sampleStatus map")
+					sampleStatus = make(map[string]crtype.TestStatus)
+				}
+				if v2, ok := sampleStatus[k]; ok {
+					fLog.Warnf("sampleStatus already had key: %+v", k)
+					fLog.Warnf("sampleStatus new value: %+v", v)
+					fLog.Warnf("sampleStatus old value: %+v", v2)
+				}
+				sampleStatus[k] = v
+			}
+		}
+		close(statusDoneCh)
+	}()
+
+	go func() {
+		for err := range statusErrCh {
+			sampleErrs = append(sampleErrs, err)
+		}
+		close(statusErrsDoneCh)
+	}()
+
+	<-statusDoneCh
+	<-statusErrsDoneCh
+	fLog.Infof("total test statuses: %d", len(sampleStatus))
+
 	if len(baseErrs) != 0 || len(sampleErrs) != 0 {
 		errs = append(errs, baseErrs...)
 		errs = append(errs, sampleErrs...)
 	}
-	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(sampleStatus), len(baseStatus))
-	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
+	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db",
+		time.Since(before), len(sampleStatus), len(baseStatus))
+	now := time.Now()
+	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
+}
+
+// copyIncludeVariantsAndRemoveOverrides is used when VariantJunitTableOverrides are in play, and we'll be merging in
+// some results from separate junit tables. In this case, when we do the normal default query, we want to remove those
+// overridden variants just in case, to make sure no results slip in that shouldn't be there.
+//
+// An index into the overrides slice can be provided if we're copying the include variants for that subquery. This is
+// just to be careful for any future cases where we might have multiple overrides in play, and want to make sure we
+// don't accidentally pull data for one, from the others junit table.
+//
+// Return includes a bool which may indicate to skip the query entirely because we've overridden all values for a variant.
+func copyIncludeVariantsAndRemoveOverrides(
+	overrides []configv1.VariantJunitTableOverride,
+	currOverride int, // index into the overrides if we're copying for that specific override query
+	includeVariants map[string][]string) (map[string][]string, bool) {
+
+	cp := make(map[string][]string)
+	for key, values := range includeVariants {
+		newSlice := []string{}
+		for _, v := range values {
+			if !shouldSkipVariant(overrides, currOverride, key, v) {
+				newSlice = append(newSlice, v)
+			}
+
+		}
+		if len(newSlice) == 0 {
+			// If we overrode a value for a variant, and no other values are specified for that
+			// variant, we want to skip this query entirely.
+			// i.e. if we include JobTier blocking, informing, and rare, we still want to do the default
+			// query for blocking and informing even though rare was overridden.
+			// However if we specify only JobTier rare, this leaves no JobTier's left in the default query resulting
+			// in a normal query without considering JobTier and thus duplicate results we don't want. In this case,
+			// we want to skip the default.
+			//
+			// TODO: With two overridden variants in one query, we could easily get into a problem
+			// where no results are returned, because we AND the include variants. If JobTier rare is in table1, and
+			// Foo=bar is in table2, both queries would be skipped because neither contains data for the other and we're
+			// doing an AND. For now, I think this is a limitation we'll have to live with
+			return cp, true
+		}
+		cp[key] = newSlice
+	}
+	return cp, false
+}
+
+func shouldSkipVariant(overrides []configv1.VariantJunitTableOverride, currOverride int, key, value string) bool {
+	for i, override := range overrides {
+		// if we're building a list of include variants for an override, then don't skip that variants inclusion
+		if i == currOverride {
+			return false
+		}
+		if override.VariantName == key && override.VariantValue == value {
+			return true
+		}
+	}
+	return false
+}
+
+func containsOverriddenVariant(includeVariants map[string][]string, key, value string) bool {
+	for k, v := range includeVariants {
+		if k != key {
+			continue
+		}
+		for _, vv := range v {
+			if vv == value {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 var componentAndCapabilityGetter func(test crtype.TestIdentification, stats crtype.TestStatus) (string, []string)
@@ -1124,8 +1304,14 @@ func (c *componentReportGenerator) matchBaseRegression(testID crtype.ReportTestI
 
 // matchBestBaseStats returns the testStatus, release and reportTestStatus
 // that has the highest threshold across the basis release and previous releases included
-// in fallback comparison
-func (c *componentReportGenerator) matchBestBaseStats(testID crtype.ReportTestIdentification, testIdentification, baseRelease string, baseStats, sampleStats crtype.TestStatus, requiredConfidence int, approvedRegression *regressionallowances.IntentionalRegression, numberOfIgnoredSampleJobRuns int) (crtype.TestStatus, string, crtype.ReportTestStats) {
+// in fallback comparison.
+func (c *componentReportGenerator) matchBestBaseStats(
+	testID crtype.ReportTestIdentification,
+	testIdentification, baseRelease string,
+	baseStats, sampleStats crtype.TestStatus,
+	requiredConfidence int,
+	approvedRegression *regressionallowances.IntentionalRegression,
+	numberOfIgnoredSampleJobRuns int) (crtype.TestStatus, string, crtype.ReportTestStats) {
 
 	// The hope is that this goes away
 	// once we agree we don't need to honor a higher intentional regression pass percentage
@@ -1519,7 +1705,7 @@ func (c *componentReportGenerator) assessComponentStatus(
 	baseSuccess,
 	baseFlake int,
 	approvedRegression *regressionallowances.IntentionalRegression,
-	numberOfIgnoredSampleJobRuns int,
+	numberOfIgnoredSampleJobRuns int, // count for triaged failures we can safely omit and ignore
 	baseRelease string,
 	baseStart,
 	baseEnd *time.Time) crtype.ReportTestStats {

@@ -1,6 +1,12 @@
 # This file is used as an overlay to customize the generated config, so it contains the Presubmit pseudorelease.
 prow:
   url: https://prow.ci.openshift.org/prowjobs.js
+componentReadiness:
+  variantJunitTableOverrides:
+    - variantName: JobTier
+      variantValue: rare
+      tableName: junit_rarely_run_jobs
+      relativeStart: end-90d
 releases:
   "3.11":
     jobs:

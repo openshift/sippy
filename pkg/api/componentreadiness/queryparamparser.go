@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/param"
@@ -20,6 +21,7 @@ func ParseComponentReportRequest(
 	req *http.Request,
 	allJobVariants crtype.JobVariants,
 	crTimeRoundingFactor time.Duration,
+	overrides []configv1.VariantJunitTableOverride,
 ) (
 	opts crtype.RequestOptions,
 	err error,
@@ -57,7 +59,7 @@ func ParseComponentReportRequest(
 		// We only support pull request jobs as the sample, not the basis:
 		opts.SampleRelease.PullRequestOptions = parsePROptions(req)
 
-		if opts.VariantOption, err = parseVariantOptions(req, allJobVariants); err != nil {
+		if opts.VariantOption, err = parseVariantOptions(req, allJobVariants, overrides); err != nil {
 			return
 		}
 		if opts.AdvancedOption, err = parseAdvancedOptions(req); err != nil {
@@ -169,11 +171,11 @@ func GetViewReleaseOptions(
 
 	var err error
 	opts := crtype.RequestReleaseOptions{Release: viewRelease.Release}
-	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeStart, true, roundingFactor)
+	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeStart, true, nil, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
 	}
-	opts.End, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeEnd, false, roundingFactor)
+	opts.End, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeEnd, false, nil, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
 	}
@@ -192,7 +194,7 @@ func parsePROptions(req *http.Request) *crtype.PullRequestOptions {
 	return &pro
 }
 
-func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants) (opts crtype.RequestVariantOptions, err error) {
+func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts crtype.RequestVariantOptions, err error) {
 	columnGroupBy := req.URL.Query().Get("columnGroupBy")
 	opts.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
 	if err != nil {
@@ -216,6 +218,16 @@ func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants) (
 	if err != nil {
 		return
 	}
+
+	// check if any included variants have a junit table override:
+	var overriddenVariant string
+	for _, or := range overrides {
+		if containsOverriddenVariant(opts.IncludeVariants, or.VariantName, or.VariantValue) {
+			overriddenVariant = fmt.Sprintf("%s=%s", or.VariantName, or.VariantValue)
+			break
+		}
+	}
+
 	compareVariants, err := api.VariantListToMap(allJobVariants, req.URL.Query()["compareVariant"])
 	if err != nil {
 		return
@@ -223,6 +235,13 @@ func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants) (
 
 	opts.VariantCrossCompare = req.URL.Query()["variantCrossCompare"]
 	if len(opts.VariantCrossCompare) > 0 {
+
+		// cross compare is not supported with variant overrides
+		if len(overriddenVariant) > 0 {
+			err = fmt.Errorf("variant cross compare is not supported with overridden variant: %s", overriddenVariant)
+			return
+		}
+
 		// when we are cross-comparing variants, we need to construct the compareVariants map from the parameters.
 		// the resulting compareVariants map is includeVariants...
 		opts.CompareVariants = map[string][]string{}
@@ -333,13 +352,13 @@ func parseDateRange(allReleases []v1.Release, req *http.Request,
 	var err error
 
 	timeStr := req.URL.Query().Get(startName)
-	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, true, roundingFactor)
+	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, true, nil, roundingFactor)
 	if err != nil {
 		return releaseOpts, fmt.Errorf(startName + " in wrong format")
 	}
 
 	timeStr = req.URL.Query().Get(endName)
-	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, false, roundingFactor)
+	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, false, nil, roundingFactor)
 	if err != nil {
 		return releaseOpts, fmt.Errorf(endName + " in wrong format")
 	}

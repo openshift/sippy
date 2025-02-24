@@ -16,6 +16,7 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/jiraautomator"
 	"github.com/openshift/sippy/pkg/flags"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -29,6 +30,7 @@ type AutomateJiraFlags struct {
 	GoogleCloudFlags        *flags.GoogleCloudFlags
 	CacheFlags              *flags.CacheFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
+	ConfigFlags             *configflags.ConfigFlags
 	JiraOptions             prowflagutil.JiraOptions
 	SippyURL                string
 	IncludeComponentsStr    string
@@ -46,6 +48,7 @@ func NewAutomateJiraFlags() *AutomateJiraFlags {
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
+		ConfigFlags:             configflags.NewConfigFlags(),
 		ColumnThresholds:        map[jiraautomator.Variant]int{},
 	}
 }
@@ -55,6 +58,7 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	f.GoogleCloudFlags.BindFlags(fs)
 	f.CacheFlags.BindFlags(fs)
 	f.ComponentReadinessFlags.BindFlags(fs)
+	f.ConfigFlags.BindFlags(fs)
 	f.JiraOptions.AddFlags(flag.CommandLine)
 	fs.AddGoFlagSet(flag.CommandLine)
 	fs.StringVar(&f.SippyURL, "sippy-url", f.SippyURL, "The Sippy URL prefix to be used to generate sharable Sippy links")
@@ -151,6 +155,11 @@ func NewAutomateJiraCommand() *cobra.Command {
 				return errors.WithMessage(err, "couldn't get jira client")
 			}
 
+			config, err := f.ConfigFlags.GetConfig()
+			if err != nil {
+				log.WithError(err).Warn("error reading config file")
+			}
+
 			allVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(ctx, bigQueryClient, f.GoogleCloudFlags.StorageBucket)
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get variants from bigquery")
@@ -163,7 +172,12 @@ func NewAutomateJiraCommand() *cobra.Command {
 				return errors.WithMessage(err, "error validating options")
 			}
 
-			j, err := jiraautomator.NewJiraAutomator(jiraClient, bigQueryClient, cacheOpts, views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount, f.IncludeComponents, f.ColumnThresholds, f.DryRun, variantToJiraComponents)
+			j, err := jiraautomator.NewJiraAutomator(
+				jiraClient, bigQueryClient, cacheOpts,
+				views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount,
+				f.IncludeComponents, f.ColumnThresholds,
+				f.DryRun, variantToJiraComponents,
+				config.ComponentReadinessConfig.VariantJunitTableOverrides)
 			if err != nil {
 				panic(err)
 			}
