@@ -1086,16 +1086,6 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		} else {
 			// requiredConfidence is lowered for on-going regressions to prevent cells from flapping:
 			requiredConfidence := c.getRequiredConfidence(testKey.TestID, testKey.Variants)
-			var approvedRegression *regressionallowances.IntentionalRegression
-			if len(c.ReqOptions.VariantOption.VariantCrossCompare) == 0 { // only really makes sense when not cross-comparing variants:
-				// TODO: move triage compensation to a middleware with a Transform
-				// look for corresponding regressions we can account for in the analysis
-				approvedRegression = regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, testKey.ColumnIdentification, testKey.TestID)
-				// ignore triage if we have an intentional regression
-				if approvedRegression == nil {
-					resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testKey)
-				}
-			}
 
 			// Check if the TestStatus is decorated with info indicating it's release was overridden, and use that data if so
 			matchedBaseRelease := c.ReqOptions.BaseRelease.Release
@@ -1107,7 +1097,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			}
 			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
-				baseStats.FlakeCount, approvedRegression, resolvedIssueCompensation, matchedBaseRelease, baseStart, baseEnd)
+				baseStats.FlakeCount, nil, resolvedIssueCompensation, matchedBaseRelease, baseStart, baseEnd)
 
 			if !sampleStats.LastFailure.IsZero() {
 				testStats.LastFailure = &sampleStats.LastFailure
@@ -1154,17 +1144,12 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		var testStats crtype.ReportTestStats
 		var triagedIncidents []crtype.TriagedIncident
 		var resolvedIssueCompensation int // triaged job run failures to ignore
-		// look for corresponding regressions we can account for in the analysis
-		approvedRegression := regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, testID.ColumnIdentification, testID.TestID)
-		// ignore triage if we have an intentional regression
-		if approvedRegression == nil {
-			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
-		}
+		resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
 
 		requiredConfidence := 0 // irrelevant for pass rate comparison
 		testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 			sampleStats.FlakeCount, 0, 0, 0, // pass 0s for base stats
-			approvedRegression, resolvedIssueCompensation, "", nil, nil)
+			nil, resolvedIssueCompensation, "", nil, nil)
 
 		if testStats.IsTriaged() {
 			// we are within the triage range
