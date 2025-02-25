@@ -342,6 +342,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	}
 
 	var baseStatus, sampleStatus map[string]crtype.TestStatus
+	baseStatusCh := make(chan map[string]crtype.TestStatus) // TODO: not hooked up yet, just in place for the interface for now
 	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 
@@ -353,10 +354,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 
 	// Invoke the Query phase for each of our configured middlewares:
 	for _, mw := range c.middlewares {
-		err := mw.Query(ctx, &wg, allJobVariants)
-		if err != nil {
-			errCh <- err
-		}
+		mw.Query(ctx, &wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
 	}
 
 	wg.Add(1)
@@ -434,6 +432,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 
 	go func() {
 		wg.Wait()
+		close(baseStatusCh)
 		close(sampleStatusCh)
 		close(errCh)
 	}()

@@ -50,9 +50,9 @@ type ReleaseFallback struct {
 	reqOptions                 crtype.RequestOptions
 }
 
-func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants) error {
+func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants,
+	_, _ chan map[string]crtype.TestStatus, errCh chan error) {
 	wg.Add(1)
-	var errs []error
 	go func() {
 		defer wg.Done()
 		select {
@@ -61,13 +61,14 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 			return
 		default:
 			// TODO: should we pass the same wg through rather than using another?
-			errs = r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Release, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
+			errs := r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Release, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
+			if len(errs) > 0 {
+				for _, err := range errs {
+					errCh <- err
+				}
+			}
 		}
 	}()
-	if len(errs) > 0 {
-		return errs[0]
-	}
-	return nil
 }
 
 // Transform iterates the base status looking for any statuses that had a better pass rate in the prior releases

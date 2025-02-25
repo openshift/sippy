@@ -35,8 +35,9 @@ type RegressionAllowances struct {
 	regressionGetterFunc func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
 }
 
-func (r *RegressionAllowances) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants) error {
-	return nil
+func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crtype.JobVariants,
+	_, _ chan map[string]crtype.TestStatus, _ chan error) {
+	// unused
 }
 
 // Transform iterates the base status looking for any with an accepted regression in the basis release, and if found
