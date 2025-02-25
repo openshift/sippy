@@ -59,10 +59,8 @@ func (r *RegressionAllowances) Transform(baseStatus, sampleStatus map[string]crt
 
 // matchBaseRegression returns a testStatus that reflects the allowances specified
 // in an intentional regression that accepted a lower threshold but maintains the higher
-// threshold when used as a basis.  It will ignore intentional regressions if we are relying
-// on fallback to find the highest threshold.  It will return the original testStatus if there
-// is no intentional regression or the testStatus has a higher threshold
-// TODO: this should be broken out into it's own middleware, run prior to RegressionAllowances
+// threshold when used as a basis.
+// It will return the original testStatus if there is no intentional regression.
 func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, baseStats crtype.TestStatus) (crtype.TestStatus, string) {
 	var baseRegression *regressionallowances.IntentionalRegression
 
@@ -73,7 +71,6 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 		// only if we are ignoring fallback, otherwise we will let fallback determine the threshold
 		baseRegression = r.regressionGetterFunc(baseRelease, testID.ColumnIdentification, testID.TestID)
 
-		// This could go away if we remove the option for ignoring fallback
 		_, success, fail, flake := baseStats.GetTotalSuccessFailFlakeCounts()
 		basePassRate := utils.CalculatePassRate(r.reqOptions, success, fail, flake)
 		if baseRegression != nil && baseRegression.PreviousPassPercentage(r.reqOptions.AdvancedOption.FlakeAsFailure) > basePassRate {
