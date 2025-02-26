@@ -46,13 +46,13 @@ var (
 		Buckets: prometheus.LinearBuckets(0, 5000, 10),
 	}, []string{"org", "repo"})
 
-	checkCommentReady = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	checkCommentReadyMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "sippy_repo_check_ready_comment",
 		Help:    "Tracks the call made to verify a pr is ready for a pr comment",
 		Buckets: prometheus.LinearBuckets(0, 500, 10),
 	}, []string{"org", "repo"})
 
-	buildPendingWork = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	buildPendingWorkMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "sippy_repo_build_pending_comment_work",
 		Help:    "Tracks the call made to query db and add items to the pending work queue",
 		Buckets: prometheus.LinearBuckets(0, 500, 10),
@@ -213,7 +213,7 @@ func (wp *WorkProcessor) work(ctx context.Context, pendingWork chan models.PullR
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		buildPendingWork.WithLabelValues("work-processor").Observe(float64(end.UnixMilli() - start.UnixMilli()))
+		buildPendingWorkMetric.WithLabelValues("work-processor").Observe(float64(end.UnixMilli() - start.UnixMilli()))
 	}()
 
 	log.Debug("Checking for work")
@@ -447,7 +447,7 @@ func (aw *AnalysisWorker) processPendingPrComment(pendingPrComment models.PullRe
 
 		// record how long it took to decide the jobs are still active
 		t := float64(time.Now().UnixMilli() - start.UnixMilli())
-		checkCommentReady.WithLabelValues(pendingPrComment.Org, pendingPrComment.Repo).Observe(t)
+		checkCommentReadyMetric.WithLabelValues(pendingPrComment.Org, pendingPrComment.Repo).Observe(t)
 		return
 	}
 
