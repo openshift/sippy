@@ -190,7 +190,7 @@ GCS_SA_JSON_PATH=~/creds/openshift-ci-data-analysis.json make e2e
 ## Running the sippy e2e tests
 
 The sippy e2e tests run in
-[prow](https://prow.ci.openshift.org/job-history/gs/origin-ci-test/pr-logs/directory/pull-ci-openshift-sippy-master-e2e)
+[prow](https://prow.ci.openshift.org/job-history/gs/origin-ci-test/pr-logs/directory/pull-ci-openshift-sippy-main-e2e)
 as part of CI using the [scripts](e2e-scripts) in this repo.
 
 You can also run them locally using your own Kubernetes cluster.  These Kubernetes types have been tested:
