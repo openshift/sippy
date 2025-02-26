@@ -634,7 +634,7 @@ func sortedKeys[T any](it map[string]T) []string {
 // baseTestDetailsQueryGenerator generates the query we use for the basis on the test details page.
 type baseTestDetailsQueryGenerator struct {
 	client         *bqcachedclient.Client
-	reqOptions     crtype.RequestOptions
+	ReqOptions     crtype.RequestOptions
 	allJobVariants crtype.JobVariants
 	BaseRelease    string
 	BaseStart      time.Time
@@ -648,7 +648,7 @@ func NewBaseTestDetailsQueryGenerator(client *bqcachedclient.Client,
 
 	return &baseTestDetailsQueryGenerator{
 		client:         client,
-		reqOptions:     reqOptions,
+		ReqOptions:     reqOptions,
 		allJobVariants: allJobVariants,
 		BaseRelease:    baseRelease,
 		BaseEnd:        baseEnd,
@@ -659,9 +659,9 @@ func NewBaseTestDetailsQueryGenerator(client *bqcachedclient.Client,
 func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(
 		b.client,
-		b.reqOptions,
+		b.ReqOptions,
 		b.allJobVariants,
-		b.reqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
+		b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
 	baseString := commonQuery + ` AND branch = @BaseRelease`
 	baseQuery := b.client.BQ.Query(baseString + groupByQuery)
 
@@ -681,7 +681,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		},
 	}...)
 
-	baseStatus, errs := fetchJobRunTestStatusResults(ctx, baseQuery, b.reqOptions)
+	baseStatus, errs := fetchJobRunTestStatusResults(ctx, baseQuery, b.ReqOptions)
 	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus}, errs
 }
 
@@ -689,7 +689,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 type sampleTestDetailsQueryGenerator struct {
 	allJobVariants crtype.JobVariants
 	client         *bqcachedclient.Client
-	reqOptions     crtype.RequestOptions
+	ReqOptions     crtype.RequestOptions
 
 	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
 	// pull its data from. It is a public field as we want it included in the cache
@@ -714,7 +714,7 @@ func NewSampleTestDetailsQueryGenerator(
 	return &sampleTestDetailsQueryGenerator{
 		allJobVariants:  allJobVariants,
 		client:          client,
-		reqOptions:      reqOptions,
+		ReqOptions:      reqOptions,
 		IncludeVariants: includeVariants,
 		Start:           start,
 		End:             end,
@@ -726,12 +726,12 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 
 	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(
 		s.client,
-		s.reqOptions,
+		s.ReqOptions,
 		s.allJobVariants,
 		s.IncludeVariants, s.JunitTable, true)
 
 	sampleString := commonQuery + ` AND branch = @SampleRelease`
-	if s.reqOptions.SampleRelease.PullRequestOptions != nil {
+	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleString += `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
 	}
 	sampleQuery := s.client.BQ.Query(sampleString + groupByQuery)
@@ -747,27 +747,27 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		},
 		{
 			Name:  "SampleRelease",
-			Value: s.reqOptions.SampleRelease.Release,
+			Value: s.ReqOptions.SampleRelease.Release,
 		},
 	}...)
-	if s.reqOptions.SampleRelease.PullRequestOptions != nil {
+	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 			{
 				Name:  "Org",
-				Value: s.reqOptions.SampleRelease.PullRequestOptions.Org,
+				Value: s.ReqOptions.SampleRelease.PullRequestOptions.Org,
 			},
 			{
 				Name:  "Repo",
-				Value: s.reqOptions.SampleRelease.PullRequestOptions.Repo,
+				Value: s.ReqOptions.SampleRelease.PullRequestOptions.Repo,
 			},
 			{
 				Name:  "PRNumber",
-				Value: s.reqOptions.SampleRelease.PullRequestOptions.PRNumber,
+				Value: s.ReqOptions.SampleRelease.PullRequestOptions.PRNumber,
 			},
 		}...)
 	}
 
-	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, sampleQuery, s.reqOptions)
+	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, sampleQuery, s.ReqOptions)
 
 	return crtype.JobRunTestReportStatus{SampleStatus: sampleStatus}, errs
 }
