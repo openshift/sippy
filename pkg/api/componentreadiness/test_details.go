@@ -56,7 +56,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	}
 	var err error
 	bqs := NewBigQueryRegressionStore(c.client)
-	allRegressions, err := bqs.ListCurrentRegressions(ctx)
+	c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(ctx, c.ReqOptions.SampleRelease.Release)
 	if err != nil {
 		errs = append(errs, err)
 		return crtype.ReportTestDetails{}, errs
@@ -76,7 +76,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		baseOverrideReport = &overrideReport
 	}
 
-	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.ReqOptions.SampleRelease.Release)
 	report := c.internalGenerateTestDetailsReport(ctx, componentJobRunTestReportStatus.BaseStatus, c.ReqOptions.BaseRelease.Release, &c.ReqOptions.BaseRelease.Start, &c.ReqOptions.BaseRelease.End, componentJobRunTestReportStatus.SampleStatus)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 

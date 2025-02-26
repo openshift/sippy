@@ -47,8 +47,8 @@ type RequestReleaseOptions struct {
 // date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
 	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
-	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
-	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	RelativeStart         string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd           string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
@@ -405,6 +405,7 @@ type Variant struct {
 // TestRegression is used for rows in the test_regressions table and is used to track when we detect test
 // regressions opening and closing.
 type TestRegression struct {
+	ID uint `json:"id" gorm:"primaryKey,column:id"`
 	// Snapshot is the time at which the full set of regressions for all releases was inserted into the db.
 	// When querying we use only those with the latest snapshot time.
 	Snapshot     time.Time              `bigquery:"snapshot" json:"snapshot"`

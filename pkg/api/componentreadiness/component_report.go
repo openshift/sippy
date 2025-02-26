@@ -270,13 +270,12 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	// Load current regression data from bigquery, used to enhance the response with information such as how long
 	// this regression has been appearing in a tracked view.
 	bqs := NewBigQueryRegressionStore(c.client)
-	allRegressions, err := bqs.ListCurrentRegressions(ctx)
+	c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(ctx, c.ReqOptions.SampleRelease.Release)
 	if err != nil {
 		log.WithError(err).Error("error listing current regressions")
 		errs = append(errs, err)
 		return crtype.ComponentReport{}, errs
 	}
-	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.ReqOptions.SampleRelease.Release)
 
 	// perform analysis and generate report:
 	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,
