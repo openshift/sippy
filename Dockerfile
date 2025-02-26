@@ -11,6 +11,7 @@ RUN mkdir -p /config
 COPY --from=builder /go/src/sippy/sippy /bin/sippy
 COPY --from=builder /go/src/sippy/sippy-daemon /bin/sippy-daemon
 COPY --from=builder /go/src/sippy/scripts/fetchdata.sh /bin/fetchdata.sh
+COPY --from=builder /go/src/sippy/historical-data /historical-data/
 COPY --from=builder /go/src/sippy/config/*.yaml /config/
 ENTRYPOINT ["/bin/sippy"]
 EXPOSE 8080
