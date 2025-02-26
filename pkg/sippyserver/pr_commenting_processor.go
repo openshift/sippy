@@ -90,18 +90,19 @@ type WorkProcessor struct {
 	newTestsWorker         *NewTestsWorker
 }
 
-type PendingComment struct {
+// PreparedComment is a comment that is ready to be posted on a github PR
+type PreparedComment struct {
 	comment     string
-	sha         string
+	commentType int
 	org         string
 	repo        string
 	number      int
-	commentType int
+	sha         string
 }
 
 type CommentWorker struct {
 	commentUpdaterRateLimiter util.RateLimiter
-	pendingComments           chan PendingComment
+	preparedComments          chan PreparedComment
 	ghCommenter               *commenter.GitHubCommenter
 	dryRunOnly                bool
 }
@@ -111,7 +112,7 @@ type AnalysisWorker struct {
 	gcsBucket           *storage.BucketHandle
 	riskAnalysisLocator *regexp.Regexp
 	pendingAnalysis     chan models.PullRequestComment
-	pendingComments     chan PendingComment
+	preparedComments    chan PreparedComment
 	newTestsWorker      *NewTestsWorker
 }
 
@@ -134,12 +135,12 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 	// create a channel with a max buffer of 5 for github updates
 	// single thread will pull updates from that channel and process them
 	// one at a time as the rate limiter allows
-	pendingComments := make(chan PendingComment, 5)
-	defer close(pendingComments)
+	preparedComments := make(chan PreparedComment, 5)
+	defer close(preparedComments)
 
 	commentWorker := CommentWorker{
 		commentUpdaterRateLimiter: util.NewRateLimiter(wp.commentUpdaterRate),
-		pendingComments:           pendingComments,
+		preparedComments:          preparedComments,
 		ghCommenter:               wp.ghCommenter,
 
 		// want an explicit setting to enable commenting
@@ -156,7 +157,7 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 	// the work thread below will put items on pendingWork
 	// blocking if the buffer is full
 	// commentAnalysisWorker threads will pull jobs and process them
-	// putting any comments on the pendingComments channel
+	// putting any comments on the preparedComments channel
 	// blocking if the buffer is full
 	pendingWork := make(chan models.PullRequestComment, wp.commentAnalysisWorkers)
 	defer close(pendingWork)
@@ -167,7 +168,7 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 			dbc:                 wp.dbc,
 			gcsBucket:           wp.gcsBucket,
 			pendingAnalysis:     pendingWork,
-			pendingComments:     pendingComments,
+			preparedComments:    preparedComments,
 			newTestsWorker:      wp.newTestsWorker,
 		}
 		go analysisWorker.Run()
@@ -192,7 +193,7 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 			// we handle that but if we are backed up then wait
 
 			// if we have pending items still then skip the next work cycle
-			if len(pendingWork) == 0 && len(pendingComments) == 0 {
+			if len(pendingWork) == 0 && len(preparedComments) == 0 {
 				err := wp.work(ctx, pendingWork)
 
 				// we only expect an error when we are in a terminal state like context is done
@@ -260,7 +261,7 @@ func (cw *CommentWorker) Run() {
 	defer cw.commentUpdaterRateLimiter.Close()
 
 	var errCount float64
-	for pc := range cw.pendingComments {
+	for pc := range cw.preparedComments {
 
 		cw.commentUpdaterRateLimiter.Tick()
 
@@ -306,16 +307,16 @@ func (cw *CommentWorker) Run() {
 	}
 }
 
-func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pendingComment PendingComment) error {
+func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, preparedComment PreparedComment) error {
 
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		writeCommentMetric.WithLabelValues(pendingComment.org, pendingComment.repo).Observe(float64(end.UnixMilli() - start.UnixMilli()))
+		writeCommentMetric.WithLabelValues(preparedComment.org, preparedComment.repo).Observe(float64(end.UnixMilli() - start.UnixMilli()))
 	}()
 
 	// if there is no comment then just delete the record
-	if pendingComment.comment == "" {
+	if preparedComment.comment == "" {
 		return nil
 	}
 
@@ -323,16 +324,16 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 	// after the pending record was written
 	// double check before we interact with github
 	// the record should still get deleted
-	if !ghCommenter.IsRepoIncluded(pendingComment.org, pendingComment.repo) {
+	if !ghCommenter.IsRepoIncluded(preparedComment.org, preparedComment.repo) {
 		return nil
 	}
 
-	logger := log.WithField("org", pendingComment.org).
-		WithField("repo", pendingComment.repo).
-		WithField("number", pendingComment.number)
+	logger := log.WithField("org", preparedComment.org).
+		WithField("repo", preparedComment.repo).
+		WithField("number", preparedComment.number)
 
 	// are we still the latest sha?
-	prEntry, err := ghCommenter.GetCurrentState(pendingComment.org, pendingComment.repo, pendingComment.number)
+	prEntry, err := ghCommenter.GetCurrentState(preparedComment.org, preparedComment.repo, preparedComment.number)
 
 	if err != nil {
 		logger.WithError(err).Error("Failed to get the current PR state")
@@ -344,12 +345,12 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 		return nil
 	}
 
-	if pendingComment.commentType == int(models.CommentTypeRiskAnalysis) && prEntry.MergedAt != nil {
+	if preparedComment.commentType == int(models.CommentTypeRiskAnalysis) && prEntry.MergedAt != nil {
 		logger.Warning("PR has merged, skipping risk analysis comment")
 		return nil
 	}
 
-	if prEntry.SHA != pendingComment.sha {
+	if prEntry.SHA != preparedComment.sha {
 
 		// we leave comments for previous shas in place
 		// but, we don't want to add a comment for an older sha
@@ -374,20 +375,20 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 	// determine the commentType and build the id off of that and the sha
 	// generate the comment
 
-	commentID := ghCommenter.CreateCommentID(models.CommentType(pendingComment.commentType), pendingComment.sha)
+	commentID := ghCommenter.CreateCommentID(models.CommentType(preparedComment.commentType), preparedComment.sha)
 
 	// when running in dryRunOnly mode we do everything up until adding or deleting anything in GitHub
 	// this allows for local testing / debugging without actually modifying PRs
 	// it is the default setting and needs to be overridden in production / live commenting instances
 	if cw.dryRunOnly {
-		logger.Infof("Dry run comment for: %s\n%s", commentID, pendingComment.comment)
+		logger.Infof("Dry run comment for: %s\n%s", commentID, preparedComment.comment)
 		return nil
 	}
 
-	ghcomment := fmt.Sprintf("<!-- META={\"%s\": \"%s\"} -->\n\n%s", commenter.TrtCommentIDKey, commentID, pendingComment.comment)
+	ghcomment := fmt.Sprintf("<!-- META={\"%s\": \"%s\"} -->\n\n%s", commenter.TrtCommentIDKey, commentID, preparedComment.comment)
 
 	// is there an existing comment of our type that we should remove
-	existingCommentID, commentBody, err := ghCommenter.FindExistingCommentID(pendingComment.org, pendingComment.repo, pendingComment.number, commenter.TrtCommentIDKey, commentID)
+	existingCommentID, commentBody, err := ghCommenter.FindExistingCommentID(preparedComment.org, preparedComment.repo, preparedComment.number, commenter.TrtCommentIDKey, commentID)
 
 	// for now, we return any errors when interacting with gitHub so that we backoff our processing rate
 	// to do, select which ones indicate a need to backoff
@@ -403,7 +404,7 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 			return nil
 		}
 		// we delete the existing comment and add a new one so the comment will be at the end of the comment list
-		err = ghCommenter.DeleteComment(pendingComment.org, pendingComment.repo, *existingCommentID)
+		err = ghCommenter.DeleteComment(preparedComment.org, preparedComment.repo, *existingCommentID)
 		// if we had an error then return it, the record will remain, and we will attempt processing again later
 		if err != nil {
 			return err
@@ -411,7 +412,7 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 	}
 
 	logger.Infof("Adding comment id: %s", commentID)
-	return ghCommenter.AddComment(pendingComment.org, pendingComment.repo, pendingComment.number, ghcomment)
+	return ghCommenter.AddComment(preparedComment.org, preparedComment.repo, preparedComment.number, ghcomment)
 }
 
 func (aw *AnalysisWorker) Run() {
@@ -467,7 +468,7 @@ func (aw *AnalysisWorker) processPendingPrComment(pendingPrComment models.PullRe
 
 	riskAnalyses := aw.buildPRJobRiskAnalysis(logger, completedJobs)
 	newTestRisks := aw.newTestsWorker.analyzeRisks(logger, completedJobs)
-	pendingComment := PendingComment{
+	preparedComment := PreparedComment{
 		comment:     buildComment(riskAnalyses, newTestRisks, pendingPrComment.SHA),
 		sha:         pendingPrComment.SHA,
 		org:         pendingPrComment.Org,
@@ -479,9 +480,9 @@ func (aw *AnalysisWorker) processPendingPrComment(pendingPrComment models.PullRe
 	// will block if the buffer is full.
 	// also if the comment processor sees an empty comment,
 	// it will not create a comment but will delete the pending comment record in the db
-	log.Debugf("Adding comment to pendingComments: %s/%s/%s", pendingComment.org, pendingComment.repo, pendingComment.sha)
-	aw.pendingComments <- pendingComment
-	log.Debugf("Comment added to pendingComments: %s/%s/%s", pendingComment.org, pendingComment.repo, pendingComment.sha)
+	log.Debugf("Adding comment to preparedComments: %s/%s/%s", preparedComment.org, preparedComment.repo, preparedComment.sha)
+	aw.preparedComments <- preparedComment
+	log.Debugf("Comment added to preparedComments: %s/%s/%s", preparedComment.org, preparedComment.repo, preparedComment.sha)
 }
 
 func buildComment(riskAnalyses []RiskAnalysisSummary, newTestRisks []*JobNewTestRisks, sha string) string {

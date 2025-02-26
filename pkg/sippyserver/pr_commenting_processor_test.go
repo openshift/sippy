@@ -98,8 +98,8 @@ func TestAnalysisWorker(t *testing.T) {
 	gcsBucket := getGcsBucket(t)
 	logrus.SetLevel(logrus.InfoLevel)
 
-	pendingComments := make(chan PendingComment, 5)
-	defer close(pendingComments)
+	preparedComments := make(chan PreparedComment, 5)
+	defer close(preparedComments)
 	pendingWork := make(chan models.PullRequestComment, 1)
 	defer close(pendingWork)
 
@@ -109,14 +109,14 @@ func TestAnalysisWorker(t *testing.T) {
 		dbc:                 dbc,
 		gcsBucket:           gcsBucket,
 		pendingAnalysis:     pendingWork,
-		pendingComments:     pendingComments,
+		preparedComments:    preparedComments,
 		newTestsWorker:      ntw,
 	}
 
 	prPendingComment := models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 29512, SHA: "8849ed78d4c51e2add729a68a2cbf8551c6d60c9", ProwJobRoot: "pr-logs/pull/29512/"} // PR constructed for testing new-test analysis
 	analysisWorker.processPendingPrComment(prPendingComment)
 
-	pc := <-pendingComments
+	pc := <-preparedComments
 	logrus.Infof("Pending comment: %+v", pc)
 	assert.Contains(t, pc.comment, "New Test Risks for", "comment should report on risks")
 	assert.Contains(t, pc.comment, "new test that failed 2 time(s)", "comment should report on risks")
@@ -125,8 +125,8 @@ func TestAnalysisWorker(t *testing.T) {
 
 // not a real test, this is just a way to run the analysis worker on specific PRs and see the result
 func TestRunCommentAnalysis(t *testing.T) {
-	pendingComments := make(chan PendingComment, 5)
-	defer close(pendingComments)
+	preparedComments := make(chan PreparedComment, 5)
+	defer close(preparedComments)
 	pendingWork := make(chan models.PullRequestComment, 1)
 	defer close(pendingWork)
 
@@ -136,7 +136,7 @@ func TestRunCommentAnalysis(t *testing.T) {
 		dbc:                 dbc,
 		gcsBucket:           getGcsBucket(t),
 		pendingAnalysis:     pendingWork,
-		pendingComments:     pendingComments,
+		preparedComments:    preparedComments,
 		newTestsWorker:      StandardNewTestsWorker(dbc),
 	}
 
@@ -159,7 +159,7 @@ func TestRunCommentAnalysis(t *testing.T) {
 			analysisWorker.processPendingPrComment(tc.prPendingComment)
 
 			select {
-			case pc := <-pendingComments:
+			case pc := <-preparedComments:
 				logrus.Infof("Pending comment: %+v", pc)
 				print(pc.comment)
 			case <-time.After(2 * time.Minute):
