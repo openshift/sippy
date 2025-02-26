@@ -27,7 +27,7 @@ side of things as well
 oc create secret generic sippy-github-token --from-literal token=ghp_THE_TOKEN -n sippy
 ```
 
-If you do not wish to build and deploy github.com/openshift/sippy master branch, you can edit `resources/buildconfig.yaml` and point to your own fork and branch.
+If you do not wish to build and deploy github.com/openshift/sippy main branch, you can edit `resources/buildconfig.yaml` and point to your own fork and branch.
 
 Apply all the manifests:
 
