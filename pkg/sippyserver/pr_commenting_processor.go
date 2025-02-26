@@ -59,6 +59,7 @@ var (
 	}, []string{"type"})
 )
 
+// NewWorkProcessor creates a standard work processor from parameters.
 // dbc: our database
 // gcsBucket: handle to our root gcs bucket
 // commentAnalysisWorkers: the number of threads active to process pending comment jobs
@@ -77,6 +78,7 @@ func NewWorkProcessor(dbc *db.DB, gcsBucket *storage.BucketHandle, commentAnalys
 	return wp
 }
 
+// WorkProcessor coordinates the initialization, connection, and execution of all the workers that go into generating PR comments
 type WorkProcessor struct {
 	commentUpdaterRate     time.Duration
 	commentAnalysisRate    time.Duration
