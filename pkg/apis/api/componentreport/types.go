@@ -72,7 +72,7 @@ type RequestVariantOptions struct {
 // RequestOptions is a struct packaging all the options for a CR request.
 // BaseOverrideRelease is the counterpart to RequestAdvancedOptions.IncludeMultiReleaseAnalysis
 // When multi release analysis is enabled we 'fallback' to the release that has the highest
-// threshold for indicating a regression.  If a release prior to the selected BasRelease has a
+// threshold for indicating a regression.  If a release prior to the selected BaseRelease has a
 // higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
 type RequestOptions struct {
 	BaseRelease         RequestReleaseOptions
@@ -135,6 +135,9 @@ type TestStatus struct {
 	SuccessCount int       `json:"success_count"`
 	FlakeCount   int       `json:"flake_count"`
 	LastFailure  time.Time `json:"last_failure"`
+	// Release provides info on the release this test status was pulled from for base TestStatus.
+	// If nil, assume the base/sample release from the request options. (used for ReleaseFallback)
+	Release *Release `json:"release"`
 }
 
 func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
@@ -142,26 +145,16 @@ func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
 	return ts.TotalCount, ts.SuccessCount, failures, ts.FlakeCount
 }
 
-// ReportTestStatus contains the mapping of all test keys (serialized with TestIdentification, variants + testID)
+// ReportTestStatus contains the mapping of all test keys (serialized with TestWithVariantsKey, variants + testID)
 // It is also an internal type used to pass data from bigquery onwards to report generation, and does not get serialized
 // as an API response.
 type ReportTestStatus struct {
-	// BaseStatus represents the stable basis for the comparison. Maps TestIdentification serialized as a string, to test status.
+	// BaseStatus represents the stable basis for the comparison. Maps TestWithVariantsKey serialized as a string, to test status.
 	BaseStatus map[string]TestStatus `json:"base_status"`
 
-	// SampleSatus represents the sample for the comparison. Maps TestIdentification serialized as a string, to test status.
+	// SampleSatus represents the sample for the comparison. Maps TestWithVariantsKey serialized as a string, to test status.
 	SampleStatus map[string]TestStatus `json:"sample_status"`
 	GeneratedAt  *time.Time            `json:"generated_at"`
-}
-
-// TestIdentification TODO: we need to get Network/Upgrade/Arch/Platform/FlatVariants off this struct as the actual variants will be dynamic.
-// However making it a map will likely break anything using this struct as a map key.
-// We may need to serialize it to a predictable string? Serialize as JSON string perhaps? Will fields be predictably ordered? Seems like go maps are always alphabetical.
-type TestIdentification struct {
-	TestID string `json:"test_id"`
-
-	// Proposed, need to serialize to use as map key
-	Variants map[string]string `json:"variants"`
 }
 
 type ComponentReport struct {
@@ -226,6 +219,7 @@ const (
 // ReportTestStats is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
 // Important type returned by the API.
+// TODO: compare with TestStatus we use internally, see if we can converge?
 type ReportTestStats struct {
 	// ReportStatus is an integer representing the severity of the regression.
 	ReportStatus Status `json:"status"`
@@ -455,4 +449,13 @@ type TriageJobRun struct {
 	URL           string                 `bigquery:"url" json:"url"`
 	StartTime     time.Time              `bigquery:"start_time" json:"start_time"`
 	CompletedTime bigquery.NullTimestamp `bigquery:"completed_time" json:"completed_time"`
+}
+
+// TestWithVariantsKey connects the core unique db testID string to a set of variants.
+// Used to serialize/deserialize as a map key when we pass test status around.
+type TestWithVariantsKey struct {
+	TestID string `json:"test_id"`
+
+	// Proposed, need to serialize to use as map key
+	Variants map[string]string `json:"variants"`
 }

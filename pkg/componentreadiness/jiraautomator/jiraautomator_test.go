@@ -31,7 +31,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 			"Network":      "ovn",
 		},
 	}
-	awsAMD64OVNTest := crtype.TestIdentification{
+	awsAMD64OVNTest := crtype.TestWithVariantsKey{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",

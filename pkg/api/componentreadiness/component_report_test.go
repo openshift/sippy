@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/stretchr/testify/assert"
 
@@ -18,7 +19,7 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-func fakeComponentAndCapabilityGetter(test crtype.TestIdentification, stats crtype.TestStatus) (string, []string) {
+func fakeComponentAndCapabilityGetter(test crtype.TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
 	name := stats.TestName
 	known := map[string]struct {
 		component    string
@@ -51,13 +52,15 @@ var (
 	}
 	defaultColumnGroupByVariants    = sets.NewString(strings.Split(DefaultColumnGroupBy, ",")...)
 	defaultDBGroupByVariants        = sets.NewString(strings.Split(DefaultDBGroupBy, ",")...)
-	defaultComponentReportGenerator = componentReportGenerator{
+	defaultComponentReportGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
-		RequestVariantOptions: crtype.RequestVariantOptions{
-			ColumnGroupBy: defaultColumnGroupByVariants,
-			DBGroupBy:     defaultDBGroupByVariants,
+		ReqOptions: crtype.RequestOptions{
+			VariantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: defaultColumnGroupByVariants,
+				DBGroupBy:     defaultDBGroupByVariants,
+			},
+			AdvancedOption: defaultAdvancedOption,
 		},
-		RequestAdvancedOptions: defaultAdvancedOption,
 	}
 	flakeFailAdvancedOption = crtype.RequestAdvancedOptions{
 		Confidence:     95,
@@ -65,76 +68,88 @@ var (
 		MinimumFailure: 3,
 		FlakeAsFailure: true,
 	}
-	flakeFailComponentReportGenerator = componentReportGenerator{
+	flakeFailComponentReportGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
-		RequestVariantOptions: crtype.RequestVariantOptions{
-			ColumnGroupBy: defaultColumnGroupByVariants,
-			DBGroupBy:     defaultDBGroupByVariants,
+		ReqOptions: crtype.RequestOptions{
+			VariantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: defaultColumnGroupByVariants,
+				DBGroupBy:     defaultDBGroupByVariants,
+			},
+			AdvancedOption: flakeFailAdvancedOption,
 		},
-		RequestAdvancedOptions: flakeFailAdvancedOption,
 	}
 	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
-	groupByInstallerComponentReportGenerator = componentReportGenerator{
+	groupByInstallerComponentReportGenerator = ComponentReportGenerator{
 		gcsBucket: "test-platform-results",
-		RequestVariantOptions: crtype.RequestVariantOptions{
-			ColumnGroupBy: installerColumnGroupByVariants,
-			DBGroupBy:     defaultDBGroupByVariants,
-		},
-		RequestAdvancedOptions: defaultAdvancedOption,
-	}
-	componentPageGenerator = componentReportGenerator{
-		gcsBucket: "test-platform-results",
-		RequestTestIdentificationOptions: crtype.RequestTestIdentificationOptions{
-			Component: "component 2",
-		},
-		RequestVariantOptions: crtype.RequestVariantOptions{
-			ColumnGroupBy: defaultColumnGroupByVariants,
-			DBGroupBy:     defaultDBGroupByVariants,
-		},
-		RequestAdvancedOptions: defaultAdvancedOption,
-	}
-	capabilityPageGenerator = componentReportGenerator{
-		gcsBucket: "test-platform-results",
-		RequestTestIdentificationOptions: crtype.RequestTestIdentificationOptions{
-			Component:  "component 2",
-			Capability: "cap22",
-		},
-		RequestVariantOptions: crtype.RequestVariantOptions{
-			ColumnGroupBy: defaultColumnGroupByVariants,
-			DBGroupBy:     defaultDBGroupByVariants,
-		},
-		RequestAdvancedOptions: defaultAdvancedOption,
-	}
-	testPageGenerator = componentReportGenerator{
-		gcsBucket: "test-platform-results",
-		RequestTestIdentificationOptions: crtype.RequestTestIdentificationOptions{
-			Component:  "component 2",
-			Capability: "cap22",
-			TestID:     "2",
-		},
-		RequestVariantOptions: crtype.RequestVariantOptions{
-			ColumnGroupBy: defaultColumnGroupByVariants,
-			DBGroupBy:     defaultDBGroupByVariants,
-		},
-		RequestAdvancedOptions: defaultAdvancedOption,
-	}
-	testDetailsGenerator = componentReportGenerator{
-		gcsBucket: "test-platform-results",
-		RequestTestIdentificationOptions: crtype.RequestTestIdentificationOptions{
-			Component:  "component 1",
-			Capability: "cap11",
-			TestID:     "1",
-		},
-		RequestVariantOptions: crtype.RequestVariantOptions{
-			ColumnGroupBy: defaultColumnGroupByVariants,
-			DBGroupBy:     defaultDBGroupByVariants,
-			RequestedVariants: map[string]string{
-				"Platform":     "aws",
-				"Architecture": "amd64",
-				"Network":      "ovn",
+		ReqOptions: crtype.RequestOptions{
+			VariantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: installerColumnGroupByVariants,
+				DBGroupBy:     defaultDBGroupByVariants,
 			},
+			AdvancedOption: defaultAdvancedOption,
 		},
-		RequestAdvancedOptions: defaultAdvancedOption,
+	}
+	componentPageGenerator = ComponentReportGenerator{
+		gcsBucket: "test-platform-results",
+		ReqOptions: crtype.RequestOptions{
+			TestIDOption: crtype.RequestTestIdentificationOptions{
+				Component: "component 2",
+			},
+			VariantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: defaultColumnGroupByVariants,
+				DBGroupBy:     defaultDBGroupByVariants,
+			},
+			AdvancedOption: defaultAdvancedOption,
+		},
+	}
+	capabilityPageGenerator = ComponentReportGenerator{
+		gcsBucket: "test-platform-results",
+		ReqOptions: crtype.RequestOptions{
+			TestIDOption: crtype.RequestTestIdentificationOptions{
+				Component:  "component 2",
+				Capability: "cap22",
+			},
+			VariantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: defaultColumnGroupByVariants,
+				DBGroupBy:     defaultDBGroupByVariants,
+			},
+			AdvancedOption: defaultAdvancedOption,
+		},
+	}
+	testPageGenerator = ComponentReportGenerator{
+		gcsBucket: "test-platform-results",
+		ReqOptions: crtype.RequestOptions{
+			TestIDOption: crtype.RequestTestIdentificationOptions{
+				Component:  "component 2",
+				Capability: "cap22",
+				TestID:     "2",
+			},
+			VariantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: defaultColumnGroupByVariants,
+				DBGroupBy:     defaultDBGroupByVariants,
+			},
+			AdvancedOption: defaultAdvancedOption,
+		},
+	}
+	testDetailsGenerator = ComponentReportGenerator{
+		gcsBucket: "test-platform-results",
+		ReqOptions: crtype.RequestOptions{
+			TestIDOption: crtype.RequestTestIdentificationOptions{
+				Component:  "component 1",
+				Capability: "cap11",
+				TestID:     "1",
+			},
+			VariantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: defaultColumnGroupByVariants,
+				DBGroupBy:     defaultDBGroupByVariants,
+				RequestedVariants: map[string]string{
+					"Platform":     "aws",
+					"Architecture": "amd64",
+					"Network":      "ovn",
+				},
+			},
+			AdvancedOption: defaultAdvancedOption,
+		},
 	}
 )
 
@@ -149,7 +164,7 @@ func filterColumnIDByDefault(id crtype.ColumnIdentification) crtype.ColumnIdenti
 }
 
 func TestGenerateComponentReport(t *testing.T) {
-	awsAMD64OVNTest := crtype.TestIdentification{
+	awsAMD64OVNTest := crtype.TestWithVariantsKey{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -166,7 +181,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64OVNTest")
 	}
-	awsAMD64SDNTest := crtype.TestIdentification{
+	awsAMD64SDNTest := crtype.TestWithVariantsKey{
 		TestID: "2",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -183,7 +198,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64SDNTest")
 	}
-	awsAMD64SDNInstallerUPITest := crtype.TestIdentification{
+	awsAMD64SDNInstallerUPITest := crtype.TestWithVariantsKey{
 		TestID: "2",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -200,7 +215,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64SDNInstallerUPITest")
 	}
-	awsAMD64OVN2Test := crtype.TestIdentification{
+	awsAMD64OVN2Test := crtype.TestWithVariantsKey{
 		TestID: "3",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -213,7 +228,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64OVN2Test")
 	}
-	awsAMD64OVNInstallerIPITest := crtype.TestIdentification{
+	awsAMD64OVNInstallerIPITest := crtype.TestWithVariantsKey{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -398,7 +413,7 @@ func TestGenerateComponentReport(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		generator      componentReportGenerator
+		generator      ComponentReportGenerator
 		baseStatus     map[string]crtype.TestStatus
 		sampleStatus   map[string]crtype.TestStatus
 		expectedReport crtype.ComponentReport
@@ -779,14 +794,16 @@ func TestGenerateComponentReport(t *testing.T) {
 		},
 		{
 			name: "top page test confidence 90 result in regression",
-			generator: componentReportGenerator{
-				RequestVariantOptions: crtype.RequestVariantOptions{
-					ColumnGroupBy: defaultColumnGroupByVariants,
-				},
-				RequestAdvancedOptions: crtype.RequestAdvancedOptions{
-					Confidence:     90,
-					PityFactor:     5,
-					MinimumFailure: 3,
+			generator: ComponentReportGenerator{
+				ReqOptions: crtype.RequestOptions{
+					VariantOption: crtype.RequestVariantOptions{
+						ColumnGroupBy: defaultColumnGroupByVariants,
+					},
+					AdvancedOption: crtype.RequestAdvancedOptions{
+						Confidence:     90,
+						PityFactor:     5,
+						MinimumFailure: 3,
+					},
 				},
 			},
 			baseStatus: map[string]crtype.TestStatus{
@@ -873,14 +890,16 @@ func TestGenerateComponentReport(t *testing.T) {
 		},
 		{
 			name: "top page test confidence 90 pity 10 result in no regression",
-			generator: componentReportGenerator{
-				RequestVariantOptions: crtype.RequestVariantOptions{
-					ColumnGroupBy: defaultColumnGroupByVariants,
-				},
-				RequestAdvancedOptions: crtype.RequestAdvancedOptions{
-					Confidence:     90,
-					PityFactor:     10,
-					MinimumFailure: 3,
+			generator: ComponentReportGenerator{
+				ReqOptions: crtype.RequestOptions{
+					VariantOption: crtype.RequestVariantOptions{
+						ColumnGroupBy: defaultColumnGroupByVariants,
+					},
+					AdvancedOption: crtype.RequestAdvancedOptions{
+						Confidence:     90,
+						PityFactor:     10,
+						MinimumFailure: 3,
+					},
 				},
 			},
 			baseStatus: map[string]crtype.TestStatus{
@@ -1144,6 +1163,27 @@ func TestGenerateComponentReport(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			report, err := tc.generator.generateComponentTestReport(context.TODO(), tc.baseStatus, tc.sampleStatus)
 			assert.NoError(t, err, "error generating component report")
+
+			// WARNING: PC and Mac differ on floating point comparisons when you get far enough into the precision.
+			// We need to do fuzzy floating point comparions which poses a problem for the way these tests are
+			// written to compare an entire report object. To avoid having to surgically compare everything, we
+			// will first iterate all rows cols and regressed tests to compare any floating point vals we need to.
+			// Then we nil them out and deep compare the rest of the object. This prevents any missed bugs where we
+			// add new data to the report, but forget to explicitly compare it.
+			assert.Equal(t, len(tc.expectedReport.Rows), len(report.Rows))
+			for ir := range report.Rows {
+				assert.Equal(t, tc.expectedReport.Rows[ir].RowIdentification, report.Rows[ir].RowIdentification)
+				assert.Equal(t, len(tc.expectedReport.Rows[ir].Columns), len(report.Rows[ir].Columns))
+				for ic := range report.Rows[ir].Columns {
+					assert.Equal(t, len(tc.expectedReport.Rows[ir].Columns[ic].RegressedTests), len(report.Rows[ir].Columns[ic].RegressedTests))
+					for it, regTest := range report.Rows[ir].Columns[ic].RegressedTests {
+						assert.InDelta(t, *tc.expectedReport.Rows[ir].Columns[ic].RegressedTests[it].FisherExact, *regTest.FisherExact, 0.000001)
+						tc.expectedReport.Rows[ir].Columns[ic].RegressedTests[it].FisherExact = nil
+						report.Rows[ir].Columns[ic].RegressedTests[it].FisherExact = nil
+
+					}
+				}
+			}
 			assert.Equal(t, tc.expectedReport, report, "expected report %+v, got %+v", tc.expectedReport, report)
 		})
 	}
@@ -1182,15 +1222,15 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		Flake:   4,
 	}
 	testDetailsRowIdentification := crtype.RowIdentification{
-		TestID:     testDetailsGenerator.TestID,
-		Component:  testDetailsGenerator.Component,
-		Capability: testDetailsGenerator.Capability,
+		TestID:     testDetailsGenerator.ReqOptions.TestIDOption.TestID,
+		Component:  testDetailsGenerator.ReqOptions.TestIDOption.Component,
+		Capability: testDetailsGenerator.ReqOptions.TestIDOption.Capability,
 	}
 	testDetailsColumnIdentification := crtype.ColumnIdentification{
-		Variants: testDetailsGenerator.RequestedVariants,
+		Variants: testDetailsGenerator.ReqOptions.VariantOption.RequestedVariants,
 	}
 	sampleReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.SampleRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.SampleRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.9203539823008849,
 			SuccessCount: 200,
@@ -1201,7 +1241,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		End:   &time.Time{},
 	}
 	baseReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.BaseRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.BaseRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.9130434782608695,
 			SuccessCount: 2000,
@@ -1236,7 +1276,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		FlakeCount:   50,
 	}
 	sampleReleaseStatsOneHigh := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.SampleRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.SampleRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.9203539823008849,
 			SuccessCount: 100,
@@ -1247,7 +1287,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		End:   &time.Time{},
 	}
 	baseReleaseStatsOneHigh := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.BaseRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.BaseRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.9130434782608695,
 			SuccessCount: 1000,
@@ -1258,7 +1298,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		End:   &time.Time{},
 	}
 	sampleReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.SampleRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.SampleRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.4778761061946903,
 			SuccessCount: 50,
@@ -1269,7 +1309,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		End:   &time.Time{},
 	}
 	baseReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.BaseRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.BaseRelease.Release,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.4782608695652174,
 			SuccessCount: 500,
@@ -1281,7 +1321,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	tests := []struct {
 		name                    string
-		generator               componentReportGenerator
+		generator               ComponentReportGenerator
 		baseRequiredJobStats    []requiredJobStats
 		sampleRequiredJobStats  []requiredJobStats
 		expectedReport          crtype.ReportTestDetails
@@ -1579,15 +1619,15 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &componentReportGenerator{}
+			c := &ComponentReportGenerator{}
 			if tt.baseRelease != "" {
-				c.BaseRelease = crtype.RequestReleaseOptions{Release: tt.baseRelease}
+				c.ReqOptions.BaseRelease = crtype.RequestReleaseOptions{Release: tt.baseRelease}
 			}
 			if tt.sampleRelease != "" {
-				c.SampleRelease = crtype.RequestReleaseOptions{Release: tt.sampleRelease}
+				c.ReqOptions.SampleRelease = crtype.RequestReleaseOptions{Release: tt.sampleRelease}
 			}
 
-			assert.Equalf(t, tt.want, c.normalizeProwJobName(tt.jobName), "normalizeProwJobName(%v)", tt.jobName)
+			assert.Equalf(t, tt.want, utils.NormalizeProwJobName(tt.jobName, c.ReqOptions), "normalizeProwJobName(%v)", tt.jobName)
 		})
 	}
 }
@@ -1830,10 +1870,10 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &componentReportGenerator{}
-			c.PassRateRequiredNewTests = tt.requiredPassRateForNewTests
-			c.PassRateRequiredAllTests = tt.requiredPassRateForAllTests
-			c.MinimumFailure = tt.minFail
+			c := &ComponentReportGenerator{}
+			c.ReqOptions.AdvancedOption.PassRateRequiredNewTests = tt.requiredPassRateForNewTests
+			c.ReqOptions.AdvancedOption.PassRateRequiredAllTests = tt.requiredPassRateForAllTests
+			c.ReqOptions.AdvancedOption.MinimumFailure = tt.minFail
 
 			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, tt.numberOfIgnoredSamples, "dummyRelease", nil, nil)
 			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")
