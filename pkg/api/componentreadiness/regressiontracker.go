@@ -42,14 +42,14 @@ type RegressionStore interface {
 // only one view is allowed to have regression tracking enabled (i.e. 4.18-main) per release, which is validated
 // when the views file is loaded. This is because we want to display regression tracking data on any report that shows
 // a regressed test, so users using custom reporting can see what is regressed in main as well.
-func ListCurrentRegressions(ctx context.Context, client *sippybigquery.Client) ([]*crtype.TestRegression, error) {
+func ListCurrentRegressions(ctx context.Context, client *sippybigquery.Client) ([]*crtype.TestRegressionBigQuery, error) {
 	// Use max snapshot date to get the most recently appended view of the regressions.
 	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE snapshot = (SELECT MAX(snapshot) FROM %s.%s)",
 		client.Dataset, testRegressionsTable, client.Dataset, testRegressionsTable)
 
 	sampleQuery := client.BQ.Query(queryString)
 
-	regressions := make([]*crtype.TestRegression, 0)
+	regressions := make([]*crtype.TestRegressionBigQuery, 0)
 	log.Infof("Fetching current test regressions with: %s", sampleQuery.Q)
 
 	it, err := sampleQuery.Read(ctx)
@@ -59,7 +59,7 @@ func ListCurrentRegressions(ctx context.Context, client *sippybigquery.Client) (
 	}
 
 	for {
-		var regression crtype.TestRegression
+		var regression crtype.TestRegressionBigQuery
 		err := it.Next(&regression)
 		if err == iterator.Done {
 			break
@@ -135,9 +135,7 @@ func (bq *BigQueryRegressionStore) OpenRegression(ctx context.Context, view crty
 		Opened:       time.Now(),
 	}
 	for key, value := range newRegressedTest.Variants {
-		newRegression.Variants = append(newRegression.Variants, crtype.Variant{
-			Key: key, Value: value,
-		})
+		newRegression.Variants = append(newRegression.Variants, fmt.Sprintf("%s:%s", key, value))
 	}
 	inserter := bq.client.BQ.Dataset(bq.client.Dataset).Table(testRegressionsTable).Inserter()
 	items := []*crtype.TestRegression{
@@ -384,8 +382,9 @@ func FindOpenRegression(view string,
 
 func findVariant(variantName string, testReg *crtype.TestRegression) string {
 	for _, v := range testReg.Variants {
-		if v.Key == variantName {
-			return v.Value
+		keyVal := strings.Split(v, ":")
+		if keyVal[0] == variantName {
+			return keyVal[1]
 		}
 	}
 	return ""
