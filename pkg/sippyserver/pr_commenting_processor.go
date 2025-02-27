@@ -430,6 +430,7 @@ func (aw *AnalysisWorker) Run() {
 	}
 }
 
+// determinePrComment evaluates the potential for a PR comment and produces that comment if appropriate
 func (aw *AnalysisWorker) determinePrComment(prCommentProspect models.PullRequestComment) {
 
 	logger := log.WithField("func", "determinePrComment").
@@ -605,6 +606,7 @@ func buildRiskAnalysisComment(sb *strings.Builder, riskAnalyses []RiskAnalysisSu
 	}
 }
 
+// prJobInfo is an internal record built to represent a job running at least once against a commit on a PR
 type prJobInfo struct {
 	name          string
 	jobID         string          // sippy ID of the job itself
