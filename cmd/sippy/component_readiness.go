@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -31,6 +32,7 @@ type ComponentReadinessFlags struct {
 	CacheFlags              *flags.CacheFlags
 	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
+	ConfigFlags             *configflags.ConfigFlags
 
 	Config      string
 	LogLevel    string
@@ -50,6 +52,7 @@ func NewComponentReadinessCommand() *cobra.Command {
 		BigQueryFlags:           flags.NewBigQueryFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
+		ConfigFlags:             configflags.NewConfigFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -80,6 +83,7 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.GoogleCloudFlags.BindFlags(flagSet)
 	f.ProwFlags.BindFlags(flagSet)
 	f.ComponentReadinessFlags.BindFlags(flagSet)
+	f.ConfigFlags.BindFlags(flagSet)
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
 	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
@@ -158,6 +162,11 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		}
 	}
 
+	config, err := f.ConfigFlags.GetConfig()
+	if err != nil {
+		log.WithError(err).Warn("error reading config file")
+	}
+
 	views, err := f.ComponentReadinessFlags.ParseViewsFile()
 	if err != nil {
 		log.WithError(err).Fatal("unable to load views")
@@ -180,11 +189,22 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		cacheClient,
 		f.ComponentReadinessFlags.CRTimeRoundingFactor,
 		views,
+		config,
 	)
 
 	if f.MetricsAddr != "" {
 		// Do an immediate metrics update
-		err = metrics.RefreshMetricsDB(context.Background(), nil, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
+		err = metrics.RefreshMetricsDB(
+			context.Background(),
+			nil,
+			bigQueryClient,
+			f.ProwFlags.URL,
+			f.GoogleCloudFlags.StorageBucket,
+			nil,
+			time.Time{},
+			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
+			views.ComponentReadiness,
+			config.ComponentReadinessConfig.VariantJunitTableOverrides)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -197,7 +217,17 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 				select {
 				case <-ticker.C:
 					log.Info("tick")
-					err := metrics.RefreshMetricsDB(context.Background(), nil, bigQueryClient, f.ProwFlags.URL, f.GoogleCloudFlags.StorageBucket, nil, time.Time{}, cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}, views.ComponentReadiness)
+					err := metrics.RefreshMetricsDB(
+						context.Background(),
+						nil,
+						bigQueryClient,
+						f.ProwFlags.URL,
+						f.GoogleCloudFlags.StorageBucket,
+						nil,
+						time.Time{},
+						cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
+						views.ComponentReadiness,
+						config.ComponentReadinessConfig.VariantJunitTableOverrides)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}

@@ -1,8 +1,9 @@
 package v1
 
 type SippyConfig struct {
-	Prow     ProwConfig               `yaml:"prow"`
-	Releases map[string]ReleaseConfig `yaml:"releases"`
+	Prow                     ProwConfig               `yaml:"prow"`
+	Releases                 map[string]ReleaseConfig `yaml:"releases"`
+	ComponentReadinessConfig ComponentReadinessConfig `yaml:"componentReadiness"`
 }
 
 type ProwConfig struct {
@@ -23,4 +24,21 @@ type ReleaseConfig struct {
 
 	// InformingJobs is the list of informing payload jobs
 	InformingJobs []string `yaml:"informingJobs,omitempty"`
+}
+
+type ComponentReadinessConfig struct {
+	// VariantJunitTableOverrides allow pulling results from additional
+	VariantJunitTableOverrides []VariantJunitTableOverride `yaml:"variantJunitTableOverrides,omitempty"`
+}
+
+// VariantJunitTableOverride is used to pull in junit results from a different table, if the given variant
+// is included in your query. (i.e. rarely run jobs support)
+type VariantJunitTableOverride struct {
+	VariantName  string `yaml:"variantName"`
+	VariantValue string `yaml:"variantValue"`
+	TableName    string `yaml:"tableName"`
+	// RelativeStart is used to allow the rarely run functionality to ignore the report start date, and instead use
+	// a much longer one for rarely run jobs. In practice, it will be based off the report end date.
+	// As with views, this is specified as a string of the form end-90d.
+	RelativeStart string `yaml:"relativeStart,omitempty"`
 }

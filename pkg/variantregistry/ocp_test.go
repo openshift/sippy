@@ -1,12 +1,16 @@
 package variantregistry
 
 import (
+	"fmt"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 )
 
 func TestVariantSyncer(t *testing.T) {
@@ -655,23 +659,22 @@ func TestVariantSyncer(t *testing.T) {
 		{
 			job: "periodic-ci-openshift-with-no-release-info",
 			expected: map[string]string{
-				VariantArch:             "amd64",
-				VariantInstaller:        "ipi",
-				VariantNetworkStack:     "ipv4",
-				VariantOwner:            "eng",
-				VariantSuite:            "unknown",
-				VariantTopology:         "ha",
-				VariantUpgrade:          VariantNoValue,
-				VariantAggregation:      VariantNoValue,
-				VariantProcedure:        "none",
-				VariantJobTier:          "standard",
-				VariantFeatureSet:       VariantDefaultValue,
-				VariantNetworkAccess:    VariantDefaultValue,
-				VariantScheduler:        VariantDefaultValue,
-				VariantSecurityMode:     VariantDefaultValue,
-				VariantContainerRuntime: "",
-				VariantCGroupMode:       "v2",
-				VariantLayeredProduct:   VariantNoValue,
+				VariantArch:           "amd64",
+				VariantInstaller:      "ipi",
+				VariantNetworkStack:   "ipv4",
+				VariantOwner:          "eng",
+				VariantSuite:          "unknown",
+				VariantTopology:       "ha",
+				VariantUpgrade:        VariantNoValue,
+				VariantAggregation:    VariantNoValue,
+				VariantProcedure:      "none",
+				VariantJobTier:        "standard",
+				VariantFeatureSet:     VariantDefaultValue,
+				VariantNetworkAccess:  VariantDefaultValue,
+				VariantScheduler:      VariantDefaultValue,
+				VariantSecurityMode:   VariantDefaultValue,
+				VariantCGroupMode:     "v2",
+				VariantLayeredProduct: VariantNoValue,
 			},
 		},
 		{
@@ -929,6 +932,34 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
+			job:          "periodic-ci-openshift-openshift-tests-private-release-4.18-multi-nightly-gcp-ipi-sno-tp-arm-f28",
+			variantsFile: map[string]string{},
+			expected: map[string]string{
+				VariantRelease:          "4.18",
+				VariantReleaseMajor:     "4",
+				VariantReleaseMinor:     "18",
+				VariantArch:             "arm64",
+				VariantInstaller:        "ipi",
+				VariantPlatform:         "gcp",
+				VariantProcedure:        "none",
+				VariantJobTier:          "standard",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "qe",
+				VariantTopology:         "single",
+				VariantSuite:            "unknown",
+				VariantUpgrade:          VariantNoValue,
+				VariantAggregation:      VariantNoValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantFeatureSet:       "techpreview",
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantContainerRuntime: "crun",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   "none",
+			},
+		},
+		{
 			job:          "periodic-ci-openshift-release-master-nightly-4.17-e2e-aws-ovn-cgroupsv1-crun",
 			variantsFile: map[string]string{},
 			expected: map[string]string{
@@ -1049,5 +1080,75 @@ func TestVariantSyncer(t *testing.T) {
 					test.job,
 					test.variantsFile))
 		})
+	}
+}
+
+// TestVariantsSnapshot regenerates variants against the OCP config, and then compares against
+// a previously taken snapshot. If variants changed, it will fail and report an error. You can
+// run `make update-variants` to update and accept the changes. This lets you easily see the impact
+// of modifying the OCP variant syncer.
+func TestVariantsSnapshot(t *testing.T) {
+	cfgFlags := &configflags.ConfigFlags{
+		Path: "../../config/openshift.yaml",
+	}
+	cfg, err := cfgFlags.GetConfig()
+	assert.NoError(t, err)
+
+	log := logrus.WithField("test", "TestVariantsSnapshot")
+
+	snapshot := NewVariantSnapshot(cfg, log)
+	newVariants := snapshot.Identify()
+	oldVariants, err := snapshot.Load("snapshot.yaml")
+	assert.NoError(t, err)
+
+	// Map to collect changes
+	summary := make(map[string][]string)
+
+	// Iterate only over jobs that exist in both old and new
+	anyFail := 0
+	for job, newVars := range newVariants {
+		oldVars, exists := oldVariants[job]
+		if exists {
+			t.Run(job, func(t *testing.T) {
+				var changes []string
+
+				// Check for added, changed, and removed variants
+				for key, newValue := range newVars {
+					if oldValue, ok := oldVars[key]; !ok {
+						changeMsg := fmt.Sprintf("Added %s:%s", key, newValue)
+						changes = append(changes, changeMsg)
+						summary[changeMsg] = append(summary[changeMsg], job)
+					} else if oldValue != newValue {
+						changeMsg := fmt.Sprintf("Changed %s (%s -> %s)", key, oldValue, newValue)
+						changes = append(changes, changeMsg)
+						summary[changeMsg] = append(summary[changeMsg], job)
+					}
+				}
+
+				for key := range oldVars {
+					if _, ok := newVars[key]; !ok {
+						changeMsg := fmt.Sprintf("Removed %s (was %q)", key, oldVars[key])
+						changes = append(changes, changeMsg)
+						summary[changeMsg] = append(summary[changeMsg], job)
+					}
+				}
+
+				if len(changes) > 0 {
+					t.Logf("%s:\n%s", job, strings.Join(changes, "\n"))
+					t.Fail()
+					anyFail++
+				}
+			})
+		}
+	}
+
+	// Print summary
+	if anyFail > 0 {
+		t.Logf("\nSummary of changes:")
+		for change, jobs := range summary {
+			sort.Strings(jobs)
+			t.Logf("%s\n   - %s", change, strings.Join(jobs, "\n   - "))
+		}
+		t.Logf("\n****** Run `make update-variants` to update the snapshot and accept these changes.")
 	}
 }

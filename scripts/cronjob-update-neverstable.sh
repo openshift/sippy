@@ -25,7 +25,7 @@ set -x
 git commit -a -m "Update never-stable"
 git push openshift-trt update --force
 
-pr-creator -org openshift -repo sippy -source openshift-trt:update -branch master \
+pr-creator -org openshift -repo sippy -source openshift-trt:update -branch main \
 	   -github-app-private-key-path "${keyfile}" -github-app-id 1046118 \
 	   -body "**Note: PLEASE REVIEW CHANGES BEFORE MERGING**<br><br>$OUTPUT" \
 	   -title "Automated - Update never-stable" \

@@ -1,1 +1,52 @@
-[]
+[
+  {
+    "JiraComponent": "Networking / ovn-kubernetes",
+    "TestID": "openshift-tests:49f059643beb9459d38acc7c0c33ec54",
+    "TestName": "[sig-network][OCPFeatureGate:NetworkSegmentation][Feature:UserDefinedPrimaryNetworks] when using openshift ovn-kubernetes created using UserDefinedNetwork is isolated from the default network with L2 primary UDN [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-50628",
+    "ReasonToAllowInsteadOfFix": "There is a test verifying that kubelet probes work correctly for UDN-enabled pods by ensuring zero pod restarts, indicating healthy startup, readiness, and failure probes. However, since RHEL8 workers use cgroupsv1, which doesn't support UDNs, pod restarts and probe failures are expected. The test needs updating to account for cgroupsv1 vs. v2 environments. This is a test update issue, not a core code bug. The bug was filed to fix the tests.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "aws",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 105,
+    "RegressedFailures": 11,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "Networking / ovn-kubernetes",
+    "TestID": "openshift-tests:ccf5cb7a4258f96c26651d1a2d7dcc88",
+    "TestName": "[sig-network][OCPFeatureGate:NetworkSegmentation][Feature:UserDefinedPrimaryNetworks] when using openshift ovn-kubernetes created using UserDefinedNetwork is isolated from the default network with L3 primary UDN [Suite:openshift/conformance/parallel]",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-50628",
+    "ReasonToAllowInsteadOfFix": "There is a test verifying that kubelet probes work correctly for UDN-enabled pods by ensuring zero pod restarts, indicating healthy startup, readiness, and failure probes. However, since RHEL8 workers use cgroupsv1, which doesn't support UDNs, pod restarts and probe failures are expected. The test needs updating to account for cgroupsv1 vs. v2 environments. This is a test update issue, not a core code bug. The bug was filed to fix the tests.",
+    "variant": {
+      "variants": {
+        "Network": "ovn",
+        "Upgrade": "none",
+        "Architecture": "amd64",
+        "Platform": "aws",
+        "FeatureSet": "default",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Installer": "ipi"
+      }
+    },
+    "PreviousSuccesses": 95,
+    "PreviousFailures": 5,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 105,
+    "RegressedFailures": 11,
+    "RegressedFlakes": 0
+  }
+]

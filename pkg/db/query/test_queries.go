@@ -64,7 +64,7 @@ const (
         from (
             select sum(runs) as current_runs, sum(passes) as current_successes
             from test_analysis_by_job_by_dates 
-            where test_name = ? AND job_name IN ?
+            where date >= ? AND test_name = ? AND job_name IN ?
         ) t`
 )
 
@@ -199,7 +199,7 @@ func TestReportExcludeVariants(
 	}
 
 	elapsed := time.Since(now)
-	log.Infof("TestReportExcludeVariants completed in %s", elapsed)
+	log.Infof("TestReportExcludeVariants completed in %s for release %s and test %q", elapsed, release, testName)
 	return testReport, nil
 }
 
@@ -224,7 +224,7 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 			results = append(results, b)
 		}
 	}
-	log.Infof("found %d bugs for test %s", len(results), testName)
+	log.Debugf("LoadBugsForTest found %d bugs for test '%s'", len(results), testName)
 
 	return results, nil
 }

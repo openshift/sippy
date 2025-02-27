@@ -33,6 +33,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Network:
           - ovn
         Owner:
@@ -95,6 +97,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Owner:
           - eng
         Platform:
@@ -154,6 +158,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Owner:
           - eng
         Platform:
@@ -212,6 +218,7 @@ component_readiness:
         Topology: {}
         Upgrade: {}
         Procedure: {}
+        JobTier: {}
       include_variants:
         Architecture:
           - amd64
@@ -220,6 +227,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Network:
           - ovn
         Owner:
@@ -246,6 +255,71 @@ component_readiness:
       enabled: false
     regression_tracking:
       enabled: false
+  - name: 4.19-virt
+    base_release:
+      release: "4.18"
+      relative_start: now-30d
+      relative_end: now
+    sample_release:
+      release: "4.19"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+        Topology: {}
+        LayeredProduct: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        LayeredProduct: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+          - techpreview
+        Installer:
+          - ipi
+          - upi
+        LayeredProduct:
+          - virt
+        Network:
+          - ovn
+        Owner:
+          - eng
+          - service-delivery
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - metal
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+          - microshift
+        CGroupMode:
+          - v2
+        ContainerRuntime:
+          - runc
+          - crun
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+      flake_as_failure: false
+      pass_rate_required_new_tests: 95
   - name: 4.18-main
     base_release:
       release: "4.17"
@@ -278,6 +352,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Network:
           - ovn
         Owner:
@@ -340,6 +416,8 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        LayeredProduct:
+          - none
         Owner:
           - eng
         Platform:
@@ -367,69 +445,6 @@ component_readiness:
       ignore_missing: false
       ignore_disruption: true
       flake_as_failure: false
-    metrics:
-      enabled: false
-    regression_tracking:
-      enabled: false
-    automate_jira:
-      enabled: false
-  - name: 4.18-rarely-run-jobs
-    base_release:
-      release: "4.17"
-      relative_start: ga-1d
-      relative_end: ga
-    sample_release:
-      release: "4.18"
-      # need to look much further back for rarely run jobs
-      relative_start: now-90d
-      relative_end: now
-    variant_options:
-      column_group_by:
-        Architecture: {}
-        Network: {}
-        Platform: {}
-        Topology: {}
-        Procedure: {}
-      db_group_by:
-        Architecture: {}
-        FeatureSet: {}
-        Installer: {}
-        Network: {}
-        Platform: {}
-        Suite: {}
-        Topology: {}
-        Upgrade: {}
-        Procedure: {}
-      include_variants:
-        Architecture:
-          - amd64
-        FeatureSet:
-          - default
-        Installer:
-          - ipi
-          - upi
-        Network:
-          - ovn
-        Owner:
-          - eng
-        Platform:
-          - aws
-          - azure
-          - gcp
-          - metal
-          - vsphere
-        Topology:
-          - ha
-        JobTier:
-          - rare
-    advanced_options:
-      minimum_failure: 2
-      confidence: 95
-      pity_factor: 5
-      ignore_missing: false
-      ignore_disruption: true
-      flake_as_failure: false
-      pass_rate_required_all_tests: 90
     metrics:
       enabled: false
     regression_tracking:

@@ -4,34 +4,56 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/filter"
 )
 
-func GetFeatureGatesFromDB(dbc *gorm.DB, release string) ([]api.FeatureGate, error) {
-	// Define the query with release filtering
-	query := `
-		SELECT
-			ROW_NUMBER() OVER (ORDER BY release, match[1], match[2]) AS id,
-			match[1] AS type,
-			match[2] AS feature_gate,
-			release,
-			COUNT(DISTINCT name) AS unique_test_count
-		FROM (
-			SELECT 
-				regexp_matches(name, '\[(FeatureGate|OCPFeatureGate):([^\]]+)\]', 'g') AS match,
-				release,
-				name
-			FROM prow_test_report_7d_matview
-			WHERE release = ?
-		) subquery
-		WHERE match IS NOT NULL
-		GROUP BY match[1], match[2], release
-		ORDER BY release, type, feature_gate
-	`
+func GetFeatureGatesFromDB(dbc *gorm.DB, release string, filterOpts *filter.FilterOptions) ([]api.FeatureGate, error) {
+	// Get tests by feature gate
+	subQuery := dbc.Table("prow_test_report_7d_matview").
+		Select("name, release, regexp_matches(name, '\\[(FeatureGate|OCPFeatureGate):([^\\]]+)\\]') AS match").
+		Where("release = ?", release)
 
-	var results []api.FeatureGate
-	// Execute the query, passing in the release filter
-	if err := dbc.Raw(query, release).Scan(&results).Error; err != nil {
+	// Figure out the first release we ever saw a FG
+	firstSeenQuery := dbc.Table("feature_gates").
+		Select(`
+			feature_gate,
+			MIN(release) OVER (
+				PARTITION BY feature_gate 
+				ORDER BY string_to_array(release, '.')::int[] ASC
+			) AS first_seen_in,
+			CAST((string_to_array(MIN(release) OVER (PARTITION BY feature_gate), '.'))[1] AS INT) AS first_seen_in_major,
+			CAST((string_to_array(MIN(release) OVER (PARTITION BY feature_gate), '.'))[2] AS INT) AS first_seen_in_minor
+		`).
+		Where("status = 'enabled'")
+
+	query := dbc.Table("feature_gates AS fg").
+		Select(`
+			ROW_NUMBER() OVER (ORDER BY fg.feature_gate) AS id,
+			fg.feature_gate,
+			fg.release,
+			fs.first_seen_in,
+			fs.first_seen_in_major,
+			fs.first_seen_in_minor,
+			COUNT(DISTINCT mt.name) AS unique_test_count,
+			ARRAY_AGG(DISTINCT fg.feature_set || ':' || fg.topology) AS enabled
+		`).
+		Joins("LEFT JOIN (?) AS mt ON fg.feature_gate = mt.match[2]", subQuery).
+		Joins("LEFT JOIN (?) AS fs ON fg.feature_gate = fs.feature_gate", firstSeenQuery).
+		Where("fg.release = ? AND fg.status = 'enabled'", release).
+		Group("fg.feature_gate, fg.release, fs.first_seen_in, fs.first_seen_in_major, fs.first_seen_in_minor").
+		Order("fg.feature_gate")
+
+	table := dbc.Table("(?) AS results", query)
+
+	q, err := filter.FilterableDBResult(table, filterOpts, api.FeatureGate{})
+	if err != nil {
 		return nil, err
+	}
+
+	results := make([]api.FeatureGate, 0)
+	tx := q.Scan(&results)
+	if tx.Error != nil {
+		return nil, tx.Error
 	}
 
 	return results, nil

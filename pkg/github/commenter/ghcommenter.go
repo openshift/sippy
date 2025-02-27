@@ -320,7 +320,7 @@ func (ghc *GitHubCommenter) QueryPRPendingComments(org, repo string, number int,
 	return pullRequestComments, nil
 }
 
-func (ghc *GitHubCommenter) QueryPendingComments(commentType models.CommentType) ([]models.PullRequestComment, error) {
+func (ghc *GitHubCommenter) QueryForPotentialComments(commentType models.CommentType) ([]models.PullRequestComment, error) {
 	pullRequestComments := make([]models.PullRequestComment, 0)
 
 	res := ghc.dbc.DB.Table("pull_request_comments").

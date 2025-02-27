@@ -3,7 +3,6 @@ package api
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -492,7 +491,6 @@ type Test struct {
 	FlakeAverage             float64 `json:"flake_average,omitempty"`
 	FlakeStandardDeviation   float64 `json:"flake_standard_deviation,omitempty"`
 	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty"`
-	Watchlist                bool    `json:"watchlist"`
 
 	Tags     []string `json:"tags" gorm:"type:text[]"`
 	OpenBugs int      `json:"open_bugs"`
@@ -508,8 +506,6 @@ func (test Test) GetFieldType(param string) ColumnType {
 		return ColumnTypeString
 	case "variants":
 		return ColumnTypeArray
-	case "watchlist":
-		return ColumnTypeString
 	default:
 		return ColumnTypeNumerical
 	}
@@ -521,8 +517,6 @@ func (test Test) GetStringValue(param string) (string, error) {
 		return test.Name, nil
 	case "variant":
 		return test.Variant, nil
-	case "watchlist":
-		return strconv.FormatBool(test.Watchlist), nil
 	default:
 		return "", fmt.Errorf("unknown string field %s", param)
 	}
@@ -750,12 +744,12 @@ type ProwJobRunRiskAnalysis struct {
 	ProwJobRunID   uint
 	Release        string
 	CompareRelease string
-	Tests          []ProwJobRunTestRiskAnalysis
+	Tests          []TestRiskAnalysis
 	OverallRisk    JobFailureRisk
 	OpenBugs       []models.Bug
 }
 
-type ProwJobRunTestRiskAnalysis struct {
+type TestRiskAnalysis struct {
 	Name     string
 	TestID   uint
 	Risk     TestFailureRisk
@@ -781,7 +775,8 @@ type TestFailureRisk struct {
 
 type RiskSummary struct {
 	OverallRisk JobFailureRisk
-	Tests       []ProwJobRunTestRiskAnalysis
+	Tests       []TestRiskAnalysis
+	// NewTests    []JobNewTestRisks
 }
 
 type RiskLevel struct {
@@ -856,9 +851,60 @@ type SippyViews struct {
 }
 
 type FeatureGate struct {
-	ID              int    `json:"id"`
-	Type            string `json:"type"`
-	FeatureGate     string `json:"feature_gate"`
-	Release         string `json:"release"`
-	UniqueTestCount int64  `json:"unique_test_count"`
+	ID               int            `json:"id"`
+	FeatureGate      string         `json:"feature_gate"`
+	Release          string         `json:"release"`
+	UniqueTestCount  int64          `json:"unique_test_count"`
+	FirstSeenIn      string         `json:"first_seen_in"`
+	FirstSeenInMajor int64          `json:"first_seen_in_major"`
+	FirstSeenInMinor int64          `json:"first_seen_in_minor"`
+	Enabled          pq.StringArray `json:"enabled" gorm:"type:text[]"`
+}
+
+func (fg FeatureGate) GetFieldType(param string) ColumnType {
+	switch param {
+	case "id":
+		return ColumnTypeNumerical
+	case "enabled":
+		return ColumnTypeArray
+	case "unique_test_count", "first_seen_in_major", "first_seen_in_minor":
+		return ColumnTypeNumerical
+	default:
+		return ColumnTypeString
+	}
+}
+
+func (fg FeatureGate) GetStringValue(param string) (string, error) {
+	switch param {
+	case "feature_gate":
+		return fg.FeatureGate, nil
+	case "release":
+		return fg.Release, nil
+	case "first_seen_in":
+		return fg.FirstSeenIn, nil
+	default:
+		return "", fmt.Errorf("unknown string field %s", param)
+	}
+}
+
+func (fg FeatureGate) GetNumericalValue(param string) (float64, error) {
+	switch param {
+	case "id":
+		return float64(fg.ID), nil
+	case "first_seen_in_major":
+		return float64(fg.FirstSeenInMajor), nil
+	case "first_seen_in_minor":
+		return float64(fg.FirstSeenInMinor), nil
+	default:
+		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (fg FeatureGate) GetArrayValue(param string) ([]string, error) {
+	switch param {
+	case "enabled":
+		return fg.Enabled, nil
+	default:
+		return nil, fmt.Errorf("unknown array value field %s", param)
+	}
 }

@@ -15,11 +15,15 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
+	metrics "github.com/slok/go-http-metrics/metrics/prometheus"
+	"github.com/slok/go-http-metrics/middleware"
+	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -63,6 +67,7 @@ func NewServer(
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
 	views *apitype.SippyViews,
+	config *v1.SippyConfig,
 ) *Server {
 
 	server := &Server{
@@ -81,6 +86,7 @@ func NewServer(
 		cache:                cacheClient,
 		crTimeRoundingFactor: crTimeRoundingFactor,
 		views:                views,
+		config:               config,
 	}
 
 	if bigQueryClient != nil {
@@ -120,6 +126,7 @@ type Server struct {
 	crTimeRoundingFactor time.Duration
 	capabilities         []string
 	views                *apitype.SippyViews
+	config               *v1.SippyConfig
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -461,7 +468,12 @@ func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonFeatureGates(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
-		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release)
+		filterOpts, err := filter.FilterOptionsFromRequest(req, "unique_test_count", apitype.SortAscending)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
+			return
+		}
+		gates, err := query.GetFeatureGatesFromDB(s.db.DB, release, filterOpts)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, "couldn't parse filter opts: "+err.Error())
 			return
@@ -656,7 +668,8 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 
-	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
+	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
+		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -668,6 +681,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		s.prowURL,
 		s.gcsBucket,
 		options,
+		s.config.ComponentReadinessConfig.VariantJunitTableOverrides,
 	)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))
@@ -698,7 +712,8 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		return
 	}
 
-	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor)
+	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
+		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -966,7 +981,6 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	logger := log.WithField("func", "jsonJobRunRiskAnalysis")
 
 	jobRun := &models.ProwJobRun{}
-	var jobRunTestCount int
 
 	// API path one where we return a risk analysis for a prow job run ID we already know about:
 	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
@@ -981,7 +995,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		logger = logger.WithField("jobRunID", jobRunID)
 
 		// lookup prowjob and run count
-		jobRun, jobRunTestCount, err = api.FetchJobRun(s.db, jobRunID, logger)
+		jobRun, err = api.FetchJobRun(s.db, jobRunID, false, logger)
 
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1013,8 +1027,6 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 			return
 		}
 
-		jobRunTestCount = jobRun.TestCount
-
 		// We don't expect the caller to fully populate the ProwJob, just its name;
 		// override the input by looking up the actual ProwJob so we have access to release and variants.
 		job := &models.ProwJob{}
@@ -1041,7 +1053,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	}
 
 	logger.Infof("job run = %+v", *jobRun)
-	result, err := api.JobRunRiskAnalysis(s.db, s.bigQueryClient, jobRun, jobRunTestCount, logger.WithField("func", "JobRunRiskAnalysis"), false)
+	result, err := api.JobRunRiskAnalysis(s.db, s.bigQueryClient, jobRun, logger, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -1516,7 +1528,14 @@ func (s *Server) Serve() {
 	var handler http.Handler = serveMux
 	// wrap mux with our logger. this will
 	handler = logRequestHandler(handler)
-	// ... potentially add more middleware handlers
+
+	// Middleware for http metrics
+	metricsMiddleware := middleware.New(middleware.Config{
+		Recorder: metrics.NewRecorder(metrics.Config{
+			DurationBuckets: []float64{.1, .25, .5, 1, 2.5, 5, 10, 30, 60, 120, 300},
+		}),
+	})
+	handler = middlewarestd.Handler("", metricsMiddleware, handler)
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
