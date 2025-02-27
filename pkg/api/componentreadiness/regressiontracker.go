@@ -35,6 +35,44 @@ type RegressionStore interface {
 	CloseRegression(ctx context.Context, regressionID string, closedAt time.Time) error
 }
 
+// TODO: temporary, just being used for migration code on initial rollout, can be deleted as soon as postgres imports
+// the current regressions.
+//
+// ListCurrentRegressionsForRelease returns *all* regressions for all releases. We operate on the assumption that
+// only one view is allowed to have regression tracking enabled (i.e. 4.18-main) per release, which is validated
+// when the views file is loaded. This is because we want to display regression tracking data on any report that shows
+// a regressed test, so users using custom reporting can see what is regressed in main as well.
+func ListCurrentRegressions(ctx context.Context, client *sippybigquery.Client) ([]*crtype.TestRegression, error) {
+	// Use max snapshot date to get the most recently appended view of the regressions.
+	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE snapshot = (SELECT MAX(snapshot) FROM %s.%s)",
+		client.Dataset, testRegressionsTable, client.Dataset, testRegressionsTable)
+
+	sampleQuery := client.BQ.Query(queryString)
+
+	regressions := make([]*crtype.TestRegression, 0)
+	log.Infof("Fetching current test regressions with: %s", sampleQuery.Q)
+
+	it, err := sampleQuery.Read(ctx)
+	if err != nil {
+		log.WithError(err).Error("error querying triaged incidents from bigquery")
+		return regressions, err
+	}
+
+	for {
+		var regression crtype.TestRegression
+		err := it.Next(&regression)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing triaged incident from bigquery")
+			return nil, errors.Wrap(err, "error parsing triaged incident from bigquery")
+		}
+		regressions = append(regressions, &regression)
+	}
+	return regressions, nil
+}
+
 // BigQueryRegressionStore is the primary implementation for real world usage, storing when regressions appear/disappear in BigQuery.
 type BigQueryRegressionStore struct {
 	client *sippybigquery.Client
