@@ -29,18 +29,14 @@ func LoadProwJobCache(dbc *db.DB) (map[string]*models.ProwJob, error) {
 }
 
 func JobRunTestCount(dbc *db.DB, jobRunID int64) (int, error) {
-	var prowJobRunTestCount int
-	var tests []models.ProwJobRunTest
+	var prowJobRunTestCount int64
 
-	res := dbc.DB.Find(&tests, "prow_job_run_id = ?", jobRunID)
-
+	res := dbc.DB.Model(&models.ProwJobRunTest{}).Where("prow_job_run_id = ?", jobRunID).Count(&prowJobRunTestCount)
 	if res.Error != nil {
 		return -1, res.Error
 	}
 
-	prowJobRunTestCount = len(tests)
-
-	return prowJobRunTestCount, nil
+	return int(prowJobRunTestCount), nil
 }
 
 func ProwJobSimilarName(dbc *db.DB, rootName, release string) ([]models.ProwJob, error) {
@@ -183,6 +179,6 @@ func LoadBugsForJobs(dbc *db.DB,
 	if res.Error != nil {
 		return results, res.Error
 	}
-	log.Infof("found %d bugs for job", len(job.Bugs))
+	log.Debugf("LoadBugsForJobs found %d bugs for job", len(job.Bugs))
 	return job.Bugs, nil
 }

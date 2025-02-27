@@ -252,7 +252,7 @@ func TestRunJobAnalysis(t *testing.T) {
 				}
 			}
 
-			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", 5, 5, false, tc.jobNames, log.WithField("jobRunID", "test"), testResultsJobNamesLookupFunc, testResultsVariantsLookupFunc)
+			result, err := runJobRunAnalysis(fakeProwJobRun, "4.12", 5, false, tc.jobNames, log.WithField("jobRunID", "test"), testResultsJobNamesLookupFunc, testResultsVariantsLookupFunc)
 
 			require.NoError(t, err)
 			assert.Equal(t, len(tc.expectedTestRisks), len(result.Tests))
@@ -291,6 +291,7 @@ func buildFakeProwJobRun() *models.ProwJobRun {
 		ProwJobID:             1000000000,
 		URL:                   "https://example.com/run/1000000000",
 		Tests:                 []models.ProwJobRunTest{}, // will be populated in the test cases
+		TestCount:             5,
 		Failed:                true,
 		InfrastructureFailure: false,
 		Succeeded:             false,
@@ -299,7 +300,7 @@ func buildFakeProwJobRun() *models.ProwJobRun {
 	return fakeProwJobRun
 }
 
-func getTestRisk(result apitype.ProwJobRunRiskAnalysis, testName string) *apitype.ProwJobRunTestRiskAnalysis {
+func getTestRisk(result apitype.ProwJobRunRiskAnalysis, testName string) *apitype.TestRiskAnalysis {
 	for _, ta := range result.Tests {
 		if ta.Name == testName {
 			return &ta

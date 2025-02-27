@@ -1,4 +1,4 @@
-// this package is used to produce a reporting structure for rendering html pages.
+// Package v1 is used to produce a reporting structure for rendering html pages.
 // it also contains intermediate types used in the processing pipeline.
 package v1
 

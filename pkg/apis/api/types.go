@@ -744,12 +744,12 @@ type ProwJobRunRiskAnalysis struct {
 	ProwJobRunID   uint
 	Release        string
 	CompareRelease string
-	Tests          []ProwJobRunTestRiskAnalysis
+	Tests          []TestRiskAnalysis
 	OverallRisk    JobFailureRisk
 	OpenBugs       []models.Bug
 }
 
-type ProwJobRunTestRiskAnalysis struct {
+type TestRiskAnalysis struct {
 	Name     string
 	TestID   uint
 	Risk     TestFailureRisk
@@ -775,7 +775,8 @@ type TestFailureRisk struct {
 
 type RiskSummary struct {
 	OverallRisk JobFailureRisk
-	Tests       []ProwJobRunTestRiskAnalysis
+	Tests       []TestRiskAnalysis
+	// NewTests    []JobNewTestRisks
 }
 
 type RiskLevel struct {

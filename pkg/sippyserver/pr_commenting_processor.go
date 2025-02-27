@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"html"
 	"regexp"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -27,7 +27,6 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
 	"github.com/openshift/sippy/pkg/util"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 var (
@@ -47,24 +46,20 @@ var (
 		Buckets: prometheus.LinearBuckets(0, 5000, 10),
 	}, []string{"org", "repo"})
 
-	checkCommentReady = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	checkCommentReadyMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "sippy_repo_check_ready_comment",
 		Help:    "Tracks the call made to verify a pr is ready for a pr comment",
 		Buckets: prometheus.LinearBuckets(0, 500, 10),
 	}, []string{"org", "repo"})
 
-	buildPendingWork = promauto.NewHistogramVec(prometheus.HistogramOpts{
+	buildPendingWorkMetric = promauto.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "sippy_repo_build_pending_comment_work",
 		Help:    "Tracks the call made to query db and add items to the pending work queue",
 		Buckets: prometheus.LinearBuckets(0, 500, 10),
 	}, []string{"type"})
 )
 
-type RiskAnalysisEntry struct {
-	Key   string
-	Value RiskAnalysisSummary
-}
-
+// NewWorkProcessor creates a standard work processor from parameters.
 // dbc: our database
 // gcsBucket: handle to our root gcs bucket
 // commentAnalysisWorkers: the number of threads active to process pending comment jobs
@@ -78,10 +73,12 @@ func NewWorkProcessor(dbc *db.DB, gcsBucket *storage.BucketHandle, commentAnalys
 		commentUpdaterRate:     commentUpdaterRate,
 		commentAnalysisWorkers: commentAnalysisWorkers,
 		dryRunOnly:             dryRunOnly,
+		newTestsWorker:         StandardNewTestsWorker(dbc),
 	}
 	return wp
 }
 
+// WorkProcessor coordinates the initialization, connection, and execution of all the workers that go into generating PR comments
 type WorkProcessor struct {
 	commentUpdaterRate     time.Duration
 	commentAnalysisRate    time.Duration
@@ -90,20 +87,22 @@ type WorkProcessor struct {
 	gcsBucket              *storage.BucketHandle
 	ghCommenter            *commenter.GitHubCommenter
 	dryRunOnly             bool
+	newTestsWorker         *NewTestsWorker
 }
 
-type PendingComment struct {
+// PreparedComment is a comment that is ready to be posted on a github PR
+type PreparedComment struct {
 	comment     string
-	sha         string
+	commentType int
 	org         string
 	repo        string
 	number      int
-	commentType int
+	sha         string
 }
 
 type CommentWorker struct {
 	commentUpdaterRateLimiter util.RateLimiter
-	pendingComments           chan PendingComment
+	preparedComments          chan PreparedComment
 	ghCommenter               *commenter.GitHubCommenter
 	dryRunOnly                bool
 }
@@ -112,8 +111,9 @@ type AnalysisWorker struct {
 	dbc                 *db.DB
 	gcsBucket           *storage.BucketHandle
 	riskAnalysisLocator *regexp.Regexp
-	pendingAnalysis     chan models.PullRequestComment
-	pendingComments     chan PendingComment
+	prCommentProspects  chan models.PullRequestComment
+	preparedComments    chan PreparedComment
+	newTestsWorker      *NewTestsWorker
 }
 
 type RiskAnalysisSummary struct {
@@ -121,18 +121,13 @@ type RiskAnalysisSummary struct {
 	URL              string
 	RiskLevel        api.RiskLevel
 	OverallReasons   []string
-	TestRiskAnalysis []api.ProwJobRunTestRiskAnalysis
+	TestRiskAnalysis []api.TestRiskAnalysis
 }
 
-type RiskAnalysisEntryList []RiskAnalysisEntry
-
-func (r RiskAnalysisEntryList) Len() int      { return len(r) }
-func (r RiskAnalysisEntryList) Swap(i, j int) { r[i], r[j] = r[j], r[i] }
-func (r RiskAnalysisEntryList) Less(i, j int) bool {
-	if r[i].Value.RiskLevel.Level == r[j].Value.RiskLevel.Level {
-		return r[i].Value.Name > r[j].Value.Name
-	}
-	return r[i].Value.RiskLevel.Level > r[j].Value.RiskLevel.Level
+func SortByJobNameRA(ras []RiskAnalysisSummary) {
+	slices.SortFunc(ras, func(a, b RiskAnalysisSummary) int {
+		return strings.Compare(a.Name, b.Name)
+	})
 }
 
 func (wp *WorkProcessor) Run(ctx context.Context) {
@@ -140,12 +135,12 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 	// create a channel with a max buffer of 5 for github updates
 	// single thread will pull updates from that channel and process them
 	// one at a time as the rate limiter allows
-	pendingComments := make(chan PendingComment, 5)
-	defer close(pendingComments)
+	preparedComments := make(chan PreparedComment, 5)
+	defer close(preparedComments)
 
 	commentWorker := CommentWorker{
 		commentUpdaterRateLimiter: util.NewRateLimiter(wp.commentUpdaterRate),
-		pendingComments:           pendingComments,
+		preparedComments:          preparedComments,
 		ghCommenter:               wp.ghCommenter,
 
 		// want an explicit setting to enable commenting
@@ -159,16 +154,23 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 	}
 	go commentWorker.Run()
 
-	// the work thread below will put items on pendingWork
+	// the work thread below will put items on prospects channel,
+	// blocking if the buffer is full.
+	// commentAnalysisWorker threads will pull jobs and process them,
+	// putting any comments on the preparedComments channel,
 	// blocking if the buffer is full
-	// commentAnalysisWorker threads will pull jobs and process them
-	// putting any comments on the pendingComments channel
-	// blocking if the buffer is full
-	pendingWork := make(chan models.PullRequestComment, wp.commentAnalysisWorkers)
-	defer close(pendingWork)
+	prospects := make(chan models.PullRequestComment, wp.commentAnalysisWorkers)
+	defer close(prospects)
 
 	for i := 0; i < wp.commentAnalysisWorkers; i++ {
-		analysisWorker := AnalysisWorker{riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(), dbc: wp.dbc, gcsBucket: wp.gcsBucket, pendingAnalysis: pendingWork, pendingComments: pendingComments}
+		analysisWorker := AnalysisWorker{
+			riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(),
+			dbc:                 wp.dbc,
+			gcsBucket:           wp.gcsBucket,
+			prCommentProspects:  prospects,
+			preparedComments:    preparedComments,
+			newTestsWorker:      wp.newTestsWorker,
+		}
 		go analysisWorker.Run()
 	}
 
@@ -191,8 +193,8 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 			// we handle that but if we are backed up then wait
 
 			// if we have pending items still then skip the next work cycle
-			if len(pendingWork) == 0 && len(pendingComments) == 0 {
-				err := wp.work(ctx, pendingWork)
+			if len(prospects) == 0 && len(preparedComments) == 0 {
+				err := wp.work(ctx, prospects)
 
 				// we only expect an error when we are in a terminal state like context is done
 				if err != nil {
@@ -209,29 +211,29 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 
 }
 
-func (wp *WorkProcessor) work(ctx context.Context, pendingWork chan models.PullRequestComment) error {
+func (wp *WorkProcessor) work(ctx context.Context, prospects chan models.PullRequestComment) error {
 
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		buildPendingWork.WithLabelValues("work-processor").Observe(float64(end.UnixMilli() - start.UnixMilli()))
+		buildPendingWorkMetric.WithLabelValues("work-processor").Observe(float64(end.UnixMilli() - start.UnixMilli()))
 	}()
 
 	log.Debug("Checking for work")
 
-	// get a list of items
+	// get a list of commentProspects
 	// process each item one at a time while checking for shutdown
 
-	items, err := wp.fetchItems()
+	commentProspects, err := wp.fetchPrCommentProspects()
 
 	if err != nil {
-		log.WithError(err).Error("Failed to query pending comments")
+		log.WithError(err).Error("Failed to query PR comments")
 
 		// we want to keep our processor loop active so don't pass the error back up
 		return nil
 	}
 
-	for _, i := range items {
+	for _, cp := range commentProspects {
 
 		select {
 
@@ -241,9 +243,9 @@ func (wp *WorkProcessor) work(ctx context.Context, pendingWork chan models.PullR
 			return errors.New("context closed")
 
 		default:
-			log.Debugf("Adding item to pending work: %s/%s/%d/%s", i.Org, i.Repo, i.PullNumber, i.SHA)
-			pendingWork <- i
-			log.Debugf("Item added to pending work: %s/%s/%d/%s", i.Org, i.Repo, i.PullNumber, i.SHA)
+			log.Debugf("Adding PR comment prospect: %s/%s/%d/%s", cp.Org, cp.Repo, cp.PullNumber, cp.SHA)
+			prospects <- cp
+			log.Debugf("Finished adding PR comment prospect: %s/%s/%d/%s", cp.Org, cp.Repo, cp.PullNumber, cp.SHA)
 		}
 	}
 
@@ -251,15 +253,15 @@ func (wp *WorkProcessor) work(ctx context.Context, pendingWork chan models.PullR
 	return nil
 }
 
-func (wp *WorkProcessor) fetchItems() ([]models.PullRequestComment, error) {
-	return wp.ghCommenter.QueryPendingComments(models.CommentTypeRiskAnalysis)
+func (wp *WorkProcessor) fetchPrCommentProspects() ([]models.PullRequestComment, error) {
+	return wp.ghCommenter.QueryForPotentialComments(models.CommentTypeRiskAnalysis)
 }
 
 func (cw *CommentWorker) Run() {
 	defer cw.commentUpdaterRateLimiter.Close()
 
 	var errCount float64
-	for pc := range cw.pendingComments {
+	for pc := range cw.preparedComments {
 
 		cw.commentUpdaterRateLimiter.Tick()
 
@@ -305,16 +307,16 @@ func (cw *CommentWorker) Run() {
 	}
 }
 
-func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pendingComment PendingComment) error {
+func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, preparedComment PreparedComment) error {
 
 	start := time.Now()
 	defer func() {
 		end := time.Now()
-		writeCommentMetric.WithLabelValues(pendingComment.org, pendingComment.repo).Observe(float64(end.UnixMilli() - start.UnixMilli()))
+		writeCommentMetric.WithLabelValues(preparedComment.org, preparedComment.repo).Observe(float64(end.UnixMilli() - start.UnixMilli()))
 	}()
 
 	// if there is no comment then just delete the record
-	if pendingComment.comment == "" {
+	if preparedComment.comment == "" {
 		return nil
 	}
 
@@ -322,16 +324,16 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 	// after the pending record was written
 	// double check before we interact with github
 	// the record should still get deleted
-	if !ghCommenter.IsRepoIncluded(pendingComment.org, pendingComment.repo) {
+	if !ghCommenter.IsRepoIncluded(preparedComment.org, preparedComment.repo) {
 		return nil
 	}
 
-	logger := log.WithField("org", pendingComment.org).
-		WithField("repo", pendingComment.repo).
-		WithField("number", pendingComment.number)
+	logger := log.WithField("org", preparedComment.org).
+		WithField("repo", preparedComment.repo).
+		WithField("number", preparedComment.number)
 
 	// are we still the latest sha?
-	prEntry, err := ghCommenter.GetCurrentState(pendingComment.org, pendingComment.repo, pendingComment.number)
+	prEntry, err := ghCommenter.GetCurrentState(preparedComment.org, preparedComment.repo, preparedComment.number)
 
 	if err != nil {
 		logger.WithError(err).Error("Failed to get the current PR state")
@@ -343,12 +345,12 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 		return nil
 	}
 
-	if pendingComment.commentType == int(models.CommentTypeRiskAnalysis) && prEntry.MergedAt != nil {
+	if preparedComment.commentType == int(models.CommentTypeRiskAnalysis) && prEntry.MergedAt != nil {
 		logger.Warning("PR has merged, skipping risk analysis comment")
 		return nil
 	}
 
-	if prEntry.SHA != pendingComment.sha {
+	if prEntry.SHA != preparedComment.sha {
 
 		// we leave comments for previous shas in place
 		// but, we don't want to add a comment for an older sha
@@ -373,20 +375,20 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 	// determine the commentType and build the id off of that and the sha
 	// generate the comment
 
-	commentID := ghCommenter.CreateCommentID(models.CommentType(pendingComment.commentType), pendingComment.sha)
+	commentID := ghCommenter.CreateCommentID(models.CommentType(preparedComment.commentType), preparedComment.sha)
 
 	// when running in dryRunOnly mode we do everything up until adding or deleting anything in GitHub
 	// this allows for local testing / debugging without actually modifying PRs
 	// it is the default setting and needs to be overridden in production / live commenting instances
 	if cw.dryRunOnly {
-		logger.Infof("Dry run comment for: %s\n%s", commentID, pendingComment.comment)
+		logger.Infof("Dry run comment for: %s\n%s", commentID, preparedComment.comment)
 		return nil
 	}
 
-	ghcomment := fmt.Sprintf("<!-- META={\"%s\": \"%s\"} -->\n\n%s", commenter.TrtCommentIDKey, commentID, pendingComment.comment)
+	ghcomment := fmt.Sprintf("<!-- META={\"%s\": \"%s\"} -->\n\n%s", commenter.TrtCommentIDKey, commentID, preparedComment.comment)
 
 	// is there an existing comment of our type that we should remove
-	existingCommentID, commentBody, err := ghCommenter.FindExistingCommentID(pendingComment.org, pendingComment.repo, pendingComment.number, commenter.TrtCommentIDKey, commentID)
+	existingCommentID, commentBody, err := ghCommenter.FindExistingCommentID(preparedComment.org, preparedComment.repo, preparedComment.number, commenter.TrtCommentIDKey, commentID)
 
 	// for now, we return any errors when interacting with gitHub so that we backoff our processing rate
 	// to do, select which ones indicate a need to backoff
@@ -402,7 +404,7 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 			return nil
 		}
 		// we delete the existing comment and add a new one so the comment will be at the end of the comment list
-		err = ghCommenter.DeleteComment(pendingComment.org, pendingComment.repo, *existingCommentID)
+		err = ghCommenter.DeleteComment(preparedComment.org, preparedComment.repo, *existingCommentID)
 		// if we had an error then return it, the record will remain, and we will attempt processing again later
 		if err != nil {
 			return err
@@ -410,17 +412,17 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pe
 	}
 
 	logger.Infof("Adding comment id: %s", commentID)
-	return ghCommenter.AddComment(pendingComment.org, pendingComment.repo, pendingComment.number, ghcomment)
+	return ghCommenter.AddComment(preparedComment.org, preparedComment.repo, preparedComment.number, ghcomment)
 }
 
 func (aw *AnalysisWorker) Run() {
 
 	// wait for the next item to be available and process it
 	// exit when closed
-	for i := range aw.pendingAnalysis {
+	for i := range aw.prCommentProspects {
 
 		if i.CommentType == int(models.CommentTypeRiskAnalysis) {
-			aw.processRiskAnalysisComment(i)
+			aw.determinePrComment(i)
 		} else {
 			log.Warningf("Unsupported comment type: %d for %s/%s/%d/%s", i.CommentType, i.Org, i.Repo, i.PullNumber, i.SHA)
 		}
@@ -428,12 +430,14 @@ func (aw *AnalysisWorker) Run() {
 	}
 }
 
-func (aw *AnalysisWorker) processRiskAnalysisComment(prPendingComment models.PullRequestComment) {
+// determinePrComment evaluates the potential for a PR comment and produces that comment if appropriate
+func (aw *AnalysisWorker) determinePrComment(prCommentProspect models.PullRequestComment) {
 
-	logger := log.WithField("org", prPendingComment.Org).
-		WithField("repo", prPendingComment.Repo).
-		WithField("Number", prPendingComment.PullNumber).
-		WithField("sha", prPendingComment.SHA)
+	logger := log.WithField("func", "determinePrComment").
+		WithField("org", prCommentProspect.Org).
+		WithField("repo", prCommentProspect.Repo).
+		WithField("pull", prCommentProspect.PullNumber).
+		WithField("sha", prCommentProspect.SHA)
 
 	start := time.Now()
 	logger.Debug("Processing item")
@@ -441,101 +445,133 @@ func (aw *AnalysisWorker) processRiskAnalysisComment(prPendingComment models.Pul
 	// we will likely pull in PRs hours before the jobs finish,
 	// so there may be many cycles before a PR is ready for commenting.
 	// check to see if all jobs have completed before doing the more intensive query / gcs locate for analysis.
-	allCompleted, _ := aw.buildPRJobRiskAnalysis(logger, prPendingComment.ProwJobRoot, true)
-	if !allCompleted {
+	completedJobs := aw.getPrJobsIfFinished(logger, prCommentProspect.ProwJobRoot)
+	if completedJobs == nil {
 		logger.Debug("Jobs are still active")
 
+		// record how long it took to decide the jobs are still active
 		t := float64(time.Now().UnixMilli() - start.UnixMilli())
-		checkCommentReady.WithLabelValues(prPendingComment.Org, prPendingComment.Repo).Observe(t)
+		checkCommentReadyMetric.WithLabelValues(prCommentProspect.Org, prCommentProspect.Repo).Observe(t)
 		return
 	}
 
 	defer func() {
+		// record how long it took to determine what the comment should be
 		t := float64(time.Now().UnixMilli() - start.UnixMilli())
-		buildCommentMetric.WithLabelValues(prPendingComment.Org, prPendingComment.Repo).Observe(t)
+		buildCommentMetric.WithLabelValues(prCommentProspect.Org, prCommentProspect.Repo).Observe(t)
 	}()
 
-	// do the full pass if all are finished (will still re-validate that all are completed - could have retries)
-	allCompleted, analysis := aw.buildPRJobRiskAnalysis(logger, prPendingComment.ProwJobRoot, false)
-	if !allCompleted {
-		logger.Debug("Jobs are still active")
-		return
-	}
-	if analysis == nil {
-		logger.Errorf("Invalid Risk Analysis result")
-		return
+	// having determined the PR is ready, scan all the runs for each job so we can find the latest
+	for idx, jobInfo := range completedJobs {
+		completedJobs[idx].prowJobRuns = aw.buildProwJobRuns(logger, jobInfo.bucketPrefix)
+		completedJobs[idx].prShaSum = prCommentProspect.SHA // so we can check whether runs are against the expected PR commit
 	}
 
-	// when the comment processor sees an empty comment it will
-	// not create a comment but will delete the comment record
-	comment := ""
-	if len(analysis) > 0 {
-
-		sortedAnalysis := make(RiskAnalysisEntryList, 0)
-		for k, v := range analysis {
-			sortedAnalysis = append(sortedAnalysis, RiskAnalysisEntry{k, v})
-		}
-		sort.Sort(sortedAnalysis)
-
-		comment = buildComment(sortedAnalysis, prPendingComment.SHA)
+	riskAnalyses := aw.buildPRJobRiskAnalysis(logger, completedJobs)
+	newTestRisks := aw.newTestsWorker.analyzeRisks(logger, completedJobs)
+	preparedComment := PreparedComment{
+		comment:     buildCommentText(riskAnalyses, newTestRisks, prCommentProspect.SHA),
+		sha:         prCommentProspect.SHA,
+		org:         prCommentProspect.Org,
+		repo:        prCommentProspect.Repo,
+		number:      prCommentProspect.PullNumber,
+		commentType: prCommentProspect.CommentType,
 	}
 
-	pendingComment := PendingComment{
-		comment:     comment,
-		sha:         prPendingComment.SHA,
-		org:         prPendingComment.Org,
-		repo:        prPendingComment.Repo,
-		number:      prPendingComment.PullNumber,
-		commentType: prPendingComment.CommentType,
-	}
-
-	// will block if the buffer is full
-	log.Debugf("Adding comment to pendingComments: %s/%s/%s", pendingComment.org, pendingComment.repo, pendingComment.sha)
-	aw.pendingComments <- pendingComment
-	log.Debugf("Comment added to pendingComments: %s/%s/%s", pendingComment.org, pendingComment.repo, pendingComment.sha)
+	// will block if the buffer is full.
+	// also if the comment processor sees an empty comment,
+	// it will not create a comment but will delete the PR comment record in the db
+	log.Debugf("Adding comment to preparedComments: %s/%s/%s", preparedComment.org, preparedComment.repo, preparedComment.sha)
+	aw.preparedComments <- preparedComment
+	log.Debugf("Comment added to preparedComments: %s/%s/%s", preparedComment.org, preparedComment.repo, preparedComment.sha)
 }
 
-func buildComment(sortedAnalysis RiskAnalysisEntryList, sha string) string {
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("Job Failure Risk Analysis for sha: %s\n\n| Job Name | Failure Risk |\n|:---|:---|\n", sha))
+func buildCommentText(riskAnalyses []RiskAnalysisSummary, newTestRisks []*JobNewTestRisks, sha string) string {
+	sb := &strings.Builder{}
+	if len(riskAnalyses) == 0 && len(newTestRisks) == 0 {
+		return ""
+	}
+	if len(riskAnalyses) > 0 {
+		buildRiskAnalysisComment(sb, riskAnalyses, sha)
+		sb.WriteString("\n\n")
+	}
+	if len(newTestRisks) > 0 {
+		buildNewTestRisksComment(sb, newTestRisks, sha)
+	}
+
+	return sb.String()
+}
+
+func buildNewTestRisksComment(sb *strings.Builder, jobRisks []*JobNewTestRisks, sha string) {
+	notableJobRisks, testSummaries := summarizeNewTestRisks(jobRisks)
+	if len(notableJobRisks) > 0 || len(testSummaries) > 0 {
+		sb.WriteString("Risk analysis has seen new tests most likely introduced by this PR.\n")
+		sb.WriteString("Please ensure that new tests meet [guidelines for naming and stability](https://github.com/openshift-eng/ci-test-mapping/?tab=readme-ov-file#test-sources).\n\n")
+	}
+
+	if len(notableJobRisks) > 0 {
+		SortByJobNameNT(notableJobRisks)
+		sb.WriteString(fmt.Sprintf("New Test Risks for sha: %s\n\n", sha))
+		sb.WriteString("| Job Name | New Test Risk |\n|:---|:---|\n")
+		for _, jr := range notableJobRisks {
+			for _, risk := range sortedTestRisks(jr.NewTestRisks) {
+				sb.WriteString(fmt.Sprintf("|%s|**%s** - *%q* **%s**|\n",
+					jr.JobName, risk.Level.Name, risk.TestName, risk.Reason))
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(testSummaries) > 0 {
+		sb.WriteString(fmt.Sprintf("New tests seen in this PR at sha: %s\n\n", sha))
+		for _, test := range testSummaries {
+			sb.WriteString(fmt.Sprintf("- *%q* [Total: %d, Pass: %d, Fail: %d, Flake: %d]\n",
+				test.TestName, test.Runs, test.Runs-test.Failures, test.Failures, test.Flakes))
+		}
+		sb.WriteString("\n")
+	}
+}
+
+func buildRiskAnalysisComment(sb *strings.Builder, riskAnalyses []RiskAnalysisSummary, sha string) {
+	SortByJobNameRA(riskAnalyses)
+	sb.WriteString(fmt.Sprintf("Job Failure Risk Analysis for sha: %s\n\n", sha))
+	sb.WriteString("| Job Name | Failure Risk |\n|:---|:---|\n")
 
 	// don't want the comment to be too large so if we have a high number of jobs to analyze
 	// reduce the max tests / reasons we show
 	maxSubRows := 3
-	if len(sortedAnalysis) > 10 {
+	if len(riskAnalyses) > 10 {
 		maxSubRows = 1
 	}
 
-	for a, value := range sortedAnalysis {
-		tableKey := value.Key
-
-		// top 20 should be more than enough
-		if a > 19 {
-			sb.WriteString(fmt.Sprintf("\nShowing %d of %d jobs analysis", a, len(sortedAnalysis)))
-			break
+	for idx, analysis := range riskAnalyses {
+		if idx > 19 {
+			sb.WriteString(fmt.Sprintf("\nShowing %d of %d jobs analysis", idx, len(riskAnalyses)))
+			break // top 20 should be more than enough
 		}
 
-		if value.Value.URL != "" {
-			tableKey = fmt.Sprintf("[%s](%s)", value.Key, value.Value.URL)
+		tableKey := analysis.Name
+		if analysis.URL != "" {
+			tableKey = fmt.Sprintf("[%s](%s)", analysis.Name, analysis.URL)
 		}
 
 		var riskSb strings.Builder
-		riskSb.WriteString(fmt.Sprintf("**%s**", value.Value.RiskLevel.Name))
+		riskSb.WriteString(fmt.Sprintf("**%s**", analysis.RiskLevel.Name))
 
 		// if we don't have any TestRiskAnalysis use the OverallReasons
-		if len(value.Value.TestRiskAnalysis) == 0 {
-			for j, r := range value.Value.OverallReasons {
+		if len(analysis.TestRiskAnalysis) == 0 {
+			for j, r := range analysis.OverallReasons {
 				if j > maxSubRows {
-					riskSb.WriteString(fmt.Sprintf("<br>Showing %d of %d test risk reasons", j, len(value.Value.OverallReasons)))
+					riskSb.WriteString(fmt.Sprintf("<br>Showing %d of %d test risk reasons", j, len(analysis.OverallReasons)))
 					break
 				}
 				riskSb.WriteString(fmt.Sprintf("<br>%s", r))
 			}
 		} else {
 
-			for i, t := range value.Value.TestRiskAnalysis {
+			for i, t := range analysis.TestRiskAnalysis {
 				if i > maxSubRows {
-					riskSb.WriteString(fmt.Sprintf("<br>---<br>Showing %d of %d test results", i, len(value.Value.TestRiskAnalysis)))
+					riskSb.WriteString(fmt.Sprintf("<br>---<br>Showing %d of %d test results", i, len(analysis.TestRiskAnalysis)))
 					break
 				}
 				if i > 0 {
@@ -567,17 +603,25 @@ func buildComment(sortedAnalysis RiskAnalysisEntryList, sha string) string {
 			}
 		}
 		sb.WriteString(fmt.Sprintf("|%s|%s|\n", tableKey, riskSb.String()))
-
 	}
-
-	return sb.String()
 }
 
-// buildPRJobRiskAnalysis walks the GCS path for this PR to find the most recent job runs;
-// returns false if any have not finished.
-// otherwise, returns a map of test names to each test's overall RiskAnalysis.
+// prJobInfo is an internal record built to represent a job running at least once against a commit on a PR
+type prJobInfo struct {
+	name          string
+	jobID         string          // sippy ID of the job itself
+	prShaSum      string          // sha of the PR at the time it was loaded
+	bucketPrefix  string          // where the job is found in the GCS bucket
+	latestRunID   string          // sippy ID of the latest run
+	latestRunPath string          // path to the latest run in the GCS bucket
+	prowJobRuns   []*prow.ProwJob // sorted list of ProwJobs (runs for this job)
+}
+
+// getPrJobsIfFinished walks the GCS path for this PR to find the most recent run of each PR job;
+// returns nil if any have not finished. otherwise, returns a list of jobs found.
 // if the map is empty, it indicates that either all tests passed or any analysis for failures was unknown.
-func (aw *AnalysisWorker) buildPRJobRiskAnalysis(logger *log.Entry, prRoot string, dryrun bool) (bool, map[string]RiskAnalysisSummary) {
+func (aw *AnalysisWorker) getPrJobsIfFinished(logger *log.Entry, prRoot string) (jobs []prJobInfo) {
+	logger = logger.WithField("prRoot", prRoot).WithField("func", "getPrJobsIfFinished")
 
 	// get the list of objects one level down from our root. the hierarchy looks like pr-logs/pull/org_repo/number/
 	it := aw.gcsBucket.Objects(context.Background(), &storage.Query{
@@ -585,16 +629,15 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(logger *log.Entry, prRoot strin
 		Delimiter: "/",
 	})
 
-	analysisByJobs := make(map[string]RiskAnalysisSummary)
-	jobRun := gcs.NewGCSJobRun(aw.gcsBucket, "")
+	gcsJobRun := gcs.NewGCSJobRun(aw.gcsBucket, "") // dummy instance for looking up bucket content
 
 	for {
 		attrs, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
-			logger.WithError(err).Warningf("gcs bucket iterator returned error")
+			logger.WithError(err).Warningf("gcs bucket iterator failed looking for PR jobs")
 			continue
 		}
 		if attrs == nil || len(attrs.Name) > 0 {
@@ -608,15 +651,17 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(logger *log.Entry, prRoot strin
 							    .  finished.json
 							    .  build-log.txt
 		*/
-		// record last segment as name; final split is "" so get penultimate
 		jobPath := strings.Split(attrs.Prefix, "/")
-		jobName := jobPath[len(jobPath)-2]
+		job := prJobInfo{
+			bucketPrefix: attrs.Prefix,
+			name:         jobPath[len(jobPath)-2], // record last segment as name; final split is "" so get penultimate
+		}
 
 		// we have to get the job run id from latest-build.txt and then check for finished.json in that path
-		bytes, err := jobRun.GetContent(context.TODO(), fmt.Sprintf("%s%s", attrs.Prefix, "latest-build.txt"))
+		bytes, err := gcsJobRun.GetContent(context.TODO(), fmt.Sprintf("%s%s", job.bucketPrefix, "latest-build.txt"))
 		if err != nil {
-			logger.WithError(err).Errorf("Failed to get latest build info for: %s", attrs.Prefix)
-			return false, nil // latest job result not recorded, consider testing incomplete for the PR
+			logger.WithError(err).Errorf("Failed to get latest build info for: %s", job.bucketPrefix)
+			return nil // latest job result not recorded, so consider testing incomplete for the PR
 		}
 
 		latest := string(bytes)
@@ -624,175 +669,139 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(logger *log.Entry, prRoot strin
 		finishedJSON := fmt.Sprintf("%sfinished.json", latestPath)
 
 		// currently we only validate that the file exists, we aren't pulling anything out of it
-		if !jobRun.ContentExists(context.TODO(), finishedJSON) {
-			return false, nil // testing not yet complete for the PR
+		if !gcsJobRun.ContentExists(context.TODO(), finishedJSON) {
+			return nil // testing not yet complete for the PR
 		}
 
-		if dryrun {
-			// we only want to evaluate if job run finished or not
-			continue
-		}
+		jobs = append(jobs, job) // officially a finished job if the latest run has finished
+	}
+	return
+}
 
-		// we don't only want the latest run, we want to scan all the runs
-		// so we can find the most recent run prior to latest.
-		// we build the risk analysis for latest but only include failed tests that
-		// also occurred in latest-1.
-		prowJobMap, mostRecentStartTime := aw.buildProwJobMap(logger.WithField("job", jobName), attrs.Prefix)
-
+// buildPRJobRiskAnalysis walks the runs for a PR job to sort out which to analyze;
+// if the map is empty, it indicates that either all tests passed or any analysis for failures was unknown.
+func (aw *AnalysisWorker) buildPRJobRiskAnalysis(logger *log.Entry, jobs []prJobInfo) []RiskAnalysisSummary {
+	logger = logger.WithField("func", "buildPRJobRiskAnalysis")
+	riskAnalysisSummaries := make([]RiskAnalysisSummary, 0)
+	for _, jobInfo := range jobs {
 		// we don't report risk on jobs without 2 or more runs.
 		// this is so we can compare failed tests against latest and latest-1,
-		// only returning analysis on tests that have failed in both
-		if len(prowJobMap) < 2 {
+		// only returning analysis on tests that have failed in both.
+		if len(jobInfo.prowJobRuns) < 2 {
 			continue
 		}
 
-		var latestProwJob, priorProwJob *prow.ProwJob
-		var priorTime time.Time
-		var prowLink string
+		latest := jobInfo.prowJobRuns[0]
+		previous := jobInfo.prowJobRuns[1]
 
-		for timestamp, job := range prowJobMap {
-			pjCopy := job // don't reference a changing loop var, reference an ephemeral copy
-
-			// if we have the latestProwJob mark it
-			if job.Status.BuildID == latest {
-				latestProwJob = &pjCopy
-				prowLink = latestProwJob.Status.URL
-			} else {
-				if latestProwJob != nil {
-					if latestProwJob.Status.CompletionTime.Before(timestamp) {
-						// shouldn't be the case
-						continue
-					}
-				}
-				if priorTime.Before(timestamp) {
-					priorTime = timestamp
-					priorProwJob = &pjCopy
-				}
-			}
-		}
-
-		// we didn't find the latest so log a warning and continue on
-		if latestProwJob == nil {
-			logger.Warnf("Failed to find latest prowjob for: %s", latestPath)
+		if latest.Spec.Refs.Pulls[0].SHA != jobInfo.prShaSum {
+			logger.Infof(
+				"Skipping risk analysis for job %s as latest completed run %s is not against the PR's shasum %s",
+				jobInfo.name, latest.Status.BuildID, jobInfo.prShaSum)
 			continue
 		}
 
-		// at times it appears that we add a comment that reflects the prior job
-		// and then update again shortly after
-		if latestProwJob.Status.StartTime.Before(mostRecentStartTime) {
-			logger.Warnf("Latest prowjob start time: %s is before mostRecentStartTime: %s", latestProwJob.Status.StartTime.Format(time.RFC3339), mostRecentStartTime.Format(time.RFC3339))
-			continue
-		}
+		_, priorRiskAnalysis := aw.getRiskSummary(
+			previous.Status.BuildID,
+			fmt.Sprintf("%s%s/", jobInfo.bucketPrefix, previous.Status.BuildID),
+			nil,
+		)
 
-		// job count is > 1, but we didn't find a valid prior job
-		// Completion time is validated in buildProwJobMap
-		if priorProwJob == nil || latestProwJob.Status.CompletionTime.Before(*priorProwJob.Status.CompletionTime) {
-			logger.Warnf("Invalid prior prowjob for: %s", latestPath)
-			continue
-		}
-
-		priorRunID := priorProwJob.Status.BuildID
-		// lastly sanity check that our priorRun && latest are not the same
-		if latest == priorRunID {
-			logger.Warnf("Prior prowjob: %s and latest: %s are the same", priorRunID, latest)
-			continue
-		}
-
-		_, priorRiskAnalysis := aw.getRiskSummary(priorRunID, fmt.Sprintf("%s%s/", attrs.Prefix, priorRunID), nil)
-
-		// if the priorRiskAnalysis is nil then skip since we require consecutive test failures
-		// this can happen if the job hasn't been imported yet
-		// and the prior risk analysis artifact failed to be created in gcs
+		// if the priorRiskAnalysis is nil then skip since we require consecutive test failures;
+		// this can happen if the job hasn't been imported yet and its risk analysis artifact failed to be created in gcs.
 		if priorRiskAnalysis == nil {
-			logger.Warnf("Failed to determine prior risk analysis for prowjob: %s", priorRunID)
+			logger.Warnf("Failed to determine prior risk analysis for prowjob: %s", previous.Status.BuildID)
 			continue
 		}
 
-		riskSummary, _ := aw.getRiskSummary(latest, latestPath, priorRiskAnalysis)
+		riskSummary, _ := aw.getRiskSummary(
+			latest.Status.BuildID,
+			fmt.Sprintf("%s%s/", jobInfo.bucketPrefix, latest.Status.BuildID),
+			priorRiskAnalysis,
+		)
 
-		// don't include none or unknown in our report
+		// report any risk worth mentioning for this job
 		if riskSummary.OverallRisk.Level != api.FailureRiskLevelNone && riskSummary.OverallRisk.Level != api.FailureRiskLevelUnknown {
-			riskAnalysisSummary := RiskAnalysisSummary{Name: jobName, URL: prowLink, RiskLevel: riskSummary.OverallRisk.Level, OverallReasons: riskSummary.OverallRisk.Reasons, TestRiskAnalysis: riskSummary.Tests}
-			analysisByJobs[jobName] = riskAnalysisSummary
+			riskAnalysisSummaries = append(riskAnalysisSummaries, RiskAnalysisSummary{
+				Name:             jobInfo.name,
+				URL:              latest.Status.URL,
+				RiskLevel:        riskSummary.OverallRisk.Level,
+				OverallReasons:   riskSummary.OverallRisk.Reasons,
+				TestRiskAnalysis: riskSummary.Tests,
+			})
 		}
 	}
 
-	// if we get here it means all the latest jobRuns have finished
-	return true, analysisByJobs
+	return riskAnalysisSummaries
 }
 
-// buildProwJobMap Walks the GCS path for this job to find the completed job runs
-// returning a map keyed by the completion time to the job and the most recent job start time
-// if no jobs are completed it will return an empty map
-func (aw *AnalysisWorker) buildProwJobMap(logger *log.Entry, prJobRoot string) (map[time.Time]prow.ProwJob, time.Time) {
+// buildProwJobRuns Walks the GCS path for this job to find its job runs,
+// returning a list of completed runs sorted by decreasing completion time
+func (aw *AnalysisWorker) buildProwJobRuns(logger *log.Entry, prJobRoot string) []*prow.ProwJob {
+	logger = logger.WithField("func", "buildProwJobRuns").WithField("jobRoot", prJobRoot)
 	// get the list of objects one level down from our root
 	it := aw.gcsBucket.Objects(context.Background(), &storage.Query{
 		Prefix:    prJobRoot,
 		Delimiter: "/",
 	})
 
-	buildIDSet := sets.String{}
-	jobsByTime := make(map[time.Time]prow.ProwJob)
-	jobRun := gcs.NewGCSJobRun(aw.gcsBucket, "")
-	mostRecentStartTime := time.Time{}
+	jobRuns := make([]*prow.ProwJob, 0)
+	lookup := gcs.NewGCSJobRun(aw.gcsBucket, "") // dummy instance to look up bucket content
 
 	for {
 		attrs, err := it.Next()
 		if errors.Is(err, iterator.Done) {
-			break
+			break // no more paths to look at
 		}
-
-		// want empty Name indicating a folder
 		if len(attrs.Name) > 0 {
-			continue
+			continue // look for empty Name which indicates a folder which should be a job run
 		}
 
-		bytes, err := jobRun.GetContent(context.TODO(), fmt.Sprintf("%s%s", attrs.Prefix, "prowjob.json"))
-		if err != nil {
+		// load the prowjob recorded in this run
+		var pj prow.ProwJob
+		if bytes, err := lookup.GetContent(context.TODO(), fmt.Sprintf("%s%s", attrs.Prefix, "prowjob.json")); err != nil {
 			logger.WithError(err).Errorf("Failed to get prowjob for: %s", attrs.Prefix)
 			continue
-		}
-
-		var pj prow.ProwJob
-		if err := json.Unmarshal(bytes, &pj); err != nil {
+		} else if err := json.Unmarshal(bytes, &pj); err != nil {
 			logger.WithError(err).Errorf("Failed to unmarshall prowjob for: %s", attrs.Prefix)
 			continue
 		}
 
-		// CompletionTime can be nil
-		// validate it isn't prior to adding
-		if pj.Status.CompletionTime != nil {
-
-			// not sure if we sometimes get duplicate jobs with different completion times
-			// but adding defensive check in case
-			if buildIDSet.Has(pj.Status.BuildID) {
-				logger.Warnf("BuildID: %s has been processed already", pj.Status.BuildID)
-				continue
-			}
-
-			jobsByTime[*pj.Status.CompletionTime] = pj
-			buildIDSet.Insert(pj.Status.BuildID)
+		// validate that this job is valid for our purposes. we checked that the job had a complete latest run,
+		// but the jobs before that could be in invalid states, and prow could have started a new run in the meantime,
+		// so guard against some of these edge cases.
+		if pj.Status.CompletionTime == nil {
+			logger.Debugf("ignoring prowjob %s with no completion time", pj.Status.BuildID)
+			continue
+		} else if pj.Status.State != prow.SuccessState && pj.Status.State != prow.FailureState {
+			logger.Debugf("ignoring prowjob %s in state %s", pj.Status.BuildID, pj.Status.State)
+			continue // filter out jobs that were aborted, failed to launch, just started, etc
+		} else if !strings.HasSuffix(attrs.Prefix, pj.Status.BuildID+"/") {
+			logger.Warnf("saw prowjob in folder %s with mismatched BuildId %s", attrs.Prefix, pj.Status.BuildID)
+			continue // the build id should match the folder name, else WTF?
 		}
 
-		if pj.Status.StartTime.After(mostRecentStartTime) {
-			mostRecentStartTime = pj.Status.StartTime
-		}
+		jobRuns = append(jobRuns, &pj)
 	}
 
-	return jobsByTime, mostRecentStartTime
+	slices.SortFunc(jobRuns, func(a, b *prow.ProwJob) int {
+		return b.Status.CompletionTime.Compare(*a.Status.CompletionTime)
+	})
+	return jobRuns
 }
 
 func (aw *AnalysisWorker) getRiskSummary(jobRunID, jobRunIDPath string, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) (api.RiskSummary, *api.ProwJobRunRiskAnalysis) {
-	logger := log.WithField("jobRunIDPath", jobRunIDPath).WithField("func", "getRiskSummary")
+	logger := log.WithField("jobRunID", jobRunID).WithField("func", "getRiskSummary")
+	logger.Infof("Summarize risks for job run at %s", jobRunIDPath)
 
 	if jobRunIntID, err := strconv.ParseInt(jobRunID, 10, 64); err != nil {
 		log.WithError(err).Errorf("Failed to parse jobRunId id: %s for: %s", jobRunID, jobRunIDPath)
-	} else if jobRun, jobRunTestCount, err := jobQueries.FetchJobRun(aw.dbc, jobRunIntID, logger); err != nil {
+	} else if jobRun, err := jobQueries.FetchJobRun(aw.dbc, jobRunIntID, false, logger); err != nil {
 		// RecordNotFound can be expected if the jobRunId job isn't in sippy yet. log any other error
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.WithError(err).Errorf("Error fetching job run for: %s", jobRunIDPath)
 		}
-	} else if ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, jobRun, jobRunTestCount, logger); err != nil {
+	} else if ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, jobRun, logger); err != nil {
 		logger.WithError(err).Errorf("Error querying risk analysis for: %s", jobRunIDPath)
 	} else {
 		// query succeeded so use the riskAnalysis we got
@@ -835,7 +844,7 @@ func buildRiskSummary(riskAnalysis, priorRiskAnalysis *api.ProwJobRunRiskAnalysi
 	return riskSummary
 }
 
-func isTestFiltered(test api.ProwJobRunTestRiskAnalysis, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) bool {
+func isTestFiltered(test api.TestRiskAnalysis, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) bool {
 	// TODO: Observe how restrictive this is
 	// Many PRs don't appear to have multiple runs
 	// Those that do don't have the same failures (because the failures are flakes and not regressions?)

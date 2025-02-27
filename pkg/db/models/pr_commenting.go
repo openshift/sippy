@@ -10,6 +10,7 @@ const (
 	CommentTypeRiskAnalysis CommentType = 0
 )
 
+// PullRequestComment tracks the risk analysis comment lifecycle for a single PR
 type PullRequestComment struct {
 	CreatedAt             time.Time
 	UpdatedAt             time.Time
