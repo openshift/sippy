@@ -357,7 +357,7 @@ The search strategy is to look for instances of the test that ran against
 PRs that merged before the test under consideration began. If there are any,
 we can cache that test name as not new. If there are none, then consider this
 a new test.
-Records for PRs and pending PR comments are both created/updated at the same time,
+Records for PRs and potential PR comments are both created/updated at the same time,
 so this should be a reasonably robust strategy, though not infallible.
 */
 func (ntf *pgNewTestFilter) IsNewTest(logger *logrus.Entry, testRun models.ProwJobRunTest) (bool, error) {

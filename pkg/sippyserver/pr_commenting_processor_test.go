@@ -108,13 +108,13 @@ func TestAnalysisWorker(t *testing.T) {
 		riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(),
 		dbc:                 dbc,
 		gcsBucket:           gcsBucket,
-		pendingAnalysis:     pendingWork,
+		prCommentProspects:  pendingWork,
 		preparedComments:    preparedComments,
 		newTestsWorker:      ntw,
 	}
 
 	prPendingComment := models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 29512, SHA: "8849ed78d4c51e2add729a68a2cbf8551c6d60c9", ProwJobRoot: "pr-logs/pull/29512/"} // PR constructed for testing new-test analysis
-	analysisWorker.processPendingPrComment(prPendingComment)
+	analysisWorker.determinePrComment(prPendingComment)
 
 	pc := <-preparedComments
 	logrus.Infof("Pending comment: %+v", pc)
@@ -135,28 +135,28 @@ func TestRunCommentAnalysis(t *testing.T) {
 		riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(),
 		dbc:                 dbc,
 		gcsBucket:           getGcsBucket(t),
-		pendingAnalysis:     pendingWork,
+		prCommentProspects:  pendingWork,
 		preparedComments:    preparedComments,
 		newTestsWorker:      StandardNewTestsWorker(dbc),
 	}
 
 	tests := map[string]struct {
-		prPendingComment models.PullRequestComment
-		logLevel         logrus.Level
+		prCommentProspect models.PullRequestComment
+		logLevel          logrus.Level
 	}{
 		"28075": {
-			prPendingComment: models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 28075, SHA: "79d237196d93eb92ed58c66497d8718259264226", ProwJobRoot: "pr-logs/pull/28075/"},
-			logLevel:         logrus.DebugLevel,
+			prCommentProspect: models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 28075, SHA: "79d237196d93eb92ed58c66497d8718259264226", ProwJobRoot: "pr-logs/pull/28075/"},
+			logLevel:          logrus.DebugLevel,
 		},
 		"has RA comment already": {
-			prPendingComment: models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 29474, SHA: "58a8615189ebd164a1ce87ffe9b078965a9f4b14", ProwJobRoot: "pr-logs/pull/29474/"},
-			logLevel:         logrus.InfoLevel,
+			prCommentProspect: models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 29474, SHA: "58a8615189ebd164a1ce87ffe9b078965a9f4b14", ProwJobRoot: "pr-logs/pull/29474/"},
+			logLevel:          logrus.InfoLevel,
 		},
 	}
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			logrus.SetLevel(tc.logLevel)
-			analysisWorker.processPendingPrComment(tc.prPendingComment)
+			analysisWorker.determinePrComment(tc.prCommentProspect)
 
 			select {
 			case pc := <-preparedComments:

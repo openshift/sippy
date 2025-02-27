@@ -111,7 +111,7 @@ type AnalysisWorker struct {
 	dbc                 *db.DB
 	gcsBucket           *storage.BucketHandle
 	riskAnalysisLocator *regexp.Regexp
-	pendingAnalysis     chan models.PullRequestComment
+	prCommentProspects  chan models.PullRequestComment
 	preparedComments    chan PreparedComment
 	newTestsWorker      *NewTestsWorker
 }
@@ -154,20 +154,20 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 	}
 	go commentWorker.Run()
 
-	// the work thread below will put items on pendingWork
+	// the work thread below will put items on prospects channel,
+	// blocking if the buffer is full.
+	// commentAnalysisWorker threads will pull jobs and process them,
+	// putting any comments on the preparedComments channel,
 	// blocking if the buffer is full
-	// commentAnalysisWorker threads will pull jobs and process them
-	// putting any comments on the preparedComments channel
-	// blocking if the buffer is full
-	pendingWork := make(chan models.PullRequestComment, wp.commentAnalysisWorkers)
-	defer close(pendingWork)
+	prospects := make(chan models.PullRequestComment, wp.commentAnalysisWorkers)
+	defer close(prospects)
 
 	for i := 0; i < wp.commentAnalysisWorkers; i++ {
 		analysisWorker := AnalysisWorker{
 			riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(),
 			dbc:                 wp.dbc,
 			gcsBucket:           wp.gcsBucket,
-			pendingAnalysis:     pendingWork,
+			prCommentProspects:  prospects,
 			preparedComments:    preparedComments,
 			newTestsWorker:      wp.newTestsWorker,
 		}
@@ -193,8 +193,8 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 			// we handle that but if we are backed up then wait
 
 			// if we have pending items still then skip the next work cycle
-			if len(pendingWork) == 0 && len(preparedComments) == 0 {
-				err := wp.work(ctx, pendingWork)
+			if len(prospects) == 0 && len(preparedComments) == 0 {
+				err := wp.work(ctx, prospects)
 
 				// we only expect an error when we are in a terminal state like context is done
 				if err != nil {
@@ -211,7 +211,7 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 
 }
 
-func (wp *WorkProcessor) work(ctx context.Context, pendingWork chan models.PullRequestComment) error {
+func (wp *WorkProcessor) work(ctx context.Context, prospects chan models.PullRequestComment) error {
 
 	start := time.Now()
 	defer func() {
@@ -221,19 +221,19 @@ func (wp *WorkProcessor) work(ctx context.Context, pendingWork chan models.PullR
 
 	log.Debug("Checking for work")
 
-	// get a list of items
+	// get a list of commentProspects
 	// process each item one at a time while checking for shutdown
 
-	items, err := wp.fetchItems()
+	commentProspects, err := wp.fetchPrCommentProspects()
 
 	if err != nil {
-		log.WithError(err).Error("Failed to query pending comments")
+		log.WithError(err).Error("Failed to query PR comments")
 
 		// we want to keep our processor loop active so don't pass the error back up
 		return nil
 	}
 
-	for _, i := range items {
+	for _, cp := range commentProspects {
 
 		select {
 
@@ -243,9 +243,9 @@ func (wp *WorkProcessor) work(ctx context.Context, pendingWork chan models.PullR
 			return errors.New("context closed")
 
 		default:
-			log.Debugf("Adding item to pending work: %s/%s/%d/%s", i.Org, i.Repo, i.PullNumber, i.SHA)
-			pendingWork <- i
-			log.Debugf("Item added to pending work: %s/%s/%d/%s", i.Org, i.Repo, i.PullNumber, i.SHA)
+			log.Debugf("Adding PR comment prospect: %s/%s/%d/%s", cp.Org, cp.Repo, cp.PullNumber, cp.SHA)
+			prospects <- cp
+			log.Debugf("Finished adding PR comment prospect: %s/%s/%d/%s", cp.Org, cp.Repo, cp.PullNumber, cp.SHA)
 		}
 	}
 
@@ -253,8 +253,8 @@ func (wp *WorkProcessor) work(ctx context.Context, pendingWork chan models.PullR
 	return nil
 }
 
-func (wp *WorkProcessor) fetchItems() ([]models.PullRequestComment, error) {
-	return wp.ghCommenter.QueryPendingComments(models.CommentTypeRiskAnalysis)
+func (wp *WorkProcessor) fetchPrCommentProspects() ([]models.PullRequestComment, error) {
+	return wp.ghCommenter.QueryForPotentialComments(models.CommentTypeRiskAnalysis)
 }
 
 func (cw *CommentWorker) Run() {
@@ -419,10 +419,10 @@ func (aw *AnalysisWorker) Run() {
 
 	// wait for the next item to be available and process it
 	// exit when closed
-	for i := range aw.pendingAnalysis {
+	for i := range aw.prCommentProspects {
 
 		if i.CommentType == int(models.CommentTypeRiskAnalysis) {
-			aw.processPendingPrComment(i)
+			aw.determinePrComment(i)
 		} else {
 			log.Warningf("Unsupported comment type: %d for %s/%s/%d/%s", i.CommentType, i.Org, i.Repo, i.PullNumber, i.SHA)
 		}
@@ -430,13 +430,13 @@ func (aw *AnalysisWorker) Run() {
 	}
 }
 
-func (aw *AnalysisWorker) processPendingPrComment(pendingPrComment models.PullRequestComment) {
+func (aw *AnalysisWorker) determinePrComment(prCommentProspect models.PullRequestComment) {
 
-	logger := log.WithField("func", "processPendingPrComment").
-		WithField("org", pendingPrComment.Org).
-		WithField("repo", pendingPrComment.Repo).
-		WithField("pull", pendingPrComment.PullNumber).
-		WithField("sha", pendingPrComment.SHA)
+	logger := log.WithField("func", "determinePrComment").
+		WithField("org", prCommentProspect.Org).
+		WithField("repo", prCommentProspect.Repo).
+		WithField("pull", prCommentProspect.PullNumber).
+		WithField("sha", prCommentProspect.SHA)
 
 	start := time.Now()
 	logger.Debug("Processing item")
@@ -444,48 +444,48 @@ func (aw *AnalysisWorker) processPendingPrComment(pendingPrComment models.PullRe
 	// we will likely pull in PRs hours before the jobs finish,
 	// so there may be many cycles before a PR is ready for commenting.
 	// check to see if all jobs have completed before doing the more intensive query / gcs locate for analysis.
-	completedJobs := aw.getPrJobsIfFinished(logger, pendingPrComment.ProwJobRoot)
+	completedJobs := aw.getPrJobsIfFinished(logger, prCommentProspect.ProwJobRoot)
 	if completedJobs == nil {
 		logger.Debug("Jobs are still active")
 
 		// record how long it took to decide the jobs are still active
 		t := float64(time.Now().UnixMilli() - start.UnixMilli())
-		checkCommentReadyMetric.WithLabelValues(pendingPrComment.Org, pendingPrComment.Repo).Observe(t)
+		checkCommentReadyMetric.WithLabelValues(prCommentProspect.Org, prCommentProspect.Repo).Observe(t)
 		return
 	}
 
 	defer func() {
 		// record how long it took to determine what the comment should be
 		t := float64(time.Now().UnixMilli() - start.UnixMilli())
-		buildCommentMetric.WithLabelValues(pendingPrComment.Org, pendingPrComment.Repo).Observe(t)
+		buildCommentMetric.WithLabelValues(prCommentProspect.Org, prCommentProspect.Repo).Observe(t)
 	}()
 
 	// having determined the PR is ready, scan all the runs for each job so we can find the latest
 	for idx, jobInfo := range completedJobs {
 		completedJobs[idx].prowJobRuns = aw.buildProwJobRuns(logger, jobInfo.bucketPrefix)
-		completedJobs[idx].prShaSum = pendingPrComment.SHA // so we can check whether runs are against the expected PR commit
+		completedJobs[idx].prShaSum = prCommentProspect.SHA // so we can check whether runs are against the expected PR commit
 	}
 
 	riskAnalyses := aw.buildPRJobRiskAnalysis(logger, completedJobs)
 	newTestRisks := aw.newTestsWorker.analyzeRisks(logger, completedJobs)
 	preparedComment := PreparedComment{
-		comment:     buildComment(riskAnalyses, newTestRisks, pendingPrComment.SHA),
-		sha:         pendingPrComment.SHA,
-		org:         pendingPrComment.Org,
-		repo:        pendingPrComment.Repo,
-		number:      pendingPrComment.PullNumber,
-		commentType: pendingPrComment.CommentType,
+		comment:     buildCommentText(riskAnalyses, newTestRisks, prCommentProspect.SHA),
+		sha:         prCommentProspect.SHA,
+		org:         prCommentProspect.Org,
+		repo:        prCommentProspect.Repo,
+		number:      prCommentProspect.PullNumber,
+		commentType: prCommentProspect.CommentType,
 	}
 
 	// will block if the buffer is full.
 	// also if the comment processor sees an empty comment,
-	// it will not create a comment but will delete the pending comment record in the db
+	// it will not create a comment but will delete the PR comment record in the db
 	log.Debugf("Adding comment to preparedComments: %s/%s/%s", preparedComment.org, preparedComment.repo, preparedComment.sha)
 	aw.preparedComments <- preparedComment
 	log.Debugf("Comment added to preparedComments: %s/%s/%s", preparedComment.org, preparedComment.repo, preparedComment.sha)
 }
 
-func buildComment(riskAnalyses []RiskAnalysisSummary, newTestRisks []*JobNewTestRisks, sha string) string {
+func buildCommentText(riskAnalyses []RiskAnalysisSummary, newTestRisks []*JobNewTestRisks, sha string) string {
 	sb := &strings.Builder{}
 	if len(riskAnalyses) == 0 && len(newTestRisks) == 0 {
 		return ""
