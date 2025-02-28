@@ -50,8 +50,8 @@ type RegressionStore interface {
 // a regressed test, so users using custom reporting can see what is regressed in main as well.
 func ListCurrentRegressions(ctx context.Context, client *sippybigquery.Client) ([]*crtype.TestRegressionBigQuery, error) {
 	// Use max snapshot date to get the most recently appended view of the regressions.
-	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE snapshot = (SELECT MAX(snapshot) FROM %s.%s)",
-		client.Dataset, testRegressionsTable, client.Dataset, testRegressionsTable)
+	queryString := fmt.Sprintf("SELECT * FROM %s.test_regressions_append WHERE snapshot = (SELECT MAX(snapshot) FROM %s.test_regressions_append)",
+		client.Dataset, client.Dataset)
 
 	sampleQuery := client.BQ.Query(queryString)
 
@@ -176,6 +176,50 @@ type RegressionTracker struct {
 // Run iterates all views with regression tracking enabled and syncs the results of it's
 // component report to the regression tables in bigquery.
 func (rt *RegressionTracker) Run(ctx context.Context) error {
+
+	// TODO: remove this temporary migration code for initial rollout
+	var totalRegressions int64
+	rt.dbc.DB.Model(&crtype.TestRegression{}).Count(&totalRegressions)
+	if totalRegressions == 0 {
+		rt.logger.Warn("no test regressions found in postgres, migrating bigquery regressions over")
+		allBigQueryRegressions, err := ListCurrentRegressions(ctx, rt.bigqueryClient)
+		if err != nil {
+			rt.logger.WithError(err).Error("error listing bigquery regressions")
+			return err
+		}
+		rt.logger.Infof("loaded %d test regressions from bigquery", len(allBigQueryRegressions))
+		for _, reg := range allBigQueryRegressions {
+			newRegression := &crtype.TestRegression{
+				View:         reg.View,
+				Release:      reg.Release,
+				TestID:       reg.TestID,
+				TestName:     reg.TestName,
+				RegressionID: reg.RegressionID,
+				Opened:       reg.Opened,
+			}
+			if !reg.Closed.Valid {
+				newRegression.Closed = sql.NullTime{
+					Valid: false,
+				}
+			} else {
+				newRegression.Closed = sql.NullTime{
+					Valid: true,
+					Time:  reg.Closed.Timestamp,
+				}
+			}
+			variants := []string{}
+			for _, v := range reg.Variants {
+				variants = append(variants, fmt.Sprintf("%s:%s", v.Key, v.Value))
+			}
+			newRegression.Variants = variants
+
+			res := rt.dbc.DB.Create(newRegression)
+			if res.Error != nil {
+				return res.Error
+			}
+		}
+	}
+
 	// Run the existing logic
 	var err error
 	for _, view := range rt.views {
