@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	f := flags.NewPostgresDatabaseFlags()
+	f := flags.NewPostgresDatabaseFlags("")
 
 	cmd := &cobra.Command{
 		Use:   "migrate",

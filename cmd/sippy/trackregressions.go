@@ -87,7 +87,7 @@ func NewTrackRegressionsCommand() *cobra.Command {
 			}
 			regressionTracker := componentreadiness.NewRegressionTracker(
 				bigQueryClient, cacheOpts, releases,
-				componentreadiness.NewBigQueryRegressionStore(bigQueryClient),
+				componentreadiness.NewPostgresRegressionStore(bigQueryClient),
 				views.ComponentReadiness,
 				config.ComponentReadinessConfig.VariantJunitTableOverrides,
 				false)

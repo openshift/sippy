@@ -18,7 +18,7 @@ type SnapshotFlags struct {
 
 func NewSnapshotFlags() *SnapshotFlags {
 	return &SnapshotFlags{
-		DBFlags:  flags.NewPostgresDatabaseFlags(),
+		DBFlags:  flags.NewPostgresDatabaseFlags(""),
 		SippyURL: "https://sippy.dptools.openshift.org",
 	}
 }

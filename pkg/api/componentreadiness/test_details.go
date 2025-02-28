@@ -54,13 +54,15 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	if len(errs) > 0 {
 		return crtype.ReportTestDetails{}, errs
 	}
-	var err error
-	bqs := NewBigQueryRegressionStore(c.client)
-	c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(ctx, c.ReqOptions.SampleRelease.Release)
-	if err != nil {
-		errs = append(errs, err)
-		return crtype.ReportTestDetails{}, errs
-	}
+	/*
+		var err error
+		bqs := NewPostgresRegressionStore(c.client)
+		c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(ctx, c.ReqOptions.SampleRelease.Release)
+		if err != nil {
+			errs = append(errs, err)
+			return crtype.ReportTestDetails{}, errs
+		}
+	*/
 
 	var baseOverrideReport *crtype.ReportTestDetails
 	if c.ReqOptions.BaseOverrideRelease.Release != "" && c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
