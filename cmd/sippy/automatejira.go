@@ -31,6 +31,7 @@ type AutomateJiraFlags struct {
 	CacheFlags              *flags.CacheFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	ConfigFlags             *configflags.ConfigFlags
+	PostgresFlags           *flags.PostgresFlags
 	JiraOptions             prowflagutil.JiraOptions
 	SippyURL                string
 	IncludeComponentsStr    string
@@ -45,6 +46,7 @@ type AutomateJiraFlags struct {
 func NewAutomateJiraFlags() *AutomateJiraFlags {
 	return &AutomateJiraFlags{
 		BigQueryFlags:           flags.NewBigQueryFlags(),
+		PostgresFlags:           flags.NewPostgresDatabaseFlags(""),
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
@@ -55,6 +57,7 @@ func NewAutomateJiraFlags() *AutomateJiraFlags {
 
 func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	f.BigQueryFlags.BindFlags(fs)
+	f.PostgresFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
 	f.CacheFlags.BindFlags(fs)
 	f.ComponentReadinessFlags.BindFlags(fs)
@@ -172,8 +175,12 @@ func NewAutomateJiraCommand() *cobra.Command {
 				return errors.WithMessage(err, "error validating options")
 			}
 
+			dbc, err := f.PostgresFlags.GetDBClient()
+			if err != nil {
+				log.WithError(err).Fatal("unable to connect to postgres")
+			}
 			j, err := jiraautomator.NewJiraAutomator(
-				jiraClient, bigQueryClient, cacheOpts,
+				jiraClient, bigQueryClient, dbc, cacheOpts,
 				views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount,
 				f.IncludeComponents, f.ColumnThresholds,
 				f.DryRun, variantToJiraComponents,

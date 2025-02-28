@@ -678,6 +678,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	outputs, errs := componentreadiness.GetComponentReportFromBigQuery(
 		req.Context(),
 		s.bigQueryClient,
+		s.db,
 		s.prowURL,
 		s.gcsBucket,
 		options,

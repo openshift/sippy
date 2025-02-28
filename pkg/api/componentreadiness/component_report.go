@@ -20,6 +20,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -107,6 +108,7 @@ func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Clie
 func GetComponentReportFromBigQuery(
 	ctx context.Context,
 	client *bqcachedclient.Client,
+	dbc *db.DB,
 	prowURL, gcsBucket string,
 	reqOptions crtype.RequestOptions,
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
@@ -123,6 +125,7 @@ func GetComponentReportFromBigQuery(
 		gcsBucket:                  gcsBucket,
 		ReqOptions:                 reqOptions,
 		triagedIssues:              nil,
+		dbc:                        dbc,
 		variantJunitTableOverrides: variantJunitTableOverrides,
 	}
 
@@ -144,6 +147,7 @@ func GetComponentReportFromBigQuery(
 type ComponentReportGenerator struct {
 	ReportModified             *time.Time
 	client                     *bqcachedclient.Client
+	dbc                        *db.DB
 	prowURL                    string
 	gcsBucket                  string
 	triagedIssues              *resolvedissues.TriagedIncidentsForRelease
@@ -269,16 +273,17 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 
 	// Load current regression data from bigquery, used to enhance the response with information such as how long
 	// this regression has been appearing in a tracked view.
-	/*
-		bqs := NewPostgresRegressionStore(c.client)
-		c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(ctx, c.ReqOptions.SampleRelease.Release)
+	// We only execute this if we were given a postgres database connection, it is still possible to run
+	// component readiness without postgresql, you just won't have regression tracking.
+	if c.dbc != nil {
+		bqs := NewPostgresRegressionStore(c.dbc)
+		c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(c.ReqOptions.SampleRelease.Release)
 		if err != nil {
 			log.WithError(err).Error("error listing current regressions")
 			errs = append(errs, err)
 			return crtype.ComponentReport{}, errs
 		}
-
-	*/
+	}
 
 	// perform analysis and generate report:
 	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,

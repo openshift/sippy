@@ -18,6 +18,7 @@ import (
 
 type TrackRegressionFlags struct {
 	BigQueryFlags           *flags.BigQueryFlags
+	PostgresFlags           *flags.PostgresFlags
 	GoogleCloudFlags        *flags.GoogleCloudFlags
 	CacheFlags              *flags.CacheFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
@@ -27,6 +28,7 @@ type TrackRegressionFlags struct {
 func NewTrackRegressionFlags() *TrackRegressionFlags {
 	return &TrackRegressionFlags{
 		BigQueryFlags:           flags.NewBigQueryFlags(),
+		PostgresFlags:           flags.NewPostgresDatabaseFlags(""),
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
@@ -36,6 +38,7 @@ func NewTrackRegressionFlags() *TrackRegressionFlags {
 
 func (f *TrackRegressionFlags) BindFlags(fs *pflag.FlagSet) {
 	f.BigQueryFlags.BindFlags(fs)
+	f.PostgresFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
 	f.CacheFlags.BindFlags(fs)
 	f.ComponentReadinessFlags.BindFlags(fs)
@@ -85,9 +88,14 @@ func NewTrackRegressionsCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("error querying releases")
 			}
+		
+			dbc, err := f.PostgresFlags.GetDBClient()
+			if err != nil {
+				log.WithError(err).Fatal("unable to connect to postgres")
+			}
 			regressionTracker := componentreadiness.NewRegressionTracker(
-				bigQueryClient, cacheOpts, releases,
-				componentreadiness.NewPostgresRegressionStore(bigQueryClient),
+				bigQueryClient, dbc, cacheOpts, releases,
+				componentreadiness.NewPostgresRegressionStore(dbc),
 				views.ComponentReadiness,
 				config.ComponentReadinessConfig.VariantJunitTableOverrides,
 				false)

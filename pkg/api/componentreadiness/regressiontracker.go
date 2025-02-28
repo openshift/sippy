@@ -91,7 +91,7 @@ func (prs *PostgresRegressionStore) ListCurrentRegressionsForRelease(release str
 	// List open regressions (no closed date), or those that closed within the last few days. This is to prevent flapping
 	// and return more accurate opened dates when a test is falling in / out of the report.
 	regressions := make([]*crtype.TestRegression, 0)
-	q := prs.dbc.DB.Table("test_regressions").
+	q := prs.dbc.DB.Table(testRegressionsTable).
 		Where("release = ?", release).
 		Where("closed IS NULL OR closed > ?", time.Now().Add(-regressionHysteresisDays*24*time.Hour))
 	res := q.Scan(&regressions)
@@ -139,6 +139,7 @@ func (prs *PostgresRegressionStore) CloseRegression(reg *crtype.TestRegression, 
 
 func NewRegressionTracker(
 	bigqueryClient *sippybigquery.Client,
+	dbc *db.DB,
 	cacheOptions cache.RequestOptions,
 	releases []v1.Release,
 	backend RegressionStore,
@@ -148,6 +149,7 @@ func NewRegressionTracker(
 
 	return &RegressionTracker{
 		bigqueryClient:             bigqueryClient,
+		dbc:                        dbc,
 		cacheOpts:                  cacheOptions,
 		releases:                   releases,
 		backend:                    backend,
@@ -162,6 +164,7 @@ func NewRegressionTracker(
 type RegressionTracker struct {
 	backend                    RegressionStore
 	bigqueryClient             *sippybigquery.Client
+	dbc                        *db.DB
 	cacheOpts                  cache.RequestOptions
 	releases                   []v1.Release
 	dryRun                     bool
@@ -218,7 +221,7 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
 	report, errs := GetComponentReportFromBigQuery(
-		ctx, rt.bigqueryClient, "", "", reportOpts, rt.variantJunitTableOverrides)
+		ctx, rt.bigqueryClient, rt.dbc, "", "", reportOpts, rt.variantJunitTableOverrides)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
@@ -231,14 +234,13 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 }
 
 func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view crtype.View, rLog *log.Entry, report *crtype.ComponentReport) error {
-	// TODO: could move to one query for all regressions across all views in the parent run function
 	regressions, err := rt.backend.ListCurrentRegressionsForRelease(view.SampleRelease.Release)
 	if err != nil {
 		return err
 	}
-	rLog.Infof("loaded %d regressions from db", len(regressions))
+	rLog.Infof("loaded %d regressions from db for release %s", len(regressions), view.SampleRelease.Release)
 
-	// All regressions, both triaged and not:
+	// All regressed tests, both triaged and not:
 	allRegressedTests := []crtype.ReportTestSummary{}
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
@@ -252,6 +254,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		}
 	}
 
+	var new, reopened, untouched, closed int
 	matchedOpenRegressions := []*crtype.TestRegression{} // all the matches we found, used to determine what had no match
 	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
 	for _, regTest := range allRegressedTests {
@@ -262,6 +265,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 				// in / out of the report depending on the data available in the sample/basis.
 				rLog.Infof("re-opening existing regression: %v", openReg)
 				if !rt.dryRun {
+					reopened++
 					err := rt.backend.ReOpenRegression(openReg)
 					if err != nil {
 						rLog.WithError(err).Errorf("error re-opening regression: %v", openReg)
@@ -269,13 +273,15 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 					}
 				}
 			} else {
+				untouched++
 				rLog.WithFields(log.Fields{
 					"test": regTest.TestName,
-				}).Infof("reusing already opened regression: %v", openReg)
+				}).Debugf("reusing already opened regression: %v", openReg)
 
 			}
 			matchedOpenRegressions = append(matchedOpenRegressions, openReg)
 		} else {
+			new++
 			rLog.Infof("opening new regression: %v", regTest)
 			if !rt.dryRun {
 				// Open a new regression:
@@ -302,6 +308,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		// If we didn't match to an active test regression, and this record isn't already closed, close it.
 		if !matched && !regression.Closed.Valid {
 			rLog.Infof("found a regression no longer appearing in the report which should be closed: %v", regression)
+			closed++
 			if !rt.dryRun {
 				err := rt.backend.CloseRegression(regression, now)
 				if err != nil {
@@ -312,6 +319,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		}
 
 	}
+	rLog.Infof("regression tracking sync completed, opened=%d, reopened=%d, closed=%d untouched=%d", new, reopened, closed, untouched)
 
 	return nil
 }
