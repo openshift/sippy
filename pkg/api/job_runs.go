@@ -199,7 +199,6 @@ func findReleaseMatchJobNames(dbc *db.DB, jobRun *models.ProwJobRun, compareRele
 					}
 
 					gosort.Strings(job.Variants)
-					log.Infof("variants %+v\njob variants %+v", variants, job.Variants)
 					if stringSlicesEqual(variants, job.Variants) {
 
 						jobIDs, err := query.ProwJobRunIDs(dbc, job.ID)
@@ -297,7 +296,6 @@ func JobRunRiskAnalysis(dbc *db.DB, bqc *bigquery.Client, jobRun *models.ProwJob
 			logger.WithError(err).Errorf("Failed to find matching jobIds for: %s", jobRun.ProwJob.Name)
 		}
 	}
-	logger.Infof("Found %d unfilered matching jobs %d runs for: %s\njobs %+v", len(jobNames), totalJobRuns, jobRun.ProwJob.Name, jobNames)
 
 	if totalJobRuns < 20 {
 		// go back to the prior release and get more jobIds to compare against
@@ -562,9 +560,9 @@ func runTestRunAnalysis(bqc *bigquery.Client, failedTest models.ProwJobRunTest, 
 		if compareOtherPRs && risk.Level.Level >= apitype.FailureRiskLevelHigh.Level && len(jobRun.PullRequests) > 0 && isHighRiskInOtherPRs(bqc, failedTest, jobRun) {
 			// If the same test/job has high risk in other PRs, we override the risk level
 			analysis.Risk = apitype.TestFailureRisk{
-				Level: apitype.FailureRiskLevelNone,
+				Level: apitype.FailureRiskLevelMedium,
 				Reasons: []string{
-					"High risk was identified in other PRs first",
+					"Potential external regression detected for High Risk Test analysis",
 				},
 			}
 		} else {
@@ -623,7 +621,7 @@ func isHighRiskInOtherPRs(bqc *bigquery.Client, failedTest models.ProwJobRunTest
 		}
 		rowCount = values[0].(int64)
 		if rowCount > 0 {
-			log.Infof("High risk items found in other PRs for job %s test '%s'", jobRun.ProwJob.Name, failedTest.Test.Name)
+			log.Infof("%d High risk item(s) found in other PRs for job %s test '%s'", rowCount, jobRun.ProwJob.Name, failedTest.Test.Name)
 			return true
 		}
 	}

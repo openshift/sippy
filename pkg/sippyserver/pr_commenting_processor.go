@@ -58,11 +58,6 @@ var (
 		Help:    "Tracks the call made to query db and add items to the pending work queue",
 		Buckets: prometheus.LinearBuckets(0, 500, 10),
 	}, []string{"type"})
-
-	riskAnalysisPRTestRiskMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "sippy_risk_analysis_pr_test_risk",
-		Help: "Tracks the risk level of high risk PRs",
-	}, []string{"org", "repo", "pr", "job", "jobID", "test"})
 )
 
 // NewWorkProcessor creates a standard work processor from parameters.
@@ -539,16 +534,6 @@ func buildNewTestRisksComment(sb *strings.Builder, jobRisks []*JobNewTestRisks, 
 				test.TestName, test.Runs, test.Runs-test.Failures, test.Failures, test.Flakes))
 		}
 		sb.WriteString("\n")
-	}
-}
-
-func setRiskAnalysisHighRiskMetrics(org, repo, number, jobName, jobID string, summary RiskAnalysisSummary) {
-	for _, testSummary := range summary.TestRiskAnalysis {
-		if summary.RiskLevel == api.FailureRiskLevelHigh {
-			riskAnalysisPRTestRiskMetric.WithLabelValues(org, repo, number, jobName, jobID, testSummary.Name).Set(float64(testSummary.Risk.Level.Level))
-		} else {
-			riskAnalysisPRTestRiskMetric.DeleteLabelValues(org, repo, number, jobName, jobID, testSummary.Name)
-		}
 	}
 }
 
