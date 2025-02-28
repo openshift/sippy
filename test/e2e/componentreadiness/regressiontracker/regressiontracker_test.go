@@ -1,11 +1,12 @@
 package regressiontracker
 
 import (
-	"context"
+	"database/sql"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -64,18 +65,20 @@ func Test_RegressionTracker(t *testing.T) {
 			},
 		},
 	}
+
 	t.Run("open a new regression", func(t *testing.T) {
-		tr, err := tracker.OpenRegression(context.Background(), view, newRegression)
+		defer cleanupAllRegressions(dbc)
+		tr, err := tracker.OpenRegression(view, newRegression)
 		require.NoError(t, err)
 		assert.Equal(t, "4.19", tr.Release)
 		assert.Equal(t, "4.19-main", tr.View)
 		assert.ElementsMatch(t, pq.StringArray([]string{"a:b", "c:d"}), tr.Variants)
 		assert.True(t, tr.ID > 0)
-		defer cleanupAllRegressions(dbc)
 	})
 
 	t.Run("close and reopen a regression", func(t *testing.T) {
-		tr, err := tracker.OpenRegression(context.Background(), view, newRegression)
+		defer cleanupAllRegressions(dbc)
+		tr, err := tracker.OpenRegression(view, newRegression)
 		require.NoError(t, err)
 
 		// look it up just to be sure:
@@ -88,48 +91,85 @@ func Test_RegressionTracker(t *testing.T) {
 
 		// Now close it:
 		assert.False(t, lookup.Closed.Valid)
-		err = tracker.CloseRegression(context.Background(), lookup, time.Now())
+		err = tracker.CloseRegression(lookup, time.Now())
 		assert.NoError(t, err)
 		// look it up again because we're being ridiculous:
 		dbc.DB.First(&lookup)
 
 		assert.True(t, lookup.Closed.Valid)
 
-		err = tracker.ReOpenRegression(context.Background(), lookup)
+		err = tracker.ReOpenRegression(lookup)
 		assert.NoError(t, err)
 		dbc.DB.First(&lookup)
 		assert.False(t, lookup.Closed.Valid)
-
-		defer cleanupAllRegressions(dbc)
-
 	})
 
-	t.Run("reopen a regression", func(t *testing.T) {
-		tr, err := tracker.OpenRegression(context.Background(), view, newRegression)
+	t.Run("list current regressions for release", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		open419, err := rawCreateRegression(dbc, "4.19-main", "4.19",
+			"test1ID", "test 1",
+			uuid.New().String(),
+			[]string{"a:b", "c:d"},
+			time.Now().Add(-77*24*time.Hour), time.Time{})
+		recentlyClosed419, err := rawCreateRegression(dbc, "4.19-main", "4.19",
+			"test2ID", "test 2",
+			uuid.New().String(),
+			[]string{"a:b", "c:d"},
+			time.Now().Add(-77*24*time.Hour), time.Now().Add(-2*24*time.Hour))
 		require.NoError(t, err)
+		_, err = rawCreateRegression(dbc, "4.19-main", "4.19",
+			"test3ID", "test 3",
+			uuid.New().String(),
+			[]string{"a:b", "c:d"},
+			time.Now().Add(-77*24*time.Hour), time.Now().Add(-70*24*time.Hour))
+		require.NoError(t, err)
+		_, err = rawCreateRegression(dbc, "4.18-main", "4.18",
+			"test1ID", "test 1",
+			uuid.New().String(),
+			[]string{"a:b", "c:d"},
+			time.Now().Add(-77*24*time.Hour), time.Time{})
 
-		// look it up just to be sure:
-		lookup := &componentreport.TestRegression{
-			ID: tr.ID,
+		// List all regressions for 4.19, should exclude 4.18, include recently closed regressions,
+		// and exclude older closed regressions.
+		relRegressions, err := tracker.ListCurrentRegressionsForRelease("4.19")
+		//expected := []*componentreport.TestRegression{open419, recentClosed419}
+		assert.Equal(t, 2, len(relRegressions))
+		for _, rel := range relRegressions {
+			assert.True(t, rel.ID == open419.ID || rel.ID == recentlyClosed419.ID,
+				"unexpected regression was returned: %+v", *rel)
 		}
-		dbc.DB.First(&lookup)
-		assert.Equal(t, tr.ID, lookup.ID)
-		assert.Equal(t, tr.TestName, lookup.TestName)
-
-		// Now close it:
-		assert.False(t, lookup.Closed.Valid)
-		err = tracker.CloseRegression(context.Background(), lookup, time.Now())
-		assert.NoError(t, err)
-		// look it up again because we're being ridiculous:
-		lookup = &componentreport.TestRegression{
-			ID: tr.ID,
-		}
-		dbc.DB.First(&lookup)
-
-		assert.True(t, lookup.Closed.Valid)
-
-		defer cleanupAllRegressions(dbc)
-
 	})
 
+}
+
+func rawCreateRegression(
+	dbc *db.DB,
+	view,
+	release,
+	testID,
+	testName,
+	regID string,
+	variants []string,
+	opened, closed time.Time) (*componentreport.TestRegression, error) {
+	newRegression := &componentreport.TestRegression{
+		View:         view,
+		Release:      release,
+		TestID:       testID,
+		TestName:     testName,
+		RegressionID: regID,
+		Opened:       opened,
+		Variants:     variants,
+	}
+	if closed.IsZero() {
+		newRegression.Closed = sql.NullTime{
+			Valid: false,
+		}
+	} else {
+		newRegression.Closed = sql.NullTime{
+			Valid: true,
+			Time:  closed,
+		}
+	}
+	res := dbc.DB.Create(newRegression)
+	return newRegression, res.Error
 }
