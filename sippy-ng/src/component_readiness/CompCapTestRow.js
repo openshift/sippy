@@ -30,6 +30,7 @@ export default function CompCapTestRow(props) {
     filterVals,
     component,
     capability,
+    accessibilityMode,
   } = props
 
   // Put the testName on the left side with no link.
@@ -58,6 +59,7 @@ export default function CompCapTestRow(props) {
             capability={capability}
             testName={testName}
             regressedTests={columnVal.regressed_tests}
+            accessibilityMode={accessibilityMode}
           />
         ))}
       </TableRow>
@@ -74,4 +76,5 @@ CompCapTestRow.propTypes = {
   filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,
   capability: PropTypes.string.isRequired,
+  accessibilityMode: PropTypes.bool.isRequired,
 }

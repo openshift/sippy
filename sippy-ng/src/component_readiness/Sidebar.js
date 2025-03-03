@@ -1,6 +1,7 @@
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Drawer } from '@mui/material'
 import { useTheme } from '@mui/styles'
+import AccessibilityToggle from './AccessibilityToggle'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import clsx from 'clsx'
@@ -45,6 +46,7 @@ export default function Sidebar(props) {
         }}
       >
         <div className={classes.drawerHeader}>
+          <AccessibilityToggle />
           <IconButton onClick={handleDrawerClose} size="large">
             {theme.direction === 'ltr' ? (
               <ChevronLeftIcon />
@@ -61,4 +63,5 @@ export default function Sidebar(props) {
 
 Sidebar.propTypes = {
   isTestDetails: PropTypes.bool,
+  // accessibilityMode: PropTypes.bool.isRequired,
 }

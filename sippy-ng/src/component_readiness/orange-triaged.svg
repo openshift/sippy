@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   data-name="Layer 1"
+   viewBox="0 0 64 64"
+   version="1.1"
+   id="svg1290"
+   xmlns="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1294" />
+  <path
+     d="M-.03-.03H64V64H-.03z"
+     style="fill:#FFBC40;fill-opacity:1"
+     id="path1276" />
+  <line
+     x1="21.33"
+     y1="0"
+     x2="21.33"
+     y2="64"
+     stroke="black"
+     stroke-width="0.5"
+     id="line1278" />
+  <line
+     x1="42.66"
+     y1="0"
+     x2="42.66"
+     y2="64"
+     stroke="black"
+     stroke-width="0.5"
+     id="line1280" />
+  <line
+     x1="0"
+     y1="21.33"
+     x2="64"
+     y2="21.33"
+     stroke="black"
+     stroke-width="0.5"
+     id="line1282" />
+  <line
+     x1="0"
+     y1="42.66"
+     x2="64"
+     y2="42.66"
+     stroke="black"
+     stroke-width="0.5"
+     id="line1284" />
+  <rect
+     x="28"
+     y="0"
+     width="8"
+     height="64"
+     style="fill:#3f51b5"
+     id="rect1286" />
+  <rect
+     x="0"
+     y="28"
+     width="64"
+     height="8"
+     style="fill:#3f51b5"
+     id="rect1288" />
+</svg>

@@ -3,10 +3,17 @@ import { formatInTimeZone } from 'date-fns-tz'
 import { safeEncodeURIComponent } from '../helpers'
 import { styled } from '@mui/styles'
 import Alert from '@mui/material/Alert'
+import blue from './blue.svg'
+import blue_missing_data from './none-blue.svg'
 import green from './green.svg'
 import green_half_data from './half.svg'
 import green_missing_data from './none.svg'
+import half_blue from './half-blue.svg'
 import heart from './improved.svg'
+import orange from './orange.svg'
+import orange_3d from './extreme-orange.svg'
+import orange_3d_triaged from './extreme-orange-triaged.svg'
+import orange_triaged from './orange-triaged.svg'
 import React from 'react'
 import red from './regressed.svg'
 import red_3d from './extreme.svg'
@@ -109,7 +116,11 @@ export function gotFetchError(fetchError) {
 
 // getStatusAndIcon returns a status string and icon to display to denote a visual and textual
 // meaning of a 'status' value.  We optionally allow a grayscale mode for the red colors.
-export function getStatusAndIcon(status, grayFactor = 0) {
+export function getStatusAndIcon(
+  status,
+  grayFactor = 0,
+  accessibilityMode = false
+) {
   let icon = ''
 
   let statusStr = status + ': '
@@ -129,9 +140,10 @@ export function getStatusAndIcon(status, grayFactor = 0) {
   } else if (status == 2) {
     statusStr =
       statusStr + 'Missing Basis And Sample (basis and sample data missing)'
+    let src = accessibilityMode ? blue_missing_data : green_missing_data
     icon = (
       <img
-        src={green_missing_data}
+        src={src}
         alt="MissingBasisAndSample"
         width="15px"
         height="15px"
@@ -140,9 +152,10 @@ export function getStatusAndIcon(status, grayFactor = 0) {
     )
   } else if (status == 1) {
     statusStr = statusStr + 'Missing Basis (basis data missing)'
+    let src = accessibilityMode ? half_blue : green_half_data
     icon = (
       <img
-        src={green_half_data}
+        src={src}
         alt="MissingBasis"
         width="15px"
         height="15px"
@@ -153,9 +166,10 @@ export function getStatusAndIcon(status, grayFactor = 0) {
     )
   } else if (status == 0) {
     statusStr = statusStr + 'NoSignificantDifference detected'
+    let src = accessibilityMode ? blue : green
     icon = (
       <img
-        src={green}
+        src={src}
         width="15px"
         height="15px"
         alt="NotSignificant"
@@ -164,9 +178,10 @@ export function getStatusAndIcon(status, grayFactor = 0) {
     )
   } else if (status == -1) {
     statusStr = statusStr + 'Missing Sample (sample data missing)'
+    let src = accessibilityMode ? half_blue : green_half_data
     icon = (
       <img
-        src={green_half_data}
+        src={src}
         alt="MissingSample"
         width="15px"
         height="15px"
@@ -178,40 +193,39 @@ export function getStatusAndIcon(status, grayFactor = 0) {
     )
   } else if (status == -2) {
     statusStr = statusStr + 'SignificantTriagedRegression detected'
+    let src = accessibilityMode ? orange_triaged : red_triaged
     icon = (
       <img
         width="15px"
         height="15px"
-        src={red_triaged}
+        src={src}
         alt="SignificantTriagedRegression"
       />
     )
   } else if (status == -3) {
     statusStr =
       statusStr + 'ExtremeTriagedRegression detected ( >15% pass rate change)'
+    let src = accessibilityMode ? orange_3d_triaged : red_3d_triaged
     icon = (
       <img
         width="15px"
         height="15px"
-        src={red_3d_triaged}
+        src={src}
         alt="ExtremeTriagedRegression >15%"
       />
     )
   } else if (status == -4) {
     statusStr = statusStr + 'SignificantRegression detected'
+    let src = accessibilityMode ? orange : red
     icon = (
-      <img width="15px" height="15px" src={red} alt="SignificantRegression" />
+      <img width="15px" height="15px" src={src} alt="SignificantRegression" />
     )
   } else if (status <= -5) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
+    let src = accessibilityMode ? orange_3d : red_3d
     icon = (
-      <img
-        width="15px"
-        height="15px"
-        src={red_3d}
-        alt="ExtremeRegression >15%"
-      />
+      <img width="15px" height="15px" src={src} alt="ExtremeRegression >15%" />
     )
   }
 

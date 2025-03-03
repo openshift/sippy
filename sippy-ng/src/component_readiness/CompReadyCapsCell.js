@@ -14,8 +14,14 @@ import React, { useContext } from 'react'
 import TableCell from '@mui/material/TableCell'
 
 export default function CompReadyCapsCell(props) {
-  const { status, environment, capabilityName, filterVals, regressedCount } =
-    props
+  const {
+    status,
+    environment,
+    capabilityName,
+    filterVals,
+    regressedCount,
+    accessibilityMode,
+  } = props
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
 
@@ -66,7 +72,11 @@ export default function CompReadyCapsCell(props) {
         }}
       >
         <Link to={capabilityReport(capabilityName, environment, filterVals)}>
-          <CompSeverityIcon status={status} count={regressedCount} />
+          <CompSeverityIcon
+            status={status}
+            count={regressedCount}
+            accessibilityMode={accessibilityMode}
+          />
         </Link>
       </TableCell>
     )
@@ -79,4 +89,5 @@ CompReadyCapsCell.propTypes = {
   capabilityName: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
   regressedCount: PropTypes.number,
+  accessibilityMode: PropTypes.bool.isRequired,
 }
