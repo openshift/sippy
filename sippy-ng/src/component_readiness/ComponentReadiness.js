@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { AccessibilityModeContext } from '../App'
 import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
@@ -19,6 +20,7 @@ import { grey } from '@mui/material/colors'
 import { Grid, TableContainer, Tooltip, Typography } from '@mui/material'
 import { makeStyles, useTheme } from '@mui/styles'
 import { Route, Switch, useRouteMatch } from 'react-router-dom'
+import { useCookies } from 'react-cookie'
 import ComponentReadinessHelp from './ComponentReadinessHelp'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'
 import CompReadyCancelled from './CompReadyCancelled'
@@ -219,6 +221,8 @@ export default function ComponentReadiness(props) {
 
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
   const copyPopoverOpen = Boolean(copyPopoverEl)
+
+  const accessibilityMode = useContext(AccessibilityModeContext)
 
   const linkToReport = () => {
     const currentUrl = new URL(window.location.href)
@@ -421,6 +425,7 @@ export default function ComponentReadiness(props) {
                       testId={testId}
                       testName={testName}
                       testBasisRelease={testBasisRelease}
+                      accessibilityMode={accessibilityMode}
                     ></CompReadyTestReport>
                   )
                 }}
@@ -440,6 +445,7 @@ export default function ComponentReadiness(props) {
                       component={varsContext.component}
                       capability={varsContext.capability}
                       testId={testId}
+                      accessibilityMode={accessibilityMode}
                     ></CompReadyEnvCapabilityTest>
                   )
                 }}
@@ -462,6 +468,7 @@ export default function ComponentReadiness(props) {
                       testId={testId}
                       environment={varsContext.environment}
                       theme={theme}
+                      accessibilityMode={accessibilityMode}
                     ></CompReadyEnvCapabilityTest>
                   )
                 }}
@@ -566,6 +573,7 @@ export default function ComponentReadiness(props) {
                             data={data}
                             filterVals={filterVals}
                             forceRefresh={forceRefresh}
+                            accessibilityMode={accessibilityMode}
                           />
                           <TableContainer
                             component="div"
@@ -675,6 +683,7 @@ export default function ComponentReadiness(props) {
                                       )}
                                       grayFactor={redOnlyChecked ? 100 : 0}
                                       filterVals={filterVals}
+                                      accessibilityMode={accessibilityMode}
                                     />
                                   ))}
                               </TableBody>

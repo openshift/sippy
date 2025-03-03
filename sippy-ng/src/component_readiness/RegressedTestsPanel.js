@@ -171,6 +171,7 @@ export default function RegressedTestsPanel(props) {
             <CompSeverityIcon
               status={params.row.status}
               explanations={params.row.explanations}
+              accessibilityMode={props.accessibilityMode}
             />
           </Link>
         </div>
@@ -229,4 +230,5 @@ export default function RegressedTestsPanel(props) {
 RegressedTestsPanel.propTypes = {
   regressedTests: PropTypes.array,
   filterVals: PropTypes.string.isRequired,
+  accessibilityMode: PropTypes.bool.isRequired,
 }
