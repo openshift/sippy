@@ -298,18 +298,18 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		}
 	}
 
-	var new, reopened, untouched, closed int
+	var newRegs, reopenedRegs, untouchedRegs, closedRegs int
 	matchedOpenRegressions := []*crtype.TestRegression{} // all the matches we found, used to determine what had no match
 	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
 	for _, regTest := range allRegressedTests {
 		if openReg := FindOpenRegression(view.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
 			if openReg.Closed.Valid {
-				// if the regression returned has a closed date, we found a recently closed
+				// if the regression returned has a closedRegs date, we found a recently closedRegs
 				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
 				// in / out of the report depending on the data available in the sample/basis.
 				rLog.Infof("re-opening existing regression: %v", openReg)
 				if !rt.dryRun {
-					reopened++
+					reopenedRegs++
 					err := rt.backend.ReOpenRegression(openReg)
 					if err != nil {
 						rLog.WithError(err).Errorf("error re-opening regression: %v", openReg)
@@ -317,7 +317,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 					}
 				}
 			} else {
-				untouched++
+				untouchedRegs++
 				rLog.WithFields(log.Fields{
 					"test": regTest.TestName,
 				}).Debugf("reusing already opened regression: %v", openReg)
@@ -325,7 +325,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 			}
 			matchedOpenRegressions = append(matchedOpenRegressions, openReg)
 		} else {
-			new++
+			newRegs++
 			rLog.Infof("opening new regression: %v", regTest)
 			if !rt.dryRun {
 				// Open a new regression:
@@ -349,10 +349,10 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 				break
 			}
 		}
-		// If we didn't match to an active test regression, and this record isn't already closed, close it.
+		// If we didn't match to an active test regression, and this record isn't already closedRegs, close it.
 		if !matched && !regression.Closed.Valid {
-			rLog.Infof("found a regression no longer appearing in the report which should be closed: %v", regression)
-			closed++
+			rLog.Infof("found a regression no longer appearing in the report which should be closedRegs: %v", regression)
+			closedRegs++
 			if !rt.dryRun {
 				err := rt.backend.CloseRegression(regression, now)
 				if err != nil {
@@ -363,7 +363,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		}
 
 	}
-	rLog.Infof("regression tracking sync completed, opened=%d, reopened=%d, closed=%d untouched=%d", new, reopened, closed, untouched)
+	rLog.Infof("regression tracking sync completed, opened=%d, reopenedRegs=%d, closedRegs=%d untouchedRegs=%d", newRegs, reopenedRegs, closedRegs, untouchedRegs)
 
 	return nil
 }

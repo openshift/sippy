@@ -21,7 +21,7 @@ func cleanupAllRegressions(dbc *db.DB) {
 	// Delete all test regressions in the e2e postgres db.
 	res := dbc.DB.Where("1 = 1").Delete(&componentreport.TestRegression{})
 	if res.Error != nil {
-		log.Fatalf("error deleting test regressions: %v", res.Error)
+		log.Errorf("error deleting test regressions: %v", res.Error)
 	}
 }
 
@@ -106,11 +106,13 @@ func Test_RegressionTracker(t *testing.T) {
 
 	t.Run("list current regressions for release", func(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
+		var err error
 		open419, err := rawCreateRegression(dbc, "4.19-main", "4.19",
 			"test1ID", "test 1",
 			uuid.New().String(),
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Time{})
+		require.NoError(t, err)
 		recentlyClosed419, err := rawCreateRegression(dbc, "4.19-main", "4.19",
 			"test2ID", "test 2",
 			uuid.New().String(),
@@ -128,11 +130,12 @@ func Test_RegressionTracker(t *testing.T) {
 			uuid.New().String(),
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Time{})
+		require.NoError(t, err)
 
 		// List all regressions for 4.19, should exclude 4.18, include recently closed regressions,
 		// and exclude older closed regressions.
 		relRegressions, err := tracker.ListCurrentRegressionsForRelease("4.19")
-		//expected := []*componentreport.TestRegression{open419, recentClosed419}
+		require.NoError(t, err)
 		assert.Equal(t, 2, len(relRegressions))
 		for _, rel := range relRegressions {
 			assert.True(t, rel.ID == open419.ID || rel.ID == recentlyClosed419.ID,

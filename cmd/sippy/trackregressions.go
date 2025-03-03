@@ -88,7 +88,6 @@ func NewTrackRegressionsCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("error querying releases")
 			}
-		
 			dbc, err := f.PostgresFlags.GetDBClient()
 			if err != nil {
 				log.WithError(err).Fatal("unable to connect to postgres")
