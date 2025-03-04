@@ -46,7 +46,7 @@ type AutomateJiraFlags struct {
 func NewAutomateJiraFlags() *AutomateJiraFlags {
 	return &AutomateJiraFlags{
 		BigQueryFlags:           flags.NewBigQueryFlags(),
-		PostgresFlags:           flags.NewPostgresDatabaseFlags(""),
+		PostgresFlags:           flags.NewPostgresDatabaseFlags(),
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),

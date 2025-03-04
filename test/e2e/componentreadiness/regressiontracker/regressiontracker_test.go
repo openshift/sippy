@@ -29,7 +29,8 @@ func Test_RegressionTracker(t *testing.T) {
 	require.NotEqual(t, "", os.Getenv("SIPPY_E2E_DSN"),
 		"SIPPY_E2E_DSN environment variable not set")
 
-	psqlFlags := flags.NewPostgresDatabaseFlags(os.Getenv("SIPPY_E2E_DSN"))
+	psqlFlags := flags.NewPostgresDatabaseFlags()
+	psqlFlags.DSN = os.Getenv("SIPPY_E2E_DSN")
 	dbc, err := psqlFlags.GetDBClient()
 	require.NoError(t, err, "error connecting to db")
 

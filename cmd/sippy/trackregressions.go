@@ -28,7 +28,7 @@ type TrackRegressionFlags struct {
 func NewTrackRegressionFlags() *TrackRegressionFlags {
 	return &TrackRegressionFlags{
 		BigQueryFlags:           flags.NewBigQueryFlags(),
-		PostgresFlags:           flags.NewPostgresDatabaseFlags(""),
+		PostgresFlags:           flags.NewPostgresDatabaseFlags(),
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),

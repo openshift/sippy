@@ -101,12 +101,10 @@ type PostgresFlags struct {
 	pinnedTime PinnedTime
 }
 
-func NewPostgresDatabaseFlags(dsn string) *PostgresFlags {
+func NewPostgresDatabaseFlags() *PostgresFlags {
+	dsn := os.Getenv("SIPPY_DATABASE_DSN")
 	if dsn == "" {
-		dsn = os.Getenv("SIPPY_DATABASE_DSN")
-		if dsn == "" {
-			dsn = "postgresql://postgres:password@localhost:5432/postgres"
-		}
+		dsn = "postgresql://postgres:password@localhost:5432/postgres"
 	}
 
 	return &PostgresFlags{

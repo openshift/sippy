@@ -43,7 +43,7 @@ func NewServerFlags() *ServerFlags {
 	return &ServerFlags{
 		BigQueryFlags:           flags.NewBigQueryFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
-		DBFlags:                 flags.NewPostgresDatabaseFlags(""),
+		DBFlags:                 flags.NewPostgresDatabaseFlags(),
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		ModeFlags:               flags.NewModeFlags(),
 		ProwFlags:               flags.NewProwFlags(),

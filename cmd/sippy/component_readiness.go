@@ -51,7 +51,7 @@ func NewComponentReadinessCommand() *cobra.Command {
 		ProwFlags:               flags.NewProwFlags(),
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		BigQueryFlags:           flags.NewBigQueryFlags(),
-		PostgresFlags:           flags.NewPostgresDatabaseFlags(""),
+		PostgresFlags:           flags.NewPostgresDatabaseFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),

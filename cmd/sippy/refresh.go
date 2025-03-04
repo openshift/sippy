@@ -15,7 +15,7 @@ type RefreshFlags struct {
 
 func NewRefreshFlags() *RefreshFlags {
 	return &RefreshFlags{
-		DBFlags: flags.NewPostgresDatabaseFlags(""),
+		DBFlags: flags.NewPostgresDatabaseFlags(),
 	}
 }
 

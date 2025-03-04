@@ -33,7 +33,7 @@ type SippyDaemonFlags struct {
 
 func NewSippyDaemonFlags() *SippyDaemonFlags {
 	return &SippyDaemonFlags{
-		DBFlags:              flags.NewPostgresDatabaseFlags(""),
+		DBFlags:              flags.NewPostgresDatabaseFlags(),
 		BigQueryFlags:        flags.NewBigQueryFlags(),
 		CacheFlags:           flags.NewCacheFlags(),
 		GithubCommenterFlags: flags.NewGithubCommenterFlags(),

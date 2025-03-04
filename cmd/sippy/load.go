@@ -59,7 +59,7 @@ func NewLoadFlags() *LoadFlags {
 	return &LoadFlags{
 		BigQueryFlags:        flags.NewBigQueryFlags(),
 		ConfigFlags:          configflags.NewConfigFlags(),
-		DBFlags:              flags.NewPostgresDatabaseFlags(""),
+		DBFlags:              flags.NewPostgresDatabaseFlags(),
 		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
 		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
 		ModeFlags:            flags.NewModeFlags(),
