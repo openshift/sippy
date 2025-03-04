@@ -173,8 +173,8 @@ type RegressionTracker struct {
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 }
 
-// Run iterates all views with regression tracking enabled and syncs the results of it's
-// component report to the regression tables in bigquery.
+// Run iterates all views with regression tracking enabled and syncs the results of its
+// component report to the regression tables.
 func (rt *RegressionTracker) Run(ctx context.Context) error {
 
 	// TODO: remove this temporary migration code for initial rollout
@@ -375,6 +375,9 @@ func FindOpenRegression(view string,
 	regressions []*crtype.TestRegression) *crtype.TestRegression {
 
 	for _, tr := range regressions {
+		if tr.View != view {
+			continue
+		}
 
 		// We compare test ID not name, as names can change.
 		if tr.TestID != testID {
