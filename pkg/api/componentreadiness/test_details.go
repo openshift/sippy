@@ -3,6 +3,7 @@ package componentreadiness
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -29,6 +30,10 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBu
 		prowURL:    prowURL,
 		gcsBucket:  gcsBucket,
 		ReqOptions: reqOptions,
+	}
+	if os.Getenv("DEV_MODE") == "1" {
+		logrus.Warn("######### RECALC REPORT")
+		return generator.GenerateTestDetailsReport(ctx)
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ReportTestDetails](
@@ -80,35 +85,34 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		return crtype.ReportTestDetails{}, errs
 	}
 
-	var baseOverrideReport *crtype.ReportTestDetails
-	if c.ReqOptions.BaseOverrideRelease.Release != "" && c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
-		// because internalGenerateTestDetailsReport modifies SampleStatus we need to copy it here
-		overrideSampleStatus := map[string][]crtype.JobRunTestStatusRow{}
-		for k, v := range componentJobRunTestReportStatus.SampleStatus {
-			overrideSampleStatus[k] = v
-		}
+	// Generate the report for the main release that was originally requested:
+	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.ReqOptions.SampleRelease.Release)
+	report := c.internalGenerateTestDetailsReport(ctx,
+		componentJobRunTestReportStatus.BaseStatus,
+		c.ReqOptions.BaseRelease.Release,
+		&c.ReqOptions.BaseRelease.Start,
+		&c.ReqOptions.BaseRelease.End,
+		componentJobRunTestReportStatus.SampleStatus)
+	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
-		overrideReport := c.internalGenerateTestDetailsReport(ctx, componentJobRunTestReportStatus.BaseOverrideStatus, c.ReqOptions.BaseOverrideRelease.Release, &c.ReqOptions.BaseOverrideRelease.Start, &c.ReqOptions.BaseOverrideRelease.End, overrideSampleStatus)
+	// Generate the report for the fallback release if one was found:
+	// Move all this to the middleware.
+	var baseOverrideReport *crtype.ReportTestDetails
+	if c.ReqOptions.BaseOverrideRelease.Release != "" &&
+		c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
+
+		overrideReport := c.internalGenerateTestDetailsReport(ctx,
+			componentJobRunTestReportStatus.BaseOverrideStatus,
+			c.ReqOptions.BaseOverrideRelease.Release,
+			&c.ReqOptions.BaseOverrideRelease.Start, &c.ReqOptions.BaseOverrideRelease.End,
+			componentJobRunTestReportStatus.SampleStatus)
 		// swap out the base dates for the override
 		overrideReport.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 		baseOverrideReport = &overrideReport
-	}
 
-	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.ReqOptions.SampleRelease.Release)
-	report := c.internalGenerateTestDetailsReport(ctx, componentJobRunTestReportStatus.BaseStatus, c.ReqOptions.BaseRelease.Release, &c.ReqOptions.BaseRelease.Start, &c.ReqOptions.BaseRelease.End, componentJobRunTestReportStatus.SampleStatus)
-	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
-
-	if baseOverrideReport != nil {
-		// WARNING: when the request has a base release override, we're returning a "base override report" which is
-		// actually the default base report, the naming conventions don't match across inputs and outputs.
-		// i.e. you request baseRelease 4.18 with baseReleaseOverride 4.17, we return a baseOverrideReport as
-		// 4.18 and the normal report is 4.17
-		baseOverrideReport.BaseOverrideReport = crtype.ReportTestOverride{
-			ReportTestStats: report.ReportTestStats,
-			JobStats:        report.JobStats,
-		}
-
-		return *baseOverrideReport, nil
+		// Inject the override report stats into the first position on the main report,
+		// which callers will interpret as the authoritative report in the event multiple are returned
+		report.Analyses = append([]crtype.TestDetailsAnalysis{baseOverrideReport.Analyses[0]}, report.Analyses...)
 	}
 
 	return report, nil
@@ -320,6 +324,13 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	baseStart,
 	baseEnd *time.Time,
 	sampleStatus map[string][]crtype.JobRunTestStatusRow) crtype.ReportTestDetails {
+
+	// make a copy of sampleStatus because it's passed by ref, and we're going to modify it.
+	sampleStatusCopy := map[string][]crtype.JobRunTestStatusRow{}
+	for k, v := range sampleStatus {
+		sampleStatusCopy[k] = v
+	}
+
 	result := crtype.ReportTestDetails{
 		ReportTestIdentification: crtype.ReportTestIdentification{
 			RowIdentification: crtype.RowIdentification{
@@ -348,6 +359,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
 
+	report := crtype.TestDetailsAnalysis{}
 	for prowJob, baseStatsList := range baseStatus {
 		jobStats := crtype.TestDetailsJobStats{
 			JobName: prowJob,
@@ -371,7 +383,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 			perJobBaseFlake += baseStats.FlakeCount
 			perJobBaseFailure += getFailureCount(baseStats)
 		}
-		if sampleStatsList, ok := sampleStatus[prowJob]; ok {
+		if sampleStatsList, ok := sampleStatusCopy[prowJob]; ok {
 			for _, sampleStats := range sampleStatsList {
 				if result.JiraComponent == "" && sampleStats.JiraComponent != "" {
 					result.JiraComponent = sampleStats.JiraComponent
@@ -385,7 +397,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 				perJobSampleFlake += sampleStats.FlakeCount
 				perJobSampleFailure += getFailureCount(sampleStats)
 			}
-			delete(sampleStatus, prowJob)
+			delete(sampleStatusCopy, prowJob)
 		}
 		jobStats.BaseStats.SuccessCount = perJobBaseSuccess
 		jobStats.BaseStats.FlakeCount = perJobBaseFlake
@@ -411,7 +423,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 			perceivedBaseSuccess)
 		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
 
-		result.JobStats = append(result.JobStats, jobStats)
+		report.JobStats = append(report.JobStats, jobStats)
 
 		totalBaseFailure += perJobBaseFailure
 		totalBaseSuccess += perJobBaseSuccess
@@ -420,7 +432,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		totalSampleSuccess += perJobSampleSuccess
 		totalSampleFlake += perJobSampleFlake
 	}
-	for prowJob, sampleStatsList := range sampleStatus {
+	for prowJob, sampleStatsList := range sampleStatusCopy {
 		jobStats := crtype.TestDetailsJobStats{
 			JobName: prowJob,
 		}
@@ -437,7 +449,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		jobStats.SampleStats.FlakeCount = perJobSampleFlake
 		jobStats.SampleStats.FailureCount = perJobSampleFailure
 		jobStats.SampleStats.SuccessRate = c.getPassRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
-		result.JobStats = append(result.JobStats, jobStats)
+		report.JobStats = append(report.JobStats, jobStats)
 		perceivedSampleFailure := perJobSampleFailure
 		perceivedSampleSuccess := perJobSampleSuccess + perJobSampleFlake
 		if c.ReqOptions.AdvancedOption.FlakeAsFailure {
@@ -454,8 +466,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		totalSampleSuccess += perJobSampleSuccess
 		totalSampleFlake += perJobSampleFlake
 	}
-	sort.Slice(result.JobStats, func(i, j int) bool {
-		return result.JobStats[i].JobName < result.JobStats[j].JobName
+	sort.Slice(report.JobStats, func(i, j int) bool {
+		return report.JobStats[i].JobName < report.JobStats[j].JobName
 	})
 
 	// The hope is that this goes away
@@ -477,7 +489,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 
 	requiredConfidence := c.getRequiredConfidence(c.ReqOptions.TestIDOption.TestID, c.ReqOptions.VariantOption.RequestedVariants)
 
-	result.ReportTestStats = c.assessComponentStatus(
+	report.ReportTestStats = c.assessComponentStatus(
 		requiredConfidence,
 		totalSampleSuccess+totalSampleFailure+totalSampleFlake,
 		totalSampleSuccess,
@@ -491,6 +503,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		baseStart,
 		baseEnd,
 	)
+	result.Analyses = []crtype.TestDetailsAnalysis{report}
 
 	return result
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -124,6 +125,11 @@ func GetComponentReportFromBigQuery(
 		ReqOptions:                 reqOptions,
 		triagedIssues:              nil,
 		variantJunitTableOverrides: variantJunitTableOverrides,
+	}
+
+	if os.Getenv("DEV_MODE") == "1" {
+		log.Warn("######### RECALC REPORT")
+		return generator.GenerateReport(ctx)
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](

@@ -169,7 +169,11 @@ export default function CompReadyTestReport(props) {
       })
       .then((json) => {
         // If the basics are not present, consider it no data
-        if (!json.component || !json.sample_stats) {
+        if (
+          !json.component ||
+          !json.analyses ||
+          !json.analyses[0].sample_stats
+        ) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
         } else {
@@ -260,16 +264,10 @@ export default function CompReadyTestReport(props) {
   let isBaseOverride = false
   let baseReleaseTabLabel = baseRelease + ' Basis'
   let overrideReleaseTabLabel = ''
-  if (
-    data &&
-    data.base_stats &&
-    data.base_stats.release &&
-    data.base_stats.release !== baseRelease &&
-    data.base_override_report
-  ) {
+  if (data && data.analyses && data.analyses.length > 1) {
     isBaseOverride = true
     overrideReleaseTabLabel = baseReleaseTabLabel
-    baseReleaseTabLabel = data.base_stats.release + ' Basis'
+    baseReleaseTabLabel = data.analyses[0].base_stats.release + ' Basis'
   }
 
   const printStatsText = (statsLabel, stats, from, to) => {
@@ -329,7 +327,7 @@ Flakes: ${stats.flake_count}`
               gap: 2,
             }}
           >
-            {data.base_stats ? (
+            {data.analyses[0].base_stats ? (
               <BugButton
                 testName={testName}
                 component={component}
@@ -342,18 +340,18 @@ Component Readiness has found a potential regression in the following test:
 
 {code:none}${testName}{code}
 
-${data.explanations.join('\n')}
+${data.analyses[0].explanations.join('\n')}
 ${printStatsText(
   'Sample (being evaluated)',
-  data.sample_stats,
-  data.sample_stats.Start,
-  data.sample_stats.End
+  data.analyses[0].sample_stats,
+  data.analyses[0].sample_stats.Start,
+  data.analyses[0].sample_stats.End
 )}
 ${printStatsText(
   'Base (historical)',
-  data.base_stats,
-  data.base_stats.Start,
-  data.base_stats.End
+  data.analyses[0].base_stats,
+  data.analyses[0].base_stats.Start,
+  data.analyses[0].base_stats.End
 )}
 
 View the [test details report|${document.location.href}] for additional context.
@@ -372,12 +370,12 @@ Component Readiness has found a potential regression in the following test:
 
 {code:none}${testName}{code}
 
-${data.explanations.join('\n')}
+${data.analyses[0].explanations.join('\n')}
 ${printStatsText(
   'Sample (being evaluated)',
-  data.sample_stats,
-  data.sample_stats.Start,
-  data.sample_stats.End
+  data.analyses[0].sample_stats,
+  data.analyses[0].sample_stats.Start,
+  data.analyses[0].sample_stats.End
 )}
 
 View the [test details report|${document.location.href}] for additional context.
@@ -434,7 +432,7 @@ View the [test details report|${document.location.href}] for additional context.
           </TableRow>
           <TableRow>
             <TableCell>Explanations:</TableCell>
-            <TableCell>{data.explanations.join('\n')}</TableCell>
+            <TableCell>{data.analyses[0].explanations.join('\n')}</TableCell>
           </TableRow>
         </TableBody>
       </Table>
@@ -450,7 +448,7 @@ View the [test details report|${document.location.href}] for additional context.
           </Tabs>
           <TestsReportTabPanel activeIndex={activeTabIndex} index={0}>
             <CompReadyTestPanel
-              data={data}
+              data={data.analyses[0]}
               versions={versions}
               isOverride={false}
               loadedParams={loadedParams}
@@ -458,7 +456,7 @@ View the [test details report|${document.location.href}] for additional context.
           </TestsReportTabPanel>
           <TestsReportTabPanel activeIndex={activeTabIndex} index={1}>
             <CompReadyTestPanel
-              data={data.base_override_report}
+              data={data.analyses[1]}
               versions={versions}
               isOverride={true}
               loadedParams={loadedParams}

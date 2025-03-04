@@ -249,19 +249,24 @@ func (r ReportTestStats) IsTriaged() bool {
 	return r.ReportStatus < MissingSample && r.ReportStatus > SignificantRegression
 }
 
-type ReportTestOverride struct {
+// TestDetailsAnalysis is a collection of stats for the report which could potentially carry
+// multiple different analyses run.
+type TestDetailsAnalysis struct {
 	ReportTestStats
 	JobStats []TestDetailsJobStats `json:"job_stats,omitempty"`
 }
 
+// ReportTestDetails is the top level API response for test details reports.
 type ReportTestDetails struct {
 	ReportTestIdentification
-	ReportTestStats
-	BaseOverrideReport ReportTestOverride    `json:"base_override_report"`
-	JiraComponent      string                `json:"jira_component"`
-	JiraComponentID    *big.Rat              `json:"jira_component_id"`
-	JobStats           []TestDetailsJobStats `json:"job_stats,omitempty"`
-	GeneratedAt        *time.Time            `json:"generated_at"`
+	JiraComponent   string     `json:"jira_component"`
+	JiraComponentID *big.Rat   `json:"jira_component_id"`
+	GeneratedAt     *time.Time `json:"generated_at"`
+
+	// Analyses is a list of potentially multiple analysis run for this test.
+	// Callers can assume that the first in the list is somewhat authoritative, and should
+	// be displayed by default.
+	Analyses []TestDetailsAnalysis `json:"analyses"`
 }
 
 type TestDetailsReleaseStats struct {
@@ -327,7 +332,9 @@ type JobRunTestStatusRow struct {
 }
 
 type JobRunTestReportStatus struct {
-	BaseStatus         map[string][]JobRunTestStatusRow `json:"base_status"`
+	BaseStatus map[string][]JobRunTestStatusRow `json:"base_status"`
+	// TODO: This could be a little cleaner if we did status.BaseStatuses plural and tied them to a release,
+	// allowing the release fallback mechanism to stay a little cleaner.
 	BaseOverrideStatus map[string][]JobRunTestStatusRow `json:"base_override_status"`
 	SampleStatus       map[string][]JobRunTestStatusRow `json:"sample_status"`
 	GeneratedAt        *time.Time                       `json:"generated_at"`

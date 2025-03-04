@@ -1348,19 +1348,23 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					RowIdentification:    testDetailsRowIdentification,
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
-				ReportTestStats: crtype.ReportTestStats{
-					Comparison:   crtype.FisherExact,
-					SampleStats:  sampleReleaseStatsOneHigh,
-					BaseStats:    &baseReleaseStatsOneHigh,
-					FisherExact:  thrift.Float64Ptr(.4807457902463764),
-					ReportStatus: crtype.NotSignificant,
-				},
-				JobStats: []crtype.TestDetailsJobStats{
+				Analyses: []crtype.TestDetailsAnalysis{
 					{
-						JobName:     prowJob1,
-						SampleStats: sampleTestStatsHigh,
-						BaseStats:   baseTestStatsHigh,
-						Significant: false,
+						ReportTestStats: crtype.ReportTestStats{
+							Comparison:   crtype.FisherExact,
+							SampleStats:  sampleReleaseStatsOneHigh,
+							BaseStats:    &baseReleaseStatsOneHigh,
+							FisherExact:  thrift.Float64Ptr(.4807457902463764),
+							ReportStatus: crtype.NotSignificant,
+						},
+						JobStats: []crtype.TestDetailsJobStats{
+							{
+								JobName:     prowJob1,
+								SampleStats: sampleTestStatsHigh,
+								BaseStats:   baseTestStatsHigh,
+								Significant: false,
+							},
+						},
 					},
 				},
 			},
@@ -1391,19 +1395,23 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					RowIdentification:    testDetailsRowIdentification,
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
-				ReportTestStats: crtype.ReportTestStats{
-					Comparison:   crtype.FisherExact,
-					SampleStats:  sampleReleaseStatsOneLow,
-					BaseStats:    &baseReleaseStatsOneHigh,
-					FisherExact:  thrift.Float64Ptr(8.209711662216515e-28),
-					ReportStatus: crtype.ExtremeRegression,
-				},
-				JobStats: []crtype.TestDetailsJobStats{
+				Analyses: []crtype.TestDetailsAnalysis{
 					{
-						JobName:     prowJob1,
-						SampleStats: sampleTestStatsLow,
-						BaseStats:   baseTestStatsHigh,
-						Significant: true,
+						ReportTestStats: crtype.ReportTestStats{
+							Comparison:   crtype.FisherExact,
+							SampleStats:  sampleReleaseStatsOneLow,
+							BaseStats:    &baseReleaseStatsOneHigh,
+							FisherExact:  thrift.Float64Ptr(8.209711662216515e-28),
+							ReportStatus: crtype.ExtremeRegression,
+						},
+						JobStats: []crtype.TestDetailsJobStats{
+							{
+								JobName:     prowJob1,
+								SampleStats: sampleTestStatsLow,
+								BaseStats:   baseTestStatsHigh,
+								Significant: true,
+							},
+						},
 					},
 				},
 			},
@@ -1434,19 +1442,23 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					RowIdentification:    testDetailsRowIdentification,
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
-				ReportTestStats: crtype.ReportTestStats{
-					Comparison:   crtype.FisherExact,
-					SampleStats:  sampleReleaseStatsOneHigh,
-					BaseStats:    &baseReleaseStatsOneLow,
-					FisherExact:  thrift.Float64Ptr(4.911246201592593e-22),
-					ReportStatus: crtype.SignificantImprovement,
-				},
-				JobStats: []crtype.TestDetailsJobStats{
+				Analyses: []crtype.TestDetailsAnalysis{
 					{
-						JobName:     prowJob1,
-						SampleStats: sampleTestStatsHigh,
-						BaseStats:   baseTestStatsLow,
-						Significant: false,
+						ReportTestStats: crtype.ReportTestStats{
+							Comparison:   crtype.FisherExact,
+							SampleStats:  sampleReleaseStatsOneHigh,
+							BaseStats:    &baseReleaseStatsOneLow,
+							FisherExact:  thrift.Float64Ptr(4.911246201592593e-22),
+							ReportStatus: crtype.SignificantImprovement,
+						},
+						JobStats: []crtype.TestDetailsJobStats{
+							{
+								JobName:     prowJob1,
+								SampleStats: sampleTestStatsHigh,
+								BaseStats:   baseTestStatsLow,
+								Significant: false,
+							},
+						},
 					},
 				},
 			},
@@ -1485,25 +1497,29 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 					RowIdentification:    testDetailsRowIdentification,
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
-				ReportTestStats: crtype.ReportTestStats{
-					Comparison:   crtype.FisherExact,
-					SampleStats:  sampleReleaseStatsTwoHigh,
-					BaseStats:    &baseReleaseStatsTwoHigh,
-					FisherExact:  thrift.Float64Ptr(0.4119831376606586),
-					ReportStatus: crtype.NotSignificant,
-				},
-				JobStats: []crtype.TestDetailsJobStats{
+				Analyses: []crtype.TestDetailsAnalysis{
 					{
-						JobName:     prowJob1,
-						SampleStats: sampleTestStatsHigh,
-						BaseStats:   baseTestStatsHigh,
-						Significant: false,
-					},
-					{
-						JobName:     prowJob2,
-						SampleStats: sampleTestStatsHigh,
-						BaseStats:   baseTestStatsHigh,
-						Significant: false,
+						ReportTestStats: crtype.ReportTestStats{
+							Comparison:   crtype.FisherExact,
+							SampleStats:  sampleReleaseStatsTwoHigh,
+							BaseStats:    &baseReleaseStatsTwoHigh,
+							FisherExact:  thrift.Float64Ptr(0.4119831376606586),
+							ReportStatus: crtype.NotSignificant,
+						},
+						JobStats: []crtype.TestDetailsJobStats{
+							{
+								JobName:     prowJob1,
+								SampleStats: sampleTestStatsHigh,
+								BaseStats:   baseTestStatsHigh,
+								Significant: false,
+							},
+							{
+								JobName:     prowJob2,
+								SampleStats: sampleTestStatsHigh,
+								BaseStats:   baseTestStatsHigh,
+								Significant: false,
+							},
+						},
 					},
 				},
 			},
@@ -1570,19 +1586,19 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			report := tc.generator.internalGenerateTestDetailsReport(context.TODO(), baseStats, "", nil, nil, sampleStats)
 			assert.Equal(t, tc.expectedReport.RowIdentification, report.RowIdentification, "expected report row identification %+v, got %+v", tc.expectedReport.RowIdentification, report.RowIdentification)
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
-			assert.Equal(t, tc.expectedReport.BaseStats, report.BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.BaseStats, report.BaseStats)
-			assert.Equal(t, tc.expectedReport.SampleStats, report.SampleStats, "expected report sample stats %+v, got %+v", tc.expectedReport.SampleStats, report.SampleStats)
-			assert.Equal(t, fmt.Sprintf("%.4f", *tc.expectedReport.FisherExact), fmt.Sprintf("%.4f", *report.FisherExact), "expected fisher exact number %+v, got %+v", tc.expectedReport.FisherExact, report.FisherExact)
-			assert.Equal(t, tc.expectedReport.ReportStatus, report.ReportStatus, "expected report status %+v, got %+v", tc.expectedReport.ReportStatus, report.ReportStatus)
-			assert.Equal(t, len(tc.expectedReport.JobStats), len(report.JobStats), "expected len of job stats %+v, got %+v", len(tc.expectedReport.JobStats), report.JobStats)
-			for i := range tc.expectedReport.JobStats {
-				jobName := report.JobStats[i].JobName
-				assert.Equal(t, tc.expectedReport.JobStats[i].JobName, jobName, "expected job name %+v, got %+v", tc.expectedReport.JobStats[i].JobName, jobName)
-				assert.Equal(t, tc.expectedReport.JobStats[i].Significant, report.JobStats[i].Significant, "expected per job significant %+v, got %+v", tc.expectedReport.JobStats[i].Significant, report.JobStats[i].Significant)
-				assert.Equal(t, tc.expectedReport.JobStats[i].BaseStats, report.JobStats[i].BaseStats, "expected per job base stats for %s to be %+v, got %+v", tc.expectedReport.JobStats[i].JobName, tc.expectedReport.JobStats[i].BaseStats, report.JobStats[i].BaseStats)
-				assert.Equal(t, tc.expectedReport.JobStats[i].SampleStats, report.JobStats[i].SampleStats, "expected per job sample stats for %s to be %+v, got %+v", tc.expectedReport.JobStats[i].JobName, tc.expectedReport.JobStats[i].SampleStats, report.JobStats[i].SampleStats)
-				assert.Equal(t, tc.expectedSampleJobRunLen[jobName], len(report.JobStats[i].SampleJobRunStats), "expected sample job run counts %+v, got %+v", tc.expectedSampleJobRunLen[jobName], len(report.JobStats[i].SampleJobRunStats))
-				assert.Equal(t, tc.expectedBaseJobRunLen[jobName], len(report.JobStats[i].BaseJobRunStats), "expected base job run counts %+v, got %+v", tc.expectedBaseJobRunLen[jobName], len(report.JobStats[i].BaseJobRunStats))
+			assert.Equal(t, tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats)
+			assert.Equal(t, tc.expectedReport.Analyses[0].SampleStats, report.Analyses[0].SampleStats, "expected report sample stats %+v, got %+v", tc.expectedReport.Analyses[0].SampleStats, report.Analyses[0].SampleStats)
+			assert.Equal(t, fmt.Sprintf("%.4f", *tc.expectedReport.Analyses[0].FisherExact), fmt.Sprintf("%.4f", *report.Analyses[0].FisherExact), "expected fisher exact number %+v, got %+v", tc.expectedReport.Analyses[0].FisherExact, report.Analyses[0].FisherExact)
+			assert.Equal(t, tc.expectedReport.Analyses[0].ReportStatus, report.Analyses[0].ReportStatus, "expected report status %+v, got %+v", tc.expectedReport.Analyses[0].ReportStatus, report.Analyses[0].ReportStatus)
+			assert.Equal(t, len(tc.expectedReport.Analyses[0].JobStats), len(report.Analyses[0].JobStats), "expected len of job stats %+v, got %+v", len(tc.expectedReport.Analyses[0].JobStats), report.Analyses[0].JobStats)
+			for i := range tc.expectedReport.Analyses[0].JobStats {
+				jobName := report.Analyses[0].JobStats[i].JobName
+				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].JobName, jobName, "expected job name %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].JobName, jobName)
+				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].Significant, report.Analyses[0].JobStats[i].Significant, "expected per job significant %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].Significant, report.Analyses[0].JobStats[i].Significant)
+				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].BaseStats, report.Analyses[0].JobStats[i].BaseStats, "expected per job base stats for %s to be %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].JobName, tc.expectedReport.Analyses[0].JobStats[i].BaseStats, report.Analyses[0].JobStats[i].BaseStats)
+				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].SampleStats, report.Analyses[0].JobStats[i].SampleStats, "expected per job sample stats for %s to be %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].JobName, tc.expectedReport.Analyses[0].JobStats[i].SampleStats, report.Analyses[0].JobStats[i].SampleStats)
+				assert.Equal(t, tc.expectedSampleJobRunLen[jobName], len(report.Analyses[0].JobStats[i].SampleJobRunStats), "expected sample job run counts %+v, got %+v", tc.expectedSampleJobRunLen[jobName], len(report.Analyses[0].JobStats[i].SampleJobRunStats))
+				assert.Equal(t, tc.expectedBaseJobRunLen[jobName], len(report.Analyses[0].JobStats[i].BaseJobRunStats), "expected base job run counts %+v, got %+v", tc.expectedBaseJobRunLen[jobName], len(report.Analyses[0].JobStats[i].BaseJobRunStats))
 			}
 			// assert.Equal(t, tc.expectedReport.ReportStatus, report.ReportStatus, "expected report %+v, got %+v", tc.expectedReport, report)
 			// output, _ := json.MarshalIndent(report, "", "    ")
