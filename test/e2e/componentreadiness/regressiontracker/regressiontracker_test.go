@@ -11,10 +11,10 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/flags"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm/logger"
 )
 
 func cleanupAllRegressions(dbc *db.DB) {
@@ -29,9 +29,7 @@ func Test_RegressionTracker(t *testing.T) {
 	require.NotEqual(t, "", os.Getenv("SIPPY_E2E_DSN"),
 		"SIPPY_E2E_DSN environment variable not set")
 
-	psqlFlags := flags.NewPostgresDatabaseFlags()
-	psqlFlags.DSN = os.Getenv("SIPPY_E2E_DSN")
-	dbc, err := psqlFlags.GetDBClient()
+	dbc, err := db.New(os.Getenv("SIPPY_E2E_DSN"), logger.Info)
 	require.NoError(t, err, "error connecting to db")
 
 	// Simple check that someone doesn't accidentally run the e2es against the prod db:
