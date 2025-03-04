@@ -491,6 +491,8 @@ func (aw *AnalysisWorker) determinePrComment(prCommentProspect models.PullReques
 	log.Debugf("Comment added to preparedComments: %s/%s/%s", preparedComment.org, preparedComment.repo, preparedComment.sha)
 }
 
+const commentRowLimit = 20
+
 func buildCommentText(riskAnalyses []RiskAnalysisSummary, newTestRisks []*JobNewTestRisks, sha string) string {
 	sb := &strings.Builder{}
 	if len(riskAnalyses) == 0 && len(newTestRisks) == 0 {
@@ -518,18 +520,30 @@ func buildNewTestRisksComment(sb *strings.Builder, jobRisks []*JobNewTestRisks, 
 		SortByJobNameNT(notableJobRisks)
 		sb.WriteString(fmt.Sprintf("New Test Risks for sha: %s\n\n", sha))
 		sb.WriteString("| Job Name | New Test Risk |\n|:---|:---|\n")
+		rows := 0
 		for _, jr := range notableJobRisks {
 			for _, risk := range sortedTestRisks(jr.NewTestRisks) {
+				rows++
+				if rows > commentRowLimit {
+					continue // limit comment size, just count rows
+				}
 				sb.WriteString(fmt.Sprintf("|%s|**%s** - *%q* **%s**|\n",
 					jr.JobName, risk.Level.Name, risk.TestName, risk.Reason))
 			}
+		}
+		if rows > commentRowLimit {
+			sb.WriteString(fmt.Sprintf("| | *(...showing %d of %d rows)* |\n", commentRowLimit, rows))
 		}
 		sb.WriteString("\n")
 	}
 
 	if len(testSummaries) > 0 {
 		sb.WriteString(fmt.Sprintf("New tests seen in this PR at sha: %s\n\n", sha))
-		for _, test := range testSummaries {
+		for idx, test := range testSummaries {
+			if idx >= commentRowLimit {
+				sb.WriteString(fmt.Sprintf("* *(...showing %d of %d tests)*", idx, len(testSummaries)))
+				break // limit comment size
+			}
 			sb.WriteString(fmt.Sprintf("- *%q* [Total: %d, Pass: %d, Fail: %d, Flake: %d]\n",
 				test.TestName, test.Runs, test.Runs-test.Failures, test.Failures, test.Flakes))
 		}
@@ -550,8 +564,8 @@ func buildRiskAnalysisComment(sb *strings.Builder, riskAnalyses []RiskAnalysisSu
 	}
 
 	for idx, analysis := range riskAnalyses {
-		if idx > 19 {
-			sb.WriteString(fmt.Sprintf("\nShowing %d of %d jobs analysis", idx, len(riskAnalyses)))
+		if idx >= commentRowLimit {
+			sb.WriteString(fmt.Sprintf("\nShowing %d of %d jobs analysis", commentRowLimit, len(riskAnalyses)))
 			break // top 20 should be more than enough
 		}
 
