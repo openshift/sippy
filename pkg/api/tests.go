@@ -245,7 +245,7 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	log.WithFields(log.Fields{
 		"elapsed": elapsed,
 		"reports": len(testReports),
-	}).Info("BuildTestsResults completed")
+	}).Debug("BuildTestsResults completed")
 
 	return testReports, overallTest, nil
 }

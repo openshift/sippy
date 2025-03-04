@@ -35,7 +35,7 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 		// This is here to support older prow jobs where only the jobID was passed.  Eventually,
 		// we will not have to fallback because we will expect all jobs to pass in enough
 		// information to construct a full GCS bucket path.
-		jobRun, _, err := api.FetchJobRun(dbc, jobRunID, logger)
+		jobRun, err := api.FetchJobRun(dbc, jobRunID, false, logger)
 		if err != nil {
 			logger.WithError(err).Error("error querying job run")
 			return nil, err
