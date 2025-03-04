@@ -246,6 +246,7 @@ export default function CompReadyEnvCapabilityTest(props) {
                     filterVals={filterVals}
                     component={component}
                     capability={capability}
+                    accessibilityMode={props.accessibilityMode}
                   />
                 )
               })
@@ -270,4 +271,5 @@ CompReadyEnvCapabilityTest.propTypes = {
   capability: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   environment: PropTypes.string,
+  accessibilityMode: PropTypes.bool.isRequired,
 }
