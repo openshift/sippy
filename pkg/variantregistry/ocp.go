@@ -44,6 +44,7 @@ func NewOCPVariantLoader(
 	if gcsBucket != "" {
 		bkt = gcsClient.Bucket(gcsBucket)
 	}
+
 	return &OCPVariantLoader{
 		BigQueryClient:  bigQueryClient,
 		bkt:             bkt,
@@ -52,7 +53,6 @@ func NewOCPVariantLoader(
 		bigQueryDataSet: bigQueryDataSet,
 		bigQueryTable:   bigQueryTable,
 	}
-
 }
 
 type prowJobLastRun struct {
@@ -546,10 +546,18 @@ func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]
 	}
 }
 
+// setJobTier sets the jobTier for a job, with values like this:
+//
+//		blocking: blocking job on payloads
+//		informing: informing job on payloads
+//		standard: should be visible in default views (component readiness, sippy)
+//	 	rare: highly reliable jobs that run at a reduced frequency
+//		candidate: a candidate for being shown in default views, used to gauge the stability and promotability of the job
+//		hidden: data should still be synced, but not shown by default
+//		excluded: data should not be synced, and excluded from all views
 func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	jobNameLower := strings.ToLower(jobName)
 
-	// Excluded jobs:
 	jobTierPatterns := []struct {
 		substring string
 		jobTier   string
@@ -557,6 +565,23 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// Rarely run
 		{"-cpu-partitioning", "rare"},
 		{"-etcd-scaling", "rare"},
+
+		// QE jobs allowlisted for Component Readiness
+		{"-automated-release", "standard"},
+
+		// Excluded jobs
+		{"-okd", "excluded"},
+		{"-recovery", "excluded"},
+		{"alibaba", "excluded"},
+
+		// Hidden jobs
+		{"-disruptive", "hidden"},
+		{"-rollback", "hidden"},
+		{"aggregator-", "hidden"},
+		{"-out-of-change", "hidden"},
+		{"-sno-fips-recert", "hidden"},
+		{"-bgp-", "hidden"},
+		{"aggregated", "hidden"},
 	}
 
 	for _, jobTierPattern := range jobTierPatterns {
@@ -566,14 +591,23 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		}
 	}
 
+	// QE default is hidden, we'll opt jobs in above as they stabalize and are
+	// ready for component readiness.
+	if variants[VariantOwner] == "qe" {
+		variants[VariantJobTier] = "hidden"
+		return
+	}
+
 	// Determine job tier from release configuration
 	release := variants[VariantRelease]
 	if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
 		variants[VariantJobTier] = "blocking"
 	} else if util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName) {
 		variants[VariantJobTier] = "informing"
-	} else {
+	} else if v.config.Releases[release].Jobs[jobName] {
 		variants[VariantJobTier] = "standard"
+	} else {
+		variants[VariantJobTier] = "candidate"
 	}
 }
 

@@ -28,11 +28,13 @@ var importantVariants = []string{
 	"Architecture",
 	"Network",
 	"NetworkStack",
+	"Owner",
 	"Topology",
 	"FeatureSet",
 	"Upgrade",
 	"SecurityMode",
 	"Installer",
+	"JobTier",
 }
 
 const (
