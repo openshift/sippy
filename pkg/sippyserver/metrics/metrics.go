@@ -167,7 +167,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, pro
 
 	// BigQuery metrics
 	if bqc != nil {
-		refreshComponentReadinessMetrics(ctx, bqc, prowURL, gcsBucket, cacheOptions, views, releases, variantJunitTableOverrides)
+		refreshComponentReadinessMetrics(ctx, bqc, dbc, prowURL, gcsBucket, cacheOptions, views, releases, variantJunitTableOverrides)
 
 		if err := refreshDisruptionMetrics(bqc, releases); err != nil {
 			log.WithError(err).Error("error refreshing disruption metrics")
@@ -179,7 +179,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, pro
 	return nil
 }
 
-func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Client, prowURL, gcsBucket string,
+func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Client, dbc *db.DB, prowURL, gcsBucket string,
 	cacheOptions cache.RequestOptions, views []crtype.View, releases []v1.Release, variantJunitTableOverrides []configv1.VariantJunitTableOverride) {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
@@ -193,7 +193,7 @@ func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Clie
 
 	for _, view := range views {
 		if view.Metrics.Enabled {
-			err := updateComponentReadinessMetricsForView(ctx, client, prowURL, gcsBucket, cacheOptions, view, releases, variantJunitTableOverrides)
+			err := updateComponentReadinessMetricsForView(ctx, client, dbc, prowURL, gcsBucket, cacheOptions, view, releases, variantJunitTableOverrides)
 			if err != nil {
 				log.WithError(err).Error("error")
 				log.WithError(err).WithField("view", view.Name).Error("error refreshing metrics/regressions for view")
@@ -204,7 +204,7 @@ func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Clie
 }
 
 // updateComponentReadinessTrackingForView queries the report for the given view, and then updates metrics.
-func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclient.Client, prowURL, gcsBucket string, cacheOptions cache.RequestOptions, view crtype.View, releases []v1.Release, overrides []configv1.VariantJunitTableOverride) error {
+func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclient.Client, dbc *db.DB, prowURL, gcsBucket string, cacheOptions cache.RequestOptions, view crtype.View, releases []v1.Release, overrides []configv1.VariantJunitTableOverride) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
@@ -234,7 +234,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 		CacheOption:    cacheOptions,
 	}
 
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(ctx, client, prowURL, gcsBucket, reportOpts,
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(ctx, client, dbc, prowURL, gcsBucket, reportOpts,
 		overrides)
 	if len(errs) > 0 {
 		var strErrors []string

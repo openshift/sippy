@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -142,6 +143,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	if err := d.DB.AutoMigrate(&componentreport.TestRegression{}); err != nil {
+		return err
+	}
+
 	if err := populateTestSuitesInDB(d.DB); err != nil {
 		return err
 	}
@@ -191,7 +196,8 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 	}
 
 	var updateRequired bool
-	if currSchemaHash.ID == 0 {
+	switch {
+	case currSchemaHash.ID == 0:
 		vlog.Debug("no current schema hash in db, creating")
 		updateRequired = true
 		currSchemaHash = models.SchemaHash{
@@ -199,11 +205,11 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 			Name: name,
 			Hash: hashStr,
 		}
-	} else if currSchemaHash.Hash != hashStr {
+	case currSchemaHash.Hash != hashStr:
 		vlog.WithField("oldHash", currSchemaHash.Hash).Debug("schema hash has changed, recreating")
 		currSchemaHash.Hash = hashStr
 		updateRequired = true
-	} else if forceUpdate {
+	case forceUpdate:
 		vlog.Debug("schema hash has not changed but a force update was requested, recreating")
 		updateRequired = true
 	}

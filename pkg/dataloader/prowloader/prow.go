@@ -1141,11 +1141,12 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, te
 		}
 		status := sippyprocessingv1.TestStatusFailure
 		var failureOutput *models.ProwJobRunTestOutput
-		if tc.SkipMessage != nil {
+		switch {
+		case tc.SkipMessage != nil:
 			continue
-		} else if tc.FailureOutput == nil {
+		case tc.FailureOutput == nil:
 			status = sippyprocessingv1.TestStatusSuccess
-		} else {
+		default:
 			failureOutput = &models.ProwJobRunTestOutput{
 				Output: tc.FailureOutput.Output,
 			}

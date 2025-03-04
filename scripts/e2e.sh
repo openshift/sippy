@@ -1,6 +1,11 @@
 #!/bin/sh
+# Shell script meant for developers to run the e2e tests locally without impacting
+# their running postgres container or sippy process.
+# It's quite quick to import the older releases below, but in theory
+# you can run these commands against your devel sippy process/db and just run the
+# go test e2es for faster turnaround.
 
-DOCKER="docker"
+DOCKER="podman"
 PSQL_CONTAINER="sippy-e2e-test-postgresql"
 PSQL_PORT="23433"
 
@@ -33,14 +38,15 @@ $DOCKER run --name $PSQL_CONTAINER -e POSTGRES_PASSWORD=password -p $PSQL_PORT:5
 echo "Wait 5s for postgresql to start..."
 sleep 5
 
+export SIPPY_E2E_DSN="postgresql://postgres:password@localhost:$PSQL_PORT/postgres"
+
 echo "Loading database..."
 # use an old release here as they have very few job runs and thus import quickly, ~5 minutes
 make build
-./sippy load --loader prow --loader releases \
-  --release 4.7 \
-  --database-dsn="postgresql://postgres:password@localhost:$PSQL_PORT/postgres" \
-  --mode=ocp \
-  --config ./config/openshift.yaml \
+./sippy load --loader prow --loader prow --load-openshift-ci-bigquery \
+  --release 4.14 \
+  --database-dsn="$SIPPY_E2E_DSN" \
+  --config ./config/e2e-openshift.yaml \
   --google-service-account-credential-file $GCS_SA_JSON_PATH
 
 # Spawn sippy server off into a separate process:
@@ -48,9 +54,9 @@ make build
 ./sippy serve \
   --listen ":18080" \
   --listen-metrics ":12112" \
-  --database-dsn="postgresql://postgres:password@localhost:$PSQL_PORT/postgres" \
+  --database-dsn="$SIPPY_E2E_DSN" \
   --log-level debug \
-  --mode ocp
+  --google-service-account-credential-file $GCS_SA_JSON_PATH
 )&
 # store the child process for cleanup
 CHILD_PID=$!
@@ -59,9 +65,8 @@ CHILD_PID=$!
 echo "Wait 30s for sippy API to start..."
 sleep 30
 
+
 # Run our tests that request against the API:
-go test ./test/e2e/ -v
+gotestsum ./test/e2e/...
 
 # WARNING: do not place more commands here without addressing return code from go test not being overridden by the cleanup func
-
-

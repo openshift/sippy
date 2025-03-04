@@ -54,12 +54,17 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	if len(errs) > 0 {
 		return crtype.ReportTestDetails{}, errs
 	}
-	var err error
-	bqs := NewBigQueryRegressionStore(c.client)
-	allRegressions, err := bqs.ListCurrentRegressions(ctx)
-	if err != nil {
-		errs = append(errs, err)
-		return crtype.ReportTestDetails{}, errs
+
+	// We only execute this if we were given a postgres database connection, it is still possible to run
+	// component readiness without postgresql, you just won't have regression tracking.
+	if c.dbc != nil {
+		var err error
+		bqs := NewPostgresRegressionStore(c.dbc)
+		c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(c.ReqOptions.SampleRelease.Release)
+		if err != nil {
+			errs = append(errs, err)
+			return crtype.ReportTestDetails{}, errs
+		}
 	}
 
 	var baseOverrideReport *crtype.ReportTestDetails
@@ -76,7 +81,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		baseOverrideReport = &overrideReport
 	}
 
-	c.openRegressions = FilterRegressionsForRelease(allRegressions, c.ReqOptions.SampleRelease.Release)
 	report := c.internalGenerateTestDetailsReport(ctx, componentJobRunTestReportStatus.BaseStatus, c.ReqOptions.BaseRelease.Release, &c.ReqOptions.BaseRelease.Start, &c.ReqOptions.BaseRelease.End, componentJobRunTestReportStatus.SampleStatus)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
