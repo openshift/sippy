@@ -26,6 +26,7 @@ linters-settings:
   gofmt:
     simplify: false # do not require the -s flag
   gocritic:
+    disable-all: true # let's only enable ones we opt in to, not random new ones
     enabled-checks:
       # Diagnostic
       - argOrder
