@@ -218,6 +218,10 @@ func (r *ReleaseFallback) TransformTestDetails(status *crtype.JobRunTestReportSt
 	return nil
 }
 
+func (r *ReleaseFallback) TestDetailsAnalyze(report *crtype.ReportTestDetails) error {
+	return nil
+}
+
 // fallbackTestQueryReleasesGenerator iterates the configured number of past releases, querying base status for
 // each, which can then be used to return the best basis data from those past releases for comparison.
 type fallbackTestQueryReleasesGenerator struct {

@@ -95,6 +95,13 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		componentJobRunTestReportStatus.SampleStatus)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
+	for _, mw := range c.middlewares {
+		err = mw.TestDetailsAnalyze(&report)
+		if err != nil {
+			return crtype.ReportTestDetails{}, []error{err}
+		}
+	}
+
 	// Generate the report for the fallback release if one was found:
 	// Move all this to the middleware.
 	var baseOverrideReport *crtype.ReportTestDetails

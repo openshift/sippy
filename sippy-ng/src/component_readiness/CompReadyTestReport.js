@@ -465,7 +465,7 @@ View the [test details report|${document.location.href}] for additional context.
         </Fragment>
       ) : (
         <CompReadyTestPanel
-          data={data}
+          data={data.analyses[0]}
           versions={versions}
           isOverride={false}
           loadedParams={loadedParams}

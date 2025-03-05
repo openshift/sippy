@@ -106,3 +106,7 @@ func (r *RegressionAllowances) QueryTestDetails(ctx context.Context, wg *sync.Wa
 func (r *RegressionAllowances) TransformTestDetails(status *crtype.JobRunTestReportStatus) error {
 	return nil
 }
+
+func (r *RegressionAllowances) TestDetailsAnalyze(details *crtype.ReportTestDetails) error {
+	return nil
+}

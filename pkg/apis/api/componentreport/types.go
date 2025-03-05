@@ -265,7 +265,8 @@ type ReportTestDetails struct {
 
 	// Analyses is a list of potentially multiple analysis run for this test.
 	// Callers can assume that the first in the list is somewhat authoritative, and should
-	// be displayed by default.
+	// be displayed by default, but each analysis offers details and explanations on it's outcome
+	// and can be used in some capacity.
 	Analyses []TestDetailsAnalysis `json:"analyses"`
 }
 
@@ -334,7 +335,8 @@ type JobRunTestStatusRow struct {
 type JobRunTestReportStatus struct {
 	BaseStatus map[string][]JobRunTestStatusRow `json:"base_status"`
 	// TODO: This could be a little cleaner if we did status.BaseStatuses plural and tied them to a release,
-	// allowing the release fallback mechanism to stay a little cleaner.
+	// allowing the release fallback mechanism to stay a little cleaner. That would more clearly
+	// keep middleware details out of the main codebase.
 	BaseOverrideStatus map[string][]JobRunTestStatusRow `json:"base_override_status"`
 	SampleStatus       map[string][]JobRunTestStatusRow `json:"sample_status"`
 	GeneratedAt        *time.Time                       `json:"generated_at"`
