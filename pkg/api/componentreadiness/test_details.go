@@ -32,7 +32,6 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBu
 		ReqOptions: reqOptions,
 	}
 	if os.Getenv("DEV_MODE") == "1" {
-		logrus.Warn("######### RECALC REPORT")
 		return generator.GenerateTestDetailsReport(ctx)
 	}
 

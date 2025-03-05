@@ -128,7 +128,6 @@ func GetComponentReportFromBigQuery(
 	}
 
 	if os.Getenv("DEV_MODE") == "1" {
-		log.Warn("######### RECALC REPORT")
 		return generator.GenerateReport(ctx)
 	}
 
