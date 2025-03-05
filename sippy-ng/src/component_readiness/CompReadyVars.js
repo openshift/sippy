@@ -510,11 +510,18 @@ export const CompReadyVarsProvider = ({ children }) => {
           // select the default view: (first in the list matching our default sample release)
           if (shouldLoadDefaultView()) {
             for (let v of views) {
+              var foundView = false
               if (v.sample_release.release === defaultSampleRelease) {
+                foundView = true
                 setView(v.name)
                 syncView(v)
                 break
               }
+            }
+            // Catch case where the views file has no entry for the current default sample release:
+            if (!foundView) {
+              setView(views[0].name)
+              syncView(views[0])
             }
           } else if (view !== undefined) {
             // A view query param was requested, sync the controls to match as soon as we receive our views list:
