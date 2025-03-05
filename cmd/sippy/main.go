@@ -15,6 +15,7 @@ var rootCmd = &cobra.Command{
 including name, suite, or NURP+ variants (network, upgrade, release,
 platform, etc).`,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		PrintVersion(cmd, args)
 		level, err := log.ParseLevel(logLevel)
 		if err != nil {
 			log.WithError(err).Fatal("cannot parse log-level")
@@ -42,6 +43,7 @@ func main() {
 		NewAutomateJiraCommand(),
 		NewTrackRegressionsCommand(),
 		NewVariantsCommand(),
+		NewVersionCommand(),
 	)
 
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
