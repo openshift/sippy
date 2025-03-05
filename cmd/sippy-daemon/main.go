@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/pkg/errors"
@@ -17,6 +19,7 @@ import (
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/github/commenter"
 	"github.com/openshift/sippy/pkg/sippyserver"
+	"github.com/openshift/sippy/pkg/version"
 )
 
 var logLevel = "info"
@@ -58,6 +61,9 @@ func NewSippyDaemonCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sippy-daemon",
 		Short: "Sippy daemon is used for on-going tasks like monitoring git repos for reporting risk analysis.",
+		PersistentPreRun: func(c *cobra.Command, args []string) {
+			fmt.Fprintf(os.Stdout, "sippy built from %s\n", version.Get().GitCommit)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			processes := make([]sippyserver.DaemonProcess, 0)

@@ -5,6 +5,11 @@ DEPS = npm go
 CHECK := $(foreach dep,$(DEPS),\
         $(if $(shell which $(dep)),"$(dep) found",$(error "Missing $(dep) in PATH")))
 
+GIT_COMMIT := $(shell git rev-parse --short HEAD)
+BUILD_DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+GIT_TREE_STATE := $(if $(shell git status --porcelain),dirty,clean)
+LDFLAGS := -ldflags "-X github.com/openshift/sippy/pkg/version.commitFromGit=$(GIT_COMMIT) -X github.com/openshift/sippy/pkg/version.buildDate=$(BUILD_DATE) -X github.com/openshift/sippy/pkg/version.gitTreeState=$(GIT_TREE_STATE)"
+
 all: test build
 
 build: builddir clean npm frontend sippy sippy-daemon
@@ -19,10 +24,10 @@ frontend:
 	cd sippy-ng; npm run build
 
 sippy: builddir
-	go build -mod=vendor ./cmd/sippy/...
+	go build $(LDFLAGS) -mod=vendor ./cmd/sippy/...
 
 sippy-daemon: builddir
-	go build -mod=vendor ./cmd/sippy-daemon/...
+	go build $(LDFLAGS) -mod=vendor ./cmd/sippy-daemon/...
 
 test: builddir npm
 ifeq ($(ARTIFACT_DIR),)
