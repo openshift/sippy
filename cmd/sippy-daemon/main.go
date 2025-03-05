@@ -36,9 +36,9 @@ type SippyDaemonFlags struct {
 
 func NewSippyDaemonFlags() *SippyDaemonFlags {
 	return &SippyDaemonFlags{
+		DBFlags:              flags.NewPostgresDatabaseFlags(),
 		BigQueryFlags:        flags.NewBigQueryFlags(),
 		CacheFlags:           flags.NewCacheFlags(),
-		DBFlags:              flags.NewPostgresDatabaseFlags(),
 		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
 		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
 	}
