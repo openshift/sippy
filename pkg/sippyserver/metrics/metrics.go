@@ -8,18 +8,18 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
+
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 
@@ -116,7 +116,7 @@ func getReleaseStatus(releases []v1.Release, release string) string {
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, prowURL, gcsBucket string, variantManager testidentification.VariantManager, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crtype.View, variantJunitTableOverrides []configv1.VariantJunitTableOverride) error {
+func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crtype.View, variantJunitTableOverrides []configv1.VariantJunitTableOverride) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := api.GetReleases(context.Background(), bqc)
@@ -167,7 +167,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, pro
 
 	// BigQuery metrics
 	if bqc != nil {
-		refreshComponentReadinessMetrics(ctx, bqc, dbc, prowURL, gcsBucket, cacheOptions, views, releases, variantJunitTableOverrides)
+		refreshComponentReadinessMetrics(ctx, bqc, dbc, cacheOptions, views, releases, variantJunitTableOverrides)
 
 		if err := refreshDisruptionMetrics(bqc, releases); err != nil {
 			log.WithError(err).Error("error refreshing disruption metrics")
@@ -179,7 +179,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, pro
 	return nil
 }
 
-func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Client, dbc *db.DB, prowURL, gcsBucket string,
+func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Client, dbc *db.DB,
 	cacheOptions cache.RequestOptions, views []crtype.View, releases []v1.Release, variantJunitTableOverrides []configv1.VariantJunitTableOverride) {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
@@ -193,7 +193,7 @@ func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Clie
 
 	for _, view := range views {
 		if view.Metrics.Enabled {
-			err := updateComponentReadinessMetricsForView(ctx, client, dbc, prowURL, gcsBucket, cacheOptions, view, releases, variantJunitTableOverrides)
+			err := updateComponentReadinessMetricsForView(ctx, client, dbc, cacheOptions, view, releases, variantJunitTableOverrides)
 			if err != nil {
 				log.WithError(err).Error("error")
 				log.WithError(err).WithField("view", view.Name).Error("error refreshing metrics/regressions for view")
@@ -204,7 +204,7 @@ func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Clie
 }
 
 // updateComponentReadinessTrackingForView queries the report for the given view, and then updates metrics.
-func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclient.Client, dbc *db.DB, prowURL, gcsBucket string, cacheOptions cache.RequestOptions, view crtype.View, releases []v1.Release, overrides []configv1.VariantJunitTableOverride) error {
+func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclient.Client, dbc *db.DB, cacheOptions cache.RequestOptions, view crtype.View, releases []v1.Release, overrides []configv1.VariantJunitTableOverride) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
@@ -234,8 +234,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 		CacheOption:    cacheOptions,
 	}
 
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(ctx, client, dbc, prowURL, gcsBucket, reportOpts,
-		overrides)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(ctx, client, dbc, reportOpts, overrides)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

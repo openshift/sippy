@@ -11,6 +11,11 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
+	log "github.com/sirupsen/logrus"
+	"github.com/trivago/tgo/tcontainer"
+	"google.golang.org/api/iterator"
+	jirautil "sigs.k8s.io/prow/pkg/jira"
+
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -20,10 +25,6 @@ import (
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/util/sets"
-	log "github.com/sirupsen/logrus"
-	"github.com/trivago/tgo/tcontainer"
-	"google.golang.org/api/iterator"
-	jirautil "sigs.k8s.io/prow/pkg/jira"
 )
 
 const (
@@ -141,7 +142,7 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 	}
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, j.dbc, "", "", reportOpts, j.variantJunitTableOverrides)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, j.dbc, reportOpts, j.variantJunitTableOverrides)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

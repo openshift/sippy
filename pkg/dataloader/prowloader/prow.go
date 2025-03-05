@@ -19,13 +19,14 @@ import (
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgtype"
-	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
+
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/db/query"
 
 	v1config "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/apis/junit"
@@ -50,8 +51,6 @@ var gcsPathStrip = regexp.MustCompile(`.*/gs/[^/]+/`)
 type ProwLoader struct {
 	ctx                     context.Context
 	dbc                     *db.DB
-	bkt                     *storage.BucketHandle
-	bktName                 string
 	errors                  []error
 	githubClient            *github.Client
 	bigQueryClient          *bqcachedclient.Client
@@ -70,6 +69,7 @@ type ProwLoader struct {
 	config                  *v1config.SippyConfig
 	ghCommenter             *commenter.GitHubCommenter
 	jobsImportedCount       atomic.Int32
+	gcsClient               *storage.Client
 }
 
 func New(
@@ -77,7 +77,6 @@ func New(
 	dbc *db.DB,
 	gcsClient *storage.Client,
 	bigQueryClient *bqcachedclient.Client,
-	gcsBucket string,
 	githubClient *github.Client,
 	variantManager testidentification.VariantManager,
 	syntheticTestManager synthetictests.SyntheticTestManager,
@@ -85,13 +84,10 @@ func New(
 	config *v1config.SippyConfig,
 	ghCommenter *commenter.GitHubCommenter) *ProwLoader {
 
-	bkt := gcsClient.Bucket(gcsBucket)
-
 	return &ProwLoader{
 		ctx:                  ctx,
 		dbc:                  dbc,
-		bkt:                  bkt,
-		bktName:              gcsBucket,
+		gcsClient:            gcsClient,
 		githubClient:         githubClient,
 		bigQueryClient:       bigQueryClient,
 		maxConcurrency:       10,
@@ -829,7 +825,8 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 		pjLog.WithError(err).WithField("prowJobURL", pj.Status.URL).Error("error getting GCS path for prow job URL")
 		return err
 	}
-	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
+	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
+	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 	allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultJunitFile()})
 	var junitMatches []string
 	if len(allMatches) > 0 {
@@ -905,6 +902,7 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 			ProwJob:       *dbProwJob,
 			ProwJobID:     dbProwJob.ID,
 			URL:           pj.Status.URL,
+			GCSBucket:     pj.Spec.DecorationConfig.GCSConfiguration.Bucket,
 			Timestamp:     pj.Status.StartTime,
 			OverallResult: overallResult,
 			PullRequests:  pulls,
@@ -1089,7 +1087,8 @@ func (pl *ProwLoader) findSuite(name string) *uint {
 func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id uint, path string, junitPaths []string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
 	failures := 0
 
-	gcsJobRun := gcs.NewGCSJobRun(pl.bkt, path)
+	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
+	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 	gcsJobRun.SetGCSJunitPaths(junitPaths)
 	suites, err := gcsJobRun.GetCombinedJUnitTestSuites(ctx)
 	if err != nil {

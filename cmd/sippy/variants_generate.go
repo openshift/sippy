@@ -78,7 +78,6 @@ func NewVariantsGenerateCommand() *cobra.Command {
 			}
 
 			var jsonData []byte
-
 			switch f.Mode {
 			case "ocp":
 
@@ -88,7 +87,6 @@ func NewVariantsGenerateCommand() *cobra.Command {
 					f.BigQueryFlags.BigQueryDataset,
 					f.BigqueryJobsTable,
 					gcsClient,
-					f.GoogleCloudFlags.StorageBucket,
 					config)
 				expectedVariants, err := jvs.LoadExpectedJobVariants(context.TODO())
 				if err != nil {

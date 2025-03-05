@@ -4,30 +4,27 @@ import (
 	"context"
 	"fmt"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
 	fet "github.com/glycerine/golang-fisher-exact"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/regressionallowances"
+	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetTestDetails(ctx context.Context, client *bigquery.Client, prowURL, gcsBucket string, reqOptions crtype.RequestOptions,
+func GetTestDetails(ctx context.Context, client *bigquery.Client, reqOptions crtype.RequestOptions,
 ) (crtype.ReportTestDetails, []error) {
 	generator := ComponentReportGenerator{
 		client:     client,
-		prowURL:    prowURL,
-		gcsBucket:  gcsBucket,
 		ReqOptions: reqOptions,
 	}
 
@@ -165,7 +162,7 @@ func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 
 func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 	fLog := logrus.WithField("func", "getJobRunTestStatusFromBigQuery")
-	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client, c.gcsBucket)
+	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client)
 	if len(errs) > 0 {
 		logrus.Errorf("failed to get variants from bigquery")
 		return crtype.JobRunTestReportStatus{}, errs
@@ -369,7 +366,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 				result.JiraComponentID = baseStats.JiraComponentID
 			}
 
-			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, c.getJobRunStats(baseStats, c.prowURL, c.gcsBucket))
+			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, c.getJobRunStats(baseStats))
 			perJobBaseSuccess += baseStats.SuccessCount
 			perJobBaseFlake += baseStats.FlakeCount
 			perJobBaseFailure += getFailureCount(baseStats)
@@ -383,7 +380,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 					result.JiraComponentID = sampleStats.JiraComponentID
 				}
 
-				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats, c.prowURL, c.gcsBucket))
+				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
 				perJobSampleSuccess += sampleStats.SuccessCount
 				perJobSampleFlake += sampleStats.FlakeCount
 				perJobSampleFailure += getFailureCount(sampleStats)
@@ -431,7 +428,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		perJobSampleSuccess = 0
 		perJobSampleFlake = 0
 		for _, sampleStats := range sampleStatsList {
-			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats, c.prowURL, c.gcsBucket))
+			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
 			perJobSampleSuccess += sampleStats.SuccessCount
 			perJobSampleFlake += sampleStats.FlakeCount
 			perJobSampleFailure += getFailureCount(sampleStats)
@@ -498,13 +495,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	return result
 }
 
-func (c *ComponentReportGenerator) getJobRunStats(stats crtype.JobRunTestStatusRow, prowURL, gcsBucket string) crtype.TestDetailsJobRunStats {
+func (c *ComponentReportGenerator) getJobRunStats(stats crtype.JobRunTestStatusRow) crtype.TestDetailsJobRunStats {
 	failure := getFailureCount(stats)
-	url := fmt.Sprintf("%s/view/gs/%s/", prowURL, gcsBucket)
-	subs := strings.Split(stats.FilePath, "/artifacts/")
-	if len(subs) > 1 {
-		url += subs[0]
-	}
 	jobRunStats := crtype.TestDetailsJobRunStats{
 		TestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  c.getPassRate(stats.SuccessCount, failure, stats.FlakeCount),
@@ -512,7 +504,7 @@ func (c *ComponentReportGenerator) getJobRunStats(stats crtype.JobRunTestStatusR
 			FailureCount: failure,
 			FlakeCount:   stats.FlakeCount,
 		},
-		JobURL: url,
+		JobURL: stats.ProwJobURL,
 	}
 	return jobRunStats
 }

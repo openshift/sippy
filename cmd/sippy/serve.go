@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -20,6 +19,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/flags"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 	"github.com/openshift/sippy/pkg/util"
@@ -31,7 +31,6 @@ type ServerFlags struct {
 	DBFlags                 *flags.PostgresFlags
 	GoogleCloudFlags        *flags.GoogleCloudFlags
 	ModeFlags               *flags.ModeFlags
-	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	ConfigFlags             *configflags.ConfigFlags
 
@@ -46,7 +45,6 @@ func NewServerFlags() *ServerFlags {
 		DBFlags:                 flags.NewPostgresDatabaseFlags(),
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		ModeFlags:               flags.NewModeFlags(),
-		ProwFlags:               flags.NewProwFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),
 		ListenAddr:              ":8080",
@@ -60,7 +58,6 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.DBFlags.BindFlags(flagSet)
 	f.GoogleCloudFlags.BindFlags(flagSet)
 	f.ModeFlags.BindFlags(flagSet)
-	f.ProwFlags.BindFlags(flagSet)
 	f.ComponentReadinessFlags.BindFlags(flagSet)
 	f.ConfigFlags.BindFlags(flagSet)
 
@@ -69,8 +66,7 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ServerFlags) Validate() error {
-	// TODO: Validate other flags
-	return f.ProwFlags.Validate()
+	return nil
 }
 
 func NewServeCommand() *cobra.Command {
@@ -150,8 +146,6 @@ func NewServeCommand() *cobra.Command {
 				webRoot,
 				&resources.Static,
 				dbc,
-				f.ProwFlags.URL,
-				f.GoogleCloudFlags.StorageBucket,
 				gcsClient,
 				bigQueryClient,
 				pinnedDateTime,
@@ -167,9 +161,6 @@ func NewServeCommand() *cobra.Command {
 					context.Background(),
 					dbc,
 					bigQueryClient,
-					f.ProwFlags.URL,
-					f.GoogleCloudFlags.StorageBucket,
-					variantManager,
 					util.GetReportEnd(pinnedDateTime),
 					cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
 					views.ComponentReadiness,
@@ -190,9 +181,6 @@ func NewServeCommand() *cobra.Command {
 								context.Background(),
 								dbc,
 								bigQueryClient,
-								f.ProwFlags.URL,
-								f.GoogleCloudFlags.StorageBucket,
-								variantManager,
 								util.GetReportEnd(pinnedDateTime),
 								cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
 								views.ComponentReadiness,

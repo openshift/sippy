@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -22,6 +21,7 @@ import (
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/flags"
+	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/pkg/sippyserver/metrics"
 )
@@ -31,7 +31,6 @@ type ComponentReadinessFlags struct {
 	BigQueryFlags           *flags.BigQueryFlags
 	PostgresFlags           *flags.PostgresFlags
 	CacheFlags              *flags.CacheFlags
-	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	ConfigFlags             *configflags.ConfigFlags
 
@@ -48,7 +47,6 @@ func NewComponentReadinessCommand() *cobra.Command {
 		ListenAddr:  ":8080",
 		MetricsAddr: ":2112",
 
-		ProwFlags:               flags.NewProwFlags(),
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		BigQueryFlags:           flags.NewBigQueryFlags(),
 		PostgresFlags:           flags.NewPostgresDatabaseFlags(),
@@ -84,7 +82,6 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.BigQueryFlags.BindFlags(flagSet)
 	f.PostgresFlags.BindFlags(flagSet)
 	f.GoogleCloudFlags.BindFlags(flagSet)
-	f.ProwFlags.BindFlags(flagSet)
 	f.ComponentReadinessFlags.BindFlags(flagSet)
 	f.ConfigFlags.BindFlags(flagSet)
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
@@ -93,7 +90,7 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
-	return f.ProwFlags.Validate()
+	return nil
 }
 
 func (f *ComponentReadinessFlags) Run() error { //nolint:gocyclo
@@ -113,11 +110,7 @@ func (f *ComponentReadinessFlags) Run() error { //nolint:gocyclo
 
 	log.Debug("debug logging enabled")
 	sippyConfig := v1.SippyConfig{}
-	if f.Config == "" {
-		sippyConfig.Prow = v1.ProwConfig{
-			URL: f.ProwFlags.URL + "/prowjobs.js",
-		}
-	} else {
+	if f.Config != "" {
 		data, err := os.ReadFile(f.Config)
 		if err != nil {
 			log.WithError(err).Fatalf("could not load config")
@@ -188,8 +181,6 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		webRoot,
 		&resources.Static,
 		dbc,
-		f.ProwFlags.URL,
-		f.GoogleCloudFlags.StorageBucket,
 		gcsClient,
 		bigQueryClient,
 		nil,
@@ -205,9 +196,6 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			context.Background(),
 			nil,
 			bigQueryClient,
-			f.ProwFlags.URL,
-			f.GoogleCloudFlags.StorageBucket,
-			nil,
 			time.Time{},
 			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
 			views.ComponentReadiness,
@@ -228,9 +216,6 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 						context.Background(),
 						nil,
 						bigQueryClient,
-						f.ProwFlags.URL,
-						f.GoogleCloudFlags.StorageBucket,
-						nil,
 						time.Time{},
 						cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
 						views.ComponentReadiness,

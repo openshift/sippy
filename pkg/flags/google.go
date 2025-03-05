@@ -10,13 +10,11 @@ import (
 type GoogleCloudFlags struct {
 	ServiceAccountCredentialFile string
 	OAuthClientCredentialFile    string
-	StorageBucket                string
 }
 
 func NewGoogleCloudFlags() *GoogleCloudFlags {
 	return &GoogleCloudFlags{
 		ServiceAccountCredentialFile: os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
-		StorageBucket:                "test-platform-results",
 	}
 }
 
@@ -30,6 +28,4 @@ func (f *GoogleCloudFlags) BindFlags(fs *pflag.FlagSet) {
 		"google-oauth-credential-file",
 		f.OAuthClientCredentialFile,
 		"location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
-
-	fs.StringVar(&f.StorageBucket, "google-storage-bucket", f.StorageBucket, "GCS bucket to pull artifacts from")
 }

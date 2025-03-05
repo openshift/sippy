@@ -47,6 +47,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			pr_number,
 			org,
 			repo,
+			gcs_bucket,
 			TIMESTAMP(prowjob_start) AS prowjob_start_ts,
 			TIMESTAMP(prowjob_completion) AS prowjob_completion_ts ` +
 		"FROM `ci_analysis_us.jobs` " +
@@ -107,6 +108,11 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 				Cluster: bqjr.Cluster,
 				Job:     bqjr.JobName,
 				Refs:    refs,
+				DecorationConfig: prow.DecorationConfig{
+					GCSConfiguration: prow.GCSConfiguration{
+						Bucket: bqjr.GCSBucket.String(),
+					},
+				},
 			},
 			Status: prow.ProwJobStatus{
 				StartTime:      bqjr.StartTime.Timestamp,
@@ -144,4 +150,5 @@ type bigqueryProwJobRun struct {
 	PRNumber       bigquery.NullString    `bigquery:"pr_number"`
 	PROrg          bigquery.NullString    `bigquery:"org"`
 	PRRepo         bigquery.NullString    `bigquery:"repo"`
+	GCSBucket      bigquery.NullString    `bigquery:"gcs_bucket"`
 }

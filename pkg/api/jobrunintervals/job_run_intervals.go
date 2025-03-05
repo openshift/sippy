@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/storage"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -20,31 +21,16 @@ import (
 // 1) using a GCS path that was calculated and passed in (we can retrieve intervals immediately)
 // 2) looking up the url given the jobRunID and extracting the prow job name (we need to wait until the sippyDB is populated)
 // If the GCS path could not be calculated, it will be empty.
-func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath string,
+func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsPath string,
 	intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
 
-	bkt := gcsClient.Bucket(gcsBucket)
-
-	var gcsJobRun *gcs.GCSJobRun
-
-	if len(gcsPath) > 0 {
-		log.WithField("gcsPath", gcsPath).Debug("calculated gcs path from job attributes")
-		gcsJobRun = gcs.NewGCSJobRun(bkt, gcsPath)
-	} else {
-		// Fall back to looking up the job run ID in the DB and extracting the URL that way.
-		// This is here to support older prow jobs where only the jobID was passed.  Eventually,
-		// we will not have to fallback because we will expect all jobs to pass in enough
-		// information to construct a full GCS bucket path.
-		jobRun, err := api.FetchJobRun(dbc, jobRunID, false, logger)
-		if err != nil {
-			logger.WithError(err).Error("error querying job run")
-			return nil, err
-		}
-		parts := strings.Split(jobRun.URL, gcsBucket)
-		path := parts[1][1:]
-		log.WithField("path", path).Debug("calculated gcs path")
-		gcsJobRun = gcs.NewGCSJobRun(bkt, path)
+	jobRun, err := api.FetchJobRun(dbc, jobRunID, false, logger)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to fetch job run %d", jobRunID)
 	}
+
+	bkt := gcsClient.Bucket(jobRun.GCSBucket)
+	gcsJobRun := gcs.NewGCSJobRun(bkt, gcsPath)
 	intervalFiles := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetIntervalFile()})
 
 	// We will often match multiple files here, one for upgrade phase, one for conformance

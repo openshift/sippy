@@ -7,6 +7,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
+
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -318,6 +319,7 @@ type JobRunTestIdentification struct {
 
 type JobRunTestStatusRow struct {
 	ProwJob         string   `bigquery:"prowjob_name"`
+	ProwJobURL      string   `bigquery:"prowjob_url"`
 	TestID          string   `bigquery:"test_id"`
 	TestName        string   `bigquery:"test_name"`
 	FilePath        string   `bigquery:"file_path"`

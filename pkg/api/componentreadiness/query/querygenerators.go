@@ -11,13 +11,14 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/iterator"
+
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util/param"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"google.golang.org/api/iterator"
 )
 
 const (
@@ -391,12 +392,14 @@ func getTestDetailsQuery(
 		jobNameQueryPortion = pullRequestDynamicJobNameCol
 	}
 
-	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
+	queryString := fmt.Sprintf(`
+					WITH latest_component_mapping AS (
 						SELECT *
-						FROM %s.component_mapping cm
-						WHERE created_at = (
-								SELECT MAX(created_at)
-								FROM %s.component_mapping))
+							FROM
+								%s.component_mapping cm
+							WHERE
+								created_at = (SELECT MAX(created_at) FROM %s.component_mapping)
+					)
 					SELECT
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
@@ -405,12 +408,14 @@ func getTestDetailsQuery(
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
 						COUNT(*) AS total_count,
+						ANY_VALUE(jobs.prowjob_url) AS prowjob_url,
 						ANY_VALUE(cm.capabilities) as capabilities,
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
-					FROM (%s)
+					FROM (%s) junit
+					INNER JOIN %s.jobs jobs ON junit.prowjob_build_id = jobs.prowjob_build_id
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, client.Dataset, client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset))
+`, client.Dataset, client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset), client.Dataset)
 
 	joinVariants := ""
 	for _, variant := range sortedKeys(allJobVariants.Variants) {

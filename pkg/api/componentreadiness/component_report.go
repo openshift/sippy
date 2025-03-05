@@ -13,23 +13,23 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
-	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/releasefallback"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/db"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
 	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
+	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/releasefallback"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -82,23 +82,19 @@ func getSingleColumnResultToSlice(ctx context.Context, q *bigquery.Query) ([]str
 // to fetch some small piece of data. These look like they should be broken out. The partial
 // instantiation of a complex object is risky in terms of bugs and maintenance.
 
-func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client,
-	gcsBucket string) (crtype.TestVariants, []error) {
+func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (crtype.TestVariants, []error) {
 	generator := ComponentReportGenerator{
-		client:    client,
-		gcsBucket: gcsBucket,
+		client: client,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.TestVariants](ctx, client.Cache, cache.RequestOptions{},
 		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, crtype.TestVariants{})
 }
 
-func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client,
-	gcsBucket string) (crtype.JobVariants,
+func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (crtype.JobVariants,
 	[]error) {
 	generator := ComponentReportGenerator{
-		client:    client,
-		gcsBucket: gcsBucket,
+		client: client,
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtype.JobVariants](ctx, client.Cache, cache.RequestOptions{},
@@ -109,7 +105,6 @@ func GetComponentReportFromBigQuery(
 	ctx context.Context,
 	client *bqcachedclient.Client,
 	dbc *db.DB,
-	prowURL, gcsBucket string,
 	reqOptions crtype.RequestOptions,
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (crtype.ComponentReport, []error) {
@@ -121,8 +116,6 @@ func GetComponentReportFromBigQuery(
 	// Watch out for BaseOverrideRelease which is not included here today. May only be used on test details...
 	generator := ComponentReportGenerator{
 		client:                     client,
-		prowURL:                    prowURL,
-		gcsBucket:                  gcsBucket,
 		ReqOptions:                 reqOptions,
 		triagedIssues:              nil,
 		dbc:                        dbc,
@@ -148,8 +141,6 @@ type ComponentReportGenerator struct {
 	ReportModified             *time.Time
 	client                     *bqcachedclient.Client
 	dbc                        *db.DB
-	prowURL                    string
-	gcsBucket                  string
 	triagedIssues              *resolvedissues.TriagedIncidentsForRelease
 	ReqOptions                 crtype.RequestOptions
 	openRegressions            []*crtype.TestRegression
@@ -342,7 +333,7 @@ func (c *ComponentReportGenerator) getSampleQueryStatus(
 func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
 	before := time.Now()
 	fLog := log.WithField("func", "getTestStatusFromBigQuery")
-	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client, c.gcsBucket)
+	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client)
 	if len(errs) > 0 {
 		fLog.Errorf("failed to get variants from bigquery")
 		return crtype.ReportTestStatus{}, errs

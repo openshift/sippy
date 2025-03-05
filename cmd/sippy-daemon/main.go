@@ -25,10 +25,11 @@ import (
 var logLevel = "info"
 
 type SippyDaemonFlags struct {
-	BigQueryFlags    *flags.BigQueryFlags
-	CacheFlags       *flags.CacheFlags
-	DBFlags          *flags.PostgresFlags
-	GoogleCloudFlags *flags.GoogleCloudFlags
+	BigQueryFlags       *flags.BigQueryFlags
+	CacheFlags          *flags.CacheFlags
+	DBFlags             *flags.PostgresFlags
+	GoogleCloudFlags    *flags.GoogleCloudFlags
+	GoogleStorageBucket string
 
 	GithubCommenterFlags *flags.GithubCommenterFlags
 	MetricsAddr          string
@@ -41,6 +42,7 @@ func NewSippyDaemonFlags() *SippyDaemonFlags {
 		CacheFlags:           flags.NewCacheFlags(),
 		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
 		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
+		GoogleStorageBucket:  "test-platform-results",
 	}
 }
 
@@ -51,6 +53,7 @@ func (f *SippyDaemonFlags) BindFlags(fs *pflag.FlagSet) {
 	f.GithubCommenterFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
 
+	fs.StringVar(&f.GoogleStorageBucket, "google-storage-bucket", f.GoogleStorageBucket, "GCS bucket to pull artifacts from")
 	fs.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 }
 
@@ -108,7 +111,7 @@ func NewSippyDaemonCommand() *cobra.Command {
 				// get comment data, get existing comments, possible delete existing, and adding the comment
 				// could  lower to 3 seconds if we need, most writes likely won't have to delete
 				processes = append(processes, sippyserver.NewWorkProcessor(dbc,
-					gcsClient.Bucket(f.GoogleCloudFlags.StorageBucket),
+					gcsClient.Bucket(f.GoogleStorageBucket),
 					10, bigQueryClient, 5*time.Minute, 5*time.Second, ghCommenter, f.GithubCommenterFlags.CommentProcessingDryRun))
 			}
 

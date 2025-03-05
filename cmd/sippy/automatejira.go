@@ -8,6 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
+	prowflagutil "sigs.k8s.io/prow/pkg/flagutil"
+
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -18,11 +24,6 @@ import (
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/util/sets"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-	prowflagutil "sigs.k8s.io/prow/pkg/flagutil"
 )
 
 type AutomateJiraFlags struct {
@@ -163,7 +164,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 				log.WithError(err).Warn("error reading config file")
 			}
 
-			allVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(ctx, bigQueryClient, f.GoogleCloudFlags.StorageBucket)
+			allVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(ctx, bigQueryClient)
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get variants from bigquery")
 			}
