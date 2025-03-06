@@ -45,6 +45,7 @@ type ProwJobRun struct {
 	// Cluster is the cluster where the prow job was run.
 	Cluster string
 
+	GCSBucket    string
 	URL          string
 	TestFailures int
 	Tests        []ProwJobRunTest  `gorm:"constraint:OnDelete:CASCADE;"`

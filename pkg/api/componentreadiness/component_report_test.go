@@ -11,9 +11,10 @@ import (
 	"time"
 
 	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
-	"github.com/stretchr/testify/assert"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -53,7 +54,6 @@ var (
 	defaultColumnGroupByVariants    = sets.NewString(strings.Split(DefaultColumnGroupBy, ",")...)
 	defaultDBGroupByVariants        = sets.NewString(strings.Split(DefaultDBGroupBy, ",")...)
 	defaultComponentReportGenerator = ComponentReportGenerator{
-		gcsBucket: "test-platform-results",
 		ReqOptions: crtype.RequestOptions{
 			VariantOption: crtype.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
@@ -69,7 +69,6 @@ var (
 		FlakeAsFailure: true,
 	}
 	flakeFailComponentReportGenerator = ComponentReportGenerator{
-		gcsBucket: "test-platform-results",
 		ReqOptions: crtype.RequestOptions{
 			VariantOption: crtype.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
@@ -80,7 +79,6 @@ var (
 	}
 	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
 	groupByInstallerComponentReportGenerator = ComponentReportGenerator{
-		gcsBucket: "test-platform-results",
 		ReqOptions: crtype.RequestOptions{
 			VariantOption: crtype.RequestVariantOptions{
 				ColumnGroupBy: installerColumnGroupByVariants,
@@ -90,7 +88,6 @@ var (
 		},
 	}
 	componentPageGenerator = ComponentReportGenerator{
-		gcsBucket: "test-platform-results",
 		ReqOptions: crtype.RequestOptions{
 			TestIDOption: crtype.RequestTestIdentificationOptions{
 				Component: "component 2",
@@ -103,7 +100,6 @@ var (
 		},
 	}
 	capabilityPageGenerator = ComponentReportGenerator{
-		gcsBucket: "test-platform-results",
 		ReqOptions: crtype.RequestOptions{
 			TestIDOption: crtype.RequestTestIdentificationOptions{
 				Component:  "component 2",
@@ -117,7 +113,6 @@ var (
 		},
 	}
 	testPageGenerator = ComponentReportGenerator{
-		gcsBucket: "test-platform-results",
 		ReqOptions: crtype.RequestOptions{
 			TestIDOption: crtype.RequestTestIdentificationOptions{
 				Component:  "component 2",
@@ -132,7 +127,6 @@ var (
 		},
 	}
 	testDetailsGenerator = ComponentReportGenerator{
-		gcsBucket: "test-platform-results",
 		ReqOptions: crtype.RequestOptions{
 			TestIDOption: crtype.RequestTestIdentificationOptions{
 				Component:  "component 1",

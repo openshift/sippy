@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -25,6 +24,8 @@ import (
 	"github.com/slok/go-http-metrics/middleware"
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
+
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
@@ -59,8 +60,6 @@ func NewServer(
 	sippyNG fs.FS,
 	static fs.FS,
 	dbClient *db.DB,
-	prowURL string,
-	gcsBucket string,
 	gcsClient *storage.Client,
 	bigQueryClient *bigquery.Client,
 	pinnedDateTime *time.Time,
@@ -80,8 +79,6 @@ func NewServer(
 		db:                   dbClient,
 		bigQueryClient:       bigQueryClient,
 		pinnedDateTime:       pinnedDateTime,
-		prowURL:              prowURL,
-		gcsBucket:            gcsBucket,
 		gcsClient:            gcsClient,
 		cache:                cacheClient,
 		crTimeRoundingFactor: crTimeRoundingFactor,
@@ -90,7 +87,7 @@ func NewServer(
 	}
 
 	if bigQueryClient != nil {
-		go componentreadiness.GetComponentTestVariantsFromBigQuery(context.Background(), bigQueryClient, gcsBucket)
+		go componentreadiness.GetComponentTestVariantsFromBigQuery(context.Background(), bigQueryClient)
 	}
 
 	return server
@@ -120,8 +117,6 @@ type Server struct {
 	bigQueryClient       *bigquery.Client
 	pinnedDateTime       *time.Time
 	gcsClient            *storage.Client
-	gcsBucket            string
-	prowURL              string
 	cache                cache.Cache
 	crTimeRoundingFactor time.Duration
 	capabilities         []string
@@ -591,7 +586,7 @@ func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, re
 		failureResponse(w, http.StatusBadRequest, "component report API is only available when google-service-account-credential-file is configured")
 		return
 	}
-	outputs, errs := componentreadiness.GetComponentTestVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
+	outputs, errs := componentreadiness.GetComponentTestVariantsFromBigQuery(req.Context(), s.bigQueryClient)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying test variants from big query:", len(errs))
 		for _, err := range errs {
@@ -608,7 +603,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 		failureResponse(w, http.StatusBadRequest, "job variants API is only available when google-service-account-credential-file is configured")
 		return
 	}
-	outputs, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
+	outputs, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying job variants from big query:", len(errs))
 		for _, err := range errs {
@@ -656,7 +651,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		failureResponse(w, http.StatusBadRequest, "component report API is only available when google-service-account-credential-file is configured")
 		return
 	}
-	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
+	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient)
 	if len(errs) > 0 {
 		failureResponse(w, http.StatusBadRequest, "failed to get variants from bigquery")
 		return
@@ -679,8 +674,6 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		req.Context(),
 		s.bigQueryClient,
 		s.db,
-		s.prowURL,
-		s.gcsBucket,
 		options,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides,
 	)
@@ -701,7 +694,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket)
+	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient)
 	if len(errs) > 0 {
 		err := fmt.Errorf("failed to get variants from bigquery")
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -719,7 +712,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, s.prowURL, s.gcsBucket, reqOptions)
+	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, reqOptions)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
 		for _, err := range errs {
@@ -1112,7 +1105,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		// JobName was not passed.
 		gcsPath = ""
 	}
-	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
+	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, gcsPath,
 		intervalFile, logger.WithField("func", "JobRunIntervals"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())

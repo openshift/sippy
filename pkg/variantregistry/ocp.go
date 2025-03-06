@@ -24,11 +24,11 @@ import (
 // OCPVariantLoader generates a mapping of job names to their variant map for all known jobs.
 type OCPVariantLoader struct {
 	BigQueryClient  *bigquery.Client
-	bkt             *storage.BucketHandle
 	config          *v1.SippyConfig
 	bigQueryProject string
 	bigQueryDataSet string
 	bigQueryTable   string
+	gcsClient       *storage.Client
 }
 
 func NewOCPVariantLoader(
@@ -37,17 +37,11 @@ func NewOCPVariantLoader(
 	bigQueryDataSet string,
 	bigQueryTable string,
 	gcsClient *storage.Client,
-	gcsBucket string,
 	config *v1.SippyConfig) *OCPVariantLoader {
-
-	var bkt *storage.BucketHandle
-	if gcsBucket != "" {
-		bkt = gcsClient.Bucket(gcsBucket)
-	}
 
 	return &OCPVariantLoader{
 		BigQueryClient:  bigQueryClient,
-		bkt:             bkt,
+		gcsClient:       gcsClient,
 		config:          config,
 		bigQueryProject: bigQueryProject,
 		bigQueryDataSet: bigQueryDataSet,
@@ -56,9 +50,10 @@ func NewOCPVariantLoader(
 }
 
 type prowJobLastRun struct {
-	JobName  string              `bigquery:"prowjob_job_name"`
-	JobRunID string              `bigquery:"prowjob_build_id"`
-	URL      bigquery.NullString `bigquery:"prowjob_url"`
+	JobName   string              `bigquery:"prowjob_job_name"`
+	JobRunID  string              `bigquery:"prowjob_build_id"`
+	GCSBucket string              `bigquery:"gcs_bucket"`
+	URL       bigquery.NullString `bigquery:"prowjob_url"`
 }
 
 // LoadExpectedJobVariants queries all known jobs from the gce-devel "jobs" table (actually contains job runs).
@@ -77,6 +72,7 @@ WITH RecentSuccessfulJobs AS (
   SELECT 
     prowjob_job_name,
     MAX(prowjob_start) AS successful_start,
+	MAX(gcs_bucket) AS gcs_bucket,
     MAX(prowjob_url) as prowjob_url,
   FROM DATASET
   WHERE prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
@@ -94,6 +90,7 @@ SELECT
   MAX(j.prowjob_start) AS prowjob_start,
   MAX(j.prowjob_build_id) AS prowjob_build_id,
   r.prowjob_url,
+  r.gcs_bucket,
   r.successful_start,
 FROM DATASET j
 LEFT JOIN RecentSuccessfulJobs r
@@ -149,7 +146,8 @@ ORDER BY j.prowjob_job_name;
 				jLog.WithError(err).WithField("prowJobURL", jlr.URL).Error("error getting GCS path for prow job URL")
 				return nil, err
 			}
-			gcsJobRun := gcs.NewGCSJobRun(v.bkt, path)
+			bkt := v.gcsClient.Bucket(jlr.GCSBucket)
+			gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 			allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
 			var clusterMatches []string
 			if len(allMatches) > 0 {
@@ -161,7 +159,7 @@ ORDER BY j.prowjob_job_name;
 			}
 
 			if len(clusterMatches) > 0 {
-				clusterDataBytes, err := prowloader.GetClusterDataBytes(ctx, v.bkt, path, clusterMatches)
+				clusterDataBytes, err := prowloader.GetClusterDataBytes(ctx, bkt, path, clusterMatches)
 				if err != nil {
 					jLog.WithError(err).Error("unable to read cluster data file, proceeding without")
 				}

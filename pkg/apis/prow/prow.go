@@ -58,12 +58,25 @@ type Pull struct {
 }
 
 type ProwJobSpec struct {
-	Type    string `json:"type,omitempty"`
-	Cluster string `json:"cluster,omitempty"`
-	Job     string `json:"job,omitempty"`
+	Type             string           `json:"type,omitempty"`
+	Cluster          string           `json:"cluster,omitempty"`
+	Job              string           `json:"job,omitempty"`
+	DecorationConfig DecorationConfig `json:"decoration_config,omitempty"`
 
 	// Refs is the code under test, determined at runtime by Prow itself
 	Refs *Refs `json:"refs,omitempty"`
+}
+
+type GCSConfiguration struct {
+	Bucket string `json:"bucket"`
+}
+
+type DecorationConfig struct {
+	GCSConfiguration GCSConfiguration `json:"gcs_configuration"`
+}
+
+type Spec struct {
+	DecorationConfig DecorationConfig `json:"decoration_config"`
 }
 
 type ProwJobStatus struct {
@@ -75,7 +88,6 @@ type ProwJobStatus struct {
 	URL              string                  `json:"url,omitempty"`
 	PodName          string                  `json:"pod_name,omitempty"`
 	BuildID          string                  `json:"build_id,omitempty"`
-	JenkinsBuildID   string                  `json:"jenkins_build_id,omitempty"`
 	PrevReportStates map[string]ProwJobState `json:"prev_report_states,omitempty"`
 }
 

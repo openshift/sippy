@@ -9,15 +9,16 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/api/iterator"
+
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"google.golang.org/api/iterator"
 )
 
 const (
@@ -265,7 +266,7 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
 	report, errs := GetComponentReportFromBigQuery(
-		ctx, rt.bigqueryClient, rt.dbc, "", "", reportOpts, rt.variantJunitTableOverrides)
+		ctx, rt.bigqueryClient, rt.dbc, reportOpts, rt.variantJunitTableOverrides)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
