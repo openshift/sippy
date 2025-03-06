@@ -45,7 +45,14 @@ const cancelFetch = () => {
 // a cell under an environment on the right in page 2 or 2a
 export default function CompReadyEnvCapability(props) {
   const classes = useContext(ComponentReadinessStyleContext)
-  const { filterVals, component, capability, environment, theme } = props
+  const {
+    filterVals,
+    component,
+    capability,
+    environment,
+    theme,
+    accessibilityMode,
+  } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -210,6 +217,7 @@ export default function CompReadyEnvCapability(props) {
         data={data}
         filterVals={filterVals}
         forceRefresh={forceRefresh}
+        accessibilityMode={accessibilityMode}
       />
       <br></br>
       <TableContainer component="div" className="cr-table-wrapper">
@@ -303,4 +311,5 @@ CompReadyEnvCapability.propTypes = {
   capability: PropTypes.string.isRequired,
   environment: PropTypes.string,
   theme: PropTypes.object.isRequired,
+  accessibilityMode: PropTypes.bool.isRequired,
 }

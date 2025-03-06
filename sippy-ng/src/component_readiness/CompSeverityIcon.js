@@ -8,9 +8,13 @@ import React from 'react'
 
 export default function CompSeverityIcon(props) {
   const theme = useTheme()
-  const { explanations, status, grayFactor, count } = props
+  const { explanations, status, grayFactor, count, accessibilityMode } = props
 
-  const [statusStr, icon] = getStatusAndIcon(status, grayFactor)
+  const [statusStr, icon] = getStatusAndIcon(
+    status,
+    grayFactor,
+    accessibilityMode
+  )
 
   let toolTip = ''
   if (explanations !== undefined) {
@@ -45,4 +49,5 @@ CompSeverityIcon.propTypes = {
   explanations: PropTypes.array,
   grayFactor: PropTypes.number,
   count: PropTypes.number,
+  accessibilityMode: PropTypes.bool.isRequired,
 }

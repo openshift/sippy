@@ -104,6 +104,7 @@ export default function CompReadyTestReport(props) {
     environment,
     testName,
     testBasisRelease,
+    accessibilityMode,
   } = props
 
   const [fetchError, setFetchError] = React.useState('')
@@ -239,7 +240,11 @@ export default function CompReadyTestReport(props) {
     setShowOnlyFailures(event.target.checked)
   }
 
-  const [statusStr, assessmentIcon] = getStatusAndIcon(data.status)
+  const [statusStr, assessmentIcon] = getStatusAndIcon(
+    data.status,
+    0,
+    accessibilityMode
+  )
   const significanceTitle = `Test results for individual Prow Jobs may not be statistically
   significant, but when taken in aggregate, there may be a statistically
   significant difference compared to the historical basis
@@ -503,4 +508,5 @@ CompReadyTestReport.propTypes = {
   environment: PropTypes.string.isRequired,
   testName: PropTypes.string.isRequired,
   testBasisRelease: PropTypes.string.isRequired,
+  accessibilityMode: PropTypes.bool.isRequired,
 }

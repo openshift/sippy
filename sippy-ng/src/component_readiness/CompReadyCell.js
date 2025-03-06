@@ -21,6 +21,7 @@ export default function CompReadyCell(props) {
     filterVals,
     grayFactor,
     regressedCount,
+    accessibilityMode,
   } = props
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
@@ -77,6 +78,7 @@ export default function CompReadyCell(props) {
             status={status}
             grayFactor={grayFactor}
             count={regressedCount}
+            accessibilityMode={accessibilityMode}
           />
         </Link>
       </TableCell>
@@ -91,4 +93,5 @@ CompReadyCell.propTypes = {
   filterVals: PropTypes.string.isRequired,
   grayFactor: PropTypes.number.isRequired,
   regressedCount: PropTypes.number,
+  accessibilityMode: PropTypes.bool,
 }

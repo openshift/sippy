@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 64 64">
+    <path d="M-.03-.03H64V64H-.03z" style="fill:#3f51b5;fill-opacity:1"/>
+    <line x1="21.33" y1="0" x2="21.33" y2="64" stroke="black" stroke-width="0.5"/>
+    <line x1="42.66" y1="0" x2="42.66" y2="64" stroke="black" stroke-width="0.5"/>
+    <line x1="0" y1="21.33" x2="64" y2="21.33" stroke="black" stroke-width="0.5"/>
+    <line x1="0" y1="42.66" x2="64" y2="42.66" stroke="black" stroke-width="0.5"/>
+</svg>
