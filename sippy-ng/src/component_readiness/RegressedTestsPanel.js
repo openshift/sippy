@@ -103,16 +103,21 @@ export default function RegressedTestsPanel(props) {
       valueGetter: (params) => {
         if (!params.row.opened) {
           // For a regression we haven't yet detected:
-          return ''
+          return null
         }
-        const regressedSinceDate = new Date(params.row.opened)
-        return relativeTime(regressedSinceDate, new Date())
+        return new Date(params.row.opened).getTime()
       },
-      renderCell: (param) => (
-        <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">
-          <div className="regressed-since">{param.value}</div>
-        </Tooltip>
-      ),
+      renderCell: (params) => {
+        if (!params.value) return ''
+        const regressedSinceDate = new Date(params.value)
+        return (
+          <Tooltip title="WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default.">
+            <div className="regressed-since">
+              {relativeTime(regressedSinceDate, new Date())}
+            </div>
+          </Tooltip>
+        )
+      },
     },
     {
       field: 'last_failure',
@@ -120,12 +125,19 @@ export default function RegressedTestsPanel(props) {
       flex: 12,
       valueGetter: (params) => {
         if (!params.row.last_failure) {
-          return ''
+          return null
         }
-        const lastFailureDate = new Date(params.row.last_failure)
-        return relativeTime(lastFailureDate, new Date())
+        return new Date(params.row.last_failure).getTime()
       },
-      renderCell: (param) => <div className="last-failure">{param.value}</div>,
+      renderCell: (params) => {
+        if (!params.value) return ''
+        const lastFailureDate = new Date(params.value)
+        return (
+          <div className="last-failure">
+            {relativeTime(lastFailureDate, new Date())}
+          </div>
+        )
+      },
     },
     {
       field: 'test_id',
