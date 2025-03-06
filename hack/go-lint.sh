@@ -9,7 +9,7 @@ if [ "$CI" = "true" ];
 then
   go version
   golangci-lint version -v
-  golangci-lint "${@}"
+  golangci-lint --timeout 10m "${@}"
 else
   DOCKER=${DOCKER:-podman}
 
@@ -29,5 +29,5 @@ else
     --volume "${PWD}:/go/src/github.com/openshift/sippy${VOLUME_OPTION}" \
     --workdir /go/src/github.com/openshift/sippy \
     docker.io/golangci/golangci-lint:v1.57.0 \
-    golangci-lint "${@}"
+    golangci-lint --timeout 10m "${@}"
 fi
