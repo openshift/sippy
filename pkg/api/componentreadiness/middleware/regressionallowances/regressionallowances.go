@@ -100,7 +100,6 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 }
 
 func (r *RegressionAllowances) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
-	return
 }
 
 func (r *RegressionAllowances) TransformTestDetails(status *crtype.JobRunTestReportStatus) error {
