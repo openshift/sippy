@@ -2,24 +2,31 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/github/commenter"
 	"github.com/openshift/sippy/pkg/sippyserver"
+	"github.com/openshift/sippy/pkg/version"
 )
 
 var logLevel = "info"
 
 type SippyDaemonFlags struct {
+	BigQueryFlags    *flags.BigQueryFlags
+	CacheFlags       *flags.CacheFlags
 	DBFlags          *flags.PostgresFlags
 	GoogleCloudFlags *flags.GoogleCloudFlags
 
@@ -30,12 +37,16 @@ type SippyDaemonFlags struct {
 func NewSippyDaemonFlags() *SippyDaemonFlags {
 	return &SippyDaemonFlags{
 		DBFlags:              flags.NewPostgresDatabaseFlags(),
+		BigQueryFlags:        flags.NewBigQueryFlags(),
+		CacheFlags:           flags.NewCacheFlags(),
 		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
 		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
 	}
 }
 
 func (f *SippyDaemonFlags) BindFlags(fs *pflag.FlagSet) {
+	f.BigQueryFlags.BindFlags(fs)
+	f.CacheFlags.BindFlags(fs)
 	f.DBFlags.BindFlags(fs)
 	f.GithubCommenterFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
@@ -50,6 +61,9 @@ func NewSippyDaemonCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sippy-daemon",
 		Short: "Sippy daemon is used for on-going tasks like monitoring git repos for reporting risk analysis.",
+		PersistentPreRun: func(c *cobra.Command, args []string) {
+			fmt.Fprintf(os.Stdout, "sippy built from %s\n", version.Get().GitCommit)
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 
 			processes := make([]sippyserver.DaemonProcess, 0)
@@ -68,6 +82,18 @@ func NewSippyDaemonCommand() *cobra.Command {
 					return nil
 				}
 
+				cacheClient, err := f.CacheFlags.GetCacheClient()
+				if err != nil {
+					return errors.WithMessage(err, "couldn't get cache client")
+				}
+
+				var bigQueryClient *bigquery.Client
+				bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(),
+					cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+				if err != nil {
+					return errors.WithMessage(err, "couldn't get bigquery client")
+				}
+
 				gcsClient, err := gcs.NewGCSClient(context.TODO(),
 					f.GoogleCloudFlags.ServiceAccountCredentialFile,
 					f.GoogleCloudFlags.OAuthClientCredentialFile,
@@ -83,7 +109,7 @@ func NewSippyDaemonCommand() *cobra.Command {
 				// could  lower to 3 seconds if we need, most writes likely won't have to delete
 				processes = append(processes, sippyserver.NewWorkProcessor(dbc,
 					gcsClient.Bucket(f.GoogleCloudFlags.StorageBucket),
-					10, 5*time.Minute, 5*time.Second, ghCommenter, f.GithubCommenterFlags.CommentProcessingDryRun))
+					10, bigQueryClient, 5*time.Minute, 5*time.Second, ghCommenter, f.GithubCommenterFlags.CommentProcessingDryRun))
 			}
 
 			daemonServer := sippyserver.NewDaemonServer(processes)

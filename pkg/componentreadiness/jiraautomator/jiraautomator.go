@@ -18,6 +18,7 @@ import (
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
@@ -46,6 +47,7 @@ type JiraComponent struct {
 type JiraAutomator struct {
 	jiraClient   jirautil.Client
 	bqClient     *bqclient.Client
+	dbc          *db.DB
 	cacheOptions cache.RequestOptions
 	views        []crtype.View
 	releases     []v1.Release
@@ -64,6 +66,7 @@ type JiraAutomator struct {
 func NewJiraAutomator(
 	jiraClient jirautil.Client,
 	bqClient *bqclient.Client,
+	dbc *db.DB,
 	cacheOptions cache.RequestOptions,
 	views []crtype.View,
 	releases []v1.Release,
@@ -78,6 +81,7 @@ func NewJiraAutomator(
 	j := JiraAutomator{
 		jiraClient:                 jiraClient,
 		bqClient:                   bqClient,
+		dbc:                        dbc,
 		cacheOptions:               cacheOptions,
 		releases:                   releases,
 		sippyURL:                   sippyURL,
@@ -137,7 +141,7 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 	}
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, "", "", reportOpts, j.variantJunitTableOverrides)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, j.dbc, "", "", reportOpts, j.variantJunitTableOverrides)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

@@ -22,6 +22,7 @@ import (
 	jobQueries "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/prow"
+	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -67,8 +68,9 @@ var (
 // commentUpdaterRate: the minimum duration between adding a comment before we begin work on adding the next
 // ghCommenter: the commenting implmentation
 // dryRunOnly: default is true to prevent unintended commenting when running locally or in a test deployment
-func NewWorkProcessor(dbc *db.DB, gcsBucket *storage.BucketHandle, commentAnalysisWorkers int, commentAnalysisRate, commentUpdaterRate time.Duration, ghCommenter *commenter.GitHubCommenter, dryRunOnly bool) *WorkProcessor {
+func NewWorkProcessor(dbc *db.DB, gcsBucket *storage.BucketHandle, commentAnalysisWorkers int, bigQueryClient *bigquery.Client, commentAnalysisRate, commentUpdaterRate time.Duration, ghCommenter *commenter.GitHubCommenter, dryRunOnly bool) *WorkProcessor {
 	wp := &WorkProcessor{dbc: dbc, gcsBucket: gcsBucket, ghCommenter: ghCommenter,
+		bigQueryClient:         bigQueryClient,
 		commentAnalysisRate:    commentAnalysisRate,
 		commentUpdaterRate:     commentUpdaterRate,
 		commentAnalysisWorkers: commentAnalysisWorkers,
@@ -86,6 +88,7 @@ type WorkProcessor struct {
 	dbc                    *db.DB
 	gcsBucket              *storage.BucketHandle
 	ghCommenter            *commenter.GitHubCommenter
+	bigQueryClient         *bigquery.Client
 	dryRunOnly             bool
 	newTestsWorker         *NewTestsWorker
 }
@@ -110,6 +113,7 @@ type CommentWorker struct {
 type AnalysisWorker struct {
 	dbc                 *db.DB
 	gcsBucket           *storage.BucketHandle
+	bigQueryClient      *bigquery.Client
 	riskAnalysisLocator *regexp.Regexp
 	prCommentProspects  chan models.PullRequestComment
 	preparedComments    chan PreparedComment
@@ -167,6 +171,7 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 			riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(),
 			dbc:                 wp.dbc,
 			gcsBucket:           wp.gcsBucket,
+			bigQueryClient:      wp.bigQueryClient,
 			prCommentProspects:  prospects,
 			preparedComments:    preparedComments,
 			newTestsWorker:      wp.newTestsWorker,
@@ -486,6 +491,8 @@ func (aw *AnalysisWorker) determinePrComment(prCommentProspect models.PullReques
 	log.Debugf("Comment added to preparedComments: %s/%s/%s", preparedComment.org, preparedComment.repo, preparedComment.sha)
 }
 
+const commentRowLimit = 20
+
 func buildCommentText(riskAnalyses []RiskAnalysisSummary, newTestRisks []*JobNewTestRisks, sha string) string {
 	sb := &strings.Builder{}
 	if len(riskAnalyses) == 0 && len(newTestRisks) == 0 {
@@ -513,18 +520,30 @@ func buildNewTestRisksComment(sb *strings.Builder, jobRisks []*JobNewTestRisks, 
 		SortByJobNameNT(notableJobRisks)
 		sb.WriteString(fmt.Sprintf("New Test Risks for sha: %s\n\n", sha))
 		sb.WriteString("| Job Name | New Test Risk |\n|:---|:---|\n")
+		rows := 0
 		for _, jr := range notableJobRisks {
 			for _, risk := range sortedTestRisks(jr.NewTestRisks) {
+				rows++
+				if rows > commentRowLimit {
+					continue // limit comment size, just count rows
+				}
 				sb.WriteString(fmt.Sprintf("|%s|**%s** - *%q* **%s**|\n",
 					jr.JobName, risk.Level.Name, risk.TestName, risk.Reason))
 			}
+		}
+		if rows > commentRowLimit {
+			sb.WriteString(fmt.Sprintf("| | *(...showing %d of %d rows)* |\n", commentRowLimit, rows))
 		}
 		sb.WriteString("\n")
 	}
 
 	if len(testSummaries) > 0 {
 		sb.WriteString(fmt.Sprintf("New tests seen in this PR at sha: %s\n\n", sha))
-		for _, test := range testSummaries {
+		for idx, test := range testSummaries {
+			if idx >= commentRowLimit {
+				sb.WriteString(fmt.Sprintf("* *(...showing %d of %d tests)*", idx, len(testSummaries)))
+				break // limit comment size
+			}
 			sb.WriteString(fmt.Sprintf("- *%q* [Total: %d, Pass: %d, Fail: %d, Flake: %d]\n",
 				test.TestName, test.Runs, test.Runs-test.Failures, test.Failures, test.Flakes))
 		}
@@ -545,8 +564,8 @@ func buildRiskAnalysisComment(sb *strings.Builder, riskAnalyses []RiskAnalysisSu
 	}
 
 	for idx, analysis := range riskAnalyses {
-		if idx > 19 {
-			sb.WriteString(fmt.Sprintf("\nShowing %d of %d jobs analysis", idx, len(riskAnalyses)))
+		if idx >= commentRowLimit {
+			sb.WriteString(fmt.Sprintf("\nShowing %d of %d jobs analysis", commentRowLimit, len(riskAnalyses)))
 			break // top 20 should be more than enough
 		}
 
@@ -801,7 +820,7 @@ func (aw *AnalysisWorker) getRiskSummary(jobRunID, jobRunIDPath string, priorRis
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.WithError(err).Errorf("Error fetching job run for: %s", jobRunIDPath)
 		}
-	} else if ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, jobRun, logger); err != nil {
+	} else if ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, aw.bigQueryClient, jobRun, logger, true); err != nil {
 		logger.WithError(err).Errorf("Error querying risk analysis for: %s", jobRunIDPath)
 	} else {
 		// query succeeded so use the riskAnalysis we got

@@ -29,6 +29,7 @@ import (
 type ComponentReadinessFlags struct {
 	GoogleCloudFlags        *flags.GoogleCloudFlags
 	BigQueryFlags           *flags.BigQueryFlags
+	PostgresFlags           *flags.PostgresFlags
 	CacheFlags              *flags.CacheFlags
 	ProwFlags               *flags.ProwFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
@@ -50,6 +51,7 @@ func NewComponentReadinessCommand() *cobra.Command {
 		ProwFlags:               flags.NewProwFlags(),
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		BigQueryFlags:           flags.NewBigQueryFlags(),
+		PostgresFlags:           flags.NewPostgresDatabaseFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),
@@ -80,6 +82,7 @@ func NewComponentReadinessCommand() *cobra.Command {
 func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.CacheFlags.BindFlags(flagSet)
 	f.BigQueryFlags.BindFlags(flagSet)
+	f.PostgresFlags.BindFlags(flagSet)
 	f.GoogleCloudFlags.BindFlags(flagSet)
 	f.ProwFlags.BindFlags(flagSet)
 	f.ComponentReadinessFlags.BindFlags(flagSet)
@@ -173,6 +176,10 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 
 	}
 
+	dbc, err := f.PostgresFlags.GetDBClient()
+	if err != nil {
+		log.WithError(err).Warn("unable to connect to postgres, regression tracking will be disabled")
+	}
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
 		f.ListenAddr,
@@ -180,7 +187,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		nil,
 		webRoot,
 		&resources.Static,
-		nil,
+		dbc,
 		f.ProwFlags.URL,
 		f.GoogleCloudFlags.StorageBucket,
 		gcsClient,
