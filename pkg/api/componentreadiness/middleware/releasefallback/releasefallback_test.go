@@ -148,9 +148,10 @@ func Test_Transform(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			rfb := NewReleaseFallbackMiddleware(nil, test.reqOpts)
 			rfb.cachedFallbackTestStatuses = &tests[i].fallbackReleases
-			baseStatus, _, err := rfb.Transform(test.baseStatus, map[string]crtype.TestStatus{})
+			status := &crtype.ReportTestStatus{BaseStatus: test.baseStatus}
+			err := rfb.Transform(status)
 			assert.NoError(t, err)
-			assert.Equal(t, test.expectedStatus, baseStatus)
+			assert.Equal(t, test.expectedStatus, status.BaseStatus)
 		})
 	}
 }

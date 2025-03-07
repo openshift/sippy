@@ -48,6 +48,8 @@ type ReleaseFallback struct {
 	cachedFallbackTestStatuses *crtype.FallbackReleases
 	log                        log.FieldLogger
 	reqOptions                 crtype.RequestOptions
+
+	baseOverrideStatus map[string][]crtype.JobRunTestStatusRow
 }
 
 func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants,
@@ -73,15 +75,15 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 
 // Transform iterates the base status looking for any statuses that had a better pass rate in the prior releases
 // we queried earlier.
-func (r *ReleaseFallback) Transform(baseStatus, sampleStatus map[string]crtype.TestStatus) (map[string]crtype.TestStatus, map[string]crtype.TestStatus, error) {
-	for testKeyStr, baseStats := range baseStatus {
+func (r *ReleaseFallback) Transform(status *crtype.ReportTestStatus) error {
+	for testKeyStr, baseStats := range status.BaseStatus {
 		newBaseStatus := r.matchBestBaseStats(testKeyStr, r.reqOptions.BaseRelease.Release, baseStats)
 		if newBaseStatus.Release != nil && newBaseStatus.Release.Release != r.reqOptions.BaseRelease.Release {
-			baseStatus[testKeyStr] = newBaseStatus
+			status.BaseStatus[testKeyStr] = newBaseStatus
 		}
 	}
 
-	return baseStatus, sampleStatus, nil
+	return nil
 }
 
 // matchBestBaseStats returns the testStatus, release and reportTestStatus
@@ -165,6 +167,58 @@ func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	}
 
 	r.cachedFallbackTestStatuses = cachedFallbackTestStatuses
+	return nil
+}
+
+func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
+	r.log.Infof("Querying fallback override test statuses")
+	if r.reqOptions.BaseOverrideRelease.Release != "" && r.reqOptions.BaseOverrideRelease.Release != r.reqOptions.BaseRelease.Release {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				r.log.Infof("Context canceled while fetching base job run test status")
+				return
+			default:
+				var errs []error
+				// We cannot inject our fallback data, rather we will query it, store it internally, and apply it during TransformTestDetails
+				generator := query.NewBaseTestDetailsQueryGenerator(
+					r.client,
+					r.reqOptions,
+					allJobVariants,
+					r.reqOptions.BaseOverrideRelease.Release,
+					r.reqOptions.BaseOverrideRelease.Start,
+					r.reqOptions.BaseOverrideRelease.End,
+				)
+
+				jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
+					ctx,
+					r.client.Cache, r.reqOptions.CacheOption,
+					api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator),
+					generator.QueryTestStatus,
+					crtype.JobRunTestReportStatus{})
+
+				for _, err := range errs {
+					errCh <- err
+				}
+				r.baseOverrideStatus = jobRunTestStatus.BaseStatus
+
+				r.log.Infof("queried fallback base override job run test status: %d jobs, %d errors", len(r.baseOverrideStatus), len(errs))
+			}
+		}()
+	}
+
+}
+
+func (r *ReleaseFallback) TransformTestDetails(status *crtype.JobRunTestReportStatus) error {
+	// Simply attach the override base stats to the status
+	r.log.Infof("Transforming fallback test details")
+	status.BaseOverrideStatus = r.baseOverrideStatus
+	return nil
+}
+
+func (r *ReleaseFallback) TestDetailsAnalyze(report *crtype.ReportTestDetails) error {
 	return nil
 }
 
