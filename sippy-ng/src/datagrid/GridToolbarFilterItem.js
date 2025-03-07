@@ -102,11 +102,13 @@ export default function GridToolbarFilterItem(props) {
                     : new Date(parseInt(props.filterModel.value))
                 }
                 onChange={(e) => {
-                  props.setFilterModel({
-                    columnField: props.filterModel.columnField,
-                    operatorValue: props.filterModel.operatorValue,
-                    value: e.getTime().toString(),
-                  })
+                  if (e && e.getTime()) {
+                    props.setFilterModel({
+                      columnField: props.filterModel.columnField,
+                      operatorValue: props.filterModel.operatorValue,
+                      value: e.getTime().toString(),
+                    })
+                  }
                 }}
                 renderInput={(props) => (
                   <TextField variant="standard" {...props} />
