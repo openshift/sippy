@@ -52,7 +52,7 @@ func NewOCPVariantLoader(
 type prowJobLastRun struct {
 	JobName   string              `bigquery:"prowjob_job_name"`
 	JobRunID  string              `bigquery:"prowjob_build_id"`
-	GCSBucket string              `bigquery:"gcs_bucket"`
+	GCSBucket bigquery.NullString `bigquery:"gcs_bucket"`
 	URL       bigquery.NullString `bigquery:"prowjob_url"`
 }
 
@@ -72,8 +72,8 @@ WITH RecentSuccessfulJobs AS (
   SELECT 
     prowjob_job_name,
     MAX(prowjob_start) AS successful_start,
-	MAX(gcs_bucket) AS gcs_bucket,
-    MAX(prowjob_url) as prowjob_url,
+    ARRAY_AGG(gcs_bucket ORDER BY CASE WHEN gcs_bucket != '' AND prowjob_url != '' THEN prowjob_start ELSE NULL END DESC LIMIT 1)[SAFE_OFFSET(0)] AS gcs_bucket,
+    ARRAY_AGG(prowjob_url ORDER BY CASE WHEN gcs_bucket != '' AND prowjob_url != '' THEN prowjob_start ELSE NULL END DESC LIMIT 1)[SAFE_OFFSET(0)] AS prowjob_url
   FROM DATASET
   WHERE prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
         prowjob_state = 'success' AND
@@ -90,7 +90,7 @@ SELECT
   MAX(j.prowjob_start) AS prowjob_start,
   MAX(j.prowjob_build_id) AS prowjob_build_id,
   r.prowjob_url,
-  r.gcs_bucket,
+  ANY_VALUE(r.gcs_bucket) AS gcs_bucket,
   r.successful_start,
 FROM DATASET j
 LEFT JOIN RecentSuccessfulJobs r
@@ -140,13 +140,13 @@ ORDER BY j.prowjob_job_name;
 
 		clusterData := map[string]string{}
 		jLog := log.WithField("job", jlr.JobName)
-		if jlr.URL.Valid {
+		if jlr.URL.Valid && jlr.GCSBucket.Valid {
 			path, err := prowloader.GetGCSPathForProwJobURL(jLog, jlr.URL.StringVal)
 			if err != nil {
 				jLog.WithError(err).WithField("prowJobURL", jlr.URL).Error("error getting GCS path for prow job URL")
 				return nil, err
 			}
-			bkt := v.gcsClient.Bucket(jlr.GCSBucket)
+			bkt := v.gcsClient.Bucket(jlr.GCSBucket.StringVal)
 			gcsJobRun := gcs.NewGCSJobRun(bkt, path)
 			allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
 			var clusterMatches []string
@@ -155,7 +155,7 @@ ORDER BY j.prowjob_job_name;
 			}
 			for _, cm := range clusterMatches {
 				// log with the file prefix for easy click/copy to browser:
-				jLog.WithField("prowJobURL", jlr.URL.StringVal).Infof("Found cluster-data file: https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/test-platform-results/%s", cm)
+				jLog.WithField("prowJobURL", jlr.URL.StringVal).Infof("Found cluster-data file: https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/%s/%s", jlr.GCSBucket.StringVal, cm)
 			}
 
 			if len(clusterMatches) > 0 {
@@ -170,6 +170,8 @@ ORDER BY j.prowjob_job_name;
 					jLog.Infof("loaded cluster data: %+v", clusterData)
 				}
 			}
+		} else {
+			jLog.WithField("gcs_bucket", jlr.GCSBucket).WithField("url", jlr.URL.StringVal).Warning("job had no gcs bucket or prow job url")
 		}
 
 		variants := v.CalculateVariantsForJob(jLog, jlr.JobName, clusterData)
