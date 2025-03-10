@@ -31,12 +31,15 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsP
 
 	bkt := gcsClient.Bucket(jobRun.GCSBucket)
 	gcsJobRun := gcs.NewGCSJobRun(bkt, gcsPath)
-	intervalFiles := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetIntervalFile()})
+	intervals := &apitype.EventIntervalList{}
+	intervalFiles, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetIntervalFile()})
+	if err != nil {
+		return intervals, err
+	}
 
 	// We will often match multiple files here, one for upgrade phase, one for conformance
 	// testing phase. For now, we return them all, and each interval has a filename it
 	// originated from.
-	intervals := &apitype.EventIntervalList{}
 	if len(intervalFiles) == 0 {
 		logger.Info("no interval files found")
 		return intervals, nil

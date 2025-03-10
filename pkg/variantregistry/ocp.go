@@ -148,7 +148,11 @@ ORDER BY j.prowjob_job_name;
 			}
 			bkt := v.gcsClient.Bucket(jlr.GCSBucket.StringVal)
 			gcsJobRun := gcs.NewGCSJobRun(bkt, path)
-			allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
+			allMatches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
+			if err != nil {
+				jLog.WithError(err).Error("error finding cluster data file, proceeding without")
+				allMatches = [][]string{}
+			}
 			var clusterMatches []string
 			if len(allMatches) > 0 {
 				clusterMatches = allMatches[0]
@@ -171,7 +175,7 @@ ORDER BY j.prowjob_job_name;
 				}
 			}
 		} else {
-			jLog.WithField("gcs_bucket", jlr.GCSBucket).WithField("url", jlr.URL.StringVal).Warning("job had no gcs bucket or prow job url")
+			jLog.WithField("gcs_bucket", jlr.GCSBucket).WithField("url", jlr.URL.StringVal).Error("job had no gcs bucket or prow job url, proceeding without")
 		}
 
 		variants := v.CalculateVariantsForJob(jLog, jlr.JobName, clusterData)

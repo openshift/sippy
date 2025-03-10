@@ -8,6 +8,7 @@ import (
 	"regexp"
 
 	"cloud.google.com/go/storage"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
@@ -75,21 +76,29 @@ func (j *GCSJobRun) SetGCSJunitPaths(paths []string) {
 	j.gcsJunitPaths = paths
 }
 
-func (j *GCSJobRun) GetGCSJunitPaths() []string {
+func (j *GCSJobRun) GetGCSJunitPaths() ([]string, error) {
 	if len(j.gcsJunitPaths) == 0 {
-		matches := j.FindAllMatches([]*regexp.Regexp{GetDefaultJunitFile()})
+		matches, err := j.FindAllMatches([]*regexp.Regexp{GetDefaultJunitFile()})
+		if err != nil {
+			return nil, err
+		}
 
 		if len(matches) > 0 {
 			j.gcsJunitPaths = matches[0]
 		}
 	}
 
-	return j.gcsJunitPaths
+	return j.gcsJunitPaths, nil
 }
 
 func (j *GCSJobRun) GetCombinedJUnitTestSuites(ctx context.Context) (*junit.TestSuites, error) {
 	testSuites := &junit.TestSuites{}
-	for _, junitFile := range j.GetGCSJunitPaths() {
+	junitPaths, err := j.GetGCSJunitPaths()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, junitFile := range junitPaths {
 		junitContent, err := j.GetContent(ctx, junitFile)
 		if err != nil {
 			return nil, fmt.Errorf("error getting content for jobrun %w", err)
@@ -188,9 +197,9 @@ func (j *GCSJobRun) FindFirstFile(root string, filename *regexp.Regexp) []byte {
 // with each regex for a match
 // each regex that matches will get the attribute name
 // in the returned matches with the index matching the regex
-func (j *GCSJobRun) FindAllMatches(filenames []*regexp.Regexp) [][]string {
+func (j *GCSJobRun) FindAllMatches(filenames []*regexp.Regexp) ([][]string, error) {
 	if len(filenames) < 1 {
-		return nil
+		return nil, nil
 	}
 	matches := make([][]string, len(filenames))
 
@@ -199,8 +208,11 @@ func (j *GCSJobRun) FindAllMatches(filenames []*regexp.Regexp) [][]string {
 	})
 	for {
 		attrs, err := it.Next()
-		if err == iterator.Done {
+		if errors.Is(err, iterator.Done) {
 			break
+		}
+		if err != nil {
+			return nil, errors.Wrap(err, "error reading GCS attributes for job run")
 		}
 
 		for i, filename := range filenames {
@@ -213,5 +225,5 @@ func (j *GCSJobRun) FindAllMatches(filenames []*regexp.Regexp) [][]string {
 		}
 	}
 
-	return matches
+	return matches, nil
 }
