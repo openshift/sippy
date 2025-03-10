@@ -827,7 +827,11 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 	}
 	bkt := pl.gcsClient.Bucket(pj.Spec.DecorationConfig.GCSConfiguration.Bucket)
 	gcsJobRun := gcs.NewGCSJobRun(bkt, path)
-	allMatches := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultJunitFile()})
+	allMatches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultJunitFile()})
+	if err != nil {
+		return errors.Wrap(err, "error finding junit file")
+	}
+
 	var junitMatches []string
 	if len(allMatches) > 0 {
 		junitMatches = allMatches[0]
