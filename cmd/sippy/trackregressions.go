@@ -9,6 +9,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/flags/configflags"
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -45,6 +46,10 @@ func (f *TrackRegressionFlags) BindFlags(fs *pflag.FlagSet) {
 	f.ConfigFlags.BindFlags(fs)
 }
 
+func (f *TrackRegressionFlags) Validate() error {
+	return f.GoogleCloudFlags.Validate()
+}
+
 func NewTrackRegressionsCommand() *cobra.Command {
 	f := NewTrackRegressionFlags()
 
@@ -53,6 +58,9 @@ func NewTrackRegressionsCommand() *cobra.Command {
 		Short: "Update tracked regressions for each view with tracking enabled",
 		Long:  "Check the component report for each view with regression tracking enabled. Maintains tables in bigquery with times we saw regressions appear/disappear.",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := f.Validate(); err != nil {
+				return errors.WithMessage(err, "error validating options")
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
 			defer cancel()
 

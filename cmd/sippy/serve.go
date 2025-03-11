@@ -66,7 +66,7 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ServerFlags) Validate() error {
-	return nil
+	return f.GoogleCloudFlags.Validate()
 }
 
 func NewServeCommand() *cobra.Command {
