@@ -1,10 +1,169 @@
 ---
 component_readiness:
-  - name: 4.17-qe-main
+  - name: 4.14-qe-main
+    base_release:
+      release: "4.14"
+      relative_start: "2024-10-16T00:00:00Z"
+      relative_end: "2024-11-16T23:59:59Z"
+    sample_release:
+      release: "4.14"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Network:
+          - ovn
+        Owner:
+          - qe
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: false
+  - name: 4.15-qe-main
+    base_release:
+      release: "4.15"
+      relative_start: "2024-11-07T00:00:00Z"
+      relative_end: "2024-12-07T23:59:59Z"
+    sample_release:
+      release: "4.15"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Network:
+          - ovn
+        Owner:
+          - qe
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: false
+  - name: 4.16-qe-main
     base_release:
       release: "4.16"
-      relative_start: ga-30d
+      relative_start: "2024-11-27T00:00:00Z"
+      relative_end: "2024-12-27T23:59:59Z"
+    sample_release:
+      release: "4.16"
+      relative_start: now-7d
       relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Network:
+          - ovn
+        Owner:
+          - qe
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: false
+  - name: 4.17-qe-main
+    base_release:
+      release: "4.17"
+      relative_start: "2025-01-06T00:00:00Z"
+      relative_end: "2025-02-06T23:59:59Z"
     sample_release:
       release: "4.17"
       relative_start: now-7d
@@ -35,7 +194,6 @@ component_readiness:
           - ovn
         Owner:
           - qe
-          - service-delivery
         Platform:
           - aws
           - azure
@@ -56,9 +214,9 @@ component_readiness:
       enabled: false
   - name: 4.18-qe-main
     base_release:
-      release: "4.17"
-      relative_start: ga-30d
-      relative_end: ga
+      release: "4.18"
+      relative_start: "2025-02-06T00:00:00Z"
+      relative_end: "2025-03-06T23:59:59Z"
     sample_release:
       release: "4.18"
       relative_start: now-7d
@@ -89,7 +247,6 @@ component_readiness:
           - ovn
         Owner:
           - qe
-          - service-delivery
         Platform:
           - aws
           - azure
