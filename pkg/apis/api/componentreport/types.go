@@ -1,12 +1,10 @@
 package componentreport
 
 import (
-	"database/sql"
 	"math/big"
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -413,19 +411,6 @@ type TriageIncidentSummary struct {
 type Variant struct {
 	Key   string `bigquery:"key" json:"key"`
 	Value string `bigquery:"value" json:"value"`
-}
-
-// TestRegression is used for rows in the test_regressions table and is used to track when we detect test
-// regressions opening and closing.
-type TestRegression struct {
-	ID       uint           `json:"-" gorm:"primaryKey,column:id"`
-	View     string         `json:"view" gorm:"not null"`
-	Release  string         `json:"release" gorm:"not null;index:idx_test_regression_release"`
-	TestID   string         `json:"test_id" gorm:"not null"`
-	TestName string         `json:"test_name" gorm:"not null;index:idx_test_regression_test_name"`
-	Variants pq.StringArray `json:"variants" gorm:"not null;type:text[]"`
-	Opened   time.Time      `json:"opened" gorm:"not null"`
-	Closed   sql.NullTime   `json:"closed"`
 }
 
 // TODO: temporary for migration

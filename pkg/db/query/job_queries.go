@@ -175,6 +175,8 @@ func LoadBugsForJobs(dbc *db.DB,
 	} else {
 		q = q.Preload("Bugs")
 	}
+	// TODO: possible bug here, we took an array of job IDs and queried for it, but we only read
+	// the first, and one caller seems to be passing multiple.
 	res := q.First(&job)
 	if res.Error != nil {
 		return results, res.Error

@@ -20,7 +20,7 @@ func cleanupAllRegressions(dbc *db.DB) {
 	if res.Error != nil {
 		log.Errorf("error deleting triage records: %v", res.Error)
 	}
-	res = dbc.DB.Where("1 = 1").Delete(&componentreport.TestRegression{})
+	res = dbc.DB.Where("1 = 1").Delete(&models.TestRegression{})
 	if res.Error != nil {
 		log.Errorf("error deleting test regressions: %v", res.Error)
 	}
@@ -55,28 +55,50 @@ func Test_Triage(t *testing.T) {
 		},
 	}
 
-	t.Run("triage a test regression", func(t *testing.T) {
+	t.Run("test Triage model in postgres", func(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
-		tr, err := tracker.OpenRegression(view, newRegression)
+		testRegression, err := tracker.OpenRegression(view, newRegression)
 		require.NoError(t, err)
 
-		triageRecord := models.Triage{
+		triage1 := models.Triage{
 			URL: "http://myjira",
-			Regressions: []componentreport.TestRegression{
-				*tr,
+			Regressions: []models.TestRegression{
+				*testRegression,
 			},
 		}
-		dbc.DB.Create(&triageRecord)
-		res := dbc.DB.First(&triageRecord, triageRecord.ID)
-		require.Nil(t, res.Error)
-		assert.Equal(t, 1, len(triageRecord.Regressions))
+		res := dbc.DB.Create(&triage1)
+		require.NoError(t, res.Error)
+		testRegression.Triages = append(testRegression.Triages, triage1)
+		res = dbc.DB.Save(&testRegression)
+
+		// Lookup the Triage again to ensure we persisted what we expect:
+		res = dbc.DB.First(&triage1, triage1.ID)
+		require.NoError(t, res.Error)
+		assert.Equal(t, 1, len(triage1.Regressions))
+
+		// Make a second Triage for the same regression:
+		triage2 := models.Triage{
+			URL: "http://myjira2",
+			Regressions: []models.TestRegression{
+				*testRegression,
+			},
+		}
+		res = dbc.DB.Create(&triage2)
+		require.NoError(t, res.Error)
+		testRegression.Triages = append(testRegression.Triages, triage2)
+		res = dbc.DB.Save(&testRegression)
+
+		// Query for triages for a specific regression:
+		res = dbc.DB.First(&testRegression, testRegression.ID).Preload("Triages")
+		require.NoError(t, res.Error)
+		assert.Equal(t, 2, len(testRegression.Triages))
 
 		// Delete the association:
-		triageRecord.Regressions = []componentreport.TestRegression{}
-		res = dbc.DB.Save(&triageRecord)
+		triage1.Regressions = []models.TestRegression{}
+		res = dbc.DB.Save(&triage1)
 		require.NoError(t, res.Error)
-		res = dbc.DB.First(&triageRecord, triageRecord.ID)
+		res = dbc.DB.First(&triage1, triage1.ID)
 		require.Nil(t, res.Error)
-		assert.Equal(t, 0, len(triageRecord.Regressions))
+		assert.Equal(t, 0, len(triage1.Regressions))
 	})
 }

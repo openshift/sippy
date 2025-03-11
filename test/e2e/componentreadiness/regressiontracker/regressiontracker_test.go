@@ -9,6 +9,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/test/e2e/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -17,7 +18,7 @@ import (
 
 func cleanupAllRegressions(dbc *db.DB) {
 	// Delete all test regressions in the e2e postgres db.
-	res := dbc.DB.Where("1 = 1").Delete(&componentreport.TestRegression{})
+	res := dbc.DB.Where("1 = 1").Delete(&models.TestRegression{})
 	if res.Error != nil {
 		log.Errorf("error deleting test regressions: %v", res.Error)
 	}
@@ -68,7 +69,7 @@ func Test_RegressionTracker(t *testing.T) {
 		require.NoError(t, err)
 
 		// look it up just to be sure:
-		lookup := &componentreport.TestRegression{
+		lookup := &models.TestRegression{
 			ID: tr.ID,
 		}
 		dbc.DB.First(&lookup)
@@ -134,8 +135,8 @@ func rawCreateRegression(
 	testID string,
 	testName string,
 	variants []string,
-	opened, closed time.Time) (*componentreport.TestRegression, error) {
-	newRegression := &componentreport.TestRegression{
+	opened, closed time.Time) (*models.TestRegression, error) {
+	newRegression := &models.TestRegression{
 		View:     view,
 		Release:  release,
 		TestID:   testID,
