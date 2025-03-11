@@ -2,19 +2,17 @@ package regressiontracker
 
 import (
 	"database/sql"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/test/e2e/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gorm.io/gorm/logger"
 )
 
 func cleanupAllRegressions(dbc *db.DB) {
@@ -26,18 +24,7 @@ func cleanupAllRegressions(dbc *db.DB) {
 }
 
 func Test_RegressionTracker(t *testing.T) {
-	require.NotEqual(t, "", os.Getenv("SIPPY_E2E_DSN"),
-		"SIPPY_E2E_DSN environment variable not set")
-
-	dbc, err := db.New(os.Getenv("SIPPY_E2E_DSN"), logger.Info)
-	require.NoError(t, err, "error connecting to db")
-
-	// Simple check that someone doesn't accidentally run the e2es against the prod db:
-	var totalRegressions int64
-	dbc.DB.Model(&componentreport.TestRegression{}).Count(&totalRegressions)
-	require.Less(t, int(totalRegressions), 100, "found too many test regressions in db, possible indicator someone is running e2e against prod, please clean out test_regressions if this is not the case")
-
-	log.Info("got db connection", dbc)
+	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
 	newRegression := componentreport.ReportTestSummary{
 		ReportTestIdentification: componentreport.ReportTestIdentification{
@@ -108,25 +95,21 @@ func Test_RegressionTracker(t *testing.T) {
 		var err error
 		open419, err := rawCreateRegression(dbc, "4.19-main", "4.19",
 			"test1ID", "test 1",
-			uuid.New().String(),
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Time{})
 		require.NoError(t, err)
 		recentlyClosed419, err := rawCreateRegression(dbc, "4.19-main", "4.19",
 			"test2ID", "test 2",
-			uuid.New().String(),
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Now().Add(-2*24*time.Hour))
 		require.NoError(t, err)
 		_, err = rawCreateRegression(dbc, "4.19-main", "4.19",
 			"test3ID", "test 3",
-			uuid.New().String(),
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Now().Add(-70*24*time.Hour))
 		require.NoError(t, err)
 		_, err = rawCreateRegression(dbc, "4.18-main", "4.18",
 			"test1ID", "test 1",
-			uuid.New().String(),
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Time{})
 		require.NoError(t, err)
@@ -146,21 +129,19 @@ func Test_RegressionTracker(t *testing.T) {
 
 func rawCreateRegression(
 	dbc *db.DB,
-	view,
-	release,
-	testID,
-	testName,
-	regID string,
+	view string,
+	release string,
+	testID string,
+	testName string,
 	variants []string,
 	opened, closed time.Time) (*componentreport.TestRegression, error) {
 	newRegression := &componentreport.TestRegression{
-		View:         view,
-		Release:      release,
-		TestID:       testID,
-		TestName:     testName,
-		RegressionID: regID,
-		Opened:       opened,
-		Variants:     variants,
+		View:     view,
+		Release:  release,
+		TestID:   testID,
+		TestName: testName,
+		Opened:   opened,
+		Variants: variants,
 	}
 	if closed.IsZero() {
 		newRegression.Closed = sql.NullTime{

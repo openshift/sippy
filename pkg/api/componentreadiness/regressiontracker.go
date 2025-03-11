@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -107,15 +106,13 @@ func (prs *PostgresRegressionStore) OpenRegression(view crtype.View, newRegresse
 	}
 	log.Infof("variants: %s", strings.Join(variants, ","))
 
-	id := uuid.New()
 	newRegression := &crtype.TestRegression{
-		View:         view.Name,
-		Release:      view.SampleRelease.Release,
-		TestID:       newRegressedTest.TestID,
-		TestName:     newRegressedTest.TestName,
-		RegressionID: id.String(),
-		Opened:       time.Now(),
-		Variants:     variants,
+		View:     view.Name,
+		Release:  view.SampleRelease.Release,
+		TestID:   newRegressedTest.TestID,
+		TestName: newRegressedTest.TestName,
+		Opened:   time.Now(),
+		Variants: variants,
 	}
 	res := prs.dbc.DB.Create(newRegression)
 	if res.Error != nil {
@@ -191,12 +188,11 @@ func (rt *RegressionTracker) Run(ctx context.Context) error {
 		rt.logger.Infof("loaded %d test regressions from bigquery", len(allBigQueryRegressions))
 		for _, reg := range allBigQueryRegressions {
 			newRegression := &crtype.TestRegression{
-				View:         reg.View,
-				Release:      reg.Release,
-				TestID:       reg.TestID,
-				TestName:     reg.TestName,
-				RegressionID: reg.RegressionID,
-				Opened:       reg.Opened,
+				View:     reg.View,
+				Release:  reg.Release,
+				TestID:   reg.TestID,
+				TestName: reg.TestName,
+				Opened:   reg.Opened,
 			}
 			if !reg.Closed.Valid {
 				newRegression.Closed = sql.NullTime{
@@ -335,7 +331,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 					rLog.WithError(err).Errorf("error opening new regression for: %v", regTest)
 					return errors.Wrapf(err, "error opening new regression: %v", regTest)
 				}
-				rLog.Infof("new regression opened with id: %s", newReg.RegressionID)
+				rLog.Infof("new regression opened with id: %s", newReg.ID)
 			}
 		}
 	}
