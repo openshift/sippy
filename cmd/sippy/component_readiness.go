@@ -90,7 +90,7 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
-	return nil
+	return f.GoogleCloudFlags.Validate()
 }
 
 func (f *ComponentReadinessFlags) Run() error { //nolint:gocyclo

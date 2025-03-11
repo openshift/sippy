@@ -57,6 +57,10 @@ func (f *SippyDaemonFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 }
 
+func (f *SippyDaemonFlags) Validate() error {
+	return f.GoogleCloudFlags.Validate()
+}
+
 func NewSippyDaemonCommand() *cobra.Command {
 	f := NewSippyDaemonFlags()
 
@@ -68,6 +72,9 @@ func NewSippyDaemonCommand() *cobra.Command {
 			fmt.Fprintf(os.Stdout, "sippy built from %s\n", version.Get().GitCommit)
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := f.Validate(); err != nil {
+				return errors.WithMessage(err, "error validating options")
+			}
 
 			processes := make([]sippyserver.DaemonProcess, 0)
 

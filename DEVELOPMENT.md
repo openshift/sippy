@@ -117,6 +117,7 @@ Then to launch the API server:
 ./sippy serve \
   --log-level=debug \
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
+  --google-service-account-credential-file ~/google-service-account-credential-file.json \
   --mode=ocp
 ````
 
@@ -128,7 +129,7 @@ If you'd like to launch just Component Readiness, you can run:
     --redis-url="redis://192.168.1.215:6379"
 ```
 
-When providing BigQuery credentials, your service account needs access to the project and datasets that are being used.
+When providing BigQuery credentials (`--google-service-account-credential-file`), your service account or personal token needs access to the project and datasets that are being used.
 The defaults are visible in `--help`. For component readiness, you need to have access to the storage API as well
 with the permission `bigquery.readsessions.create`.
 

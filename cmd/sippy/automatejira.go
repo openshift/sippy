@@ -116,6 +116,9 @@ func (f *AutomateJiraFlags) Validate(allVariants crtype.JobVariants) error {
 		}
 		f.ColumnThresholds[jiraautomator.Variant{Name: vt[0], Value: vt[1]}] = t
 	}
+	if err := f.GoogleCloudFlags.Validate(); err != nil {
+		return err
+	}
 	return f.JiraOptions.Validate(true)
 }
 
