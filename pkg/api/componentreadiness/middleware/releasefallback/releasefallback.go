@@ -142,7 +142,7 @@ func (r *ReleaseFallback) matchBestBaseStats(
 				// this back to the core report generator so it can include the adjusted release/start/end dates in
 				// the report, and ultimately the UI.
 				baseStats.Release = &cachedReleaseTestStatuses.Release
-				r.log.Infof("Overrode base stats (%.4f) using release %s (%.4f) for test: %s - %s",
+				r.log.Debugf("Overrode base stats (%.4f) using release %s (%.4f) for test: %s - %s",
 					basePassRate, baseStats.Release.Release, cPassRate, baseStats.TestName, testKeyStr)
 			}
 		}
