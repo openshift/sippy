@@ -578,6 +578,10 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{"-recovery", "excluded"},
 		{"alibaba", "excluded"},
 
+		// Experimental new jobs using nested vsphere lvl 2 environment,
+		// not ready to make release blocking yet.
+		{"-vsphere-host-groups", "candidate"},
+
 		// Hidden jobs
 		{"-disruptive", "hidden"},
 		{"-rollback", "hidden"},
@@ -595,7 +599,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		}
 	}
 
-	// QE default is hidden, we'll opt jobs in above as they stabalize and are
+	// QE default is hidden, we'll opt jobs in above as they stabilize and are
 	// ready for component readiness.
 	if variants[VariantOwner] == "qe" {
 		variants[VariantJobTier] = "hidden"
