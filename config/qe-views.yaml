@@ -1,6 +1,6 @@
 ---
 component_readiness:
-  - name: 4.14-qe-main
+  - name: 4.14-qe-auto-release
     base_release:
       release: "4.14"
       relative_start: "2024-10-16T00:00:00Z"
@@ -24,6 +24,8 @@ component_readiness:
         Topology: {}
         Upgrade: {}
       include_variants:
+        Procedure:
+          - automated-release
         Architecture:
           - amd64
         FeatureSet:
@@ -53,7 +55,7 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: false
-  - name: 4.15-qe-main
+  - name: 4.15-qe-auto-release
     base_release:
       release: "4.15"
       relative_start: "2024-11-07T00:00:00Z"
@@ -77,6 +79,8 @@ component_readiness:
         Topology: {}
         Upgrade: {}
       include_variants:
+        Procedure:
+          - automated-release
         Architecture:
           - amd64
         FeatureSet:
@@ -106,7 +110,7 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: false
-  - name: 4.16-qe-main
+  - name: 4.16-qe-auto-release
     base_release:
       release: "4.16"
       relative_start: "2024-11-27T00:00:00Z"
@@ -130,6 +134,8 @@ component_readiness:
         Topology: {}
         Upgrade: {}
       include_variants:
+        Procedure:
+          - automated-release
         Architecture:
           - amd64
         FeatureSet:
@@ -159,7 +165,7 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: false
-  - name: 4.17-qe-main
+  - name: 4.17-qe-auto-release
     base_release:
       release: "4.17"
       relative_start: "2025-01-06T00:00:00Z"
@@ -183,6 +189,8 @@ component_readiness:
         Topology: {}
         Upgrade: {}
       include_variants:
+        Procedure:
+          - automated-release
         Architecture:
           - amd64
         FeatureSet:
@@ -212,7 +220,7 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: false
-  - name: 4.18-qe-main
+  - name: 4.18-qe-auto-release
     base_release:
       release: "4.18"
       relative_start: "2025-02-06T00:00:00Z"
@@ -236,6 +244,8 @@ component_readiness:
         Topology: {}
         Upgrade: {}
       include_variants:
+        Procedure:
+          - automated-release
         Architecture:
           - amd64
         FeatureSet:
