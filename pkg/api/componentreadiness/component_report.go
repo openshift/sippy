@@ -281,6 +281,8 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 			errs = append(errs, err)
 			return crtype.ComponentReport{}, errs
 		}
+	} else {
+		log.Warnf("no postgres connection for ComponentReportGenerator, regression tracking data will not be included")
 	}
 
 	// perform analysis and generate report:

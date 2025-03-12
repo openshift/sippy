@@ -194,7 +194,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		// Do an immediate metrics update
 		err = metrics.RefreshMetricsDB(
 			context.Background(),
-			nil,
+			dbc,
 			bigQueryClient,
 			time.Time{},
 			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
@@ -214,7 +214,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 					log.Info("tick")
 					err := metrics.RefreshMetricsDB(
 						context.Background(),
-						nil,
+						dbc,
 						bigQueryClient,
 						time.Time{},
 						cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
