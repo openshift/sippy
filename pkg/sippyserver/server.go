@@ -1166,6 +1166,19 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
+func (s *Server) jsonListTriages(w http.ResponseWriter, req *http.Request) {
+	//release := param.SafeRead(req, "release")
+
+	triages := []models.Triage{}
+	res := s.db.DB.Preload("Bug").Find(&triages)
+	if res.Error != nil {
+		log.WithError(res.Error).Error("error in jsonListTriages")
+		failureResponse(w, http.StatusInternalServerError, res.Error.Error())
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, triages)
+}
+
 func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.ResponseWriter, req *http.Request)) func(http.ResponseWriter, *http.Request) {
 	if s.hasCapabilities(capabilities) {
 		return implFn
@@ -1367,6 +1380,12 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonInstallReportFromDB,
+		},
+		{
+			EndpointPath: "/api/triages",
+			Description:  "List triage records",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonListTriages,
 		},
 		{
 			EndpointPath: "/api/upgrade",

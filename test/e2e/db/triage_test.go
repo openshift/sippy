@@ -57,7 +57,7 @@ func Test_Triage(t *testing.T) {
 	}
 
 	t.Run("test Triage model in postgres", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		//defer cleanupAllRegressions(dbc)
 		testRegression, err := tracker.OpenRegression(view, newRegression)
 		require.NoError(t, err)
 
@@ -104,7 +104,7 @@ func Test_Triage(t *testing.T) {
 	})
 
 	t.Run("test Triage model Bug relationship", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		//defer cleanupAllRegressions(dbc)
 
 		jiraBug := models.Bug{
 			Key:        "MYBUGS-100",
@@ -119,7 +119,7 @@ func Test_Triage(t *testing.T) {
 
 		triage1 := models.Triage{
 			URL: "http://myjira",
-			Bug: jiraBug,
+			Bug: &jiraBug,
 		}
 		res = dbc.DB.Create(&triage1)
 		require.NoError(t, res.Error)
