@@ -1,16 +1,46 @@
 import FullCalendar from '@fullcalendar/react'
 
+import { Alert, Grid } from '@mui/material'
 import { filterFor } from '../helpers'
 import { useHistory } from 'react-router-dom'
 import { useTheme } from '@mui/material/styles'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import PayloadCalendarLegend from './PayloadCalendarLegend'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useState } from 'react'
 
 export default function PayloadCalendar(props) {
   const theme = useTheme()
   const history = useHistory()
+
+  const [acceptedFound, setAcceptedFound] = useState(true)
+
+  const acceptedSourceSuccess = (info) => {
+    setAcceptedFound(info.length > 0)
+    displayAlertIfNecessary()
+  }
+
+  const [rejectedFound, setRejectedFound] = useState(true)
+
+  const rejectedSourceSuccess = (info) => {
+    setRejectedFound(info.length > 0)
+    displayAlertIfNecessary()
+  }
+
+  const [alertMessage, setAlertMessage] = useState('')
+
+  const displayAlertIfNecessary = () => {
+    if (!acceptedFound && !rejectedFound) {
+      setAlertMessage('Warning: no results found for payload')
+    } else {
+      setAlertMessage('')
+    }
+  }
+
+  const failedRetrieval = (error) => {
+    console.error(error)
+    setAlertMessage('Warning: error retrieving results for payload')
+  }
 
   const eventSources = [
     {
@@ -30,6 +60,7 @@ export default function PayloadCalendar(props) {
       },
       color: theme.palette.success.light,
       textColor: theme.palette.success.contrastText,
+      success: acceptedSourceSuccess,
     },
     {
       url:
@@ -48,6 +79,7 @@ export default function PayloadCalendar(props) {
       },
       color: theme.palette.error.light,
       textColor: theme.palette.error.contrastText,
+      success: rejectedSourceSuccess,
     },
     {
       url: process.env.REACT_APP_API_URL + '/api/incidents',
@@ -70,6 +102,11 @@ export default function PayloadCalendar(props) {
 
   return (
     <Fragment>
+      {alertMessage && (
+        <Grid container justifyContent="center" width="100%">
+          <Alert severity="error">{alertMessage}</Alert>
+        </Grid>
+      )}
       <PayloadCalendarLegend />
       <FullCalendar
         timeZone="UTC"
@@ -82,6 +119,7 @@ export default function PayloadCalendar(props) {
         initialView="dayGridMonth"
         eventClick={eventClick}
         eventSources={eventSources}
+        eventSourceFailure={failedRetrieval}
       />
     </Fragment>
   )
