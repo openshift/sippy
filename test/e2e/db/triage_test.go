@@ -3,6 +3,7 @@ package db
 import (
 	"testing"
 
+	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/db"
@@ -100,5 +101,33 @@ func Test_Triage(t *testing.T) {
 		res = dbc.DB.First(&triage1, triage1.ID)
 		require.Nil(t, res.Error)
 		assert.Equal(t, 0, len(triage1.Regressions))
+	})
+
+	t.Run("test Triage model Bug relationship", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+
+		jiraBug := models.Bug{
+			Key:        "MYBUGS-100",
+			Status:     "New",
+			Summary:    "foo bar",
+			Components: pq.StringArray{"component1", "component2"},
+			Labels:     pq.StringArray{"label1", "label2"},
+			URL:        "https://issues.redhat.com/browse/MYBUGS-100",
+		}
+		res := dbc.DB.Create(&jiraBug)
+		require.NoError(t, res.Error)
+
+		triage1 := models.Triage{
+			URL: "http://myjira",
+			Bug: jiraBug,
+		}
+		res = dbc.DB.Create(&triage1)
+		require.NoError(t, res.Error)
+
+		// Lookup the Triage again to ensure we persisted what we expect:
+		res = dbc.DB.First(&triage1, triage1.ID)
+		require.NoError(t, res.Error)
+		assert.Equal(t, "MYBUGS-100", triage1.Bug.Key)
+
 	})
 }

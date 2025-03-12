@@ -11,7 +11,16 @@ import (
 // Triage contains data tying failures or regressions to specific bugs.
 type Triage struct {
 	gorm.Model
+	// URL references the core URL to follow for details on this triage, typically a Jira bug.
 	URL string
+
+	// Bug is populated if and when we have a URL for a valid Jira imported into our db.
+	// Because a user may link a URL that is not yet in sippy's db, we need to differentiate
+	// between the two. During bug import we explicitly bring in any triaged bugs we can find.
+	// Once imported, useful data is available for the triage via this reference.
+	Bug   Bug
+	BugID *uint
+
 	// Regressions ties this triage record to specific component readiness test regressions.
 	// Triage will often tie to regressions, often multiple (as regressions are broken out by variant / suite),
 	// but it may also be empty in
