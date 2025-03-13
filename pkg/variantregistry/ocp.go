@@ -582,6 +582,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// not ready to make release blocking yet.
 		{"-vsphere-host-groups", "candidate"},
 
+		// Konflux jobs aren't ready yet
+		{"-konflux", "candidate"},
+
 		// Hidden jobs
 		{"-disruptive", "hidden"},
 		{"-rollback", "hidden"},
