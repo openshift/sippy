@@ -650,9 +650,9 @@ func setTopology(_ logrus.FieldLogger, variants map[string]string, jobName strin
 		substring string
 		topology  string
 	}{
-		{"-sno-", "single"},         // Previously single-node
-		{"-single-node", "single"},  // Alternative format
-		{"-arbiter-", "ha-arbiter"}, // Two-node
+		{"-sno-", "single"},        // Previously single-node
+		{"-single-node", "single"}, // Alternative format
+		{"-arbiter", "ha-arbiter"}, // Two-node
 		{"-hypershift", "external"},
 		{"-hcp", "external"},
 		{"_hcp", "external"},
