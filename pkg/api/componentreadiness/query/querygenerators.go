@@ -737,7 +737,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 
 	sampleString := commonQuery + ` AND branch = @SampleRelease`
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
-		sampleString += `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
+		sampleString += `  AND jobs.org = @Org AND jobs.repo = @Repo AND jobs.pr_number = @PRNumber`
 	}
 	sampleQuery := s.client.BQ.Query(sampleString + groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, queryParameters...)
