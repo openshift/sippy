@@ -264,6 +264,7 @@ type ReportTestDetails struct {
 	ReportTestIdentification
 	JiraComponent   string     `json:"jira_component"`
 	JiraComponentID *big.Rat   `json:"jira_component_id"`
+	TestName        string     `json:"test_name"`
 	GeneratedAt     *time.Time `json:"generated_at"`
 
 	// Analyses is a list of potentially multiple analysis run for this test.
@@ -472,9 +473,9 @@ type TriagedIncidentAttribution struct {
 }
 
 type TriageJobRun struct {
-	URL           string                 `bigquery:"url" json:"url"`
-	StartTime     time.Time              `bigquery:"start_time" json:"start_time"`
-	CompletedTime bigquery.NullTimestamp `bigquery:"completed_time" json:"completed_time"`
+	URL            string                 `bigquery:"url" json:"url"`
+	StartTime      time.Time              `bigquery:"start_time" json:"start_time"`
+	CompletionTime bigquery.NullTimestamp `bigquery:"completion_time" json:"completion_time"`
 }
 
 // TestWithVariantsKey connects the core unique db testID string to a set of variants.

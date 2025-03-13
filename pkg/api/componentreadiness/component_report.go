@@ -922,10 +922,10 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 			impactedJobRuns.Insert(impactedJobRun.URL)
 
 			compareTime := impactedJobRun.StartTime
-			// preference is to compare to CompletedTime as it will more closely match jobrun modified time
-			// but, it is optional so default to StartTime and set to CompletedTime when present
-			if impactedJobRun.CompletedTime.Valid {
-				compareTime = impactedJobRun.CompletedTime.Timestamp
+			// preference is to compare to CompletionTime as it will more closely match jobrun modified time
+			// but, it is optional so default to StartTime and set to CompletionTime when present
+			if impactedJobRun.CompletionTime.Valid {
+				compareTime = impactedJobRun.CompletionTime.Timestamp
 			}
 
 			if compareTime.After(startTime) && compareTime.Before(endTime) {
@@ -1085,7 +1085,8 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 
 		var testStats crtype.ReportTestStats // This is the actual stats we return over the API
 		var triagedIncidents []crtype.TriagedIncident
-		var resolvedIssueCompensation int // triaged job run failures to ignore
+		var resolvedIssueCompensation int
+
 		sampleStats, ok := sampleStatus[testKeyStr]
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
