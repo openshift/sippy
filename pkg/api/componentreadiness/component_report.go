@@ -1092,6 +1092,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		} else {
 			// requiredConfidence is lowered for on-going regressions to prevent cells from flapping:
 			requiredConfidence := c.getRequiredConfidence(testKey.TestID, testKey.Variants)
+			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testKey) // triaged job run failures to ignore
 
 			// Check if the TestStatus is decorated with info indicating it's release was overridden, and use that data if so
 			matchedBaseRelease := c.ReqOptions.BaseRelease.Release
