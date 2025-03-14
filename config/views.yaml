@@ -33,6 +33,10 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        JobTier:
+          - blocking
+          - informing
+          - standard
         LayeredProduct:
           - none
         Network:
@@ -99,6 +103,10 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        JobTier:
+          - blocking
+          - informing
+          - standard
         LayeredProduct:
           - none
         Owner:
@@ -160,6 +168,10 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        JobTier:
+          - blocking
+          - informing
+          - standard
         LayeredProduct:
           - none
         Owner:
@@ -292,6 +304,10 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        JobTier:
+            - blocking
+            - informing
+            - standard
         LayeredProduct:
           - virt
         Network:
@@ -354,6 +370,10 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        JobTier:
+          - blocking
+          - informing
+          - standard
         LayeredProduct:
           - none
         Network:
@@ -416,6 +436,10 @@ component_readiness:
         Installer:
           - ipi
           - upi
+        JobTier:
+            - blocking
+            - informing
+            - standard
         LayeredProduct:
           - none
         Owner:
@@ -482,8 +506,12 @@ component_readiness:
             Installer:
                 - ipi
                 - upi
+            JobTier:
+              - blocking
+              - informing
+              - standard
             Owner:
-                - eng
+              - eng
             Network:
                 - ovn
             Platform:
