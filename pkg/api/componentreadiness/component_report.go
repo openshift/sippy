@@ -1615,19 +1615,11 @@ func (c *ComponentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx cont
 					FROM
 						%s.junit %s
 					WHERE
-						NOT REGEXP_CONTAINS(prowjob_name, @IgnoredJobs)
-						AND modified_time > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 60 DAY)
+						modified_time > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 60 DAY)
 					ORDER BY
 						name`, field, c.client.Dataset, unnest)
 
 	q := c.client.BQ.Query(queryString)
-	q.Parameters = []bigquery.QueryParameter{
-		{
-			Name:  "IgnoredJobs",
-			Value: query.IgnoredJobsRegexp,
-		},
-	}
-
 	return getSingleColumnResultToSlice(ctx, q)
 }
 

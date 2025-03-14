@@ -24,8 +24,6 @@ import (
 const (
 	DefaultJunitTable = "junit"
 
-	IgnoredJobsRegexp = `-okd|-recovery|aggregator-|alibaba|-disruptive|-rollback|-out-of-change|-sno-fips-recert|-bgp-|-konflux|-vsphere-host-groups`
-
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
 	//
@@ -315,15 +313,8 @@ func BuildCommonTestStatusQuery(
 						cm.id `, groupByVariants)
 
 	queryString += `WHERE cm.staff_approved_obsolete = false AND
-						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
-						AND NOT REGEXP_CONTAINS(variant_registry_job_name, @IgnoredJobs)`
-
-	commonParams := []bigquery.QueryParameter{
-		{
-			Name:  "IgnoredJobs",
-			Value: IgnoredJobsRegexp,
-		},
-	}
+						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')`
+	commonParams := []bigquery.QueryParameter{}
 	if reqOptions.AdvancedOption.IgnoreDisruption {
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
 	}
@@ -434,13 +425,8 @@ func getTestDetailsQuery(
 	queryString += `
 					WHERE
 						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
-						AND NOT REGEXP_CONTAINS(variant_registry_job_name, @IgnoredJobs)
 						AND cm.id = @TestId `
 	commonParams := []bigquery.QueryParameter{
-		{
-			Name:  "IgnoredJobs",
-			Value: IgnoredJobsRegexp,
-		},
 		{
 			Name:  "TestId",
 			Value: c.TestIDOption.TestID,
