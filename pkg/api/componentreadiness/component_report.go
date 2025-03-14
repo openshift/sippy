@@ -285,6 +285,12 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 		log.Warnf("no postgres connection for ComponentReportGenerator, regression tracking data will not be included")
 	}
 
+	// generateComponentTestReport modifies SampleStatus removing matches from BaseStatus
+	// resulting in erroneous sample results count
+	// msg="GenerateReport completed in 1m49.528090955s with 0 sample results and 133132 base results from db"
+	// get the length before processing
+	sampleLen := len(componentReportTestStatus.SampleStatus)
+
 	// perform analysis and generate report:
 	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,
 		componentReportTestStatus.SampleStatus)
@@ -294,7 +300,7 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 		return crtype.ComponentReport{}, errs
 	}
 	report.GeneratedAt = componentReportTestStatus.GeneratedAt
-	log.Infof("GenerateReport completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentReportTestStatus.SampleStatus), len(componentReportTestStatus.BaseStatus))
+	log.Infof("GenerateReport completed in %s with %d sample results and %d base results from db", time.Since(before), sampleLen, len(componentReportTestStatus.BaseStatus))
 
 	return report, nil
 }
