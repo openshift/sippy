@@ -1057,19 +1057,12 @@ if __name__ == '__main__':
 
     file_matches = None
     if args.file_matches:
-        try:
-            file_matches = args.file_matches
-        except Exception as e:
-            print(f"Failed to load file matches: {e}")
-            exit()
+        file_matches = args.file_matches
 
     test_details = None
     if args.test_details:
-        try:
-            test_details = args.test_details
-        except Exception as e:
-            print(f"Failed to load test details: {e}")
-            exit()        
+        test_details = args.test_details
+              
 
     if args.test_report_url == None or len(args.test_report_url) == 0:
         # if we are loading incidents from a file we don't need the URL
