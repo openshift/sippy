@@ -709,17 +709,39 @@ def find_matching_job_run_ids(incidents):
 
     return updated_incidents
 
-def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_cell, total_cells):
+def triage_regressions(regressed_tests, triaged_incidents, issue_url, current_cell, total_cells):
     i = 0
     for rt in regressed_tests:
         i += 1
+
+        # TODO: These are the url params we need to add onto those in the TEST_REPORT URL when we go to get the test details (job run data):
+        # &component=Monitoring&capability=Other&testId=openshift-tests-upgrade:c1f54790201ec8f4241eca902f854b79&environment=ovn%20upgrade-minor%20amd64%20metal-ipi%20standard&network=ovn&upgrade=upgrade-minor&arch=amd64&platform=metal-ipi&variant=standard
+
+        # Build out the url for full test_details api call so we can get the job runs. Adjust the endpoint, re-use the original request params, and add some more that are needed.
+        test_details_url = args.test_report_url.replace('/api/component_readiness?', '/api/component_readiness/test_details?')
+        #DBOptions
+        dbGroupBy = f"&Platform={rt['variants']['Platform']}&Architecture={rt['variants']['Architecture']}&Network={rt['variants']['Network']}&Topology={rt['variants']['Topology']}&FeatureSet={rt['variants']['FeatureSet']}&Upgrade={rt['variants']['Upgrade']}&Suite={rt['variants']['Suite']}&Installer={rt['variants']['Installer']}"
+
+        component = rt['component']
+        capability = rt['capability']
+        test_id = rt['test_id']
+        
+
+        test_details_url += '&component=%s&capability=%s&testId=%s%s' % (component, capability, test_id, dbGroupBy)
+
+
+        process_test_details(test_details_url, triaged_incidents, issue_url, test_id, rt["test_name"], rt, None, i, current_cell, total_cells, len(regressed_tests))
+
+
+def process_test_details(test_details_url, triaged_incidents, issue_url, test_id, test_name, rt, json_data, i, regressed_test_count, current_cell, total_cells):
+
 
         # test_ids can span variants
         # if we input a file we have to check to see if any variants are included with the test_id
         # and match only them
 
         # we always pull variants from the test but will match against any json input
-        test_id = rt['test_id']
+        
 
         variants = []
         variants.append({"key": "Network", "value": rt['variants']['Network']})
@@ -743,7 +765,7 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_c
         intentionalRegression = {}
         intentionalRegression["JiraComponent"] = rt['component']
         intentionalRegression["TestID"] = test_id
-        intentionalRegression["TestName"] = rt["test_name"]
+        intentionalRegression["TestName"] = test_name
         intentionalRegression["JiraBug"] = "TBD BUG"
         intentionalRegression["ReasonToAllowInsteadOfFix"] = "TBD Reason"
         intentionalRegression["variant"]= {"variants": ir_variants}
@@ -774,18 +796,15 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_c
 
 
         if not matches:
-            continue
+            return
 
         # if we have a record use the
         # issue type, description, url if provided
         issue_type, issue_description, issue_url, issue_resolution_date = issue_details(record, args.issue_type, description, issue_url, args.issue_resolution_date)
 
         print
-        print("REGRESSION: %s (%d/%d) (cell %d/%d)" % (rt["test_name"], i, len(regressed_tests), current_cell, total_cells))
+        print("REGRESSION: %s (%d/%d) (cell %d/%d)" % (test_name, i, regressed_test_count, current_cell, total_cells))
         print
-        component = rt['component']
-        capability = rt['capability']
-        test_name = rt['test_name']
 
         triaged_incident = {}
         triaged_incident["TestId"] = test_id
@@ -797,28 +816,25 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_c
                     triaged_incident["Variants"] = record["Variants"]
 
             triaged_incidents.append(triaged_incident)
-            continue
+            return
 
-            # TODO: These are the url params we need to add onto those in the TEST_REPORT URL when we go to get the test details (job run data):
-    # &component=Monitoring&capability=Other&testId=openshift-tests-upgrade:c1f54790201ec8f4241eca902f854b79&environment=ovn%20upgrade-minor%20amd64%20metal-ipi%20standard&network=ovn&upgrade=upgrade-minor&arch=amd64&platform=metal-ipi&variant=standard
 
-        # Build out the url for full test_details api call so we can get the job runs. Adjust the endpoint, re-use the original request params, and add some more that are needed.
-        test_details_url = args.test_report_url.replace('/api/component_readiness?', '/api/component_readiness/test_details?')
-        #DBOptions
-        dbGroupBy = f"&Platform={rt['variants']['Platform']}&Architecture={rt['variants']['Architecture']}&Network={rt['variants']['Network']}&Topology={rt['variants']['Topology']}&FeatureSet={rt['variants']['FeatureSet']}&Upgrade={rt['variants']['Upgrade']}&Suite={rt['variants']['Suite']}&Installer={rt['variants']['Installer']}"
 
-        test_details_url += '&component=%s&capability=%s&testId=%s%s' % (component, capability, test_id, dbGroupBy)
-        print("  Querying test details: %s" % test_details_url)
 
-        # Call the function to fetch JSON data from the API
-        json_data = fetch_json_data(test_details_url)
+        # if it was passed in already then we don't want to fetch it again
+        if json_data is None:
+            print("  Querying test details: %s" % test_details_url)
+
+            # Call the function to fetch JSON data from the API
+            json_data = fetch_json_data(test_details_url)
 
         # bad response...
         if json_data is None:
             print("Error: no json data returned from %s" % test_details_url)
             # are we hammering the server? slow down for a bit...
             time.sleep(10)
-            continue
+            return
+
 
         if args.intentional_regressions:
             #get the data from json_data
@@ -856,7 +872,7 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_c
             triaged_incident["Variants"] = variants
             triaged_incident["JobRuns"] = []
 
-            for job in json_data["job_stats"]:
+            for job in json_data["analyses"][0]["job_stats"]:
                 if not 'sample_job_run_stats' in job:
                     continue
                 for sjr in job["sample_job_run_stats"]:
@@ -911,7 +927,7 @@ def triage_regressions(regressed_tests, triaged_incidents, issue_url, currrent_c
             # don't output empty job run incidents unless we expect to have all
             # failures matched
             if len(triaged_incident["JobRuns"]) == 0 and not args.match_all_job_runs:
-                continue
+                return
 
             if args.output_type == 'JSON':
                 triaged_incidents.append(triaged_incident)
@@ -959,6 +975,7 @@ if __name__ == '__main__':
     parser.add_argument("--match-all-job-runs", help="Only the job runs common to all of the test ids will be preserved. Only valid with output-type == JSON.", type=bool, default=False)
     parser.add_argument("--relative-sample-times", help="Update the sample begin and end times based on the original time span but using the current date for end.", type=bool, default=False)
     parser.add_argument("--file-matches", help="JSON string listing artifact files to look for regex matches in")
+    parser.add_argument("--test-details", help="JSON string listing test details api urls to use in place of test-report-url")
 
 
     # a JSON structured file, potentially output by this tool, to be used as input for matching tests
@@ -1022,6 +1039,8 @@ if __name__ == '__main__':
                 args.relative_sample_times = bool(arguments["RelativeSampleTimes"])
             if "FileMatches" in arguments and len(arguments["FileMatches"]) > 0:
                 args.file_matches = arguments["FileMatches"]
+            if "TestDetails" in arguments and len(arguments["TestDetails"]) > 0:
+                args.test_details = arguments["TestDetails"]                
             if "IntentionalRegressions" in arguments and len(arguments["IntentionalRegressions"]) > 0:
                 args.intentional_regressions = bool(arguments["IntentionalRegressions"])
 
@@ -1038,18 +1057,21 @@ if __name__ == '__main__':
 
     file_matches = None
     if args.file_matches:
-        try:
-            # file_matches = json.load(args.file_matches)
-            file_matches = args.file_matches
-        except Exception as e:
-            print(f"Failed to load json file matches: {e}")
-            exit()
+        file_matches = args.file_matches
+
+    test_details = None
+    if args.test_details:
+        test_details = args.test_details
+              
 
     if args.test_report_url == None or len(args.test_report_url) == 0:
         # if we are loading incidents from a file we don't need the URL
-        if args.load_incidents_from_file == False:
+        if args.load_incidents_from_file == False and args.test_details is None:
             print(f"test-report-url is required")
             exit()
+    else:
+         print("\nTestReport URL: " + args.test_report_url)  
+
     if args.test_release == None or len(args.test_release) == 0:
         print(f"test-release is required")
         exit()
@@ -1100,7 +1122,6 @@ if __name__ == '__main__':
     if args.issue_type:
         print("\nIssue Type: " + args.issue_type)
 
-    print("\nTestReport URL: " + args.test_report_url)
     print("\nTest Release: " + args.test_release)
 
     if args.output_type == "DB":
@@ -1156,6 +1177,38 @@ if __name__ == '__main__':
         else:
             print("Invalid output type for load-incidents-from-file")
             exit()
+    elif not test_details is None:
+        #given a list of test details api urls what do we need to do to call
+        #triage_regressions(regressed_tests, triaged_incidents, issue_url, current_cell, total_regressed_cells)
+        triaged_incidents = []
+        total_cells = len(test_details)
+        i = 0
+
+        for td in test_details:
+            # Call the function to fetch JSON data from the API
+            json_data = fetch_json_data(td["URL"])
+            i += 1
+
+            # bad response...
+            if json_data is None:
+                print("Error: no json data returned from %s" % td["URL"])
+                # are we hammering the server? slow down for a bit...
+                time.sleep(10)
+                continue
+
+            # otherwise extract some necessary data and call
+            component = json_data['component']
+            capability = json_data['capability']
+            test_id = json_data['test_id']
+            test_name = test_id
+            if "test_name" in td:
+                test_name = td["test_name"]
+
+            if "test_name" in json_data:
+                test_name = json_data["test_name"]
+
+            process_test_details(None, triaged_incidents, issue_url, test_id, test_name, json_data, json_data, 1, 1, i, total_cells)
+
     else :
         # Fetch the top level regressed component + tests report:
         top_lvl_report = fetch_json_data(args.test_report_url)
@@ -1191,12 +1244,14 @@ if __name__ == '__main__':
                     print("Error: no remaining triaged incidents after matching job runs")
                     exit()
 
-            triage_output = {"Arguments": {"TestRelease": args.test_release, "TestReportURL": args.test_report_url,
+            triage_output = {"Arguments": {"TestRelease": args.test_release, 
                                         "IssueDescription": description, "IssueType": args.issue_type,
                                         "IssueURL": issue_url, "OutputFile": output_file,
                                         "IncidentGroupId": incident_group_id,
                                         "TargetModifiedTime": target_modified_time},
                                         "Tests": triaged_incidents}
+            if args.test_report_url != None:
+                triage_output["Arguments"]["TestReportURL"] = args.test_report_url
             if  args.job_run_start_time_max != None:
                 triage_output["Arguments"]["JobRunStartTimeMax"] = args.job_run_start_time_max
             if  args.job_run_start_time_min != None:

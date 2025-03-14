@@ -384,6 +384,9 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 			if result.JiraComponentID == nil && baseStats.JiraComponentID != nil {
 				result.JiraComponentID = baseStats.JiraComponentID
 			}
+			if result.TestName == "" && baseStats.TestName != "" {
+				result.TestName = baseStats.TestName
+			}
 
 			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, c.getJobRunStats(baseStats))
 			perJobBaseSuccess += baseStats.SuccessCount
@@ -397,6 +400,9 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 				}
 				if result.JiraComponentID == nil && sampleStats.JiraComponentID != nil {
 					result.JiraComponentID = sampleStats.JiraComponentID
+				}
+				if result.TestName == "" && sampleStats.TestName != "" {
+					result.TestName = sampleStats.TestName
 				}
 
 				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
