@@ -212,7 +212,7 @@ export default function ComponentReadinessToolBar(props) {
                 color="inherit"
                 onClick={() => setRegressedTestDialog(true, 'replaceIn')}
               >
-                <Badge badgeContent={regressedTests.length} color="error">
+                <Badge badgeContent={allRegressedTests.length} color="error">
                   <Tooltip title="Show regressed tests">
                     <GridView />
                   </Tooltip>
@@ -276,5 +276,5 @@ ComponentReadinessToolBar.propTypes = {
   data: PropTypes.object,
   forceRefresh: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
-  accessibilityMode: PropTypes.bool.isRequired,
+  accessibilityMode: PropTypes.bool,
 }

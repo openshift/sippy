@@ -119,6 +119,7 @@ func KeyForTriagedIssue(testID string, variants []crtype.Variant) TriagedIssueKe
 type TriageIssueType string
 
 const TriageIssueTypeInfrastructure TriageIssueType = "Infrastructure"
+const TriageIssueTypeProduct TriageIssueType = "Product"
 
 type Release string
 

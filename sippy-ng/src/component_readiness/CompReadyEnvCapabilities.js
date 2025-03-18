@@ -301,5 +301,5 @@ CompReadyEnvCapabilities.propTypes = {
   component: PropTypes.string.isRequired,
   environment: PropTypes.string,
   theme: PropTypes.object.isRequired,
-  accessibilityMode: PropTypes.bool.isRequired,
+  accessibilityMode: PropTypes.bool,
 }

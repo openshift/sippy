@@ -741,9 +741,12 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification,
 	}
 }
 
+// getTriagedIssuesFromBigquery will
+// fetch triaged issue from big query if not already present on the ComponentReportGenerator
+// and check the triaged issue for matches with the current testID
 func (c *ComponentReportGenerator) getTriagedIssuesFromBigQuery(ctx context.Context,
 	testID crtype.ReportTestIdentification) (
-	int, []crtype.TriagedIncident, []error) {
+	int, bool, []crtype.TriagedIncident, []error) {
 	generator := triagedIncidentsGenerator{
 		ReportModified: c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption),
 		client:         c.client,
@@ -760,13 +763,13 @@ func (c *ComponentReportGenerator) getTriagedIssuesFromBigQuery(ctx context.Cont
 			generator.generateTriagedIssuesFor, resolvedissues.TriagedIncidentsForRelease{})
 
 		if len(errs) > 0 {
-			return 0, nil, errs
+			return 0, false, nil, errs
 		}
 		c.triagedIssues = &releaseTriagedIncidents
 	}
-	impactedRuns, triagedIncidents := triagedIssuesFor(c.triagedIssues, testID.ColumnIdentification, testID.TestID, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
+	impactedRuns, activeProductRegression, triagedIncidents := triagedIssuesFor(c.triagedIssues, testID.ColumnIdentification, testID.TestID, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
 
-	return impactedRuns, triagedIncidents, nil
+	return impactedRuns, activeProductRegression, triagedIncidents, nil
 }
 
 func (c *ComponentReportGenerator) GetLastReportModifiedTime(ctx context.Context, client *bqcachedclient.Client,
@@ -907,9 +910,14 @@ func (t *triagedIncidentsGenerator) generateTriagedIssuesFor(ctx context.Context
 	return triagedIncidents, nil
 }
 
-func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForRelease, variant crtype.ColumnIdentification, testID string, startTime, endTime time.Time) (int, []crtype.TriagedIncident) {
+// triagedIssuesFor will look for triage issues that match the testID and variant group
+// it will return the number of triaged job runs that occur within the sample window
+// set a triage record as relevant if it has any job run that occurs within the sample window
+// as well as return a flag indicating if there is at least 1 active product regression noting
+// the UI should show the active triage icon for that cell
+func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForRelease, variant crtype.ColumnIdentification, testID string, startTime, endTime time.Time) (int, bool, []crtype.TriagedIncident) {
 	if releaseIncidents == nil {
-		return 0, nil
+		return 0, false, nil
 	}
 
 	inKey := resolvedissues.KeyForTriagedIssue(testID, resolvedissues.TransformVariant(variant))
@@ -919,6 +927,7 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 
 	impactedJobRuns := sets.NewString() // because multiple issues could impact the same job run, be sure to count each job run only once
 	numJobRunsToSuppress := 0
+	activeProductRegression := false
 	for _, triagedIncident := range triagedIncidents {
 		startNumRunsSuppressed := numJobRunsToSuppress
 		for _, impactedJobRun := range triagedIncident.JobRuns {
@@ -941,6 +950,17 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 
 		if numJobRunsToSuppress > startNumRunsSuppressed {
 			relevantIncidents = append(relevantIncidents, triagedIncident)
+
+			// If we have any Product regression that has not been marked as resolved then, we consider it active as long as
+			// we have some triaged job runs within the current query window.  This mechanism means we still have to update the triage records
+			// periodically but not daily.
+			// Note: when we want to mark a regression resolved we set the resolution date and update the triage records.  This will flip the triaged icon to green
+			// for reports showing after the resolution date.
+			//
+			// This is a stop gap until we have regression tracking associated with Jiras, and we can use the Jira itself to check for state / recent updates
+			if !triagedIncident.Issue.ResolutionDate.Valid && triagedIncident.Issue.URL.Valid && triagedIncident.Issue.Type != string(resolvedissues.TriageIssueTypeProduct) {
+				activeProductRegression = true
+			}
 		}
 	}
 
@@ -949,7 +969,7 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 		relevantIncidents = nil
 	}
 
-	return numJobRunsToSuppress, relevantIncidents
+	return numJobRunsToSuppress, activeProductRegression, relevantIncidents
 }
 
 func (t *triagedIncidentsGenerator) queryTriagedIssues(ctx context.Context) ([]crtype.TriagedIncident, []error) {
@@ -1014,23 +1034,23 @@ func (t *triagedIncidentsGenerator) fetchTriagedIssues(ctx context.Context,
 }
 
 func (c *ComponentReportGenerator) triagedIncidentsFor(ctx context.Context,
-	testID crtype.ReportTestIdentification) (int,
+	testID crtype.ReportTestIdentification) (int, bool,
 	[]crtype.TriagedIncident) {
 	// handle test case / missing client
 	if c.client == nil {
-		return 0, nil
+		return 0, false, nil
 	}
 
-	impactedRuns, triagedIncidents, errs := c.getTriagedIssuesFromBigQuery(ctx, testID)
+	impactedRuns, activeProductRegression, triagedIncidents, errs := c.getTriagedIssuesFromBigQuery(ctx, testID)
 
 	if errs != nil {
 		for _, err := range errs {
 			log.WithError(err).Error("error getting triaged issues component from bigquery")
 		}
-		return 0, nil
+		return 0, false, nil
 	}
 
-	return impactedRuns, triagedIncidents
+	return impactedRuns, activeProductRegression, triagedIncidents
 }
 
 // getRequiredConfidence returns the required certainty of a regression before we include it in the report as a
@@ -1092,6 +1112,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		var testStats crtype.ReportTestStats // This is the actual stats we return over the API
 		var triagedIncidents []crtype.TriagedIncident
 		var resolvedIssueCompensation int
+		var activeProductRegression bool
 
 		sampleStats, ok := sampleStatus[testKeyStr]
 		if !ok {
@@ -1099,9 +1120,9 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		} else {
 			// requiredConfidence is lowered for on-going regressions to prevent cells from flapping:
 			requiredConfidence := c.getRequiredConfidence(testKey.TestID, testKey.Variants)
-			resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testKey) // triaged job run failures to ignore
+			resolvedIssueCompensation, activeProductRegression, triagedIncidents = c.triagedIncidentsFor(ctx, testKey) // triaged job run failures to ignore
 
-			// Check if the TestStatus is decorated with info indicating it's release was overridden, and use that data if so
+			// Check if the TestStatus is decorated with info indicating its release was overridden, and use that data if so
 			matchedBaseRelease := c.ReqOptions.BaseRelease.Release
 			var baseStart, baseEnd *time.Time
 			if baseStats.Release != nil {
@@ -1111,7 +1132,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			}
 			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
-				baseStats.FlakeCount, nil, resolvedIssueCompensation, matchedBaseRelease, baseStart, baseEnd)
+				baseStats.FlakeCount, nil, activeProductRegression, resolvedIssueCompensation, matchedBaseRelease, baseStart, baseEnd)
 
 			if !sampleStats.LastFailure.IsZero() {
 				testStats.LastFailure = &sampleStats.LastFailure
@@ -1158,12 +1179,13 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		var testStats crtype.ReportTestStats
 		var triagedIncidents []crtype.TriagedIncident
 		var resolvedIssueCompensation int // triaged job run failures to ignore
-		resolvedIssueCompensation, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
+		var activeProductRegression bool
+		resolvedIssueCompensation, activeProductRegression, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
 
 		requiredConfidence := 0 // irrelevant for pass rate comparison
 		testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
 			sampleStats.FlakeCount, 0, 0, 0, // pass 0s for base stats
-			nil, resolvedIssueCompensation, "", nil, nil)
+			nil, activeProductRegression, resolvedIssueCompensation, "", nil, nil)
 
 		if testStats.IsTriaged() {
 			// we are within the triage range
@@ -1346,6 +1368,7 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 	baseSuccess,
 	baseFlake int,
 	approvedRegression *regressionallowances.IntentionalRegression,
+	activeProductRegression bool,
 	numberOfIgnoredSampleJobRuns int, // count for triaged failures we can safely omit and ignore
 	baseRelease string,
 	baseStart,
@@ -1418,11 +1441,11 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 	}
 
 	// Otherwise we fall back to default behavior of Fishers Exact test:
-	testStats := c.buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure, approvedRegression, initialSampleTotal, baseRelease, baseStart, baseEnd)
+	testStats := c.buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure, approvedRegression, activeProductRegression, initialSampleTotal, baseRelease, baseStart, baseEnd)
 	return testStats
 }
 
-func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure int, approvedRegression *regressionallowances.IntentionalRegression, initialSampleTotal int, baseRelease string, baseStart, baseEnd *time.Time) crtype.ReportTestStats {
+func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure int, approvedRegression *regressionallowances.IntentionalRegression, activeProductRegression bool, initialSampleTotal int, baseRelease string, baseStart, baseEnd *time.Time) crtype.ReportTestStats {
 
 	fisherExact := 0.0
 	baseStats := &crtype.TestDetailsReleaseStats{
@@ -1514,6 +1537,11 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 
 		// did we remove enough failures that we are below the MinimumFailure threshold?
 		if c.ReqOptions.AdvancedOption.MinimumFailure != 0 && (sampleTotal-samplePass) < c.ReqOptions.AdvancedOption.MinimumFailure {
+			if status <= crtype.SignificantTriagedRegression {
+				testStats.Explanations = []string{
+					fmt.Sprintf("%s regression detected.", crtype.StringForStatus(status)),
+				}
+			}
 			testStats.ReportStatus = status
 			testStats.FisherExact = thrift.Float64Ptr(0.0)
 			return testStats
@@ -1534,7 +1562,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 					status = crtype.SignificantImprovement
 				}
 			} else {
-				status = getRegressionStatus(basisPassPercentage, samplePassPercentage, false)
+				status = getRegressionStatus(basisPassPercentage, samplePassPercentage, activeProductRegression)
 			}
 		}
 	}
@@ -1543,12 +1571,19 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence,
 
 	// If we have a regression, include explanations:
 	if testStats.ReportStatus <= crtype.SignificantTriagedRegression {
-		testStats.Explanations = []string{
-			fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)),
-			fmt.Sprintf("Fishers Exact probability of a regression: %.2f%%.", float64(100)-*testStats.FisherExact),
-			fmt.Sprintf("Test pass rate dropped from %.2f%% to %.2f%%.",
-				testStats.BaseStats.SuccessRate*float64(100),
-				testStats.SampleStats.SuccessRate*float64(100)),
+
+		if testStats.ReportStatus <= crtype.SignificantRegression {
+			testStats.Explanations = []string{
+				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)),
+				fmt.Sprintf("Fishers Exact probability of a regression: %.2f%%.", float64(100)-*testStats.FisherExact),
+				fmt.Sprintf("Test pass rate dropped from %.2f%% to %.2f%%.",
+					testStats.BaseStats.SuccessRate*float64(100),
+					testStats.SampleStats.SuccessRate*float64(100)),
+			}
+		} else {
+			testStats.Explanations = []string{
+				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)),
+			}
 		}
 		// check for override
 		if baseRelease != c.ReqOptions.BaseRelease.Release {

@@ -89,5 +89,5 @@ CompReadyCapsCell.propTypes = {
   capabilityName: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
   regressedCount: PropTypes.number,
-  accessibilityMode: PropTypes.bool.isRequired,
+  accessibilityMode: PropTypes.bool,
 }
