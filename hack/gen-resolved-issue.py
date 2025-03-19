@@ -936,6 +936,34 @@ def process_test_details(test_details_url, triaged_incidents, issue_url, test_id
                 # write the record to bigquery
                 write_incident_record(triaged_incident, modified_time, target_modified_time)
 
+def update_relative_sample_times(url):
+    o = urlsplit(url)
+    params = parse_qs(o.query)
+    startTime = None
+    endTime = None
+    if "sampleEndTime" in params:
+        print("Original sample end time: " + params["sampleEndTime"][0])
+        endTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleEndTime"][0]))
+    if "sampleStartTime" in params:
+        print("Original sample start time: " + params["sampleStartTime"][0])
+        startTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleStartTime"][0]))
+
+    if not startTime == None and not endTime == None:
+        diff = endTime - startTime
+        newSampleEndTime = modified_time.replace(hour=23, minute=59, second=59)
+        newSampleStartTime = newSampleEndTime - diff
+        newSampleStartTimeParam, newSampleEndTimeParam = rfc_3339_start_end_times(newSampleStartTime, newSampleEndTime)
+        params["sampleStartTime"][0] = newSampleStartTimeParam
+        params["sampleEndTime"][0] = newSampleEndTimeParam
+
+        print("Updated sample end time: " + params["sampleEndTime"][0])
+        print("Updated sample start time: " + params["sampleStartTime"][0])
+
+        query_new = urlencode(params, doseq=True)
+        parsed=o._replace(query=query_new)
+        url_new = (parsed.geturl())
+        return url_new
+    return None
 
 if __name__ == '__main__':
 
@@ -1085,31 +1113,8 @@ if __name__ == '__main__':
     modified_time = datetime.now(tz=timezone.utc)
     if args.relative_sample_times:
         if not args.test_report_url == None:
-            o = urlsplit(args.test_report_url)
-            params = parse_qs(o.query)
-            startTime = None
-            endTime = None
-            if "sampleEndTime" in params:
-                print("Original sample end time: " + params["sampleEndTime"][0])
-                endTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleEndTime"][0]))
-            if "sampleStartTime" in params:
-                print("Original sample start time: " + params["sampleStartTime"][0])
-                startTime = datetime.fromisoformat(hack_for_rfc_3339(params["sampleStartTime"][0]))
-
-            if not startTime == None and not endTime == None:
-                diff = endTime - startTime
-                newSampleEndTime = modified_time.replace(hour=23, minute=59, second=59)
-                newSampleStartTime = newSampleEndTime - diff
-                newSampleStartTimeParam, newSampleEndTimeParam = rfc_3339_start_end_times(newSampleStartTime, newSampleEndTime)
-                params["sampleStartTime"][0] = newSampleStartTimeParam
-                params["sampleEndTime"][0] = newSampleEndTimeParam
-
-                print("Updated sample end time: " + params["sampleEndTime"][0])
-                print("Updated sample start time: " + params["sampleStartTime"][0])
-
-                query_new = urlencode(params, doseq=True)
-                parsed=o._replace(query=query_new)
-                url_new = (parsed.geturl())
+            url_new = update_relative_sample_times(args.test_report_url)
+            if url_new != None:
                 args.test_report_url = url_new
 
     # if an incident id was passed in use it
@@ -1185,13 +1190,19 @@ if __name__ == '__main__':
         i = 0
 
         for td in test_details:
+            url = td["URL"]
+            if args.relative_sample_times and url != None:
+                url_new = update_relative_sample_times(url)
+                if url_new != None:
+                    url = url_new
+
             # Call the function to fetch JSON data from the API
-            json_data = fetch_json_data(td["URL"])
+            json_data = fetch_json_data(url)
             i += 1
 
             # bad response...
             if json_data is None:
-                print("Error: no json data returned from %s" % td["URL"])
+                print("Error: no json data returned from %s" % url)
                 # are we hammering the server? slow down for a bit...
                 time.sleep(10)
                 continue

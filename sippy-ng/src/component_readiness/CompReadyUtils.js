@@ -37,6 +37,7 @@ export const initialPageTable = {
           empty: 'None',
           status: 3, // Let's start with success
           regressed_tests: [],
+          triaged_incidents: [],
           variants: [],
         },
       ],
@@ -137,7 +138,7 @@ export function getStatusAndIcon(
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status == 2) {
+  } else if (status === 2) {
     statusStr =
       statusStr + 'Missing Basis And Sample (basis and sample data missing)'
     let src = accessibilityMode ? blue_missing_data : green_missing_data
@@ -150,7 +151,7 @@ export function getStatusAndIcon(
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status == 1) {
+  } else if (status === 1) {
     statusStr = statusStr + 'Missing Basis (basis data missing)'
     let src = accessibilityMode ? half_blue : green_half_data
     icon = (
@@ -164,7 +165,7 @@ export function getStatusAndIcon(
         }}
       />
     )
-  } else if (status == 0) {
+  } else if (status === 0) {
     statusStr = statusStr + 'NoSignificantDifference detected'
     let src = accessibilityMode ? blue : green
     icon = (
@@ -176,7 +177,7 @@ export function getStatusAndIcon(
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status == -1) {
+  } else if (status === -1) {
     statusStr = statusStr + 'Missing Sample (sample data missing)'
     let src = accessibilityMode ? half_blue : green_half_data
     icon = (
@@ -191,7 +192,7 @@ export function getStatusAndIcon(
         }}
       />
     )
-  } else if (status == -2) {
+  } else if (status === -2) {
     statusStr = statusStr + 'SignificantTriagedRegression detected'
     let src = accessibilityMode ? orange_triaged : red_triaged
     icon = (
@@ -202,7 +203,7 @@ export function getStatusAndIcon(
         alt="SignificantTriagedRegression"
       />
     )
-  } else if (status == -3) {
+  } else if (status === -3) {
     statusStr =
       statusStr + 'ExtremeTriagedRegression detected ( >15% pass rate change)'
     let src = accessibilityMode ? orange_3d_triaged : red_3d_triaged
@@ -214,7 +215,7 @@ export function getStatusAndIcon(
         alt="ExtremeTriagedRegression >15%"
       />
     )
-  } else if (status == -4) {
+  } else if (status === -4) {
     statusStr = statusStr + 'SignificantRegression detected'
     let src = accessibilityMode ? orange : red
     icon = (
@@ -667,4 +668,10 @@ export function generateTestReport(
     `&testName=${safeTestName}`
 
   return sortQueryParams(retUrl)
+}
+
+export function generateRegressionCount(regressed_tests, triaged_incidents) {
+  let regressedCount = regressed_tests ? regressed_tests.length : 0
+  let triagedCount = triaged_incidents ? triaged_incidents.length : 0
+  return regressedCount + triagedCount
 }

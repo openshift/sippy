@@ -1,10 +1,8 @@
 import './ComponentReadiness.css'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Fragment, useContext } from 'react'
-import { getAPIUrl, makeRFC3339Time } from './CompReadyUtils'
-import { grey } from '@mui/material/colors'
+import { generateRegressionCount } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/styles'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
@@ -71,9 +69,10 @@ export default function CompReadyRow(props) {
             componentName={componentName}
             filterVals={filterVals}
             grayFactor={grayFactor}
-            regressedCount={
-              columnVal.regressed_tests ? columnVal.regressed_tests.length : 0
-            }
+            regressedCount={generateRegressionCount(
+              columnVal.regressed_tests,
+              columnVal.triaged_incidents
+            )}
             accessibilityMode={accessibilityMode}
           />
         ))}

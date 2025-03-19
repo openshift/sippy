@@ -245,7 +245,7 @@ export default function CompReadyTestReport(props) {
   }
 
   const [statusStr, assessmentIcon] = getStatusAndIcon(
-    data.status,
+    data.analyses[0].status,
     0,
     accessibilityMode
   )
