@@ -87,5 +87,5 @@ CompReadyRow.propTypes = {
   columnNames: PropTypes.array.isRequired,
   filterVals: PropTypes.string.isRequired,
   grayFactor: PropTypes.number.isRequired,
-  accessibilityMode: PropTypes.bool,
+  accessibilityMode: PropTypes.bool.isRequired,
 }

@@ -86,5 +86,5 @@ CompCapRow.propTypes = {
   results: PropTypes.array.isRequired,
   columnNames: PropTypes.array.isRequired,
   filterVals: PropTypes.string.isRequired,
-  accessibilityMode: PropTypes.bool,
+  accessibilityMode: PropTypes.bool.isRequired,
 }

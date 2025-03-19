@@ -49,5 +49,5 @@ CompSeverityIcon.propTypes = {
   explanations: PropTypes.array,
   grayFactor: PropTypes.number,
   count: PropTypes.number,
-  accessibilityMode: PropTypes.bool,
+  accessibilityMode: PropTypes.bool.isRequired,
 }

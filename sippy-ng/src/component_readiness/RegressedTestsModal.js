@@ -101,5 +101,5 @@ RegressedTestsModal.propTypes = {
   filterVals: PropTypes.string.isRequired,
   isOpen: PropTypes.bool,
   close: PropTypes.func,
-  accessibilityMode: PropTypes.bool,
+  accessibilityMode: PropTypes.bool.isRequired,
 }

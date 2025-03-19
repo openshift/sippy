@@ -276,5 +276,5 @@ ComponentReadinessToolBar.propTypes = {
   data: PropTypes.object,
   forceRefresh: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
-  accessibilityMode: PropTypes.bool,
+  accessibilityMode: PropTypes.bool.isRequired,
 }

@@ -242,5 +242,5 @@ export default function RegressedTestsPanel(props) {
 RegressedTestsPanel.propTypes = {
   regressedTests: PropTypes.array,
   filterVals: PropTypes.string.isRequired,
-  accessibilityMode: PropTypes.bool,
+  accessibilityMode: PropTypes.bool.isRequired,
 }
