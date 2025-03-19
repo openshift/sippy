@@ -272,6 +272,8 @@ var (
 	upgradeMinorRegex       = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
 	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
 	upgradeRegex            = regexp.MustCompile(`(?i)-upgrade`)
+
+	presubmitRegex = regexp.MustCompile(`^pull-ci-(openshift|operator-framework).*-(master|main).*-e2e-.*`)
 )
 
 const (
@@ -509,6 +511,12 @@ func setNetworkStack(_ logrus.FieldLogger, variants map[string]string, jobName s
 }
 
 func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	// Presubmits on main branch are set as "Presubmits"
+	if presubmitRegex.MatchString(jobName) {
+		variants[VariantRelease] = "Presubmits"
+		return
+	}
+
 	// Prefer core release from sippy config -- only if the job name references the release. Too many jobs
 	// are attached to "master" and move between releases.
 	for version, release := range v.config.Releases {
@@ -611,14 +619,16 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 	// Determine job tier from release configuration
 	release := variants[VariantRelease]
-	if util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName) {
+	switch {
+	case util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName):
 		variants[VariantJobTier] = "blocking"
-	} else if util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName) {
+	case util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName):
 		variants[VariantJobTier] = "informing"
-	} else if v.config.Releases[release].Jobs[jobName] {
+	case release == "Presubmits", v.config.Releases[release].Jobs[jobName]:
 		variants[VariantJobTier] = "standard"
-	} else {
+	default:
 		variants[VariantJobTier] = "candidate"
+
 	}
 }
 
