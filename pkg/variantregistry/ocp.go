@@ -6,6 +6,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -115,18 +117,15 @@ ORDER BY j.prowjob_job_name;
 		return nil, errors.Wrap(err, "error querying primary list of all jobs")
 	}
 
-	// TODO: fix release on presubmits
+	var prowJobLastRuns []*prowJobLastRun
 
-	expectedVariants := map[string]map[string]string{}
-
-	count := 0
 	for {
 		// TODO: last run but not necessarily successful, this could be a problem for cluster-data file parsing causing
 		// our churn. We can't flip the query to last success either as we wouldn't have variants for non-passing jobs at all.
 		// Two queries? Use the successful one for cluster-data?
-		jlr := prowJobLastRun{}
-		err := it.Next(&jlr)
-		if err == iterator.Done {
+		jlr := new(prowJobLastRun)
+		err := it.Next(jlr)
+		if errors.Is(err, iterator.Done) {
 			break
 		}
 		if err != nil {
@@ -138,55 +137,99 @@ ORDER BY j.prowjob_job_name;
 			continue
 		}
 
-		clusterData := map[string]string{}
-		jLog := log.WithField("job", jlr.JobName)
-		if jlr.URL.Valid && jlr.GCSBucket.Valid {
-			path, err := prowloader.GetGCSPathForProwJobURL(jLog, jlr.URL.StringVal)
-			if err != nil {
-				jLog.WithError(err).WithField("prowJobURL", jlr.URL).Error("error getting GCS path for prow job URL")
-				return nil, err
-			}
-			bkt := v.gcsClient.Bucket(jlr.GCSBucket.StringVal)
-			gcsJobRun := gcs.NewGCSJobRun(bkt, path)
-			allMatches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
-			if err != nil {
-				jLog.WithError(err).Error("error finding cluster data file, proceeding without")
-				allMatches = [][]string{}
-			}
-			var clusterMatches []string
-			if len(allMatches) > 0 {
-				clusterMatches = allMatches[0]
-			}
-			for _, cm := range clusterMatches {
-				// log with the file prefix for easy click/copy to browser:
-				jLog.WithField("prowJobURL", jlr.URL.StringVal).Infof("Found cluster-data file: https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/%s/%s", jlr.GCSBucket.StringVal, cm)
-			}
-
-			if len(clusterMatches) > 0 {
-				clusterDataBytes, err := prowloader.GetClusterDataBytes(ctx, bkt, path, clusterMatches)
-				if err != nil {
-					jLog.WithError(err).Error("unable to read cluster data file, proceeding without")
-				}
-				clusterData, err = prowloader.ParseVariantDataFile(clusterDataBytes)
-				if err != nil {
-					jLog.WithError(err).Error("unable to parse cluster data file, proceeding without")
-				} else {
-					jLog.Infof("loaded cluster data: %+v", clusterData)
-				}
-			}
-		} else {
-			jLog.WithField("gcs_bucket", jlr.GCSBucket).WithField("url", jlr.URL.StringVal).Error("job had no gcs bucket or prow job url, proceeding without")
-		}
-
-		variants := v.CalculateVariantsForJob(jLog, jlr.JobName, clusterData)
-		count++
-		jLog.WithField("variants", variants).WithField("count", count).Info("calculated variants")
-		expectedVariants[jlr.JobName] = variants
+		prowJobLastRuns = append(prowJobLastRuns, jlr)
 	}
-	dur := time.Since(start)
-	log.WithField("count", count).Infof("processed primary job list in %s", dur)
 
-	return expectedVariants, nil
+	var (
+		wg              sync.WaitGroup
+		parallelism     = 20
+		jobCh           = make(chan *prowJobLastRun)
+		count           atomic.Int64
+		variantsByJobMu sync.Mutex
+		variantsByJob   = make(map[string]map[string]string)
+	)
+
+	// Producer
+	go func() {
+		defer close(jobCh)
+		for _, jlr := range prowJobLastRuns {
+			select {
+			case <-ctx.Done():
+				return // Exit when context is cancelled
+			case jobCh <- jlr:
+			}
+		}
+	}()
+
+	// Consumer
+	for i := 0; i < parallelism; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return // Exit when context is cancelled
+				case jlr, ok := <-jobCh:
+					if !ok {
+						return // Channel was closed
+					}
+					clusterData := map[string]string{}
+					jLog := log.WithField("job", jlr.JobName)
+					if jlr.URL.Valid && jlr.GCSBucket.Valid {
+						path, err := prowloader.GetGCSPathForProwJobURL(jLog, jlr.URL.StringVal)
+						if err != nil {
+							jLog.WithError(err).WithField("prowJobURL", jlr.URL).Error("error getting GCS path for prow job URL")
+							continue
+						}
+						bkt := v.gcsClient.Bucket(jlr.GCSBucket.StringVal)
+						gcsJobRun := gcs.NewGCSJobRun(bkt, path)
+						allMatches, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetDefaultClusterDataFile()})
+						if err != nil {
+							jLog.WithError(err).Error("error finding cluster data file, proceeding without")
+							allMatches = [][]string{}
+						}
+						var clusterMatches []string
+						if len(allMatches) > 0 {
+							clusterMatches = allMatches[0]
+						}
+						for _, cm := range clusterMatches {
+							// log with the file prefix for easy click/copy to browser:
+							jLog.WithField("prowJobURL", jlr.URL.StringVal).Infof("Found cluster-data file: https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/%s/%s", jlr.GCSBucket.StringVal, cm)
+						}
+
+						if len(clusterMatches) > 0 {
+							clusterDataBytes, err := prowloader.GetClusterDataBytes(ctx, bkt, path, clusterMatches)
+							if err != nil {
+								jLog.WithError(err).Error("unable to read cluster data file, proceeding without")
+							}
+							clusterData, err = prowloader.ParseVariantDataFile(clusterDataBytes)
+							if err != nil {
+								jLog.WithError(err).Error("unable to parse cluster data file, proceeding without")
+							} else {
+								jLog.Infof("loaded cluster data: %+v", clusterData)
+							}
+						}
+					} else {
+						jLog.WithField("gcs_bucket", jlr.GCSBucket).WithField("url", jlr.URL.StringVal).Error("job had no gcs bucket or prow job url, proceeding without")
+					}
+
+					variants := v.CalculateVariantsForJob(jLog, jlr.JobName, clusterData)
+					variantsByJobMu.Lock()
+					variantsByJob[jlr.JobName] = variants
+					variantsByJobMu.Unlock()
+					count.Add(1)
+					jLog.WithField("variants", variants).WithField("count", count.Load()).Info("calculated variants")
+				}
+			}
+		}()
+	}
+
+	wg.Wait()
+	dur := time.Since(start)
+	log.WithField("count", count.Load()).Infof("processed primary job list in %s", dur)
+
+	return variantsByJob, nil
 }
 
 // fileVariantsToIgnore are values in the cluster-data.json that vary by run, and are not consistent for the job itself.
