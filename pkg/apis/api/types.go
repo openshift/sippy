@@ -3,6 +3,7 @@ package api
 
 import (
 	"fmt"
+	"math/big"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -450,50 +451,50 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 // Test contains the full accounting of a test's history, with a synthetic ID. The format
 // of this struct is suitable for use in a data table.
 type Test struct {
-	ID        int            `json:"id,omitempty"`
-	Name      string         `json:"name"`
-	SuiteName string         `json:"suite_name"`
-	Variant   string         `json:"variant,omitempty"`
-	Variants  pq.StringArray `json:"variants" gorm:"type:text[]"`
+	ID        int            `json:"id,omitempty" bigquery:"id"`
+	Name      string         `json:"name" bigquery:"name"`
+	SuiteName string         `json:"suite_name" bigquery:"suite_name"`
+	Variant   string         `json:"variant,omitempty" bigquery:"variant"`
+	Variants  pq.StringArray `json:"variants" gorm:"type:text[]" bigquery:"variants"`
 
-	JiraComponent   string `json:"jira_component"`
-	JiraComponentID int    `json:"jira_component_id"`
+	JiraComponent   string   `json:"jira_component" bigquery:"jira_component"`
+	JiraComponentID *big.Rat `json:"jira_component_id" bigquery:"jira_component_id"`
 
-	CurrentSuccesses         int     `json:"current_successes"`
-	CurrentFailures          int     `json:"current_failures"`
-	CurrentFlakes            int     `json:"current_flakes"`
-	CurrentPassPercentage    float64 `json:"current_pass_percentage"`
-	CurrentFailurePercentage float64 `json:"current_failure_percentage"`
-	CurrentFlakePercentage   float64 `json:"current_flake_percentage"`
-	CurrentWorkingPercentage float64 `json:"current_working_percentage"`
-	CurrentRuns              int     `json:"current_runs"`
+	CurrentSuccesses         int     `json:"current_successes" bigquery:"current_successes"`
+	CurrentFailures          int     `json:"current_failures" bigquery:"current_failures"`
+	CurrentFlakes            int     `json:"current_flakes" bigquery:"current_flakes"`
+	CurrentPassPercentage    float64 `json:"current_pass_percentage" bigquery:"current_pass_percentage"`
+	CurrentFailurePercentage float64 `json:"current_failure_percentage" bigquery:"current_failure_percentage"`
+	CurrentFlakePercentage   float64 `json:"current_flake_percentage" bigquery:"current_flake_percentage"`
+	CurrentWorkingPercentage float64 `json:"current_working_percentage" bigquery:"current_working_percentage"`
+	CurrentRuns              int     `json:"current_runs" bigquery:"current_runs"`
 
-	PreviousSuccesses         int     `json:"previous_successes"`
-	PreviousFailures          int     `json:"previous_failures"`
-	PreviousFlakes            int     `json:"previous_flakes"`
-	PreviousPassPercentage    float64 `json:"previous_pass_percentage"`
-	PreviousFailurePercentage float64 `json:"previous_failure_percentage"`
-	PreviousFlakePercentage   float64 `json:"previous_flake_percentage"`
-	PreviousWorkingPercentage float64 `json:"previous_working_percentage"`
-	PreviousRuns              int     `json:"previous_runs"`
+	PreviousSuccesses         int     `json:"previous_successes" bigquery:"previous_successes"`
+	PreviousFailures          int     `json:"previous_failures" bigquery:"previous_failures"`
+	PreviousFlakes            int     `json:"previous_flakes" bigquery:"previous_flakes"`
+	PreviousPassPercentage    float64 `json:"previous_pass_percentage" bigquery:"previous_pass_percentage"`
+	PreviousFailurePercentage float64 `json:"previous_failure_percentage" bigquery:"previous_failure_percentage"`
+	PreviousFlakePercentage   float64 `json:"previous_flake_percentage" bigquery:"previous_flake_percentage"`
+	PreviousWorkingPercentage float64 `json:"previous_working_percentage" bigquery:"previous_working_percentage"`
+	PreviousRuns              int     `json:"previous_runs" bigquery:"previous_runs"`
 
-	NetFailureImprovement float64 `json:"net_failure_improvement"`
-	NetFlakeImprovement   float64 `json:"net_flake_improvement"`
-	NetWorkingImprovement float64 `json:"net_working_improvement"`
-	NetImprovement        float64 `json:"net_improvement"`
+	NetFailureImprovement float64 `json:"net_failure_improvement" bigquery:"net_failure_improvement"`
+	NetFlakeImprovement   float64 `json:"net_flake_improvement" bigquery:"net_flake_improvement"`
+	NetWorkingImprovement float64 `json:"net_working_improvement" bigquery:"net_working_improvement"`
+	NetImprovement        float64 `json:"net_improvement" bigquery:"net_improvement"`
 
-	WorkingAverage           float64 `json:"working_average,omitempty"`
-	WorkingStandardDeviation float64 `json:"working_standard_deviation,omitempty"`
-	DeltaFromWorkingAverage  float64 `json:"delta_from_working_average,omitempty"`
-	PassingAverage           float64 `json:"passing_average,omitempty"`
-	PassingStandardDeviation float64 `json:"passing_standard_deviation,omitempty"`
-	DeltaFromPassingAverage  float64 `json:"delta_from_passing_average,omitempty"`
-	FlakeAverage             float64 `json:"flake_average,omitempty"`
-	FlakeStandardDeviation   float64 `json:"flake_standard_deviation,omitempty"`
-	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty"`
+	WorkingAverage           float64 `json:"working_average,omitempty" bigquery:"working_average"`
+	WorkingStandardDeviation float64 `json:"working_standard_deviation,omitempty" bigquery:"working_standard_deviation"`
+	DeltaFromWorkingAverage  float64 `json:"delta_from_working_average,omitempty" bigquery:"delta_from_working_average"`
+	PassingAverage           float64 `json:"passing_average,omitempty" bigquery:"passing_average"`
+	PassingStandardDeviation float64 `json:"passing_standard_deviation,omitempty" bigquery:"passing_standard_deviation"`
+	DeltaFromPassingAverage  float64 `json:"delta_from_passing_average,omitempty" bigquery:"delta_from_passing_average"`
+	FlakeAverage             float64 `json:"flake_average,omitempty" bigquery:"flake_average"`
+	FlakeStandardDeviation   float64 `json:"flake_standard_deviation,omitempty" bigquery:"flake_standard_deviation"`
+	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty" bigquery:"delta_from_flake_average"`
 
-	Tags     []string `json:"tags" gorm:"type:text[]"`
-	OpenBugs int      `json:"open_bugs"`
+	Tags     []string `json:"tags" gorm:"type:text[]" bigquery:"tags"`
+	OpenBugs int      `json:"open_bugs" bigquery:"open_bugs"`
 }
 
 func (test Test) GetFieldType(param string) ColumnType {
