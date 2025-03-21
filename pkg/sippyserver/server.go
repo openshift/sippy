@@ -784,6 +784,13 @@ func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request)
 	}
 }
 
+func (s *Server) jsonTestsReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
+	release := s.getParamOrFail(w, req, "release")
+	if release != "" {
+		api.PrintTestsJSONFromBigQuery(release, w, req, s.bigQueryClient)
+	}
+}
+
 func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	// Filter to test names containing this query param:
 	testSubstring := req.URL.Query()["test"]
@@ -1545,7 +1552,7 @@ func (s *Server) Serve() {
 			Description:  "Reports on tests",
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    1 * time.Hour,
-			HandlerFunc:  s.jsonTestsReportFromDB,
+			HandlerFunc:  s.jsonTestsReportFromBigQuery,
 		},
 		{
 			EndpointPath: "/api/tests/details",
