@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -38,7 +39,7 @@ func buildURL(apiPath string) string {
 	return fmt.Sprintf("http://%s%s", net.JoinHostPort(envSippyEndpoint, strconv.Itoa(port)), apiPath)
 }
 
-func SippyRequest(path string, data interface{}) error {
+func SippyGet(path string, data interface{}) error {
 	res, err := http.Get(buildURL(path))
 	if err != nil {
 		return err
@@ -50,6 +51,25 @@ func SippyRequest(path string, data interface{}) error {
 	}
 	log.Infof("Received Response: %s", string(body))
 	err = json.Unmarshal(body, data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SippyPost(path string, bodyData interface{}, responseData interface{}) error {
+	bodyBytes, err := json.Marshal(bodyData)
+	res, err := http.Post(buildURL(path), "application/json", strings.NewReader(string(bodyBytes)))
+	if err != nil {
+		return err
+	}
+
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	log.Infof("Received Response: %s", string(body))
+	err = json.Unmarshal(body, responseData)
 	if err != nil {
 		return err
 	}

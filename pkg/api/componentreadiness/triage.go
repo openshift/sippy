@@ -34,10 +34,31 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	triage.UpdatedAt = time.Time{}
 	triage.DeletedAt = gorm.DeletedAt{}
 
+	// We support linking to regressions by just setting the ID in the request, lookup
+	// full regressions for association.
+	regressionIDs := []uint{}
+	for _, trIDR := range triage.Regressions {
+		regressionIDs = append(regressionIDs, trIDR.ID)
+	}
+	var linkedRegressions []models.TestRegression
+	res := dbc.DB.Where("id IN ?", regressionIDs).Find(&linkedRegressions)
+	if res.Error != nil {
+		log.WithError(res.Error).Errorf("error looking up regression IDs: %v", regressionIDs)
+		return triage, res.Error
+	}
+
+	if len(linkedRegressions) != len(regressionIDs) {
+		err := fmt.Errorf("some of the requested regression IDs were not found: %v",
+			regressionIDs)
+		log.WithError(err).Error("error looking up test regressions")
+		return triage, err
+	}
+	triage.Regressions = linkedRegressions
+
 	// If we have a bug in the db matching the url we were given, link them up now.
 	// If not, this should be handled later during the next fetchdata cron job.
 	var bug models.Bug
-	res := dbc.DB.Where("url = ?", triage.URL).First(&bug)
+	res = dbc.DB.Where("url = ?", triage.URL).First(&bug)
 	switch {
 	case res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound):
 		log.WithError(res.Error).Errorf("unexpected error looking up bug: %s", triage.URL)

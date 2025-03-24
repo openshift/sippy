@@ -38,7 +38,7 @@ type Triage struct {
 // TestRegression is used for rows in the test_regressions table and is used to track when we detect test
 // regressions opening and closing.
 type TestRegression struct {
-	ID       uint           `json:"-" gorm:"primaryKey,column:id"`
+	ID       uint           `json:"id" gorm:"primaryKey,column:id"`
 	View     string         `json:"view" gorm:"not null"`
 	Release  string         `json:"release" gorm:"not null;index:idx_test_regression_release"`
 	TestID   string         `json:"test_id" gorm:"not null"`
