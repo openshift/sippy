@@ -1166,17 +1166,35 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
+// jsonListTriages handles multiple http verbs for managing component readiness triage records.
 func (s *Server) jsonListTriages(w http.ResponseWriter, req *http.Request) {
 	//release := param.SafeRead(req, "release")
 
-	triages := []models.Triage{}
-	res := s.db.DB.Preload("Bug").Find(&triages)
-	if res.Error != nil {
-		log.WithError(res.Error).Error("error in jsonListTriages")
-		failureResponse(w, http.StatusInternalServerError, res.Error.Error())
-		return
+	switch req.Method {
+	case http.MethodGet:
+		// TODO: handle get with a specific triage id
+
+		// List all if no triage ID specified in the URL:
+		triages, err := componentreadiness.ListTriages(s.db)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, triages)
+	case http.MethodPost:
+		var triage models.Triage
+		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
+			log.WithError(err).Error("error parsing new triage record")
+			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		triage, err := componentreadiness.CreateTriage(s.db, triage)
+		if err != nil {
+			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, triage)
 	}
-	api.RespondWithJSON(http.StatusOK, w, triages)
 }
 
 func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.ResponseWriter, req *http.Request)) func(http.ResponseWriter, *http.Request) {
@@ -1382,12 +1400,6 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonInstallReportFromDB,
 		},
 		{
-			EndpointPath: "/api/triages",
-			Description:  "List triage records",
-			Capabilities: []string{LocalDBCapability},
-			HandlerFunc:  s.jsonListTriages,
-		},
-		{
 			EndpointPath: "/api/upgrade",
 			Description:  "Reports on upgrades",
 			Capabilities: []string{LocalDBCapability},
@@ -1458,6 +1470,12 @@ func (s *Server) Serve() {
 			Description:  "Lists all predefined server-side views over ComponentReadiness data",
 			Capabilities: []string{ComponentReadinessCapability},
 			HandlerFunc:  s.jsonComponentReadinessViews,
+		},
+		{
+			EndpointPath: "/api/component_readiness/triages",
+			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonListTriages,
 		},
 		{
 			EndpointPath: "/api/capabilities",
