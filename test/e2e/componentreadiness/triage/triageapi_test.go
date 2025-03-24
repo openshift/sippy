@@ -65,17 +65,17 @@ func Test_TriageAPI(t *testing.T) {
 		log.Infof("triage response: %+v", triageResponse)
 
 		// List
-		var allTriages []models.TestRegression
+		var allTriages []models.Triage
 		err = util.SippyGet("/api/component_readiness/triages", &allTriages)
 		require.NoError(t, err)
-		var found bool
-		for _, triage := range allTriages {
+		var foundTriage *models.Triage
+		for i, triage := range allTriages {
 			if triage.ID == triageResponse.ID {
-				found = true
+				foundTriage = &allTriages[i]
 				break
 			}
 		}
-		assert.True(t, found, "expected triage was not found in list")
+		assert.NotNil(t, foundTriage, "expected triage was not found in list")
 	})
 }
 
