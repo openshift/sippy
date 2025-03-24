@@ -321,7 +321,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 	}
 
 	dataSet := "openshift-gce-devel.ci_analysis_us"
-	componentMappingString := fmt.Sprintf(`WITH latest_component_mapping AS (
+	/*componentMappingString := fmt.Sprintf(`WITH latest_component_mapping AS (
 		SELECT *
 		FROM %s.component_mapping cm
 		WHERE created_at = (
@@ -337,7 +337,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 		WHERE variant_value IS NOT NULL AND variant_value != ""
 		GROUP BY
 			job_name)`, dataSet)
-	/*queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
+	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 					SELECT *
 					FROM %s.component_mapping cm
 					WHERE created_at = (
@@ -376,17 +376,13 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 	}
 	if collapse {
 		//rawQuery = rawQuery.Select(`name,jira_component,jira_component_id,` + query.QueryTestSummer).Group("name,jira_component,jira_component_id")
-		candidateQueryStr = fmt.Sprintf(`%s,
-	%s,
-	group_stats AS (
+		candidateQueryStr = fmt.Sprintf(`WITH group_stats AS (
 		SELECT
 			test_name as name,
-			cm.jira_component as jira_component,
-			cm.jira_component_id as jira_component_id,
+			jira_component,
+			jira_component_id,
 			%s
 		FROM %s.%s junit
-		INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-		LEFT JOIN job_variants jv ON junit.job_name = jv.job_name
 		%s
 		GROUP BY name, jira_component, jira_component_id
 	),
@@ -399,14 +395,12 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 			%s
 		FROM group_stats
 	)
-	`, componentMappingString, variantString, query.QueryTestSummer, dataSet, table, whereStr, query.QueryTestSummarizer)
+	`, query.QueryTestSummer, dataSet, table, whereStr, query.QueryTestSummarizer)
 	} else {
 		if processedFilter != nil {
 			whereStr += " AND " + processedFilter.ToBQStr(apitype.Test{})
 		}
-		candidateQueryStr = fmt.Sprintf(`%s,
-	%s,
-	test_stats AS (
+		candidateQueryStr = fmt.Sprintf(`WITH test_stats AS (
 		SELECT
 			 test_id,
 			 testsuite                                                                      AS stats_suite_name,
@@ -419,24 +413,15 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 		FROM %s.%s junit
 		WHERE release='%s'
 		GROUP BY test_id, testsuite),
-	test_pass_rate AS (
-		SELECT
-			test_id,
-			testsuite as pass_rate_suite_name, 
-			variants as pass_rate_variants,
-			%s,
-		FROM %s.%s junit
-		LEFT JOIN job_variants jv ON junit.job_name = jv.job_name
-		WHERE release='%s'
-	),
-	candidate_query AS (
+	temporary_query AS (
 		SELECT
 			ROW_NUMBER() OVER() as id,
 			test_name as name,
-			cm.jira_component as jira_component,
-			cm.jira_component_id as jira_component_id,
+			jira_component,
+			jira_component_id,
 			testsuite as suite_name,
-			jv.variants as variants,
+			variants,
+			release,
 			(current_working_percentage - working_average) as delta_from_working_average,
 			working_average,
 			working_standard_deviation,
@@ -448,13 +433,16 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 			flake_standard_deviation,
 			%s
 		FROM %s.%s junit
-		INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-		LEFT JOIN job_variants jv ON junit.job_name = jv.job_name
-		INNER JOIN test_pass_rate as pass_rates on pass_rates.test_id = junit.test_id AND pass_rates.pass_rate_suite_name IS NOT DISTINCT FROM junit.testsuite AND format('%%t', pass_rates.pass_rate_variants) = format('%%t', jv.variants)
 		JOIN test_stats as stats ON stats.test_id = junit.test_id AND stats.stats_suite_name IS NOT DISTINCT FROM junit.testsuite
+	),
+	candidate_query AS (
+		SELECT
+			*
+		FROM
+			temporary_query
 		%s
 	)
-	`, componentMappingString, variantString, dataSet, table, release, query.QueryTestPercentages, dataSet, table, release, query.QueryTestSummarizer, dataSet, table, whereStr)
+	`, dataSet, table, release, query.QueryTestSummarizer, dataSet, table, whereStr)
 		//AND NOT ('never-stable'=any(junit.variants))
 
 		//rawQuery = query.TestsByNURPAndStandardDeviation(dbc, release, table)
