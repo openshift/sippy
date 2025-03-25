@@ -75,7 +75,10 @@ func Test_TriageAPI(t *testing.T) {
 				break
 			}
 		}
-		assert.NotNil(t, foundTriage, "expected triage was not found in list")
+		require.NotNil(t, foundTriage, "expected triage was not found in list")
+		assert.Equal(t, testRegression.TestName, foundTriage.Regressions[0].TestName,
+			"list triage records should include regression details")
+
 	})
 }
 
