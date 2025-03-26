@@ -24,7 +24,7 @@ export default function CompReadyTestDetailRow(props) {
   // element: a test detail element
   // idx: array index of test detail element
   // showOnlyFailures: says to focus on job failures
-  const { element, idx, showOnlyFailures } = props
+  const { element, idx, showOnlyFailures, triagedURLs } = props
 
   const infoCell = (stats) => {
     return (
@@ -89,7 +89,11 @@ export default function CompReadyTestDetailRow(props) {
                     }}
                   >
                     <Typography className={classes.crCellName}>
-                      {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
+                      {jobRun.test_stats.failure_count > 0
+                        ? triagedURLs[jobRun.job_url] !== undefined
+                          ? 'T'
+                          : 'F'
+                        : 'S'}
                     </Typography>
                   </a>
                 )
@@ -129,4 +133,5 @@ CompReadyTestDetailRow.propTypes = {
   element: PropTypes.object.isRequired,
   idx: PropTypes.number.isRequired,
   showOnlyFailures: PropTypes.bool.isRequired,
+  triagedURLs: PropTypes.array.isRequired,
 }

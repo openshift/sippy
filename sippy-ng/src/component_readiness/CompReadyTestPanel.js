@@ -167,6 +167,21 @@ export default function CompReadyTestPanel(props) {
     return null
   }
 
+  let urls = []
+  if (data && data.incidents && data.incidents.length > 0) {
+    for (let i = 0; i < data.incidents.length; i++) {
+      let incident = data.incidents[i]
+      if (incident && incident.job_runs && incident.job_runs.length > 0) {
+        for (let z = 0; z < incident.job_runs.length; z++) {
+          let job_run = incident.job_runs[z]
+          if (job_run.url !== undefined && urls[job_run.url] === undefined) {
+            urls[job_run.url] = true
+          }
+        }
+      }
+    }
+  }
+
   return (
     <Fragment>
       <Grid container spacing={2} style={{ marginTop: '10px' }}>
@@ -242,6 +257,7 @@ export default function CompReadyTestPanel(props) {
                       element={element}
                       idx={idx}
                       showOnlyFailures={showOnlyFailures}
+                      triagedURLs={urls}
                     ></CompReadyTestDetailRow>
                   )
                 })

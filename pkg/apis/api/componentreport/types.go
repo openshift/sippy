@@ -256,7 +256,8 @@ func (r ReportTestStats) IsTriaged() bool {
 // multiple different analyses run.
 type TestDetailsAnalysis struct {
 	ReportTestStats
-	JobStats []TestDetailsJobStats `json:"job_stats,omitempty"`
+	JobStats         []TestDetailsJobStats `json:"job_stats,omitempty"`
+	TriagedIncidents []TriagedIncident     `json:"incidents,omitempty"`
 }
 
 // ReportTestDetails is the top level API response for test details reports.

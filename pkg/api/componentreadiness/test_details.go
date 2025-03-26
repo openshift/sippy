@@ -351,6 +351,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		},
 	}
 	var resolvedIssueCompensation int
+	var incidents []crtype.TriagedIncident
 	approvedRegression := regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, result.ColumnIdentification, c.ReqOptions.TestIDOption.TestID)
 	var baseRegression *regressionallowances.IntentionalRegression
 	activeProductRegression := false
@@ -361,13 +362,13 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	}
 	// ignore triage if we have an intentional regression
 	if approvedRegression == nil {
-		resolvedIssueCompensation, activeProductRegression, _ = c.triagedIncidentsFor(ctx, result.ReportTestIdentification)
+		resolvedIssueCompensation, activeProductRegression, incidents = c.triagedIncidentsFor(ctx, result.ReportTestIdentification)
 	}
 
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
 
-	report := crtype.TestDetailsAnalysis{}
+	report := crtype.TestDetailsAnalysis{TriagedIncidents: incidents}
 	for prowJob, baseStatsList := range baseStatus {
 		jobStats := crtype.TestDetailsJobStats{
 			JobName: prowJob,

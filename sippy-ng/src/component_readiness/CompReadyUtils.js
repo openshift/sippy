@@ -490,7 +490,7 @@ export function validateData(data) {
     )
     return ['No data']
   }
-  if (data.rows[0].component == 'None' || !data.rows[0].columns) {
+  if (data.rows[0].component === 'None' || !data.rows[0].columns) {
     return ['No data']
   }
   if (data.rows[0].component === 'Cancelled') {
@@ -499,6 +499,41 @@ export function validateData(data) {
   }
 
   return ['']
+}
+
+export function groupIncidentIncidents(incidents, groupedIncidents) {
+  incidents.forEach((incident) => {
+    if (incident.incidents && incident.incidents.length > 0) {
+      groupIncidents(incident.incidents, groupedIncidents, incident)
+    }
+  })
+}
+
+export function groupIncidents(incidents, groupedIncidents, detailsIncident) {
+  incidents.forEach((i) => {
+    if (!groupedIncidents.has(i.incident_group_id)) {
+      groupedIncidents.set(i.incident_group_id, {
+        issue: i.issue,
+        incidents: [],
+      })
+    }
+    let incidentsGroup = groupedIncidents.get(i.incident_group_id)
+    i.details = detailsIncident
+    incidentsGroup.incidents = incidentsGroup.incidents.concat(i)
+  })
+}
+
+export function createGroupedIncidentArray(groupedIncidents) {
+  return Array.from(groupedIncidents, ([group_id, grouped_incidents]) => ({
+    group_id,
+    grouped_incidents,
+  }))
+}
+
+export function mergeIncidents(incidents, detailsIncident) {
+  let groupedIncidents = new Map()
+  groupIncidents(incidents, groupedIncidents, detailsIncident)
+  return createGroupedIncidentArray(groupedIncidents)
 }
 
 export function mergeRegressionData(data) {
@@ -521,21 +556,7 @@ export function mergeRegressionData(data) {
       if (column.triaged_incidents && column.triaged_incidents.length > 0) {
         allRegressions = allRegressions.concat(column.triaged_incidents)
 
-        column.triaged_incidents.forEach((incident) => {
-          if (incident.incidents && incident.incidents.length > 0) {
-            incident.incidents.forEach((i) => {
-              if (!groupedIncidents.has(i.incident_group_id)) {
-                groupedIncidents.set(i.incident_group_id, {
-                  issue: i.issue,
-                  incidents: [],
-                })
-              }
-              let incidentsGroup = groupedIncidents.get(i.incident_group_id)
-              i.details = incident
-              incidentsGroup.incidents = incidentsGroup.incidents.concat(i)
-            })
-          }
-        })
+        groupIncidentIncidents(column.triaged_incidents, groupedIncidents)
       }
     })
   })
@@ -556,14 +577,11 @@ export function mergeRegressionData(data) {
   })
   allRegressions = allRegressions.map((item, index) => ({ ...item, id: index }))
 
-  let arrayOfIncidents = Array.from(
-    groupedIncidents,
-    ([group_id, grouped_incidents]) => ({
-      group_id,
-      grouped_incidents,
-    })
-  )
-  return [regressedTests, allRegressions, arrayOfIncidents]
+  return [
+    regressedTests,
+    allRegressions,
+    createGroupedIncidentArray(groupedIncidents),
+  ]
 }
 
 export const Search = styled('div')(({ theme }) => ({
