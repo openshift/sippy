@@ -17,6 +17,7 @@ func GetTriage(dbc *db.DB, id int) (models.Triage, error) {
 	if res.Error != nil {
 		log.WithError(res.Error).Errorf("error looking up existing triage record: %d", id)
 	}
+	injectHATEOASLinks(&existingTriage)
 	return existingTriage, res.Error
 }
 
@@ -26,6 +27,9 @@ func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	res := dbc.DB.Preload("Bug").Preload("Regressions").Find(&triages)
 	if res.Error != nil {
 		log.WithError(res.Error).Error("error listing all triages")
+	}
+	for i := range triages {
+		injectHATEOASLinks(&triages[i])
 	}
 	return triages, res.Error
 }
@@ -83,6 +87,7 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	}
 	log.WithField("triageID", triage.ID).Info("triage record created")
 
+	injectHATEOASLinks(&triage)
 	return triage, nil
 
 }
@@ -145,5 +150,13 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 		return triage, res.Error
 	}
 
+	injectHATEOASLinks(&triage)
 	return triage, nil
+}
+
+// injectHATEOASLinks adds restful links clients can follow for this triage record.
+func injectHATEOASLinks(triage *models.Triage) {
+	triage.Links = map[string]string{
+		"self": fmt.Sprintf("/api/component_readiness/triage/%d", triage.ID),
+	}
 }

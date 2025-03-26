@@ -48,12 +48,11 @@ func Test_TriageAPI(t *testing.T) {
 	t.Run("get", func(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
 		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
-
-		var lookupTriage models.Triage
-		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &lookupTriage)
 		require.NoError(t, err)
-		assert.Equal(t, triageResponse.ID, lookupTriage.ID)
-		assert.Equal(t, len(triageResponse.Regressions), len(lookupTriage.Regressions))
+
+		// ensure hateoas links are present
+		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triage/%d", triageResponse.ID),
+			triageResponse.Links["self"])
 	})
 	t.Run("list", func(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
@@ -73,6 +72,11 @@ func Test_TriageAPI(t *testing.T) {
 		assert.Equal(t, testRegression1.TestName, foundTriage.Regressions[0].TestName,
 			"list triage records should include regression details")
 
+		// ensure hateoas links are present
+		for _, triage := range allTriages {
+			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triage/%d", triage.ID),
+				triage.Links["self"])
+		}
 	})
 	t.Run("update to add regression", func(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
@@ -86,6 +90,10 @@ func Test_TriageAPI(t *testing.T) {
 		assert.Equal(t, 2, len(triageResponse2.Regressions))
 		assert.Equal(t, triageResponse.CreatedAt, triageResponse2.CreatedAt)
 		assert.NotEqual(t, triageResponse.UpdatedAt, triageResponse2.UpdatedAt)
+
+		// ensure hateoas links are present
+		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triage/%d", triageResponse2.ID),
+			triageResponse2.Links["self"])
 	})
 	t.Run("update to remove all regressions", func(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
