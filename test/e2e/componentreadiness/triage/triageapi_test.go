@@ -24,7 +24,7 @@ var view = componentreport.View{
 	},
 }
 
-func cleanupAllRegressions(dbc *db.DB) {
+func cleanupAllTriages(dbc *db.DB) {
 	// Delete all triage and test regressions in the e2e postgres db.
 	dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1")
 	res := dbc.DB.Where("1 = 1").Delete(&models.Triage{})
@@ -46,7 +46,7 @@ func Test_TriageAPI(t *testing.T) {
 	defer dbc.DB.Delete(testRegression2)
 
 	t.Run("get", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		defer cleanupAllTriages(dbc)
 		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 		require.NoError(t, err)
 
@@ -55,7 +55,7 @@ func Test_TriageAPI(t *testing.T) {
 			triageResponse.Links["self"])
 	})
 	t.Run("list", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		defer cleanupAllTriages(dbc)
 		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var allTriages []models.Triage
@@ -79,7 +79,7 @@ func Test_TriageAPI(t *testing.T) {
 		}
 	})
 	t.Run("update to add regression", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		defer cleanupAllTriages(dbc)
 		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		// Update with a new regression:
@@ -96,7 +96,7 @@ func Test_TriageAPI(t *testing.T) {
 			triageResponse2.Links["self"])
 	})
 	t.Run("update to remove all regressions", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		defer cleanupAllTriages(dbc)
 		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var triageResponse2 models.Triage
@@ -106,7 +106,7 @@ func Test_TriageAPI(t *testing.T) {
 		assert.Equal(t, 0, len(triageResponse2.Regressions))
 	})
 	t.Run("update fails if resource has no ID", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		defer cleanupAllTriages(dbc)
 		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var triageResponse2 models.Triage
@@ -115,7 +115,7 @@ func Test_TriageAPI(t *testing.T) {
 		require.Error(t, err)
 	})
 	t.Run("update fails if URL has no ID", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		defer cleanupAllTriages(dbc)
 		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var triageResponse2 models.Triage
@@ -124,7 +124,7 @@ func Test_TriageAPI(t *testing.T) {
 		require.Error(t, err)
 	})
 	t.Run("update fails if URL ID and resource ID do not match", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		defer cleanupAllTriages(dbc)
 		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var triageResponse2 models.Triage
@@ -179,7 +179,7 @@ func Test_TriageRawDB(t *testing.T) {
 	defer dbc.DB.Delete(testRegression)
 
 	t.Run("test Triage model in postgres", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		defer cleanupAllTriages(dbc)
 
 		triage1 := models.Triage{
 			URL: "http://myjira",
@@ -224,7 +224,7 @@ func Test_TriageRawDB(t *testing.T) {
 	})
 
 	t.Run("test Triage model Bug relationship", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
+		defer cleanupAllTriages(dbc)
 
 		jiraBug := createBug(t, dbc)
 		defer dbc.DB.Delete(jiraBug)

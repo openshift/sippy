@@ -47,8 +47,8 @@ type RequestReleaseOptions struct {
 // date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
 	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
-	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
-	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	RelativeStart         string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd           string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
@@ -203,7 +203,8 @@ type ReportTestSummary struct {
 	// the regression with it's *default view* query. However we always include it in the response (if that test
 	// is regressed per the query params used). Eventually we should only include these details if the default view
 	// is being used, without overriding the start/end dates.
-	Opened *time.Time `json:"opened"`
+	Opened       *time.Time `json:"opened"`
+	RegressionID int        `json:"regression_id"`
 
 	ReportTestStats
 }

@@ -675,6 +675,7 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 			or := FindOpenRegression(view, rt.TestID, rt.Variants, openRegressions)
 			if or != nil {
 				rt.Opened = &or.Opened
+				rt.RegressionID = int(or.ID)
 			}
 		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
@@ -691,6 +692,7 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 				ti.ReportTestSummary.Variants, openRegressions)
 			if or != nil {
 				ti.ReportTestSummary.Opened = &or.Opened
+				ti.ReportTestSummary.RegressionID = int(or.ID)
 			}
 		}
 		newCellStatus.triagedIncidents = append(newCellStatus.triagedIncidents, ti)
