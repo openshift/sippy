@@ -1169,40 +1169,51 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 // jsonTriages handles multiple http verbs for managing component readiness triage records.
 func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 	//release := param.SafeRead(req, "release")
+	path := req.URL.Path
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) > 4 {
+		failureResponse(w, http.StatusBadRequest, "unknown url format: "+path)
+		return
+	}
+
+	// Extract a specific resource ID if we were given one. Verbs will decide to use it or not,
+	// as well as error if it is required.
+	var triageID int
+	if len(parts) == 4 {
+		// Expecting URL format: /api/component_readiness/triages/{id}
+		// If we can extract a triage ID from the URL, get that specific record:
+		idStr := parts[3] // Extracts "789"
+		var err error
+		triageID, err = strconv.Atoi(idStr)
+		if err != nil {
+			failureResponse(w, http.StatusBadRequest, "unknown ID format: "+idStr)
+			return
+		}
+		log.Infof("Extracted triage ID: %d", triageID)
+	}
 
 	switch req.Method {
 	case http.MethodGet:
-		path := req.URL.Path
-		parts := strings.Split(strings.Trim(path, "/"), "/")
-
-		// Expecting URL format: /api/component_readiness/triages/{id}
-		switch {
-		case len(parts) > 4:
-			failureResponse(w, http.StatusBadRequest, "unknown url format: "+path)
-			return
-		case len(parts) == 4:
-			// If we can extract a triage ID from the URL, get that specific record:
-			idStr := parts[3] // Extracts "789"
-			id, err := strconv.Atoi(idStr)
-			if err != nil {
-				failureResponse(w, http.StatusBadRequest, "unknown ID format: "+idStr)
-				return
-			}
-			log.Infof("Extracted triage ID: %d", id)
-			existingTriage, err := componentreadiness.GetTriage(s.db, id)
-			api.RespondWithJSON(http.StatusOK, w, existingTriage)
-			return
-		case len(parts) == 3:
-			// No ID in URL implies list all
-			// List all if no triage ID specified in the URL:
-			triages, err := componentreadiness.ListTriages(s.db)
+		// Was a specific record requested?
+		if triageID > 0 {
+			existingTriage, err := componentreadiness.GetTriage(s.db, triageID)
 			if err != nil {
 				failureResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
-			api.RespondWithJSON(http.StatusOK, w, triages)
+			api.RespondWithJSON(http.StatusOK, w, existingTriage)
 			return
 		}
+
+		// Otherwise list all:
+		// TODO: support release filtering
+		triages, err := componentreadiness.ListTriages(s.db)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, triages)
+		return
 
 	case http.MethodPost: // create
 		var triage models.Triage
@@ -1218,10 +1229,18 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 		}
 		api.RespondWithJSON(http.StatusOK, w, triage)
 	case http.MethodPut: // update
+		if triageID == 0 {
+			failureResponse(w, http.StatusBadRequest, "no triage ID specified in URL")
+			return
+		}
 		var triage models.Triage
 		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
 			log.WithError(err).Error("error parsing new triage record")
 			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if triageID != int(triage.ID) {
+			failureResponse(w, http.StatusBadRequest, "resource triage ID does not match URL")
 			return
 		}
 		triage, err := componentreadiness.UpdateTriage(s.db, triage)
