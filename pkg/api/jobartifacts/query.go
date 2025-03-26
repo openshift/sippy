@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 )
 
@@ -22,38 +23,86 @@ const maxFileMatches = 12    // limit the number of content matches returned for
 const artifactUrlFmt = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/%s/%s"
 
 type JobArtifactQuery struct {
-	GcsBucket        *storage.BucketHandle
-	DbClient         *db.DB
-	JobName          string        // The name of the job to query
-	JobRunIDs        []int64       // The runs of that job to query
-	PathMatch        regexp.Regexp // A regex to match files in the artifact bucket for each queried run
-	PathGlob         string        // A simple glob to match files in the artifact bucket for each queried run
-	ArtifactContains string        // A string to match in the content of the files
+	GcsBucket *storage.BucketHandle
+	DbClient  *db.DB
+	JobRunIDs []int64
+	PathMatch regexp.Regexp // A regex to match files in the artifact bucket for each queried run
+	PathGlob  string        // A simple glob to match files in the artifact bucket for each queried run
+	// TODO: add regex support for filtering file paths (requires enumerating all)
+	ArtifactContains string // A string to match in the content of the files
+	// TODO: regex and jq support for matching content
 }
 
-func (q *JobArtifactQuery) getJobRunPath(jobRunID int64) (string, error) {
+func (q *JobArtifactQuery) Query(logger *log.Entry) (runs []JobRun, errs []JobRun) {
+	for _, jobRunID := range q.JobRunIDs {
+		jobRun, err := q.QueryJobArtifacts(jobRunID, logger)
+		if err != nil {
+			errs = append(errs, JobRun{ID: jobRunID, Error: err.Error()})
+			continue
+		}
+		runs = append(runs, jobRun)
+	}
+	return
+}
+
+// will be more complicated than this
+func (q *JobArtifactQuery) QueryJobArtifacts(jobRunID int64, logger *log.Entry) (JobRun, error) {
+	jobRunResponse := JobRun{ID: jobRunID}
+	logger = logger.WithField("func", "QueryJobArtifacts").WithField("job_run_id", jobRunID)
+
+	jobRunPath, jobName, err := q.getJobRunPath(jobRunID)
+	if err != nil {
+		logger.WithError(err).Error("could not query job's bucket path")
+		return jobRunResponse, err
+	}
+	jobRunResponse.JobName = jobName
+
+	filePaths, truncated, err := q.getJobRunFiles(jobRunPath)
+	if err != nil {
+		logger.WithError(err).Error("could not find job artifact files")
+		return jobRunResponse, err
+	}
+	jobRunResponse.ArtifactListTruncated = truncated
+
+	for _, filePath := range filePaths {
+		contentMatches, truncated, err := q.getFileContentMatches(filePath)
+		if err != nil {
+			logger.WithError(err).Errorf("could not scan job artifact content at %q", filePath)
+			return jobRunResponse, err
+		}
+		jobRunResponse.Artifacts = append(jobRunResponse.Artifacts, JobRunArtifact{
+			JobRunID:         jobRunID,
+			ArtifactURL:      fmt.Sprintf(artifactUrlFmt, util.GcsBucketRoot, filePath),
+			MatchesTruncated: truncated,
+			MatchedContent:   contentMatches,
+		})
+	}
+	return jobRunResponse, nil
+}
+
+func (q *JobArtifactQuery) getJobRunPath(jobRunID int64) (string, string, error) {
 	jobRun := new(models.ProwJobRun)
-	res := q.DbClient.DB.First(jobRun, jobRunID)
+	res := q.DbClient.DB.Preload("ProwJob").First(jobRun, jobRunID)
 	if res.Error != nil {
-		return "", res.Error
+		return "", "", res.Error
 	}
 
 	url := jobRun.URL
 	if url == "" {
-		return "", fmt.Errorf("DB entry for job run %d has no URL", jobRunID)
+		return "", "", fmt.Errorf("DB entry for job run %d has no URL", jobRunID)
 	}
 
 	const marker = "/" + util.GcsBucketRoot + "/"
 	pathStart := strings.Index(url, marker)
 	if pathStart == -1 {
-		return "", fmt.Errorf("job run %d URL %s does not include bucket root %q", jobRunID, url, util.GcsBucketRoot)
+		return "", "", fmt.Errorf("job run %d URL %s does not include bucket root %q", jobRunID, url, util.GcsBucketRoot)
 	}
 
 	jobRunPath := url[pathStart+len(marker):]
 	if !strings.HasSuffix(jobRunPath, "/") {
 		jobRunPath += "/" // ensure the path looks like a bucket "object prefix"
 	}
-	return jobRunPath, nil
+	return jobRunPath, jobRun.ProwJob.Name, nil
 }
 
 func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]string, bool, error) {
@@ -90,6 +139,9 @@ func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]string, bool, er
 func (q *JobArtifactQuery) getFileContentMatches(filePath string) ([]string, bool, error) {
 	matches := []string{}
 	truncated := false
+	if q.ArtifactContains == "" { // no snippets requested
+		return matches, false, nil
+	}
 
 	gcsReader, err := q.GcsBucket.Object(filePath).NewReader(context.Background())
 	if err != nil {
