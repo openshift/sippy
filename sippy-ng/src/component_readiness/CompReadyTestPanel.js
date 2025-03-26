@@ -167,6 +167,17 @@ export default function CompReadyTestPanel(props) {
     return null
   }
 
+  let urls = []
+  if (data?.incidents?.length) {
+    data.incidents.forEach((incident) => {
+      incident?.job_runs?.forEach((job_run) => {
+        if (job_run.url !== undefined) {
+          urls[job_run.url] = true
+        }
+      })
+    })
+  }
+
   return (
     <Fragment>
       <Grid container spacing={2} style={{ marginTop: '10px' }}>
@@ -242,6 +253,7 @@ export default function CompReadyTestPanel(props) {
                       element={element}
                       idx={idx}
                       showOnlyFailures={showOnlyFailures}
+                      triagedURLs={urls}
                     ></CompReadyTestDetailRow>
                   )
                 })

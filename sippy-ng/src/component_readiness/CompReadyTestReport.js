@@ -17,6 +17,7 @@ import {
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
+  mergeIncidents,
   noDataTable,
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
@@ -43,6 +44,7 @@ import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
+import TriagedIncidentsPanel from './TriagedIncidentsPanel'
 
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
@@ -234,14 +236,10 @@ export default function CompReadyTestReport(props) {
   }
 
   const columnNames = getColumns(data)
-  if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
+  if (columnNames[0] === 'Cancelled' || columnNames[0] === 'None') {
     return (
       <CompReadyCancelled message={columnNames[0]} apiCallStr={apiCallStr} />
     )
-  }
-
-  const handleFailuresOnlyChange = (event) => {
-    setShowOnlyFailures(event.target.checked)
   }
 
   const [statusStr, assessmentIcon] = getStatusAndIcon(
@@ -397,6 +395,18 @@ View the [test details report|${document.location.href}] for additional context.
           </Box>
         </Grid>
       </Grid>
+
+      {data.analyses[0].incidents && data.analyses[0].incidents.length > 0 ? (
+        <Fragment>
+          <h2>Triaged Tests</h2>
+          <TriagedIncidentsPanel
+            triagedIncidents={mergeIncidents(data.analyses[0].incidents, data)}
+          />
+        </Fragment>
+      ) : (
+        // no incidents
+        <Fragment />
+      )}
 
       <h2>Regression Report</h2>
 
