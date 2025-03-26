@@ -87,6 +87,10 @@ func SippyPut(path string, bodyData interface{}, responseData interface{}) error
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("Sippy API returned status code %d", resp.StatusCode)
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err

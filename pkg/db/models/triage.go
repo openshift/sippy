@@ -24,6 +24,10 @@ type Triage struct {
 	Bug   *Bug  `json:"bug,omitempty"`
 	BugID *uint `json:"bug_id,omitempty"`
 
+	// Links contains REST links for clients to follow for this specific triage. Most notably "self".
+	// These are injected by the API and not stored in the DB.
+	Links map[string]string `json:"links" gorm:"-"`
+
 	// Regressions ties this triage record to specific component readiness test regressions.
 	// Triage will often tie to regressions, often multiple (as regressions are broken out by variant / suite),
 	// but it may also be empty in

@@ -1172,15 +1172,38 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 
 	switch req.Method {
 	case http.MethodGet:
-		// TODO: handle get with a specific triage id
+		path := req.URL.Path
+		parts := strings.Split(strings.Trim(path, "/"), "/")
 
-		// List all if no triage ID specified in the URL:
-		triages, err := componentreadiness.ListTriages(s.db)
-		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, err.Error())
+		// Expecting URL format: /api/component_readiness/triages/{id}
+		switch {
+		case len(parts) > 4:
+			failureResponse(w, http.StatusBadRequest, "unknown url format: "+path)
+			return
+		case len(parts) == 4:
+			// If we can extract a triage ID from the URL, get that specific record:
+			idStr := parts[3] // Extracts "789"
+			id, err := strconv.Atoi(idStr)
+			if err != nil {
+				failureResponse(w, http.StatusBadRequest, "unknown ID format: "+idStr)
+				return
+			}
+			log.Infof("Extracted triage ID: %d", id)
+			existingTriage, err := componentreadiness.GetTriage(s.db, id)
+			api.RespondWithJSON(http.StatusOK, w, existingTriage)
+			return
+		case len(parts) == 3:
+			// No ID in URL implies list all
+			// List all if no triage ID specified in the URL:
+			triages, err := componentreadiness.ListTriages(s.db)
+			if err != nil {
+				failureResponse(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			api.RespondWithJSON(http.StatusOK, w, triages)
 			return
 		}
-		api.RespondWithJSON(http.StatusOK, w, triages)
+
 	case http.MethodPost: // create
 		var triage models.Triage
 		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
@@ -1489,6 +1512,14 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/component_readiness/triages",
+			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonTriages,
+		},
+		{
+			// TODO: had to duplicate above for trailing slash for GET/PUT on specific records
+			// Switch to gorilla mux.
+			EndpointPath: "/api/component_readiness/triages/",
 			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonTriages,

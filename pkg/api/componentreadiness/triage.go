@@ -11,13 +11,21 @@ import (
 	"gorm.io/gorm"
 )
 
+func GetTriage(dbc *db.DB, id int) (models.Triage, error) {
+	existingTriage := models.Triage{}
+	res := dbc.DB.Preload("Bug").Preload("Regressions").First(&existingTriage, id)
+	if res.Error != nil {
+		log.WithError(res.Error).Errorf("error looking up existing triage record: %d", id)
+	}
+	return existingTriage, res.Error
+}
+
 func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	// List all if no triage ID specified in the URL:
 	triages := []models.Triage{}
 	res := dbc.DB.Preload("Bug").Preload("Regressions").Find(&triages)
 	if res.Error != nil {
 		log.WithError(res.Error).Error("error listing all triages")
-
 	}
 	return triages, res.Error
 }
