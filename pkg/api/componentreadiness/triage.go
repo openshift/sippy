@@ -50,7 +50,7 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	if len(linkedRegressions) != len(regressionIDs) {
 		err := fmt.Errorf("some of the requested regression IDs were not found: %v",
 			regressionIDs)
-		log.WithError(err).Error("error looking up test regressions")
+		log.WithError(err).Error("error looking up test regressions during create")
 		return triage, err
 	}
 	triage.Regressions = linkedRegressions
@@ -77,4 +77,65 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 
 	return triage, nil
 
+}
+func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
+	if triage.URL == "" {
+		return triage, fmt.Errorf("url is required for a triage record")
+	}
+	if triage.ID == 0 {
+		return triage, fmt.Errorf("must specify an id for a triage record update")
+	}
+
+	// Ensure the record exists and preserve fields you're not allowed to update:
+	// Side effect of not requiring you to specify them in your json.
+	existingTriage := models.Triage{}
+	res := dbc.DB.First(&existingTriage, triage.ID)
+	if res.Error != nil {
+		log.WithError(res.Error).Errorf("error looking up existing triage record: %v", triage.ID)
+		return triage, res.Error
+	}
+	triage.CreatedAt = existingTriage.CreatedAt
+	triage.DeletedAt = existingTriage.DeletedAt
+
+	// We support linking to regressions by just setting the ID in the request, lookup
+	// full regressions for association.
+	regressionIDs := []uint{}
+	for _, trIDR := range triage.Regressions {
+		regressionIDs = append(regressionIDs, trIDR.ID)
+	}
+	var linkedRegressions []models.TestRegression
+	res = dbc.DB.Where("id IN ?", regressionIDs).Find(&linkedRegressions)
+	if res.Error != nil {
+		log.WithError(res.Error).Errorf("error looking up regression IDs: %v", regressionIDs)
+		return triage, res.Error
+	}
+
+	if len(linkedRegressions) != len(regressionIDs) {
+		err := fmt.Errorf("some of the requested regression IDs were not found: %v",
+			regressionIDs)
+		log.WithError(err).Error("error looking up test regressions during update")
+		return triage, err
+	}
+	triage.Regressions = linkedRegressions
+
+	// If we have a bug in the db matching the url we were given, link them up now.
+	// If not, this should be handled later during the next fetchdata cron job.
+	var bug models.Bug
+	res = dbc.DB.Where("url = ?", triage.URL).First(&bug)
+	switch {
+	case res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound):
+		log.WithError(res.Error).Errorf("unexpected error looking up bug: %s", triage.URL)
+		return triage, res.Error
+	case res.Error == nil:
+		triage.Bug = &bug
+		triage.BugID = &bug.ID
+	}
+
+	res = dbc.DB.Save(&triage)
+	if res.Error != nil {
+		log.WithError(res.Error).Error("error updating triage record")
+		return triage, res.Error
+	}
+
+	return triage, nil
 }

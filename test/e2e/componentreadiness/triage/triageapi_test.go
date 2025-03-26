@@ -30,10 +30,6 @@ func cleanupAllRegressions(dbc *db.DB) {
 	if res.Error != nil {
 		log.Errorf("error deleting triage records: %v", res.Error)
 	}
-	res = dbc.DB.Where("1 = 1").Delete(&models.TestRegression{})
-	if res.Error != nil {
-		log.Errorf("error deleting test regressions: %v", res.Error)
-	}
 }
 
 func Test_TriageAPI(t *testing.T) {
@@ -43,28 +39,15 @@ func Test_TriageAPI(t *testing.T) {
 	jiraBug := createBug(t, dbc)
 	defer dbc.DB.Delete(jiraBug)
 
-	testRegression := createTestRegression(t, tracker, view)
-	defer dbc.DB.Delete(testRegression)
+	testRegression1 := createTestRegression(t, tracker, view, "faketestid")
+	defer dbc.DB.Delete(testRegression1)
+	testRegression2 := createTestRegression(t, tracker, view, "faketestid2")
+	defer dbc.DB.Delete(testRegression2)
 
-	t.Run("create and list", func(t *testing.T) {
+	t.Run("list", func(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
-		triage1 := models.Triage{
-			URL: "http://myjira",
-			Regressions: []models.TestRegression{
-				{
-					ID: testRegression.ID, // test just setting the ID to link up
-				},
-			},
-		}
+		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
-		var triageResponse models.Triage
-		err := util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse)
-		require.NoError(t, err)
-		assert.True(t, triageResponse.ID > 0)
-		assert.Equal(t, 1, len(triageResponse.Regressions))
-		log.Infof("triage response: %+v", triageResponse)
-
-		// List
 		var allTriages []models.Triage
 		err = util.SippyGet("/api/component_readiness/triages", &allTriages)
 		require.NoError(t, err)
@@ -76,10 +59,52 @@ func Test_TriageAPI(t *testing.T) {
 			}
 		}
 		require.NotNil(t, foundTriage, "expected triage was not found in list")
-		assert.Equal(t, testRegression.TestName, foundTriage.Regressions[0].TestName,
+		assert.Equal(t, testRegression1.TestName, foundTriage.Regressions[0].TestName,
 			"list triage records should include regression details")
 
 	})
+	t.Run("update to add regression", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+
+		// Update with a new regression:
+		var triageResponse2 models.Triage
+		triageResponse.Regressions = append(triageResponse.Regressions, models.TestRegression{ID: testRegression2.ID})
+		err = util.SippyPut("/api/component_readiness/triages", &triageResponse, &triageResponse2)
+		require.NoError(t, err)
+		assert.Equal(t, 2, len(triageResponse2.Regressions))
+		assert.Equal(t, triageResponse.CreatedAt, triageResponse2.CreatedAt)
+		assert.NotEqual(t, triageResponse.UpdatedAt, triageResponse2.UpdatedAt)
+	})
+	t.Run("update to remove all regressions", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+
+		// Update with a new regression:
+		var triageResponse2 models.Triage
+		triageResponse.Regressions = []models.TestRegression{}
+		err = util.SippyPut("/api/component_readiness/triages", &triageResponse, &triageResponse2)
+		require.NoError(t, err)
+		assert.Equal(t, 0, len(triageResponse2.Regressions))
+	})
+}
+
+func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 *models.TestRegression) (models.Triage, error) {
+	triage1 := models.Triage{
+		URL: bugURL,
+		Regressions: []models.TestRegression{
+			{
+				ID: testRegression1.ID, // test just setting the ID to link up
+			},
+		},
+	}
+
+	var triageResponse models.Triage
+	err := util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse)
+	require.NoError(t, err)
+	assert.True(t, triageResponse.ID > 0)
+	assert.Equal(t, 1, len(triageResponse.Regressions))
+	return triageResponse, err
 }
 
 func createBug(t *testing.T, dbc *db.DB) *models.Bug {
@@ -101,7 +126,7 @@ func Test_TriageRawDB(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
 
-	testRegression := createTestRegression(t, tracker, view)
+	testRegression := createTestRegression(t, tracker, view, "faketestid")
 	defer dbc.DB.Delete(testRegression)
 
 	t.Run("test Triage model in postgres", func(t *testing.T) {
@@ -170,7 +195,7 @@ func Test_TriageRawDB(t *testing.T) {
 	})
 }
 
-func createTestRegression(t *testing.T, tracker componentreadiness.RegressionStore, view componentreport.View) *models.TestRegression {
+func createTestRegression(t *testing.T, tracker componentreadiness.RegressionStore, view componentreport.View, testID string) *models.TestRegression {
 	newRegression := componentreport.ReportTestSummary{
 		ReportTestIdentification: componentreport.ReportTestIdentification{
 			RowIdentification: componentreport.RowIdentification{
@@ -178,7 +203,7 @@ func createTestRegression(t *testing.T, tracker componentreadiness.RegressionSto
 				Capability: "cap",
 				TestName:   "fake test",
 				TestSuite:  "fakesuite",
-				TestID:     "faketestid",
+				TestID:     testID,
 			},
 			ColumnIdentification: componentreport.ColumnIdentification{
 				Variants: map[string]string{

@@ -1166,8 +1166,8 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
-// jsonListTriages handles multiple http verbs for managing component readiness triage records.
-func (s *Server) jsonListTriages(w http.ResponseWriter, req *http.Request) {
+// jsonTriages handles multiple http verbs for managing component readiness triage records.
+func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 	//release := param.SafeRead(req, "release")
 
 	switch req.Method {
@@ -1181,7 +1181,7 @@ func (s *Server) jsonListTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		api.RespondWithJSON(http.StatusOK, w, triages)
-	case http.MethodPost:
+	case http.MethodPost: // create
 		var triage models.Triage
 		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
 			log.WithError(err).Error("error parsing new triage record")
@@ -1194,6 +1194,22 @@ func (s *Server) jsonListTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		api.RespondWithJSON(http.StatusOK, w, triage)
+	case http.MethodPut: // update
+		var triage models.Triage
+		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
+			log.WithError(err).Error("error parsing new triage record")
+			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		triage, err := componentreadiness.UpdateTriage(s.db, triage)
+		if err != nil {
+			log.WithError(err).Error("error updating triage")
+			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, triage)
+	default:
+		failureResponse(w, http.StatusBadRequest, "Unsupported method")
 	}
 }
 
@@ -1475,7 +1491,7 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/component_readiness/triages",
 			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
 			Capabilities: []string{LocalDBCapability},
-			HandlerFunc:  s.jsonListTriages,
+			HandlerFunc:  s.jsonTriages,
 		},
 		{
 			EndpointPath: "/api/capabilities",
