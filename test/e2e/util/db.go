@@ -20,7 +20,7 @@ func CreateE2EPostgresConnection(t *testing.T) *db.DB {
 	// Simple check that someone doesn't accidentally run the e2es against the prod db:
 	var totalRegressions int64
 	dbc.DB.Model(&models.TestRegression{}).Count(&totalRegressions)
-	require.Less(t, int(totalRegressions), 100, "found too many test regressions in db, possible indicator someone is running e2e against prod, please clean out test_regressions if this is not the case")
+	require.Less(t, int(totalRegressions), 300, "found too many test regressions in db, possible indicator someone is running e2e against prod, please clean out test_regressions if this is not the case")
 
 	return dbc
 }

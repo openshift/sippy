@@ -89,8 +89,8 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 
 	injectHATEOASLinks(&triage)
 	return triage, nil
-
 }
+
 func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	if triage.URL == "" {
 		return triage, fmt.Errorf("url is required for a triage record")
@@ -157,6 +157,6 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 // injectHATEOASLinks adds restful links clients can follow for this triage record.
 func injectHATEOASLinks(triage *models.Triage) {
 	triage.Links = map[string]string{
-		"self": fmt.Sprintf("/api/component_readiness/triage/%d", triage.ID),
+		"self": fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
 	}
 }

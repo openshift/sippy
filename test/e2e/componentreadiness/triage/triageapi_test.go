@@ -51,7 +51,7 @@ func Test_TriageAPI(t *testing.T) {
 		require.NoError(t, err)
 
 		// ensure hateoas links are present
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triage/%d", triageResponse.ID),
+		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
 			triageResponse.Links["self"])
 	})
 	t.Run("list", func(t *testing.T) {
@@ -74,7 +74,7 @@ func Test_TriageAPI(t *testing.T) {
 
 		// ensure hateoas links are present
 		for _, triage := range allTriages {
-			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triage/%d", triage.ID),
+			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
 				triage.Links["self"])
 		}
 	})
@@ -92,7 +92,7 @@ func Test_TriageAPI(t *testing.T) {
 		assert.NotEqual(t, triageResponse.UpdatedAt, triageResponse2.UpdatedAt)
 
 		// ensure hateoas links are present
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triage/%d", triageResponse2.ID),
+		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse2.ID),
 			triageResponse2.Links["self"])
 	})
 	t.Run("update to remove all regressions", func(t *testing.T) {
