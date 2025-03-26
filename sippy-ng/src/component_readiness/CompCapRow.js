@@ -31,13 +31,7 @@ export default function CompCapRow(props) {
   // results is an array of columns and contains the status value per columnName
   // columnNames is the calculated array of columns
   // filterVals: the parts of the url containing input values
-  const {
-    capabilityName,
-    results,
-    columnNames,
-    filterVals,
-    accessibilityMode,
-  } = props
+  const { capabilityName, results, columnNames, filterVals } = props
 
   const [capabilityParam, setCapabilityParam] = useQueryParam(
     'capability',
@@ -73,7 +67,6 @@ export default function CompCapRow(props) {
               columnVal.regressed_tests,
               columnVal.triaged_incidents
             )}
-            accessibilityMode={accessibilityMode}
           />
         ))}
       </TableRow>
@@ -86,5 +79,4 @@ CompCapRow.propTypes = {
   results: PropTypes.array.isRequired,
   columnNames: PropTypes.array.isRequired,
   filterVals: PropTypes.string.isRequired,
-  accessibilityMode: PropTypes.bool.isRequired,
 }

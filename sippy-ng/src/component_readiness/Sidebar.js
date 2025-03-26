@@ -63,5 +63,4 @@ export default function Sidebar(props) {
 
 Sidebar.propTypes = {
   isTestDetails: PropTypes.bool,
-  // accessibilityMode: PropTypes.bool.isRequired,
 }

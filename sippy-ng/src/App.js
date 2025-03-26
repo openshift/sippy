@@ -194,8 +194,6 @@ export default function App(props) {
     [setCookie]
   )
 
-  // const accessibilityMode = useContext(AccessibilityModeContext)
-
   const [lastUpdated, setLastUpdated] = React.useState(null)
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const [isLoaded, setLoaded] = React.useState(false)
