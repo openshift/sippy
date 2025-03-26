@@ -1,7 +1,7 @@
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Drawer } from '@mui/material'
 import { useTheme } from '@mui/styles'
-import AccessibilityToggle from './AccessibilityToggle'
+import AccessibilityToggle from '../components/AccessibilityToggle'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import clsx from 'clsx'

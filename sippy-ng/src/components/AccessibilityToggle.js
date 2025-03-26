@@ -1,5 +1,5 @@
 import { Accessibility } from '@mui/icons-material'
-import { AccessibilityModeContext } from '../App'
+import { AccessibilityModeContext } from './AccessibilityModeProvider'
 import { Tooltip } from '@mui/material'
 import IconButton from '@mui/material/IconButton'
 import React, { useContext } from 'react'

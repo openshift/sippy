@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { AccessibilityModeContext } from '../App'
+import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import { Badge, Tooltip } from '@mui/material'
 import { getStatusAndIcon } from './CompReadyUtils'
 import { useTheme } from '@mui/material/styles'

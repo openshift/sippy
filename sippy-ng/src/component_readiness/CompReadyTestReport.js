@@ -1,5 +1,5 @@
 import './ComponentReadiness.css'
-import { AccessibilityModeContext } from '../App'
+import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import {
   Box,
   Button,
