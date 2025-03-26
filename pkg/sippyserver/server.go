@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -76,6 +77,7 @@ func NewServer(
 		listenAddr:           listenAddr,
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
+		jobartifactsManager:  jobartifacts.NewManager(context.Background()),
 		sippyNG:              sippyNG,
 		static:               static,
 		db:                   dbClient,
@@ -113,6 +115,7 @@ type Server struct {
 	listenAddr           string
 	syntheticTestManager synthetictests.SyntheticTestManager
 	variantManager       testidentification.VariantManager
+	jobartifactsManager  *jobartifacts.Manager
 	sippyNG              fs.FS
 	static               fs.FS
 	httpServer           *http.Server
@@ -1195,6 +1198,50 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
+// queryJobArtifacts is an API to query GCS for artifacts from a set of job runs. Parameters:
+// - prowJobRuns: a comma-separated list of prow job run IDs to query
+// - pathGlob: a glob pattern to match against the GCS path (ref. https://cloud.google.com/storage/docs/json_api/v1/objects/list#list-object-glob)
+// - textContains (optional): a string to search for in the contents of the artifacts, returning the containing line
+// Returns a JSON jobartifacts.QueryResponse object listing the job runs, the artifacts that matched the glob,
+// and (optionally) lines within those artifacts that matched. Errors that occurred are also listed per job run.
+// To prevent (accidental) DOS, the number of artifacts and matches returned are limited.
+func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
+	if s.gcsClient == nil {
+		failureResponse(w, http.StatusBadRequest, "server not configured for GCS, unable to use this API")
+		return
+	}
+
+	q := &jobartifacts.JobArtifactQuery{
+		GcsBucket:        s.gcsClient.Bucket(util.GcsBucketRoot),
+		DbClient:         s.db,
+		JobRunIDs:        []int64{},
+		ArtifactContains: param.SafeRead(req, "textContains"),
+	}
+
+	jobRunIDStr := s.getParamOrFail(w, req, "prowJobRuns")
+	if jobRunIDStr == "" {
+		return
+	}
+	for _, jobRunIDStr := range strings.Split(jobRunIDStr, ",") {
+		id, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+		if err != nil {
+			failureResponse(w, http.StatusBadRequest,
+				fmt.Sprintf("unable to parse prowJobRuns id %q: %s", id, err.Error()))
+			return
+		}
+		q.JobRunIDs = append(q.JobRunIDs, id)
+	}
+
+	q.PathGlob = s.getParamOrFail(w, req, "pathGlob")
+	if q.PathGlob == "" {
+		return
+	}
+
+	// The request is good, return as OK; even if we fail at getting results, just note errors
+	result := s.jobartifactsManager.Query(req.Context(), q)
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.ResponseWriter, req *http.Request)) func(http.ResponseWriter, *http.Request) {
 	if s.hasCapabilities(capabilities) {
 		return implFn
@@ -1320,6 +1367,12 @@ func (s *Server) Serve() {
 			Description:  "Reports bugs related to jobs",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonJobBugsFromDB,
+		},
+		{
+			EndpointPath: "/api/jobs/artifacts",
+			Description:  "Queries job artifacts and their contents",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.queryJobArtifacts,
 		},
 		{
 			EndpointPath: "/api/job_variants",
