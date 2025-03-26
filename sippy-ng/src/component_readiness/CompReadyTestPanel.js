@@ -168,18 +168,14 @@ export default function CompReadyTestPanel(props) {
   }
 
   let urls = []
-  if (data && data.incidents && data.incidents.length > 0) {
-    for (let i = 0; i < data.incidents.length; i++) {
-      let incident = data.incidents[i]
-      if (incident && incident.job_runs && incident.job_runs.length > 0) {
-        for (let z = 0; z < incident.job_runs.length; z++) {
-          let job_run = incident.job_runs[z]
-          if (job_run.url !== undefined && urls[job_run.url] === undefined) {
-            urls[job_run.url] = true
-          }
+  if (data?.incidents?.length) {
+    data.incidents.forEach((incident) => {
+      incident?.job_runs?.forEach((job_run) => {
+        if (job_run.url !== undefined) {
+          urls[job_run.url] = true
         }
-      }
-    }
+      })
+    })
   }
 
   return (

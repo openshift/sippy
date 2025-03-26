@@ -501,6 +501,8 @@ export function validateData(data) {
   return ['']
 }
 
+// groupIncidentIncidents expects data from CR api call and passes the
+// incident as the details portion for the grouped incident
 export function groupIncidentIncidents(incidents, groupedIncidents) {
   incidents.forEach((incident) => {
     if (incident.incidents && incident.incidents.length > 0) {
@@ -509,6 +511,7 @@ export function groupIncidentIncidents(incidents, groupedIncidents) {
   })
 }
 
+// groupIncidents uses the incident_group_id to create a logical grouping of triaged incidents
 export function groupIncidents(incidents, groupedIncidents, detailsIncident) {
   incidents.forEach((i) => {
     if (!groupedIncidents.has(i.incident_group_id)) {
@@ -523,6 +526,7 @@ export function groupIncidents(incidents, groupedIncidents, detailsIncident) {
   })
 }
 
+// createGroupedIncidentArray converts the map into an array of grouped incidents
 export function createGroupedIncidentArray(groupedIncidents) {
   return Array.from(groupedIncidents, ([group_id, grouped_incidents]) => ({
     group_id,
@@ -530,12 +534,17 @@ export function createGroupedIncidentArray(groupedIncidents) {
   }))
 }
 
+// mergeIncidents expects a data object from TestDetails and passes it as
+// the details portion of the grouped incident
 export function mergeIncidents(incidents, detailsIncident) {
   let groupedIncidents = new Map()
   groupIncidents(incidents, groupedIncidents, detailsIncident)
   return createGroupedIncidentArray(groupedIncidents)
 }
 
+// mergeRegressionData takes the data from CR api and organizes the data
+// for groupedIncidents, regressedTests (untriaged) and combined list of untriaged and triaged tests
+// all used in the RegressedTestsModal dialog
 export function mergeRegressionData(data) {
   let ret = validateData(data)
   if (ret[0] !== '') {
