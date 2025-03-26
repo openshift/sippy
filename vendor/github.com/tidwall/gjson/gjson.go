@@ -945,7 +945,7 @@ func isDotPiperChar(s string) bool {
 		// check that the next component is *not* a modifier.
 		i := 1
 		for ; i < len(s); i++ {
-			if s[i] == '.' || s[i] == '|' {
+			if s[i] == '.' || s[i] == '|' || s[i] == ':' {
 				break
 			}
 		}
@@ -1009,8 +1009,8 @@ func parseObjectPath(path string) (r objectPathResult) {
 							r.piped = true
 						} else {
 							r.path = path[i+1:]
+							r.more = true
 						}
-						r.more = true
 						return
 					} else if path[i] == '|' {
 						r.part = string(epart)

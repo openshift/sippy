@@ -269,14 +269,14 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 	}
 	tests := []struct {
 		name          string
-		fetchJobRun   func(dbc *db.DB, jobRunID int64, unknownTests bool, logger *logrus.Entry) (*models.ProwJobRun, error)
+		fetchJobRun   func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
 		testFilter    NewTestFilter
 		expectedTests []NewTest
 		expectedError error
 	}{
 		{
 			name: "successful fetch",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				pjr := models.ProwJobRun{
 					Tests: []models.ProwJobRunTest{
 						{Test: models.Test{Name: "test1"}, Status: int(v1.TestStatusSuccess)},
@@ -295,7 +295,7 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 		},
 		{
 			name: "error on filtering",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				pjr := models.ProwJobRun{
 					Tests: []models.ProwJobRunTest{
 						{Test: models.Test{Name: "test1"}, Status: int(v1.TestStatusSuccess)},
@@ -310,7 +310,7 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 		},
 		{
 			name: "jobRun run not found",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				return nil, gorm.ErrRecordNotFound
 			},
 			expectedTests: nil,
@@ -318,7 +318,7 @@ func TestUnit_getNewTestsForJobRun(t *testing.T) {
 		},
 		{
 			name: "error fetching jobRun run",
-			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, logger *logrus.Entry) (*models.ProwJobRun, error) {
+			fetchJobRun: func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error) {
 				return nil, errors.New("fetch error")
 			},
 			expectedTests: nil,

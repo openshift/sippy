@@ -14,6 +14,8 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/hashicorp/go-version"
+	log "github.com/sirupsen/logrus"
+
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -23,7 +25,6 @@ import (
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util/param"
-	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -108,13 +109,20 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 
 // FetchJobRun returns a single job run loaded from postgres and populated with the ProwJob and test results.
 // If unknownTests is true, all tests not registered in test_ownerships are loaded; otherwise any failed tests are loaded.
-func FetchJobRun(dbc *db.DB, jobRunID int64, unknownTests bool, logger *log.Entry) (*models.ProwJobRun, error) {
+func FetchJobRun(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *log.Entry) (*models.ProwJobRun, error) {
 	jobRun := &models.ProwJobRun{}
 
 	// Load the ProwJobRun, ProwJob, and (failed|unknown) tests:
 	// TODO: we may want to expand to analyzing flakes here in the future
 	q := dbc.DB.Joins("ProwJob").
 		Preload("PullRequests")
+
+	if len(preloads) > 0 {
+		for _, preload := range preloads {
+			q = q.Preload(preload)
+		}
+	}
+
 	if unknownTests {
 		// this doesn't establish that the tests are new, but it does filter out any that sippy registers
 		q = q.Preload("Tests", "test_id not in (select test_id from test_ownerships)")

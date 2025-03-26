@@ -80,6 +80,30 @@ const (
 	JobUnknown               JobOverallResult = "f"
 )
 
+func (r *JobOverallResult) String() string {
+	switch *r {
+	case "S":
+		return "Succeeded"
+	case "R":
+		return "Running"
+	case "N":
+		return "Infrastructure failure"
+	case "I":
+		return "Install failure"
+	case "U":
+		return "Upgrade failure"
+	case "F":
+		return "Test failures"
+	case "n":
+		return "CI Infrastructure failure"
+	case "A":
+		return "Aborted"
+	default:
+		return "Unknown"
+	}
+
+}
+
 // JobRunResult represents a single invocation of a prow job and it's status, as well as any failed tests.
 type JobRunResult struct {
 	ProwID          uint     `json:"prowID"`

@@ -24,7 +24,7 @@ import (
 func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsPath string,
 	intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
 
-	jobRun, err := api.FetchJobRun(dbc, jobRunID, false, logger)
+	jobRun, err := api.FetchJobRun(dbc, jobRunID, false, nil, logger)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to fetch job run %d", jobRunID)
 	}
