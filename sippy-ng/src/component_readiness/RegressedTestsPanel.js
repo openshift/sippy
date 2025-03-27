@@ -112,7 +112,8 @@ export default function RegressedTestsPanel(props) {
         const regressedSinceDate = new Date(params.value)
         return (
           <Tooltip
-            title={`Click to copy the regression ID (${params.row.regression_id}) if one is defined. Useful for triage.`}
+            title={`WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default. 
+            Click to copy the regression ID (${params.row.regression_id}) if one is defined. Useful for triage.`}
             onClick={(event) =>
               copyTestToClipboard(event, params.row.regression_id)
             }
