@@ -4,21 +4,30 @@ import subprocess
 import tempfile
 import requests
 import yaml
+import os
 
-API_BASE_URL = "http://127.0.0.1:8080"
+# For auth sippy export API_BASE_URL="https://sippy-auth.dptools.openshift.org"
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8080")
+
+# For auth sippy, obtain token from DPCR OpenShift UI and set in this env var
+API_BEARER_TOKEN = os.getenv("API_BEARER_TOKEN")
+
+HEADERS = {}
+if API_BEARER_TOKEN:
+    HEADERS["Authorization"] = f"Bearer {API_BEARER_TOKEN}"
 
 def fetch_json(url):
-    response = requests.get(url)
+    response = requests.get(url, headers=HEADERS)
     response.raise_for_status()
     return response.json()
 
 def put_json(url, data):
-    response = requests.put(url, json=data)
+    response = requests.put(url, json=data, headers=HEADERS)
     response.raise_for_status()
     return response.json()
 
 def post_json(url, data):
-    response = requests.post(url, json=data)
+    response = requests.post(url, json=data, headers=HEADERS)
     response.raise_for_status()
     return response.json()
 
