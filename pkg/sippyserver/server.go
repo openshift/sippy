@@ -67,6 +67,7 @@ func NewServer(
 	crTimeRoundingFactor time.Duration,
 	views *apitype.SippyViews,
 	config *v1.SippyConfig,
+	enableWriteEndpoints bool,
 ) *Server {
 
 	server := &Server{
@@ -84,6 +85,7 @@ func NewServer(
 		crTimeRoundingFactor: crTimeRoundingFactor,
 		views:                views,
 		config:               config,
+		enableWriteAPIs:      enableWriteEndpoints,
 	}
 
 	if bigQueryClient != nil {
@@ -122,6 +124,7 @@ type Server struct {
 	capabilities         []string
 	views                *apitype.SippyViews
 	config               *v1.SippyConfig
+	enableWriteAPIs      bool
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -265,6 +268,10 @@ func (s *Server) determineCapabilities() {
 		} else if err != nil {
 			log.WithError(err).Warningf("could not fetch build cluster data")
 		}
+	}
+
+	if s.db != nil && s.enableWriteAPIs {
+		capabilities = append(capabilities, WriteEndpointsCapability)
 	}
 
 	s.capabilities = capabilities
@@ -1532,15 +1539,18 @@ func (s *Server) Serve() {
 		{
 			EndpointPath: "/api/component_readiness/triages",
 			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
-			Capabilities: []string{LocalDBCapability},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonTriages,
 		},
 		{
 			// TODO: had to duplicate above for trailing slash for GET/PUT on specific records
-			// Switch to gorilla mux.
+			// Switch to gorilla mux for cleaner handling of this, specific verbs, and extracting params from url
+			// Because we don't have control over verbs, we're also disabling GET if write endpoints are disabled, which
+			// means no triage apis available in non-auth sippy for now. Non urgent as we likely will just
+			// augment existing apis with triage data for the reading anyhow.
 			EndpointPath: "/api/component_readiness/triages/",
 			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
-			Capabilities: []string{LocalDBCapability},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonTriages,
 		},
 		{

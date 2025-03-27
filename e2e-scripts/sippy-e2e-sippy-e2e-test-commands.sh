@@ -78,6 +78,7 @@ spec:
     - /tmp/secrets/gcs-cred
     - --log-level
     - debug
+    - --enable-write-endpoints
     - --mode
     - ocp
     - --views
