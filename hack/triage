@@ -5,6 +5,8 @@ import tempfile
 import requests
 import yaml
 
+API_BASE_URL = "http://127.0.0.1:8080"
+
 def fetch_json(url):
     response = requests.get(url)
     response.raise_for_status()
@@ -12,6 +14,11 @@ def fetch_json(url):
 
 def put_json(url, data):
     response = requests.put(url, json=data)
+    response.raise_for_status()
+    return response.json()
+
+def post_json(url, data):
+    response = requests.post(url, json=data)
     response.raise_for_status()
     return response.json()
 
@@ -29,7 +36,7 @@ def edit_yaml_in_nvim(data):
     return edited_data
 
 def update_triage(triage_id):
-    url = f"http://127.0.0.1:8080/api/component_readiness/triages/{triage_id}"
+    url = f"{API_BASE_URL}/api/component_readiness/triages/{triage_id}"
     
     print(f"Fetching data from {url}...")
     data = fetch_json(url)
@@ -41,6 +48,35 @@ def update_triage(triage_id):
     put_json(url, edited_data)
     print("Update successful.")
 
+def create_triage():
+    url = f"{API_BASE_URL}/api/component_readiness/triage"
+    template = {
+        "url": "https://issues.redhat.com/browse/OCPBUGS-54222",
+        "type": "ci-infra",  # Options: ci-infra, product-infra, product, test
+        "regressions": [
+            {"id": 1241}
+        ]
+    }
+    
+    print("Opening template in nvim for editing...")
+    edited_data = edit_yaml_in_nvim(template)
+    
+    print(f"Creating new triage entry at {url}...")
+    response = post_json(url, edited_data)
+    print("Creation successful.", response)
+
+def get_triage(triage_id):
+    url = f"{API_BASE_URL}/api/component_readiness/triages/{triage_id}"
+    print(f"Fetching triage entry {triage_id}...")
+    data = fetch_json(url)
+    print(yaml.dump(data, default_flow_style=False, sort_keys=False))
+
+def list_triages():
+    url = f"{API_BASE_URL}/api/component_readiness/triages"
+    print("Fetching all triage entries...")
+    data = fetch_json(url)
+    print(yaml.dump(data, default_flow_style=False, sort_keys=False))
+
 def main():
     parser = argparse.ArgumentParser(description="Triage tool")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -48,10 +84,23 @@ def main():
     update_parser = subparsers.add_parser("update", help="Update a triage entry")
     update_parser.add_argument("ID", type=int, help="Triage ID")
     
+    create_parser = subparsers.add_parser("create", help="Create a new triage entry")
+    
+    get_parser = subparsers.add_parser("get", help="Get a triage entry")
+    get_parser.add_argument("ID", type=int, help="Triage ID")
+    
+    list_parser = subparsers.add_parser("list", help="List all triage entries")
+    
     args = parser.parse_args()
     
     if args.command == "update":
         update_triage(args.ID)
+    elif args.command == "create":
+        create_triage()
+    elif args.command == "get":
+        get_triage(args.ID)
+    elif args.command == "list":
+        list_triages()
 
 if __name__ == "__main__":
     main()
