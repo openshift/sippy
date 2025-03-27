@@ -457,8 +457,8 @@ type Test struct {
 	Variant   string         `json:"variant,omitempty" bigquery:"variant"`
 	Variants  pq.StringArray `json:"variants" gorm:"type:text[]" bigquery:"variants"`
 
-	JiraComponent   string   `json:"jira_component" bigquery:"jira_component"`
-	JiraComponentID *big.Rat `json:"jira_component_id" bigquery:"jira_component_id"`
+	JiraComponent   string `json:"jira_component" bigquery:"jira_component"`
+	JiraComponentID int    `json:"jira_component_id" bigquery:"jira_component_id"`
 
 	CurrentSuccesses         int     `json:"current_successes" bigquery:"current_successes"`
 	CurrentFailures          int     `json:"current_failures" bigquery:"current_failures"`
@@ -594,6 +594,162 @@ func (test Test) GetNumericalValue(param string) (float64, error) {
 }
 
 func (test Test) GetArrayValue(param string) ([]string, error) {
+	switch param {
+	case "tags":
+		return test.Tags, nil
+	case "variants":
+		return test.Variants, nil
+	default:
+		return nil, fmt.Errorf("unknown array value field %s", param)
+	}
+}
+
+// TestBQ contains the full accounting of a test's history, with a synthetic ID. The format
+// of this struct is suitable for use in a data table.
+type TestBQ struct {
+	ID        int            `json:"id,omitempty" bigquery:"id"`
+	Name      string         `json:"name" bigquery:"name"`
+	SuiteName string         `json:"suite_name" bigquery:"suite_name"`
+	Variant   string         `json:"variant,omitempty" bigquery:"variant"`
+	Variants  pq.StringArray `json:"variants" gorm:"type:text[]" bigquery:"variants"`
+
+	JiraComponent   string   `json:"jira_component" bigquery:"jira_component"`
+	JiraComponentID *big.Rat `json:"jira_component_id" bigquery:"jira_component_id"`
+
+	CurrentSuccesses         int     `json:"current_successes" bigquery:"current_successes"`
+	CurrentFailures          int     `json:"current_failures" bigquery:"current_failures"`
+	CurrentFlakes            int     `json:"current_flakes" bigquery:"current_flakes"`
+	CurrentPassPercentage    float64 `json:"current_pass_percentage" bigquery:"current_pass_percentage"`
+	CurrentFailurePercentage float64 `json:"current_failure_percentage" bigquery:"current_failure_percentage"`
+	CurrentFlakePercentage   float64 `json:"current_flake_percentage" bigquery:"current_flake_percentage"`
+	CurrentWorkingPercentage float64 `json:"current_working_percentage" bigquery:"current_working_percentage"`
+	CurrentRuns              int     `json:"current_runs" bigquery:"current_runs"`
+
+	PreviousSuccesses         int     `json:"previous_successes" bigquery:"previous_successes"`
+	PreviousFailures          int     `json:"previous_failures" bigquery:"previous_failures"`
+	PreviousFlakes            int     `json:"previous_flakes" bigquery:"previous_flakes"`
+	PreviousPassPercentage    float64 `json:"previous_pass_percentage" bigquery:"previous_pass_percentage"`
+	PreviousFailurePercentage float64 `json:"previous_failure_percentage" bigquery:"previous_failure_percentage"`
+	PreviousFlakePercentage   float64 `json:"previous_flake_percentage" bigquery:"previous_flake_percentage"`
+	PreviousWorkingPercentage float64 `json:"previous_working_percentage" bigquery:"previous_working_percentage"`
+	PreviousRuns              int     `json:"previous_runs" bigquery:"previous_runs"`
+
+	NetFailureImprovement float64 `json:"net_failure_improvement" bigquery:"net_failure_improvement"`
+	NetFlakeImprovement   float64 `json:"net_flake_improvement" bigquery:"net_flake_improvement"`
+	NetWorkingImprovement float64 `json:"net_working_improvement" bigquery:"net_working_improvement"`
+	NetImprovement        float64 `json:"net_improvement" bigquery:"net_improvement"`
+
+	WorkingAverage           float64 `json:"working_average,omitempty" bigquery:"working_average"`
+	WorkingStandardDeviation float64 `json:"working_standard_deviation,omitempty" bigquery:"working_standard_deviation"`
+	DeltaFromWorkingAverage  float64 `json:"delta_from_working_average,omitempty" bigquery:"delta_from_working_average"`
+	PassingAverage           float64 `json:"passing_average,omitempty" bigquery:"passing_average"`
+	PassingStandardDeviation float64 `json:"passing_standard_deviation,omitempty" bigquery:"passing_standard_deviation"`
+	DeltaFromPassingAverage  float64 `json:"delta_from_passing_average,omitempty" bigquery:"delta_from_passing_average"`
+	FlakeAverage             float64 `json:"flake_average,omitempty" bigquery:"flake_average"`
+	FlakeStandardDeviation   float64 `json:"flake_standard_deviation,omitempty" bigquery:"flake_standard_deviation"`
+	DeltaFromFlakeAverage    float64 `json:"delta_from_flake_average,omitempty" bigquery:"delta_from_flake_average"`
+
+	Tags     []string `json:"tags" gorm:"type:text[]" bigquery:"tags"`
+	OpenBugs int      `json:"open_bugs" bigquery:"open_bugs"`
+}
+
+func (test TestBQ) GetFieldType(param string) ColumnType {
+	switch param {
+	case "name":
+		return ColumnTypeString
+	case "tags":
+		return ColumnTypeArray
+	case "variant":
+		return ColumnTypeString
+	case "variants":
+		return ColumnTypeArray
+	default:
+		return ColumnTypeNumerical
+	}
+}
+
+func (test TestBQ) GetStringValue(param string) (string, error) {
+	switch param {
+	case "name":
+		return test.Name, nil
+	case "variant":
+		return test.Variant, nil
+	default:
+		return "", fmt.Errorf("unknown string field %s", param)
+	}
+}
+
+// nolint:gocyclo
+func (test TestBQ) GetNumericalValue(param string) (float64, error) {
+	switch param {
+	case "id":
+		return float64(test.ID), nil
+	case "current_successes":
+		return float64(test.CurrentSuccesses), nil
+	case "current_failures":
+		return float64(test.CurrentFailures), nil
+	case "current_flakes":
+		return float64(test.CurrentFlakes), nil
+	case "current_pass_percentage":
+		return test.CurrentPassPercentage, nil
+	case "current_flake_percentage":
+		return test.CurrentFlakePercentage, nil
+	case "current_failure_percentage":
+		return test.CurrentFailurePercentage, nil
+	case "current_working_percentage":
+		return test.CurrentWorkingPercentage, nil
+	case "current_runs":
+		return float64(test.CurrentRuns), nil
+	case "previous_successes":
+		return float64(test.PreviousSuccesses), nil
+	case "previous_failures":
+		return float64(test.PreviousFailures), nil
+	case "previous_flakes":
+		return float64(test.PreviousFlakes), nil
+	case "previous_pass_percentage":
+		return test.PreviousPassPercentage, nil
+	case "previous_flake_percentage":
+		return test.PreviousFlakePercentage, nil
+	case "previous_failure_percentage":
+		return test.PreviousFailurePercentage, nil
+	case "previous_working_percentage":
+		return test.PreviousWorkingPercentage, nil
+	case "previous_runs":
+		return float64(test.PreviousRuns), nil
+	case "net_failure_improvement":
+		return test.NetFailureImprovement, nil
+	case "net_flake_improvement":
+		return test.NetFlakeImprovement, nil
+	case "net_improvement":
+		return test.NetImprovement, nil
+	case "net_working_improvement":
+		return test.NetWorkingImprovement, nil
+	case "open_bugs":
+		return float64(test.OpenBugs), nil
+	case "delta_from_working_average":
+		return test.DeltaFromWorkingAverage, nil
+	case "working_average":
+		return test.WorkingAverage, nil
+	case "working_standard_deviation":
+		return test.WorkingStandardDeviation, nil
+	case "delta_from_passing_average":
+		return test.DeltaFromPassingAverage, nil
+	case "passing_average":
+		return test.PassingAverage, nil
+	case "passing_standard_deviation":
+		return test.PassingStandardDeviation, nil
+	case "delta_from_flake_average":
+		return test.DeltaFromFlakeAverage, nil
+	case "flake_average":
+		return test.FlakeAverage, nil
+	case "flake_standard_deviation":
+		return test.FlakeStandardDeviation, nil
+	default:
+		return 0, fmt.Errorf("unknown numerical field %s", param)
+	}
+}
+
+func (test TestBQ) GetArrayValue(param string) ([]string, error) {
 	switch param {
 	case "tags":
 		return test.Tags, nil
