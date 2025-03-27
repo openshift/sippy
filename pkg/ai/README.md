@@ -2,7 +2,7 @@
 
 This package contains tools for working with Generative AI.  An example is provided 
 with job runs, which uses a system prompt to prime the AI with instructions about how 
-it should operate.  In this case, it's provided some data about a job run like it's
+it should operate.  In this case, it's provided some data about a job run like its
 overall result and failed tests, and instructed to provide a summary.
 
 The data provided to the AI is limited in that you wouldn't be able to provide a whole
