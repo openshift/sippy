@@ -945,9 +945,8 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 }
 
 func (s *Server) jsonJobRunAISummary(w http.ResponseWriter, req *http.Request) {
-	jobRunIDStr := req.URL.Query().Get("prow_job_run_id")
+	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
 	if jobRunIDStr == "" {
-		api.RespondWithJSON(http.StatusInternalServerError, w, "job run ID required")
 		return
 	}
 
@@ -957,7 +956,7 @@ func (s *Server) jsonJobRunAISummary(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	summary, err := ai.AnalyzeJobRun(req.Context(), s.llmClient, s.db, jobRunID)
+	summary, err := ai.AnalyzeJobRun(req.Context(), s.llmClient, s.db, s.gcsClient, jobRunID)
 	if err != nil {
 		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
 		return
