@@ -112,7 +112,7 @@ type Server struct {
 	listenAddr           string
 	syntheticTestManager synthetictests.SyntheticTestManager
 	variantManager       testidentification.VariantManager
-	jobartifactsManager  jobartifacts.Manager
+	jobartifactsManager  *jobartifacts.Manager
 	sippyNG              fs.FS
 	static               fs.FS
 	httpServer           *http.Server

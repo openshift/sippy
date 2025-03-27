@@ -33,8 +33,7 @@ type JobArtifactQuery struct {
 	// TODO: regex and jq support for matching content
 }
 
-// will be more complicated than this
-func (q *JobArtifactQuery) queryJobArtifacts(jobRunID int64, logger *log.Entry) (JobRun, error) {
+func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64, mgr *Manager, logger *log.Entry) (JobRun, error) {
 	logger = logger.WithField("func", "queryJobArtifacts").WithField("job_run_id", jobRunID)
 
 	jobRunPath, jobRunResponse, err := q.getJobRun(jobRunID)
@@ -49,20 +48,7 @@ func (q *JobArtifactQuery) queryJobArtifacts(jobRunID int64, logger *log.Entry) 
 		return jobRunResponse, err
 	}
 	jobRunResponse.ArtifactListTruncated = truncated
-
-	for _, filePath := range filePaths {
-		contentMatches, truncated, err := q.getFileContentMatches(filePath)
-		if err != nil {
-			logger.WithError(err).Errorf("could not scan job artifact content at %q", filePath)
-			return jobRunResponse, err
-		}
-		jobRunResponse.Artifacts = append(jobRunResponse.Artifacts, JobRunArtifact{
-			JobRunID:         strconv.FormatInt(jobRunID, 10),
-			ArtifactURL:      fmt.Sprintf(artifactUrlFmt, util.GcsBucketRoot, filePath),
-			MatchesTruncated: truncated,
-			MatchedContent:   contentMatches,
-		})
-	}
+	jobRunResponse.Artifacts = mgr.QueryJobRunArtifacts(ctx, q, jobRunID, filePaths)
 	return jobRunResponse, nil
 }
 
@@ -125,16 +111,17 @@ func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]string, bool, er
 	return files, truncated, nil
 }
 
-func (q *JobArtifactQuery) getFileContentMatches(filePath string) ([]string, bool, error) {
-	matches := []string{}
-	truncated := false
+func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, filePath string) (artifact JobRunArtifact) {
+	artifact.JobRunID = strconv.FormatInt(jobRunID, 10)
+	artifact.ArtifactURL = fmt.Sprintf(artifactUrlFmt, util.GcsBucketRoot, filePath)
 	if q.ArtifactContains == "" { // no snippets requested
-		return matches, false, nil
+		return
 	}
 
 	gcsReader, err := q.GcsBucket.Object(filePath).NewReader(context.Background())
 	if err != nil {
-		return nil, false, err
+		artifact.Error = err.Error()
+		return
 	}
 	defer gcsReader.Close()
 
@@ -147,19 +134,20 @@ func (q *JobArtifactQuery) getFileContentMatches(filePath string) ([]string, boo
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return matches, false, err
+			artifact.Error = err.Error()
+			return
 		}
 
 		if q.lineMatchesQuery(line) {
-			if len(matches) >= maxFileMatches {
-				truncated = true
+			if len(artifact.MatchedContent) >= maxFileMatches {
+				artifact.MatchesTruncated = true
 				break
 			}
-			matches = append(matches, line)
+			artifact.MatchedContent = append(artifact.MatchedContent, line)
 		}
 	}
 
-	return matches, truncated, nil
+	return
 }
 
 func (q *JobArtifactQuery) lineMatchesQuery(content string) bool {

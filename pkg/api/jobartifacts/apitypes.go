@@ -1,8 +1,8 @@
 package jobartifacts
 
 type QueryResponse struct {
-	Errors  []JobRunError `json:"errors"`
-	JobRuns []JobRun      `json:"jobRuns"`
+	Errors  []JobRunError `json:"errors,omitempty"`
+	JobRuns []JobRun      `json:"jobRuns,omitempty"`
 }
 
 type JobRun struct {
@@ -11,7 +11,7 @@ type JobRun struct {
 	URL                   string           `json:"url"`
 	JobName               string           `json:"jobName"`
 	ArtifactListTruncated bool             `json:"artifactListTruncated"`
-	Artifacts             []JobRunArtifact `json:"artifacts"`
+	Artifacts             []JobRunArtifact `json:"artifacts,omitempty"`
 }
 
 type JobRunError struct {
@@ -23,5 +23,6 @@ type JobRunArtifact struct {
 	JobRunID         string   `json:"jobRunId"`
 	ArtifactURL      string   `json:"artifactUrl"`
 	MatchesTruncated bool     `json:"matchesTruncated"`
-	MatchedContent   []string `json:"matchedContents"`
+	MatchedContent   []string `json:"matchedContents,omitempty"`
+	Error            string   `json:"error,omitempty"`
 }
