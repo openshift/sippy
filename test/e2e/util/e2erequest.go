@@ -58,7 +58,7 @@ func SippyGet(path string, data interface{}) error {
 	return nil
 }
 
-func SippyPost(path string, bodyData interface{}, responseData interface{}) error {
+func SippyPost(path string, bodyData, responseData interface{}) error {
 	bodyBytes, err := json.Marshal(bodyData)
 	if err != nil {
 		return err
@@ -82,7 +82,7 @@ func SippyPost(path string, bodyData interface{}, responseData interface{}) erro
 	return nil
 }
 
-func SippyPut(path string, bodyData interface{}, responseData interface{}) error {
+func SippyPut(path string, bodyData, responseData interface{}) error {
 	bodyBytes, err := json.Marshal(bodyData)
 	if err != nil {
 		return err

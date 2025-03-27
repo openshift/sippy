@@ -67,8 +67,7 @@ func Test_TriageAPI(t *testing.T) {
 
 	t.Run("get", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
-		require.NoError(t, err)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		// ensure hateoas links are present
 		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
@@ -76,10 +75,10 @@ func Test_TriageAPI(t *testing.T) {
 	})
 	t.Run("list", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var allTriages []models.Triage
-		err = util.SippyGet("/api/component_readiness/triages", &allTriages)
+		err := util.SippyGet("/api/component_readiness/triages", &allTriages)
 		require.NoError(t, err)
 		var foundTriage *models.Triage
 		for i, triage := range allTriages {
@@ -100,12 +99,12 @@ func Test_TriageAPI(t *testing.T) {
 	})
 	t.Run("update to add regression", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		// Update with a new regression:
 		var triageResponse2 models.Triage
 		triageResponse.Regressions = append(triageResponse.Regressions, models.TestRegression{ID: testRegression2.ID})
-		err = util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &triageResponse2)
+		err := util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &triageResponse2)
 		require.NoError(t, err)
 		assert.Equal(t, 2, len(triageResponse2.Regressions))
 		assert.Equal(t, triageResponse.CreatedAt, triageResponse2.CreatedAt)
@@ -117,43 +116,43 @@ func Test_TriageAPI(t *testing.T) {
 	})
 	t.Run("update to remove all regressions", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var triageResponse2 models.Triage
 		triageResponse.Regressions = []models.TestRegression{}
-		err = util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &triageResponse2)
+		err := util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &triageResponse2)
 		require.NoError(t, err)
 		assert.Equal(t, 0, len(triageResponse2.Regressions))
 	})
 	t.Run("update fails if resource has no ID", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var triageResponse2 models.Triage
 		triageResponse.ID = 0
-		err = util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &triageResponse2)
+		err := util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &triageResponse2)
 		require.Error(t, err)
 	})
 	t.Run("update fails if URL has no ID", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var triageResponse2 models.Triage
 		// No ID specified in URL should not work for an update
-		err = util.SippyPut("/api/component_readiness/triages", &triageResponse, &triageResponse2)
+		err := util.SippyPut("/api/component_readiness/triages", &triageResponse, &triageResponse2)
 		require.Error(t, err)
 	})
 	t.Run("update fails if URL ID and resource ID do not match", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		var triageResponse2 models.Triage
-		err = util.SippyPut("/api/component_readiness/triages/128736182736128736", &triageResponse, &triageResponse2)
+		err := util.SippyPut("/api/component_readiness/triages/128736182736128736", &triageResponse, &triageResponse2)
 		require.Error(t, err)
 	})
 }
 
-func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 *models.TestRegression) (models.Triage, error) {
+func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 *models.TestRegression) models.Triage {
 	triage1 := models.Triage{
 		URL:  bugURL,
 		Type: models.TriageTypeProduct,
@@ -175,7 +174,7 @@ func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 
 	err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &lookupTriage)
 	require.NoError(t, err)
 	assert.Equal(t, models.TriageTypeProduct, lookupTriage.Type)
-	return lookupTriage, nil
+	return lookupTriage
 }
 
 func createBug(t *testing.T, dbc *db.DB) *models.Bug {
@@ -213,6 +212,7 @@ func Test_TriageRawDB(t *testing.T) {
 		require.NoError(t, res.Error)
 		testRegression.Triages = append(testRegression.Triages, triage1)
 		res = dbc.DB.Save(&testRegression)
+		require.NoError(t, res.Error)
 
 		// Lookup the Triage again to ensure we persisted what we expect:
 		res = dbc.DB.First(&triage1, triage1.ID)
@@ -230,6 +230,7 @@ func Test_TriageRawDB(t *testing.T) {
 		require.NoError(t, res.Error)
 		testRegression.Triages = append(testRegression.Triages, triage2)
 		res = dbc.DB.Save(&testRegression)
+		require.NoError(t, res.Error)
 
 		// Query for triages for a specific regression:
 		res = dbc.DB.First(&testRegression, testRegression.ID).Preload("Triages")

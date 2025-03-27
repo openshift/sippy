@@ -1175,7 +1175,6 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 
 // jsonTriages handles multiple http verbs for managing component readiness triage records.
 func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
-	//release := param.SafeRead(req, "release")
 	path := req.URL.Path
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if len(parts) > 4 {

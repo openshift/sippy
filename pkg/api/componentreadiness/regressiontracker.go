@@ -332,7 +332,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 					rLog.WithError(err).Errorf("error opening new regression for: %v", regTest)
 					return errors.Wrapf(err, "error opening new regression: %v", regTest)
 				}
-				rLog.Infof("new regression opened with id: %s", newReg.ID)
+				rLog.Infof("new regression opened with id: %d", newReg.ID)
 			}
 		}
 	}
