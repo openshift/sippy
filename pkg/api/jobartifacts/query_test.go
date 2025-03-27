@@ -1,6 +1,7 @@
 package jobartifacts
 
 import (
+	"context"
 	"testing"
 
 	"github.com/openshift/sippy/pkg/util"
@@ -65,6 +66,7 @@ func TestFunctional_QueryJobArtifacts(t *testing.T) {
 }
 
 func TestFunctional_Query(t *testing.T) {
+	mgr := NewManager(context.Background())
 	query := JobArtifactQuery{
 		DbClient:         util.GetDbHandle(t),
 		GcsBucket:        util.GetGcsBucket(t),
@@ -72,9 +74,10 @@ func TestFunctional_Query(t *testing.T) {
 		PathGlob:         "artifacts/*e2e*/gather-extra/build-log.txt",
 		ArtifactContains: "ClusterVersion:",
 	}
-	res := query.Query(log.WithField("test", "Query"))
+	res := mgr.Query(context.Background(), &query)
 	assert.NotEmpty(t, res.Errors)
 	assert.Equal(t, "42", res.Errors[0].ID, "expected not to find the answer to everything")
 	assert.NotEmpty(t, res.JobRuns, "expected to find the job")
 	assert.NotEmpty(t, res.JobRuns[0].Artifacts, "expected to find some artifacts")
+	mgr.Done()
 }

@@ -75,6 +75,7 @@ func NewServer(
 		listenAddr:           listenAddr,
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
+		jobartifactsManager:  jobartifacts.NewManager(context.Background()),
 		sippyNG:              sippyNG,
 		static:               static,
 		db:                   dbClient,
@@ -111,6 +112,7 @@ type Server struct {
 	listenAddr           string
 	syntheticTestManager synthetictests.SyntheticTestManager
 	variantManager       testidentification.VariantManager
+	jobartifactsManager  jobartifacts.Manager
 	sippyNG              fs.FS
 	static               fs.FS
 	httpServer           *http.Server
@@ -1175,8 +1177,6 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 // and (optionally) lines within those artifacts that matched. Errors that occurred are also listed per job run.
 // To prevent (accidental) DOS, the number of artifacts and matches returned are limited.
 func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
-	logger := log.WithField("func", "queryJobArtifacts")
-
 	if s.gcsClient == nil {
 		failureResponse(w, http.StatusBadRequest, "server not configured for GCS, unable to use this API")
 		return
@@ -1209,7 +1209,7 @@ func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// The request is good, return as OK; even if we fail at getting results, just note errors
-	result := q.Query(logger)
+	result := s.jobartifactsManager.Query(req.Context(), q)
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 

@@ -33,21 +33,6 @@ type JobArtifactQuery struct {
 	// TODO: regex and jq support for matching content
 }
 
-func (q *JobArtifactQuery) Query(logger *log.Entry) (res QueryResponse) {
-	for _, jobRunID := range q.JobRunIDs {
-		jobRun, err := q.queryJobArtifacts(jobRunID, logger)
-		if err != nil {
-			res.Errors = append(res.Errors, JobRunError{
-				ID:    strconv.FormatInt(jobRunID, 10),
-				Error: err.Error(),
-			})
-			continue
-		}
-		res.JobRuns = append(res.JobRuns, jobRun)
-	}
-	return
-}
-
 // will be more complicated than this
 func (q *JobArtifactQuery) queryJobArtifacts(jobRunID int64, logger *log.Entry) (JobRun, error) {
 	logger = logger.WithField("func", "queryJobArtifacts").WithField("job_run_id", jobRunID)
