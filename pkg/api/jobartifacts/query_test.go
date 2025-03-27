@@ -59,7 +59,7 @@ func TestFunctional_QueryJobArtifacts(t *testing.T) {
 		PathGlob:         "artifacts/*e2e*/gather-extra/build-log.txt",
 		ArtifactContains: "ClusterVersion:",
 	}
-	jobRun, err := query.QueryJobArtifacts(1898704060324777984, log.WithField("test", "QueryJobArtifacts"))
+	jobRun, err := query.queryJobArtifacts(1898704060324777984, log.WithField("test", "queryJobArtifacts"))
 	assert.NoError(t, err)
 	assert.NotEmpty(t, jobRun.Artifacts, "expected to find some artifacts")
 }
@@ -72,9 +72,9 @@ func TestFunctional_Query(t *testing.T) {
 		PathGlob:         "artifacts/*e2e*/gather-extra/build-log.txt",
 		ArtifactContains: "ClusterVersion:",
 	}
-	jobRuns, errs := query.Query(log.WithField("test", "Query"))
-	assert.NotEmpty(t, errs)
-	assert.Equal(t, int64(42), errs[0].ID, "expected not to find the answer to everything")
-	assert.NotEmpty(t, jobRuns, "expected to find the job")
-	assert.NotEmpty(t, jobRuns[0].Artifacts, "expected to find some artifacts")
+	res := query.Query(log.WithField("test", "Query"))
+	assert.NotEmpty(t, res.Errors)
+	assert.Equal(t, int64(42), res.Errors[0].ID, "expected not to find the answer to everything")
+	assert.NotEmpty(t, res.JobRuns, "expected to find the job")
+	assert.NotEmpty(t, res.JobRuns[0].Artifacts, "expected to find some artifacts")
 }

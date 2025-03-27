@@ -23,32 +23,31 @@ const maxFileMatches = 12    // limit the number of content matches returned for
 const artifactUrlFmt = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/%s/%s"
 
 type JobArtifactQuery struct {
-	GcsBucket *storage.BucketHandle
-	DbClient  *db.DB
-	JobRunIDs []int64
-	PathMatch regexp.Regexp // A regex to match files in the artifact bucket for each queried run
-	PathGlob  string        // A simple glob to match files in the artifact bucket for each queried run
-	// TODO: add regex support for filtering file paths (requires enumerating all)
-	ArtifactContains string // A string to match in the content of the files
+	GcsBucket        *storage.BucketHandle
+	DbClient         *db.DB
+	JobRunIDs        []int64
+	PathMatch        regexp.Regexp // (TODO) A regex to match files in the artifact bucket for each queried run
+	PathGlob         string        // A simple glob to match files in the artifact bucket for each queried run
+	ArtifactContains string        // A string to match in the content of the files
 	// TODO: regex and jq support for matching content
 }
 
-func (q *JobArtifactQuery) Query(logger *log.Entry) (runs []JobRun, errs []JobRun) {
+func (q *JobArtifactQuery) Query(logger *log.Entry) (res QueryResponse) {
 	for _, jobRunID := range q.JobRunIDs {
-		jobRun, err := q.QueryJobArtifacts(jobRunID, logger)
+		jobRun, err := q.queryJobArtifacts(jobRunID, logger)
 		if err != nil {
-			errs = append(errs, JobRun{ID: jobRunID, Error: err.Error()})
+			res.Errors = append(res.Errors, JobRun{ID: jobRunID, Error: err.Error()})
 			continue
 		}
-		runs = append(runs, jobRun)
+		res.JobRuns = append(res.JobRuns, jobRun)
 	}
 	return
 }
 
 // will be more complicated than this
-func (q *JobArtifactQuery) QueryJobArtifacts(jobRunID int64, logger *log.Entry) (JobRun, error) {
+func (q *JobArtifactQuery) queryJobArtifacts(jobRunID int64, logger *log.Entry) (JobRun, error) {
 	jobRunResponse := JobRun{ID: jobRunID}
-	logger = logger.WithField("func", "QueryJobArtifacts").WithField("job_run_id", jobRunID)
+	logger = logger.WithField("func", "queryJobArtifacts").WithField("job_run_id", jobRunID)
 
 	jobRunPath, jobName, err := q.getJobRunPath(jobRunID)
 	if err != nil {
