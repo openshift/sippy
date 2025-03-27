@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,7 +37,10 @@ func (q *JobArtifactQuery) Query(logger *log.Entry) (res QueryResponse) {
 	for _, jobRunID := range q.JobRunIDs {
 		jobRun, err := q.queryJobArtifacts(jobRunID, logger)
 		if err != nil {
-			res.Errors = append(res.Errors, JobRun{ID: jobRunID, Error: err.Error()})
+			res.Errors = append(res.Errors, JobRunError{
+				ID:    strconv.FormatInt(jobRunID, 10),
+				Error: err.Error(),
+			})
 			continue
 		}
 		res.JobRuns = append(res.JobRuns, jobRun)
@@ -46,15 +50,13 @@ func (q *JobArtifactQuery) Query(logger *log.Entry) (res QueryResponse) {
 
 // will be more complicated than this
 func (q *JobArtifactQuery) queryJobArtifacts(jobRunID int64, logger *log.Entry) (JobRun, error) {
-	jobRunResponse := JobRun{ID: jobRunID}
 	logger = logger.WithField("func", "queryJobArtifacts").WithField("job_run_id", jobRunID)
 
-	jobRunPath, jobName, err := q.getJobRunPath(jobRunID)
+	jobRunPath, jobRunResponse, err := q.getJobRun(jobRunID)
 	if err != nil {
 		logger.WithError(err).Error("could not query job's bucket path")
 		return jobRunResponse, err
 	}
-	jobRunResponse.JobName = jobName
 
 	filePaths, truncated, err := q.getJobRunFiles(jobRunPath)
 	if err != nil {
@@ -70,7 +72,7 @@ func (q *JobArtifactQuery) queryJobArtifacts(jobRunID int64, logger *log.Entry) 
 			return jobRunResponse, err
 		}
 		jobRunResponse.Artifacts = append(jobRunResponse.Artifacts, JobRunArtifact{
-			JobRunID:         jobRunID,
+			JobRunID:         strconv.FormatInt(jobRunID, 10),
 			ArtifactURL:      fmt.Sprintf(artifactUrlFmt, util.GcsBucketRoot, filePath),
 			MatchesTruncated: truncated,
 			MatchedContent:   contentMatches,
@@ -79,29 +81,32 @@ func (q *JobArtifactQuery) queryJobArtifacts(jobRunID int64, logger *log.Entry) 
 	return jobRunResponse, nil
 }
 
-func (q *JobArtifactQuery) getJobRunPath(jobRunID int64) (string, string, error) {
-	jobRun := new(models.ProwJobRun)
-	res := q.DbClient.DB.Preload("ProwJob").First(jobRun, jobRunID)
+func (q *JobArtifactQuery) getJobRun(jobRunID int64) (string, JobRun, error) {
+	jobRunResponse := JobRun{ID: strconv.FormatInt(jobRunID, 10)}
+	jobRunModel := new(models.ProwJobRun)
+	res := q.DbClient.DB.Preload("ProwJob").First(jobRunModel, jobRunID)
 	if res.Error != nil {
-		return "", "", res.Error
+		return "", jobRunResponse, res.Error
 	}
+	jobRunResponse.JobName = jobRunModel.ProwJob.Name
 
-	url := jobRun.URL
+	url := jobRunModel.URL
 	if url == "" {
-		return "", "", fmt.Errorf("DB entry for job run %d has no URL", jobRunID)
+		return "", jobRunResponse, fmt.Errorf("DB entry for job run %d has no URL", jobRunID)
 	}
+	jobRunResponse.URL = url
 
 	const marker = "/" + util.GcsBucketRoot + "/"
 	pathStart := strings.Index(url, marker)
 	if pathStart == -1 {
-		return "", "", fmt.Errorf("job run %d URL %s does not include bucket root %q", jobRunID, url, util.GcsBucketRoot)
+		return "", jobRunResponse, fmt.Errorf("job run %d URL %s does not include bucket root %q", jobRunID, url, util.GcsBucketRoot)
 	}
 
 	jobRunPath := url[pathStart+len(marker):]
 	if !strings.HasSuffix(jobRunPath, "/") {
 		jobRunPath += "/" // ensure the path looks like a bucket "object prefix"
 	}
-	return jobRunPath, jobRun.ProwJob.Name, nil
+	return jobRunPath, jobRunResponse, nil
 }
 
 func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]string, bool, error) {

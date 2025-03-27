@@ -11,10 +11,10 @@ import (
 func TestFunctional_JobRunPathFound(t *testing.T) {
 	dbClient := util.GetDbHandle(t)
 	query := JobArtifactQuery{DbClient: dbClient}
-	path, jobName, err := query.getJobRunPath(1898704060324777984)
+	path, jobRun, err := query.getJobRun(1898704060324777984)
 	assert.NoError(t, err)
 	assert.Equal(t, "logs/periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn/1898704060324777984/", path)
-	assert.Equal(t, "periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn", jobName)
+	assert.Equal(t, "periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn", jobRun.JobName)
 }
 
 func TestFunctional_ListFiles(t *testing.T) {
@@ -74,7 +74,7 @@ func TestFunctional_Query(t *testing.T) {
 	}
 	res := query.Query(log.WithField("test", "Query"))
 	assert.NotEmpty(t, res.Errors)
-	assert.Equal(t, int64(42), res.Errors[0].ID, "expected not to find the answer to everything")
+	assert.Equal(t, "42", res.Errors[0].ID, "expected not to find the answer to everything")
 	assert.NotEmpty(t, res.JobRuns, "expected to find the job")
 	assert.NotEmpty(t, res.JobRuns[0].Artifacts, "expected to find some artifacts")
 }
