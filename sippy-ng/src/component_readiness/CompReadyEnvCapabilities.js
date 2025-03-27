@@ -117,11 +117,6 @@ export default function CompReadyEnvCapabilities(props) {
     setIsLoaded(false)
     fetchData(true)
   }
-
-  if (fetchError !== '') {
-    return gotFetchError(fetchError)
-  }
-
   const [searchRowRegexURL, setSearchRowRegexURL] = useQueryParam(
     'searchRow',
     StringParam
@@ -181,11 +176,16 @@ export default function CompReadyEnvCapabilities(props) {
     }`
   )
 
+  const columnNames = getColumns(data)
+
+  if (fetchError !== '') {
+    return gotFetchError(fetchError)
+  }
+
   if (!isLoaded) {
     return <CompReadyProgress apiLink={apiCallStr} cancelFunc={cancelFetch} />
   }
 
-  const columnNames = getColumns(data)
   if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
     return (
       <CompReadyCancelled message={columnNames[0]} apiCallStr={apiCallStr} />
