@@ -1,5 +1,4 @@
-import { Accessibility, DarkMode, LightMode } from '@mui/icons-material'
-import { AccessibilityModeProvider } from './AccessibilityModeProvider'
+import { AccessibilityModeProvider } from './components/AccessibilityModeProvider'
 import { CompReadyVarsProvider } from './component_readiness/CompReadyVars'
 import { createTheme, useTheme } from '@mui/material/styles'
 import {
@@ -10,6 +9,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { cyan, green, orange, red } from '@mui/material/colors'
+import { DarkMode, LightMode } from '@mui/icons-material'
 import {
   findFirstNonGARelease,
   getReportStartDate,
@@ -25,7 +25,7 @@ import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5'
 import { Redirect, Route, Switch } from 'react-router-dom'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
-import AccessibilityToggle from './component_readiness/AccessibilityToggle'
+import AccessibilityToggle from './components/AccessibilityToggle'
 import Alert from '@mui/material/Alert'
 import BuildClusterDetails from './build_clusters/BuildClusterDetails'
 import BuildClusterOverview from './build_clusters/BuildClusterOverview'
@@ -111,9 +111,6 @@ export const ReportEndContext = React.createContext('')
 const ColorModeContext = React.createContext({
   toggleColorMode: () => {},
 })
-export const AccessibilityModeContext = React.createContext({
-  toggleAccessibilityMode: () => {},
-})
 
 const useStyles = makeStyles(() => ({
   root: {
@@ -193,8 +190,6 @@ export default function App(props) {
     }),
     [setCookie]
   )
-
-  // const accessibilityMode = useContext(AccessibilityModeContext)
 
   const [lastUpdated, setLastUpdated] = React.useState(null)
   const [drawerOpen, setDrawerOpen] = React.useState(true)

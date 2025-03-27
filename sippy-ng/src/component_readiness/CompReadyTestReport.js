@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import {
   Box,
   Button,
@@ -91,6 +92,7 @@ function TestsReportTabPanel(props) {
 // This is page 5 which runs when you click a test cell on the right of page 4 or page 4a
 export default function CompReadyTestReport(props) {
   const classes = useContext(ComponentReadinessStyleContext)
+  const { accessibilityModeOn } = useContext(AccessibilityModeContext)
 
   const [activeTabIndex, setActiveTabIndex] = React.useState(0)
 
@@ -106,7 +108,6 @@ export default function CompReadyTestReport(props) {
     environment,
     testName,
     testBasisRelease,
-    accessibilityMode,
   } = props
 
   const [fetchError, setFetchError] = React.useState('')
@@ -245,7 +246,7 @@ export default function CompReadyTestReport(props) {
   const [statusStr, assessmentIcon] = getStatusAndIcon(
     data.analyses[0].status,
     0,
-    accessibilityMode
+    accessibilityModeOn
   )
   const significanceTitle = `Test results for individual Prow Jobs may not be statistically
   significant, but when taken in aggregate, there may be a statistically
@@ -516,5 +517,4 @@ CompReadyTestReport.propTypes = {
   environment: PropTypes.string.isRequired,
   testName: PropTypes.string.isRequired,
   testBasisRelease: PropTypes.string.isRequired,
-  accessibilityMode: PropTypes.bool.isRequired,
 }

@@ -1,7 +1,10 @@
-import { AccessibilityModeContext } from './App'
 import { useCookies } from 'react-cookie'
 import PropTypes from 'prop-types'
 import React from 'react'
+
+export const AccessibilityModeContext = React.createContext({
+  toggleAccessibilityMode: () => {},
+})
 
 export const AccessibilityModeProvider = ({ children }) => {
   const [cookies, setCookie] = useCookies(['sippyAccessibilityMode'])

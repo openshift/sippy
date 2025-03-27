@@ -23,7 +23,6 @@ export default function CompReadyTestCell(props) {
     capability,
     testName,
     regressedTests,
-    accessibilityMode,
   } = props
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
@@ -81,10 +80,7 @@ export default function CompReadyTestCell(props) {
             regressedTests
           )}
         >
-          <CompSeverityIcon
-            status={status}
-            accessibilityMode={accessibilityMode}
-          />
+          <CompSeverityIcon status={status} />
         </Link>
       </TableCell>
     )
@@ -100,5 +96,4 @@ CompReadyTestCell.propTypes = {
   capability: PropTypes.string.isRequired,
   testName: PropTypes.string.isRequired,
   regressedTests: PropTypes.object,
-  accessibilityMode: PropTypes.bool.isRequired,
 }

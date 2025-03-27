@@ -43,7 +43,6 @@ export default function ComponentReadinessToolBar(props) {
     clearSearches,
     data,
     filterVals,
-    accessibilityMode,
   } = props
 
   let regressionData = mergeRegressionData(data)
@@ -259,7 +258,6 @@ export default function ComponentReadinessToolBar(props) {
         filterVals={filterVals}
         isOpen={regressedTestDialog}
         close={closeRegressedTestsDialog}
-        accessibilityMode={accessibilityMode}
       />
     </div>
   )
@@ -276,5 +274,4 @@ ComponentReadinessToolBar.propTypes = {
   data: PropTypes.object,
   forceRefresh: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
-  accessibilityMode: PropTypes.bool.isRequired,
 }
