@@ -15,7 +15,11 @@ type Triage struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
 	// URL references the core URL to follow for details on this triage, typically a Jira bug.
-	URL string `json:"url"`
+	URL string `json:"url" gorm:"not null"`
+
+	// Type provides information about the type of regression being triaged, a best guess by the
+	// individual performing triage.
+	Type TriageType `json:"type" gorm:"not null"`
 
 	// Bug is populated if and when we have a URL for a valid Jira imported into our db.
 	// Because a user may link a URL that is not yet in sippy's db, we need to differentiate
@@ -35,8 +39,35 @@ type Triage struct {
 	// TODO: still not sure about this, it feels like there would always be at least one...
 	// otherwise what are we triaging? We might later map to job runs that are not associated with
 	// any regression, but this would be fine...
-	// If we could establish this, it may mean less data copying.
+	// If we could establish this, it may mean less data duplication.
 	Regressions []TestRegression `json:"regressions" gorm:"constraint:OnDelete:CASCADE;many2many:triage_regressions;"`
+}
+
+type TriageType string
+
+const (
+	// TriageTypeCIInfra is used for CI infra problems that did not impact actual customers. (build cluster outages
+	// cloud account problems, etc.)
+	TriageTypeCIInfra TriageType = "ci-infra"
+	// TriageTypeProductInfra is used for infrastructure problems that impacted CI but also would have hit customers.
+	// (registry outages/caching issues, etc)
+	TriageTypeProductInfra TriageType = "product-infra"
+	// TriageProduct is used for actual product regressions.
+	TriageTypeProduct TriageType = "product"
+	// TriageTest is used for regressions isolated to the test framework where no product fix is actually required.
+	TriageTypeTest TriageType = "test"
+)
+
+func ValidTriageType(triageType TriageType) bool {
+	switch triageType {
+	case TriageTypeCIInfra:
+	case TriageTypeProductInfra:
+	case TriageTypeProduct:
+	case TriageTypeTest:
+	default:
+		return false
+	}
+	return true
 }
 
 // TestRegression is used for rows in the test_regressions table and is used to track when we detect test

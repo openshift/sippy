@@ -45,6 +45,26 @@ func Test_TriageAPI(t *testing.T) {
 	testRegression2 := createTestRegression(t, tracker, view, "faketestid2")
 	defer dbc.DB.Delete(testRegression2)
 
+	t.Run("create requires a valid triage type", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		triage1 := models.Triage{
+			URL: jiraBug.URL,
+			Regressions: []models.TestRegression{
+				{
+					ID: testRegression1.ID, // test just setting the ID to link up
+				},
+			},
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse)
+		require.Error(t, err)
+
+		triage1.Type = "fake"
+		err = util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse)
+		require.Error(t, err)
+	})
+
 	t.Run("get", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 		triageResponse, err := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
@@ -135,7 +155,8 @@ func Test_TriageAPI(t *testing.T) {
 
 func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 *models.TestRegression) (models.Triage, error) {
 	triage1 := models.Triage{
-		URL: bugURL,
+		URL:  bugURL,
+		Type: models.TriageTypeProduct,
 		Regressions: []models.TestRegression{
 			{
 				ID: testRegression1.ID, // test just setting the ID to link up
@@ -153,6 +174,7 @@ func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 
 	var lookupTriage models.Triage
 	err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &lookupTriage)
 	require.NoError(t, err)
+	assert.Equal(t, models.TriageTypeProduct, lookupTriage.Type)
 	return lookupTriage, nil
 }
 

@@ -48,6 +48,9 @@ func SippyGet(path string, data interface{}) error {
 	if err != nil {
 		return err
 	}
+	if req.StatusCode != http.StatusOK {
+		return fmt.Errorf("Sippy API request failed with code %d: %s", req.StatusCode, string(body))
+	}
 	err = json.Unmarshal(body, data)
 	if err != nil {
 		return err
@@ -57,15 +60,21 @@ func SippyGet(path string, data interface{}) error {
 
 func SippyPost(path string, bodyData interface{}, responseData interface{}) error {
 	bodyBytes, err := json.Marshal(bodyData)
+	if err != nil {
+		return err
+	}
 	req, err := http.Post(buildURL(path), "application/json", strings.NewReader(string(bodyBytes)))
 	if err != nil {
 		return err
 	}
-
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return err
 	}
+	if req.StatusCode != http.StatusOK {
+		return fmt.Errorf("Sippy API request failed with code %d: %s", req.StatusCode, string(body))
+	}
+
 	err = json.Unmarshal(body, responseData)
 	if err != nil {
 		return err
@@ -75,6 +84,9 @@ func SippyPost(path string, bodyData interface{}, responseData interface{}) erro
 
 func SippyPut(path string, bodyData interface{}, responseData interface{}) error {
 	bodyBytes, err := json.Marshal(bodyData)
+	if err != nil {
+		return err
+	}
 	req, err := http.NewRequest(http.MethodPut, buildURL(path), strings.NewReader(string(bodyBytes)))
 	if err != nil {
 		return err
@@ -87,14 +99,15 @@ func SippyPut(path string, bodyData interface{}, responseData interface{}) error
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("Sippy API returned status code %d", resp.StatusCode)
-	}
-
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Sippy API request failed with code %d: %s", resp.StatusCode, string(body))
+	}
+
 	err = json.Unmarshal(body, responseData)
 	if err != nil {
 		return err
