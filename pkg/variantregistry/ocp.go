@@ -521,6 +521,11 @@ func setNetworkAccess(_ logrus.FieldLogger, variants map[string]string, jobName 
 	}{
 		{"-proxy", "proxy"},
 		{"-metal-ipi-ovn-ipv6", "disconnected"},
+
+		// NAT Instance is a temporary testing variant to analyze the
+		// impacts of a cost reduction strategy in ephemeral test accounts.
+		// https://github.com/openshift/ci-tools/pull/4534 .
+		{"-nat-instance", "nat-instance"},
 	}
 
 	variants[VariantNetworkAccess] = VariantDefaultValue
