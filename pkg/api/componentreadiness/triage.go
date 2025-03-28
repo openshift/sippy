@@ -7,6 +7,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/query"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 )
@@ -22,16 +23,11 @@ func GetTriage(dbc *db.DB, id int) (models.Triage, error) {
 }
 
 func ListTriages(dbc *db.DB) ([]models.Triage, error) {
-	// List all if no triage ID specified in the URL:
-	triages := []models.Triage{}
-	res := dbc.DB.Preload("Bug").Preload("Regressions").Find(&triages)
-	if res.Error != nil {
-		log.WithError(res.Error).Error("error listing all triages")
-	}
+	triages, err := query.ListTriages(dbc)
 	for i := range triages {
 		injectHATEOASLinks(&triages[i])
 	}
-	return triages, res.Error
+	return triages, err
 }
 
 // validateTriage ensures the Triage record coming into the API appears valid. Small
@@ -63,7 +59,6 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	// zero out the timestamps, you shouldn't be specifying them, but it's not worth erroring a request over
 	triage.CreatedAt = time.Time{}
 	triage.UpdatedAt = time.Time{}
-	triage.DeletedAt = gorm.DeletedAt{}
 
 	// We support linking to regressions by just setting the ID in the request, lookup
 	// full regressions for association.
@@ -126,7 +121,6 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 		return triage, res.Error
 	}
 	triage.CreatedAt = existingTriage.CreatedAt
-	triage.DeletedAt = existingTriage.DeletedAt
 
 	// We support linking to regressions by just setting the ID in the request, lookup
 	// full regressions for association.

@@ -5,15 +5,14 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	"gorm.io/gorm"
 )
 
 // Triage contains data tying failures or regressions to specific bugs.
 type Triage struct {
-	ID        uint           `json:"id" gorm:"primarykey"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index"`
+	ID        uint      `json:"id" gorm:"primarykey"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
 	// URL references the core URL to follow for details on this triage, typically a Jira bug.
 	URL string `json:"url" gorm:"not null"`
 

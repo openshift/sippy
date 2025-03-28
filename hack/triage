@@ -58,7 +58,7 @@ def update_triage(triage_id):
     print("Update successful.")
 
 def create_triage():
-    url = f"{API_BASE_URL}/api/component_readiness/triage"
+    url = f"{API_BASE_URL}/api/component_readiness/triages"
     template = {
         "url": "https://issues.redhat.com/browse/OCPBUGS-54222",
         "type": "ci-infra",  # Options: ci-infra, product-infra, product, test
