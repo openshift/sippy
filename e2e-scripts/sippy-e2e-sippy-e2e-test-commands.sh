@@ -123,4 +123,4 @@ ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
 ${KUBECTL_CMD} -n sippy-e2e delete secret regcred
 
-go test ./test/e2e/ -v
+go test ./test/e2e/... -v
