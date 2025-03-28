@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/pflag"
 
 	resources "github.com/openshift/sippy"
+	"github.com/openshift/sippy/pkg/ai"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
@@ -26,6 +27,7 @@ import (
 )
 
 type ServerFlags struct {
+	AIFlags                 *flags.AIFlags
 	BigQueryFlags           *flags.BigQueryFlags
 	CacheFlags              *flags.CacheFlags
 	DBFlags                 *flags.PostgresFlags
@@ -40,6 +42,7 @@ type ServerFlags struct {
 
 func NewServerFlags() *ServerFlags {
 	return &ServerFlags{
+		AIFlags:                 flags.NewAIFlags(),
 		BigQueryFlags:           flags.NewBigQueryFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		DBFlags:                 flags.NewPostgresDatabaseFlags(),
@@ -53,6 +56,7 @@ func NewServerFlags() *ServerFlags {
 }
 
 func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
+	f.AIFlags.BindFlags(flagSet)
 	f.BigQueryFlags.BindFlags(flagSet)
 	f.CacheFlags.BindFlags(flagSet)
 	f.DBFlags.BindFlags(flagSet)
@@ -117,6 +121,11 @@ func NewServeCommand() *cobra.Command {
 				}
 			}
 
+			var llmClient *ai.LLMClient
+			if f.AIFlags.Endpoint != "" {
+				llmClient = f.AIFlags.GetLLMClient()
+			}
+
 			// Make sure the db is intialized, otherwise let the user know:
 			prowJobs := []models.ProwJob{}
 			res := dbc.DB.Find(&prowJobs).Limit(1)
@@ -153,6 +162,7 @@ func NewServeCommand() *cobra.Command {
 				f.ComponentReadinessFlags.CRTimeRoundingFactor,
 				views,
 				config,
+				llmClient,
 			)
 
 			if f.MetricsAddr != "" {

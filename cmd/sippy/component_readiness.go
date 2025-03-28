@@ -188,6 +188,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		f.ComponentReadinessFlags.CRTimeRoundingFactor,
 		views,
 		config,
+		nil, // No AI use yet in Component Readiness
 	)
 
 	if f.MetricsAddr != "" {

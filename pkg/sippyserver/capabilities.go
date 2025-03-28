@@ -13,4 +13,7 @@ const (
 
 	// ComponentReadiness capability is whether this sippy instance is configured for Component Readiness
 	ComponentReadinessCapability = "component_readiness"
+
+	// AI capability is whether this sippy instance is configured with credentials for Generative AI.
+	AICapability = "ai"
 )
