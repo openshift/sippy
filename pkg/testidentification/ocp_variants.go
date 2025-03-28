@@ -65,6 +65,11 @@ type jobVariant struct {
 	Variants []variant `json:"variants" bigquery:"variants"`
 }
 
+type Variant struct {
+	VariantName  string `json:"variant_name" bigquery:"variant_name"`
+	VariantValue string `json:"variant_value" bigquery:"variant_value"`
+}
+
 func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client) (VariantManager, error) {
 	if bqc == nil {
 		return nil, fmt.Errorf("openshift variant manager requires bigquery")
