@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -148,7 +149,7 @@ type ComponentReportGenerator struct {
 	dbc                        *db.DB
 	triagedIssues              *resolvedissues.TriagedIncidentsForRelease
 	ReqOptions                 crtype.RequestOptions
-	openRegressions            []*crtype.TestRegression
+	openRegressions            []*models.TestRegression
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 	middlewares                []middleware.Middleware
 }
@@ -647,7 +648,7 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 	testStats crtype.ReportTestStats,
 	existingCellStatus *cellStatus,
 	triagedIncidents []crtype.TriagedIncident,
-	openRegressions []*crtype.TestRegression) cellStatus {
+	openRegressions []*models.TestRegression) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (testStats.ReportStatus < crtype.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
@@ -674,6 +675,7 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 			or := FindOpenRegression(view, rt.TestID, rt.Variants, openRegressions)
 			if or != nil {
 				rt.Opened = &or.Opened
+				rt.RegressionID = int(or.ID)
 			}
 		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
@@ -690,6 +692,7 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 				ti.ReportTestSummary.Variants, openRegressions)
 			if or != nil {
 				ti.ReportTestSummary.Opened = &or.Opened
+				ti.ReportTestSummary.RegressionID = int(or.ID)
 			}
 		}
 		newCellStatus.triagedIncidents = append(newCellStatus.triagedIncidents, ti)
@@ -705,7 +708,7 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification,
 	allRows map[crtype.RowIdentification]struct{},
 	allColumns map[crtype.ColumnID]struct{},
 	triagedIncidents []crtype.TriagedIncident,
-	openRegressions []*crtype.TestRegression) {
+	openRegressions []*models.TestRegression) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}

@@ -10,7 +10,7 @@ import (
 
 func TestJobsAPIs(t *testing.T) {
 	var jobs []api.Job
-	err := util.SippyRequest("/api/jobs?release="+util.Release, &jobs)
+	err := util.SippyGet("/api/jobs?release="+util.Release, &jobs)
 	if !assert.NoError(t, err, "error making http request") {
 		return
 	}
