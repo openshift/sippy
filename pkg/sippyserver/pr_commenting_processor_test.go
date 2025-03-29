@@ -8,6 +8,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
@@ -94,8 +95,8 @@ func TestMatchPriorRiskAnalysisTest(t *testing.T) {
 
 func TestAnalysisWorker(t *testing.T) {
 	// initialize AnalysisWorker
-	dbc := getDbHandle(t)
-	gcsBucket := getGcsBucket(t)
+	dbc := util.GetDbHandle(t)
+	gcsBucket := util.GetGcsBucket(t)
 	logrus.SetLevel(logrus.InfoLevel)
 
 	preparedComments := make(chan PreparedComment, 5)
@@ -130,11 +131,11 @@ func TestRunCommentAnalysis(t *testing.T) {
 	pendingWork := make(chan models.PullRequestComment, 1)
 	defer close(pendingWork)
 
-	dbc := getDbHandle(t)
+	dbc := util.GetDbHandle(t)
 	analysisWorker := AnalysisWorker{
 		riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(),
 		dbc:                 dbc,
-		gcsBucket:           getGcsBucket(t),
+		gcsBucket:           util.GetGcsBucket(t),
 		prCommentProspects:  pendingWork,
 		preparedComments:    preparedComments,
 		newTestsWorker:      StandardNewTestsWorker(dbc),
