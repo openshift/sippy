@@ -1,4 +1,5 @@
 import './ComponentReadiness.css'
+import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import {
   Box,
   Button,
@@ -17,6 +18,7 @@ import {
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
+  mergeIncidents,
   noDataTable,
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
@@ -43,6 +45,7 @@ import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
+import TriagedIncidentsPanel from './TriagedIncidentsPanel'
 
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
@@ -89,6 +92,7 @@ function TestsReportTabPanel(props) {
 // This is page 5 which runs when you click a test cell on the right of page 4 or page 4a
 export default function CompReadyTestReport(props) {
   const classes = useContext(ComponentReadinessStyleContext)
+  const { accessibilityModeOn } = useContext(AccessibilityModeContext)
 
   const [activeTabIndex, setActiveTabIndex] = React.useState(0)
 
@@ -104,7 +108,6 @@ export default function CompReadyTestReport(props) {
     environment,
     testName,
     testBasisRelease,
-    accessibilityMode,
   } = props
 
   const [fetchError, setFetchError] = React.useState('')
@@ -234,20 +237,16 @@ export default function CompReadyTestReport(props) {
   }
 
   const columnNames = getColumns(data)
-  if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
+  if (columnNames[0] === 'Cancelled' || columnNames[0] === 'None') {
     return (
       <CompReadyCancelled message={columnNames[0]} apiCallStr={apiCallStr} />
     )
   }
 
-  const handleFailuresOnlyChange = (event) => {
-    setShowOnlyFailures(event.target.checked)
-  }
-
   const [statusStr, assessmentIcon] = getStatusAndIcon(
     data.analyses[0].status,
     0,
-    accessibilityMode
+    accessibilityModeOn
   )
   const significanceTitle = `Test results for individual Prow Jobs may not be statistically
   significant, but when taken in aggregate, there may be a statistically
@@ -398,6 +397,18 @@ View the [test details report|${document.location.href}] for additional context.
         </Grid>
       </Grid>
 
+      {data.analyses[0].incidents && data.analyses[0].incidents.length > 0 ? (
+        <Fragment>
+          <h2>Triaged Tests</h2>
+          <TriagedIncidentsPanel
+            triagedIncidents={mergeIncidents(data.analyses[0].incidents, data)}
+          />
+        </Fragment>
+      ) : (
+        // no incidents
+        <Fragment />
+      )}
+
       <h2>Regression Report</h2>
 
       <Table>
@@ -506,5 +517,4 @@ CompReadyTestReport.propTypes = {
   environment: PropTypes.string.isRequired,
   testName: PropTypes.string.isRequired,
   testBasisRelease: PropTypes.string.isRequired,
-  accessibilityMode: PropTypes.bool.isRequired,
 }

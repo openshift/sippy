@@ -8,6 +8,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/sirupsen/logrus"
+	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
+
 	sippyApi "github.com/openshift/sippy/pkg/api"
 	apiModels "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/prow"
@@ -15,9 +19,6 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
-	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
-	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 // NewTest represents a test result whose name has not been seen in merged code before.
@@ -94,7 +95,7 @@ type NewTestsWorker struct {
 	dbc           *db.DB
 	newTestFilter NewTestFilter
 	jobRunFilter  JobRunFilter
-	fetchJobRun   func(dbc *db.DB, jobRunID int64, unknownTests bool, logger *logrus.Entry) (*models.ProwJobRun, error)
+	fetchJobRun   func(dbc *db.DB, jobRunID int64, unknownTests bool, preloads []string, logger *logrus.Entry) (*models.ProwJobRun, error)
 }
 
 // StandardNewTestsWorker is a convenience method to create a NewTestsWorker with standard filters
@@ -317,7 +318,7 @@ func (ntw *NewTestsWorker) getNewTestsForJobRun(logger *logrus.Entry, prowjob *p
 	if jobRunIntID, err := strconv.ParseInt(prowjob.Status.BuildID, 10, 64); err != nil {
 		logger.WithError(err).Error("Failed to parse jobRunId id") // this would be exceedingly strange
 		return nil, err
-	} else if jobRun, err = ntw.fetchJobRun(ntw.dbc, jobRunIntID, true, logger); err != nil {
+	} else if jobRun, err = ntw.fetchJobRun(ntw.dbc, jobRunIntID, true, nil, logger); err != nil {
 		// RecordNotFound can be expected if the jobRunId job isn't in sippy yet. log any other error
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.Debug("Job run not found")

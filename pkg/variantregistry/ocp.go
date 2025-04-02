@@ -442,6 +442,7 @@ func setSuite(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-serial", "serial"},
 		{"-etcd-scaling", "etcd-scaling"},
 		{"conformance", "parallel"}, // Jobs with "conformance" but no explicit serial are probably parallel
+		{"usernamespace", "usernamespace"},
 	}
 
 	for _, entry := range suitePatterns {
@@ -521,6 +522,11 @@ func setNetworkAccess(_ logrus.FieldLogger, variants map[string]string, jobName 
 	}{
 		{"-proxy", "proxy"},
 		{"-metal-ipi-ovn-ipv6", "disconnected"},
+
+		// NAT Instance is a temporary testing variant to analyze the
+		// impacts of a cost reduction strategy in ephemeral test accounts.
+		// https://github.com/openshift/ci-tools/pull/4534 .
+		{"-nat-instance", "nat-instance"},
 	}
 
 	variants[VariantNetworkAccess] = VariantDefaultValue

@@ -490,7 +490,7 @@ export function validateData(data) {
     )
     return ['No data']
   }
-  if (data.rows[0].component == 'None' || !data.rows[0].columns) {
+  if (data.rows[0].component === 'None' || !data.rows[0].columns) {
     return ['No data']
   }
   if (data.rows[0].component === 'Cancelled') {
@@ -501,6 +501,50 @@ export function validateData(data) {
   return ['']
 }
 
+// groupIncidentIncidents expects data from CR api call and passes the
+// incident as the details portion for the grouped incident
+export function groupIncidentIncidents(incidents, groupedIncidents) {
+  incidents.forEach((incident) => {
+    if (incident.incidents && incident.incidents.length > 0) {
+      groupIncidents(incident.incidents, groupedIncidents, incident)
+    }
+  })
+}
+
+// groupIncidents uses the incident_group_id to create a logical grouping of triaged incidents
+export function groupIncidents(incidents, groupedIncidents, detailsIncident) {
+  incidents.forEach((i) => {
+    if (!groupedIncidents.has(i.incident_group_id)) {
+      groupedIncidents.set(i.incident_group_id, {
+        issue: i.issue,
+        incidents: [],
+      })
+    }
+    let incidentsGroup = groupedIncidents.get(i.incident_group_id)
+    i.details = detailsIncident
+    incidentsGroup.incidents = incidentsGroup.incidents.concat(i)
+  })
+}
+
+// createGroupedIncidentArray converts the map into an array of grouped incidents
+export function createGroupedIncidentArray(groupedIncidents) {
+  return Array.from(groupedIncidents, ([group_id, grouped_incidents]) => ({
+    group_id,
+    grouped_incidents,
+  }))
+}
+
+// mergeIncidents expects a data object from TestDetails and passes it as
+// the details portion of the grouped incident
+export function mergeIncidents(incidents, detailsIncident) {
+  let groupedIncidents = new Map()
+  groupIncidents(incidents, groupedIncidents, detailsIncident)
+  return createGroupedIncidentArray(groupedIncidents)
+}
+
+// mergeRegressionData takes the data from CR api and organizes the data
+// for groupedIncidents, regressedTests (untriaged) and combined list of untriaged and triaged tests
+// all used in the RegressedTestsModal dialog
 export function mergeRegressionData(data) {
   let ret = validateData(data)
   if (ret[0] !== '') {
@@ -521,21 +565,7 @@ export function mergeRegressionData(data) {
       if (column.triaged_incidents && column.triaged_incidents.length > 0) {
         allRegressions = allRegressions.concat(column.triaged_incidents)
 
-        column.triaged_incidents.forEach((incident) => {
-          if (incident.incidents && incident.incidents.length > 0) {
-            incident.incidents.forEach((i) => {
-              if (!groupedIncidents.has(i.incident_group_id)) {
-                groupedIncidents.set(i.incident_group_id, {
-                  issue: i.issue,
-                  incidents: [],
-                })
-              }
-              let incidentsGroup = groupedIncidents.get(i.incident_group_id)
-              i.details = incident
-              incidentsGroup.incidents = incidentsGroup.incidents.concat(i)
-            })
-          }
-        })
+        groupIncidentIncidents(column.triaged_incidents, groupedIncidents)
       }
     })
   })
@@ -556,14 +586,11 @@ export function mergeRegressionData(data) {
   })
   allRegressions = allRegressions.map((item, index) => ({ ...item, id: index }))
 
-  let arrayOfIncidents = Array.from(
-    groupedIncidents,
-    ([group_id, grouped_incidents]) => ({
-      group_id,
-      grouped_incidents,
-    })
-  )
-  return [regressedTests, allRegressions, arrayOfIncidents]
+  return [
+    regressedTests,
+    allRegressions,
+    createGroupedIncidentArray(groupedIncidents),
+  ]
 }
 
 export const Search = styled('div')(({ theme }) => ({

@@ -61,20 +61,18 @@ export default function RegressedTestsModal(props) {
           >
             <Tab label="Untriaged Regressions" {...tabProps(0)} />
             <Tab label="Regressed Tests" {...tabProps(1)} />
-            <Tab label="Triaged Incidents" {...tabProps(2)} />
+            <Tab label="Triaged Tests" {...tabProps(2)} />
           </Tabs>
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={0}>
             <RegressedTestsPanel
               regressedTests={props.regressedTests}
               filterVals={props.filterVals}
-              accessibilityMode={props.accessibilityMode}
             />
           </RegressedTestsTabPanel>
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={1}>
             <RegressedTestsPanel
               regressedTests={props.allRegressedTests}
               filterVals={props.filterVals}
-              accessibilityMode={props.accessibilityMode}
             />
           </RegressedTestsTabPanel>
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
@@ -101,5 +99,4 @@ RegressedTestsModal.propTypes = {
   filterVals: PropTypes.string.isRequired,
   isOpen: PropTypes.bool,
   close: PropTypes.func,
-  accessibilityMode: PropTypes.bool.isRequired,
 }

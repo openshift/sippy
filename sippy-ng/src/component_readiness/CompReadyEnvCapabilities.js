@@ -44,7 +44,7 @@ const cancelFetch = () => {
 // This is page 2 or 2a which runs when you click a component cell on the left or under an environment of page 1.
 export default function CompReadyEnvCapabilities(props) {
   const classes = useContext(ComponentReadinessStyleContext)
-  const { filterVals, component, environment, theme, accessibilityMode } = props
+  const { filterVals, component, environment, theme } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -117,11 +117,6 @@ export default function CompReadyEnvCapabilities(props) {
     setIsLoaded(false)
     fetchData(true)
   }
-
-  if (fetchError !== '') {
-    return gotFetchError(fetchError)
-  }
-
   const [searchRowRegexURL, setSearchRowRegexURL] = useQueryParam(
     'searchRow',
     StringParam
@@ -181,11 +176,16 @@ export default function CompReadyEnvCapabilities(props) {
     }`
   )
 
+  const columnNames = getColumns(data)
+
+  if (fetchError !== '') {
+    return gotFetchError(fetchError)
+  }
+
   if (!isLoaded) {
     return <CompReadyProgress apiLink={apiCallStr} cancelFunc={cancelFetch} />
   }
 
-  const columnNames = getColumns(data)
   if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {
     return (
       <CompReadyCancelled message={columnNames[0]} apiCallStr={apiCallStr} />
@@ -211,7 +211,6 @@ export default function CompReadyEnvCapabilities(props) {
         data={data}
         filterVals={filterVals}
         forceRefresh={forceRefresh}
-        accessibilityMode={accessibilityMode}
       />
       <br></br>
       <TableContainer component="div" className="cr-table-wrapper">
@@ -277,7 +276,6 @@ export default function CompReadyEnvCapabilities(props) {
                       )}
                       columnNames={columnNames}
                       filterVals={newFilterVals}
-                      accessibilityMode={accessibilityMode}
                     />
                   )
                 })
@@ -301,5 +299,4 @@ CompReadyEnvCapabilities.propTypes = {
   component: PropTypes.string.isRequired,
   environment: PropTypes.string,
   theme: PropTypes.object.isRequired,
-  accessibilityMode: PropTypes.bool.isRequired,
 }

@@ -16,4 +16,7 @@ const (
 
 	// WriteEndpointsCapability is whether we have enabled write APIs on this server.
 	WriteEndpointsCapability = "write_endpoints"
+
+	// AI capability is whether this sippy instance is configured with credentials for Generative AI.
+	AICapability = "ai"
 )

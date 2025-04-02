@@ -168,6 +168,10 @@ func (j *GCSJobRun) ContentExists(ctx context.Context, path string) bool {
 }
 
 func (j *GCSJobRun) FindFirstFile(root string, filename *regexp.Regexp) []byte {
+	if root == "" {
+		root = j.gcsProwJobPath
+	}
+
 	it := j.bkt.Objects(context.Background(), &storage.Query{
 		Prefix: root,
 	})

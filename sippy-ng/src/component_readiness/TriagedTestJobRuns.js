@@ -55,5 +55,5 @@ export default function TriagedTestJobRuns(props) {
 }
 
 TriagedTestJobRuns.propTypes = {
-  jobRuns: PropTypes.object.isRequired,
+  jobRuns: PropTypes.array.isRequired,
 }

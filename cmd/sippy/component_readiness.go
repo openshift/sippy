@@ -185,6 +185,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		views,
 		config,
 		f.APIFlags.EnableWriteEndpoints,
+		nil, // No AI use yet in Component Readiness
 	)
 
 	if f.APIFlags.MetricsAddr != "" {
