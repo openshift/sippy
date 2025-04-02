@@ -25,6 +25,7 @@ import (
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
+	"github.com/openshift/sippy/pkg/ai"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -67,6 +68,7 @@ func NewServer(
 	crTimeRoundingFactor time.Duration,
 	views *apitype.SippyViews,
 	config *v1.SippyConfig,
+	llmClient *ai.LLMClient,
 ) *Server {
 
 	server := &Server{
@@ -84,6 +86,7 @@ func NewServer(
 		crTimeRoundingFactor: crTimeRoundingFactor,
 		views:                views,
 		config:               config,
+		llmClient:            llmClient,
 	}
 
 	if bigQueryClient != nil {
@@ -122,6 +125,7 @@ type Server struct {
 	capabilities         []string
 	views                *apitype.SippyViews
 	config               *v1.SippyConfig
+	llmClient            *ai.LLMClient
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -252,6 +256,10 @@ func (s *Server) determineCapabilities() {
 	capabilities := make([]string, 0)
 	if s.mode == ModeOpenShift {
 		capabilities = append(capabilities, OpenshiftCapability)
+	}
+
+	if s.llmClient != nil {
+		capabilities = append(capabilities, AICapability)
 	}
 
 	if s.bigQueryClient != nil {
@@ -936,6 +944,27 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 	}
 }
 
+func (s *Server) jsonJobRunAISummary(w http.ResponseWriter, req *http.Request) {
+	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
+	if jobRunIDStr == "" {
+		return
+	}
+
+	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
+		return
+	}
+
+	summary, err := ai.AnalyzeJobRun(req.Context(), s.llmClient, s.db, s.gcsClient, jobRunID)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, summary)
+}
+
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := param.SafeRead(req, "release")
 
@@ -989,7 +1018,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 		logger = logger.WithField("jobRunID", jobRunID)
 
 		// lookup prowjob and run count
-		jobRun, err = api.FetchJobRun(s.db, jobRunID, false, logger)
+		jobRun, err = api.FetchJobRun(s.db, jobRunID, false, nil, logger)
 
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1236,6 +1265,12 @@ func (s *Server) Serve() {
 				}
 				api.RespondWithJSON(http.StatusOK, w, availableEndpoints)
 			},
+		},
+		{
+			EndpointPath: "/api/ai/job_run",
+			Description:  "Returns an AI-generated summary of a job run",
+			Capabilities: []string{LocalDBCapability, AICapability},
+			HandlerFunc:  s.jsonJobRunAISummary,
 		},
 		{
 			EndpointPath: "/api/autocomplete/",
