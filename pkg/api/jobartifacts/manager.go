@@ -77,7 +77,7 @@ func (m *Manager) Query(ctx context.Context, query *JobArtifactQuery) (result Qu
 	// the listener before dumping requests to the request channel, since that will block.
 	go func() {
 	responseLoop:
-		for {
+		for len(remaining) > 0 { // done if we received a response for every request
 			select {
 			case <-jobCtx.Done(): // timed out or cancelled
 				break responseLoop
@@ -91,16 +91,13 @@ func (m *Manager) Query(ctx context.Context, query *JobArtifactQuery) (result Qu
 				} else {
 					result.JobRuns = append(result.JobRuns, res.response)
 				}
-				if len(remaining) == 0 {
-					break responseLoop // we have received a response for every request
-				}
 			}
 		}
 		finished <- true
 	}()
 
-	// send all the requests along with our return channel
-	for _, id := range query.JobRunIDs {
+	// send a request per unique job run id, along with our response channel
+	for id := range sets.NewInt64(query.JobRunIDs...) {
 		request := jobRunRequest{
 			jobRun:      id,
 			query:       query,
@@ -185,10 +182,6 @@ func (m *Manager) jobRunWorker(managerCtx context.Context) {
 
 // QueryJobRunArtifacts scans the content of all matched artifacts for one job, with concurrency and timeouts/cancellation
 func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQuery, jobRunID int64, paths []string) (artifacts []JobRunArtifact) {
-	if len(paths) == 0 {
-		return // otherwise the listener below times out waiting for a first response
-	}
-
 	// set up the request/response workflow
 	artifactResponseChan := make(chan artifactResponse) // for responses from the workers
 	remaining := sets.NewString(paths...)               // keep track of responses still missing
@@ -198,23 +191,20 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 	// the listener before dumping requests to the request channel, since that will block.
 	go func() {
 	responseLoop:
-		for {
+		for len(remaining) > 0 { // done if we received a response for every request
 			select {
 			case <-ctx.Done(): // timed out or cancelled
 				break responseLoop
 			case res := <-artifactResponseChan:
 				remaining.Delete(res.artifactPath) // we have seen it, so it is no longer remaining
 				artifacts = append(artifacts, res.artifact)
-				if len(remaining) == 0 {
-					break responseLoop // we have received a response for every request
-				}
 			}
 		}
 		finished <- true
 	}()
 
-	// send all the requests along with our return channel
-	for _, path := range paths {
+	// send a request per unique path, along with our response channel
+	for path := range sets.NewString(paths...) {
 		request := artifactRequest{
 			artifactPath:  path,
 			query:         query,
