@@ -33,19 +33,15 @@ type ComponentReadinessFlags struct {
 	CacheFlags              *flags.CacheFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	ConfigFlags             *configflags.ConfigFlags
+	APIFlags                *flags.APIFlags
 
-	Config      string
-	LogLevel    string
-	ListenAddr  string
-	MetricsAddr string
-	RedisURL    string
+	Config   string
+	LogLevel string
 }
 
 func NewComponentReadinessCommand() *cobra.Command {
 	f := &ComponentReadinessFlags{
-		LogLevel:    "info",
-		ListenAddr:  ":8080",
-		MetricsAddr: ":2112",
+		LogLevel: "info",
 
 		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
 		BigQueryFlags:           flags.NewBigQueryFlags(),
@@ -53,6 +49,7 @@ func NewComponentReadinessCommand() *cobra.Command {
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),
+		APIFlags:                flags.NewAPIFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -84,9 +81,8 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.GoogleCloudFlags.BindFlags(flagSet)
 	f.ComponentReadinessFlags.BindFlags(flagSet)
 	f.ConfigFlags.BindFlags(flagSet)
+	f.APIFlags.BindFlags(flagSet)
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
-	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
-	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
 }
 
 func (f *ComponentReadinessFlags) Validate() error {
@@ -175,7 +171,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 	}
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
-		f.ListenAddr,
+		f.APIFlags.ListenAddr,
 		nil,
 		nil,
 		webRoot,
@@ -188,10 +184,11 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		f.ComponentReadinessFlags.CRTimeRoundingFactor,
 		views,
 		config,
+		f.APIFlags.EnableWriteEndpoints,
 		nil, // No AI use yet in Component Readiness
 	)
 
-	if f.MetricsAddr != "" {
+	if f.APIFlags.MetricsAddr != "" {
 		// Do an immediate metrics update
 		err = metrics.RefreshMetricsDB(
 			context.Background(),
@@ -234,7 +231,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		// Serve our metrics endpoint for prometheus to scrape
 		go func() {
 			http.Handle("/metrics", promhttp.Handler())
-			err := http.ListenAndServe(f.MetricsAddr, nil) // nolint
+			err := http.ListenAndServe(f.APIFlags.MetricsAddr, nil) // nolint
 			if err != nil {
 				panic(err)
 			}

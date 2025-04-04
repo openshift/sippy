@@ -11,10 +11,7 @@ import (
 
 type ProwKind string
 
-const ProwPeriodic ProwKind = "periodic"
-const ProwPresubmit ProwKind = "presubmit"
-
-// ProwJob represents a prow job with various fields inferred from it's name. (release, variants, etc)
+// ProwJob represents a prow job and stores data about its variants, associated bugs, etc.
 type ProwJob struct {
 	gorm.Model
 
@@ -23,8 +20,9 @@ type ProwJob struct {
 	Release     string         `gorm:"varchar(10)"`
 	Variants    pq.StringArray `gorm:"type:text[];index:idx_prow_jobs_variants,type:gin"`
 	TestGridURL string
-	Bugs        []Bug        `gorm:"many2many:bug_jobs;"`
-	JobRuns     []ProwJobRun `gorm:"constraint:OnDelete:CASCADE;"`
+	// Bugs maps to all the bugs we scanned and found this prowjob name mentioned in the description or any comment.
+	Bugs    []Bug        `gorm:"many2many:bug_jobs;"`
+	JobRuns []ProwJobRun `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
 // IDName is a partial struct to query limited fields we need for caching. Can be used

@@ -68,6 +68,7 @@ func NewServer(
 	crTimeRoundingFactor time.Duration,
 	views *apitype.SippyViews,
 	config *v1.SippyConfig,
+	enableWriteEndpoints bool,
 	llmClient *ai.LLMClient,
 ) *Server {
 
@@ -86,6 +87,7 @@ func NewServer(
 		crTimeRoundingFactor: crTimeRoundingFactor,
 		views:                views,
 		config:               config,
+		enableWriteAPIs:      enableWriteEndpoints,
 		llmClient:            llmClient,
 	}
 
@@ -125,6 +127,7 @@ type Server struct {
 	capabilities         []string
 	views                *apitype.SippyViews
 	config               *v1.SippyConfig
+	enableWriteAPIs      bool
 	llmClient            *ai.LLMClient
 }
 
@@ -273,6 +276,10 @@ func (s *Server) determineCapabilities() {
 		} else if err != nil {
 			log.WithError(err).Warningf("could not fetch build cluster data")
 		}
+	}
+
+	if s.db != nil && s.enableWriteAPIs {
+		capabilities = append(capabilities, WriteEndpointsCapability)
 	}
 
 	s.capabilities = capabilities
@@ -1195,6 +1202,94 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
+// jsonTriages handles multiple http verbs for managing component readiness triage records.
+func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
+	path := req.URL.Path
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) > 4 {
+		failureResponse(w, http.StatusBadRequest, "unknown url format: "+path)
+		return
+	}
+
+	// Extract a specific resource ID if we were given one. Verbs will decide to use it or not,
+	// as well as error if it is required.
+	var triageID int
+	if len(parts) == 4 {
+		// Expecting URL format: /api/component_readiness/triages/{id}
+		// If we can extract a triage ID from the URL, get that specific record:
+		idStr := parts[3] // Extracts "789"
+		var err error
+		triageID, err = strconv.Atoi(idStr)
+		if err != nil {
+			failureResponse(w, http.StatusBadRequest, "unknown ID format: "+idStr)
+			return
+		}
+		log.Infof("Extracted triage ID: %d", triageID)
+	}
+
+	switch req.Method {
+	case http.MethodGet:
+		// Was a specific record requested?
+		if triageID > 0 {
+			existingTriage, err := componentreadiness.GetTriage(s.db, triageID)
+			if err != nil {
+				failureResponse(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			api.RespondWithJSON(http.StatusOK, w, existingTriage)
+			return
+		}
+
+		// Otherwise list all:
+		// TODO: support release filtering
+		triages, err := componentreadiness.ListTriages(s.db)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, triages)
+		return
+
+	case http.MethodPost: // create
+		var triage models.Triage
+		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
+			log.WithError(err).Error("error parsing new triage record")
+			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		triage, err := componentreadiness.CreateTriage(s.db, triage)
+		if err != nil {
+			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, triage)
+	case http.MethodPut: // update
+		if triageID == 0 {
+			failureResponse(w, http.StatusBadRequest, "no triage ID specified in URL")
+			return
+		}
+		var triage models.Triage
+		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
+			log.WithError(err).Error("error parsing new triage record")
+			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if triageID != int(triage.ID) {
+			failureResponse(w, http.StatusBadRequest, "resource triage ID does not match URL")
+			return
+		}
+		triage, err := componentreadiness.UpdateTriage(s.db, triage)
+		if err != nil {
+			log.WithError(err).Error("error updating triage")
+			failureResponse(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, triage)
+	default:
+		failureResponse(w, http.StatusBadRequest, "Unsupported method")
+	}
+}
+
 func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.ResponseWriter, req *http.Request)) func(http.ResponseWriter, *http.Request) {
 	if s.hasCapabilities(capabilities) {
 		return implFn
@@ -1474,6 +1569,23 @@ func (s *Server) Serve() {
 			Description:  "Lists all predefined server-side views over ComponentReadiness data",
 			Capabilities: []string{ComponentReadinessCapability},
 			HandlerFunc:  s.jsonComponentReadinessViews,
+		},
+		{
+			EndpointPath: "/api/component_readiness/triages",
+			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonTriages,
+		},
+		{
+			// TODO: had to duplicate above for trailing slash for GET/PUT on specific records
+			// Switch to gorilla mux for cleaner handling of this, specific verbs, and extracting params from url
+			// Because we don't have control over verbs, we're also disabling GET if write endpoints are disabled, which
+			// means no triage apis available in non-auth sippy for now. Non urgent as we likely will just
+			// augment existing apis with triage data for the reading anyhow.
+			EndpointPath: "/api/component_readiness/triages/",
+			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonTriages,
 		},
 		{
 			EndpointPath: "/api/capabilities",
