@@ -49,6 +49,10 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"samplePROrg":      nameRegexp,
 	"samplePRRepo":     nameRegexp,
 	"samplePRNumber":   numRegexp,
+	// jobartifacts params
+	"pathGlob":     regexp.MustCompile(`^.+$`),         // a glob can be anything
+	"textContains": regexp.MustCompile(`^.+$`),         // text search can be anything
+	"prowJobRuns":  regexp.MustCompile(`^\d+(,\d+)*$`), // comma-separated integers
 }
 
 // SafeRead returns the value of a query parameter only if it matches the given regexp.
