@@ -71,7 +71,7 @@ periodic-ci-kubevirt-hyperconverged-cluster-operator-main-hco-e2e-deploy-nightly
 periodic-ci-mtc-qe-mtc-e2e-qev2-master-mtc1.8-ocp4.19-lp-interop-mtc-interop-aws
 periodic-ci-openshift-assisted-service-release-ocm-2.10-e2e-ai-operator-ztp-3masters-periodic
 periodic-ci-openshift-assisted-service-release-ocm-2.10-e2e-ai-operator-ztp-periodic
-periodic-ci-openshift-assisted-service-release-ocm-2.13-e2e-ai-operator-disconnected-capi-periodic
+periodic-ci-openshift-assisted-service-release-ocm-2.13-e2e-ai-operator-ztp-periodic
 periodic-ci-openshift-assisted-service-release-ocm-2.9-e2e-ai-operator-disconnected-capi-periodic
 periodic-ci-openshift-assisted-service-release-ocm-2.9-e2e-ai-operator-ztp-node-labels-periodic
 periodic-ci-openshift-assisted-test-infra-master-e2e-metal-assisted-bond-4-14-periodic
@@ -82,7 +82,7 @@ periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-aws-4.19-nightly-x86-control-
 periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-metal-4.16-latest-x86-weekly-6nodes
 periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-metal-4.17-latest-x86-weekly-6nodes
 periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-metal-4.18-latest-x86-daily-6nodes
-periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-rosa_hcp-4.18-nightly-x86-data-path-9nodes
+periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-rosa-4.19-nightly-x86-control-plane-120nodes
 periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-rosa_hcp-4.19-nightly-x86-control-plane-24nodes
 periodic-ci-openshift-eng-ocp-qe-perfscale-ci-main-vsphere-4.18-nightly-x86-vcenter-1-ipv4ipv6dual-control-plane-24nodes
 periodic-ci-openshift-hive-master-periodic-e2e-azure-weekly
@@ -91,7 +91,6 @@ periodic-ci-openshift-hypershift-release-4.17-periodics-e2e-aws-ovn-proxy-confor
 periodic-ci-openshift-hypershift-release-4.17-periodics-e2e-powervs-ovn
 periodic-ci-openshift-hypershift-release-4.17-periodics-mce-e2e-agent-connected-ovn-ipv4-manual-conformance
 periodic-ci-openshift-hypershift-release-4.17-periodics-mce-e2e-x86-power-heterogeneous-conformance
-periodic-ci-openshift-hypershift-release-4.18-periodics-e2e-aws-ovn-conformance-serial
 periodic-ci-openshift-hypershift-release-4.18-periodics-e2e-openstack-aws-nfv
 periodic-ci-openshift-hypershift-release-4.19-periodics-e2e-aws-multi
 periodic-ci-openshift-hypershift-release-4.19-periodics-e2e-aws-ovn-conformance-serial
@@ -107,10 +106,8 @@ periodic-ci-openshift-kni-eco-ci-cd-main-hcp-cnf-nrop-4.18-e2e-telcov10n-functio
 periodic-ci-openshift-kni-eco-ci-cd-main-hcp-cnf-nrop-4.19-e2e-telcov10n-functional-hcp-cnf-nrop-nightly
 periodic-ci-openshift-kni-numaresources-operator-release-4.12-ci-must-gather-e2e
 periodic-ci-openshift-kni-numaresources-operator-release-4.13-ci-must-gather-e2e
-periodic-ci-openshift-multiarch-master-nightly-4.12-ocp-e2e-aws-upi-ovn-arm64
 periodic-ci-openshift-multiarch-master-nightly-4.13-ocp-e2e-aws-upi-ovn-arm64
 periodic-ci-openshift-multiarch-master-nightly-4.13-ocp-e2e-azure-ovn-heterogeneous
-periodic-ci-openshift-multiarch-master-nightly-4.13-upgrade-from-nightly-4.12-ocp-e2e-aws-sdn-arm64
 periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-e2e-aws-upi-ovn-arm64
 periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-e2e-compact-ovn-remote-libvirt-s390x
 periodic-ci-openshift-multiarch-master-nightly-4.14-ocp-e2e-ibmcloud-ovn-multi-ppc64le
@@ -156,7 +153,6 @@ periodic-ci-openshift-multiarch-master-nightly-4.16-ocp-e2e-serial-ovn-remote-li
 periodic-ci-openshift-multiarch-master-nightly-4.16-ocp-e2e-serial-ovn-remote-libvirt-s390x
 periodic-ci-openshift-multiarch-master-nightly-4.16-ocp-e2e-sno-power
 periodic-ci-openshift-multiarch-master-nightly-4.16-ocp-fips-ovn-remote-libvirt-s390x
-periodic-ci-openshift-multiarch-master-nightly-4.16-upgrade-from-nightly-4.15-ocp-ovn-remote-libvirt-ppc64le
 periodic-ci-openshift-multiarch-master-nightly-4.16-upgrade-from-nightly-4.15-ocp-ovn-remote-libvirt-s390x
 periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-aws-upi-ovn-multi-a-a
 periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-compact-ovn-remote-libvirt-multi-z-z
@@ -170,7 +166,6 @@ periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-ovn-remote-libvirt-s
 periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-powervs-ovn-multi-p-px
 periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-serial-ovn-remote-libvirt-multi-z-z
 periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-e2e-aws-upi-ovn-multi-a-a
-periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-e2e-compact-ovn-remote-libvirt-multi-z-z
 periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-e2e-ibmcloud-ovn-multi-x-px
 periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-e2e-ibmcloud-ovn-multi-x-xz
 periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-e2e-ovn-agent-remote-libvirt-multi-z-z
@@ -181,8 +176,6 @@ periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-e2e-powervs-ovn-multi-p-
 periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-e2e-serial-ovn-remote-libvirt-multi-p-p
 periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-e2e-serial-ovn-remote-libvirt-multi-z-z
 periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-fips-ovn-remote-libvirt-multi-p-p
-periodic-ci-openshift-multiarch-master-nightly-4.18-ocp-fips-ovn-remote-libvirt-multi-z-z
-periodic-ci-openshift-multiarch-master-nightly-4.18-upgrade-from-nightly-4.17-ocp-ovn-remote-libvirt-multi-z-z
 periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-aws-upi-ovn-multi-a-a
 periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-compact-ovn-remote-libvirt-multi-p-p
 periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-compact-ovn-remote-libvirt-multi-z-z
@@ -193,10 +186,8 @@ periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-ovn-agent-remote-lib
 periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-ovn-agent-remote-libvirt-s390x
 periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-ovn-remote-libvirt-multi-z-xz
 periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-ovn-remote-libvirt-multi-z-z
+periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-ovn-remote-libvirt-s390x
 periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-powervs-ovn-multi-p-px
-periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-serial-ovn-remote-libvirt-multi-p-p
-periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-e2e-serial-ovn-remote-libvirt-multi-z-z
-periodic-ci-openshift-multiarch-master-nightly-4.19-ocp-fips-ovn-remote-libvirt-multi-z-z
 periodic-ci-openshift-openshift-ansible-release-3.11-e2e-gcp-nightly
 periodic-ci-openshift-osde2e-main-nightly-4.12-osd-aws
 periodic-ci-openshift-osde2e-main-nightly-4.12-osd-gcp
@@ -222,6 +213,7 @@ periodic-ci-openshift-osde2e-main-nightly-4.18-osd-aws
 periodic-ci-openshift-osde2e-main-nightly-4.18-osd-gcp
 periodic-ci-openshift-osde2e-main-nightly-4.19-osd-aws
 periodic-ci-openshift-osde2e-main-nightly-4.19-osd-gcp
+periodic-ci-openshift-pipelines-release-tests-release-v1.18-openshift-pipelines-ocp4.19-lp-interop-openshift-pipelines-interop-aws
 periodic-ci-openshift-qe-ocpqe-security-tools-main-dast-418-security-second-half
 periodic-ci-openshift-release-master-ci-4.12-e2e-aws-cilium
 periodic-ci-openshift-release-master-ci-4.12-e2e-azure-cilium
@@ -322,9 +314,11 @@ periodic-ci-openshift-release-master-ci-4.19-upgrade-from-stable-4.18-e2e-gcp-ru
 periodic-ci-openshift-release-master-ci-4.19-upgrade-from-stable-4.18-e2e-metal-ovn-single-node-rt-upgrade-test
 periodic-ci-openshift-release-master-ci-4.19-upgrade-from-stable-4.18-e2e-vsphere-cgroupsv1-upgrade
 periodic-ci-openshift-release-master-ci-4.19-upgrade-from-stable-4.18-e2e-vsphere-ovn-upgrade-storage-data
+periodic-ci-openshift-release-master-ci-4.7-e2e-aws-upgrade-rollback
 periodic-ci-openshift-release-master-ci-4.8-e2e-aws-upgrade-rollback
-periodic-ci-openshift-release-master-ci-4.8-e2e-azure-serial
+periodic-ci-openshift-release-master-ci-4.8-e2e-azure-cilium
 periodic-ci-openshift-release-master-ci-4.8-e2e-gcp-ovn
+periodic-ci-openshift-release-master-ci-4.8-e2e-network-migration
 periodic-ci-openshift-release-master-ci-4.9-upgrade-from-stable-4.8-e2e-ovirt-upgrade
 periodic-ci-openshift-release-master-cnv-nightly-4.16-upgrade-azure-kubevirt-ovn
 periodic-ci-openshift-release-master-cnv-nightly-4.17-upgrade-azure-kubevirt-ovn
@@ -344,6 +338,7 @@ periodic-ci-openshift-release-master-konflux-nightly-4.16-e2e-aws-ovn-serial
 periodic-ci-openshift-release-master-konflux-nightly-4.16-e2e-gcp-ovn-serial
 periodic-ci-openshift-release-master-konflux-nightly-4.17-e2e-aws-ovn-serial
 periodic-ci-openshift-release-master-konflux-nightly-4.17-e2e-gcp-ovn-serial
+periodic-ci-openshift-release-master-nightly-4.10-e2e-azure-csi-migration
 periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-ovn-single-node-workers
 periodic-ci-openshift-release-master-nightly-4.11-e2e-aws-ovn-single-node-workers-serial
 periodic-ci-openshift-release-master-nightly-4.12-e2e-alibaba-csi
@@ -359,6 +354,7 @@ periodic-ci-openshift-release-master-nightly-4.12-e2e-gcp-ovn-upi
 periodic-ci-openshift-release-master-nightly-4.12-e2e-gcp-sdn-fips-serial
 periodic-ci-openshift-release-master-nightly-4.12-e2e-ibmcloud-csi
 periodic-ci-openshift-release-master-nightly-4.12-e2e-metal-ovn-assisted
+periodic-ci-openshift-release-master-nightly-4.12-e2e-nutanix-ovn
 periodic-ci-openshift-release-master-nightly-4.12-e2e-ovirt-csi
 periodic-ci-openshift-release-master-nightly-4.12-e2e-ovirt-ovn
 periodic-ci-openshift-release-master-nightly-4.12-e2e-ovirt-sdn
@@ -404,6 +400,7 @@ periodic-ci-openshift-release-master-nightly-4.14-e2e-azure-sdn-fips-serial
 periodic-ci-openshift-release-master-nightly-4.14-e2e-azure-upgrade-cnv
 periodic-ci-openshift-release-master-nightly-4.14-e2e-azurestack-csi
 periodic-ci-openshift-release-master-nightly-4.14-e2e-azurestack-ovn-upi
+periodic-ci-openshift-release-master-nightly-4.14-e2e-gcp-graceful-shutdown
 periodic-ci-openshift-release-master-nightly-4.14-e2e-gcp-ovn-upi
 periodic-ci-openshift-release-master-nightly-4.14-e2e-gcp-sdn-fips-serial
 periodic-ci-openshift-release-master-nightly-4.14-e2e-ibmcloud-csi
@@ -480,7 +477,9 @@ periodic-ci-openshift-release-master-nightly-4.17-e2e-ibmcloud-csi
 periodic-ci-openshift-release-master-nightly-4.17-e2e-metal-ovn-single-node-rt-upgrade
 periodic-ci-openshift-release-master-nightly-4.17-e2e-metal-ovn-single-node-rt-upgrade-serial
 periodic-ci-openshift-release-master-nightly-4.17-e2e-metal-ovn-sno-cert-rotation-shutdown-2y-age-90d
+periodic-ci-openshift-release-master-nightly-4.17-e2e-nutanix-ovn
 periodic-ci-openshift-release-master-nightly-4.17-e2e-telco5g-sno-cnftests
+periodic-ci-openshift-release-master-nightly-4.17-e2e-vsphere-ovn-etcd-scaling
 periodic-ci-openshift-release-master-nightly-4.17-upgrade-from-stable-4.15-e2e-aws-ovn-upgrade-paused
 periodic-ci-openshift-release-master-nightly-4.17-upgrade-from-stable-4.16-e2e-metal-ovn-single-node-rt-upgrade
 periodic-ci-openshift-release-master-nightly-4.18-console-aws
@@ -533,7 +532,6 @@ periodic-ci-openshift-release-master-nightly-4.18-e2e-metal-ovn-sno-cert-rotatio
 periodic-ci-openshift-release-master-nightly-4.18-e2e-metal-ovn-sno-cert-rotation-shutdown-9y-age-90d
 periodic-ci-openshift-release-master-nightly-4.18-e2e-nutanix-ovn
 periodic-ci-openshift-release-master-nightly-4.18-e2e-telco5g-cnftests
-periodic-ci-openshift-release-master-nightly-4.18-e2e-telco5g-hcp-cnftests
 periodic-ci-openshift-release-master-nightly-4.18-e2e-telco5g-sno-cnftests
 periodic-ci-openshift-release-master-nightly-4.18-e2e-vsphere-ipi-ovn-cgroupsv1
 periodic-ci-openshift-release-master-nightly-4.18-e2e-vsphere-ipi-ovn-cgroupsv1-techpreview
@@ -579,6 +577,7 @@ periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-ha-cert-rotation
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-ha-cert-rotation-shutdown-3y-age-90d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-ha-cert-rotation-shutdown-4y-age-90d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-ha-cert-rotation-shutdown-5y-age-90d
+periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-ha-cert-rotation-shutdown-60d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-ha-cert-rotation-shutdown-6y-age-90d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-ha-cert-rotation-shutdown-7y-age-90d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-ha-cert-rotation-shutdown-8y-age-90d
@@ -587,6 +586,7 @@ periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-single-node-rt-u
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-single-node-rt-upgrade-serial
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-single-node-with-worker-live-iso
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-shutdown-10y-age-90d
+periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-shutdown-180d-age-90d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-shutdown-2y-age-90d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-shutdown-4y-age-90d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-shutdown-5y-age-90d
@@ -595,6 +595,7 @@ periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotatio
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-shutdown-8y-age-90d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-shutdown-90d-age-90d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-shutdown-9y-age-90d
+periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-suspend-30d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-metal-ovn-sno-cert-rotation-suspend-360d
 periodic-ci-openshift-release-master-nightly-4.19-e2e-nutanix-ovn
 periodic-ci-openshift-release-master-nightly-4.19-e2e-telco5g-cnftests
@@ -613,7 +614,7 @@ periodic-ci-openshift-release-master-nightly-4.19-upgrade-from-stable-4.18-e2e-m
 periodic-ci-openshift-release-master-nightly-4.19-upgrade-from-stable-4.18-e2e-metal-ipi-ovn-upgrade-runc
 periodic-ci-openshift-release-master-nightly-4.19-upgrade-from-stable-4.18-e2e-metal-ovn-single-node-rt-upgrade
 periodic-ci-openshift-release-master-nightly-4.7-e2e-aws-serial
-periodic-ci-openshift-release-master-nightly-4.7-e2e-gcp
+periodic-ci-openshift-release-master-nightly-4.7-e2e-azure-fips-serial
 periodic-ci-openshift-release-master-nightly-4.7-e2e-gcp-fips-serial
 periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-upgrade-rollback-oldest-supported
 periodic-ci-openshift-release-master-nightly-4.8-e2e-aws-workers-rhel7
@@ -627,10 +628,11 @@ periodic-ci-quay-quay-tests-master-ocp-418-quay-quay-e2e-tests-quay312-ocp418
 periodic-ci-rh-ecosystem-edge-recert-main-4.14-e2e-aws-ovn-single-node-recert-openshift-e2e-test-qe
 periodic-ci-rh-ecosystem-edge-recert-main-4.15-e2e-aws-ovn-single-node-recert-openshift-e2e-test-qe
 periodic-ci-rh-ecosystem-edge-recert-main-4.15-e2e-aws-ovn-single-node-recert-serial
-periodic-ci-rhobs-observability-operator-main-ocp-4.16-coo-arm-stage
+periodic-ci-shiftstack-ci-release-4.12-e2e-openstack-nfv-intel
 periodic-ci-shiftstack-ci-release-4.12-upgrade-from-stable-4.11-e2e-openstack-sdn-upgrade
 periodic-ci-shiftstack-ci-release-4.14-e2e-openstack-dualstack-techpreview
 periodic-ci-shiftstack-ci-release-4.14-upgrade-from-stable-4.13-e2e-openstack-ovn-upgrade
+periodic-ci-shiftstack-ci-release-4.15-e2e-openstack-csi-manila
 periodic-ci-shiftstack-ci-release-4.15-e2e-openstack-externallb
 periodic-ci-shiftstack-ci-release-4.15-e2e-openstack-ovn-etcd-scaling
 periodic-ci-shiftstack-ci-release-4.15-e2e-openstack-ovn-parallel
@@ -643,13 +645,15 @@ periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-externallb
 periodic-ci-shiftstack-ci-release-4.17-e2e-openstack-proxy
 periodic-ci-shiftstack-ci-release-4.17-upgrade-from-stable-4.16-e2e-openstack-ovn-upgrade
 periodic-ci-shiftstack-ci-release-4.18-e2e-openstack-csi-manila
+periodic-ci-shiftstack-ci-release-4.18-e2e-openstack-dualstack-upi
 periodic-ci-shiftstack-ci-release-4.18-e2e-openstack-dualstack-v6primary
 periodic-ci-shiftstack-ci-release-4.18-e2e-openstack-ovn-etcd-scaling
 periodic-ci-shiftstack-ci-release-4.18-upgrade-from-stable-4.17-e2e-openstack-ovn-upgrade
-periodic-ci-shiftstack-ci-release-4.19-e2e-openstack-ccpmso-zone
+periodic-ci-shiftstack-ci-release-4.19-e2e-openstack-dualstack-upi
 periodic-ci-shiftstack-ci-release-4.19-e2e-openstack-dualstack-v6primary
 periodic-ci-shiftstack-ci-release-4.19-e2e-openstack-externallb
 periodic-ci-shiftstack-ci-release-4.19-e2e-openstack-ovn-etcd-scaling
+periodic-ci-shiftstack-ci-release-4.19-e2e-openstack-ovn-serial
 periodic-ci-shiftstack-ci-release-4.19-techpreview-e2e-openstack-ovn-serial-techpreview
 periodic-ci-shiftstack-ci-release-4.19-upgrade-from-stable-4.18-e2e-openstack-ovn-upgrade
 periodic-ci-stackrox-stackrox-master-ocp-4-19-lp-interop-acs-tests-aws
