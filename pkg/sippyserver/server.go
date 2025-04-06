@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -1199,23 +1200,32 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 }
 
 // queryJobArtifacts is an API to query GCS for artifacts from a set of job runs. Parameters:
-// - prowJobRuns: a comma-separated list of prow job run IDs to query
-// - pathGlob: a glob pattern to match against the GCS path (ref. https://cloud.google.com/storage/docs/json_api/v1/objects/list#list-object-glob)
-// - textContains (optional): a string to search for in the contents of the artifacts, returning the containing line
+// - prowJobRuns (required): a comma-separated list of prow job run IDs to query
+// - pathGlob (required): a glob pattern to match against the GCS path (ref. https://cloud.google.com/storage/docs/json_api/v1/objects/list#list-object-glob)
+// - textContains: a string to search for in the contents of the artifacts, returning the containing line
+// - textRegex: a regex string to match in the contents of the artifacts, returning the matching line
+// - beforeContext: a positive integer indicating how many lines before the matched line to return
+// - afterContext: a positive integer indicating how many lines after the matched line to return
+// - maxFileMatches: a positive integer indicating maximum number of matches to return per file
 // Returns a JSON jobartifacts.QueryResponse object listing the job runs, the artifacts that matched the glob,
 // and (optionally) lines within those artifacts that matched. Errors that occurred are also listed per job run.
-// To prevent (accidental) DOS, the number of artifacts and matches returned are limited.
+// To prevent (accidental) DoS, the number of artifacts and matches returned are limited.
 func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
 	if s.gcsClient == nil {
 		failureResponse(w, http.StatusBadRequest, "server not configured for GCS, unable to use this API")
 		return
 	}
 
+	contentMatcher, failed := contentMatcherFromParams(w, req)
+	if failed {
+		return
+	}
+
 	q := &jobartifacts.JobArtifactQuery{
-		GcsBucket:        s.gcsClient.Bucket(util.GcsBucketRoot),
-		DbClient:         s.db,
-		JobRunIDs:        []int64{},
-		ArtifactContains: param.SafeRead(req, "textContains"),
+		GcsBucket:      s.gcsClient.Bucket(util.GcsBucketRoot),
+		DbClient:       s.db,
+		JobRunIDs:      []int64{},
+		ContentMatcher: contentMatcher,
 	}
 
 	jobRunIDStr := s.getParamOrFail(w, req, "prowJobRuns")
@@ -1240,6 +1250,31 @@ func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
 	// The request is good, return as OK; even if we fail at getting results, just note errors
 	result := s.jobartifactsManager.Query(req.Context(), q)
 	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
+func contentMatcherFromParams(w http.ResponseWriter, req *http.Request) (contentMatcher jobartifacts.ContentMatcher, failed bool) {
+	if contains := param.SafeRead(req, "textContains"); contains != "" {
+		contextBefore, contextAfter, maxMatches, errs := jobartifacts.ParseLineMatcherParams(req)
+		if len(errs) > 0 {
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("error parsing params: %v", errs))
+			return nil, true
+		}
+		contentMatcher = jobartifacts.NewStringMatcher(contains, contextBefore, contextAfter, maxMatches)
+	} else if regexStr := param.SafeRead(req, "textRegex"); regexStr != "" {
+		re, err := regexp.Compile(regexStr)
+		if err != nil {
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("error parsing textRegex: %q", err))
+			return nil, true
+		}
+		contextBefore, contextAfter, maxMatches, errs := jobartifacts.ParseLineMatcherParams(req)
+		if len(errs) > 0 {
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("error parsing params: %v", errs))
+			return nil, true
+		}
+		contentMatcher = jobartifacts.NewRegexMatcher(re, contextBefore, contextAfter, maxMatches)
+	}
+
+	return // nil matcher means don't bother reading the artifacts, just return metadata without any matching
 }
 
 func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.ResponseWriter, req *http.Request)) func(http.ResponseWriter, *http.Request) {
