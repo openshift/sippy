@@ -9,7 +9,6 @@ type APIFlags struct {
 	EnableWriteEndpoints bool
 	ListenAddr           string
 	MetricsAddr          string
-	RedisURL             string
 }
 
 func NewAPIFlags() *APIFlags {
