@@ -60,31 +60,15 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	triage.CreatedAt = time.Time{}
 	triage.UpdatedAt = time.Time{}
 
-	// We support linking to regressions by just setting the ID in the request, lookup
-	// full regressions for association.
-	regressionIDs := []uint{}
-	for _, trIDR := range triage.Regressions {
-		regressionIDs = append(regressionIDs, trIDR.ID)
-	}
-	var linkedRegressions []models.TestRegression
-	res := dbc.DB.Where("id IN ?", regressionIDs).Find(&linkedRegressions)
-	if res.Error != nil {
-		log.WithError(res.Error).Errorf("error looking up regression IDs: %v", regressionIDs)
-		return triage, res.Error
-	}
-
-	if len(linkedRegressions) != len(regressionIDs) {
-		err := fmt.Errorf("some of the requested regression IDs were not found: %v",
-			regressionIDs)
-		log.WithError(err).Error("error looking up test regressions during create")
+	err = linkRegressions(dbc, &triage)
+	if err != nil {
 		return triage, err
 	}
-	triage.Regressions = linkedRegressions
 
 	// If we have a bug in the db matching the url we were given, link them up now.
 	// If not, this should be handled later during the next fetchdata cron job.
 	var bug models.Bug
-	res = dbc.DB.Where("url = ?", triage.URL).First(&bug)
+	res := dbc.DB.Where("url = ?", triage.URL).First(&bug)
 	switch {
 	case res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound):
 		log.WithError(res.Error).Errorf("unexpected error looking up bug: %s", triage.URL)
@@ -105,6 +89,44 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	return triage, nil
 }
 
+func linkRegressions(dbc *db.DB, triage *models.Triage) error {
+	// We support linking to regressions by just setting the ID in the request, lookup
+	// full regressions for association.
+	regressionIDs := []uint{}
+	for _, trIDR := range triage.Regressions {
+		regressionIDs = append(regressionIDs, trIDR.ID)
+	}
+	var linkedRegressions []models.TestRegression
+	res := dbc.DB.Where("id IN ?", regressionIDs).Find(&linkedRegressions)
+	if res.Error != nil {
+		log.WithError(res.Error).Errorf("error looking up regression IDs: %v", regressionIDs)
+		return res.Error
+	}
+
+	if len(linkedRegressions) != len(regressionIDs) {
+		missing := []uint{}
+		for _, ri := range regressionIDs {
+			var found bool
+			for _, lr := range linkedRegressions {
+				log.Infof("got lr : %+v", lr)
+				if lr.ID == ri {
+					found = true
+					break
+				}
+			}
+			if !found {
+				missing = append(missing, ri)
+			}
+		}
+		err := fmt.Errorf("some of the requested regression IDs were not found: %v",
+			missing)
+		log.WithError(err).Error("error looking up test regressions during create")
+		return err
+	}
+	triage.Regressions = linkedRegressions
+	return nil
+}
+
 func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	err := validateTriage(triage, true)
 	if err != nil {
@@ -122,26 +144,10 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	}
 	triage.CreatedAt = existingTriage.CreatedAt
 
-	// We support linking to regressions by just setting the ID in the request, lookup
-	// full regressions for association.
-	regressionIDs := []uint{}
-	for _, trIDR := range triage.Regressions {
-		regressionIDs = append(regressionIDs, trIDR.ID)
-	}
-	var linkedRegressions []models.TestRegression
-	res = dbc.DB.Where("id IN ?", regressionIDs).Find(&linkedRegressions)
-	if res.Error != nil {
-		log.WithError(res.Error).Errorf("error looking up regression IDs: %v", regressionIDs)
-		return triage, res.Error
-	}
-
-	if len(linkedRegressions) != len(regressionIDs) {
-		err := fmt.Errorf("some of the requested regression IDs were not found: %v",
-			regressionIDs)
-		log.WithError(err).Error("error looking up test regressions during update")
+	err = linkRegressions(dbc, &triage)
+	if err != nil {
 		return triage, err
 	}
-	triage.Regressions = linkedRegressions
 
 	// If we have a bug in the db matching the url we were given, link them up now.
 	// If not, this should be handled later during the next fetchdata cron job.
