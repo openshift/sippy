@@ -67,7 +67,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantSuite:            "parallel",
 				VariantUpgrade:          VariantNoValue,
 				VariantProcedure:        "none",
-				VariantJobTier:          "candidate",
+				VariantJobTier:          "excluded",
 				VariantAggregation:      VariantNoValue,
 				VariantSecurityMode:     VariantDefaultValue,
 				VariantFeatureSet:       VariantDefaultValue,

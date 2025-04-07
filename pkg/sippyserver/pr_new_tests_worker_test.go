@@ -4,71 +4,26 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
 	"testing"
 	"time"
 
-	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/gorm"
-	gormLogger "gorm.io/gorm/logger"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/prow"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
-	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-/*
-	  many of these are functional tests requiring a live database and/or GCS bucket with known data to run,
-	  so we do not want them trying to run during CI. We will skip tests whose required environment variables are not set.
-	  don't risk checking in credentials with code; supply them with environment variables:
-		TEST_DB_LOG_LEVEL: "silent" or "info" or "warn" or "error" - the log level for gorm database methods
-		TEST_SIPPY_DATABASE_DSN: the DSN for the sippy postgres database e.g. postgresql://sippyro:...@sippy-postgresql...amazonaws.com/sippy_openshift
-		TEST_GCS_CREDS_PATH: the path to a local GCS credentials file, e.g. /home/$USER/git/sippy/openshift-sippy-ro.creds.json
-*/
-func getDbHandle(t *testing.T) *db.DB {
-	dbLogLevel := os.Getenv("TEST_DB_LOG_LEVEL") // e.g. "info" or "silent"
-	if dbLogLevel == "" {
-		dbLogLevel = "silent"
-	}
-	gormLogLevel, err := db.ParseGormLogLevel(dbLogLevel)
-	if err != nil {
-		logrus.WithError(err).Errorf("Cannot parse TEST_DB_LOG_LEVEL %s", dbLogLevel)
-		gormLogLevel = gormLogger.Silent
-	}
-
-	dsn := os.Getenv("TEST_SIPPY_DATABASE_DSN")
-	if dsn == "" {
-		t.Skip("TEST_SIPPY_DATABASE_DSN environment variable is not set; skipping database tests")
-	}
-	dbc, err := db.New(dsn, gormLogLevel)
-	if err != nil {
-		logrus.WithError(err).Fatal("Cannot connect to database")
-	}
-	return dbc
-}
-
-func getGcsBucket(t *testing.T) *storage.BucketHandle {
-	pathToGcsCredentials := os.Getenv("TEST_GCS_CREDS_PATH")
-	if pathToGcsCredentials == "" {
-		t.Skip("TEST_GCS_CREDS_PATH environment variable is not set; skipping GCS tests")
-	}
-	gcsClient, err := gcs.NewGCSClient(context.TODO(), pathToGcsCredentials, "")
-	if err != nil {
-		logrus.WithError(err).Fatalf("CRITICAL error getting GCS client with credentials at %s", pathToGcsCredentials)
-	}
-	return gcsClient.Bucket("test-platform-results")
-}
-
 func TestBuildJobMap(t *testing.T) {
 	// initialize AnalysisWorker
-	gcsBucket := getGcsBucket(t)
+	gcsBucket := util.GetGcsBucket(t)
 	aw := AnalysisWorker{gcsBucket: gcsBucket}
 	logrus.SetLevel(logrus.DebugLevel)
 	logger := logrus.WithContext(context.TODO())
@@ -88,10 +43,10 @@ func TestAssessJobRisks(t *testing.T) {
 	logger := logrus.WithContext(context.TODO())
 	logrus.SetLevel(logrus.InfoLevel)
 
-	ntw := StandardNewTestsWorker(getDbHandle(t))
+	ntw := StandardNewTestsWorker(util.GetDbHandle(t))
 
 	// Initialize GCS client and look up known job in the bucket
-	bucket := getGcsBucket(t)
+	bucket := util.GetGcsBucket(t)
 	aw := AnalysisWorker{gcsBucket: bucket, newTestsWorker: ntw}
 	jobRuns := aw.buildProwJobRuns(logger, "pr-logs/pull/29512/pull-ci-openshift-origin-master-e2e-aws-ovn-single-node/")
 	numRuns := len(jobRuns)
@@ -153,8 +108,8 @@ func TestAssessCrossJobRisks(t *testing.T) {
 	logrus.SetLevel(logrus.InfoLevel)
 
 	// look up test-bed PR jobs in the bucket
-	ntw := StandardNewTestsWorker(getDbHandle(t))
-	aw := AnalysisWorker{gcsBucket: getGcsBucket(t), newTestsWorker: ntw}
+	ntw := StandardNewTestsWorker(util.GetDbHandle(t))
+	aw := AnalysisWorker{gcsBucket: util.GetGcsBucket(t), newTestsWorker: ntw}
 	completedJobs := aw.getPrJobsIfFinished(logger, "pr-logs/pull/29512/")
 	if !assert.Greater(t, len(completedJobs), 2, "Failed to load all job runs") {
 		return
@@ -393,7 +348,7 @@ func (n *jobRunUnfiltered) JobFailedEarly(_ *logrus.Entry, _ *models.ProwJobRun)
 }
 
 func TestFunc_getNewTestsForJobRun(t *testing.T) {
-	ntf, ntw := internalNewTestsWorker(getDbHandle(t))
+	ntf, ntw := internalNewTestsWorker(util.GetDbHandle(t))
 
 	// try with a known job run
 	jobRun := &prow.ProwJob{
@@ -413,7 +368,7 @@ func TestFunc_getNewTestsForJobRun(t *testing.T) {
 }
 
 func TestIsNewTest(t *testing.T) {
-	dbc := getDbHandle(t)
+	dbc := util.GetDbHandle(t)
 
 	ntf := &pgNewTestFilter{
 		dbc:         dbc,
