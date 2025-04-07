@@ -124,7 +124,6 @@ func (bl *BugLoader) Load() {
 	triageBugs, err := bl.getTriageBugMappings(context.TODO(), triages)
 	if err != nil {
 		panic(err)
-		return
 	}
 	log.WithField("bugs", len(triageBugs)).Info("Loaded triage bugs")
 
@@ -139,7 +138,6 @@ func (bl *BugLoader) Load() {
 	}
 	for _, b := range triageBugs {
 		if _, ok := allBugs[b.ID]; ok {
-			allBugs[b.ID].Jobs = b.Jobs
 			continue
 		}
 		allBugs[b.ID] = b
