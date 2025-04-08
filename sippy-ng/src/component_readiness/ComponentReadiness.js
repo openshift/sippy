@@ -105,6 +105,16 @@ const useStyles = makeStyles((theme) => ({
     }),
     marginLeft: 0,
   },
+  selectedJobRun: {
+    borderStyle: 'solid',
+    borderWidth: '1px',
+    borderRadius: '5px',
+    // borderColor: theme.palette.mode === 'dark' ? grey[200] : grey['A800'],
+    marginRight: '1px',
+  },
+  unselectedJobRun: {
+    marginRight: '1px',
+  },
 
   // Table styling
 
@@ -127,7 +137,7 @@ const useStyles = makeStyles((theme) => ({
     zIndex: 1,
   },
   crColJobName: {
-    verticalAlign: 'bottom',
+    verticalAlign: 'top',
     backgroundColor: theme.palette.mode === 'dark' ? grey[900] : grey['A200'],
   },
   componentName: {

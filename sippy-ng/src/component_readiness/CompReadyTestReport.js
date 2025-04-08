@@ -520,6 +520,9 @@ View the [test details report|${document.location.href}] for additional context.
               versions={versions}
               isOverride={false}
               loadedParams={loadedParams}
+              testName={testName}
+              environment={environment}
+              component={component}
             />
           </TestsReportTabPanel>
           <TestsReportTabPanel activeIndex={activeTabIndex} index={1}>
@@ -528,6 +531,9 @@ View the [test details report|${document.location.href}] for additional context.
               versions={versions}
               isOverride={true}
               loadedParams={loadedParams}
+              testName={testName}
+              environment={environment}
+              component={component}
             />
           </TestsReportTabPanel>
         </Fragment>
@@ -537,6 +543,9 @@ View the [test details report|${document.location.href}] for additional context.
           versions={versions}
           isOverride={false}
           loadedParams={loadedParams}
+          testName={testName}
+          environment={environment}
+          component={component}
         />
       )}
       <Popover

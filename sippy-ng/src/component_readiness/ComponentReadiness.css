@@ -34,6 +34,28 @@
   vertical-align: top !important;
 }
 
+.cr-artifacts-table-row-jobrun {
+  border-bottom: none;
+}
+.cr-artifacts-table-row-files {
+  border-top: none;
+}
+
+.cr-artifacts-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: monospace;
+}
+
+.cr-artifacts-contents {
+  background-color: #111111;
+  white-space: nowrap;
+  overflow: auto;
+  font-family: monospace;
+  max-width: 800px;
+}
+
 .cr-triage-panel-element {
   margin-top: 30px;
 }
