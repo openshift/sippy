@@ -533,7 +533,8 @@ func (c *ComponentReportGenerator) getJobRunStats(stats crtype.JobRunTestStatusR
 			FailureCount: failure,
 			FlakeCount:   stats.FlakeCount,
 		},
-		JobURL: stats.ProwJobURL,
+		JobURL:   stats.ProwJobURL,
+		JobRunID: stats.ProwJobRunID,
 	}
 	return jobRunStats
 }
