@@ -64,6 +64,7 @@ available [here](config/README.md).
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
   --config ./config/openshift.yaml \
+  --load-openshift-ci-bigquery \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json
 ```
 
@@ -82,6 +83,7 @@ or [configure GitHub in your gitconfig](https://stackoverflow.com/questions/8505
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
   --config ./config/openshift.yaml \
+  --load-openshift-ci-bigquery \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json
 ```
 
@@ -100,6 +102,7 @@ releases and architectures like this:
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json \
   --mode=ocp \
+  --load-openshift-ci-bigquery \
   --config ./config/openshift.yaml
 ```
 
