@@ -123,5 +123,4 @@ ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
 ${KUBECTL_CMD} -n sippy-e2e delete secret regcred
 
-export SIPPY_E2E_DSN="postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres"
 go test ./test/e2e/... -v

@@ -11,8 +11,11 @@ import (
 )
 
 func CreateE2EPostgresConnection(t *testing.T) *db.DB {
-	require.NotEqual(t, "", os.Getenv("SIPPY_E2E_DSN"),
-		"SIPPY_E2E_DSN environment variable not set")
+	if os.Getenv("SIPPY_E2E_DSN") == "" {
+		// Our e2e presubmit cannot expose postgresql externally, these tests are n
+		// only useful for local development.
+		t.Skip("SIPPY_E2E_DSN environment variable not set, skipping test")
+	}
 
 	dbc, err := db.New(os.Getenv("SIPPY_E2E_DSN"), logger.Info)
 	require.NoError(t, err, "error connecting to db")
