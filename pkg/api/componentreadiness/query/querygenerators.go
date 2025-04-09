@@ -789,13 +789,7 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 			continue
 		}
 		prowName := utils.NormalizeProwJobName(testStatus.ProwJob, reqOptions)
-		rows, ok := status[prowName]
-		if !ok {
-			status[prowName] = []crtype.JobRunTestStatusRow{testStatus}
-		} else {
-			rows = append(rows, testStatus)
-			status[prowName] = rows
-		}
+		status[prowName] = append(status[prowName], testStatus)
 	}
 	return status, errs
 }

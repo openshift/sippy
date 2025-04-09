@@ -371,7 +371,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	report := crtype.TestDetailsAnalysis{TriagedIncidents: incidents}
 	for prowJob, baseStatsList := range baseStatus {
 		jobStats := crtype.TestDetailsJobStats{
-			JobName: prowJob,
+			NormalizedJobName: prowJob,
 		}
 		perJobBaseFailure = 0
 		perJobBaseSuccess = 0
@@ -380,6 +380,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		perJobSampleSuccess = 0
 		perJobSampleFlake = 0
 		for _, baseStats := range baseStatsList {
+			jobStats.BaseJobName = baseStats.ProwJob
 			if result.JiraComponent == "" && baseStats.JiraComponent != "" {
 				result.JiraComponent = baseStats.JiraComponent
 			}
@@ -397,6 +398,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		}
 		if sampleStatsList, ok := sampleStatusCopy[prowJob]; ok {
 			for _, sampleStats := range sampleStatsList {
+				jobStats.SampleJobName = sampleStats.ProwJob
 				if result.JiraComponent == "" && sampleStats.JiraComponent != "" {
 					result.JiraComponent = sampleStats.JiraComponent
 				}
@@ -449,12 +451,13 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	}
 	for prowJob, sampleStatsList := range sampleStatusCopy {
 		jobStats := crtype.TestDetailsJobStats{
-			JobName: prowJob,
+			NormalizedJobName: prowJob,
 		}
 		perJobSampleFailure = 0
 		perJobSampleSuccess = 0
 		perJobSampleFlake = 0
 		for _, sampleStats := range sampleStatsList {
+			jobStats.SampleJobName = sampleStats.ProwJob
 			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
 			perJobSampleSuccess += sampleStats.SuccessCount
 			perJobSampleFlake += sampleStats.FlakeCount
@@ -482,7 +485,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		totalSampleFlake += perJobSampleFlake
 	}
 	sort.Slice(report.JobStats, func(i, j int) bool {
-		return report.JobStats[i].JobName < report.JobStats[j].JobName
+		return report.JobStats[i].NormalizedJobName < report.JobStats[j].NormalizedJobName
 	})
 
 	// The hope is that this goes away
