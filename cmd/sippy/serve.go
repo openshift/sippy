@@ -35,9 +35,7 @@ type ServerFlags struct {
 	ModeFlags               *flags.ModeFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	ConfigFlags             *configflags.ConfigFlags
-
-	ListenAddr  string
-	MetricsAddr string
+	APIFlags                *flags.APIFlags
 }
 
 func NewServerFlags() *ServerFlags {
@@ -50,8 +48,7 @@ func NewServerFlags() *ServerFlags {
 		ModeFlags:               flags.NewModeFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),
-		ListenAddr:              ":8080",
-		MetricsAddr:             ":2112",
+		APIFlags:                flags.NewAPIFlags(),
 	}
 }
 
@@ -64,9 +61,7 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.ModeFlags.BindFlags(flagSet)
 	f.ComponentReadinessFlags.BindFlags(flagSet)
 	f.ConfigFlags.BindFlags(flagSet)
-
-	flagSet.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
-	flagSet.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
+	f.APIFlags.BindFlags(flagSet)
 }
 
 func (f *ServerFlags) Validate() error {
@@ -149,7 +144,7 @@ func NewServeCommand() *cobra.Command {
 
 			server := sippyserver.NewServer(
 				f.ModeFlags.GetServerMode(),
-				f.ListenAddr,
+				f.APIFlags.ListenAddr,
 				f.ModeFlags.GetSyntheticTestManager(),
 				variantManager,
 				webRoot,
@@ -162,10 +157,11 @@ func NewServeCommand() *cobra.Command {
 				f.ComponentReadinessFlags.CRTimeRoundingFactor,
 				views,
 				config,
+				f.APIFlags.EnableWriteEndpoints,
 				llmClient,
 			)
 
-			if f.MetricsAddr != "" {
+			if f.APIFlags.MetricsAddr != "" {
 				// Do an immediate metrics update
 				err = metrics.RefreshMetricsDB(
 					context.Background(),
@@ -208,7 +204,7 @@ func NewServeCommand() *cobra.Command {
 				// Serve our metrics endpoint for prometheus to scrape
 				go func() {
 					http.Handle("/metrics", promhttp.Handler())
-					err := http.ListenAndServe(f.MetricsAddr, nil) // nolint
+					err := http.ListenAndServe(f.APIFlags.MetricsAddr, nil) // nolint
 					if err != nil {
 						panic(err)
 					}

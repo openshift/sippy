@@ -8,8 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
-
-	log "github.com/sirupsen/logrus"
+	"strings"
 )
 
 const (
@@ -35,21 +34,81 @@ func buildURL(apiPath string) string {
 	if len(envSippyEndpoint) == 0 {
 		envSippyEndpoint = "localhost"
 	}
-	return fmt.Sprintf("http://%s%s", net.JoinHostPort(envSippyEndpoint, strconv.Itoa(port)), apiPath)
+	url := fmt.Sprintf("http://%s%s", net.JoinHostPort(envSippyEndpoint, strconv.Itoa(port)), apiPath)
+	return url
 }
 
-func SippyRequest(path string, data interface{}) error {
-	res, err := http.Get(buildURL(path))
+func SippyGet(path string, data interface{}) error {
+	req, err := http.Get(buildURL(path))
 	if err != nil {
 		return err
 	}
 
-	body, err := io.ReadAll(res.Body)
+	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return err
 	}
-	log.Infof("Received Response: %s", string(body))
+	if req.StatusCode != http.StatusOK {
+		return fmt.Errorf("Sippy API request failed with code %d: %s", req.StatusCode, string(body))
+	}
 	err = json.Unmarshal(body, data)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SippyPost(path string, bodyData, responseData interface{}) error {
+	bodyBytes, err := json.Marshal(bodyData)
+	if err != nil {
+		return err
+	}
+	req, err := http.Post(buildURL(path), "application/json", strings.NewReader(string(bodyBytes)))
+	if err != nil {
+		return err
+	}
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return err
+	}
+	if req.StatusCode != http.StatusOK {
+		return fmt.Errorf("Sippy API request failed with code %d: %s", req.StatusCode, string(body))
+	}
+
+	err = json.Unmarshal(body, responseData)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func SippyPut(path string, bodyData, responseData interface{}) error {
+	bodyBytes, err := json.Marshal(bodyData)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest(http.MethodPut, buildURL(path), strings.NewReader(string(bodyBytes)))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Sippy API request failed with code %d: %s", resp.StatusCode, string(body))
+	}
+
+	err = json.Unmarshal(body, responseData)
 	if err != nil {
 		return err
 	}

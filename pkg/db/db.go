@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -143,7 +142,11 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
-	if err := d.DB.AutoMigrate(&componentreport.TestRegression{}); err != nil {
+	if err := d.DB.AutoMigrate(&models.TestRegression{}); err != nil {
+		return err
+	}
+
+	if err := d.DB.AutoMigrate(&models.Triage{}); err != nil {
 		return err
 	}
 

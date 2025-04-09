@@ -1,13 +1,10 @@
 package componentreport
 
 import (
-	"database/sql"
 	"math/big"
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/lib/pq"
-
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -206,7 +203,12 @@ type ReportTestSummary struct {
 	// the regression with it's *default view* query. However we always include it in the response (if that test
 	// is regressed per the query params used). Eventually we should only include these details if the default view
 	// is being used, without overriding the start/end dates.
-	Opened *time.Time `json:"opened"`
+	Opened       *time.Time `json:"opened"`
+	RegressionID int        `json:"regression_id"`
+
+	// Links contains REST links for clients to follow for this specific triage. Most notably "self".
+	// These are injected by the API and not stored in the DB.
+	Links map[string]string `json:"links"`
 
 	ReportTestStats
 }
@@ -415,20 +417,6 @@ type TriageIncidentSummary struct {
 type Variant struct {
 	Key   string `bigquery:"key" json:"key"`
 	Value string `bigquery:"value" json:"value"`
-}
-
-// TestRegression is used for rows in the test_regressions table and is used to track when we detect test
-// regressions opening and closing.
-type TestRegression struct {
-	ID           uint           `json:"-" gorm:"primaryKey,column:id"`
-	View         string         `json:"view" gorm:"not null"`
-	Release      string         `json:"release" gorm:"not null;index:idx_test_regression_release"`
-	TestID       string         `json:"test_id" gorm:"not null"`
-	TestName     string         `json:"test_name" gorm:"not null;index:idx_test_regression_test_name"`
-	Variants     pq.StringArray `json:"variants" gorm:"not null;type:text[]"`
-	RegressionID string         `json:"regression_id"` // TODO, kill this, rely on db int
-	Opened       time.Time      `json:"opened" gorm:"not null"`
-	Closed       sql.NullTime   `json:"closed"`
 }
 
 // TODO: temporary for migration
