@@ -43,6 +43,9 @@ def edit_yaml_in_nvim(data):
     return edited_data
 
 def update_triage(triage_id, base_url):
+    if not isinstance(triage_id, int):
+        sys.exit(1)
+
     url = f"{base_url}/api/component_readiness/triages/{triage_id}"
     print(f"Fetching data from {url}...")
     data = fetch_json(url)
@@ -72,6 +75,8 @@ def create_triage(base_url):
     print("Creation successful.", response)
 
 def get_triage(triage_id, base_url):
+    if not isinstance(triage_id, int):
+        sys.exit(1)
     url = f"{base_url}/api/component_readiness/triages/{triage_id}"
     print(f"Fetching triage entry {triage_id}...")
     data = fetch_json(url)
