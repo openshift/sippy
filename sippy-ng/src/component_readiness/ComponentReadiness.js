@@ -127,6 +127,10 @@ const useStyles = makeStyles((theme) => ({
     left: 0,
     zIndex: 1,
   },
+  crColJobName: {
+    verticalAlign: 'bottom',
+    backgroundColor: theme.palette.mode === 'dark' ? grey[900] : grey['A200'],
+  },
   componentName: {
     width: 175,
     minWidth: 175,

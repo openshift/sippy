@@ -220,10 +220,10 @@ export default function CompReadyTestPanel(props) {
         <Table className="cr-comp-read-table">
           <TableHead>
             <TableRow>
-              {tableCell('ProwJob Name', 0)}
-              {tableCell('Basis Info', 1)}
-              {tableCell('Basis Runs', 2)}
-              {tableCell('Sample Info', 3)}
+              {tableCell('Basis Job', 0)}
+              {tableCell('Basis Runs', 1)}
+              {tableCell('', 2)}
+              {tableCell('Sample Job', 3)}
               {tableCell('Sample Runs', 4)}
               {tableTooltipCell(
                 'Statistically Significant',
