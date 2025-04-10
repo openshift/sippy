@@ -224,6 +224,79 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 	return db
 }
 
+func (f FilterItem) toBQStr(filterable Filterable) string { //nolint
+	field := strings.ReplaceAll(fmt.Sprintf("%q", f.Field), "\"", "")
+	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
+		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
+	}
+
+	switch f.Operator {
+	case OperatorContains:
+		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
+			if f.Not {
+				return fmt.Sprintf("NOT '%s' in UNNEST(%s)", f.Value, field)
+			}
+			return fmt.Sprintf("'%s' in UNNEST(%s)", f.Value, field)
+		}
+		if f.Not {
+			return fmt.Sprintf("NOT LOWER(%s) LIKE '%%%s%%'", field, f.Value)
+		}
+		return fmt.Sprintf("LOWER(%s) LIKE '%%%s%%'", field, f.Value)
+	case OperatorEquals, OperatorArithmeticEquals:
+		if f.Not {
+			return fmt.Sprintf("%s != %s", field, f.Value)
+		}
+		return fmt.Sprintf("%s = %s", field, f.Value)
+	case OperatorArithmeticGreaterThan:
+		if f.Not {
+			return fmt.Sprintf("%s <= %s", field, f.Value)
+		}
+		return fmt.Sprintf("%s > %s", field, f.Value)
+	case OperatorArithmeticGreaterThanOrEquals:
+		if f.Not {
+			return fmt.Sprintf("%s < %s", field, f.Value)
+		}
+		return fmt.Sprintf("%s >= %s", field, f.Value)
+	case OperatorArithmeticLessThan:
+		if f.Not {
+			return fmt.Sprintf("%s >= %s", field, f.Value)
+		}
+		return fmt.Sprintf("%s < %s", field, f.Value)
+	case OperatorArithmeticLessThanOrEquals:
+		if f.Not {
+			return fmt.Sprintf("%s > %s", field, f.Value)
+		}
+		return fmt.Sprintf("%s <= %s", field, f.Value)
+	case OperatorArithmeticNotEquals:
+		if f.Not {
+			return fmt.Sprintf("%s = %s", field, f.Value)
+		}
+		return fmt.Sprintf("%s != %s", field, f.Value)
+	case OperatorStartsWith:
+		if f.Not {
+			return fmt.Sprintf("NOT LOWER(%s) LIKE '%s%%'", field, f.Value)
+		}
+		return fmt.Sprintf("LOWER(%s) LIKE '%s%%'", field, f.Value)
+	case OperatorEndsWith:
+		if f.Not {
+			return fmt.Sprintf("NOT LOWER(%s) LIKE '%%%s'", field, f.Value)
+		}
+		return fmt.Sprintf("LOWER(%s) LIKE '%%%s'", field, f.Value)
+	case OperatorIsEmpty:
+		if f.Not {
+			return fmt.Sprintf("%s IS NOT NULL", field)
+		}
+		return fmt.Sprintf("%s IS NULL", field)
+	case OperatorIsNotEmpty:
+		if f.Not {
+			return fmt.Sprintf("%s IS NULL", field)
+		}
+		return fmt.Sprintf("%s IS NOT NULL", field)
+	}
+
+	return ""
+}
+
 // Filterable interface is for anything that can be filtered, it needs to
 // support querying the type and value of fields.
 type Filterable interface {
@@ -377,6 +450,22 @@ func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	db = db.Where(queryStr, orFilterParams...)
 
 	return db
+}
+
+func (filters Filter) ToBQStr(filterable Filterable) string {
+	items := []string{}
+	for _, f := range filters.Items {
+		items = append(items, f.toBQStr(filterable))
+	}
+	operator := " AND "
+	if filters.LinkOperator == LinkOperatorOr {
+		operator = " OR "
+	}
+	queryStr := strings.Join(items, operator)
+	queryStr = "(" + queryStr + ")"
+	log.Debugf("final query string: %s", queryStr)
+
+	return queryStr
 }
 
 // Filter applies the selected filters to a filterable item.
