@@ -316,6 +316,7 @@ var (
 	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
 	upgradeRegex            = regexp.MustCompile(`(?i)-upgrade`)
 
+	ciBuildRegexp  = regexp.MustCompile(`(?i)^periodic-ci-.*-ci-(\d+\.\d+)-?$`)
 	presubmitRegex = regexp.MustCompile(`^pull-ci-(openshift|operator-framework).*-(master|main).*-e2e-.*`)
 )
 
@@ -345,6 +346,7 @@ const (
 	VariantFromReleaseMinor = "FromReleaseMinor"
 	VariantFromReleaseMajor = "FromReleaseMajor"
 	VariantLayeredProduct   = "LayeredProduct"
+	VariantBuildSystem      = "BuildSystem"
 	VariantDefaultValue     = "default"
 	VariantNoValue          = "none"
 )
@@ -371,6 +373,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		setLayeredProduct,
 		setContainerRuntime,
 		setProcedure,
+		setBuildSystem,
 		v.setJobTier, // Keep this near last, it relies on other variants like owner
 	} {
 		setter(jLog, variants, jobName)
@@ -382,6 +385,24 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 	}
 
 	return variants
+}
+
+func setBuildSystem(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	var buildSystem string
+	switch {
+	case strings.HasPrefix(jobName, "aggregate"):
+		buildSystem = VariantNoValue
+	case strings.Contains(jobNameLower, "-konflux"):
+		buildSystem = "konflux"
+	default:
+		// We can't actually differentiate whether a job uses a ci or brew-built payload, because
+		// release controller overrides some `ci` jobs to use nightlies, or vice versa.
+		buildSystem = VariantDefaultValue
+	}
+
+	variants[VariantBuildSystem] = buildSystem
 }
 
 func setAggregation(_ logrus.FieldLogger, variants map[string]string, jobName string) {
