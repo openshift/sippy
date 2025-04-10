@@ -96,6 +96,6 @@ func saveToken(path string, token *oauth2.Token) {
 	}
 	defer f.Close()
 	if err := json.NewEncoder(f).Encode(token); err != nil {
-		log.Errorf(err.Error())
+		log.Error(err.Error())
 	}
 }

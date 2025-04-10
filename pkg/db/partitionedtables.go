@@ -21,7 +21,7 @@ func syncPartitionedTables(db *gorm.DB) error {
 			log.WithError(res.Error).Error("error creating partitioned table")
 			return res.Error
 		}
-		log.Infof("created partitioned table: " + pmv.Name)
+		log.Info("created partitioned table: " + pmv.Name)
 	}
 
 	return nil

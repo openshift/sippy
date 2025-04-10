@@ -5,8 +5,8 @@ run:
 linters:
   disable-all: true
   enable:
+    - copyloopvar
     - errcheck
-    - exportloopref
     # - goconst  # [lmeyer] I cannot see a way to configure this sanely
     - gocritic
     - gocyclo

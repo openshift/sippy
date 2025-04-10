@@ -944,8 +944,7 @@ func GetGCSPathForProwJobURL(pjLog log.FieldLogger, prowJobURL string) (string, 
 	path := gcsPathStrip.ReplaceAllString(pjURL.Path, "")
 	pjLog.Debugf("gcs bucket path: %+v", path)
 	if path == "" || len(path) == len(pjURL.Path) {
-		msg := fmt.Sprintf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
-		return "", fmt.Errorf(msg)
+		return "", fmt.Errorf("not continuing, gcs path empty or does not contain expected prefix original=%+v stripped=%+v", pjURL.Path, path)
 	}
 
 	return path, nil
