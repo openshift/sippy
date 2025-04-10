@@ -1353,10 +1353,10 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 						},
 						JobStats: []crtype.TestDetailsJobStats{
 							{
-								NormalizedJobName: prowJob1,
-								SampleStats:       sampleTestStatsHigh,
-								BaseStats:         baseTestStatsHigh,
-								Significant:       false,
+								SampleJobName: prowJob1,
+								SampleStats:   sampleTestStatsHigh,
+								BaseStats:     baseTestStatsHigh,
+								Significant:   false,
 							},
 						},
 					},
@@ -1400,10 +1400,11 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 						},
 						JobStats: []crtype.TestDetailsJobStats{
 							{
-								NormalizedJobName: prowJob1,
-								SampleStats:       sampleTestStatsLow,
-								BaseStats:         baseTestStatsHigh,
-								Significant:       true,
+								SampleJobName: prowJob1,
+								BaseJobName:   prowJob2,
+								SampleStats:   sampleTestStatsLow,
+								BaseStats:     baseTestStatsHigh,
+								Significant:   true,
 							},
 						},
 					},
@@ -1447,10 +1448,11 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 						},
 						JobStats: []crtype.TestDetailsJobStats{
 							{
-								NormalizedJobName: prowJob1,
-								SampleStats:       sampleTestStatsHigh,
-								BaseStats:         baseTestStatsLow,
-								Significant:       false,
+								SampleJobName: prowJob1,
+								BaseJobName:   prowJob2,
+								SampleStats:   sampleTestStatsHigh,
+								BaseStats:     baseTestStatsLow,
+								Significant:   false,
 							},
 						},
 					},
@@ -1502,16 +1504,16 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 						},
 						JobStats: []crtype.TestDetailsJobStats{
 							{
-								NormalizedJobName: prowJob1,
-								SampleStats:       sampleTestStatsHigh,
-								BaseStats:         baseTestStatsHigh,
-								Significant:       false,
+								SampleJobName: prowJob1,
+								SampleStats:   sampleTestStatsHigh,
+								BaseStats:     baseTestStatsHigh,
+								Significant:   false,
 							},
 							{
-								NormalizedJobName: prowJob2,
-								SampleStats:       sampleTestStatsHigh,
-								BaseStats:         baseTestStatsHigh,
-								Significant:       false,
+								SampleJobName: prowJob2,
+								SampleStats:   sampleTestStatsHigh,
+								BaseStats:     baseTestStatsHigh,
+								Significant:   false,
 							},
 						},
 					},
@@ -1586,11 +1588,11 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			assert.Equal(t, tc.expectedReport.Analyses[0].ReportStatus, report.Analyses[0].ReportStatus, "expected report status %+v, got %+v", tc.expectedReport.Analyses[0].ReportStatus, report.Analyses[0].ReportStatus)
 			assert.Equal(t, len(tc.expectedReport.Analyses[0].JobStats), len(report.Analyses[0].JobStats), "expected len of job stats %+v, got %+v", len(tc.expectedReport.Analyses[0].JobStats), report.Analyses[0].JobStats)
 			for i := range tc.expectedReport.Analyses[0].JobStats {
-				jobName := report.Analyses[0].JobStats[i].NormalizedJobName
-				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].NormalizedJobName, jobName, "expected job name %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].NormalizedJobName, jobName)
+				jobName := report.Analyses[0].JobStats[i].SampleJobName
+				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].SampleJobName, jobName, "expected job name %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].SampleJobName, jobName)
 				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].Significant, report.Analyses[0].JobStats[i].Significant, "expected per job significant %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].Significant, report.Analyses[0].JobStats[i].Significant)
-				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].BaseStats, report.Analyses[0].JobStats[i].BaseStats, "expected per job base stats for %s to be %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].NormalizedJobName, tc.expectedReport.Analyses[0].JobStats[i].BaseStats, report.Analyses[0].JobStats[i].BaseStats)
-				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].SampleStats, report.Analyses[0].JobStats[i].SampleStats, "expected per job sample stats for %s to be %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].NormalizedJobName, tc.expectedReport.Analyses[0].JobStats[i].SampleStats, report.Analyses[0].JobStats[i].SampleStats)
+				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].BaseStats, report.Analyses[0].JobStats[i].BaseStats, "expected per job base stats for %s to be %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].SampleJobName, tc.expectedReport.Analyses[0].JobStats[i].BaseStats, report.Analyses[0].JobStats[i].BaseStats)
+				assert.Equal(t, tc.expectedReport.Analyses[0].JobStats[i].SampleStats, report.Analyses[0].JobStats[i].SampleStats, "expected per job sample stats for %s to be %+v, got %+v", tc.expectedReport.Analyses[0].JobStats[i].SampleJobName, tc.expectedReport.Analyses[0].JobStats[i].SampleStats, report.Analyses[0].JobStats[i].SampleStats)
 				assert.Equal(t, tc.expectedSampleJobRunLen[jobName], len(report.Analyses[0].JobStats[i].SampleJobRunStats), "expected sample job run counts %+v, got %+v", tc.expectedSampleJobRunLen[jobName], len(report.Analyses[0].JobStats[i].SampleJobRunStats))
 				assert.Equal(t, tc.expectedBaseJobRunLen[jobName], len(report.Analyses[0].JobStats[i].BaseJobRunStats), "expected base job run counts %+v, got %+v", tc.expectedBaseJobRunLen[jobName], len(report.Analyses[0].JobStats[i].BaseJobRunStats))
 			}

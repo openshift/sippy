@@ -370,9 +370,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 
 	report := crtype.TestDetailsAnalysis{TriagedIncidents: incidents}
 	for prowJob, baseStatsList := range baseStatus {
-		jobStats := crtype.TestDetailsJobStats{
-			NormalizedJobName: prowJob,
-		}
+		jobStats := crtype.TestDetailsJobStats{}
 		perJobBaseFailure = 0
 		perJobBaseSuccess = 0
 		perJobBaseFlake = 0
@@ -449,10 +447,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		totalSampleSuccess += perJobSampleSuccess
 		totalSampleFlake += perJobSampleFlake
 	}
-	for prowJob, sampleStatsList := range sampleStatusCopy {
-		jobStats := crtype.TestDetailsJobStats{
-			NormalizedJobName: prowJob,
-		}
+	for _, sampleStatsList := range sampleStatusCopy {
+		jobStats := crtype.TestDetailsJobStats{}
 		perJobSampleFailure = 0
 		perJobSampleSuccess = 0
 		perJobSampleFlake = 0
@@ -485,7 +481,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		totalSampleFlake += perJobSampleFlake
 	}
 	sort.Slice(report.JobStats, func(i, j int) bool {
-		return report.JobStats[i].NormalizedJobName < report.JobStats[j].NormalizedJobName
+		return report.JobStats[i].SampleJobName+":"+report.JobStats[i].BaseJobName <
+			report.JobStats[j].SampleJobName+":"+report.JobStats[j].BaseJobName
 	})
 
 	// The hope is that this goes away
