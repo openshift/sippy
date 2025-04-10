@@ -292,7 +292,9 @@ type TestDetailsTestStats struct {
 }
 
 type TestDetailsJobStats struct {
-	JobName           string                   `json:"job_name"`
+	NormalizedJobName string                   `json:"job_name"`
+	SampleJobName     string                   `json:"sample_job_name"`
+	BaseJobName       string                   `json:"base_job_name"`
 	SampleStats       TestDetailsTestStats     `json:"sample_stats"`
 	BaseStats         TestDetailsTestStats     `json:"base_stats"`
 	SampleJobRunStats []TestDetailsJobRunStats `json:"sample_job_run_stats,omitempty"`
@@ -301,7 +303,8 @@ type TestDetailsJobStats struct {
 }
 
 type TestDetailsJobRunStats struct {
-	JobURL string `json:"job_url"`
+	JobURL   string `json:"job_url"`
+	JobRunID string `json:"job_run_id"`
 	// TestStats is the test stats from one particular job run.
 	// For the majority of the tests, there is only one junit. But
 	// there are cases multiple junits are generated for the same test.
@@ -329,6 +332,7 @@ type JobRunTestIdentification struct {
 
 type JobRunTestStatusRow struct {
 	ProwJob         string   `bigquery:"prowjob_name"`
+	ProwJobRunID    string   `bigquery:"prowjob_run_id"`
 	ProwJobURL      string   `bigquery:"prowjob_url"`
 	TestID          string   `bigquery:"test_id"`
 	TestName        string   `bigquery:"test_name"`

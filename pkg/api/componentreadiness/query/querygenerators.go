@@ -400,6 +400,7 @@ func getTestDetailsQuery(
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
 						COUNT(*) AS total_count,
 						ANY_VALUE(jobs.prowjob_url) AS prowjob_url,
+						ANY_VALUE(jobs.prowjob_build_id) AS prowjob_run_id,
 						ANY_VALUE(cm.capabilities) as capabilities,
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
@@ -788,13 +789,7 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 			continue
 		}
 		prowName := utils.NormalizeProwJobName(testStatus.ProwJob, reqOptions)
-		rows, ok := status[prowName]
-		if !ok {
-			status[prowName] = []crtype.JobRunTestStatusRow{testStatus}
-		} else {
-			rows = append(rows, testStatus)
-			status[prowName] = rows
-		}
+		status[prowName] = append(status[prowName], testStatus)
 	}
 	return status, errs
 }
