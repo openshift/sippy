@@ -152,7 +152,7 @@ export default function RegressedTestsPanel(props) {
       renderCell: (params) => {
         return (
           <IconButton
-            onClick={(event) => copyTestID(event, params.value)}
+            onClick={(event) => copyTestToClipboard(event, params.value)}
             size="small"
             aria-label="Copy test ID"
             color="inherit"
