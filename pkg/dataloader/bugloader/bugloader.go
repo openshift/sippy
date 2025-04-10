@@ -198,7 +198,7 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 	querySQL := fmt.Sprintf(
 		`%s CROSS JOIN %s.%s.%s j WHERE j.name != "upgrade" AND (STRPOS(t.summary, j.name) > 0 OR STRPOS(t.description, j.name) > 0 OR STRPOS(t.comment, j.name) > 0)`,
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
-	log.Debugf(querySQL)
+	log.Debug(querySQL)
 	q := bl.bqc.BQ.Query(querySQL)
 
 	it, err := q.Read(ctx)
@@ -252,7 +252,7 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 	querySQL := fmt.Sprintf(
 		`%s CROSS JOIN (SELECT DISTINCT prowjob_job_name AS name FROM openshift-gce-devel.ci_analysis_us.jobs WHERE prowjob_job_name IS NOT NULL AND prowjob_job_name != "") j WHERE (STRPOS(t.summary, j.name) > 0 OR STRPOS(t.description, j.name) > 0 OR STRPOS(t.comment, j.name) > 0)`,
 		TicketDataQuery)
-	log.Debugf(querySQL)
+	log.Debug(querySQL)
 	q := bl.bqc.BQ.Query(querySQL)
 
 	it, err := q.Read(ctx)
@@ -321,7 +321,7 @@ func (bl *BugLoader) getTriageBugMappings(ctx context.Context, triages []models.
 	querySQL := fmt.Sprintf(
 		`%s WHERE t.issue.key IN UNNEST(@keys)`,
 		sharedQuery)
-	log.Debugf(querySQL)
+	log.Debug(querySQL)
 	q := bl.bqc.BQ.Query(querySQL)
 	q.Parameters = append(q.Parameters, bqgo.QueryParameter{Name: "keys", Value: jiraKeys})
 

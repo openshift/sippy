@@ -100,7 +100,7 @@ func (tol *TestOwnershipLoader) Load() {
 			if res.Error != nil {
 				msg := fmt.Sprintf("error with jira component %q", m.JIRAComponent)
 				tol.errors = append(tol.errors, errors.WithMessage(res.Error, msg))
-				log.WithError(err).Warningf(msg)
+				log.WithError(err).Warning(msg)
 				continue
 			}
 			id := jiraComponent.ID

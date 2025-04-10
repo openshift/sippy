@@ -1,6 +1,7 @@
 package componentreadiness
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -270,10 +271,10 @@ func ParseIntArg(req *http.Request, name string, defaultVal int, validator func(
 	}
 	val, err := strconv.Atoi(valueStr)
 	if err != nil {
-		return val, fmt.Errorf(name + " is not an integer")
+		return val, errors.New(name + " is not an integer")
 	}
 	if !validator(val) {
-		return val, fmt.Errorf("confidence is not in the correct range")
+		return val, errors.New("confidence is not in the correct range")
 	}
 	return val, nil
 }
@@ -285,7 +286,7 @@ func ParseBoolArg(req *http.Request, name string, defaultVal bool) (bool, error)
 	}
 	val, err := strconv.ParseBool(valueStr)
 	if err != nil {
-		return val, fmt.Errorf(name + " is not a boolean")
+		return val, errors.New(name + " is not a boolean")
 	}
 	return val, nil
 }
@@ -354,13 +355,13 @@ func parseDateRange(allReleases []v1.Release, req *http.Request,
 	timeStr := req.URL.Query().Get(startName)
 	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, true, nil, roundingFactor)
 	if err != nil {
-		return releaseOpts, fmt.Errorf(startName + " in wrong format")
+		return releaseOpts, errors.New(startName + " in wrong format")
 	}
 
 	timeStr = req.URL.Query().Get(endName)
 	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, false, nil, roundingFactor)
 	if err != nil {
-		return releaseOpts, fmt.Errorf(endName + " in wrong format")
+		return releaseOpts, errors.New(endName + " in wrong format")
 	}
 	return releaseOpts, nil
 }

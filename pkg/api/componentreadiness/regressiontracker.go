@@ -269,7 +269,7 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 		for _, err := range errs {
 			strErrors = append(strErrors, err.Error())
 		}
-		return fmt.Errorf("component report generation encountered errors: " + strings.Join(strErrors, "; "))
+		return fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
 	}
 
 	return rt.SyncRegressionsForReport(ctx, view, rLog, &report)

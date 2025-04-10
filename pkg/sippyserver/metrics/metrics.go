@@ -240,7 +240,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 		for _, err := range errs {
 			strErrors = append(strErrors, err.Error())
 		}
-		return fmt.Errorf("component report generation encountered errors: " + strings.Join(strErrors, "; "))
+		return fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
 	}
 
 	logger.Info("publishing metrics for view")

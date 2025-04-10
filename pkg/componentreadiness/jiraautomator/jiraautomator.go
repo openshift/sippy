@@ -148,7 +148,7 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 		for _, err := range errs {
 			strErrors = append(strErrors, err.Error())
 		}
-		return crtype.ComponentReport{}, fmt.Errorf("component report generation encountered errors: " + strings.Join(strErrors, "; "))
+		return crtype.ComponentReport{}, fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
 	}
 	return report, nil
 }
