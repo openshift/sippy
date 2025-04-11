@@ -40,26 +40,26 @@ func TestFunctional_FilterContent(t *testing.T) {
 	gcsClient := util.GetGcsBucket(t)
 	const filePath = "logs/periodic-ci-openshift-release-master-ci-4.19-e2e-azure-ovn/1898704060324777984/artifacts/e2e-azure-ovn/gather-extra/build-log.txt"
 
-	query := JobArtifactQuery{GcsBucket: gcsClient, ArtifactContains: "ClusterVersion:"}
+	query := JobArtifactQuery{GcsBucket: gcsClient, ContentMatcher: NewStringMatcher("ClusterVersion:", 0, 0, maxFileMatches)}
 	artifact := query.getFileContentMatches(1898704060324777984, filePath)
 	assert.Empty(t, artifact.Error)
-	assert.False(t, artifact.MatchesTruncated, "expected no need for truncating the file list")
-	assert.Equal(t, 2, len(artifact.MatchedContent), "expected content to match with two lines")
+	assert.False(t, artifact.MatchedContent.(ContentLineMatches).Truncated, "expected no need for truncating the file list")
+	assert.Equal(t, 2, len(artifact.MatchedContent.(ContentLineMatches).Matches), "expected content to match with two lines")
 
-	query.ArtifactContains = "error:"
+	query.ContentMatcher = NewStringMatcher("error:", 0, 0, maxFileMatches)
 	artifact = query.getFileContentMatches(1898704060324777984, filePath)
 	assert.Empty(t, artifact.Error)
-	assert.True(t, artifact.MatchesTruncated, "expected to truncate content matches")
-	assert.Equal(t, maxFileMatches, len(artifact.MatchedContent), "expected content to match with many lines")
+	assert.True(t, artifact.MatchedContent.(ContentLineMatches).Truncated, "expected to truncate content matches")
+	assert.Equal(t, maxFileMatches, len(artifact.MatchedContent.(ContentLineMatches).Matches), "expected content to match with many lines")
 }
 
 func TestFunctional_QueryJobArtifacts(t *testing.T) {
 	mgr := NewManager(context.Background())
 	query := JobArtifactQuery{
-		DbClient:         util.GetDbHandle(t),
-		GcsBucket:        util.GetGcsBucket(t),
-		PathGlob:         "artifacts/*e2e*/gather-extra/build-log.txt",
-		ArtifactContains: "ClusterVersion:",
+		DbClient:       util.GetDbHandle(t),
+		GcsBucket:      util.GetGcsBucket(t),
+		PathGlob:       "artifacts/*e2e*/gather-extra/build-log.txt",
+		ContentMatcher: NewStringMatcher("ClusterVersion:", 0, 0, maxFileMatches),
 	}
 	jobRun, err := query.queryJobArtifacts(context.Background(), 1898704060324777984, mgr, log.WithField("test", "queryJobArtifacts"))
 	assert.NoError(t, err)
@@ -70,11 +70,11 @@ func TestFunctional_QueryJobArtifacts(t *testing.T) {
 func TestFunctional_Query(t *testing.T) {
 	mgr := NewManager(context.Background())
 	query := JobArtifactQuery{
-		DbClient:         util.GetDbHandle(t),
-		GcsBucket:        util.GetGcsBucket(t),
-		JobRunIDs:        []int64{1898704060324777984, 42},
-		PathGlob:         "artifacts/*e2e*/gather-extra/build-log.txt",
-		ArtifactContains: "ClusterVersion:",
+		DbClient:       util.GetDbHandle(t),
+		GcsBucket:      util.GetGcsBucket(t),
+		JobRunIDs:      []int64{1898704060324777984, 42},
+		PathGlob:       "artifacts/*e2e*/gather-extra/build-log.txt",
+		ContentMatcher: NewStringMatcher("ClusterVersion:", 0, 0, maxFileMatches),
 	}
 	res := mgr.Query(context.Background(), &query)
 	assert.NotEmpty(t, res.Errors)

@@ -76,21 +76,19 @@ func (m *Manager) Query(ctx context.Context, query *JobArtifactQuery) (result Qu
 	// start a listener to wait for the responses and collect them; important to prepare
 	// the listener before dumping requests to the request channel, since that will block.
 	go func() {
-	responseLoop:
 		for len(remaining) > 0 { // done if we received a response for every request
-			select {
-			case <-jobCtx.Done(): // timed out or cancelled
-				break responseLoop
-			case res := <-jobRunResponseChan:
-				remaining.Delete(res.jobRun) // we have seen it, it is no longer remaining
-				if res.error != nil {
-					result.Errors = append(result.Errors, JobRunError{
-						ID:    strconv.FormatInt(res.jobRun, 10),
-						Error: res.error.Error(),
-					})
-				} else {
-					result.JobRuns = append(result.JobRuns, res.response)
-				}
+			response, expired := receiveFromChannel(jobCtx, jobRunResponseChan)
+			if expired != nil {
+				break
+			}
+			remaining.Delete(response.jobRun) // we have seen it, it is no longer remaining
+			if response.error != nil {
+				result.Errors = append(result.Errors, JobRunError{
+					ID:    strconv.FormatInt(response.jobRun, 10),
+					Error: response.error.Error(),
+				})
+			} else {
+				result.JobRuns = append(result.JobRuns, response.response)
 			}
 		}
 		finished <- true
@@ -105,10 +103,7 @@ func (m *Manager) Query(ctx context.Context, query *JobArtifactQuery) (result Qu
 			jobCtx:      jobCtx,
 			artifactCtx: artifactCtx,
 		}
-		select {
-		case <-jobCtx.Done(): // cancelled, give up on sending
-		case m.jobRunChan <- request:
-		}
+		_ = sendViaChannel(jobCtx, m.jobRunChan, request) // if not sent, will be in remaining
 	}
 	<-finished // wait for all responses to be processed
 
@@ -152,30 +147,26 @@ func (m *Manager) jobRunWorker(managerCtx context.Context) {
 	defer m.jobRunWorkers.Done()
 	logger := log.WithField("func", "Manager.jobRunWorker")
 	for {
-		select {
-		case <-managerCtx.Done(): // shutting down the workers
-			logger.WithError(managerCtx.Err()).Debug("Shutting down per context")
+		request, expired := receiveFromChannel(managerCtx, m.jobRunChan)
+		if expired != nil {
+			logger.WithError(expired).Debug("Shutting down worker per manager context")
 			return
-		case req := <-m.jobRunChan:
-			jobLog := logger.WithField("jobRunId", req.jobRun).WithContext(req.jobCtx)
-			jobLog.Debug("Received request from jobRunChan")
-			select {
-			case <-req.jobCtx.Done(): // query is starting too late, request already cancelled
-				jobLog.WithError(req.jobCtx.Err()).Warn("Aborted request for job run")
-			default: // execute the query and respond
-				jobRunRes, err := req.query.queryJobArtifacts(req.artifactCtx, req.jobRun, m, jobLog)
-				response := jobRunResponse{
-					jobRun:   req.jobRun,
-					error:    err,
-					response: jobRunRes,
-				}
-				select {
-				case <-req.jobCtx.Done(): // cancelled, don't try to respond
-					jobLog.WithError(req.jobCtx.Err()).Debug("jobRunResponse cancelled")
-				case req.jobRunsChan <- response:
-					jobLog.Debug("Wrote jobRunResponse to jobRunsChan")
-				}
-			}
+		}
+
+		jobLog := logger.WithField("jobRunId", request.jobRun).WithContext(request.jobCtx)
+		jobLog.Debug("Received request from jobRunChan")
+		jobRunRes, err := request.query.queryJobArtifacts(request.artifactCtx, request.jobRun, m, jobLog)
+		response := jobRunResponse{
+			jobRun:   request.jobRun,
+			error:    err,
+			response: jobRunRes,
+		}
+
+		expired = sendViaChannel(request.jobCtx, request.jobRunsChan, response)
+		if expired != nil {
+			jobLog.WithError(expired).Debug("jobRunResponse cancelled")
+		} else {
+			jobLog.Debug("Wrote jobRunResponse to jobRunsChan")
 		}
 	}
 }
@@ -190,15 +181,13 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 	// start a listener to wait for the responses and collect them; important to prepare
 	// the listener before dumping requests to the request channel, since that will block.
 	go func() {
-	responseLoop:
 		for len(remaining) > 0 { // done if we received a response for every request
-			select {
-			case <-ctx.Done(): // timed out or cancelled
-				break responseLoop
-			case res := <-artifactResponseChan:
-				remaining.Delete(res.artifactPath) // we have seen it, so it is no longer remaining
-				artifacts = append(artifacts, res.artifact)
+			response, expired := receiveFromChannel(ctx, artifactResponseChan)
+			if expired != nil {
+				break // timed out or cancelled
 			}
+			remaining.Delete(response.artifactPath) // we have seen it, so it is no longer remaining
+			artifacts = append(artifacts, response.artifact)
 		}
 		finished <- true
 	}()
@@ -212,10 +201,7 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 			ctx:           ctx,
 			jobRunID:      jobRunID,
 		}
-		select {
-		case <-ctx.Done(): // cancelled, give up on sending
-		case m.artifactChan <- request:
-		}
+		_ = sendViaChannel(ctx, m.artifactChan, request) // if not sent, will be in remaining
 	}
 	<-finished // wait for all responses to be processed
 
@@ -256,28 +242,44 @@ func (m *Manager) artifactWorker(managerCtx context.Context) {
 	defer m.artifactWorkers.Done()
 	logger := log.WithField("func", "Manager.artifactWorker")
 	for {
-		select {
-		case <-managerCtx.Done(): // shutting down the workers
-			logger.WithError(managerCtx.Err()).Debug("Shutting down per context")
+		request, expired := receiveFromChannel(managerCtx, m.artifactChan)
+		if expired != nil {
+			logger.WithError(expired).Debug("Shutting down worker per manager context")
 			return
-		case req := <-m.artifactChan:
-			artLog := logger.WithField("artifactPath", req.artifactPath).WithContext(req.ctx)
-			artLog.Debug("Received request from artifactChan")
-			select {
-			case <-req.ctx.Done(): // query is starting too late, request already cancelled
-				artLog.WithError(req.ctx.Err()).Warn("Aborted request for job run artifacts")
-			default: // execute the query and respond
-				response := artifactResponse{
-					artifactPath: req.artifactPath,
-					artifact:     req.query.getFileContentMatches(req.jobRunID, req.artifactPath),
-				}
-				select {
-				case <-req.ctx.Done(): // cancelled, don't send response
-					artLog.WithError(req.ctx.Err()).Debug("artifactResponse cancelled")
-				case req.artifactsChan <- response:
-					artLog.Debug("Wrote artifactResponse to artifactsChan")
-				}
-			}
+		}
+
+		artLog := logger.WithField("artifactPath", request.artifactPath).WithContext(request.ctx)
+		artLog.Debug("Received request from artifactChan")
+		response := artifactResponse{
+			artifactPath: request.artifactPath,
+			artifact:     request.query.getFileContentMatches(request.jobRunID, request.artifactPath),
+		}
+
+		expired = sendViaChannel(request.ctx, request.artifactsChan, response)
+		if expired != nil {
+			artLog.WithError(expired).Debug("artifactResponse cancelled")
+		} else {
+			artLog.Debug("Wrote artifactResponse to artifactsChan")
 		}
 	}
+}
+
+// sendViaChannel sends a payload to a channel, subject to the given context not expiring
+func sendViaChannel[P interface{}, C chan P](ctx context.Context, channel C, payload P) error {
+	select {
+	case <-ctx.Done(): // expired, don't try to send payload
+		return ctx.Err()
+	case channel <- payload:
+		return nil
+	}
+}
+
+// receiveFromChannel receives a payload from a channel, subject to the given context not expiring
+func receiveFromChannel[P interface{}, C chan P](ctx context.Context, channel C) (payload P, err error) {
+	select {
+	case <-ctx.Done(): // expired, give up on receiving payload
+		err = ctx.Err()
+	case payload = <-channel:
+	}
+	return
 }

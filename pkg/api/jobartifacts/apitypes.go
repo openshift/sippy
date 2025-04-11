@@ -21,10 +21,19 @@ type JobRunError struct {
 }
 
 type JobRunArtifact struct {
-	JobRunID    string `json:"job_run_id"`
-	ArtifactURL string `json:"artifact_url"`
+	JobRunID       string      `json:"job_run_id"`
+	ArtifactURL    string      `json:"artifact_url"`
+	MatchedContent interface{} `json:"matched_content,omitempty"` // will be one of the content types below
+	Error          string      `json:"error,omitempty"`
+}
+
+type ContentLineMatches struct {
 	// NOTE: limited per maxFileMatches, sets Truncated if file has more matches
-	MatchedContent   []string `json:"matched_contents,omitempty"`
-	MatchesTruncated bool     `json:"matches_truncated"`
-	Error            string   `json:"error,omitempty"`
+	Matches   []ContentLineMatch `json:"matches"`
+	Truncated bool               `json:"truncated,omitempty"`
+}
+type ContentLineMatch struct {
+	Before []string `json:"before,omitempty"`
+	Match  string   `json:"match"`
+	After  []string `json:"after,omitempty"`
 }
