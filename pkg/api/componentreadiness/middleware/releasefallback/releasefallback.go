@@ -136,10 +136,10 @@ func (r *ReleaseFallback) matchBestBaseStats(
 				return baseStats
 			}
 			_, success, fail, flake := baseStats.GetTotalSuccessFailFlakeCounts()
-			basePassRate := utils.CalculatePassRate(r.reqOptions, success, fail, flake)
+			basePassRate := utils.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
 
 			_, success, fail, flake = cTestStats.GetTotalSuccessFailFlakeCounts()
-			cPassRate := utils.CalculatePassRate(r.reqOptions, success, fail, flake)
+			cPassRate := utils.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
 			if cPassRate > basePassRate {
 				baseStats = cTestStats
 				// If we swapped out base stats for better ones from a prior release, we need to communicate

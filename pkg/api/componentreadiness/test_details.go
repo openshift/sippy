@@ -74,18 +74,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		}
 	}
 
-	// We only execute this if we were given a postgres database connection, it is still possible to run
-	// component readiness without postgresql, you just won't have regression tracking.
-	if c.dbc != nil {
-		var err error
-		bqs := NewPostgresRegressionStore(c.dbc)
-		c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(c.ReqOptions.SampleRelease.Release)
-		if err != nil {
-			errs = append(errs, err)
-			return crtype.ReportTestDetails{}, errs
-		}
-	}
-
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(ctx,
 		componentJobRunTestReportStatus.BaseStatus,
@@ -503,23 +491,41 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		}
 	}
 
-	requiredConfidence := c.getRequiredConfidence(c.ReqOptions.TestIDOption.TestID, c.ReqOptions.VariantOption.RequestedVariants)
+	// TODO: restore
+	//requiredConfidence := c.getRequiredConfidence(c.ReqOptions.TestIDOption.TestID, c.ReqOptions.VariantOption.RequestedVariants)
 
-	report.ReportTestStats = c.assessComponentStatus(
-		requiredConfidence,
-		totalSampleSuccess+totalSampleFailure+totalSampleFlake,
-		totalSampleSuccess,
-		totalSampleFlake,
-		totalBaseSuccess+totalBaseFailure+totalBaseFlake,
-		totalBaseSuccess,
-		totalBaseFlake,
+	testStats := crtype.ReportTestStats{}
+	testStats.SampleStats = crtype.TestDetailsReleaseStats{
+		Release: c.ReqOptions.SampleRelease.Release,
+		Start:   &c.ReqOptions.SampleRelease.Start,
+		End:     &c.ReqOptions.SampleRelease.End,
+		TestDetailsTestStats: crtype.TestDetailsTestStats{
+			SuccessRate:  utils.CalculatePassRate(totalSampleSuccess, totalSampleFailure, totalSampleFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
+			SuccessCount: totalSampleSuccess,
+			FlakeCount:   totalSampleFlake,
+			FailureCount: totalSampleFailure,
+		},
+	}
+	testStats.BaseStats = &crtype.TestDetailsReleaseStats{
+		Release: baseRelease,
+		Start:   baseStart,
+		End:     baseEnd,
+		TestDetailsTestStats: crtype.TestDetailsTestStats{
+			SuccessRate:  utils.CalculatePassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
+			SuccessCount: totalBaseSuccess,
+			FlakeCount:   totalBaseFlake,
+			FailureCount: totalBaseFailure,
+		},
+	}
+
+	c.assessComponentStatus(
+		&testStats,
+		c.ReqOptions.AdvancedOption.Confidence,
 		approvedRegression,
 		activeProductRegression,
 		resolvedIssueCompensation,
-		baseRelease,
-		baseStart,
-		baseEnd,
 	)
+	report.ReportTestStats = testStats
 	result.Analyses = []crtype.TestDetailsAnalysis{report}
 
 	return result

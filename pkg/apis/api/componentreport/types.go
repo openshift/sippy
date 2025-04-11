@@ -48,8 +48,8 @@ type RequestReleaseOptions struct {
 // date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
 	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
-	RelativeStart         string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
-	RelativeEnd           string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
@@ -278,10 +278,16 @@ type TestDetailsReleaseStats struct {
 }
 
 type TestDetailsTestStats struct {
-	SuccessRate  float64 `json:"success_rate"`
-	SuccessCount int     `json:"success_count"`
-	FailureCount int     `json:"failure_count"`
-	FlakeCount   int     `json:"flake_count"`
+	// TODO: should be a function not a field, calculated from the three below
+	SuccessRate float64 `json:"success_rate"`
+
+	SuccessCount int `json:"success_count"`
+	FailureCount int `json:"failure_count"`
+	FlakeCount   int `json:"flake_count"`
+}
+
+func (tdts TestDetailsTestStats) Total() int {
+	return tdts.SuccessCount + tdts.FailureCount + tdts.FlakeCount
 }
 
 type TestDetailsJobStats struct {
