@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -300,7 +301,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 	matchedOpenRegressions := []*models.TestRegression{} // all the matches we found, used to determine what had no match
 	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
 	for _, regTest := range allRegressedTests {
-		if openReg := FindOpenRegression(view.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
+		if openReg := regressiontracker.FindOpenRegression(view.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
 			if openReg.Closed.Valid {
 				// if the regression returned has a closedRegs date, we found a recently closedRegs
 				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
@@ -364,45 +365,4 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 	rLog.Infof("regression tracking sync completed, opened=%d, reopenedRegs=%d, closedRegs=%d untouchedRegs=%d", newRegs, reopenedRegs, closedRegs, untouchedRegs)
 
 	return nil
-}
-
-// FindOpenRegression scans the list of open regressions for any that match the given test summary.
-func FindOpenRegression(view string,
-	testID string,
-	variants map[string]string,
-	regressions []*models.TestRegression) *models.TestRegression {
-
-	for _, tr := range regressions {
-		if tr.View != view {
-			continue
-		}
-
-		// We compare test ID not name, as names can change.
-		if tr.TestID != testID {
-			continue
-		}
-		found := true
-		for key, value := range variants {
-			if value != findVariant(key, tr) {
-				found = false
-				break
-			}
-		}
-		if !found {
-			continue
-		}
-		// If we made it this far, this appears to be a match:
-		return tr
-	}
-	return nil
-}
-
-func findVariant(variantName string, testReg *models.TestRegression) string {
-	for _, v := range testReg.Variants {
-		keyVal := strings.Split(v, ":")
-		if keyVal[0] == variantName {
-			return keyVal[1]
-		}
-	}
-	return ""
 }

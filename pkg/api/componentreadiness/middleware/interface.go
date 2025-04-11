@@ -31,4 +31,6 @@ type Middleware interface {
 	// TestDetailsAnalyze gives middleware opportunity to analyze data and adjust the final report before
 	// being returned over the API.
 	TestDetailsAnalyze(report *crtype.ReportTestDetails) error
+
+	Analyze(testID string, variants map[string]string, report *crtype.ReportTestStats) error
 }

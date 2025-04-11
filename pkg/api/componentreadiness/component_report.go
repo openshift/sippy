@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -247,6 +248,11 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis || c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
+	}
+	if c.dbc != nil {
+		c.middlewares = append(c.middlewares, regressiontracker.NewRegressionTrackerMiddleware(c.dbc, c.ReqOptions))
+	} else {
+		log.Warnf("no db connection provided, skipping regressiontracker middleware")
 	}
 }
 
@@ -670,14 +676,6 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 			ReportTestIdentification: testID,
 			ReportTestStats:          testStats,
 		}
-		if len(openRegressions) > 0 {
-			view := openRegressions[0].View // grab view from first regression, they were queried only for sample release
-			or := FindOpenRegression(view, rt.TestID, rt.Variants, openRegressions)
-			if or != nil {
-				rt.Opened = &or.Opened
-				rt.RegressionID = int(or.ID)
-			}
-		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
 	} else if testStats.ReportStatus < crtype.MissingSample {
 		ti := crtype.TriageIncidentSummary{
@@ -686,15 +684,6 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 				ReportTestIdentification: testID,
 				ReportTestStats:          testStats,
 			}}
-		if len(openRegressions) > 0 {
-			view := openRegressions[0].View // grab view from first regression, they were queried only for sample release
-			or := FindOpenRegression(view, ti.ReportTestSummary.TestID,
-				ti.ReportTestSummary.Variants, openRegressions)
-			if or != nil {
-				ti.ReportTestSummary.Opened = &or.Opened
-				ti.ReportTestSummary.RegressionID = int(or.ID)
-			}
-		}
 		newCellStatus.triagedIncidents = append(newCellStatus.triagedIncidents, ti)
 	}
 	return newCellStatus
@@ -1069,7 +1058,7 @@ func (c *ComponentReportGenerator) triagedIncidentsFor(ctx context.Context,
 func (c *ComponentReportGenerator) getRequiredConfidence(testID string, variants map[string]string) int {
 	if len(c.openRegressions) > 0 {
 		view := c.openRegressions[0].View // grab view from first regression, they were queried only for sample release
-		or := FindOpenRegression(view, testID, variants, c.openRegressions)
+		or := regressiontracker.FindOpenRegression(view, testID, variants, c.openRegressions)
 		if or != nil {
 			log.Debugf("adjusting required regression confidence from %d to %d because %s (%v) has an open regression since %s",
 				c.ReqOptions.AdvancedOption.Confidence,
@@ -1139,6 +1128,13 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 
 			if !sampleStats.LastFailure.IsZero() {
 				testStats.LastFailure = &sampleStats.LastFailure
+			}
+
+			for _, mw := range c.middlewares {
+				err = mw.Analyze(testKey.TestID, testKey.Variants, &testStats)
+				if err != nil {
+					return crtype.ComponentReport{}, err
+				}
 			}
 
 			if testStats.IsTriaged() {

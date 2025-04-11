@@ -52,6 +52,10 @@ type ReleaseFallback struct {
 	baseOverrideStatus map[string][]crtype.JobRunTestStatusRow
 }
 
+func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, report *crtype.ReportTestStats) error {
+	return nil
+}
+
 func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants,
 	_, _ chan map[string]crtype.TestStatus, errCh chan error) {
 	wg.Add(1)

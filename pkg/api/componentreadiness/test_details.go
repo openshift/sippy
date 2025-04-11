@@ -96,6 +96,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
 	for _, mw := range c.middlewares {
+		// TODO: unused, no impl yet, intended for release fallback code below
 		err = mw.TestDetailsAnalyze(&report)
 		if err != nil {
 			return crtype.ReportTestDetails{}, []error{err}

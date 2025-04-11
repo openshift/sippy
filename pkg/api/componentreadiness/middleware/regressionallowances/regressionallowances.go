@@ -35,6 +35,10 @@ type RegressionAllowances struct {
 	regressionGetterFunc func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
 }
 
+func (r *RegressionAllowances) Analyze(testID string, variants map[string]string, report *crtype.ReportTestStats) error {
+	return nil
+}
+
 func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crtype.JobVariants,
 	_, _ chan map[string]crtype.TestStatus, _ chan error) {
 	// unused

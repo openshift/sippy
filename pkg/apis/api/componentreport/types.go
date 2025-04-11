@@ -6,6 +6,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -47,8 +48,8 @@ type RequestReleaseOptions struct {
 // date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
 	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
-	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
-	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	RelativeStart         string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd           string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
@@ -196,20 +197,8 @@ type ReportTestIdentification struct {
 }
 
 type ReportTestSummary struct {
+	// TODO: really feels like this could just be moved  ReportTestStats, eliminating the need for ReportTestSummary
 	ReportTestIdentification
-
-	// Opened will be set to the time we first recorded this test went regressed.
-	// TODO: This is largely a hack right now, the sippy metrics loop sets this as soon as it notices
-	// the regression with it's *default view* query. However we always include it in the response (if that test
-	// is regressed per the query params used). Eventually we should only include these details if the default view
-	// is being used, without overriding the start/end dates.
-	Opened       *time.Time `json:"opened"`
-	RegressionID int        `json:"regression_id"`
-
-	// Links contains REST links for clients to follow for this specific triage. Most notably "self".
-	// These are injected by the API and not stored in the DB.
-	Links map[string]string `json:"links"`
-
 	ReportTestStats
 }
 
@@ -247,6 +236,10 @@ type ReportTestStats struct {
 
 	// LastFailure is the last time the regressed test failed.
 	LastFailure *time.Time `json:"last_failure"`
+
+	// Regression is populated with data on when we first detected this regression. If unset it implies
+	// the regression tracker has not yet run to find it, or you're using report params/a view without regression tracking.
+	Regression *models.TestRegression `json:"regression,omitempty"`
 }
 
 // IsTriaged returns true if this tests status is within the triaged regression range.
