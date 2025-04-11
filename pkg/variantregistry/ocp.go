@@ -651,6 +651,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{"-sno-fips-recert", "hidden"},
 		{"-bgp-", "hidden"},
 		{"aggregated", "hidden"},
+		{"-cert-rotation-shutdown-", "hidden"}, // may want to go to rare at some point
 	}
 
 	for _, jobTierPattern := range jobTierPatterns {
@@ -693,6 +694,7 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-etcd-scaling", "etcd-scaling"},
 		{"-cpu-partitioning", "cpu-partitioning"},
 		{"-automated-release", "automated-release"},
+		{"-cert-rotation-shutdown-", "cert-rotation-shutdown"},
 	}
 
 	for _, entry := range procedurePatterns {
