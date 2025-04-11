@@ -292,9 +292,9 @@ type TestDetailsTestStats struct {
 }
 
 type TestDetailsJobStats struct {
-	NormalizedJobName string                   `json:"job_name"`
-	SampleJobName     string                   `json:"sample_job_name"`
-	BaseJobName       string                   `json:"base_job_name"`
+	// one of sample/base job name could be missing if jobs change between releases
+	SampleJobName     string                   `json:"sample_job_name,omitempty"`
+	BaseJobName       string                   `json:"base_job_name,omitempty"`
 	SampleStats       TestDetailsTestStats     `json:"sample_stats"`
 	BaseStats         TestDetailsTestStats     `json:"base_stats"`
 	SampleJobRunStats []TestDetailsJobRunStats `json:"sample_job_run_stats,omitempty"`

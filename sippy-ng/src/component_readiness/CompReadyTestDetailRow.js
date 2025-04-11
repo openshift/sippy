@@ -105,18 +105,34 @@ export default function CompReadyTestDetailRow(props) {
 
   return (
     <Fragment>
-      <TableRow key={idx}>
-        <TableCell className={classes.crColResult} key={'column' + '-' + idx}>
+      <TableRow key={'jobheader-' + idx}>
+        <TableCell
+          className={classes.crColJobName}
+          key={'basisJob-' + idx}
+          colSpan={3}
+        >
           <Typography className={classes.crCellName}>
-            {element.job_name}
+            {element.base_job_name || '(No basis equivalent)'}
           </Typography>
         </TableCell>
+        <TableCell
+          className={classes.crColJobName}
+          key={'sampleJob-' + idx}
+          colSpan={3}
+        >
+          <Typography className={classes.crCellName}>
+            {element.sample_job_name || '(No sample equivalent)'}
+          </Typography>
+        </TableCell>
+      </TableRow>
+      <TableRow key={idx}>
         <TableCell style={{ verticalAlign: 'top' }}>
-          {infoCell(element.base_stats)}
+          {element.base_job_name ? infoCell(element.base_stats) : ''}
         </TableCell>
         {testJobDetailCell(element, 'base')}
+        <TableCell></TableCell>
         <TableCell style={{ verticalAlign: 'top' }}>
-          {infoCell(element.sample_stats)}
+          {element.sample_job_name ? infoCell(element.sample_stats) : ''}
         </TableCell>
         {testJobDetailCell(element, 'sample')}
         <TableCell style={{ verticalAlign: 'top' }}>
