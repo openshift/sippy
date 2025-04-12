@@ -226,6 +226,11 @@ type ReportTestStats struct {
 
 	SampleStats TestDetailsReleaseStats `json:"sample_stats"`
 
+	// RequiredConfidence is the confidence required from Fishers to consider a regression.
+	// Typically, it is as defined in the request options, but middleware may choose to adjust.
+	// 95 = 95% confidence of a regression required.
+	RequiredConfidence int `json:"-"`
+
 	// Optional fields depending on the Comparison mode
 
 	// FisherExact indicates the confidence of a regression after applying Fisher's Exact Test.

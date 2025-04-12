@@ -491,36 +491,42 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		}
 	}
 
-	// TODO: restore
-	//requiredConfidence := c.getRequiredConfidence(c.ReqOptions.TestIDOption.TestID, c.ReqOptions.VariantOption.RequestedVariants)
-
-	testStats := crtype.ReportTestStats{}
-	testStats.SampleStats = crtype.TestDetailsReleaseStats{
-		Release: c.ReqOptions.SampleRelease.Release,
-		Start:   &c.ReqOptions.SampleRelease.Start,
-		End:     &c.ReqOptions.SampleRelease.End,
-		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  utils.CalculatePassRate(totalSampleSuccess, totalSampleFailure, totalSampleFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
-			SuccessCount: totalSampleSuccess,
-			FlakeCount:   totalSampleFlake,
-			FailureCount: totalSampleFailure,
+	testStats := crtype.ReportTestStats{
+		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
+		SampleStats: crtype.TestDetailsReleaseStats{
+			Release: c.ReqOptions.SampleRelease.Release,
+			Start:   &c.ReqOptions.SampleRelease.Start,
+			End:     &c.ReqOptions.SampleRelease.End,
+			TestDetailsTestStats: crtype.TestDetailsTestStats{
+				SuccessRate:  utils.CalculatePassRate(totalSampleSuccess, totalSampleFailure, totalSampleFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
+				SuccessCount: totalSampleSuccess,
+				FlakeCount:   totalSampleFlake,
+				FailureCount: totalSampleFailure,
+			},
+		},
+		BaseStats: &crtype.TestDetailsReleaseStats{
+			Release: baseRelease,
+			Start:   baseStart,
+			End:     baseEnd,
+			TestDetailsTestStats: crtype.TestDetailsTestStats{
+				SuccessRate:  utils.CalculatePassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
+				SuccessCount: totalBaseSuccess,
+				FlakeCount:   totalBaseFlake,
+				FailureCount: totalBaseFailure,
+			},
 		},
 	}
-	testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-		Release: baseRelease,
-		Start:   baseStart,
-		End:     baseEnd,
-		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  utils.CalculatePassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
-			SuccessCount: totalBaseSuccess,
-			FlakeCount:   totalBaseFlake,
-			FailureCount: totalBaseFailure,
-		},
+
+	// Give middleware their chance to adjust parameters prior to analysis
+	for _, mw := range c.middlewares {
+		err := mw.Analyze(result.TestID, result.Variants, &testStats)
+		if err != nil {
+			logrus.WithError(err).Error("Failure from middleware analysis")
+		}
 	}
 
 	c.assessComponentStatus(
 		&testStats,
-		c.ReqOptions.AdvancedOption.Confidence,
 		approvedRegression,
 		activeProductRegression,
 		resolvedIssueCompensation,

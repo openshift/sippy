@@ -40,10 +40,6 @@ import (
 const (
 	triagedIncidentsTableID = "triaged_incidents"
 
-	// openRegressionConfidenceAdjustment is subtracted from the requested confidence for regressed tests that have
-	// an open regression.
-	openRegressionConfidenceAdjustment = 5
-
 	explanationNoRegression = "No significant regressions found"
 )
 
@@ -1025,36 +1021,6 @@ func (c *ComponentReportGenerator) triagedIncidentsFor(ctx context.Context,
 	return impactedRuns, activeProductRegression, triagedIncidents
 }
 
-// getRequiredConfidence returns the required certainty of a regression before we include it in the report as a
-// regressed test. This is to introduce some hysteresis into the process so once a regression creeps over the 95%
-// confidence we typically use, dropping to 94.9% should not make the cell immediately green.
-//
-// Instead, once you cross the confidence threshold and a regression begins tracking in the openRegressions list,
-// we'll require less confidence for that test until the regression is closed. (-5%) Once the certainty drops below that
-// modified confidence, the regression will be closed and the -5% adjuster is gone.
-//
-// ie. if the request was for 95% confidence, but we see that a test has an open regression (meaning at some point recently
-// we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
-/*
-func (c *ComponentReportGenerator) getRequiredConfidence(testID string, variants map[string]string) int {
-	if len(c.openRegressions) > 0 {
-		view := c.openRegressions[0].View // grab view from first regression, they were queried only for sample release
-		or := regressiontracker.FindOpenRegression(view, testID, variants, c.openRegressions)
-		if or != nil {
-			log.Debugf("adjusting required regression confidence from %d to %d because %s (%v) has an open regression since %s",
-				c.ReqOptions.AdvancedOption.Confidence,
-				c.ReqOptions.AdvancedOption.Confidence-openRegressionConfidenceAdjustment,
-				testID,
-				variants,
-				or.Opened)
-			return c.ReqOptions.AdvancedOption.Confidence - openRegressionConfidenceAdjustment
-		}
-	}
-	return c.ReqOptions.AdvancedOption.Confidence
-}
-
-*/
-
 func initTestAnalysisStruct(
 	testStats *crtype.ReportTestStats,
 	reqOptions crtype.RequestOptions,
@@ -1062,6 +1028,9 @@ func initTestAnalysisStruct(
 	baseStats *crtype.TestStatus,
 	baseRelease string,
 	baseStart, baseEnd *time.Time) {
+
+	// Default to required confidence from request, middleware may adjust later.
+	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
 
 	successFailCount := sampleStats.TotalCount - sampleStats.FlakeCount - sampleStats.SuccessCount
 	testStats.SampleStats = crtype.TestDetailsReleaseStats{
@@ -1135,9 +1104,6 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
-			// requiredConfidence is lowered for on-going regressions to prevent cells from flapping:
-			// TODO: ^^
-			//requiredConfidence := c.getRequiredConfidence(testKey.TestID, testKey.Variants)
 			resolvedIssueCompensation, activeProductRegression, triagedIncidents = c.triagedIncidentsFor(ctx, testKey) // triaged job run failures to ignore
 
 			// Check if the TestStatus is decorated with info indicating its release was overridden, and use that data if so
@@ -1152,9 +1118,16 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
 			initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, &baseStats, matchedBaseRelease, baseStart, baseEnd)
 
+			// Give middleware their chance to adjust parameters prior to analysis
+			for _, mw := range c.middlewares {
+				err = mw.Analyze(testKey.TestID, testKey.Variants, &testStats)
+				if err != nil {
+					return crtype.ComponentReport{}, err
+				}
+			}
+
 			c.assessComponentStatus(
 				&testStats,
-				c.ReqOptions.AdvancedOption.Confidence,
 				nil,
 				activeProductRegression,
 				resolvedIssueCompensation,
@@ -1162,13 +1135,6 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 
 			if !sampleStats.LastFailure.IsZero() {
 				testStats.LastFailure = &sampleStats.LastFailure
-			}
-
-			for _, mw := range c.middlewares {
-				err = mw.Analyze(testKey.TestID, testKey.Variants, &testStats)
-				if err != nil {
-					return crtype.ComponentReport{}, err
-				}
 			}
 
 			if testStats.IsTriaged() {
@@ -1219,8 +1185,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
 		initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, nil, "", nil, nil)
 
-		requiredConfidence := 0 // irrelevant for pass rate comparison
-		c.assessComponentStatus(&testStats, requiredConfidence,
+		c.assessComponentStatus(&testStats,
 			nil,
 			activeProductRegression,
 			resolvedIssueCompensation,
@@ -1401,11 +1366,14 @@ func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage fl
 // cross variant compare, rarely run jobs, etc.)
 func (c *ComponentReportGenerator) assessComponentStatus(
 	testStats *crtype.ReportTestStats,
-	requiredConfidence int,
 	approvedRegression *regressionallowances.IntentionalRegression,
 	activeProductRegression bool,
 	numberOfIgnoredSampleJobRuns int, // count for triaged failures we can safely omit and ignore
 ) {
+	// Catch unset required confidence, typically unit tests
+	if testStats.RequiredConfidence == 0 {
+		testStats.RequiredConfidence = c.ReqOptions.AdvancedOption.Confidence
+	}
 
 	// TODO: move to triage middleware Analyze eventually
 	// preserve the initial sampleTotal, so we can check
@@ -1454,7 +1422,6 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 	// Otherwise we fall back to default behavior of Fishers Exact test:
 	c.buildFisherExactTestStats(
 		testStats,
-		requiredConfidence,
 		approvedRegression,
 		activeProductRegression,
 		initialSampleTotal)
@@ -1462,7 +1429,6 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 }
 
 func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.ReportTestStats,
-	requiredConfidence int,
 	approvedRegression *regressionallowances.IntentionalRegression,
 	activeProductRegression bool,
 	initialSampleTotal int) {
@@ -1500,7 +1466,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		// SampleStats had it's failure count decremented earlier when we calculated adjusted sampleTotal and subtracted it
 		if initialSampleTotal > testStats.SampleStats.Total() && initialPassPercentage < basisPassPercentage {
 			if basisPassPercentage-initialPassPercentage > float64(c.ReqOptions.AdvancedOption.PityFactor)/100 {
-				wasSignificant, _ = c.fischerExactTest(requiredConfidence, initialSampleTotal-samplePass, samplePass,
+				wasSignificant, _ = c.fischerExactTest(testStats.RequiredConfidence, initialSampleTotal-samplePass, samplePass,
 					testStats.BaseStats.Total()-basePass, basePass)
 			}
 			// if it was significant without the adjustment use
@@ -1549,9 +1515,9 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 
 		if improved {
 			// flip base and sample when improved
-			significant, fisherExact = c.fischerExactTest(requiredConfidence, testStats.BaseStats.Total()-basePass, basePass, testStats.SampleStats.Total()-samplePass, samplePass)
+			significant, fisherExact = c.fischerExactTest(testStats.RequiredConfidence, testStats.BaseStats.Total()-basePass, basePass, testStats.SampleStats.Total()-samplePass, samplePass)
 		} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
-			significant, fisherExact = c.fischerExactTest(requiredConfidence, testStats.SampleStats.Total()-samplePass, samplePass, testStats.BaseStats.Total()-basePass, basePass)
+			significant, fisherExact = c.fischerExactTest(testStats.RequiredConfidence, testStats.SampleStats.Total()-samplePass, samplePass, testStats.BaseStats.Total()-basePass, basePass)
 		}
 		if significant {
 			if improved {

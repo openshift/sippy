@@ -12,6 +12,12 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	// openRegressionConfidenceAdjustment is subtracted from the requested confidence for regressed tests that have
+	// an open regression.
+	openRegressionConfidenceAdjustment = 5
+)
+
 var _ middleware.Middleware = &RegressionTracker{}
 
 func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions crtype.RequestOptions) *RegressionTracker {
@@ -68,6 +74,18 @@ func (r *RegressionTracker) Analyze(testID string, variants map[string]string, r
 		or := FindOpenRegression(view, testID, variants, r.openRegressions)
 		if or != nil {
 			report.Regression = or
+
+			// Adjust the required certainty of a regression before we include it in the report as a
+			// regressed test. This is to introduce some hysteresis into the process so once a regression creeps over the 95%
+			// confidence we typically use, dropping to 94.9% should not make the cell immediately green.
+			//
+			// Instead, once you cross the confidence threshold and a regression begins tracking in the openRegressions list,
+			// we'll require less confidence for that test until the regression is closed. (-5%) Once the certainty drops below that
+			// modified confidence, the regression will be closed and the -5% adjuster is gone.
+			//
+			// ie. if the request was for 95% confidence, but we see that a test has an open regression (meaning at some point recently
+			// we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
+			report.RequiredConfidence = r.reqOptions.AdvancedOption.Confidence - openRegressionConfidenceAdjustment
 		}
 	}
 	return nil

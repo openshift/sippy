@@ -491,7 +491,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 95,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Extreme regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
@@ -532,7 +533,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 95,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Significant regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
@@ -828,7 +830,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 90,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Significant regression detected.",
 												"Fishers Exact probability of a regression: 99.92%.",
@@ -1056,7 +1059,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 95,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Extreme regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
@@ -1097,7 +1101,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 95,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Significant regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
@@ -1898,7 +1903,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 				},
 			}
 
-			c.assessComponentStatus(testAnalysis, 0, nil, false, tt.numberOfIgnoredSamples)
+			c.assessComponentStatus(testAnalysis, nil, false, tt.numberOfIgnoredSamples)
 			assert.Equalf(t, tt.expectedStatus, testAnalysis.ReportStatus, "assessComponentStatus expected status not equal")
 			if tt.expectedFischers != nil {
 				// Mac and Linux do not matchup on floating point precision, so lets approximate the comparison:
