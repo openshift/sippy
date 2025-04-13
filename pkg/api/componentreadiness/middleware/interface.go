@@ -20,9 +20,9 @@ type Middleware interface {
 	// QueryTestDetails phase allow middleware to load data that will later be used.
 	QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants)
 
-	// Transform gives middleware opportunity to adjust the queried base and sample TestStatuses before we
+	// Transform gives middleware opportunity to adjust test data prior to running analysis.
 	// proceed to analysis.
-	Transform(status *crtype.ReportTestStatus) error
+	Transform(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error
 
 	// TransformTestDetails gives middleware opportunity to adjust the queried base and sample job run data
 	// before we proceed to analysis.
@@ -31,6 +31,4 @@ type Middleware interface {
 	// TestDetailsAnalyze gives middleware opportunity to analyze data and adjust the final report before
 	// being returned over the API.
 	TestDetailsAnalyze(report *crtype.ReportTestDetails) error
-
-	Analyze(testID string, variants map[string]string, report *crtype.ReportTestStats) error
 }
