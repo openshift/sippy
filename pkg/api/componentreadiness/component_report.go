@@ -1018,9 +1018,7 @@ func initTestAnalysisStruct(
 	testStats *crtype.ReportTestStats,
 	reqOptions crtype.RequestOptions,
 	sampleStats crtype.TestStatus,
-	baseStats *crtype.TestStatus,
-	baseRelease string,
-	baseStart, baseEnd *time.Time) {
+	baseStats *crtype.TestStatus) {
 
 	// Default to required confidence from request, middleware may adjust later.
 	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
@@ -1038,17 +1036,15 @@ func initTestAnalysisStruct(
 		},
 	}
 	if baseStats != nil {
-		// if we don't have a valid set of start and end dates we default to the baseRelease values
-		if baseStart == nil || baseEnd == nil {
-			baseStart = &reqOptions.BaseRelease.Start
-			baseEnd = &reqOptions.BaseRelease.End
-		}
+		baseRelease := reqOptions.BaseRelease.Release
+		baseStart := reqOptions.BaseRelease.Start
+		baseEnd := reqOptions.BaseRelease.End
 
 		failCount := baseStats.TotalCount - baseStats.FlakeCount - baseStats.SuccessCount
 		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
 			Release: baseRelease,
-			Start:   baseStart,
-			End:     baseEnd,
+			Start:   &baseStart,
+			End:     &baseEnd,
 			TestDetailsTestStats: crtype.TestDetailsTestStats{
 				SuccessRate:  utils.CalculatePassRate(baseStats.SuccessCount, failCount, baseStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
 				SuccessCount: baseStats.SuccessCount,
@@ -1099,17 +1095,8 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		} else {
 			resolvedIssueCompensation, activeProductRegression, triagedIncidents = c.triagedIncidentsFor(ctx, testKey) // triaged job run failures to ignore
 
-			// Check if the TestStatus is decorated with info indicating its release was overridden, and use that data if so
-			matchedBaseRelease := c.ReqOptions.BaseRelease.Release
-			var baseStart, baseEnd *time.Time
-			if baseStats.Release != nil {
-				matchedBaseRelease = baseStats.Release.Release
-				baseStart = baseStats.Release.Start
-				baseEnd = baseStats.Release.End
-			}
-
-			// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
-			initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, &baseStats, matchedBaseRelease, baseStart, baseEnd)
+			// Initialize the test analysis before we start passing it around to the middleware
+			initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, &baseStats)
 
 			// Give middleware their chance to adjust parameters prior to analysis
 			for _, mw := range c.middlewares {
@@ -1176,7 +1163,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		resolvedIssueCompensation, activeProductRegression, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
 
 		// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
-		initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, nil, "", nil, nil)
+		initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, nil)
 
 		c.assessComponentStatus(&testStats,
 			nil,
@@ -1418,7 +1405,6 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 		approvedRegression,
 		activeProductRegression,
 		initialSampleTotal)
-	return
 }
 
 func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.ReportTestStats,
@@ -1427,7 +1413,6 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 	initialSampleTotal int) {
 
 	sampleSuccess := testStats.SampleStats.SuccessCount
-	//sampleFailure := testStats.SampleStats.FailureCount
 	sampleFlake := testStats.SampleStats.FlakeCount
 
 	fisherExact := 0.0
@@ -1541,14 +1526,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 			testStats.Explanations = append(testStats.Explanations,
 				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)))
 		}
-		// check for override
-		// TODO move to releasefallback middleware transform stage
-		if testStats.BaseStats.Release != c.ReqOptions.BaseRelease.Release {
-			testStats.Explanations = append(testStats.Explanations, fmt.Sprintf("Overrode base stats using release %s", testStats.BaseStats.Release))
-		}
 	}
-
-	return
 }
 
 func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.ReportTestStats, requiredSuccessRate float64) {
@@ -1581,7 +1559,6 @@ func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.Repo
 
 	testStats.ReportStatus = crtype.NotSignificant
 	testStats.Explanations = append(testStats.Explanations, explanationNoRegression)
-	return
 }
 
 func (c *ComponentReportGenerator) fischerExactTest(confidenceRequired, sampleFailure, sampleSuccess, baseFailure, baseSuccess int) (bool, float64) {

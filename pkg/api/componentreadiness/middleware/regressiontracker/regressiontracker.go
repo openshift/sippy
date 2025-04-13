@@ -49,11 +49,9 @@ func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJo
 		return
 	}
 	r.log.Infof("Found %d open regressions", len(r.openRegressions))
-	return
 }
 
 func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
-	return
 }
 
 func (r *RegressionTracker) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {

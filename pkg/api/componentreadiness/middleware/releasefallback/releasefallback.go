@@ -79,19 +79,9 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 	}()
 }
 
-// Transform iterates the base status looking for any statuses that had a better pass rate in the prior releases
-// we queried earlier.
-// matchBestBaseStats returns the testStatus, release and reportTestStatus
-// that has the highest threshold across the basis release and previous releases included
-// in fallback comparison.
+// PreAnalysis looks for a better pass rate across our fallback releases for the given test stats.
+// It then swaps them out and leaves an explanation before handing back to the core for analysis.
 func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
-	/*
-		newBaseStatus := r.matchBestBaseStats(testKey, r.reqOptions.BaseRelease.Release, testStats)
-		if newBaseStatus.Release != nil && newBaseStatus.Release.Release != r.reqOptions.BaseRelease.Release {
-			testStats.BaseStatus[testKeyStr] = newBaseStatus
-		}
-	*/
-
 	testIDVariantsKey := crtype.TestWithVariantsKey{
 		TestID:   testKey.TestID,
 		Variants: testKey.Variants,
@@ -110,6 +100,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 
 	var priorRelease = testStats.BaseStats.Release
 	var err error
+	var swappedExplanation string
 	for err == nil {
 		var cachedReleaseTestStatuses crtype.ReleaseTestMap
 		var cTestStats crtype.TestStatus
@@ -117,12 +108,12 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 		priorRelease, err = utils.PreviousRelease(priorRelease)
 		// if we fail to determine the previous release then stop
 		if err != nil {
-			return nil
+			break
 		}
 
 		// if we hit a missing release then stop
 		if cachedReleaseTestStatuses, ok = r.cachedFallbackTestStatuses.Releases[priorRelease]; !ok {
-			return nil
+			break
 		}
 
 		// it's ok if we don't have a testKeyStr for this release
@@ -158,22 +149,14 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 						SuccessRate:  cPassRate,
 					},
 				}
-				r.log.Debugf("Overrode base stats (%.4f) using release %s (%.4f) for test: %s",
-					basePassRate, testStats.BaseStats.Release, cPassRate, testKey.TestName)
-				/*
-					baseStats = cTestStats
-
-					// If we swapped out base stats for better ones from a prior release, we need to communicate
-					// this back to the core report generator so it can include the adjusted release/start/end dates in
-					// the report, and ultimately the UI.
-					baseStats.Release = &cachedReleaseTestStatuses.Release
-					r.log.Debugf("Overrode base stats (%.4f) using release %s (%.4f) for test: %s - %s",
-						basePassRate, baseStats.Release.Release, cPassRate, baseStats.TestName, testKeyStr)
-
-				*/
+				swappedExplanation = fmt.Sprintf("Overrode base stats (%.4f) using release %s (%.4f)",
+					basePassRate, testStats.BaseStats.Release, cPassRate)
+				r.log.Debugf("%s for test %s", swappedExplanation)
 			}
-			// TODO: add an explanation if we made a change
 		}
+	}
+	if swappedExplanation != "" {
+		testStats.Explanations = append(testStats.Explanations, swappedExplanation)
 	}
 
 	return nil

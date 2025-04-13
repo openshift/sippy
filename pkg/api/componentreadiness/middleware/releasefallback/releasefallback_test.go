@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Transform(t *testing.T) {
+func Test_PreAnalysis(t *testing.T) {
 	reqOpts419 := crtype.RequestOptions{
 		BaseRelease: crtype.RequestReleaseOptions{
 			Release: "4.19",
@@ -18,7 +18,6 @@ func Test_Transform(t *testing.T) {
 		AdvancedOption: crtype.RequestAdvancedOptions{IncludeMultiReleaseAnalysis: true},
 	}
 	test1ID := "test1ID"
-	//test1Variants := []string{"Arch:amd64", "Platform:aws"}
 	test1Variants := map[string]string{
 		"Arch":     "amd64",
 		"Platform": "aws",
@@ -63,7 +62,7 @@ func Test_Transform(t *testing.T) {
 	fallbackMap418 := crtype.ReleaseTestMap{
 		Release: release418,
 		Tests: map[string]crtype.TestStatus{
-			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 95, 0, &release418),
+			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 95, 0),
 		},
 	}
 
@@ -77,7 +76,7 @@ func Test_Transform(t *testing.T) {
 	fallbackMap417 := crtype.ReleaseTestMap{
 		Release: release417,
 		Tests: map[string]crtype.TestStatus{
-			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 98, 0, &release417),
+			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 98, 0),
 		},
 	}
 
@@ -98,8 +97,8 @@ func Test_Transform(t *testing.T) {
 					fallbackMap418.Release.Release: fallbackMap418,
 				},
 			},
-			testStats:      buildTestStats(100, 93, 0, release419),
-			expectedStatus: buildTestStats(100, 95, 0, release418),
+			testStats:      buildTestStats(100, 93, release419, nil),
+			expectedStatus: buildTestStats(100, 95, release418, []string{"Overrode base stats (0.9300) using release 4.18 (0.9500)"}),
 		},
 		{
 			name:    "fallback twice to prior release",
@@ -111,8 +110,8 @@ func Test_Transform(t *testing.T) {
 					fallbackMap417.Release.Release: fallbackMap417, // 4.17 improves even further
 				},
 			},
-			testStats:      buildTestStats(100, 93, 0, release419),
-			expectedStatus: buildTestStats(100, 98, 0, release417),
+			testStats:      buildTestStats(100, 93, release419, nil),
+			expectedStatus: buildTestStats(100, 98, release417, []string{"Overrode base stats (0.9500) using release 4.17 (0.9800)"}),
 		},
 		{
 			name:    "fallback once to two releases ago",
@@ -124,8 +123,8 @@ func Test_Transform(t *testing.T) {
 					fallbackMap417.Release.Release: fallbackMap417, // 4.17 improves even further
 				},
 			},
-			testStats:      buildTestStats(100, 97, 0, release419),
-			expectedStatus: buildTestStats(100, 98, 0, release417),
+			testStats:      buildTestStats(100, 97, release419, nil),
+			expectedStatus: buildTestStats(100, 98, release417, []string{"Overrode base stats (0.9700) using release 4.17 (0.9800)"}),
 		},
 		{
 			name:    "don't fallback to prior release",
@@ -136,8 +135,8 @@ func Test_Transform(t *testing.T) {
 					fallbackMap418.Release.Release: fallbackMap418,
 				},
 			},
-			testStats:      buildTestStats(100, 100, 0, release419),
-			expectedStatus: buildTestStats(100, 100, 0, release419),
+			testStats:      buildTestStats(100, 100, release419, nil),
+			expectedStatus: buildTestStats(100, 100, release419, nil),
 		},
 		{
 			name:    "don't fallback to prior release with insufficient runs",
@@ -149,9 +148,9 @@ func Test_Transform(t *testing.T) {
 					fallbackMap417.Release.Release: fallbackMap417,
 				},
 			},
-			testStats: buildTestStats(10000, 9700, 0, release419),
+			testStats: buildTestStats(10000, 9700, release419, nil),
 			// No fallback release had at least 60% of our run count
-			expectedStatus: buildTestStats(10000, 9700, 0, release419),
+			expectedStatus: buildTestStats(10000, 9700, release419, nil),
 		},
 	}
 	for i, test := range tests {
@@ -166,7 +165,7 @@ func Test_Transform(t *testing.T) {
 }
 
 //nolint:unparam
-func buildTestStatus(testName string, variants []string, total, success, flake int, release *crtype.Release) crtype.TestStatus {
+func buildTestStatus(testName string, variants []string, total, success, flake int) crtype.TestStatus {
 	return crtype.TestStatus{
 		TestName:     testName,
 		TestSuite:    "conformance",
@@ -176,12 +175,11 @@ func buildTestStatus(testName string, variants []string, total, success, flake i
 		TotalCount:   total,
 		SuccessCount: success,
 		FlakeCount:   flake,
-		Release:      release,
 	}
 }
 
-func buildTestStats(total, success, flake int, baseRelease crtype.Release) *crtype.ReportTestStats {
-	fails := total - success - flake
+func buildTestStats(total, success int, baseRelease crtype.Release, explanations []string) *crtype.ReportTestStats {
+	fails := total - success
 	ts := &crtype.ReportTestStats{
 		BaseStats: &crtype.TestDetailsReleaseStats{
 			Release: baseRelease.Release,
@@ -190,10 +188,13 @@ func buildTestStats(total, success, flake int, baseRelease crtype.Release) *crty
 			TestDetailsTestStats: crtype.TestDetailsTestStats{
 				FailureCount: fails,
 				SuccessCount: success,
-				FlakeCount:   flake,
-				SuccessRate:  utils.CalculatePassRate(success, fails, flake, false),
+				FlakeCount:   0,
+				SuccessRate:  utils.CalculatePassRate(success, fails, 0, false),
 			},
 		},
+	}
+	if explanations != nil {
+		ts.Explanations = explanations
 	}
 	return ts
 }
