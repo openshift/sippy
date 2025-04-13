@@ -2,6 +2,8 @@ package releasefallback
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -79,34 +81,34 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 
 // Transform iterates the base status looking for any statuses that had a better pass rate in the prior releases
 // we queried earlier.
-func (r *ReleaseFallback) Transform(status *crtype.ReportTestStatus) error {
-	for testKeyStr, baseStats := range status.BaseStatus {
-		newBaseStatus := r.matchBestBaseStats(testKeyStr, r.reqOptions.BaseRelease.Release, baseStats)
-		if newBaseStatus.Release != nil && newBaseStatus.Release.Release != r.reqOptions.BaseRelease.Release {
-			status.BaseStatus[testKeyStr] = newBaseStatus
-		}
-	}
-
-	return nil
-}
-
 // matchBestBaseStats returns the testStatus, release and reportTestStatus
 // that has the highest threshold across the basis release and previous releases included
 // in fallback comparison.
-func (r *ReleaseFallback) matchBestBaseStats(
-	testKeyStr, baseRelease string,
-	baseStats crtype.TestStatus) crtype.TestStatus {
+func (r *ReleaseFallback) Transform(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+	/*
+		newBaseStatus := r.matchBestBaseStats(testKey, r.reqOptions.BaseRelease.Release, testStats)
+		if newBaseStatus.Release != nil && newBaseStatus.Release.Release != r.reqOptions.BaseRelease.Release {
+			testStats.BaseStatus[testKeyStr] = newBaseStatus
+		}
+	*/
+
+	testIDVariantsKey := crtype.TestWithVariantsKey{
+		TestID:   testKey.TestID,
+		Variants: testKey.Variants,
+	}
+	testIDBytes, _ := json.Marshal(testIDVariantsKey)
+	testKeyStr := string(testIDBytes)
 
 	if !r.reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
-		return baseStats
+		// nothing to do if this feature is disabled
+		return nil
 	}
 
 	if r.cachedFallbackTestStatuses == nil {
-		r.log.Errorf("Invalid fallback test statuses")
-		return baseStats
+		return fmt.Errorf("Invalid fallback test statuses")
 	}
 
-	var priorRelease = baseRelease
+	var priorRelease = testStats.BaseStats.Release
 	var err error
 	for err == nil {
 		var cachedReleaseTestStatuses crtype.ReleaseTestMap
@@ -115,12 +117,12 @@ func (r *ReleaseFallback) matchBestBaseStats(
 		priorRelease, err = utils.PreviousRelease(priorRelease)
 		// if we fail to determine the previous release then stop
 		if err != nil {
-			return baseStats
+			return nil
 		}
 
 		// if we hit a missing release then stop
 		if cachedReleaseTestStatuses, ok = r.cachedFallbackTestStatuses.Releases[priorRelease]; !ok {
-			return baseStats
+			return nil
 		}
 
 		// it's ok if we don't have a testKeyStr for this release
@@ -130,29 +132,50 @@ func (r *ReleaseFallback) matchBestBaseStats(
 			// what is our base total compared to the original base
 			// this happens when jobs shift like sdn -> ovn
 			// if we get below threshold that's a sign we are reducing our base signal
-			if float64(cTestStats.TotalCount)/float64(baseStats.TotalCount) < .6 {
+			if float64(cTestStats.TotalCount)/float64(testStats.BaseStats.Total()) < .6 {
 				r.log.Debugf("Fallback base total: %d to low for fallback analysis compared to original: %d",
-					cTestStats.TotalCount, baseStats.TotalCount)
-				return baseStats
+					cTestStats.TotalCount, testStats.BaseStats.Total())
+				return nil
 			}
-			_, success, fail, flake := baseStats.GetTotalSuccessFailFlakeCounts()
+			success := testStats.BaseStats.SuccessCount
+			fail := testStats.BaseStats.FailureCount
+			flake := testStats.BaseStats.FlakeCount
 			basePassRate := utils.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
 
 			_, success, fail, flake = cTestStats.GetTotalSuccessFailFlakeCounts()
 			cPassRate := utils.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
 			if cPassRate > basePassRate {
-				baseStats = cTestStats
-				// If we swapped out base stats for better ones from a prior release, we need to communicate
-				// this back to the core report generator so it can include the adjusted release/start/end dates in
-				// the report, and ultimately the UI.
-				baseStats.Release = &cachedReleaseTestStatuses.Release
-				r.log.Debugf("Overrode base stats (%.4f) using release %s (%.4f) for test: %s - %s",
-					basePassRate, baseStats.Release.Release, cPassRate, baseStats.TestName, testKeyStr)
+				// We've found a better pass rate in a prior release with enough runs to qualify.
+				// Adjust the stats and keep looking for an even better one.
+				testStats.BaseStats = &crtype.TestDetailsReleaseStats{
+					Release: cTestStats.Release.Release,
+					Start:   cTestStats.Release.Start,
+					End:     cTestStats.Release.End,
+					TestDetailsTestStats: crtype.TestDetailsTestStats{
+						SuccessCount: success,
+						FailureCount: fail,
+						FlakeCount:   flake,
+						SuccessRate:  cPassRate,
+					},
+				}
+				r.log.Debugf("Overrode base stats (%.4f) using release %s (%.4f) for test: %s",
+					basePassRate, testStats.BaseStats.Release, cPassRate, testKey.TestName)
+				/*
+					baseStats = cTestStats
+
+					// If we swapped out base stats for better ones from a prior release, we need to communicate
+					// this back to the core report generator so it can include the adjusted release/start/end dates in
+					// the report, and ultimately the UI.
+					baseStats.Release = &cachedReleaseTestStatuses.Release
+					r.log.Debugf("Overrode base stats (%.4f) using release %s (%.4f) for test: %s - %s",
+						basePassRate, baseStats.Release.Release, cPassRate, baseStats.TestName, testKeyStr)
+
+				*/
 			}
 		}
 	}
 
-	return baseStats
+	return nil
 }
 
 func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,

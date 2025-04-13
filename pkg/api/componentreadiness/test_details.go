@@ -327,17 +327,19 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		sampleStatusCopy[k] = v
 	}
 
-	result := crtype.ReportTestDetails{
-		ReportTestIdentification: crtype.ReportTestIdentification{
-			RowIdentification: crtype.RowIdentification{
-				Component:  c.ReqOptions.TestIDOption.Component,
-				Capability: c.ReqOptions.TestIDOption.Capability,
-				TestID:     c.ReqOptions.TestIDOption.TestID,
-			},
-			ColumnIdentification: crtype.ColumnIdentification{
-				Variants: c.ReqOptions.VariantOption.RequestedVariants,
-			},
+	testKey := crtype.ReportTestIdentification{
+		RowIdentification: crtype.RowIdentification{
+			Component:  c.ReqOptions.TestIDOption.Component,
+			Capability: c.ReqOptions.TestIDOption.Capability,
+			TestID:     c.ReqOptions.TestIDOption.TestID,
 		},
+		ColumnIdentification: crtype.ColumnIdentification{
+			Variants: c.ReqOptions.VariantOption.RequestedVariants,
+		},
+	}
+
+	result := crtype.ReportTestDetails{
+		ReportTestIdentification: testKey,
 	}
 	var resolvedIssueCompensation int
 	var incidents []crtype.TriagedIncident

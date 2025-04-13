@@ -56,10 +56,6 @@ func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitG
 	return
 }
 
-func (r *RegressionTracker) Transform(status *crtype.ReportTestStatus) error {
-	return nil
-}
-
 func (r *RegressionTracker) TransformTestDetails(status *crtype.JobRunTestReportStatus) error {
 	return nil
 }
@@ -68,12 +64,12 @@ func (r *RegressionTracker) TestDetailsAnalyze(report *crtype.ReportTestDetails)
 	return nil
 }
 
-func (r *RegressionTracker) Analyze(testID string, variants map[string]string, report *crtype.ReportTestStats) error {
+func (r *RegressionTracker) Transform(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 	if len(r.openRegressions) > 0 {
 		view := r.openRegressions[0].View // grab view from first regression, they were queried only for sample release
-		or := FindOpenRegression(view, testID, variants, r.openRegressions)
+		or := FindOpenRegression(view, testKey.TestID, testKey.Variants, r.openRegressions)
 		if or != nil {
-			report.Regression = or
+			testStats.Regression = or
 
 			// Adjust the required certainty of a regression before we include it in the report as a
 			// regressed test. This is to introduce some hysteresis into the process so once a regression creeps over the 95%
@@ -85,7 +81,7 @@ func (r *RegressionTracker) Analyze(testID string, variants map[string]string, r
 			//
 			// ie. if the request was for 95% confidence, but we see that a test has an open regression (meaning at some point recently
 			// we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
-			report.RequiredConfidence = r.reqOptions.AdvancedOption.Confidence - openRegressionConfidenceAdjustment
+			testStats.RequiredConfidence = r.reqOptions.AdvancedOption.Confidence - openRegressionConfidenceAdjustment
 		}
 	}
 	return nil
