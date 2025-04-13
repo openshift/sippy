@@ -1515,13 +1515,14 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 	if testStats.ReportStatus <= crtype.SignificantTriagedRegression {
 
 		if testStats.ReportStatus <= crtype.SignificantRegression {
-			testStats.Explanations = []string{
-				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)),
-				fmt.Sprintf("Fishers Exact probability of a regression: %.2f%%.", float64(100)-*testStats.FisherExact),
+			testStats.Explanations = append(testStats.Explanations,
+				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)))
+			testStats.Explanations = append(testStats.Explanations,
+				fmt.Sprintf("Fishers Exact probability of a regression: %.2f%%.", float64(100)-*testStats.FisherExact))
+			testStats.Explanations = append(testStats.Explanations,
 				fmt.Sprintf("Test pass rate dropped from %.2f%% to %.2f%%.",
 					testStats.BaseStats.SuccessRate*float64(100),
-					testStats.SampleStats.SuccessRate*float64(100)),
-			}
+					testStats.SampleStats.SuccessRate*float64(100)))
 		} else {
 			testStats.Explanations = append(testStats.Explanations,
 				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)))

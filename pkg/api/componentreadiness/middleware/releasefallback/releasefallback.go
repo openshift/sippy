@@ -155,6 +155,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 			}
 		}
 	}
+	// Add an explanation for the user why we fell back for the final release data:
 	if swappedExplanation != "" {
 		testStats.Explanations = append(testStats.Explanations, swappedExplanation)
 	}
