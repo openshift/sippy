@@ -48,8 +48,8 @@ type RequestReleaseOptions struct {
 // date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
 	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
-	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
-	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	RelativeStart         string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd           string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
@@ -138,6 +138,7 @@ type TestStatus struct {
 	LastFailure  time.Time `json:"last_failure"`
 	// Release provides info on the release this test status was pulled from for base TestStatus.
 	// If nil, assume the base/sample release from the request options. (used for ReleaseFallback)
+	// TODO: Eliminate
 	Release *Release `json:"release"`
 }
 

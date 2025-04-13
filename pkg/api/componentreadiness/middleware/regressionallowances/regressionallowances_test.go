@@ -94,7 +94,7 @@ func Test_Transform(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			rfb := NewRegressionAllowancesMiddleware(test.reqOpts)
 			rfb.regressionGetterFunc = regressionGetter
-			err := rfb.Transform(test.testKey, test.baseStatus)
+			err := rfb.PreAnalysis(test.testKey, test.baseStatus)
 			assert.NoError(t, err)
 			assert.Equal(t, *test.expectedStatus, *test.baseStatus)
 		})

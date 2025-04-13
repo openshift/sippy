@@ -158,7 +158,7 @@ func Test_Transform(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			rfb := NewReleaseFallbackMiddleware(nil, test.reqOpts)
 			rfb.cachedFallbackTestStatuses = &tests[i].fallbackReleases
-			err := rfb.Transform(test.testKey, test.testStats)
+			err := rfb.PreAnalysis(test.testKey, test.testStats)
 			assert.NoError(t, err)
 			assert.Equal(t, *test.expectedStatus, *test.testStats)
 		})
@@ -179,6 +179,7 @@ func buildTestStatus(testName string, variants []string, total, success, flake i
 		Release:      release,
 	}
 }
+
 func buildTestStats(total, success, flake int, baseRelease crtype.Release) *crtype.ReportTestStats {
 	fails := total - success - flake
 	ts := &crtype.ReportTestStats{

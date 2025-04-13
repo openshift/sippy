@@ -84,7 +84,7 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 // matchBestBaseStats returns the testStatus, release and reportTestStatus
 // that has the highest threshold across the basis release and previous releases included
 // in fallback comparison.
-func (r *ReleaseFallback) Transform(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 	/*
 		newBaseStatus := r.matchBestBaseStats(testKey, r.reqOptions.BaseRelease.Release, testStats)
 		if newBaseStatus.Release != nil && newBaseStatus.Release.Release != r.reqOptions.BaseRelease.Release {
@@ -148,9 +148,9 @@ func (r *ReleaseFallback) Transform(testKey crtype.ReportTestIdentification, tes
 				// We've found a better pass rate in a prior release with enough runs to qualify.
 				// Adjust the stats and keep looking for an even better one.
 				testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-					Release: cTestStats.Release.Release,
-					Start:   cTestStats.Release.Start,
-					End:     cTestStats.Release.End,
+					Release: priorRelease,
+					Start:   cachedReleaseTestStatuses.Start,
+					End:     cachedReleaseTestStatuses.End,
 					TestDetailsTestStats: crtype.TestDetailsTestStats{
 						SuccessCount: success,
 						FailureCount: fail,
@@ -172,6 +172,7 @@ func (r *ReleaseFallback) Transform(testKey crtype.ReportTestIdentification, tes
 
 				*/
 			}
+			// TODO: add an explanation if we made a change
 		}
 	}
 
@@ -236,13 +237,6 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 		}()
 	}
 
-}
-
-func (r *ReleaseFallback) TransformTestDetails(status *crtype.JobRunTestReportStatus) error {
-	// Simply attach the override base stats to the status
-	r.log.Infof("Transforming fallback test details")
-	status.BaseOverrideStatus = r.baseOverrideStatus
-	return nil
 }
 
 func (r *ReleaseFallback) TestDetailsAnalyze(report *crtype.ReportTestDetails) error {

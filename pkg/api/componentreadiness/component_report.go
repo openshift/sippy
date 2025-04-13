@@ -261,14 +261,7 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 		return crtype.ComponentReport{}, errs
 	}
 
-	// Allow all middlware a chance to transform the base/sample TestStatuses before we analyze:
 	var err error
-	for _, mw := range c.middlewares {
-		err = mw.Transform(&componentReportTestStatus)
-		if err != nil {
-			return crtype.ComponentReport{}, []error{err}
-		}
-	}
 
 	// generateComponentTestReport modifies SampleStatus removing matches from BaseStatus
 	// resulting in erroneous sample results count
@@ -1120,7 +1113,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 
 			// Give middleware their chance to adjust parameters prior to analysis
 			for _, mw := range c.middlewares {
-				err = mw.Analyze(testKey.TestID, testKey.Variants, &testStats)
+				err = mw.PreAnalysis(testKey, &testStats)
 				if err != nil {
 					return crtype.ComponentReport{}, err
 				}

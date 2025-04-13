@@ -56,15 +56,7 @@ func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitG
 	return
 }
 
-func (r *RegressionTracker) TransformTestDetails(status *crtype.JobRunTestReportStatus) error {
-	return nil
-}
-
-func (r *RegressionTracker) TestDetailsAnalyze(report *crtype.ReportTestDetails) error {
-	return nil
-}
-
-func (r *RegressionTracker) Transform(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *RegressionTracker) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 	if len(r.openRegressions) > 0 {
 		view := r.openRegressions[0].View // grab view from first regression, they were queried only for sample release
 		or := FindOpenRegression(view, testKey.TestID, testKey.Variants, r.openRegressions)

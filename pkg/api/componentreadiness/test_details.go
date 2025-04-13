@@ -65,15 +65,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	now := time.Now()
 	componentJobRunTestReportStatus.GeneratedAt = &now
 
-	// Allow all middleware a chance to transform the job run test statuses:
-	var err error
-	for _, mw := range c.middlewares {
-		err = mw.TransformTestDetails(&componentJobRunTestReportStatus)
-		if err != nil {
-			return crtype.ReportTestDetails{}, []error{err}
-		}
-	}
-
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(ctx,
 		componentJobRunTestReportStatus.BaseStatus,
@@ -82,14 +73,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		&c.ReqOptions.BaseRelease.End,
 		componentJobRunTestReportStatus.SampleStatus)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
-
-	for _, mw := range c.middlewares {
-		// TODO: unused, no impl yet, intended for release fallback code below
-		err = mw.TestDetailsAnalyze(&report)
-		if err != nil {
-			return crtype.ReportTestDetails{}, []error{err}
-		}
-	}
 
 	// Generate the report for the fallback release if one was found:
 	// Move all this to the middleware.
@@ -519,9 +502,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		},
 	}
 
-	// Give middleware their chance to adjust parameters prior to analysis
 	for _, mw := range c.middlewares {
-		err := mw.Analyze(result.TestID, result.Variants, &testStats)
+		err := mw.PreAnalysis(testKey, &testStats)
 		if err != nil {
 			logrus.WithError(err).Error("Failure from middleware analysis")
 		}

@@ -42,7 +42,7 @@ func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crt
 
 // Transform iterates the base status looking for any with an accepted regression in the basis release, and if found
 // swaps out the stats with the better pass rate data specified in the intentional regression allowance.
-func (r *RegressionAllowances) Transform(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *RegressionAllowances) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 
 	r.matchBaseRegression(testKey, r.reqOptions.BaseRelease.Release, testStats)
 
@@ -92,12 +92,4 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 }
 
 func (r *RegressionAllowances) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
-}
-
-func (r *RegressionAllowances) TransformTestDetails(status *crtype.JobRunTestReportStatus) error {
-	return nil
-}
-
-func (r *RegressionAllowances) TestDetailsAnalyze(details *crtype.ReportTestDetails) error {
-	return nil
 }
