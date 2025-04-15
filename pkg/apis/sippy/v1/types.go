@@ -70,9 +70,10 @@ type FailureGroup struct {
 }
 
 type Release struct {
-	Release string
-	Status  string
-	GADate  *time.Time
+	Release        string
+	Status         string
+	GADate         *time.Time
+	DevelStartDate *time.Time
 }
 
 type VariantMapping struct {

@@ -794,8 +794,10 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Request) {
 	gaDateMap := make(map[string]time.Time)
+	develDateMap := make(map[string]time.Time)
 	response := apitype.Releases{
-		GADates: gaDateMap,
+		GADates:         gaDateMap,
+		DevelStartDates: develDateMap,
 	}
 	releases, err := api.GetReleases(req.Context(), s.bigQueryClient)
 	if err != nil {
@@ -808,6 +810,9 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 		response.Releases = append(response.Releases, release.Release)
 		if release.GADate != nil {
 			response.GADates[release.Release] = *release.GADate
+		}
+		if release.DevelStartDate != nil {
+			response.DevelStartDates[release.Release] = *release.DevelStartDate
 		}
 	}
 

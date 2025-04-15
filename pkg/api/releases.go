@@ -503,12 +503,21 @@ func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client)
 			log.WithError(err).Error("error parsing release row from bigquery")
 			return releases, err
 		}
-		release := v1.Release{Release: r.Release, Status: r.ReleaseStatus.String()}
-		if r.GADate.Valid {
-			gaDate := r.GADate.Date.In(time.UTC)
-			release.GADate = &gaDate
-		}
-		releases = append(releases, release)
+		releases = append(releases, transformRelease(r))
 	}
 	return releases, nil
+}
+
+// transformRelease converts the BQ release row to v1.Relesae type
+func transformRelease(r apitype.ReleaseRow) v1.Release {
+	release := v1.Release{Release: r.Release, Status: r.ReleaseStatus.String()}
+	if r.GADate.Valid {
+		gaDate := r.GADate.Date.In(time.UTC)
+		release.GADate = &gaDate
+	}
+	if r.DevelStartDate.IsValid() {
+		develStartDate := r.DevelStartDate.In(time.UTC)
+		release.DevelStartDate = &develStartDate
+	}
+	return release
 }
