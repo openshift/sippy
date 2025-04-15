@@ -90,7 +90,7 @@ func TestTransformRelease(t *testing.T) {
 				Month: 4,
 				Day:   18,
 			}},
-			expectedRelease: v1.Release{Release: "4.20", Status: "Development", DevelStartDate: &devStart420},
+			expectedRelease: v1.Release{Release: "4.20", Status: "Development", DevelopmentStartDate: &devStart420},
 		},
 		{
 			name: "release with ga date",
@@ -105,7 +105,7 @@ func TestTransformRelease(t *testing.T) {
 					Day:   9},
 				Valid: true,
 			}},
-			expectedRelease: v1.Release{Release: "4.19", Status: "Development", DevelStartDate: &devStart419, GADate: &gaDate419},
+			expectedRelease: v1.Release{Release: "4.19", Status: "Development", DevelopmentStartDate: &devStart419, GADate: &gaDate419},
 		},
 	}
 
@@ -115,7 +115,7 @@ func TestTransformRelease(t *testing.T) {
 			assert.Equal(t, tc.expectedRelease.Release, release.Release, "unexpected release")
 			assert.Equal(t, tc.expectedRelease.Status, release.Status, "unexpected status")
 			assert.Equal(t, tc.expectedRelease.GADate, release.GADate, "unexpected status")
-			assert.Equal(t, tc.expectedRelease.DevelStartDate, release.DevelStartDate, "unexpected devel start")
+			assert.Equal(t, tc.expectedRelease.DevelopmentStartDate, release.DevelopmentStartDate, "unexpected devel start")
 		})
 	}
 }

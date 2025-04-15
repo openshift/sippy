@@ -508,7 +508,7 @@ func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client)
 	return releases, nil
 }
 
-// transformRelease converts the BQ release row to v1.Relesae type
+// transformRelease converts the BQ release row to v1.Release type
 func transformRelease(r apitype.ReleaseRow) v1.Release {
 	release := v1.Release{Release: r.Release, Status: r.ReleaseStatus.String()}
 	if r.GADate.Valid {
@@ -517,7 +517,7 @@ func transformRelease(r apitype.ReleaseRow) v1.Release {
 	}
 	if r.DevelStartDate.IsValid() {
 		develStartDate := r.DevelStartDate.In(time.UTC)
-		release.DevelStartDate = &develStartDate
+		release.DevelopmentStartDate = &develStartDate
 	}
 	return release
 }
