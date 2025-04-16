@@ -808,18 +808,14 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 
 	for _, release := range releases {
 		response.Releases = append(response.Releases, release.Release)
-		addDate := false
 		releaseDate := apitype.ReleaseDates{}
 		if release.GADate != nil {
 			response.DeprecatedGADates[release.Release] = *release.GADate
 			releaseDate.GA = release.GADate
-			addDate = true
+			response.Dates[release.Release] = releaseDate
 		}
 		if release.DevelopmentStartDate != nil {
 			releaseDate.DevelopmentStart = release.DevelopmentStartDate
-			addDate = true
-		}
-		if addDate {
 			response.Dates[release.Release] = releaseDate
 		}
 	}
