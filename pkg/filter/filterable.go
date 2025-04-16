@@ -242,7 +242,12 @@ func (f FilterItem) toBQStr(filterable Filterable) string { //nolint
 			return fmt.Sprintf("NOT LOWER(%s) LIKE '%%%s%%'", field, f.Value)
 		}
 		return fmt.Sprintf("LOWER(%s) LIKE '%%%s%%'", field, f.Value)
-	case OperatorEquals, OperatorArithmeticEquals:
+	case OperatorEquals:
+		if f.Not {
+			return fmt.Sprintf("%s != \"%s\"", field, f.Value)
+		}
+		return fmt.Sprintf("%s = \"%s\"", field, f.Value)
+	case OperatorArithmeticEquals:
 		if f.Not {
 			return fmt.Sprintf("%s != %s", field, f.Value)
 		}

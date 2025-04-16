@@ -359,7 +359,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 	candidateQueryStr := ""
 	whereStr := fmt.Sprintf(`
 		WHERE release='%s' AND (current_runs > 0 or previous_runs > 0)`, release)
-	if rawFilter != nil {
+	if rawFilter != nil && len(rawFilter.Items) > 0 {
 		whereStr += " AND " + rawFilter.ToBQStr(apitype.Test{})
 	}
 	if collapse {
@@ -385,7 +385,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 	)
 	`, query.QueryTestSummer, dataSet, table, whereStr, query.QueryTestSummarizer)
 	} else {
-		if processedFilter != nil {
+		if processedFilter != nil && len(processedFilter.Items) > 0 {
 			whereStr += " AND " + processedFilter.ToBQStr(apitype.Test{})
 		}
 		candidateQueryStr = fmt.Sprintf(`WITH test_stats AS (
@@ -431,7 +431,6 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 	)`, dataSet, table, release, query.QueryTestSummarizer, dataSet, table, whereStr)
 	}
 
-	testReports := make([]apitype.TestBQ, 0)
 	queryStr := fmt.Sprintf(`%s
 		SELECT *
 		FROM candidate_query`, candidateQueryStr)
@@ -474,12 +473,12 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 	return testReports, overallTest, nil
 }
 
-func FetchTestResultsFromBQ(ctx context.Context, query *bigquery.Query) ([]apitype.TestBQ, []error) {
+func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.TestBQ, []error) {
 	errs := []error{}
 	result := []apitype.TestBQ{}
-	log.Infof("Fetching test result with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
+	log.Infof("Fetching test result with:\n%s\nParameters:\n%+v\n", q.Q, q.Parameters)
 
-	it, err := query.Read(ctx)
+	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying test result from bigquery")
 		errs = append(errs, err)
