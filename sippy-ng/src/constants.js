@@ -139,7 +139,7 @@ export const BOOKMARKS = {
   NO_100_FLAKE: {
     columnField: 'current_flake_percentage',
     not: true,
-    operatorValue: 'equals',
+    operatorValue: '=',
     value: '100',
   },
   NO_OPENSHIFT_TESTS_SHOULD_WORK: {

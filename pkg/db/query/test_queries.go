@@ -218,7 +218,6 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 	if res.Error != nil {
 		return results, res.Error
 	}
-	log.Infof("------ test is %+v", test)
 	// issues with LabelJiraAutomator are placeholders for multiple tests. Filter them out.
 	for _, b := range test.Bugs {
 		if !util.StrSliceContains(b.Labels, jira.LabelJiraAutomator) {
