@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -303,8 +304,9 @@ type TestDetailsJobStats struct {
 }
 
 type TestDetailsJobRunStats struct {
-	JobURL   string `json:"job_url"`
-	JobRunID string `json:"job_run_id"`
+	JobURL    string         `json:"job_url"`
+	JobRunID  string         `json:"job_run_id"`
+	StartTime civil.DateTime `json:"start_time"`
 	// TestStats is the test stats from one particular job run.
 	// For the majority of the tests, there is only one junit. But
 	// there are cases multiple junits are generated for the same test.
@@ -331,17 +333,18 @@ type JobRunTestIdentification struct {
 }
 
 type JobRunTestStatusRow struct {
-	ProwJob         string   `bigquery:"prowjob_name"`
-	ProwJobRunID    string   `bigquery:"prowjob_run_id"`
-	ProwJobURL      string   `bigquery:"prowjob_url"`
-	TestID          string   `bigquery:"test_id"`
-	TestName        string   `bigquery:"test_name"`
-	FilePath        string   `bigquery:"file_path"`
-	TotalCount      int      `bigquery:"total_count"`
-	SuccessCount    int      `bigquery:"success_count"`
-	FlakeCount      int      `bigquery:"flake_count"`
-	JiraComponent   string   `bigquery:"jira_component"`
-	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
+	ProwJob         string         `bigquery:"prowjob_name"`
+	ProwJobRunID    string         `bigquery:"prowjob_run_id"`
+	ProwJobURL      string         `bigquery:"prowjob_url"`
+	StartTime       civil.DateTime `bigquery:"prowjob_start"`
+	TestID          string         `bigquery:"test_id"`
+	TestName        string         `bigquery:"test_name"`
+	FilePath        string         `bigquery:"file_path"`
+	TotalCount      int            `bigquery:"total_count"`
+	SuccessCount    int            `bigquery:"success_count"`
+	FlakeCount      int            `bigquery:"flake_count"`
+	JiraComponent   string         `bigquery:"jira_component"`
+	JiraComponentID *big.Rat       `bigquery:"jira_component_id"`
 }
 
 type JobRunTestReportStatus struct {
