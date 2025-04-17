@@ -1,10 +1,26 @@
+import { CapabilitiesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
-import { formColumnName, sortQueryParams } from './CompReadyUtils'
+import {
+  formColumnName,
+  getTriagesAPIUrl,
+  sortQueryParams,
+} from './CompReadyUtils'
+import {
+  FormHelperText,
+  MenuItem,
+  Popover,
+  Select,
+  Snackbar,
+  TextField,
+  Tooltip,
+} from '@mui/material'
 import { Link } from 'react-router-dom'
-import { Popover, Tooltip } from '@mui/material'
+import { makeStyles } from '@mui/styles'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
+import Alert from '@mui/material/Alert'
+import Button from '@mui/material/Button'
 import CompSeverityIcon from './CompSeverityIcon'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
@@ -46,10 +62,26 @@ function generateTestReport(
   return sortQueryParams(retUrl)
 }
 
+const useStyles = makeStyles({
+  triageForm: {
+    display: 'flex',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    padding: '10px 0',
+  },
+  validationErrors: {
+    color: 'red',
+  },
+})
+
 export default function RegressedTestsPanel(props) {
+  const { filterVals, regressedTests, setTriageEntryCreated } = props
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
+
+  const classes = useStyles()
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -61,8 +93,130 @@ export default function RegressedTestsPanel(props) {
     setTimeout(() => setCopyPopoverEl(null), 2000)
   }
 
+  // Helpers to create triage entries
+  const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const triageEnabled = capabilitiesContext.includes('write_endpoints')
+  const [triaging, setTriaging] = React.useState(false)
+  const [triageEntryData, setTriageEntryData] = React.useState({
+    url: '',
+    type: 'type',
+    ids: [],
+  })
+  const [triageValidationErrors, setTriageValidationErrors] = React.useState([])
+  const jiraUrlPrefix = 'https://issues.redhat.com/browse'
+
+  const handleTriageChange = (e) => {
+    const { name, value, checked } = e.target
+
+    // The checkboxes require special handling to keep in sync
+    if (name === 'triage-test-id') {
+      if (checked) {
+        setTriageEntryData((prevData) => ({
+          ...prevData,
+          ids: [...prevData.ids, value],
+        }))
+      } else {
+        setTriageEntryData((prevData) => ({
+          ...prevData,
+          ids: prevData.ids.filter((id) => id !== value),
+        }))
+      }
+    } else {
+      setTriageEntryData((prevData) => ({
+        ...prevData,
+        [name]: value,
+      }))
+    }
+  }
+
+  const handleTriageEntry = () => {
+    const validationErrors = []
+    if (triageEntryData.type === 'type') {
+      validationErrors.push('invalid type, please make a selection')
+    }
+    if (!triageEntryData.url.startsWith(jiraUrlPrefix)) {
+      validationErrors.push('invalid url, should begin with ' + jiraUrlPrefix)
+    }
+    if (triageEntryData.ids.length < 1) {
+      validationErrors.push('no tests selected, please select at least one')
+    }
+    setTriageValidationErrors(validationErrors)
+
+    if (validationErrors.length === 0) {
+      const data = {
+        url: triageEntryData.url,
+        type: triageEntryData.type,
+        regressions: triageEntryData.ids.map((id) => {
+          return { id: Number(id) }
+        }),
+      }
+
+      fetch(getTriagesAPIUrl(), {
+        method: 'POST',
+        body: JSON.stringify(data),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(
+              'error creating triage entry: ' +
+                response.status +
+                ' ' +
+                response.statusMessage
+            )
+          }
+        })
+        .then(() => {
+          setTriageEntryCreated(true)
+          setAlertText('successfully created triage entry')
+          setTriaging(false)
+          setTriageEntryData({
+            url: '',
+            type: 'type',
+            ids: [],
+          })
+        })
+    }
+  }
+
+  const [alertText, setAlertText] = React.useState('')
+  const handleAlertClose = (event, reason) => {
+    if (reason === 'clickaway') {
+      return
+    }
+    setAlertText('')
+  }
+
+  const triageTypeOptions = [
+    'type',
+    'ci-infra',
+    'product-infra',
+    'product',
+    'test',
+  ]
+
   // define table columns
   const columns = [
+    ...(triaging
+      ? [
+          {
+            field: 'triage',
+            headerName: 'Triage',
+            flex: 4,
+            valueGetter: (params) => {
+              return String(params.row.regression_id)
+            },
+            renderCell: (param) => (
+              <input
+                type="checkbox"
+                name="triage-test-id"
+                value={param.value}
+                onChange={handleTriageChange}
+                checked={triageEntryData.ids.includes(param.value)}
+              />
+            ),
+          },
+        ]
+      : []),
     {
       field: 'component',
       headerName: 'Component',
@@ -179,7 +333,7 @@ export default function RegressedTestsPanel(props) {
             to={generateTestReport(
               params.row.test_id,
               params.row.variants,
-              props.filterVals,
+              filterVals,
               params.row.component,
               params.row.capability,
               params.row.test_name,
@@ -187,7 +341,11 @@ export default function RegressedTestsPanel(props) {
             )}
           >
             <CompSeverityIcon
-              status={params.row.status}
+              status={
+                params.row.effective_status
+                  ? params.row.effective_status
+                  : params.row.status
+              }
               explanations={params.row.explanations}
             />
           </Link>
@@ -199,11 +357,21 @@ export default function RegressedTestsPanel(props) {
 
   return (
     <Fragment>
+      <Snackbar
+        open={alertText.length > 0}
+        autoHideDuration={5000}
+        onClose={handleAlertClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert onClose={handleAlertClose} severity="success">
+          {alertText}
+        </Alert>
+      </Snackbar>
       <DataGrid
         sortModel={sortModel}
         onSortModelChange={setSortModel}
         components={{ Toolbar: GridToolbar }}
-        rows={props.regressedTests}
+        rows={regressedTests}
         columns={columns}
         getRowId={(row) =>
           row.test_id +
@@ -224,6 +392,55 @@ export default function RegressedTestsPanel(props) {
           },
         }}
       />
+      {triaging ? (
+        <div className={classes.triageForm}>
+          <TextField
+            name="url"
+            label="Jira URL"
+            value={triageEntryData.url}
+            onChange={handleTriageChange}
+          />
+          <Select
+            name="type"
+            label="Type"
+            value={triageEntryData.type}
+            onChange={handleTriageChange}
+          >
+            {triageTypeOptions.map((option, index) => (
+              <MenuItem key={index} value={option}>
+                {option}
+              </MenuItem>
+            ))}
+          </Select>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleTriageEntry}
+          >
+            Create Entry
+          </Button>
+          {triageValidationErrors && (
+            <FormHelperText className={classes.validationErrors}>
+              {triageValidationErrors.map((text, index) => (
+                <span key={index}>
+                  {text}
+                  <br />
+                </span>
+              ))}
+            </FormHelperText>
+          )}
+        </div>
+      ) : null}
+      {triageEnabled ? (
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={() => setTriaging(!triaging)}
+        >
+          {triaging ? 'Close' : 'Triage'}
+        </Button>
+      ) : null}
+
       <Popover
         id="copyPopover"
         open={copyPopoverOpen}
@@ -246,5 +463,6 @@ export default function RegressedTestsPanel(props) {
 
 RegressedTestsPanel.propTypes = {
   regressedTests: PropTypes.array,
+  setTriageEntryCreated: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
 }

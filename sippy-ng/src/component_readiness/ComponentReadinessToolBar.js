@@ -18,13 +18,14 @@ import {
   ViewColumn,
   Widgets,
 } from '@mui/icons-material'
-import { Link } from 'react-router-dom'
 import {
+  getTriagesAPIUrl,
   mergeRegressionData,
   Search,
   SearchIconWrapper,
   StyledInputBase,
 } from './CompReadyUtils'
+import { Link } from 'react-router-dom'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -45,11 +46,32 @@ export default function ComponentReadinessToolBar(props) {
     filterVals,
   } = props
 
-  let regressionData = mergeRegressionData(data)
-
-  const regressedTests = regressionData.length > 0 ? regressionData[0] : null
-  const allRegressedTests = regressionData.length > 1 ? regressionData[1] : null
-  const triagedIncidents = regressionData.length > 2 ? regressionData[2] : null
+  const [triageEntryCreated, setTriageEntryCreated] = React.useState(false)
+  const [regressedTests, setRegressedTests] = React.useState([])
+  const [allRegressedTests, setAllRegressedTests] = React.useState([])
+  const [triagedIncidents, setTriagedIncidents] = React.useState([])
+  const [triageEntries, setTriageEntries] = React.useState([])
+  const [isLoaded, setIsLoaded] = React.useState(false)
+  React.useEffect(() => {
+    fetch(getTriagesAPIUrl(), {
+      method: 'GET',
+    })
+      .then((response) => {
+        if (response.status !== 200) {
+          throw new Error('API server returned ' + response.status)
+        }
+        return response.json()
+      })
+      .then((triages) => {
+        setTriageEntries(triages)
+        const merged = mergeRegressionData(data, triages)
+        setRegressedTests(merged.length > 0 ? merged[0] : null)
+        setAllRegressedTests(merged.length > 1 ? merged[1] : null)
+        setTriagedIncidents(merged.length > 2 ? merged[2] : null)
+        setTriageEntryCreated(false)
+        setIsLoaded(true)
+      })
+  }, [triageEntryCreated])
 
   const linkToReport = () => {
     const currentUrl = new URL(window.location.href)
@@ -84,6 +106,10 @@ export default function ComponentReadinessToolBar(props) {
   )
   const closeRegressedTestsDialog = () => {
     setRegressedTestDialog(false, 'replaceIn')
+  }
+
+  if (!isLoaded) {
+    return <div>Loading...</div>
   }
 
   return (
@@ -255,6 +281,8 @@ export default function ComponentReadinessToolBar(props) {
         regressedTests={regressedTests}
         allRegressedTests={allRegressedTests}
         triagedIncidents={triagedIncidents}
+        triageEntries={triageEntries}
+        setTriageEntryCreated={setTriageEntryCreated}
         filterVals={filterVals}
         isOpen={regressedTestDialog}
         close={closeRegressedTestsDialog}
