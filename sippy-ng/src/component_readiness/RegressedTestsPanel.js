@@ -129,7 +129,7 @@ export default function RegressedTestsPanel(props) {
     }
   }
 
-  const handleTriageEntry = () => {
+  const handleTriageEntrySubmit = () => {
     const validationErrors = []
     if (triageEntryData.type === 'type') {
       validationErrors.push('invalid type, please make a selection')
@@ -154,36 +154,45 @@ export default function RegressedTestsPanel(props) {
       fetch(getTriagesAPIUrl(), {
         method: 'POST',
         body: JSON.stringify(data),
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(
-              'error creating triage entry: ' +
-                response.status +
-                ' ' +
-                response.statusMessage
-            )
-          }
-        })
-        .then(() => {
-          setTriageEntryCreated(true)
-          setAlertText('successfully created triage entry')
-          setTriaging(false)
-          setTriageEntryData({
-            url: '',
-            type: 'type',
-            ids: [],
+      }).then((response) => {
+        if (!response.ok) {
+          response.json().then((data) => {
+            let errorMessage = 'invalid response returned from server'
+            if (data?.code) {
+              errorMessage =
+                'error creating triage entry: ' +
+                data.code +
+                ': ' +
+                data.message
+            }
+            console.error(errorMessage)
+            setAlertText(errorMessage)
+            setAlertSeverity('error')
           })
+          return
+        }
+
+        setTriageEntryCreated(true)
+        setAlertText('successfully created triage entry')
+        setAlertSeverity('success')
+        setTriaging(false)
+        setTriageEntryData({
+          url: '',
+          type: 'type',
+          ids: [],
         })
+      })
     }
   }
 
   const [alertText, setAlertText] = React.useState('')
+  const [alertSeverity, setAlertSeverity] = React.useState('')
   const handleAlertClose = (event, reason) => {
     if (reason === 'clickaway') {
       return
     }
     setAlertText('')
+    setAlertSeverity('')
   }
 
   const triageTypeOptions = [
@@ -212,6 +221,7 @@ export default function RegressedTestsPanel(props) {
                 value={param.value}
                 onChange={handleTriageChange}
                 checked={triageEntryData.ids.includes(param.value)}
+                disabled={param.value === '0'}
               />
             ),
           },
@@ -359,11 +369,11 @@ export default function RegressedTestsPanel(props) {
     <Fragment>
       <Snackbar
         open={alertText.length > 0}
-        autoHideDuration={5000}
+        autoHideDuration={10000}
         onClose={handleAlertClose}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert onClose={handleAlertClose} severity="success">
+        <Alert onClose={handleAlertClose} severity={alertSeverity}>
           {alertText}
         </Alert>
       </Snackbar>
@@ -415,7 +425,7 @@ export default function RegressedTestsPanel(props) {
           <Button
             variant="contained"
             color="primary"
-            onClick={handleTriageEntry}
+            onClick={handleTriageEntrySubmit}
           >
             Create Entry
           </Button>
