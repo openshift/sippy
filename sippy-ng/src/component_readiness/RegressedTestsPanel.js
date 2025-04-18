@@ -97,25 +97,25 @@ export default function RegressedTestsPanel(props) {
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
-      field: 'opened',
+      field: 'regression',
       headerName: 'Regressed Since',
       flex: 12,
       valueGetter: (params) => {
-        if (!params.row.opened) {
+        if (!params.row.regression?.opened) {
           // For a regression we haven't yet detected:
           return null
         }
-        return new Date(params.row.opened).getTime()
+        return new Date(params.row.regression.opened).getTime()
       },
       renderCell: (params) => {
         if (!params.value) return ''
-        const regressedSinceDate = new Date(params.value)
+        const regressedSinceDate = new Date(params.row.regression.opened)
         return (
           <Tooltip
             title={`WARNING: This is the first time we detected this test regressed in the default query. This value is not relevant if you've altered query parameters from the default. 
-            Click to copy the regression ID (${params.row.regression_id}) if one is defined. Useful for triage.`}
+            Click to copy the regression ID (${params.row.regression.id}) if one is defined. Useful for triage.`}
             onClick={(event) =>
-              copyTestToClipboard(event, params.row.regression_id)
+              copyTestToClipboard(event, params.row.regression.id)
             }
           >
             <div className="regressed-since">
