@@ -29,7 +29,7 @@ const (
            sum(previous_successes) AS previous_successes,
            sum(previous_failures)  AS previous_failures,
            sum(previous_flakes)    AS previous_flakes,
-           (array_agg(open_bugs))[1] AS open_bugs`
+           (array_agg(open_bugs))[0] AS open_bugs`
 
 	QueryTestFields = `
 		current_runs,
@@ -43,18 +43,18 @@ const (
 		open_bugs`
 
 	QueryTestPercentages = `
-		current_successes * 100.0 / NULLIF(current_runs, 0) AS current_pass_percentage,
-		current_failures * 100.0 / NULLIF(current_runs, 0) AS current_failure_percentage,
-		current_flakes * 100.0 / NULLIF(current_runs, 0) AS current_flake_percentage,
-		(current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0) AS current_working_percentage,
-		previous_successes * 100.0 / NULLIF(previous_runs, 0) AS previous_pass_percentage,
-		previous_failures * 100.0 / NULLIF(previous_runs, 0) AS previous_failure_percentage,
-		previous_flakes * 100.0 / NULLIF(previous_runs, 0) AS previous_flake_percentage,
-		(previous_successes + previous_flakes) * 100.0 / NULLIF(previous_runs, 0) AS previous_working_percentage,
-		(previous_failures * 100.0 / NULLIF(previous_runs, 0)) - (current_failures * 100.0 / NULLIF(current_runs, 0)) AS net_failure_improvement,
-		(previous_flakes * 100.0 / NULLIF(previous_runs, 0)) - (current_flakes * 100.0 / NULLIF(current_runs, 0)) AS net_flake_improvement,
-		((current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0)) - ((previous_successes + previous_flakes) * 100.0 / NULLIF(previous_runs, 0)) AS net_working_improvement,
-		(current_successes * 100.0 / NULLIF(current_runs, 0)) - (previous_successes * 100.0 / NULLIF(previous_runs, 0)) AS net_improvement`
+		COALESCE(current_successes * 100.0 / NULLIF(current_runs, 0), 0) AS current_pass_percentage,
+		COALESCE(current_failures * 100.0 / NULLIF(current_runs, 0), 0) AS current_failure_percentage,
+		COALESCE(current_flakes * 100.0 / NULLIF(current_runs, 0), 0) AS current_flake_percentage,
+		COALESCE((current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0), 0) AS current_working_percentage,
+		COALESCE(previous_successes * 100.0 / NULLIF(previous_runs, 0), 0) AS previous_pass_percentage,
+		COALESCE(previous_failures * 100.0 / NULLIF(previous_runs, 0), 0) AS previous_failure_percentage,
+		COALESCE(previous_flakes * 100.0 / NULLIF(previous_runs, 0), 0) AS previous_flake_percentage,
+		COALESCE((previous_successes + previous_flakes) * 100.0 / NULLIF(previous_runs, 0), 0) AS previous_working_percentage,
+		COALESCE((previous_failures * 100.0 / NULLIF(previous_runs, 0)), 0) - COALESCE((current_failures * 100.0 / NULLIF(current_runs, 0)), 0) AS net_failure_improvement,
+		COALESCE((previous_flakes * 100.0 / NULLIF(previous_runs, 0)), 0) - COALESCE((current_flakes * 100.0 / NULLIF(current_runs, 0)), 0) AS net_flake_improvement,
+		COALESCE(((current_successes + current_flakes) * 100.0 / NULLIF(current_runs, 0)), 0) - COALESCE(((previous_successes + previous_flakes) * 100.0 / NULLIF(previous_runs, 0)), 0) AS net_working_improvement,
+		COALESCE((current_successes * 100.0 / NULLIF(current_runs, 0)), 0) - COALESCE((previous_successes * 100.0 / NULLIF(previous_runs, 0)), 0) AS net_improvement`
 
 	QueryTestSummarizer = QueryTestFields + "," + QueryTestPercentages
 
