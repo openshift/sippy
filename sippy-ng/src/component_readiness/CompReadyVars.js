@@ -37,7 +37,6 @@ function getDefaultIncludeMultiReleaseAnalysis() {
   return false
 }
 
-//TODO: here is an example of a provider, I should do something like this
 export const CompReadyVarsProvider = ({ children }) => {
   const [allJobVariants, setAllJobVariants] = useState([])
   const [views, setViews] = useState([])

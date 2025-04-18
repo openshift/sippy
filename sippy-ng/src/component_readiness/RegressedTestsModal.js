@@ -4,6 +4,7 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import RegressedTestsPanel from './RegressedTestsPanel'
 import TriagedIncidentsPanel from './TriagedIncidentsPanel'
+import TriagedTestsPanel from './TriagedTestsPanel'
 
 function tabProps(index) {
   return {
@@ -61,22 +62,30 @@ export default function RegressedTestsModal(props) {
           >
             <Tab label="Untriaged Regressions" {...tabProps(0)} />
             <Tab label="Regressed Tests" {...tabProps(1)} />
-            <Tab label="Triaged Tests" {...tabProps(2)} />
+            <Tab label="Triaged Incidents" {...tabProps(2)} />
+            {props.triageEntries.length > 0 && (
+              <Tab label="Triaged Tests" {...tabProps(3)} />
+            )}
           </Tabs>
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={0}>
             <RegressedTestsPanel
               regressedTests={props.regressedTests}
+              setTriageEntryCreated={props.setTriageEntryCreated}
               filterVals={props.filterVals}
             />
           </RegressedTestsTabPanel>
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={1}>
             <RegressedTestsPanel
               regressedTests={props.allRegressedTests}
+              setTriageEntryCreated={props.setTriageEntryCreated}
               filterVals={props.filterVals}
             />
           </RegressedTestsTabPanel>
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
             <TriagedIncidentsPanel triagedIncidents={props.triagedIncidents} />
+          </RegressedTestsTabPanel>
+          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={3}>
+            <TriagedTestsPanel triageEntries={props.triageEntries} />
           </RegressedTestsTabPanel>
           <Button
             style={{ marginTop: 20, marginBottom: 20, marginLeft: 20 }}
@@ -96,6 +105,8 @@ RegressedTestsModal.propTypes = {
   regressedTests: PropTypes.array,
   allRegressedTests: PropTypes.array,
   triagedIncidents: PropTypes.array,
+  triageEntries: PropTypes.array,
+  setTriageEntryCreated: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
   isOpen: PropTypes.bool,
   close: PropTypes.func,
