@@ -565,7 +565,7 @@ export function mergeRegressionData(data, triageEntries) {
   })
 
   let groupedIncidents = new Map()
-  let regressedTests = []
+  let untriagedRegressedTests = []
   let allRegressions = []
 
   data.rows.forEach((row) => {
@@ -577,7 +577,7 @@ export function mergeRegressionData(data, triageEntries) {
             r.effective_status = r.status + 2 //setting effective_status to status + 2, for a regressed test, derives the correct triaged version
             r.explanations = [] //explanations are not relevant when we have a matching triage entry
           } else {
-            regressedTests.push(r)
+            untriagedRegressedTests.push(r)
           }
         })
         allRegressions = allRegressions.concat(regressed)
@@ -591,13 +591,16 @@ export function mergeRegressionData(data, triageEntries) {
     })
   })
 
-  regressedTests.sort((a, b) => {
+  untriagedRegressedTests.sort((a, b) => {
     return (
       a.component.toLowerCase() < b.component.toLowerCase() ||
       a.capability.toLowerCase() < b.capability.toLowerCase()
     )
   })
-  regressedTests = regressedTests.map((item, index) => ({ ...item, id: index }))
+  untriagedRegressedTests = untriagedRegressedTests.map((item, index) => ({
+    ...item,
+    id: index,
+  }))
 
   allRegressions.sort((a, b) => {
     return (
@@ -608,7 +611,7 @@ export function mergeRegressionData(data, triageEntries) {
   allRegressions = allRegressions.map((item, index) => ({ ...item, id: index }))
 
   return [
-    regressedTests,
+    untriagedRegressedTests,
     allRegressions,
     createGroupedIncidentArray(groupedIncidents),
   ]
