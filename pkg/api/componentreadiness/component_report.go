@@ -1388,6 +1388,15 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 	adjustedSampleTotal := sampleTotal - numberOfIgnoredSampleJobRuns
 	if adjustedSampleTotal < sampleSuccess {
 		log.Errorf("adjustedSampleTotal is too small: sampleTotal=%d, numberOfIgnoredSampleJobRuns=%d, sampleSuccess=%d", sampleTotal, numberOfIgnoredSampleJobRuns, sampleSuccess)
+		// due to differences in sample query times reflecting 'modified_time' and the use of job_run start / completion_time we can include
+		// some triaged job runs that are outside of our sample window resulting in removing too many runs
+		// we see this often for triaged runs on the oldest day of the sample window
+		// this leads to us ignoring all triage runs and reporting a regression
+		// https://github.com/openshift/sippy/blob/eb5d6154c745c990c25dfca7d292da43cc1b38e5/pkg/api/componentreadiness/component_report.go#L943
+		// the original intent was to err on the side of caution since we didn't understand why this would happen
+		// now we see the negative consequence flipping triaged records back to regressions
+		// in this case we will remove all failures and only report the successes and flakes
+		sampleTotal = sampleSuccess + sampleFlake
 	} else {
 		sampleTotal = adjustedSampleTotal
 	}
