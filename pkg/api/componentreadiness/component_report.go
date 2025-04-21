@@ -961,7 +961,7 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 			// for reports showing after the resolution date.
 			//
 			// This is a stop gap until we have regression tracking associated with Jiras, and we can use the Jira itself to check for state / recent updates
-			if !triagedIncident.Issue.ResolutionDate.Valid && triagedIncident.Issue.URL.Valid && triagedIncident.Issue.Type != string(resolvedissues.TriageIssueTypeProduct) {
+			if !triagedIncident.Issue.ResolutionDate.Valid && triagedIncident.Issue.URL.Valid && triagedIncident.Issue.Type == string(resolvedissues.TriageIssueTypeProduct) {
 				activeProductRegression = true
 			}
 		}
