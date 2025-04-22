@@ -208,9 +208,10 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 	// fill in errors for any that went missing
 	for path := range remaining {
 		artifacts = append(artifacts, JobRunArtifact{
-			JobRunID:    strconv.FormatInt(jobRunID, 10),
-			ArtifactURL: fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, path),
-			Error:       fmt.Sprintf("request did not complete within %s", artifactQueryTimeout),
+			JobRunID:     strconv.FormatInt(jobRunID, 10),
+			ArtifactPath: relativeArtifactPath(path, strconv.FormatInt(jobRunID, 10)),
+			ArtifactURL:  fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, path),
+			Error:        fmt.Sprintf("request did not complete within %s", artifactQueryTimeout),
 		})
 	}
 

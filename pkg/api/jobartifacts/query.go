@@ -106,8 +106,20 @@ func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]string, bool, er
 	return files, truncated, nil
 }
 
+// path queries come back with full path after bucket name; reduce to the jobrun-specific part
+func relativeArtifactPath(bucketPath, jobRunID string) string {
+	marker := "/" + jobRunID + "/"
+	start := strings.Index(bucketPath, marker)
+	if start == -1 { // would be very weird, but not really something to choke on
+		log.Errorf("artifact path %q somehow does not include jobRunID %q", bucketPath, jobRunID)
+		return bucketPath
+	}
+	return bucketPath[start+len(marker):]
+}
+
 func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, filePath string) (artifact JobRunArtifact) {
 	artifact.JobRunID = strconv.FormatInt(jobRunID, 10)
+	artifact.ArtifactPath = relativeArtifactPath(filePath, artifact.JobRunID)
 	artifact.ArtifactURL = fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, filePath)
 	if q.ContentMatcher == nil { // no matching requested
 		return
