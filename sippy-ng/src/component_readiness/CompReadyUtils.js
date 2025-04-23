@@ -90,6 +90,10 @@ export function getTestDetailsAPIUrl() {
   return process.env.REACT_APP_API_URL + '/api/component_readiness/test_details'
 }
 
+export function getTriagesAPIUrl() {
+  return process.env.REACT_APP_API_URL + '/api/component_readiness/triages'
+}
+
 export const gotoCompReadyMain = () => {
   window.location.href = '/sippy-ng/component_readiness/main'
   //window.history.back()
@@ -543,23 +547,40 @@ export function mergeIncidents(incidents, detailsIncident) {
 }
 
 // mergeRegressionData takes the data from CR api and organizes the data
-// for groupedIncidents, regressedTests (untriaged) and combined list of untriaged and triaged tests
+// for groupedIncidents, regressedTests (untriaged), combined list of untriaged and triaged tests
 // all used in the RegressedTestsModal dialog
-export function mergeRegressionData(data) {
+// if there is a triage entry with a matching regression_id, it computes the proper status for the triaged icon, and removes the corresponding explanations
+export function mergeRegressionData(data, triageEntries) {
   let ret = validateData(data)
   if (ret[0] !== '') {
     return ret
   }
 
+  // the set of regressionIds from the triageEntries will be used to determine if a test that has other not been triaged should be marked as such
+  const regressionIds = new Set()
+  triageEntries.forEach((tr) => {
+    tr.regressions.forEach((regression) => {
+      regressionIds.add(regression.id)
+    })
+  })
+
   let groupedIncidents = new Map()
-  let regressedTests = []
+  let untriagedRegressedTests = []
   let allRegressions = []
 
   data.rows.forEach((row) => {
     row.columns.forEach((column) => {
-      if (column.regressed_tests && column.regressed_tests.length > 0) {
-        regressedTests = regressedTests.concat(column.regressed_tests)
-        allRegressions = allRegressions.concat(column.regressed_tests)
+      const regressed = column.regressed_tests
+      if (column.regressed_tests && regressed.length > 0) {
+        regressed.forEach((r) => {
+          if (regressionIds.has(r.regression_id)) {
+            r.effective_status = r.status + 2 //setting effective_status to status + 2, for a regressed test, derives the correct triaged version
+            r.explanations = [] //explanations are not relevant when we have a matching triage entry
+          } else {
+            untriagedRegressedTests.push(r)
+          }
+        })
+        allRegressions = allRegressions.concat(regressed)
       }
 
       if (column.triaged_incidents && column.triaged_incidents.length > 0) {
@@ -570,13 +591,16 @@ export function mergeRegressionData(data) {
     })
   })
 
-  regressedTests.sort((a, b) => {
+  untriagedRegressedTests.sort((a, b) => {
     return (
       a.component.toLowerCase() < b.component.toLowerCase() ||
       a.capability.toLowerCase() < b.capability.toLowerCase()
     )
   })
-  regressedTests = regressedTests.map((item, index) => ({ ...item, id: index }))
+  untriagedRegressedTests = untriagedRegressedTests.map((item, index) => ({
+    ...item,
+    id: index,
+  }))
 
   allRegressions.sort((a, b) => {
     return (
@@ -587,7 +611,7 @@ export function mergeRegressionData(data) {
   allRegressions = allRegressions.map((item, index) => ({ ...item, id: index }))
 
   return [
-    regressedTests,
+    untriagedRegressedTests,
     allRegressions,
     createGroupedIncidentArray(groupedIncidents),
   ]

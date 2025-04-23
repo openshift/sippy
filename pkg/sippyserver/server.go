@@ -1264,6 +1264,10 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 		return
 
 	case http.MethodPost: // create
+		if !s.enableWriteAPIs {
+			failureResponse(w, http.StatusNotImplemented, "POST triages is not available on this server")
+			return
+		}
 		var triage models.Triage
 		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
 			log.WithError(err).Error("error parsing new triage record")
@@ -1277,6 +1281,10 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 		}
 		api.RespondWithJSON(http.StatusOK, w, triage)
 	case http.MethodPut: // update
+		if !s.enableWriteAPIs {
+			failureResponse(w, http.StatusNotImplemented, "PUT triages is not available on this server")
+			return
+		}
 		if triageID == 0 {
 			failureResponse(w, http.StatusBadRequest, "no triage ID specified in URL")
 			return
@@ -1670,18 +1678,17 @@ func (s *Server) Serve() {
 		{
 			EndpointPath: "/api/component_readiness/triages",
 			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
-			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonTriages,
 		},
 		{
 			// TODO: had to duplicate above for trailing slash for GET/PUT on specific records
-			// Switch to gorilla mux for cleaner handling of this, specific verbs, and extracting params from url
-			// Because we don't have control over verbs, we're also disabling GET if write endpoints are disabled, which
-			// means no triage apis available in non-auth sippy for now. Non urgent as we likely will just
-			// augment existing apis with triage data for the reading anyhow.
+			// Switch to gorilla mux for cleaner handling of this, specific verbs, and extracting params from url.
+			// Because we don't have control over verbs, we're also not listing the write endpoints capability here.
+			// Instead, we check it for specific verbs in the jsonTriages function.
 			EndpointPath: "/api/component_readiness/triages/",
 			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
-			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonTriages,
 		},
 		{

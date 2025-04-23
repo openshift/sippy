@@ -18,8 +18,8 @@ export default function CompSeverityIcon(props) {
     accessibilityModeOn
   )
 
-  let toolTip = ''
-  if (explanations !== undefined) {
+  let toolTip = statusStr
+  if (explanations !== undefined && explanations.length > 0) {
     toolTip = explanations.join(' ')
   }
 
