@@ -401,6 +401,7 @@ func getTestDetailsQuery(
 						COUNT(*) AS total_count,
 						ANY_VALUE(jobs.prowjob_url) AS prowjob_url,
 						ANY_VALUE(jobs.prowjob_build_id) AS prowjob_run_id,
+						ANY_VALUE(jobs.prowjob_start) AS prowjob_start,
 						ANY_VALUE(cm.capabilities) as capabilities,
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
