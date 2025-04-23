@@ -644,6 +644,8 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{"-konflux", "candidate"},
 		{"-console-operator-", "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
 
+		{"-nat-instance", "candidate"},
+
 		// Hidden jobs
 		{"-disruptive", "hidden"},
 		{"-rollback", "hidden"},
