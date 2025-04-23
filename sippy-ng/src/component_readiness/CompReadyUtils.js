@@ -72,6 +72,8 @@ export const cancelledDataTable = {
     },
   ],
 }
+export const jiraUrlPrefix = 'https://issues.redhat.com/browse/'
+
 // Make one place to create the Component Readiness api call
 export function getAPIUrl() {
   return process.env.REACT_APP_API_URL + '/api/component_readiness'

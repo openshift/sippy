@@ -5,6 +5,7 @@ import { FileCopy } from '@mui/icons-material'
 import {
   formColumnName,
   getTriagesAPIUrl,
+  jiraUrlPrefix,
   sortQueryParams,
 } from './CompReadyUtils'
 import {
@@ -100,10 +101,10 @@ export default function RegressedTestsPanel(props) {
   const [triageEntryData, setTriageEntryData] = React.useState({
     url: '',
     type: 'type',
+    description: '',
     ids: [],
   })
   const [triageValidationErrors, setTriageValidationErrors] = React.useState([])
-  const jiraUrlPrefix = 'https://issues.redhat.com/browse'
 
   const handleTriageChange = (e) => {
     const { name, value, checked } = e.target
@@ -137,6 +138,9 @@ export default function RegressedTestsPanel(props) {
     if (!triageEntryData.url.startsWith(jiraUrlPrefix)) {
       validationErrors.push('invalid url, should begin with ' + jiraUrlPrefix)
     }
+    if (triageEntryData.description.length < 1) {
+      validationErrors.push('invalid description, cannot be blank')
+    }
     if (triageEntryData.ids.length < 1) {
       validationErrors.push('no tests selected, please select at least one')
     }
@@ -146,6 +150,7 @@ export default function RegressedTestsPanel(props) {
       const data = {
         url: triageEntryData.url,
         type: triageEntryData.type,
+        description: triageEntryData.description,
         regressions: triageEntryData.ids.map((id) => {
           return { id: Number(id) }
         }),
@@ -179,6 +184,7 @@ export default function RegressedTestsPanel(props) {
         setTriageEntryData({
           url: '',
           type: 'type',
+          description: '',
           ids: [],
         })
       })
@@ -408,6 +414,12 @@ export default function RegressedTestsPanel(props) {
             name="url"
             label="Jira URL"
             value={triageEntryData.url}
+            onChange={handleTriageChange}
+          />
+          <TextField
+            name="description"
+            label="Description"
+            value={triageEntryData.description}
             onChange={handleTriageChange}
           />
           <Select

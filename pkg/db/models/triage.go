@@ -16,6 +16,9 @@ type Triage struct {
 	// URL references the core URL to follow for details on this triage, typically a Jira bug.
 	URL string `json:"url" gorm:"not null"`
 
+	// Description contains a short description regarding the URL
+	Description string `json:"description,omitempty"`
+
 	// Type provides information about the type of regression being triaged, a best guess by the
 	// individual performing triage.
 	Type TriageType `json:"type" gorm:"not null"`
