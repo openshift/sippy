@@ -713,10 +713,15 @@ type TestOutput struct {
 	Output string `json:"output"`
 }
 
+type ReleaseDates struct {
+	GA               *time.Time `json:"ga,omitempty"`
+	DevelopmentStart *time.Time `json:"development_start,omitempty"`
+}
 type Releases struct {
-	Releases    []string             `json:"releases"`
-	GADates     map[string]time.Time `json:"ga_dates"`
-	LastUpdated time.Time            `json:"last_updated"`
+	Releases          []string                `json:"releases"`
+	DeprecatedGADates map[string]time.Time    `json:"ga_dates"`
+	Dates             map[string]ReleaseDates `json:"dates"`
+	LastUpdated       time.Time               `json:"last_updated"`
 }
 
 type Indicator struct {

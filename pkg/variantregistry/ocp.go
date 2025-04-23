@@ -642,6 +642,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 		// Konflux jobs aren't ready yet
 		{"-konflux", "candidate"},
+		{"-console-operator-", "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
 
 		// Hidden jobs
 		{"-disruptive", "hidden"},
@@ -695,6 +696,7 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-cpu-partitioning", "cpu-partitioning"},
 		{"-automated-release", "automated-release"},
 		{"-cert-rotation-shutdown-", "cert-rotation-shutdown"},
+		{"-console-operator-", "console-operator"},
 	}
 
 	for _, entry := range procedurePatterns {
@@ -715,9 +717,10 @@ func setTopology(_ logrus.FieldLogger, variants map[string]string, jobName strin
 		substring string
 		topology  string
 	}{
-		{"-sno-", "single"},        // Previously single-node
-		{"-single-node", "single"}, // Alternative format
-		{"-arbiter", "ha-arbiter"}, // Two-node
+		{"-sno-", "single"},                       // Previously single-node
+		{"-single-node", "single"},                // Alternative format
+		{"-two-node-arbiter", "two-node-arbiter"}, // Two-node
+		{"-two-node-fencing", "two-node-fencing"}, // Two-node
 		{"-hypershift", "external"},
 		{"-hcp", "external"},
 		{"_hcp", "external"},

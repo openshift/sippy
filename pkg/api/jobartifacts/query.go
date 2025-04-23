@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strconv"
 	"strings"
 	"time"
@@ -21,12 +20,12 @@ import (
 const artifactURLFmt = "https://gcsweb-ci.apps.ci.l2s4.p1.openshiftapps.com/gcs/%s/%s"
 
 type JobArtifactQuery struct {
-	GcsBucket        *storage.BucketHandle
-	DbClient         *db.DB
-	JobRunIDs        []int64
-	PathGlob         string // A simple glob to match files in the artifact bucket for each queried run
-	ArtifactContains string // A string to match in the content of the files
-	// TODO: regex, jq, xpath support for matching content; requesting match context lines; etc.
+	GcsBucket      *storage.BucketHandle
+	DbClient       *db.DB
+	JobRunIDs      []int64
+	PathGlob       string // A simple glob to match files in the artifact bucket for each queried run
+	ContentMatcher        // An interface to match in the content of the files
+	// TODO: regex, jq, xpath support for matching content
 }
 
 func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64, mgr *Manager, logger *log.Entry) (JobRun, error) {
@@ -110,7 +109,7 @@ func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]string, bool, er
 func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, filePath string) (artifact JobRunArtifact) {
 	artifact.JobRunID = strconv.FormatInt(jobRunID, 10)
 	artifact.ArtifactURL = fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, filePath)
-	if q.ArtifactContains == "" { // no snippets requested
+	if q.ContentMatcher == nil { // no matching requested
 		return
 	}
 
@@ -121,32 +120,16 @@ func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, filePath string
 	}
 	defer gcsReader.Close()
 
-	reader := bufio.NewReader(gcsReader)
-	for {
-		// scan the file line by line; however, if lines are too long, ReadString
-		// breaks them up instead of failing, so these may not be complete lines.
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			artifact.Error = err.Error()
-			return
-		}
-
-		if q.lineMatchesQuery(line) {
-			if len(artifact.MatchedContent) >= maxFileMatches {
-				artifact.MatchesTruncated = true
-				break
-			}
-			artifact.MatchedContent = append(artifact.MatchedContent, line)
-		}
+	matches, err := q.ContentMatcher.GetMatches(bufio.NewReader(gcsReader))
+	if err != nil {
+		artifact.Error = err.Error()
 	}
-
+	artifact.MatchedContent = matches // even if scanning hit an error, we may still want to see incomplete matches
 	return
 }
 
-func (q *JobArtifactQuery) lineMatchesQuery(content string) bool {
-	// this can become more interesting when we want.
-	return strings.Contains(content, q.ArtifactContains)
+// ContentMatcher is a generic interface for matching content in artifact files
+type ContentMatcher interface {
+	// GetMatches reads lines from the provided reader and returns a content match object (possibly incomplete with an error)
+	GetMatches(reader *bufio.Reader) (interface{}, error)
 }

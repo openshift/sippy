@@ -919,7 +919,7 @@ func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForReleas
 			// for reports showing after the resolution date.
 			//
 			// This is a stop gap until we have regression tracking associated with Jiras, and we can use the Jira itself to check for state / recent updates
-			if !triagedIncident.Issue.ResolutionDate.Valid && triagedIncident.Issue.URL.Valid && triagedIncident.Issue.Type != string(resolvedissues.TriageIssueTypeProduct) {
+			if !triagedIncident.Issue.ResolutionDate.Valid && triagedIncident.Issue.URL.Valid && triagedIncident.Issue.Type == string(resolvedissues.TriageIssueTypeProduct) {
 				activeProductRegression = true
 			}
 		}
@@ -1362,8 +1362,16 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 	initialSampleTotal := sampleTotal
 	adjustedSampleTotal := sampleTotal - numberOfIgnoredSampleJobRuns
 	if adjustedSampleTotal < testStats.SampleStats.SuccessCount {
-		log.Errorf("adjustedSampleTotal is too small: sampleTotal=%d, numberOfIgnoredSampleJobRuns=%d, sampleSuccess=%d",
-			sampleTotal, numberOfIgnoredSampleJobRuns, testStats.SampleStats.SuccessCount)
+		log.Warnf("adjustedSampleTotal is too small: sampleTotal=%d, numberOfIgnoredSampleJobRuns=%d, sampleSuccess=%d", sampleTotal, numberOfIgnoredSampleJobRuns, testStats.SampleStats.SuccessCount)
+		// due to differences in sample query times reflecting 'modified_time' and the use of job_run start / completion_time we can include
+		// some triaged job runs that are outside our sample window resulting in removing too many runs
+		// we see this often for triaged runs on the oldest day of the sample window
+		// this leads to us ignoring all triage runs and reporting a regression
+		// https://github.com/openshift/sippy/blob/eb5d6154c745c990c25dfca7d292da43cc1b38e5/pkg/api/componentreadiness/component_report.go#L943
+		// the original intent was to err on the side of caution since we didn't understand why this would happen
+		// now we see the negative consequence flipping triaged records back to regressions
+		// in this case we will remove all failures and only report the successes and flakes
+		sampleTotal = testStats.SampleStats.SuccessCount + testStats.SampleStats.FlakeCount
 	} else {
 		sampleTotal = adjustedSampleTotal
 	}
