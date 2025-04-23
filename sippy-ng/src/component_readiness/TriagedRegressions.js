@@ -1,4 +1,5 @@
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
+import { jiraUrlPrefix } from './CompReadyUtils'
 import { Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -24,11 +25,32 @@ export default function TriagedRegressions(props) {
     {
       field: 'description',
       valueGetter: (value) => {
-        return 'Description is not yet tracked'
+        return value.row.description
       },
       headerName: 'Description',
       flex: 20,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'url',
+      valueGetter: (value) => {
+        const url = value.row.url
+        const val = {
+          url,
+          text: url,
+        }
+        if (url.startsWith(jiraUrlPrefix)) {
+          val.text = url.slice(jiraUrlPrefix.length)
+        }
+        return val
+      },
+      headerName: 'Jira',
+      flex: 5,
+      renderCell: (param) => (
+        <a target="_blank" href={param.value.url} rel="noreferrer">
+          <div className="test-name">{param.value.text}</div>
+        </a>
+      ),
     },
     {
       field: 'type',
@@ -38,19 +60,6 @@ export default function TriagedRegressions(props) {
       headerName: 'Type',
       flex: 5,
       renderCell: (param) => <div>{param.value}</div>,
-    },
-    {
-      field: 'url',
-      valueGetter: (value) => {
-        return value.row.url
-      },
-      headerName: 'Jira',
-      flex: 12,
-      renderCell: (param) => (
-        <a target="_blank" href={param.value} rel="noreferrer">
-          <div className="test-name">{param.value}</div>
-        </a>
-      ),
     },
   ]
 
