@@ -21,7 +21,7 @@ type Middleware interface {
 	QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants)
 
 	// PreAnalysis gives middleware opportunity to adjust test analysis data prior to running analysis.
-	// Implementations should can alter base/sample data as needed, request confidence levels, and add explanations for
+	// Implementations can alter base/sample data as needed, request confidence levels, and add explanations for
 	// what they did.
 	PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error
 }

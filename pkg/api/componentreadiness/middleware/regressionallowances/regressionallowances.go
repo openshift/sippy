@@ -40,7 +40,7 @@ func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crt
 	// unused
 }
 
-// Transform iterates the base status looking for any with an accepted regression in the basis release, and if found
+// PreAnalysis iterates the base status looking for any with an accepted regression in the basis release, and if found
 // swaps out the stats with the better pass rate data specified in the intentional regression allowance.
 func (r *RegressionAllowances) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 
