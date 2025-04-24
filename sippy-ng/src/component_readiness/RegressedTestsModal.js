@@ -46,6 +46,8 @@ export default function RegressedTestsModal(props) {
     setActiveTabIndex(newValue)
   }
 
+  const triageEntriesExist = props.triageEntries.length > 0
+
   return (
     <Fragment>
       <Dialog
@@ -62,9 +64,11 @@ export default function RegressedTestsModal(props) {
           >
             <Tab label="Untriaged Regressions" {...tabProps(0)} />
             <Tab label="Regressed Tests" {...tabProps(1)} />
-            <Tab label="Triaged Incidents" {...tabProps(2)} />
-            {props.triageEntries.length > 0 && (
-              <Tab label="Triaged Tests" {...tabProps(3)} />
+            {!triageEntriesExist && (
+              <Tab label="Triaged Incidents" {...tabProps(2)} />
+            )}
+            {triageEntriesExist && (
+              <Tab label="Triaged Tests" {...tabProps(2)} />
             )}
           </Tabs>
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={0}>
@@ -81,12 +85,18 @@ export default function RegressedTestsModal(props) {
               filterVals={props.filterVals}
             />
           </RegressedTestsTabPanel>
-          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
-            <TriagedIncidentsPanel triagedIncidents={props.triagedIncidents} />
-          </RegressedTestsTabPanel>
-          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={3}>
-            <TriagedTestsPanel triageEntries={props.triageEntries} />
-          </RegressedTestsTabPanel>
+          {!triageEntriesExist && (
+            <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
+              <TriagedIncidentsPanel
+                triagedIncidents={props.triagedIncidents}
+              />
+            </RegressedTestsTabPanel>
+          )}
+          {triageEntriesExist && (
+            <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
+              <TriagedTestsPanel triageEntries={props.triageEntries} />
+            </RegressedTestsTabPanel>
+          )}
           <Button
             style={{ marginTop: 20, marginBottom: 20, marginLeft: 20 }}
             variant="contained"
