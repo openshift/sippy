@@ -163,6 +163,49 @@ func Test_PreAnalysis(t *testing.T) {
 		})
 	}
 }
+func TestCalculateFallbackReleases(t *testing.T) {
+	start419 := time.Date(2025, 3, 2, 0, 0, 0, 0, time.UTC)
+	end419 := time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC)
+	release419 := crtype.Release{
+		Release: "4.19",
+		Start:   &start419,
+		End:     &end419,
+	}
+
+	start418 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
+	end418 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
+	release418 := crtype.Release{
+		Release: "4.18",
+		Start:   &start418,
+		End:     &end418,
+	}
+
+	start417 := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
+	end417 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
+	release417 := crtype.Release{
+		Release: "4.17",
+		Start:   &start417,
+		End:     &end417,
+	}
+
+	start416 := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	end416 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
+	release416 := crtype.Release{
+		Release: "4.16",
+		Start:   &start416,
+		End:     &end416,
+	}
+
+	allReleases := []crtype.Release{release419, release418, release417, release416}
+	expectedReleases := []crtype.Release{release419, release418, release417}
+
+	fallbackReleases := calculateFallbackReleases("4.20", allReleases)
+	for i := range expectedReleases {
+		assert.Equal(t, expectedReleases[i].Release, fallbackReleases[i].Release)
+		assert.Equal(t, expectedReleases[i].Start, fallbackReleases[i].Start)
+		assert.Equal(t, expectedReleases[i].End, fallbackReleases[i].End)
+	}
+}
 
 //nolint:unparam
 func buildTestStatus(testName string, variants []string, total, success, flake int) crtype.TestStatus {

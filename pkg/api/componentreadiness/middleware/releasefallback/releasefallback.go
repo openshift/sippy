@@ -277,30 +277,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 	// currently gets current base plus previous 3
 	// current base is just for testing but use could be
 	// extended to no longer require the base query
-	var selectedReleases []*crtype.Release
-	fallbackRelease := f.BaseRelease
-
-	// Get up to 3 fallback releases
-	for i := 0; i < 3; i++ {
-		var crRelease *crtype.Release
-
-		fallbackRelease, err := utils.PreviousRelease(fallbackRelease)
-		if err != nil {
-			log.WithError(err).Errorf("Failure determining fallback release for %s", fallbackRelease)
-			break
-		}
-
-		for i := range releases {
-			if releases[i].Release == fallbackRelease {
-				crRelease = &releases[i]
-				break
-			}
-		}
-
-		if crRelease != nil {
-			selectedReleases = append(selectedReleases, crRelease)
-		}
-	}
+	selectedReleases := calculateFallbackReleases(f.BaseRelease, releases)
 
 	for _, crRelease := range selectedReleases {
 
@@ -309,8 +286,8 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 
 		// we want our base release validation to match the base release report dates
 		if crRelease.Release != f.BaseRelease && crRelease.End != nil && crRelease.Start != nil {
-			end = *crRelease.End
 			start = *crRelease.Start
+			end = *crRelease.End
 		}
 
 		wg.Add(1)
@@ -336,6 +313,35 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 	return &f.CachedFallbackTestStatuses, nil
 }
 
+func calculateFallbackReleases(startingRelease string, releases []crtype.Release) []*crtype.Release {
+	var selectedReleases []*crtype.Release
+	fallbackRelease := startingRelease
+
+	// Get up to 3 fallback releases
+	for i := 0; i < 3; i++ {
+		var crRelease *crtype.Release
+
+		var err error
+		fallbackRelease, err = utils.PreviousRelease(fallbackRelease)
+		if err != nil {
+			log.WithError(err).Errorf("Failure determining fallback release for %s", fallbackRelease)
+			break
+		}
+
+		for i := range releases {
+			if releases[i].Release == fallbackRelease {
+				crRelease = &releases[i]
+				break
+			}
+		}
+
+		if crRelease != nil {
+			selectedReleases = append(selectedReleases, crRelease)
+		}
+	}
+	return selectedReleases
+}
+
 func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.Release, updateStatuses map[string]crtype.TestStatus) {
 
 	var testStatuses crtype.ReleaseTestMap
@@ -356,8 +362,8 @@ func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.R
 
 func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.Context, client *bqcachedclient.Client, release string, start, end time.Time) (crtype.ReportTestStatus, []error) {
 	generator := newFallbackBaseQueryGenerator(client, f.ReqOptions, f.allJobVariants, release, start, end)
-
-	testStatuses, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator), generator.getTestFallbackRelease, crtype.ReportTestStatus{})
+	cacheKey := api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator)
+	testStatuses, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, cacheKey, generator.getTestFallbackRelease, crtype.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return crtype.ReportTestStatus{}, errs
