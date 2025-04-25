@@ -14,7 +14,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -39,6 +39,10 @@ import (
 
 const (
 	triagedIncidentsTableID = "triaged_incidents"
+
+	// openRegressionConfidenceAdjustment is subtracted from the requested confidence for regressed tests that have
+	// an open regression.
+	openRegressionConfidenceAdjustment = 5
 
 	explanationNoRegression = "No significant regressions found"
 )
@@ -145,6 +149,7 @@ type ComponentReportGenerator struct {
 	dbc                        *db.DB
 	triagedIssues              *resolvedissues.TriagedIncidentsForRelease
 	ReqOptions                 crtype.RequestOptions
+	openRegressions            []*models.TestRegression
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 	middlewares                []middleware.Middleware
 }
@@ -243,11 +248,6 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis || c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
 	}
-	if c.dbc != nil {
-		c.middlewares = append(c.middlewares, regressiontracker.NewRegressionTrackerMiddleware(c.dbc, c.ReqOptions))
-	} else {
-		log.Warnf("no db connection provided, skipping regressiontracker middleware")
-	}
 }
 
 // GenerateReport is the main entry point for generation of a component readiness report.
@@ -261,7 +261,30 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 		return crtype.ComponentReport{}, errs
 	}
 
+	// Allow all middlware a chance to transform the base/sample TestStatuses before we analyze:
 	var err error
+	for _, mw := range c.middlewares {
+		err = mw.Transform(&componentReportTestStatus)
+		if err != nil {
+			return crtype.ComponentReport{}, []error{err}
+		}
+	}
+
+	// Load current regression data from bigquery, used to enhance the response with information such as how long
+	// this regression has been appearing in a tracked view.
+	// We only execute this if we were given a postgres database connection, it is still possible to run
+	// component readiness without postgresql, you just won't have regression tracking.
+	if c.dbc != nil {
+		bqs := NewPostgresRegressionStore(c.dbc)
+		c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(c.ReqOptions.SampleRelease.Release)
+		if err != nil {
+			log.WithError(err).Error("error listing current regressions")
+			errs = append(errs, err)
+			return crtype.ComponentReport{}, errs
+		}
+	} else {
+		log.Warnf("no postgres connection for ComponentReportGenerator, regression tracking data will not be included")
+	}
 
 	// generateComponentTestReport modifies SampleStatus removing matches from BaseStatus
 	// resulting in erroneous sample results count
@@ -624,7 +647,8 @@ type cellStatus struct {
 func getNewCellStatus(testID crtype.ReportTestIdentification,
 	testStats crtype.ReportTestStats,
 	existingCellStatus *cellStatus,
-	triagedIncidents []crtype.TriagedIncident) cellStatus {
+	triagedIncidents []crtype.TriagedIncident,
+	openRegressions []*models.TestRegression) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (testStats.ReportStatus < crtype.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
@@ -646,6 +670,14 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 			ReportTestIdentification: testID,
 			ReportTestStats:          testStats,
 		}
+		if len(openRegressions) > 0 {
+			view := openRegressions[0].View // grab view from first regression, they were queried only for sample release
+			or := FindOpenRegression(view, rt.TestID, rt.Variants, openRegressions)
+			if or != nil {
+				rt.Opened = &or.Opened
+				rt.RegressionID = int(or.ID)
+			}
+		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
 	} else if testStats.ReportStatus < crtype.MissingSample {
 		ti := crtype.TriageIncidentSummary{
@@ -654,6 +686,15 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 				ReportTestIdentification: testID,
 				ReportTestStats:          testStats,
 			}}
+		if len(openRegressions) > 0 {
+			view := openRegressions[0].View // grab view from first regression, they were queried only for sample release
+			or := FindOpenRegression(view, ti.ReportTestSummary.TestID,
+				ti.ReportTestSummary.Variants, openRegressions)
+			if or != nil {
+				ti.ReportTestSummary.Opened = &or.Opened
+				ti.ReportTestSummary.RegressionID = int(or.ID)
+			}
+		}
 		newCellStatus.triagedIncidents = append(newCellStatus.triagedIncidents, ti)
 	}
 	return newCellStatus
@@ -666,7 +707,8 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification,
 	status map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus,
 	allRows map[crtype.RowIdentification]struct{},
 	allColumns map[crtype.ColumnID]struct{},
-	triagedIncidents []crtype.TriagedIncident) {
+	triagedIncidents []crtype.TriagedIncident,
+	openRegressions []*models.TestRegression) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}
@@ -686,16 +728,16 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification,
 		if !ok {
 			row = map[crtype.ColumnID]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = getNewCellStatus(testID, testStats, nil, triagedIncidents)
+				row[columnIdentification] = getNewCellStatus(testID, testStats, nil, triagedIncidents, openRegressions)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = getNewCellStatus(testID, testStats, nil, triagedIncidents)
+					row[columnIdentification] = getNewCellStatus(testID, testStats, nil, triagedIncidents, openRegressions)
 				} else {
-					row[columnIdentification] = getNewCellStatus(testID, testStats, &existing, triagedIncidents)
+					row[columnIdentification] = getNewCellStatus(testID, testStats, &existing, triagedIncidents, openRegressions)
 				}
 			}
 		}
@@ -1014,45 +1056,31 @@ func (c *ComponentReportGenerator) triagedIncidentsFor(ctx context.Context,
 	return impactedRuns, activeProductRegression, triagedIncidents
 }
 
-func initTestAnalysisStruct(
-	testStats *crtype.ReportTestStats,
-	reqOptions crtype.RequestOptions,
-	sampleStats crtype.TestStatus,
-	baseStats *crtype.TestStatus) {
-
-	// Default to required confidence from request, middleware may adjust later.
-	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
-
-	successFailCount := sampleStats.TotalCount - sampleStats.FlakeCount - sampleStats.SuccessCount
-	testStats.SampleStats = crtype.TestDetailsReleaseStats{
-		Release: reqOptions.SampleRelease.Release,
-		Start:   &reqOptions.SampleRelease.Start,
-		End:     &reqOptions.SampleRelease.End,
-		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  utils.CalculatePassRate(sampleStats.SuccessCount, successFailCount, sampleStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
-			SuccessCount: sampleStats.SuccessCount,
-			FlakeCount:   sampleStats.FlakeCount,
-			FailureCount: successFailCount,
-		},
-	}
-	if baseStats != nil {
-		baseRelease := reqOptions.BaseRelease.Release
-		baseStart := reqOptions.BaseRelease.Start
-		baseEnd := reqOptions.BaseRelease.End
-
-		failCount := baseStats.TotalCount - baseStats.FlakeCount - baseStats.SuccessCount
-		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-			Release: baseRelease,
-			Start:   &baseStart,
-			End:     &baseEnd,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  utils.CalculatePassRate(baseStats.SuccessCount, failCount, baseStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
-				SuccessCount: baseStats.SuccessCount,
-				FlakeCount:   baseStats.FlakeCount,
-				FailureCount: failCount,
-			},
+// getRequiredConfidence returns the required certainty of a regression before we include it in the report as a
+// regressed test. This is to introduce some hysteresis into the process so once a regression creeps over the 95%
+// confidence we typically use, dropping to 94.9% should not make the cell immediately green.
+//
+// Instead, once you cross the confidence threshold and a regression begins tracking in the openRegressions list,
+// we'll require less confidence for that test until the regression is closed. (-5%) Once the certainty drops below that
+// modified confidence, the regression will be closed and the -5% adjuster is gone.
+//
+// ie. if the request was for 95% confidence, but we see that a test has an open regression (meaning at some point recently
+// we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
+func (c *ComponentReportGenerator) getRequiredConfidence(testID string, variants map[string]string) int {
+	if len(c.openRegressions) > 0 {
+		view := c.openRegressions[0].View // grab view from first regression, they were queried only for sample release
+		or := FindOpenRegression(view, testID, variants, c.openRegressions)
+		if or != nil {
+			log.Debugf("adjusting required regression confidence from %d to %d because %s (%v) has an open regression since %s",
+				c.ReqOptions.AdvancedOption.Confidence,
+				c.ReqOptions.AdvancedOption.Confidence-openRegressionConfidenceAdjustment,
+				testID,
+				variants,
+				or.Opened)
+			return c.ReqOptions.AdvancedOption.Confidence - openRegressionConfidenceAdjustment
 		}
 	}
+	return c.ReqOptions.AdvancedOption.Confidence
 }
 
 // TODO: break this function down and remove this nolint
@@ -1093,25 +1121,21 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
+			// requiredConfidence is lowered for on-going regressions to prevent cells from flapping:
+			requiredConfidence := c.getRequiredConfidence(testKey.TestID, testKey.Variants)
 			resolvedIssueCompensation, activeProductRegression, triagedIncidents = c.triagedIncidentsFor(ctx, testKey) // triaged job run failures to ignore
 
-			// Initialize the test analysis before we start passing it around to the middleware
-			initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, &baseStats)
-
-			// Give middleware their chance to adjust parameters prior to analysis
-			for _, mw := range c.middlewares {
-				err = mw.PreAnalysis(testKey, &testStats)
-				if err != nil {
-					return crtype.ComponentReport{}, err
-				}
+			// Check if the TestStatus is decorated with info indicating its release was overridden, and use that data if so
+			matchedBaseRelease := c.ReqOptions.BaseRelease.Release
+			var baseStart, baseEnd *time.Time
+			if baseStats.Release != nil {
+				matchedBaseRelease = baseStats.Release.Release
+				baseStart = baseStats.Release.Start
+				baseEnd = baseStats.Release.End
 			}
-
-			c.assessComponentStatus(
-				&testStats,
-				nil,
-				activeProductRegression,
-				resolvedIssueCompensation,
-			)
+			testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
+				sampleStats.FlakeCount, baseStats.TotalCount, baseStats.SuccessCount,
+				baseStats.FlakeCount, nil, activeProductRegression, resolvedIssueCompensation, matchedBaseRelease, baseStart, baseEnd)
 
 			if !sampleStats.LastFailure.IsZero() {
 				testStats.LastFailure = &sampleStats.LastFailure
@@ -1143,8 +1167,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentifications, testKey, testStats, aggregatedStatus,
-			allRows, allColumns, triagedIncidents)
+		updateCellStatus(rowIdentifications, columnIdentifications, testKey, testStats, aggregatedStatus, allRows, allColumns, triagedIncidents, c.openRegressions)
 	}
 
 	// Anything we saw in the basis was removed above, all that remains are tests with no basis, typically new
@@ -1162,14 +1185,10 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		var activeProductRegression bool
 		resolvedIssueCompensation, activeProductRegression, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
 
-		// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
-		initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, nil)
-
-		c.assessComponentStatus(&testStats,
-			nil,
-			activeProductRegression,
-			resolvedIssueCompensation,
-		)
+		requiredConfidence := 0 // irrelevant for pass rate comparison
+		testStats = c.assessComponentStatus(requiredConfidence, sampleStats.TotalCount, sampleStats.SuccessCount,
+			sampleStats.FlakeCount, 0, 0, 0, // pass 0s for base stats
+			nil, activeProductRegression, resolvedIssueCompensation, "", nil, nil)
 
 		if testStats.IsTriaged() {
 			// we are within the triage range
@@ -1199,8 +1218,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus,
-			allRows, allColumns, nil)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus, allRows, allColumns, nil, c.openRegressions)
 	}
 
 	// Sort the row identifications
@@ -1304,7 +1322,7 @@ func (c *ComponentReportGenerator) getTestStatusPassRate(testStatus crtype.TestS
 }
 
 func (c *ComponentReportGenerator) getPassRate(success, failure, flake int) float64 {
-	return utils.CalculatePassRate(success, failure, flake, c.ReqOptions.AdvancedOption.FlakeAsFailure)
+	return utils.CalculatePassRate(c.ReqOptions, success, failure, flake)
 }
 
 func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTriage bool) crtype.Status {
@@ -1345,24 +1363,31 @@ func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage fl
 // (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
 // cross variant compare, rarely run jobs, etc.)
 func (c *ComponentReportGenerator) assessComponentStatus(
-	testStats *crtype.ReportTestStats,
+	requiredConfidence,
+	sampleTotal,
+	sampleSuccess,
+	sampleFlake,
+	baseTotal,
+	baseSuccess,
+	baseFlake int,
 	approvedRegression *regressionallowances.IntentionalRegression,
 	activeProductRegression bool,
 	numberOfIgnoredSampleJobRuns int, // count for triaged failures we can safely omit and ignore
-) {
-	// Catch unset required confidence, typically unit tests
-	if testStats.RequiredConfidence == 0 {
-		testStats.RequiredConfidence = c.ReqOptions.AdvancedOption.Confidence
-	}
+	baseRelease string,
+	baseStart,
+	baseEnd *time.Time) crtype.ReportTestStats {
 
-	// TODO: move to triage middleware Analyze eventually
+	// if we don't have a valid set of start and end dates we default to the baseRelease values
+	if baseStart == nil || baseEnd == nil {
+		baseStart = &c.ReqOptions.BaseRelease.Start
+		baseEnd = &c.ReqOptions.BaseRelease.End
+	}
 	// preserve the initial sampleTotal, so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
-	sampleTotal := testStats.SampleStats.SuccessCount + testStats.SampleStats.FailureCount + testStats.SampleStats.FlakeCount
 	initialSampleTotal := sampleTotal
 	adjustedSampleTotal := sampleTotal - numberOfIgnoredSampleJobRuns
-	if adjustedSampleTotal < testStats.SampleStats.SuccessCount {
-		log.Warnf("adjustedSampleTotal is too small: sampleTotal=%d, numberOfIgnoredSampleJobRuns=%d, sampleSuccess=%d", sampleTotal, numberOfIgnoredSampleJobRuns, testStats.SampleStats.SuccessCount)
+	if adjustedSampleTotal < sampleSuccess {
+		log.Warnf("adjustedSampleTotal is too small: sampleTotal=%d, numberOfIgnoredSampleJobRuns=%d, sampleSuccess=%d", sampleTotal, numberOfIgnoredSampleJobRuns, sampleSuccess)
 		// due to differences in sample query times reflecting 'modified_time' and the use of job_run start / completion_time we can include
 		// some triaged job runs that are outside our sample window resulting in removing too many runs
 		// we see this often for triaged runs on the oldest day of the sample window
@@ -1371,61 +1396,98 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 		// the original intent was to err on the side of caution since we didn't understand why this would happen
 		// now we see the negative consequence flipping triaged records back to regressions
 		// in this case we will remove all failures and only report the successes and flakes
-		sampleTotal = testStats.SampleStats.SuccessCount + testStats.SampleStats.FlakeCount
+		sampleTotal = sampleSuccess + sampleFlake
 	} else {
 		sampleTotal = adjustedSampleTotal
 	}
-	// Adjust failure count for triaged runs
-	testStats.SampleStats.FailureCount = sampleTotal - testStats.SampleStats.SuccessCount - testStats.SampleStats.FlakeCount
-	if testStats.SampleStats.FailureCount < 0 {
-		// The adjusted total for ignored runs can push failure count into the negatives if there were
-		// more ignored runs than actual failures. (or no failures at all)
-		testStats.SampleStats.FailureCount = 0
-	}
 
-	var baseSuccess, baseFailure, baseFlake, baseTotal int
-	if testStats.BaseStats != nil {
-		baseSuccess = testStats.BaseStats.SuccessCount
-		baseFailure = testStats.BaseStats.FailureCount
-		baseFlake = testStats.BaseStats.FlakeCount
-		baseTotal = baseSuccess + baseFailure + baseFlake
+	sampleFailure := sampleTotal - sampleSuccess - sampleFlake
+	// The adjusted total for ignored runs can push failure count into the negatives if there were
+	// more ignored runs than actual failures. (or no failures at all)
+	if sampleFailure < 0 {
+		sampleFailure = 0
 	}
+	baseFailure := baseTotal - baseSuccess - baseFlake
 
 	if baseTotal == 0 && c.ReqOptions.AdvancedOption.PassRateRequiredNewTests > 0 {
 		// If we have no base stats, fall back to a raw pass rate comparison for new or improperly renamed tests:
-		c.buildPassRateTestStats(testStats, float64(c.ReqOptions.AdvancedOption.PassRateRequiredNewTests))
+		// Swap out sample with approvedRegression if we have it
+		if approvedRegression != nil {
+			sampleFailure = approvedRegression.PreviousFailures
+			sampleFlake = approvedRegression.PreviousFlakes
+			sampleSuccess = approvedRegression.PreviousSuccesses
+		}
+		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
+			float64(c.ReqOptions.AdvancedOption.PassRateRequiredNewTests))
 		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
 		// status to be missing basis for the pre-existing Fisher Exact behavior:
 		if testStats.ReportStatus == crtype.NotSignificant && c.ReqOptions.AdvancedOption.PassRateRequiredAllTests == 0 {
 			testStats.ReportStatus = crtype.MissingBasis
 		}
-		return
+		return testStats
 	} else if c.ReqOptions.AdvancedOption.PassRateRequiredAllTests > 0 {
 		// If requested, switch to pass rate only testing to see what does not meet the criteria:
-		c.buildPassRateTestStats(testStats,
+		// Swap out sample with approvedRegression if we have it
+		if approvedRegression != nil {
+			sampleFailure = approvedRegression.PreviousFailures
+			sampleFlake = approvedRegression.PreviousFlakes
+			sampleSuccess = approvedRegression.PreviousSuccesses
+		}
+		testStats := c.buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake,
 			float64(c.ReqOptions.AdvancedOption.PassRateRequiredAllTests))
-		return
+		// include base stats even though we didn't do fishers exact here, this is helpful
+		// for the test details page to give a visual on how the test behaved in the basis
+		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
+			Release: baseRelease,
+			Start:   baseStart,
+			End:     baseEnd,
+			TestDetailsTestStats: crtype.TestDetailsTestStats{
+				SuccessRate:  c.getPassRate(baseSuccess, baseFailure, baseFlake),
+				SuccessCount: baseSuccess,
+				FailureCount: baseFailure,
+				FlakeCount:   baseFlake,
+			},
+		}
+
+		return testStats
 	}
 
 	// Otherwise we fall back to default behavior of Fishers Exact test:
-	c.buildFisherExactTestStats(
-		testStats,
-		approvedRegression,
-		activeProductRegression,
-		initialSampleTotal)
+	testStats := c.buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure, approvedRegression, activeProductRegression, initialSampleTotal, baseRelease, baseStart, baseEnd)
+	return testStats
 }
 
-func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.ReportTestStats,
-	approvedRegression *regressionallowances.IntentionalRegression,
-	activeProductRegression bool,
-	initialSampleTotal int) {
-
-	sampleSuccess := testStats.SampleStats.SuccessCount
-	sampleFlake := testStats.SampleStats.FlakeCount
+func (c *ComponentReportGenerator) buildFisherExactTestStats(requiredConfidence, sampleTotal, sampleSuccess, sampleFlake, sampleFailure, baseTotal, baseSuccess, baseFlake, baseFailure int, approvedRegression *regressionallowances.IntentionalRegression, activeProductRegression bool, initialSampleTotal int, baseRelease string, baseStart, baseEnd *time.Time) crtype.ReportTestStats {
 
 	fisherExact := 0.0
-	testStats.Comparison = crtype.FisherExact
+	baseStats := &crtype.TestDetailsReleaseStats{
+		Release: baseRelease,
+		Start:   baseStart,
+		End:     baseEnd,
+		TestDetailsTestStats: crtype.TestDetailsTestStats{
+			SuccessRate:  c.getPassRate(baseSuccess, baseFailure, baseFlake),
+			SuccessCount: baseSuccess,
+			FailureCount: baseFailure,
+			FlakeCount:   baseFlake,
+		},
+	}
 
+	testStats := crtype.ReportTestStats{
+		Comparison: crtype.FisherExact,
+		SampleStats: crtype.TestDetailsReleaseStats{
+			Release: c.ReqOptions.SampleRelease.Release,
+			Start:   &c.ReqOptions.SampleRelease.Start,
+			End:     &c.ReqOptions.SampleRelease.End,
+			TestDetailsTestStats: crtype.TestDetailsTestStats{
+				SuccessRate:  c.getPassRate(sampleSuccess, sampleFailure, sampleFlake),
+				SuccessCount: sampleSuccess,
+				FailureCount: sampleFailure,
+				FlakeCount:   sampleFlake,
+			},
+		},
+		BaseStats:    baseStats,
+		Explanations: []string{explanationNoRegression},
+	}
 	status := crtype.MissingBasis
 	// if the unadjusted sample was 0 then nothing to do
 	if initialSampleTotal == 0 {
@@ -1434,26 +1496,24 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		} else {
 			status = crtype.MissingSample
 		}
-	} else if testStats.BaseStats.Total() != 0 {
-		// see if we had a significant regression prior to adjusting for triage
-		basePass := testStats.BaseStats.SuccessCount + testStats.BaseStats.FlakeCount
+	} else if baseTotal != 0 {
+		// see if we had a significant regression prior to adjusting
+		basePass := baseSuccess + baseFlake
 		samplePass := sampleSuccess + sampleFlake
 		if c.ReqOptions.AdvancedOption.FlakeAsFailure {
-			basePass = testStats.BaseStats.SuccessCount
+			basePass = baseSuccess
 			samplePass = sampleSuccess
 		}
-		basisPassPercentage := float64(basePass) / float64(testStats.BaseStats.Total())
+		basisPassPercentage := float64(basePass) / float64(baseTotal)
 		initialPassPercentage := float64(samplePass) / float64(initialSampleTotal)
 		effectivePityFactor := c.getEffectivePityFactor(basisPassPercentage, approvedRegression)
 
 		wasSignificant := false
 		// only consider wasSignificant if the sampleTotal has been changed and our sample
 		// pass percentage is below the basis
-		// SampleStats had it's failure count decremented earlier when we calculated adjusted sampleTotal and subtracted it
-		if initialSampleTotal > testStats.SampleStats.Total() && initialPassPercentage < basisPassPercentage {
+		if initialSampleTotal > sampleTotal && initialPassPercentage < basisPassPercentage {
 			if basisPassPercentage-initialPassPercentage > float64(c.ReqOptions.AdvancedOption.PityFactor)/100 {
-				wasSignificant, _ = c.fischerExactTest(testStats.RequiredConfidence, initialSampleTotal-samplePass, samplePass,
-					testStats.BaseStats.Total()-basePass, basePass)
+				wasSignificant, _ = c.fischerExactTest(requiredConfidence, initialSampleTotal-samplePass, samplePass, baseTotal-basePass, basePass)
 			}
 			// if it was significant without the adjustment use
 			// ExtremeTriagedRegression or SignificantTriagedRegression
@@ -1462,7 +1522,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 			}
 		}
 
-		if testStats.SampleStats.Total() == 0 {
+		if sampleTotal == 0 {
 			if !wasSignificant {
 				if c.ReqOptions.AdvancedOption.IgnoreMissing {
 					status = crtype.NotSignificant
@@ -1471,10 +1531,12 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 					status = crtype.MissingSample
 				}
 			}
-			testStats.ReportStatus = status
-			testStats.FisherExact = thrift.Float64Ptr(0.0)
-			testStats.Explanations = append(testStats.Explanations, explanationNoRegression)
-			return
+			return crtype.ReportTestStats{
+				Comparison:   crtype.FisherExact,
+				ReportStatus: status,
+				FisherExact:  thrift.Float64Ptr(0.0),
+				Explanations: []string{explanationNoRegression},
+			}
 		}
 
 		// if we didn't detect a significant regression prior to adjusting set our default here
@@ -1483,32 +1545,32 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		}
 
 		// now that we know sampleTotal is non zero
-		samplePassPercentage := float64(samplePass) / float64(testStats.SampleStats.Total())
+		samplePassPercentage := float64(samplePass) / float64(sampleTotal)
 
 		// did we remove enough failures that we are below the MinimumFailure threshold?
-		if c.ReqOptions.AdvancedOption.MinimumFailure != 0 &&
-			(testStats.SampleStats.Total()-samplePass) < c.ReqOptions.AdvancedOption.MinimumFailure {
+		if c.ReqOptions.AdvancedOption.MinimumFailure != 0 && (sampleTotal-samplePass) < c.ReqOptions.AdvancedOption.MinimumFailure {
 			if status <= crtype.SignificantTriagedRegression {
-				testStats.Explanations = append(testStats.Explanations,
-					fmt.Sprintf("%s regression detected.", crtype.StringForStatus(status)))
+				testStats.Explanations = []string{
+					fmt.Sprintf("%s regression detected.", crtype.StringForStatus(status)),
+				}
 			}
 			testStats.ReportStatus = status
 			testStats.FisherExact = thrift.Float64Ptr(0.0)
-			return
+			return testStats
 		}
 		significant := false
 		improved := samplePassPercentage >= basisPassPercentage
 
 		if improved {
 			// flip base and sample when improved
-			significant, fisherExact = c.fischerExactTest(testStats.RequiredConfidence, testStats.BaseStats.Total()-basePass, basePass, testStats.SampleStats.Total()-samplePass, samplePass)
+			significant, fisherExact = c.fischerExactTest(requiredConfidence, baseTotal-basePass, basePass, sampleTotal-samplePass, samplePass)
 		} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
-			significant, fisherExact = c.fischerExactTest(testStats.RequiredConfidence, testStats.SampleStats.Total()-samplePass, samplePass, testStats.BaseStats.Total()-basePass, basePass)
+			significant, fisherExact = c.fischerExactTest(requiredConfidence, sampleTotal-samplePass, samplePass, baseTotal-basePass, basePass)
 		}
 		if significant {
 			if improved {
 				// only show improvements if we are not dropping out triaged results
-				if initialSampleTotal == testStats.SampleStats.Total() {
+				if initialSampleTotal == sampleTotal {
 					status = crtype.SignificantImprovement
 				}
 			} else {
@@ -1523,26 +1585,28 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 	if testStats.ReportStatus <= crtype.SignificantTriagedRegression {
 
 		if testStats.ReportStatus <= crtype.SignificantRegression {
-			testStats.Explanations = append(testStats.Explanations,
-				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)))
-			testStats.Explanations = append(testStats.Explanations,
-				fmt.Sprintf("Fishers Exact probability of a regression: %.2f%%.", float64(100)-*testStats.FisherExact))
-			testStats.Explanations = append(testStats.Explanations,
+			testStats.Explanations = []string{
+				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)),
+				fmt.Sprintf("Fishers Exact probability of a regression: %.2f%%.", float64(100)-*testStats.FisherExact),
 				fmt.Sprintf("Test pass rate dropped from %.2f%% to %.2f%%.",
 					testStats.BaseStats.SuccessRate*float64(100),
-					testStats.SampleStats.SuccessRate*float64(100)))
+					testStats.SampleStats.SuccessRate*float64(100)),
+			}
 		} else {
-			testStats.Explanations = append(testStats.Explanations,
-				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)))
+			testStats.Explanations = []string{
+				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)),
+			}
+		}
+		// check for override
+		if baseRelease != c.ReqOptions.BaseRelease.Release {
+			testStats.Explanations = append(testStats.Explanations, fmt.Sprintf("Overrode base stats using release %s", baseRelease))
 		}
 	}
+
+	return testStats
 }
 
-func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.ReportTestStats, requiredSuccessRate float64) {
-	sampleSuccess := testStats.SampleStats.SuccessCount
-	sampleFailure := testStats.SampleStats.FailureCount
-	sampleFlake := testStats.SampleStats.FlakeCount
-
+func (c *ComponentReportGenerator) buildPassRateTestStats(sampleSuccess, sampleFailure, sampleFlake int, requiredSuccessRate float64) crtype.ReportTestStats {
 	successRate := c.getPassRate(sampleSuccess, sampleFailure, sampleFlake)
 
 	// Assume 2x our allowed failure rate = an extreme regression.
@@ -1558,16 +1622,29 @@ func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.Repo
 		if successRate*100 < severeRegressionSuccessRate {
 			rStatus = crtype.ExtremeRegression
 		}
-		testStats.ReportStatus = rStatus
-		testStats.Explanations = append(testStats.Explanations,
-			fmt.Sprintf("Test has a %.2f%% pass rate, but %.2f%% is required.", successRate*100, requiredSuccessRate))
-		testStats.Comparison = crtype.PassRate
-		testStats.SampleStats.SuccessRate = successRate
-		return
+		return crtype.ReportTestStats{
+			ReportStatus: rStatus,
+			Explanations: []string{
+				fmt.Sprintf("Test has a %.2f%% pass rate, but %.2f%% is required.", successRate*100, requiredSuccessRate),
+			},
+			Comparison: crtype.PassRate,
+			SampleStats: crtype.TestDetailsReleaseStats{
+				Release: c.ReqOptions.SampleRelease.Release,
+				Start:   &c.ReqOptions.SampleRelease.Start,
+				End:     &c.ReqOptions.SampleRelease.End,
+				TestDetailsTestStats: crtype.TestDetailsTestStats{
+					SuccessRate:  successRate,
+					SuccessCount: sampleSuccess,
+					FailureCount: sampleFailure,
+					FlakeCount:   sampleFlake,
+				},
+			},
+		}
 	}
-
-	testStats.ReportStatus = crtype.NotSignificant
-	testStats.Explanations = append(testStats.Explanations, explanationNoRegression)
+	return crtype.ReportTestStats{
+		ReportStatus: crtype.NotSignificant,
+		Explanations: []string{explanationNoRegression},
+	}
 }
 
 func (c *ComponentReportGenerator) fischerExactTest(confidenceRequired, sampleFailure, sampleSuccess, baseFailure, baseSuccess int) (bool, float64) {
