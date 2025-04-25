@@ -18,6 +18,7 @@ import {
   ViewColumn,
   Widgets,
 } from '@mui/icons-material'
+import { CapabilitiesContext } from '../App'
 import {
   getTriagesAPIUrl,
   mergeRegressionData,
@@ -52,25 +53,34 @@ export default function ComponentReadinessToolBar(props) {
   const [triagedIncidents, setTriagedIncidents] = React.useState([])
   const [triageEntries, setTriageEntries] = React.useState([])
   const [isLoaded, setIsLoaded] = React.useState(false)
+  const capabilitiesContext = React.useContext(CapabilitiesContext)
+
   React.useEffect(() => {
-    fetch(getTriagesAPIUrl(), {
-      method: 'GET',
-    })
-      .then((response) => {
+    const localDBEnabled = capabilitiesContext.includes('local_db')
+    // triage entries will only be available when there is a postgres connection
+    let triageFetch
+    if (localDBEnabled) {
+      triageFetch = fetch(getTriagesAPIUrl(), {
+        method: 'GET',
+      }).then((response) => {
         if (response.status !== 200) {
           throw new Error('API server returned ' + response.status)
         }
         return response.json()
       })
-      .then((triages) => {
-        setTriageEntries(triages)
-        const merged = mergeRegressionData(data, triages)
-        setRegressedTests(merged.length > 0 ? merged[0] : null)
-        setAllRegressedTests(merged.length > 1 ? merged[1] : null)
-        setTriagedIncidents(merged.length > 2 ? merged[2] : null)
-        setTriageEntryCreated(false)
-        setIsLoaded(true)
-      })
+    } else {
+      triageFetch = Promise.resolve([])
+    }
+
+    triageFetch.then((triages) => {
+      setTriageEntries(triages)
+      const merged = mergeRegressionData(data, triages)
+      setRegressedTests(merged.length > 0 ? merged[0] : null)
+      setAllRegressedTests(merged.length > 1 ? merged[1] : null)
+      setTriagedIncidents(merged.length > 2 ? merged[2] : null)
+      setTriageEntryCreated(false)
+      setIsLoaded(true)
+    })
   }, [triageEntryCreated])
 
   const linkToReport = () => {
