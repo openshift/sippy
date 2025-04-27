@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -172,11 +173,14 @@ func (m *Manager) jobRunWorker(managerCtx context.Context) {
 }
 
 // QueryJobRunArtifacts scans the content of all matched artifacts for one job, with concurrency and timeouts/cancellation
-func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQuery, jobRunID int64, paths []string) (artifacts []JobRunArtifact) {
+func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQuery, jobRunID int64, gcsFiles []*storage.ObjectAttrs) (artifacts []JobRunArtifact) {
 	// set up the request/response workflow
 	artifactResponseChan := make(chan artifactResponse) // for responses from the workers
-	remaining := sets.NewString(paths...)               // keep track of responses still missing
-	finished := make(chan bool)                         // indicate we will not receive any more responses
+	remaining := sets.NewString()                       // keep track of responses still missing
+	for _, file := range gcsFiles {
+		remaining.Insert(file.Name)
+	}
+	finished := make(chan bool) // indicate we will not receive any more responses
 
 	// start a listener to wait for the responses and collect them; important to prepare
 	// the listener before dumping requests to the request channel, since that will block.
@@ -193,9 +197,9 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 	}()
 
 	// send a request per unique path, along with our response channel
-	for path := range sets.NewString(paths...) {
+	for _, file := range gcsFiles {
 		request := artifactRequest{
-			artifactPath:  path,
+			artifactAttrs: file,
 			query:         query,
 			artifactsChan: artifactResponseChan,
 			ctx:           ctx,
@@ -224,7 +228,7 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 
 // artifactRequest channels a single artifact to be processed and returned with matching contents
 type artifactRequest struct {
-	artifactPath  string
+	artifactAttrs *storage.ObjectAttrs
 	query         *JobArtifactQuery
 	artifactsChan chan artifactResponse // when processing is done, send response to this channel
 	// putting a context in a struct is normally discouraged; but think of this entire struct as just parameters for a function call
@@ -249,11 +253,11 @@ func (m *Manager) artifactWorker(managerCtx context.Context) {
 			return
 		}
 
-		artLog := logger.WithField("artifactPath", request.artifactPath).WithContext(request.ctx)
+		artLog := logger.WithField("artifactAttrs", request.artifactAttrs).WithContext(request.ctx)
 		artLog.Debug("Received request from artifactChan")
 		response := artifactResponse{
-			artifactPath: request.artifactPath,
-			artifact:     request.query.getFileContentMatches(request.jobRunID, request.artifactPath),
+			artifactPath: request.artifactAttrs.Name,
+			artifact:     request.query.getFileContentMatches(request.jobRunID, request.artifactAttrs),
 		}
 
 		expired = sendViaChannel(request.ctx, request.artifactsChan, response)
