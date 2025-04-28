@@ -1434,7 +1434,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		} else {
 			status = crtype.MissingSample
 		}
-	} else if testStats.BaseStats.Total() != 0 {
+	} else if testStats.BaseStats != nil && testStats.BaseStats.Total() != 0 {
 		// see if we had a significant regression prior to adjusting for triage
 		basePass := testStats.BaseStats.SuccessCount + testStats.BaseStats.FlakeCount
 		samplePass := sampleSuccess + sampleFlake
