@@ -23,5 +23,10 @@ type Middleware interface {
 	// PreAnalysis gives middleware opportunity to adjust test analysis data prior to running analysis.
 	// Implementations can alter base/sample data as needed, request confidence levels, and add explanations for
 	// what they did.
+	// NOTE: due to differences in test details reports, this function is not used there.
 	PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error
+
+	// PreTestDetailsAnalysis gives middleware the opportunity to adjust inputs to the report status
+	// prior to analysis.
+	PreTestDetailsAnalysis(status *crtype.JobRunTestReportStatus) error
 }

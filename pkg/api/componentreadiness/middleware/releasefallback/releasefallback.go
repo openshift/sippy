@@ -227,6 +227,12 @@ func (r *ReleaseFallback) TestDetailsAnalyze(report *crtype.ReportTestDetails) e
 	return nil
 }
 
+func (r *ReleaseFallback) PreTestDetailsAnalysis(status *crtype.JobRunTestReportStatus) error {
+	// Add our baseOverrideStatus to the report, unfortunate hack we have to live with for now.
+	status.BaseOverrideStatus = r.baseOverrideStatus
+	return nil
+}
+
 // fallbackTestQueryReleasesGenerator iterates the configured number of past releases, querying base status for
 // each, which can then be used to return the best basis data from those past releases for comparison.
 type fallbackTestQueryReleasesGenerator struct {

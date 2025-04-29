@@ -75,10 +75,22 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
 	// Generate the report for the fallback release if one was found:
-	// Move all this to the middleware.
+	// TODO: this belongs in the releasefallback middleware, but our goal to return and display multiple
+	// reports means the PreAnalysis state cannot be used for test details. The second call to
+	// internalGenerateTestDetailsReport does not extract easily off "c". We cannot pass a ref to "c" due
+	// to a circular dep. This is an unfortunate compormise in the middleware goal I didn't have time to unwind.
+	// For now, the middleware does the querying for test details, and passes the override status out
+	// by adding it to componentJobRunTestReportStatus.BaseOverrideStatus.
 	var baseOverrideReport *crtype.ReportTestDetails
 	if c.ReqOptions.BaseOverrideRelease.Release != "" &&
 		c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
+
+		for _, mw := range c.middlewares {
+			err := mw.PreTestDetailsAnalysis(&componentJobRunTestReportStatus)
+			if err != nil {
+				return report, []error{err}
+			}
+		}
 
 		overrideReport := c.internalGenerateTestDetailsReport(ctx,
 			componentJobRunTestReportStatus.BaseOverrideStatus,
