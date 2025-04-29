@@ -11,21 +11,21 @@ import {
 } from '@mui/material'
 import {
   cancelledDataTable,
-  generateTestReport,
   getColumns,
   getStatusAndIcon,
   getTestDetailsAPIUrl,
+  getTriagesAPIUrl,
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
   mergeIncidents,
   noDataTable,
 } from './CompReadyUtils'
+import { CapabilitiesContext, ReleasesContext } from '../App'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help, InsertLink } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
-import { ReleasesContext } from '../App'
 import { safeEncodeURIComponent } from '../helpers'
 import { Tooltip } from '@mui/material'
 import BugButton from '../bugs/BugButton'
@@ -37,7 +37,6 @@ import CompReadyTestPanel from './CompReadyTestPanel'
 import CopyPageURL from './CopyPageURL'
 import GeneratedAt from './GeneratedAt'
 import IconButton from '@mui/material/IconButton'
-import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
 import Sidebar from './Sidebar'
@@ -46,6 +45,7 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
 import TriagedIncidentsPanel from './TriagedIncidentsPanel'
+import TriagedTestsPanel from './TriagedTestsPanel'
 
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
@@ -114,6 +114,7 @@ export default function CompReadyTestReport(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
   const [versions, setVersions] = React.useState({})
+  const [triageEntries, setTriageEntries] = React.useState([])
   const releases = useContext(ReleasesContext)
 
   // Set the browser tab title
@@ -125,7 +126,8 @@ export default function CompReadyTestReport(props) {
   const safeTestId = safeEncodeURIComponent(testId)
   const safeTestBasisRelease = safeEncodeURIComponent(testBasisRelease)
 
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
+  const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const { expandEnvironment, sampleRelease } = useContext(CompReadyVarsContext)
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -148,7 +150,7 @@ export default function CompReadyTestReport(props) {
     }
   }
 
-  const apiCallStr =
+  const testDetailsApiCall =
     getTestDetailsAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
@@ -160,43 +162,75 @@ export default function CompReadyTestReport(props) {
   useEffect(() => {
     setIsLoaded(false)
 
-    fetch(apiCallStr, { signal: abortController.signal })
-      .then((response) => response.json())
-      .then((data) => {
-        if (data.code < 200 || data.code >= 300) {
-          const errorMessage = data.message
-            ? `${data.message}`
-            : 'No error message'
-          throw new Error(`Return code = ${data.code} (${errorMessage})`)
+    const localDBEnabled = capabilitiesContext.includes('local_db')
+    // triage entries will only be available when there is a postgres connection
+    let triageFetch
+    if (localDBEnabled) {
+      const triagesApiCall =
+        getTriagesAPIUrl() +
+        '?test=' +
+        safeTestId +
+        '&sampleRelease=' +
+        sampleRelease
+      triageFetch = fetch(triagesApiCall).then((response) => {
+        if (response.status !== 200) {
+          throw new Error(
+            `API call failed ${triagesApiCall} Returned + ${response.status}`
+          )
         }
-        return data
+        return response.json()
       })
-      .then((json) => {
-        // If the basics are not present, consider it no data
-        if (
-          !json.component ||
-          !json.analyses ||
-          !json.analyses[0].sample_stats
-        ) {
-          // The api call returned 200 OK but the data was empty
-          setData(noDataTable)
-        } else {
-          setData(json)
-        }
-      })
-      .catch((error) => {
+    } else {
+      triageFetch = Promise.resolve([])
+    }
+
+    // fetch the test_details data and any applicable triages concurrently
+    const fetchData = async () => {
+      try {
+        await Promise.all([
+          fetch(testDetailsApiCall, { signal: abortController.signal })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.code < 200 || data.code >= 300) {
+                const errorMessage = data.message
+                  ? `${data.message}`
+                  : 'No error message'
+                throw new Error(
+                  `API call failed: ${testDetailsApiCall}\n Return code = ${data.code} (${errorMessage})`
+                )
+              }
+              return data
+            })
+            .then((json) => {
+              // If the basics are not present, consider it no data
+              if (
+                !json.component ||
+                !json.analyses ||
+                !json.analyses[0].sample_stats
+              ) {
+                // The api call returned 200 OK but the data was empty
+                setData(noDataTable)
+              } else {
+                setData(json)
+              }
+            }),
+          triageFetch.then((triages) => {
+            setTriageEntries(triages)
+          }),
+        ])
+        setIsLoaded(true)
+      } catch (error) {
         if (error.name === 'AbortError') {
           setData(cancelledDataTable)
 
           // Once this fired, we need a new one for the next button click.
           abortController = new AbortController()
         } else {
-          setFetchError(`API call failed: ${apiCallStr}\n${error}`)
+          setFetchError(error)
         }
-      })
-      .finally(() => {
-        setIsLoaded(true)
-      })
+      }
+    }
+    fetchData()
   }, [])
 
   useEffect(() => {
@@ -233,13 +267,21 @@ export default function CompReadyTestReport(props) {
   )
 
   if (!isLoaded) {
-    return <CompReadyProgress apiLink={apiCallStr} cancelFunc={cancelFetch} />
+    return (
+      <CompReadyProgress
+        apiLink={testDetailsApiCall}
+        cancelFunc={cancelFetch}
+      />
+    )
   }
 
   const columnNames = getColumns(data)
   if (columnNames[0] === 'Cancelled' || columnNames[0] === 'None') {
     return (
-      <CompReadyCancelled message={columnNames[0]} apiCallStr={apiCallStr} />
+      <CompReadyCancelled
+        message={columnNames[0]}
+        apiCallStr={testDetailsApiCall}
+      />
     )
   }
 
@@ -254,12 +296,12 @@ export default function CompReadyTestReport(props) {
   `
 
   let url
-  if (apiCallStr.startsWith('/')) {
+  if (testDetailsApiCall.startsWith('/')) {
     // In production mode, there is no hostname so we add it so that 'new URL' will work
     // for both production and development modes.
-    url = new URL('http://sippy.dptools.openshift.org' + apiCallStr)
+    url = new URL('http://sippy.dptools.openshift.org' + testDetailsApiCall)
   } else {
-    url = new URL(apiCallStr)
+    url = new URL(testDetailsApiCall)
   }
 
   const params = new URLSearchParams(url.search)
@@ -309,7 +351,10 @@ Flakes: ${stats.flake_count}`
           </Link>
         </Tooltip>
       </Box>
-      <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
+      <CompReadyPageTitle
+        pageTitle={pageTitle}
+        apiCallStr={testDetailsApiCall}
+      />
       <h3>
         <Link to="/component_readiness">
           / {environment} &gt; {component}
@@ -397,16 +442,25 @@ View the [test details report|${document.location.href}] for additional context.
         </Grid>
       </Grid>
 
-      {data.analyses[0].incidents && data.analyses[0].incidents.length > 0 ? (
+      {triageEntries.length === 0 &&
+        data.analyses[0].incidents &&
+        data.analyses[0].incidents.length > 0 && (
+          <Fragment>
+            <h2>Triaged Incidents</h2>
+            <TriagedIncidentsPanel
+              triagedIncidents={mergeIncidents(
+                data.analyses[0].incidents,
+                data
+              )}
+            />
+          </Fragment>
+        )}
+
+      {triageEntries.length >= 0 && (
         <Fragment>
           <h2>Triaged Tests</h2>
-          <TriagedIncidentsPanel
-            triagedIncidents={mergeIncidents(data.analyses[0].incidents, data)}
-          />
+          <TriagedTestsPanel triageEntries={triageEntries} />
         </Fragment>
-      ) : (
-        // no incidents
-        <Fragment />
       )}
 
       <h2>Regression Report</h2>
@@ -432,13 +486,11 @@ View the [test details report|${document.location.href}] for additional context.
             <TableCell>Environment:</TableCell>
             <TableCell>{environment}</TableCell>
           </TableRow>
-          {isBaseOverride ? (
+          {isBaseOverride && (
             <TableRow>
               <TableCell>{baseRelease} Override:</TableCell>
               <TableCell>Earlier release had a higher threshold</TableCell>
             </TableRow>
-          ) : (
-            <Fragment />
           )}
           <TableRow>
             <TableCell>Assessment:</TableCell>
@@ -504,7 +556,7 @@ View the [test details report|${document.location.href}] for additional context.
         ID copied!
       </Popover>
       <GeneratedAt time={data.generated_at} />
-      <CopyPageURL apiCallStr={apiCallStr} />
+      <CopyPageURL apiCallStr={testDetailsApiCall} />
     </Fragment>
   )
 }

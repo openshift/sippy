@@ -1253,9 +1253,9 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		// Otherwise list all:
-		// TODO: support release filtering
-		triages, err := componentreadiness.ListTriages(s.db)
+		testID := param.SafeRead(req, "test")
+		release := param.SafeRead(req, "sampleRelease")
+		triages, err := componentreadiness.ListTriages(s.db, testID, release)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
