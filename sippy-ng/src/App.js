@@ -37,12 +37,12 @@ import Drawer from '@mui/material/Drawer'
 import FeatureGates from './tests/FeatureGates'
 import IconButton from '@mui/material/IconButton'
 import Install from './releases/Install'
+import IntervalsChart from './prow_job_runs/IntervalsChart'
 import Jobs from './jobs/Jobs'
 import MenuIcon from '@mui/icons-material/Menu'
 import MuiAppBar from '@mui/material/AppBar'
 import PayloadStream from './releases/PayloadStream'
 import PayloadStreams from './releases/PayloadStreams'
-import ProwJobRun from './prow_job_runs/ProwJobRun'
 import PullRequests from './pull_requests/PullRequests'
 import React, { Fragment, useContext, useEffect, useState } from 'react'
 import ReleaseOverview from './releases/ReleaseOverview'
@@ -688,7 +688,7 @@ export default function App(props) {
                             <Route
                               path="/job_runs/:jobrunid/:jobname?/:repoinfo?/:pullnumber?/intervals"
                               render={(props) => (
-                                <ProwJobRun
+                                <IntervalsChart
                                   jobRunID={props.match.params.jobrunid}
                                   jobName={props.match.params.jobname}
                                   repoInfo={props.match.params.repoinfo}
