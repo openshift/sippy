@@ -20,13 +20,15 @@ type Middleware interface {
 	// QueryTestDetails phase allow middleware to load data that will later be used.
 	QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants)
 
-	// PreAnalysis gives middleware opportunity to adjust test analysis data prior to running analysis.
-	// Implementations can alter base/sample data as needed, request confidence levels, and add explanations for
-	// what they did.
-	// NOTE: due to differences in test details reports, this function is not used there.
-	PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error
+	// Transform gives middleware opportunity to adjust the queried base and sample TestStatuses before we
+	// proceed to analysis.
+	Transform(status *crtype.ReportTestStatus) error
 
-	// PreTestDetailsAnalysis gives middleware the opportunity to adjust inputs to the report status
-	// prior to analysis.
-	PreTestDetailsAnalysis(status *crtype.JobRunTestReportStatus) error
+	// TransformTestDetails gives middleware opportunity to adjust the queried base and sample job run data
+	// before we proceed to analysis.
+	TransformTestDetails(status *crtype.JobRunTestReportStatus) error
+
+	// TestDetailsAnalyze gives middleware opportunity to analyze data and adjust the final report before
+	// being returned over the API.
+	TestDetailsAnalyze(report *crtype.ReportTestDetails) error
 }
