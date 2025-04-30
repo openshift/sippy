@@ -6,7 +6,6 @@ import (
 	"math"
 	"net/http"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -434,41 +433,6 @@ func dbPayloadPhaseCountToAPI(dbpc []models.PayloadPhaseCount) apitype.PayloadPh
 		}
 	}
 	return apipc
-}
-
-// ScanForReleaseWarnings looks for problems in current release health and returns them to the user.
-func ScanForReleaseWarnings(dbClient *db.DB, release string, reportEnd time.Time) []string {
-	payloadHealth, err := ReleaseHealthReports(dbClient, release, reportEnd)
-	if err != nil {
-		// treat the error as a warning itself
-		return []string{fmt.Sprintf("error checking release health, see logs: %v", err)}
-	}
-	// May add more release health checks in future
-	return ScanReleaseHealthForRHCOSVersionMisMatches(payloadHealth)
-}
-
-func ScanReleaseHealthForRHCOSVersionMisMatches(payloadHealth []apitype.ReleaseHealthReport) []string {
-
-	warnings := make([]string, 0)
-	for _, streamHealth := range payloadHealth {
-		// Remove the dots in release version to compare against os version.
-		// i.e. compare 4.11 to 411.85.202203171100-0
-		release := strings.ReplaceAll(streamHealth.Release, ".", "")
-		osVerTokens := strings.Split(streamHealth.CurrentOSVersion, ".")
-		if len(osVerTokens) <= 2 {
-			warnings = append(warnings, fmt.Sprintf("unable to parse OpenShift version from OS version %s",
-				streamHealth.CurrentOSVersion))
-			continue
-		}
-		osVer := osVerTokens[0]
-		if release != osVer {
-			warnings = append(warnings, fmt.Sprintf("OS version %s does not match OpenShift release %s",
-				streamHealth.CurrentOSVersion, streamHealth.Release))
-			continue
-		}
-
-	}
-	return warnings
 }
 
 func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {

@@ -141,7 +141,11 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	}
 	currStats, prevStats := calculateJobResultStatistics(jobReports)
 
-	warnings := ScanForReleaseWarnings(dbc, release, reportEnd)
+	// Warnings used to report CoreOS version mismatches, but it is no longer tied to the OCP
+	// release. These warnings are shown as a banner on the release overview page.  I left it here
+	// in case we ever want to show these banners again for something else.
+	// TODO: use or remove this logic
+	var warnings []string
 
 	RespondWithJSON(http.StatusOK, w, apitype.Health{
 		Indicators:  indicators,
