@@ -1,10 +1,10 @@
 package regressionallowances
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
-	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/stretchr/testify/assert"
@@ -19,9 +19,9 @@ func Test_Transform(t *testing.T) {
 	regressionGetter := func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression {
 		if releaseString == "4.18" && reflect.DeepEqual(variant.Variants, variants) && testID == test1ID {
 			return &regressionallowances.IntentionalRegression{
-				JiraComponent:      "",
+				JiraComponent:      "foo",
 				TestID:             test1ID,
-				TestName:           "test 1",
+				TestName:           "test1",
 				Variant:            variant,
 				PreviousSuccesses:  100,
 				PreviousFailures:   0,
@@ -40,80 +40,74 @@ func Test_Transform(t *testing.T) {
 		},
 		AdvancedOption: crtype.RequestAdvancedOptions{IncludeMultiReleaseAnalysis: true},
 	}
-
-	test1Key := crtype.ReportTestIdentification{
-		RowIdentification: crtype.RowIdentification{
-			Component:  "",
-			Capability: "",
-			TestName:   "test 1",
-			TestSuite:  "",
-			TestID:     test1ID,
-		},
-		ColumnIdentification: crtype.ColumnIdentification{
-			Variants: variants,
-		},
+	test1Variants := []string{"Arch:amd64", "Platform:aws"}
+	test1Key := crtype.TestWithVariantsKey{
+		TestID:   test1ID,
+		Variants: variants,
 	}
+	test1KeyBytes, err := json.Marshal(test1Key)
+	test1KeyStr := string(test1KeyBytes)
+	assert.NoError(t, err)
 
 	test2ID := "test2ID"
-	test2Key := crtype.ReportTestIdentification{
-		RowIdentification: crtype.RowIdentification{
-			Component:  "",
-			Capability: "",
-			TestName:   "test 2",
-			TestSuite:  "",
-			TestID:     test2ID,
-		},
-		ColumnIdentification: crtype.ColumnIdentification{
-			Variants: variants,
-		},
+	test2Key := crtype.TestWithVariantsKey{
+		TestID:   test2ID,
+		Variants: variants,
 	}
+	test2KeyBytes, err := json.Marshal(test2Key)
+	test2KeyStr := string(test2KeyBytes)
+	assert.NoError(t, err)
 
 	tests := []struct {
 		name           string
-		testKey        crtype.ReportTestIdentification
 		reqOpts        crtype.RequestOptions
-		baseStatus     *crtype.ReportTestStats
-		expectedStatus *crtype.ReportTestStats
+		baseStatus     map[string]crtype.TestStatus
+		expectedStatus map[string]crtype.TestStatus
 	}{
 		{
-			name:           "swap base stats using regression allowance",
-			reqOpts:        reqOpts419,
-			testKey:        test1Key,
-			baseStatus:     buildTestStatus(100, 75, 0, "4.18"),
-			expectedStatus: buildTestStatus(100, 100, 0, "4.17"),
+			name:    "swap base stats using regression allowance",
+			reqOpts: reqOpts419,
+			baseStatus: map[string]crtype.TestStatus{
+				test1KeyStr: buildTestStatus("test1", test1Variants, 100, 75, 0, nil),
+			},
+			expectedStatus: map[string]crtype.TestStatus{
+				test1KeyStr: buildTestStatus("test1", test1Variants, 100, 100, 0, nil),
+			},
 		},
 		{
-			name:           "do not swap base stats if no regression allowance",
-			reqOpts:        reqOpts419,
-			testKey:        test2Key,
-			baseStatus:     buildTestStatus(100, 75, 0, "4.18"),
-			expectedStatus: buildTestStatus(100, 75, 0, "4.18"),
+			name:    "do not swap base stats if no regression allowance",
+			reqOpts: reqOpts419,
+			baseStatus: map[string]crtype.TestStatus{
+				test2KeyStr: buildTestStatus("test2", test1Variants, 100, 75, 0, nil),
+			},
+			expectedStatus: map[string]crtype.TestStatus{
+				test2KeyStr: buildTestStatus("test2", test1Variants, 100, 75, 0, nil),
+			},
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			rfb := NewRegressionAllowancesMiddleware(test.reqOpts)
 			rfb.regressionGetterFunc = regressionGetter
-			err := rfb.PreAnalysis(test.testKey, test.baseStatus)
+			status := &crtype.ReportTestStatus{BaseStatus: test.baseStatus}
+			err := rfb.Transform(status)
 			assert.NoError(t, err)
-			assert.Equal(t, *test.expectedStatus, *test.baseStatus)
+			assert.Equal(t, test.expectedStatus, status.BaseStatus)
 		})
 	}
 }
 
 //nolint:unparam
-func buildTestStatus(total, success, flake int, baseRelease string) *crtype.ReportTestStats {
-	fails := total - success - flake
-	ts := &crtype.ReportTestStats{
-		BaseStats: &crtype.TestDetailsReleaseStats{
-			Release: baseRelease,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				FailureCount: fails,
-				SuccessCount: success,
-				FlakeCount:   flake,
-				SuccessRate:  utils.CalculatePassRate(success, fails, flake, false),
-			},
-		},
+func buildTestStatus(testName string, variants []string, total, success, flake int, release *crtype.Release) crtype.TestStatus {
+	return crtype.TestStatus{
+		TestName:     testName,
+		TestSuite:    "conformance",
+		Component:    "foo",
+		Capabilities: nil,
+		Variants:     variants,
+		TotalCount:   total,
+		SuccessCount: success,
+		FlakeCount:   flake,
+		Release:      release,
 	}
-	return ts
 }

@@ -95,12 +95,12 @@ func DeserializeTestKey(stats componentreport.TestStatus, testKeyStr string) (co
 	return testID, nil
 }
 
-func CalculatePassRate(success, failure, flake int, treatFlakeAsFailure bool) float64 {
+func CalculatePassRate(reqOptions componentreport.RequestOptions, success, failure, flake int) float64 {
 	total := success + failure + flake
 	if total == 0 {
 		return 0.0
 	}
-	if treatFlakeAsFailure {
+	if reqOptions.AdvancedOption.FlakeAsFailure {
 		return float64(success) / float64(total)
 	}
 	return float64(success+flake) / float64(total)
