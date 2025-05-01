@@ -7,8 +7,8 @@ import {
   useQueryParam,
 } from 'use-query-params'
 import {
+  Box,
   Button,
-  ButtonGroup,
   Checkbox,
   MenuItem,
   Select,
@@ -285,6 +285,7 @@ export default function IntervalsChart(props) {
               allSources.push(eventInterval.source)
             }
           })
+          allSources.sort()
           console.log('allSources = ' + allSources)
           setAllSources(allSources)
           // This is a little tricky, we do a query first without specifying a filename, as we don't know what
@@ -533,7 +534,12 @@ export default function IntervalsChart(props) {
       </p>
       <div>
         Categories:
-        <ButtonGroup size="small" aria-label="Categories">
+        <Box
+          display="flex"
+          flexWrap="wrap"
+          gap={1} // optional spacing between buttons
+          mt={1}
+        >
           {allSources.map((source) => (
             <Button
               key={source}
@@ -541,11 +547,12 @@ export default function IntervalsChart(props) {
               variant={
                 selectedSources.includes(source) ? 'contained' : 'outlined'
               }
+              size="small"
             >
               {source}
             </Button>
           ))}
-        </ButtonGroup>
+        </Box>
       </div>
       <div>
         Files:
