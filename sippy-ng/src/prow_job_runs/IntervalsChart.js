@@ -493,6 +493,12 @@ export default function IntervalsChart(props) {
     setEnd(event.target.value)
   }
 
+  const resetTimeFilters = (event) => {
+    console.log('reset time filters')
+    setStart(eventIntervals[0].from)
+    setEnd(eventIntervals[eventIntervals.length - 1].to)
+  }
+
   // handleSegmentClicked is called whenever an individual interval in the chart is clicked.
   // Used to display details on the interval and locator in a way that a user can copy if needed.
   function handleSegmentClicked(segment) {
@@ -571,7 +577,7 @@ export default function IntervalsChart(props) {
           label="Start"
           variant="outlined"
           onChange={handleStartTimeFilterChange}
-          defaultValue={start}
+          value={start}
         />
         -
         <TextField
@@ -579,8 +585,11 @@ export default function IntervalsChart(props) {
           label="End"
           variant="outlined"
           onChange={handleEndTimeFilterChange}
-          defaultValue={end}
+          value={end}
         />
+        <Button key="resetTimeFilters" onClick={() => resetTimeFilters()}>
+          Reset
+        </Button>
       </div>
       <div>
         <Tooltip
