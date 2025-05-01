@@ -532,7 +532,7 @@ export default function IntervalsChart(props) {
         Loaded {eventIntervals.length} intervals from GCS, filtered down to{' '}
         {filteredIntervals.length}.
       </p>
-      <div>
+      <div style={{ paddingBottom: '1rem' }}>
         Categories:
         <Box
           display="flex"
@@ -554,7 +554,7 @@ export default function IntervalsChart(props) {
           ))}
         </Box>
       </div>
-      <div>
+      <div style={{ paddingBottom: '1rem' }}>
         Files:
         <Select
           labelId="interval-file-label"
@@ -577,7 +577,7 @@ export default function IntervalsChart(props) {
           defaultValue={filterText}
         />
       </div>
-      <div>
+      <div style={{ paddingBottom: '1rem' }}>
         Time Filter:
         <TextField
           id="start"
