@@ -17,6 +17,7 @@ import {
 } from '@mui/material'
 import { CircularProgress } from '@mui/material'
 import { escapeRegex } from '../helpers'
+import { makeStyles } from '@mui/styles'
 import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
@@ -38,6 +39,13 @@ const sourceOrder = [
   'EtcdLog',
   'EtcdLeadership',
 ]
+
+const useStyles = makeStyles({
+  filterRow: {
+    padding: '10px 0',
+    paddingBottom: '1rem',
+  },
+})
 
 // These Sources should be sorted on their locator to group lines together by node, pod, etc.
 const sortOnLocatorSources = ['NodeState']
@@ -175,6 +183,7 @@ const intervalColorizers = {
 
 export default function IntervalsChart(props) {
   const history = useHistory()
+  const classes = useStyles()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -334,7 +343,6 @@ export default function IntervalsChart(props) {
       overrideDisplayFlag != null // adjust this check as needed
 
     if (isReady) {
-      console.log('useEffect on intervals/sources')
       updateFiltering()
     }
   }, [selectedSources, history, eventIntervals, overrideDisplayFlag])
@@ -346,7 +354,6 @@ export default function IntervalsChart(props) {
       const isReady = eventIntervals != null && eventIntervals.length > 0
 
       if (isReady) {
-        console.log('Filter text updated:', filterText)
         updateFiltering()
       }
     }, 800)
@@ -532,7 +539,7 @@ export default function IntervalsChart(props) {
         Loaded {eventIntervals.length} intervals from GCS, filtered down to{' '}
         {filteredIntervals.length}.
       </p>
-      <div style={{ paddingBottom: '1rem' }}>
+      <div className={classes.filterRow}>
         Categories:
         <Box
           display="flex"
@@ -554,7 +561,7 @@ export default function IntervalsChart(props) {
           ))}
         </Box>
       </div>
-      <div style={{ paddingBottom: '1rem' }}>
+      <div className={classes.filterRow}>
         Files:
         <Select
           labelId="interval-file-label"
@@ -577,7 +584,7 @@ export default function IntervalsChart(props) {
           defaultValue={filterText}
         />
       </div>
-      <div style={{ paddingBottom: '1rem' }}>
+      <div className={classes.filterRow}>
         Time Filter:
         <TextField
           id="start"
