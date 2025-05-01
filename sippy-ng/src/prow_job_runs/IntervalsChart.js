@@ -206,6 +206,7 @@ export default function IntervalsChart(props) {
 
   const [allIntervalFiles, setAllIntervalFiles] = useState([])
   const [allSources, setAllSources] = useState([])
+  const [sourceCounts, setSourceCounts] = useState([])
   const [intervalFile = props.intervalFile, setIntervalFile] = useState(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('intervalFile')) {
@@ -386,7 +387,7 @@ export default function IntervalsChart(props) {
       search: stringify(queryString),
     })
 
-    let filteredIntervals = filterIntervals(
+    let filteredResult = filterIntervals(
       eventIntervals,
       selectedSources,
       filterText,
@@ -394,14 +395,15 @@ export default function IntervalsChart(props) {
       start,
       end
     )
+    setSourceCounts(filteredResult.sourceCounts)
     console.log(
       'now we have ' +
-        filteredIntervals.length +
+        filteredResult.intervals.length +
         '/' +
         eventIntervals.length +
         ' intervals'
     )
-    setFilteredIntervals(filteredIntervals)
+    setFilteredIntervals(filteredResult.intervals)
   }
 
   if (fetchError !== '') {
@@ -556,7 +558,7 @@ export default function IntervalsChart(props) {
               }
               size="small"
             >
-              {source}
+              {source} ({sourceCounts[source] || 0})
             </Button>
           ))}
         </Box>
@@ -682,7 +684,9 @@ function filterIntervals(
   let startFilter = new Date(start)
   let endFilter = new Date(end)
 
-  return _.filter(eventIntervals, function (eventInterval) {
+  const sourceCountsTmp = {}
+
+  let intervals = _.filter(eventIntervals, function (eventInterval) {
     let shouldInclude = false
     if (new Date(eventInterval.to) < startFilter) {
       // ended before the filtered interval
@@ -690,9 +694,6 @@ function filterIntervals(
     }
     if (new Date(eventInterval.from) > endFilter) {
       // started after the filtered interval
-      return shouldInclude
-    }
-    if (!selectedSources.includes(eventInterval.source)) {
       return shouldInclude
     }
     if (!overrideDisplayFlag && !eventInterval.display) {
@@ -706,18 +707,29 @@ function filterIntervals(
     }
     if (re) {
       if (
-        re.test(eventInterval.displayMessage) ||
-        re.test(eventInterval.displayLocator)
+        !(
+          re.test(eventInterval.displayMessage) ||
+          re.test(eventInterval.displayLocator)
+        )
       ) {
-        shouldInclude = true
-      } else {
-        console.log('missed on regex')
+        return shouldInclude
       }
-    } else {
-      shouldInclude = true
     }
-    return shouldInclude
+
+    // Increment count for this source before we filter out based on source, we want the button counts
+    // to show how many you would see if you enable that source button
+    sourceCountsTmp[eventInterval.source] =
+      (sourceCountsTmp[eventInterval.source] || 0) + 1
+
+    if (!selectedSources.includes(eventInterval.source)) {
+      return shouldInclude
+    }
+    return true
   })
+  return {
+    intervals: intervals,
+    sourceCounts: sourceCountsTmp,
+  }
 }
 
 function mutateIntervals(eventIntervals) {
