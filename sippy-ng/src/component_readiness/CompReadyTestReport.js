@@ -456,7 +456,7 @@ View the [test details report|${document.location.href}] for additional context.
           </Fragment>
         )}
 
-      {triageEntries.length >= 0 && (
+      {triageEntries.length > 0 && (
         <Fragment>
           <h2>Triaged Tests</h2>
           <TriagedTestsPanel triageEntries={triageEntries} />
