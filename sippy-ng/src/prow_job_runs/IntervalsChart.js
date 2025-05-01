@@ -7,8 +7,8 @@ import {
   useQueryParam,
 } from 'use-query-params'
 import {
+  Box,
   Button,
-  ButtonGroup,
   Checkbox,
   MenuItem,
   Select,
@@ -17,6 +17,7 @@ import {
 } from '@mui/material'
 import { CircularProgress } from '@mui/material'
 import { escapeRegex } from '../helpers'
+import { makeStyles } from '@mui/styles'
 import { stringify } from 'query-string'
 import { useHistory } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
@@ -38,6 +39,13 @@ const sourceOrder = [
   'EtcdLog',
   'EtcdLeadership',
 ]
+
+const useStyles = makeStyles({
+  filterRow: {
+    padding: '10px 0',
+    paddingBottom: '1rem',
+  },
+})
 
 // These Sources should be sorted on their locator to group lines together by node, pod, etc.
 const sortOnLocatorSources = ['NodeState']
@@ -173,8 +181,9 @@ const intervalColorizers = {
   },
 }
 
-export default function ProwJobRun(props) {
+export default function IntervalsChart(props) {
   const history = useHistory()
+  const classes = useStyles()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -217,6 +226,21 @@ export default function ProwJobRun(props) {
     return ''
   })
 
+  const [start, setStart] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('start')) {
+      return params.get('start')
+    }
+    return ''
+  })
+  const [end, setEnd] = useState(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('end')) {
+      return params.get('end')
+    }
+    return ''
+  })
+
   const fetchData = () => {
     let queryString = ''
     console.log(
@@ -255,6 +279,12 @@ export default function ProwJobRun(props) {
           mutateIntervals(tmpIntervals)
           setEventIntervals(tmpIntervals)
 
+          // if the query params did not already define a start/end filter, use the first/last interval to set it up
+          if (!start && !end) {
+            setStart(tmpIntervals[0].from)
+            setEnd(tmpIntervals[tmpIntervals.length - 1].to)
+          }
+
           let intervalFilesAvailable = json.intervalFilesAvailable
           intervalFilesAvailable.sort()
           setAllIntervalFiles(intervalFilesAvailable)
@@ -264,6 +294,7 @@ export default function ProwJobRun(props) {
               allSources.push(eventInterval.source)
             }
           })
+          allSources.sort()
           console.log('allSources = ' + allSources)
           setAllSources(allSources)
           // This is a little tricky, we do a query first without specifying a filename, as we don't know what
@@ -305,19 +336,29 @@ export default function ProwJobRun(props) {
   }, [intervalFile])
 
   useEffect(() => {
-    updateFiltering()
+    const isReady =
+      selectedSources != null &&
+      eventIntervals != null &&
+      eventIntervals.length > 0 &&
+      overrideDisplayFlag != null // adjust this check as needed
+
+    if (isReady) {
+      updateFiltering()
+    }
   }, [selectedSources, history, eventIntervals, overrideDisplayFlag])
 
   useEffect(() => {
     // Delayed processing of the filter text input to allow the user to finish typing before
     // we update our filtering:
     const timer = setTimeout(() => {
-      console.log('Filter text updated:', filterText)
-      updateFiltering()
-    }, 800)
+      const isReady = eventIntervals != null && eventIntervals.length > 0
 
+      if (isReady) {
+        updateFiltering()
+      }
+    }, 800)
     return () => clearTimeout(timer)
-  }, [filterText])
+  }, [filterText, start, end])
 
   function updateFiltering() {
     console.log('updating filtering')
@@ -328,8 +369,17 @@ export default function ProwJobRun(props) {
         intervalFile: StringParam,
         filter: StringParam,
         overrideDisplayFlag: BooleanParam,
+        start: StringParam,
+        end: StringParam,
       },
-      { selectedSources, intervalFile, filterText, overrideDisplayFlag }
+      {
+        selectedSources,
+        intervalFile,
+        filterText,
+        start,
+        end,
+        overrideDisplayFlag,
+      }
     )
 
     history.replace({
@@ -340,7 +390,16 @@ export default function ProwJobRun(props) {
       eventIntervals,
       selectedSources,
       filterText,
-      overrideDisplayFlag
+      overrideDisplayFlag,
+      start,
+      end
+    )
+    console.log(
+      'now we have ' +
+        filteredIntervals.length +
+        '/' +
+        eventIntervals.length +
+        ' intervals'
     )
     setFilteredIntervals(filteredIntervals)
   }
@@ -403,8 +462,6 @@ export default function ProwJobRun(props) {
       }
     })
 
-    console.log('final intervalColors: ' + JSON.stringify(intervalColors))
-
     return timelineGroups
   }
 
@@ -434,6 +491,20 @@ export default function ProwJobRun(props) {
 
   const handleFilterChange = (event) => {
     setFilterText(event.target.value)
+  }
+
+  const handleStartTimeFilterChange = (event) => {
+    setStart(event.target.value)
+  }
+
+  const handleEndTimeFilterChange = (event) => {
+    setEnd(event.target.value)
+  }
+
+  const resetTimeFilters = (event) => {
+    console.log('reset time filters')
+    setStart(eventIntervals[0].from)
+    setEnd(eventIntervals[eventIntervals.length - 1].to)
   }
 
   // handleSegmentClicked is called whenever an individual interval in the chart is clicked.
@@ -468,9 +539,14 @@ export default function ProwJobRun(props) {
         Loaded {eventIntervals.length} intervals from GCS, filtered down to{' '}
         {filteredIntervals.length}.
       </p>
-      <div>
+      <div className={classes.filterRow}>
         Categories:
-        <ButtonGroup size="small" aria-label="Categories">
+        <Box
+          display="flex"
+          flexWrap="wrap"
+          gap={1} // optional spacing between buttons
+          mt={1}
+        >
           {allSources.map((source) => (
             <Button
               key={source}
@@ -478,13 +554,14 @@ export default function ProwJobRun(props) {
               variant={
                 selectedSources.includes(source) ? 'contained' : 'outlined'
               }
+              size="small"
             >
               {source}
             </Button>
           ))}
-        </ButtonGroup>
+        </Box>
       </div>
-      <div>
+      <div className={classes.filterRow}>
         Files:
         <Select
           labelId="interval-file-label"
@@ -506,6 +583,27 @@ export default function ProwJobRun(props) {
           onChange={handleFilterChange}
           defaultValue={filterText}
         />
+      </div>
+      <div className={classes.filterRow}>
+        Time Filter:
+        <TextField
+          id="start"
+          label="Start"
+          variant="outlined"
+          onChange={handleStartTimeFilterChange}
+          value={start}
+        />
+        -
+        <TextField
+          id="end"
+          label="End"
+          variant="outlined"
+          onChange={handleEndTimeFilterChange}
+          value={end}
+        />
+        <Button key="resetTimeFilters" onClick={() => resetTimeFilters()}>
+          Reset
+        </Button>
       </div>
       <div>
         <Tooltip
@@ -535,7 +633,7 @@ export default function ProwJobRun(props) {
   )
 }
 
-ProwJobRun.defaultProps = {
+IntervalsChart.defaultProps = {
   // default list of pre-selected sources:
   selectedSources: [
     'OperatorAvailable',
@@ -555,12 +653,14 @@ ProwJobRun.defaultProps = {
   overrideDisplayFlag: false,
 }
 
-ProwJobRun.propTypes = {
+IntervalsChart.propTypes = {
   jobRunID: PropTypes.string.isRequired,
   jobName: PropTypes.string,
   repoInfo: PropTypes.string,
   pullNumber: PropTypes.string,
   filterText: PropTypes.string,
+  start: PropTypes.string,
+  end: PropTypes.string,
   selectedSources: PropTypes.array,
   intervalFile: PropTypes.string,
   overrideDisplayFlag: PropTypes.bool,
@@ -570,19 +670,31 @@ function filterIntervals(
   eventIntervals,
   selectedSources,
   filterText,
-  overrideDisplayFlag
+  overrideDisplayFlag,
+  start,
+  end
 ) {
   let re = null
   if (filterText) {
     re = new RegExp(escapeRegex(filterText))
   }
 
+  let startFilter = new Date(start)
+  let endFilter = new Date(end)
+
   return _.filter(eventIntervals, function (eventInterval) {
     let shouldInclude = false
+    if (startFilter > new Date(eventInterval.from)) {
+      return shouldInclude
+    }
+    if (endFilter < new Date(eventInterval.to)) {
+      return shouldInclude
+    }
     if (!selectedSources.includes(eventInterval.source)) {
       return shouldInclude
     }
     if (!overrideDisplayFlag && !eventInterval.display) {
+      console.log('missed on override')
       return shouldInclude
     }
     // Hack for Disruption intervals, we don't ever want to show those without the display flag, they should have been
@@ -596,6 +708,8 @@ function filterIntervals(
         re.test(eventInterval.displayLocator)
       ) {
         shouldInclude = true
+      } else {
+        console.log('missed on regex')
       }
     } else {
       shouldInclude = true
@@ -791,7 +905,6 @@ function createTimelineData(
     if (intervalColorizers[item.source]) {
       let r = intervalColorizers[item.source](item)
       if (r) {
-        console.log('for ' + item.source + ' got result: ' + r)
         intervalColors[r[0]] = r[1]
         val = r[0]
       }
