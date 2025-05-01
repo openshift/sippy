@@ -684,10 +684,12 @@ function filterIntervals(
 
   return _.filter(eventIntervals, function (eventInterval) {
     let shouldInclude = false
-    if (startFilter > new Date(eventInterval.from)) {
+    if (new Date(eventInterval.to) < startFilter) {
+      // ended before the filtered interval
       return shouldInclude
     }
-    if (endFilter < new Date(eventInterval.to)) {
+    if (new Date(eventInterval.from) > endFilter) {
+      // started after the filtered interval
       return shouldInclude
     }
     if (!selectedSources.includes(eventInterval.source)) {
