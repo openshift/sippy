@@ -7,6 +7,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -47,9 +48,10 @@ type RequestReleaseOptions struct {
 // for the point in time when the request was made. This is used in the UI to pre-populate the
 // date picks to transition from view based to custom reporting.
 type RequestRelativeReleaseOptions struct {
-	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive // inline is a known option
-	RelativeStart         string                          `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
-	RelativeEnd           string                          `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive
+	// inline is a known option
+	RelativeStart string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
+	RelativeEnd   string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
 type RequestTestIdentificationOptions struct {
@@ -136,9 +138,6 @@ type TestStatus struct {
 	SuccessCount int       `json:"success_count"`
 	FlakeCount   int       `json:"flake_count"`
 	LastFailure  time.Time `json:"last_failure"`
-	// Release provides info on the release this test status was pulled from for base TestStatus.
-	// If nil, assume the base/sample release from the request options. (used for ReleaseFallback)
-	Release *Release `json:"release"`
 }
 
 func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
@@ -197,20 +196,8 @@ type ReportTestIdentification struct {
 }
 
 type ReportTestSummary struct {
+	// TODO: really feels like this could just be moved  ReportTestStats, eliminating the need for ReportTestSummary
 	ReportTestIdentification
-
-	// Opened will be set to the time we first recorded this test went regressed.
-	// TODO: This is largely a hack right now, the sippy metrics loop sets this as soon as it notices
-	// the regression with it's *default view* query. However we always include it in the response (if that test
-	// is regressed per the query params used). Eventually we should only include these details if the default view
-	// is being used, without overriding the start/end dates.
-	Opened       *time.Time `json:"opened"`
-	RegressionID int        `json:"regression_id"`
-
-	// Links contains REST links for clients to follow for this specific triage. Most notably "self".
-	// These are injected by the API and not stored in the DB.
-	Links map[string]string `json:"links"`
-
 	ReportTestStats
 }
 
@@ -238,6 +225,11 @@ type ReportTestStats struct {
 
 	SampleStats TestDetailsReleaseStats `json:"sample_stats"`
 
+	// RequiredConfidence is the confidence required from Fishers to consider a regression.
+	// Typically, it is as defined in the request options, but middleware may choose to adjust.
+	// 95 = 95% confidence of a regression required.
+	RequiredConfidence int `json:"-"`
+
 	// Optional fields depending on the Comparison mode
 
 	// FisherExact indicates the confidence of a regression after applying Fisher's Exact Test.
@@ -248,6 +240,10 @@ type ReportTestStats struct {
 
 	// LastFailure is the last time the regressed test failed.
 	LastFailure *time.Time `json:"last_failure"`
+
+	// Regression is populated with data on when we first detected this regression. If unset it implies
+	// the regression tracker has not yet run to find it, or you're using report params/a view without regression tracking.
+	Regression *models.TestRegression `json:"regression,omitempty"`
 }
 
 // IsTriaged returns true if this tests status is within the triaged regression range.
@@ -286,10 +282,16 @@ type TestDetailsReleaseStats struct {
 }
 
 type TestDetailsTestStats struct {
-	SuccessRate  float64 `json:"success_rate"`
-	SuccessCount int     `json:"success_count"`
-	FailureCount int     `json:"failure_count"`
-	FlakeCount   int     `json:"flake_count"`
+	// TODO: should be a function not a field, calculated from the three below
+	SuccessRate float64 `json:"success_rate"`
+
+	SuccessCount int `json:"success_count"`
+	FailureCount int `json:"failure_count"`
+	FlakeCount   int `json:"flake_count"`
+}
+
+func (tdts TestDetailsTestStats) Total() int {
+	return tdts.SuccessCount + tdts.FailureCount + tdts.FlakeCount
 }
 
 type TestDetailsJobStats struct {

@@ -491,7 +491,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 95,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Extreme regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
@@ -532,7 +533,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 95,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Significant regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
@@ -828,7 +830,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 90,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Significant regression detected.",
 												"Fishers Exact probability of a regression: 99.92%.",
@@ -1056,7 +1059,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 95,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Extreme regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
@@ -1097,7 +1101,8 @@ func TestGenerateComponentReport(t *testing.T) {
 											},
 										},
 										ReportTestStats: crtype.ReportTestStats{
-											Comparison: crtype.FisherExact,
+											RequiredConfidence: 95,
+											Comparison:         crtype.FisherExact,
 											Explanations: []string{
 												"Significant regression detected.",
 												"Fishers Exact probability of a regression: 100.00%.",
@@ -1171,7 +1176,7 @@ func TestGenerateComponentReport(t *testing.T) {
 				for ic := range report.Rows[ir].Columns {
 					assert.Equal(t, len(tc.expectedReport.Rows[ir].Columns[ic].RegressedTests), len(report.Rows[ir].Columns[ic].RegressedTests))
 					for it, regTest := range report.Rows[ir].Columns[ic].RegressedTests {
-						assert.InDelta(t, *tc.expectedReport.Rows[ir].Columns[ic].RegressedTests[it].FisherExact, *regTest.FisherExact, 0.000001)
+						assert.InDelta(t, *tc.expectedReport.Rows[ir].Columns[ic].RegressedTests[it].FisherExact, *regTest.FisherExact, 0.000001, regTest.TestName)
 						tc.expectedReport.Rows[ir].Columns[ic].RegressedTests[it].FisherExact = nil
 						report.Rows[ir].Columns[ic].RegressedTests[it].FisherExact = nil
 
@@ -1242,8 +1247,6 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			FailureCount: 200,
 			FlakeCount:   100,
 		},
-		Start: &time.Time{},
-		End:   &time.Time{},
 	}
 	sampleTestStatsHigh := crtype.TestDetailsTestStats{
 		SuccessRate:  0.9203539823008849,
@@ -1288,8 +1291,6 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			FailureCount: 100,
 			FlakeCount:   50,
 		},
-		Start: &time.Time{},
-		End:   &time.Time{},
 	}
 	sampleReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.ReqOptions.SampleRelease.Release,
@@ -1310,8 +1311,6 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			FailureCount: 600,
 			FlakeCount:   50,
 		},
-		Start: &time.Time{},
-		End:   &time.Time{},
 	}
 	tests := []struct {
 		name                    string
@@ -1887,16 +1886,33 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			c.ReqOptions.AdvancedOption.PassRateRequiredAllTests = tt.requiredPassRateForAllTests
 			c.ReqOptions.AdvancedOption.MinimumFailure = tt.minFail
 
-			testStats := c.assessComponentStatus(0, tt.sampleTotal, tt.sampleSuccess, tt.sampleFlake, tt.baseTotal, tt.baseSuccess, tt.baseFlake, nil, false, tt.numberOfIgnoredSamples, "dummyRelease", nil, nil)
-			assert.Equalf(t, tt.expectedStatus, testStats.ReportStatus, "assessComponentStatus expected status not equal")
+			testAnalysis := &crtype.ReportTestStats{
+				SampleStats: crtype.TestDetailsReleaseStats{
+					TestDetailsTestStats: crtype.TestDetailsTestStats{
+						SuccessCount: tt.sampleSuccess,
+						FlakeCount:   tt.sampleFlake,
+						FailureCount: tt.sampleTotal - tt.sampleSuccess - tt.sampleFlake,
+					},
+				},
+				BaseStats: &crtype.TestDetailsReleaseStats{
+					TestDetailsTestStats: crtype.TestDetailsTestStats{
+						SuccessCount: tt.baseSuccess,
+						FlakeCount:   tt.baseFlake,
+						FailureCount: tt.baseTotal - tt.baseSuccess - tt.baseFlake,
+					},
+				},
+			}
+
+			c.assessComponentStatus(testAnalysis, nil, false, tt.numberOfIgnoredSamples)
+			assert.Equalf(t, tt.expectedStatus, testAnalysis.ReportStatus, "assessComponentStatus expected status not equal")
 			if tt.expectedFischers != nil {
 				// Mac and Linux do not matchup on floating point precision, so lets approximate the comparison:
 				assert.Equalf(t,
 					fmt.Sprintf("%.4f", *tt.expectedFischers),
-					fmt.Sprintf("%.4f", *testStats.FisherExact),
+					fmt.Sprintf("%.4f", *testAnalysis.FisherExact),
 					"assessComponentStatus expected fischers value not equal")
 			} else {
-				assert.Nil(t, testStats.FisherExact)
+				assert.Nil(t, testAnalysis.FisherExact)
 			}
 
 		})
