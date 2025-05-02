@@ -13,7 +13,7 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
-import React, { useContext, useState } from 'react'
+import React, { useContext } from 'react'
 import Typography from '@mui/material/Typography'
 
 export default function GroupByCheckboxList(props) {

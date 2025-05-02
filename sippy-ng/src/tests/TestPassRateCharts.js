@@ -1,20 +1,8 @@
-import { ArrayParam, useQueryParam } from 'use-query-params'
-import {
-  Button,
-  Card,
-  CircularProgress,
-  Dialog,
-  Grid,
-  Tooltip,
-  Typography,
-} from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
+import { Card, CircularProgress, Grid, Typography } from '@mui/material'
 import { Line } from 'react-chartjs-2'
 import { safeEncodeURIComponent } from '../helpers'
 import { scale } from 'chroma-js'
 import Alert from '@mui/material/Alert'
-import GridToolbar from '../datagrid/GridToolbar'
-import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 

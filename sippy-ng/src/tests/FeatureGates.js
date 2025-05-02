@@ -1,12 +1,7 @@
-import { Container, Tooltip, Typography } from '@mui/material'
+import { Container, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { Link, useHistory } from 'react-router-dom'
-import {
-  NumberParam,
-  StringParam,
-  useQueryParam,
-  withDefault,
-} from 'use-query-params'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   pathForTestSubstringByVariant,
   safeEncodeURIComponent,
@@ -15,7 +10,7 @@ import {
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect, useRef } from 'react'
+import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 
 /**

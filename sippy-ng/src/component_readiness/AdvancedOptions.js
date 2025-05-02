@@ -11,7 +11,7 @@ import { ExpandMore } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 
 import PropTypes from 'prop-types'
-import React, { useState } from 'react'
+import React from 'react'
 import Slider from '@mui/material/Slider'
 import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'

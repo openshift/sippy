@@ -1,7 +1,5 @@
-import { render } from '@testing-library/react'
 //import HelloWorld from './HelloWorld'
 import { dateEndFormat, dateFormat, formatLongDate } from './CompReadyUtils'
-import React from 'react'
 
 test('parses a query param start time without timezone', () => {
   let result = formatLongDate('2024-09-05 00:00:00', dateFormat)

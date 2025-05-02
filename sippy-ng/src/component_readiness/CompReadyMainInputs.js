@@ -5,7 +5,6 @@ import {
   formatLongDate,
   getUpdatedUrlParts,
 } from './CompReadyUtils'
-import { FormControl, Grid, InputLabel, MenuItem, Select } from '@mui/material'
 import { Fragment } from 'react'
 import { makeStyles, useTheme } from '@mui/styles'
 import { useHistory } from 'react-router-dom'

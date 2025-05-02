@@ -24,7 +24,7 @@ import {
 import { CapabilitiesContext, ReleasesContext } from '../App'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { FileCopy, Help, InsertLink } from '@mui/icons-material'
+import { FileCopy, Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { Tooltip } from '@mui/material'

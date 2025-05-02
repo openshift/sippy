@@ -1,7 +1,7 @@
 import { Box, Button, Grid, Tab, Tabs, Typography } from '@mui/material'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext } from 'react'
+import React, { Fragment } from 'react'
 import RegressedTestsPanel from './RegressedTestsPanel'
 import TriagedIncidentsPanel from './TriagedIncidentsPanel'
 import TriagedTestsPanel from './TriagedTestsPanel'

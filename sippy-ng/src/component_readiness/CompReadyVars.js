@@ -2,7 +2,6 @@ import {
   ArrayParam,
   BooleanParam,
   NumberParam,
-  ObjectParam,
   SafeStringParam,
   StringParam,
   useQueryParam,

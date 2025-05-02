@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext } from 'react'
+import React, { Fragment } from 'react'
 import TriagedTestJobRuns from './TriagedTestJobRuns'
 
 export default function TriagedTestDetails(props) {
