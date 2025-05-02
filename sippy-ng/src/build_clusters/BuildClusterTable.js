@@ -1,23 +1,17 @@
-import {
-  ArrayParam,
-  JsonParam,
-  NumberParam,
-  StringParam,
-  useQueryParam,
-} from 'use-query-params'
-import { BUILD_CLUSTER_THRESHOLDS, JOB_THRESHOLDS } from '../constants'
+import { BUILD_CLUSTER_THRESHOLDS } from '../constants'
 import { CircularProgress, Tooltip } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { generateClasses } from '../datagrid/utils'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PassRateIcon from '../components/PassRateIcon'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { useEffect } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   root: {

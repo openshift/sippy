@@ -10,7 +10,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { BugReport, DirectionsRun } from '@mui/icons-material'
+import { DirectionsRun } from '@mui/icons-material'
 import {
   filterFor,
   not,

@@ -3,7 +3,7 @@ import { Grid, TableContainer, Tooltip, Typography } from '@mui/material'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext, useEffect } from 'react'
+import React, { Fragment, useContext } from 'react'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -76,12 +76,12 @@ export default function CompReadyTestPanel(props) {
             <ul>
               {vCrossCompare.map((group, idx) =>
                 variantSelection[group] ? (
-                  <li>
+                  <li key={idx}>
                     {group}:&nbsp;
                     <strong>{variantSelection[group].join(', ')}</strong>
                   </li>
                 ) : (
-                  <li>
+                  <li key={idx}>
                     {group}: <strong>(any)</strong>
                   </li>
                 )

@@ -1,10 +1,10 @@
 import { Line } from 'react-chartjs-2'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
-import React, { Fragment, useEffect } from 'react'
+import React, { useEffect } from 'react'
 
 import './JobAnalysis.css'
-import { pathForJobsInPercentile, safeEncodeURIComponent } from '../helpers'
+import { safeEncodeURIComponent } from '../helpers'
 import { useHistory } from 'react-router-dom'
 
 export const dayFilter = (days, startDate) => {

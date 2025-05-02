@@ -7,9 +7,9 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
-import { Details, Launch } from '@mui/icons-material'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
+import { Launch } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import { MERGE_FAILURE_THERSHOLDS } from '../constants'
 import {

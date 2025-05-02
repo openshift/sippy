@@ -1,20 +1,11 @@
-import {
-  Box,
-  Container,
-  Grid,
-  Paper,
-  Tab,
-  Tabs,
-  Typography,
-} from '@mui/material'
+import { Box, Container, Paper, Tab, Tabs, Typography } from '@mui/material'
 import { TabContext } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
-import { filterFor, multiple } from '../helpers'
+import { filterFor } from '../helpers'
 import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
 import JobRunsTable from './JobRunsTable'
-import JobsDetail from './JobsDetail'
 import JobTable from './JobTable'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 

@@ -1,4 +1,4 @@
-import { Box, Button, Tooltip, Typography } from '@mui/material'
+import { Box, Tooltip, Typography } from '@mui/material'
 import { relativeTime } from '../helpers'
 import PropTypes from 'prop-types'
 import React from 'react'

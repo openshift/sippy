@@ -1,10 +1,9 @@
 import { Card, Container, Grid, Typography } from '@mui/material'
 import { filterFor, getReportStartDate, not } from '../helpers'
-import { JobStackedChart } from '../jobs/JobStackedChart'
 import { ReportEndContext } from '../App'
 import JobRunsTable from '../jobs/JobRunsTable'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React from 'react'
 
 export default function BuildClusterDetails(props) {
   const startDate = getReportStartDate(React.useContext(ReportEndContext))

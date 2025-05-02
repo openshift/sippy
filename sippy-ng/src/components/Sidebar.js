@@ -8,14 +8,13 @@ import {
   ExpandMore,
   Favorite,
   FileCopyOutlined,
-  Flare,
   GitHub,
   NotificationsActive,
 } from '@mui/icons-material'
 import { BOOKMARKS } from '../constants'
 import { CapabilitiesContext } from '../App'
 import { Link, useLocation } from 'react-router-dom'
-import { ListItemButton, ListSubheader, Tooltip, useTheme } from '@mui/material'
+import { ListItemButton, ListSubheader, useTheme } from '@mui/material'
 import {
   pathForJobsWithFilter,
   pathForTestsWithFilter,
