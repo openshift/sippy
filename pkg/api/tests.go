@@ -353,8 +353,6 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 		table = "junit_2day_comparison"
 	}
 
-	dataSet := "openshift-gce-devel.ci_analysis_us"
-
 	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
 	candidateQueryStr := ""
 	whereStr := fmt.Sprintf(`
@@ -383,7 +381,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 			%s
 		FROM group_stats
 	)
-	`, query.QueryTestSummer, dataSet, table, whereStr, query.QueryTestSummarizer)
+	`, query.QueryTestSummer, bqc.Dataset, table, whereStr, query.QueryTestSummarizer)
 	} else {
 		if processedFilter != nil && len(processedFilter.Items) > 0 {
 			whereStr += " AND " + processedFilter.ToBQStr(apitype.Test{})
@@ -428,7 +426,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 		FROM
 			unfiltered_candidate_query
 		%s
-	)`, dataSet, table, release, query.QueryTestSummarizer, dataSet, table, whereStr)
+	)`, bqc.Dataset, table, release, query.QueryTestSummarizer, bqc.Dataset, table, whereStr)
 	}
 
 	queryStr := fmt.Sprintf(`%s

@@ -785,6 +785,11 @@ func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request)
 }
 
 func (s *Server) jsonTestsReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
+	// Fall back to postgres if dataset is not ci_analysis_us
+	if s.bigQueryClient == nil || s.bigQueryClient.Dataset != "ci_analysis_us" {
+		s.jsonTestsReportFromDB(w, req)
+		return
+	}
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
 		api.PrintTestsJSONFromBigQuery(release, w, req, s.bigQueryClient)
