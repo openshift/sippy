@@ -1165,6 +1165,14 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
 		initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, nil)
 
+		// Give middleware their chance to adjust parameters prior to analysis
+		for _, mw := range c.middlewares {
+			err = mw.PreAnalysis(testID, &testStats)
+			if err != nil {
+				return crtype.ComponentReport{}, err
+			}
+		}
+
 		c.assessComponentStatus(&testStats,
 			nil,
 			activeProductRegression,

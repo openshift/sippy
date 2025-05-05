@@ -82,6 +82,10 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 // PreAnalysis looks for a better pass rate across our fallback releases for the given test stats.
 // It then swaps them out and leaves an explanation before handing back to the core for analysis.
 func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+	// Nothing to do for tests without a basis, i.e. new tests.
+	if testStats.BaseStats == nil {
+		return nil
+	}
 	testIDVariantsKey := crtype.TestWithVariantsKey{
 		TestID:   testKey.TestID,
 		Variants: testKey.Variants,

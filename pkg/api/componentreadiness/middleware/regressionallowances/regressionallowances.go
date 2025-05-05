@@ -54,8 +54,12 @@ func (r *RegressionAllowances) PreAnalysis(testKey crtype.ReportTestIdentificati
 // threshold when used as a basis.
 // It will return the original testStatus if there is no intentional regression.
 func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, testStats *crtype.ReportTestStats) {
-	var baseRegression *regressionallowances.IntentionalRegression
+	// Nothing to do for tests with no basis. (i.e. new tests)
+	if testStats.BaseStats == nil {
+		return
+	}
 
+	var baseRegression *regressionallowances.IntentionalRegression
 	if len(r.reqOptions.VariantOption.VariantCrossCompare) == 0 {
 		// only really makes sense when not cross-comparing variants:
 		// look for corresponding regressions we can account for in the analysis
@@ -63,6 +67,7 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 		baseRegression = r.regressionGetterFunc(baseRelease, testID.ColumnIdentification, testID.TestID)
 
 		baseStats := testStats.BaseStats
+
 		success := baseStats.SuccessCount
 		fail := baseStats.FailureCount
 		flake := baseStats.FlakeCount
