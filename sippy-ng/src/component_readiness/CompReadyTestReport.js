@@ -389,7 +389,7 @@ Component Readiness has found a potential regression in the following test:
 
 {code:none}${testName}{code}
 
-${data.analyses[0].explanations.join('\n')}
+${(data.analyses[0].explanations || []).join('\n')}
 ${printStatsText(
   'Sample (being evaluated)',
   data.analyses[0].sample_stats,
@@ -419,7 +419,7 @@ Component Readiness has found a potential regression in the following test:
 
 {code:none}${testName}{code}
 
-${data.analyses[0].explanations.join('\n')}
+${(data.analyses[0].explanations || []).join('\n')}
 ${printStatsText(
   'Sample (being evaluated)',
   data.analyses[0].sample_stats,
