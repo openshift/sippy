@@ -21,10 +21,12 @@ type JobRunError struct {
 }
 
 type JobRunArtifact struct {
-	JobRunID       string      `json:"job_run_id"`
-	ArtifactURL    string      `json:"artifact_url"`
-	MatchedContent interface{} `json:"matched_content,omitempty"` // will be one of the content types below
-	Error          string      `json:"error,omitempty"`
+	JobRunID            string      `json:"job_run_id"`
+	ArtifactPath        string      `json:"artifact_path"`
+	ArtifactContentType string      `json:"artifact_content_type"`
+	ArtifactURL         string      `json:"artifact_url"`
+	MatchedContent      interface{} `json:"matched_content,omitempty"` // will be one of the content types below
+	Error               string      `json:"error,omitempty"`
 }
 
 type ContentLineMatches struct {

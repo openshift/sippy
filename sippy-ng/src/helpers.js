@@ -361,3 +361,12 @@ export function findFirstNonGARelease(releases) {
   })
   return firstNonGA
 }
+
+// getTestStatus returns the status of a test represented by a test_stats object.
+export function getTestStatus(stats, flake, fail, success) {
+  return stats.flake_count > 0
+    ? flake
+    : stats.failure_count > 0
+    ? fail
+    : success
+}

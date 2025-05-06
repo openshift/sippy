@@ -1,20 +1,16 @@
 import './ComponentReadiness.css'
+import { Checkbox, Tooltip, Typography } from '@mui/material'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Fragment, useContext } from 'react'
-import { Typography } from '@mui/material'
 import PropTypes from 'prop-types'
 import React from 'react'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
 
+import { getTestStatus } from '../helpers'
+
 const getJobRunColor = (jobRun) => {
-  if (jobRun.test_stats.flake_count > 0) {
-    return 'purple'
-  } else if (jobRun.test_stats.failure_count > 0) {
-    return 'red'
-  } else {
-    return 'green'
-  }
+  return getTestStatus(jobRun.test_stats, 'purple', 'red', 'green')
 }
 
 // Represents a row on page 5a when you clicked a status cell on page4 or page4a
@@ -24,7 +20,25 @@ export default function CompReadyTestDetailRow(props) {
   // element: a test detail element
   // idx: array index of test detail element
   // showOnlyFailures: says to focus on job failures
-  const { element, idx, showOnlyFailures, triagedURLs } = props
+  const {
+    element,
+    idx,
+    showOnlyFailures,
+    triagedURLs,
+    searchJobArtifacts,
+    searchJobRunIds,
+    setSearchJobRunIds,
+  } = props
+
+  const handlerForJobRunSelect = (jobId) => {
+    return (element) => {
+      if (searchJobRunIds.has(jobId)) {
+        setSearchJobRunIds(searchJobRunIds.difference(new Set([jobId])))
+      } else {
+        setSearchJobRunIds(searchJobRunIds.union(new Set([jobId])))
+      }
+    }
+  }
 
   const infoCell = (stats) => {
     return (
@@ -41,26 +55,20 @@ export default function CompReadyTestDetailRow(props) {
     )
   }
 
-  const testJobDetailCell = (element, statsKind) => {
-    let item
+  const testJobDetailCell = (jobStats, statsKind) => {
+    let jobRuns = []
     if (statsKind === 'base') {
-      item = element.base_job_run_stats
+      jobRuns = jobStats.base_job_run_stats || []
     } else if (statsKind === 'sample') {
-      item = element.sample_job_run_stats
+      jobRuns = jobStats.sample_job_run_stats || []
     } else {
-      item = 'unknown statsKind in testDetailJobRow'
-      console.log('ERROR in testDetailJobRow')
+      console.log('ERROR in testDetailJobRow: unknown statsKind ' + statsKind)
     }
 
-    let filtered = item
-
-    // If we only care to see failures, then remove anything else
-    // Protect against empty/undefined data
-    if (showOnlyFailures) {
-      filtered = item
-        ? item.filter((jstat) => jstat.test_stats.failure_count > 0)
-        : []
-    }
+    let failureJobRuns = jobRuns.filter(
+      (jstat) => jstat.test_stats.failure_count > 0
+    ) //lol
+    jobRuns = showOnlyFailures ? failureJobRuns : jobRuns
 
     // Print out the S and F letters for job runs (20 per line) in reverse order
     // so you see the most recent jobRuns first.
@@ -73,13 +81,51 @@ export default function CompReadyTestDetailRow(props) {
             flexWrap: 'wrap',
           }}
         >
-          {filtered &&
-            filtered.length > 0 &&
-            filtered
+          {jobRuns &&
+            jobRuns.length > 0 &&
+            jobRuns
               .slice()
               .reverse()
               .map((jobRun, jobRunIndex) => {
-                return (
+                var content = (
+                  <Tooltip
+                    title={
+                      new Date(jobRun.start_time).toUTCString() +
+                      ' (#' +
+                      jobRun.job_run_id +
+                      ')'
+                    }
+                  >
+                    <Typography className={classes.crCellName}>
+                      {jobRun.test_stats.failure_count > 0
+                        ? triagedURLs.has(jobRun.job_url)
+                          ? 'T'
+                          : 'F'
+                        : 'S'}
+                    </Typography>
+                  </Tooltip>
+                )
+                var selectHandler = handlerForJobRunSelect(jobRun.job_run_id)
+
+                return searchJobArtifacts ? (
+                  <a
+                    className={
+                      searchJobRunIds.has(jobRun.job_run_id)
+                        ? classes.selectedJobRun
+                        : classes.unselectedJobRun
+                    }
+                    onClick={selectHandler}
+                    key={jobRunIndex}
+                    style={{
+                      color: getJobRunColor(jobRun),
+                      marginRight: '1px',
+                    }}
+                  >
+                    {' '}
+                    {content}{' '}
+                  </a>
+                ) : (
+                  // not searching artifacts, show normal job run with link
                   <a
                     href={jobRun.job_url}
                     key={jobRunIndex}
@@ -88,18 +134,51 @@ export default function CompReadyTestDetailRow(props) {
                       marginRight: '1px',
                     }}
                   >
-                    <Typography className={classes.crCellName}>
-                      {jobRun.test_stats.failure_count > 0
-                        ? triagedURLs[jobRun.job_url] !== undefined
-                          ? 'T'
-                          : 'F'
-                        : 'S'}
-                    </Typography>
+                    {' '}
+                    {content}{' '}
                   </a>
                 )
               })}
         </div>
       </TableCell>
+    )
+  }
+
+  // determine checkbox statuses for the failed job runs in each row
+  function getSelectingCheckBox(jobRunStats) {
+    let failures = new Set(
+      (jobRunStats || [])
+        .filter((jstat) => jstat.test_stats.failure_count > 0)
+        .map((jobRun) => jobRun.job_run_id)
+    )
+    let selectedFailures = failures.intersection(searchJobRunIds)
+    let allSelected =
+      failures.size > 0 && failures.size === selectedFailures.size
+    let someSelected =
+      failures.size > 0 &&
+      selectedFailures.size > 0 &&
+      selectedFailures.size < failures.size
+    let clickHandler = (event) => {
+      event.stopPropagation()
+      if (selectedFailures.size > 0) {
+        // if any are selected, deselect them
+        setSearchJobRunIds(searchJobRunIds.difference(failures))
+      } else {
+        setSearchJobRunIds(searchJobRunIds.union(failures))
+      }
+    }
+    return (
+      <Tooltip title="Select Failed Job Runs">
+        <Checkbox
+          sx={{ padding: 0 }}
+          checked={allSelected}
+          indeterminate={someSelected}
+          disabled={failures.size === 0}
+          size="small"
+          label="Select Failed"
+          onClick={clickHandler}
+        />
+      </Tooltip>
     )
   }
 
@@ -112,7 +191,15 @@ export default function CompReadyTestDetailRow(props) {
           colSpan={3}
         >
           <Typography className={classes.crCellName}>
-            {element.base_job_name || '(No basis equivalent)'}
+            {element.base_job_name ? (
+              <Fragment>
+                {element.base_job_name}
+                {searchJobArtifacts &&
+                  getSelectingCheckBox(element.base_job_run_stats)}
+              </Fragment>
+            ) : (
+              '(No basis equivalent)'
+            )}
           </Typography>
         </TableCell>
         <TableCell
@@ -121,7 +208,15 @@ export default function CompReadyTestDetailRow(props) {
           colSpan={3}
         >
           <Typography className={classes.crCellName}>
-            {element.sample_job_name || '(No sample equivalent)'}
+            {element.sample_job_name ? (
+              <Fragment>
+                {element.sample_job_name}
+                {searchJobArtifacts &&
+                  getSelectingCheckBox(element.sample_job_run_stats)}
+              </Fragment>
+            ) : (
+              '(No sample equivalent)'
+            )}
           </Typography>
         </TableCell>
       </TableRow>
@@ -149,5 +244,8 @@ CompReadyTestDetailRow.propTypes = {
   element: PropTypes.object.isRequired,
   idx: PropTypes.number.isRequired,
   showOnlyFailures: PropTypes.bool.isRequired,
-  triagedURLs: PropTypes.array.isRequired,
+  searchJobArtifacts: PropTypes.bool.isRequired,
+  triagedURLs: PropTypes.instanceOf(Set).isRequired,
+  searchJobRunIds: PropTypes.object.isRequired,
+  setSearchJobRunIds: PropTypes.func.isRequired,
 }

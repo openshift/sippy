@@ -2,6 +2,7 @@ package jobartifacts
 
 import (
 	"bufio"
+	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -37,13 +38,13 @@ func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64
 		return jobRunResponse, err
 	}
 
-	filePaths, truncated, err := q.getJobRunFiles(jobRunPath)
+	fileAttrs, truncated, err := q.getJobRunFiles(jobRunPath)
 	if err != nil {
 		logger.WithError(err).Error("could not find job artifact files")
 		return jobRunResponse, err
 	}
 	jobRunResponse.ArtifactListTruncated = truncated
-	jobRunResponse.Artifacts = mgr.QueryJobRunArtifacts(ctx, q, jobRunID, filePaths)
+	jobRunResponse.Artifacts = mgr.QueryJobRunArtifacts(ctx, q, jobRunID, fileAttrs)
 	return jobRunResponse, nil
 }
 
@@ -75,8 +76,8 @@ func (q *JobArtifactQuery) getJobRun(jobRunID int64) (string, JobRun, error) {
 	return jobRunPath, jobRunResponse, nil
 }
 
-func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]string, bool, error) {
-	files := []string{}
+func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]*storage.ObjectAttrs, bool, error) {
+	files := []*storage.ObjectAttrs{}
 	truncated := false
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
@@ -100,27 +101,54 @@ func (q *JobArtifactQuery) getJobRunFiles(jobRunPath string) ([]string, bool, er
 			truncated = true
 			break
 		}
-		files = append(files, attrs.Name)
+		files = append(files, attrs)
 	}
 
 	return files, truncated, nil
 }
 
-func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, filePath string) (artifact JobRunArtifact) {
+// path queries come back with full path after bucket name; reduce to the jobrun-specific part
+func relativeArtifactPath(bucketPath, jobRunID string) string {
+	marker := "/" + jobRunID + "/"
+	start := strings.Index(bucketPath, marker)
+	if start == -1 { // would be very weird, but not really something to choke on
+		log.Errorf("artifact path %q somehow does not include jobRunID %q", bucketPath, jobRunID)
+		return bucketPath
+	}
+	return bucketPath[start+len(marker):]
+}
+
+func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, file *storage.ObjectAttrs) (artifact JobRunArtifact) {
 	artifact.JobRunID = strconv.FormatInt(jobRunID, 10)
-	artifact.ArtifactURL = fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, filePath)
+	artifact.ArtifactPath = relativeArtifactPath(file.Name, artifact.JobRunID)
+	artifact.ArtifactContentType = file.ContentType
+	artifact.ArtifactURL = fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, file.Name)
 	if q.ContentMatcher == nil { // no matching requested
 		return
 	}
 
-	gcsReader, err := q.GcsBucket.Object(filePath).NewReader(context.Background())
+	gcsReader, err := q.GcsBucket.Object(file.Name).NewReader(context.Background())
 	if err != nil {
 		artifact.Error = err.Error()
 		return
 	}
 	defer gcsReader.Close()
 
-	matches, err := q.ContentMatcher.GetMatches(bufio.NewReader(gcsReader))
+	var reader *bufio.Reader
+	if file.ContentType == "application/gzip" {
+		// if it's gzipped, decompress it in the stream
+		gzipReader, err := gzip.NewReader(gcsReader)
+		if err != nil {
+			artifact.Error = err.Error()
+			return
+		}
+		defer gzipReader.Close()
+		reader = bufio.NewReader(gzipReader)
+	} else { // just read it as a normal text file
+		reader = bufio.NewReader(gcsReader)
+	}
+
+	matches, err := q.ContentMatcher.GetMatches(reader)
 	if err != nil {
 		artifact.Error = err.Error()
 	}

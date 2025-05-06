@@ -96,6 +96,10 @@ export function getTriagesAPIUrl() {
   return process.env.REACT_APP_API_URL + '/api/component_readiness/triages'
 }
 
+export function getArtifactQueryAPIUrl() {
+  return process.env.REACT_APP_API_URL + '/api/jobs/artifacts'
+}
+
 export const gotoCompReadyMain = () => {
   window.location.href = '/sippy-ng/component_readiness/main'
   //window.history.back()

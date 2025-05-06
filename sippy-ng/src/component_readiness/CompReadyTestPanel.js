@@ -1,17 +1,38 @@
+import {
+  Button,
+  Dialog,
+  FormControlLabel,
+  FormGroup,
+  Grid,
+  Stack,
+  Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tooltip,
+  Typography,
+} from '@mui/material'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
-import { Grid, TableContainer, Tooltip, Typography } from '@mui/material'
+import { getTestStatus } from '../helpers'
 import CompReadyTestDetailRow from './CompReadyTestDetailRow'
 import InfoIcon from '@mui/icons-material/Info'
+import JobArtifactQuery from './JobArtifactQuery'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
 
 export default function CompReadyTestPanel(props) {
-  const { data, isOverride, versions, loadedParams } = props
+  const {
+    data,
+    isOverride,
+    versions,
+    loadedParams,
+    testName,
+    environment,
+    component,
+  } = props
   const classes = useContext(ComponentReadinessStyleContext)
 
   const significanceTitle = `Test results for individual Prow Jobs may not be statistically
@@ -20,6 +41,7 @@ export default function CompReadyTestPanel(props) {
   `
 
   const [showOnlyFailures, setShowOnlyFailures] = React.useState(false)
+  const [searchJobArtifacts, setSearchJobArtifacts] = React.useState(false)
 
   const tableCell = (label, idx) => {
     return (
@@ -42,9 +64,62 @@ export default function CompReadyTestPanel(props) {
     )
   }
 
+  let urls = new Set()
+  if (data?.incidents?.length) {
+    data.incidents.forEach((incident) => {
+      incident?.job_runs?.forEach((job_run) => {
+        if (job_run.url !== undefined) {
+          urls.add(job_run.url)
+        }
+      })
+    })
+  }
+
   const handleFailuresOnlyChange = (event) => {
     setShowOnlyFailures(event.target.checked)
   }
+
+  const handleSearchJobArtifactsChange = (event) => {
+    setSearchJobArtifacts(event.target.checked)
+  }
+
+  // combine data for job runs to enable the job artifact query
+  const jobRuns = new Map()
+  const initialSelectedRuns = new Set() // start with all sample failures
+  for (const rowStat of data.job_stats || []) {
+    let base = {
+      job_name: rowStat.base_job_name,
+      stats: rowStat.base_job_run_stats,
+    }
+    let sample = {
+      job_name: rowStat.sample_job_name,
+      stats: rowStat.sample_job_run_stats,
+    }
+    for (const jobStat of [base, sample]) {
+      if (jobStat.stats && jobStat.stats.length > 0) {
+        for (const jobRun of jobStat.stats) {
+          let triaged = urls.has(jobRun.job_url)
+          jobRuns.set(jobRun.job_run_id, {
+            job_run_id: jobRun.job_run_id,
+            job_name: jobStat.job_name,
+            start_time: jobRun.start_time,
+            test_status: getTestStatus(
+              jobRun.test_stats,
+              triaged ? 'Triaged' : 'Flake',
+              triaged ? 'Triaged' : 'Failure',
+              'Success'
+            ),
+            url: jobRun.job_url,
+          })
+          if (jobStat === sample && jobRun.test_stats.failure_count > 0) {
+            initialSelectedRuns.add(jobRun.job_run_id)
+          }
+        }
+      }
+    }
+  }
+  const [searchJobRunIds, setSearchJobRunIds] =
+    React.useState(initialSelectedRuns)
 
   const printParamsAndStats = (
     statsLabel,
@@ -167,15 +242,10 @@ export default function CompReadyTestPanel(props) {
     return null
   }
 
-  let urls = []
-  if (data?.incidents?.length) {
-    data.incidents.forEach((incident) => {
-      incident?.job_runs?.forEach((job_run) => {
-        if (job_run.url !== undefined) {
-          urls[job_run.url] = true
-        }
-      })
-    })
+  const [openJAQ, setOpenJAQ] = React.useState(false)
+  function handleToggleJAQOpen(event) {
+    setOpenJAQ(!openJAQ)
+    event.target.blur() // otherwise button looks pressed on return
   }
 
   return (
@@ -207,14 +277,39 @@ export default function CompReadyTestPanel(props) {
         )}
       </Grid>
       <div style={{ marginTop: '10px', marginBottom: '10px' }}>
-        <label>
-          <input
-            type="checkbox"
-            checked={showOnlyFailures}
-            onChange={handleFailuresOnlyChange}
+        <FormGroup row>
+          <FormControlLabel
+            label="Only show failures"
+            control={
+              <Switch
+                color="primary"
+                checked={showOnlyFailures}
+                onChange={handleFailuresOnlyChange}
+              />
+            }
           />
-          Only Show Failures
-        </label>
+          <FormControlLabel
+            label="Select runs to compare"
+            labelPlacement="end"
+            control={
+              <Switch
+                color="primary"
+                checked={searchJobArtifacts}
+                onChange={handleSearchJobArtifactsChange}
+              />
+            }
+          />
+          <Button
+            size="small"
+            variant="contained"
+            color="primary"
+            onClick={handleToggleJAQOpen}
+          >
+            {searchJobArtifacts
+              ? 'Compare Selected'
+              : 'Compare Sample Failures'}
+          </Button>
+        </FormGroup>
       </div>
       <TableContainer component="div" className="cr-table-wrapper">
         <Table className="cr-comp-read-table">
@@ -253,6 +348,9 @@ export default function CompReadyTestPanel(props) {
                       element={element}
                       idx={idx}
                       showOnlyFailures={showOnlyFailures}
+                      searchJobArtifacts={searchJobArtifacts}
+                      searchJobRunIds={searchJobRunIds}
+                      setSearchJobRunIds={setSearchJobRunIds}
                       triagedURLs={urls}
                     ></CompReadyTestDetailRow>
                   )
@@ -266,6 +364,47 @@ export default function CompReadyTestPanel(props) {
           </TableBody>
         </Table>
       </TableContainer>
+      {searchJobArtifacts && (
+        <Button
+          size="small"
+          variant="contained"
+          color="primary"
+          onClick={handleToggleJAQOpen}
+        >
+          Compare selected
+        </Button>
+      )}
+      <Dialog fullScreen open={openJAQ} onClose={handleToggleJAQOpen}>
+        <Stack direction="row" spacing={2} width="100%" display="flex">
+          <h1>Test Details Job Artifact Query</h1>
+          <Tooltip title="Return to details report">
+            <Button
+              size="large"
+              variant="contained"
+              onClick={handleToggleJAQOpen}
+            >
+              Close
+            </Button>
+          </Tooltip>
+        </Stack>
+        <ul>
+          <li>
+            Test name: <b>{testName}</b>
+          </li>
+          <li>
+            Variants: <b>{environment}</b>{' '}
+          </li>
+          <li>
+            Component: <b>{component}</b>
+          </li>
+        </ul>
+
+        <JobArtifactQuery
+          searchJobRunIds={searchJobRunIds}
+          jobRunsLookup={jobRuns}
+          handleToggleJAQOpen={handleToggleJAQOpen}
+        />
+      </Dialog>
     </Fragment>
   )
 }
@@ -275,4 +414,7 @@ CompReadyTestPanel.propTypes = {
   versions: PropTypes.object.isRequired,
   isOverride: PropTypes.bool.isRequired,
   loadedParams: PropTypes.object.isRequired,
+  testName: PropTypes.string.isRequired,
+  environment: PropTypes.string.isRequired,
+  component: PropTypes.string.isRequired,
 }
