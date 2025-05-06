@@ -65,27 +65,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	now := time.Now()
 	componentJobRunTestReportStatus.GeneratedAt = &now
 
-	// Allow all middleware a chance to transform the job run test statuses:
-	var err error
-	for _, mw := range c.middlewares {
-		err = mw.TransformTestDetails(&componentJobRunTestReportStatus)
-		if err != nil {
-			return crtype.ReportTestDetails{}, []error{err}
-		}
-	}
-
-	// We only execute this if we were given a postgres database connection, it is still possible to run
-	// component readiness without postgresql, you just won't have regression tracking.
-	if c.dbc != nil {
-		var err error
-		bqs := NewPostgresRegressionStore(c.dbc)
-		c.openRegressions, err = bqs.ListCurrentRegressionsForRelease(c.ReqOptions.SampleRelease.Release)
-		if err != nil {
-			errs = append(errs, err)
-			return crtype.ReportTestDetails{}, errs
-		}
-	}
-
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(ctx,
 		componentJobRunTestReportStatus.BaseStatus,
@@ -95,18 +74,23 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		componentJobRunTestReportStatus.SampleStatus)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
-	for _, mw := range c.middlewares {
-		err = mw.TestDetailsAnalyze(&report)
-		if err != nil {
-			return crtype.ReportTestDetails{}, []error{err}
-		}
-	}
-
 	// Generate the report for the fallback release if one was found:
-	// Move all this to the middleware.
+	// TODO: this belongs in the releasefallback middleware, but our goal to return and display multiple
+	// reports means the PreAnalysis state cannot be used for test details. The second call to
+	// internalGenerateTestDetailsReport does not extract easily off "c". We cannot pass a ref to "c" due
+	// to a circular dep. This is an unfortunate compormise in the middleware goal I didn't have time to unwind.
+	// For now, the middleware does the querying for test details, and passes the override status out
+	// by adding it to componentJobRunTestReportStatus.BaseOverrideStatus.
 	var baseOverrideReport *crtype.ReportTestDetails
 	if c.ReqOptions.BaseOverrideRelease.Release != "" &&
 		c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
+
+		for _, mw := range c.middlewares {
+			err := mw.PreTestDetailsAnalysis(&componentJobRunTestReportStatus)
+			if err != nil {
+				return report, []error{err}
+			}
+		}
 
 		overrideReport := c.internalGenerateTestDetailsReport(ctx,
 			componentJobRunTestReportStatus.BaseOverrideStatus,
@@ -338,17 +322,19 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		sampleStatusCopy[k] = v
 	}
 
-	result := crtype.ReportTestDetails{
-		ReportTestIdentification: crtype.ReportTestIdentification{
-			RowIdentification: crtype.RowIdentification{
-				Component:  c.ReqOptions.TestIDOption.Component,
-				Capability: c.ReqOptions.TestIDOption.Capability,
-				TestID:     c.ReqOptions.TestIDOption.TestID,
-			},
-			ColumnIdentification: crtype.ColumnIdentification{
-				Variants: c.ReqOptions.VariantOption.RequestedVariants,
-			},
+	testKey := crtype.ReportTestIdentification{
+		RowIdentification: crtype.RowIdentification{
+			Component:  c.ReqOptions.TestIDOption.Component,
+			Capability: c.ReqOptions.TestIDOption.Capability,
+			TestID:     c.ReqOptions.TestIDOption.TestID,
 		},
+		ColumnIdentification: crtype.ColumnIdentification{
+			Variants: c.ReqOptions.VariantOption.RequestedVariants,
+		},
+	}
+
+	result := crtype.ReportTestDetails{
+		ReportTestIdentification: testKey,
 	}
 	var resolvedIssueCompensation int
 	var incidents []crtype.TriagedIncident
@@ -502,23 +488,46 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		}
 	}
 
-	requiredConfidence := c.getRequiredConfidence(c.ReqOptions.TestIDOption.TestID, c.ReqOptions.VariantOption.RequestedVariants)
+	testStats := crtype.ReportTestStats{
+		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
+		SampleStats: crtype.TestDetailsReleaseStats{
+			Release: c.ReqOptions.SampleRelease.Release,
+			Start:   &c.ReqOptions.SampleRelease.Start,
+			End:     &c.ReqOptions.SampleRelease.End,
+			TestDetailsTestStats: crtype.TestDetailsTestStats{
+				SuccessRate:  utils.CalculatePassRate(totalSampleSuccess, totalSampleFailure, totalSampleFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
+				SuccessCount: totalSampleSuccess,
+				FlakeCount:   totalSampleFlake,
+				FailureCount: totalSampleFailure,
+			},
+		},
+		BaseStats: &crtype.TestDetailsReleaseStats{
+			Release: baseRelease,
+			Start:   baseStart,
+			End:     baseEnd,
+			TestDetailsTestStats: crtype.TestDetailsTestStats{
+				SuccessRate:  utils.CalculatePassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
+				SuccessCount: totalBaseSuccess,
+				FlakeCount:   totalBaseFlake,
+				FailureCount: totalBaseFailure,
+			},
+		},
+	}
 
-	report.ReportTestStats = c.assessComponentStatus(
-		requiredConfidence,
-		totalSampleSuccess+totalSampleFailure+totalSampleFlake,
-		totalSampleSuccess,
-		totalSampleFlake,
-		totalBaseSuccess+totalBaseFailure+totalBaseFlake,
-		totalBaseSuccess,
-		totalBaseFlake,
+	for _, mw := range c.middlewares {
+		err := mw.PreAnalysis(testKey, &testStats)
+		if err != nil {
+			logrus.WithError(err).Error("Failure from middleware analysis")
+		}
+	}
+
+	c.assessComponentStatus(
+		&testStats,
 		approvedRegression,
 		activeProductRegression,
 		resolvedIssueCompensation,
-		baseRelease,
-		baseStart,
-		baseEnd,
 	)
+	report.ReportTestStats = testStats
 	result.Analyses = []crtype.TestDetailsAnalysis{report}
 
 	return result
