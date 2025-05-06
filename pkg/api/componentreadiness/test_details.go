@@ -18,15 +18,17 @@ import (
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetTestDetails(ctx context.Context, client *bigquery.Client, reqOptions crtype.RequestOptions,
+func GetTestDetails(ctx context.Context, client *bigquery.Client, reqOptions crtype.RequestOptions, dbc *db.DB,
 ) (crtype.ReportTestDetails, []error) {
 	generator := ComponentReportGenerator{
 		client:     client,
 		ReqOptions: reqOptions,
+		dbc:        dbc,
 	}
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateTestDetailsReport(ctx)
@@ -101,7 +103,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 			return crtype.ReportTestDetails{}, []error{err}
 		}
 	}
-
 	// Generate the report for the fallback release if one was found:
 	// Move all this to the middleware.
 	var baseOverrideReport *crtype.ReportTestDetails
@@ -436,7 +437,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 			perceivedSampleSuccess,
 			perceivedBaseFailure,
 			perceivedBaseSuccess)
-		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
+		requiredConfidence := c.getRequiredConfidence(c.ReqOptions.TestIDOption.TestID, c.ReqOptions.VariantOption.RequestedVariants)
+		jobStats.Significant = r < 1-float64(requiredConfidence)/100
 
 		report.JobStats = append(report.JobStats, jobStats)
 

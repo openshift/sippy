@@ -731,7 +731,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, reqOptions)
+	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, reqOptions, s.db)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
 		for _, err := range errs {
