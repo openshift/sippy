@@ -38,6 +38,14 @@ type RegressionTracker struct {
 }
 
 func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crtype.TestStatus, errCh chan error) {
+	r.internalQuery(errCh)
+}
+
+func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
+	r.internalQuery(errCh)
+}
+
+func (r *RegressionTracker) internalQuery(errCh chan error) {
 	// Load all known regressions for this release:
 	r.openRegressions = make([]*models.TestRegression, 0)
 	q := r.dbc.DB.Table("test_regressions").
@@ -49,9 +57,6 @@ func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJo
 		return
 	}
 	r.log.Infof("Found %d open regressions", len(r.openRegressions))
-}
-
-func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
 }
 
 func (r *RegressionTracker) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
