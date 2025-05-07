@@ -84,6 +84,8 @@ type TestRegression struct {
 	Opened   time.Time      `json:"opened" gorm:"not null"`
 	Closed   sql.NullTime   `json:"closed"`
 	Triages  []Triage       `json:"-" gorm:"many2many:triage_regressions;"`
+	// LastFailure is the last failure in the sample we saw while this regression was open.
+	LastFailure sql.NullTime `json:"last_failure"`
 	// MaxFailures is the maximum number of failures we found in the reporting window while this regression was open.
 	// This is intended to help inform the min fail thresholds we should be using, and what kind of regressions
 	// disappear on their own.

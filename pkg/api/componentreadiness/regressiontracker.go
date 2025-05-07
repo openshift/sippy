@@ -74,6 +74,7 @@ func (prs *PostgresRegressionStore) OpenRegression(view crtype.View, newRegresse
 		Opened:      time.Now(),
 		Variants:    variants,
 		MaxFailures: newRegressedTest.SampleStats.FailureCount,
+		LastFailure: sql.NullTime{Valid: true, Time: *newRegressedTest.LastFailure},
 	}
 	res := prs.dbc.DB.Create(newRegression)
 	if res.Error != nil {
@@ -211,19 +212,38 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		}
 	}
 
-	var newRegs, reopenedRegs, untouchedRegs, closedRegs int
+	var openedRegs, reopenedRegs, ongoingRegs, closedRegs, statsUpdatedRegs int
 	matchedOpenRegressions := []*models.TestRegression{} // all the matches we found, used to determine what had no match
 	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
 	for _, regTest := range allRegressedTests {
 		if openReg := regressiontracker.FindOpenRegression(view.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
+
+			// Update any tracking params on the regression if we see better values:
+			var modifiedRegression bool
+			if regTest.SampleStats.FailureCount > openReg.MaxFailures {
+				openReg.MaxFailures = regTest.SampleStats.FailureCount
+				modifiedRegression = true
+			}
+			if regTest.LastFailure != nil {
+				if !openReg.LastFailure.Valid || regTest.LastFailure.After(openReg.LastFailure.Time) {
+					openReg.LastFailure = sql.NullTime{Valid: true, Time: *regTest.LastFailure}
+					modifiedRegression = true
+				}
+			}
+			if modifiedRegression {
+				statsUpdatedRegs++
+				err := rt.backend.UpdateRegression(openReg)
+				if err != nil {
+					rLog.WithError(err).Errorf("error updating regression: %v", openReg)
+					return errors.Wrapf(err, "error updating regression: %v", openReg)
+				}
+			}
+
 			if openReg.Closed.Valid {
 				// if the regression returned has a closedRegs date, we found a recently closedRegs
 				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
 				// in / out of the report depending on the data available in the sample/basis.
 				rLog.Infof("re-opening existing regression: %v", openReg)
-				if regTest.SampleStats.FailureCount > openReg.MaxFailures {
-					openReg.MaxFailures = regTest.SampleStats.FailureCount
-				}
 				if !rt.dryRun {
 					reopenedRegs++
 					openReg.Closed = sql.NullTime{Valid: false}
@@ -234,23 +254,15 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 					}
 				}
 			} else {
-				if regTest.SampleStats.FailureCount > openReg.MaxFailures {
-					openReg.MaxFailures = regTest.SampleStats.FailureCount
-					err := rt.backend.UpdateRegression(openReg)
-					if err != nil {
-						rLog.WithError(err).Errorf("error updating MaxFailures for regression: %v", openReg)
-						return errors.Wrapf(err, "error updating MaxFailures for regression: %v", openReg)
-					}
-				}
 				// Still consider untouched even if we bumped the max failures count
-				untouchedRegs++
+				ongoingRegs++
 				rLog.WithFields(log.Fields{
 					"test": regTest.TestName,
 				}).Debugf("reusing already opened regression: %v", openReg)
 			}
 			matchedOpenRegressions = append(matchedOpenRegressions, openReg)
 		} else {
-			newRegs++
+			openedRegs++
 			rLog.Infof("opening new regression: %v", regTest)
 			if !rt.dryRun {
 				// Open a new regression:
@@ -291,7 +303,8 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		}
 
 	}
-	rLog.Infof("regression tracking sync completed, opened=%d, reopenedRegs=%d, closedRegs=%d untouchedRegs=%d", newRegs, reopenedRegs, closedRegs, untouchedRegs)
+	rLog.Infof("regression tracking sync completed, opened=%d, reopened=%d, closed=%d ongoing=%d statsUpdated=%d",
+		openedRegs, reopenedRegs, closedRegs, ongoingRegs, statsUpdatedRegs)
 
 	return nil
 }
