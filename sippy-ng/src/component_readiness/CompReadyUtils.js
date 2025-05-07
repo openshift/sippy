@@ -579,7 +579,7 @@ export function mergeRegressionData(data, triageEntries) {
       const regressed = column.regressed_tests
       if (column.regressed_tests && regressed.length > 0) {
         regressed.forEach((r) => {
-          if (regressionIds.has(r.regression_id)) {
+          if (regressionIds.has(r.regression?.id)) {
             r.effective_status = r.status + 2 //setting effective_status to status + 2, for a regressed test, derives the correct triaged version
             r.explanations = [] //explanations are not relevant when we have a matching triage entry
           } else {
