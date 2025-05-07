@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -30,6 +31,7 @@ func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions crtype.RequestOptions
 
 // RegressionTracker middleware loads all known regressions for this release from the db, and will
 // inject details onto regressed test stats if they match known regressions.
+// It also handles adjustments if those regressions are triaged to bugs.
 type RegressionTracker struct {
 	log             log.FieldLogger
 	reqOptions      crtype.RequestOptions
@@ -72,6 +74,45 @@ func (r *RegressionTracker) PreAnalysis(testKey crtype.ReportTestIdentification,
 			// ie. if the request was for 95% confidence, but we see that a test has an open regression (meaning at some point recently
 			// we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
 			testStats.RequiredConfidence = r.reqOptions.AdvancedOption.Confidence - openRegressionConfidenceAdjustment
+		}
+	}
+	return nil
+}
+
+func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+	if len(r.openRegressions) > 0 {
+		view := r.openRegressions[0].View // grab view from first regression, they were queried only for sample release
+		or := FindOpenRegression(view, testKey.TestID, testKey.Variants, r.openRegressions)
+		if or == nil {
+			return nil
+		}
+
+		if len(or.Triages) > 0 {
+
+			allTriagesResolved := true
+			var lastResolution time.Time
+			for _, t := range or.Triages {
+				if !t.Resolved.Valid {
+					allTriagesResolved = false
+				} else if t.Resolved.Time.After(lastResolution) {
+					lastResolution = t.Resolved.Time
+				}
+			}
+
+			switch {
+			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure):
+				// claimed fixed but does not appear to be
+				// aka liar liar pants on fire
+				testStats.ReportStatus = crtype.FailedFixedRegression
+			case allTriagesResolved:
+				// claimed fixed, no failures since resolution date
+				testStats.ReportStatus = crtype.FixedRegression
+			case testStats.ReportStatus == crtype.SignificantRegression:
+				testStats.ReportStatus = crtype.SignificantTriagedRegression
+			case testStats.ReportStatus == crtype.ExtremeRegression:
+				testStats.ReportStatus = crtype.ExtremeTriagedRegression
+
+			}
 		}
 	}
 	return nil

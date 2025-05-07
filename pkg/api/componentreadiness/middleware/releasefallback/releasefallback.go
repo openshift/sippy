@@ -167,6 +167,10 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 	return nil
 }
 
+func (r *ReleaseFallback) PostAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+	return nil
+}
+
 func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	allJobVariants crtype.JobVariants,
 	release string, start, end time.Time) []error {
