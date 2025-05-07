@@ -218,7 +218,11 @@ export default function RegressedTestsPanel(props) {
             headerName: 'Triage',
             flex: 4,
             valueGetter: (params) => {
-              return String(params.row.regression_id)
+              if (!params.row.regression?.opened) {
+                // For a regression we haven't yet detected:
+                return '0'
+              }
+              return String(params.row.regression.id)
             },
             renderCell: (param) => (
               <input
