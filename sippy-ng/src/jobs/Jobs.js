@@ -3,6 +3,7 @@ import { TabContext } from '@mui/lab'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
+import './JobDetailTable.css'
 import { filterFor } from '../helpers'
 import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
 import JobRunsTable from './JobRunsTable'
