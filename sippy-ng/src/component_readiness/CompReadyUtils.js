@@ -136,7 +136,7 @@ export function getStatusAndIcon(
 
   let statusStr = status + ': '
 
-  if (status >= 3) {
+  if (status >= 300) {
     statusStr =
       statusStr + 'SignificantImprovement detected (improved sample rate)'
     icon = (
@@ -148,7 +148,7 @@ export function getStatusAndIcon(
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status === 2) {
+  } else if (status === 200) {
     statusStr =
       statusStr + 'Missing Basis And Sample (basis and sample data missing)'
     let src = accessibilityMode ? blue_missing_data : green_missing_data
@@ -161,7 +161,7 @@ export function getStatusAndIcon(
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status === 1) {
+  } else if (status === 100) {
     statusStr = statusStr + 'Missing Basis (basis data missing)'
     let src = accessibilityMode ? half_blue : green_half_data
     icon = (
@@ -187,7 +187,7 @@ export function getStatusAndIcon(
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status === -1) {
+  } else if (status === -100) {
     statusStr = statusStr + 'Missing Sample (sample data missing)'
     let src = accessibilityMode ? half_blue : green_half_data
     icon = (
@@ -202,7 +202,7 @@ export function getStatusAndIcon(
         }}
       />
     )
-  } else if (status === -2) {
+  } else if (status === -200) {
     statusStr = statusStr + 'SignificantTriagedRegression detected'
     let src = accessibilityMode ? orange_triaged : red_triaged
     icon = (
@@ -213,7 +213,7 @@ export function getStatusAndIcon(
         alt="SignificantTriagedRegression"
       />
     )
-  } else if (status === -3) {
+  } else if (status === -300) {
     statusStr =
       statusStr + 'ExtremeTriagedRegression detected ( >15% pass rate change)'
     let src = accessibilityMode ? orange_3d_triaged : red_3d_triaged
@@ -225,13 +225,13 @@ export function getStatusAndIcon(
         alt="ExtremeTriagedRegression >15%"
       />
     )
-  } else if (status === -4) {
+  } else if (status === -400) {
     statusStr = statusStr + 'SignificantRegression detected'
     let src = accessibilityMode ? orange : red
     icon = (
       <img width="15px" height="15px" src={src} alt="SignificantRegression" />
     )
-  } else if (status <= -5) {
+  } else if (status <= -500) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
     let src = accessibilityMode ? orange_3d : red_3d
@@ -580,8 +580,11 @@ export function mergeRegressionData(data, triageEntries) {
       if (column.regressed_tests && regressed.length > 0) {
         regressed.forEach((r) => {
           if (regressionIds.has(r.regression?.id)) {
-            r.effective_status = r.status + 2 //setting effective_status to status + 2, for a regressed test, derives the correct triaged version
+            // TODO: remove this once new triage middleware is setting proper codes for new triage
+            r.effective_status = r.status + 200 //setting effective_status to status + 2, for a regressed test, derives the correct triaged version
             r.explanations = [] //explanations are not relevant when we have a matching triage entry
+            //r.explanations = [] //explanations are not relevant when we have a matching triage entry
+            // TODO: ^^ not sure this is true
           } else {
             untriagedRegressedTests.push(r)
           }
