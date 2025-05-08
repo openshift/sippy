@@ -128,8 +128,6 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 			// this happens when jobs shift like sdn -> ovn
 			// if we get below threshold that's a sign we are reducing our base signal
 			if float64(cTestStats.TotalCount)/float64(testStats.BaseStats.Total()) < .6 {
-				r.log.Debugf("Fallback base total: %d to low for fallback analysis compared to original: %d",
-					cTestStats.TotalCount, testStats.BaseStats.Total())
 				return nil
 			}
 			success := testStats.BaseStats.SuccessCount

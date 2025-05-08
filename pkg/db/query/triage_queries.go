@@ -43,8 +43,6 @@ func ListRegressions(dbc *db.DB, release string) ([]*models.TestRegression, erro
 	res := dbc.DB.
 		Model(&models.TestRegression{}).
 		Preload("Triages").
-		Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
-		Joins("JOIN triages ON triages.id = triage_regressions.triage_id").
 		Where("test_regressions.release = ?", release).
 		Where("test_regressions.closed IS NULL").
 		Find(&openRegressions)

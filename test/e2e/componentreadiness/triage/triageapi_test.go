@@ -230,8 +230,6 @@ func Test_TriageRawDB(t *testing.T) {
 		res = dbc.DB.
 			Model(&models.TestRegression{}).
 			Preload("Triages").
-			Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
-			Joins("JOIN triages ON triages.id = triage_regressions.triage_id").
 			Where("test_regressions.release = ?", view.SampleRelease.Release).
 			Where("test_regressions.id = ?", testRegression.ID).
 			Where("test_regressions.closed IS NULL").
