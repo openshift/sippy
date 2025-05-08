@@ -5,6 +5,8 @@ import { styled } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import blue from './blue.svg'
 import blue_missing_data from './none-blue.svg'
+import fix_failed from './fix_failed.svg'
+import fixed_waiting from './fixed_waiting.svg'
 import green from './green.svg'
 import green_half_data from './half.svg'
 import green_missing_data from './none.svg'
@@ -202,6 +204,10 @@ export function getStatusAndIcon(
         }}
       />
     )
+  } else if (status === -150) {
+    statusStr = statusStr + 'Fixed (hopefully) regression detected'
+    let src = fixed_waiting
+    icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
   } else if (status === -200) {
     statusStr = statusStr + 'SignificantTriagedRegression detected'
     let src = accessibilityMode ? orange_triaged : red_triaged
@@ -238,6 +244,10 @@ export function getStatusAndIcon(
     icon = (
       <img width="15px" height="15px" src={src} alt="ExtremeRegression >15%" />
     )
+  } else if (status === -1000) {
+    statusStr = statusStr + 'Failed fix detected'
+    let src = fix_failed
+    icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
   }
 
   return [statusStr, icon]
@@ -579,13 +589,7 @@ export function mergeRegressionData(data, triageEntries) {
       const regressed = column.regressed_tests
       if (column.regressed_tests && regressed.length > 0) {
         regressed.forEach((r) => {
-          if (regressionIds.has(r.regression?.id)) {
-            // TODO: remove this once new triage middleware is setting proper codes for new triage
-            r.effective_status = r.status + 200 //setting effective_status to status + 2, for a regressed test, derives the correct triaged version
-            r.explanations = [] //explanations are not relevant when we have a matching triage entry
-            //r.explanations = [] //explanations are not relevant when we have a matching triage entry
-            // TODO: ^^ not sure this is true
-          } else {
+          if (!regressionIds.has(r.regression?.id)) {
             untriagedRegressedTests.push(r)
           }
         })

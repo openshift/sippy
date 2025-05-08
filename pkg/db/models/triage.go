@@ -89,5 +89,5 @@ type TestRegression struct {
 	Variants pq.StringArray `json:"variants" gorm:"not null;type:text[]"`
 	Opened   time.Time      `json:"opened" gorm:"not null"`
 	Closed   sql.NullTime   `json:"closed"`
-	Triages  []Triage       `json:"-" gorm:"many2many:triage_regressions;"`
+	Triages  []Triage       `json:"triages" gorm:"many2many:triage_regressions;"`
 }
