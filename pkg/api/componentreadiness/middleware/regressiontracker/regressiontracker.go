@@ -2,6 +2,7 @@ package regressiontracker
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -10,6 +11,7 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/query"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -41,13 +43,10 @@ type RegressionTracker struct {
 
 func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crtype.TestStatus, errCh chan error) {
 	// Load all known regressions for this release:
-	r.openRegressions = make([]*models.TestRegression, 0)
-	q := r.dbc.DB.Table("test_regressions").
-		Where("release = ?", r.reqOptions.SampleRelease.Release).
-		Where("closed IS NULL")
-	res := q.Scan(&r.openRegressions)
-	if res.Error != nil {
-		errCh <- res.Error
+	var err error
+	r.openRegressions, err = query.ListRegressions(r.dbc, r.reqOptions.SampleRelease.Release)
+	if err != nil {
+		errCh <- err
 		return
 	}
 	r.log.Infof("Found %d open regressions", len(r.openRegressions))
@@ -104,14 +103,23 @@ func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification
 				// claimed fixed but does not appear to be
 				// aka liar liar pants on fire
 				testStats.ReportStatus = crtype.FailedFixedRegression
+				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+					"Regression was triaged and believed fixed as of %s but failures have been observed as late as %s",
+					lastResolution.Format(time.RFC3339), testStats.LastFailure.Format(time.RFC3339)))
 			case allTriagesResolved:
 				// claimed fixed, no failures since resolution date
 				testStats.ReportStatus = crtype.FixedRegression
+				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
+					"Regression was triaged and believed fixed as of %s",
+					lastResolution.Format(time.RFC3339)))
 			case testStats.ReportStatus == crtype.SignificantRegression:
 				testStats.ReportStatus = crtype.SignificantTriagedRegression
+				testStats.Explanations = append(testStats.Explanations,
+					"Regression has been triaged to one or more bugs")
 			case testStats.ReportStatus == crtype.ExtremeRegression:
 				testStats.ReportStatus = crtype.ExtremeTriagedRegression
-
+				testStats.Explanations = append(testStats.Explanations,
+					"Regression has been triaged to one or more bugs")
 			}
 		}
 	}

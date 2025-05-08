@@ -1117,6 +1117,15 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				testStats.LastFailure = &sampleStats.LastFailure
 			}
 
+			// Give middleware their chance to adjust the result
+			for _, mw := range c.middlewares {
+				err = mw.PostAnalysis(testKey, &testStats)
+				if err != nil {
+					return crtype.ComponentReport{}, err
+				}
+			}
+
+			// TODO: remove when we're fully transitioned to new triage
 			if testStats.IsTriaged() {
 				// we are within the triage range
 				// do we want to show the triage icon or flip reportStatus
@@ -1178,6 +1187,14 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			activeProductRegression,
 			resolvedIssueCompensation,
 		)
+
+		// Give middleware their chance to adjust the result
+		for _, mw := range c.middlewares {
+			err = mw.PostAnalysis(testID, &testStats)
+			if err != nil {
+				return crtype.ComponentReport{}, err
+			}
+		}
 
 		if testStats.IsTriaged() {
 			// we are within the triage range
@@ -1363,7 +1380,7 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 		testStats.RequiredConfidence = c.ReqOptions.AdvancedOption.Confidence
 	}
 
-	// TODO: move to triage middleware Analyze eventually
+	// TODO: delete once we move to new triage, we may no longer be in the business of subtracting job run counts
 	// preserve the initial sampleTotal, so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
 	sampleTotal := testStats.SampleStats.SuccessCount + testStats.SampleStats.FailureCount + testStats.SampleStats.FlakeCount
@@ -1465,9 +1482,12 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 			}
 			// if it was significant without the adjustment use
 			// ExtremeTriagedRegression or SignificantTriagedRegression
+			/* tODO restore:
 			if wasSignificant {
 				status = getRegressionStatus(basisPassPercentage, initialPassPercentage, true)
 			}
+
+			*/
 		}
 
 		if testStats.SampleStats.Total() == 0 {

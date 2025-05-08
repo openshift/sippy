@@ -225,6 +225,21 @@ func Test_TriageRawDB(t *testing.T) {
 		require.NoError(t, res.Error)
 		assert.Equal(t, 1, len(testRegression.Triages))
 
+		openRegressions := make([]*models.TestRegression, 0)
+
+		res = dbc.DB.
+			Model(&models.TestRegression{}).
+			Preload("Triages").
+			Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
+			Joins("JOIN triages ON triages.id = triage_regressions.triage_id").
+			Where("test_regressions.release = ?", view.SampleRelease.Release).
+			Where("test_regressions.id = ?", testRegression.ID).
+			Where("test_regressions.closed IS NULL").
+			Find(&openRegressions)
+		require.NoError(t, res.Error)
+		assert.Equal(t, 1, len(openRegressions))
+		assert.Equal(t, 1, len(openRegressions[0].Triages))
+
 		// Make a second Triage for the same regression:
 		triage2 := models.Triage{
 			URL: "http://myjira2",
