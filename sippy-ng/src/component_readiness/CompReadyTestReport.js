@@ -500,7 +500,9 @@ View the [test details report|${document.location.href}] for additional context.
           </TableRow>
           <TableRow>
             <TableCell>Explanations:</TableCell>
-            <TableCell>{data.analyses[0].explanations.join('\n')}</TableCell>
+            <TableCell>
+              {(data.analyses[0].explanations || []).join('\n')}
+            </TableCell>
           </TableRow>
         </TableBody>
       </Table>
