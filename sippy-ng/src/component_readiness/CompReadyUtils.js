@@ -237,7 +237,7 @@ export function getStatusAndIcon(
     icon = (
       <img width="15px" height="15px" src={src} alt="SignificantRegression" />
     )
-  } else if (status <= -500) {
+  } else if (status === -500) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
     let src = accessibilityMode ? orange_3d : red_3d
