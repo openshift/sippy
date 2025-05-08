@@ -44,12 +44,15 @@ func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64
 		return jobRunResponse, err
 	}
 	jobRunResponse.ArtifactListTruncated = truncated
-	jobRunResponse.Artifacts = mgr.QueryJobRunArtifacts(ctx, q, jobRunID, fileAttrs)
+	jobRunResponse.Artifacts, jobRunResponse.IsFinal = mgr.QueryJobRunArtifacts(ctx, q, jobRunID, fileAttrs)
 	return jobRunResponse, nil
 }
 
 func (q *JobArtifactQuery) getJobRun(jobRunID int64) (string, JobRun, error) {
-	jobRunResponse := JobRun{ID: strconv.FormatInt(jobRunID, 10)}
+	jobRunResponse := JobRun{
+		ID:      strconv.FormatInt(jobRunID, 10),
+		IsFinal: true, // even errors are final - only if we timed out getting answers might a retry get more
+	}
 	jobRunModel := new(models.ProwJobRun)
 	res := q.DbClient.DB.Preload("ProwJob").First(jobRunModel, jobRunID)
 	if res.Error != nil {
