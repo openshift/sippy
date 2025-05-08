@@ -297,7 +297,7 @@ func failureResponse(w http.ResponseWriter, code int, message string) {
 }
 
 // some standard error types
-const ApiConfigError = "ApiConfigError"
+const APIConfigError = "APIConfigError"
 const ParameterMissing = "ParameterMissing"
 const ParameterInvalid = "ParameterInvalid"
 
@@ -1345,7 +1345,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 // To prevent (accidental) DoS, the number of artifacts and matches returned are limited.
 func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
 	if s.gcsClient == nil {
-		typedFailureResponse(w, http.StatusServiceUnavailable, ApiConfigError, "", "server not configured for GCS, unable to use this API")
+		typedFailureResponse(w, http.StatusServiceUnavailable, APIConfigError, "", "server not configured for GCS, unable to use this API")
 		return
 	}
 
@@ -1357,6 +1357,7 @@ func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
 	q := &jobartifacts.JobArtifactQuery{
 		GcsBucket:      s.gcsClient.Bucket(util.GcsBucketRoot),
 		DbClient:       s.db,
+		Cache:          s.cache,
 		JobRunIDs:      []int64{},
 		ContentMatcher: contentMatcher,
 	}

@@ -219,7 +219,9 @@ export default function JobArtifactQuery(props) {
       // displaying only artifacts with content matches; filter out artifacts and job runs without them
       let filteredArtifacts = []
       for (const artifact of jobRun.searchResult?.artifacts || []) {
-        if ((artifact.matched_content?.matches || []).length > 0) {
+        if (
+          (artifact.matched_content?.line_matches?.matches || []).length > 0
+        ) {
           filteredArtifacts.push(artifact)
         }
       }
@@ -681,8 +683,8 @@ export default function JobArtifactQuery(props) {
                             >
                               {artifact.artifact_path}
                             </Link>
-                            {artifact.matched_content?.matches &&
-                              artifact.matched_content.matches.map(
+                            {artifact.matched_content?.line_matches?.matches &&
+                              artifact.matched_content.line_matches.matches.map(
                                 (match, index) => (
                                   <samp
                                     key={index}
