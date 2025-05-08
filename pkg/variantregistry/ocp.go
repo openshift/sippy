@@ -655,6 +655,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{"-bgp-", "hidden"},
 		{"aggregated", "hidden"},
 		{"-cert-rotation-shutdown-", "hidden"}, // may want to go to rare at some point
+
+		{"-4.19-e2e-metal-ipi-serial-ovn-ipv6-techpreview-", "candidate"},      // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
+		{"-4.19-e2e-metal-ipi-serial-ovn-dualstack-techpreview-", "candidate"}, // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
 	}
 
 	for _, jobTierPattern := range jobTierPatterns {
