@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/storage"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
@@ -55,4 +56,17 @@ func GetGcsBucket(t *testing.T) *storage.BucketHandle {
 		logrus.WithError(err).Fatalf("CRITICAL error getting GCS client with credentials at %s", pathToGcsCredentials)
 	}
 	return gcsClient.Bucket(GcsBucketRoot)
+}
+
+type PseudoCache struct {
+	Cache map[string][]byte
+}
+
+func (c *PseudoCache) Get(_ context.Context, key string, _ time.Duration) ([]byte, error) {
+	return c.Cache[key], nil
+}
+
+func (c *PseudoCache) Set(_ context.Context, key string, content []byte, _ time.Duration) error {
+	c.Cache[key] = content
+	return nil
 }
