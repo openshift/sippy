@@ -105,3 +105,13 @@ func CalculatePassRate(success, failure, flake int, treatFlakeAsFailure bool) fl
 	}
 	return float64(success+flake) / float64(total)
 }
+
+// VariantsMapToStringSlice converts the map form of variants to a string slice
+// where each variant is formatted key:value.
+func VariantsMapToStringSlice(variants map[string]string) []string {
+	vs := []string{}
+	for k, v := range variants {
+		vs = append(vs, fmt.Sprintf("%s:%s", k, v))
+	}
+	return vs
+}
