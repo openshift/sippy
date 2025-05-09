@@ -124,6 +124,8 @@ component_readiness:
         ContainerRuntime:
           - runc
           - crun
+        Suite:
+          - machine-config-operator
       compare_variants:
         Architecture:
           - arm64
