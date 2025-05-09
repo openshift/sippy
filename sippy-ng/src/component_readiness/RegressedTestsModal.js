@@ -62,13 +62,11 @@ export default function RegressedTestsModal(props) {
             onChange={handleTabChange}
             aria-label="Regressed Tests Tabs"
           >
-            <Tab label="Untriaged Regressions" {...tabProps(0)} />
-            <Tab label="Regressed Tests" {...tabProps(1)} />
+            <Tab label="Untriaged" {...tabProps(0)} />
+            {triageEntriesExist && <Tab label="Triaged" {...tabProps(2)} />}
+            <Tab label="All" {...tabProps(1)} />
             {!triageEntriesExist && (
               <Tab label="Triaged Incidents" {...tabProps(2)} />
-            )}
-            {triageEntriesExist && (
-              <Tab label="Triaged Tests" {...tabProps(2)} />
             )}
           </Tabs>
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={0}>

@@ -377,7 +377,36 @@ Flakes: ${stats.flake_count}`
       </div>
       <Grid container>
         <Grid>
-          <h2>Linked Bugs</h2>
+          {triageEntries.length === 0 &&
+            data.analyses[0].incidents &&
+            data.analyses[0].incidents.length > 0 && (
+              <Fragment>
+                <h2>Triaged Incidents</h2>
+                <TriagedIncidentsPanel
+                  triagedIncidents={mergeIncidents(
+                    data.analyses[0].incidents,
+                    data
+                  )}
+                />
+              </Fragment>
+            )}
+
+          {triageEntries.length > 0 && (
+            <Fragment>
+              <h2>Triages</h2>
+              <TriagedTestsPanel triageEntries={triageEntries} />
+            </Fragment>
+          )}
+
+          {writeEndpointsEnabled && regressionId > 0 && (
+            <UpsertTriageModal
+              regressionId={regressionId}
+              setHasBeenTriaged={setHasBeenTriaged}
+              buttonText="Triage"
+            />
+          )}
+
+          <h2>Bugs Mentioning This Test</h2>
           <BugTable testName={testName} />
           <Box
             sx={{
@@ -452,35 +481,6 @@ View the [test details report|${document.location.href}] for additional context.
           </Box>
         </Grid>
       </Grid>
-
-      {triageEntries.length === 0 &&
-        data.analyses[0].incidents &&
-        data.analyses[0].incidents.length > 0 && (
-          <Fragment>
-            <h2>Triaged Incidents</h2>
-            <TriagedIncidentsPanel
-              triagedIncidents={mergeIncidents(
-                data.analyses[0].incidents,
-                data
-              )}
-            />
-          </Fragment>
-        )}
-
-      {triageEntries.length > 0 && (
-        <Fragment>
-          <h2>Triaged Tests</h2>
-          <TriagedTestsPanel triageEntries={triageEntries} />
-        </Fragment>
-      )}
-
-      {writeEndpointsEnabled && regressionId > 0 && (
-        <UpsertTriageModal
-          regressionId={regressionId}
-          setHasBeenTriaged={setHasBeenTriaged}
-          buttonText="Triage"
-        />
-      )}
 
       <h2>Regression Report</h2>
 
