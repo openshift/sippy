@@ -443,6 +443,7 @@ func setSuite(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-etcd-scaling", "etcd-scaling"},
 		{"conformance", "parallel"}, // Jobs with "conformance" but no explicit serial are probably parallel
 		{"usernamespace", "usernamespace"},
+		{"machine-config-operator", "machine-config-operator"},
 	}
 
 	for _, entry := range suitePatterns {
