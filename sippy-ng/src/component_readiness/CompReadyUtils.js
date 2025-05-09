@@ -6,7 +6,9 @@ import Alert from '@mui/material/Alert'
 import blue from './blue.svg'
 import blue_missing_data from './none-blue.svg'
 import fix_failed from './fix_failed.svg'
+import fix_failed_accessible from './fix_failed_accessible.svg'
 import fixed_waiting from './fixed_waiting.svg'
+import fixed_waiting_accessible from './fixed_waiting_accessible.svg'
 import green from './green.svg'
 import green_half_data from './half.svg'
 import green_missing_data from './none.svg'
@@ -206,7 +208,7 @@ export function getStatusAndIcon(
     )
   } else if (status === -150) {
     statusStr = statusStr + 'Fixed (hopefully) regression detected'
-    let src = fixed_waiting
+    let src = accessibilityMode ? fixed_waiting_accessible : fixed_waiting
     icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
   } else if (status === -200) {
     statusStr = statusStr + 'SignificantTriagedRegression detected'
@@ -246,7 +248,7 @@ export function getStatusAndIcon(
     )
   } else if (status === -1000) {
     statusStr = statusStr + 'Failed fix detected'
-    let src = fix_failed
+    let src = accessibilityMode ? fix_failed_accessible : fix_failed
     icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
   }
 
