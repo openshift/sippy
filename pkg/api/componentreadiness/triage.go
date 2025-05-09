@@ -22,11 +22,11 @@ func GetTriage(dbc *db.DB, id int) (models.Triage, error) {
 	return existingTriage, res.Error
 }
 
-func ListTriages(dbc *db.DB, testID, release string) ([]models.Triage, error) {
+func ListTriages(dbc *db.DB, regressionID string) ([]models.Triage, error) {
 	var triages []models.Triage
 	var err error
-	if testID != "" || release != "" {
-		triages, err = query.TriagesForTestIDRelease(dbc, testID, release)
+	if regressionID != "" {
+		triages, err = query.TriagesForRegressionID(dbc, regressionID)
 	} else {
 		triages, err = query.ListTriages(dbc)
 	}

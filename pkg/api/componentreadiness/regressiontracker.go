@@ -4,23 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"reflect"
 	"strings"
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
-	"google.golang.org/api/iterator"
-
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -40,46 +37,7 @@ type RegressionStore interface {
 	// a regressed test, so people using custom reporting can see what is regressed in main as well.
 	ListCurrentRegressionsForRelease(release string) ([]*models.TestRegression, error)
 	OpenRegression(view crtype.View, newRegressedTest crtype.ReportTestSummary) (*models.TestRegression, error)
-	ReOpenRegression(reg *models.TestRegression) error
-	CloseRegression(reg *models.TestRegression, closedAt time.Time) error
-}
-
-// TODO: temporary, just being used for migration code on initial rollout, can be deleted as soon as postgres imports
-// the current regressions.
-//
-// ListCurrentRegressionsForRelease returns *all* regressions for all releases. We operate on the assumption that
-// only one view is allowed to have regression tracking enabled (i.e. 4.18-main) per release, which is validated
-// when the views file is loaded. This is because we want to display regression tracking data on any report that shows
-// a regressed test, so users using custom reporting can see what is regressed in main as well.
-func ListCurrentRegressions(ctx context.Context, client *sippybigquery.Client) ([]*crtype.TestRegressionBigQuery, error) {
-	// Use max snapshot date to get the most recently appended view of the regressions.
-	queryString := fmt.Sprintf("SELECT * FROM %s.test_regressions_append WHERE snapshot = (SELECT MAX(snapshot) FROM %s.test_regressions_append)",
-		client.Dataset, client.Dataset)
-
-	sampleQuery := client.BQ.Query(queryString)
-
-	regressions := make([]*crtype.TestRegressionBigQuery, 0)
-	log.Infof("Fetching current test regressions with: %s", sampleQuery.Q)
-
-	it, err := sampleQuery.Read(ctx)
-	if err != nil {
-		log.WithError(err).Error("error querying triaged incidents from bigquery")
-		return regressions, err
-	}
-
-	for {
-		var regression crtype.TestRegressionBigQuery
-		err := it.Next(&regression)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.WithError(err).Error("error parsing triaged incident from bigquery")
-			return nil, errors.Wrap(err, "error parsing triaged incident from bigquery")
-		}
-		regressions = append(regressions, &regression)
-	}
-	return regressions, nil
+	UpdateRegression(reg *models.TestRegression) error
 }
 
 type PostgresRegressionStore struct {
@@ -99,20 +57,22 @@ func (prs *PostgresRegressionStore) ListCurrentRegressionsForRelease(release str
 		Where("closed IS NULL OR closed > ?", time.Now().Add(-regressionHysteresisDays*24*time.Hour))
 	res := q.Scan(&regressions)
 	return regressions, res.Error
-
 }
+
 func (prs *PostgresRegressionStore) OpenRegression(view crtype.View, newRegressedTest crtype.ReportTestSummary) (*models.TestRegression, error) {
 
 	variants := utils.VariantsMapToStringSlice(newRegressedTest.Variants)
 	log.Infof("variants: %s", strings.Join(variants, ","))
 
 	newRegression := &models.TestRegression{
-		View:     view.Name,
-		Release:  view.SampleRelease.Release,
-		TestID:   newRegressedTest.TestID,
-		TestName: newRegressedTest.TestName,
-		Opened:   time.Now(),
-		Variants: variants,
+		View:        view.Name,
+		Release:     view.SampleRelease.Release,
+		TestID:      newRegressedTest.TestID,
+		TestName:    newRegressedTest.TestName,
+		Opened:      time.Now(),
+		Variants:    variants,
+		MaxFailures: newRegressedTest.SampleStats.FailureCount,
+		LastFailure: sql.NullTime{Valid: true, Time: *newRegressedTest.LastFailure},
 	}
 	res := prs.dbc.DB.Create(newRegression)
 	if res.Error != nil {
@@ -123,14 +83,7 @@ func (prs *PostgresRegressionStore) OpenRegression(view crtype.View, newRegresse
 
 }
 
-func (prs *PostgresRegressionStore) ReOpenRegression(reg *models.TestRegression) error {
-	reg.Closed = sql.NullTime{Valid: false}
-	res := prs.dbc.DB.Save(&reg)
-	return res.Error
-}
-
-func (prs *PostgresRegressionStore) CloseRegression(reg *models.TestRegression, closedAt time.Time) error {
-	reg.Closed = sql.NullTime{Valid: true, Time: closedAt}
+func (prs *PostgresRegressionStore) UpdateRegression(reg *models.TestRegression) error {
 	res := prs.dbc.DB.Save(&reg)
 	return res.Error
 }
@@ -174,48 +127,6 @@ type RegressionTracker struct {
 // Run iterates all views with regression tracking enabled and syncs the results of its
 // component report to the regression tables.
 func (rt *RegressionTracker) Run(ctx context.Context) error {
-
-	// TODO: remove this temporary migration code for initial rollout
-	var totalRegressions int64
-	rt.dbc.DB.Model(&models.TestRegression{}).Count(&totalRegressions)
-	if totalRegressions == 0 {
-		rt.logger.Warn("no test regressions found in postgres, migrating bigquery regressions over")
-		allBigQueryRegressions, err := ListCurrentRegressions(ctx, rt.bigqueryClient)
-		if err != nil {
-			rt.logger.WithError(err).Error("error listing bigquery regressions")
-			return err
-		}
-		rt.logger.Infof("loaded %d test regressions from bigquery", len(allBigQueryRegressions))
-		for _, reg := range allBigQueryRegressions {
-			newRegression := &models.TestRegression{
-				View:     reg.View,
-				Release:  reg.Release,
-				TestID:   reg.TestID,
-				TestName: reg.TestName,
-				Opened:   reg.Opened,
-			}
-			if !reg.Closed.Valid {
-				newRegression.Closed = sql.NullTime{
-					Valid: false,
-				}
-			} else {
-				newRegression.Closed = sql.NullTime{
-					Valid: true,
-					Time:  reg.Closed.Timestamp,
-				}
-			}
-			variants := []string{}
-			for _, v := range reg.Variants {
-				variants = append(variants, fmt.Sprintf("%s:%s", v.Key, v.Value))
-			}
-			newRegression.Variants = variants
-
-			res := rt.dbc.DB.Create(newRegression)
-			if res.Error != nil {
-				return res.Error
-			}
-		}
-	}
 
 	// Run the existing logic
 	var err error
@@ -295,11 +206,33 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		}
 	}
 
-	var newRegs, reopenedRegs, untouchedRegs, closedRegs int
+	var openedRegs, reopenedRegs, ongoingRegs, closedRegs, statsUpdatedRegs int
 	matchedOpenRegressions := []*models.TestRegression{} // all the matches we found, used to determine what had no match
 	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
 	for _, regTest := range allRegressedTests {
 		if openReg := regressiontracker.FindOpenRegression(view.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
+
+			// Update any tracking params on the regression if we see better values:
+			var modifiedRegression bool
+			if regTest.SampleStats.FailureCount > openReg.MaxFailures {
+				openReg.MaxFailures = regTest.SampleStats.FailureCount
+				modifiedRegression = true
+			}
+			if regTest.LastFailure != nil {
+				if !openReg.LastFailure.Valid || regTest.LastFailure.After(openReg.LastFailure.Time) {
+					openReg.LastFailure = sql.NullTime{Valid: true, Time: *regTest.LastFailure}
+					modifiedRegression = true
+				}
+			}
+			if modifiedRegression {
+				statsUpdatedRegs++
+				err := rt.backend.UpdateRegression(openReg)
+				if err != nil {
+					rLog.WithError(err).Errorf("error updating regression: %v", openReg)
+					return errors.Wrapf(err, "error updating regression: %v", openReg)
+				}
+			}
+
 			if openReg.Closed.Valid {
 				// if the regression returned has a closedRegs date, we found a recently closedRegs
 				// regression for this test. We'll re-use it to limit churn as sometimes tests may drop
@@ -307,22 +240,23 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 				rLog.Infof("re-opening existing regression: %v", openReg)
 				if !rt.dryRun {
 					reopenedRegs++
-					err := rt.backend.ReOpenRegression(openReg)
+					openReg.Closed = sql.NullTime{Valid: false}
+					err := rt.backend.UpdateRegression(openReg)
 					if err != nil {
 						rLog.WithError(err).Errorf("error re-opening regression: %v", openReg)
 						return errors.Wrapf(err, "error re-opening regression: %v", openReg)
 					}
 				}
 			} else {
-				untouchedRegs++
+				// Still consider untouched even if we bumped the max failures count
+				ongoingRegs++
 				rLog.WithFields(log.Fields{
 					"test": regTest.TestName,
 				}).Debugf("reusing already opened regression: %v", openReg)
-
 			}
 			matchedOpenRegressions = append(matchedOpenRegressions, openReg)
 		} else {
-			newRegs++
+			openedRegs++
 			rLog.Infof("opening new regression: %v", regTest)
 			if !rt.dryRun {
 				// Open a new regression:
@@ -340,8 +274,10 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 	now := time.Now()
 	for _, regression := range regressions {
 		var matched bool
+		// We don't want to reject a regression as unmatched because it's max failures count is different.
+		// We also do not want to wipe out the max failures value when closing.
 		for _, m := range matchedOpenRegressions {
-			if reflect.DeepEqual(m, regression) {
+			if m.ID == regression.ID {
 				matched = true
 				break
 			}
@@ -351,7 +287,8 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 			rLog.Infof("found a regression no longer appearing in the report which should be closedRegs: %v", regression)
 			closedRegs++
 			if !rt.dryRun {
-				err := rt.backend.CloseRegression(regression, now)
+				regression.Closed = sql.NullTime{Valid: true, Time: now}
+				err := rt.backend.UpdateRegression(regression)
 				if err != nil {
 					rLog.WithError(err).Errorf("error closing regression: %v", regression)
 					return errors.Wrap(err, "error closing regression")
@@ -360,7 +297,8 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		}
 
 	}
-	rLog.Infof("regression tracking sync completed, opened=%d, reopenedRegs=%d, closedRegs=%d untouchedRegs=%d", newRegs, reopenedRegs, closedRegs, untouchedRegs)
+	rLog.Infof("regression tracking sync completed, opened=%d, reopened=%d, closed=%d ongoing=%d statsUpdated=%d",
+		openedRegs, reopenedRegs, closedRegs, ongoingRegs, statsUpdatedRegs)
 
 	return nil
 }

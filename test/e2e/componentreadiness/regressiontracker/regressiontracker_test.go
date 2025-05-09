@@ -78,14 +78,16 @@ func Test_RegressionTracker(t *testing.T) {
 
 		// Now close it:
 		assert.False(t, lookup.Closed.Valid)
-		err = tracker.CloseRegression(lookup, time.Now())
+		lookup.Closed = sql.NullTime{Valid: true, Time: time.Now()}
+		err = tracker.UpdateRegression(lookup)
 		assert.NoError(t, err)
 		// look it up again because we're being ridiculous:
 		dbc.DB.First(&lookup)
 
 		assert.True(t, lookup.Closed.Valid)
 
-		err = tracker.ReOpenRegression(lookup)
+		lookup.Closed = sql.NullTime{Valid: false}
+		err = tracker.UpdateRegression(lookup)
 		assert.NoError(t, err)
 		dbc.DB.First(&lookup)
 		assert.False(t, lookup.Closed.Valid)

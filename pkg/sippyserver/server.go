@@ -731,7 +731,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, reqOptions)
+	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, s.db, reqOptions)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
 		for _, err := range errs {
@@ -1253,9 +1253,8 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		testID := param.SafeRead(req, "test")
-		release := param.SafeRead(req, "sampleRelease")
-		triages, err := componentreadiness.ListTriages(s.db, testID, release)
+		regressionID := param.SafeRead(req, "regressionId")
+		triages, err := componentreadiness.ListTriages(s.db, regressionID)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
@@ -1306,6 +1305,11 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		api.RespondWithJSON(http.StatusOK, w, triage)
+	case http.MethodOptions:
+		// TODO(sgoeddel): should we enable CORS? If so, we will have to do some special logic to allow localhost as well until gorilla is utilized
+		// w.Header().Set("Access-Control-Allow-Origin", "https://sippy-auth.dptools.openshift.org")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+		api.RespondWithJSON(http.StatusOK, w, nil)
 	default:
 		failureResponse(w, http.StatusBadRequest, "Unsupported method")
 	}

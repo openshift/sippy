@@ -9,6 +9,7 @@ import (
 	"time"
 
 	fet "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/db"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -22,10 +23,11 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetTestDetails(ctx context.Context, client *bigquery.Client, reqOptions crtype.RequestOptions,
+func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions crtype.RequestOptions,
 ) (crtype.ReportTestDetails, []error) {
 	generator := ComponentReportGenerator{
 		client:     client,
+		dbc:        dbc,
 		ReqOptions: reqOptions,
 	}
 	if os.Getenv("DEV_MODE") == "1" {

@@ -489,6 +489,9 @@ export default function IntervalsChart(props) {
   const handleIntervalFileChange = (event) => {
     console.log('new interval file selected: ' + event.target.value)
     setIntervalFile(event.target.value)
+    // We're going to a new file, wipe out the old start/end time filters, we'll reset to first/last in the new file
+    setStart('')
+    setEnd('')
   }
 
   const handleFilterChange = (event) => {
