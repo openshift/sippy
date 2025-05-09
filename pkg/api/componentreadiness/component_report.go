@@ -775,11 +775,10 @@ func (c *ComponentReportGenerator) GetLastReportModifiedTime(ctx context.Context
 
 			err := c.dbc.DB.
 				Model(&models.Triage{}).
-				Select("MAX(updated_time)").
-				Where("release = ?", c.ReqOptions.SampleRelease.Release).
+				Select("MAX(updated_at)").
 				Scan(&lastTriageUpdate).Error
 			if err != nil {
-				log.WithError(err).Warn("Error getting lastTriageUpdate")
+				log.WithError(err).Fatal("Error getting lastTriageUpdate")
 			}
 			if lastTriageUpdate.After(*c.ReportModified) {
 				c.ReportModified = &lastTriageUpdate
