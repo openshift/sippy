@@ -293,9 +293,6 @@ export default function CompReadyTestReport(props) {
   //   If there are triage entries, and the status isn't already triaged
   //   (which it could be due to existing incidents during this interim period) increment by 2
   let status = data.analyses[0].status
-  if (triageEntries.length > 0 && status <= -4) {
-    status += 2
-  }
   const [statusStr, assessmentIcon] = getStatusAndIcon(
     status,
     0,
