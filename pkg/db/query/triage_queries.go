@@ -15,20 +15,11 @@ func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	return triages, res.Error
 }
 
-func TriagesForTestIDRelease(dbc *db.DB, testID, release string) ([]models.Triage, error) {
+func TriagesForRegressionID(dbc *db.DB, regressionID string) ([]models.Triage, error) {
 	var triages []models.Triage
-	query := dbc.DB.
+	res := dbc.DB.
 		Joins("JOIN triage_regressions trr ON trr.triage_id = triages.id").
-		Joins("JOIN test_regressions tr ON tr.id = trr.test_regression_id")
-
-	if testID != "" {
-		query.Where("tr.test_id = ?", testID)
-	}
-	if release != "" {
-		query.Where("tr.release = ?", release)
-	}
-
-	res := query.
+		Where("trr.test_regression_id = ?", regressionID).
 		Preload("Bug").
 		Preload("Regressions").
 		Find(&triages)

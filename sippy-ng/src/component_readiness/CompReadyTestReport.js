@@ -167,71 +167,61 @@ export default function CompReadyTestReport(props) {
   useEffect(() => {
     setIsLoaded(false)
     setHasBeenTriaged(false)
-
     const localDBEnabled = capabilitiesContext.includes('local_db')
-    // triage entries will only be available when there is a postgres connection
-    let triageFetch
-    if (localDBEnabled) {
-      //TODO(sgoeddel): This api call isn't what we want. We need to find triages that are associated to the
-      // regressionId, rather than the test and sample release
-      const triagesApiCall =
-        getTriagesAPIUrl() +
-        '?test=' +
-        safeTestId +
-        '&sampleRelease=' +
-        sampleRelease
-      triageFetch = fetch(triagesApiCall).then((response) => {
-        if (response.status !== 200) {
+
+    // fetch the test_details data followed by any triage records that match the regressionId (if found)
+    fetch(testDetailsApiCall, { signal: abortController.signal })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.code < 200 || data.code >= 300) {
+          const errorMessage = data.message
+            ? `${data.message}`
+            : 'No error message'
           throw new Error(
-            `API call failed ${triagesApiCall} Returned + ${response.status}`
+            `API call failed: ${testDetailsApiCall}\n Return code = ${data.code} (${errorMessage})`
           )
         }
-        return response.json()
+        return data
       })
-    } else {
-      triageFetch = Promise.resolve([])
-    }
+      .then((json) => {
+        // If the basics are not present, consider it no data
+        if (
+          !json.component ||
+          !json.analyses ||
+          !json.analyses[0].sample_stats
+        ) {
+          // The api call returned 200 OK but the data was empty
+          setData(noDataTable)
+        } else {
+          setData(json)
 
-    // fetch the test_details data and any applicable triages concurrently
-    const fetchData = async () => {
-      try {
-        await Promise.all([
-          fetch(testDetailsApiCall, { signal: abortController.signal })
-            .then((response) => response.json())
-            .then((data) => {
-              if (data.code < 200 || data.code >= 300) {
-                const errorMessage = data.message
-                  ? `${data.message}`
-                  : 'No error message'
-                throw new Error(
-                  `API call failed: ${testDetailsApiCall}\n Return code = ${data.code} (${errorMessage})`
+          if (json.analyses[0].regression) {
+            const regId = json.analyses[0].regression.id
+            setRegressionId(regId)
+            return regId
+          }
+        }
+        return -1 // no regressionId found for the test
+      })
+      .then((regId) => {
+        if (regId >= 0 && localDBEnabled) {
+          const triagesApiCall = getTriagesAPIUrl() + '?regressionId=' + regId
+          fetch(triagesApiCall)
+            .then((response) => {
+              if (response.status !== 200) {
+                setFetchError(
+                  `API call failed ${triagesApiCall} Returned: ${response.status}`
                 )
+                return []
               }
-              return data
+              return response.json()
             })
-            .then((json) => {
-              // If the basics are not present, consider it no data
-              if (
-                !json.component ||
-                !json.analyses ||
-                !json.analyses[0].sample_stats
-              ) {
-                // The api call returned 200 OK but the data was empty
-                setData(noDataTable)
-              } else {
-                setData(json)
-
-                if (json.analyses[0].regression) {
-                  setRegressionId(json.analyses[0].regression.id)
-                }
-              }
-            }),
-          triageFetch.then((triages) => {
-            setTriageEntries(triages)
-          }),
-        ])
-        setIsLoaded(true)
-      } catch (error) {
+            .then((triages) => {
+              setTriageEntries(triages)
+            })
+        }
+      })
+      .catch((error) => {
         if (error.name === 'AbortError') {
           setData(cancelledDataTable)
 
@@ -240,9 +230,10 @@ export default function CompReadyTestReport(props) {
         } else {
           setFetchError(error)
         }
-      }
-    }
-    fetchData()
+      })
+      .finally(() => {
+        setIsLoaded(true)
+      })
   }, [hasBeenTriaged])
 
   useEffect(() => {
@@ -298,12 +289,11 @@ export default function CompReadyTestReport(props) {
   }
 
   //TODO(sgoeddel): this logic will eventually happen in the backend, for now,
-  // this is a quick and dirty way to correctly compute the triaged status when applicable
+  // this is a quick and dirty way to correctly compute the triaged status when applicable:
+  //   If there are triage entries, and the status isn't already triaged
+  //   (which it could be due to existing incidents during this interim period) increment by 2
   let status = data.analyses[0].status
-  if (
-    triageEntries.length > 0 &&
-    (!data.analyses[0].incidents || data.analyses[0].incidents.length === 0)
-  ) {
+  if (triageEntries.length > 0 && status <= -4) {
     status += 2
   }
   const [statusStr, assessmentIcon] = getStatusAndIcon(
