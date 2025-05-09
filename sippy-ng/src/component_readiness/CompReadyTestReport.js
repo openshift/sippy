@@ -46,6 +46,7 @@ import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
 import TriagedIncidentsPanel from './TriagedIncidentsPanel'
 import TriagedTestsPanel from './TriagedTestsPanel'
+import UpsertTriageModal from './UpsertTriageModal'
 
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
@@ -113,6 +114,7 @@ export default function CompReadyTestReport(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
+  const [regressionId, setRegressionId] = React.useState(0)
   const [versions, setVersions] = React.useState({})
   const [triageEntries, setTriageEntries] = React.useState([])
   const releases = useContext(ReleasesContext)
@@ -127,6 +129,7 @@ export default function CompReadyTestReport(props) {
   const safeTestBasisRelease = safeEncodeURIComponent(testBasisRelease)
 
   const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const writeEndpointsEnabled = capabilitiesContext.includes('write_endpoints')
   const { expandEnvironment, sampleRelease } = useContext(CompReadyVarsContext)
 
   // Helpers for copying the test ID to clipboard
@@ -150,6 +153,8 @@ export default function CompReadyTestReport(props) {
     }
   }
 
+  const [hasBeenTriaged, setHasBeenTriaged] = React.useState(false)
+
   const testDetailsApiCall =
     getTestDetailsAPIUrl() +
     makeRFC3339Time(filterVals) +
@@ -161,11 +166,14 @@ export default function CompReadyTestReport(props) {
 
   useEffect(() => {
     setIsLoaded(false)
+    setHasBeenTriaged(false)
 
     const localDBEnabled = capabilitiesContext.includes('local_db')
     // triage entries will only be available when there is a postgres connection
     let triageFetch
     if (localDBEnabled) {
+      //TODO(sgoeddel): This api call isn't what we want. We need to find triages that are associated to the
+      // regressionId, rather than the test and sample release
       const triagesApiCall =
         getTriagesAPIUrl() +
         '?test=' +
@@ -212,6 +220,10 @@ export default function CompReadyTestReport(props) {
                 setData(noDataTable)
               } else {
                 setData(json)
+
+                if (json.analyses[0].regression) {
+                  setRegressionId(json.analyses[0].regression.id)
+                }
               }
             }),
           triageFetch.then((triages) => {
@@ -231,7 +243,7 @@ export default function CompReadyTestReport(props) {
       }
     }
     fetchData()
-  }, [])
+  }, [hasBeenTriaged])
 
   useEffect(() => {
     let tmpRelease = {}
@@ -285,8 +297,17 @@ export default function CompReadyTestReport(props) {
     )
   }
 
+  //TODO(sgoeddel): this logic will eventually happen in the backend, for now,
+  // this is a quick and dirty way to correctly compute the triaged status when applicable
+  let status = data.analyses[0].status
+  if (
+    triageEntries.length > 0 &&
+    (!data.analyses[0].incidents || data.analyses[0].incidents.length === 0)
+  ) {
+    status += 2
+  }
   const [statusStr, assessmentIcon] = getStatusAndIcon(
-    data.analyses[0].status,
+    status,
     0,
     accessibilityModeOn
   )
@@ -461,6 +482,14 @@ View the [test details report|${document.location.href}] for additional context.
           <h2>Triaged Tests</h2>
           <TriagedTestsPanel triageEntries={triageEntries} />
         </Fragment>
+      )}
+
+      {writeEndpointsEnabled && regressionId > 0 && (
+        <UpsertTriageModal
+          regressionId={regressionId}
+          setHasBeenTriaged={setHasBeenTriaged}
+          buttonText="Triage"
+        />
       )}
 
       <h2>Regression Report</h2>

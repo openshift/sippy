@@ -1306,6 +1306,11 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		api.RespondWithJSON(http.StatusOK, w, triage)
+	case http.MethodOptions:
+		// TODO(sgoeddel): should we enable CORS? If so, we will have to do some special logic to allow localhost as well until gorilla is utilized
+		// w.Header().Set("Access-Control-Allow-Origin", "https://sippy-auth.dptools.openshift.org")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+		api.RespondWithJSON(http.StatusOK, w, nil)
 	default:
 		failureResponse(w, http.StatusBadRequest, "Unsupported method")
 	}

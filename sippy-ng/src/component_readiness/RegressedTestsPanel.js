@@ -2,23 +2,9 @@ import { CapabilitiesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
-import {
-  formColumnName,
-  getTriagesAPIUrl,
-  jiraUrlPrefix,
-  sortQueryParams,
-} from './CompReadyUtils'
-import {
-  FormHelperText,
-  MenuItem,
-  Popover,
-  Select,
-  Snackbar,
-  TextField,
-  Tooltip,
-} from '@mui/material'
+import { formColumnName, sortQueryParams } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
-import { makeStyles } from '@mui/styles'
+import { Popover, Snackbar, Tooltip } from '@mui/material'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
@@ -26,6 +12,7 @@ import CompSeverityIcon from './CompSeverityIcon'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
+import TriageFields from './TriageFields'
 
 // Construct a URL with all existing filters plus testId, environment, and testName.
 // This is the url used when you click inside a TableCell on page4 on the right.
@@ -63,26 +50,11 @@ function generateTestReport(
   return sortQueryParams(retUrl)
 }
 
-const useStyles = makeStyles({
-  triageForm: {
-    display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    padding: '10px 0',
-  },
-  validationErrors: {
-    color: 'red',
-  },
-})
-
 export default function RegressedTestsPanel(props) {
   const { filterVals, regressedTests, setTriageEntryCreated } = props
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
-
-  const classes = useStyles()
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -104,90 +76,29 @@ export default function RegressedTestsPanel(props) {
     description: '',
     ids: [],
   })
-  const [triageValidationErrors, setTriageValidationErrors] = React.useState([])
+  const handleTriageFormCompletion = () => {
+    setTriageEntryData({
+      url: '',
+      type: 'type',
+      description: '',
+      ids: [],
+    })
+    setTriaging(false)
+    setTriageEntryCreated(true)
+  }
 
-  const handleTriageChange = (e) => {
-    const { name, value, checked } = e.target
-
-    // The checkboxes require special handling to keep in sync
-    if (name === 'triage-test-id') {
-      if (checked) {
-        setTriageEntryData((prevData) => ({
-          ...prevData,
-          ids: [...prevData.ids, value],
-        }))
-      } else {
-        setTriageEntryData((prevData) => ({
-          ...prevData,
-          ids: prevData.ids.filter((id) => id !== value),
-        }))
-      }
+  const handleTriageTestIdChange = (e) => {
+    const { value, checked } = e.target
+    if (checked) {
+      setTriageEntryData((prevData) => ({
+        ...prevData,
+        ids: [...prevData.ids, value],
+      }))
     } else {
       setTriageEntryData((prevData) => ({
         ...prevData,
-        [name]: value,
+        ids: prevData.ids.filter((id) => id !== value),
       }))
-    }
-  }
-
-  const handleTriageEntrySubmit = () => {
-    const validationErrors = []
-    if (triageEntryData.type === 'type') {
-      validationErrors.push('invalid type, please make a selection')
-    }
-    if (!triageEntryData.url.startsWith(jiraUrlPrefix)) {
-      validationErrors.push('invalid url, should begin with ' + jiraUrlPrefix)
-    }
-    if (triageEntryData.description.length < 1) {
-      validationErrors.push('invalid description, cannot be blank')
-    }
-    if (triageEntryData.ids.length < 1) {
-      validationErrors.push('no tests selected, please select at least one')
-    }
-    setTriageValidationErrors(validationErrors)
-
-    if (validationErrors.length === 0) {
-      const data = {
-        url: triageEntryData.url,
-        type: triageEntryData.type,
-        description: triageEntryData.description,
-        regressions: triageEntryData.ids.map((id) => {
-          return { id: Number(id) }
-        }),
-      }
-
-      fetch(getTriagesAPIUrl(), {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }).then((response) => {
-        if (!response.ok) {
-          response.json().then((data) => {
-            let errorMessage = 'invalid response returned from server'
-            if (data?.code) {
-              errorMessage =
-                'error creating triage entry: ' +
-                data.code +
-                ': ' +
-                data.message
-            }
-            console.error(errorMessage)
-            setAlertText(errorMessage)
-            setAlertSeverity('error')
-          })
-          return
-        }
-
-        setTriageEntryCreated(true)
-        setAlertText('successfully created triage entry')
-        setAlertSeverity('success')
-        setTriaging(false)
-        setTriageEntryData({
-          url: '',
-          type: 'type',
-          description: '',
-          ids: [],
-        })
-      })
     }
   }
 
@@ -200,14 +111,6 @@ export default function RegressedTestsPanel(props) {
     setAlertText('')
     setAlertSeverity('')
   }
-
-  const triageTypeOptions = [
-    'type',
-    'ci-infra',
-    'product-infra',
-    'product',
-    'test',
-  ]
 
   // define table columns
   const columns = [
@@ -229,7 +132,7 @@ export default function RegressedTestsPanel(props) {
                 type="checkbox"
                 name="triage-test-id"
                 value={param.value}
-                onChange={handleTriageChange}
+                onChange={handleTriageTestIdChange}
                 checked={triageEntryData.ids.includes(param.value)}
                 disabled={param.value === '0'}
               />
@@ -412,55 +315,20 @@ export default function RegressedTestsPanel(props) {
           },
         }}
       />
-      {triaging ? (
-        <div className={classes.triageForm}>
-          <TextField
-            name="url"
-            label="Jira URL"
-            value={triageEntryData.url}
-            onChange={handleTriageChange}
-          />
-          <TextField
-            name="description"
-            label="Description"
-            value={triageEntryData.description}
-            onChange={handleTriageChange}
-          />
-          <Select
-            name="type"
-            label="Type"
-            value={triageEntryData.type}
-            onChange={handleTriageChange}
-          >
-            {triageTypeOptions.map((option, index) => (
-              <MenuItem key={index} value={option}>
-                {option}
-              </MenuItem>
-            ))}
-          </Select>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleTriageEntrySubmit}
-          >
-            Create Entry
-          </Button>
-          {triageValidationErrors && (
-            <FormHelperText className={classes.validationErrors}>
-              {triageValidationErrors.map((text, index) => (
-                <span key={index}>
-                  {text}
-                  <br />
-                </span>
-              ))}
-            </FormHelperText>
-          )}
-        </div>
-      ) : null}
+      {triaging && (
+        <TriageFields
+          setAlertText={setAlertText}
+          setAlertSeverity={setAlertSeverity}
+          setTriageEntryData={setTriageEntryData}
+          triageEntryData={triageEntryData}
+          handleFormCompletion={handleTriageFormCompletion}
+        />
+      )}
       {triageEnabled ? (
         <Button
           variant="contained"
           color="secondary"
+          sx={'margin-top: 10px'}
           onClick={() => setTriaging(!triaging)}
         >
           {triaging ? 'Close' : 'Triage'}
