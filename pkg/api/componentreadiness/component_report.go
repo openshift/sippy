@@ -15,6 +15,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -769,11 +770,28 @@ func (c *ComponentReportGenerator) GetLastReportModifiedTime(ctx context.Context
 		}
 
 		c.ReportModified = lastModifiedTime
+		if c.dbc != nil {
+			var lastTriageUpdate time.Time
+
+			err := c.dbc.DB.
+				Model(&models.Triage{}).
+				Select("MAX(updated_time)").
+				Where("release = ?", c.ReqOptions.SampleRelease.Release).
+				Scan(&lastTriageUpdate).Error
+			if err != nil {
+				log.WithError(err).Warn("Error getting lastTriageUpdate")
+			}
+			if lastTriageUpdate.After(*c.ReportModified) {
+				c.ReportModified = &lastTriageUpdate
+			}
+
+		}
 	}
 
 	return c.ReportModified
 }
 
+// TODO: remove once we're on new triage fully
 type triagedIncidentsModifiedTimeGenerator struct {
 	client                *bqcachedclient.Client
 	cacheOption           cache.RequestOptions
@@ -1482,12 +1500,9 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 			}
 			// if it was significant without the adjustment use
 			// ExtremeTriagedRegression or SignificantTriagedRegression
-			/* tODO restore:
 			if wasSignificant {
 				status = getRegressionStatus(basisPassPercentage, initialPassPercentage, true)
 			}
-
-			*/
 		}
 
 		if testStats.SampleStats.Total() == 0 {
