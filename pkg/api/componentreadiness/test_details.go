@@ -311,6 +311,8 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 
 // internalGenerateTestDetailsReport handles the report generation for the lowest level test report including
 // breakdown by job as well as overall stats.
+//
+//nolint:gocyclo
 func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context.Context,
 	baseStatus map[string][]crtype.JobRunTestStatusRow,
 	baseRelease string,

@@ -9,6 +9,7 @@ import (
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRegressionTracker_PostAnalysis(t *testing.T) {
@@ -170,7 +171,8 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw.openRegressions = []*models.TestRegression{&tt.openRegression}
-			mw.PostAnalysis(testKey, &tt.testStats)
+			err := mw.PostAnalysis(testKey, &tt.testStats)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expectedExplanationsCount, len(tt.testStats.Explanations))
 			assert.Equal(t, tt.expectStatus, tt.testStats.ReportStatus)
 
