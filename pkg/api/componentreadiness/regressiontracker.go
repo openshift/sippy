@@ -90,10 +90,6 @@ func (prs *PostgresRegressionStore) UpdateRegression(reg *models.TestRegression)
 	return res.Error
 }
 
-func (prs *PostgresRegressionStore) CloseRegression(reg *models.TestRegression, closedAt time.Time) error {
-	return prs.UpdateRegression(reg)
-}
-
 func NewRegressionTracker(
 	bigqueryClient *sippybigquery.Client,
 	dbc *db.DB,
