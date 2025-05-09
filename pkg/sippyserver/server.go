@@ -1253,9 +1253,8 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		testID := param.SafeRead(req, "test")
-		release := param.SafeRead(req, "sampleRelease")
-		triages, err := componentreadiness.ListTriages(s.db, testID, release)
+		regressionID := param.SafeRead(req, "regressionId")
+		triages, err := componentreadiness.ListTriages(s.db, regressionID)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
