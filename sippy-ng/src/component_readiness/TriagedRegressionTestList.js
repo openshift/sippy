@@ -72,6 +72,26 @@ export default function TriagedRegressionTestList(props) {
         </Tooltip>
       ),
     },
+    {
+      field: 'last_failure',
+      headerName: 'Last Failure',
+      flex: 12,
+      valueGetter: (params) => {
+        if (!params.row.last_failure.Valid) {
+          return null
+        }
+        return new Date(params.row.last_failure.Time).getTime()
+      },
+      renderCell: (params) => {
+        if (!params.value) return ''
+        const lastFailureDate = new Date(params.value)
+        return (
+          <div className="last-failure">
+            {relativeTime(lastFailureDate, new Date())}
+          </div>
+        )
+      },
+    },
   ]
 
   return (
