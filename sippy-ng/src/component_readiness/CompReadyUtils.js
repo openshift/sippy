@@ -5,6 +5,10 @@ import { styled } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import blue from './blue.svg'
 import blue_missing_data from './none-blue.svg'
+import fix_failed from './fix_failed.svg'
+import fix_failed_accessible from './fix_failed_accessible.svg'
+import fixed_waiting from './fixed_waiting.svg'
+import fixed_waiting_accessible from './fixed_waiting_accessible.svg'
 import green from './green.svg'
 import green_half_data from './half.svg'
 import green_missing_data from './none.svg'
@@ -136,7 +140,7 @@ export function getStatusAndIcon(
 
   let statusStr = status + ': '
 
-  if (status >= 3) {
+  if (status >= 300) {
     statusStr =
       statusStr + 'SignificantImprovement detected (improved sample rate)'
     icon = (
@@ -148,7 +152,7 @@ export function getStatusAndIcon(
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status === 2) {
+  } else if (status === 200) {
     statusStr =
       statusStr + 'Missing Basis And Sample (basis and sample data missing)'
     let src = accessibilityMode ? blue_missing_data : green_missing_data
@@ -161,7 +165,7 @@ export function getStatusAndIcon(
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status === 1) {
+  } else if (status === 100) {
     statusStr = statusStr + 'Missing Basis (basis data missing)'
     let src = accessibilityMode ? half_blue : green_half_data
     icon = (
@@ -187,7 +191,7 @@ export function getStatusAndIcon(
         style={{ filter: `grayscale(${grayFactor}%)` }}
       />
     )
-  } else if (status === -1) {
+  } else if (status === -100) {
     statusStr = statusStr + 'Missing Sample (sample data missing)'
     let src = accessibilityMode ? half_blue : green_half_data
     icon = (
@@ -202,7 +206,11 @@ export function getStatusAndIcon(
         }}
       />
     )
-  } else if (status === -2) {
+  } else if (status === -150) {
+    statusStr = statusStr + 'Fixed (hopefully) regression detected'
+    let src = accessibilityMode ? fixed_waiting_accessible : fixed_waiting
+    icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
+  } else if (status === -200) {
     statusStr = statusStr + 'SignificantTriagedRegression detected'
     let src = accessibilityMode ? orange_triaged : red_triaged
     icon = (
@@ -213,7 +221,7 @@ export function getStatusAndIcon(
         alt="SignificantTriagedRegression"
       />
     )
-  } else if (status === -3) {
+  } else if (status === -300) {
     statusStr =
       statusStr + 'ExtremeTriagedRegression detected ( >15% pass rate change)'
     let src = accessibilityMode ? orange_3d_triaged : red_3d_triaged
@@ -225,19 +233,23 @@ export function getStatusAndIcon(
         alt="ExtremeTriagedRegression >15%"
       />
     )
-  } else if (status === -4) {
+  } else if (status === -400) {
     statusStr = statusStr + 'SignificantRegression detected'
     let src = accessibilityMode ? orange : red
     icon = (
       <img width="15px" height="15px" src={src} alt="SignificantRegression" />
     )
-  } else if (status <= -5) {
+  } else if (status === -500) {
     statusStr =
       statusStr + 'ExtremeRegression detected ( >15% pass rate change)'
     let src = accessibilityMode ? orange_3d : red_3d
     icon = (
       <img width="15px" height="15px" src={src} alt="ExtremeRegression >15%" />
     )
+  } else if (status === -1000) {
+    statusStr = statusStr + 'Failed fix detected'
+    let src = accessibilityMode ? fix_failed_accessible : fix_failed
+    icon = <img width="15px" height="15px" src={src} alt="Fixed regression" />
   }
 
   return [statusStr, icon]
@@ -579,10 +591,7 @@ export function mergeRegressionData(data, triageEntries) {
       const regressed = column.regressed_tests
       if (column.regressed_tests && regressed.length > 0) {
         regressed.forEach((r) => {
-          if (regressionIds.has(r.regression?.id)) {
-            r.effective_status = r.status + 2 //setting effective_status to status + 2, for a regressed test, derives the correct triaged version
-            r.explanations = [] //explanations are not relevant when we have a matching triage entry
-          } else {
+          if (!regressionIds.has(r.regression?.id)) {
             untriagedRegressedTests.push(r)
           }
         })

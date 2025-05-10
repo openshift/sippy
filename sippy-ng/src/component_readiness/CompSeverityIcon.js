@@ -35,7 +35,7 @@ export default function CompSeverityIcon(props) {
   }))(Badge)
   return (
     <div>
-      {status < -1 && count > 1 ? (
+      {status < -100 && count > 1 ? (
         <StyledBadge badgeContent={count} color="error">
           <Tooltip title={toolTip}>{icon}</Tooltip>
         </StyledBadge>

@@ -1670,7 +1670,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseSuccess:            14,
 			baseFlake:              1,
 			numberOfIgnoredSamples: 2,
-			expectedStatus:         -4,
+			expectedStatus:         -400,
 			expectedFischers:       thrift.Float64Ptr(0.4827586206896551),
 		},
 		{
@@ -1682,7 +1682,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseSuccess:            14,
 			baseFlake:              1,
 			numberOfIgnoredSamples: 2,
-			expectedStatus:         -2,
+			expectedStatus:         -200,
 			expectedFischers:       thrift.Float64Ptr(1),
 		},
 		{
@@ -1694,7 +1694,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseSuccess:            14,
 			baseFlake:              1,
 			numberOfIgnoredSamples: 0,
-			expectedStatus:         -4,
+			expectedStatus:         -400,
 			expectedFischers:       thrift.Float64Ptr(0.2413793103448262),
 		},
 		{
@@ -1706,7 +1706,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseSuccess:            14,
 			baseFlake:              1,
 			numberOfIgnoredSamples: 0,
-			expectedStatus:         -5,
+			expectedStatus:         -500,
 			expectedFischers:       thrift.Float64Ptr(6.446725037893782e-09),
 		},
 		{
@@ -1718,7 +1718,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseSuccess:            14,
 			baseFlake:              1,
 			numberOfIgnoredSamples: 15,
-			expectedStatus:         -3,
+			expectedStatus:         -300,
 			expectedFischers:       thrift.Float64Ptr(0),
 		},
 
@@ -1731,7 +1731,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseSuccess:            14,
 			baseFlake:              1,
 			numberOfIgnoredSamples: 10,
-			expectedStatus:         -3,
+			expectedStatus:         -300,
 			expectedFischers:       thrift.Float64Ptr(1),
 		},
 
@@ -1744,7 +1744,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseSuccess:            14,
 			baseFlake:              1,
 			numberOfIgnoredSamples: 9,
-			expectedStatus:         -5,
+			expectedStatus:         -500,
 			expectedFischers:       thrift.Float64Ptr(0.285714285714284),
 		},
 		{
@@ -1756,7 +1756,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseSuccess:            14,
 			baseFlake:              1,
 			numberOfIgnoredSamples: 9,
-			expectedStatus:         -5,
+			expectedStatus:         -500,
 			expectedFischers:       thrift.Float64Ptr(0.285714285714284),
 		},
 		{

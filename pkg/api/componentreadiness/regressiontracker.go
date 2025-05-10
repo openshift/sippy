@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -60,10 +61,7 @@ func (prs *PostgresRegressionStore) ListCurrentRegressionsForRelease(release str
 
 func (prs *PostgresRegressionStore) OpenRegression(view crtype.View, newRegressedTest crtype.ReportTestSummary) (*models.TestRegression, error) {
 
-	variants := []string{}
-	for k, v := range newRegressedTest.Variants {
-		variants = append(variants, fmt.Sprintf("%s:%s", k, v))
-	}
+	variants := utils.VariantsMapToStringSlice(newRegressedTest.Variants)
 	log.Infof("variants: %s", strings.Join(variants, ","))
 
 	newRegression := &models.TestRegression{

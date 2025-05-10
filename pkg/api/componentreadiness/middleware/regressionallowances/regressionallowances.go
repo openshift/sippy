@@ -49,6 +49,10 @@ func (r *RegressionAllowances) PreAnalysis(testKey crtype.ReportTestIdentificati
 	return nil
 }
 
+func (r *RegressionAllowances) PostAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+	return nil
+}
+
 // matchBaseRegression returns a testStatus that reflects the allowances specified
 // in an intentional regression that accepted a lower threshold but maintains the higher
 // threshold when used as a basis.

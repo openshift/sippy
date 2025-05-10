@@ -62,14 +62,12 @@ export default function RegressedTestsModal(props) {
             onChange={handleTabChange}
             aria-label="Regressed Tests Tabs"
           >
-            <Tab label="Untriaged Regressions" {...tabProps(0)} />
-            <Tab label="Regressed Tests" {...tabProps(1)} />
+            <Tab label="Untriaged" {...tabProps(0)} />
+            {triageEntriesExist && <Tab label="Triaged" {...tabProps(1)} />}
             {!triageEntriesExist && (
-              <Tab label="Triaged Incidents" {...tabProps(2)} />
+              <Tab label="Triaged Incidents" {...tabProps(1)} />
             )}
-            {triageEntriesExist && (
-              <Tab label="Triaged Tests" {...tabProps(2)} />
-            )}
+            <Tab label="All" {...tabProps(2)} />
           </Tabs>
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={0}>
             <RegressedTestsPanel
@@ -78,25 +76,25 @@ export default function RegressedTestsModal(props) {
               filterVals={props.filterVals}
             />
           </RegressedTestsTabPanel>
-          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={1}>
-            <RegressedTestsPanel
-              regressedTests={props.allRegressedTests}
-              setTriageEntryCreated={props.setTriageEntryCreated}
-              filterVals={props.filterVals}
-            />
-          </RegressedTestsTabPanel>
           {!triageEntriesExist && (
-            <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
+            <RegressedTestsTabPanel activeIndex={activeTabIndex} index={1}>
               <TriagedIncidentsPanel
                 triagedIncidents={props.triagedIncidents}
               />
             </RegressedTestsTabPanel>
           )}
           {triageEntriesExist && (
-            <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
+            <RegressedTestsTabPanel activeIndex={activeTabIndex} index={1}>
               <TriagedTestsPanel triageEntries={props.triageEntries} />
             </RegressedTestsTabPanel>
           )}
+          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
+            <RegressedTestsPanel
+              regressedTests={props.allRegressedTests}
+              setTriageEntryCreated={props.setTriageEntryCreated}
+              filterVals={props.filterVals}
+            />
+          </RegressedTestsTabPanel>
           <Button
             style={{ marginTop: 20, marginBottom: 20, marginLeft: 20 }}
             variant="contained"
