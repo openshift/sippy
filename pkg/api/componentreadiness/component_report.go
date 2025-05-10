@@ -778,7 +778,7 @@ func (c *ComponentReportGenerator) GetLastReportModifiedTime(ctx context.Context
 				Select("MAX(updated_at)").
 				Scan(&lastTriageUpdate).Error
 			if err != nil {
-				log.WithError(err).Fatal("Error getting lastTriageUpdate")
+				log.WithError(err).Warn("Error getting lastTriageUpdate, can happen when there are no triages")
 			}
 			if lastTriageUpdate.After(*c.ReportModified) {
 				c.ReportModified = &lastTriageUpdate
