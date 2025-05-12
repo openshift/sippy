@@ -52,7 +52,7 @@ func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitG
 func (r *RegressionTracker) internalQuery(errCh chan error) {
 	// Load all known regressions for this release:
 	var err error
-	r.openRegressions, err = query.ListRegressions(r.dbc, r.reqOptions.SampleRelease.Release)
+	r.openRegressions, err = query.ListOpenRegressions(r.dbc, r.reqOptions.SampleRelease.Release)
 	if err != nil {
 		errCh <- err
 		return

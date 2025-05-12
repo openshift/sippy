@@ -29,7 +29,7 @@ func TriagesForRegressionID(dbc *db.DB, regressionID string) ([]models.Triage, e
 	return triages, res.Error
 }
 
-func ListRegressions(dbc *db.DB, release string) ([]*models.TestRegression, error) {
+func ListOpenRegressions(dbc *db.DB, release string) ([]*models.TestRegression, error) {
 	var openRegressions []*models.TestRegression
 	res := dbc.DB.
 		Model(&models.TestRegression{}).
