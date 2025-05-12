@@ -15,20 +15,6 @@ func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	return triages, res.Error
 }
 
-func TriagesForRegressionID(dbc *db.DB, regressionID string) ([]models.Triage, error) {
-	var triages []models.Triage
-	res := dbc.DB.
-		Joins("JOIN triage_regressions trr ON trr.triage_id = triages.id").
-		Where("trr.test_regression_id = ?", regressionID).
-		Preload("Bug").
-		Preload("Regressions").
-		Find(&triages)
-	if res.Error != nil {
-		log.WithError(res.Error).Error("error finding triages")
-	}
-	return triages, res.Error
-}
-
 func ListOpenRegressions(dbc *db.DB, release string) ([]*models.TestRegression, error) {
 	var openRegressions []*models.TestRegression
 	res := dbc.DB.

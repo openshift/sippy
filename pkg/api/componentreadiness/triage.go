@@ -22,14 +22,10 @@ func GetTriage(dbc *db.DB, id int) (models.Triage, error) {
 	return existingTriage, res.Error
 }
 
-func ListTriages(dbc *db.DB, regressionID string) ([]models.Triage, error) {
+func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	var triages []models.Triage
 	var err error
-	if regressionID != "" {
-		triages, err = query.TriagesForRegressionID(dbc, regressionID)
-	} else {
-		triages, err = query.ListTriages(dbc)
-	}
+	triages, err = query.ListTriages(dbc)
 	for i := range triages {
 		injectHATEOASLinks(&triages[i])
 	}

@@ -14,7 +14,6 @@ import {
   getColumns,
   getStatusAndIcon,
   getTestDetailsAPIUrl,
-  getTriagesAPIUrl,
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
@@ -167,7 +166,6 @@ export default function CompReadyTestReport(props) {
   useEffect(() => {
     setIsLoaded(false)
     setHasBeenTriaged(false)
-    const localDBEnabled = capabilitiesContext.includes('local_db')
 
     // fetch the test_details data followed by any triage records that match the regressionId (if found)
     fetch(testDetailsApiCall, { signal: abortController.signal })
@@ -194,31 +192,11 @@ export default function CompReadyTestReport(props) {
           setData(noDataTable)
         } else {
           setData(json)
-
-          if (json.analyses[0].regression) {
-            const regId = json.analyses[0].regression.id
-            setRegressionId(regId)
-            return regId
+          const regression = json.analyses[0].regression
+          if (regression) {
+            setRegressionId(regression.id)
+            setTriageEntries(regression.triages)
           }
-        }
-        return -1 // no regressionId found for the test
-      })
-      .then((regId) => {
-        if (regId >= 0 && localDBEnabled) {
-          const triagesApiCall = getTriagesAPIUrl() + '?regressionId=' + regId
-          fetch(triagesApiCall)
-            .then((response) => {
-              if (response.status !== 200) {
-                setFetchError(
-                  `API call failed ${triagesApiCall} Returned: ${response.status}`
-                )
-                return []
-              }
-              return response.json()
-            })
-            .then((triages) => {
-              setTriageEntries(triages)
-            })
         }
       })
       .catch((error) => {

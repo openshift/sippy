@@ -52,7 +52,6 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"samplePROrg":      nameRegexp,
 	"samplePRRepo":     nameRegexp,
 	"samplePRNumber":   uintRegexp,
-	"regressionId":     uintRegexp,
 	// jobartifacts params
 	"prowJobRuns":        regexp.MustCompile(`^\d+(,\d+)*$`), // comma-separated integers
 	"pathGlob":           nonEmptyRegex,                      // a glob can be anything
