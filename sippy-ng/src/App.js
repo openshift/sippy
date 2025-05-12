@@ -9,7 +9,7 @@ import {
   Tooltip,
 } from '@mui/material'
 import { cyan, green, orange, red } from '@mui/material/colors'
-import { DarkMode, LightMode } from '@mui/icons-material'
+import { DarkMode, LightMode, ToggleOff, ToggleOn } from '@mui/icons-material'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
   findFirstNonGARelease,
@@ -162,7 +162,10 @@ export default function App(props) {
   const classes = useStyles()
   const theme = useTheme()
 
-  const [cookies, setCookie] = useCookies(['sippyColorMode'])
+  const [cookies, setCookie] = useCookies([
+    'sippyColorMode',
+    'testTableDBSource',
+  ])
   const colorModePreference = cookies['sippyColorMode']
   const systemPrefersDark = window.matchMedia(
     '(prefers-color-scheme: dark)'
@@ -186,6 +189,27 @@ export default function App(props) {
             expires: new Date('3000-12-31'),
           })
           return newMode
+        })
+      },
+    }),
+    [setCookie]
+  )
+
+  const testTableDBSourcePreference = cookies['testTableDBSource']
+  const [testTableDBSource, setTestTableDBSource] = React.useState(
+    testTableDBSourcePreference
+  )
+  const testTableDBSourceToggle = React.useMemo(
+    () => ({
+      toggleTestTableDBSource: () => {
+        setTestTableDBSource((prevSource) => {
+          const newSource = prevSource === 'bigquery' ? 'postgres' : 'bigquery'
+          setCookie('testTableDBSource', newSource, {
+            path: '/',
+            sameSite: 'Strict',
+            expires: new Date('3000-12-31'),
+          })
+          return newSource
         })
       },
     }),
@@ -391,6 +415,27 @@ export default function App(props) {
                             </IconButton>
                           </Tooltip>
                           <AccessibilityToggle />
+                          <Tooltip
+                            title={
+                              testTableDBSource === 'bigquery'
+                                ? 'BigQuery as test table DB source'
+                                : 'Postgres as test table DB source'
+                            }
+                          >
+                            <IconButton
+                              sx={{ ml: 1 }}
+                              onClick={
+                                testTableDBSourceToggle.toggleTestTableDBSource
+                              }
+                              color="inherit"
+                            >
+                              {testTableDBSource === 'bigquery' ? (
+                                <ToggleOff />
+                              ) : (
+                                <ToggleOn />
+                              )}
+                            </IconButton>
+                          </Tooltip>
                           <IconButton onClick={handleDrawerClose} size="large">
                             {theme.direction === 'ltr' ? (
                               <ChevronLeftIcon />

@@ -25,6 +25,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { StyledDataGrid } from '../datagrid/StyledDataGrid'
+import { useCookies } from 'react-cookie'
 import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -83,6 +84,9 @@ function TestTable(props) {
     'pageSize',
     NumberParam
   )
+
+  const [cookies, setCookie] = useCookies(['testTableDBSource'])
+  const testTableDBSource = cookies['testTableDBSource']
 
   const views = {
     Working: {
@@ -806,12 +810,12 @@ function TestTable(props) {
 
     queryString += '&collapse=' + safeEncodeURIComponent(props.collapse)
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/tests?release=' +
-        props.release +
-        queryString
-    )
+    let testAPI = '/api/tests?release='
+    if (testTableDBSource === 'bigquery') {
+      testAPI = '/api/tests/v2?release='
+    }
+
+    fetch(process.env.REACT_APP_API_URL + testAPI + props.release + queryString)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)
