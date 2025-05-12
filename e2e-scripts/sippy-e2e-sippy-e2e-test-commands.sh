@@ -112,12 +112,24 @@ ${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server.log
 
 echo "Setup services and port forwarding for the sippy api server ..."
 
-# Create the Kubernetes service for the sippy-server pod
-# Setup port forward for port 18080 to get to the sippy-server pod
-${KUBECTL_CMD} -n sippy-e2e expose pod sippy-server
-${KUBECTL_CMD} -n sippy-e2e port-forward pod/sippy-server 8080:8080 &
-SIPPY_API_PORT=8080
+# Random port between 18000 and 18500 so we don't collide with other test jobs
+SIPPY_API_PORT=$((RANDOM % 501 + 18000))
 export SIPPY_API_PORT
+
+# Create the Kubernetes service for the sippy-server pod
+# Setup port forward for random port to get to the sippy-server pod
+${KUBECTL_CMD} -n sippy-e2e expose pod sippy-server
+${KUBECTL_CMD} -n sippy-e2e port-forward pod/sippy-server ${SIPPY_API_PORT}:8080 &
+
+# Random port for postgres as well, between 18500 and 19000
+# Direct postgres access is used for some e2e test to seed data and cleanup things we don't expose on the api,
+# and to test gorm mappings.
+SIPPY_PSQL_PORT=$((RANDOM % 501 + 18500))
+export SIPPY_PSQL_PORT
+export SIPPY_E2E_DSN="postgresql://postgres:password@localhost:${SIPPY_PSQL_PORT}/postgres"
+echo $SIPPY_E2E_DSN
+${KUBECTL_CMD} -n sippy-e2e expose pod postg1
+${KUBECTL_CMD} -n sippy-e2e port-forward pod/postg1 ${SIPPY_PSQL_PORT}:5432 &
 
 ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
