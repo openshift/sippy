@@ -28,3 +28,17 @@ func TriagesForRegressionID(dbc *db.DB, regressionID string) ([]models.Triage, e
 	}
 	return triages, res.Error
 }
+
+func ListOpenRegressions(dbc *db.DB, release string) ([]*models.TestRegression, error) {
+	var openRegressions []*models.TestRegression
+	res := dbc.DB.
+		Model(&models.TestRegression{}).
+		Preload("Triages").
+		Where("test_regressions.release = ?", release).
+		Where("test_regressions.closed IS NULL").
+		Find(&openRegressions)
+	if res.Error != nil {
+		log.WithError(res.Error).Error("error listing all regressions")
+	}
+	return openRegressions, res.Error
+}

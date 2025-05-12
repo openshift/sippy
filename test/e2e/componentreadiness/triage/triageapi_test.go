@@ -219,6 +219,25 @@ func Test_TriageRawDB(t *testing.T) {
 		require.NoError(t, res.Error)
 		assert.Equal(t, 1, len(triage1.Regressions))
 
+		// Ensure loading a regression can load the triage records for it:
+		var lookupRegression models.TestRegression
+		res = dbc.DB.First(&lookupRegression, testRegression.ID).Preload("Triages")
+		require.NoError(t, res.Error)
+		assert.Equal(t, 1, len(testRegression.Triages))
+
+		openRegressions := make([]*models.TestRegression, 0)
+
+		res = dbc.DB.
+			Model(&models.TestRegression{}).
+			Preload("Triages").
+			Where("test_regressions.release = ?", view.SampleRelease.Release).
+			Where("test_regressions.id = ?", testRegression.ID).
+			Where("test_regressions.closed IS NULL").
+			Find(&openRegressions)
+		require.NoError(t, res.Error)
+		assert.Equal(t, 1, len(openRegressions))
+		assert.Equal(t, 1, len(openRegressions[0].Triages))
+
 		// Make a second Triage for the same regression:
 		triage2 := models.Triage{
 			URL: "http://myjira2",
@@ -244,6 +263,9 @@ func Test_TriageRawDB(t *testing.T) {
 		res = dbc.DB.First(&triage1, triage1.ID)
 		require.Nil(t, res.Error)
 		assert.Equal(t, 0, len(triage1.Regressions))
+		// Make sure we didn't wipe out the regression itself:
+		res = dbc.DB.First(&lookupRegression, testRegression.ID)
+		require.NoError(t, res.Error)
 	})
 
 	t.Run("test Triage model Bug relationship", func(t *testing.T) {

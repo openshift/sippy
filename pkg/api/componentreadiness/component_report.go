@@ -15,6 +15,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -769,11 +770,27 @@ func (c *ComponentReportGenerator) GetLastReportModifiedTime(ctx context.Context
 		}
 
 		c.ReportModified = lastModifiedTime
+		if c.dbc != nil {
+			var lastTriageUpdate time.Time
+
+			err := c.dbc.DB.
+				Model(&models.Triage{}).
+				Select("MAX(updated_at)").
+				Scan(&lastTriageUpdate).Error
+			if err != nil {
+				log.WithError(err).Warn("Error getting lastTriageUpdate, can happen when there are no triages")
+			}
+			if lastTriageUpdate.After(*c.ReportModified) {
+				c.ReportModified = &lastTriageUpdate
+			}
+
+		}
 	}
 
 	return c.ReportModified
 }
 
+// TODO: remove once we're on new triage fully
 type triagedIncidentsModifiedTimeGenerator struct {
 	client                *bqcachedclient.Client
 	cacheOption           cache.RequestOptions
@@ -1117,6 +1134,15 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				testStats.LastFailure = &sampleStats.LastFailure
 			}
 
+			// Give middleware their chance to adjust the result
+			for _, mw := range c.middlewares {
+				err = mw.PostAnalysis(testKey, &testStats)
+				if err != nil {
+					return crtype.ComponentReport{}, err
+				}
+			}
+
+			// TODO: remove when we're fully transitioned to new triage
 			if testStats.IsTriaged() {
 				// we are within the triage range
 				// do we want to show the triage icon or flip reportStatus
@@ -1178,6 +1204,14 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			activeProductRegression,
 			resolvedIssueCompensation,
 		)
+
+		// Give middleware their chance to adjust the result
+		for _, mw := range c.middlewares {
+			err = mw.PostAnalysis(testID, &testStats)
+			if err != nil {
+				return crtype.ComponentReport{}, err
+			}
+		}
 
 		if testStats.IsTriaged() {
 			// we are within the triage range
@@ -1363,7 +1397,7 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 		testStats.RequiredConfidence = c.ReqOptions.AdvancedOption.Confidence
 	}
 
-	// TODO: move to triage middleware Analyze eventually
+	// TODO: delete once we move to new triage, we may no longer be in the business of subtracting job run counts
 	// preserve the initial sampleTotal, so we can check
 	// to see if numberOfIgnoredSampleJobRuns impacts the status
 	sampleTotal := testStats.SampleStats.SuccessCount + testStats.SampleStats.FailureCount + testStats.SampleStats.FlakeCount

@@ -43,6 +43,12 @@ type Triage struct {
 	// any regression, but this would be fine...
 	// If we could establish this, it may mean less data duplication.
 	Regressions []TestRegression `json:"regressions" gorm:"constraint:OnDelete:CASCADE;many2many:triage_regressions;"`
+
+	// Resolution is an important field presently set by a user indicating a claimed time this issue was resolved,
+	// and thus all associated regressions should be fixed.
+	// Setting this will immediately change the regressions icon to one indicate the issue is believed to
+	// be fixed. If we see failures beyond the resolved time, you will see another icon to highlight this situation.
+	Resolved sql.NullTime `json:"resolved"`
 }
 
 type TriageType string
@@ -83,7 +89,7 @@ type TestRegression struct {
 	Variants pq.StringArray `json:"variants" gorm:"not null;type:text[]"`
 	Opened   time.Time      `json:"opened" gorm:"not null"`
 	Closed   sql.NullTime   `json:"closed"`
-	Triages  []Triage       `json:"-" gorm:"many2many:triage_regressions;"`
+	Triages  []Triage       `json:"triages" gorm:"many2many:triage_regressions;"`
 	// LastFailure is the last failure in the sample we saw while this regression was open.
 	LastFailure sql.NullTime `json:"last_failure"`
 	// MaxFailures is the maximum number of failures we found in the reporting window while this regression was open.

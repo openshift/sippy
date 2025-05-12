@@ -360,24 +360,28 @@ type JobRunTestReportStatus struct {
 }
 
 const (
+	// FailedFixedRegression indicates someone has claimed the bug is fix, but we see failures past the resolution time
+	FailedFixedRegression Status = -1000
 	// ExtremeRegression shows regression with >15% pass rate change
-	ExtremeRegression Status = -5
+	ExtremeRegression Status = -500
 	// SignificantRegression shows significant regression
-	SignificantRegression Status = -4
+	SignificantRegression Status = -400
 	// ExtremeTriagedRegression shows an ExtremeRegression that clears when Triaged incidents are factored in
-	ExtremeTriagedRegression Status = -3
+	ExtremeTriagedRegression Status = -300
 	// SignificantTriagedRegression shows a SignificantRegression that clears when Triaged incidents are factored in
-	SignificantTriagedRegression Status = -2
+	SignificantTriagedRegression Status = -200
+	// FixedRegression indicates someone has claimed the bug is now fixed, but has not yet rolled off the sample window
+	FixedRegression Status = -150
 	// MissingSample indicates sample data missing
-	MissingSample Status = -1
+	MissingSample Status = -100
 	// NotSignificant indicates no significant difference
 	NotSignificant Status = 0
 	// MissingBasis indicates basis data missing
-	MissingBasis Status = 1
+	MissingBasis Status = 100
 	// MissingBasisAndSample indicates basis and sample data missing
-	MissingBasisAndSample Status = 2
+	MissingBasisAndSample Status = 200
 	// SignificantImprovement indicates improved sample rate
-	SignificantImprovement Status = 3
+	SignificantImprovement Status = 300
 )
 
 func StringForStatus(s Status) string {
@@ -392,6 +396,10 @@ func StringForStatus(s Status) string {
 		return "SignificantTriaged"
 	case MissingSample:
 		return "MissingSample"
+	case FixedRegression:
+		return "Fixed"
+	case FailedFixedRegression:
+		return "FailedFixed"
 	}
 	return "Unknown"
 }

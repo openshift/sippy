@@ -80,7 +80,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	// TODO: this belongs in the releasefallback middleware, but our goal to return and display multiple
 	// reports means the PreAnalysis state cannot be used for test details. The second call to
 	// internalGenerateTestDetailsReport does not extract easily off "c". We cannot pass a ref to "c" due
-	// to a circular dep. This is an unfortunate compormise in the middleware goal I didn't have time to unwind.
+	// to a circular dep. This is an unfortunate compromise in the middleware goal I didn't have time to unwind.
 	// For now, the middleware does the querying for test details, and passes the override status out
 	// by adding it to componentJobRunTestReportStatus.BaseOverrideStatus.
 	var baseOverrideReport *crtype.ReportTestDetails
@@ -311,6 +311,8 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 
 // internalGenerateTestDetailsReport handles the report generation for the lowest level test report including
 // breakdown by job as well as overall stats.
+//
+//nolint:gocyclo
 func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context.Context,
 	baseStatus map[string][]crtype.JobRunTestStatusRow,
 	baseRelease string,
@@ -529,6 +531,14 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		activeProductRegression,
 		resolvedIssueCompensation,
 	)
+
+	for _, mw := range c.middlewares {
+		err := mw.PostAnalysis(testKey, &testStats)
+		if err != nil {
+			logrus.WithError(err).Error("Failure from middleware PostAnalysis")
+		}
+	}
+
 	report.ReportTestStats = testStats
 	result.Analyses = []crtype.TestDetailsAnalysis{report}
 

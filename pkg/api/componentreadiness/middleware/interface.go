@@ -26,6 +26,11 @@ type Middleware interface {
 	// NOTE: due to differences in test details reports, this function is not used there.
 	PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error
 
+	// PostAnalysis gives middleware opportunity to adjust test analysis data after running the core of the analysis.
+	// Implementations can alter Status code and add explanations for what they did.
+	// Used in both ComponentReport and TestDetails.
+	PostAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error
+
 	// PreTestDetailsAnalysis gives middleware the opportunity to adjust inputs to the report status
 	// prior to analysis.
 	PreTestDetailsAnalysis(status *crtype.JobRunTestReportStatus) error
