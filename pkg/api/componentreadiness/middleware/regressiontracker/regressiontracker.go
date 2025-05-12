@@ -110,7 +110,7 @@ func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification
 				// aka liar liar pants on fire
 				testStats.ReportStatus = crtype.FailedFixedRegression
 				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
-					"Regression is triaged and believed fixed as of %s but failures have been observed as late as %s.",
+					"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
 					lastResolution.Format(time.RFC3339), testStats.LastFailure.Format(time.RFC3339)))
 			case allTriagesResolved:
 				// claimed fixed, no failures since resolution date
@@ -125,7 +125,7 @@ func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification
 			case testStats.ReportStatus == crtype.ExtremeRegression:
 				testStats.ReportStatus = crtype.ExtremeTriagedRegression
 				testStats.Explanations = append(testStats.Explanations,
-					"Regression has been triaged to one or more bugs.")
+					"Extreme regression has been triaged to one or more bugs.")
 			}
 		}
 	}

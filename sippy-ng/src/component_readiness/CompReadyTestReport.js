@@ -288,10 +288,6 @@ export default function CompReadyTestReport(props) {
     )
   }
 
-  //TODO(sgoeddel): this logic will eventually happen in the backend, for now,
-  // this is a quick and dirty way to correctly compute the triaged status when applicable:
-  //   If there are triage entries, and the status isn't already triaged
-  //   (which it could be due to existing incidents during this interim period) increment by 2
   let status = data.analyses[0].status
   const [statusStr, assessmentIcon] = getStatusAndIcon(
     status,
