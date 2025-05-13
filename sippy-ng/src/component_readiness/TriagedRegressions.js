@@ -15,10 +15,15 @@ export default function TriagedRegressions(props) {
       if (event[0] === entry.id) selectedTriagedEntry = entry
     })
 
-    props.eventEmitter.emit(
-      'triagedEntrySelectionChanged',
-      selectedTriagedEntry.regressions
-    )
+    if (
+      selectedTriagedEntry.regressions !== 'undefined' &&
+      selectedTriagedEntry.regressions.length > 0
+    ) {
+      props.eventEmitter.emit(
+        'triagedEntrySelectionChanged',
+        selectedTriagedEntry.regressions
+      )
+    }
   }
 
   const columns = [
