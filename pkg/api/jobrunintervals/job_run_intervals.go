@@ -22,9 +22,9 @@ import (
 // 1) using a GCS path that was calculated and passed in (we can retrieve intervals immediately)
 // 2) looking up the url given the jobRunID and extracting the prow job name (we need to wait until the sippyDB is populated)
 // If the GCS path could not be calculated, it will be empty.
-func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath string, intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
+func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath, intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
 
-	jobUrl := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/%s/%s", gcsBucket, gcsPath)
+	jobRunURL := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/%s/%s", gcsBucket, gcsPath)
 
 	jobRun, err := api.FetchJobRun(dbc, jobRunID, false, nil, logger)
 	if err != nil {
@@ -34,13 +34,13 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 			return nil, errors.New("no GCS path given and no job run found in DB")
 		}
 	} else {
-		jobUrl = jobRun.URL
+		jobRunURL = jobRun.URL
 		gcsBucket = jobRun.GCSBucket // in theory jobs might someday come from more than one bucket
-		if _, path, found := strings.Cut(jobUrl, "/"+gcsBucket+"/"); found {
-			gcsPath = path
-		} else {
+		_, path, found := strings.Cut(jobRunURL, "/"+gcsBucket+"/")
+		if !found {
 			return nil, fmt.Errorf("job run URL %q does not contain bucket %q", jobRun.URL, gcsBucket)
 		}
+		gcsPath = path
 	}
 
 	gcsJobRun := gcs.NewGCSJobRun(gcsClient.Bucket(gcsBucket), gcsPath)
@@ -126,7 +126,7 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 	}
 
 	newIntervals.IntervalFilesAvailable = intervalFilesAvailable
-	newIntervals.JobRunURL = jobUrl
+	newIntervals.JobRunURL = jobRunURL
 
 	return &newIntervals, nil
 }
