@@ -24,6 +24,8 @@ import (
 // If the GCS path could not be calculated, it will be empty.
 func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath string, intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
 
+	jobUrl := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/%s/%s", gcsBucket, gcsPath)
+
 	jobRun, err := api.FetchJobRun(dbc, jobRunID, false, nil, logger)
 	if err != nil {
 		// some jobs are not in the DB, and usually we have bucket/path without looking them up
@@ -32,8 +34,9 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 			return nil, errors.New("no GCS path given and no job run found in DB")
 		}
 	} else {
+		jobUrl = jobRun.URL
 		gcsBucket = jobRun.GCSBucket // in theory jobs might someday come from more than one bucket
-		if _, path, found := strings.Cut(jobRun.URL, "/"+gcsBucket+"/"); found {
+		if _, path, found := strings.Cut(jobUrl, "/"+gcsBucket+"/"); found {
 			gcsPath = path
 		} else {
 			return nil, fmt.Errorf("job run URL %q does not contain bucket %q", jobRun.URL, gcsBucket)
@@ -123,6 +126,7 @@ func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsB
 	}
 
 	newIntervals.IntervalFilesAvailable = intervalFilesAvailable
+	newIntervals.JobRunURL = jobUrl
 
 	return &newIntervals, nil
 }

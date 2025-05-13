@@ -32,6 +32,7 @@ type EventInterval struct {
 type EventIntervalList struct {
 	Items                  []EventInterval `json:"items"`
 	IntervalFilesAvailable []string        `json:"intervalFilesAvailable"`
+	JobRunURL              string          `json:"jobRunURL"`
 }
 
 // LegacyEventInterval is the previous temporary schema we used before we completed the port to the new API.

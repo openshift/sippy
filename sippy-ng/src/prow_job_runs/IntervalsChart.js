@@ -10,6 +10,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Link,
   MenuItem,
   Select,
   TextField,
@@ -189,6 +190,7 @@ export default function IntervalsChart(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [eventIntervals, setEventIntervals] = React.useState([])
   const [filteredIntervals, setFilteredIntervals] = React.useState([])
+  const [jobRunUrl, setJobRunUrl] = React.useState('')
 
   // Interval colors will hold the colors calculated by invoking intervalColorizers functions
   // against each interval. Anything that matches will get added to this map and passed to the
@@ -275,6 +277,7 @@ export default function IntervalsChart(props) {
       })
       .then((json) => {
         if (json != null) {
+          setJobRunUrl(json.jobRunURL)
           // Process and filter our intervals
           let tmpIntervals = json.items
           mutateIntervals(tmpIntervals)
@@ -541,8 +544,14 @@ export default function IntervalsChart(props) {
   return (
     <Fragment>
       <p>
-        Loaded {eventIntervals.length} intervals from GCS, filtered down to{' '}
-        {filteredIntervals.length}.
+        Loaded {eventIntervals.length} intervals from{' '}
+        <Link
+          onClick={() => window.open(jobRunUrl)}
+          style={{ cursor: 'pointer' }}
+        >
+          GCS job run
+        </Link>
+        , filtered down to {filteredIntervals.length}.
       </p>
       <div className={classes.filterRow}>
         Categories:
