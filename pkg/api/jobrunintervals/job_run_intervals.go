@@ -21,8 +21,7 @@ import (
 // 1) using a GCS path that was calculated and passed in (we can retrieve intervals immediately)
 // 2) looking up the url given the jobRunID and extracting the prow job name (we need to wait until the sippyDB is populated)
 // If the GCS path could not be calculated, it will be empty.
-func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsPath string,
-	intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
+func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsPath string, intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
 
 	jobRun, err := api.FetchJobRun(dbc, jobRunID, false, nil, logger)
 	if err != nil {
