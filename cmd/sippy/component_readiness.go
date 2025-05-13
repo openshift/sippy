@@ -178,6 +178,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		&resources.Static,
 		dbc,
 		gcsClient,
+		f.GoogleCloudFlags.StorageBucket,
 		bigQueryClient,
 		nil,
 		cacheClient,

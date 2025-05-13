@@ -3,11 +3,12 @@ package jobrunintervals
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"regexp"
 	"strings"
 
 	"cloud.google.com/go/storage"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -21,15 +22,25 @@ import (
 // 1) using a GCS path that was calculated and passed in (we can retrieve intervals immediately)
 // 2) looking up the url given the jobRunID and extracting the prow job name (we need to wait until the sippyDB is populated)
 // If the GCS path could not be calculated, it will be empty.
-func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsPath string, intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
+func JobRunIntervals(gcsClient *storage.Client, dbc *db.DB, jobRunID int64, gcsBucket, gcsPath string, intervalFile string, logger *log.Entry) (*apitype.EventIntervalList, error) {
 
 	jobRun, err := api.FetchJobRun(dbc, jobRunID, false, nil, logger)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to fetch job run %d", jobRunID)
+		// some jobs are not in the DB, and usually we have bucket/path without looking them up
+		logger.WithError(err).Debugf("failed to fetch job run %d", jobRunID)
+		if gcsPath == "" {
+			return nil, errors.New("no GCS path given and no job run found in DB")
+		}
+	} else {
+		gcsBucket = jobRun.GCSBucket // in theory jobs might someday come from more than one bucket
+		if _, path, found := strings.Cut(jobRun.URL, "/"+gcsBucket+"/"); found {
+			gcsPath = path
+		} else {
+			return nil, fmt.Errorf("job run URL %q does not contain bucket %q", jobRun.URL, gcsBucket)
+		}
 	}
 
-	bkt := gcsClient.Bucket(jobRun.GCSBucket)
-	gcsJobRun := gcs.NewGCSJobRun(bkt, gcsPath)
+	gcsJobRun := gcs.NewGCSJobRun(gcsClient.Bucket(gcsBucket), gcsPath)
 	intervals := &apitype.EventIntervalList{}
 	intervalFiles, err := gcsJobRun.FindAllMatches([]*regexp.Regexp{gcs.GetIntervalFile()})
 	if err != nil {
