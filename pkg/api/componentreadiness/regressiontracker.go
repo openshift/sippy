@@ -72,7 +72,9 @@ func (prs *PostgresRegressionStore) OpenRegression(view crtype.View, newRegresse
 		Opened:      time.Now(),
 		Variants:    variants,
 		MaxFailures: newRegressedTest.SampleStats.FailureCount,
-		LastFailure: sql.NullTime{Valid: true, Time: *newRegressedTest.LastFailure},
+	}
+	if newRegressedTest.LastFailure != nil {
+		newRegression.LastFailure = sql.NullTime{Valid: true, Time: *newRegressedTest.LastFailure}
 	}
 	res := prs.dbc.DB.Create(newRegression)
 	if res.Error != nil {
