@@ -10,8 +10,12 @@ export default function TriagedRegressionTestList(props) {
     { field: 'component', sort: 'asc' },
   ])
 
-  const [triagedRegressions, setTriagedRegressions] = React.useState([])
-  const [showView, setShowView] = React.useState(false)
+  const [triagedRegressions, setTriagedRegressions] = React.useState(
+    props.regressions !== undefined ? props.regressions : []
+  )
+  const [showView, setShowView] = React.useState(
+    props.regressions !== undefined && props.regressions.length > 0
+  )
 
   const handleTriagedRegressionGroupSelectionChanged = (data) => {
     let displayView = false
@@ -21,10 +25,12 @@ export default function TriagedRegressionTestList(props) {
     setTriagedRegressions(data)
     setShowView(displayView)
   }
-  props.eventEmitter.on(
-    'triagedEntrySelectionChanged',
-    handleTriagedRegressionGroupSelectionChanged
-  )
+  if (props.eventEmitter !== undefined) {
+    props.eventEmitter.on(
+      'triagedEntrySelectionChanged',
+      handleTriagedRegressionGroupSelectionChanged
+    )
+  }
 
   const columns = [
     {
@@ -122,4 +128,6 @@ export default function TriagedRegressionTestList(props) {
 
 TriagedRegressionTestList.propTypes = {
   eventEmitter: PropTypes.object,
+  regressions: PropTypes.array,
+  showOnLoad: PropTypes.bool,
 }

@@ -322,6 +322,7 @@ export default function RegressedTestsPanel(props) {
           setTriageEntryData={setTriageEntryData}
           triageEntryData={triageEntryData}
           handleFormCompletion={handleTriageFormCompletion}
+          submitButtonText={'Create Entry'}
         />
       )}
       {triageEnabled ? (

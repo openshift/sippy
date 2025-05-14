@@ -347,7 +347,7 @@ Flakes: ${stats.flake_count}`
         <h2>{testName}</h2>
       </div>
       <Grid container>
-        <Grid>
+        <Grid item xs={12}>
           {triageEntries.length === 0 &&
             data.analyses[0].incidents &&
             data.analyses[0].incidents.length > 0 && (
@@ -372,8 +372,9 @@ Flakes: ${stats.flake_count}`
           {writeEndpointsEnabled && regressionId > 0 && (
             <UpsertTriageModal
               regressionId={regressionId}
-              setHasBeenTriaged={setHasBeenTriaged}
+              setComplete={setHasBeenTriaged}
               buttonText="Triage"
+              submissionDelay={2000}
             />
           )}
 
