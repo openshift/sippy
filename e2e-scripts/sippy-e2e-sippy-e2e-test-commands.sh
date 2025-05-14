@@ -135,4 +135,5 @@ ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
 ${KUBECTL_CMD} -n sippy-e2e delete secret regcred
 
-go test ./test/e2e/... -v
+# only 1 in parallel, some tests will clash if run at the same time
+go test ./test/e2e/... -v -p 1
