@@ -413,6 +413,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 	}{
 		{"-osd", "service-delivery"},
 		{"-rosa", "service-delivery"},
+		{"-openshift-online", "service-delivery"},
 		{"-telco5g", "cnf"},
 		{"-perfscale", "perfscale"},
 		{"-chaos-", "chaos"},
