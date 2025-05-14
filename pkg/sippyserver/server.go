@@ -299,6 +299,23 @@ func failureResponse(w http.ResponseWriter, code int, message string) {
 	})
 }
 
+// some standard error types
+const APIConfigError = "APIConfigError"
+const ParameterMissing = "ParameterMissing"
+const ParameterInvalid = "ParameterInvalid"
+
+func typedFailureResponse(w http.ResponseWriter, code int, errorType, errorParam, message string) {
+	response := map[string]interface{}{
+		"code":      code,
+		"errorType": errorType,
+		"message":   message,
+	}
+	if errorParam != "" {
+		response["errorParam"] = errorParam
+	}
+	api.RespondWithJSON(code, w, response)
+}
+
 func (s *Server) jsonCapabilitiesReport(w http.ResponseWriter, _ *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, s.capabilities)
 }
@@ -1342,7 +1359,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 // To prevent (accidental) DoS, the number of artifacts and matches returned are limited.
 func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
 	if s.gcsClient == nil {
-		failureResponse(w, http.StatusBadRequest, "server not configured for GCS, unable to use this API")
+		typedFailureResponse(w, http.StatusServiceUnavailable, APIConfigError, "", "server not configured for GCS, unable to use this API")
 		return
 	}
 
@@ -1354,57 +1371,84 @@ func (s *Server) queryJobArtifacts(w http.ResponseWriter, req *http.Request) {
 	q := &jobartifacts.JobArtifactQuery{
 		GcsBucket:      s.gcsClient.Bucket(util.GcsBucketRoot),
 		DbClient:       s.db,
+		Cache:          s.cache,
 		JobRunIDs:      []int64{},
 		ContentMatcher: contentMatcher,
 	}
 
-	jobRunIDStr := s.getParamOrFail(w, req, "prowJobRuns")
+	jobRunIDStr := param.SafeRead(req, "prowJobRuns")
 	if jobRunIDStr == "" {
+		typedFailureResponse(w, http.StatusBadRequest, ParameterMissing, "prowJobRuns",
+			"required parameter is missing")
 		return
 	}
 	for _, jobRunIDStr := range strings.Split(jobRunIDStr, ",") {
 		id, err := strconv.ParseInt(jobRunIDStr, 10, 64)
 		if err != nil {
-			failureResponse(w, http.StatusBadRequest,
+			typedFailureResponse(w, http.StatusBadRequest, ParameterInvalid, "prowJobRuns",
 				fmt.Sprintf("unable to parse prowJobRuns id %q: %s", id, err.Error()))
 			return
 		}
 		q.JobRunIDs = append(q.JobRunIDs, id)
 	}
 
-	q.PathGlob = s.getParamOrFail(w, req, "pathGlob")
+	q.PathGlob = param.SafeRead(req, "pathGlob")
 	if q.PathGlob == "" {
+		typedFailureResponse(w, http.StatusBadRequest, ParameterMissing, "pathGlob",
+			"required parameter is missing")
 		return
 	}
 
-	// The request is good, return as OK; even if we fail at getting results, just note errors
+	// The query looks good to run
 	result := s.jobartifactsManager.Query(req.Context(), q)
+	// But there's one user input we can't validate without querying: pathGlob. Look for that error and treat it as a bad request.
+	if len(result.JobRuns) == 0 && len(result.Errors) > 0 && strings.HasPrefix(result.Errors[0].Error, "googleapi: Error 400: Glob pattern") {
+		// the pattern is built differently per run, but a single failure should be representative for all
+		typedFailureResponse(w, http.StatusBadRequest, ParameterInvalid, "pathGlob", "invalid pattern according to "+result.Errors[0].Error)
+		return
+	}
+	// The request is good, return as OK; even if we fail at getting results, just note errors
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
 func contentMatcherFromParams(w http.ResponseWriter, req *http.Request) (contentMatcher jobartifacts.ContentMatcher, failed bool) {
 	if contains := param.SafeRead(req, "textContains"); contains != "" {
 		contextBefore, contextAfter, maxMatches, errs := jobartifacts.ParseLineMatcherParams(req)
-		if len(errs) > 0 {
-			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("error parsing params: %v", errs))
+		if contentMatcherParamFailure(w, errs) {
 			return nil, true
 		}
 		contentMatcher = jobartifacts.NewStringMatcher(contains, contextBefore, contextAfter, maxMatches)
 	} else if regexStr := param.SafeRead(req, "textRegex"); regexStr != "" {
 		re, err := regexp.Compile(regexStr)
 		if err != nil {
-			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("error parsing textRegex: %q", err))
+			typedFailureResponse(w, http.StatusBadRequest, ParameterInvalid, "textRegex", fmt.Sprintf("error parsing regex: %q", err))
 			return nil, true
 		}
 		contextBefore, contextAfter, maxMatches, errs := jobartifacts.ParseLineMatcherParams(req)
-		if len(errs) > 0 {
-			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("error parsing params: %v", errs))
+		if contentMatcherParamFailure(w, errs) {
 			return nil, true
 		}
 		contentMatcher = jobartifacts.NewRegexMatcher(re, contextBefore, contextAfter, maxMatches)
 	}
 
 	return // nil matcher means don't bother reading the artifacts, just return metadata without any matching
+}
+
+func contentMatcherParamFailure(w http.ResponseWriter, errs map[string]error) (failed bool) {
+	if len(errs) == 0 {
+		return false
+	}
+	response := map[string]interface{}{
+		"code":      http.StatusBadRequest,
+		"errorType": ParameterInvalid,
+	}
+	for name, err := range errs {
+		response[name] = err.Error()  // include all the errors if multiple
+		response["errorParam"] = name // but only one will be "the" error
+		response["message"] = err.Error()
+	}
+	api.RespondWithJSON(http.StatusBadRequest, w, response)
+	return true
 }
 
 func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.ResponseWriter, req *http.Request)) func(http.ResponseWriter, *http.Request) {

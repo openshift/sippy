@@ -73,6 +73,7 @@ func (m *Manager) Query(ctx context.Context, query *JobArtifactQuery) (result Qu
 	jobRunResponseChan := make(chan jobRunResponse) // for responses from the workers
 	remaining := sets.NewInt64(query.JobRunIDs...)  // keep track of responses still missing
 	finished := make(chan bool)                     // indicate we will not receive any more responses
+	result.IsFinal = true                           // even errors are "final"; only timeouts mean a retry could get more
 
 	// start a listener to wait for the responses and collect them; important to prepare
 	// the listener before dumping requests to the request channel, since that will block.
@@ -90,6 +91,9 @@ func (m *Manager) Query(ctx context.Context, query *JobArtifactQuery) (result Qu
 				})
 			} else {
 				result.JobRuns = append(result.JobRuns, response.response)
+				if !response.response.IsFinal {
+					result.IsFinal = false // if any job run is not final, the full result is not final
+				}
 			}
 		}
 		finished <- true
@@ -110,9 +114,11 @@ func (m *Manager) Query(ctx context.Context, query *JobArtifactQuery) (result Qu
 
 	// fill in errors for any that went missing
 	for it := range remaining {
+		result.IsFinal = false
 		result.Errors = append(result.Errors, JobRunError{
-			ID:    strconv.FormatInt(it, 10),
-			Error: fmt.Sprintf("request did not complete within %s", jobRunQueryTimeout),
+			ID:       strconv.FormatInt(it, 10),
+			Error:    fmt.Sprintf("request did not complete within %s", jobRunQueryTimeout),
+			TimedOut: true,
 		})
 	}
 
@@ -173,7 +179,7 @@ func (m *Manager) jobRunWorker(managerCtx context.Context) {
 }
 
 // QueryJobRunArtifacts scans the content of all matched artifacts for one job, with concurrency and timeouts/cancellation
-func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQuery, jobRunID int64, gcsFiles []*storage.ObjectAttrs) (artifacts []JobRunArtifact) {
+func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQuery, jobRunID int64, gcsFiles []*storage.ObjectAttrs) (artifacts []JobRunArtifact, isComplete bool) {
 	// set up the request/response workflow
 	artifactResponseChan := make(chan artifactResponse) // for responses from the workers
 	remaining := sets.NewString()                       // keep track of responses still missing
@@ -208,14 +214,17 @@ func (m *Manager) QueryJobRunArtifacts(ctx context.Context, query *JobArtifactQu
 		_ = sendViaChannel(ctx, m.artifactChan, request) // if not sent, will be in remaining
 	}
 	<-finished // wait for all responses to be processed
+	isComplete = true
 
 	// fill in errors for any that went missing
 	for path := range remaining {
+		isComplete = false
 		artifacts = append(artifacts, JobRunArtifact{
 			JobRunID:     strconv.FormatInt(jobRunID, 10),
 			ArtifactPath: relativeArtifactPath(path, strconv.FormatInt(jobRunID, 10)),
 			ArtifactURL:  fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, path),
 			Error:        fmt.Sprintf("request did not complete within %s", artifactQueryTimeout),
+			TimedOut:     true,
 		})
 	}
 

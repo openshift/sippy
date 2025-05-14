@@ -5,26 +5,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/stretchr/testify/assert"
 )
-
-type PseudoCache struct {
-	cache map[string][]byte
-}
-
-func (c *PseudoCache) Get(_ context.Context, key string, _ time.Duration) ([]byte, error) {
-	return c.cache[key], nil
-}
-
-func (c *PseudoCache) Set(_ context.Context, key string, content []byte, _ time.Duration) error {
-	c.cache[key] = content
-	return nil
-}
 
 func TestPseudoCache(t *testing.T) {
 	data := "It is useful mainly in compressed network protocols, to ensure that a remote reader has enough data to reconstruct a packet. Flush does not return until the data has been written. If the underlying writer returns an error, Flush returns that error. "
 
-	cache, err := NewCompressedCache(&PseudoCache{cache: make(map[string][]byte)})
+	cache, err := NewCompressedCache(&util.PseudoCache{Cache: make(map[string][]byte)})
 	assert.Nil(t, err, "Failed to create compression cache: %v", err)
 
 	err = cache.Set(context.TODO(), "testKey", []byte(data), time.Hour)
