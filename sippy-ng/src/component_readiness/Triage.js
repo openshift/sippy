@@ -14,13 +14,15 @@ export default function Triage({ id }) {
   const [triage, setTriage] = React.useState({})
   const [isUpdated, setIsUpdated] = React.useState(false)
   const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const triageEnabled = capabilitiesContext.includes('write_endpoints')
+  const localDBEnabled = capabilitiesContext.includes('local_db')
 
   React.useEffect(() => {
     setIsLoaded(false)
     setIsUpdated(false)
-    const localDBEnabled = capabilitiesContext.includes('local_db')
-    // triage entries will only be available when there is a postgres connection
+
     let triageFetch
+    // triage entries will only be available when there is a postgres connection
     if (localDBEnabled) {
       triageFetch = fetch(getTriagesAPIUrl() + '/' + id).then((response) => {
         if (response.status !== 200) {
@@ -75,11 +77,13 @@ export default function Triage({ id }) {
       </Table>
       <h2>Included Tests</h2>
       <TriagedRegressionTestList regressions={triage.regressions} />
-      <UpsertTriageModal
-        triage={triage}
-        buttonText={'Update'}
-        setComplete={setIsUpdated}
-      />
+      {triageEnabled && (
+        <UpsertTriageModal
+          triage={triage}
+          buttonText={'Update'}
+          setComplete={setIsUpdated}
+        />
+      )}
     </Fragment>
   )
 }
