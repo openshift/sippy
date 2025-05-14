@@ -151,6 +151,7 @@ func NewServeCommand() *cobra.Command {
 				&resources.Static,
 				dbc,
 				gcsClient,
+				f.GoogleCloudFlags.StorageBucket,
 				bigQueryClient,
 				pinnedDateTime,
 				cacheClient,

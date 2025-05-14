@@ -64,6 +64,7 @@ func NewServer(
 	static fs.FS,
 	dbClient *db.DB,
 	gcsClient *storage.Client,
+	gcsBucket string,
 	bigQueryClient *bigquery.Client,
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
@@ -86,6 +87,7 @@ func NewServer(
 		bigQueryClient:       bigQueryClient,
 		pinnedDateTime:       pinnedDateTime,
 		gcsClient:            gcsClient,
+		gcsBucket:            gcsBucket,
 		cache:                cacheClient,
 		crTimeRoundingFactor: crTimeRoundingFactor,
 		views:                views,
@@ -126,6 +128,7 @@ type Server struct {
 	bigQueryClient       *bigquery.Client
 	pinnedDateTime       *time.Time
 	gcsClient            *storage.Client
+	gcsBucket            string
 	cache                cache.Cache
 	crTimeRoundingFactor time.Duration
 	capabilities         []string
@@ -1166,7 +1169,7 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 		// JobName was not passed.
 		gcsPath = ""
 	}
-	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, gcsPath,
+	result, err := jobrunintervals.JobRunIntervals(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
 		intervalFile, logger.WithField("func", "JobRunIntervals"))
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())

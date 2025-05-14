@@ -11,11 +11,13 @@ import (
 type GoogleCloudFlags struct {
 	ServiceAccountCredentialFile string
 	OAuthClientCredentialFile    string
+	StorageBucket                string
 }
 
 func NewGoogleCloudFlags() *GoogleCloudFlags {
 	return &GoogleCloudFlags{
 		ServiceAccountCredentialFile: os.Getenv("GOOGLE_APPLICATION_CREDENTIALS"),
+		StorageBucket:                DefaultGoogleStorageBucket,
 	}
 }
 
@@ -29,6 +31,11 @@ func (f *GoogleCloudFlags) BindFlags(fs *pflag.FlagSet) {
 		"google-oauth-credential-file",
 		f.OAuthClientCredentialFile,
 		"location of a credential file described by https://developers.google.com/people/quickstart/go, setup from https://cloud.google.com/bigquery/docs/authentication/end-user-installed#client-credentials")
+
+	fs.StringVar(&f.StorageBucket,
+		"google-storage-bucket",
+		f.StorageBucket,
+		"default storage bucket in Google Cloud Storage to use for job results")
 }
 
 func (f *GoogleCloudFlags) Validate() error {
@@ -38,3 +45,5 @@ func (f *GoogleCloudFlags) Validate() error {
 
 	return nil
 }
+
+const DefaultGoogleStorageBucket = "test-platform-results"
