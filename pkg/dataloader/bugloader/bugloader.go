@@ -45,6 +45,7 @@ SELECT
   t.status.name as status,
   ARRAY(SELECT name FROM UNNEST(affects_versions)) as affects_versions,
   ARRAY(SELECT name FROM UNNEST(fix_versions)) as fix_versions,
+  ARRAY(SELECT name FROM UNNEST(target_versions)) as target_versions,
   ARRAY(SELECT name FROM UNNEST(components)) as components,
   t.labels as labels
 FROM
@@ -65,6 +66,7 @@ type bigQueryBug struct {
 	Summary         string             `json:"summary" bigquery:"summary"`
 	AffectsVersions []string           `json:"affects_versions" bigquery:"affects_versions"`
 	FixVersions     []string           `json:"fix_versions" bigquery:"fix_versions"`
+	TargetVersions  []string           `json:"target_versions" bigquery:"target_versions"`
 	Components      []string           `json:"components" bigquery:"components"`
 	Labels          []string           `json:"labels" bigquery:"labels"`
 	JiraID          string             `bigquery:"jira_id"`
@@ -375,6 +377,7 @@ func bigQueryBugToModel(bqBug bigQueryBug) *models.Bug {
 		Summary:         bqBug.Summary,
 		AffectsVersions: pq.StringArray(bqBug.AffectsVersions),
 		FixVersions:     pq.StringArray(bqBug.FixVersions),
+		TargetVersions:  pq.StringArray(bqBug.TargetVersions),
 		Components:      pq.StringArray(bqBug.Components),
 		Labels:          pq.StringArray(bqBug.Labels),
 		URL:             fmt.Sprintf("https://issues.redhat.com/browse/%s", bqBug.Key),
