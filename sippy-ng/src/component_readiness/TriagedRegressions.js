@@ -37,6 +37,15 @@ export default function TriagedRegressions(props) {
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
+      field: 'type',
+      valueGetter: (value) => {
+        return value.row.type
+      },
+      headerName: 'Type',
+      flex: 5,
+      renderCell: (param) => <div>{param.value}</div>,
+    },
+    {
       field: 'url',
       valueGetter: (value) => {
         const url = value.row.url
@@ -58,13 +67,27 @@ export default function TriagedRegressions(props) {
       ),
     },
     {
-      field: 'type',
+      field: 'bug_state',
       valueGetter: (value) => {
-        return value.row.type
+        const bugState = value.row.bug?.status || ''
+        return bugState
       },
-      headerName: 'Type',
+      headerName: 'State',
       flex: 5,
-      renderCell: (param) => <div>{param.value}</div>,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'bug_version',
+      valueGetter: (value) => {
+        const bugState =
+          value.row.bug?.target_versions ||
+          value.row.bug?.affects_versions ||
+          ''
+        return bugState
+      },
+      headerName: 'Version',
+      flex: 5,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
   ]
 

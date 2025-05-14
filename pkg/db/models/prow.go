@@ -126,6 +126,7 @@ type Bug struct {
 	Summary         string         `json:"summary"`
 	AffectsVersions pq.StringArray `json:"affects_versions" gorm:"type:text[]"`
 	FixVersions     pq.StringArray `json:"fix_versions" gorm:"type:text[]"`
+	TargetVersions  pq.StringArray `json:"target_versions" gorm:"type:text[]"`
 	Components      pq.StringArray `json:"components" gorm:"type:text[]"`
 	Labels          pq.StringArray `json:"labels" gorm:"type:text[]"`
 	URL             string         `json:"url"`
