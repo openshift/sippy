@@ -10,13 +10,12 @@ import {
   Box,
   Button,
   Checkbox,
-  Link,
+  CircularProgress,
   MenuItem,
   Select,
   TextField,
   Tooltip,
 } from '@mui/material'
-import { CircularProgress } from '@mui/material'
 import { escapeRegex } from '../helpers'
 import { makeStyles } from '@mui/styles'
 import { stringify } from 'query-string'
@@ -26,6 +25,7 @@ import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
+import SecureLink from '../components/SecureLink'
 import TimelineChart from '../components/TimelineChart'
 
 // sourceOrder is our preferred ordering of the sections of the chart (interval sources), assuming that
@@ -545,13 +545,8 @@ export default function IntervalsChart(props) {
     <Fragment>
       <p>
         Loaded {eventIntervals.length} intervals from{' '}
-        <Link
-          onClick={() => window.open(jobRunUrl)}
-          style={{ cursor: 'pointer' }}
-        >
-          GCS job run
-        </Link>
-        , filtered down to {filteredIntervals.length}.
+        <SecureLink address={jobRunUrl}>GCS job run</SecureLink>, filtered down
+        to {filteredIntervals.length}.
       </p>
       <div className={classes.filterRow}>
         Categories:
