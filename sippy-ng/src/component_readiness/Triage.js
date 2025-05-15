@@ -1,9 +1,5 @@
 import { CapabilitiesContext } from '../App'
-import {
-  getTriagesAPIUrl,
-  jiraUrlPrefix,
-  safeExternalHref,
-} from './CompReadyUtils'
+import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import Table from '@mui/material/Table'
@@ -64,7 +60,8 @@ export default function Triage({ id }) {
           <TableRow>
             <TableCell>Jira</TableCell>
             <TableCell>
-              <a href={safeExternalHref(triage.url)}>{displayUrl}</a>
+              {/*TODO(sgoeddel): snyk doesn't like the link, bring it back in a followup*/}
+              {displayUrl}
             </TableCell>
           </TableRow>
           <TableRow>
