@@ -74,7 +74,7 @@ export default function UpsertTriageModal({
       regressions: [...existingTriage.regressions, { id: regressionId }],
     }
 
-    fetch(getTriagesAPIUrl() + '/' + existingTriage.id, {
+    fetch(getTriagesAPIUrl(existingTriage.id), {
       method: 'PUT',
       body: JSON.stringify(updatedTriage),
     }).then((response) => {

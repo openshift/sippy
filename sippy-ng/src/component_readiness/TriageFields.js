@@ -67,7 +67,7 @@ export default function TriageFields({
       let method
       if (updating) {
         data = triageEntryData
-        triagesAPIUrl = getTriagesAPIUrl() + '/' + triageId
+        triagesAPIUrl = getTriagesAPIUrl(triageId)
         method = 'PUT'
       } else {
         triagesAPIUrl = getTriagesAPIUrl()

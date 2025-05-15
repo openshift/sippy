@@ -24,7 +24,7 @@ export default function Triage({ id }) {
     let triageFetch
     // triage entries will only be available when there is a postgres connection
     if (localDBEnabled) {
-      triageFetch = fetch(getTriagesAPIUrl() + '/' + id).then((response) => {
+      triageFetch = fetch(getTriagesAPIUrl(id)).then((response) => {
         if (response.status !== 200) {
           throw new Error('API server returned ' + response.status)
         }

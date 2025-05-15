@@ -79,34 +79,39 @@ export const cancelledDataTable = {
 export const jiraUrlPrefix = 'https://issues.redhat.com/browse/'
 
 // Make one place to create the Component Readiness api call
-export function getAPIUrl() {
-  return process.env.REACT_APP_API_URL + '/api/component_readiness'
+export function getAPIUrl(endpoint) {
+  return `${process.env.REACT_APP_API_URL}/api/${endpoint}`
 }
 
-export function getJobVariantsUrl() {
-  return process.env.REACT_APP_API_URL + '/api/job_variants'
+export function getCRMainAPIUrl() {
+  return getAPIUrl('component_readiness')
 }
 
-export function getComponentReadinessViewsUrl() {
-  return process.env.REACT_APP_API_URL + '/api/component_readiness/views'
+export function getJobVariantsAPIUrl() {
+  return getAPIUrl('job_variants')
+}
+
+export function getComponentReadinessViewsAPIUrl() {
+  return getAPIUrl('component_readiness/views')
 }
 
 // Make one place to create the Component Readiness test_details api call
 export function getTestDetailsAPIUrl() {
-  return process.env.REACT_APP_API_URL + '/api/component_readiness/test_details'
+  return getAPIUrl('component_readiness/test_details')
 }
 
-export function getTriagesAPIUrl() {
-  return process.env.REACT_APP_API_URL + '/api/component_readiness/triages'
+export function getTriagesAPIUrl(id = null) {
+  return getAPIUrl(
+    id ? `component_readiness/triages/${id}` : 'component_readiness/triages'
+  )
 }
 
 export function getArtifactQueryAPIUrl() {
-  return process.env.REACT_APP_API_URL + '/api/jobs/artifacts'
+  return getAPIUrl('jobs/artifacts')
 }
 
 export const gotoCompReadyMain = () => {
   window.location.href = '/sippy-ng/component_readiness/main'
-  //window.history.back()
 }
 
 // When we get a fetch error, this will print a standard message.

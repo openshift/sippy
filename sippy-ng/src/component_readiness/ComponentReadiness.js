@@ -3,8 +3,8 @@ import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
   formColumnName,
-  getAPIUrl,
   getColumns,
+  getCRMainAPIUrl,
   getKeeperColumns,
   getUpdatedUrlParts,
   gotFetchError,
@@ -283,7 +283,7 @@ export default function ComponentReadiness(props) {
   // Show the current state of the filter variables and the url.
   // Create API call string and return it.
   const showValuesForReport = () => {
-    let apiCallStr = getAPIUrl()
+    let apiCallStr = getCRMainAPIUrl()
 
     if (varsContext.view != null && varsContext.view !== '') {
       apiCallStr += '?view=' + varsContext.view
