@@ -427,14 +427,14 @@ func getTestDetailsQuery(
 	queryString += `
 					WHERE
 						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
-						AND cm.id = @TestId `
-	commonParams := []bigquery.QueryParameter{
-		{
-			Name:  "TestId",
-			Value: c.TestIDOption.TestID,
-		},
-	}
+`
+	commonParams := []bigquery.QueryParameter{}
 
+	queryString += fmt.Sprintf(`AND cm.id = '%s' 
+`, c.TestIDOption.TestID)
+	// TODO: here we lump in current where in (), or'd with all the other tests
+	// we would need to format our own string not pass params, as we would have many params
+	// Include the testID above portion, obviously
 	for _, key := range sortedKeys(includeVariants) {
 		// only add in include variants that aren't part of the requested or cross-compared variants
 

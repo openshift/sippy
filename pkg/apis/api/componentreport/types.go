@@ -69,6 +69,7 @@ type RequestVariantOptions struct {
 	CompareVariants     map[string][]string `json:"compare_variants,omitempty" yaml:"compare_variants,omitempty"`
 	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`
 	// RequestedVariants are used for filtering the test details view down to a specific set. Unused in the main component report.
+	// TODO: this needs to become test specific, maybe move to TestIDOption struct
 	RequestedVariants map[string]string `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
 }
 
@@ -81,10 +82,12 @@ type RequestOptions struct {
 	BaseRelease         RequestReleaseOptions
 	BaseOverrideRelease RequestReleaseOptions
 	SampleRelease       RequestReleaseOptions
-	TestIDOption        RequestTestIdentificationOptions
 	VariantOption       RequestVariantOptions
 	AdvancedOption      RequestAdvancedOptions
 	CacheOption         cache.RequestOptions
+	// TODO: phase our once multi TestIDOptions is fully implemented
+	TestIDOption  RequestTestIdentificationOptions
+	TestIDOptions []RequestTestIdentificationOptions
 }
 
 // View is a server side construct representing a predefined view over the component readiness data.

@@ -63,6 +63,11 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		return crtype.ReportTestDetails{}, errs
 	}
 
+	// TODO: this is the spot, here we would have base and sample status, for all MultiTestIDOptions
+	// sort them by test and variant
+	// invoke report for each
+	// refactor so we can get multiple reports from one query
+
 	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
 	now := time.Now()
 	componentJobRunTestReportStatus.GeneratedAt = &now
