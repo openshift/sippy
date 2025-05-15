@@ -188,6 +188,35 @@ func (bl *BugLoader) Load() {
 		bl.errors = append(bl.errors, err)
 	}
 	log.Infof("deleted %d stale bugs", res.RowsAffected)
+
+	// Some triage records may have been aligned to bugs that did not mention a test name and were just imported.
+	// If so we need to establish the db link between these and the new bug records in postgres.
+	// Also watch out for traiges that changed bug url, and fix that linkage.
+	log.Infof("ensuring triages have correct refs to their bugs")
+	for _, t := range triages {
+		if t.BugID != nil && t.URL == t.Bug.URL {
+			// Ignore bugs that seem to already be linked properly
+			continue
+		}
+
+		var bug models.Bug
+		res = bl.dbc.DB.Where("url = ?", t.URL).First(&bug)
+		if res.Error != nil {
+			// Someone could have put in a bad url, we won't let that error out our reconcile job.
+			log.WithError(res.Error).Warnf("error looking up bug which should exist by this point: %s", t.URL)
+			continue
+		}
+
+		log.Infof("linking triage %q (%d) to bug %q (%d)", t.Description, t.ID, bug.Summary, bug.ID)
+		t.Bug = &bug
+		t.BugID = &bug.ID
+		res = bl.dbc.DB.Save(t)
+		if res.Error != nil {
+			log.WithError(res.Error).Error("error linking bug")
+			err := errors.Wrap(res.Error, "error linking bug")
+			bl.errors = append(bl.errors, err)
+		}
+	}
 }
 
 // getTestBugMappings looks for jira cards that contain a test name from the ci-test-mapping database in bigquery.  We
@@ -301,8 +330,8 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 	return bugs, nil
 }
 
-// getTriageBugMappings looks for jira cards that contain a test name from the ci-test-mapping database in bigquery.  We
-// search the Jira comments, description and summary for the test name.
+// getTriageBugMappings looks for jira cards in bigquery that were traiged to a regression n bigquery.
+// Once found we then associate them to their records in the triage table.
 func (bl *BugLoader) getTriageBugMappings(ctx context.Context, triages []models.Triage) (map[uint]*models.Bug, error) {
 	bugs := make(map[uint]*models.Bug)
 
