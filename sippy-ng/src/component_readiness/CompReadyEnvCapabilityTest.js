@@ -2,8 +2,8 @@ import './ComponentReadiness.css'
 import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
-  getAPIUrl,
   getColumns,
+  getCRMainAPIUrl,
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
@@ -107,7 +107,7 @@ export default function CompReadyEnvCapabilityTest(props) {
 
   const { expandEnvironment } = useContext(CompReadyVarsContext)
   let apiCallStr =
-    getAPIUrl() +
+    getCRMainAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
     `&capability=${safeCapability}` +

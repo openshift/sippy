@@ -32,6 +32,7 @@ import { getArtifactQueryAPIUrl } from './CompReadyUtils'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
+import SecureLink from '../components/SecureLink'
 
 const emptyContentMatch = {
   type: 'none',
@@ -629,14 +630,13 @@ export default function JobArtifactQuery(props) {
                     <SelectingCheckbox jobRunID={row.job_run_id} />
                   </TableCell>
                   <TableCell>
-                    <Link
-                      // snyk is paranoid about href coming from state vars. use JS instead.
-                      onClick={() => window.open(row.url, '_blank')}
+                    <SecureLink
+                      address={row.url}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       {row.job_name}
-                    </Link>
+                    </SecureLink>
                   </TableCell>
                   <TableCell>
                     <Tooltip
@@ -648,14 +648,13 @@ export default function JobArtifactQuery(props) {
                       }
                     >
                       <div className="test-name">
-                        <Link
-                          // snyk is paranoid about href coming from state vars. use JS instead.
-                          onClick={() => window.open(row.url, '_blank')}
+                        <SecureLink
+                          address={row.url}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           {relativeTime(new Date(row.start_time), new Date())}
-                        </Link>
+                        </SecureLink>
                       </div>
                     </Tooltip>
                   </TableCell>
@@ -672,17 +671,14 @@ export default function JobArtifactQuery(props) {
                       <Stack direction="column" spacing={2}>
                         {row.searchResult.artifacts.map((artifact) => (
                           <Fragment key={artifact.artifact_url}>
-                            <Link
+                            <SecureLink
                               className="cr-artifacts-truncate"
-                              // snyk is paranoid about href coming from state vars. use JS instead.
-                              onClick={() =>
-                                window.open(artifact.artifact_url, '_blank')
-                              }
+                              address={artifact.artifact_url}
                               target="_blank"
                               rel="noreferrer noopener"
                             >
                               {artifact.artifact_path}
-                            </Link>
+                            </SecureLink>
                             {artifact.matched_content?.line_matches?.matches &&
                               artifact.matched_content.line_matches.matches.map(
                                 (match, index) => (

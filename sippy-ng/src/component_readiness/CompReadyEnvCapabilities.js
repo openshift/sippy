@@ -3,8 +3,8 @@ import { BooleanParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   cancelledDataTable,
   formColumnName,
-  getAPIUrl,
   getColumns,
+  getCRMainAPIUrl,
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
@@ -59,7 +59,7 @@ export default function CompReadyEnvCapabilities(props) {
   const safeComponent = safeEncodeURIComponent(component)
 
   let apiCallStr =
-    getAPIUrl() +
+    getCRMainAPIUrl() +
     makeRFC3339Time(filterVals) +
     `&component=${safeComponent}` +
     (environment ? expandEnvironment(environment) : '')
