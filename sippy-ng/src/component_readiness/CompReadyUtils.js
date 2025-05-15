@@ -741,3 +741,15 @@ export function generateRegressionCount(regressed_tests, triaged_incidents) {
   let triagedCount = triaged_incidents ? triaged_incidents.length : 0
   return regressedCount + triagedCount
 }
+
+export function safeExternalHref(url) {
+  try {
+    const parsed = new URL(url)
+    if (['http:', 'https:'].includes(parsed.protocol)) {
+      return parsed.href
+    }
+  } catch (e) {
+    // Invalid URL
+  }
+  return '#'
+}
