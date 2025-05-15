@@ -47,6 +47,8 @@ export default function Triage({ id }) {
   const displayUrl = triage.url.startsWith(jiraUrlPrefix)
     ? triage.url.slice(jiraUrlPrefix.length)
     : triage.url
+  // validate the url for the link
+  const jiraLink = triage.url.startsWith('https://') ? triage.url : '#'
 
   return (
     <Fragment>
@@ -60,7 +62,7 @@ export default function Triage({ id }) {
           <TableRow>
             <TableCell>Jira</TableCell>
             <TableCell>
-              <a href={triage.url}>{displayUrl}</a>
+              <a href={jiraLink}>{displayUrl}</a>
             </TableCell>
           </TableRow>
           <TableRow>

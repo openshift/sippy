@@ -1,6 +1,5 @@
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { jiraUrlPrefix } from './CompReadyUtils'
-import { Link } from 'react-router-dom'
 import { Typography } from '@mui/material'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
@@ -108,9 +107,13 @@ export default function TriagedRegressions(props) {
       headerName: 'Details',
       flex: 2,
       renderCell: (param) => (
-        <Link to={'/triages/' + param.value}>
+        <a
+          href={'/sippy-ng/triages/' + param.value}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <InfoIcon />
-        </Link>
+        </a>
       ),
     },
   ]
