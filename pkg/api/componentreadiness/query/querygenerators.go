@@ -123,7 +123,7 @@ func NewBaseQueryGenerator(
 
 func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(b.client,
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client,
 		b.ReqOptions,
 		b.allVariants,
 		b.ReqOptions.VariantOption.IncludeVariants,
@@ -199,7 +199,7 @@ func NewSampleQueryGenerator(
 }
 
 func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := BuildCommonTestStatusQuery(s.client, s.ReqOptions,
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions,
 		s.allVariants, s.IncludeVariants, s.JunitTable, true, false)
 
 	before := time.Now()
@@ -252,8 +252,8 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Repo
 	return crtype.ReportTestStatus{SampleStatus: sampleStatus}, errs
 }
 
-// BuildCommonTestStatusQuery returns the common query for the higher level summary component summary.
-func BuildCommonTestStatusQuery(
+// BuildComponentReportQuery returns the common query for the higher level summary component summary.
+func BuildComponentReportQuery(
 	client *bqcachedclient.Client,
 	reqOptions crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
@@ -341,36 +341,40 @@ func BuildCommonTestStatusQuery(
 			})
 		}
 
-		for _, group := range sortedKeys(reqOptions.TestIDOption.RequestedVariants) {
-			group = param.Cleanse(group) // should be clean already, but just to make sure
-			paramName := fmt.Sprintf("ReqVariant_%s", group)
-			queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
-			commonParams = append(commonParams, bigquery.QueryParameter{
-				Name:  paramName,
-				Value: reqOptions.TestIDOption.RequestedVariants[group],
-			})
-		}
-		if reqOptions.TestIDOption.Capability != "" {
-			queryString += " AND @Capability in UNNEST(capabilities)"
-			commonParams = append(commonParams, bigquery.QueryParameter{
-				Name:  "Capability",
-				Value: reqOptions.TestIDOption.Capability,
-			})
-		}
-		if reqOptions.TestIDOption.TestID != "" {
-			queryString += ` AND cm.id = @TestId`
-			commonParams = append(commonParams, bigquery.QueryParameter{
-				Name:  "TestId",
-				Value: reqOptions.TestIDOption.TestID,
-			})
-		}
+		/*
+			TODO: figure out how to restore this drilldown functionality if this experiment works
+
+			for _, group := range sortedKeys(reqOptions.TestIDOption.RequestedVariants) {
+				group = param.Cleanse(group) // should be clean already, but just to make sure
+				paramName := fmt.Sprintf("ReqVariant_%s", group)
+				queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
+				commonParams = append(commonParams, bigquery.QueryParameter{
+					Name:  paramName,
+					Value: reqOptions.TestIDOption.RequestedVariants[group],
+				})
+			}
+			if reqOptions.TestIDOption.Capability != "" {
+				queryString += " AND @Capability in UNNEST(capabilities)"
+				commonParams = append(commonParams, bigquery.QueryParameter{
+					Name:  "Capability",
+					Value: reqOptions.TestIDOption.Capability,
+				})
+			}
+			if reqOptions.TestIDOption.TestID != "" {
+				queryString += ` AND cm.id = @TestId`
+				commonParams = append(commonParams, bigquery.QueryParameter{
+					Name:  "TestId",
+					Value: reqOptions.TestIDOption.TestID,
+				})
+			}
+		*/
 	}
 	return queryString, groupString, commonParams
 }
 
-// getTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
+// buildTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
 // This is for the bottom level most specific pages in component readiness.
-func getTestDetailsQuery(
+func buildTestDetailsQuery(
 	client *bqcachedclient.Client,
 	c crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
@@ -427,18 +431,40 @@ func getTestDetailsQuery(
 	queryString += `
 					WHERE
 						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
+						AND
 `
 	commonParams := []bigquery.QueryParameter{}
 
-	queryString += fmt.Sprintf(`AND cm.id = '%s' 
-`, c.TestIDOption.TestID)
-	// TODO: here we lump in current where in (), or'd with all the other tests
-	// we would need to format our own string not pass params, as we would have many params
-	// Include the testID above portion, obviously
+	for i, testIDOption := range c.TestIDOptions {
+		queryString = addTestFilters(testIDOption, i, queryString, c, includeVariants)
+
+	}
+
+	if isSample {
+		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, c.VariantOption.CompareVariants, &commonParams)
+	} else {
+		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, includeVariants, &commonParams)
+	}
+	return queryString, groupString, commonParams
+}
+
+// addTestFilters injects query params to limit to one test and variants combo.
+func addTestFilters(
+	testIDOption crtype.RequestTestIdentificationOptions,
+	i int,
+	queryString string,
+	c crtype.RequestOptions,
+	includeVariants map[string][]string) string {
+
+	if i > 0 {
+		queryString += " OR "
+	}
+	// TODO: validation?
+	queryString += fmt.Sprintf(`(cm.id = '%s' 
+`, testIDOption.TestID)
 	for _, key := range sortedKeys(includeVariants) {
 		// only add in include variants that aren't part of the requested or cross-compared variants
-
-		if _, ok := c.TestIDOption.RequestedVariants[key]; ok {
+		if _, ok := testIDOption.RequestedVariants[key]; ok {
 			continue
 		}
 		if slices.Contains(c.VariantOption.VariantCrossCompare, key) {
@@ -446,29 +472,29 @@ func getTestDetailsQuery(
 		}
 
 		group := param.Cleanse(key)
-		paramName := "IncludeVariants" + group
-		queryString += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(@%s)`, group, paramName)
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  paramName,
-			Value: c.VariantOption.IncludeVariants[key],
-		})
+		// TODO: validation?
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(%s)`, group,
+			FormatStringSliceForBigQuery(c.VariantOption.IncludeVariants[key]))
 	}
 
-	for _, group := range sortedKeys(c.TestIDOption.RequestedVariants) {
+	for _, group := range sortedKeys(testIDOption.RequestedVariants) {
 		group = param.Cleanse(group) // should be clean anyway, but just to make sure
-		paramName := "IncludeVariantValue" + group
-		queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  paramName,
-			Value: c.TestIDOption.RequestedVariants[group],
-		})
+		// TODO: validation?
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value = "%s"`, group, testIDOption.RequestedVariants[group])
 	}
-	if isSample {
-		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, c.VariantOption.CompareVariants, &commonParams)
-	} else {
-		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, includeVariants, &commonParams)
+	queryString += `)
+`
+	return queryString
+}
+
+// FormatStringSliceForBigQuery takes a slice of strings and returns a formatted
+// string suitable for use in a BigQuery UNNEST clause (e.g., ["crun", "runc"]).
+func FormatStringSliceForBigQuery(sl []string) string {
+	quotedStrings := make([]string, len(sl))
+	for i, s := range sl {
+		quotedStrings[i] = fmt.Sprintf("\"%s\"", s)
 	}
-	return queryString, groupString, commonParams
+	return fmt.Sprintf("[%s]", strings.Join(quotedStrings, ", "))
 }
 
 // filterByCrossCompareVariants adds the where clause for any variants being cross-compared (which are not included in RequestedVariants).
@@ -650,7 +676,7 @@ func NewBaseTestDetailsQueryGenerator(client *bqcachedclient.Client,
 }
 
 func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(
+	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		b.client,
 		b.ReqOptions,
 		b.allJobVariants,
@@ -717,7 +743,7 @@ func NewSampleTestDetailsQueryGenerator(
 
 func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := getTestDetailsQuery(
+	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		s.client,
 		s.ReqOptions,
 		s.allJobVariants,
@@ -727,6 +753,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleString += `  AND jobs.org = @Org AND jobs.repo = @Repo AND jobs.pr_number = @PRNumber`
 	}
+	fmt.Printf("Sample TestDetails query: \n%s\n", sampleString+groupByQuery)
 	sampleQuery := s.client.BQ.Query(sampleString + groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{

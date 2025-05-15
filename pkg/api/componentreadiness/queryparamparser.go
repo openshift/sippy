@@ -111,17 +111,19 @@ func ParseComponentReportRequest(
 
 	// Params below this point can be used with and without views:
 
-	opts.TestIDOption = crtype.RequestTestIdentificationOptions{
-		// these are semi-freeform and only used in lookup keys, so don't need validation
-		Component:  req.URL.Query().Get("component"),
-		Capability: req.URL.Query().Get("capability"),
-		TestID:     req.URL.Query().Get("testId"),
+	opts.TestIDOptions = []crtype.RequestTestIdentificationOptions{
+		{
+			// these are semi-freeform and only used in lookup keys, so don't need validation
+			Component:  req.URL.Query().Get("component"),
+			Capability: req.URL.Query().Get("capability"),
+			TestID:     req.URL.Query().Get("testId"),
+		},
 	}
-	opts.TestIDOption.RequestedVariants = map[string]string{}
+	opts.TestIDOptions[0].RequestedVariants = map[string]string{}
 	// Only the dbGroupBy variants can be specifically requested
 	for _, variant := range opts.VariantOption.DBGroupBy.List() {
 		if value := req.URL.Query().Get(variant); value != "" {
-			opts.TestIDOption.RequestedVariants[variant] = value
+			opts.TestIDOptions[0].RequestedVariants[variant] = value
 		}
 	}
 

@@ -43,15 +43,26 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 		crtype.ReportTestDetails{})
 }
 
+// GenerateTestDetailsReport is the main function to generate a test details report for a request, if we miss the cache.
 func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (crtype.ReportTestDetails, []error) {
+	// This function is called from the API, and we assume only one TestIDOptions entry in that case.
+	testIDOptions := c.ReqOptions.TestIDOptions[0]
+	return c.GenerateDetailsReportForTest(ctx, testIDOptions)
+}
+
+// GenerateDetailsReportForTest generates a test detail report for a per-test + variant combo.
+func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption crtype.RequestTestIdentificationOptions) (crtype.ReportTestDetails, []error) {
 	c.initializeMiddleware()
 
-	if c.ReqOptions.TestIDOption.TestID == "" {
+	if testIDOption.TestID == "" {
 		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
 	for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
-		if _, ok := c.ReqOptions.TestIDOption.RequestedVariants[v]; !ok {
-			return crtype.ReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v", v, c.ReqOptions.TestIDOption.RequestedVariants)}
+		if _, ok := testIDOption.RequestedVariants[v]; !ok {
+			return crtype.ReportTestDetails{}, []error{
+				fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v",
+					v, testIDOption.RequestedVariants),
+			}
 		}
 	}
 
@@ -63,14 +74,14 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		return crtype.ReportTestDetails{}, errs
 	}
 
+	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
+	now := time.Now()
+	componentJobRunTestReportStatus.GeneratedAt = &now
+
 	// TODO: this is the spot, here we would have base and sample status, for all MultiTestIDOptions
 	// sort them by test and variant
 	// invoke report for each
 	// refactor so we can get multiple reports from one query, break out everything below.
-
-	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
-	now := time.Now()
-	componentJobRunTestReportStatus.GeneratedAt = &now
 
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(ctx,
@@ -78,7 +89,8 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		c.ReqOptions.BaseRelease.Release,
 		&c.ReqOptions.BaseRelease.Start,
 		&c.ReqOptions.BaseRelease.End,
-		componentJobRunTestReportStatus.SampleStatus)
+		componentJobRunTestReportStatus.SampleStatus,
+		testIDOption)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
 	// Generate the report for the fallback release if one was found:
@@ -95,7 +107,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		for _, mw := range c.middlewares {
 			err := mw.PreTestDetailsAnalysis(&componentJobRunTestReportStatus)
 			if err != nil {
-				return report, []error{err}
+				return crtype.ReportTestDetails{}, []error{err}
 			}
 		}
 
@@ -103,7 +115,8 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 			componentJobRunTestReportStatus.BaseOverrideStatus,
 			c.ReqOptions.BaseOverrideRelease.Release,
 			&c.ReqOptions.BaseOverrideRelease.Start, &c.ReqOptions.BaseOverrideRelease.End,
-			componentJobRunTestReportStatus.SampleStatus)
+			componentJobRunTestReportStatus.SampleStatus,
+			testIDOption)
 		// swap out the base dates for the override
 		overrideReport.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 		baseOverrideReport = &overrideReport
@@ -323,7 +336,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	baseRelease string,
 	baseStart,
 	baseEnd *time.Time,
-	sampleStatus map[string][]crtype.JobRunTestStatusRow) crtype.ReportTestDetails {
+	sampleStatus map[string][]crtype.JobRunTestStatusRow,
+	testIDOption crtype.RequestTestIdentificationOptions) crtype.ReportTestDetails {
 
 	// make a copy of sampleStatus because it's passed by ref, and we're going to modify it.
 	sampleStatusCopy := map[string][]crtype.JobRunTestStatusRow{}
@@ -333,12 +347,12 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 
 	testKey := crtype.ReportTestIdentification{
 		RowIdentification: crtype.RowIdentification{
-			Component:  c.ReqOptions.TestIDOption.Component,
-			Capability: c.ReqOptions.TestIDOption.Capability,
-			TestID:     c.ReqOptions.TestIDOption.TestID,
+			Component:  testIDOption.Component,
+			Capability: testIDOption.Capability,
+			TestID:     testIDOption.TestID,
 		},
 		ColumnIdentification: crtype.ColumnIdentification{
-			Variants: c.ReqOptions.TestIDOption.RequestedVariants,
+			Variants: testIDOption.RequestedVariants,
 		},
 	}
 
@@ -347,13 +361,15 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	}
 	var resolvedIssueCompensation int
 	var incidents []crtype.TriagedIncident
-	approvedRegression := regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, result.ColumnIdentification, c.ReqOptions.TestIDOption.TestID)
+	approvedRegression := regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release,
+		result.ColumnIdentification, testIDOption.TestID)
 	var baseRegression *regressionallowances.IntentionalRegression
 	activeProductRegression := false
 	// if we are ignoring fallback then honor the settings for the baseRegression
 	// otherwise let fallback determine the threshold
 	if !c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
-		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, result.ColumnIdentification, c.ReqOptions.TestIDOption.TestID)
+		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, result.ColumnIdentification,
+			testIDOption.TestID)
 	}
 	// ignore triage if we have an intentional regression
 	if approvedRegression == nil {

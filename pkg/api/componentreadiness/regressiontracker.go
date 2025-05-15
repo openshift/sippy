@@ -167,7 +167,6 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 	reportOpts := crtype.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
-		TestIDOption:   crtype.RequestTestIdentificationOptions{},
 		VariantOption:  variantOption,
 		AdvancedOption: advancedOption,
 		CacheOption:    rt.cacheOpts,

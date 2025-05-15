@@ -552,54 +552,65 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	var test crtype.TestWithVariantsKey
 	columnGroupByVariants := c.ReqOptions.VariantOption.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
+	/* TODO
 	if c.ReqOptions.TestIDOption.TestID != "" {
 		columnGroupByVariants = c.ReqOptions.VariantOption.DBGroupBy
 	}
+
+	*/
+
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIDStr), &test)
 	if err != nil {
 		return []crtype.RowIdentification{}, []crtype.ColumnID{}, err
 	}
 
-	component, capabilities := componentAndCapabilityGetter(test, stats)
+	// TODO;
+	//	component, capabilities := componentAndCapabilityGetter(test, stats)
+	component, _ := componentAndCapabilityGetter(test, stats)
 	rows := []crtype.RowIdentification{}
 	// First Page with no component requested
-	if c.ReqOptions.TestIDOption.Component == "" {
-		rows = append(rows, crtype.RowIdentification{Component: component})
-	} else if c.ReqOptions.TestIDOption.Component == component {
-		// Exact test match
-		if c.ReqOptions.TestIDOption.TestID != "" {
-			row := crtype.RowIdentification{
-				Component: component,
-				TestID:    test.TestID,
-				TestName:  stats.TestName,
-				TestSuite: stats.TestSuite,
-			}
-			if c.ReqOptions.TestIDOption.Capability != "" {
-				row.Capability = c.ReqOptions.TestIDOption.Capability
-			}
-			rows = append(rows, row)
-		} else {
-			for _, capability := range capabilities {
-				// Exact capability match only produces one row
+	// TODO: delete
+	rows = append(rows, crtype.RowIdentification{Component: component})
+	/*
+		if c.ReqOptions.TestIDOption.Component == "" {
+			rows = append(rows, crtype.RowIdentification{Component: component})
+		} else if c.ReqOptions.TestIDOption.Component == component {
+			// Exact test match
+			if c.ReqOptions.TestIDOption.TestID != "" {
+				row := crtype.RowIdentification{
+					Component: component,
+					TestID:    test.TestID,
+					TestName:  stats.TestName,
+					TestSuite: stats.TestSuite,
+				}
 				if c.ReqOptions.TestIDOption.Capability != "" {
-					if c.ReqOptions.TestIDOption.Capability == capability {
-						row := crtype.RowIdentification{
-							Component:  component,
-							TestID:     test.TestID,
-							TestName:   stats.TestName,
-							TestSuite:  stats.TestSuite,
-							Capability: capability,
+					row.Capability = c.ReqOptions.TestIDOption.Capability
+				}
+				rows = append(rows, row)
+			} else {
+				for _, capability := range capabilities {
+					// Exact capability match only produces one row
+					if c.ReqOptions.TestIDOption.Capability != "" {
+						if c.ReqOptions.TestIDOption.Capability == capability {
+							row := crtype.RowIdentification{
+								Component:  component,
+								TestID:     test.TestID,
+								TestName:   stats.TestName,
+								TestSuite:  stats.TestSuite,
+								Capability: capability,
+							}
+							rows = append(rows, row)
+							break
 						}
-						rows = append(rows, row)
-						break
+					} else {
+						rows = append(rows, crtype.RowIdentification{Component: component, Capability: capability})
 					}
-				} else {
-					rows = append(rows, crtype.RowIdentification{Component: component, Capability: capability})
 				}
 			}
 		}
-	}
+
+	*/
 	columns := []crtype.ColumnID{}
 	column := crtype.ColumnIdentification{Variants: map[string]string{}}
 	for key, value := range test.Variants {

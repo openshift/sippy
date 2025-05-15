@@ -413,7 +413,7 @@ func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions crt
 }
 
 func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := query.BuildCommonTestStatusQuery(
+	commonQuery, groupByQuery, queryParameters := query.BuildComponentReportQuery(
 		f.client,
 		f.ReqOptions,
 		f.allVariants, f.ReqOptions.VariantOption.IncludeVariants,

@@ -87,7 +87,6 @@ type RequestOptions struct {
 	AdvancedOption      RequestAdvancedOptions
 	CacheOption         cache.RequestOptions
 	// TODO: phase our once multi TestIDOptions is fully implemented
-	TestIDOption  RequestTestIdentificationOptions
 	TestIDOptions []RequestTestIdentificationOptions
 }
 
