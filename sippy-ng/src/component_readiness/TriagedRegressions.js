@@ -1,6 +1,7 @@
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { jiraUrlPrefix } from './CompReadyUtils'
 import { Typography } from '@mui/material'
+import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
@@ -67,6 +68,15 @@ export default function TriagedRegressions(props) {
       ),
     },
     {
+      field: 'resolution_date',
+      valueGetter: (value) => {
+        return value.row.resolved?.Valid ? value.row.resolved.Time : ''
+      },
+      headerName: 'Resolution Date',
+      flex: 5,
+      renderCell: (param) => <div>{param.value}</div>,
+    },
+    {
       field: 'bug_state',
       valueGetter: (value) => {
         const bugState = value.row.bug?.status || ''
@@ -88,6 +98,23 @@ export default function TriagedRegressions(props) {
       headerName: 'Version',
       flex: 5,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'details',
+      valueGetter: (value) => {
+        return value.row.id
+      },
+      headerName: 'Details',
+      flex: 2,
+      renderCell: (param) => (
+        <a
+          href={'/sippy-ng/triages/' + param.value}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <InfoIcon />
+        </a>
+      ),
     },
   ]
 

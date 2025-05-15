@@ -53,6 +53,7 @@ import RepositoryDetails from './repositories/RepositoryDetails'
 import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Toolbar from '@mui/material/Toolbar'
+import Triage from './component_readiness/Triage'
 import Typography from '@mui/material/Typography'
 import Upgrades from './releases/Upgrades'
 import VariantStatus from './jobs/VariantStatus'
@@ -627,6 +628,16 @@ export default function App(props) {
                                     key={'tests-' + props.match.params.release}
                                     release={props.match.params.release}
                                   />
+                                )
+                              }
+                            />
+
+                            <Route
+                              path="/triages/:id"
+                              render={(props) =>
+                                redirectIfLatest(
+                                  props,
+                                  <Triage id={props.match.params.id} />
                                 )
                               }
                             />

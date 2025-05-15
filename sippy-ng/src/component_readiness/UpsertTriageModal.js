@@ -18,8 +18,10 @@ import TriageFields from './TriageFields'
 
 export default function UpsertTriageModal({
   regressionId,
-  setHasBeenTriaged,
+  triage,
+  setComplete,
   buttonText,
+  submissionDelay = 0,
 }) {
   const [triages, setTriages] = React.useState([])
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
@@ -104,15 +106,19 @@ export default function UpsertTriageModal({
       completeTriageSubmission()
     })
   }
-
-  const [newTriageEntryData, setNewTriageEntryData] = React.useState({
+  let initialTriage = {
     url: '',
     type: 'type',
     description: '',
-  })
+    ids: [regressionId],
+  }
+  if (triage !== undefined) {
+    initialTriage = triage
+  }
+  const [triageEntryData, setTriageEntryData] = React.useState(initialTriage)
 
   const handleNewTriageFormCompletion = () => {
-    setNewTriageEntryData({
+    setTriageEntryData({
       url: '',
       type: 'type',
       description: '',
@@ -123,10 +129,10 @@ export default function UpsertTriageModal({
 
   const completeTriageSubmission = () => {
     setTriageModalOpen(false)
-    // allow a couple seconds to view the success message before the page gets reloaded
+    // allow for an optional delay  to view the success message before the page gets reloaded
     const timer = setTimeout(() => {
-      setHasBeenTriaged(true)
-    }, 2000)
+      setComplete(true)
+    }, submissionDelay)
     return () => clearTimeout(timer)
   }
 
@@ -181,58 +187,80 @@ export default function UpsertTriageModal({
         open={triageModalOpen}
         onClose={handleTriageModalClosed}
       >
-        <DialogTitle>Add Triage</DialogTitle>
-        <DialogContent>
-          <Tabs
-            value={tabIndex}
-            onChange={handleTabChange}
-            indicatorColor="secondary"
-            textColor="primary"
-            variant="fullWidth"
-          >
-            <Tab label="Existing Triage" />
-            <Tab label="New Triage" />
-          </Tabs>
-          {addToExisting && (
-            <Fragment>
-              <h3>Add to existing Triage</h3>
-              <Select
-                id="existing-triage"
-                name="existing-triage"
-                label="Existing Triage"
-                value={existingTriageID}
-                onChange={handleExistingTriageChange}
-              >
-                {triages.map((triageEntry, index) => (
-                  <MenuItem key={index} value={triageEntry.id}>
-                    {formatTriageURLDescription(triageEntry)}
-                  </MenuItem>
-                ))}
-              </Select>
-              <Button
-                variant="contained"
-                color="primary"
-                sx={{ margin: '0 10px' }}
-                onClick={handleAddToExistingTriageSubmit}
-              >
-                Add to Entry
-              </Button>
-            </Fragment>
-          )}
-          {addToNew && (
-            <Fragment>
-              <h3>Add to new Triage</h3>
+        {/* TODO(sgoeddel): the following should be a separate component for readability */}
+        {triage !== undefined && (
+          <Fragment>
+            <DialogTitle>Update Triage</DialogTitle>
+            <DialogContent>
               <TriageFields
-                regressionId={regressionId}
+                triageId={triage.id}
                 setAlertText={setAlertText}
                 setAlertSeverity={setAlertSeverity}
-                triageEntryData={newTriageEntryData}
+                triageEntryData={triageEntryData}
+                setTriageEntryData={setTriageEntryData}
                 handleFormCompletion={handleNewTriageFormCompletion}
-                setTriageEntryData={setNewTriageEntryData}
+                submitButtonText={'Update'}
               />
-            </Fragment>
-          )}
-        </DialogContent>
+            </DialogContent>
+          </Fragment>
+        )}
+        {/* TODO(sgoeddel): the following should be a separate component for readability */}
+        {regressionId > 0 && (
+          <Fragment>
+            <DialogTitle>Add Triage</DialogTitle>
+            <DialogContent>
+              <Tabs
+                value={tabIndex}
+                onChange={handleTabChange}
+                indicatorColor="secondary"
+                textColor="primary"
+                variant="fullWidth"
+              >
+                <Tab label="Existing Triage" />
+                <Tab label="New Triage" />
+              </Tabs>
+              {addToExisting && (
+                <Fragment>
+                  <h3>Add to existing Triage</h3>
+                  <Select
+                    id="existing-triage"
+                    name="existing-triage"
+                    label="Existing Triage"
+                    value={existingTriageID}
+                    onChange={handleExistingTriageChange}
+                  >
+                    {triages.map((triageEntry, index) => (
+                      <MenuItem key={index} value={triageEntry.id}>
+                        {formatTriageURLDescription(triageEntry)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    sx={{ margin: '0 10px' }}
+                    onClick={handleAddToExistingTriageSubmit}
+                  >
+                    Add to Entry
+                  </Button>
+                </Fragment>
+              )}
+              {addToNew && (
+                <Fragment>
+                  <h3>Add to new Triage</h3>
+                  <TriageFields
+                    setAlertText={setAlertText}
+                    setAlertSeverity={setAlertSeverity}
+                    triageEntryData={triageEntryData}
+                    handleFormCompletion={handleNewTriageFormCompletion}
+                    setTriageEntryData={setTriageEntryData}
+                    submitButtonText={'Create Entry'}
+                  />
+                </Fragment>
+              )}
+            </DialogContent>
+          </Fragment>
+        )}
         <DialogActions sx={{ justifyContent: 'flex-start' }}>
           <Button
             variant="contained"
@@ -249,6 +277,8 @@ export default function UpsertTriageModal({
 
 UpsertTriageModal.propTypes = {
   regressionId: PropTypes.number,
-  setHasBeenTriaged: PropTypes.func.isRequired,
+  triage: PropTypes.object,
+  setComplete: PropTypes.func.isRequired,
   buttonText: PropTypes.string.isRequired,
+  submissionDelay: PropTypes.number,
 }

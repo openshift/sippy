@@ -1,3 +1,5 @@
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns'
+import { DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { FormHelperText, MenuItem, Select, TextField } from '@mui/material'
 import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
@@ -19,16 +21,19 @@ const useStyles = makeStyles({
 })
 
 export default function TriageFields({
-  regressionId,
+  triageId,
   setAlertText,
   setAlertSeverity,
   triageEntryData,
   setTriageEntryData,
   handleFormCompletion,
+  submitButtonText,
 }) {
   const classes = useStyles()
 
   const [triageValidationErrors, setTriageValidationErrors] = React.useState([])
+
+  const updating = triageId > 0
 
   const handleTriageChange = (e) => {
     const { name, value } = e.target
@@ -57,21 +62,31 @@ export default function TriageFields({
     setTriageValidationErrors(validationErrors)
 
     if (validationErrors.length === 0) {
-      const data = {
-        url: triageEntryData.url,
-        type: triageEntryData.type,
-        description: triageEntryData.description,
-      }
-      if (managingIds) {
-        data.regressions = triageEntryData.ids.map((id) => {
-          return { id: Number(id) }
-        })
-      } else if (regressionId > 0) {
-        data.regressions = [{ id: regressionId }]
+      let data
+      let triagesAPIUrl
+      let method
+      if (updating) {
+        data = triageEntryData
+        triagesAPIUrl = getTriagesAPIUrl() + '/' + triageId
+        method = 'PUT'
+      } else {
+        triagesAPIUrl = getTriagesAPIUrl()
+        method = 'POST'
+        data = {
+          url: triageEntryData.url,
+          type: triageEntryData.type,
+          description: triageEntryData.description,
+        }
+
+        if (managingIds) {
+          data.regressions = triageEntryData.ids.map((id) => {
+            return { id: Number(id) }
+          })
+        }
       }
 
-      fetch(getTriagesAPIUrl(), {
-        method: 'POST',
+      fetch(triagesAPIUrl, {
+        method: method,
         body: JSON.stringify(data),
       }).then((response) => {
         if (!response.ok) {
@@ -79,7 +94,9 @@ export default function TriageFields({
             let errorMessage = 'invalid response returned from server'
             if (data?.code) {
               errorMessage =
-                'error creating triage entry: ' +
+                'error ' +
+                (updating ? 'updating' : 'creating') +
+                ' triage entry: ' +
                 data.code +
                 ': ' +
                 data.message
@@ -91,7 +108,11 @@ export default function TriageFields({
           return
         }
 
-        setAlertText('successfully created triage entry')
+        if (updating) {
+          setAlertText('successfully updated triage entry')
+        } else {
+          setAlertText('successfully created triage entry')
+        }
         setAlertSeverity('success')
         handleFormCompletion()
       })
@@ -132,12 +153,31 @@ export default function TriageFields({
           </MenuItem>
         ))}
       </Select>
+      {updating && (
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <DateTimePicker
+            label="Resolution Date"
+            value={
+              triageEntryData.resolved?.Valid
+                ? triageEntryData.resolved?.Time
+                : null
+            }
+            onChange={(date) =>
+              setTriageEntryData((prevData) => ({
+                ...prevData,
+                resolved: { Time: date, Valid: true },
+              }))
+            }
+            renderInput={(props) => <TextField variant="standard" {...props} />}
+          />
+        </LocalizationProvider>
+      )}
       <Button
         variant="contained"
         color="primary"
         onClick={handleTriageEntrySubmit}
       >
-        Create Entry
+        {submitButtonText}
       </Button>
       {triageValidationErrors && (
         <FormHelperText className={classes.validationErrors}>
@@ -154,10 +194,11 @@ export default function TriageFields({
 }
 
 TriageFields.propTypes = {
-  regressionId: PropTypes.number,
+  triageId: PropTypes.number,
   setAlertText: PropTypes.func.isRequired,
   setAlertSeverity: PropTypes.func.isRequired,
   triageEntryData: PropTypes.object.isRequired,
   setTriageEntryData: PropTypes.func.isRequired,
   handleFormCompletion: PropTypes.func.isRequired,
+  submitButtonText: PropTypes.string.isRequired,
 }
