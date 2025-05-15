@@ -132,15 +132,15 @@ var (
 				Component:  "component 1",
 				Capability: "cap11",
 				TestID:     "1",
-			},
-			VariantOption: crtype.RequestVariantOptions{
-				ColumnGroupBy: defaultColumnGroupByVariants,
-				DBGroupBy:     defaultDBGroupByVariants,
 				RequestedVariants: map[string]string{
 					"Platform":     "aws",
 					"Architecture": "amd64",
 					"Network":      "ovn",
 				},
+			},
+			VariantOption: crtype.RequestVariantOptions{
+				ColumnGroupBy: defaultColumnGroupByVariants,
+				DBGroupBy:     defaultDBGroupByVariants,
 			},
 			AdvancedOption: defaultAdvancedOption,
 		},
@@ -1226,7 +1226,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		Capability: testDetailsGenerator.ReqOptions.TestIDOption.Capability,
 	}
 	testDetailsColumnIdentification := crtype.ColumnIdentification{
-		Variants: testDetailsGenerator.ReqOptions.VariantOption.RequestedVariants,
+		Variants: testDetailsGenerator.ReqOptions.TestIDOption.RequestedVariants,
 	}
 	sampleReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.ReqOptions.SampleRelease.Release,

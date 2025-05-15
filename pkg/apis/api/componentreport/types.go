@@ -54,12 +54,16 @@ type RequestRelativeReleaseOptions struct {
 	RelativeEnd   string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
+// RequestTestIdentificationOptions handles options used in the test details report when we focus in
+// on a specific test and variants combo, typically because it is or was regressed.
 type RequestTestIdentificationOptions struct {
 	Component  string
 	Capability string
 	// TestID is a unique identification for the test defined in the DB.
 	// It matches the test_id in the bigquery ci_analysis_us.junit table.
 	TestID string
+	// RequestedVariants are used for filtering the test details view down to a specific set.
+	RequestedVariants map[string]string `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
 }
 
 type RequestVariantOptions struct {
@@ -68,9 +72,6 @@ type RequestVariantOptions struct {
 	IncludeVariants     map[string][]string `json:"include_variants" yaml:"include_variants"`
 	CompareVariants     map[string][]string `json:"compare_variants,omitempty" yaml:"compare_variants,omitempty"`
 	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`
-	// RequestedVariants are used for filtering the test details view down to a specific set. Unused in the main component report.
-	// TODO: this needs to become test specific, maybe move to TestIDOption struct
-	RequestedVariants map[string]string `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
 }
 
 // RequestOptions is a struct packaging all the options for a CR request.

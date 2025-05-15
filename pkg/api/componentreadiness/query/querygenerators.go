@@ -341,13 +341,13 @@ func BuildCommonTestStatusQuery(
 			})
 		}
 
-		for _, group := range sortedKeys(reqOptions.VariantOption.RequestedVariants) {
+		for _, group := range sortedKeys(reqOptions.TestIDOption.RequestedVariants) {
 			group = param.Cleanse(group) // should be clean already, but just to make sure
 			paramName := fmt.Sprintf("ReqVariant_%s", group)
 			queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
 			commonParams = append(commonParams, bigquery.QueryParameter{
 				Name:  paramName,
-				Value: reqOptions.VariantOption.RequestedVariants[group],
+				Value: reqOptions.TestIDOption.RequestedVariants[group],
 			})
 		}
 		if reqOptions.TestIDOption.Capability != "" {
@@ -438,7 +438,7 @@ func getTestDetailsQuery(
 	for _, key := range sortedKeys(includeVariants) {
 		// only add in include variants that aren't part of the requested or cross-compared variants
 
-		if _, ok := c.VariantOption.RequestedVariants[key]; ok {
+		if _, ok := c.TestIDOption.RequestedVariants[key]; ok {
 			continue
 		}
 		if slices.Contains(c.VariantOption.VariantCrossCompare, key) {
@@ -454,13 +454,13 @@ func getTestDetailsQuery(
 		})
 	}
 
-	for _, group := range sortedKeys(c.VariantOption.RequestedVariants) {
+	for _, group := range sortedKeys(c.TestIDOption.RequestedVariants) {
 		group = param.Cleanse(group) // should be clean anyway, but just to make sure
 		paramName := "IncludeVariantValue" + group
 		queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  paramName,
-			Value: c.VariantOption.RequestedVariants[group],
+			Value: c.TestIDOption.RequestedVariants[group],
 		})
 	}
 	if isSample {

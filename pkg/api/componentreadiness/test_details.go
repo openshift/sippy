@@ -50,8 +50,8 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
 	}
 	for _, v := range c.ReqOptions.VariantOption.DBGroupBy.List() {
-		if _, ok := c.ReqOptions.VariantOption.RequestedVariants[v]; !ok {
-			return crtype.ReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v", v, c.ReqOptions.VariantOption.RequestedVariants)}
+		if _, ok := c.ReqOptions.TestIDOption.RequestedVariants[v]; !ok {
+			return crtype.ReportTestDetails{}, []error{fmt.Errorf("all dbGroupBy variants have to be defined for test details: %s is missing in %v", v, c.ReqOptions.TestIDOption.RequestedVariants)}
 		}
 	}
 
@@ -66,7 +66,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	// TODO: this is the spot, here we would have base and sample status, for all MultiTestIDOptions
 	// sort them by test and variant
 	// invoke report for each
-	// refactor so we can get multiple reports from one query
+	// refactor so we can get multiple reports from one query, break out everything below.
 
 	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
 	now := time.Now()
@@ -338,7 +338,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 			TestID:     c.ReqOptions.TestIDOption.TestID,
 		},
 		ColumnIdentification: crtype.ColumnIdentification{
-			Variants: c.ReqOptions.VariantOption.RequestedVariants,
+			Variants: c.ReqOptions.TestIDOption.RequestedVariants,
 		},
 	}
 

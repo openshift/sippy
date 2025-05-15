@@ -117,6 +117,13 @@ func ParseComponentReportRequest(
 		Capability: req.URL.Query().Get("capability"),
 		TestID:     req.URL.Query().Get("testId"),
 	}
+	opts.TestIDOption.RequestedVariants = map[string]string{}
+	// Only the dbGroupBy variants can be specifically requested
+	for _, variant := range opts.VariantOption.DBGroupBy.List() {
+		if value := req.URL.Query().Get(variant); value != "" {
+			opts.TestIDOption.RequestedVariants[variant] = value
+		}
+	}
 
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
 	if err != nil {
@@ -207,13 +214,6 @@ func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants, o
 		return
 	}
 
-	opts.RequestedVariants = map[string]string{}
-	// Only the dbGroupBy variants can be specifically requested
-	for _, variant := range opts.DBGroupBy.List() {
-		if value := req.URL.Query().Get(variant); value != "" {
-			opts.RequestedVariants[variant] = value
-		}
-	}
 	includeVariants := req.URL.Query()["includeVariant"]
 	opts.IncludeVariants, err = api.VariantListToMap(allJobVariants, includeVariants)
 	if err != nil {
