@@ -45,6 +45,7 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 
 // GenerateTestDetailsReport is the main function to generate a test details report for a request, if we miss the cache.
 func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (crtype.ReportTestDetails, []error) {
+	c.initializeMiddleware()
 	// This function is called from the API, and we assume only one TestIDOptions entry in that case.
 	testIDOptions := c.ReqOptions.TestIDOptions[0]
 	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
@@ -58,7 +59,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 
 // GenerateDetailsReportForTest generates a test detail report for a per-test + variant combo.
 func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption crtype.RequestTestIdentificationOptions, componentJobRunTestReportStatus crtype.JobRunTestReportStatus) (crtype.ReportTestDetails, []error) {
-	c.initializeMiddleware()
 
 	if testIDOption.TestID == "" {
 		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
