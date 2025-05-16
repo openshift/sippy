@@ -344,7 +344,6 @@ type JobRunTestStatusRow struct {
 	StartTime       civil.DateTime `bigquery:"prowjob_start"`
 	TestID          string         `bigquery:"test_id"`
 	TestName        string         `bigquery:"test_name"`
-	FilePath        string         `bigquery:"file_path"`
 	TotalCount      int            `bigquery:"total_count"`
 	SuccessCount    int            `bigquery:"success_count"`
 	FlakeCount      int            `bigquery:"flake_count"`
@@ -352,6 +351,10 @@ type JobRunTestStatusRow struct {
 	JiraComponentID *big.Rat       `bigquery:"jira_component_id"`
 }
 
+// JobRunTestReportStatus contains the rows returned from a test details query,
+// essentially the actual job runs and their status that was used to calculate this
+// report.
+// Status fields map prowjob name to each row result we received for that job.
 type JobRunTestReportStatus struct {
 	BaseStatus map[string][]JobRunTestStatusRow `json:"base_status"`
 	// TODO: This could be a little cleaner if we did status.BaseStatuses plural and tied them to a release,
