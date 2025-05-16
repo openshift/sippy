@@ -113,13 +113,7 @@ func GetComponentReportFromBigQuery(
 	// in other packages. Cache key to me looks like it should just be RequestOptions. With exception
 	// of cacheOptions which are private, we are otherwise just breaking apart RequestOptions.
 	// Watch out for BaseOverrideRelease which is not included here today. May only be used on test details...
-	generator := ComponentReportGenerator{
-		client:                     client,
-		ReqOptions:                 reqOptions,
-		triagedIssues:              nil,
-		dbc:                        dbc,
-		variantJunitTableOverrides: variantJunitTableOverrides,
-	}
+	generator := NewComponentReportGenerator(client, reqOptions, dbc, variantJunitTableOverrides)
 
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateReport(ctx)
@@ -132,6 +126,17 @@ func GetComponentReportFromBigQuery(
 		generator.GetComponentReportCacheKey(ctx, "ComponentReport~"),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
+}
+
+func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtype.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride) ComponentReportGenerator {
+	generator := ComponentReportGenerator{
+		client:                     client,
+		ReqOptions:                 reqOptions,
+		triagedIssues:              nil,
+		dbc:                        dbc,
+		variantJunitTableOverrides: variantJunitTableOverrides,
+	}
+	return generator
 }
 
 // ComponentReportGenerator contains the information needed to generate a CR report. Do
