@@ -45,6 +45,7 @@ var testSuites = []string{
 	"step graph",
 	"telco-verification",
 	"github.com/openshift/console-operator/test/e2e",
+	"prowjob-junit",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {
