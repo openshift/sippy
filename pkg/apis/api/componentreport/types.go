@@ -318,25 +318,6 @@ type TestDetailsJobRunStats struct {
 	TestStats TestDetailsTestStats `json:"test_stats"`
 }
 
-type JobRunTestStatus struct {
-	Component    string
-	Capabilities []string
-	Network      string
-	Upgrade      string
-	Arch         string
-	Platform     string
-	Variants     []string
-	TotalCount   int
-	SuccessCount int
-	FlakeCount   int
-}
-
-type JobRunTestIdentification struct {
-	TestName string
-	TestID   string
-	FilePath string
-}
-
 type JobRunTestStatusRow struct {
 	ProwJob         string         `bigquery:"prowjob_name"`
 	ProwJobRunID    string         `bigquery:"prowjob_run_id"`
@@ -349,6 +330,7 @@ type JobRunTestStatusRow struct {
 	FlakeCount      int            `bigquery:"flake_count"`
 	JiraComponent   string         `bigquery:"jira_component"`
 	JiraComponentID *big.Rat       `bigquery:"jira_component_id"`
+	Variants        map[string]string
 }
 
 // JobRunTestReportStatus contains the rows returned from a test details query,

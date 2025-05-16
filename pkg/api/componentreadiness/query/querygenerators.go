@@ -393,6 +393,7 @@ func buildTestDetailsQuery(
 	// Because this query can now be used with multiple test id / variant combos, we need to return dynamic variant
 	// columns so we can separate the results in code later.
 	selectVariants := ""
+	groupByVariants := ""
 	joinVariants := ""
 	for _, variant := range sortedKeys(allJobVariants.Variants) {
 		v := param.Cleanse(variant) // should be clean anyway, but just to make sure
@@ -402,6 +403,7 @@ func buildTestDetailsQuery(
 	for _, v := range c.VariantOption.DBGroupBy.List() {
 		v = param.Cleanse(v)
 		selectVariants += fmt.Sprintf("jv_%s.variant_value AS variant_%s,\n", v, v) // Note: Variants are camelcase, so the query columns come back like: variant_Architecture
+		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
 
 	queryString := fmt.Sprintf(`
@@ -431,16 +433,17 @@ func buildTestDetailsQuery(
 					FROM (%s) junit
 					INNER JOIN %s.jobs jobs ON junit.prowjob_build_id = jobs.prowjob_build_id
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, client.Dataset, client.Dataset, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, selectVariants, client.Dataset, junitTable, client.Dataset), client.Dataset)
+`, client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset), client.Dataset)
 
 	queryString += joinVariants
 
-	groupString := `
+	groupString := fmt.Sprintf(`
 					GROUP BY
+						%s
 						file_path,
 						modified_time
 					ORDER BY
-						modified_time `
+						modified_time `, groupByVariants)
 	queryString += `
 					WHERE
 						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
@@ -806,9 +809,9 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 }
 
 func fetchJobRunTestStatusResults(ctx context.Context,
-	query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string]map[string][]crtype.JobRunTestStatusRow, []error) {
+	query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string][]crtype.JobRunTestStatusRow, []error) {
 	errs := []error{}
-	status := map[string]map[string][]crtype.JobRunTestStatusRow{}
+	status := map[string][]crtype.JobRunTestStatusRow{}
 	log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
 	it, err := query.Read(ctx)
@@ -831,7 +834,7 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 			continue
 		}
 
-		testIDStr, jobRunTestStatusRow, err := deserializeRowToJobRunTestReportStatus(row, it.Schema)
+		jobRunTestStatusRow, err := deserializeRowToJobRunTestReportStatus(row, it.Schema)
 		if err != nil {
 			err2 := errors.Wrap(err, "error deserializing row from bigquery")
 			log.Error(err2.Error())
@@ -839,7 +842,7 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 			continue
 		}
 		prowName := utils.NormalizeProwJobName(jobRunTestStatusRow.ProwJob, reqOptions)
-		status[testIDStr][prowName] = append(status[testIDStr][prowName], jobRunTestStatusRow)
+		status[prowName] = append(status[prowName], jobRunTestStatusRow)
 	}
 	return status, errs
 }
@@ -847,22 +850,17 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 // deserializeRowToJobRunTestReportStatus deserializes a single row into a testID string and matching status.
 // This is where we handle the dynamic variant_ columns, parsing these into a map on the test identification.
 // Other fixed columns we expect are serialized directly to their appropriate columns.
-func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquery.Schema) (string, crtype.JobRunTestStatusRow, error) {
+func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquery.Schema) (crtype.JobRunTestStatusRow, error) {
 	if len(row) != len(schema) {
 		log.Infof("row is %+v, schema is %+v", row, schema)
-		return "", crtype.JobRunTestStatusRow{}, fmt.Errorf("number of values in row doesn't match schema length")
+		return crtype.JobRunTestStatusRow{}, fmt.Errorf("number of values in row doesn't match schema length")
 	}
 
-	testKey := crtype.TestWithVariantsKey{
-		Variants: map[string]string{},
-	}
-	cts := crtype.JobRunTestStatusRow{}
+	cts := crtype.JobRunTestStatusRow{Variants: map[string]string{}}
 	for i, fieldSchema := range schema {
 		col := fieldSchema.Name
 		// Some rows we know what to expect, others are dynamic (variants) and go into the map.
 		switch {
-		case col == "test_id":
-			testKey.TestID = row[i].(string)
 		case col == "total_count":
 			cts.TotalCount = int(row[i].(int64))
 		case col == "success_count":
@@ -888,15 +886,12 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 		case strings.HasPrefix(col, "variant_"):
 			variantName := col[len("variant_"):]
 			if row[i] != nil {
-				testKey.Variants[variantName] = row[i].(string)
+				cts.Variants[variantName] = row[i].(string)
 			}
 		default:
 			log.Warnf("ignoring column in query: %s", col)
 		}
 	}
 
-	// Create a string representation of the test ID so we can use it as a map key throughout:
-	testIDBytes, err := json.Marshal(testKey)
-
-	return string(testIDBytes), cts, err
+	return cts, nil
 }
