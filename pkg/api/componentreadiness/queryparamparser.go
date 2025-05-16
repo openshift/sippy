@@ -110,7 +110,8 @@ func ParseComponentReportRequest(
 	}
 
 	// Params below this point can be used with and without views:
-
+	// TODO: leave nil for safer cache keys if params not set, sync with metrics and primecache.go
+	// TODO: unit test that metrics and primecache cache keys match a request object here
 	opts.TestIDOptions = []crtype.RequestTestIdentificationOptions{
 		{
 			// these are semi-freeform and only used in lookup keys, so don't need validation

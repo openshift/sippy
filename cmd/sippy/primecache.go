@@ -141,6 +141,39 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 	// a report with the data for each chunk.
 	rLog.Infof("report: %s", report)
 	rLog.Infof("generator: %s", generator)
+	// All regressed tests, both triaged and not:
+	allRegressedTests := []crtype.ReportTestSummary{}
+	for _, row := range report.Rows {
+		for _, col := range row.Columns {
+			allRegressedTests = append(allRegressedTests, col.RegressedTests...)
+			// Once triaged, regressions move to this list, we want to still consider them an open regression until
+			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
+			// a regression.
+			for _, triaged := range col.TriagedIncidents {
+				allRegressedTests = append(allRegressedTests, triaged.ReportTestSummary)
+			}
+		}
+	}
+	rLog.Infof("found %d regressed tests in report", len(allRegressedTests))
+	testIDOptions := []crtype.RequestTestIdentificationOptions{}
+	for _, regressedTest := range allRegressedTests {
+		newTIDOpts := crtype.RequestTestIdentificationOptions{
+			TestID:            regressedTest.TestID,
+			RequestedVariants: regressedTest.Variants,
+		}
+		rLog.Infof("adding test details request for %+v", newTIDOpts)
+		testIDOptions = append(testIDOptions, newTIDOpts)
+	}
+	generator.ReqOptions.TestIDOptions = testIDOptions
+	tdReports, errs := generator.GenerateTestDetailsReportMultiTest(ctx)
+	if len(errs) > 0 {
+		var strErrors []string
+		for _, err := range errs {
+			strErrors = append(strErrors, err.Error())
+		}
+		return fmt.Errorf("mutli test details report generation encountered errors: %s", strings.Join(strErrors, "; "))
+	}
+	rLog.Infof("got %d test details reports", len(tdReports))
 
 	return nil
 }
@@ -162,19 +195,23 @@ func generateReport(view crtype.View, releases []apiv1.Release, cacheOpts cache.
 	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
-	reportOpts := crtype.RequestOptions{
+	reqOpts := crtype.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
 		VariantOption:  variantOption,
 		AdvancedOption: advancedOption,
 		CacheOption:    cacheOpts,
+		// TODO: Needed to match API cache key
+		TestIDOptions: []crtype.RequestTestIdentificationOptions{
+			{},
+		},
 	}
 
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,
 	// explicitly set our reports in the cache, thus resetting the timer for all expiry and keeping the cache
 	// primed.
 	// TODO: this may not be bypassing the cache for underlying bigquery...
-	generator := componentreadiness.NewComponentReportGenerator(bigQueryClient, reportOpts, dbc, config.ComponentReadinessConfig.VariantJunitTableOverrides)
+	generator := componentreadiness.NewComponentReportGenerator(bigQueryClient, reqOpts, dbc, config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	report, errs := generator.GenerateReport(ctx)
 	if len(errs) > 0 {
 		var strErrors []string

@@ -52,6 +52,29 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	return c.GenerateDetailsReportForTest(ctx, testIDOptions, componentJobRunTestReportStatus)
 }
 
+// Variant of the function for multi-test reports, used for cache priming all test detail reports for a view.
+func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx context.Context) ([]crtype.ReportTestDetails, []error) {
+	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
+	componentJobRunTestReportStatus, errs := c.getJobRunTestStatusFromBigQuery(ctx)
+	if len(errs) > 0 {
+		return []crtype.ReportTestDetails{}, errs
+	}
+
+	// TODO: split the status on test ID
+
+	reports := []crtype.ReportTestDetails{}
+	for _, tOpt := range c.ReqOptions.TestIDOptions {
+
+		report, errs := c.GenerateDetailsReportForTest(ctx, tOpt, componentJobRunTestReportStatus)
+		if len(errs) > 0 {
+			errs = append(errs, errs...)
+			continue
+		}
+		reports = append(reports, report)
+	}
+	return reports, errs
+}
+
 // GenerateDetailsReportForTest generates a test detail report for a per-test + variant combo.
 func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption crtype.RequestTestIdentificationOptions, componentJobRunTestReportStatus crtype.JobRunTestReportStatus) (crtype.ReportTestDetails, []error) {
 

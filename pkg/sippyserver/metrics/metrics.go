@@ -228,9 +228,9 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 	reportOpts := crtype.RequestOptions{
 		BaseRelease:   baseRelease,
 		SampleRelease: sampleRelease,
-		// Needed to match API cache key
+		// TODO: Needed to match API cache key
 		TestIDOptions: []crtype.RequestTestIdentificationOptions{
-			crtype.RequestTestIdentificationOptions{},
+			{},
 		},
 		VariantOption:  variantOption,
 		AdvancedOption: advancedOption,
