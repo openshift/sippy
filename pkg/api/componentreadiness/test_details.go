@@ -47,11 +47,17 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (crtype.ReportTestDetails, []error) {
 	// This function is called from the API, and we assume only one TestIDOptions entry in that case.
 	testIDOptions := c.ReqOptions.TestIDOptions[0]
-	return c.GenerateDetailsReportForTest(ctx, testIDOptions)
+	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
+	componentJobRunTestReportStatus, errs := c.getJobRunTestStatusFromBigQuery(ctx)
+	if len(errs) > 0 {
+		return crtype.ReportTestDetails{}, errs
+	}
+
+	return c.GenerateDetailsReportForTest(ctx, testIDOptions, componentJobRunTestReportStatus)
 }
 
 // GenerateDetailsReportForTest generates a test detail report for a per-test + variant combo.
-func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption crtype.RequestTestIdentificationOptions) (crtype.ReportTestDetails, []error) {
+func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption crtype.RequestTestIdentificationOptions, componentJobRunTestReportStatus crtype.JobRunTestReportStatus) (crtype.ReportTestDetails, []error) {
 	c.initializeMiddleware()
 
 	if testIDOption.TestID == "" {
@@ -67,12 +73,6 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 	}
 
 	before := time.Now()
-
-	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
-	componentJobRunTestReportStatus, errs := c.getJobRunTestStatusFromBigQuery(ctx)
-	if len(errs) > 0 {
-		return crtype.ReportTestDetails{}, errs
-	}
 
 	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
 	now := time.Now()

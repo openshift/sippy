@@ -173,6 +173,7 @@ func generateReport(view crtype.View, releases []apiv1.Release, cacheOpts cache.
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,
 	// explicitly set our reports in the cache, thus resetting the timer for all expiry and keeping the cache
 	// primed.
+	// TODO: this may not be bypassing the cache for underlying bigquery...
 	generator := componentreadiness.NewComponentReportGenerator(bigQueryClient, reportOpts, dbc, config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	report, errs := generator.GenerateReport(ctx)
 	if len(errs) > 0 {
