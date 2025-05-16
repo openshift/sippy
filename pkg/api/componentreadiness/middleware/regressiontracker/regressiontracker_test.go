@@ -166,6 +166,80 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			expectStatus:              crtype.FailedFixedRegression,
 			expectedExplanationsCount: 1,
 		},
+		{
+			name: "triage resolved and has cleared entirely",
+			testStats: crtype.ReportTestStats{
+				ReportStatus: crtype.SignificantImprovement,
+				Explanations: []string{},
+				LastFailure:  nil,
+			},
+			openRegression: models.TestRegression{
+				ID:       0,
+				View:     "",
+				Release:  "",
+				TestID:   testKey.TestID,
+				TestName: testKey.TestName,
+				Variants: variantsStrSlice,
+				Opened:   daysAgo5,
+				Closed: sql.NullTime{
+					Time:  time.Time{},
+					Valid: false,
+				},
+				Triages: []models.Triage{
+					{
+						ID:          42,
+						CreatedAt:   daysAgo4,
+						UpdatedAt:   daysAgo4,
+						URL:         "https://example.com/foobar",
+						Description: "foobar",
+						Type:        "product",
+						Resolved: sql.NullTime{
+							Time:  daysAgo3,
+							Valid: true,
+						},
+					},
+				},
+			},
+			expectStatus:              crtype.SignificantImprovement,
+			expectedExplanationsCount: 0,
+		},
+		{
+			name: "triage resolved no longer significant but failures since resolution time",
+			testStats: crtype.ReportTestStats{
+				ReportStatus: crtype.NotSignificant,
+				Explanations: []string{},
+				LastFailure:  &daysAgo2,
+			},
+			openRegression: models.TestRegression{
+				ID:       0,
+				View:     "",
+				Release:  "",
+				TestID:   testKey.TestID,
+				TestName: testKey.TestName,
+				Variants: variantsStrSlice,
+				Opened:   daysAgo5,
+				Closed: sql.NullTime{
+					Time:  time.Time{},
+					Valid: false,
+				},
+				Triages: []models.Triage{
+					{
+						ID:          42,
+						CreatedAt:   daysAgo4,
+						UpdatedAt:   daysAgo4,
+						URL:         "https://example.com/foobar",
+						Description: "foobar",
+						Type:        "product",
+						Resolved: sql.NullTime{
+							Time:  daysAgo3,
+							Valid: true,
+						},
+					},
+				},
+			},
+			expectStatus:              crtype.NotSignificant,
+			expectedExplanationsCount: 0,
+		},
 	}
 
 	for _, tt := range tests {
@@ -173,7 +247,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			mw.openRegressions = []*models.TestRegression{&tt.openRegression}
 			err := mw.PostAnalysis(testKey, &tt.testStats)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectedExplanationsCount, len(tt.testStats.Explanations))
+			assert.Equal(t, tt.expectedExplanationsCount, len(tt.testStats.Explanations), tt.testStats.Explanations)
 			assert.Equal(t, tt.expectStatus, tt.testStats.ReportStatus)
 
 		})
