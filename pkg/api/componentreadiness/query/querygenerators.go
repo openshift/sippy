@@ -698,6 +698,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		b.allJobVariants,
 		b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
 	baseString := commonQuery + ` AND branch = @BaseRelease`
+	fmt.Printf("Base TestDetails query: \n%s\n", baseString+groupByQuery)
 	baseQuery := b.client.BQ.Query(baseString + groupByQuery)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, queryParameters...)
