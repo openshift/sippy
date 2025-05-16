@@ -25,11 +25,7 @@ import (
 
 func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions crtype.RequestOptions,
 ) (crtype.ReportTestDetails, []error) {
-	generator := ComponentReportGenerator{
-		client:     client,
-		dbc:        dbc,
-		ReqOptions: reqOptions,
-	}
+	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil)
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateTestDetailsReport(ctx)
 	}
@@ -45,7 +41,6 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 
 // GenerateTestDetailsReport is the main function to generate a test details report for a request, if we miss the cache.
 func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context) (crtype.ReportTestDetails, []error) {
-	c.initializeMiddleware()
 	// This function is called from the API, and we assume only one TestIDOptions entry in that case.
 	testIDOptions := c.ReqOptions.TestIDOptions[0]
 	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested

@@ -136,6 +136,7 @@ func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtyp
 		dbc:                        dbc,
 		variantJunitTableOverrides: variantJunitTableOverrides,
 	}
+	generator.initializeMiddleware()
 	return generator
 }
 
@@ -259,7 +260,6 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 // GenerateReport is the main entry point for generation of a component readiness report.
 func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.ComponentReport, []error) {
 	before := time.Now()
-	c.initializeMiddleware()
 
 	// Load all test pass/fail counts from bigquery, both sample and basis
 	componentReportTestStatus, errs := c.getTestStatusFromBigQuery(ctx)
