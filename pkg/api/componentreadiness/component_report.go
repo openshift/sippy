@@ -118,7 +118,7 @@ func GetComponentReportFromBigQuery(
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		generator.client.Cache, generator.ReqOptions.CacheOption,
-		generator.GetCacheKey(ctx, ComponentReportCacheKeyPrefix),
+		api.GetPrefixedCacheKey(ComponentReportCacheKeyPrefix, generator.GetCacheKey(ctx)),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 }
@@ -161,7 +161,7 @@ type GeneratorCacheKey struct {
 	TestIDOptions       []crtype.RequestTestIdentificationOptions
 }
 
-func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context, prefix string) api.CacheData {
+func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCacheKey {
 	// Make sure we have initialized the report modified field
 	cacheKey := GeneratorCacheKey{
 		ReportModified:      c.ReportModified,
@@ -175,7 +175,7 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context, prefix strin
 	if c.ReportModified == nil {
 		cacheKey.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption)
 	}
-	return api.GetPrefixedCacheKey(prefix, cacheKey)
+	return cacheKey
 }
 
 func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype.TestVariants, []error) {
