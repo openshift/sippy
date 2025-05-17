@@ -139,8 +139,7 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 	// reports, for all regressed tests in the main report. This will happen with one query to be very cost-effective,
 	// and we'll sort the test/variant combos that come back from bigquery as we go, generating
 	// a report with the data for each chunk.
-	rLog.Infof("report: %s", report)
-	rLog.Infof("generator: %s", generator)
+
 	// All regressed tests, both triaged and not:
 	allRegressedTests := []crtype.ReportTestSummary{}
 	for _, row := range report.Rows {
@@ -174,6 +173,11 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 		return fmt.Errorf("mutli test details report generation encountered errors: %s", strings.Join(strErrors, "; "))
 	}
 	rLog.Infof("got %d test details reports", len(tdReports))
+
+	rLog.Info("first report")
+	rLog.Infof("%s - %s", tdReports[0].TestID, tdReports[0].TestName)
+	rLog.Infof("BaseStats: %+v", tdReports[0].Analyses[0].BaseStats)
+	rLog.Infof("SampleStats: %+v", tdReports[0].Analyses[0].SampleStats)
 
 	return nil
 }

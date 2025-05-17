@@ -1,6 +1,7 @@
 package componentreport
 
 import (
+	"encoding/json"
 	"math/big"
 	"time"
 
@@ -318,33 +319,37 @@ type TestDetailsJobRunStats struct {
 	TestStats TestDetailsTestStats `json:"test_stats"`
 }
 
-type JobRunTestStatusRow struct {
+// TestJobRunRows are the per job run rows that come back from bigquery for a test details report
+// indicating if the test passed or failed.
+// Fields are named count somewhat misleadingly as technically they're always 0 or 1 today.
+type TestJobRunRows struct {
+	// TODO: move testID and variants to TestWithVariantsKey, and precalc the string
+	TestID          string `bigquery:"test_id"`
+	TestName        string `bigquery:"test_name"`
+	Variants        map[string]string
 	ProwJob         string         `bigquery:"prowjob_name"`
 	ProwJobRunID    string         `bigquery:"prowjob_run_id"`
 	ProwJobURL      string         `bigquery:"prowjob_url"`
 	StartTime       civil.DateTime `bigquery:"prowjob_start"`
-	TestID          string         `bigquery:"test_id"`
-	TestName        string         `bigquery:"test_name"`
 	TotalCount      int            `bigquery:"total_count"`
 	SuccessCount    int            `bigquery:"success_count"`
 	FlakeCount      int            `bigquery:"flake_count"`
 	JiraComponent   string         `bigquery:"jira_component"`
 	JiraComponentID *big.Rat       `bigquery:"jira_component_id"`
-	Variants        map[string]string
 }
 
-// JobRunTestReportStatus contains the rows returned from a test details query,
+// TestJobRunStatuses contains the rows returned from a test details query organized by base and sample,
 // essentially the actual job runs and their status that was used to calculate this
 // report.
 // Status fields map prowjob name to each row result we received for that job.
-type JobRunTestReportStatus struct {
-	BaseStatus map[string][]JobRunTestStatusRow `json:"base_status"`
+type TestJobRunStatuses struct {
+	BaseStatus map[string][]TestJobRunRows `json:"base_status"`
 	// TODO: This could be a little cleaner if we did status.BaseStatuses plural and tied them to a release,
 	// allowing the release fallback mechanism to stay a little cleaner. That would more clearly
 	// keep middleware details out of the main codebase.
-	BaseOverrideStatus map[string][]JobRunTestStatusRow `json:"base_override_status"`
-	SampleStatus       map[string][]JobRunTestStatusRow `json:"sample_status"`
-	GeneratedAt        *time.Time                       `json:"generated_at"`
+	BaseOverrideStatus map[string][]TestJobRunRows `json:"base_override_status"`
+	SampleStatus       map[string][]TestJobRunRows `json:"sample_status"`
+	GeneratedAt        *time.Time                  `json:"generated_at"`
 }
 
 const (
@@ -479,4 +484,14 @@ type TestWithVariantsKey struct {
 
 	// Proposed, need to serialize to use as map key
 	Variants map[string]string `json:"variants"`
+}
+
+// KeyOrDie serializes this test key into a json string suitable for use in maps.
+// JSON serialization uses sorted map keys, so the output is stable.
+func (t TestWithVariantsKey) KeyOrDie() string {
+	testIDBytes, err := json.Marshal(t)
+	if err != nil {
+		panic(err)
+	}
+	return string(testIDBytes)
 }

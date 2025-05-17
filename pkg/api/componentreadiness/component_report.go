@@ -1349,7 +1349,7 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 	return regressionRows, nil
 }
 
-func getFailureCount(status crtype.JobRunTestStatusRow) int {
+func getFailureCount(status crtype.TestJobRunRows) int {
 	failure := status.TotalCount - status.SuccessCount - status.FlakeCount
 	if failure < 0 {
 		failure = 0

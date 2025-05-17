@@ -51,7 +51,7 @@ type ReleaseFallback struct {
 	log                        log.FieldLogger
 	reqOptions                 crtype.RequestOptions
 
-	baseOverrideStatus map[string][]crtype.JobRunTestStatusRow
+	baseOverrideStatus map[string][]crtype.TestJobRunRows
 }
 
 func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, report *crtype.ReportTestStats) error {
@@ -210,12 +210,12 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 					r.reqOptions.BaseOverrideRelease.End,
 				)
 
-				jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
+				jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.TestJobRunStatuses](
 					ctx,
 					r.client.Cache, r.reqOptions.CacheOption,
 					api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator),
 					generator.QueryTestStatus,
-					crtype.JobRunTestReportStatus{})
+					crtype.TestJobRunStatuses{})
 
 				for _, err := range errs {
 					errCh <- err
@@ -233,7 +233,7 @@ func (r *ReleaseFallback) TestDetailsAnalyze(report *crtype.ReportTestDetails) e
 	return nil
 }
 
-func (r *ReleaseFallback) PreTestDetailsAnalysis(status *crtype.JobRunTestReportStatus) error {
+func (r *ReleaseFallback) PreTestDetailsAnalysis(status *crtype.TestJobRunStatuses) error {
 	// Add our baseOverrideStatus to the report, unfortunate hack we have to live with for now.
 	status.BaseOverrideStatus = r.baseOverrideStatus
 	return nil

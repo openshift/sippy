@@ -1530,24 +1530,24 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
-		baseStats := map[string][]crtype.JobRunTestStatusRow{}
-		sampleStats := map[string][]crtype.JobRunTestStatusRow{}
+		baseStats := map[string][]crtype.TestJobRunRows{}
+		sampleStats := map[string][]crtype.TestJobRunRows{}
 		for _, testStats := range tc.baseRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
-				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.JobRunTestStatusRow{
+				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob:      testStats.job,
 					TotalCount:   1,
 					SuccessCount: 1,
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
-				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.JobRunTestStatusRow{
+				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob:    testStats.job,
 					TotalCount: 1,
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
-				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.JobRunTestStatusRow{
+				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob:    testStats.job,
 					TotalCount: 1,
 					FlakeCount: 1,
@@ -1556,20 +1556,20 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		}
 		for _, testStats := range tc.sampleRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
-				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.JobRunTestStatusRow{
+				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob:      testStats.job,
 					TotalCount:   1,
 					SuccessCount: 1,
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
-				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.JobRunTestStatusRow{
+				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob:    testStats.job,
 					TotalCount: 1,
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
-				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.JobRunTestStatusRow{
+				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob:    testStats.job,
 					TotalCount: 1,
 					FlakeCount: 1,

@@ -2,7 +2,6 @@ package query
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"slices"
@@ -649,11 +648,7 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 		}
 	}
 
-	// Create a string representation of the test ID so we can use it as a map key throughout:
-	// TODO: json better? reversible if we do...
-	testIDBytes, err := json.Marshal(tid)
-
-	return string(testIDBytes), cts, err
+	return tid.KeyOrDie(), cts, nil
 }
 
 // sortedKeys is a helper that sorts the keys of a variant group map for consistent ordering.
@@ -691,7 +686,7 @@ func NewBaseTestDetailsQueryGenerator(client *bqcachedclient.Client,
 	}
 }
 
-func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.TestJobRunStatuses, []error) {
 	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		b.client,
 		b.ReqOptions,
@@ -718,7 +713,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 	}...)
 
 	baseStatus, errs := fetchJobRunTestStatusResults(ctx, baseQuery, b.ReqOptions)
-	return crtype.JobRunTestReportStatus{BaseStatus: baseStatus}, errs
+	return crtype.TestJobRunStatuses{BaseStatus: baseStatus}, errs
 }
 
 // sampleTestDetailsQueryGenerator generates the query we use for the sample on the test details page.
@@ -758,7 +753,7 @@ func NewSampleTestDetailsQueryGenerator(
 	}
 }
 
-func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.JobRunTestReportStatus, []error) {
+func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.TestJobRunStatuses, []error) {
 
 	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		s.client,
@@ -806,13 +801,13 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 
 	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, sampleQuery, s.ReqOptions)
 
-	return crtype.JobRunTestReportStatus{SampleStatus: sampleStatus}, errs
+	return crtype.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }
 
 func fetchJobRunTestStatusResults(ctx context.Context,
-	query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string][]crtype.JobRunTestStatusRow, []error) {
+	query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string][]crtype.TestJobRunRows, []error) {
 	errs := []error{}
-	status := map[string][]crtype.JobRunTestStatusRow{}
+	status := map[string][]crtype.TestJobRunRows{}
 	log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
 	it, err := query.Read(ctx)
@@ -851,13 +846,13 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 // deserializeRowToJobRunTestReportStatus deserializes a single row into a testID string and matching status.
 // This is where we handle the dynamic variant_ columns, parsing these into a map on the test identification.
 // Other fixed columns we expect are serialized directly to their appropriate columns.
-func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquery.Schema) (crtype.JobRunTestStatusRow, error) {
+func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquery.Schema) (crtype.TestJobRunRows, error) {
 	if len(row) != len(schema) {
 		log.Infof("row is %+v, schema is %+v", row, schema)
-		return crtype.JobRunTestStatusRow{}, fmt.Errorf("number of values in row doesn't match schema length")
+		return crtype.TestJobRunRows{}, fmt.Errorf("number of values in row doesn't match schema length")
 	}
 
-	cts := crtype.JobRunTestStatusRow{Variants: map[string]string{}}
+	cts := crtype.TestJobRunRows{Variants: map[string]string{}}
 	for i, fieldSchema := range schema {
 		col := fieldSchema.Name
 		// Some rows we know what to expect, others are dynamic (variants) and go into the map.
@@ -890,7 +885,7 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 				cts.Variants[variantName] = row[i].(string)
 			}
 		default:
-			log.Warnf("ignoring column in query: %s", col)
+			log.Debugf("ignoring column in query: %s", col)
 		}
 	}
 
