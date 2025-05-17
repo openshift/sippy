@@ -323,19 +323,18 @@ type TestDetailsJobRunStats struct {
 // indicating if the test passed or failed.
 // Fields are named count somewhat misleadingly as technically they're always 0 or 1 today.
 type TestJobRunRows struct {
-	// TODO: move testID and variants to TestWithVariantsKey, and precalc the string
-	TestID          string `bigquery:"test_id"`
-	TestName        string `bigquery:"test_name"`
-	Variants        map[string]string
-	ProwJob         string         `bigquery:"prowjob_name"`
-	ProwJobRunID    string         `bigquery:"prowjob_run_id"`
-	ProwJobURL      string         `bigquery:"prowjob_url"`
-	StartTime       civil.DateTime `bigquery:"prowjob_start"`
-	TotalCount      int            `bigquery:"total_count"`
-	SuccessCount    int            `bigquery:"success_count"`
-	FlakeCount      int            `bigquery:"flake_count"`
-	JiraComponent   string         `bigquery:"jira_component"`
-	JiraComponentID *big.Rat       `bigquery:"jira_component_id"`
+	TestKey         TestWithVariantsKey `json:"test_key"`
+	TestKeyStr      string              `json:"-"` // transient field so we dont have to keep recalculating
+	TestName        string              `bigquery:"test_name"`
+	ProwJob         string              `bigquery:"prowjob_name"`
+	ProwJobRunID    string              `bigquery:"prowjob_run_id"`
+	ProwJobURL      string              `bigquery:"prowjob_url"`
+	StartTime       civil.DateTime      `bigquery:"prowjob_start"`
+	TotalCount      int                 `bigquery:"total_count"`
+	SuccessCount    int                 `bigquery:"success_count"`
+	FlakeCount      int                 `bigquery:"flake_count"`
+	JiraComponent   string              `bigquery:"jira_component"`
+	JiraComponentID *big.Rat            `bigquery:"jira_component_id"`
 }
 
 // TestJobRunStatuses contains the rows returned from a test details query organized by base and sample,

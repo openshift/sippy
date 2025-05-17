@@ -179,6 +179,8 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 	rLog.Infof("BaseStats: %+v", tdReports[0].Analyses[0].BaseStats)
 	rLog.Infof("SampleStats: %+v", tdReports[0].Analyses[0].SampleStats)
 
+	// Now we carefully cache each the parent report, and each test details report, with correct keys:
+
 	return nil
 }
 

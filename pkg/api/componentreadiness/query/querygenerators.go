@@ -693,7 +693,6 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		b.allJobVariants,
 		b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
 	baseString := commonQuery + ` AND branch = @BaseRelease`
-	fmt.Printf("Base TestDetails query: \n%s\n", baseString+groupByQuery)
 	baseQuery := b.client.BQ.Query(baseString + groupByQuery)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, queryParameters...)
@@ -765,7 +764,6 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleString += `  AND jobs.org = @Org AND jobs.repo = @Repo AND jobs.pr_number = @PRNumber`
 	}
-	fmt.Printf("Sample TestDetails query: \n%s\n", sampleString+groupByQuery)
 	sampleQuery := s.client.BQ.Query(sampleString + groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
@@ -852,7 +850,9 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 		return crtype.TestJobRunRows{}, fmt.Errorf("number of values in row doesn't match schema length")
 	}
 
-	cts := crtype.TestJobRunRows{Variants: map[string]string{}}
+	cts := crtype.TestJobRunRows{
+		TestKey: crtype.TestWithVariantsKey{Variants: map[string]string{}},
+	}
 	for i, fieldSchema := range schema {
 		col := fieldSchema.Name
 		// Some rows we know what to expect, others are dynamic (variants) and go into the map.
@@ -872,7 +872,7 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 		case col == "prowjob_start":
 			cts.StartTime = row[i].(civil.DateTime)
 		case col == "test_id":
-			cts.TestID = row[i].(string)
+			cts.TestKey.TestID = row[i].(string)
 		case col == "test_name":
 			cts.TestName = row[i].(string)
 		case col == "jira_component":
@@ -882,12 +882,15 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 		case strings.HasPrefix(col, "variant_"):
 			variantName := col[len("variant_"):]
 			if row[i] != nil {
-				cts.Variants[variantName] = row[i].(string)
+				cts.TestKey.Variants[variantName] = row[i].(string)
 			}
 		default:
 			log.Debugf("ignoring column in query: %s", col)
 		}
 	}
+
+	// Serialize the test key once only so we don't have to keep recalculating
+	cts.TestKeyStr = cts.TestKey.KeyOrDie()
 
 	return cts, nil
 }

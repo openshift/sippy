@@ -68,11 +68,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 	testKeyTestJobRunStatuses := map[string]crtype.TestJobRunStatuses{}
 	for jobName, rows := range allTestsJobRunStatuses.BaseStatus {
 		for _, row := range rows {
-			testKey := crtype.TestWithVariantsKey{
-				TestID:   row.TestID,
-				Variants: row.Variants,
-			}
-			testKeyStr := testKey.KeyOrDie()
+			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
 				testKeyTestJobRunStatuses[testKeyStr] = crtype.TestJobRunStatuses{
 					BaseStatus:         map[string][]crtype.TestJobRunRows{},
@@ -90,11 +86,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 	}
 	for jobName, rows := range allTestsJobRunStatuses.BaseOverrideStatus {
 		for _, row := range rows {
-			testKey := crtype.TestWithVariantsKey{
-				TestID:   row.TestID,
-				Variants: row.Variants,
-			}
-			testKeyStr := testKey.KeyOrDie()
+			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
 				testKeyTestJobRunStatuses[testKeyStr] = crtype.TestJobRunStatuses{
 					BaseStatus:         map[string][]crtype.TestJobRunRows{},
@@ -112,11 +104,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 	}
 	for jobName, rows := range allTestsJobRunStatuses.SampleStatus {
 		for _, row := range rows {
-			testKey := crtype.TestWithVariantsKey{
-				TestID:   row.TestID,
-				Variants: row.Variants,
-			}
-			testKeyStr := testKey.KeyOrDie()
+			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
 				testKeyTestJobRunStatuses[testKeyStr] = crtype.TestJobRunStatuses{
 					BaseStatus:         map[string][]crtype.TestJobRunRows{},
