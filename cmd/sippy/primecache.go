@@ -92,7 +92,11 @@ func NewPrimeCacheCommand() *cobra.Command {
 				bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 			}
 
-			cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
+			cacheOpts := cache.RequestOptions{
+				CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor,
+				// Force a refresh, we want to ensure we update the cache no matter what
+				ForceRefresh: true,
+			}
 
 			views, err := f.ComponentReadinessFlags.ParseViewsFile()
 			if err != nil {
@@ -218,7 +222,14 @@ func generateReport(view crtype.View, releases []apiv1.Release, cacheOpts cache.
 	// primed.
 	// TODO: this may not be bypassing the cache for underlying bigquery...
 	generator := componentreadiness.NewComponentReportGenerator(bigQueryClient, reqOpts, dbc, config.ComponentReadinessConfig.VariantJunitTableOverrides)
-	report, errs := generator.GenerateReport(ctx)
+
+	// Update the cache for the main report
+	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
+		ctx,
+		bigQueryClient.Cache, generator.ReqOptions.CacheOption,
+		generator.GetComponentReportCacheKey(ctx, componentreadiness.ComponentReportCacheKeyPrefix),
+		generator.GenerateReport,
+		crtype.ComponentReport{})
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

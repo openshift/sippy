@@ -56,10 +56,13 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 // Variant of the function for multi-test reports, used for cache priming all test detail reports for a view.
 func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx context.Context) ([]crtype.ReportTestDetails, []error) {
 	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
+	before := time.Now()
 	allTestsJobRunStatuses, errs := c.getJobRunTestStatusFromBigQuery(ctx)
 	if len(errs) > 0 {
 		return []crtype.ReportTestDetails{}, errs
 	}
+	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db",
+		time.Since(before), len(allTestsJobRunStatuses.SampleStatus), len(allTestsJobRunStatuses.BaseStatus))
 
 	// We have a struct where the statuses are mapped by prowjob to all rows results for that prowjob,
 	// with multiple tests intermingled in that layer.
@@ -159,9 +162,6 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 		}
 	}
 
-	before := time.Now()
-
-	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db", time.Since(before), len(componentJobRunTestReportStatus.SampleStatus), len(componentJobRunTestReportStatus.BaseStatus))
 	now := time.Now()
 	componentJobRunTestReportStatus.GeneratedAt = &now
 

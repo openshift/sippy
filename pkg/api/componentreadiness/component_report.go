@@ -41,7 +41,8 @@ import (
 const (
 	triagedIncidentsTableID = "triaged_incidents"
 
-	explanationNoRegression = "No significant regressions found"
+	explanationNoRegression       = "No significant regressions found"
+	ComponentReportCacheKeyPrefix = "ComponentReport~"
 )
 
 type GeneratorType string
@@ -109,10 +110,12 @@ func GetComponentReportFromBigQuery(
 ) (crtype.ComponentReport, []error) {
 
 	// TODO: generator is used as a cache key, public fields get included when we serialize it.
-	// This muddles cache key with actual public/private fields and complicates use of the object
-	// in other packages. Cache key to me looks like it should just be RequestOptions. With exception
-	// of cacheOptions which are private, we are otherwise just breaking apart RequestOptions.
-	// Watch out for BaseOverrideRelease which is not included here today. May only be used on test details...
+	// We need to stop doing this, it's quite dangerous. Slightly different generator initializations (empty
+	// map vs nil, unintended public fields we needed access to but break cache key hits) can cause unintended cache
+	// misses and thus very slow requests and higher costs.
+	//
+	// Generator should have a single function to return it's cache key, a separate struct, not the generator itself.
+	// This will ensure that irrelevant initialization differences and public fields do not automatically break keys.
 	generator := NewComponentReportGenerator(client, reqOptions, dbc, variantJunitTableOverrides)
 
 	if os.Getenv("DEV_MODE") == "1" {
@@ -123,7 +126,7 @@ func GetComponentReportFromBigQuery(
 		ctx,
 		generator.client.Cache, generator.ReqOptions.CacheOption,
 		// TODO: how are we not specifying anything specific for cache key?
-		generator.GetComponentReportCacheKey(ctx, "ComponentReport~"),
+		generator.GetComponentReportCacheKey(ctx, ComponentReportCacheKeyPrefix),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 }
