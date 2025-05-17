@@ -212,17 +212,24 @@ func generateReport(view crtype.View, releases []apiv1.Release, cacheOpts cache.
 		return nil, nil, err
 	}
 
+	baseOverrideRelease := crtype.RequestReleaseOptions{
+		Release: baseRelease.Release,
+		Start:   baseRelease.Start,
+		End:     baseRelease.End,
+	}
+
 	variantOption := view.VariantOptions
 	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
 	reqOpts := crtype.RequestOptions{
-		BaseRelease:    baseRelease,
-		SampleRelease:  sampleRelease,
-		VariantOption:  variantOption,
-		AdvancedOption: advancedOption,
-		CacheOption:    cacheOpts,
-		// TODO: Needed to match API cache key
+		BaseRelease:         baseRelease,
+		BaseOverrideRelease: baseOverrideRelease,
+		SampleRelease:       sampleRelease,
+		VariantOption:       variantOption,
+		AdvancedOption:      advancedOption,
+		CacheOption:         cacheOpts,
+		// Needed to match API cache key
 		TestIDOptions: []crtype.RequestTestIdentificationOptions{
 			{},
 		},
