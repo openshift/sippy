@@ -261,7 +261,8 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	// TODO: Should middleware constructors do the interpretation of the request
 	// and decide if they want to take part? Return nil if not?
 	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
-	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis || c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
+	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis || (c.ReqOptions.BaseOverrideRelease.Release != "" &&
+		c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release) {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
 	}
 	if c.dbc != nil {
