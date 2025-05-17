@@ -109,13 +109,6 @@ func GetComponentReportFromBigQuery(
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (crtype.ComponentReport, []error) {
 
-	// TODO: generator is used as a cache key, public fields get included when we serialize it.
-	// We need to stop doing this, it's quite dangerous. Slightly different generator initializations (empty
-	// map vs nil, unintended public fields we needed access to but break cache key hits) can cause unintended cache
-	// misses and thus very slow requests and higher costs.
-	//
-	// Generator should have a single function to return it's cache key, a separate struct, not the generator itself.
-	// This will ensure that irrelevant initialization differences and public fields do not automatically break keys.
 	generator := NewComponentReportGenerator(client, reqOptions, dbc, variantJunitTableOverrides)
 
 	if os.Getenv("DEV_MODE") == "1" {
@@ -125,8 +118,7 @@ func GetComponentReportFromBigQuery(
 	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		generator.client.Cache, generator.ReqOptions.CacheOption,
-		// TODO: how are we not specifying anything specific for cache key?
-		generator.GetComponentReportCacheKey(ctx, ComponentReportCacheKeyPrefix),
+		generator.GetCacheKey(ctx, ComponentReportCacheKeyPrefix),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 }
@@ -159,12 +151,31 @@ type ComponentReportGenerator struct {
 	middlewares                []middleware.Middleware
 }
 
-func (c *ComponentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
+type GeneratorCacheKey struct {
+	ReportModified      *time.Time
+	BaseRelease         crtype.RequestReleaseOptions
+	BaseOverrideRelease crtype.RequestReleaseOptions
+	SampleRelease       crtype.RequestReleaseOptions
+	VariantOption       crtype.RequestVariantOptions
+	AdvancedOption      crtype.RequestAdvancedOptions
+	TestIDOptions       []crtype.RequestTestIdentificationOptions
+}
+
+func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context, prefix string) api.CacheData {
 	// Make sure we have initialized the report modified field
-	if c.ReportModified == nil {
-		c.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption)
+	cacheKey := GeneratorCacheKey{
+		ReportModified:      c.ReportModified,
+		BaseRelease:         c.ReqOptions.BaseRelease,
+		BaseOverrideRelease: c.ReqOptions.BaseOverrideRelease,
+		SampleRelease:       c.ReqOptions.SampleRelease,
+		VariantOption:       c.ReqOptions.VariantOption,
+		AdvancedOption:      c.ReqOptions.AdvancedOption,
+		TestIDOptions:       c.ReqOptions.TestIDOptions,
 	}
-	return api.GetPrefixedCacheKey(prefix, c)
+	if c.ReportModified == nil {
+		cacheKey.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption)
+	}
+	return api.GetPrefixedCacheKey(prefix, cacheKey)
 }
 
 func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype.TestVariants, []error) {

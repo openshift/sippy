@@ -35,7 +35,7 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 		ctx,
 		generator.client.Cache,
 		generator.ReqOptions.CacheOption,
-		generator.GetComponentReportCacheKey(ctx, "TestDetailsReport~"),
+		generator.GetCacheKey(ctx, "TestDetailsReport~"),
 		generator.GenerateTestDetailsReport,
 		crtype.ReportTestDetails{})
 }

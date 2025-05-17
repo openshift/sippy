@@ -227,7 +227,7 @@ func generateReport(view crtype.View, releases []apiv1.Release, cacheOpts cache.
 	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		bigQueryClient.Cache, generator.ReqOptions.CacheOption,
-		generator.GetComponentReportCacheKey(ctx, componentreadiness.ComponentReportCacheKeyPrefix),
+		generator.GetCacheKey(ctx, componentreadiness.ComponentReportCacheKeyPrefix),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 	if len(errs) > 0 {
