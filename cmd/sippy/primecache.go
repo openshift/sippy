@@ -163,6 +163,8 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 		newTIDOpts := crtype.RequestTestIdentificationOptions{
 			TestID:            regressedTest.TestID,
 			RequestedVariants: regressedTest.Variants,
+			Component:         regressedTest.Component,
+			Capability:        regressedTest.Capability,
 		}
 		rLog.Infof("adding test details request for %+v", newTIDOpts)
 		testIDOptions = append(testIDOptions, newTIDOpts)

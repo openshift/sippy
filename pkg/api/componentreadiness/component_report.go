@@ -161,6 +161,10 @@ type GeneratorCacheKey struct {
 	TestIDOptions       []crtype.RequestTestIdentificationOptions
 }
 
+// GetCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
+// we cache. This provides a safer option than using the generator previously which carries some public fields
+// which would be serialized and thus cause unnecessary cache misses.
+// Here we should normalize to output the same cache key regardless of how fields were initialized. (nil vs empty, etc)
 func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCacheKey {
 	// Make sure we have initialized the report modified field
 	cacheKey := GeneratorCacheKey{
@@ -172,6 +176,12 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 		AdvancedOption:      c.ReqOptions.AdvancedOption,
 		TestIDOptions:       c.ReqOptions.TestIDOptions,
 	}
+
+	// If BaseOverrideRelease is matching BaseRelease, use empty struct for the purposes of our key.
+	if cacheKey.BaseOverrideRelease.Release == cacheKey.BaseRelease.Release {
+		cacheKey.BaseOverrideRelease = crtype.RequestReleaseOptions{}
+	}
+
 	if c.ReportModified == nil {
 		cacheKey.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption)
 	}
