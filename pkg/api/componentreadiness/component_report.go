@@ -182,6 +182,16 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 		cacheKey.BaseOverrideRelease = crtype.RequestReleaseOptions{}
 	}
 
+	// Ensure string arrays are stable sorted regardless of how the caller / we constructed them.
+	for k, vals := range cacheKey.VariantOption.IncludeVariants {
+		sort.Strings(vals)
+		cacheKey.VariantOption.IncludeVariants[k] = vals
+	}
+	for k, vals := range cacheKey.VariantOption.CompareVariants {
+		sort.Strings(vals)
+		cacheKey.VariantOption.CompareVariants[k] = vals
+	}
+
 	if c.ReportModified == nil {
 		cacheKey.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption)
 	}
