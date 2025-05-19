@@ -757,6 +757,7 @@ func setInstaller(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-hcp", "hypershift"},
 		{"_hcp", "hypershift"},
 		{"-upi", "upi"},
+		{"-agent", "agent"},
 	}
 
 	for _, entry := range installationPatterns {
