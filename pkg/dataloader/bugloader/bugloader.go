@@ -224,10 +224,15 @@ func (bl *BugLoader) Load() {
 func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[string]*models.Test) (map[uint]*models.Bug, error) {
 	bugs := make(map[uint]*models.Bug)
 
-	// `WHERE j.name != upgrade` is because there's a test named just `upgrade` in some junits, which querying
-	// Jira for produces thousands of tickets
+	// `WHERE j.name != upgrade` is because there's a test named just `upgrade` in some junits,
+	// and querying against Jira produces thousands of tickets that mention `upgrade`; so just ignore it.
 	querySQL := fmt.Sprintf(
-		`%s CROSS JOIN %s.%s.%s j WHERE j.name != "upgrade" AND (STRPOS(t.summary, j.name) > 0 OR STRPOS(t.description, j.name) > 0 OR STRPOS(t.comment, j.name) > 0)`,
+		`%s
+		JOIN %s.%s.%s j
+		  ON STRPOS(t.summary, j.name) > 0
+		  OR STRPOS(t.description, j.name) > 0
+		  OR STRPOS(t.comment, j.name ) > 0
+        WHERE j.name != "upgrade"`,
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
 	log.Debug(querySQL)
 	q := bl.bqc.BQ.Query(querySQL)
@@ -238,8 +243,8 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 	}
 
 	for {
-		var bwt bigQueryBug
-		err := it.Next(&bwt)
+		var bqb bigQueryBug
+		err := it.Next(&bqb)
 		if errors.Is(err, iterator.Done) {
 			break
 		}
@@ -248,28 +253,28 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		}
 
 		// Make sure data in BQ is sane
-		if bwt.JiraID == "" || bwt.LinkName == "" {
+		if bqb.JiraID == "" || bqb.LinkName == "" {
 			continue
 		}
 
-		intID, err := strconv.Atoi(bwt.JiraID)
+		jiraID, err := strconv.ParseUint(bqb.JiraID, 10, 64)
 		if err != nil {
-			bl.errors = append(bl.errors, errors.WithMessagef(err, "failed to convert jira id %s", bwt.JiraID))
+			bl.errors = append(bl.errors, errors.WithMessagef(err, "failed to convert jira id %s", bqb.JiraID))
 			continue
 		}
-		bwt.ID = uint(intID)
+		bqb.ID = uint(jiraID)
 
-		if _, ok := testCache[bwt.LinkName]; !ok {
+		if _, ok := testCache[bqb.LinkName]; !ok {
 			// This is probably common since we're using ci-test-mapping test names, and sippy may not know all of them
-			log.Debugf("test name was in jira issue but not known by sippy: %s", bwt.LinkName)
+			log.Debugf("test name was in jira issue but not known by sippy: %s", bqb.LinkName)
 			continue
 		}
 
-		if _, ok := bugs[bwt.ID]; !ok {
-			bugs[bwt.ID] = bigQueryBugToModel(bwt)
+		if _, ok := bugs[bqb.ID]; !ok {
+			bugs[bqb.ID] = bigQueryBugToModel(bqb)
 		}
 
-		bugs[bwt.ID].Tests = append(bugs[bwt.ID].Tests, *testCache[bwt.LinkName])
+		bugs[bqb.ID].Tests = append(bugs[bqb.ID].Tests, *testCache[bqb.LinkName])
 	}
 
 	return bugs, nil
