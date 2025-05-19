@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm/clause"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
@@ -92,7 +93,7 @@ func (bl *BugLoader) Load() {
 	dbExpectedBugs := make([]*models.Bug, 0)
 
 	// Fetch bugs<->test mapping from bigquery
-	testCache, err := query.LoadTestCache(bl.dbc, []string{})
+	testCache, err := query.LoadTestCache(bl.dbc, []string{"TestOwnerships"})
 	if err != nil {
 		bl.errors = append(bl.errors, err)
 		return
@@ -242,6 +243,11 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		return nil, errors.WithMessage(err, "failed to execute query")
 	}
 
+	// create a lookup of all the tests that are mapped to the same test id
+	testsForUID := MapTestCacheByUniqueID(testCache)
+	// and keep track of the tests we've seen for each bug id so we don't add duplicates
+	testsSeenForBug := make(map[uint]sets.Set[string])
+
 	for {
 		var bqb bigQueryBug
 		err := it.Next(&bqb)
@@ -264,20 +270,56 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		}
 		bqb.ID = uint(jiraID)
 
-		if _, ok := testCache[bqb.LinkName]; !ok {
+		// look up sippy DB's record for this test name
+		test, found := testCache[bqb.LinkName]
+		if !found {
 			// This is probably common since we're using ci-test-mapping test names, and sippy may not know all of them
 			log.Debugf("test name was in jira issue but not known by sippy: %s", bqb.LinkName)
 			continue
 		}
 
-		if _, ok := bugs[bqb.ID]; !ok {
+		tests := []models.Test{*test}
+		// if we found test ownership, include all tests from the same ownership
+		for _, mapping := range test.TestOwnerships {
+			if mappedTests, found := testsForUID[mapping.UniqueID]; found {
+				tests = append(tests, mappedTests...)
+			}
+		}
+
+		// map a bug for this jira id if we haven't already
+		if _, found := bugs[bqb.ID]; !found {
 			bugs[bqb.ID] = bigQueryBugToModel(bqb)
 		}
 
-		bugs[bqb.ID].Tests = append(bugs[bqb.ID].Tests, *testCache[bqb.LinkName])
+		// track the tests we've seen for this bug id and add non-duplicates
+		seen := testsSeenForBug[bqb.ID]
+		if seen == nil {
+			seen = sets.New[string]()
+			testsSeenForBug[bqb.ID] = seen
+		}
+		for _, test := range tests {
+			if !seen.Has(test.Name) {
+				seen.Insert(test.Name)
+				bugs[bqb.ID].Tests = append(bugs[bqb.ID].Tests, test)
+			}
+		}
 	}
 
 	return bugs, nil
+}
+
+// MapTestCacheByUniqueID takes a map of tests by name, with the TestOwnership preloaded, and returns a map of
+// all the tests that share the same unique ID (same TestOwnership).
+func MapTestCacheByUniqueID(testForID map[string]*models.Test) map[string][]models.Test {
+	testForUniqueID := make(map[string][]models.Test, len(testForID))
+	for _, test := range testForID {
+		for _, mapping := range test.TestOwnerships {
+			if mapping.UniqueID != "" {
+				testForUniqueID[mapping.UniqueID] = append(testForUniqueID[mapping.UniqueID], *test)
+			}
+		}
+	}
+	return testForUniqueID
 }
 
 // getJobBugMappings looks for jira cards that contain a job name from the jobs table in bigquery.  We
