@@ -54,6 +54,9 @@ function ReleaseSelector(props) {
     setPullRequestRepo,
     pullRequestNumber,
     setPullRequestNumber,
+    payloadSupport,
+    payloadTag,
+    setPayloadTag,
   } = props
 
   const days = 24 * 60 * 60 * 1000
@@ -64,6 +67,8 @@ function ReleaseSelector(props) {
 
   const [pullRequestURL, setPullRequestURL] = useState('')
   const [pullRequestURLError, setPullRequestURLError] = useState(false)
+
+  const [payloadTagError, setPayloadTagError] = useState(false)
 
   const setGADate = () => {
     let start = new Date(versions[version])
@@ -109,6 +114,12 @@ function ReleaseSelector(props) {
     }
   }, [pullRequestOrg, pullRequestRepo, pullRequestNumber])
 
+  useEffect(() => {
+    if (payloadTag) {
+      setPayloadTag(payloadTag)
+    }
+  }, [payloadTag])
+
   const handlePullRequestURLChange = (e) => {
     const newURL = e.target.value
     setPullRequestURL(newURL)
@@ -131,6 +142,29 @@ function ReleaseSelector(props) {
       setPullRequestNumber(match[3])
     } else {
       setPullRequestURLError(true)
+    }
+  }
+
+  const handlePayloadTagChange = (e) => {
+    const newTag = e.target.value
+
+    // Allow clearing the URL:
+    if (newTag === '') {
+      setPayloadTagError(false)
+      setPayloadTag('')
+      return
+    }
+
+    // Match string like 4.19.0-0.nightly-2025-03-14-061055
+    const regex =
+      /^\d+\.\d+\.\d+-\d+\.(nightly|ci|konflux-nightly)-\d{4}-\d{2}-\d{2}-(\d+)$/
+    const match = newTag.match(regex)
+    if (match) {
+      setPayloadTagError(false)
+      setPayloadTag(newTag)
+    } else {
+      setPayloadTagError(true)
+      setPayloadTag('')
     }
   }
 
@@ -181,6 +215,23 @@ function ReleaseSelector(props) {
                 />
                 {pullRequestURLError && (
                   <FormHelperText>Invalid Pull Request URL</FormHelperText>
+                )}
+              </FormControl>
+            )}
+          </div>
+          <div>
+            {payloadSupport && (
+              <FormControl error={payloadTagError}>
+                <InputLabel htmlFor="payloadTag">
+                  Payload Tag (optional)
+                </InputLabel>
+                <Input
+                  id="payloadTag"
+                  value={payloadTag}
+                  onChange={handlePayloadTagChange}
+                />
+                {payloadTagError && (
+                  <FormHelperText>Invalid Payload Tag</FormHelperText>
                 )}
               </FormControl>
             )}
@@ -289,11 +340,15 @@ ReleaseSelector.propTypes = {
   setPullRequestRepo: PropTypes.func,
   pullRequestNumber: PropTypes.string,
   setPullRequestNumber: PropTypes.func,
+  payloadSupport: PropTypes.bool,
+  payloadTag: PropTypes.string,
+  setPayloadTag: PropTypes.func,
 }
 
 ReleaseSelector.defaultProps = {
   label: 'Version',
   pullRequestSupport: false,
+  payloadSupport: false,
 }
 
 export default ReleaseSelector
