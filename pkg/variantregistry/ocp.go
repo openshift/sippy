@@ -648,6 +648,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{"-nat-instance", "candidate"},
 
 		// Hidden jobs
+		{"-cilium", "hidden"},
 		{"-disruptive", "hidden"},
 		{"-rollback", "hidden"},
 		{"aggregator-", "hidden"},
@@ -898,6 +899,7 @@ func setNetwork(jLog logrus.FieldLogger, variants map[string]string, jobName str
 	}{
 		{"-ovn", "ovn"},
 		{"-sdn", "sdn"},
+		{"-cilium", "cilium"},
 	}
 
 	// Check jobName for explicit network type
