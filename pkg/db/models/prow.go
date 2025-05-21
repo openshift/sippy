@@ -64,9 +64,8 @@ type ProwJobRun struct {
 
 type Test struct {
 	gorm.Model
-	Name           string `gorm:"uniqueIndex"`
-	Bugs           []Bug  `gorm:"many2many:bug_tests;"`
-	TestOwnerships []TestOwnership
+	Name string `gorm:"uniqueIndex"`
+	Bugs []Bug  `gorm:"many2many:bug_tests;"`
 }
 
 // ProwJobRunTest defines a join table linking tests to the job runs they execute in, along with the status for
