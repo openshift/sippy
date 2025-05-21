@@ -180,23 +180,26 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 	}
 	rLog.Infof("got %d test details reports", len(tdReports))
 
-	rLog.Info("first report")
-	rLog.Infof("%s - %s", tdReports[0].TestID, tdReports[0].TestName)
-	rLog.Infof("BaseStats: %+v", tdReports[0].Analyses[0].BaseStats)
-	rLog.Infof("SampleStats: %+v", tdReports[0].Analyses[0].SampleStats)
+	// Now we cache each test details report:
+	for _, report := range tdReports {
+		// manipulate cache key per test options
+		genCacheKey := generator.GetCacheKey(ctx)
+		newTIDOpts := crtype.RequestTestIdentificationOptions{
+			TestID:            report.TestID,
+			RequestedVariants: report.Variants,
+			Component:         report.Component,
+			Capability:        report.Capability,
+		}
+		genCacheKey.TestIDOptions = []crtype.RequestTestIdentificationOptions{newTIDOpts}
+		tempKey := api.GetPrefixedCacheKey("TestDetailsReport~", genCacheKey)
+		cacheKey, err := tempKey.GetCacheKey()
+		if err != nil {
+			return err
+		}
+		cacheDuration := api.CalculateRoundedCacheDuration(cacheOpts)
+		api.CacheSet(ctx, bigQueryClient.Cache, report, cacheKey, cacheDuration)
 
-	// manipulate cache key per test options
-	genCacheKey := generator.GetCacheKey(ctx)
-	genCacheKey.TestIDOptions = []crtype.RequestTestIdentificationOptions{testIDOptions[0]}
-	tempKey := api.GetPrefixedCacheKey("TestDetailsReport~", genCacheKey)
-	cacheKey, err := tempKey.GetCacheKey()
-	if err != nil {
-		return err
 	}
-	cacheDuration := api.CalculateRoundedCacheDuration(cacheOpts)
-	api.CacheSet(ctx, bigQueryClient.Cache, tdReports[0], cacheKey, cacheDuration)
-
-	// Now we carefully cache each the parent report, and each test details report, with correct keys:
 
 	return nil
 }

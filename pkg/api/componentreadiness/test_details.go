@@ -3,7 +3,6 @@ package componentreadiness
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"sort"
 	"sync"
@@ -73,6 +72,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		for _, row := range rows {
 			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
+				logrus.Infof("added test key: " + testKeyStr)
 				testKeyTestJobRunStatuses[testKeyStr] = crtype.TestJobRunStatuses{
 					BaseStatus:         map[string][]crtype.TestJobRunRows{},
 					BaseOverrideStatus: map[string][]crtype.TestJobRunRows{},
@@ -91,6 +91,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		for _, row := range rows {
 			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
+				logrus.Infof("added test key: " + testKeyStr)
 				testKeyTestJobRunStatuses[testKeyStr] = crtype.TestJobRunStatuses{
 					BaseStatus:         map[string][]crtype.TestJobRunRows{},
 					BaseOverrideStatus: map[string][]crtype.TestJobRunRows{},
@@ -109,6 +110,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		for _, row := range rows {
 			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
+				logrus.Infof("added test key: " + testKeyStr)
 				testKeyTestJobRunStatuses[testKeyStr] = crtype.TestJobRunStatuses{
 					BaseStatus:         map[string][]crtype.TestJobRunRows{},
 					BaseOverrideStatus: map[string][]crtype.TestJobRunRows{},
@@ -139,7 +141,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 			}
 			reports = append(reports, report)
 		} else {
-			log.Fatalf("missing test key in results: %v", testKeyStr)
+			logrus.Errorf("missing test key in results: %v", testKeyStr)
 
 		}
 
