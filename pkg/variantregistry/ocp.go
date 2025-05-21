@@ -704,6 +704,7 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-cert-rotation-shutdown-", "cert-rotation-shutdown"},
 		{"-console-operator-", "console-operator"},
 		{"-ipsec", "ipsec"},
+		{"-machine-config-operator", "machine-config-operator"},
 	}
 
 	for _, entry := range procedurePatterns {
