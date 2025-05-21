@@ -452,7 +452,7 @@ func buildTestDetailsQuery(
 	commonParams := []bigquery.QueryParameter{}
 
 	for i, testIDOption := range c.TestIDOptions {
-		queryString = addTestFilters(testIDOption, i, queryString, c, includeVariants)
+		queryString = addTestFilters(testIDOption, i, queryString, c, includeVariants, isSample)
 
 	}
 
@@ -470,14 +470,22 @@ func addTestFilters(
 	i int,
 	queryString string,
 	c crtype.RequestOptions,
-	includeVariants map[string][]string) string {
+	includeVariants map[string][]string,
+	isSample bool) string {
 
 	if i > 0 {
 		queryString += " OR "
 	}
 	// TODO: validation?
-	queryString += fmt.Sprintf(`(cm.id = '%s' 
+	if isSample {
+		queryString += fmt.Sprintf(`(cm.id = '%s' AND branch = @SampleRelease
+
 `, testIDOption.TestID)
+	} else {
+		queryString += fmt.Sprintf(`(cm.id = '%s' AND branch = @BaseRelease
+
+`, testIDOption.TestID)
+	}
 	for _, key := range sortedKeys(includeVariants) {
 		// only add in include variants that aren't part of the requested or cross-compared variants
 		if _, ok := testIDOption.RequestedVariants[key]; ok {
@@ -693,7 +701,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		b.ReqOptions,
 		b.allJobVariants,
 		b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
-	baseString := commonQuery + ` AND branch = @BaseRelease`
+	baseString := commonQuery
 	baseQuery := b.client.BQ.Query(baseString + groupByQuery)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, queryParameters...)
@@ -761,7 +769,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		s.allJobVariants,
 		s.IncludeVariants, s.JunitTable, true)
 
-	sampleString := commonQuery + ` AND branch = @SampleRelease`
+	sampleString := commonQuery
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleString += `  AND jobs.org = @Org AND jobs.repo = @Repo AND jobs.pr_number = @PRNumber`
 	}
@@ -807,7 +815,16 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 	query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string][]crtype.TestJobRunRows, []error) {
 	errs := []error{}
 	status := map[string][]crtype.TestJobRunRows{}
-	log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
+
+	// Attempt to log a usable version of the query with params swapped in.
+	strQuery := query.Q
+	for _, param := range query.Parameters {
+		strQuery = strings.ReplaceAll(strQuery, "@"+param.Name, fmt.Sprintf(`"%s"`, param.Value))
+	}
+	log.Infof("fetching job run test details with:")
+	fmt.Println(strQuery)
+
+	///log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
 	it, err := query.Read(ctx)
 	if err != nil {
