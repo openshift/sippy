@@ -444,6 +444,7 @@ func setSuite(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-etcd-scaling", "etcd-scaling"},
 		{"conformance", "parallel"}, // Jobs with "conformance" but no explicit serial are probably parallel
 		{"usernamespace", "usernamespace"},
+		{"-e2e-external-", "parallel"},
 	}
 
 	for _, entry := range suitePatterns {
@@ -733,19 +734,8 @@ func setTopology(_ logrus.FieldLogger, variants map[string]string, jobName strin
 		{"-hypershift", "external"},
 		{"-hcp", "external"},
 		{"_hcp", "external"},
-		{"-external", "external"},
 		{"-compact", "compact"},
 		{"-microshift", "microshift"},
-	}
-
-	// the use of external-lb in these cases do not apply to topology so drop them out from evaluation
-	ignorePatterns := []string{"-external-lb-", "-externallb", "-ingress-external-"}
-	for _, ignore := range ignorePatterns {
-		replace := "-"
-		if ignore[len(ignore)-1] != '-' {
-			replace = ""
-		}
-		jobNameLower = strings.ReplaceAll(jobNameLower, ignore, replace)
 	}
 
 	for _, entry := range topologyPatterns {
@@ -771,6 +761,9 @@ func setInstaller(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"_hcp", "hypershift"},
 		{"-upi", "upi"},
 		{"-agent", "agent"},
+		{"-e2e-external-aws", "upi"}, // clusters with platform type external can be installed in any provider with no installer automation (upi).
+		{"-e2e-external-vsphere", "upi"},
+		{"-e2e-oci-assisted", "assisted"},
 	}
 
 	for _, entry := range installationPatterns {
@@ -826,6 +819,9 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-openstack", "openstack"},
 		{"-ovirt", "ovirt"},
 		{"-vsphere", "vsphere"},
+		{"-e2e-external-aws", "external(aws)"}, // platform type external can be installed in any provider. Syntax platformType(provider).
+		{"-e2e-external-vsphere", "external(vsphere)"},
+		{"-e2e-oci-assisted", "external(oci)"},
 	}
 
 	for _, entry := range platformPatterns {
