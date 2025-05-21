@@ -733,8 +733,19 @@ func setTopology(_ logrus.FieldLogger, variants map[string]string, jobName strin
 		{"-hypershift", "external"},
 		{"-hcp", "external"},
 		{"_hcp", "external"},
+		{"-external", "external"},
 		{"-compact", "compact"},
 		{"-microshift", "microshift"},
+	}
+
+	// the use of external-lb in these cases do not apply to topology so drop them out from evaluation
+	ignorePatterns := []string{"-external-lb-", "-externallb", "-ingress-external-"}
+	for _, ignore := range ignorePatterns {
+		replace := "-"
+		if ignore[len(ignore)-1] != '-' {
+			replace = ""
+		}
+		jobNameLower = strings.ReplaceAll(jobNameLower, ignore, replace)
 	}
 
 	for _, entry := range topologyPatterns {
