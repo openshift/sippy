@@ -440,7 +440,8 @@ func buildTestDetailsQuery(
 					GROUP BY
 						%s
 						file_path,
-						modified_time
+						modified_time,
+                        cm.id
 					ORDER BY
 						modified_time `, groupByVariants)
 	queryString += `
@@ -868,7 +869,9 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 		case col == "prowjob_run_id":
 			cts.ProwJobRunID = row[i].(string)
 		case col == "prowjob_url":
-			cts.ProwJobURL = row[i].(string)
+			if row[i] != nil {
+				cts.ProwJobURL = row[i].(string)
+			}
 		case col == "prowjob_start":
 			cts.StartTime = row[i].(civil.DateTime)
 		case col == "test_id":
