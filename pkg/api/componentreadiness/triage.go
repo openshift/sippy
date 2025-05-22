@@ -164,6 +164,15 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 		triage.BugID = &bug.ID
 	}
 
+	// When we have removed regressions, we must replace the associations directly, as Save will not handle it.
+	// This results in rows being deleted and re-created even when there are no changes, but this should happen
+	// enough that it makes no difference.
+	err = dbc.DB.Model(&triage).Association("Regressions").Replace(triage.Regressions)
+	if err != nil {
+		log.WithError(res.Error).Error("error replacing regressions on triage record")
+		return triage, res.Error
+	}
+
 	res = dbc.DB.Save(&triage)
 	if res.Error != nil {
 		log.WithError(res.Error).Error("error updating triage record")
@@ -172,6 +181,15 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 
 	injectHATEOASLinks(&triage)
 	return triage, nil
+}
+
+func DeleteTriage(dbc *db.DB, id int) error {
+	existingTriage := &models.Triage{}
+	res := dbc.DB.First(existingTriage, id).Delete(existingTriage)
+	if res.Error != nil {
+		return fmt.Errorf("error deleting triage record: %v", res.Error)
+	}
+	return nil
 }
 
 // injectHATEOASLinks adds restful links clients can follow for this triage record.
