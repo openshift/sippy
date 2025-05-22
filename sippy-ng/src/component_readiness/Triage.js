@@ -1,7 +1,9 @@
+import { Button } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
+import SecureLink from '../components/SecureLink'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -12,6 +14,7 @@ import UpsertTriageModal from './UpsertTriageModal'
 export default function Triage({ id }) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [triage, setTriage] = React.useState({})
+  const [message, setMessage] = React.useState('')
   const [isUpdated, setIsUpdated] = React.useState(false)
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
@@ -34,11 +37,40 @@ export default function Triage({ id }) {
       triageFetch = Promise.resolve({})
     }
 
-    triageFetch.then((t) => {
-      setTriage(t)
-      setIsLoaded(true)
-    })
+    triageFetch
+      .then((t) => {
+        setTriage(t)
+        setIsLoaded(true)
+      })
+      .catch((error) => {
+        setMessage(error.toString())
+      })
   }, [isUpdated])
+
+  const deleteTriage = () => {
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this triage record?'
+    )
+    if (confirmed) {
+      fetch(getTriagesAPIUrl(id), {
+        method: 'DELETE',
+      })
+        .then((response) => {
+          if (response.status !== 200) {
+            throw new Error('API server returned ' + response.status)
+          }
+
+          setMessage('Triage record has been deleted.')
+        })
+        .catch((error) => {
+          setMessage(error.toString())
+        })
+    }
+  }
+
+  if (message !== '') {
+    return <h2>{message}</h2>
+  }
 
   if (!isLoaded) {
     return <p>Loading...</p>
@@ -58,15 +90,14 @@ export default function Triage({ id }) {
             <TableCell>{triage.description}</TableCell>
           </TableRow>
           <TableRow>
-            <TableCell>Jira</TableCell>
-            <TableCell>
-              {/*TODO(sgoeddel): snyk doesn't like the link, bring it back in a followup*/}
-              {displayUrl}
-            </TableCell>
-          </TableRow>
-          <TableRow>
             <TableCell>Type</TableCell>
             <TableCell>{triage.type}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Jira</TableCell>
+            <TableCell>
+              <SecureLink address={triage.url}>{displayUrl}</SecureLink>
+            </TableCell>
           </TableRow>
           <TableRow>
             <TableCell>Resolution Date</TableCell>
@@ -74,16 +105,40 @@ export default function Triage({ id }) {
               {triage.resolved?.Valid ? triage.resolved?.Time : ''}
             </TableCell>
           </TableRow>
+          <TableRow>
+            <TableCell>State</TableCell>
+            <TableCell>{triage.bug?.status}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Version</TableCell>
+            <TableCell>
+              {triage.bug?.target_versions || triage.bug?.affects_versions}
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Last Change</TableCell>
+            <TableCell>{triage.bug?.last_change_time}</TableCell>
+          </TableRow>
         </TableBody>
       </Table>
       <h2>Included Tests</h2>
       <TriagedRegressionTestList regressions={triage.regressions} />
       {triageEnabled && (
-        <UpsertTriageModal
-          triage={triage}
-          buttonText={'Update'}
-          setComplete={setIsUpdated}
-        />
+        <Fragment>
+          <UpsertTriageModal
+            triage={triage}
+            buttonText={'Update'}
+            setComplete={setIsUpdated}
+          />
+          <Button
+            onClick={deleteTriage}
+            variant="contained"
+            color="secondary"
+            sx={{ marginLeft: '10px' }}
+          >
+            Delete
+          </Button>
+        </Fragment>
       )}
     </Fragment>
   )
