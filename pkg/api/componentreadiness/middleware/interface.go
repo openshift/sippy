@@ -33,5 +33,5 @@ type Middleware interface {
 
 	// PreTestDetailsAnalysis gives middleware the opportunity to adjust inputs to the report status
 	// prior to analysis.
-	PreTestDetailsAnalysis(status *crtype.TestJobRunStatuses) error
+	PreTestDetailsAnalysis(testKey crtype.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error
 }

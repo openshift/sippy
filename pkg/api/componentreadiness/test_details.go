@@ -52,7 +52,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	return c.GenerateDetailsReportForTest(ctx, testIDOptions, componentJobRunTestReportStatus)
 }
 
-// Variant of the function for multi-test reports, used for cache priming all test detail reports for a view.
+// GenerateTestDetailsReportMultiTest variant of the function is for multi-test reports, used for cache priming all test detail reports for a view.
 func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx context.Context) ([]crtype.ReportTestDetails, []error) {
 	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
 	before := time.Now()
@@ -194,7 +194,11 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 		c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
 
 		for _, mw := range c.middlewares {
-			err := mw.PreTestDetailsAnalysis(&componentJobRunTestReportStatus)
+			testKey := crtype.TestWithVariantsKey{
+				TestID:   testIDOption.TestID,
+				Variants: testIDOption.RequestedVariants,
+			}
+			err := mw.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus)
 			if err != nil {
 				return crtype.ReportTestDetails{}, []error{err}
 			}
@@ -203,7 +207,8 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 		overrideReport := c.internalGenerateTestDetailsReport(ctx,
 			componentJobRunTestReportStatus.BaseOverrideStatus,
 			c.ReqOptions.BaseOverrideRelease.Release,
-			&c.ReqOptions.BaseOverrideRelease.Start, &c.ReqOptions.BaseOverrideRelease.End,
+			&c.ReqOptions.BaseOverrideRelease.Start,
+			&c.ReqOptions.BaseOverrideRelease.End,
 			componentJobRunTestReportStatus.SampleStatus,
 			testIDOption)
 		// swap out the base dates for the override

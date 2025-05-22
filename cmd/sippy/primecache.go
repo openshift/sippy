@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -160,14 +161,23 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 	rLog.Infof("found %d regressed tests in report", len(allRegressedTests))
 	testIDOptions := []crtype.RequestTestIdentificationOptions{}
 	for _, regressedTest := range allRegressedTests {
+		// regressedTest.BaseStats.Release // start // end
 		newTIDOpts := crtype.RequestTestIdentificationOptions{
 			TestID:            regressedTest.TestID,
 			RequestedVariants: regressedTest.Variants,
 			Component:         regressedTest.Component,
 			Capability:        regressedTest.Capability,
 		}
+		if regressedTest.BaseStats != nil && regressedTest.BaseStats.Release != view.BaseRelease.Release {
+			// releasefallback was enabled and this particular regressed test was using a prior
+			// release because it had a better pass rate.
+			newTIDOpts.BaseOverrideRelease = regressedTest.BaseStats.Release
+		}
 		rLog.Infof("adding test details request for %+v", newTIDOpts)
 		testIDOptions = append(testIDOptions, newTIDOpts)
+	}
+	if true {
+		os.Exit(1)
 	}
 	generator.ReqOptions.TestIDOptions = testIDOptions
 	tdReports, errs := generator.GenerateTestDetailsReportMultiTest(ctx)

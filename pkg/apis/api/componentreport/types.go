@@ -65,6 +65,8 @@ type RequestTestIdentificationOptions struct {
 	TestID string
 	// RequestedVariants are used for filtering the test details view down to a specific set.
 	RequestedVariants map[string]string `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
+	// BaseOverrideRelease is used when we're requesting a test details report for both the base release, and a fallback override that had a better pass rate.
+	BaseOverrideRelease string `json:"base_override_release,omitempty" yaml:"base_override_release,omitempty"`
 }
 
 type RequestVariantOptions struct {
@@ -82,7 +84,7 @@ type RequestVariantOptions struct {
 // higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
 type RequestOptions struct {
 	BaseRelease         RequestReleaseOptions
-	BaseOverrideRelease RequestReleaseOptions
+	BaseOverrideRelease RequestReleaseOptions // TODO remove, moved to test id options
 	SampleRelease       RequestReleaseOptions
 	VariantOption       RequestVariantOptions
 	AdvancedOption      RequestAdvancedOptions

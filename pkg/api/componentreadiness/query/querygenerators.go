@@ -378,6 +378,7 @@ func BuildComponentReportQuery(
 // never used, test name, component, file path, url, etc.
 func buildTestDetailsQuery(
 	client *bqcachedclient.Client,
+	testIDOpts []crtype.RequestTestIdentificationOptions,
 	c crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
@@ -451,7 +452,7 @@ func buildTestDetailsQuery(
 `
 	commonParams := []bigquery.QueryParameter{}
 
-	for i, testIDOption := range c.TestIDOptions {
+	for i, testIDOption := range testIDOpts {
 		queryString = addTestFilters(testIDOption, i, queryString, c, includeVariants, isSample)
 
 	}
@@ -678,12 +679,14 @@ type baseTestDetailsQueryGenerator struct {
 	BaseRelease    string
 	BaseStart      time.Time
 	BaseEnd        time.Time
+	TestIDOpts     []crtype.RequestTestIdentificationOptions
 }
 
 func NewBaseTestDetailsQueryGenerator(client *bqcachedclient.Client,
 	reqOptions crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
-	baseRelease string, baseStart time.Time, baseEnd time.Time) *baseTestDetailsQueryGenerator {
+	baseRelease string, baseStart time.Time, baseEnd time.Time,
+	testIDOpts []crtype.RequestTestIdentificationOptions) *baseTestDetailsQueryGenerator {
 
 	return &baseTestDetailsQueryGenerator{
 		client:         client,
@@ -692,12 +695,14 @@ func NewBaseTestDetailsQueryGenerator(client *bqcachedclient.Client,
 		BaseRelease:    baseRelease,
 		BaseEnd:        baseEnd,
 		BaseStart:      baseStart,
+		TestIDOpts:     testIDOpts,
 	}
 }
 
 func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.TestJobRunStatuses, []error) {
 	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		b.client,
+		b.TestIDOpts,
 		b.ReqOptions,
 		b.allJobVariants,
 		b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
@@ -765,6 +770,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 
 	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		s.client,
+		s.ReqOptions.TestIDOptions,
 		s.ReqOptions,
 		s.allJobVariants,
 		s.IncludeVariants, s.JunitTable, true)
