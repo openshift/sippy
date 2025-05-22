@@ -321,9 +321,17 @@ func MapTestCacheByUniqueID(testForID map[string]*models.Test) map[string][]mode
 func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]*models.ProwJob) (map[uint]*models.Bug, error) {
 	bugs := make(map[uint]*models.Bug)
 
-	querySQL := fmt.Sprintf(
-		`%s CROSS JOIN (SELECT DISTINCT prowjob_job_name AS name FROM openshift-gce-devel.ci_analysis_us.jobs WHERE prowjob_job_name IS NOT NULL AND prowjob_job_name != "") j WHERE (STRPOS(t.summary, j.name) > 0 OR STRPOS(t.description, j.name) > 0 OR STRPOS(t.comment, j.name) > 0)`,
-		TicketDataQuery)
+	querySQL := TicketDataQuery + `
+		JOIN (
+            SELECT DISTINCT prowjob_job_name AS name
+            FROM openshift-gce-devel.ci_analysis_us.jobs
+            WHERE prowjob_job_name IS NOT NULL
+              AND prowjob_job_name != ""
+        ) j
+        ON STRPOS(t.summary, j.name) > 0
+        OR STRPOS(t.description, j.name) > 0
+        OR STRPOS(t.comment, j.name) > 0
+    `
 	log.Debug(querySQL)
 	q := bl.bqc.BQ.Query(querySQL)
 
