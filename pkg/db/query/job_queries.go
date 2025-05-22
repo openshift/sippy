@@ -170,10 +170,11 @@ func LoadBugsForJobs(dbc *db.DB,
 
 	job := models.ProwJob{}
 	q := dbc.DB.Where("id IN ?", jobIDs)
+	timeLimit := "NOW() - last_change_time < interval '14 days'" // filter bugs since we no longer delete them
 	if filterClosed {
-		q = q.Preload("Bugs", "UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
+		q = q.Preload("Bugs", timeLimit+" and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
 	} else {
-		q = q.Preload("Bugs")
+		q = q.Preload("Bugs", timeLimit)
 	}
 	// TODO: possible bug here, we took an array of job IDs and queried for it, but we only read
 	// the first, and one caller seems to be passing multiple.
