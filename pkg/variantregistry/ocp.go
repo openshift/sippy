@@ -707,8 +707,6 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-console-operator-", "console-operator"},
 		{"-ipsec", "ipsec"},
 		{"-machine-config-operator", "machine-config-operator"},
-		{"-e2e-external", "external"}, // platform type external can be installed in any provider. Syntax platformType(provider).
-		{"-e2e-oci", "external"},
 	}
 
 	for _, entry := range procedurePatterns {
@@ -809,6 +807,9 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		substring string
 		platform  string
 	}{
+		{"-e2e-external-aws", "external-aws"}, // platform type external can be installed in any provider. Syntax platformType(provider).
+		{"-e2e-external-vsphere", "external-vsphere"},
+		{"-e2e-oci-assisted", "external-oci"},
 		{"-rosa", "rosa"}, // Keep above AWS as many ROSA jobs also mention AWS
 		{"-aws", "aws"},
 		{"-alibaba", "alibaba"},
@@ -821,7 +822,6 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-openstack", "openstack"},
 		{"-ovirt", "ovirt"},
 		{"-vsphere", "vsphere"},
-		{"-e2e-oci-assisted", "oci"},
 	}
 
 	for _, entry := range platformPatterns {
