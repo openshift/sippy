@@ -12,13 +12,16 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetTriage(dbc *db.DB, id int) (models.Triage, error) {
-	existingTriage := models.Triage{}
-	res := dbc.DB.Preload("Bug").Preload("Regressions").First(&existingTriage, id)
+func GetTriage(dbc *db.DB, id int) (*models.Triage, error) {
+	existingTriage := &models.Triage{}
+	res := dbc.DB.Preload("Bug").Preload("Regressions").First(existingTriage, id)
 	if res.Error != nil {
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
 		log.WithError(res.Error).Errorf("error looking up existing triage record: %d", id)
 	}
-	injectHATEOASLinks(&existingTriage)
+	injectHATEOASLinks(existingTriage)
 	return existingTriage, res.Error
 }
 
@@ -165,8 +168,8 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	}
 
 	// When we have removed regressions, we must replace the associations directly, as Save will not handle it.
-	// This results in rows being deleted and re-created even when there are no changes, but this should happen
-	// enough that it makes no difference.
+	// This results in rows being deleted and re-created even when there are no changes, but this shouldn't happen
+	// enough that it makes a difference.
 	err = dbc.DB.Model(&triage).Association("Regressions").Replace(triage.Regressions)
 	if err != nil {
 		log.WithError(res.Error).Error("error replacing regressions on triage record")

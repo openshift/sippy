@@ -1278,7 +1278,11 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 		if triageID > 0 {
 			existingTriage, err := componentreadiness.GetTriage(s.db, triageID)
 			if err != nil {
-				failureResponse(w, http.StatusNotFound, err.Error())
+				failureResponse(w, http.StatusInternalServerError, err.Error())
+				return
+			}
+			if existingTriage == nil {
+				failureResponse(w, http.StatusNotFound, "triage not found")
 				return
 			}
 			api.RespondWithJSON(http.StatusOK, w, existingTriage)
