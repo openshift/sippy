@@ -182,17 +182,9 @@ func (bl *BugLoader) Load() {
 	}
 	log.Infof("created or updated %d bugs", len(expectedBugIDs))
 
-	// Remove old unseen bugs
-	res := bl.dbc.DB.Where("id not in ?", expectedBugIDs).Unscoped().Delete(&models.Bug{})
-	if res.Error != nil {
-		err := errors.Wrap(res.Error, "error deleting stale bugs")
-		bl.errors = append(bl.errors, err)
-	}
-	log.Infof("deleted %d stale bugs", res.RowsAffected)
-
 	// Some triage records may have been aligned to bugs that did not mention a test name and were just imported.
 	// If so we need to establish the db link between these and the new bug records in postgres.
-	// Also watch out for traiges that changed bug url, and fix that linkage.
+	// Also watch out for triages that changed bug url, and fix that linkage.
 	log.Infof("ensuring triages have correct refs to their bugs")
 	for _, t := range triages {
 		if t.BugID != nil && t.URL == t.Bug.URL {
@@ -201,7 +193,7 @@ func (bl *BugLoader) Load() {
 		}
 
 		var bug models.Bug
-		res = bl.dbc.DB.Where("url = ?", t.URL).First(&bug)
+		res := bl.dbc.DB.Where("url = ?", t.URL).First(&bug)
 		if res.Error != nil {
 			// Someone could have put in a bad url, we won't let that error out our reconcile job.
 			log.WithError(res.Error).Warnf("error looking up bug which should exist by this point: %s", t.URL)
