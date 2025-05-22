@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -135,7 +134,12 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 	rLog := log.WithField("view", view.Name)
 
 	rLog.Infof("priming cache for view")
-	report, generator, err := generateReport(view, releases, cacheOpts, ctx, bigQueryClient, dbc, config)
+	generator, err := buildGenerator(view, releases, cacheOpts, []crtype.RequestTestIdentificationOptions{{}}, bigQueryClient, dbc, config)
+	if err != nil {
+		return err
+	}
+	// 	empty test ID options needed to match cache keys with the default path through
+	report, err := generateReport(ctx, generator, bigQueryClient)
 	if err != nil {
 		return err
 	}
@@ -173,11 +177,14 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 			// release because it had a better pass rate.
 			newTIDOpts.BaseOverrideRelease = regressedTest.BaseStats.Release
 		}
-		rLog.Infof("adding test details request for %+v", newTIDOpts)
+		rLog.Infof("adding test details request options for %+v", newTIDOpts)
 		testIDOptions = append(testIDOptions, newTIDOpts)
 	}
-	if true {
-		os.Exit(1)
+
+	// make a fresh generator for the test details report to avoid state issues in middleware etc.
+	generator, err = buildGenerator(view, releases, cacheOpts, testIDOptions, bigQueryClient, dbc, config)
+	if err != nil {
+		return err
 	}
 	generator.ReqOptions.TestIDOptions = testIDOptions
 	tdReports, errs := generator.GenerateTestDetailsReportMultiTest(ctx)
@@ -214,17 +221,44 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 	return nil
 }
 
-func generateReport(view crtype.View, releases []apiv1.Release, cacheOpts cache.RequestOptions, ctx context.Context, bigQueryClient *bqcachedclient.Client, dbc *db.DB, config *configv1.SippyConfig) (*crtype.ComponentReport, *componentreadiness.ComponentReportGenerator, error) {
+func generateReport(ctx context.Context, generator *componentreadiness.ComponentReportGenerator, bigQueryClient *bqcachedclient.Client) (*crtype.ComponentReport, error) {
+
+	// Update the cache for the main report
+	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
+		ctx,
+		bigQueryClient.Cache, generator.ReqOptions.CacheOption,
+		api.GetPrefixedCacheKey(componentreadiness.ComponentReportCacheKeyPrefix, generator.GetCacheKey(ctx)),
+		generator.GenerateReport,
+		crtype.ComponentReport{})
+	if len(errs) > 0 {
+		var strErrors []string
+		for _, err := range errs {
+			strErrors = append(strErrors, err.Error())
+		}
+		return nil, fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
+	}
+	return &report, nil
+}
+
+func buildGenerator(
+	view crtype.View,
+	releases []apiv1.Release,
+	cacheOpts cache.RequestOptions,
+	testIDOpts []crtype.RequestTestIdentificationOptions,
+	bigQueryClient *bqcachedclient.Client,
+	dbc *db.DB,
+	config *configv1.SippyConfig) (*componentreadiness.ComponentReportGenerator, error) {
+
 	baseRelease, err := componentreadiness.GetViewReleaseOptions(
 		releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	sampleRelease, err := componentreadiness.GetViewReleaseOptions(
 		releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	baseOverrideRelease := crtype.RequestReleaseOptions{
@@ -244,10 +278,7 @@ func generateReport(view crtype.View, releases []apiv1.Release, cacheOpts cache.
 		VariantOption:       variantOption,
 		AdvancedOption:      advancedOption,
 		CacheOption:         cacheOpts,
-		// Needed to match API cache key
-		TestIDOptions: []crtype.RequestTestIdentificationOptions{
-			{},
-		},
+		TestIDOptions:       testIDOpts,
 	}
 
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,
@@ -255,20 +286,5 @@ func generateReport(view crtype.View, releases []apiv1.Release, cacheOpts cache.
 	// primed.
 	// TODO: this may not be bypassing the cache for underlying bigquery...
 	generator := componentreadiness.NewComponentReportGenerator(bigQueryClient, reqOpts, dbc, config.ComponentReadinessConfig.VariantJunitTableOverrides)
-
-	// Update the cache for the main report
-	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
-		ctx,
-		bigQueryClient.Cache, generator.ReqOptions.CacheOption,
-		api.GetPrefixedCacheKey(componentreadiness.ComponentReportCacheKeyPrefix, generator.GetCacheKey(ctx)),
-		generator.GenerateReport,
-		crtype.ComponentReport{})
-	if len(errs) > 0 {
-		var strErrors []string
-		for _, err := range errs {
-			strErrors = append(strErrors, err.Error())
-		}
-		return nil, nil, fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
-	}
-	return &report, &generator, nil
+	return &generator, nil
 }

@@ -190,8 +190,8 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 	// For now, the middleware does the querying for test details, and passes the override status out
 	// by adding it to componentJobRunTestReportStatus.BaseOverrideStatus.
 	var baseOverrideReport *crtype.ReportTestDetails
-	if c.ReqOptions.BaseOverrideRelease.Release != "" &&
-		c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
+	if testIDOption.BaseOverrideRelease != "" &&
+		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Release {
 
 		for _, mw := range c.middlewares {
 			testKey := crtype.TestWithVariantsKey{
@@ -237,6 +237,7 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 		baseRelease,
 		baseStart,
 		baseEnd,
+		c.ReqOptions.TestIDOptions,
 	)
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.TestJobRunStatuses](
