@@ -196,8 +196,26 @@ func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	return nil
 }
 
+func findStartEndTimesForRelease(releases []crtype.Release, release string) (*time.Time, *time.Time, error) {
+	for _, r := range releases {
+		if r.Release == release {
+			return r.Start, r.End, nil
+		}
+	}
+	return nil, nil, fmt.Errorf("release %s not found", release)
+}
+
 func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
 	r.log.Infof("Querying fallback override test statuses for %d test ID options", len(r.reqOptions.TestIDOptions))
+
+	// Lookup all release dates, we're going to need them
+	releases, errs := query.GetReleaseDatesFromBigQuery(ctx, r.client, r.reqOptions)
+	for _, err := range errs {
+		errCh <- err
+	}
+	if errs != nil {
+		return
+	}
 
 	// we have an array of TestIdentificationOptions, each of which MAY have a BaseOverrideRelease specified.
 	// This was determined from the main report path through this code.
@@ -221,6 +239,12 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 	for release, testIDOpts := range releaseToTestIDOptions {
 		r.log.Infof("Querying %d fallback override test statuses for release %s", len(testIDOpts), release)
 
+		start, end, err := findStartEndTimesForRelease(releases, release)
+		if err != nil {
+			errCh <- err
+			return
+		}
+
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -232,12 +256,13 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 				var errs []error
 				// We cannot inject our fallback data, rather we will query it, store it internally, and apply it during TransformTestDetails
 				generator := query.NewBaseTestDetailsQueryGenerator(
+					r.log.WithField("release", release),
 					r.client,
 					r.reqOptions,
 					allJobVariants,
-					r.reqOptions.BaseOverrideRelease.Release,
-					r.reqOptions.BaseOverrideRelease.Start,
-					r.reqOptions.BaseOverrideRelease.End,
+					release,
+					*start,
+					*end,
 					testIDOpts,
 				)
 

@@ -231,6 +231,7 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	baseEnd time.Time) (map[string][]crtype.TestJobRunRows, []error) {
 
 	generator := query.NewBaseTestDetailsQueryGenerator(
+		logrus.WithField("func", "getBaseJobRunTestStatus"),
 		c.client,
 		c.ReqOptions,
 		allJobVariants,

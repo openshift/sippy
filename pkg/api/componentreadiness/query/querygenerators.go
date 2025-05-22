@@ -673,6 +673,7 @@ func sortedKeys[T any](it map[string]T) []string {
 
 // baseTestDetailsQueryGenerator generates the query we use for the basis on the test details page.
 type baseTestDetailsQueryGenerator struct {
+	logger         log.FieldLogger
 	client         *bqcachedclient.Client
 	ReqOptions     crtype.RequestOptions
 	allJobVariants crtype.JobVariants
@@ -682,13 +683,14 @@ type baseTestDetailsQueryGenerator struct {
 	TestIDOpts     []crtype.RequestTestIdentificationOptions
 }
 
-func NewBaseTestDetailsQueryGenerator(client *bqcachedclient.Client,
+func NewBaseTestDetailsQueryGenerator(logger log.FieldLogger, client *bqcachedclient.Client,
 	reqOptions crtype.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	baseRelease string, baseStart time.Time, baseEnd time.Time,
 	testIDOpts []crtype.RequestTestIdentificationOptions) *baseTestDetailsQueryGenerator {
 
 	return &baseTestDetailsQueryGenerator{
+		logger:         logger,
 		client:         client,
 		ReqOptions:     reqOptions,
 		allJobVariants: allJobVariants,
@@ -725,7 +727,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		},
 	}...)
 
-	baseStatus, errs := fetchJobRunTestStatusResults(ctx, baseQuery, b.ReqOptions)
+	baseStatus, errs := fetchJobRunTestStatusResults(b.logger, ctx, baseQuery, b.ReqOptions)
 	return crtype.TestJobRunStatuses{BaseStatus: baseStatus}, errs
 }
 
@@ -812,12 +814,12 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		}...)
 	}
 
-	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, sampleQuery, s.ReqOptions)
+	sampleStatus, errs := fetchJobRunTestStatusResults(log.WithField("generator", "SampleQuery"), ctx, sampleQuery, s.ReqOptions)
 
 	return crtype.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }
 
-func fetchJobRunTestStatusResults(ctx context.Context,
+func fetchJobRunTestStatusResults(logger log.FieldLogger, ctx context.Context,
 	query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string][]crtype.TestJobRunRows, []error) {
 	errs := []error{}
 	status := map[string][]crtype.TestJobRunRows{}
@@ -827,14 +829,12 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 	for _, param := range query.Parameters {
 		strQuery = strings.ReplaceAll(strQuery, "@"+param.Name, fmt.Sprintf(`"%s"`, param.Value))
 	}
-	log.Infof("fetching job run test details with:")
+	logger.Infof("fetching job run test details with:")
 	fmt.Println(strQuery)
-
-	///log.Infof("Fetching job run test details with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
 	it, err := query.Read(ctx)
 	if err != nil {
-		log.WithError(err).Error("error querying job run test status from bigquery")
+		logger.WithError(err).Error("error querying job run test status from bigquery")
 		errs = append(errs, err)
 		return status, errs
 	}
@@ -847,7 +847,7 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 			break
 		}
 		if err != nil {
-			log.WithError(err).Error("error parsing component from bigquery")
+			logger.WithError(err).Error("error parsing component from bigquery")
 			errs = append(errs, errors.Wrap(err, "error parsing prowjob from bigquery"))
 			continue
 		}
@@ -855,7 +855,7 @@ func fetchJobRunTestStatusResults(ctx context.Context,
 		jobRunTestStatusRow, err := deserializeRowToJobRunTestReportStatus(row, it.Schema)
 		if err != nil {
 			err2 := errors.Wrap(err, "error deserializing row from bigquery")
-			log.Error(err2.Error())
+			logger.Error(err2.Error())
 			errs = append(errs, err2)
 			continue
 		}
