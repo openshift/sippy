@@ -89,37 +89,39 @@ func (bl *BugLoader) Errors() []error {
 	return bl.errors
 }
 
-func (bl *BugLoader) Load() {
-	logger := log.WithField("func", "bugloader.Load")
-	addError := func(err error, msg string) {
-		logger.WithError(err).Error(msg)
-		bl.errors = append(bl.errors, errors.Wrap(err, msg))
-	}
+func (bl *BugLoader) addError(logger *log.Entry, err error, msg string) {
+	logger.WithError(err).Error(msg)
+	bl.errors = append(bl.errors, errors.Wrap(err, msg))
+}
 
-	dbExpectedBugs := make([]*models.Bug, 0)
+// load updated bugs from BQ and cross-reference with tests, jobs, and triage from postgres
+func (bl *BugLoader) loadLatestBugs() (bugsFromDb []*models.Bug, triages []models.Triage, ok bool) {
+	logger := log.WithField("func", "bugloader.loadLatestBugs")
 
-	// Fetch bugs<->test mapping from bigquery
+	// Fetch known tests and ownerships from postgres
 	testCache, err := query.LoadTestCache(bl.dbc, []string{"TestOwnerships"})
 	if err != nil {
-		addError(err, "error loading test cache")
+		bl.addError(logger, err, "error loading test cache")
 		return
 	}
+	// Fetch (from bigquery) bugs that mention known (postgres) tests, so we can update mappings later
 	testBugs, err := bl.getTestBugMappings(context.TODO(), testCache)
 	if err != nil {
-		addError(err, "error loading test bug mappings")
+		bl.addError(logger, err, "error loading test bug mappings")
 		return
 	}
 	logger.WithField("bugs", len(testBugs)).Info("Loaded test bugs")
 
-	// Fetch bugs<->job mapping from bigquery
+	// Fetch known jobs from postgres
 	jobCache, err := query.LoadProwJobCache(bl.dbc)
 	if err != nil {
-		addError(err, "error loading prow job cache")
+		bl.addError(logger, err, "error loading prow job cache")
 		return
 	}
+	// Fetch (from bigquery) bugs that mention known (postgres) jobs, so we can update mappings later
 	jobBugs, err := bl.getJobBugMappings(context.TODO(), jobCache)
 	if err != nil {
-		addError(err, "error loading bug-job mappings")
+		bl.addError(logger, err, "error loading bug-job mappings")
 		return
 	}
 	logger.WithField("bugs", len(jobBugs)).Info("Loaded job bugs")
@@ -127,72 +129,81 @@ func (bl *BugLoader) Load() {
 	// Fetch bugs triaged to component readiness regressions if not already picked up above,
 	// sometimes the test name is forgotten in the bug, sometimes the mapping breaks due to
 	// weird whitespace issues:
-	triages, err := query.ListTriages(bl.dbc)
+	triages, err = query.ListTriages(bl.dbc)
 	if err != nil {
-		addError(err, "error loading triages")
+		bl.addError(logger, err, "error loading triages")
 		return
 	}
 	triageBugs, err := bl.getTriageBugMappings(context.TODO(), triages)
 	if err != nil {
-		addError(err, "error loading triage bug mappings")
+		bl.addError(logger, err, "error loading triage bug mappings")
 		return
 	}
 	logger.WithField("bugs", len(triageBugs)).Info("Loaded triage bugs")
 
-	// Merge all the bugs together
+	// Merge all the bugs together (deduplicating by ID)
 	allBugs := testBugs
 	for _, b := range jobBugs {
-		if _, ok := allBugs[b.ID]; ok {
-			allBugs[b.ID].Jobs = b.Jobs
+		if _, seen := allBugs[b.ID]; seen {
+			allBugs[b.ID].Jobs = b.Jobs // merge if both tests and jobs were mentioned
 			continue
 		}
 		allBugs[b.ID] = b
 	}
 	for _, b := range triageBugs {
-		if _, ok := allBugs[b.ID]; ok {
-			continue
+		if _, seen := allBugs[b.ID]; !seen {
+			allBugs[b.ID] = b
 		}
-		allBugs[b.ID] = b
 	}
 	logger.WithField("bugs", len(allBugs)).Info("Loaded all job bugs")
 
+	// flatten the map into a slice for return
+	bugsFromDb = make([]*models.Bug, 0, len(allBugs))
 	for _, b := range allBugs {
-		dbExpectedBugs = append(dbExpectedBugs, b)
+		bugsFromDb = append(bugsFromDb, b)
 	}
 
-	// Find or create new bugs and mappings
-	expectedBugIDs := make([]uint, 0, len(dbExpectedBugs))
-	for _, bug := range dbExpectedBugs {
-		expectedBugIDs = append(expectedBugIDs, bug.ID)
+	ok = true // nothing failed...
+	return
+}
+
+// Upsert latest bugs and mappings to tests/jobs in postgres
+func (bl *BugLoader) updateBugsInDb(latestBugs []*models.Bug) {
+	logger := log.WithField("func", "bugloader.updateBugsInDb")
+	updatedBugs := 0
+	for _, bug := range latestBugs {
 		res := bl.dbc.DB.Clauses(clause.OnConflict{
 			UpdateAll: true,
 		}).Create(bug)
 		if res.Error != nil {
-			addError(res.Error, fmt.Sprintf("error creating bug: %v", bug))
+			bl.addError(logger, res.Error, fmt.Sprintf("error creating bug: %v", bug))
 			continue
 		}
+		updatedBugs++
 		// With gorm we need to explicitly replace the associations to tests and jobs to get them to take effect:
 		err := bl.dbc.DB.Model(bug).Association("Tests").Replace(bug.Tests)
 		if err != nil {
-			addError(err, fmt.Sprintf("error updating bug test associations: %v", bug))
+			bl.addError(logger, err, fmt.Sprintf("error updating bug test associations: %v", bug))
 			continue
 		}
 		err = bl.dbc.DB.Model(bug).Association("Jobs").Replace(bug.Jobs)
 		if err != nil {
-			addError(err, fmt.Sprintf("error updating bug job associations: %v", bug))
+			bl.addError(logger, err, fmt.Sprintf("error updating bug job associations: %v", bug))
 			continue
 		}
 	}
-	logger.WithField("bugs", len(expectedBugIDs)).Info("created or updated bugs")
+	logger.WithField("bugs", updatedBugs).Info("created or updated bugs")
+}
 
-	// Some triage records may have been aligned to bugs that did not mention a test name and were just imported.
-	// If so we need to establish the db link between these and the new bug records in postgres.
-	// Also watch out for triages that changed bug url, and fix that linkage.
+// Some triage records may have been aligned to bugs that did not mention a test name and were just imported.
+// If so we need to establish the db link between these and the new bug records in postgres.
+// Also watch out for triages that changed bug url, and fix that linkage.
+func (bl *BugLoader) updateTriageBugLinks(triages []models.Triage) {
+	logger := log.WithField("func", "bugloader.updateTriageBugLinks")
 	logger.Infof("ensuring triages have correct refs to their bugs")
 	for _, t := range triages {
 		if t.BugID != nil && t.URL == t.Bug.URL {
-			// Ignore bugs that seem to already be linked properly
-			continue
+			continue // Ignore bugs that already seem properly linked
 		}
 
 		var bug models.Bug
@@ -209,8 +220,16 @@ func (bl *BugLoader) Load() {
 		t.BugID = &bug.ID
 		res = bl.dbc.DB.Save(t)
 		if res.Error != nil {
-			addError(res.Error, "error "+info)
+			bl.addError(logger, res.Error, "error "+info)
 		}
+	}
+}
+
+func (bl *BugLoader) Load() {
+	// methods below record errors in bl.errors, so we don't need to return them
+	if latestBugs, triages, ok := bl.loadLatestBugs(); ok { // no errors preventing processing
+		bl.updateBugsInDb(latestBugs)
+		bl.updateTriageBugLinks(triages)
 	}
 }
 
