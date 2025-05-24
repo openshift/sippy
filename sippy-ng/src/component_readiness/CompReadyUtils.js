@@ -390,6 +390,10 @@ export function getUpdatedUrlParts(vars) {
 
   // TODO: inject the PR vars into query params
 
+  if (vars.samplePayloadTag) {
+    valuesMap.samplePayloadTag = vars.samplePayloadTag
+  }
+
   function filterOutVariantCC(values) {
     return values.filter((value) => !vars.variantCrossCompare.includes(value))
   }
