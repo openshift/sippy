@@ -61,7 +61,7 @@ func (tol *TestOwnershipLoader) Load() {
 		if res.Error == gorm.ErrRecordNotFound {
 			log.WithFields(log.Fields{
 				"testname": m.Name,
-			}).Warningf("sippy doesn't know about this test")
+			}).Debugf("sippy doesn't know about this test")
 			unknown++
 			continue
 		}
