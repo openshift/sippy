@@ -207,6 +207,10 @@ func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cac
 			Component:         report.Component,
 			Capability:        report.Capability,
 		}
+		// If we overrode the base stats with a prior release, reflect this in our cache key:
+		if report.Analyses[0].BaseStats != nil && report.Analyses[0].BaseStats.Release != view.BaseRelease.Release {
+			newTIDOpts.BaseOverrideRelease = report.Analyses[0].BaseStats.Release
+		}
 		genCacheKey.TestIDOptions = []crtype.RequestTestIdentificationOptions{newTIDOpts}
 		tempKey := api.GetPrefixedCacheKey("TestDetailsReport~", genCacheKey)
 		cacheKey, err := tempKey.GetCacheKey()
