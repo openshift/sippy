@@ -89,8 +89,10 @@ var (
 	}
 	componentPageGenerator = ComponentReportGenerator{
 		ReqOptions: crtype.RequestOptions{
-			TestIDOption: crtype.RequestTestIdentificationOptions{
-				Component: "component 2",
+			TestIDOptions: []crtype.RequestTestIdentificationOptions{
+				{
+					Component: "component 2",
+				},
 			},
 			VariantOption: crtype.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
@@ -101,9 +103,11 @@ var (
 	}
 	capabilityPageGenerator = ComponentReportGenerator{
 		ReqOptions: crtype.RequestOptions{
-			TestIDOption: crtype.RequestTestIdentificationOptions{
-				Component:  "component 2",
-				Capability: "cap22",
+			TestIDOptions: []crtype.RequestTestIdentificationOptions{
+				{
+					Component:  "component 2",
+					Capability: "cap22",
+				},
 			},
 			VariantOption: crtype.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
@@ -114,10 +118,12 @@ var (
 	}
 	testPageGenerator = ComponentReportGenerator{
 		ReqOptions: crtype.RequestOptions{
-			TestIDOption: crtype.RequestTestIdentificationOptions{
-				Component:  "component 2",
-				Capability: "cap22",
-				TestID:     "2",
+			TestIDOptions: []crtype.RequestTestIdentificationOptions{
+				{
+					Component:  "component 2",
+					Capability: "cap22",
+					TestID:     "2",
+				},
 			},
 			VariantOption: crtype.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
@@ -128,14 +134,16 @@ var (
 	}
 	testDetailsGenerator = ComponentReportGenerator{
 		ReqOptions: crtype.RequestOptions{
-			TestIDOption: crtype.RequestTestIdentificationOptions{
-				Component:  "component 1",
-				Capability: "cap11",
-				TestID:     "1",
-				RequestedVariants: map[string]string{
-					"Platform":     "aws",
-					"Architecture": "amd64",
-					"Network":      "ovn",
+			TestIDOptions: []crtype.RequestTestIdentificationOptions{
+				{
+					Component:  "component 1",
+					Capability: "cap11",
+					TestID:     "1",
+					RequestedVariants: map[string]string{
+						"Platform":     "aws",
+						"Architecture": "amd64",
+						"Network":      "ovn",
+					},
 				},
 			},
 			VariantOption: crtype.RequestVariantOptions{
@@ -1164,7 +1172,7 @@ func TestGenerateComponentReport(t *testing.T) {
 			assert.NoError(t, err, "error generating component report")
 
 			// WARNING: PC and Mac differ on floating point comparisons when you get far enough into the precision.
-			// We need to do fuzzy floating point comparions which poses a problem for the way these tests are
+			// We need to do fuzzy floating point comparisons which poses a problem for the way these tests are
 			// written to compare an entire report object. To avoid having to surgically compare everything, we
 			// will first iterate all rows cols and regressed tests to compare any floating point vals we need to.
 			// Then we nil them out and deep compare the rest of the object. This prevents any missed bugs where we
@@ -1221,12 +1229,12 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		Flake:   4,
 	}
 	testDetailsRowIdentification := crtype.RowIdentification{
-		TestID:     testDetailsGenerator.ReqOptions.TestIDOption.TestID,
-		Component:  testDetailsGenerator.ReqOptions.TestIDOption.Component,
-		Capability: testDetailsGenerator.ReqOptions.TestIDOption.Capability,
+		TestID:     testDetailsGenerator.ReqOptions.TestIDOptions[0].TestID,
+		Component:  testDetailsGenerator.ReqOptions.TestIDOptions[0].Component,
+		Capability: testDetailsGenerator.ReqOptions.TestIDOptions[0].Capability,
 	}
 	testDetailsColumnIdentification := crtype.ColumnIdentification{
-		Variants: testDetailsGenerator.ReqOptions.TestIDOption.RequestedVariants,
+		Variants: testDetailsGenerator.ReqOptions.TestIDOptions[0].RequestedVariants,
 	}
 	sampleReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.ReqOptions.SampleRelease.Release,
@@ -1578,7 +1586,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
-			report := tc.generator.internalGenerateTestDetailsReport(context.TODO(), baseStats, "", nil, nil, sampleStats)
+			report := tc.generator.internalGenerateTestDetailsReport(context.TODO(), baseStats, "", nil, nil, sampleStats, crtype.RequestTestIdentificationOptions{})
 			assert.Equal(t, tc.expectedReport.RowIdentification, report.RowIdentification, "expected report row identification %+v, got %+v", tc.expectedReport.RowIdentification, report.RowIdentification)
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
 			assert.Equal(t, tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats)

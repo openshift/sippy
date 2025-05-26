@@ -408,7 +408,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, tc.baseRelease, options.BaseRelease)
 				assert.Equal(t, tc.sampleRelease, options.SampleRelease)
-				assert.Equal(t, tc.testIDOption, options.TestIDOption)
+				assert.Equal(t, tc.testIDOption, options.TestIDOptions[0])
 				assert.Equal(t, tc.variantOption, options.VariantOption)
 				assert.Equal(t, tc.advancedOption, options.AdvancedOption)
 				assert.Equal(t, tc.cacheOption, options.CacheOption)

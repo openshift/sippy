@@ -582,12 +582,9 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	var test crtype.TestWithVariantsKey
 	columnGroupByVariants := c.ReqOptions.VariantOption.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
-	/* TODO
-	if c.ReqOptions.TestIDOption.TestID != "" {
+	if len(c.ReqOptions.TestIDOptions) > 0 && c.ReqOptions.TestIDOptions[0].TestID != "" {
 		columnGroupByVariants = c.ReqOptions.VariantOption.DBGroupBy
 	}
-
-	*/
 
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIDStr), &test)
@@ -595,34 +592,31 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 		return []crtype.RowIdentification{}, []crtype.ColumnID{}, err
 	}
 
-	// TODO;
-	//	component, capabilities := componentAndCapabilityGetter(test, stats)
-	component, _ := componentAndCapabilityGetter(test, stats)
+	component, capabilities := componentAndCapabilityGetter(test, stats)
 	rows := []crtype.RowIdentification{}
 	// First Page with no component requested
-	// TODO: delete
 	rows = append(rows, crtype.RowIdentification{Component: component})
-	/*
-		if c.ReqOptions.TestIDOption.Component == "" {
+	if len(c.ReqOptions.TestIDOptions) > 0 {
+		if c.ReqOptions.TestIDOptions[0].Component == "" {
 			rows = append(rows, crtype.RowIdentification{Component: component})
-		} else if c.ReqOptions.TestIDOption.Component == component {
+		} else if c.ReqOptions.TestIDOptions[0].Component == component {
 			// Exact test match
-			if c.ReqOptions.TestIDOption.TestID != "" {
+			if c.ReqOptions.TestIDOptions[0].TestID != "" {
 				row := crtype.RowIdentification{
 					Component: component,
 					TestID:    test.TestID,
 					TestName:  stats.TestName,
 					TestSuite: stats.TestSuite,
 				}
-				if c.ReqOptions.TestIDOption.Capability != "" {
-					row.Capability = c.ReqOptions.TestIDOption.Capability
+				if c.ReqOptions.TestIDOptions[0].Capability != "" {
+					row.Capability = c.ReqOptions.TestIDOptions[0].Capability
 				}
 				rows = append(rows, row)
 			} else {
 				for _, capability := range capabilities {
 					// Exact capability match only produces one row
-					if c.ReqOptions.TestIDOption.Capability != "" {
-						if c.ReqOptions.TestIDOption.Capability == capability {
+					if c.ReqOptions.TestIDOptions[0].Capability != "" {
+						if c.ReqOptions.TestIDOptions[0].Capability == capability {
 							row := crtype.RowIdentification{
 								Component:  component,
 								TestID:     test.TestID,
@@ -639,8 +633,8 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 				}
 			}
 		}
+	}
 
-	*/
 	columns := []crtype.ColumnID{}
 	column := crtype.ColumnIdentification{Variants: map[string]string{}}
 	for key, value := range test.Variants {
