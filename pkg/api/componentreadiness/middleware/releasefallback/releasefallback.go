@@ -196,15 +196,6 @@ func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	return nil
 }
 
-func findStartEndTimesForRelease(releases []crtype.Release, release string) (*time.Time, *time.Time, error) {
-	for _, r := range releases {
-		if r.Release == release {
-			return r.Start, r.End, nil
-		}
-	}
-	return nil, nil, fmt.Errorf("release %s not found", release)
-}
-
 func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
 	r.log.Infof("Querying fallback override test statuses for %d test ID options", len(r.reqOptions.TestIDOptions))
 
@@ -239,7 +230,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 	for release, testIDOpts := range releaseToTestIDOptions {
 		r.log.Infof("Querying %d fallback override test statuses for release %s", len(testIDOpts), release)
 
-		start, end, err := findStartEndTimesForRelease(releases, release)
+		start, end, err := utils.FindStartEndTimesForRelease(releases, release)
 		if err != nil {
 			errCh <- err
 			return

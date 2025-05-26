@@ -152,13 +152,12 @@ type ComponentReportGenerator struct {
 }
 
 type GeneratorCacheKey struct {
-	ReportModified      *time.Time
-	BaseRelease         crtype.RequestReleaseOptions
-	BaseOverrideRelease crtype.RequestReleaseOptions
-	SampleRelease       crtype.RequestReleaseOptions
-	VariantOption       crtype.RequestVariantOptions
-	AdvancedOption      crtype.RequestAdvancedOptions
-	TestIDOptions       []crtype.RequestTestIdentificationOptions
+	ReportModified *time.Time
+	BaseRelease    crtype.RequestReleaseOptions
+	SampleRelease  crtype.RequestReleaseOptions
+	VariantOption  crtype.RequestVariantOptions
+	AdvancedOption crtype.RequestAdvancedOptions
+	TestIDOptions  []crtype.RequestTestIdentificationOptions
 }
 
 // GetCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -168,18 +167,12 @@ type GeneratorCacheKey struct {
 func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCacheKey {
 	// Make sure we have initialized the report modified field
 	cacheKey := GeneratorCacheKey{
-		ReportModified:      c.ReportModified,
-		BaseRelease:         c.ReqOptions.BaseRelease,
-		BaseOverrideRelease: c.ReqOptions.BaseOverrideRelease,
-		SampleRelease:       c.ReqOptions.SampleRelease,
-		VariantOption:       c.ReqOptions.VariantOption,
-		AdvancedOption:      c.ReqOptions.AdvancedOption,
-		TestIDOptions:       c.ReqOptions.TestIDOptions,
-	}
-
-	// If BaseOverrideRelease is matching BaseRelease, use empty struct for the purposes of our key.
-	if cacheKey.BaseOverrideRelease.Release == cacheKey.BaseRelease.Release {
-		cacheKey.BaseOverrideRelease = crtype.RequestReleaseOptions{}
+		ReportModified: c.ReportModified,
+		BaseRelease:    c.ReqOptions.BaseRelease,
+		SampleRelease:  c.ReqOptions.SampleRelease,
+		VariantOption:  c.ReqOptions.VariantOption,
+		AdvancedOption: c.ReqOptions.AdvancedOption,
+		TestIDOptions:  c.ReqOptions.TestIDOptions,
 	}
 
 	// Ensure string arrays are stable sorted regardless of how the caller / we constructed them.
@@ -281,10 +274,7 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	// TODO: Should middleware constructors do the interpretation of the request
 	// and decide if they want to take part? Return nil if not?
 	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
-	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis || (c.ReqOptions.BaseOverrideRelease.Release != "" &&
-		c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release) {
-		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
-	}
+	c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
 	if c.dbc != nil {
 		c.middlewares = append(c.middlewares, regressiontracker.NewRegressionTrackerMiddleware(c.dbc, c.ReqOptions))
 	} else {

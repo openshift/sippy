@@ -78,35 +78,6 @@ func ParseComponentReportRequest(
 			return
 		}
 
-		// default to no override
-		opts.BaseOverrideRelease.Release = opts.BaseRelease.Release
-		opts.BaseOverrideRelease.Start = opts.BaseRelease.Start
-		opts.BaseOverrideRelease.End = opts.BaseRelease.End
-
-		if opts.AdvancedOption.IncludeMultiReleaseAnalysis {
-			// check to see if we have an individual test which is using a fallback release for basis
-			testBasisRelease := param.SafeRead(req, "testBasisRelease")
-			if len(testBasisRelease) > 0 && releases != nil {
-				// indicates we fell back to a previous release
-				// get that release and find the dates associated with it.
-				for _, release := range releases {
-					if release.Release == testBasisRelease {
-						// found the release so update if not already set
-						// if it is already the base release we don't update
-						// change dates
-						if opts.BaseRelease.Release != testBasisRelease {
-							opts.BaseOverrideRelease.Release = testBasisRelease
-
-							if release.GADate != nil {
-								opts.BaseOverrideRelease.End = *release.GADate
-								opts.BaseOverrideRelease.Start = util.AdjustReleaseTime(opts.BaseOverrideRelease.End, true, "30", crTimeRoundingFactor)
-							}
-						}
-						break
-					}
-				}
-			}
-		}
 	}
 
 	// Params below this point can be used with and without views:
@@ -119,6 +90,33 @@ func ParseComponentReportRequest(
 			Capability: req.URL.Query().Get("capability"),
 			TestID:     req.URL.Query().Get("testId"),
 		},
+	}
+	if opts.AdvancedOption.IncludeMultiReleaseAnalysis {
+		// check to see if we have an individual test which is using a fallback release for basis
+		testBasisRelease := param.SafeRead(req, "testBasisRelease")
+		if len(testBasisRelease) > 0 && releases != nil {
+			// indicates we fell back to a previous release
+			// get that release and find the dates associated with it.
+			for _, release := range releases {
+				if release.Release == testBasisRelease {
+					// found the release so update if not already set
+					// if it is already the base release we don't update
+					// change dates
+					if opts.BaseRelease.Release != testBasisRelease {
+						opts.TestIDOptions[0].BaseOverrideRelease = testBasisRelease
+
+						/*
+							if release.GADate != nil {
+								opts.BaseOverrideRelease.End = *release.GADate
+								opts.BaseOverrideRelease.Start = util.AdjustReleaseTime(opts.BaseOverrideRelease.End, true, "30", crTimeRoundingFactor)
+							}
+					
+						*/
+					}
+					break
+				}
+			}
+		}
 	}
 	opts.TestIDOptions[0].RequestedVariants = map[string]string{}
 	// Only the dbGroupBy variants can be specifically requested

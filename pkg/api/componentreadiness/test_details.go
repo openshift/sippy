@@ -141,6 +141,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 			}
 			reports = append(reports, report)
 		} else {
+			// TODO: why are we seeing this
 			logrus.Errorf("missing test key in results: %v", testKeyStr)
 
 		}
@@ -162,6 +163,11 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 					v, testIDOption.RequestedVariants),
 			}
 		}
+	}
+
+	releases, errs := query.GetReleaseDatesFromBigQuery(ctx, c.client, c.ReqOptions)
+	if errs != nil {
+		return crtype.ReportTestDetails{}, errs
 	}
 
 	now := time.Now()
@@ -204,11 +210,16 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 			}
 		}
 
+		start, end, err := utils.FindStartEndTimesForRelease(releases, testIDOption.BaseOverrideRelease)
+		if err != nil {
+			return crtype.ReportTestDetails{}, []error{err}
+		}
+
 		overrideReport := c.internalGenerateTestDetailsReport(ctx,
 			componentJobRunTestReportStatus.BaseOverrideStatus,
-			c.ReqOptions.BaseOverrideRelease.Release,
-			&c.ReqOptions.BaseOverrideRelease.Start,
-			&c.ReqOptions.BaseOverrideRelease.End,
+			testIDOption.BaseOverrideRelease,
+			start,
+			end,
 			componentJobRunTestReportStatus.SampleStatus,
 			testIDOption)
 		// swap out the base dates for the override

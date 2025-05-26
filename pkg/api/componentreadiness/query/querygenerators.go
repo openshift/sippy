@@ -859,7 +859,8 @@ func fetchJobRunTestStatusResults(logger log.FieldLogger, ctx context.Context,
 			errs = append(errs, err2)
 			continue
 		}
-		prowName := utils.NormalizeProwJobName(jobRunTestStatusRow.ProwJob, reqOptions)
+		// TODO: how can we pass base override release here when it's now per test
+		prowName := utils.NormalizeProwJobName(jobRunTestStatusRow.ProwJob, reqOptions, "")
 		status[prowName] = append(status[prowName], jobRunTestStatusRow)
 	}
 	return status, errs

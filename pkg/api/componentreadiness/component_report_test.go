@@ -1638,7 +1638,7 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 				c.ReqOptions.SampleRelease = crtype.RequestReleaseOptions{Release: tt.sampleRelease}
 			}
 
-			assert.Equalf(t, tt.want, utils.NormalizeProwJobName(tt.jobName, c.ReqOptions), "normalizeProwJobName(%v)", tt.jobName)
+			assert.Equalf(t, tt.want, utils.NormalizeProwJobName(tt.jobName, c.ReqOptions, ""), "normalizeProwJobName(%v)", tt.jobName)
 		})
 	}
 }

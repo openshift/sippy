@@ -261,24 +261,17 @@ func buildGenerator(
 		return nil, err
 	}
 
-	baseOverrideRelease := crtype.RequestReleaseOptions{
-		Release: baseRelease.Release,
-		Start:   baseRelease.Start,
-		End:     baseRelease.End,
-	}
-
 	variantOption := view.VariantOptions
 	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
 	reqOpts := crtype.RequestOptions{
-		BaseRelease:         baseRelease,
-		BaseOverrideRelease: baseOverrideRelease,
-		SampleRelease:       sampleRelease,
-		VariantOption:       variantOption,
-		AdvancedOption:      advancedOption,
-		CacheOption:         cacheOpts,
-		TestIDOptions:       testIDOpts,
+		BaseRelease:    baseRelease,
+		SampleRelease:  sampleRelease,
+		VariantOption:  variantOption,
+		AdvancedOption: advancedOption,
+		CacheOption:    cacheOpts,
+		TestIDOptions:  testIDOpts,
 	}
 
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,

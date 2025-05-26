@@ -83,12 +83,11 @@ type RequestVariantOptions struct {
 // threshold for indicating a regression.  If a release prior to the selected BaseRelease has a
 // higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
 type RequestOptions struct {
-	BaseRelease         RequestReleaseOptions
-	BaseOverrideRelease RequestReleaseOptions // TODO remove, moved to test id options
-	SampleRelease       RequestReleaseOptions
-	VariantOption       RequestVariantOptions
-	AdvancedOption      RequestAdvancedOptions
-	CacheOption         cache.RequestOptions
+	BaseRelease    RequestReleaseOptions
+	SampleRelease  RequestReleaseOptions
+	VariantOption  RequestVariantOptions
+	AdvancedOption RequestAdvancedOptions
+	CacheOption    cache.RequestOptions
 	// TODO: phase our once multi TestIDOptions is fully implemented
 	TestIDOptions []RequestTestIdentificationOptions
 }

@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/sirupsen/logrus"
@@ -40,7 +41,16 @@ func getMinor(in string) (int, error) {
 	return int(minor), err
 }
 
-func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOptions) string {
+func FindStartEndTimesForRelease(releases []componentreport.Release, release string) (*time.Time, *time.Time, error) {
+	for _, r := range releases {
+		if r.Release == release {
+			return r.Start, r.End, nil
+		}
+	}
+	return nil, nil, fmt.Errorf("release %s not found", release)
+}
+
+func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOptions, baseOverrideRelease string) string {
 	name := prowName
 	if reqOptions.BaseRelease.Release != "" {
 		name = strings.ReplaceAll(name, reqOptions.BaseRelease.Release, "X.X")
@@ -48,9 +58,9 @@ func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOpt
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
-	if reqOptions.BaseOverrideRelease.Release != "" {
-		name = strings.ReplaceAll(name, reqOptions.BaseOverrideRelease.Release, "X.X")
-		if prev, err := PreviousRelease(reqOptions.BaseOverrideRelease.Release); err == nil {
+	if baseOverrideRelease != "" {
+		name = strings.ReplaceAll(name, baseOverrideRelease, "X.X")
+		if prev, err := PreviousRelease(baseOverrideRelease); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
