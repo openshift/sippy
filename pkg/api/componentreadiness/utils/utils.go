@@ -50,26 +50,29 @@ func FindStartEndTimesForRelease(releases []componentreport.Release, release str
 	return nil, nil, fmt.Errorf("release %s not found", release)
 }
 
-func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOptions, baseOverrideRelease string) string {
+func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOptions) string {
 	name := prowName
+	// Build a list of all releases involved in this request to replace with X.X in normalized prow job names.
+	releases := []string{}
 	if reqOptions.BaseRelease.Release != "" {
-		name = strings.ReplaceAll(name, reqOptions.BaseRelease.Release, "X.X")
-		if prev, err := PreviousRelease(reqOptions.BaseRelease.Release); err == nil {
-			name = strings.ReplaceAll(name, prev, "X.X")
-		}
-	}
-	if baseOverrideRelease != "" {
-		name = strings.ReplaceAll(name, baseOverrideRelease, "X.X")
-		if prev, err := PreviousRelease(baseOverrideRelease); err == nil {
-			name = strings.ReplaceAll(name, prev, "X.X")
-		}
+		releases = append(releases, reqOptions.BaseRelease.Release)
 	}
 	if reqOptions.SampleRelease.Release != "" {
-		name = strings.ReplaceAll(name, reqOptions.SampleRelease.Release, "X.X")
-		if prev, err := PreviousRelease(reqOptions.SampleRelease.Release); err == nil {
+		releases = append(releases, reqOptions.SampleRelease.Release)
+	}
+	for _, tid := range reqOptions.TestIDOptions {
+		if tid.BaseOverrideRelease != "" {
+			releases = append(releases, tid.BaseOverrideRelease)
+		}
+	}
+
+	for _, release := range releases {
+		name = strings.ReplaceAll(name, release, "X.X")
+		if prev, err := PreviousRelease(release); err == nil {
 			name = strings.ReplaceAll(name, prev, "X.X")
 		}
 	}
+
 	// Some jobs encode frequency in their name, which can change
 	re := regexp.MustCompile(`-f\d+`)
 	name = re.ReplaceAllString(name, "-fXX")
