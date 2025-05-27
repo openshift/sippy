@@ -70,6 +70,10 @@ func NewPrimeCacheCommand() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
 			defer cancel()
 
+			if f.CacheFlags.RedisURL == "" {
+				log.Fatalf("--redis-url is required")
+			}
+
 			cacheClient, err := f.CacheFlags.GetCacheClient()
 			if err != nil {
 				log.WithError(err).Fatal("couldn't get cache client")
@@ -112,7 +116,7 @@ func NewPrimeCacheCommand() *cobra.Command {
 			}
 
 			for _, view := range views.ComponentReadiness {
-				if view.RegressionTracking.Enabled {
+				if view.PrimeCache.Enabled {
 
 					err2 := primeCacheForView(view, releases, cacheOpts, ctx, bigQueryClient, dbc, config)
 					if err2 != nil {

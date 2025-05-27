@@ -105,6 +105,7 @@ type View struct {
 	Metrics            ViewMetrics            `json:"metrics" yaml:"metrics"`
 	RegressionTracking ViewRegressionTracking `json:"regression_tracking" yaml:"regression_tracking"`
 	AutomateJira       AutomateJira           `json:"automate_jira" yaml:"automate_jira"`
+	PrimeCache         ViewPrimeCache         `json:"prime_cache" yaml:"prime_cache"`
 }
 
 type ViewMetrics struct {
@@ -115,6 +116,9 @@ type ViewRegressionTracking struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 }
 
+type ViewPrimeCache struct {
+	Enabled bool `json:"enabled" yaml:"enabled"`
+}
 type AutomateJira struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 }

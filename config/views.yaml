@@ -73,6 +73,8 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
+    prime_cache:
+      enabled: true
     automate_jira:
       enabled: true
   - name: 4.20-x86-vs-arm
@@ -344,6 +346,8 @@ component_readiness:
     metrics:
       enabled: true
     regression_tracking:
+      enabled: true
+    prime_cache:
       enabled: true
     automate_jira:
       enabled: true
