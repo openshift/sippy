@@ -592,43 +592,59 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 		return []crtype.RowIdentification{}, []crtype.ColumnID{}, err
 	}
 
-	component, capabilities := componentAndCapabilityGetter(test, stats)
+	testComponent, testCapabilities := componentAndCapabilityGetter(test, stats)
 	rows := []crtype.RowIdentification{}
 	// First Page with no component requested
+	requestedComponent := ""
+	requestedCapability := ""
+	requestedTestID := "" // component reports can filter on test if you drill down far enough
 	if len(c.ReqOptions.TestIDOptions) > 0 {
-		if c.ReqOptions.TestIDOptions[0].Component == "" {
-			rows = append(rows, crtype.RowIdentification{Component: component})
-		} else if c.ReqOptions.TestIDOptions[0].Component == component {
-			// Exact test match
-			if c.ReqOptions.TestIDOptions[0].TestID != "" {
-				row := crtype.RowIdentification{
-					Component: component,
-					TestID:    test.TestID,
-					TestName:  stats.TestName,
-					TestSuite: stats.TestSuite,
-				}
-				if c.ReqOptions.TestIDOptions[0].Capability != "" {
-					row.Capability = c.ReqOptions.TestIDOptions[0].Capability
-				}
-				rows = append(rows, row)
-			} else {
-				for _, capability := range capabilities {
-					// Exact capability match only produces one row
-					if c.ReqOptions.TestIDOptions[0].Capability != "" {
-						if c.ReqOptions.TestIDOptions[0].Capability == capability {
-							row := crtype.RowIdentification{
-								Component:  component,
-								TestID:     test.TestID,
-								TestName:   stats.TestName,
-								TestSuite:  stats.TestSuite,
-								Capability: capability,
-							}
-							rows = append(rows, row)
-							break
+		if c.ReqOptions.TestIDOptions[0].Component != "" {
+			requestedComponent = c.ReqOptions.TestIDOptions[0].Component
+		}
+		if c.ReqOptions.TestIDOptions[0].Capability != "" {
+			requestedCapability = c.ReqOptions.TestIDOptions[0].Capability
+		}
+		if c.ReqOptions.TestIDOptions[0].TestID != "" {
+			requestedTestID = c.ReqOptions.TestIDOptions[0].TestID
+		}
+	}
+
+	if requestedComponent == "" {
+		// No component filter specified for this report, include a row for all components:
+		rows = append(rows, crtype.RowIdentification{Component: testComponent})
+	} else if requestedComponent == testComponent {
+		// A component filter was specified and this test matches that component:
+
+		// Exact test match
+		if requestedTestID != "" {
+			row := crtype.RowIdentification{
+				Component: testComponent,
+				TestID:    test.TestID,
+				TestName:  stats.TestName,
+				TestSuite: stats.TestSuite,
+			}
+			if requestedCapability != "" {
+				row.Capability = requestedCapability
+			}
+			rows = append(rows, row)
+		} else {
+			for _, capability := range testCapabilities {
+				// Exact capability match only produces one row
+				if requestedCapability != "" {
+					if requestedCapability == capability {
+						row := crtype.RowIdentification{
+							Component:  testComponent,
+							TestID:     test.TestID,
+							TestName:   stats.TestName,
+							TestSuite:  stats.TestSuite,
+							Capability: capability,
 						}
-					} else {
-						rows = append(rows, crtype.RowIdentification{Component: component, Capability: capability})
+						rows = append(rows, row)
+						break
 					}
+				} else {
+					rows = append(rows, crtype.RowIdentification{Component: testComponent, Capability: capability})
 				}
 			}
 		}
