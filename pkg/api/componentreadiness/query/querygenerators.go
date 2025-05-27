@@ -545,8 +545,8 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]crtype.TestStatus, []error) {
 	errs := []error{}
 	status := map[string]crtype.TestStatus{}
-	log.Infof("Fetching test status with:\n%s\nParameters:\n%+v\n", query.Q, query.Parameters)
 
+	logQueryWithParamsReplaced(log.WithField("type", "ComponentReport"), query)
 	it, err := query.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying test status from bigquery")
@@ -818,18 +818,29 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 	return crtype.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }
 
+// logQueryWithParamsReplaced is intended to give developers a query they can copy out of logs and work with directly,
+// which has all the parameters replaced. This query is NOT the one we run live, we let bigquery do it's param replacement
+// itself.
+// Without this, logrus logs the query in one line with everything escaped, and parameters have to be manually replaced by the user.
+// This will only log if we're logging at Debug level.
+func logQueryWithParamsReplaced(logger log.FieldLogger, query *bigquery.Query) {
+	if log.GetLevel() == log.DebugLevel {
+		// Attempt to log a usable version of the query with params swapped in.
+		strQuery := query.Q
+		for _, p := range query.Parameters {
+			strQuery = strings.ReplaceAll(strQuery, "@"+p.Name, fmt.Sprintf(`"%s"`, p.Value))
+		}
+		logger.Debugf("fetching bigquery data with query:")
+		fmt.Println(strQuery)
+	}
+}
+
 func fetchJobRunTestStatusResults(logger log.FieldLogger, ctx context.Context,
 	query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string][]crtype.TestJobRunRows, []error) {
 	errs := []error{}
 	status := map[string][]crtype.TestJobRunRows{}
 
-	// Attempt to log a usable version of the query with params swapped in.
-	strQuery := query.Q
-	for _, p := range query.Parameters {
-		strQuery = strings.ReplaceAll(strQuery, "@"+p.Name, fmt.Sprintf(`"%s"`, p.Value))
-	}
-	logger.Infof("fetching job run test details with:")
-	fmt.Println(strQuery)
+	logQueryWithParamsReplaced(logger.WithField("type", "TestDetails"), query)
 
 	it, err := query.Read(ctx)
 	if err != nil {
