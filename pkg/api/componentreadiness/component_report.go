@@ -595,7 +595,6 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	component, capabilities := componentAndCapabilityGetter(test, stats)
 	rows := []crtype.RowIdentification{}
 	// First Page with no component requested
-	rows = append(rows, crtype.RowIdentification{Component: component})
 	if len(c.ReqOptions.TestIDOptions) > 0 {
 		if c.ReqOptions.TestIDOptions[0].Component == "" {
 			rows = append(rows, crtype.RowIdentification{Component: component})
