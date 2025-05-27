@@ -71,6 +71,7 @@ func GetDataFromCacheOrGenerate[T any](
 		}
 
 		cacheDuration := CalculateRoundedCacheDuration(cacheOptions)
+		log.Debugf("cache duration set to %s or approx %s for key %s", cacheDuration, time.Now().Add(cacheDuration).Format(time.RFC3339), cacheKey)
 
 		if !cacheOptions.ForceRefresh {
 			if res, err := c.Get(ctx, string(cacheKey), cacheDuration); err == nil {

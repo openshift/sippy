@@ -479,15 +479,14 @@ func addTestFilters(
 	if i > 0 {
 		queryString += " OR "
 	}
-	// TODO: validation?
 	if isSample {
 		queryString += fmt.Sprintf(`(cm.id = '%s' AND branch = @SampleRelease
 
-`, testIDOption.TestID)
+`, param.Cleanse(testIDOption.TestID))
 	} else {
 		queryString += fmt.Sprintf(`(cm.id = '%s' AND branch = @BaseRelease
 
-`, testIDOption.TestID)
+`, param.Cleanse(testIDOption.TestID))
 	}
 	for _, key := range sortedKeys(includeVariants) {
 		// only add in include variants that aren't part of the requested or cross-compared variants
@@ -499,15 +498,13 @@ func addTestFilters(
 		}
 
 		group := param.Cleanse(key)
-		// TODO: validation?
 		queryString += fmt.Sprintf(` AND jv_%s.variant_value IN UNNEST(%s)`, group,
 			FormatStringSliceForBigQuery(c.VariantOption.IncludeVariants[key]))
 	}
 
 	for _, group := range sortedKeys(testIDOption.RequestedVariants) {
 		group = param.Cleanse(group) // should be clean anyway, but just to make sure
-		// TODO: validation?
-		queryString += fmt.Sprintf(` AND jv_%s.variant_value = "%s"`, group, testIDOption.RequestedVariants[group])
+		queryString += fmt.Sprintf(` AND jv_%s.variant_value = "%s"`, group, param.Cleanse(testIDOption.RequestedVariants[group]))
 	}
 	queryString += `)
 `
@@ -519,7 +516,7 @@ func addTestFilters(
 func FormatStringSliceForBigQuery(sl []string) string {
 	quotedStrings := make([]string, len(sl))
 	for i, s := range sl {
-		quotedStrings[i] = fmt.Sprintf("\"%s\"", s)
+		quotedStrings[i] = fmt.Sprintf("\"%s\"", param.Cleanse(s))
 	}
 	return fmt.Sprintf("[%s]", strings.Join(quotedStrings, ", "))
 }
@@ -828,8 +825,8 @@ func fetchJobRunTestStatusResults(logger log.FieldLogger, ctx context.Context,
 
 	// Attempt to log a usable version of the query with params swapped in.
 	strQuery := query.Q
-	for _, param := range query.Parameters {
-		strQuery = strings.ReplaceAll(strQuery, "@"+param.Name, fmt.Sprintf(`"%s"`, param.Value))
+	for _, p := range query.Parameters {
+		strQuery = strings.ReplaceAll(strQuery, "@"+p.Name, fmt.Sprintf(`"%s"`, p.Value))
 	}
 	logger.Infof("fetching job run test details with:")
 	fmt.Println(strQuery)

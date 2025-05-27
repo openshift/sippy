@@ -281,7 +281,6 @@ func buildGenerator(
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,
 	// explicitly set our reports in the cache, thus resetting the timer for all expiry and keeping the cache
 	// primed.
-	// TODO: this may not be bypassing the cache for underlying bigquery...
 	generator := componentreadiness.NewComponentReportGenerator(bigQueryClient, reqOpts, dbc, config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	return &generator, nil
 }
