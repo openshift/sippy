@@ -341,34 +341,36 @@ func BuildComponentReportQuery(
 			})
 		}
 
-		/*
-			TODO: figure out how to restore this drilldown functionality if this experiment works
-
-			for _, group := range sortedKeys(reqOptions.TestIDOption.RequestedVariants) {
+		// In this context, a component report, multiple test ID options should not be specified. Thus
+		// here we assume just one for the filtering purposes here. This code triggers as you drill down
+		// on a main report into component > capability > tests, but it does not get used on a test details page.
+		if len(reqOptions.TestIDOptions) == 1 {
+			for _, group := range sortedKeys(reqOptions.TestIDOptions[0].RequestedVariants) {
 				group = param.Cleanse(group) // should be clean already, but just to make sure
 				paramName := fmt.Sprintf("ReqVariant_%s", group)
 				queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
 				commonParams = append(commonParams, bigquery.QueryParameter{
 					Name:  paramName,
-					Value: reqOptions.TestIDOption.RequestedVariants[group],
+					Value: reqOptions.TestIDOptions[0].RequestedVariants[group],
 				})
 			}
-			if reqOptions.TestIDOption.Capability != "" {
+			if reqOptions.TestIDOptions[0].Capability != "" {
 				queryString += " AND @Capability in UNNEST(capabilities)"
 				commonParams = append(commonParams, bigquery.QueryParameter{
 					Name:  "Capability",
-					Value: reqOptions.TestIDOption.Capability,
+					Value: reqOptions.TestIDOptions[0].Capability,
 				})
 			}
-			if reqOptions.TestIDOption.TestID != "" {
+			if reqOptions.TestIDOptions[0].TestID != "" {
 				queryString += ` AND cm.id = @TestId`
 				commonParams = append(commonParams, bigquery.QueryParameter{
 					Name:  "TestId",
-					Value: reqOptions.TestIDOption.TestID,
+					Value: reqOptions.TestIDOptions[0].TestID,
 				})
 			}
-		*/
+		}
 	}
+
 	return queryString, groupString, commonParams
 }
 
