@@ -72,7 +72,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		for _, row := range rows {
 			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-				logrus.Infof("added test key: " + testKeyStr)
 				testKeyTestJobRunStatuses[testKeyStr] = crtype.TestJobRunStatuses{
 					BaseStatus:         map[string][]crtype.TestJobRunRows{},
 					BaseOverrideStatus: map[string][]crtype.TestJobRunRows{},
@@ -91,7 +90,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		for _, row := range rows {
 			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-				logrus.Infof("added test key: " + testKeyStr)
 				testKeyTestJobRunStatuses[testKeyStr] = crtype.TestJobRunStatuses{
 					BaseStatus:         map[string][]crtype.TestJobRunRows{},
 					BaseOverrideStatus: map[string][]crtype.TestJobRunRows{},
@@ -110,7 +108,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		for _, row := range rows {
 			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-				logrus.Infof("added test key: " + testKeyStr)
 				testKeyTestJobRunStatuses[testKeyStr] = crtype.TestJobRunStatuses{
 					BaseStatus:         map[string][]crtype.TestJobRunRows{},
 					BaseOverrideStatus: map[string][]crtype.TestJobRunRows{},
@@ -134,9 +131,9 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		}
 		testKeyStr := testKey.KeyOrDie()
 		if statuses, ok := testKeyTestJobRunStatuses[testKeyStr]; ok {
-			report, errs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses)
-			if len(errs) > 0 {
-				errs = append(errs, errs...)
+			report, errs2 := c.GenerateDetailsReportForTest(ctx, tOpt, statuses)
+			if len(errs2) > 0 {
+				errs = append(errs, errs2...)
 				continue
 			}
 			reports = append(reports, report)

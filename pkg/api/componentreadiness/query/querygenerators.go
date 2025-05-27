@@ -726,7 +726,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 		},
 	}...)
 
-	baseStatus, errs := fetchJobRunTestStatusResults(b.logger, ctx, baseQuery, b.ReqOptions)
+	baseStatus, errs := fetchJobRunTestStatusResults(ctx, b.logger, baseQuery, b.ReqOptions)
 	return crtype.TestJobRunStatuses{BaseStatus: baseStatus}, errs
 }
 
@@ -813,7 +813,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		}...)
 	}
 
-	sampleStatus, errs := fetchJobRunTestStatusResults(log.WithField("generator", "SampleQuery"), ctx, sampleQuery, s.ReqOptions)
+	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, log.WithField("generator", "SampleQuery"), sampleQuery, s.ReqOptions)
 
 	return crtype.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }
@@ -835,8 +835,7 @@ func logQueryWithParamsReplaced(logger log.FieldLogger, query *bigquery.Query) {
 	}
 }
 
-func fetchJobRunTestStatusResults(logger log.FieldLogger, ctx context.Context,
-	query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string][]crtype.TestJobRunRows, []error) {
+func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string][]crtype.TestJobRunRows, []error) {
 	errs := []error{}
 	status := map[string][]crtype.TestJobRunRows{}
 

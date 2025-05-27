@@ -104,14 +104,6 @@ func ParseComponentReportRequest(
 					// change dates
 					if opts.BaseRelease.Release != testBasisRelease {
 						opts.TestIDOptions[0].BaseOverrideRelease = testBasisRelease
-
-						/*
-							if release.GADate != nil {
-								opts.BaseOverrideRelease.End = *release.GADate
-								opts.BaseOverrideRelease.Start = util.AdjustReleaseTime(opts.BaseOverrideRelease.End, true, "30", crTimeRoundingFactor)
-							}
-					
-						*/
 					}
 					break
 				}

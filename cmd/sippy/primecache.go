@@ -71,12 +71,12 @@ func NewPrimeCacheCommand() *cobra.Command {
 			defer cancel()
 
 			if f.CacheFlags.RedisURL == "" {
-				log.Fatalf("--redis-url is required")
+				return fmt.Errorf("--redis-url is required")
 			}
 
 			cacheClient, err := f.CacheFlags.GetCacheClient()
 			if err != nil {
-				log.WithError(err).Fatal("couldn't get cache client")
+				return errors.Wrap(err, "couldn't get cache client")
 			}
 
 			bigQueryClient, err := bqcachedclient.New(ctx,
@@ -84,7 +84,7 @@ func NewPrimeCacheCommand() *cobra.Command {
 				f.BigQueryFlags.BigQueryProject,
 				f.BigQueryFlags.BigQueryDataset, cacheClient)
 			if err != nil {
-				log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents regression tracking")
+				return errors.Wrap(err, "CRITICAL error getting BigQuery client which prevents regression tracking")
 			}
 
 			config, err := f.ConfigFlags.GetConfig()
@@ -104,21 +104,21 @@ func NewPrimeCacheCommand() *cobra.Command {
 
 			views, err := f.ComponentReadinessFlags.ParseViewsFile()
 			if err != nil {
-				log.WithError(err).Fatal("unable to load views")
+				return errors.Wrap(err, "unable to load views")
 			}
 			releases, err := api.GetReleases(context.TODO(), bigQueryClient)
 			if err != nil {
-				log.WithError(err).Fatal("error querying releases")
+				return errors.Wrap(err, "error querying releases")
 			}
 			dbc, err := f.PostgresFlags.GetDBClient()
 			if err != nil {
-				log.WithError(err).Fatal("unable to connect to postgres")
+				return errors.Wrap(err, "unable to connect to postgres")
 			}
 
 			for _, view := range views.ComponentReadiness {
 				if view.PrimeCache.Enabled {
 
-					err2 := primeCacheForView(view, releases, cacheOpts, ctx, bigQueryClient, dbc, config)
+					err2 := primeCacheForView(ctx, view, releases, cacheOpts, bigQueryClient, dbc, config)
 					if err2 != nil {
 						return err2
 					}
@@ -134,7 +134,7 @@ func NewPrimeCacheCommand() *cobra.Command {
 	return cmd
 }
 
-func primeCacheForView(view crtype.View, releases []apiv1.Release, cacheOpts cache.RequestOptions, ctx context.Context, bigQueryClient *bqcachedclient.Client, dbc *db.DB, config *configv1.SippyConfig) error {
+func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.Release, cacheOpts cache.RequestOptions, bigQueryClient *bqcachedclient.Client, dbc *db.DB, config *configv1.SippyConfig) error {
 	rLog := log.WithField("view", view.Name)
 
 	rLog.Infof("priming cache for view")
