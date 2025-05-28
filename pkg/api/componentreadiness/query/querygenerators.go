@@ -417,7 +417,7 @@ func buildTestDetailsQuery(
 								created_at = (SELECT MAX(created_at) FROM %s.component_mapping)
 					)
 					SELECT
-						ANY_VALUE(test_id) AS test_id,
+						cm.id AS test_id,
 						ANY_VALUE(test_name) AS test_name,
 						ANY_VALUE(testsuite) AS test_suite,
 						%s
