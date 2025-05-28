@@ -30,13 +30,45 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 		return generator.GenerateTestDetailsReport(ctx)
 	}
 
-	return api.GetDataFromCacheOrGenerate[crtype.ReportTestDetails](
+	report, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestDetails](
 		ctx,
 		generator.client.Cache,
 		generator.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey("TestDetailsReport~", generator.GetCacheKey(ctx)),
 		generator.GenerateTestDetailsReport,
 		crtype.ReportTestDetails{})
+	if len(errs) > 0 {
+		return report, errs
+	}
+
+	err := generator.PostAnalysisTestDetails(&report)
+	if err != nil {
+		return report, []error{err}
+	}
+
+	return report, []error{}
+}
+
+// PostAnalysisTestDetails runs the PostAnalysis method for all middleware on this test details report.
+// This is done outside the caching mechanism so we can load fresh data from our db (which is fast and cheap),
+// and inject it into an expensive / slow report without recalculating everything.
+func (c *ComponentReportGenerator) PostAnalysisTestDetails(report *crtype.ReportTestDetails) error {
+
+	// Give middleware their chance to adjust the result
+	for _, mw := range c.middlewares {
+		testKey := crtype.ReportTestIdentification{
+			RowIdentification:    report.RowIdentification,
+			ColumnIdentification: report.ColumnIdentification,
+		}
+		for ai := range report.Analyses {
+			err := mw.PostAnalysis(testKey, &report.Analyses[ai].ReportTestStats)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // GenerateTestDetailsReport is the main function to generate a test details report for a request, if we miss the cache.
@@ -655,13 +687,6 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		activeProductRegression,
 		resolvedIssueCompensation,
 	)
-
-	for _, mw := range c.middlewares {
-		err := mw.PostAnalysis(testKey, &testStats)
-		if err != nil {
-			logrus.WithError(err).Error("Failure from middleware PostAnalysis")
-		}
-	}
 
 	report.ReportTestStats = testStats
 	result.Analyses = []crtype.TestDetailsAnalysis{report}

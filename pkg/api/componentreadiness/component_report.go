@@ -15,7 +15,6 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -115,12 +114,48 @@ func GetComponentReportFromBigQuery(
 		return generator.GenerateReport(ctx)
 	}
 
-	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
+	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		generator.client.Cache, generator.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey(ComponentReportCacheKeyPrefix, generator.GetCacheKey(ctx)),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
+	if len(errs) > 0 {
+		return report, errs
+	}
+
+	err := generator.PostAnalysis(&report)
+	if err != nil {
+		return report, []error{err}
+	}
+
+	return report, []error{}
+}
+
+// PostAnalysis runs the PostAnalysis method for all middleware on this component report.
+// This is done outside the caching mechanism so we can load fresh data from our db (which is fast and cheap),
+// and inject it into an expensive / slow report without recalculating everything.
+func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) error {
+
+	// Give middleware their chance to adjust the result
+	for ri, row := range report.Rows {
+		for ci, col := range row.Columns {
+			for rti := range col.RegressedTests {
+				for _, mw := range c.middlewares {
+					testKey := crtype.ReportTestIdentification{
+						RowIdentification:    col.RegressedTests[rti].RowIdentification,
+						ColumnIdentification: col.RegressedTests[rti].ColumnIdentification,
+					}
+					err := mw.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtype.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride) ComponentReportGenerator {
@@ -820,21 +855,6 @@ func (c *ComponentReportGenerator) GetLastReportModifiedTime(ctx context.Context
 		}
 
 		c.ReportModified = lastModifiedTime
-		if c.dbc != nil {
-			var lastTriageUpdate time.Time
-
-			err := c.dbc.DB.
-				Model(&models.Triage{}).
-				Select("MAX(updated_at)").
-				Scan(&lastTriageUpdate).Error
-			if err != nil {
-				log.WithError(err).Warn("Error getting lastTriageUpdate, can happen when there are no triages")
-			}
-			if lastTriageUpdate.After(*c.ReportModified) {
-				c.ReportModified = &lastTriageUpdate
-			}
-
-		}
 	}
 
 	return c.ReportModified
@@ -1184,14 +1204,6 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				testStats.LastFailure = &sampleStats.LastFailure
 			}
 
-			// Give middleware their chance to adjust the result
-			for _, mw := range c.middlewares {
-				err = mw.PostAnalysis(testKey, &testStats)
-				if err != nil {
-					return crtype.ComponentReport{}, err
-				}
-			}
-
 			// TODO: remove when we're fully transitioned to new triage
 			if testStats.IsTriaged() {
 				// we are within the triage range
@@ -1254,14 +1266,6 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			activeProductRegression,
 			resolvedIssueCompensation,
 		)
-
-		// Give middleware their chance to adjust the result
-		for _, mw := range c.middlewares {
-			err = mw.PostAnalysis(testID, &testStats)
-			if err != nil {
-				return crtype.ComponentReport{}, err
-			}
-		}
 
 		if testStats.IsTriaged() {
 			// we are within the triage range
