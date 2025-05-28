@@ -14,7 +14,7 @@ import (
 // This is useful for sanitizing dynamic SQL queries built from user input.
 func Cleanse(name string) string {
 	return strings.Map(func(r rune) rune {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == ':' {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' || r == ':' || r == ' ' {
 			return r
 		}
 		return -1

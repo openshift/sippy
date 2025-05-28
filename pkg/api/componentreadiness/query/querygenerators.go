@@ -828,7 +828,22 @@ func logQueryWithParamsReplaced(logger log.FieldLogger, query *bigquery.Query) {
 		// Attempt to log a usable version of the query with params swapped in.
 		strQuery := query.Q
 		for _, p := range query.Parameters {
-			strQuery = strings.ReplaceAll(strQuery, "@"+p.Name, fmt.Sprintf(`"%s"`, p.Value))
+			paramName := "@" + p.Name
+			paramValue := p.Value
+
+			// Special handling for time.Time values
+			if t, ok := paramValue.(time.Time); ok {
+				// Format time.Time to "YYYY-MM-DD HH:MM:SS"
+				// Note: BigQuery's DATETIME type does not store timezone info.
+				// This format aligns with what BigQuery expects for DATETIME literals.
+				// Without it, you'll copy the query and attempt to run it and be told you're not filtering on
+				// modified time.
+				formattedTime := t.Format("2006-01-02 15:04:05")
+				strQuery = strings.ReplaceAll(strQuery, paramName, fmt.Sprintf(`DATETIME("%s")`, formattedTime))
+			} else {
+				// Default handling for other types, wrap in quotes for string literals
+				strQuery = strings.ReplaceAll(strQuery, paramName, fmt.Sprintf(`"%v"`, paramValue))
+			}
 		}
 		logger.Debugf("fetching bigquery data with query:")
 		fmt.Println(strQuery)
@@ -920,7 +935,6 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 				cts.TestKey.Variants[variantName] = row[i].(string)
 			}
 		default:
-			log.Debugf("ignoring column in query: %s", col)
 		}
 	}
 

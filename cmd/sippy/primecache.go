@@ -61,8 +61,8 @@ func NewPrimeCacheCommand() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "prime-cache",
-		Short: "Prime the cache for all views with tracking enabled",
-		Long:  "Primes the cache for views with tracking enabled, both top level report as well as all test details reports for regressed tets.",
+		Short: "Prime the cache for all views with the cache priming feature enabled",
+		Long:  "Primes the cache for views with feature enabled, both top level report as well as all test details reports for regressed tests.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := f.Validate(); err != nil {
 				return errors.WithMessage(err, "error validating options")
@@ -96,10 +96,16 @@ func NewPrimeCacheCommand() *cobra.Command {
 				bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 			}
 
+			// Force a refresh, we want to ensure we update the cache no matter what
+			//
+			// This command should be called in a kube cronjob matching the time rounding factor.
+			// Today we push our Sample end time out to the next even 4 hour interval UTC, i.e. 4am, 8am, 12pm, 4pm, etc.
+			// We then use the delta to that time when caching as the duration for that key.
+			// This command should be run in a kube cronjob then at those precise times meaning all but the most unlucky
+			// requests between say 4:00:00am and 4:00:45am, should always hit the cache.
 			cacheOpts := cache.RequestOptions{
 				CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor,
-				// Force a refresh, we want to ensure we update the cache no matter what
-				ForceRefresh: true,
+				ForceRefresh:         true,
 			}
 
 			views, err := f.ComponentReadinessFlags.ParseViewsFile()
@@ -142,7 +148,6 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 	if err != nil {
 		return err
 	}
-	// 	empty test ID options needed to match cache keys with the default path through
 	report, err := generateReport(ctx, generator, bigQueryClient)
 	if err != nil {
 		return err

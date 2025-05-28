@@ -138,7 +138,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 			}
 			reports = append(reports, report)
 		} else {
-			// TODO: why are we seeing this
 			logrus.Errorf("missing test key in results: %v", testKeyStr)
 
 		}
