@@ -444,6 +444,7 @@ func setSuite(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-etcd-scaling", "etcd-scaling"},
 		{"conformance", "parallel"}, // Jobs with "conformance" but no explicit serial are probably parallel
 		{"usernamespace", "usernamespace"},
+		{"-e2e-external-", "parallel"},
 	}
 
 	for _, entry := range suitePatterns {
@@ -648,6 +649,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{"-nat-instance", "candidate"},
 
 		// Hidden jobs
+		{"-cilium", "hidden"},
 		{"-disruptive", "hidden"},
 		{"-rollback", "hidden"},
 		{"aggregator-", "hidden"},
@@ -704,6 +706,7 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-cert-rotation-shutdown-", "cert-rotation-shutdown"},
 		{"-console-operator-", "console-operator"},
 		{"-ipsec", "ipsec"},
+		{"-machine-config-operator", "machine-config-operator"},
 	}
 
 	for _, entry := range procedurePatterns {
@@ -757,6 +760,10 @@ func setInstaller(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-hcp", "hypershift"},
 		{"_hcp", "hypershift"},
 		{"-upi", "upi"},
+		{"-agent", "agent"},
+		{"-e2e-external-aws", "upi"}, // clusters with platform type external can be installed in any provider with no installer automation (upi).
+		{"-e2e-external-vsphere", "upi"},
+		{"-e2e-oci-assisted", "assisted"},
 	}
 
 	for _, entry := range installationPatterns {
@@ -800,6 +807,9 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		substring string
 		platform  string
 	}{
+		{"-e2e-external-aws", "external-aws"}, // platform type external can be installed in any provider. Syntax platformType(provider).
+		{"-e2e-external-vsphere", "external-vsphere"},
+		{"-e2e-oci-assisted", "external-oci"},
 		{"-rosa", "rosa"}, // Keep above AWS as many ROSA jobs also mention AWS
 		{"-aws", "aws"},
 		{"-alibaba", "alibaba"},
@@ -871,6 +881,12 @@ func setArchitecture(_ logrus.FieldLogger, variants map[string]string, jobName s
 		{"-multi-", "heterogeneous"},
 	}
 
+	// the use of multi in these cases do not apply to architecture so drop them out from evaluation
+	ignorePatterns := []string{"-multi-vcenter-", "-multi-network-"}
+	for _, ignore := range ignorePatterns {
+		jobNameLower = strings.ReplaceAll(jobNameLower, ignore, "-")
+	}
+
 	for _, entry := range architecturePatterns {
 		if strings.Contains(jobNameLower, entry.substring) {
 			variants[VariantArch] = entry.architecture
@@ -890,6 +906,7 @@ func setNetwork(jLog logrus.FieldLogger, variants map[string]string, jobName str
 	}{
 		{"-ovn", "ovn"},
 		{"-sdn", "sdn"},
+		{"-cilium", "cilium"},
 	}
 
 	// Check jobName for explicit network type

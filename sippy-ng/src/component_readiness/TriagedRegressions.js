@@ -79,8 +79,7 @@ export default function TriagedRegressions(props) {
     {
       field: 'bug_state',
       valueGetter: (value) => {
-        const bugState = value.row.bug?.status || ''
-        return bugState
+        return value.row.bug?.status || ''
       },
       headerName: 'State',
       flex: 5,
@@ -89,13 +88,22 @@ export default function TriagedRegressions(props) {
     {
       field: 'bug_version',
       valueGetter: (value) => {
-        const bugState =
+        return (
           value.row.bug?.target_versions ||
           value.row.bug?.affects_versions ||
           ''
-        return bugState
+        )
       },
       headerName: 'Version',
+      flex: 5,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'last_change',
+      valueGetter: (value) => {
+        return value.row.bug?.last_change_time || ''
+      },
+      headerName: 'Last Change',
       flex: 5,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },

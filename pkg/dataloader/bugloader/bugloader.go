@@ -15,6 +15,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm/clause"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
@@ -89,45 +90,54 @@ func (bl *BugLoader) Errors() []error {
 }
 
 func (bl *BugLoader) Load() {
+	logger := log.WithField("func", "bugloader.Load")
+	addError := func(err error, msg string) {
+		logger.WithError(err).Error(msg)
+		bl.errors = append(bl.errors, errors.Wrap(err, msg))
+	}
+
 	dbExpectedBugs := make([]*models.Bug, 0)
 
 	// Fetch bugs<->test mapping from bigquery
-	testCache, err := query.LoadTestCache(bl.dbc, []string{})
+	testCache, err := query.LoadTestCache(bl.dbc, []string{"TestOwnerships"})
 	if err != nil {
-		bl.errors = append(bl.errors, err)
+		addError(err, "error loading test cache")
 		return
 	}
 	testBugs, err := bl.getTestBugMappings(context.TODO(), testCache)
 	if err != nil {
-		panic(err)
+		addError(err, "error loading test bug mappings")
+		return
 	}
-	log.WithField("bugs", len(testBugs)).Info("Loaded test bugs")
+	logger.WithField("bugs", len(testBugs)).Info("Loaded test bugs")
 
 	// Fetch bugs<->job mapping from bigquery
 	jobCache, err := query.LoadProwJobCache(bl.dbc)
 	if err != nil {
-		bl.errors = append(bl.errors, err)
+		addError(err, "error loading prow job cache")
 		return
 	}
 	jobBugs, err := bl.getJobBugMappings(context.TODO(), jobCache)
 	if err != nil {
-		panic(err)
+		addError(err, "error loading bug-job mappings")
+		return
 	}
-	log.WithField("bugs", len(jobBugs)).Info("Loaded job bugs")
+	logger.WithField("bugs", len(jobBugs)).Info("Loaded job bugs")
 
 	// Fetch bugs triaged to component readiness regressions if not already picked up above,
 	// sometimes the test name is forgotten in the bug, sometimes the mapping breaks due to
 	// weird whitespace issues:
 	triages, err := query.ListTriages(bl.dbc)
 	if err != nil {
-		bl.errors = append(bl.errors, err)
+		addError(err, "error loading triages")
 		return
 	}
 	triageBugs, err := bl.getTriageBugMappings(context.TODO(), triages)
 	if err != nil {
-		panic(err)
+		addError(err, "error loading triage bug mappings")
+		return
 	}
-	log.WithField("bugs", len(triageBugs)).Info("Loaded triage bugs")
+	logger.WithField("bugs", len(triageBugs)).Info("Loaded triage bugs")
 
 	// Merge all the bugs together
 	allBugs := testBugs
@@ -144,7 +154,7 @@ func (bl *BugLoader) Load() {
 		}
 		allBugs[b.ID] = b
 	}
-	log.WithField("bugs", len(allBugs)).Info("Loaded all job bugs")
+	logger.WithField("bugs", len(allBugs)).Info("Loaded all job bugs")
 
 	for _, b := range allBugs {
 		dbExpectedBugs = append(dbExpectedBugs, b)
@@ -158,41 +168,27 @@ func (bl *BugLoader) Load() {
 			UpdateAll: true,
 		}).Create(bug)
 		if res.Error != nil {
-			log.Errorf("error creating bug: %s %v", res.Error, bug)
-			err := errors.Wrap(res.Error, "error creating bug")
-			bl.errors = append(bl.errors, err)
+			addError(res.Error, fmt.Sprintf("error creating bug: %v", bug))
 			continue
 		}
 		// With gorm we need to explicitly replace the associations to tests and jobs to get them to take effect:
 		err := bl.dbc.DB.Model(bug).Association("Tests").Replace(bug.Tests)
 		if err != nil {
-			log.Errorf("error updating bug test associations: %s %v", err, bug)
-			err := errors.Wrap(res.Error, "error updating bug test assocations")
-			bl.errors = append(bl.errors, err)
+			addError(err, fmt.Sprintf("error updating bug test associations: %v", bug))
 			continue
 		}
 		err = bl.dbc.DB.Model(bug).Association("Jobs").Replace(bug.Jobs)
 		if err != nil {
-			log.Errorf("error updating bug job associations: %s %v", err, bug)
-			err := errors.Wrap(res.Error, "error updating bug job assocations")
-			bl.errors = append(bl.errors, err)
+			addError(err, fmt.Sprintf("error updating bug job associations: %v", bug))
 			continue
 		}
 	}
-	log.Infof("created or updated %d bugs", len(expectedBugIDs))
-
-	// Remove old unseen bugs
-	res := bl.dbc.DB.Where("id not in ?", expectedBugIDs).Unscoped().Delete(&models.Bug{})
-	if res.Error != nil {
-		err := errors.Wrap(res.Error, "error deleting stale bugs")
-		bl.errors = append(bl.errors, err)
-	}
-	log.Infof("deleted %d stale bugs", res.RowsAffected)
+	logger.WithField("bugs", len(expectedBugIDs)).Info("created or updated bugs")
 
 	// Some triage records may have been aligned to bugs that did not mention a test name and were just imported.
 	// If so we need to establish the db link between these and the new bug records in postgres.
-	// Also watch out for traiges that changed bug url, and fix that linkage.
-	log.Infof("ensuring triages have correct refs to their bugs")
+	// Also watch out for triages that changed bug url, and fix that linkage.
+	logger.Infof("ensuring triages have correct refs to their bugs")
 	for _, t := range triages {
 		if t.BugID != nil && t.URL == t.Bug.URL {
 			// Ignore bugs that seem to already be linked properly
@@ -200,21 +196,20 @@ func (bl *BugLoader) Load() {
 		}
 
 		var bug models.Bug
-		res = bl.dbc.DB.Where("url = ?", t.URL).First(&bug)
+		res := bl.dbc.DB.Where("url = ?", t.URL).First(&bug)
 		if res.Error != nil {
 			// Someone could have put in a bad url, we won't let that error out our reconcile job.
-			log.WithError(res.Error).Warnf("error looking up bug which should exist by this point: %s", t.URL)
+			logger.WithError(res.Error).Warnf("error looking up bug which should exist by this point: %s", t.URL)
 			continue
 		}
 
-		log.Infof("linking triage %q (%d) to bug %q (%d)", t.Description, t.ID, bug.Summary, bug.ID)
+		info := fmt.Sprintf("linking triage %q (%d) to bug %q (%d)", t.Description, t.ID, bug.Summary, bug.ID)
+		logger.Info(info)
 		t.Bug = &bug
 		t.BugID = &bug.ID
 		res = bl.dbc.DB.Save(t)
 		if res.Error != nil {
-			log.WithError(res.Error).Error("error linking bug")
-			err := errors.Wrap(res.Error, "error linking bug")
-			bl.errors = append(bl.errors, err)
+			addError(res.Error, "error "+info)
 		}
 	}
 }
@@ -224,10 +219,15 @@ func (bl *BugLoader) Load() {
 func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[string]*models.Test) (map[uint]*models.Bug, error) {
 	bugs := make(map[uint]*models.Bug)
 
-	// `WHERE j.name != upgrade` is because there's a test named just `upgrade` in some junits, which querying
-	// Jira for produces thousands of tickets
+	// `WHERE j.name != upgrade` is because there's a test named just `upgrade` in some junits,
+	// and querying against Jira produces thousands of tickets that mention `upgrade`; so just ignore it.
 	querySQL := fmt.Sprintf(
-		`%s CROSS JOIN %s.%s.%s j WHERE j.name != "upgrade" AND (STRPOS(t.summary, j.name) > 0 OR STRPOS(t.description, j.name) > 0 OR STRPOS(t.comment, j.name) > 0)`,
+		`%s
+		JOIN %s.%s.%s j
+		  ON STRPOS(t.summary, j.name) > 0
+		  OR STRPOS(t.description, j.name) > 0
+		  OR STRPOS(t.comment, j.name ) > 0
+        WHERE j.name != "upgrade"`,
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
 	log.Debug(querySQL)
 	q := bl.bqc.BQ.Query(querySQL)
@@ -237,9 +237,14 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		return nil, errors.WithMessage(err, "failed to execute query")
 	}
 
+	// create a lookup of all the tests that are mapped to the same test id
+	testsForUID := MapTestCacheByUniqueID(testCache)
+	// and keep track of the tests we've seen for each bug id so we don't add duplicates
+	testsSeenForBug := make(map[uint]sets.Set[string])
+
 	for {
-		var bwt bigQueryBug
-		err := it.Next(&bwt)
+		var bqb bigQueryBug
+		err := it.Next(&bqb)
 		if errors.Is(err, iterator.Done) {
 			break
 		}
@@ -248,31 +253,67 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 		}
 
 		// Make sure data in BQ is sane
-		if bwt.JiraID == "" || bwt.LinkName == "" {
+		if bqb.JiraID == "" || bqb.LinkName == "" {
 			continue
 		}
 
-		intID, err := strconv.Atoi(bwt.JiraID)
+		jiraID, err := strconv.ParseUint(bqb.JiraID, 10, 64)
 		if err != nil {
-			bl.errors = append(bl.errors, errors.WithMessagef(err, "failed to convert jira id %s", bwt.JiraID))
+			bl.errors = append(bl.errors, errors.WithMessagef(err, "failed to convert jira id %s", bqb.JiraID))
 			continue
 		}
-		bwt.ID = uint(intID)
+		bqb.ID = uint(jiraID)
 
-		if _, ok := testCache[bwt.LinkName]; !ok {
+		// look up sippy DB's record for this test name
+		test, found := testCache[bqb.LinkName]
+		if !found {
 			// This is probably common since we're using ci-test-mapping test names, and sippy may not know all of them
-			log.Debugf("test name was in jira issue but not known by sippy: %s", bwt.LinkName)
+			log.Debugf("test name was in jira issue but not known by sippy: %s", bqb.LinkName)
 			continue
 		}
 
-		if _, ok := bugs[bwt.ID]; !ok {
-			bugs[bwt.ID] = bigQueryBugToModel(bwt)
+		tests := []models.Test{*test}
+		// if we found test ownership, include all tests from the same ownership
+		for _, mapping := range test.TestOwnerships {
+			if mappedTests, found := testsForUID[mapping.UniqueID]; found {
+				tests = append(tests, mappedTests...)
+			}
 		}
 
-		bugs[bwt.ID].Tests = append(bugs[bwt.ID].Tests, *testCache[bwt.LinkName])
+		// map a bug for this jira id if we haven't already
+		if _, found := bugs[bqb.ID]; !found {
+			bugs[bqb.ID] = bigQueryBugToModel(bqb)
+		}
+
+		// track the tests we've seen for this bug id and add non-duplicates
+		seen := testsSeenForBug[bqb.ID]
+		if seen == nil {
+			seen = sets.New[string]()
+			testsSeenForBug[bqb.ID] = seen
+		}
+		for _, test := range tests {
+			if !seen.Has(test.Name) {
+				seen.Insert(test.Name)
+				bugs[bqb.ID].Tests = append(bugs[bqb.ID].Tests, test)
+			}
+		}
 	}
 
 	return bugs, nil
+}
+
+// MapTestCacheByUniqueID takes a map of tests by name, with the TestOwnership preloaded, and returns a map of
+// all the tests that share the same unique ID (same TestOwnership).
+func MapTestCacheByUniqueID(testForID map[string]*models.Test) map[string][]models.Test {
+	testForUniqueID := make(map[string][]models.Test, len(testForID))
+	for _, test := range testForID {
+		for _, mapping := range test.TestOwnerships {
+			if mapping.UniqueID != "" {
+				testForUniqueID[mapping.UniqueID] = append(testForUniqueID[mapping.UniqueID], *test)
+			}
+		}
+	}
+	return testForUniqueID
 }
 
 // getJobBugMappings looks for jira cards that contain a job name from the jobs table in bigquery.  We

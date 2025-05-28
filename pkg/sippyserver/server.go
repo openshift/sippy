@@ -1281,6 +1281,10 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 				failureResponse(w, http.StatusInternalServerError, err.Error())
 				return
 			}
+			if existingTriage == nil {
+				failureResponse(w, http.StatusNotFound, "triage not found")
+				return
+			}
 			api.RespondWithJSON(http.StatusOK, w, existingTriage)
 			return
 		}
@@ -1336,10 +1340,20 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		api.RespondWithJSON(http.StatusOK, w, triage)
+	case http.MethodDelete:
+		if !s.enableWriteAPIs {
+			failureResponse(w, http.StatusNotImplemented, "DELETE triages is not available on this server")
+			return
+		}
+		if err := componentreadiness.DeleteTriage(s.db, triageID); err != nil {
+			failureResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, nil)
 	case http.MethodOptions:
 		// TODO(sgoeddel): should we enable CORS? If so, we will have to do some special logic to allow localhost as well until gorilla is utilized
 		// w.Header().Set("Access-Control-Allow-Origin", "https://sippy-auth.dptools.openshift.org")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		api.RespondWithJSON(http.StatusOK, w, nil)
 	default:
 		failureResponse(w, http.StatusBadRequest, "Unsupported method")

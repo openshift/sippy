@@ -54,6 +54,7 @@ const (
 						ELSE 2
 					END) AS row_num,
 %s
+				jobs.prowjob_start as prowjob_start,
 				jobs.org,
 				jobs.repo,
 				jobs.pr_number,
@@ -283,6 +284,9 @@ func BuildComponentReportQuery(
 
 	// WARNING: returning additional columns from this query will require explicit parsing in deserializeRowToTestStatus
 	// TODO: jira_component and jira_component_id appear to not be used? Could save bigquery costs if we remove them.
+	// TODO: last_failure here explicitly uses success_val not adjusted_success_val, this ensures we
+	// show the last time the test failed, not flaked. if you enable the flakes as failures feature (which is
+	// non default today), the last failure time will be wrong which can impact things like failed fix detection.
 	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
 						SELECT *
 						FROM %s.component_mapping cm
@@ -297,7 +301,7 @@ func BuildComponentReportQuery(
 						COUNT(cm.id) AS total_count,
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
-						MAX(CASE WHEN adjusted_success_val = 0 THEN modified_time ELSE NULL END) AS last_failure,
+						MAX(CASE WHEN success_val = 0 THEN prowjob_start ELSE NULL END) AS last_failure,
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities,
 					FROM (%s)

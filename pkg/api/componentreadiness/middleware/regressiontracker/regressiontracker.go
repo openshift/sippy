@@ -98,6 +98,10 @@ func (r *RegressionTracker) PreAnalysis(testKey crtype.ReportTestIdentification,
 
 // PostAnalysis adjusts status code (and thus icons) based on the triaged state of open regressions.
 func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+	if testStats.ReportStatus > crtype.SignificantTriagedRegression {
+		// no need to adjust status for triage if this is no longer a regression
+		return nil
+	}
 	err := r.ensureRegressionsLoaded()
 	if err != nil {
 		return err

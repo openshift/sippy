@@ -17,7 +17,7 @@ import (
 
 const TestFailureSummaryFilePrefix = "risk-analysis"
 const ClusterDataFilePrefix = "cluster-data_"
-const JunitRegExStr = "\\/junit.*xml"
+const JunitRegExStr = "\\/.*junit.*xml"
 const intervalFilesRegExStr = "\\/(e2e-events|e2e-timelines).*json"
 
 var (

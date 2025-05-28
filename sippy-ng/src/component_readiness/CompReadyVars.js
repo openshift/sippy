@@ -12,8 +12,8 @@ import {
   dateEndFormat,
   dateFormat,
   formatLongDate,
-  getComponentReadinessViewsUrl,
-  getJobVariantsUrl,
+  getComponentReadinessViewsAPIUrl,
+  getJobVariantsAPIUrl,
   gotFetchError,
 } from './CompReadyUtils'
 import { ReleasesContext } from '../App'
@@ -480,8 +480,8 @@ export const CompReadyVarsProvider = ({ children }) => {
   }
 
   useEffect(() => {
-    const jobVariantsAPIURL = getJobVariantsUrl()
-    const viewsAPIURL = getComponentReadinessViewsUrl()
+    const jobVariantsAPIURL = getJobVariantsAPIUrl()
+    const viewsAPIURL = getComponentReadinessViewsAPIUrl()
     Promise.all([fetch(jobVariantsAPIURL), fetch(viewsAPIURL)])
       .then(([variantsResp, viewsResp]) => {
         if (variantsResp.code < 200 || variantsResp.code >= 300) {
