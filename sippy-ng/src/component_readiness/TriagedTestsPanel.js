@@ -27,6 +27,6 @@ export default function TriagedTestsPanel(props) {
 
 TriagedTestsPanel.propTypes = {
   triageEntries: PropTypes.array.isRequired,
-  allRegressedTests: PropTypes.array.isRequired,
-  filterVals: PropTypes.string.isRequired,
+  allRegressedTests: PropTypes.array,
+  filterVals: PropTypes.string,
 }
