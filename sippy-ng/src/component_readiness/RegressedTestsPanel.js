@@ -1,54 +1,20 @@
 import { CapabilitiesContext } from '../App'
-import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
-import { formColumnName, sortQueryParams } from './CompReadyUtils'
+import {
+  formColumnName,
+  generateTestReportForRegressedTest,
+} from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
-import { relativeTime, safeEncodeURIComponent } from '../helpers'
+import { relativeTime } from '../helpers'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CompSeverityIcon from './CompSeverityIcon'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext } from 'react'
+import React, { Fragment } from 'react'
 import TriageFields from './TriageFields'
-
-// Construct a URL with all existing filters plus testId, environment, and testName.
-// This is the url used when you click inside a TableCell on page4 on the right.
-// We pass these arguments to the component that generates the test details report.
-function generateTestReport(
-  testId,
-  variants,
-  filterVals,
-  componentName,
-  capabilityName,
-  testName,
-  testBasisRelease
-) {
-  const environmentVal = formColumnName({ variants: variants })
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
-  const safeComponentName = safeEncodeURIComponent(componentName)
-  const safeTestId = safeEncodeURIComponent(testId)
-  const safeTestName = safeEncodeURIComponent(testName)
-  const safeTestBasisRelease = safeEncodeURIComponent(testBasisRelease)
-  let variantsUrl = ''
-  Object.entries(variants).forEach(([key, value]) => {
-    variantsUrl += '&' + key + '=' + safeEncodeURIComponent(value)
-  })
-  const retUrl =
-    '/component_readiness/test_details' +
-    filterVals +
-    `&testBasisRelease=${safeTestBasisRelease}` +
-    `&testId=${safeTestId}` +
-    expandEnvironment(environmentVal) +
-    `&component=${safeComponentName}` +
-    `&capability=${capabilityName}` +
-    variantsUrl +
-    `&testName=${safeTestName}`
-
-  return sortQueryParams(retUrl)
-}
 
 export default function RegressedTestsPanel(props) {
   const { filterVals, regressedTests, setTriageEntryCreated } = props
@@ -252,17 +218,7 @@ export default function RegressedTestsPanel(props) {
           }}
           className="status"
         >
-          <Link
-            to={generateTestReport(
-              params.row.test_id,
-              params.row.variants,
-              filterVals,
-              params.row.component,
-              params.row.capability,
-              params.row.test_name,
-              params.row.base_stats ? params.row.base_stats.release : ''
-            )}
-          >
+          <Link to={generateTestReportForRegressedTest(params.row, filterVals)}>
             <CompSeverityIcon
               status={
                 params.row.effective_status

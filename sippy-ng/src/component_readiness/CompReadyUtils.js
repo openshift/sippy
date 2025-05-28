@@ -1,4 +1,5 @@
 import { alpha, InputBase, Typography } from '@mui/material'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { formatInTimeZone } from 'date-fns-tz'
 import { safeEncodeURIComponent } from '../helpers'
 import { styled } from '@mui/styles'
@@ -18,7 +19,7 @@ import orange from './orange.svg'
 import orange_3d from './extreme-orange.svg'
 import orange_3d_triaged from './extreme-orange-triaged.svg'
 import orange_triaged from './orange-triaged.svg'
-import React from 'react'
+import React, { useContext } from 'react'
 import red from './regressed.svg'
 import red_3d from './extreme.svg'
 import red_3d_triaged from './extreme-triaged.svg'
@@ -741,20 +742,37 @@ export function generateTestReport(
   return sortQueryParams(retUrl)
 }
 
+// Construct a URL with all existing filters utilizing the necessary info from the regressed test.
+// We pass these arguments to the component that generates the test details report.
+export function generateTestReportForRegressedTest(regressedTest, filterVals) {
+  const environmentVal = formColumnName({ variants: regressedTest.variants })
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
+  const safeComponentName = safeEncodeURIComponent(regressedTest.component)
+  const safeTestId = safeEncodeURIComponent(regressedTest.test_id)
+  const safeTestName = safeEncodeURIComponent(regressedTest.test_name)
+  const safeTestBasisRelease = safeEncodeURIComponent(
+    regressedTest.base_stats?.release
+  )
+  let variantsUrl = ''
+  Object.entries(regressedTest.variants).forEach(([key, value]) => {
+    variantsUrl += '&' + key + '=' + safeEncodeURIComponent(value)
+  })
+  const retUrl =
+    '/component_readiness/test_details' +
+    filterVals +
+    `&testBasisRelease=${safeTestBasisRelease}` +
+    `&testId=${safeTestId}` +
+    expandEnvironment(environmentVal) +
+    `&component=${safeComponentName}` +
+    `&capability=${regressedTest.capability}` +
+    variantsUrl +
+    `&testName=${safeTestName}`
+
+  return sortQueryParams(retUrl)
+}
+
 export function generateRegressionCount(regressed_tests, triaged_incidents) {
   let regressedCount = regressed_tests ? regressed_tests.length : 0
   let triagedCount = triaged_incidents ? triaged_incidents.length : 0
   return regressedCount + triagedCount
-}
-
-export function safeExternalHref(url) {
-  try {
-    const parsed = new URL(url)
-    if (['http:', 'https:'].includes(parsed.protocol)) {
-      return parsed.href
-    }
-  } catch (e) {
-    // Invalid URL
-  }
-  return '#'
 }

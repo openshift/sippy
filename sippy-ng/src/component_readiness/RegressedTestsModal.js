@@ -85,7 +85,11 @@ export default function RegressedTestsModal(props) {
           )}
           {triageEntriesExist && (
             <RegressedTestsTabPanel activeIndex={activeTabIndex} index={1}>
-              <TriagedTestsPanel triageEntries={props.triageEntries} />
+              <TriagedTestsPanel
+                triageEntries={props.triageEntries}
+                allRegressedTests={props.allRegressedTests}
+                filterVals={props.filterVals}
+              />
             </RegressedTestsTabPanel>
           )}
           <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
