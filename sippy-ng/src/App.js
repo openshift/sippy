@@ -634,12 +634,11 @@ export default function App(props) {
 
                             <Route
                               path="/triages/:id"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
+                              render={(props) => (
+                                <CompReadyVarsProvider>
                                   <Triage id={props.match.params.id} />
-                                )
-                              }
+                                </CompReadyVarsProvider>
+                              )}
                             />
 
                             <Route
