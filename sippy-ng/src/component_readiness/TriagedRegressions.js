@@ -17,7 +17,7 @@ export default function TriagedRegressions(props) {
     })
 
     if (
-      selectedTriagedEntry.regressions !== 'undefined' &&
+      selectedTriagedEntry.regressions !== null &&
       selectedTriagedEntry.regressions.length > 0
     ) {
       props.eventEmitter.emit(

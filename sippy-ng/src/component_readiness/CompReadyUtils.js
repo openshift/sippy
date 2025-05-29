@@ -741,20 +741,40 @@ export function generateTestReport(
   return sortQueryParams(retUrl)
 }
 
+// Construct a URL with all existing filters utilizing the necessary info from the regressed test.
+// We pass these arguments to the component that generates the test details report.
+export function generateTestReportForRegressedTest(
+  regressedTest,
+  filterVals,
+  expandEnvironment
+) {
+  const environmentVal = formColumnName({ variants: regressedTest.variants })
+  const safeComponentName = safeEncodeURIComponent(regressedTest.component)
+  const safeTestId = safeEncodeURIComponent(regressedTest.test_id)
+  const safeTestName = safeEncodeURIComponent(regressedTest.test_name)
+  const safeTestBasisRelease = safeEncodeURIComponent(
+    regressedTest.base_stats?.release
+  )
+  let variantsUrl = ''
+  Object.entries(regressedTest.variants).forEach(([key, value]) => {
+    variantsUrl += '&' + key + '=' + safeEncodeURIComponent(value)
+  })
+  const retUrl =
+    '/component_readiness/test_details' +
+    filterVals +
+    `&testBasisRelease=${safeTestBasisRelease}` +
+    `&testId=${safeTestId}` +
+    expandEnvironment(environmentVal) +
+    `&component=${safeComponentName}` +
+    `&capability=${regressedTest.capability}` +
+    variantsUrl +
+    `&testName=${safeTestName}`
+
+  return sortQueryParams(retUrl)
+}
+
 export function generateRegressionCount(regressed_tests, triaged_incidents) {
   let regressedCount = regressed_tests ? regressed_tests.length : 0
   let triagedCount = triaged_incidents ? triaged_incidents.length : 0
   return regressedCount + triagedCount
-}
-
-export function safeExternalHref(url) {
-  try {
-    const parsed = new URL(url)
-    if (['http:', 'https:'].includes(parsed.protocol)) {
-      return parsed.href
-    }
-  } catch (e) {
-    // Invalid URL
-  }
-  return '#'
 }

@@ -1,11 +1,19 @@
+import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
-import { formColumnName } from './CompReadyUtils'
+import {
+  formColumnName,
+  generateTestReportForRegressedTest,
+} from './CompReadyUtils'
+import { Link } from 'react-router-dom'
 import { relativeTime } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
+import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useContext } from 'react'
 
 export default function TriagedRegressionTestList(props) {
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
+
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
@@ -31,6 +39,9 @@ export default function TriagedRegressionTestList(props) {
       handleTriagedRegressionGroupSelectionChanged
     )
   }
+
+  const showStatus =
+    props.allRegressedTests !== undefined && props.allRegressedTests.length > 0
 
   const columns = [
     {
@@ -98,6 +109,51 @@ export default function TriagedRegressionTestList(props) {
         )
       },
     },
+    ...(showStatus
+      ? [
+          {
+            field: 'status',
+            headerName: 'Status',
+            valueGetter: (params) => {
+              const value = {
+                status: '',
+                explanations: '',
+                url: '',
+              }
+              const regressionId = params.row.id
+              const matchingRegression = props.allRegressedTests.find(
+                (rt) => rt.regression?.id === regressionId
+              )
+              if (matchingRegression) {
+                value.status = matchingRegression.status
+                value.explanations = matchingRegression.explanations
+                value.url = generateTestReportForRegressedTest(
+                  matchingRegression,
+                  props.filterVals,
+                  expandEnvironment
+                )
+              }
+              return value
+            },
+            renderCell: (params) => (
+              <div
+                style={{
+                  textAlign: 'center',
+                }}
+                className="status"
+              >
+                <Link to={params.value.url}>
+                  <CompSeverityIcon
+                    status={params.value.status}
+                    explanations={params.value.explanations}
+                  />
+                </Link>
+              </div>
+            ),
+            flex: 6,
+          },
+        ]
+      : []),
   ]
 
   return (
@@ -129,5 +185,7 @@ export default function TriagedRegressionTestList(props) {
 TriagedRegressionTestList.propTypes = {
   eventEmitter: PropTypes.object,
   regressions: PropTypes.array,
+  allRegressedTests: PropTypes.array,
+  filterVals: PropTypes.string,
   showOnLoad: PropTypes.bool,
 }
