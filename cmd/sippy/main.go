@@ -42,7 +42,6 @@ func main() {
 		NewComponentReadinessCommand(),
 		NewAutomateJiraCommand(),
 		NewTrackRegressionsCommand(),
-		NewPrimeCacheCommand(),
 		NewVariantsCommand(),
 		NewVersionCommand(),
 	)

@@ -1,4 +1,4 @@
-package main
+package crcacheloader
 
 import (
 	"context"
@@ -8,139 +8,89 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	sippytypes "github.com/openshift/sippy/pkg/apis/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	apiv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
-
-	"github.com/openshift/sippy/pkg/flags"
 )
 
-type PrimeCacheFlags struct {
-	BigQueryFlags           *flags.BigQueryFlags
-	PostgresFlags           *flags.PostgresFlags
-	GoogleCloudFlags        *flags.GoogleCloudFlags
-	CacheFlags              *flags.CacheFlags
-	ComponentReadinessFlags *flags.ComponentReadinessFlags
-	ConfigFlags             *configflags.ConfigFlags
+type ComponentReadinessCacheLoader struct {
+	dbc                  *db.DB
+	errs                 []error
+	views                *sippytypes.SippyViews
+	cacheClient          cache.Cache
+	bqClient             *bigquery.Client
+	config               *v1.SippyConfig
+	crTimeRoundingFactor time.Duration
 }
 
-func NewPrimeCacheFlags() *PrimeCacheFlags {
-	return &PrimeCacheFlags{
-		BigQueryFlags:           flags.NewBigQueryFlags(),
-		PostgresFlags:           flags.NewPostgresDatabaseFlags(),
-		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
-		CacheFlags:              flags.NewCacheFlags(),
-		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
-		ConfigFlags:             configflags.NewConfigFlags(),
+func New(
+	dbc *db.DB,
+	cacheClient cache.Cache,
+	bqClient *bigquery.Client,
+	config *v1.SippyConfig,
+	views *sippytypes.SippyViews,
+	crTimeRoundingFactor time.Duration) *ComponentReadinessCacheLoader {
+
+	return &ComponentReadinessCacheLoader{
+		dbc:                  dbc,
+		cacheClient:          cacheClient,
+		errs:                 []error{},
+		views:                views,
+		bqClient:             bqClient,
+		config:               config,
+		crTimeRoundingFactor: crTimeRoundingFactor,
 	}
 }
 
-func (f *PrimeCacheFlags) BindFlags(fs *pflag.FlagSet) {
-	f.BigQueryFlags.BindFlags(fs)
-	f.PostgresFlags.BindFlags(fs)
-	f.GoogleCloudFlags.BindFlags(fs)
-	f.CacheFlags.BindFlags(fs)
-	f.ComponentReadinessFlags.BindFlags(fs)
-	f.ConfigFlags.BindFlags(fs)
+func (l *ComponentReadinessCacheLoader) Name() string {
+	return "component-readiness-cache"
 }
 
-func (f *PrimeCacheFlags) Validate() error {
-	return f.GoogleCloudFlags.Validate()
-}
-
-func NewPrimeCacheCommand() *cobra.Command {
-	f := NewPrimeCacheFlags()
-
-	cmd := &cobra.Command{
-		Use:   "prime-cache",
-		Short: "Prime the cache for all views with the cache priming feature enabled",
-		Long:  "Primes the cache for views with feature enabled, both top level report as well as all test details reports for regressed tests.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := f.Validate(); err != nil {
-				return errors.WithMessage(err, "error validating options")
-			}
-			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
-			defer cancel()
-
-			if f.CacheFlags.RedisURL == "" {
-				return fmt.Errorf("--redis-url is required")
-			}
-
-			cacheClient, err := f.CacheFlags.GetCacheClient()
-			if err != nil {
-				return errors.Wrap(err, "couldn't get cache client")
-			}
-
-			bigQueryClient, err := bqcachedclient.New(ctx,
-				f.GoogleCloudFlags.ServiceAccountCredentialFile,
-				f.BigQueryFlags.BigQueryProject,
-				f.BigQueryFlags.BigQueryDataset, cacheClient)
-			if err != nil {
-				return errors.Wrap(err, "CRITICAL error getting BigQuery client which prevents regression tracking")
-			}
-
-			config, err := f.ConfigFlags.GetConfig()
-			if err != nil {
-				log.WithError(err).Warn("error reading config file")
-			}
-
-			if bigQueryClient != nil && f.CacheFlags.EnablePersistentCaching {
-				bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
-			}
-
-			// Force a refresh, we want to ensure we update the cache no matter what
-			//
-			// This command should be called in a kube cronjob matching the time rounding factor.
-			// Today we push our Sample end time out to the next even 4 hour interval UTC, i.e. 4am, 8am, 12pm, 4pm, etc.
-			// We then use the delta to that time when caching as the duration for that key.
-			// This command should be run in a kube cronjob then at those precise times meaning all but the most unlucky
-			// requests between say 4:00:00am and 4:00:45am, should always hit the cache.
-			cacheOpts := cache.RequestOptions{
-				CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor,
-				ForceRefresh:         true,
-			}
-
-			views, err := f.ComponentReadinessFlags.ParseViewsFile()
-			if err != nil {
-				return errors.Wrap(err, "unable to load views")
-			}
-			releases, err := api.GetReleases(context.TODO(), bigQueryClient)
-			if err != nil {
-				return errors.Wrap(err, "error querying releases")
-			}
-			dbc, err := f.PostgresFlags.GetDBClient()
-			if err != nil {
-				return errors.Wrap(err, "unable to connect to postgres")
-			}
-
-			for _, view := range views.ComponentReadiness {
-				if view.PrimeCache.Enabled {
-
-					err2 := primeCacheForView(ctx, view, releases, cacheOpts, bigQueryClient, dbc, config)
-					if err2 != nil {
-						return err2
-					}
-
-				}
-			}
-			return err // return last error
-		},
+func (l *ComponentReadinessCacheLoader) Load() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
+	defer cancel()
+	// Force a refresh, we want to ensure we update the cache no matter what
+	//
+	// This command should be called in a kube cronjob matching the time rounding factor.
+	// Today we push our Sample end time out to the next even 4 hour interval UTC, i.e. 4am, 8am, 12pm, 4pm, etc.
+	// We then use the delta to that time when caching as the duration for that key.
+	// This command should be run in a kube cronjob then at those precise times meaning all but the most unlucky
+	// requests between say 4:00:00am and 4:00:45am, should always hit the cache.
+	cacheOpts := cache.RequestOptions{
+		CRTimeRoundingFactor: l.crTimeRoundingFactor,
+		ForceRefresh:         true,
 	}
 
-	f.BindFlags(cmd.Flags())
+	releases, err := api.GetReleases(context.TODO(), l.bqClient)
+	if err != nil {
+		l.errs = append(l.errs, errors.Wrap(err, "error querying releases"))
+		return
+	}
 
-	return cmd
+	for _, view := range l.views.ComponentReadiness {
+		if view.PrimeCache.Enabled {
+
+			err2 := primeCacheForView(ctx, view, releases, cacheOpts, l.bqClient, l.dbc, l.config)
+			if err2 != nil {
+				l.errs = append(l.errs, err)
+				continue
+			}
+
+		}
+	}
 }
 
-func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.Release, cacheOpts cache.RequestOptions, bigQueryClient *bqcachedclient.Client, dbc *db.DB, config *configv1.SippyConfig) error {
+func (l *ComponentReadinessCacheLoader) Errors() []error {
+	return l.errs
+}
+
+func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.Release, cacheOpts cache.RequestOptions, bigQueryClient *bigquery.Client, dbc *db.DB, config *v1.SippyConfig) error {
 	rLog := log.WithField("view", view.Name)
 
 	rLog.Infof("priming cache for view")
@@ -234,7 +184,7 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 	return nil
 }
 
-func generateReport(ctx context.Context, generator *componentreadiness.ComponentReportGenerator, bigQueryClient *bqcachedclient.Client) (*crtype.ComponentReport, error) {
+func generateReport(ctx context.Context, generator *componentreadiness.ComponentReportGenerator, bigQueryClient *bigquery.Client) (*crtype.ComponentReport, error) {
 
 	// Update the cache for the main report
 	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
@@ -258,9 +208,9 @@ func buildGenerator(
 	releases []apiv1.Release,
 	cacheOpts cache.RequestOptions,
 	testIDOpts []crtype.RequestTestIdentificationOptions,
-	bigQueryClient *bqcachedclient.Client,
+	bigQueryClient *bigquery.Client,
 	dbc *db.DB,
-	config *configv1.SippyConfig) (*componentreadiness.ComponentReportGenerator, error) {
+	config *v1.SippyConfig) (*componentreadiness.ComponentReportGenerator, error) {
 
 	baseRelease, err := componentreadiness.GetViewReleaseOptions(
 		releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor)
