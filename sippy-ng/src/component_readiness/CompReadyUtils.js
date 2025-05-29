@@ -1,5 +1,4 @@
 import { alpha, InputBase, Typography } from '@mui/material'
-import { CompReadyVarsContext } from './CompReadyVars'
 import { formatInTimeZone } from 'date-fns-tz'
 import { safeEncodeURIComponent } from '../helpers'
 import { styled } from '@mui/styles'
@@ -19,7 +18,7 @@ import orange from './orange.svg'
 import orange_3d from './extreme-orange.svg'
 import orange_3d_triaged from './extreme-orange-triaged.svg'
 import orange_triaged from './orange-triaged.svg'
-import React, { useContext } from 'react'
+import React from 'react'
 import red from './regressed.svg'
 import red_3d from './extreme.svg'
 import red_3d_triaged from './extreme-triaged.svg'
@@ -744,9 +743,12 @@ export function generateTestReport(
 
 // Construct a URL with all existing filters utilizing the necessary info from the regressed test.
 // We pass these arguments to the component that generates the test details report.
-export function generateTestReportForRegressedTest(regressedTest, filterVals) {
+export function generateTestReportForRegressedTest(
+  regressedTest,
+  filterVals,
+  expandEnvironment
+) {
   const environmentVal = formColumnName({ variants: regressedTest.variants })
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
   const safeComponentName = safeEncodeURIComponent(regressedTest.component)
   const safeTestId = safeEncodeURIComponent(regressedTest.test_id)
   const safeTestName = safeEncodeURIComponent(regressedTest.test_name)

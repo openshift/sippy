@@ -1,4 +1,5 @@
 import { CapabilitiesContext } from '../App'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
 import {
@@ -13,10 +14,11 @@ import Button from '@mui/material/Button'
 import CompSeverityIcon from './CompSeverityIcon'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useContext } from 'react'
 import TriageFields from './TriageFields'
 
 export default function RegressedTestsPanel(props) {
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
   const { filterVals, regressedTests, setTriageEntryCreated } = props
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
@@ -218,7 +220,13 @@ export default function RegressedTestsPanel(props) {
           }}
           className="status"
         >
-          <Link to={generateTestReportForRegressedTest(params.row, filterVals)}>
+          <Link
+            to={generateTestReportForRegressedTest(
+              params.row,
+              filterVals,
+              expandEnvironment
+            )}
+          >
             <CompSeverityIcon
               status={
                 params.row.effective_status

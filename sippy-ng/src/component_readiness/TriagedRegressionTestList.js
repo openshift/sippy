@@ -1,3 +1,4 @@
+import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import {
   formColumnName,
@@ -8,9 +9,11 @@ import { relativeTime } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
 import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useContext } from 'react'
 
 export default function TriagedRegressionTestList(props) {
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
+
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
@@ -126,7 +129,8 @@ export default function TriagedRegressionTestList(props) {
                 value.explanations = matchingRegression.explanations
                 value.url = generateTestReportForRegressedTest(
                   matchingRegression,
-                  props.filterVals
+                  props.filterVals,
+                  expandEnvironment
                 )
               }
               return value
