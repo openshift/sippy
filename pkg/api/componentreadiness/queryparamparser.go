@@ -57,8 +57,9 @@ func ParseComponentReportRequest(
 			err = fmt.Errorf("missing sampleRelease")
 			return
 		}
-		// We only support pull request jobs as the sample, not the basis:
+		// We only support pull request and payload jobs as the sample, not the basis:
 		opts.SampleRelease.PullRequestOptions = parsePROptions(req)
+		opts.SampleRelease.PayloadOptions = parsePayloadOptions(req)
 
 		if opts.VariantOption, err = parseVariantOptions(req, allJobVariants, overrides); err != nil {
 			return
@@ -139,6 +140,7 @@ func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, err
 		"baseRelease", "sampleRelease", // release opts
 		"samplePROrg", "samplePRRepo", "samplePRNumber", // PR opts
 		"columnGroupBy", "dbGroupBy", // grouping
+		"samplePayloadTag",                                        // Payload opts
 		"includeVariant", "compareVariant", "variantCrossCompare", // variants
 		"confidence", "pity", "minFail", "passRateNewTests", "passRateAllTests",
 		"ignoreMissing", "ignoreDisruption", // advanced opts
@@ -193,6 +195,16 @@ func parsePROptions(req *http.Request) *crtype.PullRequestOptions {
 		return nil
 	}
 	return &pro
+}
+
+func parsePayloadOptions(req *http.Request) *crtype.PayloadOptions {
+	po := crtype.PayloadOptions{
+		Tag: param.SafeRead(req, "samplePayloadTag"),
+	}
+	if po.Tag == "" {
+		return nil
+	}
+	return &po
 }
 
 func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts crtype.RequestVariantOptions, err error) {

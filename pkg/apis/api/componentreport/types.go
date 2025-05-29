@@ -34,9 +34,16 @@ type PullRequestOptions struct {
 	PRNumber string
 }
 
+// PayloadOptions specifies a specific payload tag to use as the
+// sample for the report. This is only used for sample, not basis.
+type PayloadOptions struct {
+	Tag string
+}
+
 type RequestReleaseOptions struct {
 	Release            string              `json:"release" yaml:"release"`
 	PullRequestOptions *PullRequestOptions `json:"pull_request_options,omitempty" yaml:"pull_request_options,omitempty"`
+	PayloadOptions     *PayloadOptions     `json:"payload_options,omitempty" yaml:"payload_options,omitempty"`
 	Start              time.Time           `json:"start,omitempty" yaml:"start,omitempty"`
 	End                time.Time           `json:"end,omitempty" yaml:"end,omitempty"`
 }

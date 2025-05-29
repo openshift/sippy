@@ -54,6 +54,9 @@ function ReleaseSelector(props) {
     setPullRequestRepo,
     pullRequestNumber,
     setPullRequestNumber,
+    payloadSupport,
+    payloadTag,
+    setPayloadTag,
   } = props
 
   const days = 24 * 60 * 60 * 1000
@@ -64,6 +67,8 @@ function ReleaseSelector(props) {
 
   const [pullRequestURL, setPullRequestURL] = useState('')
   const [pullRequestURLError, setPullRequestURLError] = useState(false)
+
+  const [payloadTagError, setPayloadTagError] = useState(false)
 
   const setGADate = () => {
     let start = new Date(versions[version])
@@ -109,10 +114,21 @@ function ReleaseSelector(props) {
     }
   }, [pullRequestOrg, pullRequestRepo, pullRequestNumber])
 
+  useEffect(() => {
+    if (payloadTag) {
+      setPayloadTag(payloadTag)
+    }
+  }, [payloadTag])
+
   const handlePullRequestURLChange = (e) => {
     const newURL = e.target.value
     setPullRequestURL(newURL)
 
+    // Don't allow PRURL and payload tag at the same time
+    if (payloadTag !== '') {
+      setPullRequestURLError(true)
+      return
+    }
     // Allow clearing the URL:
     if (newURL === '') {
       setPullRequestURLError(false)
@@ -131,6 +147,34 @@ function ReleaseSelector(props) {
       setPullRequestNumber(match[3])
     } else {
       setPullRequestURLError(true)
+    }
+  }
+
+  const handlePayloadTagChange = (e) => {
+    const newTag = e.target.value
+
+    // Don't allow PRURL and payload tag at the same time
+    if (pullRequestURL !== '') {
+      setPayloadTagError(true)
+      return
+    }
+    // Allow clearing the URL:
+    if (newTag === '') {
+      setPayloadTagError(false)
+      setPayloadTag('')
+      return
+    }
+
+    // Match string like 4.19.0-0.nightly-2025-03-14-061055
+    const regex =
+      /^\d+\.\d+\.\d+-\d+\.(nightly|ci|konflux-nightly)-\d{4}-\d{2}-\d{2}-(\d+)$/
+    const match = newTag.match(regex)
+    if (match) {
+      setPayloadTagError(false)
+      setPayloadTag(newTag)
+    } else {
+      setPayloadTagError(true)
+      setPayloadTag('')
     }
   }
 
@@ -179,8 +223,39 @@ function ReleaseSelector(props) {
                   value={pullRequestURL}
                   onChange={handlePullRequestURLChange}
                 />
-                {pullRequestURLError && (
+                {pullRequestURLError && payloadTag !== '' && (
+                  <FormHelperText>
+                    Cannot have payload tag and pull request URL at the same
+                    time!
+                  </FormHelperText>
+                )}
+                {pullRequestURLError && payloadTag === '' && (
                   <FormHelperText>Invalid Pull Request URL</FormHelperText>
+                )}
+              </FormControl>
+            )}
+          </div>
+          <div>
+            {payloadSupport && (
+              <FormControl error={payloadTagError}>
+                <InputLabel htmlFor="payloadTag">
+                  Payload Tag (optional)
+                </InputLabel>
+                <Input
+                  id="payloadTag"
+                  value={payloadTag}
+                  onChange={handlePayloadTagChange}
+                />
+                {payloadTagError && pullRequestURL !== '' && (
+                  <FormHelperText>
+                    Cannot have pull request URL and payload tag at the same
+                    time!
+                  </FormHelperText>
+                )}
+                {payloadTagError && pullRequestURL === '' && (
+                  <FormHelperText>
+                    Valid tag format: 4.19.0-0.ci-2025-05-17-032906
+                  </FormHelperText>
                 )}
               </FormControl>
             )}
@@ -289,11 +364,15 @@ ReleaseSelector.propTypes = {
   setPullRequestRepo: PropTypes.func,
   pullRequestNumber: PropTypes.string,
   setPullRequestNumber: PropTypes.func,
+  payloadSupport: PropTypes.bool,
+  payloadTag: PropTypes.string,
+  setPayloadTag: PropTypes.func,
 }
 
 ReleaseSelector.defaultProps = {
   label: 'Version',
   pullRequestSupport: false,
+  payloadSupport: false,
 }
 
 export default ReleaseSelector
