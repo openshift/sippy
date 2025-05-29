@@ -35,7 +35,7 @@ type PullRequestOptions struct {
 }
 
 // PayloadOptions specifies a specific payload tag to use as the
-// basis or (more often) sample for the report.
+// sample for the report. This is only used for sample, not basis.
 type PayloadOptions struct {
 	Tag string
 }

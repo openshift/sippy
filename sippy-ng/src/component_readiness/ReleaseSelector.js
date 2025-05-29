@@ -124,6 +124,11 @@ function ReleaseSelector(props) {
     const newURL = e.target.value
     setPullRequestURL(newURL)
 
+    // Don't allow PRURL and payload tag at the same time
+    if (payloadTag !== '') {
+      setPullRequestURLError(true)
+      return
+    }
     // Allow clearing the URL:
     if (newURL === '') {
       setPullRequestURLError(false)
@@ -148,6 +153,11 @@ function ReleaseSelector(props) {
   const handlePayloadTagChange = (e) => {
     const newTag = e.target.value
 
+    // Don't allow PRURL and payload tag at the same time
+    if (pullRequestURL !== '') {
+      setPayloadTagError(true)
+      return
+    }
     // Allow clearing the URL:
     if (newTag === '') {
       setPayloadTagError(false)
@@ -213,7 +223,13 @@ function ReleaseSelector(props) {
                   value={pullRequestURL}
                   onChange={handlePullRequestURLChange}
                 />
-                {pullRequestURLError && (
+                {pullRequestURLError && payloadTag !== '' && (
+                  <FormHelperText>
+                    Cannot have payload tag and pull request URL at the same
+                    time!
+                  </FormHelperText>
+                )}
+                {pullRequestURLError && payloadTag === '' && (
                   <FormHelperText>Invalid Pull Request URL</FormHelperText>
                 )}
               </FormControl>
@@ -230,8 +246,16 @@ function ReleaseSelector(props) {
                   value={payloadTag}
                   onChange={handlePayloadTagChange}
                 />
-                {payloadTagError && (
-                  <FormHelperText>Invalid Payload Tag</FormHelperText>
+                {payloadTagError && pullRequestURL !== '' && (
+                  <FormHelperText>
+                    Cannot have pull request URL and payload tag at the same
+                    time!
+                  </FormHelperText>
+                )}
+                {payloadTagError && pullRequestURL === '' && (
+                  <FormHelperText>
+                    Valid tag format: 4.19.0-0.ci-2025-05-17-032906
+                  </FormHelperText>
                 )}
               </FormControl>
             )}

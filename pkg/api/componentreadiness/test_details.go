@@ -67,13 +67,6 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	now := time.Now()
 	componentJobRunTestReportStatus.GeneratedAt = &now
 
-	for _, mw := range c.middlewares {
-		err := mw.PreTestDetailsAnalysis(&componentJobRunTestReportStatus)
-		if err != nil {
-			return crtype.ReportTestDetails{}, []error{err}
-		}
-	}
-
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(ctx,
 		componentJobRunTestReportStatus.BaseStatus,
