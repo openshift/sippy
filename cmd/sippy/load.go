@@ -121,9 +121,16 @@ func NewLoadCommand() *cobra.Command {
 
 			cacheClient, cacheErr := f.CacheFlags.GetCacheClient()
 
-			// Get a bigquery client
-			bqc, bigqueryErr := f.BigQueryFlags.GetBigQueryClient(context.Background(),
-				nil, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+			// initializing a different bigquery client to the normal one
+			bqc, bigqueryErr := bqcachedclient.New(ctx,
+				f.GoogleCloudFlags.ServiceAccountCredentialFile,
+				f.BigQueryFlags.BigQueryProject,
+				f.BigQueryFlags.BigQueryDataset, cacheClient)
+			if bigqueryErr == nil {
+				if f.CacheFlags.EnablePersistentCaching {
+					bqc = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bqc)
+				}
+			}
 
 			// Sippy Config
 			config, err := f.ConfigFlags.GetConfig()
@@ -135,6 +142,9 @@ func NewLoadCommand() *cobra.Command {
 
 			for _, l := range f.Loaders {
 				if l == "component-readiness-cache" {
+					if bigqueryErr != nil {
+						return errors.Wrap(err, "CRITICAL error getting BigQuery client which prevents regression tracking")
+					}
 					if dbErr != nil {
 						return dbErr
 					}
@@ -144,17 +154,6 @@ func NewLoadCommand() *cobra.Command {
 					if f.CacheFlags.RedisURL == "" {
 						return fmt.Errorf("--redis-url is required")
 					}
-					// initializing a different bigquery client to the normal one
-					bqClient, err := bqcachedclient.New(ctx,
-						f.GoogleCloudFlags.ServiceAccountCredentialFile,
-						f.BigQueryFlags.BigQueryProject,
-						f.BigQueryFlags.BigQueryDataset, cacheClient)
-					if err != nil {
-						return errors.Wrap(err, "CRITICAL error getting BigQuery client which prevents regression tracking")
-					}
-					if f.CacheFlags.EnablePersistentCaching {
-						bqClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bqClient)
-					}
 
 					views, err := f.ComponentReadinessFlags.ParseViewsFile()
 					if err != nil {
@@ -163,7 +162,7 @@ func NewLoadCommand() *cobra.Command {
 					if len(views.ComponentReadiness) == 0 {
 						return fmt.Errorf("no component readiness views provided")
 					}
-					loaders = append(loaders, crcacheloader.New(dbc, cacheClient, bqClient, config, views,
+					loaders = append(loaders, crcacheloader.New(dbc, cacheClient, bqc, config, views,
 						f.ComponentReadinessFlags.CRTimeRoundingFactor))
 
 				}
