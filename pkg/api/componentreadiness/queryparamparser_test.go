@@ -59,10 +59,9 @@ func TestParseComponentReportRequest(t *testing.T) {
 			RelativeEnd:   "now",
 		},
 		VariantOptions: crtype.RequestVariantOptions{
-			ColumnGroupBy:     defaultColumnGroupByVariants,
-			DBGroupBy:         defaultDBGroupByVariants,
-			IncludeVariants:   includeVariants,
-			RequestedVariants: nil,
+			ColumnGroupBy:   defaultColumnGroupByVariants,
+			DBGroupBy:       defaultDBGroupByVariants,
+			IncludeVariants: includeVariants,
 		},
 		AdvancedOptions: crtype.RequestAdvancedOptions{
 			MinimumFailure:   3,
@@ -147,7 +146,6 @@ func TestParseComponentReportRequest(t *testing.T) {
 					"FeatureSet":   {"default"},
 					"Installer":    {"ipi", "upi"},
 				},
-				RequestedVariants: map[string]string{},
 			},
 			baseRelease: crtype.RequestReleaseOptions{
 				Release: "4.15",
@@ -159,7 +157,9 @@ func TestParseComponentReportRequest(t *testing.T) {
 				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
 				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
 			},
-			testIDOption: crtype.RequestTestIdentificationOptions{},
+			testIDOption: crtype.RequestTestIdentificationOptions{
+				RequestedVariants: map[string]string{},
+			},
 			advancedOption: crtype.RequestAdvancedOptions{
 				MinimumFailure:   3,
 				Confidence:       95,
@@ -200,7 +200,6 @@ func TestParseComponentReportRequest(t *testing.T) {
 					"FeatureSet":   {"default"},
 					"Installer":    {"ipi", "upi"},
 				},
-				RequestedVariants: map[string]string{},
 			},
 			baseRelease: crtype.RequestReleaseOptions{
 				Release: "4.15",
@@ -212,7 +211,9 @@ func TestParseComponentReportRequest(t *testing.T) {
 				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
 				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
 			},
-			testIDOption: crtype.RequestTestIdentificationOptions{},
+			testIDOption: crtype.RequestTestIdentificationOptions{
+				RequestedVariants: map[string]string{},
+			},
 			advancedOption: crtype.RequestAdvancedOptions{
 				MinimumFailure:   3,
 				Confidence:       95,
@@ -249,7 +250,9 @@ func TestParseComponentReportRequest(t *testing.T) {
 				Start:   time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
 				End:     nowRoundUp,
 			},
-			testIDOption: crtype.RequestTestIdentificationOptions{},
+			testIDOption: crtype.RequestTestIdentificationOptions{
+				RequestedVariants: map[string]string{},
+			},
 			advancedOption: crtype.RequestAdvancedOptions{
 				MinimumFailure:   3,
 				Confidence:       95,
@@ -315,7 +318,6 @@ func TestParseComponentReportRequest(t *testing.T) {
 					"Installer":    {"ipi", "upi"},
 				},
 				VariantCrossCompare: []string{"Architecture", "Topology"},
-				RequestedVariants:   map[string]string{},
 			},
 			baseRelease: crtype.RequestReleaseOptions{
 				Release: "4.15",
@@ -327,7 +329,9 @@ func TestParseComponentReportRequest(t *testing.T) {
 				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
 				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
 			},
-			testIDOption: crtype.RequestTestIdentificationOptions{},
+			testIDOption: crtype.RequestTestIdentificationOptions{
+				RequestedVariants: map[string]string{},
+			},
 			advancedOption: crtype.RequestAdvancedOptions{
 				MinimumFailure:   3,
 				Confidence:       95,
@@ -369,7 +373,9 @@ func TestParseComponentReportRequest(t *testing.T) {
 				Start:   time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
 				End:     nowRoundUp,
 			},
-			testIDOption: crtype.RequestTestIdentificationOptions{},
+			testIDOption: crtype.RequestTestIdentificationOptions{
+				RequestedVariants: map[string]string{},
+			},
 			advancedOption: crtype.RequestAdvancedOptions{
 				MinimumFailure:   3,
 				Confidence:       95,
@@ -402,7 +408,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, tc.baseRelease, options.BaseRelease)
 				assert.Equal(t, tc.sampleRelease, options.SampleRelease)
-				assert.Equal(t, tc.testIDOption, options.TestIDOption)
+				assert.Equal(t, tc.testIDOption, options.TestIDOptions[0])
 				assert.Equal(t, tc.variantOption, options.VariantOption)
 				assert.Equal(t, tc.advancedOption, options.AdvancedOption)
 				assert.Equal(t, tc.cacheOption, options.CacheOption)

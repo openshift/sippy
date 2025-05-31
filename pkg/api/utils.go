@@ -70,13 +70,8 @@ func GetDataFromCacheOrGenerate[T any](
 			panic(fmt.Sprintf("cache key is empty for %s", reflect.TypeOf(defaultVal)))
 		}
 
-		// require cacheDuration for persistence logic
-		cacheDuration := defaultCacheDuration
-		if cacheOptions.CRTimeRoundingFactor > 0 {
-			now := time.Now().UTC()
-			// Only cache until the next rounding duration
-			cacheDuration = now.Truncate(cacheOptions.CRTimeRoundingFactor).Add(cacheOptions.CRTimeRoundingFactor).Sub(now)
-		}
+		cacheDuration := CalculateRoundedCacheDuration(cacheOptions)
+		log.Debugf("cache duration set to %s or approx %s for key %s", cacheDuration, time.Now().Add(cacheDuration).Format(time.RFC3339), cacheKey)
 
 		if !cacheOptions.ForceRefresh {
 			if res, err := c.Get(ctx, string(cacheKey), cacheDuration); err == nil {
@@ -96,26 +91,44 @@ func GetDataFromCacheOrGenerate[T any](
 				"key": string(cacheKey),
 			}).Infof("cache miss")
 		}
+
+		// Cache has missed or we're explicitly forcing a refresh:
 		result, errs := generateFn(ctx)
 		if len(errs) == 0 {
-			cr, err := json.Marshal(result)
-			if err == nil {
-				if err := c.Set(ctx, string(cacheKey), cr, cacheDuration); err != nil {
-					if strings.Contains(err.Error(), "connection refused") {
-						log.WithError(err).Fatalf("redis URL specified but got connection refused, exiting due to cost issues in this configuration")
-					}
-					log.WithError(err).Warningf("couldn't persist new item to cache")
-				} else {
-					log.Debugf("cache set for cache key: %s", string(cacheKey))
-				}
-			} else {
-				log.WithError(err).Errorf("Failed to marshall cache item: %v", result)
-			}
+
+			CacheSet(ctx, c, result, cacheKey, cacheDuration)
 		}
 		return result, errs
 	}
 
 	return generateFn(ctx)
+}
+
+func CacheSet[T any](ctx context.Context, c cache.Cache, result T, cacheKey []byte, cacheDuration time.Duration) {
+	cr, err := json.Marshal(result)
+	if err == nil {
+		if err := c.Set(ctx, string(cacheKey), cr, cacheDuration); err != nil {
+			if strings.Contains(err.Error(), "connection refused") {
+				log.WithError(err).Fatalf("redis URL specified but got connection refused, exiting due to cost issues in this configuration")
+			}
+			log.WithError(err).Warningf("couldn't persist new item to cache")
+		} else {
+			log.Debugf("cache set for cache key: %s", string(cacheKey))
+		}
+	} else {
+		log.WithError(err).Errorf("Failed to marshall cache item: %v", result)
+	}
+}
+
+func CalculateRoundedCacheDuration(cacheOptions cache.RequestOptions) time.Duration {
+	// require cacheDuration for persistence logic
+	cacheDuration := defaultCacheDuration
+	if cacheOptions.CRTimeRoundingFactor > 0 {
+		now := time.Now().UTC()
+		// Only cache until the next rounding duration
+		cacheDuration = now.Truncate(cacheOptions.CRTimeRoundingFactor).Add(cacheOptions.CRTimeRoundingFactor).Sub(now)
+	}
+	return cacheDuration
 }
 
 // isStructWithNoPublicFields checks if the given interface is a struct with no public fields.

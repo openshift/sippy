@@ -8,6 +8,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -245,6 +246,8 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mw.openRegressions = []*models.TestRegression{&tt.openRegression}
+			mw.hasLoadedRegressions = true
+			mw.log = logrus.New()
 			err := mw.PostAnalysis(testKey, &tt.testStats)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expectedExplanationsCount, len(tt.testStats.Explanations), tt.testStats.Explanations)
