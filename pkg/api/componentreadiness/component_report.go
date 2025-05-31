@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strconv"
@@ -14,8 +15,6 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -23,6 +22,7 @@ import (
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/releasefallback"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
@@ -33,6 +33,7 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -1363,23 +1364,44 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTr
 	return crtype.SignificantRegression
 }
 
-func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage float64, approvedRegression *regressionallowances.IntentionalRegression) int {
+func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage float64, approvedRegression *regressionallowances.IntentionalRegression, sampleSize int) float64 {
+	// Minimum Detectable Effect (MDE) is the smallest difference between groups that a statistical test can reliably
+	// detect, given the sample size and confidence level. Component Readiness calls this "pity factor" but it's used
+	// universally regardless of sample size.
+	//
+	// We want the baseline pity factor to be used when n = 30.  So given the default value of 5%,
+	//		n=5, pity factor becomes   ~12%
+	//		n=30, pity factor becomes   ~5%
+	//		n=100, pity factor becomes  ~2%
+	//
+	// The formula to figure out the MDE is:
+	//		pity = max(2%,C/sqrt(n)) where n is the sample size, and C is our defined constant
+	//
+	// We determine our constant based on our desire for the requested pity factor to apply when
+	// n = 30.
+	baseline := 30.0 // Baseline is the sample size where the selected pity factor applies
+	mdeConstant := float64(c.ReqOptions.AdvancedOption.PityFactor) / 100 * math.Sqrt(baseline)
+	log.Debugf("MDE Constant is %0.4f", mdeConstant)
+
+	adjustedPityFactorWithMDE := math.Max(0.02, mdeConstant/math.Sqrt(float64(sampleSize)))
+	log.Debugf("Adjusted pity factor %0.4f to %0.4f for sample n=%d", float64(c.ReqOptions.AdvancedOption.PityFactor)/100, adjustedPityFactorWithMDE, sampleSize)
+
 	if approvedRegression != nil && approvedRegression.RegressedFailures > 0 {
 		regressedPassPercentage := approvedRegression.RegressedPassPercentage(c.ReqOptions.AdvancedOption.FlakeAsFailure)
 		if regressedPassPercentage < basisPassPercentage {
 			// product owner chose a required pass percentage, so we allow pity to cover that approved pass percent
 			// plus the existing pity factor to limit, "well, it's just *barely* lower" arguments.
-			effectivePityFactor := int(basisPassPercentage*100) - int(regressedPassPercentage*100) + c.ReqOptions.AdvancedOption.PityFactor
+			effectivePityFactor := basisPassPercentage - regressedPassPercentage + adjustedPityFactorWithMDE
 
-			if effectivePityFactor < c.ReqOptions.AdvancedOption.PityFactor {
+			if effectivePityFactor < adjustedPityFactorWithMDE {
 				log.Errorf("effective pity factor for %+v is below zero: %d", approvedRegression, effectivePityFactor)
-				effectivePityFactor = c.ReqOptions.AdvancedOption.PityFactor
+				effectivePityFactor = adjustedPityFactorWithMDE
 			}
 
 			return effectivePityFactor
 		}
 	}
-	return c.ReqOptions.AdvancedOption.PityFactor
+	return adjustedPityFactorWithMDE
 }
 
 // TODO: this will eventually become the analyze step on a Middleware, or possibly a separate
@@ -1486,7 +1508,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		}
 		basisPassPercentage := float64(basePass) / float64(testStats.BaseStats.Total())
 		initialPassPercentage := float64(samplePass) / float64(initialSampleTotal)
-		effectivePityFactor := c.getEffectivePityFactor(basisPassPercentage, approvedRegression)
+		effectivePityFactor := c.getEffectivePityFactor(basisPassPercentage, approvedRegression, initialSampleTotal)
 
 		wasSignificant := false
 		// only consider wasSignificant if the sampleTotal has been changed and our sample
@@ -1544,7 +1566,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		if improved {
 			// flip base and sample when improved
 			significant, fisherExact = c.fischerExactTest(testStats.RequiredConfidence, testStats.BaseStats.Total()-basePass, basePass, testStats.SampleStats.Total()-samplePass, samplePass)
-		} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor)/100 {
+		} else if basisPassPercentage-samplePassPercentage > float64(effectivePityFactor) {
 			significant, fisherExact = c.fischerExactTest(testStats.RequiredConfidence, testStats.SampleStats.Total()-samplePass, samplePass, testStats.BaseStats.Total()-basePass, basePass)
 		}
 		if significant {
