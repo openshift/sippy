@@ -103,10 +103,6 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	if len(in.TestName) == 0 {
 		return fmt.Errorf("testName must be specified")
 	}
-	// there must have been successes previously for there to be a regression now
-	if in.PreviousSuccesses <= 0 {
-		return fmt.Errorf("previousSuccesses must be specified")
-	}
 	// there must be failures now for there to be a regression
 	if in.RegressedFailures <= 0 {
 		return fmt.Errorf("regressedFailures must be specified")
