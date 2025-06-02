@@ -165,7 +165,7 @@ export default function TriageFields({
             onChange={(date) =>
               setTriageEntryData((prevData) => ({
                 ...prevData,
-                resolved: { Time: date, Valid: true },
+                resolved: { Time: date, Valid: date !== null },
               }))
             }
             renderInput={(props) => <TextField variant="standard" {...props} />}
