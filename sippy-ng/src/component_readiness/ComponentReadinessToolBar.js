@@ -81,15 +81,17 @@ export default function ComponentReadinessToolBar(props) {
       const activeRegressionIds = allRegressed?.map(
         (test) => test.regression?.id
       )
-      const triagesAssociatedWithActiveRegressions = triages.filter(
-        (triage) => {
-          return (
-            triage.regressions.find((regression) =>
-              activeRegressionIds.includes(regression.id)
-            ) !== undefined
-          )
+      let triagesAssociatedWithActiveRegressions = []
+      triages.forEach((triage) => {
+        // Filter out any included regressions that are no longer active
+        triage.regressions = triage.regressions.filter((regression) =>
+          activeRegressionIds.includes(regression.id)
+        )
+        // If there are no regressions left, the triage record will be hidden
+        if (triage.regressions.length > 0) {
+          triagesAssociatedWithActiveRegressions.push(triage)
         }
-      )
+      })
       setTriageEntries(triagesAssociatedWithActiveRegressions)
       setTriageEntryCreated(false)
       setIsLoaded(true)
