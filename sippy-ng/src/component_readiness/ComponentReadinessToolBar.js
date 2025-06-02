@@ -73,11 +73,24 @@ export default function ComponentReadinessToolBar(props) {
     }
 
     triageFetch.then((triages) => {
-      setTriageEntries(triages)
       const merged = mergeRegressionData(data, triages)
+      const allRegressed = merged.length > 1 ? merged[1] : null
       setRegressedTests(merged.length > 0 ? merged[0] : null)
-      setAllRegressedTests(merged.length > 1 ? merged[1] : null)
+      setAllRegressedTests(allRegressed)
       setTriagedIncidents(merged.length > 2 ? merged[2] : null)
+      const activeRegressionIds = allRegressed?.map(
+        (test) => test.regression?.id
+      )
+      const triagesAssociatedWithActiveRegressions = triages.filter(
+        (triage) => {
+          return (
+            triage.regressions.find((regression) =>
+              activeRegressionIds.includes(regression.id)
+            ) !== undefined
+          )
+        }
+      )
+      setTriageEntries(triagesAssociatedWithActiveRegressions)
       setTriageEntryCreated(false)
       setIsLoaded(true)
     })
