@@ -594,6 +594,7 @@ export function mergeRegressionData(data, triageEntries) {
   let groupedIncidents = new Map()
   let untriagedRegressedTests = []
   let allRegressions = []
+  let unresolvedRegressedTests = []
 
   data.rows.forEach((row) => {
     row.columns.forEach((column) => {
@@ -615,6 +616,13 @@ export function mergeRegressionData(data, triageEntries) {
     })
   })
 
+  allRegressions.forEach((r) => {
+    // Anything below "hopefully fixed" belongs in unresolvedRegressedTests
+    if (r.status <= -200) {
+      unresolvedRegressedTests.push(r)
+    }
+  })
+
   untriagedRegressedTests.sort((a, b) => {
     return (
       a.component.toLowerCase() < b.component.toLowerCase() ||
@@ -634,11 +642,12 @@ export function mergeRegressionData(data, triageEntries) {
   })
   allRegressions = allRegressions.map((item, index) => ({ ...item, id: index }))
 
-  return [
-    untriagedRegressedTests,
-    allRegressions,
-    createGroupedIncidentArray(groupedIncidents),
-  ]
+  return {
+    untriagedRegressedTests: untriagedRegressedTests,
+    allRegressions: allRegressions,
+    unresolvedRegressedTests: unresolvedRegressedTests,
+    groupedIncidents: createGroupedIncidentArray(groupedIncidents),
+  }
 }
 
 export const Search = styled('div')(({ theme }) => ({
