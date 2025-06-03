@@ -119,6 +119,14 @@ export default function Triage({ id }) {
             <TableCell>Last Change</TableCell>
             <TableCell>{triage.bug?.last_change_time}</TableCell>
           </TableRow>
+          <TableRow>
+            <TableCell>Record Created</TableCell>
+            <TableCell>{triage.created_at}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Record Updated</TableCell>
+            <TableCell>{triage.updated_at}</TableCell>
+          </TableRow>
         </TableBody>
       </Table>
       <h2>Included Tests</h2>
