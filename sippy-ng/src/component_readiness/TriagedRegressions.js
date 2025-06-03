@@ -5,14 +5,18 @@ import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-export default function TriagedRegressions(props) {
+export default function TriagedRegressions({
+  triageEntries,
+  eventEmitter,
+  entriesPerPage = 10,
+}) {
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
 
   const handleSetSelectionModel = (event) => {
     let selectedTriagedEntry = {}
-    props.triageEntries.forEach((entry) => {
+    triageEntries.forEach((entry) => {
       if (event[0] === entry.id) selectedTriagedEntry = entry
     })
 
@@ -20,7 +24,7 @@ export default function TriagedRegressions(props) {
       selectedTriagedEntry.regressions !== null &&
       selectedTriagedEntry.regressions.length > 0
     ) {
-      props.eventEmitter.emit(
+      eventEmitter.emit(
         'triagedEntrySelectionChanged',
         selectedTriagedEntry.regressions
       )
@@ -134,10 +138,10 @@ export default function TriagedRegressions(props) {
         onSortModelChange={setSortModel}
         onSelectionModelChange={handleSetSelectionModel}
         components={{ Toolbar: GridToolbar }}
-        rows={props.triageEntries}
+        rows={triageEntries}
         columns={columns}
         getRowId={(row) => row.id}
-        pageSize={10}
+        pageSize={entriesPerPage}
         rowHeight={60}
         autoHeight={true}
         checkboxSelection={false}
@@ -154,4 +158,5 @@ export default function TriagedRegressions(props) {
 TriagedRegressions.propTypes = {
   eventEmitter: PropTypes.object,
   triageEntries: PropTypes.array,
+  entriesPerPage: PropTypes.number,
 }
