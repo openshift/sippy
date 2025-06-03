@@ -7,7 +7,7 @@ import React, { Fragment } from 'react'
 
 export default function TriagedRegressions(props) {
   const [sortModel, setSortModel] = React.useState([
-    { field: 'component', sort: 'asc' },
+    { field: 'created_at', sort: 'desc' },
   ])
 
   const handleSetSelectionModel = (event) => {
@@ -104,6 +104,24 @@ export default function TriagedRegressions(props) {
         return value.row.bug?.last_change_time || ''
       },
       headerName: 'Last Change',
+      flex: 5,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'created_at',
+      valueGetter: (value) => {
+        return value.row.created_at
+      },
+      headerName: 'Created',
+      flex: 5,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'updated_at',
+      valueGetter: (value) => {
+        return value.row.updated_at
+      },
+      headerName: 'Updated',
       flex: 5,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
