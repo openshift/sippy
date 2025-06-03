@@ -41,6 +41,7 @@ export default function Triage({ id }) {
       .then((t) => {
         setTriage(t)
         setIsLoaded(true)
+        document.title = 'Triage: ' + t.id
       })
       .catch((error) => {
         setMessage(error.toString())

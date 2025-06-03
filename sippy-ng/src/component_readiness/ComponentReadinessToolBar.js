@@ -14,6 +14,7 @@ import {
   GridView,
   HelpCenter,
   InsertLink,
+  LocalHospital,
   Refresh,
   ViewColumn,
   Widgets,
@@ -54,9 +55,9 @@ export default function ComponentReadinessToolBar(props) {
   const [triageEntries, setTriageEntries] = React.useState([])
   const [isLoaded, setIsLoaded] = React.useState(false)
   const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const localDBEnabled = capabilitiesContext.includes('local_db')
 
   React.useEffect(() => {
-    const localDBEnabled = capabilitiesContext.includes('local_db')
     // triage entries will only be available when there is a postgres connection
     let triageFetch
     if (localDBEnabled) {
@@ -254,6 +255,21 @@ export default function ComponentReadinessToolBar(props) {
                 </Tooltip>
               </IconButton>
             </Box>
+
+            {localDBEnabled && (
+              <Box sx={{ display: { md: 'flex' } }}>
+                <IconButton
+                  size="large"
+                  aria-label="Show all triage records"
+                  color="inherit"
+                  href="/sippy-ng/triages/"
+                >
+                  <Tooltip title="Show all triage records">
+                    <LocalHospital />
+                  </Tooltip>
+                </IconButton>
+              </Box>
+            )}
 
             <Box sx={{ display: { md: 'flex' } }}>
               <IconButton
