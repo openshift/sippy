@@ -50,6 +50,7 @@ export default function ComponentReadinessToolBar(props) {
   const [triageEntryCreated, setTriageEntryCreated] = React.useState(false)
   const [regressedTests, setRegressedTests] = React.useState([])
   const [allRegressedTests, setAllRegressedTests] = React.useState([])
+  const [unresolvedTests, setUnresolvedTests] = React.useState([])
   const [triagedIncidents, setTriagedIncidents] = React.useState([])
   const [triageEntries, setTriageEntries] = React.useState([])
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -74,11 +75,11 @@ export default function ComponentReadinessToolBar(props) {
 
     triageFetch.then((triages) => {
       const merged = mergeRegressionData(data, triages)
-      const allRegressed = merged.length > 1 ? merged[1] : null
-      setRegressedTests(merged.length > 0 ? merged[0] : null)
-      setAllRegressedTests(allRegressed)
-      setTriagedIncidents(merged.length > 2 ? merged[2] : null)
-      const activeRegressionIds = allRegressed?.map(
+      setRegressedTests(merged.untriagedRegressedTests)
+      setAllRegressedTests(merged.allRegressions)
+      setUnresolvedTests(merged.unresolvedRegressedTests)
+      setTriagedIncidents(merged.groupedIncidents)
+      const activeRegressionIds = merged.allRegressions?.map(
         (test) => test.regression?.id
       )
       let triagesAssociatedWithActiveRegressions = []
@@ -305,6 +306,7 @@ export default function ComponentReadinessToolBar(props) {
       <RegressedTestsModal
         regressedTests={regressedTests}
         allRegressedTests={allRegressedTests}
+        unresolvedTests={unresolvedTests}
         triagedIncidents={triagedIncidents}
         triageEntries={triageEntries}
         setTriageEntryCreated={setTriageEntryCreated}
