@@ -263,7 +263,7 @@ export default function ComponentReadinessToolBar(props) {
                   size="large"
                   aria-label="Show all triage records"
                   color="inherit"
-                  href="/sippy-ng/triages/"
+                  href="/sippy-ng/triages"
                 >
                   <Tooltip title="Show all triage records">
                     <LocalHospital />
