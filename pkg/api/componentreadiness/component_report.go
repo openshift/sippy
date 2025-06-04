@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -208,6 +209,12 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 		VariantOption:  c.ReqOptions.VariantOption,
 		AdvancedOption: c.ReqOptions.AdvancedOption,
 		TestIDOptions:  c.ReqOptions.TestIDOptions,
+	}
+
+	if len(c.ReqOptions.TestIDOptions) == 1 && reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], crtype.RequestTestIdentificationOptions{}) {
+		// some code instantiates an empty request test ID options, standardize on null if we see this to keep cache keys
+		// from missing.
+		cacheKey.TestIDOptions = nil
 	}
 
 	// Ensure string arrays are stable sorted regardless of how the caller / we constructed them.
