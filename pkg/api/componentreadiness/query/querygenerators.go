@@ -59,6 +59,7 @@ const (
 				jobs.repo,
 				jobs.pr_number,
 				jobs.pr_sha,
+				jobs.release_verify_tag,
 				CASE
 					WHEN flake_count > 0 THEN 0
 					ELSE success_val
@@ -209,6 +210,9 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Repo
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleString += `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
 	}
+	if s.ReqOptions.SampleRelease.PayloadOptions != nil {
+		sampleString += `  AND release_verify_tag = @Tag`
+	}
 	sampleQuery := s.client.BQ.Query(sampleString + groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
@@ -238,6 +242,14 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Repo
 			{
 				Name:  "PRNumber",
 				Value: s.ReqOptions.SampleRelease.PullRequestOptions.PRNumber,
+			},
+		}...)
+	}
+	if s.ReqOptions.SampleRelease.PayloadOptions != nil {
+		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+			{
+				Name:  "Tag",
+				Value: s.ReqOptions.SampleRelease.PayloadOptions.Tag,
 			},
 		}...)
 	}
@@ -784,6 +796,9 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleString += `  AND jobs.org = @Org AND jobs.repo = @Repo AND jobs.pr_number = @PRNumber`
 	}
+	if s.ReqOptions.SampleRelease.PayloadOptions != nil {
+		sampleString += `  AND jobs.release_verify_tag = @Tag`
+	}
 	sampleQuery := s.client.BQ.Query(sampleString + groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
@@ -813,6 +828,14 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 			{
 				Name:  "PRNumber",
 				Value: s.ReqOptions.SampleRelease.PullRequestOptions.PRNumber,
+			},
+		}...)
+	}
+	if s.ReqOptions.SampleRelease.PayloadOptions != nil {
+		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+			{
+				Name:  "Tag",
+				Value: s.ReqOptions.SampleRelease.PayloadOptions.Tag,
 			},
 		}...)
 	}

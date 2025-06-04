@@ -94,6 +94,43 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			expectedExplanationsCount: 1,
 		},
 		{
+			name: "ci-infra triage resolved",
+			testStats: crtype.ReportTestStats{
+				ReportStatus: crtype.ExtremeRegression,
+				Explanations: []string{},
+				LastFailure:  &daysAgo4,
+			},
+			openRegression: models.TestRegression{
+				ID:       0,
+				View:     "",
+				Release:  "",
+				TestID:   testKey.TestID,
+				TestName: testKey.TestName,
+				Variants: variantsStrSlice,
+				Opened:   daysAgo5,
+				Closed: sql.NullTime{
+					Time:  time.Time{},
+					Valid: false,
+				},
+				Triages: []models.Triage{
+					{
+						ID:          42,
+						CreatedAt:   daysAgo4,
+						UpdatedAt:   daysAgo4,
+						URL:         "https://example.com/foobar",
+						Description: "foobar",
+						Type:        "ci-infra",
+						Resolved: sql.NullTime{
+							Time:  daysAgo3,
+							Valid: true,
+						},
+					},
+				},
+			},
+			expectStatus:              crtype.NotSignificant,
+			expectedExplanationsCount: 0,
+		},
+		{
 			name: "triage resolved waiting to clear",
 			testStats: crtype.ReportTestStats{
 				ReportStatus: crtype.ExtremeRegression,

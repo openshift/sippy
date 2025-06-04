@@ -41,6 +41,7 @@ export default function Triage({ id }) {
       .then((t) => {
         setTriage(t)
         setIsLoaded(true)
+        document.title = 'Triage: ' + t.id
       })
       .catch((error) => {
         setMessage(error.toString())
@@ -118,6 +119,14 @@ export default function Triage({ id }) {
           <TableRow>
             <TableCell>Last Change</TableCell>
             <TableCell>{triage.bug?.last_change_time}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Record Created</TableCell>
+            <TableCell>{triage.created_at}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Record Updated</TableCell>
+            <TableCell>{triage.updated_at}</TableCell>
           </TableRow>
         </TableBody>
       </Table>

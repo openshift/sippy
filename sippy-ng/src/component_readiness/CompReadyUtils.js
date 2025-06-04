@@ -390,6 +390,10 @@ export function getUpdatedUrlParts(vars) {
 
   // TODO: inject the PR vars into query params
 
+  if (vars.samplePayloadTag) {
+    valuesMap.samplePayloadTag = vars.samplePayloadTag
+  }
+
   function filterOutVariantCC(values) {
     return values.filter((value) => !vars.variantCrossCompare.includes(value))
   }
@@ -590,6 +594,7 @@ export function mergeRegressionData(data, triageEntries) {
   let groupedIncidents = new Map()
   let untriagedRegressedTests = []
   let allRegressions = []
+  let unresolvedRegressedTests = []
 
   data.rows.forEach((row) => {
     row.columns.forEach((column) => {
@@ -611,6 +616,13 @@ export function mergeRegressionData(data, triageEntries) {
     })
   })
 
+  allRegressions.forEach((r) => {
+    // Anything below "hopefully fixed" belongs in unresolvedRegressedTests
+    if (r.status <= -200) {
+      unresolvedRegressedTests.push(r)
+    }
+  })
+
   untriagedRegressedTests.sort((a, b) => {
     return (
       a.component.toLowerCase() < b.component.toLowerCase() ||
@@ -630,11 +642,12 @@ export function mergeRegressionData(data, triageEntries) {
   })
   allRegressions = allRegressions.map((item, index) => ({ ...item, id: index }))
 
-  return [
-    untriagedRegressedTests,
-    allRegressions,
-    createGroupedIncidentArray(groupedIncidents),
-  ]
+  return {
+    untriagedRegressedTests: untriagedRegressedTests,
+    allRegressions: allRegressions,
+    unresolvedRegressedTests: unresolvedRegressedTests,
+    groupedIncidents: createGroupedIncidentArray(groupedIncidents),
+  }
 }
 
 export const Search = styled('div')(({ theme }) => ({
@@ -741,20 +754,40 @@ export function generateTestReport(
   return sortQueryParams(retUrl)
 }
 
+// Construct a URL with all existing filters utilizing the necessary info from the regressed test.
+// We pass these arguments to the component that generates the test details report.
+export function generateTestReportForRegressedTest(
+  regressedTest,
+  filterVals,
+  expandEnvironment
+) {
+  const environmentVal = formColumnName({ variants: regressedTest.variants })
+  const safeComponentName = safeEncodeURIComponent(regressedTest.component)
+  const safeTestId = safeEncodeURIComponent(regressedTest.test_id)
+  const safeTestName = safeEncodeURIComponent(regressedTest.test_name)
+  const safeTestBasisRelease = safeEncodeURIComponent(
+    regressedTest.base_stats?.release
+  )
+  let variantsUrl = ''
+  Object.entries(regressedTest.variants).forEach(([key, value]) => {
+    variantsUrl += '&' + key + '=' + safeEncodeURIComponent(value)
+  })
+  const retUrl =
+    '/component_readiness/test_details' +
+    filterVals +
+    `&testBasisRelease=${safeTestBasisRelease}` +
+    `&testId=${safeTestId}` +
+    expandEnvironment(environmentVal) +
+    `&component=${safeComponentName}` +
+    `&capability=${regressedTest.capability}` +
+    variantsUrl +
+    `&testName=${safeTestName}`
+
+  return sortQueryParams(retUrl)
+}
+
 export function generateRegressionCount(regressed_tests, triaged_incidents) {
   let regressedCount = regressed_tests ? regressed_tests.length : 0
   let triagedCount = triaged_incidents ? triaged_incidents.length : 0
   return regressedCount + triagedCount
-}
-
-export function safeExternalHref(url) {
-  try {
-    const parsed = new URL(url)
-    if (['http:', 'https:'].includes(parsed.protocol)) {
-      return parsed.href
-    }
-  } catch (e) {
-    // Invalid URL
-  }
-  return '#'
 }

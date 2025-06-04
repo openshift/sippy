@@ -5,22 +5,26 @@ import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
-export default function TriagedRegressions(props) {
+export default function TriagedRegressions({
+  triageEntries,
+  eventEmitter,
+  entriesPerPage = 10,
+}) {
   const [sortModel, setSortModel] = React.useState([
-    { field: 'component', sort: 'asc' },
+    { field: 'created_at', sort: 'desc' },
   ])
 
   const handleSetSelectionModel = (event) => {
     let selectedTriagedEntry = {}
-    props.triageEntries.forEach((entry) => {
+    triageEntries.forEach((entry) => {
       if (event[0] === entry.id) selectedTriagedEntry = entry
     })
 
     if (
-      selectedTriagedEntry.regressions !== 'undefined' &&
+      selectedTriagedEntry.regressions !== null &&
       selectedTriagedEntry.regressions.length > 0
     ) {
-      props.eventEmitter.emit(
+      eventEmitter.emit(
         'triagedEntrySelectionChanged',
         selectedTriagedEntry.regressions
       )
@@ -108,6 +112,24 @@ export default function TriagedRegressions(props) {
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
+      field: 'created_at',
+      valueGetter: (value) => {
+        return value.row.created_at
+      },
+      headerName: 'Created',
+      flex: 5,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'updated_at',
+      valueGetter: (value) => {
+        return value.row.updated_at
+      },
+      headerName: 'Updated',
+      flex: 5,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
       field: 'details',
       valueGetter: (value) => {
         return value.row.id
@@ -134,10 +156,10 @@ export default function TriagedRegressions(props) {
         onSortModelChange={setSortModel}
         onSelectionModelChange={handleSetSelectionModel}
         components={{ Toolbar: GridToolbar }}
-        rows={props.triageEntries}
+        rows={triageEntries}
         columns={columns}
         getRowId={(row) => row.id}
-        pageSize={10}
+        pageSize={entriesPerPage}
         rowHeight={60}
         autoHeight={true}
         checkboxSelection={false}
@@ -154,4 +176,5 @@ export default function TriagedRegressions(props) {
 TriagedRegressions.propTypes = {
   eventEmitter: PropTypes.object,
   triageEntries: PropTypes.array,
+  entriesPerPage: PropTypes.number,
 }

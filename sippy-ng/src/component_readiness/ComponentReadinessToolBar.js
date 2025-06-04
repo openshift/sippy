@@ -14,6 +14,7 @@ import {
   GridView,
   HelpCenter,
   InsertLink,
+  LocalHospital,
   Refresh,
   ViewColumn,
   Widgets,
@@ -51,13 +52,14 @@ export default function ComponentReadinessToolBar(props) {
   const [triageEntryCreated, setTriageEntryCreated] = React.useState(false)
   const [regressedTests, setRegressedTests] = React.useState([])
   const [allRegressedTests, setAllRegressedTests] = React.useState([])
+  const [unresolvedTests, setUnresolvedTests] = React.useState([])
   const [triagedIncidents, setTriagedIncidents] = React.useState([])
   const [triageEntries, setTriageEntries] = React.useState([])
   const [isLoaded, setIsLoaded] = React.useState(false)
   const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const localDBEnabled = capabilitiesContext.includes('local_db')
 
   React.useEffect(() => {
-    const localDBEnabled = capabilitiesContext.includes('local_db')
     // triage entries will only be available when there is a postgres connection
     let triageFetch
     if (localDBEnabled) {
@@ -74,11 +76,26 @@ export default function ComponentReadinessToolBar(props) {
     }
 
     triageFetch.then((triages) => {
-      setTriageEntries(triages)
       const merged = mergeRegressionData(data, triages)
-      setRegressedTests(merged.length > 0 ? merged[0] : null)
-      setAllRegressedTests(merged.length > 1 ? merged[1] : null)
-      setTriagedIncidents(merged.length > 2 ? merged[2] : null)
+      setRegressedTests(merged.untriagedRegressedTests)
+      setAllRegressedTests(merged.allRegressions)
+      setUnresolvedTests(merged.unresolvedRegressedTests)
+      setTriagedIncidents(merged.groupedIncidents)
+      const activeRegressionIds = merged.allRegressions?.map(
+        (test) => test.regression?.id
+      )
+      let triagesAssociatedWithActiveRegressions = []
+      triages.forEach((triage) => {
+        // Filter out any included regressions that are no longer active
+        triage.regressions = triage.regressions.filter((regression) =>
+          activeRegressionIds.includes(regression.id)
+        )
+        // If there are no regressions left, the triage record will be hidden
+        if (triage.regressions.length > 0) {
+          triagesAssociatedWithActiveRegressions.push(triage)
+        }
+      })
+      setTriageEntries(triagesAssociatedWithActiveRegressions)
       setTriageEntryCreated(false)
       setIsLoaded(true)
     })
@@ -241,6 +258,21 @@ export default function ComponentReadinessToolBar(props) {
               </IconButton>
             </Box>
 
+            {localDBEnabled && (
+              <Box sx={{ display: { md: 'flex' } }}>
+                <IconButton
+                  size="large"
+                  aria-label="Show all triage records"
+                  color="inherit"
+                  href="/sippy-ng/triages"
+                >
+                  <Tooltip title="Show all triage records">
+                    <LocalHospital />
+                  </Tooltip>
+                </IconButton>
+              </Box>
+            )}
+
             <Box sx={{ display: { md: 'flex' } }}>
               <IconButton
                 size="large"
@@ -248,7 +280,7 @@ export default function ComponentReadinessToolBar(props) {
                 color="inherit"
                 onClick={() => setRegressedTestDialog(true, 'replaceIn')}
               >
-                <Badge badgeContent={allRegressedTests.length} color="error">
+                <Badge badgeContent={unresolvedTests.length} color="error">
                   <Tooltip title="Show regressed tests">
                     <GridView />
                   </Tooltip>
@@ -291,6 +323,7 @@ export default function ComponentReadinessToolBar(props) {
       <RegressedTestsModal
         regressedTests={regressedTests}
         allRegressedTests={allRegressedTests}
+        unresolvedTests={unresolvedTests}
         triagedIncidents={triagedIncidents}
         triageEntries={triageEntries}
         setTriageEntryCreated={setTriageEntryCreated}

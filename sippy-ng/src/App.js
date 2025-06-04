@@ -54,6 +54,7 @@ import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Toolbar from '@mui/material/Toolbar'
 import Triage from './component_readiness/Triage'
+import TriageList from './component_readiness/TriageList'
 import Typography from '@mui/material/Typography'
 import Upgrades from './releases/Upgrades'
 import VariantStatus from './jobs/VariantStatus'
@@ -634,12 +635,20 @@ export default function App(props) {
 
                             <Route
                               path="/triages/:id"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
+                              render={(props) => (
+                                <CompReadyVarsProvider>
                                   <Triage id={props.match.params.id} />
-                                )
-                              }
+                                </CompReadyVarsProvider>
+                              )}
+                            />
+
+                            <Route
+                              path="/triages"
+                              render={() => (
+                                <CompReadyVarsProvider>
+                                  <TriageList />
+                                </CompReadyVarsProvider>
+                              )}
                             />
 
                             <Route
