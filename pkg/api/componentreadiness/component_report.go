@@ -216,7 +216,7 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 		(c.ReqOptions.TestIDOptions[0].Component == "" &&
 			c.ReqOptions.TestIDOptions[0].Capability == "" &&
 			c.ReqOptions.TestIDOptions[0].TestID == "" &&
-			(c.ReqOptions.TestIDOptions[0].RequestedVariants == nil || len(c.ReqOptions.TestIDOptions[0].RequestedVariants) == 0) &&
+			len(c.ReqOptions.TestIDOptions[0].RequestedVariants) == 0 &&
 			c.ReqOptions.TestIDOptions[0].BaseOverrideRelease == "")) {
 		// some code instantiates an empty request test ID options, standardize on null if we see this to keep cache keys
 		// from missing.
