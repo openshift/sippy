@@ -41,9 +41,9 @@ export default function TriagedRegressionTestList(props) {
     let displayView = false
     if (data) {
       displayView = true
+      setTriagedRegressions(data.regressions)
+      setActiveRow(data.activeId, 'replaceIn')
     }
-    setTriagedRegressions(data.regressions)
-    setActiveRow(data.activeId)
 
     setShowView(displayView)
   }
@@ -185,12 +185,12 @@ export default function TriagedRegressionTestList(props) {
           onSelectionModelChange={(newRow) => {
             // Due to the usage of the eventEmitter, this can sometimes fire when we don't want it to actually de-select
             if (newRow.length > 0) {
-              setActiveRow(Number(newRow))
+              setActiveRow(Number(newRow), 'replaceIn')
             }
           }}
           page={activePage}
           onPageChange={(newPage) => {
-            setActivePage(newPage)
+            setActivePage(newPage, 'replaceIn')
           }}
           pageSize={10}
           rowHeight={60}

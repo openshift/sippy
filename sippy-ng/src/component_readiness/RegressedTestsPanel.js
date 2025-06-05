@@ -281,12 +281,14 @@ export default function RegressedTestsPanel(props) {
         }
         selectionModel={activeRow}
         onSelectionModelChange={(newRow) => {
-          setActiveRow(newRow)
+          if (newRow) {
+            setActiveRow(newRow, 'replaceIn')
+          }
         }}
         pageSize={10}
         page={activePage}
         onPageChange={(newPage) => {
-          setActivePage(newPage)
+          setActivePage(newPage, 'replaceIn')
         }}
         rowHeight={60}
         autoHeight={true}
