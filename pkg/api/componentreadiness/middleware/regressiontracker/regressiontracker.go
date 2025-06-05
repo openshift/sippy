@@ -39,38 +39,25 @@ type RegressionTracker struct {
 	reqOptions      crtype.RequestOptions
 	dbc             *db.DB
 	openRegressions []*models.TestRegression
-	// hasLoadedRegressions will be true once we've loaded regression data
-	hasLoadedRegressions bool
 }
 
 func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crtype.TestStatus, errCh chan error) {
-	err := r.ensureRegressionsLoaded()
-	if err != nil {
-		errCh <- err
-	}
+	r.internalQuery(errCh)
 }
 
 func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
-	err := r.ensureRegressionsLoaded()
-	if err != nil {
-		errCh <- err
-	}
+	r.internalQuery(errCh)
 }
 
-func (r *RegressionTracker) ensureRegressionsLoaded() error {
-	if r.hasLoadedRegressions {
-		return nil
-	}
-
+func (r *RegressionTracker) internalQuery(errCh chan error) {
 	// Load all known regressions for this release:
 	var err error
 	r.openRegressions, err = query.ListOpenRegressions(r.dbc, r.reqOptions.SampleRelease.Release)
 	if err != nil {
-		return err
+		errCh <- err
+		return
 	}
 	r.log.Infof("Found %d open regressions", len(r.openRegressions))
-	r.hasLoadedRegressions = true
-	return nil
 }
 
 func (r *RegressionTracker) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
@@ -102,16 +89,10 @@ func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification
 		// no need to adjust status for triage if this is no longer a regression
 		return nil
 	}
-	err := r.ensureRegressionsLoaded()
-	if err != nil {
-		return err
-	}
 	if len(r.openRegressions) > 0 {
 		view := r.openRegressions[0].View // grab view from first regression, they were queried only for sample release
 		or := FindOpenRegression(view, testKey.TestID, testKey.Variants, r.openRegressions)
-		r.log.Infof("checking regressions for %+v", testKey)
 		if or == nil {
-			r.log.Info("none found")
 			return nil
 		}
 
@@ -196,6 +177,6 @@ func findVariant(variantName string, testReg *models.TestRegression) string {
 	return ""
 }
 
-func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtype.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error {
+func (r *RegressionTracker) PreTestDetailsAnalysis(status *crtype.JobRunTestReportStatus) error {
 	return nil
 }

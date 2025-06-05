@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/openshift/sippy/pkg/dataloader/crcacheloader"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -47,27 +46,23 @@ type LoadFlags struct {
 	Architectures []string
 	Releases      []string
 
-	BigQueryFlags           *flags.BigQueryFlags
-	ConfigFlags             *configflags.ConfigFlags
-	DBFlags                 *flags.PostgresFlags
-	GithubCommenterFlags    *flags.GithubCommenterFlags
-	GoogleCloudFlags        *flags.GoogleCloudFlags
-	ModeFlags               *flags.ModeFlags
-	CacheFlags              *flags.CacheFlags
-	ComponentReadinessFlags *flags.ComponentReadinessFlags
-	JobVariantsInputFile    string
+	BigQueryFlags        *flags.BigQueryFlags
+	ConfigFlags          *configflags.ConfigFlags
+	DBFlags              *flags.PostgresFlags
+	GithubCommenterFlags *flags.GithubCommenterFlags
+	GoogleCloudFlags     *flags.GoogleCloudFlags
+	ModeFlags            *flags.ModeFlags
+	JobVariantsInputFile string
 }
 
 func NewLoadFlags() *LoadFlags {
 	return &LoadFlags{
-		BigQueryFlags:           flags.NewBigQueryFlags(),
-		ConfigFlags:             configflags.NewConfigFlags(),
-		DBFlags:                 flags.NewPostgresDatabaseFlags(),
-		GithubCommenterFlags:    flags.NewGithubCommenterFlags(),
-		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
-		ModeFlags:               flags.NewModeFlags(),
-		CacheFlags:              flags.NewCacheFlags(),
-		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
+		BigQueryFlags:        flags.NewBigQueryFlags(),
+		ConfigFlags:          configflags.NewConfigFlags(),
+		DBFlags:              flags.NewPostgresDatabaseFlags(),
+		GithubCommenterFlags: flags.NewGithubCommenterFlags(),
+		GoogleCloudFlags:     flags.NewGoogleCloudFlags(),
+		ModeFlags:            flags.NewModeFlags(),
 	}
 }
 
@@ -78,8 +73,6 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.GithubCommenterFlags.BindFlags(fs)
 	f.GoogleCloudFlags.BindFlags(fs)
 	f.ModeFlags.BindFlags(fs)
-	f.CacheFlags.BindFlags(fs)
-	f.ComponentReadinessFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
 	fs.BoolVar(&f.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
@@ -89,7 +82,6 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.JobVariantsInputFile, "job-variants-input-file", "expected-job-variants.json", "JSON input file for the job-variants loader")
 }
 
-// nolint:gocyclo
 func NewLoadCommand() *cobra.Command {
 	f := NewLoadFlags()
 
@@ -119,54 +111,13 @@ func NewLoadCommand() *cobra.Command {
 				}
 			}
 
-			cacheClient, cacheErr := f.CacheFlags.GetCacheClient()
-
-			// initializing a different bigquery client to the normal one
-			bqc, bigqueryErr := bqcachedclient.New(ctx,
-				f.GoogleCloudFlags.ServiceAccountCredentialFile,
-				f.BigQueryFlags.BigQueryProject,
-				f.BigQueryFlags.BigQueryDataset, cacheClient)
-			if bigqueryErr == nil {
-				if f.CacheFlags.EnablePersistentCaching {
-					bqc = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bqc)
-				}
-			}
-
 			// Sippy Config
 			config, err := f.ConfigFlags.GetConfig()
 			if err != nil {
 				return err
 			}
 
-			var refreshMatviews bool
-
 			for _, l := range f.Loaders {
-				if l == "component-readiness-cache" {
-					if bigqueryErr != nil {
-						return errors.Wrap(err, "CRITICAL error getting BigQuery client which prevents regression tracking")
-					}
-					if dbErr != nil {
-						return dbErr
-					}
-					if cacheErr != nil {
-						return errors.Wrap(err, "couldn't get cache client")
-					}
-					if f.CacheFlags.RedisURL == "" {
-						return fmt.Errorf("--redis-url is required")
-					}
-
-					views, err := f.ComponentReadinessFlags.ParseViewsFile()
-					if err != nil {
-						return errors.Wrap(err, "error parsing views file")
-					}
-					if len(views.ComponentReadiness) == 0 {
-						return fmt.Errorf("no component readiness views provided")
-					}
-					loaders = append(loaders, crcacheloader.New(dbc, cacheClient, bqc, config, views,
-						f.ComponentReadinessFlags.CRTimeRoundingFactor))
-
-				}
-
 				if l == "releases" {
 					if dbErr != nil {
 						return dbErr
@@ -176,7 +127,6 @@ func NewLoadCommand() *cobra.Command {
 
 				// Prow Loader
 				if l == "prow" {
-					refreshMatviews = true
 					if dbErr != nil {
 						return dbErr
 					}
@@ -198,7 +148,6 @@ func NewLoadCommand() *cobra.Command {
 
 				// Load mapping for jira components to tests
 				if l == "test-mapping" {
-					refreshMatviews = true
 					if dbErr != nil {
 						return dbErr
 					}
@@ -218,26 +167,19 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					if bigqueryErr != nil {
+					// Get a bigquery client
+					bqc, err := f.BigQueryFlags.GetBigQueryClient(context.Background(), nil, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+					if err != nil {
 						return errors.WithMessage(err, "could not get bigquery client")
 					}
 					loaders = append(loaders, bugloader.New(dbc, bqc))
 				}
 
-				// Load Job Variants into BigQuery
-				if l == "job-variants" {
-					variantsLoader, err := f.jobVariantsLoader(ctx)
-					if err != nil {
-						return err
-					}
-					loaders = append(loaders, variantsLoader)
-				}
-
 				// Sync postgres variants from BigQuery -- directly updates all jobs immediately
 				// without us waiting to see the job again.
 				if l == "sync-variants" {
-					refreshMatviews = true
-					if bigqueryErr != nil {
+					bqc, err := f.BigQueryFlags.GetBigQueryClient(context.Background(), nil, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+					if err != nil {
 						return errors.WithMessage(err, "could not get bigquery client")
 					}
 					vs, err := variantsyncer.New(dbc, bqc)
@@ -247,9 +189,17 @@ func NewLoadCommand() *cobra.Command {
 					loaders = append(loaders, vs)
 				}
 
+				// Job Variants Loader from BigQuery
+				if l == "job-variants" {
+					variantsLoader, err := f.jobVariantsLoader(ctx)
+					if err != nil {
+						return err
+					}
+					loaders = append(loaders, variantsLoader)
+				}
+
 				// Feature gates
 				if l == "feature-gates" {
-					refreshMatviews = true
 					fgLoader := featuregateloader.New(dbc)
 					loaders = append(loaders, fgLoader)
 				}
@@ -266,9 +216,7 @@ func NewLoadCommand() *cobra.Command {
 			log.WithField("elapsed", elapsed).Info("database load complete")
 
 			pinnedTime := f.DBFlags.GetPinnedTime()
-			if refreshMatviews {
-				sippyserver.RefreshData(dbc, pinnedTime, false)
-			}
+			sippyserver.RefreshData(dbc, pinnedTime, false)
 
 			if len(allErrs) > 0 {
 				log.Warningf("%d errors were encountered while loading database:", len(allErrs))

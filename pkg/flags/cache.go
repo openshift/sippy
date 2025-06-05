@@ -62,7 +62,7 @@ func (f *CacheFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&f.EnablePersistentCacheWrite,
 		"enable-persistent-cache-write",
 		false,
-		"Boolean indicating if the cache should attempt to write or is read only")
+		"Boolean indicating if the cache should attempt to writ or is read only")
 }
 
 func (f *CacheFlags) GetCacheClient() (cache.Cache, error) {

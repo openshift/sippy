@@ -1,7 +1,6 @@
 package componentreport
 
 import (
-	"encoding/json"
 	"math/big"
 	"time"
 
@@ -62,18 +61,12 @@ type RequestRelativeReleaseOptions struct {
 	RelativeEnd   string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
-// RequestTestIdentificationOptions handles options used in the test details report when we focus in
-// on a specific test and variants combo, typically because it is or was regressed.
 type RequestTestIdentificationOptions struct {
-	Component  string `json:"component,omitempty" yaml:"component,omitempty"`
-	Capability string `json:"capability,omitempty" yaml:"capability,omitempty"`
+	Component  string
+	Capability string
 	// TestID is a unique identification for the test defined in the DB.
 	// It matches the test_id in the bigquery ci_analysis_us.junit table.
-	TestID string `json:"test_id,omitempty" yaml:"test_id,omitempty"`
-	// RequestedVariants are used for filtering the test details view down to a specific set.
-	RequestedVariants map[string]string `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
-	// BaseOverrideRelease is used when we're requesting a test details report for both the base release, and a fallback override that had a better pass rate.
-	BaseOverrideRelease string `json:"base_override_release,omitempty" yaml:"base_override_release,omitempty"`
+	TestID string
 }
 
 type RequestVariantOptions struct {
@@ -82,6 +75,8 @@ type RequestVariantOptions struct {
 	IncludeVariants     map[string][]string `json:"include_variants" yaml:"include_variants"`
 	CompareVariants     map[string][]string `json:"compare_variants,omitempty" yaml:"compare_variants,omitempty"`
 	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`
+	// RequestedVariants are used for filtering the test details view down to a specific set. Unused in the main component report.
+	RequestedVariants map[string]string `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
 }
 
 // RequestOptions is a struct packaging all the options for a CR request.
@@ -90,13 +85,13 @@ type RequestVariantOptions struct {
 // threshold for indicating a regression.  If a release prior to the selected BaseRelease has a
 // higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
 type RequestOptions struct {
-	BaseRelease    RequestReleaseOptions
-	SampleRelease  RequestReleaseOptions
-	VariantOption  RequestVariantOptions
-	AdvancedOption RequestAdvancedOptions
-	CacheOption    cache.RequestOptions
-	// TODO: phase our once multi TestIDOptions is fully implemented
-	TestIDOptions []RequestTestIdentificationOptions
+	BaseRelease         RequestReleaseOptions
+	BaseOverrideRelease RequestReleaseOptions
+	SampleRelease       RequestReleaseOptions
+	TestIDOption        RequestTestIdentificationOptions
+	VariantOption       RequestVariantOptions
+	AdvancedOption      RequestAdvancedOptions
+	CacheOption         cache.RequestOptions
 }
 
 // View is a server side construct representing a predefined view over the component readiness data.
@@ -112,7 +107,6 @@ type View struct {
 	Metrics            ViewMetrics            `json:"metrics" yaml:"metrics"`
 	RegressionTracking ViewRegressionTracking `json:"regression_tracking" yaml:"regression_tracking"`
 	AutomateJira       AutomateJira           `json:"automate_jira" yaml:"automate_jira"`
-	PrimeCache         ViewPrimeCache         `json:"prime_cache" yaml:"prime_cache"`
 }
 
 type ViewMetrics struct {
@@ -123,9 +117,6 @@ type ViewRegressionTracking struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 }
 
-type ViewPrimeCache struct {
-	Enabled bool `json:"enabled" yaml:"enabled"`
-}
 type AutomateJira struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 }
@@ -331,36 +322,48 @@ type TestDetailsJobRunStats struct {
 	TestStats TestDetailsTestStats `json:"test_stats"`
 }
 
-// TestJobRunRows are the per job run rows that come back from bigquery for a test details report
-// indicating if the test passed or failed.
-// Fields are named count somewhat misleadingly as technically they're always 0 or 1 today.
-type TestJobRunRows struct {
-	TestKey         TestWithVariantsKey `json:"test_key"`
-	TestKeyStr      string              `json:"-"` // transient field so we dont have to keep recalculating
-	TestName        string              `bigquery:"test_name"`
-	ProwJob         string              `bigquery:"prowjob_name"`
-	ProwJobRunID    string              `bigquery:"prowjob_run_id"`
-	ProwJobURL      string              `bigquery:"prowjob_url"`
-	StartTime       civil.DateTime      `bigquery:"prowjob_start"`
-	TotalCount      int                 `bigquery:"total_count"`
-	SuccessCount    int                 `bigquery:"success_count"`
-	FlakeCount      int                 `bigquery:"flake_count"`
-	JiraComponent   string              `bigquery:"jira_component"`
-	JiraComponentID *big.Rat            `bigquery:"jira_component_id"`
+type JobRunTestStatus struct {
+	Component    string
+	Capabilities []string
+	Network      string
+	Upgrade      string
+	Arch         string
+	Platform     string
+	Variants     []string
+	TotalCount   int
+	SuccessCount int
+	FlakeCount   int
 }
 
-// TestJobRunStatuses contains the rows returned from a test details query organized by base and sample,
-// essentially the actual job runs and their status that was used to calculate this
-// report.
-// Status fields map prowjob name to each row result we received for that job.
-type TestJobRunStatuses struct {
-	BaseStatus map[string][]TestJobRunRows `json:"base_status"`
+type JobRunTestIdentification struct {
+	TestName string
+	TestID   string
+	FilePath string
+}
+
+type JobRunTestStatusRow struct {
+	ProwJob         string         `bigquery:"prowjob_name"`
+	ProwJobRunID    string         `bigquery:"prowjob_run_id"`
+	ProwJobURL      string         `bigquery:"prowjob_url"`
+	StartTime       civil.DateTime `bigquery:"prowjob_start"`
+	TestID          string         `bigquery:"test_id"`
+	TestName        string         `bigquery:"test_name"`
+	FilePath        string         `bigquery:"file_path"`
+	TotalCount      int            `bigquery:"total_count"`
+	SuccessCount    int            `bigquery:"success_count"`
+	FlakeCount      int            `bigquery:"flake_count"`
+	JiraComponent   string         `bigquery:"jira_component"`
+	JiraComponentID *big.Rat       `bigquery:"jira_component_id"`
+}
+
+type JobRunTestReportStatus struct {
+	BaseStatus map[string][]JobRunTestStatusRow `json:"base_status"`
 	// TODO: This could be a little cleaner if we did status.BaseStatuses plural and tied them to a release,
 	// allowing the release fallback mechanism to stay a little cleaner. That would more clearly
 	// keep middleware details out of the main codebase.
-	BaseOverrideStatus map[string][]TestJobRunRows `json:"base_override_status"`
-	SampleStatus       map[string][]TestJobRunRows `json:"sample_status"`
-	GeneratedAt        *time.Time                  `json:"generated_at"`
+	BaseOverrideStatus map[string][]JobRunTestStatusRow `json:"base_override_status"`
+	SampleStatus       map[string][]JobRunTestStatusRow `json:"sample_status"`
+	GeneratedAt        *time.Time                       `json:"generated_at"`
 }
 
 const (
@@ -495,14 +498,4 @@ type TestWithVariantsKey struct {
 
 	// Proposed, need to serialize to use as map key
 	Variants map[string]string `json:"variants"`
-}
-
-// KeyOrDie serializes this test key into a json string suitable for use in maps.
-// JSON serialization uses sorted map keys, so the output is stable.
-func (t TestWithVariantsKey) KeyOrDie() string {
-	testIDBytes, err := json.Marshal(t)
-	if err != nil {
-		panic(err)
-	}
-	return string(testIDBytes)
 }

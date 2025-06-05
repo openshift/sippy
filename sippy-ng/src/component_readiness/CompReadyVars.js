@@ -319,7 +319,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [includeMultiReleaseAnalysis, setIncludeMultiReleaseAnalysis] =
     React.useState(
       includeMultiReleaseAnalysisParam ||
-        getDefaultIncludeMultiReleaseAnalysis() === 'true'
+        Boolean(getDefaultIncludeMultiReleaseAnalysis())
     )
   /******************************************************************************
    * Parameters that are used to refine the query as the user drills down into CR

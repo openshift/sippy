@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -41,8 +41,7 @@ import (
 const (
 	triagedIncidentsTableID = "triaged_incidents"
 
-	explanationNoRegression       = "No significant regressions found"
-	ComponentReportCacheKeyPrefix = "ComponentReport~"
+	explanationNoRegression = "No significant regressions found"
 )
 
 type GeneratorType string
@@ -109,57 +108,11 @@ func GetComponentReportFromBigQuery(
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (crtype.ComponentReport, []error) {
 
-	generator := NewComponentReportGenerator(client, reqOptions, dbc, variantJunitTableOverrides)
-
-	if os.Getenv("DEV_MODE") == "1" {
-		return generator.GenerateReport(ctx)
-	}
-
-	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
-		ctx,
-		generator.client.Cache, generator.ReqOptions.CacheOption,
-		api.GetPrefixedCacheKey(ComponentReportCacheKeyPrefix, generator.GetCacheKey(ctx)),
-		generator.GenerateReport,
-		crtype.ComponentReport{})
-	if len(errs) > 0 {
-		return report, errs
-	}
-
-	err := generator.PostAnalysis(&report)
-	if err != nil {
-		return report, []error{err}
-	}
-
-	return report, []error{}
-}
-
-// PostAnalysis runs the PostAnalysis method for all middleware on this component report.
-// This is done outside the caching mechanism so we can load fresh data from our db (which is fast and cheap),
-// and inject it into an expensive / slow report without recalculating everything.
-func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) error {
-
-	// Give middleware their chance to adjust the result
-	for ri, row := range report.Rows {
-		for ci, col := range row.Columns {
-			for rti := range col.RegressedTests {
-				for _, mw := range c.middlewares {
-					testKey := crtype.ReportTestIdentification{
-						RowIdentification:    col.RegressedTests[rti].RowIdentification,
-						ColumnIdentification: col.RegressedTests[rti].ColumnIdentification,
-					}
-					err := mw.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats)
-					if err != nil {
-						return err
-					}
-				}
-			}
-		}
-	}
-
-	return nil
-}
-
-func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtype.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride) ComponentReportGenerator {
+	// TODO: generator is used as a cache key, public fields get included when we serialize it.
+	// This muddles cache key with actual public/private fields and complicates use of the object
+	// in other packages. Cache key to me looks like it should just be RequestOptions. With exception
+	// of cacheOptions which are private, we are otherwise just breaking apart RequestOptions.
+	// Watch out for BaseOverrideRelease which is not included here today. May only be used on test details...
 	generator := ComponentReportGenerator{
 		client:                     client,
 		ReqOptions:                 reqOptions,
@@ -167,8 +120,18 @@ func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtyp
 		dbc:                        dbc,
 		variantJunitTableOverrides: variantJunitTableOverrides,
 	}
-	generator.initializeMiddleware()
-	return generator
+
+	if os.Getenv("DEV_MODE") == "1" {
+		return generator.GenerateReport(ctx)
+	}
+
+	return api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
+		ctx,
+		generator.client.Cache, generator.ReqOptions.CacheOption,
+		// TODO: how are we not specifying anything specific for cache key?
+		generator.GetComponentReportCacheKey(ctx, "ComponentReport~"),
+		generator.GenerateReport,
+		crtype.ComponentReport{})
 }
 
 // ComponentReportGenerator contains the information needed to generate a CR report. Do
@@ -187,58 +150,12 @@ type ComponentReportGenerator struct {
 	middlewares                []middleware.Middleware
 }
 
-type GeneratorCacheKey struct {
-	ReportModified *time.Time
-	BaseRelease    crtype.RequestReleaseOptions
-	SampleRelease  crtype.RequestReleaseOptions
-	VariantOption  crtype.RequestVariantOptions
-	AdvancedOption crtype.RequestAdvancedOptions
-	TestIDOptions  []crtype.RequestTestIdentificationOptions
-}
-
-// GetCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
-// we cache. This provides a safer option than using the generator previously which carries some public fields
-// which would be serialized and thus cause unnecessary cache misses.
-// Here we should normalize to output the same cache key regardless of how fields were initialized. (nil vs empty, etc)
-func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCacheKey {
-	cacheKey := GeneratorCacheKey{
-		ReportModified: c.ReportModified,
-		BaseRelease:    c.ReqOptions.BaseRelease,
-		SampleRelease:  c.ReqOptions.SampleRelease,
-		VariantOption:  c.ReqOptions.VariantOption,
-		AdvancedOption: c.ReqOptions.AdvancedOption,
-		TestIDOptions:  c.ReqOptions.TestIDOptions,
-	}
-
-	// TestIDOptions initialization differences caused many cache misses. This hacky bit of code attempts to handle
-	// them all and ensure we end up with the same cache key if the slice is null, empty, or has one empty element
-	if len(c.ReqOptions.TestIDOptions) == 1 && (reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], crtype.RequestTestIdentificationOptions{}) ||
-		(c.ReqOptions.TestIDOptions[0].Component == "" &&
-			c.ReqOptions.TestIDOptions[0].Capability == "" &&
-			c.ReqOptions.TestIDOptions[0].TestID == "" &&
-			len(c.ReqOptions.TestIDOptions[0].RequestedVariants) == 0 &&
-			c.ReqOptions.TestIDOptions[0].BaseOverrideRelease == "")) {
-		// some code instantiates an empty request test ID options, standardize on null if we see this to keep cache keys
-		// from missing.
-		cacheKey.TestIDOptions = nil
-	} else if len(c.ReqOptions.TestIDOptions) == 0 {
-		cacheKey.TestIDOptions = nil
-	}
-
-	// Ensure string arrays are stable sorted regardless of how the caller / we constructed them.
-	for k, vals := range cacheKey.VariantOption.IncludeVariants {
-		sort.Strings(vals)
-		cacheKey.VariantOption.IncludeVariants[k] = vals
-	}
-	for k, vals := range cacheKey.VariantOption.CompareVariants {
-		sort.Strings(vals)
-		cacheKey.VariantOption.CompareVariants[k] = vals
-	}
-
+func (c *ComponentReportGenerator) GetComponentReportCacheKey(ctx context.Context, prefix string) api.CacheData {
+	// Make sure we have initialized the report modified field
 	if c.ReportModified == nil {
-		cacheKey.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption)
+		c.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption)
 	}
-	return cacheKey
+	return api.GetPrefixedCacheKey(prefix, c)
 }
 
 func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype.TestVariants, []error) {
@@ -318,10 +235,13 @@ func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 }
 
 func (c *ComponentReportGenerator) initializeMiddleware() {
+	// TODO: move to a constructor or similar
 	c.middlewares = []middleware.Middleware{}
 	// Initialize all our middleware applicable to this request.
+	// TODO: Should middleware constructors do the interpretation of the request
+	// and decide if they want to take part? Return nil if not?
 	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
-	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
+	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis || c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
 	}
 	if c.dbc != nil {
@@ -334,6 +254,7 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 // GenerateReport is the main entry point for generation of a component readiness report.
 func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.ComponentReport, []error) {
 	before := time.Now()
+	c.initializeMiddleware()
 
 	// Load all test pass/fail counts from bigquery, both sample and basis
 	componentReportTestStatus, errs := c.getTestStatusFromBigQuery(ctx)
@@ -631,60 +552,40 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	var test crtype.TestWithVariantsKey
 	columnGroupByVariants := c.ReqOptions.VariantOption.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
-	if len(c.ReqOptions.TestIDOptions) > 0 && c.ReqOptions.TestIDOptions[0].TestID != "" {
+	if c.ReqOptions.TestIDOption.TestID != "" {
 		columnGroupByVariants = c.ReqOptions.VariantOption.DBGroupBy
 	}
-
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIDStr), &test)
 	if err != nil {
 		return []crtype.RowIdentification{}, []crtype.ColumnID{}, err
 	}
 
-	testComponent, testCapabilities := componentAndCapabilityGetter(test, stats)
+	component, capabilities := componentAndCapabilityGetter(test, stats)
 	rows := []crtype.RowIdentification{}
 	// First Page with no component requested
-	requestedComponent := ""
-	requestedCapability := ""
-	requestedTestID := "" // component reports can filter on test if you drill down far enough
-	if len(c.ReqOptions.TestIDOptions) > 0 {
-		firstTIDOpts := c.ReqOptions.TestIDOptions[0]
-		if firstTIDOpts.Component != "" {
-			requestedComponent = firstTIDOpts.Component
-		}
-		if firstTIDOpts.Capability != "" {
-			requestedCapability = firstTIDOpts.Capability
-		}
-		if firstTIDOpts.TestID != "" {
-			requestedTestID = c.ReqOptions.TestIDOptions[0].TestID
-		}
-	}
-
-	if requestedComponent == "" {
-		// No component filter specified for this report, include a row for all components:
-		rows = append(rows, crtype.RowIdentification{Component: testComponent})
-	} else if requestedComponent == testComponent {
-		// A component filter was specified and this test matches that component:
-
+	if c.ReqOptions.TestIDOption.Component == "" {
+		rows = append(rows, crtype.RowIdentification{Component: component})
+	} else if c.ReqOptions.TestIDOption.Component == component {
 		// Exact test match
-		if requestedTestID != "" {
+		if c.ReqOptions.TestIDOption.TestID != "" {
 			row := crtype.RowIdentification{
-				Component: testComponent,
+				Component: component,
 				TestID:    test.TestID,
 				TestName:  stats.TestName,
 				TestSuite: stats.TestSuite,
 			}
-			if requestedCapability != "" {
-				row.Capability = requestedCapability
+			if c.ReqOptions.TestIDOption.Capability != "" {
+				row.Capability = c.ReqOptions.TestIDOption.Capability
 			}
 			rows = append(rows, row)
 		} else {
-			for _, capability := range testCapabilities {
+			for _, capability := range capabilities {
 				// Exact capability match only produces one row
-				if requestedCapability != "" {
-					if requestedCapability == capability {
+				if c.ReqOptions.TestIDOption.Capability != "" {
+					if c.ReqOptions.TestIDOption.Capability == capability {
 						row := crtype.RowIdentification{
-							Component:  testComponent,
+							Component:  component,
 							TestID:     test.TestID,
 							TestName:   stats.TestName,
 							TestSuite:  stats.TestSuite,
@@ -694,12 +595,11 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 						break
 					}
 				} else {
-					rows = append(rows, crtype.RowIdentification{Component: testComponent, Capability: capability})
+					rows = append(rows, crtype.RowIdentification{Component: component, Capability: capability})
 				}
 			}
 		}
 	}
-
 	columns := []crtype.ColumnID{}
 	column := crtype.ColumnIdentification{Variants: map[string]string{}}
 	for key, value := range test.Variants {
@@ -870,6 +770,21 @@ func (c *ComponentReportGenerator) GetLastReportModifiedTime(ctx context.Context
 		}
 
 		c.ReportModified = lastModifiedTime
+		if c.dbc != nil {
+			var lastTriageUpdate time.Time
+
+			err := c.dbc.DB.
+				Model(&models.Triage{}).
+				Select("MAX(updated_at)").
+				Scan(&lastTriageUpdate).Error
+			if err != nil {
+				log.WithError(err).Warn("Error getting lastTriageUpdate, can happen when there are no triages")
+			}
+			if lastTriageUpdate.After(*c.ReportModified) {
+				c.ReportModified = &lastTriageUpdate
+			}
+
+		}
 	}
 
 	return c.ReportModified
@@ -1219,6 +1134,14 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				testStats.LastFailure = &sampleStats.LastFailure
 			}
 
+			// Give middleware their chance to adjust the result
+			for _, mw := range c.middlewares {
+				err = mw.PostAnalysis(testKey, &testStats)
+				if err != nil {
+					return crtype.ComponentReport{}, err
+				}
+			}
+
 			// TODO: remove when we're fully transitioned to new triage
 			if testStats.IsTriaged() {
 				// we are within the triage range
@@ -1281,6 +1204,14 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			activeProductRegression,
 			resolvedIssueCompensation,
 		)
+
+		// Give middleware their chance to adjust the result
+		for _, mw := range c.middlewares {
+			err = mw.PostAnalysis(testID, &testStats)
+			if err != nil {
+				return crtype.ComponentReport{}, err
+			}
+		}
 
 		if testStats.IsTriaged() {
 			// we are within the triage range
@@ -1402,7 +1333,7 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 	return regressionRows, nil
 }
 
-func getFailureCount(status crtype.TestJobRunRows) int {
+func getFailureCount(status crtype.JobRunTestStatusRow) int {
 	failure := status.TotalCount - status.SuccessCount - status.FlakeCount
 	if failure < 0 {
 		failure = 0
