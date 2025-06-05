@@ -99,12 +99,8 @@ func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification
 		if len(or.Triages) > 0 {
 
 			allTriagesResolved := true
-			allTriagesInfra := true
 			var lastResolution time.Time
 			for _, t := range or.Triages {
-				if t.Type != models.TriageTypeCIInfra {
-					allTriagesInfra = false
-				}
 				if !t.Resolved.Valid {
 					allTriagesResolved = false
 				} else if t.Resolved.Time.After(lastResolution) {
@@ -120,10 +116,6 @@ func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification
 				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
 					"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
 					lastResolution.Format(time.RFC3339), testStats.LastFailure.Format(time.RFC3339)))
-			case allTriagesResolved && allTriagesInfra:
-				// claimed fixed, triaged as CI infra problem, thus we can make this completely disappear,
-				// no significant regression unless the problem reappears after resolution date (the above case)
-				testStats.ReportStatus = crtype.NotSignificant
 			case allTriagesResolved:
 				// claimed fixed, no failures since resolution date
 				testStats.ReportStatus = crtype.FixedRegression
