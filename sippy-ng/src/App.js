@@ -674,6 +674,11 @@ export default function App(props) {
                                     <ComponentReadiness
                                       key={getUrlWithoutParams([
                                         'regressedModal',
+                                        'regressedModalTab',
+                                        'regressedModalRow',
+                                        'regressedModalPage',
+                                        'regressedModalTestRow',
+                                        'regressedModalTestPage',
                                       ])}
                                     />
                                   </CompReadyVarsProvider>

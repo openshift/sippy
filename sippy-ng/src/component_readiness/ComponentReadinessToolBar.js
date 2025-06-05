@@ -7,7 +7,13 @@ import {
   Popover,
   Tooltip,
 } from '@mui/material'
-import { BooleanParam, useQueryParam } from 'use-query-params'
+import {
+  BooleanParam,
+  NumberParam,
+  StringParam,
+  useQueryParam,
+  useQueryParams,
+} from 'use-query-params'
 import {
   BugReport,
   Clear,
@@ -131,8 +137,26 @@ export default function ComponentReadinessToolBar(props) {
     'regressedModal',
     BooleanParam
   )
+  const [, setQuery] = useQueryParams(
+    {
+      regressedModalTab: NumberParam,
+      regressedModalRow: StringParam,
+      regressedModalPage: NumberParam,
+      regressedModalTestRow: NumberParam,
+      regressedModalTestPage: NumberParam,
+    },
+    { updateType: 'replaceIn' }
+  )
+
   const closeRegressedTestsDialog = () => {
-    setRegressedTestDialog(false, 'replaceIn')
+    setRegressedTestDialog(undefined, 'replaceIn')
+    setQuery({
+      regressedModalTab: undefined,
+      regressedModalRow: undefined,
+      regressedModalPage: undefined,
+      regressedModalTestRow: undefined,
+      regressedModalTestPage: undefined,
+    })
   }
 
   if (!isLoaded) {

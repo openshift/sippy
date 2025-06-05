@@ -1,9 +1,10 @@
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { jiraUrlPrefix } from './CompReadyUtils'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Typography } from '@mui/material'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useEffect } from 'react'
 
 export default function TriagedRegressions({
   triageEntries,
@@ -14,21 +15,54 @@ export default function TriagedRegressions({
     { field: 'created_at', sort: 'desc' },
   ])
 
-  const handleSetSelectionModel = (event) => {
-    let selectedTriagedEntry = {}
-    triageEntries.forEach((entry) => {
-      if (event[0] === entry.id) selectedTriagedEntry = entry
-    })
+  const [activeRow, setActiveRow] = useQueryParam(
+    'regressedModalRow',
+    StringParam, //String is used in order to re-use the same parameter that is utilized in the rest of the modal's tabs
+    { updateType: 'replaceIn' }
+  )
+  const [activePage, setActivePage] = useQueryParam(
+    'regressedModalPage',
+    NumberParam,
+    { updateType: 'replaceIn' }
+  )
+  const [activeRegression] = useQueryParam(
+    'regressedModalTestRow',
+    NumberParam,
+    { updateType: 'replaceIn' }
+  )
 
-    if (
-      selectedTriagedEntry.regressions !== null &&
-      selectedTriagedEntry.regressions.length > 0
-    ) {
-      eventEmitter.emit(
-        'triagedEntrySelectionChanged',
-        selectedTriagedEntry.regressions
-      )
+  useEffect(() => {
+    const triage = getSelectedTriage(activeRow)
+    if (triage != null) {
+      toggleAssociatedRegressions(triage)
     }
+  }, [])
+
+  const getSelectedTriage = (id) => {
+    return triageEntries.find((triage) => String(triage.id) === id)
+  }
+
+  function toggleAssociatedRegressions(triage) {
+    if (triage.regressions !== null && triage.regressions.length > 0) {
+      // When the new selection doesn't contain the active regression id, we should allow it to be cleared
+      const triageContainsCurrentlySelectedRegression = triage.regressions.find(
+        (r) => r.id === activeRegression
+      )
+      const data = {
+        regressions: triage.regressions,
+        activeId: triageContainsCurrentlySelectedRegression
+          ? activeRegression
+          : undefined,
+      }
+      eventEmitter.emit('triagedEntrySelectionChanged', data)
+    }
+  }
+
+  const handleSetSelectionModel = (event) => {
+    const triage = getSelectedTriage(event[0])
+    setActiveRow(String(triage.id))
+
+    toggleAssociatedRegressions(triage)
   }
 
   const columns = [
@@ -154,12 +188,17 @@ export default function TriagedRegressions({
       <DataGrid
         sortModel={sortModel}
         onSortModelChange={setSortModel}
+        selectionModel={activeRow}
         onSelectionModelChange={handleSetSelectionModel}
         components={{ Toolbar: GridToolbar }}
         rows={triageEntries}
         columns={columns}
-        getRowId={(row) => row.id}
+        getRowId={(row) => String(row.id)}
         pageSize={entriesPerPage}
+        page={activePage}
+        onPageChange={(newPage) => {
+          setActivePage(newPage)
+        }}
         rowHeight={60}
         autoHeight={true}
         checkboxSelection={false}

@@ -5,6 +5,7 @@ import {
   generateTestReportForRegressedTest,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { NumberParam, useQueryParam } from 'use-query-params'
 import { relativeTime } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -13,6 +14,17 @@ import React, { Fragment, useContext } from 'react'
 
 export default function TriagedRegressionTestList(props) {
   const { expandEnvironment } = useContext(CompReadyVarsContext)
+
+  const [activeRow, setActiveRow] = useQueryParam(
+    'regressedModalTestRow',
+    NumberParam,
+    { updateType: 'replaceIn' }
+  )
+  const [activePage, setActivePage] = useQueryParam(
+    'regressedModalTestPage',
+    NumberParam,
+    { updateType: 'replaceIn' }
+  )
 
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
@@ -30,7 +42,9 @@ export default function TriagedRegressionTestList(props) {
     if (data) {
       displayView = true
     }
-    setTriagedRegressions(data)
+    setTriagedRegressions(data.regressions)
+    setActiveRow(data.activeId)
+
     setShowView(displayView)
   }
   if (props.eventEmitter !== undefined) {
@@ -167,6 +181,17 @@ export default function TriagedRegressionTestList(props) {
           rows={triagedRegressions}
           columns={columns}
           getRowId={(row) => row.id}
+          selectionModel={activeRow}
+          onSelectionModelChange={(newRow) => {
+            // Due to the usage of the eventEmitter, this can sometimes fire when we don't want it to actually de-select
+            if (newRow.length > 0) {
+              setActiveRow(Number(newRow))
+            }
+          }}
+          page={activePage}
+          onPageChange={(newPage) => {
+            setActivePage(newPage)
+          }}
           pageSize={10}
           rowHeight={60}
           autoHeight={true}
