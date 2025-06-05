@@ -201,7 +201,6 @@ type GeneratorCacheKey struct {
 // which would be serialized and thus cause unnecessary cache misses.
 // Here we should normalize to output the same cache key regardless of how fields were initialized. (nil vs empty, etc)
 func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCacheKey {
-	// Make sure we have initialized the report modified field
 	cacheKey := GeneratorCacheKey{
 		ReportModified: c.ReportModified,
 		BaseRelease:    c.ReqOptions.BaseRelease,
@@ -310,13 +309,12 @@ func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 }
 
 func (c *ComponentReportGenerator) initializeMiddleware() {
-	// TODO: move to a constructor or similar
 	c.middlewares = []middleware.Middleware{}
 	// Initialize all our middleware applicable to this request.
-	// TODO: Should middleware constructors do the interpretation of the request
-	// and decide if they want to take part? Return nil if not?
 	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
-	c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
+	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
+		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
+	}
 	if c.dbc != nil {
 		c.middlewares = append(c.middlewares, regressiontracker.NewRegressionTrackerMiddleware(c.dbc, c.ReqOptions))
 	} else {
