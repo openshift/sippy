@@ -33,7 +33,7 @@ export default function TriagedRegressions({
 
   useEffect(() => {
     const triage = getSelectedTriage(activeRow)
-    if (triage != null) {
+    if (triage) {
       toggleAssociatedRegressions(triage)
     }
   }, [])
@@ -60,9 +60,10 @@ export default function TriagedRegressions({
 
   const handleSetSelectionModel = (event) => {
     const triage = getSelectedTriage(event[0])
-    setActiveRow(String(triage.id))
-
-    toggleAssociatedRegressions(triage)
+    if (triage) {
+      setActiveRow(String(triage.id))
+      toggleAssociatedRegressions(triage)
+    }
   }
 
   const columns = [
