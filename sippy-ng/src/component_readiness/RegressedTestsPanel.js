@@ -7,6 +7,7 @@ import {
   generateTestReportForRegressedTest,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
 import { relativeTime } from '../helpers'
 import Alert from '@mui/material/Alert'
@@ -18,6 +19,16 @@ import React, { Fragment, useContext } from 'react'
 import TriageFields from './TriageFields'
 
 export default function RegressedTestsPanel(props) {
+  const [activeRow, setActiveRow] = useQueryParam(
+    'regressedModalRow',
+    StringParam,
+    { updateType: 'replaceIn' }
+  )
+  const [activePage, setActivePage] = useQueryParam(
+    'regressedModalPage',
+    NumberParam,
+    { updateType: 'replaceIn' }
+  )
   const { expandEnvironment } = useContext(CompReadyVarsContext)
   const { filterVals, regressedTests, setTriageEntryCreated } = props
   const [sortModel, setSortModel] = React.useState([
@@ -268,7 +279,15 @@ export default function RegressedTestsPanel(props) {
             .map((key) => row.variants[key])
             .join(' ')
         }
+        selectionModel={activeRow}
+        onSelectionModelChange={(newRow) => {
+          setActiveRow(newRow)
+        }}
         pageSize={10}
+        page={activePage}
+        onPageChange={(newPage) => {
+          setActivePage(newPage)
+        }}
         rowHeight={60}
         autoHeight={true}
         checkboxSelection={false}

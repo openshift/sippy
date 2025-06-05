@@ -1,4 +1,10 @@
 import { Box, Button, Grid, Tab, Tabs, Typography } from '@mui/material'
+import {
+  NumberParam,
+  StringParam,
+  useQueryParam,
+  useQueryParams,
+} from 'use-query-params'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -19,9 +25,7 @@ RegressedTestsTabPanel.propTypes = {
   activeIndex: PropTypes.number.isRequired,
 }
 
-function RegressedTestsTabPanel(props) {
-  const { children, activeIndex, index, ...other } = props
-
+function RegressedTestsTabPanel({ children, activeIndex, index, ...other }) {
   return (
     <div
       role="tabpanel"
@@ -39,26 +43,51 @@ function RegressedTestsTabPanel(props) {
   )
 }
 
-export default function RegressedTestsModal(props) {
-  const [activeTabIndex, setActiveTabIndex] = React.useState(0)
+export default function RegressedTestsModal({
+  regressedTests,
+  allRegressedTests,
+  unresolvedTests,
+  triagedIncidents,
+  triageEntries,
+  setTriageEntryCreated,
+  filterVals,
+  isOpen,
+  close,
+}) {
+  const [activeTab = 0, setActiveTab] = useQueryParam(
+    'regressedModalTab',
+    NumberParam,
+    { updateType: 'replaceIn' }
+  )
+  const [, setQuery] = useQueryParams(
+    {
+      regressedModalRow: StringParam,
+      regressedModalPage: NumberParam,
+      regressedModalTestRow: NumberParam,
+      regressedModalTestPage: NumberParam,
+    },
+    { updateType: 'replaceIn' }
+  )
 
   const handleTabChange = (event, newValue) => {
-    setActiveTabIndex(newValue)
+    setActiveTab(newValue)
+    // The active pages and rows in the DataGrid are most likely no longer relevant when switching tabs
+    setQuery({
+      regressedModalRow: undefined,
+      regressedModalPage: undefined,
+      regressedModalTestRow: undefined,
+      regressedModalTestPage: undefined,
+    })
   }
 
-  const triageEntriesExist = props.triageEntries.length > 0
+  const triageEntriesExist = triageEntries.length > 0
 
   return (
     <Fragment>
-      <Dialog
-        fullWidth={true}
-        maxWidth={false}
-        open={props.isOpen}
-        onClose={props.close}
-      >
+      <Dialog fullWidth={true} maxWidth={false} open={isOpen} onClose={close}>
         <Grid className="regressed-tests-dialog">
           <Tabs
-            value={activeTabIndex}
+            value={activeTab}
             onChange={handleTabChange}
             aria-label="Regressed Tests Tabs"
           >
@@ -70,48 +99,46 @@ export default function RegressedTestsModal(props) {
             )}
             <Tab label="All" {...tabProps(3)} />
           </Tabs>
-          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={0}>
+          <RegressedTestsTabPanel activeIndex={activeTab} index={0}>
             <RegressedTestsPanel
-              regressedTests={props.unresolvedTests}
-              setTriageEntryCreated={props.setTriageEntryCreated}
-              filterVals={props.filterVals}
+              regressedTests={unresolvedTests}
+              setTriageEntryCreated={setTriageEntryCreated}
+              filterVals={filterVals}
             />
           </RegressedTestsTabPanel>
-          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={1}>
+          <RegressedTestsTabPanel activeIndex={activeTab} index={1}>
             <RegressedTestsPanel
-              regressedTests={props.regressedTests}
-              setTriageEntryCreated={props.setTriageEntryCreated}
-              filterVals={props.filterVals}
+              regressedTests={regressedTests}
+              setTriageEntryCreated={setTriageEntryCreated}
+              filterVals={filterVals}
             />
           </RegressedTestsTabPanel>
           {!triageEntriesExist && (
-            <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
-              <TriagedIncidentsPanel
-                triagedIncidents={props.triagedIncidents}
-              />
+            <RegressedTestsTabPanel activeIndex={activeTab} index={2}>
+              <TriagedIncidentsPanel triagedIncidents={triagedIncidents} />
             </RegressedTestsTabPanel>
           )}
           {triageEntriesExist && (
-            <RegressedTestsTabPanel activeIndex={activeTabIndex} index={2}>
+            <RegressedTestsTabPanel activeIndex={activeTab} index={2}>
               <TriagedTestsPanel
-                triageEntries={props.triageEntries}
-                allRegressedTests={props.allRegressedTests}
-                filterVals={props.filterVals}
+                triageEntries={triageEntries}
+                allRegressedTests={allRegressedTests}
+                filterVals={filterVals}
               />
             </RegressedTestsTabPanel>
           )}
-          <RegressedTestsTabPanel activeIndex={activeTabIndex} index={3}>
+          <RegressedTestsTabPanel activeIndex={activeTab} index={3}>
             <RegressedTestsPanel
-              regressedTests={props.allRegressedTests}
-              setTriageEntryCreated={props.setTriageEntryCreated}
-              filterVals={props.filterVals}
+              regressedTests={allRegressedTests}
+              setTriageEntryCreated={setTriageEntryCreated}
+              filterVals={filterVals}
             />
           </RegressedTestsTabPanel>
           <Button
             style={{ marginTop: 20, marginBottom: 20, marginLeft: 20 }}
             variant="contained"
             color="primary"
-            onClick={props.close}
+            onClick={close}
           >
             CLOSE
           </Button>
