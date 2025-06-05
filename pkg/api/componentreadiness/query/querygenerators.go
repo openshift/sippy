@@ -486,13 +486,13 @@ func buildTestDetailsQuery(
 // addTestFilters injects query params to limit to one test and variants combo.
 func addTestFilters(
 	testIDOption crtype.RequestTestIdentificationOptions,
-	i int,
+	index int,
 	queryString string,
 	c crtype.RequestOptions,
 	includeVariants map[string][]string,
 	isSample bool) string {
 
-	if i > 0 {
+	if index > 0 {
 		queryString += " OR "
 	}
 	if isSample {
@@ -585,9 +585,9 @@ func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[str
 
 		testIDStr, testStatus, err := deserializeRowToTestStatus(row, it.Schema)
 		if err != nil {
-			err2 := errors.Wrap(err, "error deserializing row from bigquery")
-			log.Error(err2.Error())
-			errs = append(errs, err2)
+			deserializationErr := errors.Wrap(err, "error deserializing row from bigquery")
+			log.Error(deserializationErr.Error())
+			errs = append(errs, deserializationErr)
 			continue
 		}
 

@@ -639,13 +639,14 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	requestedCapability := ""
 	requestedTestID := "" // component reports can filter on test if you drill down far enough
 	if len(c.ReqOptions.TestIDOptions) > 0 {
-		if c.ReqOptions.TestIDOptions[0].Component != "" {
-			requestedComponent = c.ReqOptions.TestIDOptions[0].Component
+		firstTIDOpts := c.ReqOptions.TestIDOptions[0]
+		if firstTIDOpts.Component != "" {
+			requestedComponent = firstTIDOpts.Component
 		}
-		if c.ReqOptions.TestIDOptions[0].Capability != "" {
-			requestedCapability = c.ReqOptions.TestIDOptions[0].Capability
+		if firstTIDOpts.Capability != "" {
+			requestedCapability = firstTIDOpts.Capability
 		}
-		if c.ReqOptions.TestIDOptions[0].TestID != "" {
+		if firstTIDOpts.TestID != "" {
 			requestedTestID = c.ReqOptions.TestIDOptions[0].TestID
 		}
 	}

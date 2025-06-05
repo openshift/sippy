@@ -39,7 +39,7 @@ type RegressionTracker struct {
 	reqOptions      crtype.RequestOptions
 	dbc             *db.DB
 	openRegressions []*models.TestRegression
-	// hasLoadedRegression will be true once we've loaded regression data
+	// hasLoadedRegressions will be true once we've loaded regression data
 	hasLoadedRegressions bool
 }
 

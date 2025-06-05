@@ -211,7 +211,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 	// we have an array of TestIdentificationOptions, each of which MAY have a BaseOverrideRelease specified.
 	// This was determined from the main report path through this code.
 	// We want to do one query per fallback release, for each test ID we fell back to that release for.
-	// First we sort each release to map to the tests well fell back to that release for.
+	// First we sort each release to map to the tests we fell back to that release for.
 
 	releaseToTestIDOptions := map[string][]crtype.RequestTestIdentificationOptions{}
 	for _, testIDOpts := range r.reqOptions.TestIDOptions {

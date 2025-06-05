@@ -60,8 +60,8 @@ func (c *ComponentReportGenerator) PostAnalysisTestDetails(report *crtype.Report
 			RowIdentification:    report.RowIdentification,
 			ColumnIdentification: report.ColumnIdentification,
 		}
-		for ai := range report.Analyses {
-			err := mw.PostAnalysis(testKey, &report.Analyses[ai].ReportTestStats)
+		for i := range report.Analyses {
+			err := mw.PostAnalysis(testKey, &report.Analyses[i].ReportTestStats)
 			if err != nil {
 				return err
 			}
@@ -163,9 +163,9 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		}
 		testKeyStr := testKey.KeyOrDie()
 		if statuses, ok := testKeyTestJobRunStatuses[testKeyStr]; ok {
-			report, errs2 := c.GenerateDetailsReportForTest(ctx, tOpt, statuses)
-			if len(errs2) > 0 {
-				errs = append(errs, errs2...)
+			report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses)
+			if len(generateReportErrs) > 0 {
+				errs = append(errs, generateReportErrs...)
 				continue
 			}
 			reports = append(reports, report)
@@ -200,11 +200,6 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 
 	now := time.Now()
 	componentJobRunTestReportStatus.GeneratedAt = &now
-
-	// TODO: this is the spot, here we would have base and sample status, for all MultiTestIDOptions
-	// sort them by test and variant
-	// invoke report for each
-	// refactor so we can get multiple reports from one query, break out everything below.
 
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(ctx,

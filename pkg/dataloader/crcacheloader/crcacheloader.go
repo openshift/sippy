@@ -124,7 +124,6 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 	rLog.Infof("found %d regressed tests in report", len(allRegressedTests))
 	testIDOptions := []crtype.RequestTestIdentificationOptions{}
 	for _, regressedTest := range allRegressedTests {
-		// regressedTest.BaseStats.Release // start // end
 		newTIDOpts := crtype.RequestTestIdentificationOptions{
 			TestID:            regressedTest.TestID,
 			RequestedVariants: regressedTest.Variants,
