@@ -41,9 +41,15 @@ func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crt
 
 // PreAnalysis iterates the base status looking for any with an accepted regression in the basis release, and if found
 // swaps out the stats with the better pass rate data specified in the intentional regression allowance.
+// It also populates an intentional regression if it exists for the sample.
 func (r *RegressionAllowances) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 
 	r.matchBaseRegression(testKey, r.reqOptions.BaseRelease.Release, testStats)
+	if ir := regressionallowances.IntentionalRegressionFor(testStats.SampleStats.Release, testKey.ColumnIdentification, testKey.TestID); ir != nil {
+		testStats.SampleIntentionalRegression = ir
+		// do not set unconditionally; interface stores a typed nil that does not match nil and causes a panic later.
+		// https://codefibershq.com/blog/golang-why-nil-is-not-always-nil
+	}
 
 	return nil
 }
