@@ -167,11 +167,13 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 	reportOpts := crtype.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
+		TestIDOption:   crtype.RequestTestIdentificationOptions{},
 		VariantOption:  variantOption,
 		AdvancedOption: advancedOption,
 		CacheOption:    rt.cacheOpts,
 	}
 
+	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
 	report, errs := GetComponentReportFromBigQuery(
 		ctx, rt.bigqueryClient, rt.dbc, reportOpts, rt.variantJunitTableOverrides)
 	if len(errs) > 0 {

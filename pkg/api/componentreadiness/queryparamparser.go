@@ -79,44 +79,44 @@ func ParseComponentReportRequest(
 			return
 		}
 
-	}
+		// default to no override
+		opts.BaseOverrideRelease.Release = opts.BaseRelease.Release
+		opts.BaseOverrideRelease.Start = opts.BaseRelease.Start
+		opts.BaseOverrideRelease.End = opts.BaseRelease.End
 
-	// Params below this point can be used with and without views:
-	// TODO: leave nil for safer cache keys if params not set, sync with metrics and primecache.go
-	// TODO: unit test that metrics and primecache cache keys match a request object here
-	opts.TestIDOptions = []crtype.RequestTestIdentificationOptions{
-		{
-			// these are semi-freeform and only used in lookup keys, so don't need validation
-			Component:  req.URL.Query().Get("component"),
-			Capability: req.URL.Query().Get("capability"),
-			TestID:     req.URL.Query().Get("testId"),
-		},
-	}
-	if opts.AdvancedOption.IncludeMultiReleaseAnalysis {
-		// check to see if we have an individual test which is using a fallback release for basis
-		testBasisRelease := param.SafeRead(req, "testBasisRelease")
-		if len(testBasisRelease) > 0 && releases != nil {
-			// indicates we fell back to a previous release
-			// get that release and find the dates associated with it.
-			for _, release := range releases {
-				if release.Release == testBasisRelease {
-					// found the release so update if not already set
-					// if it is already the base release we don't update
-					// change dates
-					if opts.BaseRelease.Release != testBasisRelease {
-						opts.TestIDOptions[0].BaseOverrideRelease = testBasisRelease
+		if opts.AdvancedOption.IncludeMultiReleaseAnalysis {
+			// check to see if we have an individual test which is using a fallback release for basis
+			testBasisRelease := param.SafeRead(req, "testBasisRelease")
+			if len(testBasisRelease) > 0 && releases != nil {
+				// indicates we fell back to a previous release
+				// get that release and find the dates associated with it.
+				for _, release := range releases {
+					if release.Release == testBasisRelease {
+						// found the release so update if not already set
+						// if it is already the base release we don't update
+						// change dates
+						if opts.BaseRelease.Release != testBasisRelease {
+							opts.BaseOverrideRelease.Release = testBasisRelease
+
+							if release.GADate != nil {
+								opts.BaseOverrideRelease.End = *release.GADate
+								opts.BaseOverrideRelease.Start = util.AdjustReleaseTime(opts.BaseOverrideRelease.End, true, "30", crTimeRoundingFactor)
+							}
+						}
+						break
 					}
-					break
 				}
 			}
 		}
 	}
-	opts.TestIDOptions[0].RequestedVariants = map[string]string{}
-	// Only the dbGroupBy variants can be specifically requested
-	for _, variant := range opts.VariantOption.DBGroupBy.List() {
-		if value := req.URL.Query().Get(variant); value != "" {
-			opts.TestIDOptions[0].RequestedVariants[variant] = value
-		}
+
+	// Params below this point can be used with and without views:
+
+	opts.TestIDOption = crtype.RequestTestIdentificationOptions{
+		// these are semi-freeform and only used in lookup keys, so don't need validation
+		Component:  req.URL.Query().Get("component"),
+		Capability: req.URL.Query().Get("capability"),
+		TestID:     req.URL.Query().Get("testId"),
 	}
 
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
@@ -219,6 +219,13 @@ func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants, o
 		return
 	}
 
+	opts.RequestedVariants = map[string]string{}
+	// Only the dbGroupBy variants can be specifically requested
+	for _, variant := range opts.DBGroupBy.List() {
+		if value := req.URL.Query().Get(variant); value != "" {
+			opts.RequestedVariants[variant] = value
+		}
+	}
 	includeVariants := req.URL.Query()["includeVariant"]
 	opts.IncludeVariants, err = api.VariantListToMap(allJobVariants, includeVariants)
 	if err != nil {
