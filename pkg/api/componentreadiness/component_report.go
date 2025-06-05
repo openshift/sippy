@@ -210,9 +210,18 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 		TestIDOptions:  c.ReqOptions.TestIDOptions,
 	}
 
-	if len(c.ReqOptions.TestIDOptions) == 1 && reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], crtype.RequestTestIdentificationOptions{}) {
+	// TestIDOptions initialization differences caused many cache misses. This hacky bit of code attempts to handle
+	// them all and ensure we end up with the same cache key if the slice is null, empty, or has one empty element
+	if len(c.ReqOptions.TestIDOptions) == 1 && (reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], crtype.RequestTestIdentificationOptions{}) ||
+		(c.ReqOptions.TestIDOptions[0].Component == "" &&
+			c.ReqOptions.TestIDOptions[0].Capability == "" &&
+			c.ReqOptions.TestIDOptions[0].TestID == "" &&
+			(c.ReqOptions.TestIDOptions[0].RequestedVariants == nil || len(c.ReqOptions.TestIDOptions[0].RequestedVariants) == 0) &&
+			c.ReqOptions.TestIDOptions[0].BaseOverrideRelease == "")) {
 		// some code instantiates an empty request test ID options, standardize on null if we see this to keep cache keys
 		// from missing.
+		cacheKey.TestIDOptions = nil
+	} else if len(c.ReqOptions.TestIDOptions) == 0 {
 		cacheKey.TestIDOptions = nil
 	}
 

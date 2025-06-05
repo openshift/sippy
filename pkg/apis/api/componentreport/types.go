@@ -65,11 +65,11 @@ type RequestRelativeReleaseOptions struct {
 // RequestTestIdentificationOptions handles options used in the test details report when we focus in
 // on a specific test and variants combo, typically because it is or was regressed.
 type RequestTestIdentificationOptions struct {
-	Component  string
-	Capability string
+	Component  string `json:"component,omitempty" yaml:"component,omitempty"`
+	Capability string `json:"capability,omitempty" yaml:"capability,omitempty"`
 	// TestID is a unique identification for the test defined in the DB.
 	// It matches the test_id in the bigquery ci_analysis_us.junit table.
-	TestID string
+	TestID string `json:"test_id,omitempty" yaml:"test_id,omitempty"`
 	// RequestedVariants are used for filtering the test details view down to a specific set.
 	RequestedVariants map[string]string `json:"requested_variants,omitempty" yaml:"requested_variants,omitempty"`
 	// BaseOverrideRelease is used when we're requesting a test details report for both the base release, and a fallback override that had a better pass rate.
