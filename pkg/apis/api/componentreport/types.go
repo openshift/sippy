@@ -237,6 +237,12 @@ type ReportTestStats struct {
 	// 95 = 95% confidence of a regression required.
 	RequiredConfidence int `json:"-"`
 
+	// PityAdjustment can be used to adjust the tolerance for failures for this particular test.
+	PityAdjustment float64 `json:"-"`
+
+	// RequiredPassRateAdjustment can be used to adjust the tolerance for failures for a new test.
+	RequiredPassRateAdjustment float64 `json:"-"`
+
 	// Optional fields depending on the Comparison mode
 
 	// FisherExact indicates the confidence of a regression after applying Fisher's Exact Test.
@@ -299,6 +305,13 @@ type TestDetailsTestStats struct {
 
 func (tdts TestDetailsTestStats) Total() int {
 	return tdts.SuccessCount + tdts.FailureCount + tdts.FlakeCount
+}
+
+func (tdts TestDetailsTestStats) Passes(flakesAsFailure bool) int {
+	if flakesAsFailure {
+		return tdts.SuccessCount
+	}
+	return tdts.SuccessCount + tdts.FlakeCount
 }
 
 type TestDetailsJobStats struct {
