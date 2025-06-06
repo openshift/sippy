@@ -38,6 +38,13 @@ export function safeEncodeURIComponent(value) {
     .replace('}', '%7D')
 }
 
+// Helper function to format dates to second precision
+export function formatDateToSeconds(dateString) {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toISOString().replace(/\.\d{3}Z$/, 'Z')
+}
+
 // relativeTime shows a plain English rendering of a time, e.g. "30 minutes ago".
 // This is because the ES6 Intl.RelativeTime isn't available in all environments yet,
 // e.g. Safari and NodeJS.
