@@ -1,16 +1,16 @@
-import { Button, MenuItem, Select, Tab, Tabs } from '@mui/material'
+import { Button, Tab, Tabs } from '@mui/material'
 import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
+import Autocomplete from '@mui/lab/Autocomplete'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
+import TextField from '@mui/material/TextField'
 import TriageFields from './TriageFields'
 
 export default function AddRegressionPanel({
   triages,
   regressionId,
-  existingTriageId,
-  setExistingTriageId,
   setAlertText,
   setAlertSeverity,
   handleNewTriageFormCompletion,
@@ -18,20 +18,25 @@ export default function AddRegressionPanel({
   triageEntryData,
   setTriageEntryData,
 }) {
+  triages.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+
   const [tabIndex, setTabIndex] = React.useState(0)
   const handleTabChange = (event, newValue) => {
     setTabIndex(newValue)
   }
 
-  const handleAddToExistingTriageSubmit = () => {
-    const existingTriage = triages.find((t) => t.id === existingTriageId)
+  const [existingTriageId, setExistingTriageId] = React.useState(triages[0].id)
 
+  const handleAddToExistingTriageSubmit = () => {
+    const existingTriage = triages.find(
+      (triage) => triage.id === existingTriageId
+    )
     const updatedTriage = {
       ...existingTriage,
       regressions: [...existingTriage.regressions, { id: regressionId }],
     }
 
-    fetch(getTriagesAPIUrl(existingTriage.id), {
+    fetch(getTriagesAPIUrl(existingTriageId), {
       method: 'PUT',
       body: JSON.stringify(updatedTriage),
     }).then((response) => {
@@ -64,8 +69,8 @@ export default function AddRegressionPanel({
     })
   }
 
-  const handleExistingTriageChange = (event) => {
-    setExistingTriageId(event.target.value)
+  const handleExistingTriageChange = (event, newValue) => {
+    setExistingTriageId(newValue.id)
   }
 
   const formatTriageURLDescription = (triage) => {
@@ -96,23 +101,25 @@ export default function AddRegressionPanel({
         {addToExisting && (
           <Fragment>
             <h3>Add to existing Triage</h3>
-            <Select
+            <Autocomplete
               id="existing-triage"
               name="existing-triage"
-              label="Existing Triage"
-              value={existingTriageId}
+              options={triages}
+              value={triages.find((t) => t.id === existingTriageId)}
+              getOptionLabel={(triage) => {
+                return formatTriageURLDescription(triage)
+              }}
+              isOptionEqualToValue={(triage, value) => triage.id === value?.id}
+              renderInput={(params) => (
+                <TextField {...params} label="Existing Triage" />
+              )}
               onChange={handleExistingTriageChange}
-            >
-              {triages.map((triageEntry, index) => (
-                <MenuItem key={index} value={triageEntry.id}>
-                  {formatTriageURLDescription(triageEntry)}
-                </MenuItem>
-              ))}
-            </Select>
+            />
+
             <Button
               variant="contained"
               color="primary"
-              sx={{ margin: '0 10px' }}
+              sx={{ margin: '10px 0' }}
               onClick={handleAddToExistingTriageSubmit}
             >
               Add to Entry
@@ -140,8 +147,6 @@ export default function AddRegressionPanel({
 AddRegressionPanel.propTypes = {
   triages: PropTypes.array.isRequired,
   regressionId: PropTypes.number.isRequired,
-  existingTriageId: PropTypes.number.isRequired,
-  setExistingTriageId: PropTypes.func.isRequired,
   triageEntryData: PropTypes.object.isRequired,
   setTriageEntryData: PropTypes.func.isRequired,
   setAlertText: PropTypes.func.isRequired,
