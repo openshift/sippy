@@ -6,6 +6,7 @@ import {
   formColumnName,
   generateTestReportForRegressedTest,
 } from './CompReadyUtils'
+import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
 import { relativeTime } from '../helpers'
@@ -81,7 +82,7 @@ export default function RegressedTestsPanel(props) {
   }
 
   const [alertText, setAlertText] = React.useState('')
-  const [alertSeverity, setAlertSeverity] = React.useState('success')
+  const [alertSeverity, setAlertSeverity] = React.useState('')
   const handleAlertClose = (event, reason) => {
     if (reason === 'clickaway') {
       return
@@ -230,14 +231,12 @@ export default function RegressedTestsPanel(props) {
           }}
           className="status"
         >
-          <a
-            href={generateTestReportForRegressedTest(
+          <Link
+            to={generateTestReportForRegressedTest(
               params.row,
               filterVals,
               expandEnvironment
             )}
-            target="_blank"
-            rel="noopener noreferrer"
           >
             <CompSeverityIcon
               status={
@@ -247,7 +246,7 @@ export default function RegressedTestsPanel(props) {
               }
               explanations={params.row.explanations}
             />
-          </a>
+          </Link>
         </div>
       ),
       flex: 6,
@@ -282,14 +281,12 @@ export default function RegressedTestsPanel(props) {
         }
         selectionModel={activeRow}
         onSelectionModelChange={(newRow) => {
-          if (newRow.length > 0) {
-            setActiveRow(String(newRow), 'replaceIn')
-          }
+          setActiveRow(newRow)
         }}
         pageSize={10}
         page={activePage}
         onPageChange={(newPage) => {
-          setActivePage(newPage, 'replaceIn')
+          setActivePage(newPage)
         }}
         rowHeight={60}
         autoHeight={true}
