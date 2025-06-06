@@ -27,9 +27,8 @@ func NewRegressionAllowancesMiddleware(reqOptions crtype.RequestOptions) *Regres
 // This allows us to make sure the current branch compares against the good data from two releases ago, instead of the
 // prior release which had a regression in the window prior to GA.
 type RegressionAllowances struct {
-	cachedFallbackTestStatuses *crtype.FallbackReleases
-	log                        log.FieldLogger
-	reqOptions                 crtype.RequestOptions
+	log        log.FieldLogger
+	reqOptions crtype.RequestOptions
 
 	// regressionGetterFunc allows us to unit test without relying on real regression data
 	regressionGetterFunc func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
@@ -42,9 +41,15 @@ func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crt
 
 // PreAnalysis iterates the base status looking for any with an accepted regression in the basis release, and if found
 // swaps out the stats with the better pass rate data specified in the intentional regression allowance.
+// It also populates an intentional regression if it exists for the sample.
 func (r *RegressionAllowances) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 
 	r.matchBaseRegression(testKey, r.reqOptions.BaseRelease.Release, testStats)
+	if ir := regressionallowances.IntentionalRegressionFor(testStats.SampleStats.Release, testKey.ColumnIdentification, testKey.TestID); ir != nil {
+		testStats.SampleIntentionalRegression = ir
+		// do not set unconditionally; interface stores a typed nil that does not match nil and causes a panic later.
+		// https://codefibershq.com/blog/golang-why-nil-is-not-always-nil
+	}
 
 	return nil
 }
@@ -63,38 +68,43 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 		return
 	}
 
+	// nothing to do for cross variant compares
+	if len(r.reqOptions.VariantOption.VariantCrossCompare) != 0 {
+		return
+	}
+
 	var baseRegression *regressionallowances.IntentionalRegression
-	if len(r.reqOptions.VariantOption.VariantCrossCompare) == 0 {
-		// only really makes sense when not cross-comparing variants:
-		// look for corresponding regressions we can account for in the analysis
-		// only if we are ignoring fallback, otherwise we will let fallback determine the threshold
-		baseRegression = r.regressionGetterFunc(baseRelease, testID.ColumnIdentification, testID.TestID)
+	// look for corresponding regressions we can account for in the analysis
+	// only if we are ignoring fallback, otherwise we will let fallback determine the threshold
+	baseRegression = r.regressionGetterFunc(baseRelease, testID.ColumnIdentification, testID.TestID)
+	if baseRegression != nil {
+		r.log.Infof("found a base regression for %s", testID.TestName)
+	}
 
-		baseStats := testStats.BaseStats
+	baseStats := testStats.BaseStats
 
-		success := baseStats.SuccessCount
-		fail := baseStats.FailureCount
-		flake := baseStats.FlakeCount
-		basePassRate := utils.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
-		if baseRegression != nil && baseRegression.PreviousPassPercentage(r.reqOptions.AdvancedOption.FlakeAsFailure) > basePassRate {
-			// override with  the basis regression previous values
-			// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-			baseRegressionPreviousRelease, err := utils.PreviousRelease(r.reqOptions.BaseRelease.Release)
-			if err != nil {
-				log.WithError(err).Error("Failed to determine the previous release for baseRegression")
-			} else {
-				testStats.BaseStats.Release = baseRegressionPreviousRelease
-				testStats.BaseStats.TestDetailsTestStats = crtype.TestDetailsTestStats{
-					SuccessCount: baseRegression.PreviousSuccesses,
-					FailureCount: baseRegression.PreviousFailures,
-					FlakeCount:   baseRegression.PreviousFlakes,
-					SuccessRate: utils.CalculatePassRate(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures,
-						baseRegression.PreviousFlakes, r.reqOptions.AdvancedOption.FlakeAsFailure),
-				}
-
-				log.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d",
-					baseRegressionPreviousRelease, baseStats.SuccessCount, baseStats.FlakeCount)
+	success := baseStats.SuccessCount
+	fail := baseStats.FailureCount
+	flake := baseStats.FlakeCount
+	basePassRate := utils.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
+	if baseRegression != nil && baseRegression.PreviousPassPercentage(r.reqOptions.AdvancedOption.FlakeAsFailure) > basePassRate {
+		// override with  the basis regression previous values
+		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
+		baseRegressionPreviousRelease, err := utils.PreviousRelease(r.reqOptions.BaseRelease.Release)
+		if err != nil {
+			r.log.WithError(err).Error("Failed to determine the previous release for baseRegression")
+		} else {
+			testStats.BaseStats.Release = baseRegressionPreviousRelease
+			testStats.BaseStats.TestDetailsTestStats = crtype.TestDetailsTestStats{
+				SuccessCount: baseRegression.PreviousSuccesses,
+				FailureCount: baseRegression.PreviousFailures,
+				FlakeCount:   baseRegression.PreviousFlakes,
+				SuccessRate: utils.CalculatePassRate(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures,
+					baseRegression.PreviousFlakes, r.reqOptions.AdvancedOption.FlakeAsFailure),
 			}
+
+			r.log.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d",
+				baseRegressionPreviousRelease, baseStats.SuccessCount, baseStats.FlakeCount)
 		}
 	}
 

@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
+	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
-	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/releasefallback"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
@@ -33,7 +33,6 @@ import (
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -240,7 +239,6 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	// Initialize all our middleware applicable to this request.
 	// TODO: Should middleware constructors do the interpretation of the request
 	// and decide if they want to take part? Return nil if not?
-	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis || c.ReqOptions.BaseOverrideRelease.Release != c.ReqOptions.BaseRelease.Release {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
 	}
@@ -249,6 +247,7 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	} else {
 		log.Warnf("no db connection provided, skipping regressiontracker middleware")
 	}
+	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
 }
 
 // GenerateReport is the main entry point for generation of a component readiness report.
@@ -1123,12 +1122,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				}
 			}
 
-			c.assessComponentStatus(
-				&testStats,
-				nil,
-				activeProductRegression,
-				resolvedIssueCompensation,
-			)
+			c.assessComponentStatus(&testStats, activeProductRegression, resolvedIssueCompensation)
 
 			if !sampleStats.LastFailure.IsZero() {
 				testStats.LastFailure = &sampleStats.LastFailure
@@ -1199,11 +1193,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			}
 		}
 
-		c.assessComponentStatus(&testStats,
-			nil,
-			activeProductRegression,
-			resolvedIssueCompensation,
-		)
+		c.assessComponentStatus(&testStats, activeProductRegression, resolvedIssueCompensation)
 
 		// Give middleware their chance to adjust the result
 		for _, mw := range c.middlewares {
@@ -1363,8 +1353,8 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTr
 	return crtype.SignificantRegression
 }
 
-func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage float64, approvedRegression *regressionallowances.IntentionalRegression) int {
-	if approvedRegression != nil && approvedRegression.RegressedFailures > 0 {
+func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage float64, approvedRegression crtype.IntentionalRegression) int {
+	if approvedRegression != nil {
 		regressedPassPercentage := approvedRegression.RegressedPassPercentage(c.ReqOptions.AdvancedOption.FlakeAsFailure)
 		if regressedPassPercentage < basisPassPercentage {
 			// product owner chose a required pass percentage, so we allow pity to cover that approved pass percent
@@ -1386,15 +1376,11 @@ func (c *ComponentReportGenerator) getEffectivePityFactor(basisPassPercentage fl
 // set of objects relating to analysis, as there's not a lot of overlap between the analyzers
 // (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
 // cross variant compare, rarely run jobs, etc.)
-func (c *ComponentReportGenerator) assessComponentStatus(
-	testStats *crtype.ReportTestStats,
-	approvedRegression *regressionallowances.IntentionalRegression,
-	activeProductRegression bool,
-	numberOfIgnoredSampleJobRuns int, // count for triaged failures we can safely omit and ignore
-) {
+func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.ReportTestStats, activeProductRegression bool, numberOfIgnoredSampleJobRuns int) {
 	// Catch unset required confidence, typically unit tests
+	opts := c.ReqOptions.AdvancedOption
 	if testStats.RequiredConfidence == 0 {
-		testStats.RequiredConfidence = c.ReqOptions.AdvancedOption.Confidence
+		testStats.RequiredConfidence = opts.Confidence
 	}
 
 	// TODO: delete once we move to new triage, we may no longer be in the business of subtracting job run counts
@@ -1433,34 +1419,29 @@ func (c *ComponentReportGenerator) assessComponentStatus(
 		baseTotal = baseSuccess + baseFailure + baseFlake
 	}
 
-	if baseTotal == 0 && c.ReqOptions.AdvancedOption.PassRateRequiredNewTests > 0 {
+	if baseTotal == 0 && opts.PassRateRequiredNewTests > 0 {
 		// If we have no base stats, fall back to a raw pass rate comparison for new or improperly renamed tests:
-		c.buildPassRateTestStats(testStats, float64(c.ReqOptions.AdvancedOption.PassRateRequiredNewTests))
+		c.buildPassRateTestStats(testStats, float64(opts.PassRateRequiredNewTests))
 		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
 		// status to be missing basis for the pre-existing Fisher Exact behavior:
-		if testStats.ReportStatus == crtype.NotSignificant && c.ReqOptions.AdvancedOption.PassRateRequiredAllTests == 0 {
+		if testStats.ReportStatus == crtype.NotSignificant && opts.PassRateRequiredAllTests == 0 {
 			testStats.ReportStatus = crtype.MissingBasis
 		}
 		return
-	} else if c.ReqOptions.AdvancedOption.PassRateRequiredAllTests > 0 {
+	} else if opts.PassRateRequiredAllTests > 0 {
 		// If requested, switch to pass rate only testing to see what does not meet the criteria:
-		c.buildPassRateTestStats(testStats,
-			float64(c.ReqOptions.AdvancedOption.PassRateRequiredAllTests))
+		c.buildPassRateTestStats(testStats, float64(opts.PassRateRequiredAllTests))
 		return
 	}
 
 	// Otherwise we fall back to default behavior of Fishers Exact test:
 	c.buildFisherExactTestStats(
 		testStats,
-		approvedRegression,
 		activeProductRegression,
 		initialSampleTotal)
 }
 
-func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.ReportTestStats,
-	approvedRegression *regressionallowances.IntentionalRegression,
-	activeProductRegression bool,
-	initialSampleTotal int) {
+func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.ReportTestStats, activeProductRegression bool, initialSampleTotal int) {
 
 	sampleSuccess := testStats.SampleStats.SuccessCount
 	sampleFlake := testStats.SampleStats.FlakeCount
@@ -1486,7 +1467,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		}
 		basisPassPercentage := float64(basePass) / float64(testStats.BaseStats.Total())
 		initialPassPercentage := float64(samplePass) / float64(initialSampleTotal)
-		effectivePityFactor := c.getEffectivePityFactor(basisPassPercentage, approvedRegression)
+		effectivePityFactor := c.getEffectivePityFactor(basisPassPercentage, testStats.SampleIntentionalRegression)
 
 		wasSignificant := false
 		// only consider wasSignificant if the sampleTotal has been changed and our sample
@@ -1586,6 +1567,11 @@ func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.Repo
 	sampleFlake := testStats.SampleStats.FlakeCount
 
 	successRate := c.getPassRate(sampleSuccess, sampleFailure, sampleFlake)
+
+	if ir := testStats.SampleIntentionalRegression; ir != nil {
+		// When an intentional regression applies, adjust the required success rate to match the regression.
+		requiredSuccessRate = ir.RegressedPassPercentage(c.ReqOptions.AdvancedOption.FlakeAsFailure) * 100
+	}
 
 	// Assume 2x our allowed failure rate = an extreme regression.
 	// i.e. if we require 90%, extreme is anything below 80%

@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_Transform(t *testing.T) {
+func Test_PreAnalysis(t *testing.T) {
 	test1ID := "test1ID"
 	variants := map[string]string{
 		"Arch":     "amd64",
@@ -69,31 +69,42 @@ func Test_Transform(t *testing.T) {
 	}
 
 	tests := []struct {
-		name           string
-		testKey        crtype.ReportTestIdentification
-		reqOpts        crtype.RequestOptions
-		baseStatus     *crtype.ReportTestStats
-		expectedStatus *crtype.ReportTestStats
+		name             string
+		testKey          crtype.ReportTestIdentification
+		reqOpts          crtype.RequestOptions
+		regressionGetter func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
+		baseStatus       *crtype.ReportTestStats
+		expectedStatus   *crtype.ReportTestStats
 	}{
 		{
-			name:           "swap base stats using regression allowance",
-			reqOpts:        reqOpts419,
-			testKey:        test1Key,
-			baseStatus:     buildTestStatus(100, 75, 0, "4.18"),
-			expectedStatus: buildTestStatus(100, 100, 0, "4.17"),
+			name:             "swap base stats using regression allowance",
+			reqOpts:          reqOpts419,
+			testKey:          test1Key,
+			regressionGetter: regressionGetter,
+			baseStatus:       buildTestStatus(100, 75, 0, "4.18"),
+			expectedStatus:   buildTestStatus(100, 100, 0, "4.17"),
 		},
 		{
-			name:           "do not swap base stats if no regression allowance",
-			reqOpts:        reqOpts419,
-			testKey:        test2Key,
-			baseStatus:     buildTestStatus(100, 75, 0, "4.18"),
-			expectedStatus: buildTestStatus(100, 75, 0, "4.18"),
+			name:             "do not swap base stats if no regression allowance",
+			reqOpts:          reqOpts419,
+			testKey:          test2Key,
+			regressionGetter: regressionGetter,
+			baseStatus:       buildTestStatus(100, 75, 0, "4.18"),
+			expectedStatus:   buildTestStatus(100, 75, 0, "4.18"),
+		},
+		{
+			name:             "4.19 vsphere alert firing real allowance test",
+			reqOpts:          reqOpts419,
+			testKey:          test1Key,
+			regressionGetter: regressionallowances.IntentionalRegressionFor,
+			baseStatus:       buildTestStatus(100, 75, 0, "4.16"),
+			expectedStatus:   buildTestStatus(100, 100, 0, "4.17"),
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			rfb := NewRegressionAllowancesMiddleware(test.reqOpts)
-			rfb.regressionGetterFunc = regressionGetter
+			rfb.regressionGetterFunc = test.regressionGetter
 			err := rfb.PreAnalysis(test.testKey, test.baseStatus)
 			assert.NoError(t, err)
 			assert.Equal(t, *test.expectedStatus, *test.baseStatus)

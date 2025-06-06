@@ -216,6 +216,10 @@ const (
 	FisherExact Comparison = "fisher_exact"
 )
 
+type IntentionalRegression interface {
+	RegressedPassPercentage(flakeAsFailure bool) float64
+}
+
 // ReportTestStats is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
 // Important type returned by the API.
@@ -251,6 +255,10 @@ type ReportTestStats struct {
 	// Regression is populated with data on when we first detected this regression. If unset it implies
 	// the regression tracker has not yet run to find it, or you're using report params/a view without regression tracking.
 	Regression *models.TestRegression `json:"regression,omitempty"`
+
+	// SampleIntentionalRegression is an intentional regression found for the particular test's sample release,
+	// and used to adjust the tolerance for failures so that we don't count it as a regression.
+	SampleIntentionalRegression IntentionalRegression `json:"-"`
 }
 
 // IsTriaged returns true if this tests status is within the triaged regression range.
