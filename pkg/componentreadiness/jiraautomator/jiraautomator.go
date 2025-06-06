@@ -125,9 +125,11 @@ func (j JiraAutomator) getRequestOptionForView(view crtype.View) (crtype.Request
 
 	// Get component readiness report
 	reportOpts := crtype.RequestOptions{
-		BaseRelease:    baseRelease,
-		SampleRelease:  sampleRelease,
-		TestIDOption:   view.TestIDOption,
+		BaseRelease:   baseRelease,
+		SampleRelease: sampleRelease,
+		TestIDOptions: []crtype.RequestTestIdentificationOptions{
+			view.TestIDOption,
+		},
 		VariantOption:  variantOption,
 		AdvancedOption: advancedOption,
 		CacheOption:    j.cacheOptions,
@@ -244,18 +246,20 @@ func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (strin
 	absURL := j.sippyURL + "/sippy-ng/component_readiness/"
 	// Create a URL values object
 	values := url.Values{}
-	if reportOpts.TestIDOption.TestID != "" {
-		absURL += "env_test?"
-		values.Add("testId", reportOpts.TestIDOption.TestID)
-		values.Add("capability", reportOpts.TestIDOption.Capability)
-		values.Add("component", reportOpts.TestIDOption.Component)
-	} else if reportOpts.TestIDOption.Capability != "" {
-		absURL += "env_capability?"
-		values.Add("capability", reportOpts.TestIDOption.Capability)
-		values.Add("component", reportOpts.TestIDOption.Component)
-	} else if reportOpts.TestIDOption.Component != "" {
-		absURL += "env_capabilities?"
-		values.Add("component", reportOpts.TestIDOption.Component)
+	if len(reportOpts.TestIDOptions) > 0 {
+		if reportOpts.TestIDOptions[0].TestID != "" {
+			absURL += "env_test?"
+			values.Add("testId", reportOpts.TestIDOptions[0].TestID)
+			values.Add("capability", reportOpts.TestIDOptions[0].Capability)
+			values.Add("component", reportOpts.TestIDOptions[0].Component)
+		} else if reportOpts.TestIDOptions[0].Capability != "" {
+			absURL += "env_capability?"
+			values.Add("capability", reportOpts.TestIDOptions[0].Capability)
+			values.Add("component", reportOpts.TestIDOptions[0].Component)
+		} else if reportOpts.TestIDOptions[0].Component != "" {
+			absURL += "env_capabilities?"
+			values.Add("component", reportOpts.TestIDOptions[0].Component)
+		}
 	} else {
 		absURL += "main?"
 	}
