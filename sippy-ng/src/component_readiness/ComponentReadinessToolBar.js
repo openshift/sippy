@@ -150,13 +150,16 @@ export default function ComponentReadinessToolBar(props) {
 
   const closeRegressedTestsDialog = () => {
     setRegressedTestDialog(undefined, 'replaceIn')
-    setQuery({
-      regressedModalTab: undefined,
-      regressedModalRow: undefined,
-      regressedModalPage: undefined,
-      regressedModalTestRow: undefined,
-      regressedModalTestPage: undefined,
-    })
+    setQuery(
+      {
+        regressedModalTab: undefined,
+        regressedModalRow: undefined,
+        regressedModalPage: undefined,
+        regressedModalTestRow: undefined,
+        regressedModalTestPage: undefined,
+      },
+      'replaceIn'
+    )
   }
 
   if (!isLoaded) {
