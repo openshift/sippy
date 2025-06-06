@@ -1,7 +1,10 @@
+import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
+import { formatDateToSeconds, relativeTime } from '../helpers'
 import { jiraUrlPrefix } from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { Typography } from '@mui/material'
+import { Tooltip, Typography } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -11,6 +14,7 @@ export default function TriagedRegressions({
   eventEmitter,
   entriesPerPage = 10,
 }) {
+  const theme = useTheme()
   const [sortModel, setSortModel] = React.useState([
     { field: 'created_at', sort: 'desc' },
   ])
@@ -68,6 +72,30 @@ export default function TriagedRegressions({
 
   const columns = [
     {
+      field: 'resolution_date',
+      valueGetter: (value) => {
+        return value.row.resolved?.Valid ? value.row.resolved.Time : ''
+      },
+      headerName: 'Resolved',
+      flex: 4,
+      align: 'center',
+      renderCell: (param) =>
+        param.value ? (
+          <Tooltip
+            title={`${relativeTime(
+              new Date(param.value),
+              new Date()
+            )} (${formatDateToSeconds(param.value)})`}
+          >
+            <CheckCircle style={{ color: theme.palette.success.light }} />
+          </Tooltip>
+        ) : (
+          <Tooltip title="Not resolved">
+            <ErrorIcon style={{ color: theme.palette.error.light }} />
+          </Tooltip>
+        ),
+    },
+    {
       field: 'description',
       valueGetter: (value) => {
         return value.row.description
@@ -106,15 +134,7 @@ export default function TriagedRegressions({
         </a>
       ),
     },
-    {
-      field: 'resolution_date',
-      valueGetter: (value) => {
-        return value.row.resolved?.Valid ? value.row.resolved.Time : ''
-      },
-      headerName: 'Resolution Date',
-      flex: 5,
-      renderCell: (param) => <div>{param.value}</div>,
-    },
+
     {
       field: 'bug_state',
       valueGetter: (value) => {
@@ -142,27 +162,47 @@ export default function TriagedRegressions({
       valueGetter: (value) => {
         return value.row.bug?.last_change_time || ''
       },
-      headerName: 'Last Change',
+      headerName: 'Jira updated',
       flex: 5,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      renderCell: (param) => (
+        <Tooltip title={param.value}>
+          <div className="test-name">
+            {relativeTime(new Date(param.value), new Date())}
+          </div>
+        </Tooltip>
+      ),
     },
     {
       field: 'created_at',
+      hide: true,
       valueGetter: (value) => {
         return value.row.created_at
       },
-      headerName: 'Created',
+      headerName: 'Created at',
       flex: 5,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      renderCell: (param) => (
+        <Tooltip title={param.value}>
+          <div className="test-name">
+            {relativeTime(new Date(param.value), new Date())}
+          </div>
+        </Tooltip>
+      ),
     },
     {
       field: 'updated_at',
+      hide: true,
       valueGetter: (value) => {
         return value.row.updated_at
       },
-      headerName: 'Updated',
+      headerName: 'Updated At',
       flex: 5,
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      renderCell: (param) => (
+        <div className="test-name">
+          <Tooltip title={param.value}>
+            <span>{relativeTime(new Date(param.value), new Date())}</span>
+          </Tooltip>
+        </div>
+      ),
     },
     {
       field: 'details',
