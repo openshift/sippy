@@ -19,6 +19,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+// Lets not assume redis can handle infinite regressions, on days where we have a mass outage we can easily see thousands and push
+// cache memory pretty high. Shut down test_details caching if we're over this limit, pages will have to load slowly for those
+// that actually will be looked at.
+const MAX_REGRESSIONS_TO_CACHE = 300
+
 type ComponentReadinessCacheLoader struct {
 	dbc                  *db.DB
 	errs                 []error
@@ -122,6 +127,10 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 		}
 	}
 	rLog.Infof("found %d regressed tests in report", len(allRegressedTests))
+	if len(allRegressedTests) > MAX_REGRESSIONS_TO_CACHE {
+		rLog.Warnf("skipping test_details report caching due to the number of regressed tests being over the max (%d)", MAX_REGRESSIONS_TO_CACHE)
+		return nil
+	}
 	testIDOptions := []crtype.RequestTestIdentificationOptions{}
 	for _, regressedTest := range allRegressedTests {
 		newTIDOpts := crtype.RequestTestIdentificationOptions{
