@@ -32,9 +32,11 @@ export default function TriagedRegressions({
   )
 
   useEffect(() => {
-    const triage = getSelectedTriage(activeRow)
-    if (triage) {
-      toggleAssociatedRegressions(triage)
+    if (activeRow) {
+      const triage = getSelectedTriage(activeRow)
+      if (triage) {
+        toggleAssociatedRegressions(triage)
+      }
     }
   }, [])
 
@@ -61,7 +63,7 @@ export default function TriagedRegressions({
   const handleSetSelectionModel = (event) => {
     const triage = getSelectedTriage(event[0])
     if (triage) {
-      setActiveRow(String(triage.id))
+      setActiveRow(String(triage.id), 'replaceIn')
       toggleAssociatedRegressions(triage)
     }
   }
@@ -198,7 +200,7 @@ export default function TriagedRegressions({
         pageSize={entriesPerPage}
         page={activePage}
         onPageChange={(newPage) => {
-          setActivePage(newPage)
+          setActivePage(newPage, 'replaceIn')
         }}
         rowHeight={60}
         autoHeight={true}
