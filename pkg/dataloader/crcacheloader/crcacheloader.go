@@ -113,26 +113,30 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 	// and we'll sort the test/variant combos that come back from bigquery as we go, generating
 	// a report with the data for each chunk.
 
-	// All regressed tests, both triaged and not:
-	allRegressedTests := []crtype.ReportTestSummary{}
+	// All unresolved regressed tests, both triaged and not:
+	regressedTestsToCache := []crtype.ReportTestSummary{}
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
-			allRegressedTests = append(allRegressedTests, col.RegressedTests...)
+			regressedTestsToCache = append(regressedTestsToCache, col.RegressedTests...)
 			// Once triaged, regressions move to this list, we want to still consider them an open regression until
 			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
 			// a regression.
 			for _, triaged := range col.TriagedIncidents {
-				allRegressedTests = append(allRegressedTests, triaged.ReportTestSummary)
+				// skip if it's resolved, it's far less likely anyone will be loading details for something marked
+				// resolved, and this helps reduce the caching memory when we have mass regressions and clean them up:
+				if triaged.ReportStatus < crtype.FixedRegression {
+					regressedTestsToCache = append(regressedTestsToCache, triaged.ReportTestSummary)
+				}
 			}
 		}
 	}
-	rLog.Infof("found %d regressed tests in report", len(allRegressedTests))
-	if len(allRegressedTests) > MAX_REGRESSIONS_TO_CACHE {
-		rLog.Warnf("skipping test_details report caching due to the number of regressed tests being over the max (%d)", MAX_REGRESSIONS_TO_CACHE)
+	rLog.Infof("found %d unresolved regressed tests in report", len(regressedTestsToCache))
+	if len(regressedTestsToCache) > MAX_REGRESSIONS_TO_CACHE {
+		rLog.Warnf("skipping test_details report caching due to the number of unresolved regressed tests being over the max (%d)", MAX_REGRESSIONS_TO_CACHE)
 		return nil
 	}
 	testIDOptions := []crtype.RequestTestIdentificationOptions{}
-	for _, regressedTest := range allRegressedTests {
+	for _, regressedTest := range regressedTestsToCache {
 		newTIDOpts := crtype.RequestTestIdentificationOptions{
 			TestID:            regressedTest.TestID,
 			RequestedVariants: regressedTest.Variants,
@@ -160,7 +164,7 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 		for _, err := range errs {
 			strErrors = append(strErrors, err.Error())
 		}
-		return fmt.Errorf("mutli test details report generation encountered errors: %s", strings.Join(strErrors, "; "))
+		return fmt.Errorf("multi test details report generation encountered errors: %s", strings.Join(strErrors, "; "))
 	}
 	rLog.Infof("got %d test details reports", len(tdReports))
 
