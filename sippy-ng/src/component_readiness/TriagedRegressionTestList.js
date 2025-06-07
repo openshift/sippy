@@ -4,7 +4,6 @@ import {
   formColumnName,
   generateTestReportForRegressedTest,
 } from './CompReadyUtils'
-import { Link } from 'react-router-dom'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { relativeTime } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
@@ -41,9 +40,9 @@ export default function TriagedRegressionTestList(props) {
     let displayView = false
     if (data) {
       displayView = true
+      setTriagedRegressions(data.regressions)
+      setActiveRow(data.activeId, 'replaceIn')
     }
-    setTriagedRegressions(data.regressions)
-    setActiveRow(data.activeId)
 
     setShowView(displayView)
   }
@@ -156,12 +155,16 @@ export default function TriagedRegressionTestList(props) {
                 }}
                 className="status"
               >
-                <Link to={params.value.url}>
+                <a
+                  href={params.value.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <CompSeverityIcon
                     status={params.value.status}
                     explanations={params.value.explanations}
                   />
-                </Link>
+                </a>
               </div>
             ),
             flex: 6,
@@ -183,14 +186,13 @@ export default function TriagedRegressionTestList(props) {
           getRowId={(row) => row.id}
           selectionModel={activeRow}
           onSelectionModelChange={(newRow) => {
-            // Due to the usage of the eventEmitter, this can sometimes fire when we don't want it to actually de-select
             if (newRow.length > 0) {
-              setActiveRow(Number(newRow))
+              setActiveRow(Number(newRow), 'replaceIn')
             }
           }}
           page={activePage}
           onPageChange={(newPage) => {
-            setActivePage(newPage)
+            setActivePage(newPage, 'replaceIn')
           }}
           pageSize={10}
           rowHeight={60}

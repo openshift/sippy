@@ -72,12 +72,15 @@ export default function RegressedTestsModal({
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue)
     // The active pages and rows in the DataGrid are most likely no longer relevant when switching tabs
-    setQuery({
-      regressedModalRow: undefined,
-      regressedModalPage: undefined,
-      regressedModalTestRow: undefined,
-      regressedModalTestPage: undefined,
-    })
+    setQuery(
+      {
+        regressedModalRow: undefined,
+        regressedModalPage: undefined,
+        regressedModalTestRow: undefined,
+        regressedModalTestPage: undefined,
+      },
+      'replaceIn'
+    )
   }
 
   const triageEntriesExist = triageEntries.length > 0
