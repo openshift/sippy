@@ -142,6 +142,11 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 	for ri, row := range report.Rows {
 		for ci, col := range row.Columns {
 			for rti := range col.RegressedTests {
+				// Carefully update the column status. We only hit this loop if there are regressed tests, which is
+				// good because we know the cell status can't be improved or missing basis/sample.
+				// All we need to do now is track the lowest (i.e. worst) status we see after PostAnalysis,
+				// and make that our new cell status.
+				var initialStatus crtype.Status
 				for _, mw := range c.middlewares {
 					testKey := crtype.ReportTestIdentification{
 						RowIdentification:    col.RegressedTests[rti].RowIdentification,
@@ -150,6 +155,10 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 					err := mw.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats)
 					if err != nil {
 						return err
+					}
+					if report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats.ReportStatus < initialStatus {
+						// After PostAnalysis this is our new worst status observed, so update the cell's status in the grid
+						report.Rows[ri].Columns[ci].Status = report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats.ReportStatus
 					}
 				}
 			}
