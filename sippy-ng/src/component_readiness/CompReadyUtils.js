@@ -773,7 +773,7 @@ export function generateTestReportForRegressedTest(
     variantsUrl += '&' + key + '=' + safeEncodeURIComponent(value)
   })
   const retUrl =
-    '/component_readiness/test_details' +
+    '/sippy-ng/component_readiness/test_details' +
     filterVals +
     `&testBasisRelease=${safeTestBasisRelease}` +
     `&testId=${safeTestId}` +
