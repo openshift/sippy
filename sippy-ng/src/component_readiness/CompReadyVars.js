@@ -569,11 +569,8 @@ export const CompReadyVarsProvider = ({ children }) => {
     const items = environmentStr.split(' ')
     const params = {}
     items.forEach((item) => {
-      Object.entries(allJobVariants).forEach(([variantName, variantValues]) => {
-        if (variantValues.includes(item)) {
-          params[variantName] = item
-        }
-      })
+      const variants = item.split(':')
+      params[variants[0]] = variants[1]
     })
     const paramStrings = Object.entries(params).map(
       ([key, value]) => `${key}=${value}`
