@@ -265,7 +265,7 @@ export function getStatusAndIcon(
 export function formColumnName(column) {
   let variants = column['variants']
   return Object.keys(variants)
-    .map((key) => variants[key])
+    .map((key) => key + ':' + variants[key])
     .join(' ')
 }
 
