@@ -117,7 +117,10 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 	regressedTestsToCache := []crtype.ReportTestSummary{}
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
+
+			// Handle the untriaged:
 			regressedTestsToCache = append(regressedTestsToCache, col.RegressedTests...)
+
 			// Once triaged, regressions move to this list, we want to still consider them an open regression until
 			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
 			// a regression.
@@ -133,6 +136,10 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 	rLog.Infof("found %d unresolved regressed tests in report", len(regressedTestsToCache))
 	if len(regressedTestsToCache) > MAX_REGRESSIONS_TO_CACHE {
 		rLog.Warnf("skipping test_details report caching due to the number of unresolved regressed tests being over the max (%d)", MAX_REGRESSIONS_TO_CACHE)
+		return nil
+	}
+	if len(regressedTestsToCache) == 0 {
+		rLog.Infof("skipping test details report as no regressed tests are unresolved")
 		return nil
 	}
 	testIDOptions := []crtype.RequestTestIdentificationOptions{}
