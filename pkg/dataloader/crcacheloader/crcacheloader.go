@@ -22,7 +22,7 @@ import (
 // Lets not assume redis can handle infinite regressions, on days where we have a mass outage we can easily see thousands and push
 // cache memory pretty high. Shut down test_details caching if we're over this limit, pages will have to load slowly for those
 // that actually will be looked at.
-const MAX_REGRESSIONS_TO_CACHE = 300
+const MaxRegressionsToCache = 300
 
 type ComponentReadinessCacheLoader struct {
 	dbc                  *db.DB
@@ -134,8 +134,8 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 		}
 	}
 	rLog.Infof("found %d unresolved regressed tests in report", len(regressedTestsToCache))
-	if len(regressedTestsToCache) > MAX_REGRESSIONS_TO_CACHE {
-		rLog.Warnf("skipping test_details report caching due to the number of unresolved regressed tests being over the max (%d)", MAX_REGRESSIONS_TO_CACHE)
+	if len(regressedTestsToCache) > MaxRegressionsToCache {
+		rLog.Warnf("skipping test_details report caching due to the number of unresolved regressed tests being over the max (%d)", MaxRegressionsToCache)
 		return nil
 	}
 	if len(regressedTestsToCache) == 0 {
