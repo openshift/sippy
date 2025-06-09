@@ -94,8 +94,7 @@ func GetDataFromCacheOrGenerate[T any](
 
 		// Cache has missed or we're explicitly forcing a refresh:
 		result, errs := generateFn(ctx)
-		if len(errs) == 0 {
-
+		if len(errs) == 0 && !cacheOptions.SkipCacheWrites {
 			CacheSet(ctx, c, result, cacheKey, cacheDuration)
 		}
 		return result, errs

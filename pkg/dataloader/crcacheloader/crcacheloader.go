@@ -165,6 +165,10 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 		return err
 	}
 	generator.ReqOptions.TestIDOptions = testIDOptions
+	// Disable cache writes for this mega test details query, it's huge, and it can't possibly be reused because
+	// the next time we come through this path, we're force updating anyhow. Below, when we cache each test details
+	// sub report, we do so explicitly.
+	generator.ReqOptions.CacheOption.SkipCacheWrites = true
 	tdReports, errs := generator.GenerateTestDetailsReportMultiTest(ctx)
 	if len(errs) > 0 {
 		var strErrors []string
