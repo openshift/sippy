@@ -71,7 +71,7 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 	}
 
 	// with fallback enabled and a fallback release found, let that determine the threshold across bases without the munging done below.
-	if r.reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis && r.reqOptions.BaseOverrideRelease.Release != "" {
+	if r.reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis && crtype.AnyAreBaseOverrides(r.reqOptions.TestIDOptions) {
 		return
 	}
 

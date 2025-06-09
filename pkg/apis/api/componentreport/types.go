@@ -99,6 +99,15 @@ type RequestOptions struct {
 	TestIDOptions []RequestTestIdentificationOptions
 }
 
+func AnyAreBaseOverrides(opts []RequestTestIdentificationOptions) bool {
+	for _, tid := range opts {
+		if tid.BaseOverrideRelease != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // View is a server side construct representing a predefined view over the component readiness data.
 // Useful for defining the primary view of what we deem required for considering the release ready.
 type View struct {

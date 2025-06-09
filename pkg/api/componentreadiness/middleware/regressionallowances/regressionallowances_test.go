@@ -56,7 +56,7 @@ func Test_PreAnalysis(t *testing.T) {
 		},
 	}
 	reqOpts419Fallback := reqOpts419
-	reqOpts419Fallback.BaseOverrideRelease.Release = "4.17"
+	reqOpts419Fallback.TestIDOptions = []crtype.RequestTestIdentificationOptions{{BaseOverrideRelease: "4.17"}}
 	reqOpts420Fallback := reqOpts419
 	reqOpts420Fallback.SampleRelease.Release = "4.20"
 	reqOpts420Fallback.BaseRelease.Release = "4.19"
