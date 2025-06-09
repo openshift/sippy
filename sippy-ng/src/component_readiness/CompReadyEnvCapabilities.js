@@ -50,6 +50,8 @@ export default function CompReadyEnvCapabilities(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
+  const [triageActionTaken, setTriageActionTaken] = React.useState(false)
+
   // Set the browser tab title
   document.title =
     'Sippy > Component Readiness > Capabilities' +
@@ -70,7 +72,8 @@ export default function CompReadyEnvCapabilities(props) {
   useEffect(() => {
     setIsLoaded(false)
     fetchData()
-  }, [])
+    setTriageActionTaken(false)
+  }, [triageActionTaken])
 
   const fetchData = (fresh) => {
     if (fresh) {
@@ -210,6 +213,7 @@ export default function CompReadyEnvCapabilities(props) {
         clearSearches={clearSearches}
         data={data}
         filterVals={filterVals}
+        setTriageActionTaken={setTriageActionTaken}
         forceRefresh={forceRefresh}
       />
       <br></br>

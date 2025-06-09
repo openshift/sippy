@@ -4,7 +4,7 @@ import {
   formColumnName,
   generateTestReportForRegressedTest,
 } from './CompReadyUtils'
-import { Link } from 'react-router-dom'
+import { NumberParam, useQueryParam } from 'use-query-params'
 import { relativeTime } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -13,6 +13,17 @@ import React, { Fragment, useContext } from 'react'
 
 export default function TriagedRegressionTestList(props) {
   const { expandEnvironment } = useContext(CompReadyVarsContext)
+
+  const [activeRow, setActiveRow] = useQueryParam(
+    'regressedModalTestRow',
+    NumberParam,
+    { updateType: 'replaceIn' }
+  )
+  const [activePage, setActivePage] = useQueryParam(
+    'regressedModalTestPage',
+    NumberParam,
+    { updateType: 'replaceIn' }
+  )
 
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
@@ -29,8 +40,10 @@ export default function TriagedRegressionTestList(props) {
     let displayView = false
     if (data) {
       displayView = true
+      setTriagedRegressions(data.regressions)
+      setActiveRow(data.activeId, 'replaceIn')
     }
-    setTriagedRegressions(data)
+
     setShowView(displayView)
   }
   if (props.eventEmitter !== undefined) {
@@ -142,12 +155,16 @@ export default function TriagedRegressionTestList(props) {
                 }}
                 className="status"
               >
-                <Link to={params.value.url}>
+                <a
+                  href={params.value.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <CompSeverityIcon
                     status={params.value.status}
                     explanations={params.value.explanations}
                   />
-                </Link>
+                </a>
               </div>
             ),
             flex: 6,
@@ -167,6 +184,16 @@ export default function TriagedRegressionTestList(props) {
           rows={triagedRegressions}
           columns={columns}
           getRowId={(row) => row.id}
+          selectionModel={activeRow}
+          onSelectionModelChange={(newRow) => {
+            if (newRow.length > 0) {
+              setActiveRow(Number(newRow), 'replaceIn')
+            }
+          }}
+          page={activePage}
+          onPageChange={(newPage) => {
+            setActivePage(newPage, 'replaceIn')
+          }}
           pageSize={10}
           rowHeight={60}
           autoHeight={true}

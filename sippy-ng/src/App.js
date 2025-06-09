@@ -54,6 +54,7 @@ import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Toolbar from '@mui/material/Toolbar'
 import Triage from './component_readiness/Triage'
+import TriageList from './component_readiness/TriageList'
 import Typography from '@mui/material/Typography'
 import Upgrades from './releases/Upgrades'
 import VariantStatus from './jobs/VariantStatus'
@@ -642,6 +643,15 @@ export default function App(props) {
                             />
 
                             <Route
+                              path="/triages"
+                              render={() => (
+                                <CompReadyVarsProvider>
+                                  <TriageList />
+                                </CompReadyVarsProvider>
+                              )}
+                            />
+
+                            <Route
                               path="/upgrade/:release"
                               render={(props) =>
                                 redirectIfLatest(
@@ -664,6 +674,11 @@ export default function App(props) {
                                     <ComponentReadiness
                                       key={getUrlWithoutParams([
                                         'regressedModal',
+                                        'regressedModalTab',
+                                        'regressedModalRow',
+                                        'regressedModalPage',
+                                        'regressedModalTestRow',
+                                        'regressedModalTestPage',
                                       ])}
                                     />
                                   </CompReadyVarsProvider>

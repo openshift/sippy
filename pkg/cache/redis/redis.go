@@ -23,6 +23,10 @@ func NewRedisCache(url string) (*Cache, error) {
 		return nil, err
 	}
 
+	// Using redis on a separate host on local network, some of our blobs are so large they take slightly more than the
+	// default 3s to send and store:
+	opts.WriteTimeout = time.Second * 15
+
 	return &Cache{
 		client: r.NewClient(opts),
 	}, nil

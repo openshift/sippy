@@ -22,4 +22,6 @@ type RequestOptions struct {
 	ForceRefresh bool
 	// CRTimeRoundingFactor is used to calculate cache expiration time
 	CRTimeRoundingFactor time.Duration
+	// SkipCacheWrites will disable setting keys in the cache. Used in some scenarios where a lot of data is in play and serves no purpose being in the cache.
+	SkipCacheWrites bool
 }

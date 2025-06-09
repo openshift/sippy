@@ -1,6 +1,9 @@
-import { Button } from '@mui/material'
+import { Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
+import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
+import { formatDateToSeconds, relativeTime } from '../helpers'
 import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
+import { useTheme } from '@mui/material/styles'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import SecureLink from '../components/SecureLink'
@@ -12,6 +15,7 @@ import TriagedRegressionTestList from './TriagedRegressionTestList'
 import UpsertTriageModal from './UpsertTriageModal'
 
 export default function Triage({ id }) {
+  const theme = useTheme()
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [triage, setTriage] = React.useState({})
   const [message, setMessage] = React.useState('')
@@ -41,6 +45,7 @@ export default function Triage({ id }) {
       .then((t) => {
         setTriage(t)
         setIsLoaded(true)
+        document.title = 'Triage "' + t.description + '" (' + t.id + ')'
       })
       .catch((error) => {
         setMessage(error.toString())
@@ -86,6 +91,25 @@ export default function Triage({ id }) {
       <Table>
         <TableBody>
           <TableRow>
+            <TableCell>Resolved</TableCell>
+            <TableCell>
+              {triage.resolved?.Valid ? (
+                <Tooltip
+                  title={`${relativeTime(
+                    new Date(triage.resolved.Time),
+                    new Date()
+                  )} (${formatDateToSeconds(triage.resolved.Time)})`}
+                >
+                  <CheckCircle style={{ color: theme.palette.success.light }} />
+                </Tooltip>
+              ) : (
+                <Tooltip title="Not resolved">
+                  <ErrorIcon style={{ color: theme.palette.error.light }} />
+                </Tooltip>
+              )}
+            </TableCell>
+          </TableRow>
+          <TableRow>
             <TableCell>Description</TableCell>
             <TableCell>{triage.description}</TableCell>
           </TableRow>
@@ -102,7 +126,18 @@ export default function Triage({ id }) {
           <TableRow>
             <TableCell>Resolution Date</TableCell>
             <TableCell>
-              {triage.resolved?.Valid ? triage.resolved?.Time : ''}
+              {triage.resolved?.Valid ? (
+                <Tooltip
+                  title={relativeTime(
+                    new Date(triage.resolved.Time),
+                    new Date()
+                  )}
+                >
+                  <span>{formatDateToSeconds(triage.resolved.Time)}</span>
+                </Tooltip>
+              ) : (
+                ''
+              )}
             </TableCell>
           </TableRow>
           <TableRow>
@@ -116,8 +151,51 @@ export default function Triage({ id }) {
             </TableCell>
           </TableRow>
           <TableRow>
-            <TableCell>Last Change</TableCell>
-            <TableCell>{triage.bug?.last_change_time}</TableCell>
+            <TableCell>Jira updated</TableCell>
+            <TableCell>
+              {triage.bug?.last_change_time ? (
+                <Tooltip
+                  title={relativeTime(
+                    new Date(triage.bug.last_change_time),
+                    new Date()
+                  )}
+                >
+                  <span>
+                    {formatDateToSeconds(triage.bug.last_change_time)}
+                  </span>
+                </Tooltip>
+              ) : (
+                ''
+              )}
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Record Created</TableCell>
+            <TableCell>
+              {triage.created_at ? (
+                <Tooltip
+                  title={relativeTime(new Date(triage.created_at), new Date())}
+                >
+                  <span>{formatDateToSeconds(triage.created_at)}</span>
+                </Tooltip>
+              ) : (
+                ''
+              )}
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Record Updated</TableCell>
+            <TableCell>
+              {triage.updated_at ? (
+                <Tooltip
+                  title={relativeTime(new Date(triage.updated_at), new Date())}
+                >
+                  <span>{formatDateToSeconds(triage.updated_at)}</span>
+                </Tooltip>
+              ) : (
+                ''
+              )}
+            </TableCell>
           </TableRow>
         </TableBody>
       </Table>

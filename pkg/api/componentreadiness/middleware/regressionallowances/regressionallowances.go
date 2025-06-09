@@ -156,6 +156,6 @@ func (r *RegressionAllowances) adjustAnalysisParameters(testStats *crtype.Report
 func (r *RegressionAllowances) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
 }
 
-func (r *RegressionAllowances) PreTestDetailsAnalysis(status *crtype.JobRunTestReportStatus) error {
+func (r *RegressionAllowances) PreTestDetailsAnalysis(testKey crtype.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error {
 	return nil
 }

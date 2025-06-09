@@ -37,22 +37,17 @@ export default function UpsertTriageModal({
             )
         )
         setTriages(filtered)
-        if (filtered.length > 0) {
-          setExistingTriageId(filtered[0].id)
-        }
+        setTriageModalOpen(true)
       })
       .catch((error) => {
         setAlertText('Error retrieving existing triage records')
         setAlertSeverity('error')
         console.error(error)
       })
-    setTriageModalOpen(true)
   }
   const handleTriageModalClosed = () => {
     setTriageModalOpen(false)
   }
-
-  const [existingTriageId, setExistingTriageId] = React.useState(0)
 
   const handleTriageFormCompletion = () => {
     setTriageEntryData({
@@ -106,53 +101,55 @@ export default function UpsertTriageModal({
           {alertText}
         </Alert>
       </Snackbar>
-      <Button
-        sx={{ margin: '10px 0' }}
-        variant="contained"
-        onClick={handleTriageModalOpen}
-      >
-        {buttonText}
-      </Button>
-      <Dialog
-        fullWidth
-        maxWidth="md"
-        open={triageModalOpen}
-        onClose={handleTriageModalClosed}
-      >
-        {triage !== undefined && (
-          <UpdateTriagePanel
-            triage={triage}
-            setAlertText={setAlertText}
-            setAlertSeverity={setAlertSeverity}
-            triageEntryData={triageEntryData}
-            handleTriageFormCompletion={handleTriageFormCompletion}
-            setTriageEntryData={setTriageEntryData}
-          />
-        )}
-        {regressionId > 0 && (
-          <AddRegressionPanel
-            triages={triages}
-            regressionId={regressionId}
-            existingTriageId={existingTriageId}
-            setExistingTriageId={setExistingTriageId}
-            triageEntryData={triageEntryData}
-            setTriageEntryData={setTriageEntryData}
-            setAlertText={setAlertText}
-            setAlertSeverity={setAlertSeverity}
-            handleNewTriageFormCompletion={handleTriageFormCompletion}
-            completeTriageSubmission={completeTriageSubmission}
-          />
-        )}
-        <DialogActions sx={{ justifyContent: 'flex-start' }}>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleTriageModalClosed}
-          >
-            CLOSE
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {!triageModalOpen && (
+        <Button
+          sx={{ margin: '10px 0' }}
+          variant="contained"
+          onClick={handleTriageModalOpen}
+        >
+          {buttonText}
+        </Button>
+      )}
+      {triageModalOpen && (
+        <Dialog
+          fullWidth
+          maxWidth="md"
+          open={triageModalOpen}
+          onClose={handleTriageModalClosed}
+        >
+          {triage !== undefined && (
+            <UpdateTriagePanel
+              triage={triage}
+              setAlertText={setAlertText}
+              setAlertSeverity={setAlertSeverity}
+              triageEntryData={triageEntryData}
+              handleTriageFormCompletion={handleTriageFormCompletion}
+              setTriageEntryData={setTriageEntryData}
+            />
+          )}
+          {regressionId > 0 && (
+            <AddRegressionPanel
+              triages={triages}
+              regressionId={regressionId}
+              triageEntryData={triageEntryData}
+              setTriageEntryData={setTriageEntryData}
+              setAlertText={setAlertText}
+              setAlertSeverity={setAlertSeverity}
+              handleNewTriageFormCompletion={handleTriageFormCompletion}
+              completeTriageSubmission={completeTriageSubmission}
+            />
+          )}
+          <DialogActions sx={{ justifyContent: 'flex-start' }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleTriageModalClosed}
+            >
+              CLOSE
+            </Button>
+          </DialogActions>
+        </Dialog>
+      )}
     </Fragment>
   )
 }

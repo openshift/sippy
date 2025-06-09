@@ -6,7 +6,7 @@ import {
   formColumnName,
   generateTestReportForRegressedTest,
 } from './CompReadyUtils'
-import { Link } from 'react-router-dom'
+import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
 import { relativeTime } from '../helpers'
 import Alert from '@mui/material/Alert'
@@ -18,8 +18,18 @@ import React, { Fragment, useContext } from 'react'
 import TriageFields from './TriageFields'
 
 export default function RegressedTestsPanel(props) {
+  const [activeRow, setActiveRow] = useQueryParam(
+    'regressedModalRow',
+    StringParam,
+    { updateType: 'replaceIn' }
+  )
+  const [activePage, setActivePage] = useQueryParam(
+    'regressedModalPage',
+    NumberParam,
+    { updateType: 'replaceIn' }
+  )
   const { expandEnvironment } = useContext(CompReadyVarsContext)
-  const { filterVals, regressedTests, setTriageEntryCreated } = props
+  const { filterVals, regressedTests, setTriageActionTaken } = props
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
@@ -52,7 +62,7 @@ export default function RegressedTestsPanel(props) {
       ids: [],
     })
     setTriaging(false)
-    setTriageEntryCreated(true)
+    setTriageActionTaken(true)
   }
 
   const handleTriageTestIdChange = (e) => {
@@ -71,7 +81,7 @@ export default function RegressedTestsPanel(props) {
   }
 
   const [alertText, setAlertText] = React.useState('')
-  const [alertSeverity, setAlertSeverity] = React.useState('')
+  const [alertSeverity, setAlertSeverity] = React.useState('success')
   const handleAlertClose = (event, reason) => {
     if (reason === 'clickaway') {
       return
@@ -220,12 +230,14 @@ export default function RegressedTestsPanel(props) {
           }}
           className="status"
         >
-          <Link
-            to={generateTestReportForRegressedTest(
+          <a
+            href={generateTestReportForRegressedTest(
               params.row,
               filterVals,
               expandEnvironment
             )}
+            target="_blank"
+            rel="noopener noreferrer"
           >
             <CompSeverityIcon
               status={
@@ -235,7 +247,7 @@ export default function RegressedTestsPanel(props) {
               }
               explanations={params.row.explanations}
             />
-          </Link>
+          </a>
         </div>
       ),
       flex: 6,
@@ -268,7 +280,17 @@ export default function RegressedTestsPanel(props) {
             .map((key) => row.variants[key])
             .join(' ')
         }
+        selectionModel={activeRow}
+        onSelectionModelChange={(newRow) => {
+          if (newRow.length > 0) {
+            setActiveRow(String(newRow), 'replaceIn')
+          }
+        }}
         pageSize={10}
+        page={activePage}
+        onPageChange={(newPage) => {
+          setActivePage(newPage, 'replaceIn')
+        }}
         rowHeight={60}
         autoHeight={true}
         checkboxSelection={false}
@@ -322,6 +344,6 @@ export default function RegressedTestsPanel(props) {
 
 RegressedTestsPanel.propTypes = {
   regressedTests: PropTypes.array,
-  setTriageEntryCreated: PropTypes.func,
+  setTriageActionTaken: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
 }
