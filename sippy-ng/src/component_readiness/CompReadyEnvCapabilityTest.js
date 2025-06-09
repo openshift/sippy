@@ -50,6 +50,8 @@ export default function CompReadyEnvCapabilityTest(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
+  const [triageActionTaken, setTriageActionTaken] = React.useState(false)
+
   const [searchRowRegexURL, setSearchRowRegexURL] = useQueryParam(
     'searchRow',
     StringParam
@@ -122,7 +124,8 @@ export default function CompReadyEnvCapabilityTest(props) {
   useEffect(() => {
     setIsLoaded(false)
     fetchData()
-  }, [])
+    setTriageActionTaken(false)
+  }, [triageActionTaken])
 
   const fetchData = (fresh) => {
     if (fresh) {
@@ -203,6 +206,7 @@ export default function CompReadyEnvCapabilityTest(props) {
       <ComponentReadinessToolBar
         data={data}
         filterVals={filterVals}
+        setTriageActionTaken={setTriageActionTaken}
         forceRefresh={forceRefresh}
       />
       <br></br>

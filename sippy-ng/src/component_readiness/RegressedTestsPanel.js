@@ -29,7 +29,7 @@ export default function RegressedTestsPanel(props) {
     { updateType: 'replaceIn' }
   )
   const { expandEnvironment } = useContext(CompReadyVarsContext)
-  const { filterVals, regressedTests, setTriageEntryCreated } = props
+  const { filterVals, regressedTests, setTriageActionTaken } = props
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
@@ -62,7 +62,7 @@ export default function RegressedTestsPanel(props) {
       ids: [],
     })
     setTriaging(false)
-    setTriageEntryCreated(true)
+    setTriageActionTaken(true)
   }
 
   const handleTriageTestIdChange = (e) => {
@@ -344,6 +344,6 @@ export default function RegressedTestsPanel(props) {
 
 RegressedTestsPanel.propTypes = {
   regressedTests: PropTypes.array,
-  setTriageEntryCreated: PropTypes.func,
+  setTriageActionTaken: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
 }

@@ -51,10 +51,10 @@ export default function ComponentReadinessToolBar(props) {
     handleRedOnlyCheckboxChange,
     clearSearches,
     data,
+    setTriageActionTaken,
     filterVals,
   } = props
 
-  const [triageEntryCreated, setTriageEntryCreated] = React.useState(false)
   const [regressedTests, setRegressedTests] = React.useState([])
   const [allRegressedTests, setAllRegressedTests] = React.useState([])
   const [unresolvedTests, setUnresolvedTests] = React.useState([])
@@ -101,10 +101,9 @@ export default function ComponentReadinessToolBar(props) {
         }
       })
       setTriageEntries(triagesAssociatedWithActiveRegressions)
-      setTriageEntryCreated(false)
       setIsLoaded(true)
     })
-  }, [triageEntryCreated])
+  }, [])
 
   const linkToReport = () => {
     const currentUrl = new URL(window.location.href)
@@ -352,7 +351,7 @@ export default function ComponentReadinessToolBar(props) {
         unresolvedTests={unresolvedTests}
         triagedIncidents={triagedIncidents}
         triageEntries={triageEntries}
-        setTriageEntryCreated={setTriageEntryCreated}
+        setTriageActionTaken={setTriageActionTaken}
         filterVals={filterVals}
         isOpen={regressedTestDialog}
         close={closeRegressedTestsDialog}
@@ -371,5 +370,6 @@ ComponentReadinessToolBar.propTypes = {
   clearSearches: PropTypes.func,
   data: PropTypes.object,
   forceRefresh: PropTypes.func,
+  setTriageActionTaken: PropTypes.func,
   filterVals: PropTypes.string.isRequired,
 }
