@@ -46,6 +46,7 @@ var testSuites = []string{
 	"telco-verification",
 	"github.com/openshift/console-operator/test/e2e",
 	"prowjob-junit",
+	"OLM-Catalog-Validation",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {
