@@ -161,7 +161,6 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 				}
 				swappedExplanation = fmt.Sprintf("Overrode base stats (%.4f) using release %s (%.4f)",
 					basePassRate, testStats.BaseStats.Release, cPassRate)
-				r.log.Debugf("%s for test %s", swappedExplanation, testKey.TestName)
 			}
 		}
 	}

@@ -109,9 +109,8 @@ func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification
 	if len(r.openRegressions) > 0 {
 		view := r.openRegressions[0].View // grab view from first regression, they were queried only for sample release
 		or := FindOpenRegression(view, testKey.TestID, testKey.Variants, r.openRegressions)
-		r.log.Infof("checking regressions for %+v", testKey)
+		r.log.Debugf("checking regressions for %+v", testKey)
 		if or == nil {
-			r.log.Info("none found")
 			return nil
 		}
 
