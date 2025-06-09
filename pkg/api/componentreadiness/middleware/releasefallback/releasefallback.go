@@ -51,7 +51,11 @@ type ReleaseFallback struct {
 	log                        log.FieldLogger
 	reqOptions                 crtype.RequestOptions
 
-	baseOverrideStatus map[string][]crtype.JobRunTestStatusRow
+	// baseOverrideStatus maps test key, to job name, to the result rows for that job.
+	// This is used in test details reports, and in the typical API case will only contain one
+	// test ID, but when cache priming for a view, we may have multiple.
+	baseOverrideStatus map[string]map[string][]crtype.TestJobRunRows
+	baseOverrideMutex  sync.Mutex // Mutex to protect the map
 }
 
 func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, report *crtype.ReportTestStats) error {
@@ -99,7 +103,11 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 	}
 
 	if r.cachedFallbackTestStatuses == nil {
-		return fmt.Errorf("Invalid fallback test statuses")
+		// In the test details path, this map is not initialized and we have no work to do for pre analysis.
+		// Fallback is treated as a separate second report entirely, rather than swapping out values on the fly,
+		// as this allows us to return both the fallback report as well as the one they asked for, which is helpful
+		// for user comparison.
+		return nil
 	}
 
 	var priorRelease = testStats.BaseStats.Release
@@ -153,7 +161,6 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 				}
 				swappedExplanation = fmt.Sprintf("Overrode base stats (%.4f) using release %s (%.4f)",
 					basePassRate, testStats.BaseStats.Release, cPassRate)
-				r.log.Debugf("%s for test %s", swappedExplanation, testKey.TestName)
 			}
 		}
 	}
@@ -189,8 +196,45 @@ func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 }
 
 func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
-	r.log.Infof("Querying fallback override test statuses")
-	if r.reqOptions.BaseOverrideRelease.Release != "" && r.reqOptions.BaseOverrideRelease.Release != r.reqOptions.BaseRelease.Release {
+	r.log.Infof("Querying fallback override test statuses for %d test ID options", len(r.reqOptions.TestIDOptions))
+
+	// Lookup all release dates, we're going to need them
+	releases, errs := query.GetReleaseDatesFromBigQuery(ctx, r.client, r.reqOptions)
+	for _, err := range errs {
+		errCh <- err
+	}
+	if errs != nil {
+		return
+	}
+
+	// we have an array of TestIdentificationOptions, each of which MAY have a BaseOverrideRelease specified.
+	// This was determined from the main report path through this code.
+	// We want to do one query per fallback release, for each test ID we fell back to that release for.
+	// First we sort each release to map to the tests we fell back to that release for.
+
+	releaseToTestIDOptions := map[string][]crtype.RequestTestIdentificationOptions{}
+	for _, testIDOpts := range r.reqOptions.TestIDOptions {
+		if testIDOpts.BaseOverrideRelease == "" {
+			// no fallback for this regressed test, so this middleware has no work to do
+			continue
+		}
+		if _, ok := releaseToTestIDOptions[testIDOpts.BaseOverrideRelease]; !ok {
+			releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = []crtype.RequestTestIdentificationOptions{}
+		}
+		releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = append(releaseToTestIDOptions[testIDOpts.BaseOverrideRelease], testIDOpts)
+	}
+	r.baseOverrideStatus = map[string]map[string][]crtype.TestJobRunRows{}
+
+	// Now we'll do one concurrent bigquery query for each release that has some fallback tests:
+	for release, testIDOpts := range releaseToTestIDOptions {
+		r.log.Infof("Querying %d fallback override test statuses for release %s", len(testIDOpts), release)
+
+		start, end, err := utils.FindStartEndTimesForRelease(releases, release)
+		if err != nil {
+			errCh <- err
+			return
+		}
+
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -202,25 +246,51 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 				var errs []error
 				// We cannot inject our fallback data, rather we will query it, store it internally, and apply it during TransformTestDetails
 				generator := query.NewBaseTestDetailsQueryGenerator(
+					r.log.WithField("release", release),
 					r.client,
 					r.reqOptions,
 					allJobVariants,
-					r.reqOptions.BaseOverrideRelease.Release,
-					r.reqOptions.BaseOverrideRelease.Start,
-					r.reqOptions.BaseOverrideRelease.End,
+					release,
+					*start,
+					*end,
+					testIDOpts,
 				)
 
-				jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.JobRunTestReportStatus](
+				jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.TestJobRunStatuses](
 					ctx,
 					r.client.Cache, r.reqOptions.CacheOption,
 					api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator),
 					generator.QueryTestStatus,
-					crtype.JobRunTestReportStatus{})
+					crtype.TestJobRunStatuses{})
 
 				for _, err := range errs {
 					errCh <- err
 				}
-				r.baseOverrideStatus = jobRunTestStatus.BaseStatus
+
+				// Now that we've queried all the results for a fallback release, we need to chop them up into
+				// per test -> job -> result rows.
+
+				// We have a struct where the statuses are mapped by prowjob to all rows results for that prowjob,
+				// with multiple tests intermingled in that layer.
+				// Build out a new struct where these are split up by test ID.
+				// split the status on test ID, and pass only that tests data in for reporting:
+				r.baseOverrideMutex.Lock()
+				for jobName, rows := range jobRunTestStatus.BaseStatus {
+					for _, row := range rows {
+						testKeyStr := row.TestKeyStr
+						if _, ok := r.baseOverrideStatus[testKeyStr]; !ok {
+							r.log.Infof("added test key: " + testKeyStr)
+							r.baseOverrideStatus[testKeyStr] = map[string][]crtype.TestJobRunRows{}
+						}
+						if r.baseOverrideStatus[testKeyStr][jobName] == nil {
+							r.baseOverrideStatus[testKeyStr][jobName] = []crtype.TestJobRunRows{}
+						}
+						r.baseOverrideStatus[testKeyStr][jobName] =
+							append(r.baseOverrideStatus[testKeyStr][jobName], row)
+					}
+				}
+
+				r.baseOverrideMutex.Unlock()
 
 				r.log.Infof("queried fallback base override job run test status: %d jobs, %d errors", len(r.baseOverrideStatus), len(errs))
 			}
@@ -229,13 +299,16 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 }
 
-func (r *ReleaseFallback) TestDetailsAnalyze(report *crtype.ReportTestDetails) error {
+func (r *ReleaseFallback) PreTestDetailsAnalysis(testKey crtype.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error {
+	// Add our baseOverrideStatus to the report, unfortunate hack we have to live with for now.
+	testKeyStr := testKey.KeyOrDie()
+	if _, ok := r.baseOverrideStatus[testKeyStr]; ok {
+		status.BaseOverrideStatus = r.baseOverrideStatus[testKeyStr]
+	}
 	return nil
 }
 
-func (r *ReleaseFallback) PreTestDetailsAnalysis(status *crtype.JobRunTestReportStatus) error {
-	// Add our baseOverrideStatus to the report, unfortunate hack we have to live with for now.
-	status.BaseOverrideStatus = r.baseOverrideStatus
+func (r *ReleaseFallback) TestDetailsAnalyze(report *crtype.ReportTestDetails) error {
 	return nil
 }
 
@@ -413,7 +486,7 @@ func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions crt
 }
 
 func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (crtype.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := query.BuildCommonTestStatusQuery(
+	commonQuery, groupByQuery, queryParameters := query.BuildComponentReportQuery(
 		f.client,
 		f.ReqOptions,
 		f.allVariants, f.ReqOptions.VariantOption.IncludeVariants,

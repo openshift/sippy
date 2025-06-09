@@ -228,7 +228,6 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 	reportOpts := crtype.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
-		TestIDOption:   crtype.RequestTestIdentificationOptions{},
 		VariantOption:  variantOption,
 		AdvancedOption: advancedOption,
 		CacheOption:    cacheOptions,
