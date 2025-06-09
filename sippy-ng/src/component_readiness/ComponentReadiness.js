@@ -231,6 +231,8 @@ export default function ComponentReadiness(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
 
+  const [triageActionTaken, setTriageActionTaken] = React.useState(false)
+
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
   const copyPopoverOpen = Boolean(copyPopoverEl)
 
@@ -368,12 +370,14 @@ export default function ComponentReadiness(props) {
   }
 
   useEffect(() => {
+    setIsLoaded(false)
     if (window.location.pathname.includes('/component_readiness/main')) {
       fetchData()
     } else {
       setIsLoaded(true)
     }
-  }, [])
+    setTriageActionTaken(false)
+  }, [triageActionTaken])
 
   if (!isLoaded) {
     return (
@@ -579,6 +583,7 @@ export default function ComponentReadiness(props) {
                             clearSearches={clearSearches}
                             data={data}
                             filterVals={filterVals}
+                            setTriageActionTaken={setTriageActionTaken}
                             forceRefresh={forceRefresh}
                           />
                           <TableContainer
