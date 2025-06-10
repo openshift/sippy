@@ -371,7 +371,7 @@ Flakes: ${stats.flake_count}`
 
           {writeEndpointsEnabled && regressionId > 0 && (
             <UpsertTriageModal
-              regressionId={regressionId}
+              regressionIds={[regressionId]}
               setComplete={setHasBeenTriaged}
               buttonText="Triage"
               submissionDelay={2000}

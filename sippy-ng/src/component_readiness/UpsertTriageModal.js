@@ -1,19 +1,23 @@
-import { Button, DialogActions, Snackbar } from '@mui/material'
+import { Button, DialogActions, Snackbar, Tooltip } from '@mui/material'
 import { getTriagesAPIUrl } from './CompReadyUtils'
 import AddRegressionPanel from './AddRegressionPanel'
 import Alert from '@mui/material/Alert'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useEffect } from 'react'
 import UpdateTriagePanel from './UpdateTriagePanel'
 
 export default function UpsertTriageModal({
-  regressionId,
+  regressionIds,
   triage,
   setComplete,
   buttonText,
   submissionDelay = 0,
 }) {
+  const regressionAddMode =
+    regressionIds !== undefined && regressionIds.length > 0
+  const triageDetailsUpdateMode = triage !== undefined
+
   const [triages, setTriages] = React.useState([])
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
   const handleTriageModalOpen = () => {
@@ -30,13 +34,15 @@ export default function UpsertTriageModal({
         return response.json()
       })
       .then((triages) => {
-        const filtered = triages.filter(
-          (triage) =>
-            !triage.regressions.some(
-              (regression) => regression.id === regressionId
-            )
-        )
-        setTriages(filtered)
+        if (regressionAddMode) {
+          triages = triages.filter(
+            (triage) =>
+              !triage.regressions.some((regression) =>
+                regressionIds.includes(regression.id)
+              )
+          )
+        }
+        setTriages(triages)
         setTriageModalOpen(true)
       })
       .catch((error) => {
@@ -72,12 +78,21 @@ export default function UpsertTriageModal({
     url: '',
     type: 'type',
     description: '',
-    ids: [regressionId],
   }
-  if (triage !== undefined) {
+  if (triageDetailsUpdateMode) {
     initialTriage = triage
   }
   const [triageEntryData, setTriageEntryData] = React.useState(initialTriage)
+
+  // when the regressionIds prop is changed in the parent, we must update the triageEntryData to reflect that
+  useEffect(() => {
+    if (regressionAddMode) {
+      setTriageEntryData({
+        ...triageEntryData,
+        ids: regressionIds,
+      })
+    }
+  }, [regressionIds])
 
   const [alertText, setAlertText] = React.useState('')
   const [alertSeverity, setAlertSeverity] = React.useState('success')
@@ -88,6 +103,12 @@ export default function UpsertTriageModal({
     setAlertText('')
     setAlertSeverity('success')
   }
+
+  const openModalDisabled =
+    !triageDetailsUpdateMode && regressionIds.length === 0
+  const openModalTooltip = openModalDisabled
+    ? 'Please select at least one regression to triage'
+    : ''
 
   return (
     <Fragment>
@@ -102,13 +123,18 @@ export default function UpsertTriageModal({
         </Alert>
       </Snackbar>
       {!triageModalOpen && (
-        <Button
-          sx={{ margin: '10px 0' }}
-          variant="contained"
-          onClick={handleTriageModalOpen}
-        >
-          {buttonText}
-        </Button>
+        <Tooltip title={openModalTooltip}>
+          <span>
+            <Button
+              sx={{ margin: '10px 0' }}
+              variant="contained"
+              onClick={handleTriageModalOpen}
+              disabled={openModalDisabled}
+            >
+              {buttonText}
+            </Button>
+          </span>
+        </Tooltip>
       )}
       {triageModalOpen && (
         <Dialog
@@ -117,20 +143,20 @@ export default function UpsertTriageModal({
           open={triageModalOpen}
           onClose={handleTriageModalClosed}
         >
-          {triage !== undefined && (
+          {triageDetailsUpdateMode && (
             <UpdateTriagePanel
               triage={triage}
               setAlertText={setAlertText}
               setAlertSeverity={setAlertSeverity}
               triageEntryData={triageEntryData}
-              handleTriageFormCompletion={handleTriageFormCompletion}
               setTriageEntryData={setTriageEntryData}
+              handleTriageFormCompletion={handleTriageFormCompletion}
             />
           )}
-          {regressionId > 0 && (
+          {regressionAddMode && (
             <AddRegressionPanel
               triages={triages}
-              regressionId={regressionId}
+              regressionIds={regressionIds}
               triageEntryData={triageEntryData}
               setTriageEntryData={setTriageEntryData}
               setAlertText={setAlertText}
@@ -155,7 +181,7 @@ export default function UpsertTriageModal({
 }
 
 UpsertTriageModal.propTypes = {
-  regressionId: PropTypes.number,
+  regressionIds: PropTypes.array,
   triage: PropTypes.object,
   setComplete: PropTypes.func.isRequired,
   buttonText: PropTypes.string.isRequired,
