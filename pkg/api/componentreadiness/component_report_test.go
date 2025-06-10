@@ -1585,7 +1585,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
-			report := tc.generator.internalGenerateTestDetailsReport(baseStats, "", nil, nil, sampleStats, tc.generator.ReqOptions.TestIDOptions[0])
+			report := tc.generator.internalGenerateTestDetailsReport("", nil, nil, baseStats, sampleStats, tc.generator.ReqOptions.TestIDOptions[0])
 			assert.Equal(t, tc.expectedReport.RowIdentification, report.RowIdentification, "expected report row identification %+v, got %+v", tc.expectedReport.RowIdentification, report.RowIdentification)
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
 			assert.Equal(t, tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats)

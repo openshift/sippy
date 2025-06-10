@@ -202,7 +202,11 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 	componentJobRunTestReportStatus.GeneratedAt = &now
 
 	// Generate the report for the main release that was originally requested:
-	report := c.internalGenerateTestDetailsReport(componentJobRunTestReportStatus.BaseStatus, c.ReqOptions.BaseRelease.Release, &c.ReqOptions.BaseRelease.Start, &c.ReqOptions.BaseRelease.End, componentJobRunTestReportStatus.SampleStatus, testIDOption)
+	report := c.internalGenerateTestDetailsReport(
+		c.ReqOptions.BaseRelease.Release,
+		&c.ReqOptions.BaseRelease.Start, &c.ReqOptions.BaseRelease.End,
+		componentJobRunTestReportStatus.BaseStatus, componentJobRunTestReportStatus.SampleStatus,
+		testIDOption)
 	report.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 
 	// Generate the report for the fallback release if one was found:
@@ -232,7 +236,11 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 			return crtype.ReportTestDetails{}, []error{err}
 		}
 
-		overrideReport := c.internalGenerateTestDetailsReport(componentJobRunTestReportStatus.BaseOverrideStatus, testIDOption.BaseOverrideRelease, start, end, componentJobRunTestReportStatus.SampleStatus, testIDOption)
+		overrideReport := c.internalGenerateTestDetailsReport(
+			testIDOption.BaseOverrideRelease,
+			start, end,
+			componentJobRunTestReportStatus.BaseOverrideStatus, componentJobRunTestReportStatus.SampleStatus,
+			testIDOption)
 		// swap out the base dates for the override
 		overrideReport.GeneratedAt = componentJobRunTestReportStatus.GeneratedAt
 		baseOverrideReport = &overrideReport
@@ -449,7 +457,12 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 // breakdown by job as well as overall stats.
 //
 //nolint:gocyclo
-func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(baseStatus map[string][]crtype.TestJobRunRows, baseRelease string, baseStart, baseEnd *time.Time, sampleStatus map[string][]crtype.TestJobRunRows, testIDOption crtype.RequestTestIdentificationOptions) crtype.ReportTestDetails {
+func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
+	baseRelease string,
+	baseStart, baseEnd *time.Time,
+	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows,
+	testIDOption crtype.RequestTestIdentificationOptions,
+) crtype.ReportTestDetails {
 
 	// make a copy of sampleStatus because it's passed by ref, and we're going to modify it.
 	sampleStatusCopy := map[string][]crtype.TestJobRunRows{}
