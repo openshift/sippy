@@ -16,3 +16,4 @@ exclude:
     - gen-resolved-issue.py
     - pkg/cache/compressed/cache.go
     - sippy-ng/src/releases/ReleaseOverview.js
+    - scripts/add-intentional-regression.py
