@@ -520,19 +520,15 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	// also tally unmatched sample stats (jobs that didn't run in the basis release)
 	for _, sampleStatsList := range sampleStatusCopy {
 		jobStats := crtype.TestDetailsJobStats{}
-		var perJobSample crtype.TestDetailsTestStats
-		for _, sampleStats := range sampleStatsList {
-			jobStats.SampleJobName = sampleStats.ProwJob
-			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
-			perJobSample = perJobSample.AddTestCount(sampleStats.TestCount, faf)
-		}
-		jobStats.SampleStats = perJobSample
-		report.JobStats = append(report.JobStats, jobStats)
-		sFail, sPass := perJobSample.FailPassWithFlakes(faf)
+		c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &result, faf)
+
+		// determine the statistical significance of the job stats
+		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
 		_, _, r, _ := fet.FisherExactTest(sFail, sPass, 0, 0)
 		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
 
-		totalSample = totalSample.Add(perJobSample, faf)
+		report.JobStats = append(report.JobStats, jobStats)
+		totalSample = totalSample.Add(jobStats.SampleStats, faf)
 	}
 	sort.Slice(report.JobStats, func(i, j int) bool {
 		return report.JobStats[i].SampleJobName+":"+report.JobStats[i].BaseJobName <
