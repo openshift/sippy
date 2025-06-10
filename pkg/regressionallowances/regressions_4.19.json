@@ -1,1 +1,52 @@
-[]
+[
+  {
+    "JiraComponent": "Node / Kubelet",
+    "TestID": "openshift-tests-upgrade:94dd2139932adef9349f0563f5f9d799",
+    "TestName": "[sig-node] node-lifecycle detects unreachable state on node",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-44757",
+    "ReasonToAllowInsteadOfFix": "4.17 could not fail, failures happening while running 4.18 prior to upgrade, 4.19 improves significantly",
+    "variant": {
+      "variants": {
+        "Architecture": "amd64",
+        "FeatureSet": "default",
+        "Installer": "ipi",
+        "Network": "ovn",
+        "Platform": "azure",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Upgrade": "minor"
+      }
+    },
+    "PreviousSuccesses": 613,
+    "PreviousFailures": 0,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 247,
+    "RegressedFailures": 21,
+    "RegressedFlakes": 0
+  },
+  {
+    "JiraComponent": "Node / Kubelet",
+    "TestID": "openshift-tests-upgrade:1f3a2a9f8d7b6e8deb502468746bc363",
+    "TestName": "[sig-node] node-lifecycle detects unexpected not ready node",
+    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-44757",
+    "ReasonToAllowInsteadOfFix": "4.17 could not fail, failures happening while running 4.18 prior to upgrade, 4.19 improves significantly",
+    "variant": {
+      "variants": {
+        "Architecture": "amd64",
+        "FeatureSet": "default",
+        "Installer": "ipi",
+        "Network": "ovn",
+        "Platform": "azure",
+        "Suite": "unknown",
+        "Topology": "ha",
+        "Upgrade": "minor"
+      }
+    },
+    "PreviousSuccesses": 613,
+    "PreviousFailures": 0,
+    "PreviousFlakes": 0,
+    "RegressedSuccesses": 247,
+    "RegressedFailures": 21,
+    "RegressedFlakes": 0
+  }
+]
