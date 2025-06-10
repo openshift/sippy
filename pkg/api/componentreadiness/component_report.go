@@ -793,7 +793,7 @@ func initTestAnalysisStruct(
 		Start:   &reqOptions.SampleRelease.Start,
 		End:     &reqOptions.SampleRelease.End,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  utils.CalculatePassRate(sampleStats.SuccessCount, successFailCount, sampleStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
+			SuccessRate:  crtype.CalculatePassRate(sampleStats.SuccessCount, successFailCount, sampleStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
 			SuccessCount: sampleStats.SuccessCount,
 			FlakeCount:   sampleStats.FlakeCount,
 			FailureCount: successFailCount,
@@ -810,7 +810,7 @@ func initTestAnalysisStruct(
 			Start:   &baseStart,
 			End:     &baseEnd,
 			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  utils.CalculatePassRate(baseStats.SuccessCount, failCount, baseStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
+				SuccessRate:  crtype.CalculatePassRate(baseStats.SuccessCount, failCount, baseStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
 				SuccessCount: baseStats.SuccessCount,
 				FlakeCount:   baseStats.FlakeCount,
 				FailureCount: failCount,
@@ -1012,7 +1012,7 @@ func (c *ComponentReportGenerator) getTestStatusPassRate(testStatus crtype.TestS
 }
 
 func (c *ComponentReportGenerator) getPassRate(success, failure, flake int) float64 {
-	return utils.CalculatePassRate(success, failure, flake, c.ReqOptions.AdvancedOption.FlakeAsFailure)
+	return crtype.CalculatePassRate(success, failure, flake, c.ReqOptions.AdvancedOption.FlakeAsFailure)
 }
 
 func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crtype.Status {

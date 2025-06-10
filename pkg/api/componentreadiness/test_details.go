@@ -495,18 +495,13 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	// track the last failure we observe in the sample, used for triage middleware to adjust status
 	var lastFailure *time.Time
 
-	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
-	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
+	var totalBase, totalSample crtype.TestDetailsTestStats
+	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
 
 	report := crtype.TestDetailsAnalysis{}
 	for prowJob, baseStatsList := range baseStatus {
 		jobStats := crtype.TestDetailsJobStats{}
-		perJobBaseFailure = 0
-		perJobBaseSuccess = 0
-		perJobBaseFlake = 0
-		perJobSampleFailure = 0
-		perJobSampleSuccess = 0
-		perJobSampleFlake = 0
+		var perJobBase, perJobSample crtype.TestDetailsTestStats
 		for _, baseStats := range baseStatsList {
 			jobStats.BaseJobName = baseStats.ProwJob
 			if result.JiraComponent == "" && baseStats.JiraComponent != "" {
@@ -520,9 +515,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 			}
 
 			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, c.getJobRunStats(baseStats))
-			perJobBaseSuccess += baseStats.SuccessCount
-			perJobBaseFlake += baseStats.FlakeCount
-			perJobBaseFailure += getFailureCount(baseStats)
+			perJobBase = perJobBase.AddTestCount(baseStats.TestCount, faf)
 		}
 		if sampleStatsList, ok := sampleStatusCopy[prowJob]; ok {
 			for _, sampleStats := range sampleStatsList {
@@ -543,50 +536,25 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 				}
 
 				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
-				perJobSampleSuccess += sampleStats.SuccessCount
-				perJobSampleFlake += sampleStats.FlakeCount
-				perJobSampleFailure += getFailureCount(sampleStats)
+				perJobSample = perJobSample.AddTestCount(sampleStats.TestCount, faf)
 			}
 			delete(sampleStatusCopy, prowJob)
 		}
-		jobStats.BaseStats.SuccessCount = perJobBaseSuccess
-		jobStats.BaseStats.FlakeCount = perJobBaseFlake
-		jobStats.BaseStats.FailureCount = perJobBaseFailure
-		jobStats.BaseStats.SuccessRate = c.getPassRate(perJobBaseSuccess, perJobBaseFailure, perJobBaseFlake)
-		jobStats.SampleStats.SuccessCount = perJobSampleSuccess
-		jobStats.SampleStats.FlakeCount = perJobSampleFlake
-		jobStats.SampleStats.FailureCount = perJobSampleFailure
-		jobStats.SampleStats.SuccessRate = c.getPassRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
-		perceivedSampleFailure := perJobSampleFailure
-		perceivedBaseFailure := perJobBaseFailure
-		perceivedSampleSuccess := perJobSampleSuccess + perJobSampleFlake
-		perceivedBaseSuccess := perJobBaseSuccess + perJobBaseFlake
-		if c.ReqOptions.AdvancedOption.FlakeAsFailure {
-			perceivedSampleFailure = perJobSampleFailure + perJobSampleFlake
-			perceivedBaseFailure = perJobBaseFailure + perJobBaseFlake
-			perceivedSampleSuccess = perJobSampleSuccess
-			perceivedBaseSuccess = perJobBaseSuccess
-		}
-		_, _, r, _ := fet.FisherExactTest(perceivedSampleFailure,
-			perceivedSampleSuccess,
-			perceivedBaseFailure,
-			perceivedBaseSuccess)
+		jobStats.BaseStats = perJobBase
+		jobStats.SampleStats = perJobSample
+		sFail, sPass := perJobSample.FailPassWithFlakes(faf)
+		bFail, bPass := perJobBase.FailPassWithFlakes(faf)
+		_, _, r, _ := fet.FisherExactTest(sFail, sPass, bFail, bPass)
 		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
 
 		report.JobStats = append(report.JobStats, jobStats)
 
-		totalBaseFailure += perJobBaseFailure
-		totalBaseSuccess += perJobBaseSuccess
-		totalBaseFlake += perJobBaseFlake
-		totalSampleFailure += perJobSampleFailure
-		totalSampleSuccess += perJobSampleSuccess
-		totalSampleFlake += perJobSampleFlake
+		totalBase = totalBase.Add(perJobBase, faf)
+		totalSample = totalSample.Add(perJobSample, faf)
 	}
 	for _, sampleStatsList := range sampleStatusCopy {
 		jobStats := crtype.TestDetailsJobStats{}
-		perJobSampleFailure = 0
-		perJobSampleSuccess = 0
-		perJobSampleFlake = 0
+		var perJobSample crtype.TestDetailsTestStats
 		for _, sampleStats := range sampleStatsList {
 			if (lastFailure == nil || sampleStats.StartTime.In(time.UTC).After(*lastFailure)) &&
 				(sampleStats.FlakeCount == 0 && sampleStats.SuccessCount == 0) {
@@ -595,30 +563,15 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 			}
 			jobStats.SampleJobName = sampleStats.ProwJob
 			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
-			perJobSampleSuccess += sampleStats.SuccessCount
-			perJobSampleFlake += sampleStats.FlakeCount
-			perJobSampleFailure += getFailureCount(sampleStats)
+			perJobSample = perJobSample.AddTestCount(sampleStats.TestCount, faf)
 		}
-		jobStats.SampleStats.SuccessCount = perJobSampleSuccess
-		jobStats.SampleStats.FlakeCount = perJobSampleFlake
-		jobStats.SampleStats.FailureCount = perJobSampleFailure
-		jobStats.SampleStats.SuccessRate = c.getPassRate(perJobSampleSuccess, perJobSampleFailure, perJobSampleFlake)
+		jobStats.SampleStats = perJobSample
 		report.JobStats = append(report.JobStats, jobStats)
-		perceivedSampleFailure := perJobSampleFailure
-		perceivedSampleSuccess := perJobSampleSuccess + perJobSampleFlake
-		if c.ReqOptions.AdvancedOption.FlakeAsFailure {
-			perceivedSampleFailure = perJobSampleFailure + perJobSampleFlake
-			perceivedSampleSuccess = perJobSampleSuccess
-		}
-		_, _, r, _ := fet.FisherExactTest(perceivedSampleFailure,
-			perceivedSampleSuccess,
-			0,
-			0)
+		sFail, sPass := perJobSample.FailPassWithFlakes(faf)
+		_, _, r, _ := fet.FisherExactTest(sFail, sPass, 0, 0)
 		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
 
-		totalSampleFailure += perJobSampleFailure
-		totalSampleSuccess += perJobSampleSuccess
-		totalSampleFlake += perJobSampleFlake
+		totalSample = totalSample.Add(perJobSample, faf)
 	}
 	sort.Slice(report.JobStats, func(i, j int) bool {
 		return report.JobStats[i].SampleJobName+":"+report.JobStats[i].BaseJobName <
@@ -627,18 +580,16 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 
 	// The hope is that this goes away
 	// once we agree we don't need to honor a higher intentional regression pass percentage
-	if baseRegression != nil && baseRegression.PreviousPassPercentage(c.ReqOptions.AdvancedOption.FlakeAsFailure) > c.getPassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake) {
+	if baseRegression != nil && baseRegression.PreviousPassPercentage(faf) > totalBase.PassRate(faf) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
 		baseRegressionPreviousRelease, err := utils.PreviousRelease(baseRelease)
 		if err != nil {
 			logrus.WithError(err).Error("Failed to determine the previous release for baseRegression")
 		} else {
-			totalBaseFlake = baseRegression.PreviousFlakes
-			totalBaseSuccess = baseRegression.PreviousSuccesses
-			totalBaseFailure = baseRegression.PreviousFailures
+			totalBase = crtype.NewTestStats(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures, baseRegression.PreviousFlakes, faf)
 			baseRelease = baseRegressionPreviousRelease
-			logrus.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d, Failures: %d", baseRelease, totalBaseSuccess, totalBaseFlake, totalBaseFailure)
+			logrus.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Stats: %v", baseRelease, totalBase)
 		}
 	}
 
@@ -646,26 +597,16 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 		LastFailure:        lastFailure,
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
 		SampleStats: crtype.TestDetailsReleaseStats{
-			Release: c.ReqOptions.SampleRelease.Release,
-			Start:   &c.ReqOptions.SampleRelease.Start,
-			End:     &c.ReqOptions.SampleRelease.End,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  utils.CalculatePassRate(totalSampleSuccess, totalSampleFailure, totalSampleFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
-				SuccessCount: totalSampleSuccess,
-				FlakeCount:   totalSampleFlake,
-				FailureCount: totalSampleFailure,
-			},
+			Release:              c.ReqOptions.SampleRelease.Release,
+			Start:                &c.ReqOptions.SampleRelease.Start,
+			End:                  &c.ReqOptions.SampleRelease.End,
+			TestDetailsTestStats: totalSample,
 		},
 		BaseStats: &crtype.TestDetailsReleaseStats{
-			Release: baseRelease,
-			Start:   baseStart,
-			End:     baseEnd,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  utils.CalculatePassRate(totalBaseSuccess, totalBaseFailure, totalBaseFlake, c.ReqOptions.AdvancedOption.FlakeAsFailure),
-				SuccessCount: totalBaseSuccess,
-				FlakeCount:   totalBaseFlake,
-				FailureCount: totalBaseFailure,
-			},
+			Release:              baseRelease,
+			Start:                baseStart,
+			End:                  baseEnd,
+			TestDetailsTestStats: totalBase,
 		},
 	}
 

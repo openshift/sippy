@@ -92,7 +92,7 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 	success := baseStats.SuccessCount
 	fail := baseStats.FailureCount
 	flake := baseStats.FlakeCount
-	basePassRate := utils.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
+	basePassRate := crtype.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
 	if baseRegression.PreviousPassPercentage(r.reqOptions.AdvancedOption.FlakeAsFailure) > basePassRate {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
@@ -100,7 +100,7 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 			SuccessCount: baseRegression.PreviousSuccesses,
 			FailureCount: baseRegression.PreviousFailures,
 			FlakeCount:   baseRegression.PreviousFlakes,
-			SuccessRate: utils.CalculatePassRate(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures,
+			SuccessRate: crtype.CalculatePassRate(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures,
 				baseRegression.PreviousFlakes, r.reqOptions.AdvancedOption.FlakeAsFailure),
 		}
 		baseRegressionPreviousRelease, err := utils.PreviousRelease(r.reqOptions.BaseRelease.Release)
