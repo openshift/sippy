@@ -474,56 +474,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 			Variants: testIDOption.RequestedVariants,
 		},
 	}
-	result := crtype.ReportTestDetails{
-		ReportTestIdentification: testKey,
-	}
 
-	// track the last failure we observe in the sample, used for triage middleware to adjust status
-	lastFailure := time.Time{}
-
-	// go through all the job runs that had this test and summarize the results
-	var totalBase, totalSample crtype.TestDetailsTestStats
-	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
-	report := crtype.TestDetailsAnalysis{}
-	sampleStatusSeen := sets.NewString()
-	for prowJob, baseStatsList := range baseStatus {
-		// tally up base job stats and matching sample job stats (if any); record job names, component, etc in the result
-		jobStats := crtype.TestDetailsJobStats{}
-		if sampleStatsList, ok := sampleStatus[prowJob]; ok {
-			c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
-			sampleStatusSeen.Insert(prowJob)
-		}
-		c.assessTestStats(baseStatsList, &jobStats.BaseStats, &jobStats.BaseJobRunStats, &jobStats.BaseJobName, nil, &result, faf)
-		// determine the statistical significance of the job stats
-		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
-		bFail, bPass := jobStats.BaseStats.FailPassWithFlakes(faf)
-		_, _, r, _ := fet.FisherExactTest(sFail, sPass, bFail, bPass)
-		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
-
-		report.JobStats = append(report.JobStats, jobStats)
-		totalBase = totalBase.Add(jobStats.BaseStats, faf)
-		totalSample = totalSample.Add(jobStats.SampleStats, faf)
-	}
-	// also tally unmatched sample stats (jobs that didn't run in the basis release)
-	for job, sampleStatsList := range sampleStatus {
-		if sampleStatusSeen.Has(job) {
-			continue // already processed
-		}
-		jobStats := crtype.TestDetailsJobStats{}
-		c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
-
-		// determine the statistical significance of the job stats
-		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
-		_, _, r, _ := fet.FisherExactTest(sFail, sPass, 0, 0)
-		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
-
-		report.JobStats = append(report.JobStats, jobStats)
-		totalSample = totalSample.Add(jobStats.SampleStats, faf)
-	}
-	sort.Slice(report.JobStats, func(i, j int) bool {
-		return report.JobStats[i].SampleJobName+":"+report.JobStats[i].BaseJobName <
-			report.JobStats[j].SampleJobName+":"+report.JobStats[j].BaseJobName
-	})
+	totalBase, totalSample, report, result, lastFailure := c.summarizeRecordedTestStats(baseStatus, sampleStatus, testKey)
 
 	// if we are ignoring fallback then honor the settings for the baseRegression
 	// otherwise let fallback determine the threshold
@@ -534,6 +486,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	}
 	// The hope is that this goes away
 	// once we agree we don't need to honor a higher intentional regression pass percentage
+	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
 	if baseRegression != nil && baseRegression.PreviousPassPercentage(faf) > totalBase.PassRate(faf) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
@@ -574,11 +527,67 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	}
 
 	c.assessComponentStatus(&testStats)
-
 	report.ReportTestStats = testStats
 	result.Analyses = []crtype.TestDetailsAnalysis{report}
 
 	return result
+}
+
+// go through all the job runs that had a test and summarize the results
+func (c *ComponentReportGenerator) summarizeRecordedTestStats(
+	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows, testKey crtype.ReportTestIdentification,
+) (
+	totalBase, totalSample crtype.TestDetailsTestStats,
+	report crtype.TestDetailsAnalysis,
+	result crtype.ReportTestDetails,
+	lastFailure time.Time,
+) {
+	result = crtype.ReportTestDetails{ReportTestIdentification: testKey}
+	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
+	sampleStatusSeen := sets.NewString()
+	// track the last failure we observe in the sample, used for triage middleware to adjust status
+	for prowJob, baseStatsList := range baseStatus {
+		// tally up base job stats and matching sample job stats (if any); record job names, component, etc in the result
+		jobStats := crtype.TestDetailsJobStats{}
+		if sampleStatsList, ok := sampleStatus[prowJob]; ok {
+			c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
+			sampleStatusSeen.Insert(prowJob)
+		}
+		c.assessTestStats(baseStatsList, &jobStats.BaseStats, &jobStats.BaseJobRunStats, &jobStats.BaseJobName, nil, &result, faf)
+		// determine the statistical significance of the job stats
+		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
+		bFail, bPass := jobStats.BaseStats.FailPassWithFlakes(faf)
+		_, _, r, _ := fet.FisherExactTest(sFail, sPass, bFail, bPass)
+		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
+
+		report.JobStats = append(report.JobStats, jobStats)
+		totalBase = totalBase.Add(jobStats.BaseStats, faf)
+		totalSample = totalSample.Add(jobStats.SampleStats, faf)
+	}
+
+	// also tally unmatched sample stats (jobs that didn't run in the basis release)
+	for job, sampleStatsList := range sampleStatus {
+		if sampleStatusSeen.Has(job) {
+			continue // already processed
+		}
+		jobStats := crtype.TestDetailsJobStats{}
+		c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
+
+		// determine the statistical significance of the job stats
+		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
+		_, _, r, _ := fet.FisherExactTest(sFail, sPass, 0, 0)
+		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
+
+		report.JobStats = append(report.JobStats, jobStats)
+		totalSample = totalSample.Add(jobStats.SampleStats, faf)
+	}
+
+	// sort stats by job name in the results
+	sort.Slice(report.JobStats, func(i, j int) bool {
+		return report.JobStats[i].SampleJobName+":"+report.JobStats[i].BaseJobName <
+			report.JobStats[j].SampleJobName+":"+report.JobStats[j].BaseJobName
+	})
+	return
 }
 
 // assessTestStats calculates the test stats for a given list of job rows
