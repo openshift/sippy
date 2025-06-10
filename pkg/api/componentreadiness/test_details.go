@@ -626,14 +626,13 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 }
 
 func (c *ComponentReportGenerator) getJobRunStats(stats crtype.TestJobRunRows) crtype.TestDetailsJobRunStats {
-	failure := getFailureCount(stats)
 	jobRunStats := crtype.TestDetailsJobRunStats{
-		TestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  c.getPassRate(stats.SuccessCount, failure, stats.FlakeCount),
-			SuccessCount: stats.SuccessCount,
-			FailureCount: failure,
-			FlakeCount:   stats.FlakeCount,
-		},
+		TestStats: crtype.NewTestStats(
+			stats.SuccessCount,
+			stats.Failures(),
+			stats.FlakeCount,
+			c.ReqOptions.AdvancedOption.FlakeAsFailure,
+		),
 		JobURL:    stats.ProwJobURL,
 		JobRunID:  stats.ProwJobRunID,
 		StartTime: stats.StartTime,
