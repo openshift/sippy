@@ -20,7 +20,6 @@ import (
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/openshift/sippy/pkg/util"
 )
 
@@ -476,29 +475,6 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	}
 
 	totalBase, totalSample, report, result, lastFailure := c.summarizeRecordedTestStats(baseStatus, sampleStatus, testKey)
-
-	// if we are ignoring fallback then honor the settings for the baseRegression
-	// otherwise let fallback determine the threshold
-	var baseRegression *regressionallowances.IntentionalRegression
-	if !c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
-		baseRegression = regressionallowances.IntentionalRegressionFor(
-			baseRelease, result.ColumnIdentification, testIDOption.TestID)
-	}
-	// The hope is that this goes away
-	// once we agree we don't need to honor a higher intentional regression pass percentage
-	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
-	if baseRegression != nil && baseRegression.PreviousPassPercentage(faf) > totalBase.PassRate(faf) {
-		// override with  the basis regression previous values
-		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-		baseRegressionPreviousRelease, err := utils.PreviousRelease(baseRelease)
-		if err != nil {
-			logrus.WithError(err).Error("Failed to determine the previous release for baseRegression")
-		} else {
-			totalBase = crtype.NewTestStats(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures, baseRegression.PreviousFlakes, faf)
-			baseRelease = baseRegressionPreviousRelease
-			logrus.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Stats: %v", baseRelease, totalBase)
-		}
-	}
 
 	testStats := crtype.ReportTestStats{
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
