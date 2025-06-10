@@ -493,74 +493,35 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	}
 
 	// track the last failure we observe in the sample, used for triage middleware to adjust status
-	var lastFailure *time.Time
+	lastFailure := time.Time{}
 
+	// go through all the job runs that had this test and summarize the results
 	var totalBase, totalSample crtype.TestDetailsTestStats
 	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
-
 	report := crtype.TestDetailsAnalysis{}
 	for prowJob, baseStatsList := range baseStatus {
+		// tally up base job stats and matching sample job stats (if any); record job names, component, etc in the result
 		jobStats := crtype.TestDetailsJobStats{}
-		var perJobBase, perJobSample crtype.TestDetailsTestStats
-		for _, baseStats := range baseStatsList {
-			jobStats.BaseJobName = baseStats.ProwJob
-			if result.JiraComponent == "" && baseStats.JiraComponent != "" {
-				result.JiraComponent = baseStats.JiraComponent
-			}
-			if result.JiraComponentID == nil && baseStats.JiraComponentID != nil {
-				result.JiraComponentID = baseStats.JiraComponentID
-			}
-			if result.TestName == "" && baseStats.TestName != "" {
-				result.TestName = baseStats.TestName
-			}
-
-			jobStats.BaseJobRunStats = append(jobStats.BaseJobRunStats, c.getJobRunStats(baseStats))
-			perJobBase = perJobBase.AddTestCount(baseStats.TestCount, faf)
-		}
 		if sampleStatsList, ok := sampleStatusCopy[prowJob]; ok {
-			for _, sampleStats := range sampleStatsList {
-				if (lastFailure == nil || sampleStats.StartTime.In(time.UTC).After(*lastFailure)) &&
-					(sampleStats.FlakeCount == 0 && sampleStats.SuccessCount == 0) {
-					tempTime := sampleStats.StartTime.In(time.UTC)
-					lastFailure = &tempTime
-				}
-				jobStats.SampleJobName = sampleStats.ProwJob
-				if result.JiraComponent == "" && sampleStats.JiraComponent != "" {
-					result.JiraComponent = sampleStats.JiraComponent
-				}
-				if result.JiraComponentID == nil && sampleStats.JiraComponentID != nil {
-					result.JiraComponentID = sampleStats.JiraComponentID
-				}
-				if result.TestName == "" && sampleStats.TestName != "" {
-					result.TestName = sampleStats.TestName
-				}
-
-				jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
-				perJobSample = perJobSample.AddTestCount(sampleStats.TestCount, faf)
-			}
-			delete(sampleStatusCopy, prowJob)
+			c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
+			delete(sampleStatusCopy, prowJob) // remove matching sample stats from copy leaving only unmatched sample stats
 		}
-		jobStats.BaseStats = perJobBase
-		jobStats.SampleStats = perJobSample
-		sFail, sPass := perJobSample.FailPassWithFlakes(faf)
-		bFail, bPass := perJobBase.FailPassWithFlakes(faf)
+		c.assessTestStats(baseStatsList, &jobStats.BaseStats, &jobStats.BaseJobRunStats, &jobStats.BaseJobName, nil, &result, faf)
+		// determine the statistical significance of the job stats
+		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
+		bFail, bPass := jobStats.BaseStats.FailPassWithFlakes(faf)
 		_, _, r, _ := fet.FisherExactTest(sFail, sPass, bFail, bPass)
 		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
 
 		report.JobStats = append(report.JobStats, jobStats)
-
-		totalBase = totalBase.Add(perJobBase, faf)
-		totalSample = totalSample.Add(perJobSample, faf)
+		totalBase = totalBase.Add(jobStats.BaseStats, faf)
+		totalSample = totalSample.Add(jobStats.SampleStats, faf)
 	}
+	// also tally unmatched sample stats (jobs that didn't run in the basis release)
 	for _, sampleStatsList := range sampleStatusCopy {
 		jobStats := crtype.TestDetailsJobStats{}
 		var perJobSample crtype.TestDetailsTestStats
 		for _, sampleStats := range sampleStatsList {
-			if (lastFailure == nil || sampleStats.StartTime.In(time.UTC).After(*lastFailure)) &&
-				(sampleStats.FlakeCount == 0 && sampleStats.SuccessCount == 0) {
-				tempTime := sampleStats.StartTime.In(time.UTC)
-				lastFailure = &tempTime
-			}
 			jobStats.SampleJobName = sampleStats.ProwJob
 			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
 			perJobSample = perJobSample.AddTestCount(sampleStats.TestCount, faf)
@@ -594,7 +555,6 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	}
 
 	testStats := crtype.ReportTestStats{
-		LastFailure:        lastFailure,
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
 		SampleStats: crtype.TestDetailsReleaseStats{
 			Release:              c.ReqOptions.SampleRelease.Release,
@@ -608,6 +568,9 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 			End:                  baseEnd,
 			TestDetailsTestStats: totalBase,
 		},
+	}
+	if !lastFailure.IsZero() {
+		testStats.LastFailure = &lastFailure
 	}
 
 	for _, mw := range c.middlewares {
@@ -623,6 +586,39 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	result.Analyses = []crtype.TestDetailsAnalysis{report}
 
 	return result
+}
+
+// assessTestStats calculates the test stats for a given list of job rows
+// and updates by-reference parameters with information found in the job rows.
+func (c *ComponentReportGenerator) assessTestStats(
+	jobRowsList []crtype.TestJobRunRows,
+	testStats *crtype.TestDetailsTestStats,
+	jobRunStatsList *[]crtype.TestDetailsJobRunStats,
+	jobName *string, lastFailure *time.Time,
+	result *crtype.ReportTestDetails,
+	flakeAsFailure bool,
+) {
+	for _, jobRow := range jobRowsList {
+		*jobName = jobRow.ProwJob
+
+		start := jobRow.StartTime.In(time.UTC)
+		if lastFailure != nil && start.After(*lastFailure) && jobRow.Failures() > 0 {
+			*lastFailure = start
+		}
+
+		if result.JiraComponent == "" && jobRow.JiraComponent != "" {
+			result.JiraComponent = jobRow.JiraComponent
+		}
+		if result.JiraComponentID == nil && jobRow.JiraComponentID != nil {
+			result.JiraComponentID = jobRow.JiraComponentID
+		}
+		if result.TestName == "" && jobRow.TestName != "" {
+			result.TestName = jobRow.TestName
+		}
+
+		*testStats = testStats.AddTestCount(jobRow.TestCount, flakeAsFailure)
+		*jobRunStatsList = append(*jobRunStatsList, c.getJobRunStats(jobRow))
+	}
 }
 
 func (c *ComponentReportGenerator) getJobRunStats(stats crtype.TestJobRunRows) crtype.TestDetailsJobRunStats {
