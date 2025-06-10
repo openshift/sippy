@@ -118,8 +118,13 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
 
-			// Handle the untriaged:
-			regressedTestsToCache = append(regressedTestsToCache, col.RegressedTests...)
+			for _, reg := range col.RegressedTests {
+				// skip if it's resolved, it's far less likely anyone will be loading details for something marked
+				// resolved, and this helps reduce the caching memory when we have mass regressions and clean them up:
+				if reg.ReportStatus < crtype.FixedRegression {
+					regressedTestsToCache = append(regressedTestsToCache, reg)
+				}
+			}
 
 			// Once triaged, regressions move to this list, we want to still consider them an open regression until
 			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
@@ -223,7 +228,8 @@ func generateReport(ctx context.Context, generator *componentreadiness.Component
 		}
 		return nil, fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
 	}
-	return &report, nil
+	err := generator.PostAnalysis(&report)
+	return &report, err
 }
 
 func buildGenerator(
