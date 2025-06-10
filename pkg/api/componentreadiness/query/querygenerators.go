@@ -22,7 +22,8 @@ import (
 )
 
 const (
-	DefaultJunitTable = "junit"
+	DefaultJunitTable        = "junit"
+	jobRunAnnotationToIgnore = "IgnoreComponentReadiness"
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
@@ -74,9 +75,14 @@ const (
 				junit.prowjob_build_id = jobs.prowjob_build_id 
 				AND jobs.prowjob_start >= DATETIME(@From)
 				AND jobs.prowjob_start < DATETIME(@To)
+			LEFT JOIN %s.job_annotations job_annotations ON
+				junit.prowjob_build_id = job_annotations.prowjob_build_id
+				AND job_annotations.prowjob_start >= DATETIME(@From)
+				AND job_annotations.prowjob_start < DATETIME(@To)
 			WHERE modified_time >= DATETIME(@From)
 			AND modified_time < DATETIME(@To)
 			AND skipped = false
+			AND (job_annotations.label IS NULL OR job_annotations.label != '%s')
 		)
 		SELECT * FROM deduped_testcases WHERE row_num = 1`
 
@@ -319,7 +325,7 @@ func BuildComponentReportQuery(
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `,
-		client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset))
+		client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore))
 
 	queryString += joinVariants
 
@@ -451,7 +457,7 @@ func buildTestDetailsQuery(
 					FROM (%s) junit
 					INNER JOIN %s.jobs jobs ON junit.prowjob_build_id = jobs.prowjob_build_id
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset), client.Dataset)
+`, client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore), client.Dataset)
 
 	queryString += joinVariants
 

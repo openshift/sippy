@@ -190,7 +190,9 @@ func NewAnnotateJobRunsCommand() *cobra.Command {
 				f.PathGlob,
 				*f.JobRunIDs,
 				f.Remark)
-
+			if err != nil {
+				return errors.WithMessage(err, "error creating annotator")
+			}
 			return jobRunannotator.Run(ctx)
 		},
 	}

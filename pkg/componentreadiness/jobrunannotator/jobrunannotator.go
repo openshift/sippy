@@ -1,17 +1,16 @@
 package jobrunannotator
 
 import (
-	"cloud.google.com/go/civil"
 	"context"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/exp/maps"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -21,6 +20,7 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
 	"google.golang.org/api/iterator"
 )
 
@@ -60,19 +60,19 @@ type JobRunAnnotator struct {
 	dbClient         *db.DB
 	cache            cache.Cache
 	dryRun           bool
-	Release          string
 	allVariants      crtype.JobVariants
-	IncludedVariants []crtype.Variant
-	Label            string
-	BuildCluster     string
-	StartTime        time.Time
-	Duration         time.Duration
-	MinimumFailure   int
-	FlakeAsFailure   bool
-	TextContains     string
-	TextRegex        string
-	PathGlob         string
-	JobRunIDs        []int64
+	Release          string           `json:"release"`
+	IncludedVariants []crtype.Variant `json:"included_variants"`
+	Label            string           `json:"label"`
+	BuildCluster     string           `json:"build_cluster"`
+	StartTime        time.Time        `json:"start_time"`
+	Duration         time.Duration    `json:"duration"`
+	MinimumFailure   int              `json:"minimum_failure"`
+	FlakeAsFailure   bool             `json:"flake_as_failure"`
+	TextContains     string           `json:"text_contains"`
+	TextRegex        string           `json:"text_regex"`
+	PathGlob         string           `json:"path_glob"`
+	JobRunIDs        []int64          `json:"job_run_ids"`
 	remark           string
 }
 
@@ -81,7 +81,7 @@ func NewJobRunAnnotator(
 	cacheOptions cache.RequestOptions,
 	gcsClient *storage.Client,
 	dbClient *db.DB,
-	cache cache.Cache,
+	cacheClient cache.Cache,
 	dryRun bool,
 	release string,
 	allVariants crtype.JobVariants,
@@ -104,7 +104,7 @@ func NewJobRunAnnotator(
 		cacheOptions:     cacheOptions,
 		gcsClient:        gcsClient,
 		dbClient:         dbClient,
-		cache:            cache,
+		cache:            cacheClient,
 		dryRun:           dryRun,
 		Release:          release,
 		allVariants:      allVariants,
