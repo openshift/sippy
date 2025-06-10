@@ -15,7 +15,7 @@ import CompSeverityIcon from './CompSeverityIcon'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
-import TriageFields from './TriageFields'
+import UpsertTriageModal from './UpsertTriageModal'
 
 export default function RegressedTestsPanel(props) {
   const [activeRow, setActiveRow] = useQueryParam(
@@ -48,19 +48,10 @@ export default function RegressedTestsPanel(props) {
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const [triaging, setTriaging] = React.useState(false)
-  const [triageEntryData, setTriageEntryData] = React.useState({
-    url: '',
-    type: 'type',
-    description: '',
-    ids: [],
-  })
+  const [regressionIds, setRegressionIds] = React.useState([])
+
   const handleTriageFormCompletion = () => {
-    setTriageEntryData({
-      url: '',
-      type: 'type',
-      description: '',
-      ids: [],
-    })
+    setRegressionIds([])
     setTriaging(false)
     setTriageActionTaken(true)
   }
@@ -68,15 +59,9 @@ export default function RegressedTestsPanel(props) {
   const handleTriageTestIdChange = (e) => {
     const { value, checked } = e.target
     if (checked) {
-      setTriageEntryData((prevData) => ({
-        ...prevData,
-        ids: [...prevData.ids, value],
-      }))
+      setRegressionIds((prevData) => [...prevData, value])
     } else {
-      setTriageEntryData((prevData) => ({
-        ...prevData,
-        ids: prevData.ids.filter((id) => id !== value),
-      }))
+      setRegressionIds((prevData) => prevData.filter((id) => id !== value))
     }
   }
 
@@ -111,7 +96,7 @@ export default function RegressedTestsPanel(props) {
                 name="triage-test-id"
                 value={param.value}
                 onChange={handleTriageTestIdChange}
-                checked={triageEntryData.ids.includes(param.value)}
+                checked={regressionIds.includes(param.value)}
                 disabled={param.value === '0'}
               />
             ),
@@ -302,23 +287,21 @@ export default function RegressedTestsPanel(props) {
         }}
       />
       {triaging && (
-        <TriageFields
-          setAlertText={setAlertText}
-          setAlertSeverity={setAlertSeverity}
-          setTriageEntryData={setTriageEntryData}
-          triageEntryData={triageEntryData}
-          handleFormCompletion={handleTriageFormCompletion}
-          submitButtonText={'Create Entry'}
+        <UpsertTriageModal
+          regressionIds={regressionIds}
+          buttonText="Set Triage Info"
+          setComplete={handleTriageFormCompletion}
+          submissionDelay={1500}
         />
       )}
       {triageEnabled ? (
         <Button
           variant="contained"
           color="secondary"
-          sx={'margin-top: 10px'}
+          sx={'margin: 10px'}
           onClick={() => setTriaging(!triaging)}
         >
-          {triaging ? 'Close' : 'Triage'}
+          {triaging ? 'Cancel' : 'Triage'}
         </Button>
       ) : null}
 

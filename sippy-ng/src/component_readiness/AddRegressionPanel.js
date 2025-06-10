@@ -10,7 +10,7 @@ import TriageFields from './TriageFields'
 
 export default function AddRegressionPanel({
   triages,
-  regressionId,
+  regressionIds,
   setAlertText,
   setAlertSeverity,
   handleNewTriageFormCompletion,
@@ -33,7 +33,12 @@ export default function AddRegressionPanel({
     )
     const updatedTriage = {
       ...existingTriage,
-      regressions: [...existingTriage.regressions, { id: regressionId }],
+      regressions: [
+        ...existingTriage.regressions,
+        ...regressionIds.map((id) => {
+          return { id: Number(id) }
+        }),
+      ],
     }
 
     fetch(getTriagesAPIUrl(existingTriageId), {
@@ -86,7 +91,7 @@ export default function AddRegressionPanel({
 
   return (
     <Fragment>
-      <DialogTitle>Add Triage</DialogTitle>
+      <DialogTitle>Triage</DialogTitle>
       <DialogContent>
         <Tabs
           value={tabIndex}
@@ -128,7 +133,7 @@ export default function AddRegressionPanel({
         )}
         {addToNew && (
           <Fragment>
-            <h3>Add to new Triage</h3>
+            <h3>Create new Triage</h3>
             <TriageFields
               setAlertText={setAlertText}
               setAlertSeverity={setAlertSeverity}
@@ -146,7 +151,7 @@ export default function AddRegressionPanel({
 
 AddRegressionPanel.propTypes = {
   triages: PropTypes.array.isRequired,
-  regressionId: PropTypes.number.isRequired,
+  regressionIds: PropTypes.array.isRequired,
   triageEntryData: PropTypes.object.isRequired,
   setTriageEntryData: PropTypes.func.isRequired,
   setAlertText: PropTypes.func.isRequired,
