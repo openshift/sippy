@@ -1272,6 +1272,13 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 		log.Infof("Extracted triage ID: %d", triageID)
 	}
 
+	if req.Method == http.MethodPost || req.Method == http.MethodPut {
+		user := req.Header.Get("X-Forwarded-User")
+		email := req.Header.Get("X-Forwarded-Email")
+
+		log.Infof("triage %s being made by user: %s, email: %s", req.Method, user, email)
+	}
+
 	switch req.Method {
 	case http.MethodGet:
 		// Was a specific record requested?
