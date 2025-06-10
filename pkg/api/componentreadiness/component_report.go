@@ -999,22 +999,6 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 	return regressionRows, nil
 }
 
-func getFailureCount(status crtype.TestJobRunRows) int {
-	failure := status.TotalCount - status.SuccessCount - status.FlakeCount
-	if failure < 0 {
-		failure = 0
-	}
-	return failure
-}
-
-func (c *ComponentReportGenerator) getTestStatusPassRate(testStatus crtype.TestStatus) float64 {
-	return c.getPassRate(testStatus.SuccessCount, testStatus.TotalCount-testStatus.SuccessCount-testStatus.FlakeCount, testStatus.FlakeCount)
-}
-
-func (c *ComponentReportGenerator) getPassRate(success, failure, flake int) float64 {
-	return crtype.CalculatePassRate(success, failure, flake, c.ReqOptions.AdvancedOption.FlakeAsFailure)
-}
-
 func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crtype.Status {
 	if (basisPassPercentage - samplePassPercentage) > 0.15 {
 		return crtype.ExtremeRegression
@@ -1140,11 +1124,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 }
 
 func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.ReportTestStats, requiredSuccessRate float64) {
-	sampleSuccess := testStats.SampleStats.SuccessCount
-	sampleFailure := testStats.SampleStats.FailureCount
-	sampleFlake := testStats.SampleStats.FlakeCount
 
-	successRate := c.getPassRate(sampleSuccess, sampleFailure, sampleFlake)
 	effectiveSuccessReq := requiredSuccessRate + testStats.RequiredPassRateAdjustment
 
 	// Assume 2x our allowed failure rate = an extreme regression.
@@ -1154,9 +1134,11 @@ func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.Repo
 	severeRegressionSuccessRate := effectiveSuccessReq - (100 - requiredSuccessRate)
 
 	// Require 7 runs in the sample (typically 1 week) for us to consider a pass rate requirement for a new test:
-	sufficientRuns := (sampleSuccess + sampleFailure + sampleFlake) >= 7
+	sufficientRuns := testStats.SampleStats.Total() >= 7
 
-	if sufficientRuns && successRate*100 < effectiveSuccessReq && sampleFailure >= c.ReqOptions.AdvancedOption.MinimumFailure {
+	opts := c.ReqOptions.AdvancedOption
+	successRate := testStats.SampleStats.PassRate(opts.FlakeAsFailure)
+	if sufficientRuns && successRate*100 < effectiveSuccessReq && testStats.SampleStats.FailureCount >= opts.MinimumFailure {
 		rStatus := crtype.SignificantRegression
 		if successRate*100 < severeRegressionSuccessRate {
 			rStatus = crtype.ExtremeRegression
