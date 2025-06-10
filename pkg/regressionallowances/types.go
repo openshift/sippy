@@ -59,10 +59,14 @@ func (i *IntentionalRegression) PreviousPassPercentage(flakeAsFailure bool) floa
 }
 
 func passPercentage(flakeAsFailure bool, successes, flakes, failures int) float64 {
-	if flakeAsFailure {
-		return float64(successes) / float64(successes+flakes+failures)
+	total := successes + flakes + failures
+	if total == 0 {
+		return 1.0 // prevent division by zero, consider pass rate 100% if no data
 	}
-	return float64(successes+flakes) / float64(successes+flakes+failures)
+	if flakeAsFailure {
+		return float64(successes) / float64(total)
+	}
+	return float64(successes+flakes) / float64(total)
 }
 
 func keyFor(testID string, variant crtype.ColumnIdentification) string {
@@ -102,10 +106,6 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	}
 	if len(in.TestName) == 0 {
 		return fmt.Errorf("testName must be specified")
-	}
-	// there must have been successes previously for there to be a regression now
-	if in.PreviousSuccesses <= 0 {
-		return fmt.Errorf("previousSuccesses must be specified")
 	}
 	// there must be failures now for there to be a regression
 	if in.RegressedFailures <= 0 {

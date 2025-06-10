@@ -99,6 +99,15 @@ type RequestOptions struct {
 	TestIDOptions []RequestTestIdentificationOptions
 }
 
+func AnyAreBaseOverrides(opts []RequestTestIdentificationOptions) bool {
+	for _, tid := range opts {
+		if tid.BaseOverrideRelease != "" {
+			return true
+		}
+	}
+	return false
+}
+
 // View is a server side construct representing a predefined view over the component readiness data.
 // Useful for defining the primary view of what we deem required for considering the release ready.
 type View struct {
@@ -246,6 +255,12 @@ type ReportTestStats struct {
 	// 95 = 95% confidence of a regression required.
 	RequiredConfidence int `json:"-"`
 
+	// PityAdjustment can be used to adjust the tolerance for failures for this particular test.
+	PityAdjustment float64 `json:"-"`
+
+	// RequiredPassRateAdjustment can be used to adjust the tolerance for failures for a new test.
+	RequiredPassRateAdjustment float64 `json:"-"`
+
 	// Optional fields depending on the Comparison mode
 
 	// FisherExact indicates the confidence of a regression after applying Fisher's Exact Test.
@@ -308,6 +323,13 @@ type TestDetailsTestStats struct {
 
 func (tdts TestDetailsTestStats) Total() int {
 	return tdts.SuccessCount + tdts.FailureCount + tdts.FlakeCount
+}
+
+func (tdts TestDetailsTestStats) Passes(flakesAsFailure bool) int {
+	if flakesAsFailure {
+		return tdts.SuccessCount
+	}
+	return tdts.SuccessCount + tdts.FlakeCount
 }
 
 type TestDetailsJobStats struct {

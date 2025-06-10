@@ -491,8 +491,6 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	}
 	var resolvedIssueCompensation int
 	var incidents []crtype.TriagedIncident
-	approvedRegression := regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release,
-		result.ColumnIdentification, testIDOption.TestID)
 	var baseRegression *regressionallowances.IntentionalRegression
 	activeProductRegression := false
 	// if we are ignoring fallback then honor the settings for the baseRegression
@@ -501,8 +499,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, result.ColumnIdentification,
 			testIDOption.TestID)
 	}
-	// ignore triage if we have an intentional regression
-	if approvedRegression == nil {
+	// determine triage, unless we have an intentional regression
+	if regressionallowances.IntentionalRegressionFor(c.ReqOptions.SampleRelease.Release, result.ColumnIdentification, testIDOption.TestID) == nil {
 		resolvedIssueCompensation, activeProductRegression, incidents = c.triagedIncidentsFor(ctx, result.ReportTestIdentification)
 	}
 
@@ -676,12 +674,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		}
 	}
 
-	c.assessComponentStatus(
-		&testStats,
-		approvedRegression,
-		activeProductRegression,
-		resolvedIssueCompensation,
-	)
+	c.assessComponentStatus(&testStats, activeProductRegression, resolvedIssueCompensation)
 
 	report.ReportTestStats = testStats
 	result.Analyses = []crtype.TestDetailsAnalysis{report}
