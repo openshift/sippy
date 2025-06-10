@@ -23,7 +23,7 @@ import (
 
 const (
 	DefaultJunitTable        = "junit"
-	jobRunAnnotationToIgnore = "IgnoreComponentReadiness"
+	jobRunAnnotationToIgnore = "InfraFailure"
 
 	// This query de-dupes the test results. There are multiple issues present in
 	// our data set:
@@ -75,14 +75,15 @@ const (
 				junit.prowjob_build_id = jobs.prowjob_build_id 
 				AND jobs.prowjob_start >= DATETIME(@From)
 				AND jobs.prowjob_start < DATETIME(@To)
-			LEFT JOIN %s.job_annotations job_annotations ON
-				junit.prowjob_build_id = job_annotations.prowjob_build_id
-				AND job_annotations.prowjob_start >= DATETIME(@From)
-				AND job_annotations.prowjob_start < DATETIME(@To)
+			LEFT JOIN %s.job_labels job_labels ON
+				junit.prowjob_build_id = job_labels.prowjob_build_id
+				AND job_labels.prowjob_start >= DATETIME(@From)
+				AND job_labels.prowjob_start < DATETIME(@To)
+				AND job_labels.label = '%s'
 			WHERE modified_time >= DATETIME(@From)
 			AND modified_time < DATETIME(@To)
 			AND skipped = false
-			AND (job_annotations.label IS NULL OR job_annotations.label != '%s')
+			AND job_labels.label IS NULL
 		)
 		SELECT * FROM deduped_testcases WHERE row_num = 1`
 

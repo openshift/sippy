@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	jobAnnotationTable   = "job_annotations"
+	jobAnnotationTable   = "job_labels"
 	dedupedJunitTableFmt = `
 		WITH deduped_testcases AS (
 			SELECT
@@ -59,21 +59,22 @@ type JobRunAnnotator struct {
 	gcsClient        *storage.Client
 	dbClient         *db.DB
 	cache            cache.Cache
-	dryRun           bool
+	execute          bool
 	allVariants      crtype.JobVariants
 	Release          string           `json:"release"`
 	IncludedVariants []crtype.Variant `json:"included_variants"`
 	Label            string           `json:"label"`
-	BuildCluster     string           `json:"build_cluster"`
+	BuildClusters    []string         `json:"build_clusters"`
 	StartTime        time.Time        `json:"start_time"`
 	Duration         time.Duration    `json:"duration"`
-	MinimumFailure   int              `json:"minimum_failure"`
+	MinFailures      int              `json:"minimum_failure"`
 	FlakeAsFailure   bool             `json:"flake_as_failure"`
 	TextContains     string           `json:"text_contains"`
 	TextRegex        string           `json:"text_regex"`
 	PathGlob         string           `json:"path_glob"`
 	JobRunIDs        []int64          `json:"job_run_ids"`
-	remark           string
+	comment          string
+	user             string
 }
 
 func NewJobRunAnnotator(
@@ -82,21 +83,22 @@ func NewJobRunAnnotator(
 	gcsClient *storage.Client,
 	dbClient *db.DB,
 	cacheClient cache.Cache,
-	dryRun bool,
+	execute bool,
 	release string,
 	allVariants crtype.JobVariants,
 	Variants []crtype.Variant,
 	Label string,
-	BuildCluster string,
+	BuildClusters []string,
 	StartTime time.Time,
 	Duration time.Duration,
-	MinimumFailure int,
+	MinFailures int,
 	flakeAsFailure bool,
 	textContains string,
 	textRegex string,
 	pathGlob string,
 	jobRunIDs []int64,
-	remarkPrefix string,
+	commentPrefix string,
+	user string,
 ) (JobRunAnnotator, error) {
 
 	j := JobRunAnnotator{
@@ -105,21 +107,22 @@ func NewJobRunAnnotator(
 		gcsClient:        gcsClient,
 		dbClient:         dbClient,
 		cache:            cacheClient,
-		dryRun:           dryRun,
+		execute:          execute,
 		Release:          release,
 		allVariants:      allVariants,
 		IncludedVariants: Variants,
 		Label:            Label,
-		BuildCluster:     BuildCluster,
+		BuildClusters:    BuildClusters,
 		StartTime:        StartTime,
 		Duration:         Duration,
-		MinimumFailure:   MinimumFailure,
+		MinFailures:      MinFailures,
 		FlakeAsFailure:   flakeAsFailure,
 		TextContains:     textContains,
 		TextRegex:        textRegex,
 		PathGlob:         pathGlob,
 		JobRunIDs:        jobRunIDs,
-		remark:           remarkPrefix,
+		comment:          commentPrefix,
+		user:             user,
 	}
 	if bqClient == nil || bqClient.BQ == nil {
 		return j, fmt.Errorf("we don't have a bigquery client for job run annotator")
@@ -170,8 +173,9 @@ type jobRun struct {
 
 type jobRunAnnotation struct {
 	jobRun
-	Label  string `bigquery:"label"`
-	Remark string `bigquery:"remark"`
+	Label   string `bigquery:"label"`
+	Comment string `bigquery:"comment"`
+	User    string `bigquery:"user"`
 }
 
 func (j JobRunAnnotator) getJobRunsFromBigQuery(ctx context.Context) (map[int64]jobRun, error) { //lint:ignore
@@ -187,8 +191,12 @@ func (j JobRunAnnotator) getJobRunsFromBigQuery(ctx context.Context) (map[int64]
 		jobRunWhereStr += fmt.Sprintf(" AND prowjob_build_id IN UNNEST([%s])\n", strings.Join(strIDs, ", "))
 	}
 
-	if len(j.BuildCluster) != 0 {
-		jobRunWhereStr += fmt.Sprintf(" AND prowjob_cluster='%s'\n", j.BuildCluster)
+	if len(j.BuildClusters) != 0 {
+		clusterStrs := []string{}
+		for _, cluster := range j.BuildClusters {
+			clusterStrs = append(clusterStrs, fmt.Sprintf(" prowjob_cluster='%s' ", cluster))
+		}
+		jobRunWhereStr += fmt.Sprintf(" AND (%s)\n", strings.Join(clusterStrs, " OR "))
 	}
 	joinVariantsStr := ""
 	filterVariantsStr := ""
@@ -207,11 +215,11 @@ func (j JobRunAnnotator) getJobRunsFromBigQuery(ctx context.Context) (map[int64]
 	}
 
 	minimumFailureStr := ""
-	if j.MinimumFailure != 0 {
+	if j.MinFailures != 0 {
 		if j.FlakeAsFailure {
-			minimumFailureStr += fmt.Sprintf("WHERE %d < total_count - success_count\n", j.MinimumFailure)
+			minimumFailureStr += fmt.Sprintf("WHERE %d < total_count - success_count\n", j.MinFailures)
 		} else {
-			minimumFailureStr += fmt.Sprintf("WHERE %d < total_count - success_count - flake_count\n", j.MinimumFailure)
+			minimumFailureStr += fmt.Sprintf("WHERE %d < total_count - success_count - flake_count\n", j.MinFailures)
 		}
 	}
 	dedupedJunitTable := fmt.Sprintf(dedupedJunitTableFmt, j.bqClient.Dataset, j.StartTime.UTC().Format(time.RFC3339), j.StartTime.Add(j.Duration).UTC().Format(time.RFC3339))
@@ -380,8 +388,9 @@ func (j JobRunAnnotator) filterJobRunByArtifact(ctx context.Context, jobRunIDs [
 func (j JobRunAnnotator) bulkInsertJobRunAnnotations(ctx context.Context, inserts []jobRunAnnotation) error {
 	var batchSize = 500
 
-	if j.dryRun {
+	if !j.execute {
 		log.Infof("\n===========================================================\nDry run mode enabled\nBulk inserting\n%+v", inserts)
+		log.Infof("\n\nTo write the label to DB, please use --execute argument\n")
 		return nil
 	}
 
@@ -396,26 +405,26 @@ func (j JobRunAnnotator) bulkInsertJobRunAnnotations(ctx context.Context, insert
 		if err := inserter.Put(ctx, inserts[i:end]); err != nil {
 			return err
 		}
-		log.Infof("added %d new job annotation rows", end-i)
+		log.Infof("added %d new job label rows", end-i)
 	}
 
 	return nil
 }
 
-func (j JobRunAnnotator) generateRemark() string {
-	remark := j.remark
-	annotatorRemark, err := json.MarshalIndent(j, "", "    ")
+func (j JobRunAnnotator) generateComment() string {
+	comment := j.comment
+	annotatorComment, err := json.MarshalIndent(j, "", "    ")
 	if err == nil {
-		remark += fmt.Sprintf("\nAnnotator\n%s", annotatorRemark)
+		comment += fmt.Sprintf("\nAnnotator\n%s", annotatorComment)
 	}
-	return remark
+	return comment
 }
 
 func (j JobRunAnnotator) annotateJobRuns(ctx context.Context, jobRunIDs []int64, jobRuns map[int64]jobRun) error {
 	jobRunAnnotations := make([]jobRunAnnotation, 0, len(jobRunIDs))
 	for _, jobRunID := range jobRunIDs {
 		if jobRun, ok := jobRuns[jobRunID]; ok {
-			jobRunAnnotations = append(jobRunAnnotations, jobRunAnnotation{jobRun, j.Label, j.generateRemark()})
+			jobRunAnnotations = append(jobRunAnnotations, jobRunAnnotation{jobRun, j.Label, j.generateComment(), j.user})
 		}
 	}
 	return j.bulkInsertJobRunAnnotations(ctx, jobRunAnnotations)
