@@ -10,6 +10,7 @@ import (
 
 	fet "github.com/glycerine/golang-fisher-exact"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -463,13 +464,6 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows,
 	testIDOption crtype.RequestTestIdentificationOptions,
 ) crtype.ReportTestDetails {
-
-	// make a copy of sampleStatus because it's passed by ref, and we're going to modify it.
-	sampleStatusCopy := map[string][]crtype.TestJobRunRows{}
-	for k, v := range sampleStatus {
-		sampleStatusCopy[k] = v
-	}
-
 	testKey := crtype.ReportTestIdentification{
 		RowIdentification: crtype.RowIdentification{
 			Component:  testIDOption.Component,
@@ -480,16 +474,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 			Variants: testIDOption.RequestedVariants,
 		},
 	}
-
 	result := crtype.ReportTestDetails{
 		ReportTestIdentification: testKey,
-	}
-	var baseRegression *regressionallowances.IntentionalRegression
-	// if we are ignoring fallback then honor the settings for the baseRegression
-	// otherwise let fallback determine the threshold
-	if !c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
-		baseRegression = regressionallowances.IntentionalRegressionFor(baseRelease, result.ColumnIdentification,
-			testIDOption.TestID)
 	}
 
 	// track the last failure we observe in the sample, used for triage middleware to adjust status
@@ -499,12 +485,13 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	var totalBase, totalSample crtype.TestDetailsTestStats
 	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
 	report := crtype.TestDetailsAnalysis{}
+	sampleStatusSeen := sets.NewString()
 	for prowJob, baseStatsList := range baseStatus {
 		// tally up base job stats and matching sample job stats (if any); record job names, component, etc in the result
 		jobStats := crtype.TestDetailsJobStats{}
-		if sampleStatsList, ok := sampleStatusCopy[prowJob]; ok {
+		if sampleStatsList, ok := sampleStatus[prowJob]; ok {
 			c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
-			delete(sampleStatusCopy, prowJob) // remove matching sample stats from copy leaving only unmatched sample stats
+			sampleStatusSeen.Insert(prowJob)
 		}
 		c.assessTestStats(baseStatsList, &jobStats.BaseStats, &jobStats.BaseJobRunStats, &jobStats.BaseJobName, nil, &result, faf)
 		// determine the statistical significance of the job stats
@@ -518,9 +505,12 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 		totalSample = totalSample.Add(jobStats.SampleStats, faf)
 	}
 	// also tally unmatched sample stats (jobs that didn't run in the basis release)
-	for _, sampleStatsList := range sampleStatusCopy {
+	for job, sampleStatsList := range sampleStatus {
+		if sampleStatusSeen.Has(job) {
+			continue // already processed
+		}
 		jobStats := crtype.TestDetailsJobStats{}
-		c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &result, faf)
+		c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
 
 		// determine the statistical significance of the job stats
 		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
@@ -535,6 +525,13 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 			report.JobStats[j].SampleJobName+":"+report.JobStats[j].BaseJobName
 	})
 
+	// if we are ignoring fallback then honor the settings for the baseRegression
+	// otherwise let fallback determine the threshold
+	var baseRegression *regressionallowances.IntentionalRegression
+	if !c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
+		baseRegression = regressionallowances.IntentionalRegressionFor(
+			baseRelease, result.ColumnIdentification, testIDOption.TestID)
+	}
 	// The hope is that this goes away
 	// once we agree we don't need to honor a higher intentional regression pass percentage
 	if baseRegression != nil && baseRegression.PreviousPassPercentage(faf) > totalBase.PassRate(faf) {
