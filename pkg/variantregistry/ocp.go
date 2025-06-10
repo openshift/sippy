@@ -822,6 +822,10 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-openstack", "openstack"},
 		{"-ovirt", "ovirt"},
 		{"-vsphere", "vsphere"},
+
+		// there is no cluster for the periodics-default-catalog-consistency jobs
+		// forcing to aws to include signal in CR main view without adding 'none' platform
+		{"-periodics-default-catalog-consistency", "aws"},
 	}
 
 	for _, entry := range platformPatterns {
