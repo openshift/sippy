@@ -44,6 +44,7 @@ func main() {
 		NewTrackRegressionsCommand(),
 		NewVariantsCommand(),
 		NewVersionCommand(),
+		NewAnnotateJobRunsCommand(),
 	)
 
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
