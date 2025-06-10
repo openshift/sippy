@@ -125,17 +125,6 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 					regressedTestsToCache = append(regressedTestsToCache, reg)
 				}
 			}
-
-			// Once triaged, regressions move to this list, we want to still consider them an open regression until
-			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
-			// a regression.
-			for _, triaged := range col.TriagedIncidents {
-				// skip if it's resolved, it's far less likely anyone will be loading details for something marked
-				// resolved, and this helps reduce the caching memory when we have mass regressions and clean them up:
-				if triaged.ReportStatus < crtype.FixedRegression {
-					regressedTestsToCache = append(regressedTestsToCache, triaged.ReportTestSummary)
-				}
-			}
 		}
 	}
 	rLog.Infof("found %d unresolved regressed tests in report", len(regressedTestsToCache))

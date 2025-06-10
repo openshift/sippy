@@ -202,9 +202,8 @@ type RowIdentification struct {
 
 type ReportColumn struct {
 	ColumnIdentification
-	Status           Status                  `json:"status"`
-	RegressedTests   []ReportTestSummary     `json:"regressed_tests,omitempty"`
-	TriagedIncidents []TriageIncidentSummary `json:"triaged_incidents,omitempty"`
+	Status         Status              `json:"status"`
+	RegressedTests []ReportTestSummary `json:"regressed_tests,omitempty"`
 }
 
 type ColumnID string
@@ -277,17 +276,11 @@ type ReportTestStats struct {
 	Regression *models.TestRegression `json:"regression,omitempty"`
 }
 
-// IsTriaged returns true if this tests status is within the triaged regression range.
-func (r ReportTestStats) IsTriaged() bool {
-	return r.ReportStatus < MissingSample && r.ReportStatus > SignificantRegression
-}
-
 // TestDetailsAnalysis is a collection of stats for the report which could potentially carry
 // multiple different analyses run.
 type TestDetailsAnalysis struct {
 	ReportTestStats
-	JobStats         []TestDetailsJobStats `json:"job_stats,omitempty"`
-	TriagedIncidents []TriagedIncident     `json:"incidents,omitempty"`
+	JobStats []TestDetailsJobStats `json:"job_stats,omitempty"`
 }
 
 // ReportTestDetails is the top level API response for test details reports.
@@ -451,12 +444,6 @@ type JobVariants struct {
 	Variants map[string][]string `json:"variants,omitempty"`
 }
 
-type TriageIncidentSummary struct {
-	ReportTestSummary
-	TriagedIncidents []TriagedIncident `json:"incidents"`
-}
-
-// Variant is currently only used with TriagedIncidents
 type Variant struct {
 	Key   string `bigquery:"key" json:"key"`
 	Value string `bigquery:"value" json:"value"`
@@ -475,39 +462,6 @@ type TestRegressionBigQuery struct {
 	Opened       time.Time              `bigquery:"opened" json:"opened"`
 	Closed       bigquery.NullTimestamp `bigquery:"closed" json:"closed"`
 	Variants     []Variant              `bigquery:"variants" json:"variants"`
-}
-
-type TriagedIncident struct {
-	Release string `bigquery:"release" json:"release"`
-	TestID  string `bigquery:"test_id" json:"test_id"`
-	// TODO: should this be joined in instead of recording? test_name can change for a given test_id
-	TestName        string                       `bigquery:"test_name" json:"test_name"`
-	IncidentID      string                       `bigquery:"incident_id" json:"incident_id"`
-	IncidentGroupID string                       `bigquery:"incident_group_id" json:"incident_group_id"`
-	ModifiedTime    time.Time                    `bigquery:"modified_time" json:"modified_time"`
-	Variants        []Variant                    `bigquery:"variants" json:"variants"`
-	Issue           TriagedIncidentIssue         `bigquery:"issue" json:"issue"`
-	JobRuns         []TriageJobRun               `bigquery:"job_runs" json:"job_runs"`
-	Attributions    []TriagedIncidentAttribution `bigquery:"attributions" json:"attributions"`
-}
-
-type TriagedIncidentIssue struct {
-	Type           string                 `bigquery:"type" json:"type"`
-	Description    bigquery.NullString    `bigquery:"description" json:"description"`
-	URL            bigquery.NullString    `bigquery:"url" json:"url"`
-	StartDate      time.Time              `bigquery:"start_date" json:"start_date"`
-	ResolutionDate bigquery.NullTimestamp `bigquery:"resolution_date" json:"resolution_date"`
-}
-
-type TriagedIncidentAttribution struct {
-	ID         string    `bigquery:"id" json:"id"`
-	UpdateTime time.Time `bigquery:"update_time" json:"update_time"`
-}
-
-type TriageJobRun struct {
-	URL            string                 `bigquery:"url" json:"url"`
-	StartTime      time.Time              `bigquery:"start_time" json:"start_time"`
-	CompletionTime bigquery.NullTimestamp `bigquery:"completion_time" json:"completion_time"`
 }
 
 // TestWithVariantsKey connects the core unique db testID string to a set of variants.

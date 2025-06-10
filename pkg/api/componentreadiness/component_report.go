@@ -31,15 +31,12 @@ import (
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 const (
-	triagedIncidentsTableID = "triaged_incidents"
-
 	explanationNoRegression       = "No significant regressions found"
 	ComponentReportCacheKeyPrefix = "ComponentReport~"
 )
@@ -171,7 +168,6 @@ func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtyp
 	generator := ComponentReportGenerator{
 		client:                     client,
 		ReqOptions:                 reqOptions,
-		triagedIssues:              nil,
 		dbc:                        dbc,
 		variantJunitTableOverrides: variantJunitTableOverrides,
 	}
@@ -186,10 +182,8 @@ func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtyp
 // is marshalled for the cache key and should be changed when the object being
 // cached changes in a way that will no longer be compatible with any prior cached version.
 type ComponentReportGenerator struct {
-	ReportModified             *time.Time
 	client                     *bqcachedclient.Client
 	dbc                        *db.DB
-	triagedIssues              *resolvedissues.TriagedIncidentsForRelease
 	ReqOptions                 crtype.RequestOptions
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 	middlewares                []middleware.Middleware
@@ -210,7 +204,6 @@ type GeneratorCacheKey struct {
 // Here we should normalize to output the same cache key regardless of how fields were initialized. (nil vs empty, etc)
 func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCacheKey {
 	cacheKey := GeneratorCacheKey{
-		ReportModified: c.ReportModified,
 		BaseRelease:    c.ReqOptions.BaseRelease,
 		SampleRelease:  c.ReqOptions.SampleRelease,
 		VariantOption:  c.ReqOptions.VariantOption,
@@ -243,9 +236,6 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 		cacheKey.VariantOption.CompareVariants[k] = vals
 	}
 
-	if c.ReportModified == nil {
-		cacheKey.ReportModified = c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption)
-	}
 	return cacheKey
 }
 
@@ -358,8 +348,7 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	sampleLen := len(componentReportTestStatus.SampleStatus)
 
 	// perform analysis and generate report:
-	report, err := c.generateComponentTestReport(ctx, componentReportTestStatus.BaseStatus,
-		componentReportTestStatus.SampleStatus)
+	report, err := c.generateComponentTestReport(componentReportTestStatus.BaseStatus, componentReportTestStatus.SampleStatus)
 	if err != nil {
 		log.WithError(err).Error("error generating report")
 		errs = append(errs, err)
@@ -725,15 +714,11 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 }
 
 type cellStatus struct {
-	status           crtype.Status
-	regressedTests   []crtype.ReportTestSummary
-	triagedIncidents []crtype.TriageIncidentSummary
+	status         crtype.Status
+	regressedTests []crtype.ReportTestSummary
 }
 
-func getNewCellStatus(testID crtype.ReportTestIdentification,
-	testStats crtype.ReportTestStats,
-	existingCellStatus *cellStatus,
-	triagedIncidents []crtype.TriagedIncident) cellStatus {
+func getNewCellStatus(testID crtype.ReportTestIdentification, testStats crtype.ReportTestStats, existingCellStatus *cellStatus) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (testStats.ReportStatus < crtype.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
@@ -744,38 +729,20 @@ func getNewCellStatus(testID crtype.ReportTestIdentification,
 			newCellStatus.status = existingCellStatus.status
 		}
 		newCellStatus.regressedTests = existingCellStatus.regressedTests
-		newCellStatus.triagedIncidents = existingCellStatus.triagedIncidents
 	} else {
 		newCellStatus.status = testStats.ReportStatus
 	}
-	// don't show triaged regressions in the regressed tests
-	// need a new UI to show active triaged incidents
-	if testStats.ReportStatus < crtype.ExtremeTriagedRegression {
+	if testStats.ReportStatus < crtype.MissingSample {
 		rt := crtype.ReportTestSummary{
 			ReportTestIdentification: testID,
 			ReportTestStats:          testStats,
 		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
-	} else if testStats.ReportStatus < crtype.MissingSample {
-		ti := crtype.TriageIncidentSummary{
-			TriagedIncidents: triagedIncidents,
-			ReportTestSummary: crtype.ReportTestSummary{
-				ReportTestIdentification: testID,
-				ReportTestStats:          testStats,
-			}}
-		newCellStatus.triagedIncidents = append(newCellStatus.triagedIncidents, ti)
 	}
 	return newCellStatus
 }
 
-func updateCellStatus(rowIdentifications []crtype.RowIdentification,
-	columnIdentifications []crtype.ColumnID,
-	testID crtype.ReportTestIdentification,
-	testStats crtype.ReportTestStats,
-	status map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus,
-	allRows map[crtype.RowIdentification]struct{},
-	allColumns map[crtype.ColumnID]struct{},
-	triagedIncidents []crtype.TriagedIncident) {
+func updateCellStatus(rowIdentifications []crtype.RowIdentification, columnIdentifications []crtype.ColumnID, testID crtype.ReportTestIdentification, testStats crtype.ReportTestStats, status map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus, allRows map[crtype.RowIdentification]struct{}, allColumns map[crtype.ColumnID]struct{}) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}
@@ -795,333 +762,20 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification,
 		if !ok {
 			row = map[crtype.ColumnID]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
-				row[columnIdentification] = getNewCellStatus(testID, testStats, nil, triagedIncidents)
+				row[columnIdentification] = getNewCellStatus(testID, testStats, nil)
 				status[rowIdentification] = row
 			}
 		} else {
 			for _, columnIdentification := range columnIdentifications {
 				existing, ok := row[columnIdentification]
 				if !ok {
-					row[columnIdentification] = getNewCellStatus(testID, testStats, nil, triagedIncidents)
+					row[columnIdentification] = getNewCellStatus(testID, testStats, nil)
 				} else {
-					row[columnIdentification] = getNewCellStatus(testID, testStats, &existing, triagedIncidents)
+					row[columnIdentification] = getNewCellStatus(testID, testStats, &existing)
 				}
 			}
 		}
 	}
-}
-
-// getTriagedIssuesFromBigquery will
-// fetch triaged issue from big query if not already present on the ComponentReportGenerator
-// and check the triaged issue for matches with the current testID
-func (c *ComponentReportGenerator) getTriagedIssuesFromBigQuery(ctx context.Context,
-	testID crtype.ReportTestIdentification) (
-	int, bool, []crtype.TriagedIncident, []error) {
-	generator := triagedIncidentsGenerator{
-		ReportModified: c.GetLastReportModifiedTime(ctx, c.client, c.ReqOptions.CacheOption),
-		client:         c.client,
-		cacheOption:    c.ReqOptions.CacheOption,
-		SampleRelease:  c.ReqOptions.SampleRelease,
-	}
-
-	// we want to fetch this once per generator instance which should be once per UI load
-	// this is the full list from the cache if available that will be subset to specific test
-	// in triagedIssuesFor
-	if c.triagedIssues == nil {
-		releaseTriagedIncidents, errs := api.GetDataFromCacheOrGenerate[resolvedissues.TriagedIncidentsForRelease](
-			ctx, generator.client.Cache, generator.cacheOption, api.GetPrefixedCacheKey("TriagedIncidents~", generator),
-			generator.generateTriagedIssuesFor, resolvedissues.TriagedIncidentsForRelease{})
-
-		if len(errs) > 0 {
-			return 0, false, nil, errs
-		}
-		c.triagedIssues = &releaseTriagedIncidents
-	}
-	impactedRuns, activeProductRegression, triagedIncidents := triagedIssuesFor(c.triagedIssues, testID.ColumnIdentification, testID.TestID, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
-
-	return impactedRuns, activeProductRegression, triagedIncidents, nil
-}
-
-func (c *ComponentReportGenerator) GetLastReportModifiedTime(ctx context.Context, client *bqcachedclient.Client,
-	options cache.RequestOptions) *time.Time {
-
-	if c.ReportModified == nil {
-
-		// check each component of the report that may change asynchronously and require refreshing the report
-		// return the most recent time
-
-		// cache only for 5 minutes
-		lastModifiedTimeCacheDuration := 5 * time.Minute
-		now := time.Now().UTC()
-		// Only cache until the next rounding duration
-		cacheDuration := now.Truncate(lastModifiedTimeCacheDuration).Add(lastModifiedTimeCacheDuration).Sub(now)
-
-		// default our last modified time to within the last 12 hours
-		// any newer modifications will be picked up
-		initLastModifiedTime := time.Now().UTC().Truncate(12 * time.Hour)
-
-		generator := triagedIncidentsModifiedTimeGenerator{
-			client: client,
-			cacheOption: cache.RequestOptions{
-				ForceRefresh:         options.ForceRefresh,
-				CRTimeRoundingFactor: cacheDuration,
-			},
-			LastModifiedStartTime: &initLastModifiedTime,
-		}
-
-		// this gets called a lot, so we want to set it once on the ComponentReportGenerator
-		lastModifiedTime, errs := api.GetDataFromCacheOrGenerate[*time.Time](ctx, generator.client.Cache,
-			generator.cacheOption, api.GetPrefixedCacheKey("TriageLastModified~", generator), generator.generateTriagedIssuesLastModifiedTime, generator.LastModifiedStartTime)
-
-		if len(errs) > 0 {
-			c.ReportModified = generator.LastModifiedStartTime
-		}
-
-		c.ReportModified = lastModifiedTime
-	}
-
-	return c.ReportModified
-}
-
-// TODO: remove once we're on new triage fully
-type triagedIncidentsModifiedTimeGenerator struct {
-	client                *bqcachedclient.Client
-	cacheOption           cache.RequestOptions
-	LastModifiedStartTime *time.Time
-}
-
-func (t *triagedIncidentsModifiedTimeGenerator) generateTriagedIssuesLastModifiedTime(ctx context.Context) (*time.Time,
-	[]error) {
-	before := time.Now()
-	lastModifiedTime, errs := t.queryTriagedIssuesLastModified(ctx)
-
-	log.Infof("generateTriagedIssuesLastModifiedTime query completed in %s ", time.Since(before))
-
-	if errs != nil {
-		return nil, errs
-	}
-
-	return lastModifiedTime, nil
-}
-
-func (t *triagedIncidentsModifiedTimeGenerator) queryTriagedIssuesLastModified(ctx context.Context) (*time.Time, []error) {
-	// Look for the most recent modified time after our lastModifiedTime.
-	// Using the partition to limit the query, we don't need the actual most recent modified time just need to know
-	// if it has changed / is greater than our default
-	queryString := fmt.Sprintf("SELECT max(modified_time) as LastModification FROM %s.%s WHERE modified_time > TIMESTAMP(@Last)", t.client.Dataset, triagedIncidentsTableID)
-
-	params := make([]bigquery.QueryParameter, 0)
-
-	params = append(params, []bigquery.QueryParameter{
-		{
-			Name:  "Last",
-			Value: *t.LastModifiedStartTime,
-		},
-	}...)
-
-	sampleQuery := t.client.BQ.Query(queryString)
-	sampleQuery.Parameters = append(sampleQuery.Parameters, params...)
-
-	return t.fetchLastModified(ctx, sampleQuery)
-}
-
-func (t *triagedIncidentsModifiedTimeGenerator) fetchLastModified(ctx context.Context,
-	q *bigquery.Query) (*time.Time,
-	[]error) {
-	log.Infof("Fetching triaged incidents last modified time with:\n%s\nParameters:\n%+v\n", q.Q, q.Parameters)
-
-	it, err := q.Read(ctx)
-	if err != nil {
-		log.WithError(err).Error("error querying triaged incidents last modified time from bigquery")
-		return nil, []error{err}
-	}
-
-	lastModification := t.LastModifiedStartTime
-	var triagedIncidentModifiedTime struct {
-		LastModification bigquery.NullTimestamp
-	}
-	err = it.Next(&triagedIncidentModifiedTime)
-	if err != nil && err != iterator.Done {
-		log.WithError(err).Error("error parsing triaged incident last modification time from bigquery")
-		return nil, []error{err}
-	}
-	if triagedIncidentModifiedTime.LastModification.Valid {
-		lastModification = &triagedIncidentModifiedTime.LastModification.Timestamp
-	}
-
-	return lastModification, nil
-}
-
-type triagedIncidentsGenerator struct {
-	ReportModified *time.Time
-	client         *bqcachedclient.Client
-	cacheOption    cache.RequestOptions
-	SampleRelease  crtype.RequestReleaseOptions
-}
-
-func (t *triagedIncidentsGenerator) generateTriagedIssuesFor(ctx context.Context) (resolvedissues.TriagedIncidentsForRelease, []error) {
-	before := time.Now()
-	incidents, errs := t.queryTriagedIssues(ctx)
-
-	log.Infof("generateTriagedIssuesFor query completed in %s with %d incidents from db", time.Since(before), len(incidents))
-
-	if len(errs) > 0 {
-		return resolvedissues.TriagedIncidentsForRelease{}, errs
-	}
-
-	triagedIncidents := resolvedissues.NewTriagedIncidentsForRelease(resolvedissues.Release(t.SampleRelease.Release))
-
-	for _, incident := range incidents {
-		k := resolvedissues.KeyForTriagedIssue(incident.TestID, incident.Variants)
-		triagedIncidents.TriagedIncidents[k] = append(triagedIncidents.TriagedIncidents[k], incident)
-	}
-
-	log.Infof("generateTriagedIssuesFor completed in %s with %d incidents from db", time.Since(before), len(incidents))
-
-	return triagedIncidents, nil
-}
-
-// triagedIssuesFor will look for triage issues that match the testID and variant group
-// it will return the number of triaged job runs that occur within the sample window
-// set a triage record as relevant if it has any job run that occurs within the sample window
-// as well as return a flag indicating if there is at least 1 active product regression noting
-// the UI should show the active triage icon for that cell
-func triagedIssuesFor(releaseIncidents *resolvedissues.TriagedIncidentsForRelease, variant crtype.ColumnIdentification, testID string, startTime, endTime time.Time) (int, bool, []crtype.TriagedIncident) {
-	if releaseIncidents == nil {
-		return 0, false, nil
-	}
-
-	inKey := resolvedissues.KeyForTriagedIssue(testID, resolvedissues.TransformVariant(variant))
-
-	triagedIncidents := releaseIncidents.TriagedIncidents[inKey]
-	relevantIncidents := []crtype.TriagedIncident{}
-
-	impactedJobRuns := sets.NewString() // because multiple issues could impact the same job run, be sure to count each job run only once
-	numJobRunsToSuppress := 0
-	activeProductRegression := false
-	for _, triagedIncident := range triagedIncidents {
-		startNumRunsSuppressed := numJobRunsToSuppress
-		for _, impactedJobRun := range triagedIncident.JobRuns {
-			if impactedJobRuns.Has(impactedJobRun.URL) {
-				continue
-			}
-			impactedJobRuns.Insert(impactedJobRun.URL)
-
-			compareTime := impactedJobRun.StartTime
-			// preference is to compare to CompletionTime as it will more closely match jobrun modified time
-			// but, it is optional so default to StartTime and set to CompletionTime when present
-			if impactedJobRun.CompletionTime.Valid {
-				compareTime = impactedJobRun.CompletionTime.Timestamp
-			}
-
-			if compareTime.After(startTime) && compareTime.Before(endTime) {
-				numJobRunsToSuppress++
-			}
-		}
-
-		if numJobRunsToSuppress > startNumRunsSuppressed {
-			relevantIncidents = append(relevantIncidents, triagedIncident)
-
-			// If we have any Product regression that has not been marked as resolved then, we consider it active as long as
-			// we have some triaged job runs within the current query window.  This mechanism means we still have to update the triage records
-			// periodically but not daily.
-			// Note: when we want to mark a regression resolved we set the resolution date and update the triage records.  This will flip the triaged icon to green
-			// for reports showing after the resolution date.
-			//
-			// This is a stop gap until we have regression tracking associated with Jiras, and we can use the Jira itself to check for state / recent updates
-			if !triagedIncident.Issue.ResolutionDate.Valid && triagedIncident.Issue.URL.Valid && triagedIncident.Issue.Type == string(resolvedissues.TriageIssueTypeProduct) {
-				activeProductRegression = true
-			}
-		}
-	}
-
-	// if we didn't have any jobs that matched the compare time then return nil
-	if numJobRunsToSuppress == 0 {
-		relevantIncidents = nil
-	}
-
-	return numJobRunsToSuppress, activeProductRegression, relevantIncidents
-}
-
-func (t *triagedIncidentsGenerator) queryTriagedIssues(ctx context.Context) ([]crtype.TriagedIncident, []error) {
-	// Look for issue.start_date < TIMESTAMP(@TO) AND
-	// (issue.resolution_date IS NULL OR issue.resolution_date >= TIMESTAMP(@FROM))
-	// we could add a range for modified_time if we want to leverage the partitions
-	// presume modification would be within 6 months of start / end
-	// shouldn't be so many of these that would query too much data
-	queryString := fmt.Sprintf("SELECT * FROM %s.%s WHERE release = @SampleRelease AND issue.start_date <= TIMESTAMP(@TO) AND (issue.resolution_date IS NULL OR issue.resolution_date >= TIMESTAMP(@FROM))", t.client.Dataset, triagedIncidentsTableID)
-
-	params := make([]bigquery.QueryParameter, 0)
-
-	params = append(params, []bigquery.QueryParameter{
-		{
-			Name:  "From",
-			Value: t.SampleRelease.Start,
-		},
-		{
-			Name:  "To",
-			Value: t.SampleRelease.End,
-		},
-		{
-			Name:  "SampleRelease",
-			Value: t.SampleRelease.Release,
-		},
-	}...)
-
-	sampleQuery := t.client.BQ.Query(queryString)
-	sampleQuery.Parameters = append(sampleQuery.Parameters, params...)
-
-	return t.fetchTriagedIssues(ctx, sampleQuery)
-}
-
-func (t *triagedIncidentsGenerator) fetchTriagedIssues(ctx context.Context,
-	q *bigquery.Query) ([]crtype.TriagedIncident,
-	[]error) {
-	errs := make([]error, 0)
-	incidents := make([]crtype.TriagedIncident, 0)
-	log.Infof("Fetching triaged incidents with:\n%s\nParameters:\n%+v\n", q.Q, q.Parameters)
-
-	it, err := q.Read(ctx)
-	if err != nil {
-		log.WithError(err).Error("error querying triaged incidents from bigquery")
-		errs = append(errs, err)
-		return incidents, errs
-	}
-
-	for {
-		var triagedIncident crtype.TriagedIncident
-		err := it.Next(&triagedIncident)
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.WithError(err).Error("error parsing triaged incident from bigquery")
-			errs = append(errs, errors.Wrap(err, "error parsing triaged incident from bigquery"))
-			continue
-		}
-		incidents = append(incidents, triagedIncident)
-	}
-	return incidents, errs
-}
-
-func (c *ComponentReportGenerator) triagedIncidentsFor(ctx context.Context,
-	testID crtype.ReportTestIdentification) (int, bool,
-	[]crtype.TriagedIncident) {
-	// handle test case / missing client
-	if c.client == nil {
-		return 0, false, nil
-	}
-
-	impactedRuns, activeProductRegression, triagedIncidents, errs := c.getTriagedIssuesFromBigQuery(ctx, testID)
-
-	if errs != nil {
-		for _, err := range errs {
-			log.WithError(err).Error("error getting triaged issues component from bigquery")
-		}
-		return 0, false, nil
-	}
-
-	return impactedRuns, activeProductRegression, triagedIncidents
 }
 
 func initTestAnalysisStruct(
@@ -1167,9 +821,7 @@ func initTestAnalysisStruct(
 
 // TODO: break this function down and remove this nolint
 // nolint:gocyclo
-func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Context,
-	baseStatus map[string]crtype.TestStatus,
-	sampleStatus map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
+func (c *ComponentReportGenerator) generateComponentTestReport(baseStatus, sampleStatus map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
 	report := crtype.ComponentReport{
 		Rows: []crtype.ReportRow{},
 	}
@@ -1195,15 +847,11 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		}
 
 		var testStats crtype.ReportTestStats // This is the actual stats we return over the API
-		var triagedIncidents []crtype.TriagedIncident
-		var resolvedIssueCompensation int
-		var activeProductRegression bool
 
 		sampleStats, ok := sampleStatus[testKeyStr]
 		if !ok {
 			testStats.ReportStatus = crtype.MissingSample
 		} else {
-			resolvedIssueCompensation, activeProductRegression, triagedIncidents = c.triagedIncidentsFor(ctx, testKey) // triaged job run failures to ignore
 
 			// Initialize the test analysis before we start passing it around to the middleware
 			initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, &baseStats)
@@ -1216,32 +864,12 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 				}
 			}
 
-			c.assessComponentStatus(&testStats, activeProductRegression, resolvedIssueCompensation)
+			c.assessComponentStatus(&testStats)
 
 			if !sampleStats.LastFailure.IsZero() {
 				testStats.LastFailure = &sampleStats.LastFailure
 			}
 
-			// TODO: remove when we're fully transitioned to new triage
-			if testStats.IsTriaged() {
-				// we are within the triage range
-				// do we want to show the triage icon or flip reportStatus
-				canClearReportStatus := true
-				for _, ti := range triagedIncidents {
-					if ti.Issue.Type != string(resolvedissues.TriageIssueTypeInfrastructure) {
-						// if a non Infrastructure regression isn't marked resolved or the resolution date is after the end of our sample query
-						// then we won't clear it.  Otherwise, we can.
-						if !ti.Issue.ResolutionDate.Valid || ti.Issue.ResolutionDate.Timestamp.After(c.ReqOptions.SampleRelease.End) {
-							canClearReportStatus = false
-						}
-					}
-				}
-
-				// sanity check to make sure we aren't just defaulting to clear without any incidents (not likely)
-				if len(triagedIncidents) > 0 && canClearReportStatus {
-					testStats.ReportStatus = crtype.NotSignificant
-				}
-			}
 		}
 		delete(sampleStatus, testKeyStr)
 
@@ -1249,8 +877,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentifications, testKey, testStats, aggregatedStatus,
-			allRows, allColumns, triagedIncidents)
+		updateCellStatus(rowIdentifications, columnIdentifications, testKey, testStats, aggregatedStatus, allRows, allColumns)
 	}
 
 	// Anything we saw in the basis was removed above, all that remains are tests with no basis, typically new
@@ -1261,12 +888,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			return crtype.ComponentReport{}, err
 		}
 
-		// Check for approved regressions, and triaged incidents, which may adjust our counts and pass rate:
 		var testStats crtype.ReportTestStats
-		var triagedIncidents []crtype.TriagedIncident
-		var resolvedIssueCompensation int // triaged job run failures to ignore
-		var activeProductRegression bool
-		resolvedIssueCompensation, activeProductRegression, triagedIncidents = c.triagedIncidentsFor(ctx, testID)
 
 		// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
 		initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, nil)
@@ -1279,27 +901,8 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 			}
 		}
 
-		c.assessComponentStatus(&testStats, activeProductRegression, resolvedIssueCompensation)
+		c.assessComponentStatus(&testStats)
 
-		if testStats.IsTriaged() {
-			// we are within the triage range
-			// do we want to show the triage icon or flip reportStatus
-			canClearReportStatus := true
-			for _, ti := range triagedIncidents {
-				if ti.Issue.Type != string(resolvedissues.TriageIssueTypeInfrastructure) {
-					// if a non Infrastructure regression isn't marked resolved or the resolution date is after the end of our sample query
-					// then we won't clear it.  Otherwise, we can.
-					if !ti.Issue.ResolutionDate.Valid || ti.Issue.ResolutionDate.Timestamp.After(c.ReqOptions.SampleRelease.End) {
-						canClearReportStatus = false
-					}
-				}
-			}
-
-			// sanity check to make sure we aren't just defaulting to clear without any incidents (not likely)
-			if len(triagedIncidents) > 0 && canClearReportStatus {
-				testStats.ReportStatus = crtype.NotSignificant
-			}
-		}
 		if !sampleStats.LastFailure.IsZero() {
 			lastFailure := sampleStats.LastFailure
 			testStats.LastFailure = &lastFailure
@@ -1309,8 +912,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(ctx context.Conte
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus,
-			allRows, allColumns, nil)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus, allRows, allColumns)
 	}
 
 	// Sort the row identifications
@@ -1378,10 +980,6 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 				sort.Slice(reportColumn.RegressedTests, func(i, j int) bool {
 					return reportColumn.RegressedTests[i].ReportStatus < reportColumn.RegressedTests[j].ReportStatus
 				})
-				reportColumn.TriagedIncidents = status.triagedIncidents
-				sort.Slice(reportColumn.TriagedIncidents, func(i, j int) bool {
-					return reportColumn.TriagedIncidents[i].ReportStatus < reportColumn.TriagedIncidents[j].ReportStatus
-				})
 			}
 			reportRow.Columns = append(reportRow.Columns, reportColumn)
 			if reportColumn.Status <= crtype.SignificantTriagedRegression {
@@ -1417,17 +1015,11 @@ func (c *ComponentReportGenerator) getPassRate(success, failure, flake int) floa
 	return utils.CalculatePassRate(success, failure, flake, c.ReqOptions.AdvancedOption.FlakeAsFailure)
 }
 
-func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTriage bool) crtype.Status {
+func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crtype.Status {
 	if (basisPassPercentage - samplePassPercentage) > 0.15 {
-		if isTriage {
-			return crtype.ExtremeTriagedRegression
-		}
 		return crtype.ExtremeRegression
 	}
 
-	if isTriage {
-		return crtype.SignificantTriagedRegression
-	}
 	return crtype.SignificantRegression
 }
 
@@ -1435,39 +1027,11 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64, isTr
 // set of objects relating to analysis, as there's not a lot of overlap between the analyzers
 // (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
 // cross variant compare, rarely run jobs, etc.)
-func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.ReportTestStats, activeProductRegression bool, numberOfIgnoredSampleJobRuns int) {
+func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.ReportTestStats) {
 	// Catch unset required confidence, typically unit tests
 	opts := c.ReqOptions.AdvancedOption
 	if testStats.RequiredConfidence == 0 {
 		testStats.RequiredConfidence = opts.Confidence
-	}
-
-	// TODO: delete once we move to new triage, we may no longer be in the business of subtracting job run counts
-	// preserve the initial sampleTotal, so we can check
-	// to see if numberOfIgnoredSampleJobRuns impacts the status
-	sampleTotal := testStats.SampleStats.SuccessCount + testStats.SampleStats.FailureCount + testStats.SampleStats.FlakeCount
-	initialSampleTotal := sampleTotal
-	adjustedSampleTotal := sampleTotal - numberOfIgnoredSampleJobRuns
-	if adjustedSampleTotal < testStats.SampleStats.SuccessCount {
-		log.Warnf("adjustedSampleTotal is too small: sampleTotal=%d, numberOfIgnoredSampleJobRuns=%d, sampleSuccess=%d", sampleTotal, numberOfIgnoredSampleJobRuns, testStats.SampleStats.SuccessCount)
-		// due to differences in sample query times reflecting 'modified_time' and the use of job_run start / completion_time we can include
-		// some triaged job runs that are outside our sample window resulting in removing too many runs
-		// we see this often for triaged runs on the oldest day of the sample window
-		// this leads to us ignoring all triage runs and reporting a regression
-		// https://github.com/openshift/sippy/blob/eb5d6154c745c990c25dfca7d292da43cc1b38e5/pkg/api/componentreadiness/component_report.go#L943
-		// the original intent was to err on the side of caution since we didn't understand why this would happen
-		// now we see the negative consequence flipping triaged records back to regressions
-		// in this case we will remove all failures and only report the successes and flakes
-		sampleTotal = testStats.SampleStats.SuccessCount + testStats.SampleStats.FlakeCount
-	} else {
-		sampleTotal = adjustedSampleTotal
-	}
-	// Adjust failure count for triaged runs
-	testStats.SampleStats.FailureCount = sampleTotal - testStats.SampleStats.SuccessCount - testStats.SampleStats.FlakeCount
-	if testStats.SampleStats.FailureCount < 0 {
-		// The adjusted total for ignored runs can push failure count into the negatives if there were
-		// more ignored runs than actual failures. (or no failures at all)
-		testStats.SampleStats.FailureCount = 0
 	}
 
 	var baseSuccess, baseFailure, baseFlake, baseTotal int
@@ -1494,74 +1058,38 @@ func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.Repor
 	}
 
 	// Otherwise we fall back to default behavior of Fishers Exact test:
-	c.buildFisherExactTestStats(
-		testStats,
-		activeProductRegression,
-		initialSampleTotal)
+	c.buildFisherExactTestStats(testStats)
 }
 
-func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.ReportTestStats, activeProductRegression bool, initialSampleTotal int) {
+func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.ReportTestStats) {
 
 	fisherExact := 0.0
 	testStats.Comparison = crtype.FisherExact
 
 	status := crtype.MissingBasis
-	// if the unadjusted sample was 0 then nothing to do
 	opts := c.ReqOptions.AdvancedOption
-	if initialSampleTotal == 0 {
+	if testStats.SampleStats.Total() == 0 {
 		if opts.IgnoreMissing {
 			status = crtype.NotSignificant
 		} else {
 			status = crtype.MissingSample
 		}
+		testStats.ReportStatus = status
+		testStats.FisherExact = thrift.Float64Ptr(0.0)
+		testStats.Explanations = append(testStats.Explanations, explanationNoRegression)
 	} else if testStats.BaseStats != nil && testStats.BaseStats.Total() != 0 {
-		// see if we had a significant regression prior to adjusting for triage
 		samplePass := testStats.SampleStats.Passes(opts.FlakeAsFailure)
 		basePass := testStats.BaseStats.Passes(opts.FlakeAsFailure)
 		basisPassPercentage := float64(basePass) / float64(testStats.BaseStats.Total())
-		initialPassPercentage := float64(samplePass) / float64(initialSampleTotal)
 		effectivePityFactor := float64(opts.PityFactor) + testStats.PityAdjustment
 
-		wasSignificant := false
-		// only consider wasSignificant if the sampleTotal has been changed and our sample
-		// pass percentage is below the basis
-		// SampleStats had it's failure count decremented earlier when we calculated adjusted sampleTotal and subtracted it
-		if initialSampleTotal > testStats.SampleStats.Total() && initialPassPercentage < basisPassPercentage {
-			if basisPassPercentage-initialPassPercentage > float64(opts.PityFactor)/100 {
-				wasSignificant, _ = c.fischerExactTest(testStats.RequiredConfidence, initialSampleTotal-samplePass, samplePass,
-					testStats.BaseStats.Total()-basePass, basePass)
-			}
-			// if it was significant without the adjustment use
-			// ExtremeTriagedRegression or SignificantTriagedRegression
-			if wasSignificant {
-				status = getRegressionStatus(basisPassPercentage, initialPassPercentage, true)
-			}
-		}
-
-		if testStats.SampleStats.Total() == 0 {
-			if !wasSignificant {
-				if opts.IgnoreMissing {
-					status = crtype.NotSignificant
-
-				} else {
-					status = crtype.MissingSample
-				}
-			}
-			testStats.ReportStatus = status
-			testStats.FisherExact = thrift.Float64Ptr(0.0)
-			testStats.Explanations = append(testStats.Explanations, explanationNoRegression)
-			return
-		}
-
-		// if we didn't detect a significant regression prior to adjusting set our default here
-		if !wasSignificant {
-			status = crtype.NotSignificant
-		}
+		// default starting status now that we know we have basis and sample
+		status = crtype.NotSignificant
 
 		// now that we know sampleTotal is non zero
 		samplePassPercentage := float64(samplePass) / float64(testStats.SampleStats.Total())
 
-		// did we remove enough failures that we are below the MinimumFailure threshold?
+		// are we below the MinimumFailure threshold?
 		if opts.MinimumFailure != 0 &&
 			(testStats.SampleStats.Total()-samplePass) < opts.MinimumFailure {
 			if status <= crtype.SignificantTriagedRegression {
@@ -1583,12 +1111,9 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		}
 		if significant {
 			if improved {
-				// only show improvements if we are not dropping out triaged results
-				if initialSampleTotal == testStats.SampleStats.Total() {
-					status = crtype.SignificantImprovement
-				}
+				status = crtype.SignificantImprovement
 			} else {
-				status = getRegressionStatus(basisPassPercentage, samplePassPercentage, activeProductRegression)
+				status = getRegressionStatus(basisPassPercentage, samplePassPercentage)
 			}
 		}
 	}
