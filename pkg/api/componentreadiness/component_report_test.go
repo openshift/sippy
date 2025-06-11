@@ -247,95 +247,121 @@ func TestGenerateComponentReport(t *testing.T) {
 		assert.NoError(t, err, "error marshalling awsAMD64OVNInstallerIPITest")
 	}
 	awsAMD64OVNBaseTestStats90Percent := crtype.TestStatus{
-		TestName:     "test 1",
-		Variants:     []string{"standard"},
-		TotalCount:   1000,
-		FlakeCount:   10,
-		SuccessCount: 900,
+		TestName: "test 1",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   1000,
+			FlakeCount:   10,
+			SuccessCount: 900,
+		},
 	}
 	awsAMD64OVNBaseTestStats50Percent := crtype.TestStatus{
-		TestName:     "test 1",
-		Variants:     []string{"standard"},
-		TotalCount:   1000,
-		FlakeCount:   10,
-		SuccessCount: 500,
+		TestName: "test 1",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   1000,
+			FlakeCount:   10,
+			SuccessCount: 500,
+		},
 	}
 	awsAMD64OVNBaseTestStatsVariants90Percent := crtype.TestStatus{
-		TestName:     "test 1",
-		Variants:     []string{"standard", "fips"},
-		TotalCount:   1000,
-		FlakeCount:   10,
-		SuccessCount: 900,
+		TestName: "test 1",
+		Variants: []string{"standard", "fips"},
+		TestCount: crtype.TestCount{
+			TotalCount:   1000,
+			FlakeCount:   10,
+			SuccessCount: 900,
+		},
 	}
 	awsAMD64OVNSampleTestStats90Percent := crtype.TestStatus{
-		TestName:     "test 1",
-		Variants:     []string{"standard"},
-		TotalCount:   100,
-		FlakeCount:   1,
-		SuccessCount: 90,
+		TestName: "test 1",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   100,
+			FlakeCount:   1,
+			SuccessCount: 90,
+		},
 	}
 	awsAMD64OVNSampleTestStats85Percent := crtype.TestStatus{
-		TestName:     "test 1",
-		Variants:     []string{"standard"},
-		TotalCount:   100,
-		FlakeCount:   1,
-		SuccessCount: 85,
+		TestName: "test 1",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   100,
+			FlakeCount:   1,
+			SuccessCount: 85,
+		},
 	}
 	awsAMD64OVNSampleTestStats50Percent := crtype.TestStatus{
-		TestName:     "test 1",
-		Variants:     []string{"standard"},
-		TotalCount:   100,
-		FlakeCount:   1,
-		SuccessCount: 50,
+		TestName: "test 1",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   100,
+			FlakeCount:   1,
+			SuccessCount: 50,
+		},
 	}
 	awsAMD64OVNSampleTestStatsTiny := crtype.TestStatus{
-		TestName:     "test 1",
-		Variants:     []string{"standard"},
-		TotalCount:   3,
-		FlakeCount:   0,
-		SuccessCount: 1,
+		TestName: "test 1",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   3,
+			FlakeCount:   0,
+			SuccessCount: 1,
+		},
 	}
 	awsAMD64OVNSampleTestStatsVariants90Percent := crtype.TestStatus{
-		TestName:     "test 1",
-		Variants:     []string{"standard", "fips"},
-		TotalCount:   100,
-		FlakeCount:   1,
-		SuccessCount: 90,
+		TestName: "test 1",
+		Variants: []string{"standard", "fips"},
+		TestCount: crtype.TestCount{
+			TotalCount:   100,
+			FlakeCount:   1,
+			SuccessCount: 90,
+		},
 	}
 	awsAMD64SDNBaseTestStats90Percent := crtype.TestStatus{
-		TestName:     "test 2",
-		Variants:     []string{"standard"},
-		TotalCount:   1000,
-		FlakeCount:   10,
-		SuccessCount: 900,
+		TestName: "test 2",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   1000,
+			FlakeCount:   10,
+			SuccessCount: 900,
+		},
 	}
 	awsAMD64SDNBaseTestStats50Percent := crtype.TestStatus{
-		TestName:     "test 2",
-		Variants:     []string{"standard"},
-		TotalCount:   1000,
-		FlakeCount:   10,
-		SuccessCount: 500,
+		TestName: "test 2",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   1000,
+			FlakeCount:   10,
+			SuccessCount: 500,
+		},
 	}
 	awsAMD64SDNSampleTestStats90Percent := crtype.TestStatus{
-		TestName:     "test 2",
-		Variants:     []string{"standard"},
-		TotalCount:   100,
-		FlakeCount:   1,
-		SuccessCount: 90,
+		TestName: "test 2",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   100,
+			FlakeCount:   1,
+			SuccessCount: 90,
+		},
 	}
 	awsAMD64OVN2BaseTestStats90Percent := crtype.TestStatus{
-		TestName:     "test 3",
-		Variants:     []string{"standard"},
-		TotalCount:   1000,
-		FlakeCount:   10,
-		SuccessCount: 900,
+		TestName: "test 3",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   1000,
+			FlakeCount:   10,
+			SuccessCount: 900,
+		},
 	}
 	awsAMD64OVN2SampleTestStats80Percent := crtype.TestStatus{
-		TestName:     "test 3",
-		Variants:     []string{"standard"},
-		TotalCount:   100,
-		FlakeCount:   1,
-		SuccessCount: 80,
+		TestName: "test 3",
+		Variants: []string{"standard"},
+		TestCount: crtype.TestCount{
+			TotalCount:   100,
+			FlakeCount:   1,
+			SuccessCount: 80,
+		},
 	}
 	columnAWSAMD64OVN := crtype.ColumnIdentification{
 		Variants: map[string]string{
@@ -1542,50 +1568,58 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		for _, testStats := range tc.baseRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
 				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.TestJobRunRows{
-					ProwJob:      testStats.job,
-					TotalCount:   1,
-					SuccessCount: 1,
+					ProwJob: testStats.job,
+					TestCount: crtype.TestCount{
+						TotalCount:   1,
+						SuccessCount: 1,
+					},
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
 				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.TestJobRunRows{
-					ProwJob:    testStats.job,
-					TotalCount: 1,
+					ProwJob:   testStats.job,
+					TestCount: crtype.TestCount{TotalCount: 1},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
 				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.TestJobRunRows{
-					ProwJob:    testStats.job,
-					TotalCount: 1,
-					FlakeCount: 1,
+					ProwJob: testStats.job,
+					TestCount: crtype.TestCount{
+						TotalCount: 1,
+						FlakeCount: 1,
+					},
 				})
 			}
 		}
 		for _, testStats := range tc.sampleRequiredJobStats {
 			for i := 0; i < testStats.Success; i++ {
 				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.TestJobRunRows{
-					ProwJob:      testStats.job,
-					TotalCount:   1,
-					SuccessCount: 1,
+					ProwJob: testStats.job,
+					TestCount: crtype.TestCount{
+						TotalCount:   1,
+						SuccessCount: 1,
+					},
 				})
 			}
 			for i := 0; i < testStats.Failure; i++ {
 				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.TestJobRunRows{
-					ProwJob:    testStats.job,
-					TotalCount: 1,
+					ProwJob:   testStats.job,
+					TestCount: crtype.TestCount{TotalCount: 1},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
 				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.TestJobRunRows{
-					ProwJob:    testStats.job,
-					TotalCount: 1,
-					FlakeCount: 1,
+					ProwJob: testStats.job,
+					TestCount: crtype.TestCount{
+						TotalCount: 1,
+						FlakeCount: 1,
+					},
 				})
 			}
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
-			report := tc.generator.internalGenerateTestDetailsReport(baseStats, "", nil, nil, sampleStats, tc.generator.ReqOptions.TestIDOptions[0])
+			report := tc.generator.internalGenerateTestDetailsReport("", nil, nil, baseStats, sampleStats, tc.generator.ReqOptions.TestIDOptions[0])
 			assert.Equal(t, tc.expectedReport.RowIdentification, report.RowIdentification, "expected report row identification %+v, got %+v", tc.expectedReport.RowIdentification, report.RowIdentification)
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
 			assert.Equal(t, tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats)

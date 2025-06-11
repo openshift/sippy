@@ -141,10 +141,10 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 			success := testStats.BaseStats.SuccessCount
 			fail := testStats.BaseStats.FailureCount
 			flake := testStats.BaseStats.FlakeCount
-			basePassRate := utils.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
+			basePassRate := crtype.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
 
 			_, success, fail, flake = cTestStats.GetTotalSuccessFailFlakeCounts()
-			cPassRate := utils.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
+			cPassRate := crtype.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
 			if cPassRate > basePassRate {
 				// We've found a better pass rate in a prior release with enough runs to qualify.
 				// Adjust the stats and keep looking for an even better one.

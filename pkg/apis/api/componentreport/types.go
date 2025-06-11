@@ -151,22 +151,42 @@ type RequestAdvancedOptions struct {
 	IncludeMultiReleaseAnalysis bool `json:"include_multi_release_analysis" yaml:"include_multi_release_analysis"`
 }
 
+// TestCount is a struct representing the counts of test results in BigQuery-land.
+type TestCount struct {
+	TotalCount   int `json:"total_count" bigquery:"total_count"`
+	SuccessCount int `json:"success_count" bigquery:"success_count"`
+	FlakeCount   int `json:"flake_count" bigquery:"flake_count"`
+}
+
+//nolint:revive
+func (tc TestCount) Add(add TestCount) TestCount {
+	tc.TotalCount += add.TotalCount
+	tc.SuccessCount += add.SuccessCount
+	tc.FlakeCount += add.FlakeCount
+	return tc
+}
+func (tc TestCount) Failures() int { // translate to sippy/stats-land
+	failure := tc.TotalCount - tc.SuccessCount - tc.FlakeCount
+	if failure < 0 { // this shouldn't happen but just as a failsafe...
+		failure = 0
+	}
+	return failure
+}
+
 // TestStatus is an internal type used to pass data bigquery onwards to the actual
 // report generation. It is not serialized over the API.
 type TestStatus struct {
-	TestName     string    `json:"test_name"`
-	TestSuite    string    `json:"test_suite"`
-	Component    string    `json:"component"`
-	Capabilities []string  `json:"capabilities"`
-	Variants     []string  `json:"variants"`
-	TotalCount   int       `json:"total_count"`
-	SuccessCount int       `json:"success_count"`
-	FlakeCount   int       `json:"flake_count"`
-	LastFailure  time.Time `json:"last_failure"`
+	TestName     string   `json:"test_name"`
+	TestSuite    string   `json:"test_suite"`
+	Component    string   `json:"component"`
+	Capabilities []string `json:"capabilities"`
+	Variants     []string `json:"variants"`
+	TestCount
+	LastFailure time.Time `json:"last_failure"`
 }
 
 func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
-	failures := ts.TotalCount - ts.SuccessCount - ts.FlakeCount
+	failures := ts.Failures()
 	return ts.TotalCount, ts.SuccessCount, failures, ts.FlakeCount
 }
 
@@ -306,12 +326,11 @@ type TestDetailsReleaseStats struct {
 }
 
 type TestDetailsTestStats struct {
-	// TODO: should be a function not a field, calculated from the three below
-	SuccessRate float64 `json:"success_rate"`
-
 	SuccessCount int `json:"success_count"`
 	FailureCount int `json:"failure_count"`
 	FlakeCount   int `json:"flake_count"`
+	// calculate from the above with PassRate method:
+	SuccessRate float64 `json:"success_rate"`
 }
 
 func (tdts TestDetailsTestStats) Total() int {
@@ -323,6 +342,55 @@ func (tdts TestDetailsTestStats) Passes(flakesAsFailure bool) int {
 		return tdts.SuccessCount
 	}
 	return tdts.SuccessCount + tdts.FlakeCount
+}
+
+func (tdts TestDetailsTestStats) PassRate(flakesAsFailure bool) float64 {
+	return CalculatePassRate(tdts.SuccessCount, tdts.FailureCount, tdts.FlakeCount, flakesAsFailure)
+}
+
+func (tdts TestDetailsTestStats) Add(add TestDetailsTestStats, flakesAsFailure bool) TestDetailsTestStats {
+	return NewTestStats(
+		tdts.SuccessCount+add.SuccessCount,
+		tdts.FailureCount+add.FailureCount,
+		tdts.FlakeCount+add.FlakeCount,
+		flakesAsFailure,
+	)
+}
+
+func (tdts TestDetailsTestStats) AddTestCount(add TestCount, flakesAsFailure bool) TestDetailsTestStats {
+	return NewTestStats(
+		tdts.SuccessCount+add.SuccessCount,
+		tdts.FailureCount+add.Failures(),
+		tdts.FlakeCount+add.FlakeCount,
+		flakesAsFailure,
+	)
+}
+
+func (tdts TestDetailsTestStats) FailPassWithFlakes(flakesAsFailure bool) (int, int) {
+	if flakesAsFailure {
+		return tdts.FailureCount + tdts.FlakeCount, tdts.SuccessCount
+	}
+	return tdts.FailureCount, tdts.SuccessCount + tdts.FlakeCount
+}
+
+func NewTestStats(successCount, failureCount, flakeCount int, flakesAsFailure bool) TestDetailsTestStats {
+	return TestDetailsTestStats{
+		SuccessCount: successCount,
+		FailureCount: failureCount,
+		FlakeCount:   flakeCount,
+		SuccessRate:  CalculatePassRate(successCount, failureCount, flakeCount, flakesAsFailure),
+	}
+}
+
+func CalculatePassRate(success, failure, flake int, treatFlakeAsFailure bool) float64 {
+	total := success + failure + flake
+	if total == 0 {
+		return 0.0
+	}
+	if treatFlakeAsFailure {
+		return float64(success) / float64(total)
+	}
+	return float64(success+flake) / float64(total)
 }
 
 type TestDetailsJobStats struct {
@@ -350,18 +418,16 @@ type TestDetailsJobRunStats struct {
 // indicating if the test passed or failed.
 // Fields are named count somewhat misleadingly as technically they're always 0 or 1 today.
 type TestJobRunRows struct {
-	TestKey         TestWithVariantsKey `json:"test_key"`
-	TestKeyStr      string              `json:"-"` // transient field so we dont have to keep recalculating
-	TestName        string              `bigquery:"test_name"`
-	ProwJob         string              `bigquery:"prowjob_name"`
-	ProwJobRunID    string              `bigquery:"prowjob_run_id"`
-	ProwJobURL      string              `bigquery:"prowjob_url"`
-	StartTime       civil.DateTime      `bigquery:"prowjob_start"`
-	TotalCount      int                 `bigquery:"total_count"`
-	SuccessCount    int                 `bigquery:"success_count"`
-	FlakeCount      int                 `bigquery:"flake_count"`
-	JiraComponent   string              `bigquery:"jira_component"`
-	JiraComponentID *big.Rat            `bigquery:"jira_component_id"`
+	TestKey      TestWithVariantsKey `json:"test_key"`
+	TestKeyStr   string              `json:"-"` // transient field so we dont have to keep recalculating
+	TestName     string              `bigquery:"test_name"`
+	ProwJob      string              `bigquery:"prowjob_name"`
+	ProwJobRunID string              `bigquery:"prowjob_run_id"`
+	ProwJobURL   string              `bigquery:"prowjob_url"`
+	StartTime    civil.DateTime      `bigquery:"prowjob_start"`
+	TestCount
+	JiraComponent   string   `bigquery:"jira_component"`
+	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
 }
 
 // TestJobRunStatuses contains the rows returned from a test details query organized by base and sample,

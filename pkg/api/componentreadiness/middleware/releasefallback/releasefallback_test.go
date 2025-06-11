@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/stretchr/testify/assert"
 )
@@ -215,9 +214,11 @@ func buildTestStatus(testName string, variants []string, total, success, flake i
 		Component:    "foo",
 		Capabilities: nil,
 		Variants:     variants,
-		TotalCount:   total,
-		SuccessCount: success,
-		FlakeCount:   flake,
+		TestCount: crtype.TestCount{
+			TotalCount:   total,
+			SuccessCount: success,
+			FlakeCount:   flake,
+		},
 	}
 }
 
@@ -232,7 +233,7 @@ func buildTestStats(total, success int, baseRelease crtype.Release, explanations
 				FailureCount: fails,
 				SuccessCount: success,
 				FlakeCount:   0,
-				SuccessRate:  utils.CalculatePassRate(success, fails, 0, false),
+				SuccessRate:  crtype.CalculatePassRate(success, fails, 0, false),
 			},
 		},
 	}

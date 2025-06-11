@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/stretchr/testify/assert"
@@ -168,7 +167,7 @@ func buildTestStatus(total, success, flake int, baseRelease string) *crtype.Repo
 				FailureCount: fails,
 				SuccessCount: success,
 				FlakeCount:   flake,
-				SuccessRate:  utils.CalculatePassRate(success, fails, flake, false),
+				SuccessRate:  crtype.CalculatePassRate(success, fails, flake, false),
 			},
 		},
 	}
@@ -188,7 +187,7 @@ func buildTestStatus2(total, success, flake int, baseRelease, sampleRelease stri
 			FailureCount: fails,
 			SuccessCount: success,
 			FlakeCount:   flake,
-			SuccessRate:  utils.CalculatePassRate(success, fails, flake, false),
+			SuccessRate:  crtype.CalculatePassRate(success, fails, flake, false),
 		},
 	}
 	ts.PityAdjustment = pityAdjust
