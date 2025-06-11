@@ -570,7 +570,20 @@ export const CompReadyVarsProvider = ({ children }) => {
     const params = {}
     items.forEach((item) => {
       const variants = item.split(':')
-      params[variants[0]] = variants[1]
+      if (variants.length === 2) {
+        params[variants[0]] = variants[1]
+      } else {
+        // handle legacy links where env didn't specify variant name (TRT-2154)
+        Object.entries(allJobVariants).forEach(
+          ([variantName, variantValues]) => {
+            // the new env format started after platform 'none' was added.
+            // we only need to support 'none' in the legacy format for Upgrade=none
+            if (variantValues.includes(item))
+              if (variantName === 'Upgrade' || item !== 'none')
+                params[variantName] = item
+          }
+        )
+      }
     })
     const paramStrings = Object.entries(params).map(
       ([key, value]) => `${key}=${value}`
