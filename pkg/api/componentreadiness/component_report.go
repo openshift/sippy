@@ -1002,15 +1002,7 @@ func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.Repor
 		testStats.RequiredConfidence = opts.Confidence
 	}
 
-	var baseSuccess, baseFailure, baseFlake, baseTotal int
-	if testStats.BaseStats != nil {
-		baseSuccess = testStats.BaseStats.SuccessCount
-		baseFailure = testStats.BaseStats.FailureCount
-		baseFlake = testStats.BaseStats.FlakeCount
-		baseTotal = baseSuccess + baseFailure + baseFlake
-	}
-
-	if baseTotal == 0 && opts.PassRateRequiredNewTests > 0 {
+	if (testStats.BaseStats == nil || testStats.BaseStats.Total() == 0) && opts.PassRateRequiredNewTests > 0 {
 		// If we have no base stats, fall back to a raw pass rate comparison for new or improperly renamed tests:
 		c.buildPassRateTestStats(testStats, float64(opts.PassRateRequiredNewTests))
 		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
