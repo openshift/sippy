@@ -59,7 +59,6 @@ export default function ComponentReadinessToolBar(props) {
   const [regressedTests, setRegressedTests] = React.useState([])
   const [allRegressedTests, setAllRegressedTests] = React.useState([])
   const [unresolvedTests, setUnresolvedTests] = React.useState([])
-  const [triagedIncidents, setTriagedIncidents] = React.useState([])
   const [triageEntries, setTriageEntries] = React.useState([])
   const [isLoaded, setIsLoaded] = React.useState(false)
   const capabilitiesContext = React.useContext(CapabilitiesContext)
@@ -86,7 +85,6 @@ export default function ComponentReadinessToolBar(props) {
       setRegressedTests(merged.untriagedRegressedTests)
       setAllRegressedTests(merged.allRegressions)
       setUnresolvedTests(merged.unresolvedRegressedTests)
-      setTriagedIncidents(merged.groupedIncidents)
       const activeRegressionIds = merged.allRegressions?.map(
         (test) => test.regression?.id
       )
@@ -350,7 +348,6 @@ export default function ComponentReadinessToolBar(props) {
         regressedTests={regressedTests}
         allRegressedTests={allRegressedTests}
         unresolvedTests={unresolvedTests}
-        triagedIncidents={triagedIncidents}
         triageEntries={triageEntries}
         setTriageActionTaken={setTriageActionTaken}
         filterVals={filterVals}

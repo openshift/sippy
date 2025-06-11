@@ -17,7 +17,6 @@ import {
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
-  mergeIncidents,
   noDataTable,
 } from './CompReadyUtils'
 import { CapabilitiesContext, ReleasesContext } from '../App'
@@ -43,7 +42,6 @@ import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
-import TriagedIncidentsPanel from './TriagedIncidentsPanel'
 import TriagedTestsPanel from './TriagedTestsPanel'
 import UpsertTriageModal from './UpsertTriageModal'
 
@@ -348,20 +346,6 @@ Flakes: ${stats.flake_count}`
       </div>
       <Grid container>
         <Grid item xs={12}>
-          {triageEntries.length === 0 &&
-            data.analyses[0].incidents &&
-            data.analyses[0].incidents.length > 0 && (
-              <Fragment>
-                <h2>Triaged Incidents</h2>
-                <TriagedIncidentsPanel
-                  triagedIncidents={mergeIncidents(
-                    data.analyses[0].incidents,
-                    data
-                  )}
-                />
-              </Fragment>
-            )}
-
           {triageEntries.length > 0 && (
             <Fragment>
               <h2>Triages</h2>
@@ -511,7 +495,6 @@ View the [test details report|${document.location.href}] for additional context.
             <CompReadyTestPanel
               data={data.analyses[0]}
               versions={versions}
-              isOverride={false}
               loadedParams={loadedParams}
               testName={testName}
               environment={environment}
@@ -522,7 +505,6 @@ View the [test details report|${document.location.href}] for additional context.
             <CompReadyTestPanel
               data={data.analyses[1]}
               versions={versions}
-              isOverride={true}
               loadedParams={loadedParams}
               testName={testName}
               environment={environment}
@@ -534,7 +516,6 @@ View the [test details report|${document.location.href}] for additional context.
         <CompReadyTestPanel
           data={data.analyses[0]}
           versions={versions}
-          isOverride={false}
           loadedParams={loadedParams}
           testName={testName}
           environment={environment}

@@ -9,7 +9,6 @@ import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import RegressedTestsPanel from './RegressedTestsPanel'
-import TriagedIncidentsPanel from './TriagedIncidentsPanel'
 import TriagedTestsPanel from './TriagedTestsPanel'
 
 function tabProps(index) {
@@ -47,7 +46,6 @@ export default function RegressedTestsModal({
   regressedTests,
   allRegressedTests,
   unresolvedTests,
-  triagedIncidents,
   triageEntries,
   setTriageActionTaken,
   filterVals,
@@ -96,10 +94,11 @@ export default function RegressedTestsModal({
           >
             <Tab label="Unresolved" {...tabProps(0)} />
             <Tab label="Untriaged" {...tabProps(1)} />
-            {triageEntriesExist && <Tab label="Triaged" {...tabProps(2)} />}
-            {!triageEntriesExist && (
-              <Tab label="Triaged Incidents" {...tabProps(2)} />
-            )}
+            <Tab
+              label="Triaged"
+              disabled={!triageEntriesExist}
+              {...tabProps(2)}
+            />
             <Tab label="All" {...tabProps(3)} />
           </Tabs>
           <RegressedTestsTabPanel activeIndex={activeTab} index={0}>
@@ -116,11 +115,6 @@ export default function RegressedTestsModal({
               filterVals={filterVals}
             />
           </RegressedTestsTabPanel>
-          {!triageEntriesExist && (
-            <RegressedTestsTabPanel activeIndex={activeTab} index={2}>
-              <TriagedIncidentsPanel triagedIncidents={triagedIncidents} />
-            </RegressedTestsTabPanel>
-          )}
           {triageEntriesExist && (
             <RegressedTestsTabPanel activeIndex={activeTab} index={2}>
               <TriagedTestsPanel
@@ -155,7 +149,6 @@ RegressedTestsModal.propTypes = {
   regressedTests: PropTypes.array,
   allRegressedTests: PropTypes.array,
   unresolvedTests: PropTypes.array,
-  triagedIncidents: PropTypes.array,
   triageEntries: PropTypes.array,
   setTriageActionTaken: PropTypes.func,
   filterVals: PropTypes.string.isRequired,

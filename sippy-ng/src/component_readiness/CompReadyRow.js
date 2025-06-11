@@ -1,7 +1,6 @@
 import './ComponentReadiness.css'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Fragment, useContext } from 'react'
-import { generateRegressionCount } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
@@ -62,10 +61,7 @@ export default function CompReadyRow(props) {
             componentName={componentName}
             filterVals={filterVals}
             grayFactor={grayFactor}
-            regressedCount={generateRegressionCount(
-              columnVal.regressed_tests,
-              columnVal.triaged_incidents
-            )}
+            regressedCount={columnVal.regressed_tests}
           />
         ))}
       </TableRow>
