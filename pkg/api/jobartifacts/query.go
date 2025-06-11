@@ -260,6 +260,10 @@ const cacheExpiration = 4 * time.Hour
 func (q *JobArtifactQuery) SetJobRunCache(ctx context.Context, jobRunID int64, response JobRun) error {
 	logger := log.WithField("func", "SetJobRunCache").WithField("job_run_id", jobRunID)
 
+	if q.Cache == nil {
+		return fmt.Errorf("job artifact query cache is disabled")
+	}
+
 	serialized, err := json.Marshal(response)
 	if err != nil {
 		logger.WithError(err).Fatal("Should never fail to serialize jobRunResponse")
@@ -275,6 +279,10 @@ func (q *JobArtifactQuery) SetJobRunCache(ctx context.Context, jobRunID int64, r
 
 func (q *JobArtifactQuery) GetCachedJobRun(ctx context.Context, jobRunID int64) (response JobRun, err error) {
 	logger := log.WithField("func", "GetCachedJobRun").WithField("job_run_id", jobRunID)
+
+	if q.Cache == nil {
+		return JobRun{}, errors.New("cache not initialized")
+	}
 
 	// retrieve bytes from the cache if they exist
 	jsonBytes, err := q.Cache.Get(ctx, q.CacheKeyForJobRun(jobRunID), cacheExpiration)
