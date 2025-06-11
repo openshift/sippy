@@ -805,7 +805,7 @@ func initTestAnalysisStruct(
 
 // TODO: break this function down and remove this nolint
 // nolint:gocyclo
-func (c *ComponentReportGenerator) generateComponentTestReport(baseStatus, sampleStatus map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
+func (c *ComponentReportGenerator) generateComponentTestReport(baseStatusMap, sampleStatusMap map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
 	report := crtype.ComponentReport{
 		Rows: []crtype.ReportRow{},
 	}
@@ -824,79 +824,79 @@ func (c *ComponentReportGenerator) generateComponentTestReport(baseStatus, sampl
 	// understand we use this to find tests associated with base that we don't see now in sample
 	// meaning they have been renamed or removed
 
-	for testKeyStr, baseStats := range baseStatus {
-		testKey, err := utils.DeserializeTestKey(baseStats, testKeyStr)
+	for testKeyStr, baseStatus := range baseStatusMap {
+		testKey, err := utils.DeserializeTestKey(baseStatus, testKeyStr)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
 
-		var testStats crtype.ReportTestStats // This is the actual stats we return over the API
+		var report crtype.ReportTestStats // This is the actual stats we return over the API
 
-		sampleStats, ok := sampleStatus[testKeyStr]
+		sampleStatus, ok := sampleStatusMap[testKeyStr]
 		if !ok {
-			testStats.ReportStatus = crtype.MissingSample
+			report.ReportStatus = crtype.MissingSample
 		} else {
 
 			// Initialize the test analysis before we start passing it around to the middleware
-			initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, &baseStats)
+			initTestAnalysisStruct(&report, c.ReqOptions, sampleStatus, &baseStatus)
 
 			// Give middleware their chance to adjust parameters prior to analysis
 			for _, mw := range c.middlewares {
-				err = mw.PreAnalysis(testKey, &testStats)
+				err = mw.PreAnalysis(testKey, &report)
 				if err != nil {
 					return crtype.ComponentReport{}, err
 				}
 			}
 
-			c.assessComponentStatus(&testStats)
+			c.assessComponentStatus(&report)
 
-			if !sampleStats.LastFailure.IsZero() {
-				testStats.LastFailure = &sampleStats.LastFailure
+			if !sampleStatus.LastFailure.IsZero() {
+				report.LastFailure = &sampleStatus.LastFailure
 			}
 
 		}
-		delete(sampleStatus, testKeyStr)
+		delete(sampleStatusMap, testKeyStr)
 
-		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, baseStats)
+		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, baseStatus)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentifications, testKey, testStats, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(rowIdentifications, columnIdentifications, testKey, report, aggregatedStatus, allRows, allColumns)
 	}
 
 	// Anything we saw in the basis was removed above, all that remains are tests with no basis, typically new
 	// tests, or tests that were renamed without submitting a rename to the test mapping repo.
-	for testKey, sampleStats := range sampleStatus {
-		testID, err := utils.DeserializeTestKey(sampleStats, testKey)
+	for testKey, sampleStatus := range sampleStatusMap {
+		testID, err := utils.DeserializeTestKey(sampleStatus, testKey)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
 
-		var testStats crtype.ReportTestStats
+		var report crtype.ReportTestStats
 
 		// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
-		initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, nil)
+		initTestAnalysisStruct(&report, c.ReqOptions, sampleStatus, nil)
 
 		// Give middleware their chance to adjust parameters prior to analysis
 		for _, mw := range c.middlewares {
-			err = mw.PreAnalysis(testID, &testStats)
+			err = mw.PreAnalysis(testID, &report)
 			if err != nil {
 				return crtype.ComponentReport{}, err
 			}
 		}
 
-		c.assessComponentStatus(&testStats)
+		c.assessComponentStatus(&report)
 
-		if !sampleStats.LastFailure.IsZero() {
-			lastFailure := sampleStats.LastFailure
-			testStats.LastFailure = &lastFailure
+		if !sampleStatus.LastFailure.IsZero() {
+			lastFailure := sampleStatus.LastFailure
+			report.LastFailure = &lastFailure
 		}
 
-		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testKey, sampleStats)
+		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testKey, sampleStatus)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(rowIdentifications, columnIdentification, testID, report, aggregatedStatus, allRows, allColumns)
 	}
 
 	// Sort the row identifications
