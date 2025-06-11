@@ -2,7 +2,6 @@
 package componentreadiness
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -1168,7 +1167,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	componentAndCapabilityGetter = fakeComponentAndCapabilityGetter
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			report, err := tc.generator.generateComponentTestReport(context.TODO(), tc.baseStatus, tc.sampleStatus)
+			report, err := tc.generator.generateComponentTestReport(tc.baseStatus, tc.sampleStatus)
 			assert.NoError(t, err, "error generating component report")
 
 			// WARNING: PC and Mac differ on floating point comparisons when you get far enough into the precision.
@@ -1586,7 +1585,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		}
 
 		t.Run(tc.name, func(t *testing.T) {
-			report := tc.generator.internalGenerateTestDetailsReport(context.TODO(), baseStats, "", nil, nil, sampleStats, tc.generator.ReqOptions.TestIDOptions[0])
+			report := tc.generator.internalGenerateTestDetailsReport(baseStats, "", nil, nil, sampleStats, tc.generator.ReqOptions.TestIDOptions[0])
 			assert.Equal(t, tc.expectedReport.RowIdentification, report.RowIdentification, "expected report row identification %+v, got %+v", tc.expectedReport.RowIdentification, report.RowIdentification)
 			assert.Equal(t, tc.expectedReport.ColumnIdentification, report.ColumnIdentification, "expected report column identification %+v, got %+v", tc.expectedReport.ColumnIdentification, report.ColumnIdentification)
 			assert.Equal(t, tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats, "expected report base stats %+v, got %+v", tc.expectedReport.Analyses[0].BaseStats, report.Analyses[0].BaseStats)
@@ -1653,14 +1652,13 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 
 func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 	tests := []struct {
-		name                   string
-		sampleTotal            int
-		sampleSuccess          int
-		sampleFlake            int
-		baseTotal              int
-		baseSuccess            int
-		baseFlake              int
-		numberOfIgnoredSamples int
+		name          string
+		sampleTotal   int
+		sampleSuccess int
+		sampleFlake   int
+		baseTotal     int
+		baseSuccess   int
+		baseFlake     int
 
 		requiredPassRateForNewTests int
 		requiredPassRateForAllTests int
@@ -1670,102 +1668,26 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 		expectedFischers *float64
 	}{
 		{
-			name:                   "triaged still regular regression",
-			sampleTotal:            16,
-			sampleSuccess:          13,
-			sampleFlake:            0,
-			baseTotal:              15,
-			baseSuccess:            14,
-			baseFlake:              1,
-			numberOfIgnoredSamples: 2,
-			expectedStatus:         -400,
-			expectedFischers:       thrift.Float64Ptr(0.4827586206896551),
+			name:             "regular regression",
+			sampleTotal:      15,
+			sampleSuccess:    13,
+			sampleFlake:      0,
+			baseTotal:        15,
+			baseSuccess:      14,
+			baseFlake:        1,
+			expectedStatus:   -400,
+			expectedFischers: thrift.Float64Ptr(0.2413793103448262),
 		},
 		{
-			name:                   "triaged regular regression",
-			sampleTotal:            15,
-			sampleSuccess:          13,
-			sampleFlake:            0,
-			baseTotal:              15,
-			baseSuccess:            14,
-			baseFlake:              1,
-			numberOfIgnoredSamples: 2,
-			expectedStatus:         -200,
-			expectedFischers:       thrift.Float64Ptr(1),
-		},
-		{
-			name:                   "regular regression",
-			sampleTotal:            15,
-			sampleSuccess:          13,
-			sampleFlake:            0,
-			baseTotal:              15,
-			baseSuccess:            14,
-			baseFlake:              1,
-			numberOfIgnoredSamples: 0,
-			expectedStatus:         -400,
-			expectedFischers:       thrift.Float64Ptr(0.2413793103448262),
-		},
-		{
-			name:                   "zero success",
-			sampleTotal:            15,
-			sampleSuccess:          0,
-			sampleFlake:            0,
-			baseTotal:              15,
-			baseSuccess:            14,
-			baseFlake:              1,
-			numberOfIgnoredSamples: 0,
-			expectedStatus:         -500,
-			expectedFischers:       thrift.Float64Ptr(6.446725037893782e-09),
-		},
-		{
-			name:                   "triaged, zero success",
-			sampleTotal:            15,
-			sampleSuccess:          0,
-			sampleFlake:            0,
-			baseTotal:              15,
-			baseSuccess:            14,
-			baseFlake:              1,
-			numberOfIgnoredSamples: 15,
-			expectedStatus:         -300,
-			expectedFischers:       thrift.Float64Ptr(0),
-		},
-
-		{
-			name:                   "triaged extreme, fixed",
-			sampleTotal:            15,
-			sampleSuccess:          5,
-			sampleFlake:            0,
-			baseTotal:              15,
-			baseSuccess:            14,
-			baseFlake:              1,
-			numberOfIgnoredSamples: 10,
-			expectedStatus:         -300,
-			expectedFischers:       thrift.Float64Ptr(1),
-		},
-
-		{
-			name:                   "triaged, still extreme",
-			sampleTotal:            15,
-			sampleSuccess:          5,
-			sampleFlake:            0,
-			baseTotal:              15,
-			baseSuccess:            14,
-			baseFlake:              1,
-			numberOfIgnoredSamples: 9,
-			expectedStatus:         -500,
-			expectedFischers:       thrift.Float64Ptr(0.285714285714284),
-		},
-		{
-			name:                   "triaged, still extreme",
-			sampleTotal:            15,
-			sampleSuccess:          5,
-			sampleFlake:            0,
-			baseTotal:              15,
-			baseSuccess:            14,
-			baseFlake:              1,
-			numberOfIgnoredSamples: 9,
-			expectedStatus:         -500,
-			expectedFischers:       thrift.Float64Ptr(0.285714285714284),
+			name:             "zero success",
+			sampleTotal:      15,
+			sampleSuccess:    0,
+			sampleFlake:      0,
+			baseTotal:        15,
+			baseSuccess:      14,
+			baseFlake:        1,
+			expectedStatus:   -500,
+			expectedFischers: thrift.Float64Ptr(6.446725037893782e-09),
 		},
 		{
 			name:                        "new test no regression",
@@ -1791,22 +1713,6 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			expectedStatus:              crtype.SignificantRegression,
 		},
 		{
-			name:                        "new test significant regression with triaged runs",
-			sampleTotal:                 1000,
-			sampleSuccess:               985,
-			numberOfIgnoredSamples:      12,
-			requiredPassRateForNewTests: 99,
-			expectedStatus:              crtype.MissingBasis,
-		},
-		{
-			name:                        "new test all failures triaged",
-			sampleTotal:                 1000,
-			sampleSuccess:               988,
-			numberOfIgnoredSamples:      12,
-			requiredPassRateForNewTests: 99,
-			expectedStatus:              crtype.MissingBasis,
-		},
-		{
 			name:                        "pass rate mode significant regression",
 			sampleTotal:                 100,
 			sampleSuccess:               94,
@@ -1814,7 +1720,6 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseTotal:                   100,
 			baseSuccess:                 94,
 			baseFlake:                   0,
-			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
 			expectedStatus:              crtype.SignificantRegression,
 		},
@@ -1826,7 +1731,6 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseTotal:                   100,
 			baseSuccess:                 89,
 			baseFlake:                   0,
-			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
 			expectedStatus:              crtype.ExtremeRegression,
 		},
@@ -1838,7 +1742,6 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseTotal:                   100,
 			baseSuccess:                 97,
 			baseFlake:                   0,
-			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
 			expectedStatus:              crtype.NotSignificant,
 		},
@@ -1850,7 +1753,6 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseTotal:                   20,
 			baseSuccess:                 18,
 			baseFlake:                   0,
-			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
 			minFail:                     5,
 			expectedStatus:              crtype.NotSignificant,
@@ -1863,7 +1765,6 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			baseTotal:                   20,
 			baseSuccess:                 18,
 			baseFlake:                   0,
-			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
 			minFail:                     1,
 			expectedStatus:              crtype.SignificantRegression,
@@ -1873,7 +1774,6 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			sampleTotal:                 6,
 			sampleSuccess:               0,
 			sampleFlake:                 0,
-			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
 			expectedStatus:              crtype.NotSignificant,
 		},
@@ -1882,7 +1782,6 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 			sampleTotal:                 7,
 			sampleSuccess:               6,
 			sampleFlake:                 0,
-			numberOfIgnoredSamples:      0,
 			requiredPassRateForAllTests: 95,
 			expectedStatus:              crtype.ExtremeRegression,
 		},
@@ -1911,7 +1810,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 				},
 			}
 
-			c.assessComponentStatus(testAnalysis, false, tt.numberOfIgnoredSamples)
+			c.assessComponentStatus(testAnalysis)
 			assert.Equalf(t, tt.expectedStatus, testAnalysis.ReportStatus, "assessComponentStatus expected status not equal")
 			if tt.expectedFischers != nil {
 				// Mac and Linux do not matchup on floating point precision, so lets approximate the comparison:

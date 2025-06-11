@@ -197,12 +197,6 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
 			allRegressedTests = append(allRegressedTests, col.RegressedTests...)
-			// Once triaged, regressions move to this list, we want to still consider them an open regression until
-			// the report says they're cleared and they disappear fully. Triaged does not imply fixed or no longer
-			// a regression.
-			for _, triaged := range col.TriagedIncidents {
-				allRegressedTests = append(allRegressedTests, triaged.ReportTestSummary)
-			}
 		}
 	}
 
