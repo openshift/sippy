@@ -66,8 +66,8 @@ export default function CompReadyEnvCapabilities(props) {
     `&component=${safeComponent}` +
     (environment ? expandEnvironment(environment) : '')
 
-  const newFilterVals =
-    filterVals + `&component=${safeComponent}` + expandEnvironment(environment)
+  // To be consistent filterVals does not contain environment
+  const newFilterVals = filterVals + `&component=${safeComponent}`
 
   useEffect(() => {
     setIsLoaded(false)
@@ -280,6 +280,7 @@ export default function CompReadyEnvCapabilities(props) {
                       )}
                       columnNames={columnNames}
                       filterVals={newFilterVals}
+                      environment={environment}
                     />
                   )
                 })

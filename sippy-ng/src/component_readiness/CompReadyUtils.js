@@ -362,6 +362,7 @@ export function formatLongDate(aLongDate, aDateFormat) {
 
 // Take the values needed to make an api call and return a string that can be used to
 // make that call.
+// To be consistent, this value (filterVals) should not contain environment on any level
 export function getUpdatedUrlParts(vars) {
   const valuesMap = {
     baseRelease: vars.baseRelease,
@@ -768,10 +769,6 @@ export function generateTestReportForRegressedTest(
   const safeTestBasisRelease = safeEncodeURIComponent(
     regressedTest.base_stats?.release
   )
-  let variantsUrl = ''
-  Object.entries(regressedTest.variants).forEach(([key, value]) => {
-    variantsUrl += '&' + key + '=' + safeEncodeURIComponent(value)
-  })
   const retUrl =
     '/sippy-ng/component_readiness/test_details' +
     filterVals +
@@ -780,7 +777,6 @@ export function generateTestReportForRegressedTest(
     expandEnvironment(environmentVal) +
     `&component=${safeComponentName}` +
     `&capability=${regressedTest.capability}` +
-    variantsUrl +
     `&testName=${safeTestName}`
 
   return sortQueryParams(retUrl)
