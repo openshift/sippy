@@ -504,6 +504,9 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		resolvedIssueCompensation, activeProductRegression, incidents = c.triagedIncidentsFor(ctx, result.ReportTestIdentification)
 	}
 
+	// track the last failure we observe in the sample, used for triage middleware to adjust status
+	var lastFailure *time.Time
+
 	var totalBaseFailure, totalBaseSuccess, totalBaseFlake, totalSampleFailure, totalSampleSuccess, totalSampleFlake int
 	var perJobBaseFailure, perJobBaseSuccess, perJobBaseFlake, perJobSampleFailure, perJobSampleSuccess, perJobSampleFlake int
 
@@ -535,6 +538,11 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		}
 		if sampleStatsList, ok := sampleStatusCopy[prowJob]; ok {
 			for _, sampleStats := range sampleStatsList {
+				if (lastFailure == nil || sampleStats.StartTime.In(time.UTC).After(*lastFailure)) &&
+					(sampleStats.FlakeCount == 0 && sampleStats.SuccessCount == 0) {
+					tempTime := sampleStats.StartTime.In(time.UTC)
+					lastFailure = &tempTime
+				}
 				jobStats.SampleJobName = sampleStats.ProwJob
 				if result.JiraComponent == "" && sampleStats.JiraComponent != "" {
 					result.JiraComponent = sampleStats.JiraComponent
@@ -592,6 +600,11 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 		perJobSampleSuccess = 0
 		perJobSampleFlake = 0
 		for _, sampleStats := range sampleStatsList {
+			if (lastFailure == nil || sampleStats.StartTime.In(time.UTC).After(*lastFailure)) &&
+				(sampleStats.FlakeCount == 0 && sampleStats.SuccessCount == 0) {
+				tempTime := sampleStats.StartTime.In(time.UTC)
+				lastFailure = &tempTime
+			}
 			jobStats.SampleJobName = sampleStats.ProwJob
 			jobStats.SampleJobRunStats = append(jobStats.SampleJobRunStats, c.getJobRunStats(sampleStats))
 			perJobSampleSuccess += sampleStats.SuccessCount
@@ -642,6 +655,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(ctx context
 	}
 
 	testStats := crtype.ReportTestStats{
+		LastFailure:        lastFailure,
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
 		SampleStats: crtype.TestDetailsReleaseStats{
 			Release: c.ReqOptions.SampleRelease.Release,
