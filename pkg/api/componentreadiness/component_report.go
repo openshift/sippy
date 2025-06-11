@@ -781,40 +781,24 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification, columnIdent
 func initTestAnalysisStruct(
 	testStats *crtype.ReportTestStats,
 	reqOptions crtype.RequestOptions,
-	sampleStats crtype.TestStatus,
-	baseStats *crtype.TestStatus) {
+	sampleStatus crtype.TestStatus,
+	baseStatus *crtype.TestStatus) {
 
 	// Default to required confidence from request, middleware may adjust later.
 	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
 
-	successFailCount := sampleStats.TotalCount - sampleStats.FlakeCount - sampleStats.SuccessCount
 	testStats.SampleStats = crtype.TestDetailsReleaseStats{
-		Release: reqOptions.SampleRelease.Release,
-		Start:   &reqOptions.SampleRelease.Start,
-		End:     &reqOptions.SampleRelease.End,
-		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  crtype.CalculatePassRate(sampleStats.SuccessCount, successFailCount, sampleStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
-			SuccessCount: sampleStats.SuccessCount,
-			FlakeCount:   sampleStats.FlakeCount,
-			FailureCount: successFailCount,
-		},
+		Release:              reqOptions.SampleRelease.Release,
+		Start:                &reqOptions.SampleRelease.Start,
+		End:                  &reqOptions.SampleRelease.End,
+		TestDetailsTestStats: sampleStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 	}
-	if baseStats != nil {
-		baseRelease := reqOptions.BaseRelease.Release
-		baseStart := reqOptions.BaseRelease.Start
-		baseEnd := reqOptions.BaseRelease.End
-
-		failCount := baseStats.TotalCount - baseStats.FlakeCount - baseStats.SuccessCount
+	if baseStatus != nil {
 		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-			Release: baseRelease,
-			Start:   &baseStart,
-			End:     &baseEnd,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  crtype.CalculatePassRate(baseStats.SuccessCount, failCount, baseStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
-				SuccessCount: baseStats.SuccessCount,
-				FlakeCount:   baseStats.FlakeCount,
-				FailureCount: failCount,
-			},
+			Release:              reqOptions.BaseRelease.Release,
+			Start:                &reqOptions.BaseRelease.Start,
+			End:                  &reqOptions.BaseRelease.End,
+			TestDetailsTestStats: baseStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 		}
 	}
 }
