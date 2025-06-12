@@ -409,7 +409,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	var baseStatus, sampleStatus map[string]crtype.TestStatus
 	baseStatusCh := make(chan map[string]crtype.TestStatus) // TODO: not hooked up yet, just in place for the interface for now
 	var baseErrs, sampleErrs []error
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 
 	// channels for status as we may collect status from multiple queries run in separate goroutines
 	sampleStatusCh := make(chan map[string]crtype.TestStatus)
@@ -417,41 +417,23 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
-	c.middlewares.Query(ctx, &wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
+	c.middlewares.Query(ctx, wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		select {
-		case <-ctx.Done():
+	goInterruptible(ctx, wg, func() { baseStatus, baseErrs = c.getBaseQueryStatus(ctx, allJobVariants) })
+	goInterruptible(ctx, wg, func() {
+		includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
+		if skipQuery {
+			fLog.Infof("skipping default sample query as all values for a variant were overridden")
 			return
-		default:
-			baseStatus, baseErrs = c.getBaseQueryStatus(ctx, allJobVariants)
 		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
-			if skipQuery {
-				fLog.Infof("skipping default sample query as all values for a variant were overridden")
-				return
-			}
-			fLog.Infof("running default sample query with includeVariants: %+v", includeVariants)
-			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
-			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
-			sampleStatusCh <- status
-			for _, err := range errs {
-				errCh <- err
-			}
+		fLog.Infof("running default sample query with includeVariants: %+v", includeVariants)
+		status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
+		fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
+		sampleStatusCh <- status
+		for _, err := range errs {
+			errCh <- err
 		}
-
-	}()
+	})
 
 	// fork additional sample queries for the overrides
 	// TODO: move to a variantjunitoverride middleware with Query implemented
@@ -459,37 +441,31 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		if !containsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
 			continue
 		}
-		// only do this additional query if the specified override variant is actually included in this request
-		wg.Add(1)
-		go func(i int, or configv1.VariantJunitTableOverride) {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.ReqOptions.VariantOption.IncludeVariants)
-				if skipQuery {
-					fLog.Infof("skipping override sample query as all values for a variant were overridden")
-					return
-				}
-				fLog.Infof("running override sample query for %+v with includeVariants: %+v", or, includeVariants)
-				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
-				end := c.ReqOptions.SampleRelease.End
-				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
-					true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, start, end, or.TableName)
-				fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
-				sampleStatusCh <- status
-				for _, err := range errs {
-					errCh <- err
-				}
-			}
 
-		}(i, or)
+		index, override := i, or // copy loop vars to avoid them changing during goroutine
+		goInterruptible(ctx, wg, func() {
+			// only do this additional query if the specified override variant is actually included in this request
+			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, index, c.ReqOptions.VariantOption.IncludeVariants)
+			if skipQuery {
+				fLog.Infof("skipping override sample query as all values for a variant were overridden")
+				return
+			}
+			fLog.Infof("running override sample query for %+v with includeVariants: %+v", override, includeVariants)
+			// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
+			end := c.ReqOptions.SampleRelease.End
+			start, err := util.ParseCRReleaseTime([]v1.Release{}, "", override.RelativeStart,
+				true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, start, end, override.TableName)
+			fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
+			sampleStatusCh <- status
+			for _, err := range errs {
+				errCh <- err
+			}
+		})
 	}
 
 	go func() {
@@ -538,6 +514,19 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		time.Since(before), len(sampleStatus), len(baseStatus))
 	now := time.Now()
 	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
+}
+
+func goInterruptible(ctx context.Context, wg *sync.WaitGroup, closure func()) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			closure()
+		}
+	}()
 }
 
 // copyIncludeVariantsAndRemoveOverrides is used when VariantJunitTableOverrides are in play, and we'll be merging in
