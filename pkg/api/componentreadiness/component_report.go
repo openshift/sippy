@@ -633,20 +633,12 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	testComponent, testCapabilities := componentAndCapabilityGetter(test, stats)
 	rows := []crtype.RowIdentification{}
 	// First Page with no component requested
-	requestedComponent := ""
-	requestedCapability := ""
-	requestedTestID := "" // component reports can filter on test if you drill down far enough
+	requestedComponent, requestedCapability, requestedTestID := "", "", ""
 	if len(c.ReqOptions.TestIDOptions) > 0 {
 		firstTIDOpts := c.ReqOptions.TestIDOptions[0]
-		if firstTIDOpts.Component != "" {
-			requestedComponent = firstTIDOpts.Component
-		}
-		if firstTIDOpts.Capability != "" {
-			requestedCapability = firstTIDOpts.Capability
-		}
-		if firstTIDOpts.TestID != "" {
-			requestedTestID = c.ReqOptions.TestIDOptions[0].TestID
-		}
+		requestedComponent = firstTIDOpts.Component
+		requestedCapability = firstTIDOpts.Capability
+		requestedTestID = firstTIDOpts.TestID // component reports can filter on test if you drill down far enough
 	}
 
 	if requestedComponent == "" {
@@ -655,14 +647,14 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	} else if requestedComponent == testComponent {
 		// A component filter was specified and this test matches that component:
 
+		row := crtype.RowIdentification{
+			Component: testComponent,
+			TestID:    test.TestID,
+			TestName:  stats.TestName,
+			TestSuite: stats.TestSuite,
+		}
 		// Exact test match
 		if requestedTestID != "" {
-			row := crtype.RowIdentification{
-				Component: testComponent,
-				TestID:    test.TestID,
-				TestName:  stats.TestName,
-				TestSuite: stats.TestSuite,
-			}
 			if requestedCapability != "" {
 				row.Capability = requestedCapability
 			}
@@ -672,13 +664,7 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 				// Exact capability match only produces one row
 				if requestedCapability != "" {
 					if requestedCapability == capability {
-						row := crtype.RowIdentification{
-							Component:  testComponent,
-							TestID:     test.TestID,
-							TestName:   stats.TestName,
-							TestSuite:  stats.TestSuite,
-							Capability: capability,
-						}
+						row.Capability = capability
 						rows = append(rows, row)
 						break
 					}
