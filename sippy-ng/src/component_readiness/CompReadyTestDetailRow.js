@@ -24,7 +24,6 @@ export default function CompReadyTestDetailRow(props) {
     element,
     idx,
     showOnlyFailures,
-    triagedURLs,
     searchJobArtifacts,
     searchJobRunIds,
     setSearchJobRunIds,
@@ -97,11 +96,7 @@ export default function CompReadyTestDetailRow(props) {
                     }
                   >
                     <Typography className={classes.crCellName}>
-                      {jobRun.test_stats.failure_count > 0
-                        ? triagedURLs.has(jobRun.job_url)
-                          ? 'T'
-                          : 'F'
-                        : 'S'}
+                      {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
                     </Typography>
                   </Tooltip>
                 )
@@ -245,7 +240,6 @@ CompReadyTestDetailRow.propTypes = {
   idx: PropTypes.number.isRequired,
   showOnlyFailures: PropTypes.bool.isRequired,
   searchJobArtifacts: PropTypes.bool.isRequired,
-  triagedURLs: PropTypes.instanceOf(Set).isRequired,
   searchJobRunIds: PropTypes.object.isRequired,
   setSearchJobRunIds: PropTypes.func.isRequired,
 }

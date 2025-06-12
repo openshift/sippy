@@ -1,8 +1,8 @@
 import './ComponentReadiness.css'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Fragment, useContext } from 'react'
-import { generateRegressionCount, sortQueryParams } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { sortQueryParams } from './CompReadyUtils'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import CompReadyCapsCell from './CompReadyCapsCell'
@@ -63,10 +63,7 @@ export default function CompCapRow(props) {
             environment={columnNames[idx]}
             capabilityName={capabilityName}
             filterVals={filterVals}
-            regressedCount={generateRegressionCount(
-              columnVal.regressed_tests,
-              columnVal.triaged_incidents
-            )}
+            regressedCount={columnVal.regressed_tests}
           />
         ))}
       </TableRow>

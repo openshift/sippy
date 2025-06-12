@@ -24,15 +24,8 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 
 export default function CompReadyTestPanel(props) {
-  const {
-    data,
-    isOverride,
-    versions,
-    loadedParams,
-    testName,
-    environment,
-    component,
-  } = props
+  const { data, versions, loadedParams, testName, environment, component } =
+    props
   const classes = useContext(ComponentReadinessStyleContext)
 
   const significanceTitle = `Test results for individual Prow Jobs may not be statistically
@@ -64,17 +57,6 @@ export default function CompReadyTestPanel(props) {
     )
   }
 
-  let urls = new Set()
-  if (data?.incidents?.length) {
-    data.incidents.forEach((incident) => {
-      incident?.job_runs?.forEach((job_run) => {
-        if (job_run.url !== undefined) {
-          urls.add(job_run.url)
-        }
-      })
-    })
-  }
-
   const handleFailuresOnlyChange = (event) => {
     setShowOnlyFailures(event.target.checked)
   }
@@ -98,15 +80,14 @@ export default function CompReadyTestPanel(props) {
     for (const jobStat of [base, sample]) {
       if (jobStat.stats && jobStat.stats.length > 0) {
         for (const jobRun of jobStat.stats) {
-          let triaged = urls.has(jobRun.job_url)
           jobRuns.set(jobRun.job_run_id, {
             job_run_id: jobRun.job_run_id,
             job_name: jobStat.job_name,
             start_time: jobRun.start_time,
             test_status: getTestStatus(
               jobRun.test_stats,
-              triaged ? 'Triaged' : 'Flake',
-              triaged ? 'Triaged' : 'Failure',
+              'Flake',
+              'Failure',
               'Success'
             ),
             url: jobRun.job_url,
@@ -351,7 +332,6 @@ export default function CompReadyTestPanel(props) {
                       searchJobArtifacts={searchJobArtifacts}
                       searchJobRunIds={searchJobRunIds}
                       setSearchJobRunIds={setSearchJobRunIds}
-                      triagedURLs={urls}
                     ></CompReadyTestDetailRow>
                   )
                 })
@@ -412,7 +392,6 @@ export default function CompReadyTestPanel(props) {
 CompReadyTestPanel.propTypes = {
   data: PropTypes.object.isRequired,
   versions: PropTypes.object.isRequired,
-  isOverride: PropTypes.bool.isRequired,
   loadedParams: PropTypes.object.isRequired,
   testName: PropTypes.string.isRequired,
   environment: PropTypes.string.isRequired,
