@@ -55,16 +55,13 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 func (c *ComponentReportGenerator) PostAnalysisTestDetails(report *crtype.ReportTestDetails) error {
 
 	// Give middleware their chance to adjust the result
-	for _, mw := range c.middlewares {
-		testKey := crtype.ReportTestIdentification{
-			RowIdentification:    report.RowIdentification,
-			ColumnIdentification: report.ColumnIdentification,
-		}
-		for i := range report.Analyses {
-			err := mw.PostAnalysis(testKey, &report.Analyses[i].ReportTestStats)
-			if err != nil {
-				return err
-			}
+	testKey := crtype.ReportTestIdentification{
+		RowIdentification:    report.RowIdentification,
+		ColumnIdentification: report.ColumnIdentification,
+	}
+	for i := range report.Analyses {
+		if err := c.middlewares.PostAnalysis(testKey, &report.Analyses[i].ReportTestStats); err != nil {
+			return err
 		}
 	}
 
@@ -220,15 +217,12 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 	if testIDOption.BaseOverrideRelease != "" &&
 		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Release {
 
-		for _, mw := range c.middlewares {
-			testKey := crtype.TestWithVariantsKey{
-				TestID:   testIDOption.TestID,
-				Variants: testIDOption.RequestedVariants,
-			}
-			err := mw.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus)
-			if err != nil {
-				return crtype.ReportTestDetails{}, []error{err}
-			}
+		testKey := crtype.TestWithVariantsKey{
+			TestID:   testIDOption.TestID,
+			Variants: testIDOption.RequestedVariants,
+		}
+		if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
+			return crtype.ReportTestDetails{}, []error{err}
 		}
 
 		start, end, err := utils.FindStartEndTimesForRelease(releases, testIDOption.BaseOverrideRelease)
@@ -327,10 +321,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
-	// Invoke the Query phase for each of our configured middlewares:
-	for _, mw := range c.middlewares {
-		mw.QueryTestDetails(ctx, &wg, errCh, allJobVariants)
-	}
+	c.middlewares.QueryTestDetails(ctx, &wg, errCh, allJobVariants)
 
 	wg.Add(1)
 	go func() {
@@ -495,11 +486,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 		testStats.LastFailure = &lastFailure
 	}
 
-	for _, mw := range c.middlewares {
-		err := mw.PreAnalysis(testKey, &testStats)
-		if err != nil {
-			logrus.WithError(err).Error("Failure from middleware analysis")
-		}
+	if err := c.middlewares.PreAnalysis(testKey, &testStats); err != nil {
+		logrus.WithError(err).Error("Failure from middleware analysis")
 	}
 
 	c.assessComponentStatus(&testStats)

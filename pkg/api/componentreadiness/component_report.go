@@ -143,19 +143,16 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 				// All we need to do now is track the lowest (i.e. worst) status we see after PostAnalysis,
 				// and make that our new cell status.
 				var initialStatus crtype.Status
-				for _, mw := range c.middlewares {
-					testKey := crtype.ReportTestIdentification{
-						RowIdentification:    col.RegressedTests[rti].RowIdentification,
-						ColumnIdentification: col.RegressedTests[rti].ColumnIdentification,
-					}
-					err := mw.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats)
-					if err != nil {
-						return err
-					}
-					if report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats.ReportStatus < initialStatus {
-						// After PostAnalysis this is our new worst status observed, so update the cell's status in the grid
-						report.Rows[ri].Columns[ci].Status = report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats.ReportStatus
-					}
+				testKey := crtype.ReportTestIdentification{
+					RowIdentification:    col.RegressedTests[rti].RowIdentification,
+					ColumnIdentification: col.RegressedTests[rti].ColumnIdentification,
+				}
+				if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats); err != nil {
+					return err
+				}
+				if newStatus := report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats.ReportStatus; newStatus < initialStatus {
+					// After PostAnalysis this is our new worst status observed, so update the cell's status in the grid
+					report.Rows[ri].Columns[ci].Status = newStatus
 				}
 			}
 		}
@@ -186,7 +183,7 @@ type ComponentReportGenerator struct {
 	dbc                        *db.DB
 	ReqOptions                 crtype.RequestOptions
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
-	middlewares                []middleware.Middleware
+	middlewares                middleware.List
 }
 
 type GeneratorCacheKey struct {
@@ -316,7 +313,7 @@ func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 }
 
 func (c *ComponentReportGenerator) initializeMiddleware() {
-	c.middlewares = []middleware.Middleware{}
+	c.middlewares = middleware.List{}
 	// Initialize all our middleware applicable to this request.
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
@@ -420,10 +417,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
-	// Invoke the Query phase for each of our configured middlewares:
-	for _, mw := range c.middlewares {
-		mw.Query(ctx, &wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
-	}
+	c.middlewares.Query(ctx, &wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
 
 	wg.Add(1)
 	go func() {
@@ -841,11 +835,8 @@ func (c *ComponentReportGenerator) generateComponentTestReport(baseStatusMap, sa
 			initTestAnalysisStruct(&report, c.ReqOptions, sampleStatus, &baseStatus)
 
 			// Give middleware their chance to adjust parameters prior to analysis
-			for _, mw := range c.middlewares {
-				err = mw.PreAnalysis(testKey, &report)
-				if err != nil {
-					return crtype.ComponentReport{}, err
-				}
+			if err := c.middlewares.PreAnalysis(testKey, &report); err != nil {
+				return crtype.ComponentReport{}, err
 			}
 
 			c.assessComponentStatus(&report)
@@ -878,11 +869,8 @@ func (c *ComponentReportGenerator) generateComponentTestReport(baseStatusMap, sa
 		initTestAnalysisStruct(&report, c.ReqOptions, sampleStatus, nil)
 
 		// Give middleware their chance to adjust parameters prior to analysis
-		for _, mw := range c.middlewares {
-			err = mw.PreAnalysis(testID, &report)
-			if err != nil {
-				return crtype.ComponentReport{}, err
-			}
+		if err := c.middlewares.PreAnalysis(testID, &report); err != nil {
+			return crtype.ComponentReport{}, err
 		}
 
 		c.assessComponentStatus(&report)
