@@ -1,5 +1,6 @@
 import './ComponentReadiness.css'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { Fragment, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { sortQueryParams } from './CompReadyUtils'
@@ -11,17 +12,6 @@ import React from 'react'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
 
-// After clicking a capability name on page 2, we add that capability name
-// to the api call along with all the other parts we already have.
-function capabilityLink(filterVals, capabilityName) {
-  const retVal =
-    '/component_readiness/capability' +
-    filterVals +
-    `&capability=${capabilityName}`
-
-  return sortQueryParams(retVal)
-}
-
 // Represents a row when you clicked a cell from page 1
 // We display capabilities on the left.
 export default function CompCapRow(props) {
@@ -31,12 +21,27 @@ export default function CompCapRow(props) {
   // results is an array of columns and contains the status value per columnName
   // columnNames is the calculated array of columns
   // filterVals: the parts of the url containing input values
-  const { capabilityName, results, columnNames, filterVals } = props
+  const { capabilityName, results, columnNames, filterVals, environment } =
+    props
 
   const [capabilityParam, setCapabilityParam] = useQueryParam(
     'capability',
     StringParam
   )
+
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
+
+  // After clicking a capability name on page 2, we add that capability name
+  // to the api call along with all the other parts we already have.
+  function capabilityLink(filterVals, capabilityName, environment) {
+    const retVal =
+      '/component_readiness/capability' +
+      filterVals +
+      expandEnvironment(environment) +
+      `&capability=${capabilityName}`
+
+    return sortQueryParams(retVal)
+  }
 
   // Put the capabilityName on the left side with a link to a capability specific
   // capabilities report.
@@ -44,7 +49,7 @@ export default function CompCapRow(props) {
     <TableCell className={classes.componentName} key={capabilityName}>
       <Tooltip title={'Capabilities report for ' + capabilityName}>
         <Typography className={classes.crCellName}>
-          <Link to={capabilityLink(filterVals, capabilityName)}>
+          <Link to={capabilityLink(filterVals, capabilityName, environment)}>
             {capabilityName}
           </Link>
         </Typography>
@@ -76,4 +81,5 @@ CompCapRow.propTypes = {
   results: PropTypes.array.isRequired,
   columnNames: PropTypes.array.isRequired,
   filterVals: PropTypes.string.isRequired,
+  environment: PropTypes.string,
 }
