@@ -720,7 +720,16 @@ func getNewCellStatus(testID crtype.ReportTestIdentification, testStats crtype.R
 	return newCellStatus
 }
 
-func updateCellStatus(rowIdentifications []crtype.RowIdentification, columnIdentifications []crtype.ColumnID, testID crtype.ReportTestIdentification, testStats crtype.ReportTestStats, status map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus, allRows map[crtype.RowIdentification]struct{}, allColumns map[crtype.ColumnID]struct{}) {
+func updateCellStatus(
+	rowIdentifications []crtype.RowIdentification,
+	columnIdentifications []crtype.ColumnID,
+	testID crtype.ReportTestIdentification,
+	testStats crtype.ReportTestStats,
+	// use the inputs above to update the maps below (golang passes maps by reference)
+	status map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus,
+	allRows map[crtype.RowIdentification]struct{},
+	allColumns map[crtype.ColumnID]struct{},
+) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}
