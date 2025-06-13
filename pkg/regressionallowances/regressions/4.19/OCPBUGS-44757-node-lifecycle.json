@@ -48,30 +48,5 @@
     "RegressedSuccesses": 247,
     "RegressedFailures": 21,
     "RegressedFlakes": 0
-  },
-  {
-    "JiraComponent": "kube-apiserver",
-    "TestID": "openshift-tests:9ff4e9b171ea809e0d6faf721b2fe737",
-    "TestName": "[sig-arch][Late] operators should not create watch channels very often [apigroup:apiserver.openshift.io] [Suite:openshift/conformance/parallel]",
-    "JiraBug": "https://issues.redhat.com/browse/OCPBUGS-57351",
-    "ReasonToAllowInsteadOfFix": "Test was stealth disabled in prior releases, trying to reestablish but watch requests test limits still need slight bump",
-    "variant": {
-      "variants": {
-        "Architecture": "amd64",
-        "FeatureSet": "default",
-        "Installer": "ipi",
-        "Network": "ovn",
-        "Platform": "vsphere",
-        "Suite": "serial",
-        "Topology": "ha",
-        "Upgrade": "none"
-      }
-    },
-    "PreviousSuccesses": 54,
-    "PreviousFailures": 0,
-    "PreviousFlakes": 0,
-    "RegressedSuccesses": 32,
-    "RegressedFailures": 3,
-    "RegressedFlakes": 0
   }
 ]

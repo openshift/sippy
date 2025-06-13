@@ -1,12 +1,11 @@
 package regressionallowances
 
 import (
-	_ "embed"
+	"embed"
 	"encoding/json"
+	"fmt"
+	"strings"
 )
-
-// embed regressions415.json
-// var regressions4_15 []byte
 
 // example regressions json
 // [
@@ -62,35 +61,68 @@ import (
 // }
 // ]
 
-//go:embed regressions_4.17.json
-var regressions4_17 []byte
+/* example regressions directory
+- regressions
+  - OWNERS (ignored)
+  - 4.17:
+	- regressions_4.17.json
+  - 4.18:
+	- OCPBUGS-23456-some-problem.json
+	- TRT-1234-some-other-problem.json
+	- TRT-5678-several-for-same-problem.json
+*/
+//go:embed regressions
+var regressionsDir embed.FS
 
-//go:embed regressions_4.18.json
-var regressions4_18 []byte
-
-//go:embed regressions_4.19.json
-var regressions4_19 []byte
-
-var (
-	release417 release = "4.17"
-	release418 release = "4.18"
-	release419 release = "4.19"
-)
-
-//nolint:all
 func init() {
-	importIntentionalRegressions(release417, regressions4_17)
-	importIntentionalRegressions(release418, regressions4_18)
-	importIntentionalRegressions(release419, regressions4_19)
-}
+	// get a list of directories in the regressions directory
+	// for each directory, get the json files
+	// for each json file, unmarshal the json into a slice of IntentionalRegression
+	// for each IntentionalRegression, add it to the map
 
-func importIntentionalRegressions(releaseTarget release, jsonRegressions []byte) {
-	regressions := []IntentionalRegression{}
-
-	err := json.Unmarshal(jsonRegressions, &regressions)
-
+	fs, err := regressionsDir.ReadDir("regressions")
 	if err != nil {
 		panic(err)
+	}
+	for _, entry := range fs {
+		if !entry.IsDir() {
+			continue
+		}
+
+		releaseStr := entry.Name()
+		dirPath := "regressions/" + releaseStr
+		releaseDir, err := regressionsDir.ReadDir(dirPath)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, file := range releaseDir {
+			if !strings.HasSuffix(file.Name(), ".json") {
+				continue // only interested in json files under each release
+			}
+
+			filePath := dirPath + "/" + file.Name()
+			regressionsFile, err := regressionsDir.ReadFile(filePath)
+			if err != nil {
+				panic(err)
+			}
+
+			importIntentionalRegressions(release(releaseStr), filePath, regressionsFile)
+		}
+	}
+}
+
+func importIntentionalRegressions(releaseTarget release, path string, jsonRegressions []byte) {
+	regressions := []IntentionalRegression{}
+	regression := IntentionalRegression{}
+
+	listErr := json.Unmarshal(jsonRegressions, &regressions)
+	if listErr != nil {
+		singleErr := json.Unmarshal(jsonRegressions, &regression)
+		if singleErr != nil {
+			panic(fmt.Errorf("could not load json file %q either as a list (%s) or single (%s) regression", path, listErr, singleErr))
+		}
+		regressions = []IntentionalRegression{regression}
 	}
 
 	for _, regression := range regressions {
