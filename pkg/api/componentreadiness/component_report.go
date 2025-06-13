@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -790,97 +792,72 @@ func initTestAnalysisStruct(
 	}
 }
 
-// TODO: break this function down and remove this nolint
-// nolint:gocyclo
-func (c *ComponentReportGenerator) generateComponentTestReport(baseStatusMap, sampleStatusMap map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
-	report := crtype.ComponentReport{
-		Rows: []crtype.ReportRow{},
-	}
+func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, sampleStatusMap map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
 	aggregatedStatus := map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
 	allRows := map[crtype.RowIdentification]struct{}{}
 	allColumns := map[crtype.ColumnID]struct{}{}
-	// testID is used to identify the most regressed test. With this, we can
-	// create a shortcut link from any page to go straight to the most regressed test page.
 
-	// using the baseStatus range here makes it hard to do away with the baseQuery
-	// but if we did and just enumerated the sampleStatus instead
-	// we wouldn't need the base query each time
-	//
-	// understand we use this to find tests associated with base that we don't see now in sample
-	// meaning they have been renamed or removed
+	// merge basis and sample map keys and evaluate each key once
+	keySet := sets.NewString(slices.Collect(maps.Keys(basisStatusMap))...)
+	keySet.Insert(slices.Collect(maps.Keys(sampleStatusMap))...)
+	for testKeyStr := range keySet {
+		var cellReport crtype.ReportTestStats // The actual stats we return over the API
+		sampleStatus, sampleThere := sampleStatusMap[testKeyStr]
+		basisStatus, basisThere := basisStatusMap[testKeyStr]
 
-	for testKeyStr, baseStatus := range baseStatusMap {
-		testKey, err := utils.DeserializeTestKey(baseStatus, testKeyStr)
+		// Deserialize the test key from its string form; need sample or base status to do this
+		status := sampleStatus
+		if !sampleThere {
+			status = basisStatus
+		}
+		testKey, err := utils.DeserializeTestKey(status, testKeyStr)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
 
-		var report crtype.ReportTestStats // This is the actual stats we return over the API
-
-		sampleStatus, ok := sampleStatusMap[testKeyStr]
-		if !ok {
-			report.ReportStatus = crtype.MissingSample
+		if !sampleThere {
+			// we use this to find tests associated with the basis that we don't see now in sample,
+			// meaning they have been renamed or removed. no further analysis is needed.
+			cellReport.ReportStatus = crtype.MissingSample
 		} else {
-
 			// Initialize the test analysis before we start passing it around to the middleware
-			initTestAnalysisStruct(&report, c.ReqOptions, sampleStatus, &baseStatus)
+			if basisThere {
+				initTestAnalysisStruct(&cellReport, c.ReqOptions, sampleStatus, &basisStatus)
+			} else {
+				initTestAnalysisStruct(&cellReport, c.ReqOptions, sampleStatus, nil)
+			}
 
-			// Give middleware their chance to adjust parameters prior to analysis
-			if err := c.middlewares.PreAnalysis(testKey, &report); err != nil {
+			// Give middleware a chance to adjust parameters prior to analysis
+			if err := c.middlewares.PreAnalysis(testKey, &cellReport); err != nil {
 				return crtype.ComponentReport{}, err
 			}
 
-			c.assessComponentStatus(&report)
-
-			if !sampleStatus.LastFailure.IsZero() {
-				report.LastFailure = &sampleStatus.LastFailure
+			c.assessComponentStatus(&cellReport)
+			if lastFailure := sampleStatus.LastFailure; !lastFailure.IsZero() {
+				cellReport.LastFailure = &lastFailure // it's a copy, for pointer hygiene
 			}
-
 		}
-		delete(sampleStatusMap, testKeyStr)
 
-		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, baseStatus)
+		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, sampleStatus)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentifications, testKey, report, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(
+			rowIdentifications, columnIdentifications, testKey, cellReport, // inputs
+			aggregatedStatus, allRows, allColumns, // these three are maps to be updated
+		)
 	}
 
-	// Anything we saw in the basis was removed above, all that remains are tests with no basis, typically new
-	// tests, or tests that were renamed without submitting a rename to the test mapping repo.
-	for testKey, sampleStatus := range sampleStatusMap {
-		testID, err := utils.DeserializeTestKey(sampleStatus, testKey)
-		if err != nil {
-			return crtype.ComponentReport{}, err
-		}
-
-		var report crtype.ReportTestStats
-
-		// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
-		initTestAnalysisStruct(&report, c.ReqOptions, sampleStatus, nil)
-
-		// Give middleware their chance to adjust parameters prior to analysis
-		if err := c.middlewares.PreAnalysis(testID, &report); err != nil {
-			return crtype.ComponentReport{}, err
-		}
-
-		c.assessComponentStatus(&report)
-
-		if !sampleStatus.LastFailure.IsZero() {
-			lastFailure := sampleStatus.LastFailure
-			report.LastFailure = &lastFailure
-		}
-
-		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testKey, sampleStatus)
-		if err != nil {
-			return crtype.ComponentReport{}, err
-		}
-		updateCellStatus(rowIdentifications, columnIdentification, testID, report, aggregatedStatus, allRows, allColumns)
+	rows, err := buildReport(sortRowIdentifications(allRows), sortColumnIdentifications(allColumns), aggregatedStatus)
+	if err != nil {
+		return crtype.ComponentReport{}, err
 	}
+	return crtype.ComponentReport{Rows: rows}, nil
+}
 
-	// Sort the row identifications
+func sortRowIdentifications(allRows map[crtype.RowIdentification]struct{}) []crtype.RowIdentification {
 	sortedRows := []crtype.RowIdentification{}
 	for rowID := range allRows {
 		sortedRows = append(sortedRows, rowID)
@@ -898,8 +875,10 @@ func (c *ComponentReportGenerator) generateComponentTestReport(baseStatusMap, sa
 		}
 		return less
 	})
+	return sortedRows
+}
 
-	// Sort the column identifications
+func sortColumnIdentifications(allColumns map[crtype.ColumnID]struct{}) []crtype.ColumnID {
 	sortedColumns := []crtype.ColumnID{}
 	for columnID := range allColumns {
 		sortedColumns = append(sortedColumns, columnID)
@@ -907,13 +886,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(baseStatusMap, sa
 	sort.Slice(sortedColumns, func(i, j int) bool {
 		return sortedColumns[i] < sortedColumns[j]
 	})
-
-	rows, err := buildReport(sortedRows, sortedColumns, aggregatedStatus)
-	if err != nil {
-		return crtype.ComponentReport{}, err
-	}
-	report.Rows = rows
-	return report, nil
+	return sortedColumns
 }
 
 func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.ColumnID, aggregatedStatus map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus) ([]crtype.ReportRow, error) {
