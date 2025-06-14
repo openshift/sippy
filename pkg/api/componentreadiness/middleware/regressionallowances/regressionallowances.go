@@ -65,13 +65,14 @@ func (r *RegressionAllowances) PostAnalysis(testKey crtype.ReportTestIdentificat
 // threshold when used as a basis.
 // It will return the original testStatus if there is no intentional regression.
 func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, testStats *crtype.ReportTestStats) {
+	opts := r.reqOptions.AdvancedOption
 	// Nothing to do for tests with no basis. (i.e. new tests)
 	if testStats.BaseStats == nil {
 		return
 	}
 
 	// with fallback enabled and a fallback release found, let that determine the threshold across bases without the munging done below.
-	if r.reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis && crtype.AnyAreBaseOverrides(r.reqOptions.TestIDOptions) {
+	if opts.IncludeMultiReleaseAnalysis && crtype.AnyAreBaseOverrides(r.reqOptions.TestIDOptions) {
 		return
 	}
 
@@ -88,24 +89,13 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 	r.log.Infof("found a base regression for %s", testID.TestName)
 
 	baseStats := testStats.BaseStats
-
-	success := baseStats.SuccessCount
-	fail := baseStats.FailureCount
-	flake := baseStats.FlakeCount
-	basePassRate := crtype.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
-	if baseRegression.PreviousPassPercentage(r.reqOptions.AdvancedOption.FlakeAsFailure) > basePassRate {
+	overrideTestStats := crtype.NewTestStats(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures, baseRegression.PreviousFlakes, opts.FlakeAsFailure)
+	if overrideTestStats.SuccessRate > baseStats.PassRate(opts.FlakeAsFailure) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-		overrideTestStats := crtype.TestDetailsTestStats{
-			SuccessCount: baseRegression.PreviousSuccesses,
-			FailureCount: baseRegression.PreviousFailures,
-			FlakeCount:   baseRegression.PreviousFlakes,
-			SuccessRate: crtype.CalculatePassRate(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures,
-				baseRegression.PreviousFlakes, r.reqOptions.AdvancedOption.FlakeAsFailure),
-		}
 		baseRegressionPreviousRelease, err := utils.PreviousRelease(r.reqOptions.BaseRelease.Release)
 		if err != nil {
-			r.log.WithError(err).Error("Failed to determine the previous release for baseRegression")
+			r.log.WithError(err).Error("Failed to determine the previous release for base regression")
 		} else if overrideTestStats.Total() > 0 { // only override if there is history to override with
 			testStats.BaseStats.Release = baseRegressionPreviousRelease
 			testStats.BaseStats.TestDetailsTestStats = overrideTestStats
@@ -136,7 +126,7 @@ func (r *RegressionAllowances) adjustAnalysisParameters(testStats *crtype.Report
 		}
 	} else {
 		// for regressions on existing tests, adjust what Fisher's Exact will consider a pass
-		basisPassPercentage := float64(testStats.BaseStats.Passes(opts.FlakeAsFailure)) / float64(testStats.BaseStats.Total())
+		basisPassPercentage := testStats.BaseStats.PassRate(opts.FlakeAsFailure)
 		regressedPassPercentage := ir.RegressedPassPercentage(opts.FlakeAsFailure)
 		if regressedPassPercentage < basisPassPercentage {
 			// adjust pity to cover product-owner-approved leniency for pass percentage

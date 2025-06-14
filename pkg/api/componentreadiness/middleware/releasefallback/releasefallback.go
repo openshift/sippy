@@ -115,7 +115,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 	var swappedExplanation string
 	for err == nil {
 		var cachedReleaseTestStatuses crtype.ReleaseTestMap
-		var cTestStats crtype.TestStatus
+		var cTestStatus crtype.TestStatus
 		ok := false
 		priorRelease, err = utils.PreviousRelease(priorRelease)
 		// if we fail to determine the previous release then stop
@@ -130,37 +130,28 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtype.ReportTestIdentification, t
 
 		// it's ok if we don't have a testKeyStr for this release
 		// we likely won't have it for earlier releases either, but we can keep going
-		if cTestStats, ok = cachedReleaseTestStatuses.Tests[testKeyStr]; ok {
+		if cTestStatus, ok = cachedReleaseTestStatuses.Tests[testKeyStr]; ok {
 
 			// what is our base total compared to the original base
 			// this happens when jobs shift like sdn -> ovn
 			// if we get below threshold that's a sign we are reducing our base signal
-			if float64(cTestStats.TotalCount)/float64(testStats.BaseStats.Total()) < .6 {
+			if float64(cTestStatus.TotalCount)/float64(testStats.BaseStats.Total()) < .6 {
 				return nil
 			}
-			success := testStats.BaseStats.SuccessCount
-			fail := testStats.BaseStats.FailureCount
-			flake := testStats.BaseStats.FlakeCount
-			basePassRate := crtype.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
+			basePassRate := testStats.BaseStats.PassRate(r.reqOptions.AdvancedOption.FlakeAsFailure)
 
-			_, success, fail, flake = cTestStats.GetTotalSuccessFailFlakeCounts()
-			cPassRate := crtype.CalculatePassRate(success, fail, flake, r.reqOptions.AdvancedOption.FlakeAsFailure)
-			if cPassRate > basePassRate {
+			cTestStats := cTestStatus.ToTestStats(r.reqOptions.AdvancedOption.FlakeAsFailure)
+			if cTestStats.SuccessRate > basePassRate {
 				// We've found a better pass rate in a prior release with enough runs to qualify.
 				// Adjust the stats and keep looking for an even better one.
 				testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-					Release: priorRelease,
-					Start:   cachedReleaseTestStatuses.Start,
-					End:     cachedReleaseTestStatuses.End,
-					TestDetailsTestStats: crtype.TestDetailsTestStats{
-						SuccessCount: success,
-						FailureCount: fail,
-						FlakeCount:   flake,
-						SuccessRate:  cPassRate,
-					},
+					Release:              priorRelease,
+					Start:                cachedReleaseTestStatuses.Start,
+					End:                  cachedReleaseTestStatuses.End,
+					TestDetailsTestStats: cTestStats,
 				}
 				swappedExplanation = fmt.Sprintf("Overrode base stats (%.4f) using release %s (%.4f)",
-					basePassRate, testStats.BaseStats.Release, cPassRate)
+					basePassRate, testStats.BaseStats.Release, cTestStats.SuccessRate)
 			}
 		}
 	}
