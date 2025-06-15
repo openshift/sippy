@@ -3,7 +3,9 @@ package componentreadiness
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -55,16 +57,13 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 func (c *ComponentReportGenerator) PostAnalysisTestDetails(report *crtype.ReportTestDetails) error {
 
 	// Give middleware their chance to adjust the result
-	for _, mw := range c.middlewares {
-		testKey := crtype.ReportTestIdentification{
-			RowIdentification:    report.RowIdentification,
-			ColumnIdentification: report.ColumnIdentification,
-		}
-		for i := range report.Analyses {
-			err := mw.PostAnalysis(testKey, &report.Analyses[i].ReportTestStats)
-			if err != nil {
-				return err
-			}
+	testKey := crtype.ReportTestIdentification{
+		RowIdentification:    report.RowIdentification,
+		ColumnIdentification: report.ColumnIdentification,
+	}
+	for i := range report.Analyses {
+		if err := c.middlewares.PostAnalysis(testKey, &report.Analyses[i].ReportTestStats); err != nil {
+			return err
 		}
 	}
 
@@ -220,15 +219,12 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 	if testIDOption.BaseOverrideRelease != "" &&
 		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Release {
 
-		for _, mw := range c.middlewares {
-			testKey := crtype.TestWithVariantsKey{
-				TestID:   testIDOption.TestID,
-				Variants: testIDOption.RequestedVariants,
-			}
-			err := mw.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus)
-			if err != nil {
-				return crtype.ReportTestDetails{}, []error{err}
-			}
+		testKey := crtype.TestWithVariantsKey{
+			TestID:   testIDOption.TestID,
+			Variants: testIDOption.RequestedVariants,
+		}
+		if err := c.middlewares.PreTestDetailsAnalysis(testKey, &componentJobRunTestReportStatus); err != nil {
+			return crtype.ReportTestDetails{}, []error{err}
 		}
 
 		start, end, err := utils.FindStartEndTimesForRelease(releases, testIDOption.BaseOverrideRelease)
@@ -327,10 +323,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
-	// Invoke the Query phase for each of our configured middlewares:
-	for _, mw := range c.middlewares {
-		mw.QueryTestDetails(ctx, &wg, errCh, allJobVariants)
-	}
+	c.middlewares.QueryTestDetails(ctx, &wg, errCh, allJobVariants)
 
 	wg.Add(1)
 	go func() {
@@ -455,8 +448,6 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 
 // internalGenerateTestDetailsReport handles the report generation for the lowest level test report including
 // breakdown by job as well as overall stats.
-//
-//nolint:gocyclo
 func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	baseRelease string,
 	baseStart, baseEnd *time.Time,
@@ -495,11 +486,8 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 		testStats.LastFailure = &lastFailure
 	}
 
-	for _, mw := range c.middlewares {
-		err := mw.PreAnalysis(testKey, &testStats)
-		if err != nil {
-			logrus.WithError(err).Error("Failure from middleware analysis")
-		}
+	if err := c.middlewares.PreAnalysis(testKey, &testStats); err != nil {
+		logrus.WithError(err).Error("Failure from middleware analysis")
 	}
 
 	c.assessComponentStatus(&testStats)
@@ -516,46 +504,33 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 	totalBase, totalSample crtype.TestDetailsTestStats,
 	report crtype.TestDetailsAnalysis,
 	result crtype.ReportTestDetails,
-	lastFailure time.Time,
+	lastFailure time.Time, // track the last failure we observe in the sample, used by triage middleware to adjust status
 ) {
 	result = crtype.ReportTestDetails{ReportTestIdentification: testKey}
 	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
-	sampleStatusSeen := sets.NewString()
-	// track the last failure we observe in the sample, used for triage middleware to adjust status
-	for prowJob, baseStatsList := range baseStatus {
+
+	// merge the job names from both base and sample status and assess each once
+	jobNames := sets.NewString(slices.Collect(maps.Keys(baseStatus))...)
+	jobNames.Insert(slices.Collect(maps.Keys(sampleStatus))...)
+	for job := range jobNames {
 		// tally up base job stats and matching sample job stats (if any); record job names, component, etc in the result
 		jobStats := crtype.TestDetailsJobStats{}
-		if sampleStatsList, ok := sampleStatus[prowJob]; ok {
+		if sampleStatsList, ok := sampleStatus[job]; ok {
 			c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
-			sampleStatusSeen.Insert(prowJob)
+			totalSample = totalSample.Add(jobStats.SampleStats, faf)
 		}
-		c.assessTestStats(baseStatsList, &jobStats.BaseStats, &jobStats.BaseJobRunStats, &jobStats.BaseJobName, nil, &result, faf)
-		// determine the statistical significance of the job stats
+		if baseStatsList, ok := baseStatus[job]; ok {
+			c.assessTestStats(baseStatsList, &jobStats.BaseStats, &jobStats.BaseJobRunStats, &jobStats.BaseJobName, nil, &result, faf)
+			totalBase = totalBase.Add(jobStats.BaseStats, faf)
+		}
+
+		// determine the statistical significance to report in the job stats
 		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
 		bFail, bPass := jobStats.BaseStats.FailPassWithFlakes(faf)
 		_, _, r, _ := fet.FisherExactTest(sFail, sPass, bFail, bPass)
 		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
 
 		report.JobStats = append(report.JobStats, jobStats)
-		totalBase = totalBase.Add(jobStats.BaseStats, faf)
-		totalSample = totalSample.Add(jobStats.SampleStats, faf)
-	}
-
-	// also tally unmatched sample stats (jobs that didn't run in the basis release)
-	for job, sampleStatsList := range sampleStatus {
-		if sampleStatusSeen.Has(job) {
-			continue // already processed
-		}
-		jobStats := crtype.TestDetailsJobStats{}
-		c.assessTestStats(sampleStatsList, &jobStats.SampleStats, &jobStats.SampleJobRunStats, &jobStats.SampleJobName, &lastFailure, &result, faf)
-
-		// determine the statistical significance of the job stats
-		sFail, sPass := jobStats.SampleStats.FailPassWithFlakes(faf)
-		_, _, r, _ := fet.FisherExactTest(sFail, sPass, 0, 0)
-		jobStats.Significant = r < 1-float64(c.ReqOptions.AdvancedOption.Confidence)/100
-
-		report.JobStats = append(report.JobStats, jobStats)
-		totalSample = totalSample.Add(jobStats.SampleStats, faf)
 	}
 
 	// sort stats by job name in the results

@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -143,19 +145,16 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 				// All we need to do now is track the lowest (i.e. worst) status we see after PostAnalysis,
 				// and make that our new cell status.
 				var initialStatus crtype.Status
-				for _, mw := range c.middlewares {
-					testKey := crtype.ReportTestIdentification{
-						RowIdentification:    col.RegressedTests[rti].RowIdentification,
-						ColumnIdentification: col.RegressedTests[rti].ColumnIdentification,
-					}
-					err := mw.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats)
-					if err != nil {
-						return err
-					}
-					if report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats.ReportStatus < initialStatus {
-						// After PostAnalysis this is our new worst status observed, so update the cell's status in the grid
-						report.Rows[ri].Columns[ci].Status = report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats.ReportStatus
-					}
+				testKey := crtype.ReportTestIdentification{
+					RowIdentification:    col.RegressedTests[rti].RowIdentification,
+					ColumnIdentification: col.RegressedTests[rti].ColumnIdentification,
+				}
+				if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats); err != nil {
+					return err
+				}
+				if newStatus := report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats.ReportStatus; newStatus < initialStatus {
+					// After PostAnalysis this is our new worst status observed, so update the cell's status in the grid
+					report.Rows[ri].Columns[ci].Status = newStatus
 				}
 			}
 		}
@@ -186,7 +185,7 @@ type ComponentReportGenerator struct {
 	dbc                        *db.DB
 	ReqOptions                 crtype.RequestOptions
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
-	middlewares                []middleware.Middleware
+	middlewares                middleware.List
 }
 
 type GeneratorCacheKey struct {
@@ -316,7 +315,7 @@ func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 }
 
 func (c *ComponentReportGenerator) initializeMiddleware() {
-	c.middlewares = []middleware.Middleware{}
+	c.middlewares = middleware.List{}
 	// Initialize all our middleware applicable to this request.
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
 		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
@@ -412,7 +411,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	var baseStatus, sampleStatus map[string]crtype.TestStatus
 	baseStatusCh := make(chan map[string]crtype.TestStatus) // TODO: not hooked up yet, just in place for the interface for now
 	var baseErrs, sampleErrs []error
-	wg := sync.WaitGroup{}
+	wg := &sync.WaitGroup{}
 
 	// channels for status as we may collect status from multiple queries run in separate goroutines
 	sampleStatusCh := make(chan map[string]crtype.TestStatus)
@@ -420,84 +419,27 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
-	// Invoke the Query phase for each of our configured middlewares:
-	for _, mw := range c.middlewares {
-		mw.Query(ctx, &wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
-	}
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		select {
-		case <-ctx.Done():
+	// generate inputs to the channels
+	c.middlewares.Query(ctx, wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
+	goInterruptible(ctx, wg, func() { baseStatus, baseErrs = c.getBaseQueryStatus(ctx, allJobVariants) })
+	goInterruptible(ctx, wg, func() {
+		includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
+		if skipQuery {
+			fLog.Infof("skipping default sample query as all values for a variant were overridden")
 			return
-		default:
-			baseStatus, baseErrs = c.getBaseQueryStatus(ctx, allJobVariants)
 		}
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
-			if skipQuery {
-				fLog.Infof("skipping default sample query as all values for a variant were overridden")
-				return
-			}
-			fLog.Infof("running default sample query with includeVariants: %+v", includeVariants)
-			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
-			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
-			sampleStatusCh <- status
-			for _, err := range errs {
-				errCh <- err
-			}
+		fLog.Infof("running default sample query with includeVariants: %+v", includeVariants)
+		status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
+		fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
+		sampleStatusCh <- status
+		for _, err := range errs {
+			errCh <- err
 		}
-
-	}()
-
-	// fork additional sample queries for the overrides
+	})
 	// TODO: move to a variantjunitoverride middleware with Query implemented
-	for i, or := range c.variantJunitTableOverrides {
-		if !containsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
-			continue
-		}
-		// only do this additional query if the specified override variant is actually included in this request
-		wg.Add(1)
-		go func(i int, or configv1.VariantJunitTableOverride) {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.ReqOptions.VariantOption.IncludeVariants)
-				if skipQuery {
-					fLog.Infof("skipping override sample query as all values for a variant were overridden")
-					return
-				}
-				fLog.Infof("running override sample query for %+v with includeVariants: %+v", or, includeVariants)
-				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
-				end := c.ReqOptions.SampleRelease.End
-				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
-					true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, start, end, or.TableName)
-				fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
-				sampleStatusCh <- status
-				for _, err := range errs {
-					errCh <- err
-				}
-			}
+	c.goRunOverrideSampleQueries(ctx, wg, fLog, allJobVariants, sampleStatusCh, errCh)
 
-		}(i, or)
-	}
-
+	// clean up channels after all queries are done
 	go func() {
 		wg.Wait()
 		close(baseStatusCh)
@@ -505,8 +447,8 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		close(errCh)
 	}()
 
+	// manage output from the channels
 	go func() {
-
 		for status := range sampleStatusCh {
 			fLog.Infof("received %d test statuses over channel", len(status))
 			for k, v := range status {
@@ -544,6 +486,58 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 		time.Since(before), len(sampleStatus), len(baseStatus))
 	now := time.Now()
 	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
+}
+
+// fork additional sample queries for the overrides
+func (c *ComponentReportGenerator) goRunOverrideSampleQueries(
+	ctx context.Context, wg *sync.WaitGroup, fLog *log.Entry,
+	allJobVariants crtype.JobVariants,
+	sampleStatusCh chan map[string]crtype.TestStatus,
+	errCh chan error,
+) {
+	for i, or := range c.variantJunitTableOverrides {
+		if !containsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
+			continue
+		}
+
+		index, override := i, or // copy loop vars to avoid them changing during goroutine
+		goInterruptible(ctx, wg, func() {
+			// only do this additional query if the specified override variant is actually included in this request
+			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, index, c.ReqOptions.VariantOption.IncludeVariants)
+			if skipQuery {
+				fLog.Infof("skipping override sample query as all values for a variant were overridden")
+				return
+			}
+			fLog.Infof("running override sample query for %+v with includeVariants: %+v", override, includeVariants)
+			// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
+			end := c.ReqOptions.SampleRelease.End
+			start, err := util.ParseCRReleaseTime([]v1.Release{}, "", override.RelativeStart,
+				true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			status, errs := c.getSampleQueryStatus(ctx, allJobVariants, includeVariants, start, end, override.TableName)
+			fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
+			sampleStatusCh <- status
+			for _, err := range errs {
+				errCh <- err
+			}
+		})
+	}
+}
+
+func goInterruptible(ctx context.Context, wg *sync.WaitGroup, closure func()) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			closure()
+		}
+	}()
 }
 
 // copyIncludeVariantsAndRemoveOverrides is used when VariantJunitTableOverrides are in play, and we'll be merging in
@@ -641,20 +635,12 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	testComponent, testCapabilities := componentAndCapabilityGetter(test, stats)
 	rows := []crtype.RowIdentification{}
 	// First Page with no component requested
-	requestedComponent := ""
-	requestedCapability := ""
-	requestedTestID := "" // component reports can filter on test if you drill down far enough
+	requestedComponent, requestedCapability, requestedTestID := "", "", ""
 	if len(c.ReqOptions.TestIDOptions) > 0 {
 		firstTIDOpts := c.ReqOptions.TestIDOptions[0]
-		if firstTIDOpts.Component != "" {
-			requestedComponent = firstTIDOpts.Component
-		}
-		if firstTIDOpts.Capability != "" {
-			requestedCapability = firstTIDOpts.Capability
-		}
-		if firstTIDOpts.TestID != "" {
-			requestedTestID = c.ReqOptions.TestIDOptions[0].TestID
-		}
+		requestedComponent = firstTIDOpts.Component
+		requestedCapability = firstTIDOpts.Capability
+		requestedTestID = firstTIDOpts.TestID // component reports can filter on test if you drill down far enough
 	}
 
 	if requestedComponent == "" {
@@ -663,14 +649,14 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	} else if requestedComponent == testComponent {
 		// A component filter was specified and this test matches that component:
 
+		row := crtype.RowIdentification{
+			Component: testComponent,
+			TestID:    test.TestID,
+			TestName:  stats.TestName,
+			TestSuite: stats.TestSuite,
+		}
 		// Exact test match
 		if requestedTestID != "" {
-			row := crtype.RowIdentification{
-				Component: testComponent,
-				TestID:    test.TestID,
-				TestName:  stats.TestName,
-				TestSuite: stats.TestSuite,
-			}
 			if requestedCapability != "" {
 				row.Capability = requestedCapability
 			}
@@ -680,13 +666,7 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 				// Exact capability match only produces one row
 				if requestedCapability != "" {
 					if requestedCapability == capability {
-						row := crtype.RowIdentification{
-							Component:  testComponent,
-							TestID:     test.TestID,
-							TestName:   stats.TestName,
-							TestSuite:  stats.TestSuite,
-							Capability: capability,
-						}
+						row.Capability = capability
 						rows = append(rows, row)
 						break
 					}
@@ -742,7 +722,16 @@ func getNewCellStatus(testID crtype.ReportTestIdentification, testStats crtype.R
 	return newCellStatus
 }
 
-func updateCellStatus(rowIdentifications []crtype.RowIdentification, columnIdentifications []crtype.ColumnID, testID crtype.ReportTestIdentification, testStats crtype.ReportTestStats, status map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus, allRows map[crtype.RowIdentification]struct{}, allColumns map[crtype.ColumnID]struct{}) {
+func updateCellStatus(
+	rowIdentifications []crtype.RowIdentification,
+	columnIdentifications []crtype.ColumnID,
+	testID crtype.ReportTestIdentification,
+	testStats crtype.ReportTestStats,
+	// use the inputs above to update the maps below (golang passes maps by reference)
+	status map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus,
+	allRows map[crtype.RowIdentification]struct{},
+	allColumns map[crtype.ColumnID]struct{},
+) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
 			allColumns[columnIdentification] = struct{}{}
@@ -781,141 +770,94 @@ func updateCellStatus(rowIdentifications []crtype.RowIdentification, columnIdent
 func initTestAnalysisStruct(
 	testStats *crtype.ReportTestStats,
 	reqOptions crtype.RequestOptions,
-	sampleStats crtype.TestStatus,
-	baseStats *crtype.TestStatus) {
+	sampleStatus crtype.TestStatus,
+	baseStatus *crtype.TestStatus) {
 
 	// Default to required confidence from request, middleware may adjust later.
 	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
 
-	successFailCount := sampleStats.TotalCount - sampleStats.FlakeCount - sampleStats.SuccessCount
 	testStats.SampleStats = crtype.TestDetailsReleaseStats{
-		Release: reqOptions.SampleRelease.Release,
-		Start:   &reqOptions.SampleRelease.Start,
-		End:     &reqOptions.SampleRelease.End,
-		TestDetailsTestStats: crtype.TestDetailsTestStats{
-			SuccessRate:  crtype.CalculatePassRate(sampleStats.SuccessCount, successFailCount, sampleStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
-			SuccessCount: sampleStats.SuccessCount,
-			FlakeCount:   sampleStats.FlakeCount,
-			FailureCount: successFailCount,
-		},
+		Release:              reqOptions.SampleRelease.Release,
+		Start:                &reqOptions.SampleRelease.Start,
+		End:                  &reqOptions.SampleRelease.End,
+		TestDetailsTestStats: sampleStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 	}
-	if baseStats != nil {
-		baseRelease := reqOptions.BaseRelease.Release
-		baseStart := reqOptions.BaseRelease.Start
-		baseEnd := reqOptions.BaseRelease.End
-
-		failCount := baseStats.TotalCount - baseStats.FlakeCount - baseStats.SuccessCount
+	if baseStatus != nil {
 		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-			Release: baseRelease,
-			Start:   &baseStart,
-			End:     &baseEnd,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
-				SuccessRate:  crtype.CalculatePassRate(baseStats.SuccessCount, failCount, baseStats.FlakeCount, reqOptions.AdvancedOption.FlakeAsFailure),
-				SuccessCount: baseStats.SuccessCount,
-				FlakeCount:   baseStats.FlakeCount,
-				FailureCount: failCount,
-			},
+			Release:              reqOptions.BaseRelease.Release,
+			Start:                &reqOptions.BaseRelease.Start,
+			End:                  &reqOptions.BaseRelease.End,
+			TestDetailsTestStats: baseStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 		}
 	}
 }
 
-// TODO: break this function down and remove this nolint
-// nolint:gocyclo
-func (c *ComponentReportGenerator) generateComponentTestReport(baseStatus, sampleStatus map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
-	report := crtype.ComponentReport{
-		Rows: []crtype.ReportRow{},
-	}
+func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, sampleStatusMap map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
 	aggregatedStatus := map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
 	allRows := map[crtype.RowIdentification]struct{}{}
 	allColumns := map[crtype.ColumnID]struct{}{}
-	// testID is used to identify the most regressed test. With this, we can
-	// create a shortcut link from any page to go straight to the most regressed test page.
 
-	// using the baseStatus range here makes it hard to do away with the baseQuery
-	// but if we did and just enumerated the sampleStatus instead
-	// we wouldn't need the base query each time
-	//
-	// understand we use this to find tests associated with base that we don't see now in sample
-	// meaning they have been renamed or removed
+	// merge basis and sample map keys and evaluate each key once
+	keySet := sets.NewString(slices.Collect(maps.Keys(basisStatusMap))...)
+	keySet.Insert(slices.Collect(maps.Keys(sampleStatusMap))...)
+	for testKeyStr := range keySet {
+		var cellReport crtype.ReportTestStats // The actual stats we return over the API
+		sampleStatus, sampleThere := sampleStatusMap[testKeyStr]
+		basisStatus, basisThere := basisStatusMap[testKeyStr]
 
-	for testKeyStr, baseStats := range baseStatus {
-		testKey, err := utils.DeserializeTestKey(baseStats, testKeyStr)
+		// Deserialize the test key from its string form; need sample or base status to do this
+		status := sampleStatus
+		if !sampleThere {
+			status = basisStatus
+		}
+		testKey, err := utils.DeserializeTestKey(status, testKeyStr)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
 
-		var testStats crtype.ReportTestStats // This is the actual stats we return over the API
-
-		sampleStats, ok := sampleStatus[testKeyStr]
-		if !ok {
-			testStats.ReportStatus = crtype.MissingSample
+		if !sampleThere {
+			// we use this to find tests associated with the basis that we don't see now in sample,
+			// meaning they have been renamed or removed. no further analysis is needed.
+			cellReport.ReportStatus = crtype.MissingSample
 		} else {
-
 			// Initialize the test analysis before we start passing it around to the middleware
-			initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, &baseStats)
-
-			// Give middleware their chance to adjust parameters prior to analysis
-			for _, mw := range c.middlewares {
-				err = mw.PreAnalysis(testKey, &testStats)
-				if err != nil {
-					return crtype.ComponentReport{}, err
-				}
+			if basisThere {
+				initTestAnalysisStruct(&cellReport, c.ReqOptions, sampleStatus, &basisStatus)
+			} else {
+				initTestAnalysisStruct(&cellReport, c.ReqOptions, sampleStatus, nil)
 			}
 
-			c.assessComponentStatus(&testStats)
-
-			if !sampleStats.LastFailure.IsZero() {
-				testStats.LastFailure = &sampleStats.LastFailure
-			}
-
-		}
-		delete(sampleStatus, testKeyStr)
-
-		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, baseStats)
-		if err != nil {
-			return crtype.ComponentReport{}, err
-		}
-		updateCellStatus(rowIdentifications, columnIdentifications, testKey, testStats, aggregatedStatus, allRows, allColumns)
-	}
-
-	// Anything we saw in the basis was removed above, all that remains are tests with no basis, typically new
-	// tests, or tests that were renamed without submitting a rename to the test mapping repo.
-	for testKey, sampleStats := range sampleStatus {
-		testID, err := utils.DeserializeTestKey(sampleStats, testKey)
-		if err != nil {
-			return crtype.ComponentReport{}, err
-		}
-
-		var testStats crtype.ReportTestStats
-
-		// Initialize the test analysis before we start passing it around to the middleware and eventual assess:
-		initTestAnalysisStruct(&testStats, c.ReqOptions, sampleStats, nil)
-
-		// Give middleware their chance to adjust parameters prior to analysis
-		for _, mw := range c.middlewares {
-			err = mw.PreAnalysis(testID, &testStats)
-			if err != nil {
+			// Give middleware a chance to adjust parameters prior to analysis
+			if err := c.middlewares.PreAnalysis(testKey, &cellReport); err != nil {
 				return crtype.ComponentReport{}, err
 			}
+
+			c.assessComponentStatus(&cellReport)
+			if lastFailure := sampleStatus.LastFailure; !lastFailure.IsZero() {
+				cellReport.LastFailure = &lastFailure // it's a copy, for pointer hygiene
+			}
 		}
 
-		c.assessComponentStatus(&testStats)
-
-		if !sampleStats.LastFailure.IsZero() {
-			lastFailure := sampleStats.LastFailure
-			testStats.LastFailure = &lastFailure
-		}
-
-		rowIdentifications, columnIdentification, err := c.getRowColumnIdentifications(testKey, sampleStats)
+		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, sampleStatus)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
-		updateCellStatus(rowIdentifications, columnIdentification, testID, testStats, aggregatedStatus, allRows, allColumns)
+		updateCellStatus(
+			rowIdentifications, columnIdentifications, testKey, cellReport, // inputs
+			aggregatedStatus, allRows, allColumns, // these three are maps to be updated
+		)
 	}
 
-	// Sort the row identifications
+	rows, err := buildReport(sortRowIdentifications(allRows), sortColumnIdentifications(allColumns), aggregatedStatus)
+	if err != nil {
+		return crtype.ComponentReport{}, err
+	}
+	return crtype.ComponentReport{Rows: rows}, nil
+}
+
+func sortRowIdentifications(allRows map[crtype.RowIdentification]struct{}) []crtype.RowIdentification {
 	sortedRows := []crtype.RowIdentification{}
 	for rowID := range allRows {
 		sortedRows = append(sortedRows, rowID)
@@ -933,8 +875,10 @@ func (c *ComponentReportGenerator) generateComponentTestReport(baseStatus, sampl
 		}
 		return less
 	})
+	return sortedRows
+}
 
-	// Sort the column identifications
+func sortColumnIdentifications(allColumns map[crtype.ColumnID]struct{}) []crtype.ColumnID {
 	sortedColumns := []crtype.ColumnID{}
 	for columnID := range allColumns {
 		sortedColumns = append(sortedColumns, columnID)
@@ -942,13 +886,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(baseStatus, sampl
 	sort.Slice(sortedColumns, func(i, j int) bool {
 		return sortedColumns[i] < sortedColumns[j]
 	})
-
-	rows, err := buildReport(sortedRows, sortedColumns, aggregatedStatus)
-	if err != nil {
-		return crtype.ComponentReport{}, err
-	}
-	report.Rows = rows
-	return report, nil
+	return sortedColumns
 }
 
 func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.ColumnID, aggregatedStatus map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus) ([]crtype.ReportRow, error) {
@@ -1018,15 +956,7 @@ func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.Repor
 		testStats.RequiredConfidence = opts.Confidence
 	}
 
-	var baseSuccess, baseFailure, baseFlake, baseTotal int
-	if testStats.BaseStats != nil {
-		baseSuccess = testStats.BaseStats.SuccessCount
-		baseFailure = testStats.BaseStats.FailureCount
-		baseFlake = testStats.BaseStats.FlakeCount
-		baseTotal = baseSuccess + baseFailure + baseFlake
-	}
-
-	if baseTotal == 0 && opts.PassRateRequiredNewTests > 0 {
+	if (testStats.BaseStats == nil || testStats.BaseStats.Total() == 0) && opts.PassRateRequiredNewTests > 0 {
 		// If we have no base stats, fall back to a raw pass rate comparison for new or improperly renamed tests:
 		c.buildPassRateTestStats(testStats, float64(opts.PassRateRequiredNewTests))
 		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
