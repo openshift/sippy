@@ -172,6 +172,9 @@ func (tc TestCount) Failures() int { // translate to sippy/stats-land
 	}
 	return failure
 }
+func (tc TestCount) ToTestStats(flakeAsFailure bool) TestDetailsTestStats { // translate to sippy/stats-land
+	return NewTestStats(tc.SuccessCount, tc.Failures(), tc.FlakeCount, flakeAsFailure)
+}
 
 // TestStatus is an internal type used to pass data bigquery onwards to the actual
 // report generation. It is not serialized over the API.

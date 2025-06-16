@@ -51,22 +51,11 @@ func IntentionalRegressionFor(releaseString string, variant crtype.ColumnIdentif
 }
 
 func (i *IntentionalRegression) RegressedPassPercentage(flakeAsFailure bool) float64 {
-	return passPercentage(flakeAsFailure, i.RegressedSuccesses, i.RegressedFlakes, i.RegressedFailures)
+	return crtype.CalculatePassRate(i.RegressedSuccesses, i.RegressedFailures, i.RegressedFlakes, flakeAsFailure)
 }
 
 func (i *IntentionalRegression) PreviousPassPercentage(flakeAsFailure bool) float64 {
-	return passPercentage(flakeAsFailure, i.PreviousSuccesses, i.PreviousFlakes, i.PreviousFailures)
-}
-
-func passPercentage(flakeAsFailure bool, successes, flakes, failures int) float64 {
-	total := successes + flakes + failures
-	if total == 0 {
-		return 1.0 // prevent division by zero, consider pass rate 100% if no data
-	}
-	if flakeAsFailure {
-		return float64(successes) / float64(total)
-	}
-	return float64(successes+flakes) / float64(total)
+	return crtype.CalculatePassRate(i.PreviousSuccesses, i.PreviousFailures, i.PreviousFlakes, flakeAsFailure)
 }
 
 func keyFor(testID string, variant crtype.ColumnIdentification) string {
