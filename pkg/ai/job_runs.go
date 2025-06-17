@@ -32,27 +32,58 @@ structured JSON input containing:
 Based on this, return a concise summary (1–3 sentences max) explaining why the job failed. Be clear, factual, and avoid
 speculation. Do not guess at the meaning of any acronyms. Be brief.`
 
-type clusterOperatorStatus struct {
-	Name    string
-	Status  string
-	Reason  string
-	Message string
+// ClusterOperatorStatus represents the status of a cluster operator
+type ClusterOperatorStatus struct {
+	Name    string `json:"name"`
+	Status  string `json:"status"`
+	Reason  string `json:"reason"`
+	Message string `json:"message"`
 }
 
-type jobRunData struct {
-	Name             string                  `json:"name"`
-	Reason           string                  `json:"reason"`
-	TestFailures     map[string]string       `json:"testFailures,omitempty"`
-	ClusterOperators []clusterOperatorStatus `json:"clusterOperators,omitempty"`
+// JobRunData contains the comprehensive data for a job run including test failures and cluster operator status
+type JobRunData struct {
+	// Basic job information
+	ID        uint   `json:"id"`
+	Name      string `json:"name"`
+	Release   string `json:"release"`
+	Cluster   string `json:"cluster"`
+	URL       string `json:"url"`
+	GCSBucket string `json:"gcsBucket"`
+
+	// Timing information
+	StartTime       time.Time     `json:"startTime"`
+	Duration        time.Duration `json:"duration"`
+	DurationSeconds float64       `json:"durationSeconds"`
+
+	// Status and results
+	OverallResult         string `json:"overallResult"`
+	Reason                string `json:"reason"`
+	Succeeded             bool   `json:"succeeded"`
+	Failed                bool   `json:"failed"`
+	InfrastructureFailure bool   `json:"infrastructureFailure"`
+	KnownFailure          bool   `json:"knownFailure"`
+
+	// Test information
+	TestCount        int               `json:"testCount"`
+	TestFailureCount int               `json:"testFailureCount"`
+	TestFailures     map[string]string `json:"testFailures,omitempty"`
+
+	// Job metadata
+	Variants    []string `json:"variants,omitempty"`
+	TestGridURL string   `json:"testGridURL,omitempty"`
+
+	// Cluster and infrastructure information
+	ClusterOperators []ClusterOperatorStatus `json:"clusterOperators,omitempty"`
 }
 
-func AnalyzeJobRun(ctx context.Context, llmClient *LLMClient, dbc *db.DB, gcsClient *storage.Client, jobRunID int64) (string, error) {
+// GetJobRunSummary extracts and returns the raw job run data without LLM analysis
+func GetJobRunSummary(ctx context.Context, dbc *db.DB, gcsClient *storage.Client, jobRunID int64) (*JobRunData, error) {
 	jLog := log.WithField("JobRunID", jobRunID)
 	dbStart := time.Now()
 	jLog.Info("Querying DB for job run data")
 	jr, err := jobQueries.FetchJobRun(dbc, jobRunID, false, []string{"Tests.ProwJobRunTestOutput"}, jLog)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	jLog.Infof("DB query complete after %+v", time.Since(dbStart))
 
@@ -61,18 +92,55 @@ func AnalyzeJobRun(ctx context.Context, llmClient *LLMClient, dbc *db.DB, gcsCli
 	// Extract data from GCS bucket
 	gcsPath, err := prowloader.GetGCSPathForProwJobURL(jLog, jr.URL)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	bkt := gcsClient.Bucket(jr.GCSBucket)
 	gcsJr := gcs.NewGCSJobRun(bkt, gcsPath)
 
 	clusterOperators := getUnavailableOrDegradedOperators(gcsJr, jLog)
 
-	jrData := jobRunData{
-		Name:             jr.ProwJob.Name,
-		Reason:           jr.OverallResult.String(),
+	jrData := &JobRunData{
+		// Basic job information
+		ID:        jr.ID,
+		Name:      jr.ProwJob.Name,
+		Release:   jr.ProwJob.Release,
+		Cluster:   jr.Cluster,
+		URL:       jr.URL,
+		GCSBucket: jr.GCSBucket,
+
+		// Timing information
+		StartTime:       jr.Timestamp,
+		Duration:        jr.Duration,
+		DurationSeconds: jr.Duration.Seconds(),
+
+		// Status and results
+		OverallResult:         string(jr.OverallResult),
+		Reason:                jr.OverallResult.String(),
+		Succeeded:             jr.Succeeded,
+		Failed:                jr.Failed,
+		InfrastructureFailure: jr.InfrastructureFailure,
+		KnownFailure:          jr.KnownFailure,
+
+		// Test information
+		TestCount:        jr.TestCount,
+		TestFailureCount: jr.TestFailures,
 		TestFailures:     failures,
+
+		// Job metadata
+		Variants:    jr.ProwJob.Variants,
+		TestGridURL: jr.ProwJob.TestGridURL,
+
+		// Cluster and infrastructure information
 		ClusterOperators: clusterOperators,
+	}
+
+	return jrData, nil
+}
+
+func AnalyzeJobRun(ctx context.Context, llmClient *LLMClient, dbc *db.DB, gcsClient *storage.Client, jobRunID int64) (string, error) {
+	jrData, err := GetJobRunSummary(ctx, dbc, gcsClient, jobRunID)
+	if err != nil {
+		return "", err
 	}
 
 	jobRunSummary, err := json.MarshalIndent(jrData, "", "  ")
@@ -81,7 +149,7 @@ func AnalyzeJobRun(ctx context.Context, llmClient *LLMClient, dbc *db.DB, gcsCli
 	}
 
 	llmStart := time.Now()
-	jLog = jLog.WithField("Name", jrData.Name)
+	jLog := log.WithField("JobRunID", jobRunID).WithField("Name", jrData.Name)
 	jLog.Info("Asking LLM for job run summary")
 	jLog.Debugf("Job Run Data: %s", string(jobRunSummary))
 	res, err := llmClient.Chat(ctx, jobRunAnalysisPrompt, string(jobRunSummary))
@@ -92,7 +160,7 @@ func AnalyzeJobRun(ctx context.Context, llmClient *LLMClient, dbc *db.DB, gcsCli
 	return res, err
 }
 
-func getUnavailableOrDegradedOperators(jr *gcs.GCSJobRun, jLog *log.Entry) []clusterOperatorStatus {
+func getUnavailableOrDegradedOperators(jr *gcs.GCSJobRun, jLog *log.Entry) []ClusterOperatorStatus {
 	start := time.Now()
 	jLog.Info("Fetching cluster operators...")
 	// Operator statuses
@@ -102,7 +170,7 @@ func getUnavailableOrDegradedOperators(jr *gcs.GCSJobRun, jLog *log.Entry) []clu
 		return nil
 	}
 
-	var statuses []clusterOperatorStatus
+	var statuses []ClusterOperatorStatus
 	var coList openshift.ClusterOperatorList
 	if err := json.Unmarshal(coData, &coList); err != nil {
 		jLog.WithError(err).Warn("Failed to parse cluster operator list")
@@ -111,7 +179,7 @@ func getUnavailableOrDegradedOperators(jr *gcs.GCSJobRun, jLog *log.Entry) []clu
 	for _, co := range coList.Items {
 		for _, condition := range co.Status.Conditions {
 			if (condition.Type == "Degraded" && condition.Status == "True") || (condition.Type == "Available" && condition.Status == "False") {
-				statuses = append(statuses, clusterOperatorStatus{
+				statuses = append(statuses, ClusterOperatorStatus{
 					Name:    co.Metadata.Name,
 					Status:  condition.Status,
 					Reason:  condition.Reason,

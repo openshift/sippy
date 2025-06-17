@@ -1017,6 +1017,27 @@ func (s *Server) jsonJobRunAISummary(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, summary)
 }
 
+func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
+	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
+	if jobRunIDStr == "" {
+		return
+	}
+
+	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
+		return
+	}
+
+	summary, err := ai.GetJobRunSummary(req.Context(), s.db, s.gcsClient, jobRunID)
+	if err != nil {
+		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, summary)
+}
+
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := param.SafeRead(req, "release")
 
@@ -1548,6 +1569,12 @@ func (s *Server) Serve() {
 			Description:  "Returns an AI-generated summary of a job run",
 			Capabilities: []string{LocalDBCapability, AICapability},
 			HandlerFunc:  s.jsonJobRunAISummary,
+		},
+		{
+			EndpointPath: "/api/job/run/summary",
+			Description:  "Returns raw job run summary data including test failures and cluster operators",
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonJobRunSummary,
 		},
 		{
 			EndpointPath: "/api/autocomplete/",
