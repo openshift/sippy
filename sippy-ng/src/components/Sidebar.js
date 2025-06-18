@@ -10,6 +10,7 @@ import {
   FileCopyOutlined,
   GitHub,
   NotificationsActive,
+  SmartToy,
 } from '@mui/icons-material'
 import { BOOKMARKS } from '../constants'
 import { CapabilitiesContext } from '../App'
@@ -128,6 +129,23 @@ export default function Sidebar(props) {
                       <ListItemText primary="Component Readiness" />
                     </StyledListItemButton>
                   </ListItem>
+
+                  {/* Only show Chat Agent if REACT_APP_CHAT_API_URL is set */}
+                  {process.env.REACT_APP_CHAT_API_URL && (
+                    <ListItem
+                      key={'chat-agent'}
+                      component={Link}
+                      to={'/chat'}
+                      className={classes.nested}
+                    >
+                      <StyledListItemButton>
+                        <ListItemIcon>
+                          <SmartToy />
+                        </ListItemIcon>
+                        <ListItemText primary="Chat Agent" />
+                      </StyledListItemButton>
+                    </ListItem>
+                  )}
 
                   <ListItem
                     component="a"
