@@ -3,8 +3,8 @@ component_readiness:
   - name: 4.20-main
     base_release:
       release: "4.19"
-      relative_start: now-30d
-      relative_end: now
+      relative_start: ga-30d
+      relative_end: ga
     sample_release:
       release: "4.20"
       relative_start: now-7d
@@ -214,9 +214,9 @@ component_readiness:
       enabled: false
   - name: 4.20-rarely-run-jobs
     base_release:
-      release: "4.20"
-      relative_start: now-1d
-      relative_end: now
+      release: "4.19"
+      relative_start: ga-1d
+      relative_end: ga
     sample_release:
       release: "4.20"
       # need to look much further back for rarely run jobs
