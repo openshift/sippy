@@ -44,16 +44,19 @@ function getRelativeTime(date) {
 // Get WebSocket URL based on current environment
 export function getChatWebSocketUrl() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const baseUrl = process.env.REACT_APP_CHAT_API_URL || 'http://localhost:8000'
-  const host = new URL(baseUrl).host
+  const baseUrl = process.env.REACT_APP_CHAT_API_URL || '/api/chat'
 
-  return `${protocol}//${host}/chat/stream`
-}
+  let url
+  if (baseUrl.startsWith('/')) {
+    url = new URL(baseUrl, window.location.origin)
+  } else {
+    url = new URL(baseUrl)
+    url.protocol = protocol
+  }
 
-// Get REST API URL for chat
-export function getChatRestUrl() {
-  const baseUrl = process.env.REACT_APP_CHAT_API_URL || 'http://localhost:8000'
-  return `${baseUrl}/chat`
+  url.pathname = url.pathname.replace(/\/$/, '') + '/stream'
+  console.log(url.toString())
+  return url.toString()
 }
 
 // Create a new message object

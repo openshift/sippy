@@ -81,6 +81,7 @@ func NewServer(
 	config *v1.SippyConfig,
 	enableWriteEndpoints bool,
 	llmClient *ai.LLMClient,
+	chatAPIURL string,
 	jiraClient *jira.Client,
 ) *Server {
 
@@ -104,6 +105,7 @@ func NewServer(
 		config:               config,
 		enableWriteAPIs:      enableWriteEndpoints,
 		llmClient:            llmClient,
+		chatAPIURL:           chatAPIURL,
 		jiraClient:           jiraClient,
 	}
 
@@ -148,6 +150,7 @@ type Server struct {
 	config               *v1.SippyConfig
 	enableWriteAPIs      bool
 	llmClient            *ai.LLMClient
+	chatAPIURL           string
 	jiraClient           *jira.Client
 }
 
@@ -300,6 +303,10 @@ func (s *Server) determineCapabilities() {
 
 	if s.db != nil && s.enableWriteAPIs {
 		capabilities = append(capabilities, WriteEndpointsCapability)
+	}
+
+	if s.chatAPIURL != "" {
+		capabilities = append(capabilities, ChatCapability)
 	}
 
 	s.capabilities = capabilities
@@ -2287,6 +2294,18 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonFeatureGates,
 		},
+		{
+			EndpointPath: "/api/chat",
+			Description:  "HTTP proxy for REST API requests to sippy-chat service",
+			Capabilities: []string{ChatCapability},
+			HandlerFunc:  s.handleChatProxy,
+		},
+		{
+			EndpointPath: "/api/chat/stream",
+			Description:  "Websocket proxy for chat API requests to sippy-chat service (supports HTTP and WebSocket)",
+			Capabilities: []string{ChatCapability},
+			HandlerFunc:  s.handleChatProxy,
+		},
 	}
 
 	for _, ep := range endpoints {
@@ -2437,4 +2456,23 @@ func recordResponse(c cache.Cache, duration time.Duration, w http.ResponseWriter
 
 func (s *Server) GetHTTPServer() *http.Server {
 	return s.httpServer
+}
+
+// handleChatProxy handles proxying requests to the sippy-chat service
+func (s *Server) handleChatProxy(w http.ResponseWriter, r *http.Request) {
+	if s.chatAPIURL == "" {
+		http.Error(w, "Chat API not configured", http.StatusServiceUnavailable)
+		return
+	}
+
+	// Create chat proxy if not already created
+	chatProxy, err := NewChatProxy(s.chatAPIURL)
+	if err != nil {
+		log.WithError(err).Error("Failed to create chat proxy")
+		http.Error(w, "Failed to initialize chat proxy", http.StatusInternalServerError)
+		return
+	}
+
+	// Proxy the request
+	chatProxy.ServeHTTP(w, r)
 }

@@ -134,22 +134,27 @@ export default function Sidebar(props) {
                     </StyledListItemButton>
                   </ListItem>
 
-                  {/* Only show Chat Agent if REACT_APP_CHAT_API_URL is set */}
-                  {process.env.REACT_APP_CHAT_API_URL && (
-                    <ListItem
-                      key={'chat-agent'}
-                      component={Link}
-                      to={'/chat'}
-                      className={classes.nested}
-                    >
-                      <StyledListItemButton>
-                        <ListItemIcon>
-                          <SmartToy />
-                        </ListItemIcon>
-                        <ListItemText primary="Chat Agent" />
-                      </StyledListItemButton>
-                    </ListItem>
-                  )}
+                  <CapabilitiesContext.Consumer>
+                    {(value) => {
+                      if (value.includes('chat')) {
+                        return (
+                          <ListItem
+                            key={'chat-agent'}
+                            component={Link}
+                            to={'/chat'}
+                            className={classes.nested}
+                          >
+                            <StyledListItemButton>
+                              <ListItemIcon>
+                                <SmartToy />
+                              </ListItemIcon>
+                              <ListItemText primary="Chat Agent" />
+                            </StyledListItemButton>
+                          </ListItem>
+                        )
+                      }
+                    }}
+                  </CapabilitiesContext.Consumer>
 
                   <ListItem
                     component="a"
