@@ -351,8 +351,6 @@ component_readiness:
       enabled: true
     prime_cache:
       enabled: true
-    automate_jira:
-      enabled: true
   - name: 4.19-x86-vs-arm
     base_release:
       release: "4.19"
@@ -752,8 +750,6 @@ component_readiness:
       enabled: false
     regression_tracking:
       enabled: false
-    automate_jira:
-      enabled: false
   - name: 4.17-main
     base_release:
       release: "4.16"
@@ -816,8 +812,6 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
-    automate_jira:
-      enabled: false
   - name: 4.16-main
     base_release:
       release: "4.15"
@@ -874,5 +868,3 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
-    automate_jira:
-      enabled: false
