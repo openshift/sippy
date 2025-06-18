@@ -3,8 +3,8 @@ component_readiness:
   - name: 4.20-main
     base_release:
       release: "4.19"
-      relative_start: now-30d
-      relative_end: now
+      relative_start: ga-30d
+      relative_end: ga
     sample_release:
       release: "4.20"
       relative_start: now-7d
@@ -214,9 +214,9 @@ component_readiness:
       enabled: false
   - name: 4.20-rarely-run-jobs
     base_release:
-      release: "4.20"
-      relative_start: now-1d
-      relative_end: now
+      release: "4.19"
+      relative_start: ga-1d
+      relative_end: ga
     sample_release:
       release: "4.20"
       # need to look much further back for rarely run jobs
@@ -350,8 +350,6 @@ component_readiness:
     regression_tracking:
       enabled: true
     prime_cache:
-      enabled: true
-    automate_jira:
       enabled: true
   - name: 4.19-x86-vs-arm
     base_release:
@@ -752,8 +750,6 @@ component_readiness:
       enabled: false
     regression_tracking:
       enabled: false
-    automate_jira:
-      enabled: false
   - name: 4.17-main
     base_release:
       release: "4.16"
@@ -816,8 +812,6 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
-    automate_jira:
-      enabled: false
   - name: 4.16-main
     base_release:
       release: "4.15"
@@ -874,5 +868,3 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
-    automate_jira:
-      enabled: false
