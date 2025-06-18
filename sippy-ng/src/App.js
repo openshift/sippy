@@ -30,6 +30,7 @@ import AccessibilityToggle from './components/AccessibilityToggle'
 import Alert from '@mui/material/Alert'
 import BuildClusterDetails from './build_clusters/BuildClusterDetails'
 import BuildClusterOverview from './build_clusters/BuildClusterOverview'
+import ChatAgent from './chat/ChatAgent'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
@@ -766,6 +767,14 @@ export default function App(props) {
                                 />
                               )}
                             />
+
+                            {/* Only show /chat route if REACT_APP_CHAT_API_URL is set */}
+                            {process.env.REACT_APP_CHAT_API_URL && (
+                              <Route
+                                path="/chat"
+                                render={() => <ChatAgent />}
+                              />
+                            )}
 
                             {capabilities.includes('local_db') ? (
                               <Route path="/">{landingPage}</Route>
