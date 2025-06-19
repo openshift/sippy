@@ -776,10 +776,7 @@ export default function App(props) {
                             />
 
                             {capabilities.includes('chat') && (
-                              <Route
-                                path="/chat"
-                                element={<ChatAgent />}
-                              />
+                              <Route path="/chat" element={<ChatAgent />} />
                             )}
 
                             <Route
