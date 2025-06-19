@@ -150,6 +150,14 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	if err := d.DB.AutoMigrate(&models.AuditLog{}); err != nil {
+		return err
+	}
+
+	if err := createAuditLogIndexes(d.DB); err != nil {
+		return err
+	}
+
 	if err := populateTestSuitesInDB(d.DB); err != nil {
 		return err
 	}
@@ -246,6 +254,20 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 		vlog.Debug("no schema update required")
 	}
 	return updateRequired, nil
+}
+
+// createAuditLogIndexes creates GIN indexes for JSONB columns in audit_logs table
+// for efficient JSON querying operations.
+func createAuditLogIndexes(db *gorm.DB) error {
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_audit_logs_new_data_gin ON audit_logs USING GIN (new_data)").Error; err != nil {
+		return fmt.Errorf("failed to create GIN index on audit_logs.new_data: %w", err)
+	}
+
+	if err := db.Exec("CREATE INDEX IF NOT EXISTS idx_audit_logs_old_data_gin ON audit_logs USING GIN (old_data)").Error; err != nil {
+		return fmt.Errorf("failed to create GIN index on audit_logs.old_data: %w", err)
+	}
+
+	return nil
 }
 
 func ParseGormLogLevel(logLevel string) (gormlogger.LogLevel, error) {

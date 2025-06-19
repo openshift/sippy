@@ -1272,13 +1272,6 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 		log.Infof("Extracted triage ID: %d", triageID)
 	}
 
-	if req.Method == http.MethodPost || req.Method == http.MethodPut {
-		user := req.Header.Get("X-Forwarded-User")
-		email := req.Header.Get("X-Forwarded-Email")
-
-		log.Infof("triage %s being made by user: %s, email: %s", req.Method, user, email)
-	}
-
 	switch req.Method {
 	case http.MethodGet:
 		// Was a specific record requested?
@@ -1309,13 +1302,16 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusNotImplemented, "POST triages is not available on this server")
 			return
 		}
+		user := getUserForRequest(req)
+		log.Infof("triage POST made by user: %s", user)
 		var triage models.Triage
 		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
 			log.WithError(err).Error("error parsing new triage record")
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		triage, err := componentreadiness.CreateTriage(s.db, triage)
+		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
+		triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -1330,6 +1326,8 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusBadRequest, "no triage ID specified in URL")
 			return
 		}
+		user := getUserForRequest(req)
+		log.Infof("triage PUT made by user: %s", user)
 		var triage models.Triage
 		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
 			log.WithError(err).Error("error parsing new triage record")
@@ -1340,7 +1338,8 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusBadRequest, "resource triage ID does not match URL")
 			return
 		}
-		triage, err := componentreadiness.UpdateTriage(s.db, triage)
+		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
+		triage, err := componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage)
 		if err != nil {
 			log.WithError(err).Error("error updating triage")
 			failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1352,7 +1351,10 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusNotImplemented, "DELETE triages is not available on this server")
 			return
 		}
-		if err := componentreadiness.DeleteTriage(s.db, triageID); err != nil {
+		user := getUserForRequest(req)
+		log.Infof("triage DELETE made by user: %s", user)
+		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
+		if err := componentreadiness.DeleteTriage(s.db.DB.WithContext(ctx), triageID); err != nil {
 			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -1365,6 +1367,14 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 	default:
 		failureResponse(w, http.StatusBadRequest, "Unsupported method")
 	}
+}
+
+func getUserForRequest(req *http.Request) string {
+	user := req.Header.Get("X-Forwarded-User")
+	if user == "" && os.Getenv("DEV_MODE") == "1" {
+		user = "developer"
+	}
+	return user
 }
 
 // queryJobArtifacts is an API to query GCS for artifacts from a set of job runs. Parameters:
