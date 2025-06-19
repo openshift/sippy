@@ -24,7 +24,10 @@ import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
-import { safeEncodeURIComponent } from '../helpers'
+import {
+  pathForExactTestAnalysisWithFilter,
+  safeEncodeURIComponent,
+} from '../helpers'
 import { Tooltip } from '@mui/material'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
@@ -422,6 +425,17 @@ View the [test details report|${document.location.href}] for additional context.
               href="https://issues.redhat.com/issues/?filter=12432468"
             >
               View other open regressions
+            </Button>
+            <Button
+              variant="contained"
+              color="secondary"
+              href={pathForExactTestAnalysisWithFilter(
+                sampleRelease,
+                testName,
+                { items: [] }
+              )}
+            >
+              View Test Analysis
             </Button>
           </Box>
         </Grid>
