@@ -88,7 +88,7 @@ function TestsReportTabPanel(props) {
 
 // This component runs when we see /component_readiness/test_details
 // This is page 5 which runs when you click a test cell on the right of page 4 or page 4a
-export default function CompReadyTestReport(props) {
+export default function TestDetailsReport(props) {
   const classes = useContext(ComponentReadinessStyleContext)
   const { accessibilityModeOn } = useContext(AccessibilityModeContext)
 
@@ -544,7 +544,7 @@ View the [test details report|${document.location.href}] for additional context.
   )
 }
 
-CompReadyTestReport.propTypes = {
+TestDetailsReport.propTypes = {
   filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,
   capability: PropTypes.string.isRequired,

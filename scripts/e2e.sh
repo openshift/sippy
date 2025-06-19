@@ -45,6 +45,8 @@ echo "Loading database..."
 make build
 ./sippy load --loader prow --loader prow --load-openshift-ci-bigquery \
   --release 4.14 \
+  --init-database \
+  --mode ocp \
   --database-dsn="$SIPPY_E2E_DSN" \
   --config ./config/e2e-openshift.yaml \
   --google-service-account-credential-file $GCS_SA_JSON_PATH
