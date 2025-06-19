@@ -54,7 +54,6 @@ export default function ComponentReadinessToolBar(props) {
     setTriageActionTaken,
     filterVals,
   } = props
-  console.log('data = ', data)
 
   const [regressedTests, setRegressedTests] = React.useState([])
   const [allRegressedTests, setAllRegressedTests] = React.useState([])

@@ -88,7 +88,7 @@ function TestsReportTabPanel(props) {
 
 // This component runs when we see /component_readiness/test_details
 // This is page 5 which runs when you click a test cell on the right of page 4 or page 4a
-export default function CompReadyTestReport(props) {
+export default function TestDetailsReport(props) {
   const classes = useContext(ComponentReadinessStyleContext)
   const { accessibilityModeOn } = useContext(AccessibilityModeContext)
 
@@ -137,17 +137,6 @@ export default function CompReadyTestReport(props) {
     navigator.clipboard.writeText(testId)
     setCopyPopoverEl(event.currentTarget)
     setTimeout(() => setCopyPopoverEl(null), 2000)
-  }
-
-  const handleCopy = async (event) => {
-    try {
-      await navigator.clipboard.writeText(testId)
-      setAnchorEl(event.currentTarget)
-      setTimeout(() => setAnchorEl(null), 1500) // Close popover after 1.5 seconds
-    } catch (err) {
-      setAnchorEl(event.currentTarget)
-      setTimeout(() => setAnchorEl(null), 1500) // Close popover after 1.5 seconds
-    }
   }
 
   const [hasBeenTriaged, setHasBeenTriaged] = React.useState(false)
@@ -544,7 +533,7 @@ View the [test details report|${document.location.href}] for additional context.
   )
 }
 
-CompReadyTestReport.propTypes = {
+TestDetailsReport.propTypes = {
   filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,
   capability: PropTypes.string.isRequired,

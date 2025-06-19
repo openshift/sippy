@@ -28,7 +28,6 @@ import CompReadyEnvCapabilityTest from './CompReadyEnvCapabilityTest'
 import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyRow from './CompReadyRow'
-import CompReadyTestReport from './CompReadyTestReport'
 import CopyPageURL from './CopyPageURL'
 import GeneratedAt from './GeneratedAt'
 import React, { Fragment, useContext, useEffect, useState } from 'react'
@@ -38,6 +37,7 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import TestDetailsReport from './TestDetailsReport'
 
 const drawerWidth = 240
 
@@ -430,7 +430,7 @@ export default function ComponentReadiness(props) {
                   setTestBasisReleaseParam(testBasisRelease)
                   varsContext.setEnvironmentParam(varsContext.environment)
                   return (
-                    <CompReadyTestReport
+                    <TestDetailsReport
                       key="testreport"
                       filterVals={filterVals}
                       component={varsContext.component}
@@ -439,7 +439,7 @@ export default function ComponentReadiness(props) {
                       testId={testId}
                       testName={testName}
                       testBasisRelease={testBasisRelease}
-                    ></CompReadyTestReport>
+                    ></TestDetailsReport>
                   )
                 }}
               />
