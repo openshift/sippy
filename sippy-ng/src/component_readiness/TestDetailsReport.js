@@ -139,17 +139,6 @@ export default function TestDetailsReport(props) {
     setTimeout(() => setCopyPopoverEl(null), 2000)
   }
 
-  const handleCopy = async (event) => {
-    try {
-      await navigator.clipboard.writeText(testId)
-      setAnchorEl(event.currentTarget)
-      setTimeout(() => setAnchorEl(null), 1500) // Close popover after 1.5 seconds
-    } catch (err) {
-      setAnchorEl(event.currentTarget)
-      setTimeout(() => setAnchorEl(null), 1500) // Close popover after 1.5 seconds
-    }
-  }
-
   const [hasBeenTriaged, setHasBeenTriaged] = React.useState(false)
 
   const testDetailsApiCall =
