@@ -43,7 +43,8 @@ export SIPPY_E2E_DSN="postgresql://postgres:password@localhost:$PSQL_PORT/postgr
 echo "Loading database..."
 # use an old release here as they have very few job runs and thus import quickly, ~5 minutes
 make build
-./sippy load --loader prow --loader prow --load-openshift-ci-bigquery \
+./sippy load --init-database --loader prow --loader prow --load-openshift-ci-bigquery \
+  --mode ocp \
   --release 4.14 \
   --database-dsn="$SIPPY_E2E_DSN" \
   --config ./config/e2e-openshift.yaml \
@@ -55,6 +56,7 @@ make build
   --listen ":18080" \
   --listen-metrics ":12112" \
   --database-dsn="$SIPPY_E2E_DSN" \
+  --enable-write-endpoints \
   --log-level debug \
   --google-service-account-credential-file $GCS_SA_JSON_PATH
 )&
