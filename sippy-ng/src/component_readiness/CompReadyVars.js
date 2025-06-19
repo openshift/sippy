@@ -1,6 +1,5 @@
 import {
   ArrayParam,
-  BooleanParam,
   NumberParam,
   SafeStringParam,
   StringParam,
@@ -34,6 +33,17 @@ function getDefaultIncludeMultiReleaseAnalysis() {
     }
   }
   return false
+}
+
+// Use of booleans in URL params does not seem to parse properly as a BooleanParam.
+// Use this custom param parser instead.
+const CustomBooleanParam = {
+  encode: (value) => String(value),
+  decode: (value) => {
+    if (value === 'true' || value === '1' || value === '') return true
+    if (value === 'false' || value === '0') return false
+    return null
+  },
 }
 
 export const CompReadyVarsProvider = ({ children }) => {
@@ -126,20 +136,21 @@ export const CompReadyVarsProvider = ({ children }) => {
   )
   const [ignoreMissingParam, setIgnoreMissingParam] = useQueryParam(
     'ignoreMissing',
-    BooleanParam
+    CustomBooleanParam
   )
   const [ignoreDisruptionParam, setIgnoreDisruptionParam] = useQueryParam(
     'ignoreDisruption',
-    BooleanParam
-  )
-  const [flakeAsFailureParam, setFlakeAsFailureParam] = useQueryParam(
-    'flakeAsFailure',
-    BooleanParam
+    CustomBooleanParam
   )
   const [
     includeMultiReleaseAnalysisParam,
     setIncludeMultiReleaseAnalysisParam,
-  ] = useQueryParam('includeMultiReleaseAnalysis', BooleanParam)
+  ] = useQueryParam('includeMultiReleaseAnalysis', CustomBooleanParam)
+
+  const [flakeAsFailureParam, setFlakeAsFailureParam] = useQueryParam(
+    'flakeAsFailure',
+    CustomBooleanParam
+  )
 
   // Create the variables to be used for api calls; these are initialized to the
   // value of the variables that got their values from the URL.
