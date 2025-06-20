@@ -34,8 +34,12 @@ func NewSeedDataCommand() *cobra.Command {
 		Use:   "seed-data",
 		Short: "Populate test data in the database",
 		Long: `Populate test data in the database for development purposes.
-This command creates sample ProwJob records with realistic test data
-that can be used for local development and testing.`,
+This command creates sample ProwJob and Test records with realistic test data
+that can be used for local development and testing.
+
+Creates:
+- 15 ProwJob records (5 each for releases 4.20, 4.19, 4.18)
+- 20 Test records (test01 through test20)`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dbc, err := f.DBFlags.GetDBClient()
 			if err != nil {
@@ -53,6 +57,12 @@ that can be used for local development and testing.`,
 				}
 				log.Infof("Processed 5 ProwJobs for release %s", release)
 			}
+
+			// Create Test models
+			if err := createTestModels(dbc); err != nil {
+				return errors.WithMessage(err, "failed to create Test models")
+			}
+			log.Info("Processed 20 Test models")
 
 			log.Info("Successfully seeded test data!")
 			return nil
@@ -85,6 +95,31 @@ func createProwJobsForRelease(dbc *db.DB, release string) error {
 			log.Debugf("Created new ProwJob: %s", prowJob.Name)
 		} else {
 			log.Debugf("ProwJob already exists: %s", prowJob.Name)
+		}
+	}
+
+	return nil
+}
+
+func createTestModels(dbc *db.DB) error {
+	// Create 20 Test models with names test01 through test20
+	for i := 1; i <= 20; i++ {
+		testModel := models.Test{
+			Name: fmt.Sprintf("test%02d", i), // Format as test01, test02, ..., test20
+			// Bugs and TestOwnerships are left empty as requested
+		}
+
+		// Use FirstOrCreate to avoid duplicates - only creates if a Test with this name doesn't exist
+		var existingTest models.Test
+		if err := dbc.DB.Where("name = ?", testModel.Name).FirstOrCreate(&existingTest, testModel).Error; err != nil {
+			return fmt.Errorf("failed to create or find Test %s: %v", testModel.Name, err)
+		}
+
+		// Log whether we created a new test or found an existing one
+		if existingTest.CreatedAt.IsZero() || existingTest.CreatedAt.Equal(existingTest.UpdatedAt) {
+			log.Debugf("Created new Test: %s", testModel.Name)
+		} else {
+			log.Debugf("Test already exists: %s", testModel.Name)
 		}
 	}
 
