@@ -58,40 +58,24 @@ func SippyGet(path string, data interface{}) error {
 	return nil
 }
 
-func SippyPost(path string, bodyData, responseData interface{}) error {
-	bodyBytes, err := json.Marshal(bodyData)
-	if err != nil {
-		return err
-	}
-	req, err := http.Post(buildURL(path), "application/json", strings.NewReader(string(bodyBytes)))
-	if err != nil {
-		return err
-	}
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return err
-	}
-	if req.StatusCode != http.StatusOK {
-		return fmt.Errorf("Sippy API request failed with code %d: %s", req.StatusCode, string(body))
+// sippyMutatingRequest performs a generic HTTP request with JSON body to the Sippy API
+func sippyMutatingRequest(method, path string, bodyData, responseData interface{}) error {
+	var bodyReader io.Reader
+	if bodyData != nil {
+		bodyBytes, err := json.Marshal(bodyData)
+		if err != nil {
+			return err
+		}
+		bodyReader = strings.NewReader(string(bodyBytes))
 	}
 
-	err = json.Unmarshal(body, responseData)
+	req, err := http.NewRequest(method, buildURL(path), bodyReader)
 	if err != nil {
 		return err
 	}
-	return nil
-}
 
-func SippyPut(path string, bodyData, responseData interface{}) error {
-	bodyBytes, err := json.Marshal(bodyData)
-	if err != nil {
-		return err
-	}
-	req, err := http.NewRequest(http.MethodPut, buildURL(path), strings.NewReader(string(bodyBytes)))
-	if err != nil {
-		return err
-	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Forwarded-User", "developer")
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -108,9 +92,23 @@ func SippyPut(path string, bodyData, responseData interface{}) error {
 		return fmt.Errorf("Sippy API request failed with code %d: %s", resp.StatusCode, string(body))
 	}
 
-	err = json.Unmarshal(body, responseData)
-	if err != nil {
-		return err
+	if responseData != nil {
+		err = json.Unmarshal(body, responseData)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+func SippyPost(path string, bodyData, responseData interface{}) error {
+	return sippyMutatingRequest(http.MethodPost, path, bodyData, responseData)
+}
+
+func SippyPut(path string, bodyData, responseData interface{}) error {
+	return sippyMutatingRequest(http.MethodPut, path, bodyData, responseData)
+}
+
+func SippyDelete(path string) error {
+	return sippyMutatingRequest(http.MethodDelete, path, nil, nil)
 }
