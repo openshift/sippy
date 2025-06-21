@@ -187,6 +187,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		config,
 		f.APIFlags.EnableWriteEndpoints,
 		nil, // No AI use yet in Component Readiness
+		"",  // No chat API in Component Readiness
 	)
 
 	if f.APIFlags.MetricsAddr != "" {
