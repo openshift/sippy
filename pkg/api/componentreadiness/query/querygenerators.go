@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
@@ -18,7 +19,6 @@ import (
 	"google.golang.org/api/iterator"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util/param"
 )
@@ -132,7 +132,7 @@ func NewBaseQueryGenerator(
 	return generator
 }
 
-func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
+func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
 
 	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client,
 		b.ReqOptions,
@@ -169,7 +169,7 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Report
 
 	log.Infof("Base QueryTestStatus completed in %s with %d base results from db", time.Since(before), len(baseStatus))
 
-	return crtype.ReportTestStatus{BaseStatus: baseStatus}, errs
+	return bq.ReportTestStatus{BaseStatus: baseStatus}, errs
 }
 
 type sampleQueryGenerator struct {
@@ -209,7 +209,7 @@ func NewSampleQueryGenerator(
 	return generator
 }
 
-func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.ReportTestStatus, []error) {
+func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions,
 		s.allVariants, s.IncludeVariants, s.JunitTable, true, false)
 
@@ -271,7 +271,7 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Repo
 
 	log.Infof("Sample QueryTestStatus completed in %s with %d sample results db", time.Since(before), len(sampleStatus))
 
-	return crtype.ReportTestStatus{SampleStatus: sampleStatus}, errs
+	return bq.ReportTestStatus{SampleStatus: sampleStatus}, errs
 }
 
 // BuildComponentReportQuery returns the common query for the higher level summary component summary.
@@ -567,9 +567,9 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	return
 }
 
-func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]crtype.TestStatus, []error) {
+func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]bq.TestStatus, []error) {
 	errs := []error{}
-	status := map[string]crtype.TestStatus{}
+	status := map[string]bq.TestStatus{}
 
 	logQueryWithParamsReplaced(log.WithField("type", "ComponentReport"), query)
 	it, err := query.Read(ctx)
@@ -608,10 +608,10 @@ func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[str
 // deserializeRowToTestStatus deserializes a single row into a testID string and matching status.
 // This is where we handle the dynamic variant_ columns, parsing these into a map on the test identification.
 // Other fixed columns we expect are serialized directly to their appropriate columns.
-func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (string, crtype.TestStatus, error) {
+func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (string, bq.TestStatus, error) {
 	if len(row) != len(schema) {
 		log.Infof("row is %+v, schema is %+v", row, schema)
-		return "", crtype.TestStatus{}, fmt.Errorf("number of values in row doesn't match schema length")
+		return "", bq.TestStatus{}, fmt.Errorf("number of values in row doesn't match schema length")
 	}
 
 	// Expect:
@@ -636,7 +636,7 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 	tid := crtest.KeyWithVariants{
 		Variants: map[string]string{},
 	}
-	cts := crtype.TestStatus{}
+	cts := bq.TestStatus{}
 	for i, fieldSchema := range schema {
 		col := fieldSchema.Name
 		// Some rows we know what to expect, others are dynamic (variants) and go into the map.
@@ -725,7 +725,7 @@ func NewBaseTestDetailsQueryGenerator(logger log.FieldLogger, client *bqcachedcl
 	}
 }
 
-func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.TestJobRunStatuses, []error) {
+func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (bq.TestJobRunStatuses, []error) {
 	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		b.client,
 		b.TestIDOpts,
@@ -752,7 +752,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 	}...)
 
 	baseStatus, errs := fetchJobRunTestStatusResults(ctx, b.logger, baseQuery, b.ReqOptions)
-	return crtype.TestJobRunStatuses{BaseStatus: baseStatus}, errs
+	return bq.TestJobRunStatuses{BaseStatus: baseStatus}, errs
 }
 
 // sampleTestDetailsQueryGenerator generates the query we use for the sample on the test details page.
@@ -792,7 +792,7 @@ func NewSampleTestDetailsQueryGenerator(
 	}
 }
 
-func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.TestJobRunStatuses, []error) {
+func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (bq.TestJobRunStatuses, []error) {
 
 	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		s.client,
@@ -851,7 +851,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 
 	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, log.WithField("generator", "SampleQuery"), sampleQuery, s.ReqOptions)
 
-	return crtype.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
+	return bq.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }
 
 // logQueryWithParamsReplaced is intended to give developers a query they can copy out of logs and work with directly,
@@ -886,9 +886,9 @@ func logQueryWithParamsReplaced(logger log.FieldLogger, query *bigquery.Query) {
 	}
 }
 
-func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query, reqOptions reqopts.RequestOptions) (map[string][]crtype.TestJobRunRows, []error) {
+func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query, reqOptions reqopts.RequestOptions) (map[string][]bq.TestJobRunRows, []error) {
 	errs := []error{}
-	status := map[string][]crtype.TestJobRunRows{}
+	status := map[string][]bq.TestJobRunRows{}
 
 	logQueryWithParamsReplaced(logger.WithField("type", "TestDetails"), query)
 
@@ -928,13 +928,13 @@ func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, q
 // deserializeRowToJobRunTestReportStatus deserializes a single row into a testID string and matching status.
 // This is where we handle the dynamic variant_ columns, parsing these into a map on the test identification.
 // Other fixed columns we expect are serialized directly to their appropriate columns.
-func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquery.Schema) (crtype.TestJobRunRows, error) {
+func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquery.Schema) (bq.TestJobRunRows, error) {
 	if len(row) != len(schema) {
 		log.Infof("row is %+v, schema is %+v", row, schema)
-		return crtype.TestJobRunRows{}, fmt.Errorf("number of values in row doesn't match schema length")
+		return bq.TestJobRunRows{}, fmt.Errorf("number of values in row doesn't match schema length")
 	}
 
-	cts := crtype.TestJobRunRows{
+	cts := bq.TestJobRunRows{
 		TestKey: crtest.KeyWithVariants{Variants: map[string]string{}},
 	}
 	for i, fieldSchema := range schema {

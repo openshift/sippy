@@ -6,6 +6,7 @@ import (
 	"time"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/stretchr/testify/assert"
@@ -62,7 +63,7 @@ func Test_PreAnalysis(t *testing.T) {
 	}
 	fallbackMap418 := crtype.ReleaseTestMap{
 		Release: release418,
-		Tests: map[string]crtype.TestStatus{
+		Tests: map[string]bq.TestStatus{
 			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 95, 0),
 		},
 	}
@@ -76,7 +77,7 @@ func Test_PreAnalysis(t *testing.T) {
 	}
 	fallbackMap417 := crtype.ReleaseTestMap{
 		Release: release417,
-		Tests: map[string]crtype.TestStatus{
+		Tests: map[string]bq.TestStatus{
 			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 98, 0),
 		},
 	}
@@ -209,8 +210,8 @@ func TestCalculateFallbackReleases(t *testing.T) {
 }
 
 //nolint:unparam
-func buildTestStatus(testName string, variants []string, total, success, flake int) crtype.TestStatus {
-	return crtype.TestStatus{
+func buildTestStatus(testName string, variants []string, total, success, flake int) bq.TestStatus {
+	return bq.TestStatus{
 		TestName:     testName,
 		TestSuite:    "conformance",
 		Component:    "foo",

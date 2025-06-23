@@ -13,7 +13,7 @@ import (
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
@@ -62,18 +62,18 @@ type JobRunAnnotator struct {
 	cache            cache.Cache
 	execute          bool
 	allVariants      crtest.JobVariants
-	Release          string           `json:"release"`
-	IncludedVariants []crtype.Variant `json:"included_variants"`
-	Label            string           `json:"label"`
-	BuildClusters    []string         `json:"build_clusters"`
-	StartTime        time.Time        `json:"start_time"`
-	Duration         time.Duration    `json:"duration"`
-	MinFailures      int              `json:"minimum_failure"`
-	FlakeAsFailure   bool             `json:"flake_as_failure"`
-	TextContains     string           `json:"text_contains"`
-	TextRegex        string           `json:"text_regex"`
-	PathGlob         string           `json:"path_glob"`
-	JobRunIDs        []int64          `json:"job_run_ids"`
+	Release          string        `json:"release"`
+	IncludedVariants []bq.Variant  `json:"included_variants"`
+	Label            string        `json:"label"`
+	BuildClusters    []string      `json:"build_clusters"`
+	StartTime        time.Time     `json:"start_time"`
+	Duration         time.Duration `json:"duration"`
+	MinFailures      int           `json:"minimum_failure"`
+	FlakeAsFailure   bool          `json:"flake_as_failure"`
+	TextContains     string        `json:"text_contains"`
+	TextRegex        string        `json:"text_regex"`
+	PathGlob         string        `json:"path_glob"`
+	JobRunIDs        []int64       `json:"job_run_ids"`
 	comment          string
 	user             string
 }
@@ -87,7 +87,7 @@ func NewJobRunAnnotator(
 	execute bool,
 	release string,
 	allVariants crtest.JobVariants,
-	variants []crtype.Variant,
+	variants []bq.Variant,
 	label string,
 	buildClusters []string,
 	startTime time.Time,

@@ -19,6 +19,7 @@ import (
 	fischer "github.com/glycerine/golang-fisher-exact"
 	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
@@ -282,7 +283,7 @@ func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 
 	floatVariants := sets.NewString("FromRelease", "FromReleaseMajor", "FromReleaseMinor", "Release", "ReleaseMajor", "ReleaseMinor")
 	for {
-		row := crtype.JobVariant{}
+		row := bq.JobVariant{}
 		err := it.Next(&row)
 		if err == iterator.Done {
 			break
@@ -363,12 +364,12 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 
 // getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
 func (c *ComponentReportGenerator) getBaseQueryStatus(ctx context.Context,
-	allJobVariants crtest.JobVariants) (map[string]crtype.TestStatus, []error) {
+	allJobVariants crtest.JobVariants) (map[string]bq.TestStatus, []error) {
 
 	generator := query.NewBaseQueryGenerator(c.client, c.ReqOptions, allJobVariants)
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, c.client.Cache,
-		generator.ReqOptions.CacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.QueryTestStatus, crtype.ReportTestStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx, c.client.Cache,
+		generator.ReqOptions.CacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.QueryTestStatus, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -383,14 +384,14 @@ func (c *ComponentReportGenerator) getSampleQueryStatus(
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time,
-	junitTable string) (map[string]crtype.TestStatus, []error) {
+	junitTable string) (map[string]bq.TestStatus, []error) {
 
 	generator := query.NewSampleQueryGenerator(c.client, c.ReqOptions, allJobVariants, includeVariants, start, end, junitTable)
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx,
 		c.client.Cache, c.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey("SampleTestStatus~", generator),
-		generator.QueryTestStatus, crtype.ReportTestStatus{})
+		generator.QueryTestStatus, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -401,22 +402,22 @@ func (c *ComponentReportGenerator) getSampleQueryStatus(
 
 // getTestStatusFromBigQuery orchestrates the actual fetching of junit test run data for both basis and sample.
 // goroutines are used to concurrently request the data for basis, sample, and various other edge cases.
-func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
+func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (bq.ReportTestStatus, []error) {
 	before := time.Now()
 	fLog := log.WithField("func", "getTestStatusFromBigQuery")
 	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client)
 	if len(errs) > 0 {
 		fLog.Errorf("failed to get variants from bigquery")
-		return crtype.ReportTestStatus{}, errs
+		return bq.ReportTestStatus{}, errs
 	}
 
-	var baseStatus, sampleStatus map[string]crtype.TestStatus
-	baseStatusCh := make(chan map[string]crtype.TestStatus) // TODO: not hooked up yet, just in place for the interface for now
+	var baseStatus, sampleStatus map[string]bq.TestStatus
+	baseStatusCh := make(chan map[string]bq.TestStatus) // TODO: not hooked up yet, just in place for the interface for now
 	var baseErrs, sampleErrs []error
 	wg := &sync.WaitGroup{}
 
 	// channels for status as we may collect status from multiple queries run in separate goroutines
-	sampleStatusCh := make(chan map[string]crtype.TestStatus)
+	sampleStatusCh := make(chan map[string]bq.TestStatus)
 	errCh := make(chan error)
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
@@ -456,7 +457,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 			for k, v := range status {
 				if sampleStatus == nil {
 					fLog.Warnf("initializing sampleStatus map")
-					sampleStatus = make(map[string]crtype.TestStatus)
+					sampleStatus = make(map[string]bq.TestStatus)
 				}
 				if v2, ok := sampleStatus[k]; ok {
 					fLog.Warnf("sampleStatus already had key: %+v", k)
@@ -487,14 +488,14 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db",
 		time.Since(before), len(sampleStatus), len(baseStatus))
 	now := time.Now()
-	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
+	return bq.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
 }
 
 // fork additional sample queries for the overrides
 func (c *ComponentReportGenerator) goRunOverrideSampleQueries(
 	ctx context.Context, wg *sync.WaitGroup, fLog *log.Entry,
 	allJobVariants crtest.JobVariants,
-	sampleStatusCh chan map[string]crtype.TestStatus,
+	sampleStatusCh chan map[string]bq.TestStatus,
 	errCh chan error,
 ) {
 	for i, or := range c.variantJunitTableOverrides {
@@ -612,15 +613,15 @@ func containsOverriddenVariant(includeVariants map[string][]string, key, value s
 	return false
 }
 
-var componentAndCapabilityGetter func(test crtest.KeyWithVariants, stats crtype.TestStatus) (string, []string)
+var componentAndCapabilityGetter func(test crtest.KeyWithVariants, stats bq.TestStatus) (string, []string)
 
-func testToComponentAndCapability(_ crtest.KeyWithVariants, stats crtype.TestStatus) (string, []string) {
+func testToComponentAndCapability(_ crtest.KeyWithVariants, stats bq.TestStatus) (string, []string) {
 	return stats.Component, stats.Capabilities
 }
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
-func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string, stats crtype.TestStatus) ([]crtest.RowIdentification, []crtest.ColumnID, error) {
+func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string, stats bq.TestStatus) ([]crtest.RowIdentification, []crtest.ColumnID, error) {
 	var test crtest.KeyWithVariants
 	columnGroupByVariants := c.ReqOptions.VariantOption.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
@@ -772,8 +773,8 @@ func updateCellStatus(
 func initTestAnalysisStruct(
 	testStats *crtype.ReportTestStats,
 	reqOptions reqopts.RequestOptions,
-	sampleStatus crtype.TestStatus,
-	baseStatus *crtype.TestStatus) {
+	sampleStatus bq.TestStatus,
+	baseStatus *bq.TestStatus) {
 
 	// Default to required confidence from request, middleware may adjust later.
 	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
@@ -794,7 +795,7 @@ func initTestAnalysisStruct(
 	}
 }
 
-func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, sampleStatusMap map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
+func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, sampleStatusMap map[string]bq.TestStatus) (crtype.ComponentReport, error) {
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
 	aggregatedStatus := map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order

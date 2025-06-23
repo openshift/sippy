@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 )
 
@@ -16,7 +17,7 @@ type Middleware interface {
 	// Base and sample status can be submitted using the provided channels for a map of ALL test keys
 	// (ID plus variant info serialized) to TestStatus.
 	Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants,
-		baseStatusCh, sampleStatusCh chan map[string]crtype.TestStatus, errCh chan error)
+		baseStatusCh, sampleStatusCh chan map[string]bq.TestStatus, errCh chan error)
 
 	// QueryTestDetails phase allow middleware to load data that will later be used.
 	QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants)
@@ -35,5 +36,5 @@ type Middleware interface {
 
 	// PreTestDetailsAnalysis gives middleware the opportunity to adjust inputs to the report status
 	// prior to analysis.
-	PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crtype.TestJobRunStatuses) error
+	PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *bq.TestJobRunStatuses) error
 }

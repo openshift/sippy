@@ -11,6 +11,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	log "github.com/sirupsen/logrus"
@@ -56,7 +57,7 @@ type ReleaseFallback struct {
 	// baseOverrideStatus maps test key, to job name, to the result rows for that job.
 	// This is used in test details reports, and in the typical API case will only contain one
 	// test ID, but when cache priming for a view, we may have multiple.
-	baseOverrideStatus map[string]map[string][]crtype.TestJobRunRows
+	baseOverrideStatus map[string]map[string][]bq.TestJobRunRows
 	baseOverrideMutex  sync.Mutex // Mutex to protect the map
 }
 
@@ -65,7 +66,7 @@ func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, rep
 }
 
 func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants,
-	_, _ chan map[string]crtype.TestStatus, errCh chan error) {
+	_, _ chan map[string]bq.TestStatus, errCh chan error) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -117,7 +118,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *
 	var swappedExplanation string
 	for err == nil {
 		var cachedReleaseTestStatuses crtype.ReleaseTestMap
-		var cTestStatus crtype.TestStatus
+		var cTestStatus bq.TestStatus
 		ok := false
 		priorRelease, err = utils.PreviousRelease(priorRelease)
 		// if we fail to determine the previous release then stop
@@ -216,7 +217,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 		}
 		releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = append(releaseToTestIDOptions[testIDOpts.BaseOverrideRelease], testIDOpts)
 	}
-	r.baseOverrideStatus = map[string]map[string][]crtype.TestJobRunRows{}
+	r.baseOverrideStatus = map[string]map[string][]bq.TestJobRunRows{}
 
 	// Now we'll do one concurrent bigquery query for each release that has some fallback tests:
 	for release, testIDOpts := range releaseToTestIDOptions {
@@ -249,12 +250,12 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 					testIDOpts,
 				)
 
-				jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.TestJobRunStatuses](
+				jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](
 					ctx,
 					r.client.Cache, r.reqOptions.CacheOption,
 					api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator),
 					generator.QueryTestStatus,
-					crtype.TestJobRunStatuses{})
+					bq.TestJobRunStatuses{})
 
 				for _, err := range errs {
 					errCh <- err
@@ -273,10 +274,10 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 						testKeyStr := row.TestKeyStr
 						if _, ok := r.baseOverrideStatus[testKeyStr]; !ok {
 							r.log.Infof("added test key: " + testKeyStr)
-							r.baseOverrideStatus[testKeyStr] = map[string][]crtype.TestJobRunRows{}
+							r.baseOverrideStatus[testKeyStr] = map[string][]bq.TestJobRunRows{}
 						}
 						if r.baseOverrideStatus[testKeyStr][jobName] == nil {
-							r.baseOverrideStatus[testKeyStr][jobName] = []crtype.TestJobRunRows{}
+							r.baseOverrideStatus[testKeyStr][jobName] = []bq.TestJobRunRows{}
 						}
 						r.baseOverrideStatus[testKeyStr][jobName] =
 							append(r.baseOverrideStatus[testKeyStr][jobName], row)
@@ -292,7 +293,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 }
 
-func (r *ReleaseFallback) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crtype.TestJobRunStatuses) error {
+func (r *ReleaseFallback) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *bq.TestJobRunStatuses) error {
 	// Add our baseOverrideStatus to the report, unfortunate hack we have to live with for now.
 	testKeyStr := testKey.KeyOrDie()
 	if _, ok := r.baseOverrideStatus[testKeyStr]; ok {
@@ -420,7 +421,7 @@ func calculateFallbackReleases(startingRelease string, releases []crtype.Release
 	return selectedReleases
 }
 
-func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.Release, updateStatuses map[string]crtype.TestStatus) {
+func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.Release, updateStatuses map[string]bq.TestStatus) {
 
 	var testStatuses crtype.ReleaseTestMap
 	var ok bool
@@ -429,7 +430,7 @@ func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.R
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	if testStatuses, ok = f.CachedFallbackTestStatuses.Releases[release.Release]; !ok {
-		testStatuses = crtype.ReleaseTestMap{Release: release, Tests: map[string]crtype.TestStatus{}}
+		testStatuses = crtype.ReleaseTestMap{Release: release, Tests: map[string]bq.TestStatus{}}
 		f.CachedFallbackTestStatuses.Releases[release.Release] = testStatuses
 	}
 
@@ -438,13 +439,13 @@ func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.R
 	}
 }
 
-func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.Context, client *bqcachedclient.Client, release string, start, end time.Time) (crtype.ReportTestStatus, []error) {
+func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.Context, client *bqcachedclient.Client, release string, start, end time.Time) (bq.ReportTestStatus, []error) {
 	generator := newFallbackBaseQueryGenerator(client, f.ReqOptions, f.allJobVariants, release, start, end)
 	cacheKey := api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator)
-	testStatuses, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, cacheKey, generator.getTestFallbackRelease, crtype.ReportTestStatus{})
+	testStatuses, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, cacheKey, generator.getTestFallbackRelease, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
-		return crtype.ReportTestStatus{}, errs
+		return bq.ReportTestStatus{}, errs
 	}
 
 	return testStatuses, nil
@@ -478,7 +479,7 @@ func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions req
 	return generator
 }
 
-func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (crtype.ReportTestStatus, []error) {
+func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (bq.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := query.BuildComponentReportQuery(
 		f.client,
 		f.ReqOptions,
@@ -514,7 +515,7 @@ func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context)
 
 	log.Infof("Fallback (%s) QueryTestStatus completed in %s with %d base results from db", f.BaseRelease, time.Since(before), len(baseStatus))
 
-	return crtype.ReportTestStatus{BaseStatus: baseStatus}, errs
+	return bq.ReportTestStatus{BaseStatus: baseStatus}, errs
 }
 
 func newFallbackReleases() crtype.FallbackReleases {

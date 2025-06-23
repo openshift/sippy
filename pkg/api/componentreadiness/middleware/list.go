@@ -5,12 +5,13 @@ import (
 	"sync"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 )
 
 type List []Middleware
 
-func (l List) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crtype.TestStatus, errCh chan error) {
+func (l List) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]bq.TestStatus, errCh chan error) {
 	// Invoke the Query phase for each middleware configured:
 	for _, mw := range l {
 		mw.Query(ctx, wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
@@ -42,7 +43,7 @@ func (l List) PostAnalysis(testKey crtest.Identification, testStats *crtype.Repo
 	return nil
 }
 
-func (l List) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crtype.TestJobRunStatuses) error {
+func (l List) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *bq.TestJobRunStatuses) error {
 	for _, mw := range l {
 		if err := mw.PreTestDetailsAnalysis(testKey, status); err != nil {
 			return err
