@@ -12,21 +12,21 @@ type View struct {
 	VariantOptions  reqopts.Variants           `json:"variant_options" yaml:"variant_options"`
 	AdvancedOptions reqopts.Advanced           `json:"advanced_options" yaml:"advanced_options"`
 
-	Metrics            ViewMetrics            `json:"metrics" yaml:"metrics"`
-	RegressionTracking ViewRegressionTracking `json:"regression_tracking" yaml:"regression_tracking"`
-	AutomateJira       AutomateJira           `json:"automate_jira" yaml:"automate_jira"`
-	PrimeCache         ViewPrimeCache         `json:"prime_cache" yaml:"prime_cache"`
+	Metrics            Metrics            `json:"metrics" yaml:"metrics"`
+	RegressionTracking RegressionTracking `json:"regression_tracking" yaml:"regression_tracking"`
+	AutomateJira       AutomateJira       `json:"automate_jira" yaml:"automate_jira"`
+	PrimeCache         PrimeCache         `json:"prime_cache" yaml:"prime_cache"`
 }
 
-type ViewMetrics struct {
+type Metrics struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 }
 
-type ViewRegressionTracking struct {
+type RegressionTracking struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 }
 
-type ViewPrimeCache struct {
+type PrimeCache struct {
 	Enabled bool `json:"enabled" yaml:"enabled"`
 }
 type AutomateJira struct {
