@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/civil"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/db/models"
 )
@@ -14,15 +13,6 @@ type Release struct {
 	Release string
 	End     *time.Time
 	Start   *time.Time
-}
-
-type ReleaseTestMap struct {
-	Release
-	Tests map[string]bq.TestStatus
-}
-
-type FallbackReleases struct {
-	Releases map[string]ReleaseTestMap
 }
 
 //nolint:revive

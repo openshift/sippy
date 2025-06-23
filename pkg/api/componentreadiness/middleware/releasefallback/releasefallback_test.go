@@ -61,7 +61,7 @@ func Test_PreAnalysis(t *testing.T) {
 		Start:   &start418,
 		End:     &end418,
 	}
-	fallbackMap418 := crtype.ReleaseTestMap{
+	fallbackMap418 := ReleaseTestMap{
 		Release: release418,
 		Tests: map[string]bq.TestStatus{
 			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 95, 0),
@@ -75,7 +75,7 @@ func Test_PreAnalysis(t *testing.T) {
 		Start:   &start417,
 		End:     &end417,
 	}
-	fallbackMap417 := crtype.ReleaseTestMap{
+	fallbackMap417 := ReleaseTestMap{
 		Release: release417,
 		Tests: map[string]bq.TestStatus{
 			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 98, 0),
@@ -86,7 +86,7 @@ func Test_PreAnalysis(t *testing.T) {
 		name             string
 		reqOpts          reqopts.RequestOptions
 		testKey          crtest.Identification
-		fallbackReleases crtype.FallbackReleases
+		fallbackReleases FallbackReleases
 		testStats        *crtype.ReportTestStats
 		expectedStatus   *crtype.ReportTestStats
 	}{
@@ -94,8 +94,8 @@ func Test_PreAnalysis(t *testing.T) {
 			name:    "fallback to prior release",
 			reqOpts: reqOpts419,
 			testKey: test1RTI,
-			fallbackReleases: crtype.FallbackReleases{
-				Releases: map[string]crtype.ReleaseTestMap{
+			fallbackReleases: FallbackReleases{
+				Releases: map[string]ReleaseTestMap{
 					fallbackMap418.Release.Release: fallbackMap418,
 				},
 			},
@@ -106,8 +106,8 @@ func Test_PreAnalysis(t *testing.T) {
 			name:    "fallback twice to prior release",
 			reqOpts: reqOpts419,
 			testKey: test1RTI,
-			fallbackReleases: crtype.FallbackReleases{
-				Releases: map[string]crtype.ReleaseTestMap{
+			fallbackReleases: FallbackReleases{
+				Releases: map[string]ReleaseTestMap{
 					fallbackMap418.Release.Release: fallbackMap418,
 					fallbackMap417.Release.Release: fallbackMap417, // 4.17 improves even further
 				},
@@ -119,8 +119,8 @@ func Test_PreAnalysis(t *testing.T) {
 			name:    "fallback once to two releases ago",
 			reqOpts: reqOpts419,
 			testKey: test1RTI,
-			fallbackReleases: crtype.FallbackReleases{
-				Releases: map[string]crtype.ReleaseTestMap{
+			fallbackReleases: FallbackReleases{
+				Releases: map[string]ReleaseTestMap{
 					fallbackMap418.Release.Release: fallbackMap418,
 					fallbackMap417.Release.Release: fallbackMap417, // 4.17 improves even further
 				},
@@ -132,8 +132,8 @@ func Test_PreAnalysis(t *testing.T) {
 			name:    "don't fallback to prior release",
 			reqOpts: reqOpts419,
 			testKey: test1RTI,
-			fallbackReleases: crtype.FallbackReleases{
-				Releases: map[string]crtype.ReleaseTestMap{
+			fallbackReleases: FallbackReleases{
+				Releases: map[string]ReleaseTestMap{
 					fallbackMap418.Release.Release: fallbackMap418,
 				},
 			},
@@ -144,8 +144,8 @@ func Test_PreAnalysis(t *testing.T) {
 			name:    "don't fallback to prior release with insufficient runs",
 			reqOpts: reqOpts419,
 			testKey: test1RTI,
-			fallbackReleases: crtype.FallbackReleases{
-				Releases: map[string]crtype.ReleaseTestMap{
+			fallbackReleases: FallbackReleases{
+				Releases: map[string]ReleaseTestMap{
 					fallbackMap418.Release.Release: fallbackMap418,
 					fallbackMap417.Release.Release: fallbackMap417,
 				},
