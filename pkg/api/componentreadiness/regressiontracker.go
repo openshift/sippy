@@ -10,6 +10,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -164,7 +165,7 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
-	reportOpts := crtype.RequestOptions{
+	reportOpts := reqopts.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
 		VariantOption:  variantOption,

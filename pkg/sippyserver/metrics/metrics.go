@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -225,7 +226,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
-	reportOpts := crtype.RequestOptions{
+	reportOpts := reqopts.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
 		VariantOption:  variantOption,

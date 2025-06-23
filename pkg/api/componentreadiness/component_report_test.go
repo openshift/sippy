@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/apache/thrift/lib/go/thrift"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
@@ -45,7 +46,7 @@ func fakeComponentAndCapabilityGetter(test crtype.TestWithVariantsKey, stats crt
 }
 
 var (
-	defaultAdvancedOption = crtype.RequestAdvancedOptions{
+	defaultAdvancedOption = reqopts.RequestAdvancedOptions{
 		Confidence:     95,
 		PityFactor:     5,
 		MinimumFailure: 3,
@@ -53,23 +54,23 @@ var (
 	defaultColumnGroupByVariants    = sets.NewString(strings.Split(DefaultColumnGroupBy, ",")...)
 	defaultDBGroupByVariants        = sets.NewString(strings.Split(DefaultDBGroupBy, ",")...)
 	defaultComponentReportGenerator = ComponentReportGenerator{
-		ReqOptions: crtype.RequestOptions{
-			VariantOption: crtype.RequestVariantOptions{
+		ReqOptions: reqopts.RequestOptions{
+			VariantOption: reqopts.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
 			AdvancedOption: defaultAdvancedOption,
 		},
 	}
-	flakeFailAdvancedOption = crtype.RequestAdvancedOptions{
+	flakeFailAdvancedOption = reqopts.RequestAdvancedOptions{
 		Confidence:     95,
 		PityFactor:     5,
 		MinimumFailure: 3,
 		FlakeAsFailure: true,
 	}
 	flakeFailComponentReportGenerator = ComponentReportGenerator{
-		ReqOptions: crtype.RequestOptions{
-			VariantOption: crtype.RequestVariantOptions{
+		ReqOptions: reqopts.RequestOptions{
+			VariantOption: reqopts.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -78,8 +79,8 @@ var (
 	}
 	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
 	groupByInstallerComponentReportGenerator = ComponentReportGenerator{
-		ReqOptions: crtype.RequestOptions{
-			VariantOption: crtype.RequestVariantOptions{
+		ReqOptions: reqopts.RequestOptions{
+			VariantOption: reqopts.RequestVariantOptions{
 				ColumnGroupBy: installerColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -87,13 +88,13 @@ var (
 		},
 	}
 	componentPageGenerator = ComponentReportGenerator{
-		ReqOptions: crtype.RequestOptions{
-			TestIDOptions: []crtype.RequestTestIdentificationOptions{
+		ReqOptions: reqopts.RequestOptions{
+			TestIDOptions: []reqopts.RequestTestIdentificationOptions{
 				{
 					Component: "component 2",
 				},
 			},
-			VariantOption: crtype.RequestVariantOptions{
+			VariantOption: reqopts.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -101,14 +102,14 @@ var (
 		},
 	}
 	capabilityPageGenerator = ComponentReportGenerator{
-		ReqOptions: crtype.RequestOptions{
-			TestIDOptions: []crtype.RequestTestIdentificationOptions{
+		ReqOptions: reqopts.RequestOptions{
+			TestIDOptions: []reqopts.RequestTestIdentificationOptions{
 				{
 					Component:  "component 2",
 					Capability: "cap22",
 				},
 			},
-			VariantOption: crtype.RequestVariantOptions{
+			VariantOption: reqopts.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -116,15 +117,15 @@ var (
 		},
 	}
 	testPageGenerator = ComponentReportGenerator{
-		ReqOptions: crtype.RequestOptions{
-			TestIDOptions: []crtype.RequestTestIdentificationOptions{
+		ReqOptions: reqopts.RequestOptions{
+			TestIDOptions: []reqopts.RequestTestIdentificationOptions{
 				{
 					Component:  "component 2",
 					Capability: "cap22",
 					TestID:     "2",
 				},
 			},
-			VariantOption: crtype.RequestVariantOptions{
+			VariantOption: reqopts.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -132,8 +133,8 @@ var (
 		},
 	}
 	testDetailsGenerator = ComponentReportGenerator{
-		ReqOptions: crtype.RequestOptions{
-			TestIDOptions: []crtype.RequestTestIdentificationOptions{
+		ReqOptions: reqopts.RequestOptions{
+			TestIDOptions: []reqopts.RequestTestIdentificationOptions{
 				{
 					Component:  "component 1",
 					Capability: "cap11",
@@ -145,7 +146,7 @@ var (
 					},
 				},
 			},
-			VariantOption: crtype.RequestVariantOptions{
+			VariantOption: reqopts.RequestVariantOptions{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -824,11 +825,11 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name: "top page test confidence 90 result in regression",
 			generator: ComponentReportGenerator{
-				ReqOptions: crtype.RequestOptions{
-					VariantOption: crtype.RequestVariantOptions{
+				ReqOptions: reqopts.RequestOptions{
+					VariantOption: reqopts.RequestVariantOptions{
 						ColumnGroupBy: defaultColumnGroupByVariants,
 					},
-					AdvancedOption: crtype.RequestAdvancedOptions{
+					AdvancedOption: reqopts.RequestAdvancedOptions{
 						Confidence:     90,
 						PityFactor:     5,
 						MinimumFailure: 3,
@@ -921,11 +922,11 @@ func TestGenerateComponentReport(t *testing.T) {
 		{
 			name: "top page test confidence 90 pity 10 result in no regression",
 			generator: ComponentReportGenerator{
-				ReqOptions: crtype.RequestOptions{
-					VariantOption: crtype.RequestVariantOptions{
+				ReqOptions: reqopts.RequestOptions{
+					VariantOption: reqopts.RequestVariantOptions{
 						ColumnGroupBy: defaultColumnGroupByVariants,
 					},
-					AdvancedOption: crtype.RequestAdvancedOptions{
+					AdvancedOption: reqopts.RequestAdvancedOptions{
 						Confidence:     90,
 						PityFactor:     10,
 						MinimumFailure: 3,
@@ -1673,10 +1674,10 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ComponentReportGenerator{}
 			if tt.baseRelease != "" {
-				c.ReqOptions.BaseRelease = crtype.RequestReleaseOptions{Release: tt.baseRelease}
+				c.ReqOptions.BaseRelease = reqopts.RequestReleaseOptions{Release: tt.baseRelease}
 			}
 			if tt.sampleRelease != "" {
-				c.ReqOptions.SampleRelease = crtype.RequestReleaseOptions{Release: tt.sampleRelease}
+				c.ReqOptions.SampleRelease = reqopts.RequestReleaseOptions{Release: tt.sampleRelease}
 			}
 
 			assert.Equalf(t, tt.want, utils.NormalizeProwJobName(tt.jobName, c.ReqOptions), "normalizeProwJobName(%v)", tt.jobName)

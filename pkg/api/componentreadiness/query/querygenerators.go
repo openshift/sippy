@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -115,12 +116,12 @@ const (
 type baseQueryGenerator struct {
 	client      *bqcachedclient.Client
 	allVariants crtype.JobVariants
-	ReqOptions  crtype.RequestOptions
+	ReqOptions  reqopts.RequestOptions
 }
 
 func NewBaseQueryGenerator(
 	client *bqcachedclient.Client,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 	allVariants crtype.JobVariants) baseQueryGenerator {
 	generator := baseQueryGenerator{
 		client:      client,
@@ -173,7 +174,7 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Report
 type sampleQueryGenerator struct {
 	client      *bqcachedclient.Client
 	allVariants crtype.JobVariants
-	ReqOptions  crtype.RequestOptions
+	ReqOptions  reqopts.RequestOptions
 	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
 	// pull its data from. It is a public field as we want it included in the cache
 	// key to differentiate this request from other sample queries that might be using a junit table override.
@@ -189,7 +190,7 @@ type sampleQueryGenerator struct {
 
 func NewSampleQueryGenerator(
 	client *bqcachedclient.Client,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 	allVariants crtype.JobVariants,
 	includeVariants map[string][]string, // separate from ReqOptions as caller sometimes has to modify them
 	start, end time.Time,
@@ -275,7 +276,7 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Repo
 // BuildComponentReportQuery returns the common query for the higher level summary component summary.
 func BuildComponentReportQuery(
 	client *bqcachedclient.Client,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
 	junitTable string,
@@ -403,8 +404,8 @@ func BuildComponentReportQuery(
 // never used, test name, component, file path, url, etc.
 func buildTestDetailsQuery(
 	client *bqcachedclient.Client,
-	testIDOpts []crtype.RequestTestIdentificationOptions,
-	c crtype.RequestOptions,
+	testIDOpts []reqopts.RequestTestIdentificationOptions,
+	c reqopts.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
 	junitTable string,
@@ -492,10 +493,10 @@ func buildTestDetailsQuery(
 
 // addTestFilters injects query params to limit to one test and variants combo.
 func addTestFilters(
-	testIDOption crtype.RequestTestIdentificationOptions,
+	testIDOption reqopts.RequestTestIdentificationOptions,
 	index int,
 	queryString string,
-	c crtype.RequestOptions,
+	c reqopts.RequestOptions,
 	includeVariants map[string][]string,
 	isSample bool) string {
 
@@ -697,19 +698,19 @@ func sortedKeys[T any](it map[string]T) []string {
 type baseTestDetailsQueryGenerator struct {
 	logger         log.FieldLogger
 	client         *bqcachedclient.Client
-	ReqOptions     crtype.RequestOptions
+	ReqOptions     reqopts.RequestOptions
 	allJobVariants crtype.JobVariants
 	BaseRelease    string
 	BaseStart      time.Time
 	BaseEnd        time.Time
-	TestIDOpts     []crtype.RequestTestIdentificationOptions
+	TestIDOpts     []reqopts.RequestTestIdentificationOptions
 }
 
 func NewBaseTestDetailsQueryGenerator(logger log.FieldLogger, client *bqcachedclient.Client,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	baseRelease string, baseStart time.Time, baseEnd time.Time,
-	testIDOpts []crtype.RequestTestIdentificationOptions) *baseTestDetailsQueryGenerator {
+	testIDOpts []reqopts.RequestTestIdentificationOptions) *baseTestDetailsQueryGenerator {
 
 	return &baseTestDetailsQueryGenerator{
 		logger:         logger,
@@ -757,7 +758,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 type sampleTestDetailsQueryGenerator struct {
 	allJobVariants crtype.JobVariants
 	client         *bqcachedclient.Client
-	ReqOptions     crtype.RequestOptions
+	ReqOptions     reqopts.RequestOptions
 
 	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
 	// pull its data from. It is a public field as we want it included in the cache
@@ -774,7 +775,7 @@ type sampleTestDetailsQueryGenerator struct {
 
 func NewSampleTestDetailsQueryGenerator(
 	client *bqcachedclient.Client,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time,
@@ -884,7 +885,7 @@ func logQueryWithParamsReplaced(logger log.FieldLogger, query *bigquery.Query) {
 	}
 }
 
-func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query, reqOptions crtype.RequestOptions) (map[string][]crtype.TestJobRunRows, []error) {
+func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query, reqOptions reqopts.RequestOptions) (map[string][]crtype.TestJobRunRows, []error) {
 	errs := []error{}
 	status := map[string][]crtype.TestJobRunRows{}
 

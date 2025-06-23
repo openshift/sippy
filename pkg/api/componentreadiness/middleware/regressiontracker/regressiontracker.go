@@ -9,6 +9,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -23,7 +24,7 @@ const (
 
 var _ middleware.Middleware = &RegressionTracker{}
 
-func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions crtype.RequestOptions) *RegressionTracker {
+func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions reqopts.RequestOptions) *RegressionTracker {
 	return &RegressionTracker{
 		log:        log.WithField("middleware", "RegressionTracker"),
 		reqOptions: reqOptions,
@@ -36,7 +37,7 @@ func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions crtype.RequestOptions
 // It also handles adjustments if those regressions are triaged to bugs.
 type RegressionTracker struct {
 	log             log.FieldLogger
-	reqOptions      crtype.RequestOptions
+	reqOptions      reqopts.RequestOptions
 	dbc             *db.DB
 	openRegressions []*models.TestRegression
 	// hasLoadedRegressions will be true once we've loaded regression data

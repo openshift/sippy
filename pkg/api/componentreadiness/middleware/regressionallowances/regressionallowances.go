@@ -7,6 +7,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	log "github.com/sirupsen/logrus"
 
@@ -15,7 +16,7 @@ import (
 
 var _ middleware.Middleware = &RegressionAllowances{}
 
-func NewRegressionAllowancesMiddleware(reqOptions crtype.RequestOptions) *RegressionAllowances {
+func NewRegressionAllowancesMiddleware(reqOptions reqopts.RequestOptions) *RegressionAllowances {
 	return &RegressionAllowances{
 		log:                  log.WithField("middleware", "RegressionAllowances"),
 		reqOptions:           reqOptions,
@@ -29,7 +30,7 @@ func NewRegressionAllowancesMiddleware(reqOptions crtype.RequestOptions) *Regres
 // prior release which had a regression in the window prior to GA.
 type RegressionAllowances struct {
 	log        log.FieldLogger
-	reqOptions crtype.RequestOptions
+	reqOptions reqopts.RequestOptions
 
 	// regressionGetterFunc allows us to unit test without relying on real regression data
 	regressionGetterFunc func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
@@ -72,7 +73,7 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 	}
 
 	// with fallback enabled and a fallback release found, let that determine the threshold across bases without the munging done below.
-	if opts.IncludeMultiReleaseAnalysis && crtype.AnyAreBaseOverrides(r.reqOptions.TestIDOptions) {
+	if opts.IncludeMultiReleaseAnalysis && reqopts.AnyAreBaseOverrides(r.reqOptions.TestIDOptions) {
 		return
 	}
 

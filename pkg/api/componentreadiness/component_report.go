@@ -19,6 +19,7 @@ import (
 	fischer "github.com/glycerine/golang-fisher-exact"
 	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -103,7 +104,7 @@ func GetComponentReportFromBigQuery(
 	ctx context.Context,
 	client *bqcachedclient.Client,
 	dbc *db.DB,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (crtype.ComponentReport, []error) {
 
@@ -163,7 +164,7 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 	return nil
 }
 
-func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtype.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride) ComponentReportGenerator {
+func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions reqopts.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride) ComponentReportGenerator {
 	generator := ComponentReportGenerator{
 		client:                     client,
 		ReqOptions:                 reqOptions,
@@ -183,18 +184,18 @@ func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtyp
 type ComponentReportGenerator struct {
 	client                     *bqcachedclient.Client
 	dbc                        *db.DB
-	ReqOptions                 crtype.RequestOptions
+	ReqOptions                 reqopts.RequestOptions
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 	middlewares                middleware.List
 }
 
 type GeneratorCacheKey struct {
 	ReportModified *time.Time
-	BaseRelease    crtype.RequestReleaseOptions
-	SampleRelease  crtype.RequestReleaseOptions
-	VariantOption  crtype.RequestVariantOptions
-	AdvancedOption crtype.RequestAdvancedOptions
-	TestIDOptions  []crtype.RequestTestIdentificationOptions
+	BaseRelease    reqopts.RequestReleaseOptions
+	SampleRelease  reqopts.RequestReleaseOptions
+	VariantOption  reqopts.RequestVariantOptions
+	AdvancedOption reqopts.RequestAdvancedOptions
+	TestIDOptions  []reqopts.RequestTestIdentificationOptions
 }
 
 // GetCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -212,7 +213,7 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 
 	// TestIDOptions initialization differences caused many cache misses. This hacky bit of code attempts to handle
 	// them all and ensure we end up with the same cache key if the slice is null, empty, or has one empty element
-	if len(c.ReqOptions.TestIDOptions) == 1 && (reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], crtype.RequestTestIdentificationOptions{}) ||
+	if len(c.ReqOptions.TestIDOptions) == 1 && (reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], reqopts.RequestTestIdentificationOptions{}) ||
 		(c.ReqOptions.TestIDOptions[0].Component == "" &&
 			c.ReqOptions.TestIDOptions[0].Capability == "" &&
 			c.ReqOptions.TestIDOptions[0].TestID == "" &&
@@ -769,7 +770,7 @@ func updateCellStatus(
 
 func initTestAnalysisStruct(
 	testStats *crtype.ReportTestStats,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 	sampleStatus crtype.TestStatus,
 	baseStatus *crtype.TestStatus) {
 

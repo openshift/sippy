@@ -7,6 +7,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -32,18 +33,18 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 	}
 	variantsStrSlice := utils.VariantsMapToStringSlice(testKey.Variants)
 	mw := RegressionTracker{
-		reqOptions: crtype.RequestOptions{
-			BaseRelease: crtype.RequestReleaseOptions{
+		reqOptions: reqopts.RequestOptions{
+			BaseRelease: reqopts.RequestReleaseOptions{
 				Release: baseRelease,
 				Start:   time.Time{},
 				End:     time.Time{},
 			},
-			SampleRelease: crtype.RequestReleaseOptions{
+			SampleRelease: reqopts.RequestReleaseOptions{
 				Release: sampleRelease,
 				Start:   time.Time{},
 				End:     time.Time{},
 			},
-			AdvancedOption: crtype.RequestAdvancedOptions{
+			AdvancedOption: reqopts.RequestAdvancedOptions{
 				Confidence: 95,
 			},
 		},

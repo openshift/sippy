@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/sirupsen/logrus"
 )
 
@@ -50,7 +51,7 @@ func FindStartEndTimesForRelease(releases []componentreport.Release, release str
 	return nil, nil, fmt.Errorf("release %s not found", release)
 }
 
-func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOptions) string {
+func NormalizeProwJobName(prowName string, reqOptions reqopts.RequestOptions) string {
 	name := prowName
 	// Build a list of all releases involved in this request to replace with X.X in normalized prow job names.
 	releases := []string{}

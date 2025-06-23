@@ -11,6 +11,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -27,7 +28,7 @@ const (
 var _ middleware.Middleware = &ReleaseFallback{}
 
 func NewReleaseFallbackMiddleware(client *bqcachedclient.Client,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 ) *ReleaseFallback {
 	return &ReleaseFallback{
 		client:     client,
@@ -49,7 +50,7 @@ type ReleaseFallback struct {
 	client                     *bqcachedclient.Client
 	cachedFallbackTestStatuses *crtype.FallbackReleases
 	log                        log.FieldLogger
-	reqOptions                 crtype.RequestOptions
+	reqOptions                 reqopts.RequestOptions
 
 	// baseOverrideStatus maps test key, to job name, to the result rows for that job.
 	// This is used in test details reports, and in the typical API case will only contain one
@@ -203,14 +204,14 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 	// We want to do one query per fallback release, for each test ID we fell back to that release for.
 	// First we sort each release to map to the tests we fell back to that release for.
 
-	releaseToTestIDOptions := map[string][]crtype.RequestTestIdentificationOptions{}
+	releaseToTestIDOptions := map[string][]reqopts.RequestTestIdentificationOptions{}
 	for _, testIDOpts := range r.reqOptions.TestIDOptions {
 		if testIDOpts.BaseOverrideRelease == "" {
 			// no fallback for this regressed test, so this middleware has no work to do
 			continue
 		}
 		if _, ok := releaseToTestIDOptions[testIDOpts.BaseOverrideRelease]; !ok {
-			releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = []crtype.RequestTestIdentificationOptions{}
+			releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = []reqopts.RequestTestIdentificationOptions{}
 		}
 		releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = append(releaseToTestIDOptions[testIDOpts.BaseOverrideRelease], testIDOpts)
 	}
@@ -314,12 +315,12 @@ type fallbackTestQueryReleasesGenerator struct {
 	BaseEnd                    time.Time
 	CachedFallbackTestStatuses crtype.FallbackReleases
 	lock                       *sync.Mutex
-	ReqOptions                 crtype.RequestOptions
+	ReqOptions                 reqopts.RequestOptions
 }
 
 func newFallbackTestQueryReleasesGenerator(
 	client *bqcachedclient.Client,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	release string, start, end time.Time) fallbackTestQueryReleasesGenerator {
 
@@ -455,10 +456,10 @@ type fallbackTestQueryGenerator struct {
 	BaseRelease string
 	BaseStart   time.Time
 	BaseEnd     time.Time
-	ReqOptions  crtype.RequestOptions
+	ReqOptions  reqopts.RequestOptions
 }
 
-func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions crtype.RequestOptions, allVariants crtype.JobVariants,
+func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions reqopts.RequestOptions, allVariants crtype.JobVariants,
 	baseRelease string, baseStart, baseEnd time.Time) fallbackTestQueryGenerator {
 	generator := fallbackTestQueryGenerator{
 		client:      client,

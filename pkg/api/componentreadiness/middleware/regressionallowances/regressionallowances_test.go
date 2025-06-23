@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/stretchr/testify/assert"
 )
@@ -46,16 +47,16 @@ func Test_PreAnalysis(t *testing.T) {
 		}
 		return nil
 	}
-	reqOpts419 := crtype.RequestOptions{
-		SampleRelease: crtype.RequestReleaseOptions{Release: "4.19"},
-		BaseRelease:   crtype.RequestReleaseOptions{Release: "4.18"},
-		AdvancedOption: crtype.RequestAdvancedOptions{
+	reqOpts419 := reqopts.RequestOptions{
+		SampleRelease: reqopts.RequestReleaseOptions{Release: "4.19"},
+		BaseRelease:   reqopts.RequestReleaseOptions{Release: "4.18"},
+		AdvancedOption: reqopts.RequestAdvancedOptions{
 			IncludeMultiReleaseAnalysis: true,
 			PassRateRequiredNewTests:    95,
 		},
 	}
 	reqOpts419Fallback := reqOpts419
-	reqOpts419Fallback.TestIDOptions = []crtype.RequestTestIdentificationOptions{{BaseOverrideRelease: "4.17"}}
+	reqOpts419Fallback.TestIDOptions = []reqopts.RequestTestIdentificationOptions{{BaseOverrideRelease: "4.17"}}
 	reqOpts420Fallback := reqOpts419
 	reqOpts420Fallback.SampleRelease.Release = "4.20"
 	reqOpts420Fallback.BaseRelease.Release = "4.19"
@@ -83,7 +84,7 @@ func Test_PreAnalysis(t *testing.T) {
 	tests := []struct {
 		name             string
 		testKey          crtype.ReportTestIdentification
-		reqOpts          crtype.RequestOptions
+		reqOpts          reqopts.RequestOptions
 		regressionGetter func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
 		testStatus       *crtype.ReportTestStats
 		expectedStatus   *crtype.ReportTestStats

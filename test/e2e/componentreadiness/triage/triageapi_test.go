@@ -7,6 +7,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/test/e2e/util"
@@ -17,8 +18,8 @@ import (
 
 var view = componentreport.View{
 	Name: "4.19-main",
-	SampleRelease: componentreport.RequestRelativeReleaseOptions{
-		RequestReleaseOptions: componentreport.RequestReleaseOptions{
+	SampleRelease: reqopts.RequestRelativeReleaseOptions{
+		RequestReleaseOptions: reqopts.RequestReleaseOptions{
 			Release: "4.19",
 		},
 	},

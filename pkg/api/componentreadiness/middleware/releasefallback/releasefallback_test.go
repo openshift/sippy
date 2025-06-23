@@ -6,15 +6,16 @@ import (
 	"time"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_PreAnalysis(t *testing.T) {
-	reqOpts419 := crtype.RequestOptions{
-		BaseRelease: crtype.RequestReleaseOptions{
+	reqOpts419 := reqopts.RequestOptions{
+		BaseRelease: reqopts.RequestReleaseOptions{
 			Release: "4.19",
 		},
-		AdvancedOption: crtype.RequestAdvancedOptions{IncludeMultiReleaseAnalysis: true},
+		AdvancedOption: reqopts.RequestAdvancedOptions{IncludeMultiReleaseAnalysis: true},
 	}
 	test1ID := "test1ID"
 	test1Variants := map[string]string{
@@ -81,7 +82,7 @@ func Test_PreAnalysis(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		reqOpts          crtype.RequestOptions
+		reqOpts          reqopts.RequestOptions
 		testKey          crtype.ReportTestIdentification
 		fallbackReleases crtype.FallbackReleases
 		testStats        *crtype.ReportTestStats

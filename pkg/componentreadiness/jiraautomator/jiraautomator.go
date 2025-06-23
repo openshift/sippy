@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
 	"google.golang.org/api/iterator"
@@ -109,25 +110,25 @@ func NewJiraAutomator(
 	return j, nil
 }
 
-func (j JiraAutomator) getRequestOptionForView(view crtype.View) (crtype.RequestOptions, error) {
+func (j JiraAutomator) getRequestOptionForView(view crtype.View) (reqopts.RequestOptions, error) {
 	baseRelease, err := componentreadiness.GetViewReleaseOptions(j.releases, "basis", view.BaseRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
-		return crtype.RequestOptions{}, err
+		return reqopts.RequestOptions{}, err
 	}
 
 	sampleRelease, err := componentreadiness.GetViewReleaseOptions(j.releases, "sample", view.SampleRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
-		return crtype.RequestOptions{}, err
+		return reqopts.RequestOptions{}, err
 	}
 
 	variantOption := view.VariantOptions
 	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
-	reportOpts := crtype.RequestOptions{
+	reportOpts := reqopts.RequestOptions{
 		BaseRelease:   baseRelease,
 		SampleRelease: sampleRelease,
-		TestIDOptions: []crtype.RequestTestIdentificationOptions{
+		TestIDOptions: []reqopts.RequestTestIdentificationOptions{
 			view.TestIDOption,
 		},
 		VariantOption:  variantOption,

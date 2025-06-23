@@ -11,6 +11,7 @@ import (
 	"time"
 
 	fet "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/util/sets"
 	"github.com/sirupsen/logrus"
@@ -25,7 +26,7 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions crtype.RequestOptions,
+func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions reqopts.RequestOptions,
 ) (crtype.ReportTestDetails, []error) {
 	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil)
 	if os.Getenv("DEV_MODE") == "1" {
@@ -178,7 +179,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 }
 
 // GenerateDetailsReportForTest generates a test detail report for a per-test + variant combo.
-func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption crtype.RequestTestIdentificationOptions, componentJobRunTestReportStatus crtype.TestJobRunStatuses) (crtype.ReportTestDetails, []error) {
+func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption reqopts.RequestTestIdentificationOptions, componentJobRunTestReportStatus crtype.TestJobRunStatuses) (crtype.ReportTestDetails, []error) {
 
 	if testIDOption.TestID == "" {
 		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
@@ -452,7 +453,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	baseRelease string,
 	baseStart, baseEnd *time.Time,
 	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows,
-	testIDOption crtype.RequestTestIdentificationOptions,
+	testIDOption reqopts.RequestTestIdentificationOptions,
 ) crtype.ReportTestDetails {
 	testKey := crtype.ReportTestIdentification{
 		RowIdentification: crtype.RowIdentification{
