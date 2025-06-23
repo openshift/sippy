@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
@@ -51,7 +52,7 @@ type JiraAutomator struct {
 	bqClient     *bqclient.Client
 	dbc          *db.DB
 	cacheOptions cache.RequestOptions
-	views        []crtype.View
+	views        []crview.View
 	releases     []v1.Release
 	sippyURL     string
 	// columnThresholds defines a threshold for the number of red cells in a column.
@@ -70,7 +71,7 @@ func NewJiraAutomator(
 	bqClient *bqclient.Client,
 	dbc *db.DB,
 	cacheOptions cache.RequestOptions,
-	views []crtype.View,
+	views []crview.View,
 	releases []v1.Release,
 	sippyURL, jiraAccount string,
 	includeComponents sets.String,
@@ -110,7 +111,7 @@ func NewJiraAutomator(
 	return j, nil
 }
 
-func (j JiraAutomator) getRequestOptionForView(view crtype.View) (reqopts.RequestOptions, error) {
+func (j JiraAutomator) getRequestOptionForView(view crview.View) (reqopts.RequestOptions, error) {
 	baseRelease, err := componentreadiness.GetViewReleaseOptions(j.releases, "basis", view.BaseRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return reqopts.RequestOptions{}, err
@@ -138,7 +139,7 @@ func (j JiraAutomator) getRequestOptionForView(view crtype.View) (reqopts.Reques
 	return reportOpts, nil
 }
 
-func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.ComponentReport, error) {
+func (j JiraAutomator) getComponentReportForView(view crview.View) (crtype.ComponentReport, error) {
 	reportOpts, err := j.getRequestOptionForView(view)
 	if err != nil {
 		return crtype.ComponentReport{}, fmt.Errorf("failed to get request option for view %s with error %v", view.Name, err)
@@ -161,7 +162,7 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 // (b) has the "Affects Version/s" set to the sample version,
 // (c) were reported by the CR JIRA service account
 // Issues will be ordered by creation time
-func (j JiraAutomator) getExistingIssuesForComponent(view crtype.View, component JiraComponent) ([]jira.Issue, error) {
+func (j JiraAutomator) getExistingIssuesForComponent(view crview.View, component JiraComponent) ([]jira.Issue, error) {
 	searchOptions := jira.SearchOptions{
 		MaxResults: 1,
 		Fields: []string{
@@ -211,7 +212,7 @@ func isReleaseBlockerApproved(existing *jira.Issue) bool {
 // updateExistingJiraIssue updates existing issue by
 // a. adding a new comment containing a CR link with the most recently analyzed time window where the regression is still manifesting.
 // b. if pre-release, label the ticket as a Release Blocker if someone removed it
-func (j JiraAutomator) updateExistingJiraIssue(view crtype.View, existing *jira.Issue) error {
+func (j JiraAutomator) updateExistingJiraIssue(view crview.View, existing *jira.Issue) error {
 	absURL, _, err := j.getComponentReadinessURLsForView(view)
 	if err != nil {
 		return err
@@ -239,7 +240,7 @@ func (j JiraAutomator) updateExistingJiraIssue(view crtype.View, existing *jira.
 
 // getComponentReadinessURLsForView generates two URL, one with absolute timing params at this moment this is called
 // and one with view.
-func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (string, string, error) {
+func (j JiraAutomator) getComponentReadinessURLsForView(view crview.View) (string, string, error) {
 	reportOpts, err := j.getRequestOptionForView(view)
 	if err != nil {
 		return "", "", err
@@ -306,7 +307,7 @@ func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (strin
 // b  adding the Regression label defined by LabelJiraAutomator.
 // c. setting a description with links to CR
 // d. for pre-release, setting "Release Blocker" label to Approved
-func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, component JiraComponent, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) error {
+func (j JiraAutomator) createNewJiraIssueForRegressions(view crview.View, component JiraComponent, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) error {
 	if len(tests) > 0 {
 		description := `Component Readiness has found a potential regression in the following tests:`
 		for _, test := range tests {
@@ -375,7 +376,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 	return nil
 }
 
-func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crtype.View, component JiraComponent, tests []crtype.ReportTestSummary) error {
+func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crview.View, component JiraComponent, tests []crtype.ReportTestSummary) error {
 	switch issue.Fields.Status.Name {
 	case jiratype.StatusNew, jiratype.StatusInProgress, jiratype.StatusAssigned, jiratype.StatusModified:
 		// New/Assigned/In Progress/Modified
@@ -554,7 +555,7 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 	return componentRegressedTests, nil
 }
 
-func (j JiraAutomator) automateJirasForView(view crtype.View) error {
+func (j JiraAutomator) automateJirasForView(view crview.View) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("automate jiras for view")

@@ -7,6 +7,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -16,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var view = componentreport.View{
+var view = crview.View{
 	Name: "4.19-main",
 	SampleRelease: reqopts.RelativeRelease{
 		Release: reqopts.Release{
@@ -290,7 +291,7 @@ func Test_TriageRawDB(t *testing.T) {
 	})
 }
 
-func createTestRegression(t *testing.T, tracker componentreadiness.RegressionStore, view componentreport.View, testID string) *models.TestRegression {
+func createTestRegression(t *testing.T, tracker componentreadiness.RegressionStore, view crview.View, testID string) *models.TestRegression {
 	newRegression := componentreport.ReportTestSummary{
 		ReportTestIdentification: componentreport.ReportTestIdentification{
 			RowIdentification: componentreport.RowIdentification{

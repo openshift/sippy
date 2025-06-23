@@ -9,6 +9,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -18,7 +19,7 @@ import (
 
 // nolint:gocyclo
 func ParseComponentReportRequest(
-	views []crtype.View,
+	views []crview.View,
 	releases []v1.Release,
 	req *http.Request,
 	allJobVariants crtype.JobVariants,
@@ -130,7 +131,7 @@ func ParseComponentReportRequest(
 }
 
 // getRequestedView returns the view requested per the view param, or nil if none.
-func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, error) {
+func getRequestedView(req *http.Request, views []crview.View) (*crview.View, error) {
 	viewRequested := req.URL.Query().Get("view") // used only to lookup by view name
 	if viewRequested == "" {
 		return nil, nil

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v2 "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -43,7 +44,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 		"Upgrade":      {"micro", "minor", "none"},
 	}}
 
-	view417main := crtype.View{
+	view417main := crview.View{
 		Name: "4.17-main",
 		BaseRelease: reqopts.RelativeRelease{
 			Release: reqopts.Release{
@@ -92,7 +93,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 		DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
 	}
 
-	views := []crtype.View{
+	views := []crview.View{
 		view417main,
 		view417cross,
 	}

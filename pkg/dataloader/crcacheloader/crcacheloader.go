@@ -10,6 +10,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	sippytypes "github.com/openshift/sippy/pkg/apis/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -96,7 +97,7 @@ func (l *ComponentReadinessCacheLoader) Errors() []error {
 	return l.errs
 }
 
-func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.Release, cacheOpts cache.RequestOptions, bigQueryClient *bigquery.Client, dbc *db.DB, config *v1.SippyConfig) error {
+func primeCacheForView(ctx context.Context, view crview.View, releases []apiv1.Release, cacheOpts cache.RequestOptions, bigQueryClient *bigquery.Client, dbc *db.DB, config *v1.SippyConfig) error {
 	rLog := log.WithField("view", view.Name)
 
 	rLog.Infof("priming cache for view")
@@ -223,7 +224,7 @@ func generateReport(ctx context.Context, generator *componentreadiness.Component
 }
 
 func buildGenerator(
-	view crtype.View,
+	view crview.View,
 	releases []apiv1.Release,
 	cacheOpts cache.RequestOptions,
 	testIDOpts []reqopts.TestIdentification,

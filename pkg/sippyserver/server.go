@@ -17,6 +17,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -34,7 +35,6 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
@@ -663,7 +663,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 
 	// deep copy the views and then we'll inject a fixed start/end time using the relative times
 	// the view is configured with, so the UI can pre-populate the pickers
-	viewsCopy := make([]crtype.View, len(s.views.ComponentReadiness))
+	viewsCopy := make([]crview.View, len(s.views.ComponentReadiness))
 	copy(viewsCopy, s.views.ComponentReadiness)
 	for i := range viewsCopy {
 		rro, err := componentreadiness.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)

@@ -8,6 +8,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -45,7 +46,7 @@ func Test_RegressionTracker(t *testing.T) {
 			},
 		},
 	}
-	view := componentreport.View{
+	view := crview.View{
 		Name: "4.19-main",
 		SampleRelease: reqopts.RelativeRelease{
 			Release: reqopts.Release{
