@@ -22,6 +22,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -701,7 +702,7 @@ type cellStatus struct {
 	regressedTests []crtype.ReportTestSummary
 }
 
-func getNewCellStatus(testID crtest.Identification, testStats crtype.ReportTestStats, existingCellStatus *cellStatus) cellStatus {
+func getNewCellStatus(testID crtest.Identification, testStats testdetails.ReportTestStats, existingCellStatus *cellStatus) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (testStats.ReportStatus < crtest.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
@@ -729,7 +730,7 @@ func updateCellStatus(
 	rowIdentifications []crtest.RowIdentification,
 	columnIdentifications []crtest.ColumnID,
 	testID crtest.Identification,
-	testStats crtype.ReportTestStats,
+	testStats testdetails.ReportTestStats,
 	// use the inputs above to update the maps below (golang passes maps by reference)
 	status map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus,
 	allRows map[crtest.RowIdentification]struct{},
@@ -771,7 +772,7 @@ func updateCellStatus(
 }
 
 func initTestAnalysisStruct(
-	testStats *crtype.ReportTestStats,
+	testStats *testdetails.ReportTestStats,
 	reqOptions reqopts.RequestOptions,
 	sampleStatus bq.TestStatus,
 	baseStatus *bq.TestStatus) {
@@ -779,14 +780,14 @@ func initTestAnalysisStruct(
 	// Default to required confidence from request, middleware may adjust later.
 	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
 
-	testStats.SampleStats = crtype.TestDetailsReleaseStats{
+	testStats.SampleStats = testdetails.TestDetailsReleaseStats{
 		Release: reqOptions.SampleRelease.Name,
 		Start:   &reqOptions.SampleRelease.Start,
 		End:     &reqOptions.SampleRelease.End,
 		Stats:   sampleStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 	}
 	if baseStatus != nil {
-		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
+		testStats.BaseStats = &testdetails.TestDetailsReleaseStats{
 			Release: reqOptions.BaseRelease.Name,
 			Start:   &reqOptions.BaseRelease.Start,
 			End:     &reqOptions.BaseRelease.End,
@@ -806,7 +807,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 	keySet := sets.NewString(slices.Collect(maps.Keys(basisStatusMap))...)
 	keySet.Insert(slices.Collect(maps.Keys(sampleStatusMap))...)
 	for testKeyStr := range keySet {
-		var cellReport crtype.ReportTestStats // The actual stats we return over the API
+		var cellReport testdetails.ReportTestStats // The actual stats we return over the API
 		sampleStatus, sampleThere := sampleStatusMap[testKeyStr]
 		basisStatus, basisThere := basisStatusMap[testKeyStr]
 
@@ -952,7 +953,7 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crte
 // set of objects relating to analysis, as there's not a lot of overlap between the analyzers
 // (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
 // cross variant compare, rarely run jobs, etc.)
-func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.ReportTestStats) {
+func (c *ComponentReportGenerator) assessComponentStatus(testStats *testdetails.ReportTestStats) {
 	// Catch unset required confidence, typically unit tests
 	opts := c.ReqOptions.AdvancedOption
 	if testStats.RequiredConfidence == 0 {
@@ -978,7 +979,7 @@ func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.Repor
 	c.buildFisherExactTestStats(testStats)
 }
 
-func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.ReportTestStats) {
+func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdetails.ReportTestStats) {
 
 	fisherExact := 0.0
 	testStats.Comparison = crtest.FisherExact
@@ -1056,7 +1057,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 	}
 }
 
-func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.ReportTestStats, requiredSuccessRate float64) {
+func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *testdetails.ReportTestStats, requiredSuccessRate float64) {
 
 	effectiveSuccessReq := requiredSuccessRate + testStats.RequiredPassRateAdjustment
 

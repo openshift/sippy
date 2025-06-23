@@ -9,6 +9,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -87,8 +88,8 @@ func Test_PreAnalysis(t *testing.T) {
 		reqOpts          reqopts.RequestOptions
 		testKey          crtest.Identification
 		fallbackReleases FallbackReleases
-		testStats        *crtype.ReportTestStats
-		expectedStatus   *crtype.ReportTestStats
+		testStats        *testdetails.ReportTestStats
+		expectedStatus   *testdetails.ReportTestStats
 	}{
 		{
 			name:    "fallback to prior release",
@@ -225,10 +226,10 @@ func buildTestStatus(testName string, variants []string, total, success, flake i
 	}
 }
 
-func buildTestStats(total, success int, baseRelease crtype.Release, explanations []string) *crtype.ReportTestStats {
+func buildTestStats(total, success int, baseRelease crtype.Release, explanations []string) *testdetails.ReportTestStats {
 	fails := total - success
-	ts := &crtype.ReportTestStats{
-		BaseStats: &crtype.TestDetailsReleaseStats{
+	ts := &testdetails.ReportTestStats{
+		BaseStats: &testdetails.TestDetailsReleaseStats{
 			Release: baseRelease.Release,
 			Start:   baseRelease.Start,
 			End:     baseRelease.End,

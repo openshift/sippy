@@ -4,9 +4,9 @@ import (
 	"context"
 	"sync"
 
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 )
 
 type List []Middleware
@@ -25,7 +25,7 @@ func (l List) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh ch
 	}
 }
 
-func (l List) PreAnalysis(testKey crtest.Identification, testStats *crtype.ReportTestStats) error {
+func (l List) PreAnalysis(testKey crtest.Identification, testStats *testdetails.ReportTestStats) error {
 	for _, mw := range l {
 		if err := mw.PreAnalysis(testKey, testStats); err != nil {
 			return err
@@ -34,7 +34,7 @@ func (l List) PreAnalysis(testKey crtest.Identification, testStats *crtype.Repor
 	return nil
 }
 
-func (l List) PostAnalysis(testKey crtest.Identification, testStats *crtype.ReportTestStats) error {
+func (l List) PostAnalysis(testKey crtest.Identification, testStats *testdetails.ReportTestStats) error {
 	for _, mw := range l {
 		if err := mw.PostAnalysis(testKey, testStats); err != nil {
 			return err
