@@ -179,7 +179,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 }
 
 // GenerateDetailsReportForTest generates a test detail report for a per-test + variant combo.
-func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption reqopts.RequestTestIdentificationOptions, componentJobRunTestReportStatus crtype.TestJobRunStatuses) (crtype.ReportTestDetails, []error) {
+func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption reqopts.TestIdentification, componentJobRunTestReportStatus crtype.TestJobRunStatuses) (crtype.ReportTestDetails, []error) {
 
 	if testIDOption.TestID == "" {
 		return crtype.ReportTestDetails{}, []error{fmt.Errorf("test_id has to be defined for test details")}
@@ -203,7 +203,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 
 	// Generate the report for the main release that was originally requested:
 	report := c.internalGenerateTestDetailsReport(
-		c.ReqOptions.BaseRelease.Release,
+		c.ReqOptions.BaseRelease.Name,
 		&c.ReqOptions.BaseRelease.Start, &c.ReqOptions.BaseRelease.End,
 		componentJobRunTestReportStatus.BaseStatus, componentJobRunTestReportStatus.SampleStatus,
 		testIDOption)
@@ -218,7 +218,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 	// by adding it to componentJobRunTestReportStatus.BaseOverrideStatus.
 	var baseOverrideReport *crtype.ReportTestDetails
 	if testIDOption.BaseOverrideRelease != "" &&
-		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Release {
+		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Name {
 
 		testKey := crtype.TestWithVariantsKey{
 			TestID:   testIDOption.TestID,
@@ -334,7 +334,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			logrus.Infof("Context canceled while fetching base job run test status")
 			return
 		default:
-			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.BaseRelease.Release, c.ReqOptions.BaseRelease.Start, c.ReqOptions.BaseRelease.End)
+			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.BaseRelease.Name, c.ReqOptions.BaseRelease.Start, c.ReqOptions.BaseRelease.End)
 		}
 
 	}()
@@ -453,7 +453,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	baseRelease string,
 	baseStart, baseEnd *time.Time,
 	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows,
-	testIDOption reqopts.RequestTestIdentificationOptions,
+	testIDOption reqopts.TestIdentification,
 ) crtype.ReportTestDetails {
 	testKey := crtype.ReportTestIdentification{
 		RowIdentification: crtype.RowIdentification{
@@ -471,7 +471,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	testStats := crtype.ReportTestStats{
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
 		SampleStats: crtype.TestDetailsReleaseStats{
-			Release:              c.ReqOptions.SampleRelease.Release,
+			Release:              c.ReqOptions.SampleRelease.Name,
 			Start:                &c.ReqOptions.SampleRelease.Start,
 			End:                  &c.ReqOptions.SampleRelease.End,
 			TestDetailsTestStats: totalSample,

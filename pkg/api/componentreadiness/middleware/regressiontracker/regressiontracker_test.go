@@ -34,17 +34,17 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 	variantsStrSlice := utils.VariantsMapToStringSlice(testKey.Variants)
 	mw := RegressionTracker{
 		reqOptions: reqopts.RequestOptions{
-			BaseRelease: reqopts.RequestReleaseOptions{
-				Release: baseRelease,
-				Start:   time.Time{},
-				End:     time.Time{},
+			BaseRelease: reqopts.Release{
+				Name:  baseRelease,
+				Start: time.Time{},
+				End:   time.Time{},
 			},
-			SampleRelease: reqopts.RequestReleaseOptions{
-				Release: sampleRelease,
-				Start:   time.Time{},
-				End:     time.Time{},
+			SampleRelease: reqopts.Release{
+				Name:  sampleRelease,
+				Start: time.Time{},
+				End:   time.Time{},
 			},
-			AdvancedOption: reqopts.RequestAdvancedOptions{
+			AdvancedOption: reqopts.Advanced{
 				Confidence: 95,
 			},
 		},

@@ -47,7 +47,7 @@ func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crt
 func (r *RegressionAllowances) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 
 	// for intentional regression in the base
-	r.matchBaseRegression(testKey, r.reqOptions.BaseRelease.Release, testStats)
+	r.matchBaseRegression(testKey, r.reqOptions.BaseRelease.Name, testStats)
 
 	if ir := r.regressionGetterFunc(testStats.SampleStats.Release, testKey.ColumnIdentification, testKey.TestID); ir != nil {
 		// for intentional regression in the sample
@@ -94,7 +94,7 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 	if overrideTestStats.SuccessRate > baseStats.PassRate(opts.FlakeAsFailure) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-		baseRegressionPreviousRelease, err := utils.PreviousRelease(r.reqOptions.BaseRelease.Release)
+		baseRegressionPreviousRelease, err := utils.PreviousRelease(r.reqOptions.BaseRelease.Name)
 		if err != nil {
 			r.log.WithError(err).Error("Failed to determine the previous release for base regression")
 		} else if overrideTestStats.Total() > 0 { // only override if there is history to override with

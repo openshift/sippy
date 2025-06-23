@@ -55,11 +55,11 @@ func NormalizeProwJobName(prowName string, reqOptions reqopts.RequestOptions) st
 	name := prowName
 	// Build a list of all releases involved in this request to replace with X.X in normalized prow job names.
 	releases := []string{}
-	if reqOptions.BaseRelease.Release != "" {
-		releases = append(releases, reqOptions.BaseRelease.Release)
+	if reqOptions.BaseRelease.Name != "" {
+		releases = append(releases, reqOptions.BaseRelease.Name)
 	}
-	if reqOptions.SampleRelease.Release != "" {
-		releases = append(releases, reqOptions.SampleRelease.Release)
+	if reqOptions.SampleRelease.Name != "" {
+		releases = append(releases, reqOptions.SampleRelease.Name)
 	}
 	for _, tid := range reqOptions.TestIDOptions {
 		if tid.BaseOverrideRelease != "" {

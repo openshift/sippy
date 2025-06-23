@@ -191,11 +191,11 @@ type ComponentReportGenerator struct {
 
 type GeneratorCacheKey struct {
 	ReportModified *time.Time
-	BaseRelease    reqopts.RequestReleaseOptions
-	SampleRelease  reqopts.RequestReleaseOptions
-	VariantOption  reqopts.RequestVariantOptions
-	AdvancedOption reqopts.RequestAdvancedOptions
-	TestIDOptions  []reqopts.RequestTestIdentificationOptions
+	BaseRelease    reqopts.Release
+	SampleRelease  reqopts.Release
+	VariantOption  reqopts.Variants
+	AdvancedOption reqopts.Advanced
+	TestIDOptions  []reqopts.TestIdentification
 }
 
 // GetCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -213,7 +213,7 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 
 	// TestIDOptions initialization differences caused many cache misses. This hacky bit of code attempts to handle
 	// them all and ensure we end up with the same cache key if the slice is null, empty, or has one empty element
-	if len(c.ReqOptions.TestIDOptions) == 1 && (reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], reqopts.RequestTestIdentificationOptions{}) ||
+	if len(c.ReqOptions.TestIDOptions) == 1 && (reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], reqopts.TestIdentification{}) ||
 		(c.ReqOptions.TestIDOptions[0].Component == "" &&
 			c.ReqOptions.TestIDOptions[0].Capability == "" &&
 			c.ReqOptions.TestIDOptions[0].TestID == "" &&
@@ -778,14 +778,14 @@ func initTestAnalysisStruct(
 	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
 
 	testStats.SampleStats = crtype.TestDetailsReleaseStats{
-		Release:              reqOptions.SampleRelease.Release,
+		Release:              reqOptions.SampleRelease.Name,
 		Start:                &reqOptions.SampleRelease.Start,
 		End:                  &reqOptions.SampleRelease.End,
 		TestDetailsTestStats: sampleStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 	}
 	if baseStatus != nil {
 		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-			Release:              reqOptions.BaseRelease.Release,
+			Release:              reqOptions.BaseRelease.Name,
 			Start:                &reqOptions.BaseRelease.Start,
 			End:                  &reqOptions.BaseRelease.End,
 			TestDetailsTestStats: baseStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),

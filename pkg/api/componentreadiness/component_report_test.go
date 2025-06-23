@@ -46,7 +46,7 @@ func fakeComponentAndCapabilityGetter(test crtype.TestWithVariantsKey, stats crt
 }
 
 var (
-	defaultAdvancedOption = reqopts.RequestAdvancedOptions{
+	defaultAdvancedOption = reqopts.Advanced{
 		Confidence:     95,
 		PityFactor:     5,
 		MinimumFailure: 3,
@@ -55,14 +55,14 @@ var (
 	defaultDBGroupByVariants        = sets.NewString(strings.Split(DefaultDBGroupBy, ",")...)
 	defaultComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			VariantOption: reqopts.RequestVariantOptions{
+			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
 			AdvancedOption: defaultAdvancedOption,
 		},
 	}
-	flakeFailAdvancedOption = reqopts.RequestAdvancedOptions{
+	flakeFailAdvancedOption = reqopts.Advanced{
 		Confidence:     95,
 		PityFactor:     5,
 		MinimumFailure: 3,
@@ -70,7 +70,7 @@ var (
 	}
 	flakeFailComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			VariantOption: reqopts.RequestVariantOptions{
+			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -80,7 +80,7 @@ var (
 	installerColumnGroupByVariants           = sets.NewString("Platform", "Architecture", "Network", "Installer")
 	groupByInstallerComponentReportGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			VariantOption: reqopts.RequestVariantOptions{
+			VariantOption: reqopts.Variants{
 				ColumnGroupBy: installerColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -89,12 +89,12 @@ var (
 	}
 	componentPageGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.RequestTestIdentificationOptions{
+			TestIDOptions: []reqopts.TestIdentification{
 				{
 					Component: "component 2",
 				},
 			},
-			VariantOption: reqopts.RequestVariantOptions{
+			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -103,13 +103,13 @@ var (
 	}
 	capabilityPageGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.RequestTestIdentificationOptions{
+			TestIDOptions: []reqopts.TestIdentification{
 				{
 					Component:  "component 2",
 					Capability: "cap22",
 				},
 			},
-			VariantOption: reqopts.RequestVariantOptions{
+			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -118,14 +118,14 @@ var (
 	}
 	testPageGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.RequestTestIdentificationOptions{
+			TestIDOptions: []reqopts.TestIdentification{
 				{
 					Component:  "component 2",
 					Capability: "cap22",
 					TestID:     "2",
 				},
 			},
-			VariantOption: reqopts.RequestVariantOptions{
+			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -134,7 +134,7 @@ var (
 	}
 	testDetailsGenerator = ComponentReportGenerator{
 		ReqOptions: reqopts.RequestOptions{
-			TestIDOptions: []reqopts.RequestTestIdentificationOptions{
+			TestIDOptions: []reqopts.TestIdentification{
 				{
 					Component:  "component 1",
 					Capability: "cap11",
@@ -146,7 +146,7 @@ var (
 					},
 				},
 			},
-			VariantOption: reqopts.RequestVariantOptions{
+			VariantOption: reqopts.Variants{
 				ColumnGroupBy: defaultColumnGroupByVariants,
 				DBGroupBy:     defaultDBGroupByVariants,
 			},
@@ -826,10 +826,10 @@ func TestGenerateComponentReport(t *testing.T) {
 			name: "top page test confidence 90 result in regression",
 			generator: ComponentReportGenerator{
 				ReqOptions: reqopts.RequestOptions{
-					VariantOption: reqopts.RequestVariantOptions{
+					VariantOption: reqopts.Variants{
 						ColumnGroupBy: defaultColumnGroupByVariants,
 					},
-					AdvancedOption: reqopts.RequestAdvancedOptions{
+					AdvancedOption: reqopts.Advanced{
 						Confidence:     90,
 						PityFactor:     5,
 						MinimumFailure: 3,
@@ -923,10 +923,10 @@ func TestGenerateComponentReport(t *testing.T) {
 			name: "top page test confidence 90 pity 10 result in no regression",
 			generator: ComponentReportGenerator{
 				ReqOptions: reqopts.RequestOptions{
-					VariantOption: reqopts.RequestVariantOptions{
+					VariantOption: reqopts.Variants{
 						ColumnGroupBy: defaultColumnGroupByVariants,
 					},
-					AdvancedOption: reqopts.RequestAdvancedOptions{
+					AdvancedOption: reqopts.Advanced{
 						Confidence:     90,
 						PityFactor:     10,
 						MinimumFailure: 3,
@@ -1263,7 +1263,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		Variants: testDetailsGenerator.ReqOptions.TestIDOptions[0].RequestedVariants,
 	}
 	sampleReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.ReqOptions.SampleRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.SampleRelease.Name,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.9203539823008849,
 			SuccessCount: 200,
@@ -1274,7 +1274,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		End:   &time.Time{},
 	}
 	baseReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.ReqOptions.BaseRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.BaseRelease.Name,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.9130434782608695,
 			SuccessCount: 2000,
@@ -1307,7 +1307,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		FlakeCount:   50,
 	}
 	sampleReleaseStatsOneHigh := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.ReqOptions.SampleRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.SampleRelease.Name,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.9203539823008849,
 			SuccessCount: 100,
@@ -1318,7 +1318,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		End:   &time.Time{},
 	}
 	baseReleaseStatsOneHigh := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.ReqOptions.BaseRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.BaseRelease.Name,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.9130434782608695,
 			SuccessCount: 1000,
@@ -1327,7 +1327,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		},
 	}
 	sampleReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.ReqOptions.SampleRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.SampleRelease.Name,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.4778761061946903,
 			SuccessCount: 50,
@@ -1338,7 +1338,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 		End:   &time.Time{},
 	}
 	baseReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
-		Release: testDetailsGenerator.ReqOptions.BaseRelease.Release,
+		Release: testDetailsGenerator.ReqOptions.BaseRelease.Name,
 		TestDetailsTestStats: crtype.TestDetailsTestStats{
 			SuccessRate:  0.4782608695652174,
 			SuccessCount: 500,
@@ -1674,10 +1674,10 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &ComponentReportGenerator{}
 			if tt.baseRelease != "" {
-				c.ReqOptions.BaseRelease = reqopts.RequestReleaseOptions{Release: tt.baseRelease}
+				c.ReqOptions.BaseRelease = reqopts.Release{Name: tt.baseRelease}
 			}
 			if tt.sampleRelease != "" {
-				c.ReqOptions.SampleRelease = reqopts.RequestReleaseOptions{Release: tt.sampleRelease}
+				c.ReqOptions.SampleRelease = reqopts.Release{Name: tt.sampleRelease}
 			}
 
 			assert.Equalf(t, tt.want, utils.NormalizeProwJobName(tt.jobName, c.ReqOptions), "normalizeProwJobName(%v)", tt.jobName)

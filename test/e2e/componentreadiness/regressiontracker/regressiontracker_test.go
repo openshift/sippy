@@ -47,9 +47,9 @@ func Test_RegressionTracker(t *testing.T) {
 	}
 	view := componentreport.View{
 		Name: "4.19-main",
-		SampleRelease: reqopts.RequestRelativeReleaseOptions{
-			RequestReleaseOptions: reqopts.RequestReleaseOptions{
-				Release: "4.19",
+		SampleRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{
+				Name: "4.19",
 			},
 		},
 	}

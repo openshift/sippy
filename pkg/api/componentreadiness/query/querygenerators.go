@@ -156,7 +156,7 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Report
 		},
 		{
 			Name:  "BaseRelease",
-			Value: b.ReqOptions.BaseRelease.Release,
+			Value: b.ReqOptions.BaseRelease.Name,
 		},
 	}...)
 
@@ -234,7 +234,7 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Repo
 		},
 		{
 			Name:  "SampleRelease",
-			Value: s.ReqOptions.SampleRelease.Release,
+			Value: s.ReqOptions.SampleRelease.Name,
 		},
 	}...)
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
@@ -404,7 +404,7 @@ func BuildComponentReportQuery(
 // never used, test name, component, file path, url, etc.
 func buildTestDetailsQuery(
 	client *bqcachedclient.Client,
-	testIDOpts []reqopts.RequestTestIdentificationOptions,
+	testIDOpts []reqopts.TestIdentification,
 	c reqopts.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	includeVariants map[string][]string,
@@ -493,7 +493,7 @@ func buildTestDetailsQuery(
 
 // addTestFilters injects query params to limit to one test and variants combo.
 func addTestFilters(
-	testIDOption reqopts.RequestTestIdentificationOptions,
+	testIDOption reqopts.TestIdentification,
 	index int,
 	queryString string,
 	c reqopts.RequestOptions,
@@ -703,14 +703,14 @@ type baseTestDetailsQueryGenerator struct {
 	BaseRelease    string
 	BaseStart      time.Time
 	BaseEnd        time.Time
-	TestIDOpts     []reqopts.RequestTestIdentificationOptions
+	TestIDOpts     []reqopts.TestIdentification
 }
 
 func NewBaseTestDetailsQueryGenerator(logger log.FieldLogger, client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
 	allJobVariants crtype.JobVariants,
 	baseRelease string, baseStart time.Time, baseEnd time.Time,
-	testIDOpts []reqopts.RequestTestIdentificationOptions) *baseTestDetailsQueryGenerator {
+	testIDOpts []reqopts.TestIdentification) *baseTestDetailsQueryGenerator {
 
 	return &baseTestDetailsQueryGenerator{
 		logger:         logger,
@@ -820,7 +820,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		},
 		{
 			Name:  "SampleRelease",
-			Value: s.ReqOptions.SampleRelease.Release,
+			Value: s.ReqOptions.SampleRelease.Name,
 		},
 	}...)
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {

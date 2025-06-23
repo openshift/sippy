@@ -48,18 +48,18 @@ func Test_PreAnalysis(t *testing.T) {
 		return nil
 	}
 	reqOpts419 := reqopts.RequestOptions{
-		SampleRelease: reqopts.RequestReleaseOptions{Release: "4.19"},
-		BaseRelease:   reqopts.RequestReleaseOptions{Release: "4.18"},
-		AdvancedOption: reqopts.RequestAdvancedOptions{
+		SampleRelease: reqopts.Release{Name: "4.19"},
+		BaseRelease:   reqopts.Release{Name: "4.18"},
+		AdvancedOption: reqopts.Advanced{
 			IncludeMultiReleaseAnalysis: true,
 			PassRateRequiredNewTests:    95,
 		},
 	}
 	reqOpts419Fallback := reqOpts419
-	reqOpts419Fallback.TestIDOptions = []reqopts.RequestTestIdentificationOptions{{BaseOverrideRelease: "4.17"}}
+	reqOpts419Fallback.TestIDOptions = []reqopts.TestIdentification{{BaseOverrideRelease: "4.17"}}
 	reqOpts420Fallback := reqOpts419
-	reqOpts420Fallback.SampleRelease.Release = "4.20"
-	reqOpts420Fallback.BaseRelease.Release = "4.19"
+	reqOpts420Fallback.SampleRelease.Name = "4.20"
+	reqOpts420Fallback.BaseRelease.Name = "4.19"
 
 	test1Key := crtype.ReportTestIdentification{
 		RowIdentification: crtype.RowIdentification{

@@ -65,7 +65,7 @@ func (r *RegressionTracker) ensureRegressionsLoaded() error {
 
 	// Load all known regressions for this release:
 	var err error
-	r.openRegressions, err = query.ListOpenRegressions(r.dbc, r.reqOptions.SampleRelease.Release)
+	r.openRegressions, err = query.ListOpenRegressions(r.dbc, r.reqOptions.SampleRelease.Name)
 	if err != nil {
 		return err
 	}

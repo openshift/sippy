@@ -128,7 +128,7 @@ func (j JiraAutomator) getRequestOptionForView(view crtype.View) (reqopts.Reques
 	reportOpts := reqopts.RequestOptions{
 		BaseRelease:   baseRelease,
 		SampleRelease: sampleRelease,
-		TestIDOptions: []reqopts.RequestTestIdentificationOptions{
+		TestIDOptions: []reqopts.TestIdentification{
 			view.TestIDOption,
 		},
 		VariantOption:  variantOption,
@@ -173,7 +173,7 @@ func (j JiraAutomator) getExistingIssuesForComponent(view crtype.View, component
 		},
 	}
 	jqlQuery := fmt.Sprintf("project=%s&&component='%s'&&creator='%s'&&affectedVersion=%s&&labels in (%s) ORDER BY createdDate",
-		component.Project, component.Component, j.jiraAccount, view.SampleRelease.Release, jiratype.LabelJiraAutomator)
+		component.Project, component.Component, j.jiraAccount, view.SampleRelease.Name, jiratype.LabelJiraAutomator)
 	issues, _, err := j.jiraClient.SearchWithContext(context.Background(), jqlQuery, &searchOptions)
 	return issues, err
 }
@@ -231,7 +231,7 @@ func (j JiraAutomator) updateExistingJiraIssue(view crtype.View, existing *jira.
 
 	// Set Release Blocker
 	if !isReleaseBlockerApproved(existing) {
-		return j.updateReleaseBlocker(existing, view.SampleRelease.Release)
+		return j.updateReleaseBlocker(existing, view.SampleRelease.Name)
 	}
 
 	return nil
@@ -265,13 +265,13 @@ func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (strin
 		absURL += "main?"
 	}
 
-	if reportOpts.BaseRelease.Release != "" {
-		values.Add("baseRelease", reportOpts.BaseRelease.Release)
+	if reportOpts.BaseRelease.Name != "" {
+		values.Add("baseRelease", reportOpts.BaseRelease.Name)
 		values.Add("baseStartTime", reportOpts.BaseRelease.Start.UTC().Format(time.RFC3339))
 		values.Add("baseEndTime", reportOpts.BaseRelease.End.UTC().Format(time.RFC3339))
 	}
-	if reportOpts.SampleRelease.Release != "" {
-		values.Add("sampleRelease", reportOpts.SampleRelease.Release)
+	if reportOpts.SampleRelease.Name != "" {
+		values.Add("sampleRelease", reportOpts.SampleRelease.Name)
 		values.Add("sampleStartTime", reportOpts.SampleRelease.Start.UTC().Format(time.RFC3339))
 		values.Add("sampleEndTime", reportOpts.SampleRelease.End.UTC().Format(time.RFC3339))
 	}
@@ -350,7 +350,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 				Summary: summary,
 				AffectsVersions: []*jira.AffectsVersion{
 					{
-						Name: view.SampleRelease.Release,
+						Name: view.SampleRelease.Name,
 					},
 				},
 				Labels: []string{jiratype.LabelJiraAutomator},
@@ -362,7 +362,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 				return err
 			}
 			// Set Release Blocker field. Jira does not allow setting those during creation. So do it in separate step.
-			return j.updateReleaseBlocker(created, view.SampleRelease.Release)
+			return j.updateReleaseBlocker(created, view.SampleRelease.Name)
 		}
 		issueStr, err := json.MarshalIndent(issue, "", "  ")
 		if err != nil {

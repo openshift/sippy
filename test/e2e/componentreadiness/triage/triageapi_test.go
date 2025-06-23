@@ -18,9 +18,9 @@ import (
 
 var view = componentreport.View{
 	Name: "4.19-main",
-	SampleRelease: reqopts.RequestRelativeReleaseOptions{
-		RequestReleaseOptions: reqopts.RequestReleaseOptions{
-			Release: "4.19",
+	SampleRelease: reqopts.RelativeRelease{
+		Release: reqopts.Release{
+			Name: "4.19",
 		},
 	},
 }
@@ -231,7 +231,7 @@ func Test_TriageRawDB(t *testing.T) {
 		res = dbc.DB.
 			Model(&models.TestRegression{}).
 			Preload("Triages").
-			Where("test_regressions.release = ?", view.SampleRelease.Release).
+			Where("test_regressions.release = ?", view.SampleRelease.Name).
 			Where("test_regressions.id = ?", testRegression.ID).
 			Where("test_regressions.closed IS NULL").
 			Find(&openRegressions)

@@ -45,26 +45,26 @@ func TestParseComponentReportRequest(t *testing.T) {
 
 	view417main := crtype.View{
 		Name: "4.17-main",
-		BaseRelease: reqopts.RequestRelativeReleaseOptions{
-			RequestReleaseOptions: reqopts.RequestReleaseOptions{
-				Release: "4.16",
+		BaseRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{
+				Name: "4.16",
 			},
 			RelativeStart: "ga-30d",
 			RelativeEnd:   "ga",
 		},
-		SampleRelease: reqopts.RequestRelativeReleaseOptions{
-			RequestReleaseOptions: reqopts.RequestReleaseOptions{
-				Release: "4.17",
+		SampleRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{
+				Name: "4.17",
 			},
 			RelativeStart: "now-7d",
 			RelativeEnd:   "now",
 		},
-		VariantOptions: reqopts.RequestVariantOptions{
+		VariantOptions: reqopts.Variants{
 			ColumnGroupBy:   defaultColumnGroupByVariants,
 			DBGroupBy:       defaultDBGroupByVariants,
 			IncludeVariants: includeVariants,
 		},
-		AdvancedOptions: reqopts.RequestAdvancedOptions{
+		AdvancedOptions: reqopts.Advanced{
 			MinimumFailure:   3,
 			Confidence:       95,
 			PityFactor:       5,
@@ -75,7 +75,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 	// would like to test with a view that does define cross-compare variants
 	view417cross := view417main
 	view417cross.Name = "4.17-cross"
-	view417cross.VariantOptions = reqopts.RequestVariantOptions{
+	view417cross.VariantOptions = reqopts.Variants{
 		VariantCrossCompare: []string{"Topology"},
 		IncludeVariants: map[string][]string{
 			"Architecture": []string{"amd64"},
@@ -110,11 +110,11 @@ func TestParseComponentReportRequest(t *testing.T) {
 		queryParams [][]string
 
 		// expected outputs
-		baseRelease    reqopts.RequestReleaseOptions
-		sampleRelease  reqopts.RequestReleaseOptions
-		testIDOption   reqopts.RequestTestIdentificationOptions
-		variantOption  reqopts.RequestVariantOptions
-		advancedOption reqopts.RequestAdvancedOptions
+		baseRelease    reqopts.Release
+		sampleRelease  reqopts.Release
+		testIDOption   reqopts.TestIdentification
+		variantOption  reqopts.Variants
+		advancedOption reqopts.Advanced
 		cacheOption    cache.RequestOptions
 		errMessage     string
 	}{
@@ -139,7 +139,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Installer:ipi"},
 				{"includeVariant", "Installer:upi"},
 			},
-			variantOption: reqopts.RequestVariantOptions{
+			variantOption: reqopts.Variants{
 				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
 				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
@@ -148,20 +148,20 @@ func TestParseComponentReportRequest(t *testing.T) {
 					"Installer":    {"ipi", "upi"},
 				},
 			},
-			baseRelease: reqopts.RequestReleaseOptions{
-				Release: "4.15",
-				Start:   time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
-				End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
+			baseRelease: reqopts.Release{
+				Name:  "4.15",
+				Start: time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
 			},
-			sampleRelease: reqopts.RequestReleaseOptions{
-				Release: "4.16",
-				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
-				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
+			sampleRelease: reqopts.Release{
+				Name:  "4.16",
+				Start: time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
+				End:   time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
 			},
-			testIDOption: reqopts.RequestTestIdentificationOptions{
+			testIDOption: reqopts.TestIdentification{
 				RequestedVariants: map[string]string{},
 			},
-			advancedOption: reqopts.RequestAdvancedOptions{
+			advancedOption: reqopts.Advanced{
 				MinimumFailure:   3,
 				Confidence:       95,
 				PityFactor:       5,
@@ -193,7 +193,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"includeVariant", "Installer:ipi"},
 				{"includeVariant", "Installer:upi"},
 			},
-			variantOption: reqopts.RequestVariantOptions{
+			variantOption: reqopts.Variants{
 				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
 				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
@@ -202,20 +202,20 @@ func TestParseComponentReportRequest(t *testing.T) {
 					"Installer":    {"ipi", "upi"},
 				},
 			},
-			baseRelease: reqopts.RequestReleaseOptions{
-				Release: "4.15",
-				Start:   time.Date(2024, time.January, 29, 0, 0, 0, 0, time.UTC),
-				End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
+			baseRelease: reqopts.Release{
+				Name:  "4.15",
+				Start: time.Date(2024, time.January, 29, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
 			},
-			sampleRelease: reqopts.RequestReleaseOptions{
-				Release: "4.16",
-				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
-				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
+			sampleRelease: reqopts.Release{
+				Name:  "4.16",
+				Start: time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
+				End:   time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
 			},
-			testIDOption: reqopts.RequestTestIdentificationOptions{
+			testIDOption: reqopts.TestIdentification{
 				RequestedVariants: map[string]string{},
 			},
-			advancedOption: reqopts.RequestAdvancedOptions{
+			advancedOption: reqopts.Advanced{
 				MinimumFailure:   3,
 				Confidence:       95,
 				PityFactor:       5,
@@ -231,7 +231,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			queryParams: [][]string{
 				{"view", "4.17-main"},
 			},
-			variantOption: reqopts.RequestVariantOptions{
+			variantOption: reqopts.Variants{
 				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
 				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
@@ -241,20 +241,20 @@ func TestParseComponentReportRequest(t *testing.T) {
 				},
 				CompareVariants: nil, // the view is likely not to specify compare variants at all
 			},
-			baseRelease: reqopts.RequestReleaseOptions{
-				Release: "4.16",
-				Start:   time.Date(2024, time.May, 28, 0, 0, 0, 0, time.UTC),
-				End:     time.Date(2024, time.June, 27, 23, 59, 59, 0, time.UTC),
+			baseRelease: reqopts.Release{
+				Name:  "4.16",
+				Start: time.Date(2024, time.May, 28, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, time.June, 27, 23, 59, 59, 0, time.UTC),
 			},
-			sampleRelease: reqopts.RequestReleaseOptions{
-				Release: "4.17",
-				Start:   time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
-				End:     nowRoundUp,
+			sampleRelease: reqopts.Release{
+				Name:  "4.17",
+				Start: time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
+				End:   nowRoundUp,
 			},
-			testIDOption: reqopts.RequestTestIdentificationOptions{
+			testIDOption: reqopts.TestIdentification{
 				RequestedVariants: map[string]string{},
 			},
-			advancedOption: reqopts.RequestAdvancedOptions{
+			advancedOption: reqopts.Advanced{
 				MinimumFailure:   3,
 				Confidence:       95,
 				PityFactor:       5,
@@ -303,7 +303,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 				{"compareVariant", "Architecture:ppc64le"},
 				{"compareVariant", "Topology:single"},
 			},
-			variantOption: reqopts.RequestVariantOptions{
+			variantOption: reqopts.Variants{
 				ColumnGroupBy: sets.NewString("Platform", "Network"),
 				DBGroupBy:     sets.NewString("Platform", "Network", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
@@ -320,20 +320,20 @@ func TestParseComponentReportRequest(t *testing.T) {
 				},
 				VariantCrossCompare: []string{"Architecture", "Topology"},
 			},
-			baseRelease: reqopts.RequestReleaseOptions{
-				Release: "4.15",
-				Start:   time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
-				End:     time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
+			baseRelease: reqopts.Release{
+				Name:  "4.15",
+				Start: time.Date(2024, time.February, 1, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, time.February, 28, 23, 59, 59, 0, time.UTC),
 			},
-			sampleRelease: reqopts.RequestReleaseOptions{
-				Release: "4.16",
-				Start:   time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
-				End:     time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
+			sampleRelease: reqopts.Release{
+				Name:  "4.16",
+				Start: time.Date(2024, time.April, 4, 0, 0, 5, 0, time.UTC),
+				End:   time.Date(2024, time.April, 11, 23, 59, 59, 0, time.UTC),
 			},
-			testIDOption: reqopts.RequestTestIdentificationOptions{
+			testIDOption: reqopts.TestIdentification{
 				RequestedVariants: map[string]string{},
 			},
-			advancedOption: reqopts.RequestAdvancedOptions{
+			advancedOption: reqopts.Advanced{
 				MinimumFailure:   3,
 				Confidence:       95,
 				PityFactor:       5,
@@ -349,7 +349,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			queryParams: [][]string{
 				{"view", "4.17-cross"},
 			},
-			variantOption: reqopts.RequestVariantOptions{
+			variantOption: reqopts.Variants{
 				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
 				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Suite", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
@@ -364,20 +364,20 @@ func TestParseComponentReportRequest(t *testing.T) {
 					"Topology":     {"single"},
 				},
 			},
-			baseRelease: reqopts.RequestReleaseOptions{
-				Release: "4.16",
-				Start:   time.Date(2024, time.May, 28, 0, 0, 0, 0, time.UTC),
-				End:     time.Date(2024, time.June, 27, 23, 59, 59, 0, time.UTC),
+			baseRelease: reqopts.Release{
+				Name:  "4.16",
+				Start: time.Date(2024, time.May, 28, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, time.June, 27, 23, 59, 59, 0, time.UTC),
 			},
-			sampleRelease: reqopts.RequestReleaseOptions{
-				Release: "4.17",
-				Start:   time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
-				End:     nowRoundUp,
+			sampleRelease: reqopts.Release{
+				Name:  "4.17",
+				Start: time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
+				End:   nowRoundUp,
 			},
-			testIDOption: reqopts.RequestTestIdentificationOptions{
+			testIDOption: reqopts.TestIdentification{
 				RequestedVariants: map[string]string{},
 			},
-			advancedOption: reqopts.RequestAdvancedOptions{
+			advancedOption: reqopts.Advanced{
 				MinimumFailure:   3,
 				Confidence:       95,
 				PityFactor:       5,

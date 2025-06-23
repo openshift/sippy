@@ -67,7 +67,7 @@ func (prs *PostgresRegressionStore) OpenRegression(view crtype.View, newRegresse
 
 	newRegression := &models.TestRegression{
 		View:        view.Name,
-		Release:     view.SampleRelease.Release,
+		Release:     view.SampleRelease.Name,
 		TestID:      newRegressedTest.TestID,
 		TestName:    newRegressedTest.TestName,
 		Opened:      time.Now(),
@@ -187,11 +187,11 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 }
 
 func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view crtype.View, rLog *log.Entry, report *crtype.ComponentReport) error {
-	regressions, err := rt.backend.ListCurrentRegressionsForRelease(view.SampleRelease.Release)
+	regressions, err := rt.backend.ListCurrentRegressionsForRelease(view.SampleRelease.Name)
 	if err != nil {
 		return err
 	}
-	rLog.Infof("loaded %d regressions from db for release %s", len(regressions), view.SampleRelease.Release)
+	rLog.Infof("loaded %d regressions from db for release %s", len(regressions), view.SampleRelease.Name)
 
 	// All regressed tests, both triaged and not:
 	allRegressedTests := []crtype.ReportTestSummary{}

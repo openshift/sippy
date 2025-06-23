@@ -29,12 +29,12 @@ type FallbackReleases struct {
 // View is a server side construct representing a predefined view over the component readiness data.
 // Useful for defining the primary view of what we deem required for considering the release ready.
 type View struct {
-	Name            string                                   `json:"name" yaml:"name"`
-	BaseRelease     reqopts.RequestRelativeReleaseOptions    `json:"base_release" yaml:"base_release"`
-	SampleRelease   reqopts.RequestRelativeReleaseOptions    `json:"sample_release" yaml:"sample_release"`
-	TestIDOption    reqopts.RequestTestIdentificationOptions `json:"test_id_options" yaml:"test_id_options"`
-	VariantOptions  reqopts.RequestVariantOptions            `json:"variant_options" yaml:"variant_options"`
-	AdvancedOptions reqopts.RequestAdvancedOptions           `json:"advanced_options" yaml:"advanced_options"`
+	Name            string                     `json:"name" yaml:"name"`
+	BaseRelease     reqopts.RelativeRelease    `json:"base_release" yaml:"base_release"`
+	SampleRelease   reqopts.RelativeRelease    `json:"sample_release" yaml:"sample_release"`
+	TestIDOption    reqopts.TestIdentification `json:"test_id_options" yaml:"test_id_options"`
+	VariantOptions  reqopts.Variants           `json:"variant_options" yaml:"variant_options"`
+	AdvancedOptions reqopts.Advanced           `json:"advanced_options" yaml:"advanced_options"`
 
 	Metrics            ViewMetrics            `json:"metrics" yaml:"metrics"`
 	RegressionTracking ViewRegressionTracking `json:"regression_tracking" yaml:"regression_tracking"`

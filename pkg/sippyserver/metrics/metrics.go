@@ -245,7 +245,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 
 	logger.Info("publishing metrics for view")
 
-	releaseStatus := getReleaseStatus(releases, view.SampleRelease.Release)
+	releaseStatus := getReleaseStatus(releases, view.SampleRelease.Name)
 	for _, row := range report.Rows {
 		totalRegressedTestsByComponent := 0
 		uniqueRegressedTestsByComponent := sets.NewString()
@@ -270,11 +270,11 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 			if !ok {
 				platLabel = ""
 			}
-			componentReadinessMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name,
+			componentReadinessMetric.WithLabelValues(view.SampleRelease.Name, releaseStatus, view.Name,
 				row.Component, networkLabel, archLabel, platLabel).Set(float64(col.Status))
 		}
-		componentReadinessTotalRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(totalRegressedTestsByComponent))
-		componentReadinessUniqueRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
+		componentReadinessTotalRegressionsMetric.WithLabelValues(view.SampleRelease.Name, releaseStatus, view.Name, row.Component).Set(float64(totalRegressedTestsByComponent))
+		componentReadinessUniqueRegressionsMetric.WithLabelValues(view.SampleRelease.Name, releaseStatus, view.Name, row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
 	}
 
 	return nil

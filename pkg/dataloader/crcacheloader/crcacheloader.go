@@ -100,7 +100,7 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 	rLog := log.WithField("view", view.Name)
 
 	rLog.Infof("priming cache for view")
-	generator, err := buildGenerator(view, releases, cacheOpts, []reqopts.RequestTestIdentificationOptions{{}}, bigQueryClient, dbc, config)
+	generator, err := buildGenerator(view, releases, cacheOpts, []reqopts.TestIdentification{{}}, bigQueryClient, dbc, config)
 	if err != nil {
 		return err
 	}
@@ -137,15 +137,15 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 		rLog.Infof("skipping test details report as no regressed tests are unresolved")
 		return nil
 	}
-	testIDOptions := []reqopts.RequestTestIdentificationOptions{}
+	testIDOptions := []reqopts.TestIdentification{}
 	for _, regressedTest := range regressedTestsToCache {
-		newTIDOpts := reqopts.RequestTestIdentificationOptions{
+		newTIDOpts := reqopts.TestIdentification{
 			TestID:            regressedTest.TestID,
 			RequestedVariants: regressedTest.Variants,
 			Component:         regressedTest.Component,
 			Capability:        regressedTest.Capability,
 		}
-		if regressedTest.BaseStats != nil && regressedTest.BaseStats.Release != view.BaseRelease.Release {
+		if regressedTest.BaseStats != nil && regressedTest.BaseStats.Release != view.BaseRelease.Name {
 			// releasefallback was enabled and this particular regressed test was using a prior
 			// release because it had a better pass rate.
 			newTIDOpts.BaseOverrideRelease = regressedTest.BaseStats.Release
@@ -178,17 +178,17 @@ func primeCacheForView(ctx context.Context, view crtype.View, releases []apiv1.R
 	for _, report := range tdReports {
 		// manipulate cache key per test options
 		genCacheKey := generator.GetCacheKey(ctx)
-		newTIDOpts := reqopts.RequestTestIdentificationOptions{
+		newTIDOpts := reqopts.TestIdentification{
 			TestID:            report.TestID,
 			RequestedVariants: report.Variants,
 			Component:         report.Component,
 			Capability:        report.Capability,
 		}
 		// If we overrode the base stats with a prior release, reflect this in our cache key:
-		if report.Analyses[0].BaseStats != nil && report.Analyses[0].BaseStats.Release != view.BaseRelease.Release {
+		if report.Analyses[0].BaseStats != nil && report.Analyses[0].BaseStats.Release != view.BaseRelease.Name {
 			newTIDOpts.BaseOverrideRelease = report.Analyses[0].BaseStats.Release
 		}
-		genCacheKey.TestIDOptions = []reqopts.RequestTestIdentificationOptions{newTIDOpts}
+		genCacheKey.TestIDOptions = []reqopts.TestIdentification{newTIDOpts}
 		tempKey := api.GetPrefixedCacheKey("TestDetailsReport~", genCacheKey)
 		cacheKey, err := tempKey.GetCacheKey()
 		if err != nil {
@@ -226,7 +226,7 @@ func buildGenerator(
 	view crtype.View,
 	releases []apiv1.Release,
 	cacheOpts cache.RequestOptions,
-	testIDOpts []reqopts.RequestTestIdentificationOptions,
+	testIDOpts []reqopts.TestIdentification,
 	bigQueryClient *bigquery.Client,
 	dbc *db.DB,
 	config *v1.SippyConfig) (*componentreadiness.ComponentReportGenerator, error) {

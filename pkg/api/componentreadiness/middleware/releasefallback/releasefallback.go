@@ -74,7 +74,7 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 			return
 		default:
 			// TODO: should we pass the same wg through rather than using another?
-			errs := r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Release, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
+			errs := r.getFallbackBaseQueryStatus(ctx, allJobVariants, r.reqOptions.BaseRelease.Name, r.reqOptions.BaseRelease.Start, r.reqOptions.BaseRelease.End)
 			if len(errs) > 0 {
 				for _, err := range errs {
 					errCh <- err
@@ -204,14 +204,14 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 	// We want to do one query per fallback release, for each test ID we fell back to that release for.
 	// First we sort each release to map to the tests we fell back to that release for.
 
-	releaseToTestIDOptions := map[string][]reqopts.RequestTestIdentificationOptions{}
+	releaseToTestIDOptions := map[string][]reqopts.TestIdentification{}
 	for _, testIDOpts := range r.reqOptions.TestIDOptions {
 		if testIDOpts.BaseOverrideRelease == "" {
 			// no fallback for this regressed test, so this middleware has no work to do
 			continue
 		}
 		if _, ok := releaseToTestIDOptions[testIDOpts.BaseOverrideRelease]; !ok {
-			releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = []reqopts.RequestTestIdentificationOptions{}
+			releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = []reqopts.TestIdentification{}
 		}
 		releaseToTestIDOptions[testIDOpts.BaseOverrideRelease] = append(releaseToTestIDOptions[testIDOpts.BaseOverrideRelease], testIDOpts)
 	}

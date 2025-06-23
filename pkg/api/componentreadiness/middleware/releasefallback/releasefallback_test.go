@@ -12,10 +12,10 @@ import (
 
 func Test_PreAnalysis(t *testing.T) {
 	reqOpts419 := reqopts.RequestOptions{
-		BaseRelease: reqopts.RequestReleaseOptions{
-			Release: "4.19",
+		BaseRelease: reqopts.Release{
+			Name: "4.19",
 		},
-		AdvancedOption: reqopts.RequestAdvancedOptions{IncludeMultiReleaseAnalysis: true},
+		AdvancedOption: reqopts.Advanced{IncludeMultiReleaseAnalysis: true},
 	}
 	test1ID := "test1ID"
 	test1Variants := map[string]string{

@@ -11,58 +11,58 @@ import (
 // which need to be serialized as part of caching the report results.
 
 // RequestOptions is a struct packaging all the options for a CR request.
-// BaseOverrideRelease is the counterpart to RequestAdvancedOptions.IncludeMultiReleaseAnalysis
+// BaseOverrideRelease is the counterpart to Advanced.IncludeMultiReleaseAnalysis
 // When multi release analysis is enabled we 'fallback' to the release that has the highest
 // threshold for indicating a regression.  If a release prior to the selected BaseRelease has a
 // higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
 type RequestOptions struct {
-	BaseRelease    RequestReleaseOptions
-	SampleRelease  RequestReleaseOptions
-	VariantOption  RequestVariantOptions
-	AdvancedOption RequestAdvancedOptions
+	BaseRelease    Release
+	SampleRelease  Release
+	VariantOption  Variants
+	AdvancedOption Advanced
 	CacheOption    cache.RequestOptions
-	// TODO: phase our once multi TestIDOptions is fully implemented
-	TestIDOptions []RequestTestIdentificationOptions
+	// TODO: phase out once multi TestIDOptions is fully implemented
+	TestIDOptions []TestIdentification
 }
 
-// PullRequestOptions specifies a specific pull request to use as the
+// PullRequest specifies a specific pull request to use as the
 // basis or (more often) sample for the report.
-type PullRequestOptions struct {
+type PullRequest struct {
 	Org      string
 	Repo     string
 	PRNumber string
 }
 
-// PayloadOptions specifies a specific payload tag to use as the
+// Payload specifies a specific payload tag to use as the
 // sample for the report. This is only used for sample, not basis.
-type PayloadOptions struct {
+type Payload struct {
 	Tag string
 }
 
-type RequestReleaseOptions struct {
-	Release            string              `json:"release" yaml:"release"`
-	PullRequestOptions *PullRequestOptions `json:"pull_request_options,omitempty" yaml:"pull_request_options,omitempty"`
-	PayloadOptions     *PayloadOptions     `json:"payload_options,omitempty" yaml:"payload_options,omitempty"`
-	Start              time.Time           `json:"start,omitempty" yaml:"start,omitempty"`
-	End                time.Time           `json:"end,omitempty" yaml:"end,omitempty"`
+type Release struct {
+	Name               string       `json:"release" yaml:"release"`
+	PullRequestOptions *PullRequest `json:"pull_request_options,omitempty" yaml:"pull_request_options,omitempty"`
+	PayloadOptions     *Payload     `json:"payload_options,omitempty" yaml:"payload_options,omitempty"`
+	Start              time.Time    `json:"start,omitempty" yaml:"start,omitempty"`
+	End                time.Time    `json:"end,omitempty" yaml:"end,omitempty"`
 }
 
-// RequestRelativeReleaseOptions is an unfortunate necessity for views where we do not have
+// RelativeRelease is an unfortunate necessity for views where we do not have
 // a fixed time, rather a relative time to now/ga. It is translated to the above normal struct before use.
 //
 // When returned in the API, it should include the concrete start/end calculated from relative
 // for the point in time when the request was made. This is used in the UI to pre-populate the
 // date picks to transition from view based to custom reporting.
-type RequestRelativeReleaseOptions struct {
-	RequestReleaseOptions `json:",inline" yaml:",inline"` //nolint:revive
+type RelativeRelease struct {
+	Release `json:",inline" yaml:",inline"` //nolint:revive
 	// inline is a known option
 	RelativeStart string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
 	RelativeEnd   string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
 }
 
-// RequestTestIdentificationOptions handles options used in the test details report when we focus in
+// TestIdentification handles options used in the test details report when we focus in
 // on a specific test and variants combo, typically because it is or was regressed.
-type RequestTestIdentificationOptions struct {
+type TestIdentification struct {
 	Component  string `json:"component,omitempty" yaml:"component,omitempty"`
 	Capability string `json:"capability,omitempty" yaml:"capability,omitempty"`
 	// TestID is a unique identification for the test defined in the DB.
@@ -74,7 +74,7 @@ type RequestTestIdentificationOptions struct {
 	BaseOverrideRelease string `json:"base_override_release,omitempty" yaml:"base_override_release,omitempty"`
 }
 
-func AnyAreBaseOverrides(opts []RequestTestIdentificationOptions) bool {
+func AnyAreBaseOverrides(opts []TestIdentification) bool {
 	for _, tid := range opts {
 		if tid.BaseOverrideRelease != "" {
 			return true
@@ -83,7 +83,7 @@ func AnyAreBaseOverrides(opts []RequestTestIdentificationOptions) bool {
 	return false
 }
 
-type RequestVariantOptions struct {
+type Variants struct {
 	ColumnGroupBy       sets.String         `json:"column_group_by" yaml:"column_group_by"`
 	DBGroupBy           sets.String         `json:"db_group_by" yaml:"db_group_by"`
 	IncludeVariants     map[string][]string `json:"include_variants" yaml:"include_variants"`
@@ -91,7 +91,7 @@ type RequestVariantOptions struct {
 	VariantCrossCompare []string            `json:"variant_cross_compare,omitempty" yaml:"variant_cross_compare,omitempty"`
 }
 
-type RequestAdvancedOptions struct {
+type Advanced struct {
 	MinimumFailure              int  `json:"minimum_failure" yaml:"minimum_failure"`
 	Confidence                  int  `json:"confidence" yaml:"confidence"`
 	PityFactor                  int  `json:"pity_factor" yaml:"pity_factor"`

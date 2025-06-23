@@ -47,14 +47,14 @@ func ParseComponentReportRequest(
 			return
 		}
 	} else {
-		opts.BaseRelease.Release = param.SafeRead(req, "baseRelease")
-		if opts.BaseRelease.Release == "" {
+		opts.BaseRelease.Name = param.SafeRead(req, "baseRelease")
+		if opts.BaseRelease.Name == "" {
 			err = fmt.Errorf("missing baseRelease")
 			return
 		}
 
-		opts.SampleRelease.Release = param.SafeRead(req, "sampleRelease")
-		if opts.SampleRelease.Release == "" {
+		opts.SampleRelease.Name = param.SafeRead(req, "sampleRelease")
+		if opts.SampleRelease.Name == "" {
 			err = fmt.Errorf("missing sampleRelease")
 			return
 		}
@@ -85,7 +85,7 @@ func ParseComponentReportRequest(
 	// Params below this point can be used with and without views:
 	// TODO: leave nil for safer cache keys if params not set, sync with metrics and primecache.go
 	// TODO: unit test that metrics and primecache cache keys match a request object here
-	opts.TestIDOptions = []reqopts.RequestTestIdentificationOptions{
+	opts.TestIDOptions = []reqopts.TestIdentification{
 		{
 			// these are semi-freeform and only used in lookup keys, so don't need validation
 			Component:  req.URL.Query().Get("component"),
@@ -104,7 +104,7 @@ func ParseComponentReportRequest(
 					// found the release so update if not already set
 					// if it is already the base release we don't update
 					// change dates
-					if opts.BaseRelease.Release != testBasisRelease {
+					if opts.BaseRelease.Name != testBasisRelease {
 						opts.TestIDOptions[0].BaseOverrideRelease = testBasisRelease
 					}
 					break
@@ -169,25 +169,25 @@ func getRequestedView(req *http.Request, views []crtype.View) (*crtype.View, err
 func GetViewReleaseOptions(
 	releases []v1.Release,
 	releaseType string,
-	viewRelease reqopts.RequestRelativeReleaseOptions,
+	viewRelease reqopts.RelativeRelease,
 	roundingFactor time.Duration,
-) (reqopts.RequestReleaseOptions, error) {
+) (reqopts.Release, error) {
 
 	var err error
-	opts := reqopts.RequestReleaseOptions{Release: viewRelease.Release}
-	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeStart, true, nil, roundingFactor)
+	opts := reqopts.Release{Name: viewRelease.Name}
+	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeStart, true, nil, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
 	}
-	opts.End, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeEnd, false, nil, roundingFactor)
+	opts.End, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
 	}
 	return opts, nil
 }
 
-func parsePROptions(req *http.Request) *reqopts.PullRequestOptions {
-	pro := reqopts.PullRequestOptions{
+func parsePROptions(req *http.Request) *reqopts.PullRequest {
+	pro := reqopts.PullRequest{
 		Org:      param.SafeRead(req, "samplePROrg"),
 		Repo:     param.SafeRead(req, "samplePRRepo"),
 		PRNumber: param.SafeRead(req, "samplePRNumber"),
@@ -198,8 +198,8 @@ func parsePROptions(req *http.Request) *reqopts.PullRequestOptions {
 	return &pro
 }
 
-func parsePayloadOptions(req *http.Request) *reqopts.PayloadOptions {
-	po := reqopts.PayloadOptions{
+func parsePayloadOptions(req *http.Request) *reqopts.Payload {
+	po := reqopts.Payload{
 		Tag: param.SafeRead(req, "samplePayloadTag"),
 	}
 	if po.Tag == "" {
@@ -208,7 +208,7 @@ func parsePayloadOptions(req *http.Request) *reqopts.PayloadOptions {
 	return &po
 }
 
-func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts reqopts.RequestVariantOptions, err error) {
+func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts reqopts.Variants, err error) {
 	columnGroupBy := req.URL.Query().Get("columnGroupBy")
 	opts.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
 	if err != nil {
@@ -297,7 +297,7 @@ func ParseBoolArg(req *http.Request, name string, defaultVal bool) (bool, error)
 	return val, nil
 }
 
-func parseAdvancedOptions(req *http.Request) (advancedOption reqopts.RequestAdvancedOptions, err error) {
+func parseAdvancedOptions(req *http.Request) (advancedOption reqopts.Advanced, err error) {
 	advancedOption.Confidence, err = ParseIntArg(req, "confidence", 95,
 		func(v int) bool { return v >= 0 && v <= 100 })
 	if err != nil {
@@ -352,20 +352,20 @@ func parseAdvancedOptions(req *http.Request) (advancedOption reqopts.RequestAdva
 }
 
 func parseDateRange(allReleases []v1.Release, req *http.Request,
-	releaseOpts reqopts.RequestReleaseOptions,
+	releaseOpts reqopts.Release,
 	startName string, endName string,
 	roundingFactor time.Duration,
-) (reqopts.RequestReleaseOptions, error) {
+) (reqopts.Release, error) {
 	var err error
 
 	timeStr := req.URL.Query().Get(startName)
-	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, true, nil, roundingFactor)
+	releaseOpts.Start, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, true, nil, roundingFactor)
 	if err != nil {
 		return releaseOpts, errors.New(startName + " in wrong format")
 	}
 
 	timeStr = req.URL.Query().Get(endName)
-	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Release, timeStr, false, nil, roundingFactor)
+	releaseOpts.End, err = util.ParseCRReleaseTime(allReleases, releaseOpts.Name, timeStr, false, nil, roundingFactor)
 	if err != nil {
 		return releaseOpts, errors.New(endName + " in wrong format")
 	}
