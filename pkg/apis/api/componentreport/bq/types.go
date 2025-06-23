@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"time"
 
-	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 )
@@ -72,19 +71,4 @@ type JobVariant struct {
 type Variant struct {
 	Key   string `bigquery:"key" json:"key"`
 	Value string `bigquery:"value" json:"value"`
-}
-
-// TODO: temporary for migration
-type TestRegressionBigQuery struct {
-	// Snapshot is the time at which the full set of regressions for all releases was inserted into the db.
-	// When querying we use only those with the latest snapshot time.
-	Snapshot     time.Time              `bigquery:"snapshot" json:"snapshot"`
-	View         string                 `bigquery:"view" json:"view"`
-	Release      string                 `bigquery:"release" json:"release"`
-	TestID       string                 `bigquery:"test_id" json:"test_id"`
-	TestName     string                 `bigquery:"test_name" json:"test_name"`
-	RegressionID string                 `bigquery:"regression_id" json:"regression_id"`
-	Opened       time.Time              `bigquery:"opened" json:"opened"`
-	Closed       bigquery.NullTimestamp `bigquery:"closed" json:"closed"`
-	Variants     []Variant              `bigquery:"variants" json:"variants"`
 }

@@ -13,8 +13,6 @@ type Release struct {
 	Start   *time.Time
 }
 
-//nolint:revive
-
 type ComponentReport struct {
 	Rows        []ReportRow `json:"rows,omitempty"`
 	GeneratedAt *time.Time  `json:"generated_at"`
@@ -36,5 +34,3 @@ type ReportTestSummary struct {
 	crtest.Identification
 	testdetails.TestComparison
 }
-
-type ReportResponse []ReportRow
