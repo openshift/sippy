@@ -87,8 +87,8 @@ func Test_PreAnalysis(t *testing.T) {
 		testKey          crtest.Identification
 		reqOpts          reqopts.RequestOptions
 		regressionGetter func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
-		testStatus       *testdetails.ReportTestStats
-		expectedStatus   *testdetails.ReportTestStats
+		testStatus       *testdetails.TestComparison
+		expectedStatus   *testdetails.TestComparison
 	}{
 		{
 			name:             "swap base stats using regression allowance",
@@ -160,10 +160,10 @@ func maskFLOPError(f1, f2 *float64) {
 	}
 }
 
-func buildTestStatus(total, success, flake int, baseRelease string) *testdetails.ReportTestStats {
+func buildTestStatus(total, success, flake int, baseRelease string) *testdetails.TestComparison {
 	fails := total - success - flake
-	ts := &testdetails.ReportTestStats{
-		BaseStats: &testdetails.TestDetailsReleaseStats{
+	ts := &testdetails.TestComparison{
+		BaseStats: &testdetails.ReleaseStats{
 			Release: baseRelease,
 			Stats: crtest.Stats{
 				FailureCount: fails,
@@ -177,13 +177,13 @@ func buildTestStatus(total, success, flake int, baseRelease string) *testdetails
 }
 
 //nolint:unparam
-func buildTestStatus2(total, success, flake int, baseRelease, sampleRelease string, regressed int, pityAdjust, passRateAdjust float64) *testdetails.ReportTestStats {
+func buildTestStatus2(total, success, flake int, baseRelease, sampleRelease string, regressed int, pityAdjust, passRateAdjust float64) *testdetails.TestComparison {
 	fails := total - success - flake
 	ts := buildTestStatus(total, success, flake, baseRelease) // set up the base stats as before
 
 	fails += regressed // set up sample stats as base with regressed included
 	success -= regressed
-	ts.SampleStats = testdetails.TestDetailsReleaseStats{
+	ts.SampleStats = testdetails.ReleaseStats{
 		Release: sampleRelease,
 		Stats: crtest.Stats{
 			FailureCount: fails,

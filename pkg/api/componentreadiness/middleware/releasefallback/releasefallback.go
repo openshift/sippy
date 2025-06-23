@@ -62,7 +62,7 @@ type ReleaseFallback struct {
 	baseOverrideMutex  sync.Mutex // Mutex to protect the map
 }
 
-func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, report *testdetails.ReportTestStats) error {
+func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, report *testdetails.TestComparison) error {
 	return nil
 }
 
@@ -89,7 +89,7 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 
 // PreAnalysis looks for a better pass rate across our fallback releases for the given test stats.
 // It then swaps them out and leaves an explanation before handing back to the core for analysis.
-func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *testdetails.ReportTestStats) error {
+func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	// Nothing to do for tests without a basis, i.e. new tests.
 	if testStats.BaseStats == nil {
 		return nil
@@ -148,7 +148,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *
 			if cTestStats.SuccessRate > basePassRate {
 				// We've found a better pass rate in a prior release with enough runs to qualify.
 				// Adjust the stats and keep looking for an even better one.
-				testStats.BaseStats = &testdetails.TestDetailsReleaseStats{
+				testStats.BaseStats = &testdetails.ReleaseStats{
 					Release: priorRelease,
 					Start:   cachedReleaseTestStatuses.Start,
 					End:     cachedReleaseTestStatuses.End,
@@ -167,7 +167,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *
 	return nil
 }
 
-func (r *ReleaseFallback) PostAnalysis(testKey crtest.Identification, testStats *testdetails.ReportTestStats) error {
+func (r *ReleaseFallback) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	return nil
 }
 
@@ -303,7 +303,7 @@ func (r *ReleaseFallback) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants,
 	return nil
 }
 
-func (r *ReleaseFallback) TestDetailsAnalyze(report *testdetails.ReportTestDetails) error {
+func (r *ReleaseFallback) TestDetailsAnalyze(report *testdetails.Report) error {
 	return nil
 }
 

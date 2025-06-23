@@ -32,9 +32,9 @@ type ReportColumn struct {
 }
 
 type ReportTestSummary struct {
-	// TODO: really feels like this could just be moved  ReportTestStats, eliminating the need for ReportTestSummary
+	// TODO: really feels like this could just be moved  TestComparison, eliminating the need for ReportTestSummary
 	crtest.Identification
-	testdetails.ReportTestStats
+	testdetails.TestComparison
 }
 
 type ReportResponse []ReportRow

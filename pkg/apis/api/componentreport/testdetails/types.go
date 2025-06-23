@@ -9,11 +9,11 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
-// ReportTestStats is an overview struct for a particular regressed test's stats.
+// TestComparison is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
 // Important type returned by the API.
 // TODO: compare with TestStatus we use internally, see if we can converge?
-type ReportTestStats struct {
+type TestComparison struct {
 	// ReportStatus is an integer representing the severity of the regression.
 	ReportStatus crtest.Status `json:"status"`
 
@@ -23,7 +23,7 @@ type ReportTestStats struct {
 	// Explanations are human-readable details of why this test was marked regressed.
 	Explanations []string `json:"explanations"`
 
-	SampleStats TestDetailsReleaseStats `json:"sample_stats"`
+	SampleStats ReleaseStats `json:"sample_stats"`
 
 	// RequiredConfidence is the confidence required from Fishers to consider a regression.
 	// Typically, it is as defined in the request options, but middleware may choose to adjust.
@@ -42,7 +42,7 @@ type ReportTestStats struct {
 	FisherExact *float64 `json:"fisher_exact,omitempty"`
 
 	// BaseStats may not be present in the response, i.e. new tests regressed because of their pass rate.
-	BaseStats *TestDetailsReleaseStats `json:"base_stats,omitempty"`
+	BaseStats *ReleaseStats `json:"base_stats,omitempty"`
 
 	// LastFailure is the last time the regressed test failed.
 	LastFailure *time.Time `json:"last_failure"`
@@ -52,15 +52,15 @@ type ReportTestStats struct {
 	Regression *models.TestRegression `json:"regression,omitempty"`
 }
 
-// TestDetailsAnalysis is a collection of stats for the report which could potentially carry
+// Analysis is a collection of stats for the report which could potentially carry
 // multiple different analyses run.
-type TestDetailsAnalysis struct {
-	ReportTestStats
-	JobStats []TestDetailsJobStats `json:"job_stats,omitempty"`
+type Analysis struct {
+	TestComparison
+	JobStats []JobStats `json:"job_stats,omitempty"`
 }
 
-// ReportTestDetails is the top level API response for test details reports.
-type ReportTestDetails struct {
+// Report is the top level API response for test details reports.
+type Report struct {
 	crtest.Identification
 	JiraComponent   string     `json:"jira_component"`
 	JiraComponentID *big.Rat   `json:"jira_component_id"`
@@ -71,28 +71,28 @@ type ReportTestDetails struct {
 	// Callers can assume that the first in the list is somewhat authoritative, and should
 	// be displayed by default, but each analysis offers details and explanations on it's outcome
 	// and can be used in some capacity.
-	Analyses []TestDetailsAnalysis `json:"analyses"`
+	Analyses []Analysis `json:"analyses"`
 }
 
-type TestDetailsReleaseStats struct {
+type ReleaseStats struct {
 	Release string `json:"release"`
 	Start   *time.Time
 	End     *time.Time
 	crtest.Stats
 }
 
-type TestDetailsJobStats struct {
+type JobStats struct {
 	// one of sample/base job name could be missing if jobs change between releases
-	SampleJobName     string                   `json:"sample_job_name,omitempty"`
-	BaseJobName       string                   `json:"base_job_name,omitempty"`
-	SampleStats       crtest.Stats             `json:"sample_stats"`
-	BaseStats         crtest.Stats             `json:"base_stats"`
-	SampleJobRunStats []TestDetailsJobRunStats `json:"sample_job_run_stats,omitempty"`
-	BaseJobRunStats   []TestDetailsJobRunStats `json:"base_job_run_stats,omitempty"`
-	Significant       bool                     `json:"significant"`
+	SampleJobName     string        `json:"sample_job_name,omitempty"`
+	BaseJobName       string        `json:"base_job_name,omitempty"`
+	SampleStats       crtest.Stats  `json:"sample_stats"`
+	BaseStats         crtest.Stats  `json:"base_stats"`
+	SampleJobRunStats []JobRunStats `json:"sample_job_run_stats,omitempty"`
+	BaseJobRunStats   []JobRunStats `json:"base_job_run_stats,omitempty"`
+	Significant       bool          `json:"significant"`
 }
 
-type TestDetailsJobRunStats struct {
+type JobRunStats struct {
 	JobURL    string         `json:"job_url"`
 	JobRunID  string         `json:"job_run_id"`
 	StartTime civil.DateTime `json:"start_time"`

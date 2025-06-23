@@ -76,7 +76,7 @@ func (r *RegressionTracker) ensureRegressionsLoaded() error {
 	return nil
 }
 
-func (r *RegressionTracker) PreAnalysis(testKey crtest.Identification, testStats *testdetails.ReportTestStats) error {
+func (r *RegressionTracker) PreAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	if len(r.openRegressions) > 0 {
 		view := r.openRegressions[0].View // grab view from first regression, they were queried only for sample release
 		or := FindOpenRegression(view, testKey.TestID, testKey.Variants, r.openRegressions)
@@ -100,7 +100,7 @@ func (r *RegressionTracker) PreAnalysis(testKey crtest.Identification, testStats
 }
 
 // PostAnalysis adjusts status code (and thus icons) based on the triaged state of open regressions.
-func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStats *testdetails.ReportTestStats) error {
+func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	if testStats.ReportStatus > crtest.SignificantTriagedRegression {
 		// no need to adjust status for triage if this is no longer a regression
 		return nil

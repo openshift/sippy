@@ -56,14 +56,14 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 	daysAgo2 := time.Now().UTC().Add(-2 * 24 * time.Hour)
 	tests := []struct {
 		name                      string
-		testStats                 testdetails.ReportTestStats
+		testStats                 testdetails.TestComparison
 		openRegression            models.TestRegression
 		expectStatus              crtest.Status
 		expectedExplanationsCount int
 	}{
 		{
 			name: "triaged regression",
-			testStats: testdetails.ReportTestStats{
+			testStats: testdetails.TestComparison{
 				ReportStatus: crtest.ExtremeRegression,
 				Explanations: []string{},
 				LastFailure:  &daysAgo4,
@@ -97,7 +97,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 		},
 		{
 			name: "triage resolved waiting to clear",
-			testStats: testdetails.ReportTestStats{
+			testStats: testdetails.TestComparison{
 				ReportStatus: crtest.ExtremeRegression,
 				Explanations: []string{},
 				LastFailure:  &daysAgo4,
@@ -134,7 +134,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 		},
 		{
 			name: "triage resolved but has failed since",
-			testStats: testdetails.ReportTestStats{
+			testStats: testdetails.TestComparison{
 				ReportStatus: crtest.ExtremeRegression,
 				Explanations: []string{},
 				LastFailure:  &daysAgo2,
@@ -171,7 +171,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 		},
 		{
 			name: "triage resolved and has cleared entirely",
-			testStats: testdetails.ReportTestStats{
+			testStats: testdetails.TestComparison{
 				ReportStatus: crtest.SignificantImprovement,
 				Explanations: []string{},
 				LastFailure:  nil,
@@ -208,7 +208,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 		},
 		{
 			name: "triage resolved no longer significant but failures since resolution time",
-			testStats: testdetails.ReportTestStats{
+			testStats: testdetails.TestComparison{
 				ReportStatus: crtest.NotSignificant,
 				Explanations: []string{},
 				LastFailure:  &daysAgo2,
