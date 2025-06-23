@@ -7,12 +7,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 )
 
-type Release struct {
-	Release string
-	End     *time.Time
-	Start   *time.Time
-}
-
 type ComponentReport struct {
 	Rows        []ReportRow `json:"rows,omitempty"`
 	GeneratedAt *time.Time  `json:"generated_at"`

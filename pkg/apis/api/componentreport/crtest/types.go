@@ -1,6 +1,9 @@
 package crtest
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 type ColumnID string
 
@@ -98,4 +101,10 @@ func (t KeyWithVariants) KeyOrDie() string {
 		panic(err)
 	}
 	return string(testIDBytes)
+}
+
+type Release struct {
+	Release string
+	End     *time.Time
+	Start   *time.Time
 }

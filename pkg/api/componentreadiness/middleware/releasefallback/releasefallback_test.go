@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -49,7 +48,7 @@ func Test_PreAnalysis(t *testing.T) {
 	// 4.19 will be our assumed requested base release, which may trigger fallback to 4.18 or 4.17 in these tests
 	start419 := time.Date(2025, 3, 2, 0, 0, 0, 0, time.UTC)
 	end419 := time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC)
-	release419 := crtype.Release{
+	release419 := crtest.Release{
 		Release: "4.19",
 		Start:   &start419,
 		End:     &end419,
@@ -57,7 +56,7 @@ func Test_PreAnalysis(t *testing.T) {
 
 	start418 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 	end418 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	release418 := crtype.Release{
+	release418 := crtest.Release{
 		Release: "4.18",
 		Start:   &start418,
 		End:     &end418,
@@ -71,7 +70,7 @@ func Test_PreAnalysis(t *testing.T) {
 
 	start417 := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
 	end417 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	release417 := crtype.Release{
+	release417 := crtest.Release{
 		Release: "4.17",
 		Start:   &start417,
 		End:     &end417,
@@ -169,7 +168,7 @@ func Test_PreAnalysis(t *testing.T) {
 func TestCalculateFallbackReleases(t *testing.T) {
 	start419 := time.Date(2025, 3, 2, 0, 0, 0, 0, time.UTC)
 	end419 := time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC)
-	release419 := crtype.Release{
+	release419 := crtest.Release{
 		Release: "4.19",
 		Start:   &start419,
 		End:     &end419,
@@ -177,7 +176,7 @@ func TestCalculateFallbackReleases(t *testing.T) {
 
 	start418 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 	end418 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	release418 := crtype.Release{
+	release418 := crtest.Release{
 		Release: "4.18",
 		Start:   &start418,
 		End:     &end418,
@@ -185,7 +184,7 @@ func TestCalculateFallbackReleases(t *testing.T) {
 
 	start417 := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
 	end417 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	release417 := crtype.Release{
+	release417 := crtest.Release{
 		Release: "4.17",
 		Start:   &start417,
 		End:     &end417,
@@ -193,14 +192,14 @@ func TestCalculateFallbackReleases(t *testing.T) {
 
 	start416 := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
 	end416 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	release416 := crtype.Release{
+	release416 := crtest.Release{
 		Release: "4.16",
 		Start:   &start416,
 		End:     &end416,
 	}
 
-	allReleases := []crtype.Release{release419, release418, release417, release416}
-	expectedReleases := []crtype.Release{release419, release418, release417}
+	allReleases := []crtest.Release{release419, release418, release417, release416}
+	expectedReleases := []crtest.Release{release419, release418, release417}
 
 	fallbackReleases := calculateFallbackReleases("4.20", allReleases)
 	for i := range expectedReleases {
@@ -226,7 +225,7 @@ func buildTestStatus(testName string, variants []string, total, success, flake i
 	}
 }
 
-func buildTestStats(total, success int, baseRelease crtype.Release, explanations []string) *testdetails.TestComparison {
+func buildTestStats(total, success int, baseRelease crtest.Release, explanations []string) *testdetails.TestComparison {
 	fails := total - success
 	ts := &testdetails.TestComparison{
 		BaseStats: &testdetails.ReleaseStats{

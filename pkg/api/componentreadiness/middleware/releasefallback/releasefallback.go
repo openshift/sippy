@@ -18,7 +18,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 )
@@ -371,7 +370,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 		}
 
 		wg.Add(1)
-		go func(queryRelease crtype.Release, queryStart, queryEnd time.Time) {
+		go func(queryRelease crtest.Release, queryStart, queryEnd time.Time) {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
@@ -393,13 +392,13 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 	return &f.CachedFallbackTestStatuses, nil
 }
 
-func calculateFallbackReleases(startingRelease string, releases []crtype.Release) []*crtype.Release {
-	var selectedReleases []*crtype.Release
+func calculateFallbackReleases(startingRelease string, releases []crtest.Release) []*crtest.Release {
+	var selectedReleases []*crtest.Release
 	fallbackRelease := startingRelease
 
 	// Get up to 3 fallback releases
 	for i := 0; i < 3; i++ {
-		var crRelease *crtype.Release
+		var crRelease *crtest.Release
 
 		var err error
 		fallbackRelease, err = utils.PreviousRelease(fallbackRelease)
@@ -422,7 +421,7 @@ func calculateFallbackReleases(startingRelease string, releases []crtype.Release
 	return selectedReleases
 }
 
-func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtype.Release, updateStatuses map[string]bq.TestStatus) {
+func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtest.Release, updateStatuses map[string]bq.TestStatus) {
 
 	var testStatuses ReleaseTestMap
 	var ok bool
@@ -527,7 +526,7 @@ func newFallbackReleases() FallbackReleases {
 }
 
 type ReleaseTestMap struct {
-	crtype.Release
+	crtest.Release
 	Tests map[string]bq.TestStatus
 }
 
