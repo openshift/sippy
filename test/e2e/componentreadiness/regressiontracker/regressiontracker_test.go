@@ -31,7 +31,7 @@ func Test_RegressionTracker(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
 	newRegression := componentreport.ReportTestSummary{
-		ReportTestIdentification: crtest.ReportTestIdentification{
+		Identification: crtest.Identification{
 			RowIdentification: crtest.RowIdentification{
 				Component:  "comp",
 				Capability: "cap",

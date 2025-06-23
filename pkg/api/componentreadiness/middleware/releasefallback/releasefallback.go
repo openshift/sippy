@@ -87,12 +87,12 @@ func (r *ReleaseFallback) Query(ctx context.Context, wg *sync.WaitGroup, allJobV
 
 // PreAnalysis looks for a better pass rate across our fallback releases for the given test stats.
 // It then swaps them out and leaves an explanation before handing back to the core for analysis.
-func (r *ReleaseFallback) PreAnalysis(testKey crtest.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *crtype.ReportTestStats) error {
 	// Nothing to do for tests without a basis, i.e. new tests.
 	if testStats.BaseStats == nil {
 		return nil
 	}
-	testIDVariantsKey := crtest.TestWithVariantsKey{
+	testIDVariantsKey := crtest.KeyWithVariants{
 		TestID:   testKey.TestID,
 		Variants: testKey.Variants,
 	}
@@ -147,10 +147,10 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.ReportTestIdentification, t
 				// We've found a better pass rate in a prior release with enough runs to qualify.
 				// Adjust the stats and keep looking for an even better one.
 				testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-					Release:              priorRelease,
-					Start:                cachedReleaseTestStatuses.Start,
-					End:                  cachedReleaseTestStatuses.End,
-					TestDetailsTestStats: cTestStats,
+					Release: priorRelease,
+					Start:   cachedReleaseTestStatuses.Start,
+					End:     cachedReleaseTestStatuses.End,
+					Stats:   cTestStats,
 				}
 				swappedExplanation = fmt.Sprintf("Overrode base stats (%.4f) using release %s (%.4f)",
 					basePassRate, testStats.BaseStats.Release, cTestStats.SuccessRate)
@@ -165,7 +165,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.ReportTestIdentification, t
 	return nil
 }
 
-func (r *ReleaseFallback) PostAnalysis(testKey crtest.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *ReleaseFallback) PostAnalysis(testKey crtest.Identification, testStats *crtype.ReportTestStats) error {
 	return nil
 }
 
@@ -292,7 +292,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 
 }
 
-func (r *ReleaseFallback) PreTestDetailsAnalysis(testKey crtest.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error {
+func (r *ReleaseFallback) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crtype.TestJobRunStatuses) error {
 	// Add our baseOverrideStatus to the report, unfortunate hack we have to live with for now.
 	testKeyStr := testKey.KeyOrDie()
 	if _, ok := r.baseOverrideStatus[testKeyStr]; ok {

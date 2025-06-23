@@ -62,7 +62,7 @@ func Test_PreAnalysis(t *testing.T) {
 	reqOpts420Fallback.SampleRelease.Name = "4.20"
 	reqOpts420Fallback.BaseRelease.Name = "4.19"
 
-	test1Key := crtest.ReportTestIdentification{
+	test1Key := crtest.Identification{
 		RowIdentification: crtest.RowIdentification{
 			TestName: "test 1",
 			TestID:   test1ID,
@@ -72,7 +72,7 @@ func Test_PreAnalysis(t *testing.T) {
 		},
 	}
 
-	test2Key := crtest.ReportTestIdentification{
+	test2Key := crtest.Identification{
 		RowIdentification: crtest.RowIdentification{
 			TestName: "test 2",
 			TestID:   test2ID,
@@ -84,7 +84,7 @@ func Test_PreAnalysis(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		testKey          crtest.ReportTestIdentification
+		testKey          crtest.Identification
 		reqOpts          reqopts.RequestOptions
 		regressionGetter func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
 		testStatus       *crtype.ReportTestStats
@@ -165,7 +165,7 @@ func buildTestStatus(total, success, flake int, baseRelease string) *crtype.Repo
 	ts := &crtype.ReportTestStats{
 		BaseStats: &crtype.TestDetailsReleaseStats{
 			Release: baseRelease,
-			TestDetailsTestStats: crtest.TestDetailsTestStats{
+			Stats: crtest.Stats{
 				FailureCount: fails,
 				SuccessCount: success,
 				FlakeCount:   flake,
@@ -185,7 +185,7 @@ func buildTestStatus2(total, success, flake int, baseRelease, sampleRelease stri
 	success -= regressed
 	ts.SampleStats = crtype.TestDetailsReleaseStats{
 		Release: sampleRelease,
-		TestDetailsTestStats: crtest.TestDetailsTestStats{
+		Stats: crtest.Stats{
 			FailureCount: fails,
 			SuccessCount: success,
 			FlakeCount:   flake,

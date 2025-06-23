@@ -294,7 +294,7 @@ func Test_TriageRawDB(t *testing.T) {
 
 func createTestRegression(t *testing.T, tracker componentreadiness.RegressionStore, view crview.View, testID string) *models.TestRegression {
 	newRegression := componentreport.ReportTestSummary{
-		ReportTestIdentification: crtest.ReportTestIdentification{
+		Identification: crtest.Identification{
 			RowIdentification: crtest.RowIdentification{
 				Component:  "comp",
 				Capability: "cap",

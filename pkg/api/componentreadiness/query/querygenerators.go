@@ -633,7 +633,7 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 	// INFO[2024-04-22T13:31:23.124-03:00] jira_component_id = 12367602000000000/1000000000
 	// INFO[2024-04-22T13:31:23.124-03:00] test_name = [sig-storage] [Serial] Volume metrics Ephemeral should create volume metrics in Volume Manager [Suite:openshift/conformance/serial] [Suite:k8s]
 	// INFO[2024-04-22T13:31:23.124-03:00] test_suite = openshift-tests
-	tid := crtest.TestWithVariantsKey{
+	tid := crtest.KeyWithVariants{
 		Variants: map[string]string{},
 	}
 	cts := crtype.TestStatus{}
@@ -935,7 +935,7 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 	}
 
 	cts := crtype.TestJobRunRows{
-		TestKey: crtest.TestWithVariantsKey{Variants: map[string]string{}},
+		TestKey: crtest.KeyWithVariants{Variants: map[string]string{}},
 	}
 	for i, fieldSchema := range schema {
 		col := fieldSchema.Name

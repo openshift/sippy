@@ -18,7 +18,7 @@ import (
 func TestRegressionTracker_PostAnalysis(t *testing.T) {
 	baseRelease := "4.19"
 	sampleRelease := "4.18"
-	testKey := crtest.ReportTestIdentification{
+	testKey := crtest.Identification{
 		RowIdentification: crtest.RowIdentification{
 			Component:  "foo",
 			Capability: "bar",

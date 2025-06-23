@@ -21,7 +21,7 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-func fakeComponentAndCapabilityGetter(test crtest.TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
+func fakeComponentAndCapabilityGetter(test crtest.KeyWithVariants, stats crtype.TestStatus) (string, []string) {
 	name := stats.TestName
 	known := map[string]struct {
 		component    string
@@ -167,7 +167,7 @@ func filterColumnIDByDefault(id crtest.ColumnIdentification) crtest.ColumnIdenti
 }
 
 func TestGenerateComponentReport(t *testing.T) {
-	awsAMD64OVNTest := crtest.TestWithVariantsKey{
+	awsAMD64OVNTest := crtest.KeyWithVariants{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -184,7 +184,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64OVNTest")
 	}
-	awsAMD64SDNTest := crtest.TestWithVariantsKey{
+	awsAMD64SDNTest := crtest.KeyWithVariants{
 		TestID: "2",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -201,7 +201,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64SDNTest")
 	}
-	awsAMD64SDNInstallerUPITest := crtest.TestWithVariantsKey{
+	awsAMD64SDNInstallerUPITest := crtest.KeyWithVariants{
 		TestID: "2",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -218,7 +218,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64SDNInstallerUPITest")
 	}
-	awsAMD64OVN2Test := crtest.TestWithVariantsKey{
+	awsAMD64OVN2Test := crtest.KeyWithVariants{
 		TestID: "3",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -231,7 +231,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	if err != nil {
 		assert.NoError(t, err, "error marshalling awsAMD64OVN2Test")
 	}
-	awsAMD64OVNInstallerIPITest := crtest.TestWithVariantsKey{
+	awsAMD64OVNInstallerIPITest := crtest.KeyWithVariants{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -251,7 +251,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNBaseTestStats90Percent := crtype.TestStatus{
 		TestName: "test 1",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
 			SuccessCount: 900,
@@ -260,7 +260,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNBaseTestStats50Percent := crtype.TestStatus{
 		TestName: "test 1",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
 			SuccessCount: 500,
@@ -269,7 +269,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNBaseTestStatsVariants90Percent := crtype.TestStatus{
 		TestName: "test 1",
 		Variants: []string{"standard", "fips"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
 			SuccessCount: 900,
@@ -278,7 +278,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNSampleTestStats90Percent := crtype.TestStatus{
 		TestName: "test 1",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
 			SuccessCount: 90,
@@ -287,7 +287,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNSampleTestStats85Percent := crtype.TestStatus{
 		TestName: "test 1",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
 			SuccessCount: 85,
@@ -296,7 +296,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNSampleTestStats50Percent := crtype.TestStatus{
 		TestName: "test 1",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
 			SuccessCount: 50,
@@ -305,7 +305,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNSampleTestStatsTiny := crtype.TestStatus{
 		TestName: "test 1",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   3,
 			FlakeCount:   0,
 			SuccessCount: 1,
@@ -314,7 +314,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVNSampleTestStatsVariants90Percent := crtype.TestStatus{
 		TestName: "test 1",
 		Variants: []string{"standard", "fips"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
 			SuccessCount: 90,
@@ -323,7 +323,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64SDNBaseTestStats90Percent := crtype.TestStatus{
 		TestName: "test 2",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
 			SuccessCount: 900,
@@ -332,7 +332,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64SDNBaseTestStats50Percent := crtype.TestStatus{
 		TestName: "test 2",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
 			SuccessCount: 500,
@@ -341,7 +341,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64SDNSampleTestStats90Percent := crtype.TestStatus{
 		TestName: "test 2",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
 			SuccessCount: 90,
@@ -350,7 +350,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVN2BaseTestStats90Percent := crtype.TestStatus{
 		TestName: "test 3",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   1000,
 			FlakeCount:   10,
 			SuccessCount: 900,
@@ -359,7 +359,7 @@ func TestGenerateComponentReport(t *testing.T) {
 	awsAMD64OVN2SampleTestStats80Percent := crtype.TestStatus{
 		TestName: "test 3",
 		Variants: []string{"standard"},
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   100,
 			FlakeCount:   1,
 			SuccessCount: 80,
@@ -516,7 +516,7 @@ func TestGenerateComponentReport(t *testing.T) {
 								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: awsAMD64OVNBaseTestStats90Percent.TestName,
 												TestID:   awsAMD64OVNTest.TestID,
@@ -536,7 +536,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											ReportStatus: crtest.ExtremeRegression,
 											FisherExact:  thrift.Float64Ptr(1.8251046156331867e-21),
 											SampleStats: crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.51,
 													SuccessCount: 50,
 													FailureCount: 49,
@@ -546,7 +546,7 @@ func TestGenerateComponentReport(t *testing.T) {
 												End:   &time.Time{},
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.91,
 													SuccessCount: 900,
 													FailureCount: 90,
@@ -558,7 +558,7 @@ func TestGenerateComponentReport(t *testing.T) {
 										},
 									},
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: awsAMD64OVN2BaseTestStats90Percent.TestName,
 												TestID:   awsAMD64OVN2Test.TestID,
@@ -578,7 +578,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											ReportStatus: crtest.SignificantRegression,
 											FisherExact:  thrift.Float64Ptr(0.002621948654892275),
 											SampleStats: crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.81,
 													SuccessCount: 80,
 													FailureCount: 19,
@@ -588,7 +588,7 @@ func TestGenerateComponentReport(t *testing.T) {
 												End:   &time.Time{},
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.91,
 													SuccessCount: 900,
 													FailureCount: 90,
@@ -855,7 +855,7 @@ func TestGenerateComponentReport(t *testing.T) {
 								Status:               crtest.SignificantRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: awsAMD64OVNBaseTestStats90Percent.TestName,
 												TestID:   awsAMD64OVNTest.TestID,
@@ -875,7 +875,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											ReportStatus: crtest.SignificantRegression,
 											FisherExact:  thrift.Float64Ptr(0.07837082801914011),
 											SampleStats: crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.86,
 													SuccessCount: 85,
 													FailureCount: 14,
@@ -885,7 +885,7 @@ func TestGenerateComponentReport(t *testing.T) {
 												End:   &time.Time{},
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.91,
 													SuccessCount: 900,
 													FailureCount: 90,
@@ -1084,7 +1084,7 @@ func TestGenerateComponentReport(t *testing.T) {
 								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: awsAMD64OVNBaseTestStats90Percent.TestName,
 												TestID:   awsAMD64OVNTest.TestID,
@@ -1104,7 +1104,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											ReportStatus: crtest.ExtremeRegression,
 											FisherExact:  thrift.Float64Ptr(1.0800451094957381e-20),
 											SampleStats: crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.5,
 													SuccessCount: 50,
 													FailureCount: 49,
@@ -1114,7 +1114,7 @@ func TestGenerateComponentReport(t *testing.T) {
 												End:   &time.Time{},
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.9,
 													SuccessCount: 900,
 													FailureCount: 90,
@@ -1126,7 +1126,7 @@ func TestGenerateComponentReport(t *testing.T) {
 										},
 									},
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: awsAMD64OVN2BaseTestStats90Percent.TestName,
 												TestID:   awsAMD64OVN2Test.TestID,
@@ -1146,7 +1146,7 @@ func TestGenerateComponentReport(t *testing.T) {
 											ReportStatus: crtest.SignificantRegression,
 											FisherExact:  thrift.Float64Ptr(0.0035097810890055117),
 											SampleStats: crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.8,
 													SuccessCount: 80,
 													FailureCount: 19,
@@ -1156,7 +1156,7 @@ func TestGenerateComponentReport(t *testing.T) {
 												End:   &time.Time{},
 											},
 											BaseStats: &crtype.TestDetailsReleaseStats{
-												TestDetailsTestStats: crtest.TestDetailsTestStats{
+												Stats: crtest.Stats{
 													SuccessRate:  0.9,
 													SuccessCount: 900,
 													FailureCount: 90,
@@ -1265,7 +1265,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	sampleReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.ReqOptions.SampleRelease.Name,
-		TestDetailsTestStats: crtest.TestDetailsTestStats{
+		Stats: crtest.Stats{
 			SuccessRate:  0.9203539823008849,
 			SuccessCount: 200,
 			FailureCount: 18,
@@ -1276,32 +1276,32 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	baseReleaseStatsTwoHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.ReqOptions.BaseRelease.Name,
-		TestDetailsTestStats: crtest.TestDetailsTestStats{
+		Stats: crtest.Stats{
 			SuccessRate:  0.9130434782608695,
 			SuccessCount: 2000,
 			FailureCount: 200,
 			FlakeCount:   100,
 		},
 	}
-	sampleTestStatsHigh := crtest.TestDetailsTestStats{
+	sampleTestStatsHigh := crtest.Stats{
 		SuccessRate:  0.9203539823008849,
 		SuccessCount: 100,
 		FailureCount: 9,
 		FlakeCount:   4,
 	}
-	baseTestStatsHigh := crtest.TestDetailsTestStats{
+	baseTestStatsHigh := crtest.Stats{
 		SuccessRate:  0.9130434782608695,
 		SuccessCount: 1000,
 		FailureCount: 100,
 		FlakeCount:   50,
 	}
-	sampleTestStatsLow := crtest.TestDetailsTestStats{
+	sampleTestStatsLow := crtest.Stats{
 		SuccessRate:  0.4778761061946903,
 		SuccessCount: 50,
 		FailureCount: 59,
 		FlakeCount:   4,
 	}
-	baseTestStatsLow := crtest.TestDetailsTestStats{
+	baseTestStatsLow := crtest.Stats{
 		SuccessRate:  0.4782608695652174,
 		SuccessCount: 500,
 		FailureCount: 600,
@@ -1309,7 +1309,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	sampleReleaseStatsOneHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.ReqOptions.SampleRelease.Name,
-		TestDetailsTestStats: crtest.TestDetailsTestStats{
+		Stats: crtest.Stats{
 			SuccessRate:  0.9203539823008849,
 			SuccessCount: 100,
 			FailureCount: 9,
@@ -1320,7 +1320,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	baseReleaseStatsOneHigh := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.ReqOptions.BaseRelease.Name,
-		TestDetailsTestStats: crtest.TestDetailsTestStats{
+		Stats: crtest.Stats{
 			SuccessRate:  0.9130434782608695,
 			SuccessCount: 1000,
 			FailureCount: 100,
@@ -1329,7 +1329,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	sampleReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.ReqOptions.SampleRelease.Name,
-		TestDetailsTestStats: crtest.TestDetailsTestStats{
+		Stats: crtest.Stats{
 			SuccessRate:  0.4778761061946903,
 			SuccessCount: 50,
 			FailureCount: 59,
@@ -1340,7 +1340,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 	}
 	baseReleaseStatsOneLow := crtype.TestDetailsReleaseStats{
 		Release: testDetailsGenerator.ReqOptions.BaseRelease.Name,
-		TestDetailsTestStats: crtest.TestDetailsTestStats{
+		Stats: crtest.Stats{
 			SuccessRate:  0.4782608695652174,
 			SuccessCount: 500,
 			FailureCount: 600,
@@ -1372,7 +1372,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				},
 			},
 			expectedReport: crtype.ReportTestDetails{
-				ReportTestIdentification: crtest.ReportTestIdentification{
+				Identification: crtest.Identification{
 					RowIdentification:    testDetailsRowIdentification,
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
@@ -1419,7 +1419,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				},
 			},
 			expectedReport: crtype.ReportTestDetails{
-				ReportTestIdentification: crtest.ReportTestIdentification{
+				Identification: crtest.Identification{
 					RowIdentification:    testDetailsRowIdentification,
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
@@ -1467,7 +1467,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				},
 			},
 			expectedReport: crtype.ReportTestDetails{
-				ReportTestIdentification: crtest.ReportTestIdentification{
+				Identification: crtest.Identification{
 					RowIdentification:    testDetailsRowIdentification,
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
@@ -1523,7 +1523,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 				},
 			},
 			expectedReport: crtype.ReportTestDetails{
-				ReportTestIdentification: crtest.ReportTestIdentification{
+				Identification: crtest.Identification{
 					RowIdentification:    testDetailsRowIdentification,
 					ColumnIdentification: testDetailsColumnIdentification,
 				},
@@ -1571,7 +1571,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			for i := 0; i < testStats.Success; i++ {
 				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob: testStats.job,
-					TestCount: crtest.TestCount{
+					Count: crtest.Count{
 						TotalCount:   1,
 						SuccessCount: 1,
 					},
@@ -1579,14 +1579,14 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			}
 			for i := 0; i < testStats.Failure; i++ {
 				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.TestJobRunRows{
-					ProwJob:   testStats.job,
-					TestCount: crtest.TestCount{TotalCount: 1},
+					ProwJob: testStats.job,
+					Count:   crtest.Count{TotalCount: 1},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
 				baseStats[testStats.job] = append(baseStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob: testStats.job,
-					TestCount: crtest.TestCount{
+					Count: crtest.Count{
 						TotalCount: 1,
 						FlakeCount: 1,
 					},
@@ -1597,7 +1597,7 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			for i := 0; i < testStats.Success; i++ {
 				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob: testStats.job,
-					TestCount: crtest.TestCount{
+					Count: crtest.Count{
 						TotalCount:   1,
 						SuccessCount: 1,
 					},
@@ -1605,14 +1605,14 @@ func TestGenerateComponentTestDetailsReport(t *testing.T) {
 			}
 			for i := 0; i < testStats.Failure; i++ {
 				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.TestJobRunRows{
-					ProwJob:   testStats.job,
-					TestCount: crtest.TestCount{TotalCount: 1},
+					ProwJob: testStats.job,
+					Count:   crtest.Count{TotalCount: 1},
 				})
 			}
 			for i := 0; i < testStats.Flake; i++ {
 				sampleStats[testStats.job] = append(sampleStats[testStats.job], crtype.TestJobRunRows{
 					ProwJob: testStats.job,
-					TestCount: crtest.TestCount{
+					Count: crtest.Count{
 						TotalCount: 1,
 						FlakeCount: 1,
 					},
@@ -1831,14 +1831,14 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 
 			testAnalysis := &crtype.ReportTestStats{
 				SampleStats: crtype.TestDetailsReleaseStats{
-					TestDetailsTestStats: crtest.TestDetailsTestStats{
+					Stats: crtest.Stats{
 						SuccessCount: tt.sampleSuccess,
 						FlakeCount:   tt.sampleFlake,
 						FailureCount: tt.sampleTotal - tt.sampleSuccess - tt.sampleFlake,
 					},
 				},
 				BaseStats: &crtype.TestDetailsReleaseStats{
-					TestDetailsTestStats: crtest.TestDetailsTestStats{
+					Stats: crtest.Stats{
 						SuccessCount: tt.baseSuccess,
 						FlakeCount:   tt.baseFlake,
 						FailureCount: tt.baseTotal - tt.baseSuccess - tt.baseFlake,

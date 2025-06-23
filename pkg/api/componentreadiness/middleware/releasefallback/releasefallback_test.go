@@ -24,14 +24,14 @@ func Test_PreAnalysis(t *testing.T) {
 		"Platform": "aws",
 	}
 	test1VariantsFlattened := []string{"Arch:amd64", "Platform:aws"}
-	test1MapKey := crtest.TestWithVariantsKey{
+	test1MapKey := crtest.KeyWithVariants{
 		TestID:   test1ID,
 		Variants: test1Variants,
 	}
 	test1KeyBytes, err := json.Marshal(test1MapKey)
 	test1KeyStr := string(test1KeyBytes)
 	assert.NoError(t, err)
-	test1RTI := crtest.ReportTestIdentification{
+	test1RTI := crtest.Identification{
 		RowIdentification: crtest.RowIdentification{
 			Component:  "",
 			Capability: "",
@@ -84,7 +84,7 @@ func Test_PreAnalysis(t *testing.T) {
 	tests := []struct {
 		name             string
 		reqOpts          reqopts.RequestOptions
-		testKey          crtest.ReportTestIdentification
+		testKey          crtest.Identification
 		fallbackReleases crtype.FallbackReleases
 		testStats        *crtype.ReportTestStats
 		expectedStatus   *crtype.ReportTestStats
@@ -216,7 +216,7 @@ func buildTestStatus(testName string, variants []string, total, success, flake i
 		Component:    "foo",
 		Capabilities: nil,
 		Variants:     variants,
-		TestCount: crtest.TestCount{
+		Count: crtest.Count{
 			TotalCount:   total,
 			SuccessCount: success,
 			FlakeCount:   flake,
@@ -231,7 +231,7 @@ func buildTestStats(total, success int, baseRelease crtype.Release, explanations
 			Release: baseRelease.Release,
 			Start:   baseRelease.Start,
 			End:     baseRelease.End,
-			TestDetailsTestStats: crtest.TestDetailsTestStats{
+			Stats: crtest.Stats{
 				FailureCount: fails,
 				SuccessCount: success,
 				FlakeCount:   0,

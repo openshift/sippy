@@ -59,7 +59,7 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 func (c *ComponentReportGenerator) PostAnalysisTestDetails(report *crtype.ReportTestDetails) error {
 
 	// Give middleware their chance to adjust the result
-	testKey := crtest.ReportTestIdentification{
+	testKey := crtest.Identification{
 		RowIdentification:    report.RowIdentification,
 		ColumnIdentification: report.ColumnIdentification,
 	}
@@ -158,7 +158,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 
 	reports := []crtype.ReportTestDetails{}
 	for _, tOpt := range c.ReqOptions.TestIDOptions {
-		testKey := crtest.TestWithVariantsKey{
+		testKey := crtest.KeyWithVariants{
 			TestID:   tOpt.TestID,
 			Variants: tOpt.RequestedVariants,
 		}
@@ -221,7 +221,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 	if testIDOption.BaseOverrideRelease != "" &&
 		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Name {
 
-		testKey := crtest.TestWithVariantsKey{
+		testKey := crtest.KeyWithVariants{
 			TestID:   testIDOption.TestID,
 			Variants: testIDOption.RequestedVariants,
 		}
@@ -456,7 +456,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows,
 	testIDOption reqopts.TestIdentification,
 ) crtype.ReportTestDetails {
-	testKey := crtest.ReportTestIdentification{
+	testKey := crtest.Identification{
 		RowIdentification: crtest.RowIdentification{
 			Component:  testIDOption.Component,
 			Capability: testIDOption.Capability,
@@ -472,16 +472,16 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	testStats := crtype.ReportTestStats{
 		RequiredConfidence: c.ReqOptions.AdvancedOption.Confidence,
 		SampleStats: crtype.TestDetailsReleaseStats{
-			Release:              c.ReqOptions.SampleRelease.Name,
-			Start:                &c.ReqOptions.SampleRelease.Start,
-			End:                  &c.ReqOptions.SampleRelease.End,
-			TestDetailsTestStats: totalSample,
+			Release: c.ReqOptions.SampleRelease.Name,
+			Start:   &c.ReqOptions.SampleRelease.Start,
+			End:     &c.ReqOptions.SampleRelease.End,
+			Stats:   totalSample,
 		},
 		BaseStats: &crtype.TestDetailsReleaseStats{
-			Release:              baseRelease,
-			Start:                baseStart,
-			End:                  baseEnd,
-			TestDetailsTestStats: totalBase,
+			Release: baseRelease,
+			Start:   baseStart,
+			End:     baseEnd,
+			Stats:   totalBase,
 		},
 	}
 	if !lastFailure.IsZero() {
@@ -501,14 +501,14 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 
 // go through all the job runs that had a test and summarize the results
 func (c *ComponentReportGenerator) summarizeRecordedTestStats(
-	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows, testKey crtest.ReportTestIdentification,
+	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows, testKey crtest.Identification,
 ) (
-	totalBase, totalSample crtest.TestDetailsTestStats,
+	totalBase, totalSample crtest.Stats,
 	report crtype.TestDetailsAnalysis,
 	result crtype.ReportTestDetails,
 	lastFailure time.Time, // track the last failure we observe in the sample, used by triage middleware to adjust status
 ) {
-	result = crtype.ReportTestDetails{ReportTestIdentification: testKey}
+	result = crtype.ReportTestDetails{Identification: testKey}
 	faf := c.ReqOptions.AdvancedOption.FlakeAsFailure
 
 	// merge the job names from both base and sample status and assess each once
@@ -547,7 +547,7 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 // and updates by-reference parameters with information found in the job rows.
 func (c *ComponentReportGenerator) assessTestStats(
 	jobRowsList []crtype.TestJobRunRows,
-	testStats *crtest.TestDetailsTestStats,
+	testStats *crtest.Stats,
 	jobRunStatsList *[]crtype.TestDetailsJobRunStats,
 	jobName *string, lastFailure *time.Time,
 	result *crtype.ReportTestDetails,
@@ -571,7 +571,7 @@ func (c *ComponentReportGenerator) assessTestStats(
 			result.TestName = jobRow.TestName
 		}
 
-		*testStats = testStats.AddTestCount(jobRow.TestCount, flakeAsFailure)
+		*testStats = testStats.AddTestCount(jobRow.Count, flakeAsFailure)
 		*jobRunStatsList = append(*jobRunStatsList, c.getJobRunStats(jobRow))
 	}
 }

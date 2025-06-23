@@ -147,7 +147,7 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 				// All we need to do now is track the lowest (i.e. worst) status we see after PostAnalysis,
 				// and make that our new cell status.
 				var initialStatus crtest.Status
-				testKey := crtest.ReportTestIdentification{
+				testKey := crtest.Identification{
 					RowIdentification:    col.RegressedTests[rti].RowIdentification,
 					ColumnIdentification: col.RegressedTests[rti].ColumnIdentification,
 				}
@@ -612,16 +612,16 @@ func containsOverriddenVariant(includeVariants map[string][]string, key, value s
 	return false
 }
 
-var componentAndCapabilityGetter func(test crtest.TestWithVariantsKey, stats crtype.TestStatus) (string, []string)
+var componentAndCapabilityGetter func(test crtest.KeyWithVariants, stats crtype.TestStatus) (string, []string)
 
-func testToComponentAndCapability(_ crtest.TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
+func testToComponentAndCapability(_ crtest.KeyWithVariants, stats crtype.TestStatus) (string, []string) {
 	return stats.Component, stats.Capabilities
 }
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
 func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string, stats crtype.TestStatus) ([]crtest.RowIdentification, []crtest.ColumnID, error) {
-	var test crtest.TestWithVariantsKey
+	var test crtest.KeyWithVariants
 	columnGroupByVariants := c.ReqOptions.VariantOption.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
 	if len(c.ReqOptions.TestIDOptions) > 0 && c.ReqOptions.TestIDOptions[0].TestID != "" {
@@ -700,7 +700,7 @@ type cellStatus struct {
 	regressedTests []crtype.ReportTestSummary
 }
 
-func getNewCellStatus(testID crtest.ReportTestIdentification, testStats crtype.ReportTestStats, existingCellStatus *cellStatus) cellStatus {
+func getNewCellStatus(testID crtest.Identification, testStats crtype.ReportTestStats, existingCellStatus *cellStatus) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
 		if (testStats.ReportStatus < crtest.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
@@ -716,8 +716,8 @@ func getNewCellStatus(testID crtest.ReportTestIdentification, testStats crtype.R
 	}
 	if testStats.ReportStatus < crtest.MissingSample {
 		rt := crtype.ReportTestSummary{
-			ReportTestIdentification: testID,
-			ReportTestStats:          testStats,
+			Identification:  testID,
+			ReportTestStats: testStats,
 		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
 	}
@@ -727,7 +727,7 @@ func getNewCellStatus(testID crtest.ReportTestIdentification, testStats crtype.R
 func updateCellStatus(
 	rowIdentifications []crtest.RowIdentification,
 	columnIdentifications []crtest.ColumnID,
-	testID crtest.ReportTestIdentification,
+	testID crtest.Identification,
 	testStats crtype.ReportTestStats,
 	// use the inputs above to update the maps below (golang passes maps by reference)
 	status map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus,
@@ -779,17 +779,17 @@ func initTestAnalysisStruct(
 	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
 
 	testStats.SampleStats = crtype.TestDetailsReleaseStats{
-		Release:              reqOptions.SampleRelease.Name,
-		Start:                &reqOptions.SampleRelease.Start,
-		End:                  &reqOptions.SampleRelease.End,
-		TestDetailsTestStats: sampleStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
+		Release: reqOptions.SampleRelease.Name,
+		Start:   &reqOptions.SampleRelease.Start,
+		End:     &reqOptions.SampleRelease.End,
+		Stats:   sampleStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 	}
 	if baseStatus != nil {
 		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-			Release:              reqOptions.BaseRelease.Name,
-			Start:                &reqOptions.BaseRelease.Start,
-			End:                  &reqOptions.BaseRelease.End,
-			TestDetailsTestStats: baseStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
+			Release: reqOptions.BaseRelease.Name,
+			Start:   &reqOptions.BaseRelease.Start,
+			End:     &reqOptions.BaseRelease.End,
+			Stats:   baseStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 		}
 	}
 }

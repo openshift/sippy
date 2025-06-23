@@ -4,7 +4,7 @@ import "encoding/json"
 
 type ColumnID string
 
-type ReportTestIdentification struct {
+type Identification struct {
 	RowIdentification
 	ColumnIdentification
 }
@@ -81,9 +81,9 @@ type JobVariants struct {
 	Variants map[string][]string `json:"variants,omitempty"`
 }
 
-// TestWithVariantsKey connects the core unique db testID string to a set of variants.
+// KeyWithVariants connects the core unique db testID string to a set of variants.
 // Used to serialize/deserialize as a map key when we pass test status around.
-type TestWithVariantsKey struct {
+type KeyWithVariants struct {
 	TestID string `json:"test_id"`
 
 	// Proposed, need to serialize to use as map key
@@ -92,7 +92,7 @@ type TestWithVariantsKey struct {
 
 // KeyOrDie serializes this test key into a json string suitable for use in maps.
 // JSON serialization uses sorted map keys, so the output is stable.
-func (t TestWithVariantsKey) KeyOrDie() string {
+func (t KeyWithVariants) KeyOrDie() string {
 	testIDBytes, err := json.Marshal(t)
 	if err != nil {
 		panic(err)

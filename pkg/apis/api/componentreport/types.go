@@ -35,7 +35,7 @@ type TestStatus struct {
 	Component    string   `json:"component"`
 	Capabilities []string `json:"capabilities"`
 	Variants     []string `json:"variants"`
-	crtest.TestCount
+	crtest.Count
 	LastFailure time.Time `json:"last_failure"`
 }
 
@@ -44,14 +44,14 @@ func (ts TestStatus) GetTotalSuccessFailFlakeCounts() (int, int, int, int) {
 	return ts.TotalCount, ts.SuccessCount, failures, ts.FlakeCount
 }
 
-// ReportTestStatus contains the mapping of all test keys (serialized with TestWithVariantsKey, variants + testID)
+// ReportTestStatus contains the mapping of all test keys (serialized with KeyWithVariants, variants + testID)
 // It is also an internal type used to pass data from bigquery onwards to report generation, and does not get serialized
 // as an API response.
 type ReportTestStatus struct {
-	// BaseStatus represents the stable basis for the comparison. Maps TestWithVariantsKey serialized as a string, to test status.
+	// BaseStatus represents the stable basis for the comparison. Maps KeyWithVariants serialized as a string, to test status.
 	BaseStatus map[string]TestStatus `json:"base_status"`
 
-	// SampleSatus represents the sample for the comparison. Maps TestWithVariantsKey serialized as a string, to test status.
+	// SampleSatus represents the sample for the comparison. Maps KeyWithVariants serialized as a string, to test status.
 	SampleStatus map[string]TestStatus `json:"sample_status"`
 	GeneratedAt  *time.Time            `json:"generated_at"`
 }
@@ -74,7 +74,7 @@ type ReportColumn struct {
 
 type ReportTestSummary struct {
 	// TODO: really feels like this could just be moved  ReportTestStats, eliminating the need for ReportTestSummary
-	crtest.ReportTestIdentification
+	crtest.Identification
 	ReportTestStats
 }
 
@@ -130,7 +130,7 @@ type TestDetailsAnalysis struct {
 
 // ReportTestDetails is the top level API response for test details reports.
 type ReportTestDetails struct {
-	crtest.ReportTestIdentification
+	crtest.Identification
 	JiraComponent   string     `json:"jira_component"`
 	JiraComponentID *big.Rat   `json:"jira_component_id"`
 	TestName        string     `json:"test_name"`
@@ -147,18 +147,18 @@ type TestDetailsReleaseStats struct {
 	Release string `json:"release"`
 	Start   *time.Time
 	End     *time.Time
-	crtest.TestDetailsTestStats
+	crtest.Stats
 }
 
 type TestDetailsJobStats struct {
 	// one of sample/base job name could be missing if jobs change between releases
-	SampleJobName     string                      `json:"sample_job_name,omitempty"`
-	BaseJobName       string                      `json:"base_job_name,omitempty"`
-	SampleStats       crtest.TestDetailsTestStats `json:"sample_stats"`
-	BaseStats         crtest.TestDetailsTestStats `json:"base_stats"`
-	SampleJobRunStats []TestDetailsJobRunStats    `json:"sample_job_run_stats,omitempty"`
-	BaseJobRunStats   []TestDetailsJobRunStats    `json:"base_job_run_stats,omitempty"`
-	Significant       bool                        `json:"significant"`
+	SampleJobName     string                   `json:"sample_job_name,omitempty"`
+	BaseJobName       string                   `json:"base_job_name,omitempty"`
+	SampleStats       crtest.Stats             `json:"sample_stats"`
+	BaseStats         crtest.Stats             `json:"base_stats"`
+	SampleJobRunStats []TestDetailsJobRunStats `json:"sample_job_run_stats,omitempty"`
+	BaseJobRunStats   []TestDetailsJobRunStats `json:"base_job_run_stats,omitempty"`
+	Significant       bool                     `json:"significant"`
 }
 
 type TestDetailsJobRunStats struct {
@@ -168,21 +168,21 @@ type TestDetailsJobRunStats struct {
 	// TestStats is the test stats from one particular job run.
 	// For the majority of the tests, there is only one junit. But
 	// there are cases multiple junits are generated for the same test.
-	TestStats crtest.TestDetailsTestStats `json:"test_stats"`
+	TestStats crtest.Stats `json:"test_stats"`
 }
 
 // TestJobRunRows are the per job run rows that come back from bigquery for a test details report
 // indicating if the test passed or failed.
 // Fields are named count somewhat misleadingly as technically they're always 0 or 1 today.
 type TestJobRunRows struct {
-	TestKey      crtest.TestWithVariantsKey `json:"test_key"`
-	TestKeyStr   string                     `json:"-"` // transient field so we dont have to keep recalculating
-	TestName     string                     `bigquery:"test_name"`
-	ProwJob      string                     `bigquery:"prowjob_name"`
-	ProwJobRunID string                     `bigquery:"prowjob_run_id"`
-	ProwJobURL   string                     `bigquery:"prowjob_url"`
-	StartTime    civil.DateTime             `bigquery:"prowjob_start"`
-	crtest.TestCount
+	TestKey      crtest.KeyWithVariants `json:"test_key"`
+	TestKeyStr   string                 `json:"-"` // transient field so we dont have to keep recalculating
+	TestName     string                 `bigquery:"test_name"`
+	ProwJob      string                 `bigquery:"prowjob_name"`
+	ProwJobRunID string                 `bigquery:"prowjob_run_id"`
+	ProwJobURL   string                 `bigquery:"prowjob_url"`
+	StartTime    civil.DateTime         `bigquery:"prowjob_start"`
+	crtest.Count
 	JiraComponent   string   `bigquery:"jira_component"`
 	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
 }

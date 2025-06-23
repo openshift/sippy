@@ -1,31 +1,31 @@
 package crtest
 
-// TestCount is a struct representing the counts of test results in BigQuery-land.
-type TestCount struct {
+// Count is a struct representing the counts of test results in BigQuery-land.
+type Count struct {
 	TotalCount   int `json:"total_count" bigquery:"total_count"`
 	SuccessCount int `json:"success_count" bigquery:"success_count"`
 	FlakeCount   int `json:"flake_count" bigquery:"flake_count"`
 }
 
 //nolint:revive
-func (tc TestCount) Add(add TestCount) TestCount {
+func (tc Count) Add(add Count) Count {
 	tc.TotalCount += add.TotalCount
 	tc.SuccessCount += add.SuccessCount
 	tc.FlakeCount += add.FlakeCount
 	return tc
 }
-func (tc TestCount) Failures() int { // translate to sippy/stats-land
+func (tc Count) Failures() int { // translate to sippy/stats-land
 	failure := tc.TotalCount - tc.SuccessCount - tc.FlakeCount
 	if failure < 0 { // this shouldn't happen but just as a failsafe...
 		failure = 0
 	}
 	return failure
 }
-func (tc TestCount) ToTestStats(flakeAsFailure bool) TestDetailsTestStats { // translate to sippy/stats-land
+func (tc Count) ToTestStats(flakeAsFailure bool) Stats { // translate to sippy/stats-land
 	return NewTestStats(tc.SuccessCount, tc.Failures(), tc.FlakeCount, flakeAsFailure)
 }
 
-type TestDetailsTestStats struct {
+type Stats struct {
 	SuccessCount int `json:"success_count"`
 	FailureCount int `json:"failure_count"`
 	FlakeCount   int `json:"flake_count"`
@@ -33,48 +33,48 @@ type TestDetailsTestStats struct {
 	SuccessRate float64 `json:"success_rate"`
 }
 
-func (tdts TestDetailsTestStats) Total() int {
-	return tdts.SuccessCount + tdts.FailureCount + tdts.FlakeCount
+func (ts Stats) Total() int {
+	return ts.SuccessCount + ts.FailureCount + ts.FlakeCount
 }
 
-func (tdts TestDetailsTestStats) Passes(flakesAsFailure bool) int {
+func (ts Stats) Passes(flakesAsFailure bool) int {
 	if flakesAsFailure {
-		return tdts.SuccessCount
+		return ts.SuccessCount
 	}
-	return tdts.SuccessCount + tdts.FlakeCount
+	return ts.SuccessCount + ts.FlakeCount
 }
 
-func (tdts TestDetailsTestStats) PassRate(flakesAsFailure bool) float64 {
-	return CalculatePassRate(tdts.SuccessCount, tdts.FailureCount, tdts.FlakeCount, flakesAsFailure)
+func (ts Stats) PassRate(flakesAsFailure bool) float64 {
+	return CalculatePassRate(ts.SuccessCount, ts.FailureCount, ts.FlakeCount, flakesAsFailure)
 }
 
-func (tdts TestDetailsTestStats) Add(add TestDetailsTestStats, flakesAsFailure bool) TestDetailsTestStats {
+func (ts Stats) Add(add Stats, flakesAsFailure bool) Stats {
 	return NewTestStats(
-		tdts.SuccessCount+add.SuccessCount,
-		tdts.FailureCount+add.FailureCount,
-		tdts.FlakeCount+add.FlakeCount,
+		ts.SuccessCount+add.SuccessCount,
+		ts.FailureCount+add.FailureCount,
+		ts.FlakeCount+add.FlakeCount,
 		flakesAsFailure,
 	)
 }
 
-func (tdts TestDetailsTestStats) AddTestCount(add TestCount, flakesAsFailure bool) TestDetailsTestStats {
+func (ts Stats) AddTestCount(add Count, flakesAsFailure bool) Stats {
 	return NewTestStats(
-		tdts.SuccessCount+add.SuccessCount,
-		tdts.FailureCount+add.Failures(),
-		tdts.FlakeCount+add.FlakeCount,
+		ts.SuccessCount+add.SuccessCount,
+		ts.FailureCount+add.Failures(),
+		ts.FlakeCount+add.FlakeCount,
 		flakesAsFailure,
 	)
 }
 
-func (tdts TestDetailsTestStats) FailPassWithFlakes(flakesAsFailure bool) (int, int) {
+func (ts Stats) FailPassWithFlakes(flakesAsFailure bool) (int, int) {
 	if flakesAsFailure {
-		return tdts.FailureCount + tdts.FlakeCount, tdts.SuccessCount
+		return ts.FailureCount + ts.FlakeCount, ts.SuccessCount
 	}
-	return tdts.FailureCount, tdts.SuccessCount + tdts.FlakeCount
+	return ts.FailureCount, ts.SuccessCount + ts.FlakeCount
 }
 
-func NewTestStats(successCount, failureCount, flakeCount int, flakesAsFailure bool) TestDetailsTestStats {
-	return TestDetailsTestStats{
+func NewTestStats(successCount, failureCount, flakeCount int, flakesAsFailure bool) Stats {
+	return Stats{
 		SuccessCount: successCount,
 		FailureCount: failureCount,
 		FlakeCount:   flakeCount,

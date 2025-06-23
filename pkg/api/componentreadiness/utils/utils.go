@@ -85,14 +85,14 @@ func NormalizeProwJobName(prowName string, reqOptions reqopts.RequestOptions) st
 // DeserializeTestKey helps us workaround the limitations of a struct as a map key, where
 // we instead serialize a very small struct to json for a unit test key that includes test
 // ID and a specific set of variants. This function deserializes back to a struct.
-func DeserializeTestKey(stats componentreport.TestStatus, testKeyStr string) (crtest.ReportTestIdentification, error) {
-	var testKey crtest.TestWithVariantsKey
+func DeserializeTestKey(stats componentreport.TestStatus, testKeyStr string) (crtest.Identification, error) {
+	var testKey crtest.KeyWithVariants
 	err := json.Unmarshal([]byte(testKeyStr), &testKey)
 	if err != nil {
 		logrus.WithError(err).Errorf("trying to unmarshel %s", testKeyStr)
-		return crtest.ReportTestIdentification{}, err
+		return crtest.Identification{}, err
 	}
-	testID := crtest.ReportTestIdentification{
+	testID := crtest.Identification{
 		RowIdentification: crtest.RowIdentification{
 			Component: stats.Component,
 			TestName:  stats.TestName,

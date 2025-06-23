@@ -45,7 +45,7 @@ func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crt
 // PreAnalysis iterates the base status looking for any with an accepted regression in the basis release, and if found
 // swaps out the stats with the better pass rate data specified in the intentional regression allowance.
 // It also iterates the sample looking for intentional regressions and adjusts the analysis parameters accordingly.
-func (r *RegressionAllowances) PreAnalysis(testKey crtest.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *RegressionAllowances) PreAnalysis(testKey crtest.Identification, testStats *crtype.ReportTestStats) error {
 
 	// for intentional regression in the base
 	r.matchBaseRegression(testKey, r.reqOptions.BaseRelease.Name, testStats)
@@ -58,7 +58,7 @@ func (r *RegressionAllowances) PreAnalysis(testKey crtest.ReportTestIdentificati
 	return nil
 }
 
-func (r *RegressionAllowances) PostAnalysis(testKey crtest.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *RegressionAllowances) PostAnalysis(testKey crtest.Identification, testStats *crtype.ReportTestStats) error {
 	return nil
 }
 
@@ -66,7 +66,7 @@ func (r *RegressionAllowances) PostAnalysis(testKey crtest.ReportTestIdentificat
 // in an intentional regression that accepted a lower threshold but maintains the higher
 // threshold when used as a basis.
 // It will return the original testStatus if there is no intentional regression.
-func (r *RegressionAllowances) matchBaseRegression(testID crtest.ReportTestIdentification, baseRelease string, testStats *crtype.ReportTestStats) {
+func (r *RegressionAllowances) matchBaseRegression(testID crtest.Identification, baseRelease string, testStats *crtype.ReportTestStats) {
 	opts := r.reqOptions.AdvancedOption
 	// Nothing to do for tests with no basis. (i.e. new tests)
 	if testStats.BaseStats == nil {
@@ -100,7 +100,7 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtest.ReportTestIdent
 			r.log.WithError(err).Error("Failed to determine the previous release for base regression")
 		} else if overrideTestStats.Total() > 0 { // only override if there is history to override with
 			testStats.BaseStats.Release = baseRegressionPreviousRelease
-			testStats.BaseStats.TestDetailsTestStats = overrideTestStats
+			testStats.BaseStats.Stats = overrideTestStats
 			r.log.Infof("BaseRegression - PreviousPassPercentage overrides baseStats.  Release: %s, Successes: %d, Flakes: %d",
 				baseRegressionPreviousRelease, baseStats.SuccessCount, baseStats.FlakeCount)
 		}
@@ -148,6 +148,6 @@ func (r *RegressionAllowances) adjustAnalysisParameters(testStats *crtype.Report
 func (r *RegressionAllowances) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
 }
 
-func (r *RegressionAllowances) PreTestDetailsAnalysis(testKey crtest.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error {
+func (r *RegressionAllowances) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crtype.TestJobRunStatuses) error {
 	return nil
 }

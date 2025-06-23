@@ -32,7 +32,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 			"Network":      "ovn",
 		},
 	}
-	awsAMD64OVNTest := crtest.TestWithVariantsKey{
+	awsAMD64OVNTest := crtest.KeyWithVariants{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -62,7 +62,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: testName1,
 											},
@@ -81,7 +81,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: testName1,
 											},
@@ -112,7 +112,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: testName2,
 											},
@@ -133,7 +133,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 			expectedResult: map[JiraComponent][]crtype.ReportTestSummary{
 				{Project: "OCPBUGS", Component: "component 1"}: {
 					{
-						ReportTestIdentification: crtest.ReportTestIdentification{
+						Identification: crtest.Identification{
 							RowIdentification: crtest.RowIdentification{
 								TestName: testName1,
 							},
@@ -146,7 +146,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 						},
 					},
 					{
-						ReportTestIdentification: crtest.ReportTestIdentification{
+						Identification: crtest.Identification{
 							RowIdentification: crtest.RowIdentification{
 								TestName: testName1,
 							},
@@ -161,7 +161,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 				},
 				{Project: "OCPBUGS", Component: "component 2"}: {
 					{
-						ReportTestIdentification: crtest.ReportTestIdentification{
+						Identification: crtest.Identification{
 							RowIdentification: crtest.RowIdentification{
 								TestName: testName2,
 							},
@@ -190,7 +190,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: testName1,
 											},
@@ -209,7 +209,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: testName1,
 											},
@@ -240,7 +240,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtest.ReportTestIdentification{
+										Identification: crtest.Identification{
 											RowIdentification: crtest.RowIdentification{
 												TestName: testName2,
 											},
@@ -261,7 +261,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 			expectedResult: map[JiraComponent][]crtype.ReportTestSummary{
 				{Project: "OCPBUGS", Component: "component 1"}: {
 					{
-						ReportTestIdentification: crtest.ReportTestIdentification{
+						Identification: crtest.Identification{
 							RowIdentification: crtest.RowIdentification{
 								TestName: testName1,
 							},
@@ -276,7 +276,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 				},
 				{Project: "OCPBUGS", Component: "Bare Metal Hardware Provisioning"}: {
 					{
-						ReportTestIdentification: crtest.ReportTestIdentification{
+						Identification: crtest.Identification{
 							RowIdentification: crtest.RowIdentification{
 								TestName: testName1,
 							},
@@ -289,7 +289,7 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 						},
 					},
 					{
-						ReportTestIdentification: crtest.ReportTestIdentification{
+						Identification: crtest.Identification{
 							RowIdentification: crtest.RowIdentification{
 								TestName: testName2,
 							},
