@@ -133,11 +133,3 @@ type TestDetailsJobRunStats struct {
 }
 
 type ReportResponse []ReportRow
-
-type TestVariants struct {
-	Network  []string `json:"network,omitempty"`
-	Upgrade  []string `json:"upgrade,omitempty"`
-	Arch     []string `json:"arch,omitempty"`
-	Platform []string `json:"platform,omitempty"`
-	Variant  []string `json:"variant,omitempty"`
-}

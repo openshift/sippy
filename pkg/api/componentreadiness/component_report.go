@@ -83,13 +83,13 @@ func getSingleColumnResultToSlice(ctx context.Context, q *bigquery.Query) ([]str
 // to fetch some small piece of data. These look like they should be broken out. The partial
 // instantiation of a complex object is risky in terms of bugs and maintenance.
 
-func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (crtype.TestVariants, []error) {
+func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (TestVariants, []error) {
 	generator := ComponentReportGenerator{
 		client: client,
 	}
 
-	return api.GetDataFromCacheOrGenerate[crtype.TestVariants](ctx, client.Cache, cache.RequestOptions{},
-		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, crtype.TestVariants{})
+	return api.GetDataFromCacheOrGenerate[TestVariants](ctx, client.Cache, cache.RequestOptions{},
+		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, TestVariants{})
 }
 
 func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (crtest.JobVariants,
@@ -241,7 +241,7 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 	return cacheKey
 }
 
-func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype.TestVariants, []error) {
+func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (TestVariants, []error) {
 	errs := []error{}
 	columns := make(map[string][]string)
 
@@ -255,7 +255,7 @@ func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype
 		columns[column] = values
 	}
 
-	return crtype.TestVariants{
+	return TestVariants{
 		Platform: columns["platform"],
 		Network:  columns["network"],
 		Arch:     columns["arch"],
@@ -1120,4 +1120,12 @@ func (c *ComponentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx cont
 
 func init() {
 	componentAndCapabilityGetter = testToComponentAndCapability
+}
+
+type TestVariants struct {
+	Network  []string `json:"network,omitempty"`
+	Upgrade  []string `json:"upgrade,omitempty"`
+	Arch     []string `json:"arch,omitempty"`
+	Platform []string `json:"platform,omitempty"`
+	Variant  []string `json:"variant,omitempty"`
 }
