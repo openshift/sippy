@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/url"
 
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/componentreadiness/resolvedissues"
 
 	log "github.com/sirupsen/logrus"
@@ -15,7 +15,7 @@ type IntentionalRegression struct {
 	JiraComponent             string
 	TestID                    string
 	TestName                  string
-	Variant                   crtype.ColumnIdentification
+	Variant                   crtest.ColumnIdentification
 	PreviousSuccesses         int
 	PreviousFailures          int
 	PreviousFlakes            int
@@ -32,10 +32,10 @@ var intentionalRegressions = map[release]map[string]IntentionalRegression{}
 
 type regressionKey struct {
 	TestID  string
-	Variant crtype.ColumnIdentification
+	Variant crtest.ColumnIdentification
 }
 
-func IntentionalRegressionFor(releaseString string, variant crtype.ColumnIdentification, testID string) *IntentionalRegression {
+func IntentionalRegressionFor(releaseString string, variant crtest.ColumnIdentification, testID string) *IntentionalRegression {
 	var targetMap map[string]IntentionalRegression
 	var ok bool
 	if targetMap, ok = intentionalRegressions[release(releaseString)]; !ok {
@@ -51,17 +51,17 @@ func IntentionalRegressionFor(releaseString string, variant crtype.ColumnIdentif
 }
 
 func (i *IntentionalRegression) RegressedPassPercentage(flakeAsFailure bool) float64 {
-	return crtype.CalculatePassRate(i.RegressedSuccesses, i.RegressedFailures, i.RegressedFlakes, flakeAsFailure)
+	return crtest.CalculatePassRate(i.RegressedSuccesses, i.RegressedFailures, i.RegressedFlakes, flakeAsFailure)
 }
 
 func (i *IntentionalRegression) PreviousPassPercentage(flakeAsFailure bool) float64 {
-	return crtype.CalculatePassRate(i.PreviousSuccesses, i.PreviousFailures, i.PreviousFlakes, flakeAsFailure)
+	return crtest.CalculatePassRate(i.PreviousSuccesses, i.PreviousFailures, i.PreviousFlakes, flakeAsFailure)
 }
 
-func keyFor(testID string, variant crtype.ColumnIdentification) string {
+func keyFor(testID string, variant crtest.ColumnIdentification) string {
 	key := regressionKey{
 		TestID: testID,
-		Variant: crtype.ColumnIdentification{
+		Variant: crtest.ColumnIdentification{
 			Variants: variant.Variants,
 		},
 	}

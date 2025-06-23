@@ -11,6 +11,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -115,14 +116,14 @@ const (
 
 type baseQueryGenerator struct {
 	client      *bqcachedclient.Client
-	allVariants crtype.JobVariants
+	allVariants crtest.JobVariants
 	ReqOptions  reqopts.RequestOptions
 }
 
 func NewBaseQueryGenerator(
 	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
-	allVariants crtype.JobVariants) baseQueryGenerator {
+	allVariants crtest.JobVariants) baseQueryGenerator {
 	generator := baseQueryGenerator{
 		client:      client,
 		allVariants: allVariants,
@@ -173,7 +174,7 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Report
 
 type sampleQueryGenerator struct {
 	client      *bqcachedclient.Client
-	allVariants crtype.JobVariants
+	allVariants crtest.JobVariants
 	ReqOptions  reqopts.RequestOptions
 	// JunitTable is the bigquery table (in the normal dataset configured), where this sample query generator should
 	// pull its data from. It is a public field as we want it included in the cache
@@ -191,7 +192,7 @@ type sampleQueryGenerator struct {
 func NewSampleQueryGenerator(
 	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
-	allVariants crtype.JobVariants,
+	allVariants crtest.JobVariants,
 	includeVariants map[string][]string, // separate from ReqOptions as caller sometimes has to modify them
 	start, end time.Time,
 	junitTable string) sampleQueryGenerator {
@@ -277,7 +278,7 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crtype.Repo
 func BuildComponentReportQuery(
 	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
-	allJobVariants crtype.JobVariants,
+	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	junitTable string,
 	isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
@@ -406,7 +407,7 @@ func buildTestDetailsQuery(
 	client *bqcachedclient.Client,
 	testIDOpts []reqopts.TestIdentification,
 	c reqopts.RequestOptions,
-	allJobVariants crtype.JobVariants,
+	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	junitTable string,
 	isSample bool) (string, string, []bigquery.QueryParameter) {
@@ -632,7 +633,7 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 	// INFO[2024-04-22T13:31:23.124-03:00] jira_component_id = 12367602000000000/1000000000
 	// INFO[2024-04-22T13:31:23.124-03:00] test_name = [sig-storage] [Serial] Volume metrics Ephemeral should create volume metrics in Volume Manager [Suite:openshift/conformance/serial] [Suite:k8s]
 	// INFO[2024-04-22T13:31:23.124-03:00] test_suite = openshift-tests
-	tid := crtype.TestWithVariantsKey{
+	tid := crtest.TestWithVariantsKey{
 		Variants: map[string]string{},
 	}
 	cts := crtype.TestStatus{}
@@ -699,7 +700,7 @@ type baseTestDetailsQueryGenerator struct {
 	logger         log.FieldLogger
 	client         *bqcachedclient.Client
 	ReqOptions     reqopts.RequestOptions
-	allJobVariants crtype.JobVariants
+	allJobVariants crtest.JobVariants
 	BaseRelease    string
 	BaseStart      time.Time
 	BaseEnd        time.Time
@@ -708,7 +709,7 @@ type baseTestDetailsQueryGenerator struct {
 
 func NewBaseTestDetailsQueryGenerator(logger log.FieldLogger, client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
-	allJobVariants crtype.JobVariants,
+	allJobVariants crtest.JobVariants,
 	baseRelease string, baseStart time.Time, baseEnd time.Time,
 	testIDOpts []reqopts.TestIdentification) *baseTestDetailsQueryGenerator {
 
@@ -756,7 +757,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (cr
 
 // sampleTestDetailsQueryGenerator generates the query we use for the sample on the test details page.
 type sampleTestDetailsQueryGenerator struct {
-	allJobVariants crtype.JobVariants
+	allJobVariants crtest.JobVariants
 	client         *bqcachedclient.Client
 	ReqOptions     reqopts.RequestOptions
 
@@ -776,7 +777,7 @@ type sampleTestDetailsQueryGenerator struct {
 func NewSampleTestDetailsQueryGenerator(
 	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
-	allJobVariants crtype.JobVariants,
+	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time,
 	junitTable string) *sampleTestDetailsQueryGenerator {
@@ -934,7 +935,7 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 	}
 
 	cts := crtype.TestJobRunRows{
-		TestKey: crtype.TestWithVariantsKey{Variants: map[string]string{}},
+		TestKey: crtest.TestWithVariantsKey{Variants: map[string]string{}},
 	}
 	for i, fieldSchema := range schema {
 		col := fieldSchema.Name

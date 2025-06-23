@@ -10,6 +10,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	sippytypes "github.com/openshift/sippy/pkg/apis/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -123,7 +124,7 @@ func primeCacheForView(ctx context.Context, view crview.View, releases []apiv1.R
 			for _, reg := range col.RegressedTests {
 				// skip if it's resolved, it's far less likely anyone will be loading details for something marked
 				// resolved, and this helps reduce the caching memory when we have mass regressions and clean them up:
-				if reg.ReportStatus < crtype.FixedRegression {
+				if reg.ReportStatus < crtest.FixedRegression {
 					regressedTestsToCache = append(regressedTestsToCache, reg)
 				}
 			}

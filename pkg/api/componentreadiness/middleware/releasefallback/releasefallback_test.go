@@ -6,6 +6,7 @@ import (
 	"time"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/stretchr/testify/assert"
 )
@@ -23,22 +24,22 @@ func Test_PreAnalysis(t *testing.T) {
 		"Platform": "aws",
 	}
 	test1VariantsFlattened := []string{"Arch:amd64", "Platform:aws"}
-	test1MapKey := crtype.TestWithVariantsKey{
+	test1MapKey := crtest.TestWithVariantsKey{
 		TestID:   test1ID,
 		Variants: test1Variants,
 	}
 	test1KeyBytes, err := json.Marshal(test1MapKey)
 	test1KeyStr := string(test1KeyBytes)
 	assert.NoError(t, err)
-	test1RTI := crtype.ReportTestIdentification{
-		RowIdentification: crtype.RowIdentification{
+	test1RTI := crtest.ReportTestIdentification{
+		RowIdentification: crtest.RowIdentification{
 			Component:  "",
 			Capability: "",
 			TestName:   "test 1",
 			TestSuite:  "",
 			TestID:     test1ID,
 		},
-		ColumnIdentification: crtype.ColumnIdentification{
+		ColumnIdentification: crtest.ColumnIdentification{
 			Variants: test1Variants,
 		},
 	}
@@ -83,7 +84,7 @@ func Test_PreAnalysis(t *testing.T) {
 	tests := []struct {
 		name             string
 		reqOpts          reqopts.RequestOptions
-		testKey          crtype.ReportTestIdentification
+		testKey          crtest.ReportTestIdentification
 		fallbackReleases crtype.FallbackReleases
 		testStats        *crtype.ReportTestStats
 		expectedStatus   *crtype.ReportTestStats
@@ -215,7 +216,7 @@ func buildTestStatus(testName string, variants []string, total, success, flake i
 		Component:    "foo",
 		Capabilities: nil,
 		Variants:     variants,
-		TestCount: crtype.TestCount{
+		TestCount: crtest.TestCount{
 			TotalCount:   total,
 			SuccessCount: success,
 			FlakeCount:   flake,
@@ -230,11 +231,11 @@ func buildTestStats(total, success int, baseRelease crtype.Release, explanations
 			Release: baseRelease.Release,
 			Start:   baseRelease.Start,
 			End:     baseRelease.End,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
+			TestDetailsTestStats: crtest.TestDetailsTestStats{
 				FailureCount: fails,
 				SuccessCount: success,
 				FlakeCount:   0,
-				SuccessRate:  crtype.CalculatePassRate(success, fails, 0, false),
+				SuccessRate:  crtest.CalculatePassRate(success, fails, 0, false),
 			},
 		},
 	}

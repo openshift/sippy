@@ -7,6 +7,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
@@ -293,15 +294,15 @@ func Test_TriageRawDB(t *testing.T) {
 
 func createTestRegression(t *testing.T, tracker componentreadiness.RegressionStore, view crview.View, testID string) *models.TestRegression {
 	newRegression := componentreport.ReportTestSummary{
-		ReportTestIdentification: componentreport.ReportTestIdentification{
-			RowIdentification: componentreport.RowIdentification{
+		ReportTestIdentification: crtest.ReportTestIdentification{
+			RowIdentification: crtest.RowIdentification{
 				Component:  "comp",
 				Capability: "cap",
 				TestName:   "fake test",
 				TestSuite:  "fakesuite",
 				TestID:     testID,
 			},
-			ColumnIdentification: componentreport.ColumnIdentification{
+			ColumnIdentification: crtest.ColumnIdentification{
 				Variants: map[string]string{
 					"a": "b",
 					"c": "d",

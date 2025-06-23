@@ -1,12 +1,12 @@
 package componentreport
 
 import (
-	"encoding/json"
 	"math/big"
 	"time"
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
@@ -25,30 +25,7 @@ type FallbackReleases struct {
 	Releases map[string]ReleaseTestMap
 }
 
-// TestCount is a struct representing the counts of test results in BigQuery-land.
-type TestCount struct {
-	TotalCount   int `json:"total_count" bigquery:"total_count"`
-	SuccessCount int `json:"success_count" bigquery:"success_count"`
-	FlakeCount   int `json:"flake_count" bigquery:"flake_count"`
-}
-
 //nolint:revive
-func (tc TestCount) Add(add TestCount) TestCount {
-	tc.TotalCount += add.TotalCount
-	tc.SuccessCount += add.SuccessCount
-	tc.FlakeCount += add.FlakeCount
-	return tc
-}
-func (tc TestCount) Failures() int { // translate to sippy/stats-land
-	failure := tc.TotalCount - tc.SuccessCount - tc.FlakeCount
-	if failure < 0 { // this shouldn't happen but just as a failsafe...
-		failure = 0
-	}
-	return failure
-}
-func (tc TestCount) ToTestStats(flakeAsFailure bool) TestDetailsTestStats { // translate to sippy/stats-land
-	return NewTestStats(tc.SuccessCount, tc.Failures(), tc.FlakeCount, flakeAsFailure)
-}
 
 // TestStatus is an internal type used to pass data bigquery onwards to the actual
 // report generation. It is not serialized over the API.
@@ -58,7 +35,7 @@ type TestStatus struct {
 	Component    string   `json:"component"`
 	Capabilities []string `json:"capabilities"`
 	Variants     []string `json:"variants"`
-	TestCount
+	crtest.TestCount
 	LastFailure time.Time `json:"last_failure"`
 }
 
@@ -85,50 +62,21 @@ type ComponentReport struct {
 }
 
 type ReportRow struct {
-	RowIdentification
+	crtest.RowIdentification
 	Columns []ReportColumn `json:"columns,omitempty"`
 }
 
-type RowIdentification struct {
-	Component  string `json:"component"`
-	Capability string `json:"capability,omitempty"`
-	TestName   string `json:"test_name,omitempty"`
-	TestSuite  string `json:"test_suite,omitempty"`
-	TestID     string `json:"test_id,omitempty"`
-}
-
 type ReportColumn struct {
-	ColumnIdentification
-	Status         Status              `json:"status"`
+	crtest.ColumnIdentification
+	Status         crtest.Status       `json:"status"`
 	RegressedTests []ReportTestSummary `json:"regressed_tests,omitempty"`
-}
-
-type ColumnID string
-
-type ColumnIdentification struct {
-	Variants map[string]string `json:"variants"`
-}
-
-type Status int
-
-type ReportTestIdentification struct {
-	RowIdentification
-	ColumnIdentification
 }
 
 type ReportTestSummary struct {
 	// TODO: really feels like this could just be moved  ReportTestStats, eliminating the need for ReportTestSummary
-	ReportTestIdentification
+	crtest.ReportTestIdentification
 	ReportTestStats
 }
-
-// Comparison is the type of comparison done for a test that has been marked red.
-type Comparison string
-
-const (
-	PassRate    Comparison = "pass_rate"
-	FisherExact Comparison = "fisher_exact"
-)
 
 // ReportTestStats is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
@@ -136,10 +84,10 @@ const (
 // TODO: compare with TestStatus we use internally, see if we can converge?
 type ReportTestStats struct {
 	// ReportStatus is an integer representing the severity of the regression.
-	ReportStatus Status `json:"status"`
+	ReportStatus crtest.Status `json:"status"`
 
 	// Comparison indicates what mode was used to check this tests results in the sample.
-	Comparison Comparison `json:"comparison"`
+	Comparison crtest.Comparison `json:"comparison"`
 
 	// Explanations are human-readable details of why this test was marked regressed.
 	Explanations []string `json:"explanations"`
@@ -182,7 +130,7 @@ type TestDetailsAnalysis struct {
 
 // ReportTestDetails is the top level API response for test details reports.
 type ReportTestDetails struct {
-	ReportTestIdentification
+	crtest.ReportTestIdentification
 	JiraComponent   string     `json:"jira_component"`
 	JiraComponentID *big.Rat   `json:"jira_component_id"`
 	TestName        string     `json:"test_name"`
@@ -199,86 +147,18 @@ type TestDetailsReleaseStats struct {
 	Release string `json:"release"`
 	Start   *time.Time
 	End     *time.Time
-	TestDetailsTestStats
-}
-
-type TestDetailsTestStats struct {
-	SuccessCount int `json:"success_count"`
-	FailureCount int `json:"failure_count"`
-	FlakeCount   int `json:"flake_count"`
-	// calculate from the above with PassRate method:
-	SuccessRate float64 `json:"success_rate"`
-}
-
-func (tdts TestDetailsTestStats) Total() int {
-	return tdts.SuccessCount + tdts.FailureCount + tdts.FlakeCount
-}
-
-func (tdts TestDetailsTestStats) Passes(flakesAsFailure bool) int {
-	if flakesAsFailure {
-		return tdts.SuccessCount
-	}
-	return tdts.SuccessCount + tdts.FlakeCount
-}
-
-func (tdts TestDetailsTestStats) PassRate(flakesAsFailure bool) float64 {
-	return CalculatePassRate(tdts.SuccessCount, tdts.FailureCount, tdts.FlakeCount, flakesAsFailure)
-}
-
-func (tdts TestDetailsTestStats) Add(add TestDetailsTestStats, flakesAsFailure bool) TestDetailsTestStats {
-	return NewTestStats(
-		tdts.SuccessCount+add.SuccessCount,
-		tdts.FailureCount+add.FailureCount,
-		tdts.FlakeCount+add.FlakeCount,
-		flakesAsFailure,
-	)
-}
-
-func (tdts TestDetailsTestStats) AddTestCount(add TestCount, flakesAsFailure bool) TestDetailsTestStats {
-	return NewTestStats(
-		tdts.SuccessCount+add.SuccessCount,
-		tdts.FailureCount+add.Failures(),
-		tdts.FlakeCount+add.FlakeCount,
-		flakesAsFailure,
-	)
-}
-
-func (tdts TestDetailsTestStats) FailPassWithFlakes(flakesAsFailure bool) (int, int) {
-	if flakesAsFailure {
-		return tdts.FailureCount + tdts.FlakeCount, tdts.SuccessCount
-	}
-	return tdts.FailureCount, tdts.SuccessCount + tdts.FlakeCount
-}
-
-func NewTestStats(successCount, failureCount, flakeCount int, flakesAsFailure bool) TestDetailsTestStats {
-	return TestDetailsTestStats{
-		SuccessCount: successCount,
-		FailureCount: failureCount,
-		FlakeCount:   flakeCount,
-		SuccessRate:  CalculatePassRate(successCount, failureCount, flakeCount, flakesAsFailure),
-	}
-}
-
-func CalculatePassRate(success, failure, flake int, treatFlakeAsFailure bool) float64 {
-	total := success + failure + flake
-	if total == 0 {
-		return 0.0
-	}
-	if treatFlakeAsFailure {
-		return float64(success) / float64(total)
-	}
-	return float64(success+flake) / float64(total)
+	crtest.TestDetailsTestStats
 }
 
 type TestDetailsJobStats struct {
 	// one of sample/base job name could be missing if jobs change between releases
-	SampleJobName     string                   `json:"sample_job_name,omitempty"`
-	BaseJobName       string                   `json:"base_job_name,omitempty"`
-	SampleStats       TestDetailsTestStats     `json:"sample_stats"`
-	BaseStats         TestDetailsTestStats     `json:"base_stats"`
-	SampleJobRunStats []TestDetailsJobRunStats `json:"sample_job_run_stats,omitempty"`
-	BaseJobRunStats   []TestDetailsJobRunStats `json:"base_job_run_stats,omitempty"`
-	Significant       bool                     `json:"significant"`
+	SampleJobName     string                      `json:"sample_job_name,omitempty"`
+	BaseJobName       string                      `json:"base_job_name,omitempty"`
+	SampleStats       crtest.TestDetailsTestStats `json:"sample_stats"`
+	BaseStats         crtest.TestDetailsTestStats `json:"base_stats"`
+	SampleJobRunStats []TestDetailsJobRunStats    `json:"sample_job_run_stats,omitempty"`
+	BaseJobRunStats   []TestDetailsJobRunStats    `json:"base_job_run_stats,omitempty"`
+	Significant       bool                        `json:"significant"`
 }
 
 type TestDetailsJobRunStats struct {
@@ -288,21 +168,21 @@ type TestDetailsJobRunStats struct {
 	// TestStats is the test stats from one particular job run.
 	// For the majority of the tests, there is only one junit. But
 	// there are cases multiple junits are generated for the same test.
-	TestStats TestDetailsTestStats `json:"test_stats"`
+	TestStats crtest.TestDetailsTestStats `json:"test_stats"`
 }
 
 // TestJobRunRows are the per job run rows that come back from bigquery for a test details report
 // indicating if the test passed or failed.
 // Fields are named count somewhat misleadingly as technically they're always 0 or 1 today.
 type TestJobRunRows struct {
-	TestKey      TestWithVariantsKey `json:"test_key"`
-	TestKeyStr   string              `json:"-"` // transient field so we dont have to keep recalculating
-	TestName     string              `bigquery:"test_name"`
-	ProwJob      string              `bigquery:"prowjob_name"`
-	ProwJobRunID string              `bigquery:"prowjob_run_id"`
-	ProwJobURL   string              `bigquery:"prowjob_url"`
-	StartTime    civil.DateTime      `bigquery:"prowjob_start"`
-	TestCount
+	TestKey      crtest.TestWithVariantsKey `json:"test_key"`
+	TestKeyStr   string                     `json:"-"` // transient field so we dont have to keep recalculating
+	TestName     string                     `bigquery:"test_name"`
+	ProwJob      string                     `bigquery:"prowjob_name"`
+	ProwJobRunID string                     `bigquery:"prowjob_run_id"`
+	ProwJobURL   string                     `bigquery:"prowjob_url"`
+	StartTime    civil.DateTime             `bigquery:"prowjob_start"`
+	crtest.TestCount
 	JiraComponent   string   `bigquery:"jira_component"`
 	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
 }
@@ -321,51 +201,6 @@ type TestJobRunStatuses struct {
 	GeneratedAt        *time.Time                  `json:"generated_at"`
 }
 
-const (
-	// FailedFixedRegression indicates someone has claimed the bug is fix, but we see failures past the resolution time
-	FailedFixedRegression Status = -1000
-	// ExtremeRegression shows regression with >15% pass rate change
-	ExtremeRegression Status = -500
-	// SignificantRegression shows significant regression
-	SignificantRegression Status = -400
-	// ExtremeTriagedRegression shows an ExtremeRegression that clears when Triaged incidents are factored in
-	ExtremeTriagedRegression Status = -300
-	// SignificantTriagedRegression shows a SignificantRegression that clears when Triaged incidents are factored in
-	SignificantTriagedRegression Status = -200
-	// FixedRegression indicates someone has claimed the bug is now fixed, but has not yet rolled off the sample window
-	FixedRegression Status = -150
-	// MissingSample indicates sample data missing
-	MissingSample Status = -100
-	// NotSignificant indicates no significant difference
-	NotSignificant Status = 0
-	// MissingBasis indicates basis data missing
-	MissingBasis Status = 100
-	// MissingBasisAndSample indicates basis and sample data missing
-	MissingBasisAndSample Status = 200
-	// SignificantImprovement indicates improved sample rate
-	SignificantImprovement Status = 300
-)
-
-func StringForStatus(s Status) string {
-	switch s {
-	case ExtremeRegression:
-		return "Extreme"
-	case SignificantRegression:
-		return "Significant"
-	case ExtremeTriagedRegression:
-		return "ExtremeTriaged"
-	case SignificantTriagedRegression:
-		return "SignificantTriaged"
-	case MissingSample:
-		return "MissingSample"
-	case FixedRegression:
-		return "Fixed"
-	case FailedFixedRegression:
-		return "FailedFixed"
-	}
-	return "Unknown"
-}
-
 type ReportResponse []ReportRow
 
 type TestVariants struct {
@@ -380,11 +215,6 @@ type TestVariants struct {
 type JobVariant struct {
 	VariantName   string   `bigquery:"variant_name"`
 	VariantValues []string `bigquery:"variant_values"`
-}
-
-// JobVariants contains all variants supported in the system.
-type JobVariants struct {
-	Variants map[string][]string `json:"variants,omitempty"`
 }
 
 type Variant struct {
@@ -405,23 +235,4 @@ type TestRegressionBigQuery struct {
 	Opened       time.Time              `bigquery:"opened" json:"opened"`
 	Closed       bigquery.NullTimestamp `bigquery:"closed" json:"closed"`
 	Variants     []Variant              `bigquery:"variants" json:"variants"`
-}
-
-// TestWithVariantsKey connects the core unique db testID string to a set of variants.
-// Used to serialize/deserialize as a map key when we pass test status around.
-type TestWithVariantsKey struct {
-	TestID string `json:"test_id"`
-
-	// Proposed, need to serialize to use as map key
-	Variants map[string]string `json:"variants"`
-}
-
-// KeyOrDie serializes this test key into a json string suitable for use in maps.
-// JSON serialization uses sorted map keys, so the output is stable.
-func (t TestWithVariantsKey) KeyOrDie() string {
-	testIDBytes, err := json.Marshal(t)
-	if err != nil {
-		panic(err)
-	}
-	return string(testIDBytes)
 }

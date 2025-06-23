@@ -7,6 +7,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	log "github.com/sirupsen/logrus"
@@ -33,10 +34,10 @@ type RegressionAllowances struct {
 	reqOptions reqopts.RequestOptions
 
 	// regressionGetterFunc allows us to unit test without relying on real regression data
-	regressionGetterFunc func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
+	regressionGetterFunc func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
 }
 
-func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crtype.JobVariants,
+func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crtest.JobVariants,
 	_, _ chan map[string]crtype.TestStatus, _ chan error) {
 	// unused
 }
@@ -44,7 +45,7 @@ func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crt
 // PreAnalysis iterates the base status looking for any with an accepted regression in the basis release, and if found
 // swaps out the stats with the better pass rate data specified in the intentional regression allowance.
 // It also iterates the sample looking for intentional regressions and adjusts the analysis parameters accordingly.
-func (r *RegressionAllowances) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *RegressionAllowances) PreAnalysis(testKey crtest.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 
 	// for intentional regression in the base
 	r.matchBaseRegression(testKey, r.reqOptions.BaseRelease.Name, testStats)
@@ -57,7 +58,7 @@ func (r *RegressionAllowances) PreAnalysis(testKey crtype.ReportTestIdentificati
 	return nil
 }
 
-func (r *RegressionAllowances) PostAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *RegressionAllowances) PostAnalysis(testKey crtest.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
 	return nil
 }
 
@@ -65,7 +66,7 @@ func (r *RegressionAllowances) PostAnalysis(testKey crtype.ReportTestIdentificat
 // in an intentional regression that accepted a lower threshold but maintains the higher
 // threshold when used as a basis.
 // It will return the original testStatus if there is no intentional regression.
-func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdentification, baseRelease string, testStats *crtype.ReportTestStats) {
+func (r *RegressionAllowances) matchBaseRegression(testID crtest.ReportTestIdentification, baseRelease string, testStats *crtype.ReportTestStats) {
 	opts := r.reqOptions.AdvancedOption
 	// Nothing to do for tests with no basis. (i.e. new tests)
 	if testStats.BaseStats == nil {
@@ -90,7 +91,7 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtype.ReportTestIdent
 	r.log.Infof("found a base regression for %s", testID.TestName)
 
 	baseStats := testStats.BaseStats
-	overrideTestStats := crtype.NewTestStats(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures, baseRegression.PreviousFlakes, opts.FlakeAsFailure)
+	overrideTestStats := crtest.NewTestStats(baseRegression.PreviousSuccesses, baseRegression.PreviousFailures, baseRegression.PreviousFlakes, opts.FlakeAsFailure)
 	if overrideTestStats.SuccessRate > baseStats.PassRate(opts.FlakeAsFailure) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
@@ -144,9 +145,9 @@ func (r *RegressionAllowances) adjustAnalysisParameters(testStats *crtype.Report
 	}
 }
 
-func (r *RegressionAllowances) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
+func (r *RegressionAllowances) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
 }
 
-func (r *RegressionAllowances) PreTestDetailsAnalysis(testKey crtype.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error {
+func (r *RegressionAllowances) PreTestDetailsAnalysis(testKey crtest.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error {
 	return nil
 }

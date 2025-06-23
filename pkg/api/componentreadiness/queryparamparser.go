@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -22,7 +22,7 @@ func ParseComponentReportRequest(
 	views []crview.View,
 	releases []v1.Release,
 	req *http.Request,
-	allJobVariants crtype.JobVariants,
+	allJobVariants crtest.JobVariants,
 	crTimeRoundingFactor time.Duration,
 	overrides []configv1.VariantJunitTableOverride,
 ) (
@@ -209,7 +209,7 @@ func parsePayloadOptions(req *http.Request) *reqopts.Payload {
 	return &po
 }
 
-func parseVariantOptions(req *http.Request, allJobVariants crtype.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts reqopts.Variants, err error) {
+func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts reqopts.Variants, err error) {
 	columnGroupBy := req.URL.Query().Get("columnGroupBy")
 	opts.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
 	if err != nil {

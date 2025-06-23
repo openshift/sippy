@@ -11,6 +11,7 @@ import (
 	"time"
 
 	fet "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/util/sets"
@@ -58,7 +59,7 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 func (c *ComponentReportGenerator) PostAnalysisTestDetails(report *crtype.ReportTestDetails) error {
 
 	// Give middleware their chance to adjust the result
-	testKey := crtype.ReportTestIdentification{
+	testKey := crtest.ReportTestIdentification{
 		RowIdentification:    report.RowIdentification,
 		ColumnIdentification: report.ColumnIdentification,
 	}
@@ -157,7 +158,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 
 	reports := []crtype.ReportTestDetails{}
 	for _, tOpt := range c.ReqOptions.TestIDOptions {
-		testKey := crtype.TestWithVariantsKey{
+		testKey := crtest.TestWithVariantsKey{
 			TestID:   tOpt.TestID,
 			Variants: tOpt.RequestedVariants,
 		}
@@ -220,7 +221,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 	if testIDOption.BaseOverrideRelease != "" &&
 		testIDOption.BaseOverrideRelease != c.ReqOptions.BaseRelease.Name {
 
-		testKey := crtype.TestWithVariantsKey{
+		testKey := crtest.TestWithVariantsKey{
 			TestID:   testIDOption.TestID,
 			Variants: testIDOption.RequestedVariants,
 		}
@@ -252,7 +253,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 
 func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	ctx context.Context,
-	allJobVariants crtype.JobVariants,
+	allJobVariants crtest.JobVariants,
 	baseRelease string,
 	baseStart time.Time,
 	baseEnd time.Time) (map[string][]crtype.TestJobRunRows, []error) {
@@ -284,7 +285,7 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 
 func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 	ctx context.Context,
-	allJobVariants crtype.JobVariants,
+	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time,
 	junitTable string) (map[string][]crtype.TestJobRunRows, []error) {
@@ -455,13 +456,13 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows,
 	testIDOption reqopts.TestIdentification,
 ) crtype.ReportTestDetails {
-	testKey := crtype.ReportTestIdentification{
-		RowIdentification: crtype.RowIdentification{
+	testKey := crtest.ReportTestIdentification{
+		RowIdentification: crtest.RowIdentification{
 			Component:  testIDOption.Component,
 			Capability: testIDOption.Capability,
 			TestID:     testIDOption.TestID,
 		},
-		ColumnIdentification: crtype.ColumnIdentification{
+		ColumnIdentification: crtest.ColumnIdentification{
 			Variants: testIDOption.RequestedVariants,
 		},
 	}
@@ -500,9 +501,9 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 
 // go through all the job runs that had a test and summarize the results
 func (c *ComponentReportGenerator) summarizeRecordedTestStats(
-	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows, testKey crtype.ReportTestIdentification,
+	baseStatus, sampleStatus map[string][]crtype.TestJobRunRows, testKey crtest.ReportTestIdentification,
 ) (
-	totalBase, totalSample crtype.TestDetailsTestStats,
+	totalBase, totalSample crtest.TestDetailsTestStats,
 	report crtype.TestDetailsAnalysis,
 	result crtype.ReportTestDetails,
 	lastFailure time.Time, // track the last failure we observe in the sample, used by triage middleware to adjust status
@@ -546,7 +547,7 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 // and updates by-reference parameters with information found in the job rows.
 func (c *ComponentReportGenerator) assessTestStats(
 	jobRowsList []crtype.TestJobRunRows,
-	testStats *crtype.TestDetailsTestStats,
+	testStats *crtest.TestDetailsTestStats,
 	jobRunStatsList *[]crtype.TestDetailsJobRunStats,
 	jobName *string, lastFailure *time.Time,
 	result *crtype.ReportTestDetails,
@@ -577,7 +578,7 @@ func (c *ComponentReportGenerator) assessTestStats(
 
 func (c *ComponentReportGenerator) getJobRunStats(stats crtype.TestJobRunRows) crtype.TestDetailsJobRunStats {
 	jobRunStats := crtype.TestDetailsJobRunStats{
-		TestStats: crtype.NewTestStats(
+		TestStats: crtest.NewTestStats(
 			stats.SuccessCount,
 			stats.Failures(),
 			stats.FlakeCount,

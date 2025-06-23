@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/jobrunannotator"
@@ -82,7 +83,7 @@ func (f *AnnotateJobRunsFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.User, "user", f.User, "User who is applying the label.")
 }
 
-func (f *AnnotateJobRunsFlags) Validate(allVariants crtype.JobVariants) error {
+func (f *AnnotateJobRunsFlags) Validate(allVariants crtest.JobVariants) error {
 	for _, variantStr := range f.VariantStr {
 		vt := strings.Split(variantStr, ":")
 		if len(vt) != 2 {

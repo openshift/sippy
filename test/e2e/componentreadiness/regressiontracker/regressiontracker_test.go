@@ -8,6 +8,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
@@ -30,15 +31,15 @@ func Test_RegressionTracker(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
 	newRegression := componentreport.ReportTestSummary{
-		ReportTestIdentification: componentreport.ReportTestIdentification{
-			RowIdentification: componentreport.RowIdentification{
+		ReportTestIdentification: crtest.ReportTestIdentification{
+			RowIdentification: crtest.RowIdentification{
 				Component:  "comp",
 				Capability: "cap",
 				TestName:   "fake test",
 				TestSuite:  "fakesuite",
 				TestID:     "faketestid",
 			},
-			ColumnIdentification: componentreport.ColumnIdentification{
+			ColumnIdentification: crtest.ColumnIdentification{
 				Variants: map[string]string{
 					"a": "b",
 					"c": "d",

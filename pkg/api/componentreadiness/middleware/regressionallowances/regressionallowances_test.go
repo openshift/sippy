@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +19,7 @@ func Test_PreAnalysis(t *testing.T) {
 		"Arch":     "amd64",
 		"Platform": "aws",
 	}
-	regressionGetter := func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression {
+	regressionGetter := func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression {
 		if releaseString == "4.18" && reflect.DeepEqual(variant.Variants, variants) && testID == test1ID {
 			return &regressionallowances.IntentionalRegression{
 				TestID:             test1ID,
@@ -61,31 +62,31 @@ func Test_PreAnalysis(t *testing.T) {
 	reqOpts420Fallback.SampleRelease.Name = "4.20"
 	reqOpts420Fallback.BaseRelease.Name = "4.19"
 
-	test1Key := crtype.ReportTestIdentification{
-		RowIdentification: crtype.RowIdentification{
+	test1Key := crtest.ReportTestIdentification{
+		RowIdentification: crtest.RowIdentification{
 			TestName: "test 1",
 			TestID:   test1ID,
 		},
-		ColumnIdentification: crtype.ColumnIdentification{
+		ColumnIdentification: crtest.ColumnIdentification{
 			Variants: variants,
 		},
 	}
 
-	test2Key := crtype.ReportTestIdentification{
-		RowIdentification: crtype.RowIdentification{
+	test2Key := crtest.ReportTestIdentification{
+		RowIdentification: crtest.RowIdentification{
 			TestName: "test 2",
 			TestID:   test2ID,
 		},
-		ColumnIdentification: crtype.ColumnIdentification{
+		ColumnIdentification: crtest.ColumnIdentification{
 			Variants: variants,
 		},
 	}
 
 	tests := []struct {
 		name             string
-		testKey          crtype.ReportTestIdentification
+		testKey          crtest.ReportTestIdentification
 		reqOpts          reqopts.RequestOptions
-		regressionGetter func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
+		regressionGetter func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
 		testStatus       *crtype.ReportTestStats
 		expectedStatus   *crtype.ReportTestStats
 	}{
@@ -164,11 +165,11 @@ func buildTestStatus(total, success, flake int, baseRelease string) *crtype.Repo
 	ts := &crtype.ReportTestStats{
 		BaseStats: &crtype.TestDetailsReleaseStats{
 			Release: baseRelease,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
+			TestDetailsTestStats: crtest.TestDetailsTestStats{
 				FailureCount: fails,
 				SuccessCount: success,
 				FlakeCount:   flake,
-				SuccessRate:  crtype.CalculatePassRate(success, fails, flake, false),
+				SuccessRate:  crtest.CalculatePassRate(success, fails, flake, false),
 			},
 		},
 	}
@@ -184,11 +185,11 @@ func buildTestStatus2(total, success, flake int, baseRelease, sampleRelease stri
 	success -= regressed
 	ts.SampleStats = crtype.TestDetailsReleaseStats{
 		Release: sampleRelease,
-		TestDetailsTestStats: crtype.TestDetailsTestStats{
+		TestDetailsTestStats: crtest.TestDetailsTestStats{
 			FailureCount: fails,
 			SuccessCount: success,
 			FlakeCount:   flake,
-			SuccessRate:  crtype.CalculatePassRate(success, fails, flake, false),
+			SuccessRate:  crtest.CalculatePassRate(success, fails, flake, false),
 		},
 	}
 	ts.PityAdjustment = pityAdjust

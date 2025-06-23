@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -34,7 +34,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 		{Release: "4.15", Status: "", GADate: util.DatePtr(2024, 2, 28, 0, 0, 0, 0, time.UTC)},
 	}
 
-	allJobVariants := crtype.JobVariants{Variants: map[string][]string{
+	allJobVariants := crtest.JobVariants{Variants: map[string][]string{
 		"Architecture": {"amd64", "arm64", "s390x", "ppc64le", "heterogeneous"},
 		"FeatureSet":   {"default", "techpreview"},
 		"Installer":    {"ipi", "upi"},
