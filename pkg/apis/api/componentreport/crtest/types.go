@@ -5,6 +5,9 @@ import (
 	"time"
 )
 
+// These are foundational types for tests, built only from basic golang types.
+// They are test data building blocks shared by test_details and component reports.
+
 type ColumnID string
 
 type Identification struct {

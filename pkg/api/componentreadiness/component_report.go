@@ -740,7 +740,7 @@ func updateCellStatus(
 	columnIdentifications []crtest.ColumnID,
 	testID crtest.Identification,
 	testStats testdetails.TestComparison,
-// use the inputs above to update the maps below (golang passes maps by reference)
+	// use the inputs above to update the maps below (golang passes maps by reference)
 	status map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus,
 	allRows map[crtest.RowIdentification]struct{},
 	allColumns map[crtest.ColumnID]struct{},

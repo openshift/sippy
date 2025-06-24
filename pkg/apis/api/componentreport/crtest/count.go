@@ -1,6 +1,13 @@
 package crtest
 
-// Count is a struct representing the counts of test results in BigQuery-land.
+// test Count and Stats types represent much the same concept,
+// but Count is used as basically a DAO for BigQuery test results and summations,
+// while Stats represent test results to sippy users with pass rates built in.
+// really, Count belongs in the bq package, but since these types are so closely related,
+// and each has methods to translate the other, they need to be together to prevent circular dependencies.
+
+// Count is a struct representing the counts of test results from BigQuery-land.
+// initial counts from the DB are always 0 or 1, but these can be aggregated via Add().
 type Count struct {
 	TotalCount   int `json:"total_count" bigquery:"total_count"`
 	SuccessCount int `json:"success_count" bigquery:"success_count"`
@@ -25,12 +32,24 @@ func (tc Count) ToTestStats(flakeAsFailure bool) Stats { // translate to sippy/s
 	return NewTestStats(tc.SuccessCount, tc.Failures(), tc.FlakeCount, flakeAsFailure)
 }
 
+// Stats represents test result counts for sippy viewers; the attributes should be considered read-only,
+// created and modified only via methods, which consistently calculate SuccessRate according to
+// whether we consider flakes success or not.
 type Stats struct {
 	SuccessCount int `json:"success_count"`
 	FailureCount int `json:"failure_count"`
 	FlakeCount   int `json:"flake_count"`
 	// calculate from the above with PassRate method:
 	SuccessRate float64 `json:"success_rate"`
+}
+
+func NewTestStats(successCount, failureCount, flakeCount int, flakesAsFailure bool) Stats {
+	return Stats{
+		SuccessCount: successCount,
+		FailureCount: failureCount,
+		FlakeCount:   flakeCount,
+		SuccessRate:  CalculatePassRate(successCount, failureCount, flakeCount, flakesAsFailure),
+	}
 }
 
 func (ts Stats) Total() int {
@@ -71,15 +90,6 @@ func (ts Stats) FailPassWithFlakes(flakesAsFailure bool) (int, int) {
 		return ts.FailureCount + ts.FlakeCount, ts.SuccessCount
 	}
 	return ts.FailureCount, ts.SuccessCount + ts.FlakeCount
-}
-
-func NewTestStats(successCount, failureCount, flakeCount int, flakesAsFailure bool) Stats {
-	return Stats{
-		SuccessCount: successCount,
-		FailureCount: failureCount,
-		FlakeCount:   flakeCount,
-		SuccessRate:  CalculatePassRate(successCount, failureCount, flakeCount, flakesAsFailure),
-	}
 }
 
 func CalculatePassRate(success, failure, flake int, treatFlakeAsFailure bool) float64 {

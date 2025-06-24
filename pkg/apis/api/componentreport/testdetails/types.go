@@ -9,9 +9,33 @@ import (
 	"github.com/openshift/sippy/pkg/db/models"
 )
 
+// These are types used specifically to generate a test-details API response derived from lower-level DB test data.
+
+// Report is the top level API response for test details reports.
+type Report struct {
+	crtest.Identification
+	JiraComponent   string     `json:"jira_component"`
+	JiraComponentID *big.Rat   `json:"jira_component_id"`
+	TestName        string     `json:"test_name"`
+	GeneratedAt     *time.Time `json:"generated_at"`
+
+	// Analyses is a list of potentially multiple analysis runs for this test.
+	// Callers can assume that the first in the list is somewhat authoritative, and should
+	// be displayed by default, but each analysis offers details and explanations on its outcome
+	// and can be used in some capacity.
+	Analyses []Analysis `json:"analyses"`
+}
+
+// Analysis is a collection of stats for the report which could potentially carry
+// multiple different analyses run.
+type Analysis struct {
+	TestComparison
+	JobStats []JobStats `json:"job_stats,omitempty"`
+}
+
 // TestComparison is an overview struct for a particular regressed test's stats.
 // (basis passes and pass rate, sample passes and pass rate, and fishers exact confidence)
-// Important type returned by the API.
+// Important type returned by the API and also aggreggated in component reports.
 // TODO: compare with TestStatus we use internally, see if we can converge?
 type TestComparison struct {
 	// ReportStatus is an integer representing the severity of the regression.
@@ -50,28 +74,6 @@ type TestComparison struct {
 	// Regression is populated with data on when we first detected this regression. If unset it implies
 	// the regression tracker has not yet run to find it, or you're using report params/a view without regression tracking.
 	Regression *models.TestRegression `json:"regression,omitempty"`
-}
-
-// Analysis is a collection of stats for the report which could potentially carry
-// multiple different analyses run.
-type Analysis struct {
-	TestComparison
-	JobStats []JobStats `json:"job_stats,omitempty"`
-}
-
-// Report is the top level API response for test details reports.
-type Report struct {
-	crtest.Identification
-	JiraComponent   string     `json:"jira_component"`
-	JiraComponentID *big.Rat   `json:"jira_component_id"`
-	TestName        string     `json:"test_name"`
-	GeneratedAt     *time.Time `json:"generated_at"`
-
-	// Analyses is a list of potentially multiple analysis run for this test.
-	// Callers can assume that the first in the list is somewhat authoritative, and should
-	// be displayed by default, but each analysis offers details and explanations on it's outcome
-	// and can be used in some capacity.
-	Analyses []Analysis `json:"analyses"`
 }
 
 type ReleaseStats struct {

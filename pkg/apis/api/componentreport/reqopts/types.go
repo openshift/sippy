@@ -7,14 +7,10 @@ import (
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
-// These component report types respresent options that the user has requested,
+// These types represent report options requested by the user,
 // which need to be serialized as part of caching the report results.
 
 // RequestOptions is a struct packaging all the options for a CR request.
-// BaseOverrideRelease is the counterpart to Advanced.IncludeMultiReleaseAnalysis
-// When multi release analysis is enabled we 'fallback' to the release that has the highest
-// threshold for indicating a regression.  If a release prior to the selected BaseRelease has a
-// higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
 type RequestOptions struct {
 	BaseRelease    Release
 	SampleRelease  Release
@@ -62,6 +58,10 @@ type RelativeRelease struct {
 
 // TestIdentification handles options used in the test details report when we focus in
 // on a specific test and variants combo, typically because it is or was regressed.
+// BaseOverrideRelease is the counterpart to Advanced.IncludeMultiReleaseAnalysis
+// When multi release analysis is enabled we 'fallback' to the release that has the highest
+// threshold for indicating a regression.  If a release prior to the selected BaseRelease has a
+// higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
 type TestIdentification struct {
 	Component  string `json:"component,omitempty" yaml:"component,omitempty"`
 	Capability string `json:"capability,omitempty" yaml:"capability,omitempty"`
