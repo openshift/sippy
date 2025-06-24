@@ -88,7 +88,7 @@ type RequestVariantOptions struct {
 // BaseOverrideRelease is the counterpart to RequestAdvancedOptions.IncludeMultiReleaseAnalysis
 // When multi release analysis is enabled we 'fallback' to the release that has the highest
 // threshold for indicating a regression.  If a release prior to the selected BaseRelease has a
-// higher standard it will be set as the BaseOverrideRelease to be included in the TestDetails analysis
+// higher standard it will be set as the BaseRelease to be included in the TestDetails analysis
 type RequestOptions struct {
 	BaseRelease    RequestReleaseOptions
 	SampleRelease  RequestReleaseOptions

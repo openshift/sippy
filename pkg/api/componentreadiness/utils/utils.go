@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -132,12 +133,17 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 	}
 
 	// Find the view for this regression
-	var view *crtype.View
+	var view crtype.View
+	var found bool
 	for i := range views {
 		if views[i].Name == regression.View {
-			view = &views[i]
+			view = views[i]
+			found = true
 			break
 		}
+	}
+	if !found {
+		return "", fmt.Errorf("view %s not found", regression.View)
 	}
 
 	// Parse variants from the regression's Variants field (which is a []string of "key:value" pairs)
@@ -157,57 +163,61 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 
 	params := url.Values{}
 
-	if view != nil {
-		// Use view configuration to populate parameters
+	params.Add("testId", regression.TestID)
 
-		// Get base and sample release options from the view
-		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor)
-		if err != nil {
-			return "", fmt.Errorf("failed to get base release options: %w", err)
+	// Use view configuration to populate parameters
+
+	// Get base and sample release options from the view
+	baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor)
+	if err != nil {
+		return "", fmt.Errorf("failed to get base release options: %w", err)
+	}
+
+	sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor)
+	if err != nil {
+		return "", fmt.Errorf("failed to get sample release options: %w", err)
+	}
+
+	// Add release and time parameters from view
+	params.Add("baseRelease", baseReleaseOpts.Release)
+	params.Add("sampleRelease", sampleReleaseOpts.Release)
+	params.Add("baseStartTime", baseReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
+	params.Add("baseEndTime", baseReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
+	params.Add("sampleStartTime", sampleReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
+	params.Add("sampleEndTime", sampleReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
+
+	// Check if release fallback was used and the regression matched an older release:
+	if regression.BaseRelease != baseReleaseOpts.Release {
+		params.Add("testBasisRelease", regression.BaseRelease)
+	}
+
+	// Add advanced options from view
+	params.Add("confidence", strconv.Itoa(view.AdvancedOptions.Confidence))
+	params.Add("minFail", strconv.Itoa(view.AdvancedOptions.MinimumFailure))
+	params.Add("pity", strconv.Itoa(view.AdvancedOptions.PityFactor))
+	params.Add("passRateNewTests", strconv.Itoa(view.AdvancedOptions.PassRateRequiredNewTests))
+	params.Add("passRateAllTests", strconv.Itoa(view.AdvancedOptions.PassRateRequiredAllTests))
+	params.Add("ignoreDisruption", strconv.FormatBool(view.AdvancedOptions.IgnoreDisruption))
+	params.Add("ignoreMissing", strconv.FormatBool(view.AdvancedOptions.IgnoreMissing))
+	params.Add("flakeAsFailure", strconv.FormatBool(view.AdvancedOptions.FlakeAsFailure))
+	params.Add("includeMultiReleaseAnalysis", strconv.FormatBool(view.AdvancedOptions.IncludeMultiReleaseAnalysis))
+
+	// Add variant options from view
+	if view.VariantOptions.ColumnGroupBy != nil {
+		params.Add("columnGroupBy", strings.Join(view.VariantOptions.ColumnGroupBy.List(), ","))
+	}
+	if view.VariantOptions.DBGroupBy != nil {
+		params.Add("dbGroupBy", strings.Join(view.VariantOptions.DBGroupBy.List(), ","))
+	}
+
+	// Add include variants from view
+	for variantKey, variantValues := range view.VariantOptions.IncludeVariants {
+		for _, variantValue := range variantValues {
+			params.Add("includeVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
 		}
-
-		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor)
-		if err != nil {
-			return "", fmt.Errorf("failed to get sample release options: %w", err)
-		}
-
-		// Add release and time parameters from view
-		params.Add("baseRelease", baseReleaseOpts.Release)
-		params.Add("sampleRelease", sampleReleaseOpts.Release)
-		params.Add("baseStartTime", baseReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
-		params.Add("baseEndTime", baseReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
-		params.Add("sampleStartTime", sampleReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
-		params.Add("sampleEndTime", sampleReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
-
-		// Add advanced options from view
-		params.Add("confidence", strconv.Itoa(view.AdvancedOptions.Confidence))
-		params.Add("minFail", strconv.Itoa(view.AdvancedOptions.MinimumFailure))
-		params.Add("pity", strconv.Itoa(view.AdvancedOptions.PityFactor))
-		params.Add("passRateNewTests", strconv.Itoa(view.AdvancedOptions.PassRateRequiredNewTests))
-		params.Add("passRateAllTests", strconv.Itoa(view.AdvancedOptions.PassRateRequiredAllTests))
-		params.Add("ignoreDisruption", strconv.FormatBool(view.AdvancedOptions.IgnoreDisruption))
-		params.Add("ignoreMissing", strconv.FormatBool(view.AdvancedOptions.IgnoreMissing))
-		params.Add("flakeAsFailure", strconv.FormatBool(view.AdvancedOptions.FlakeAsFailure))
-		params.Add("includeMultiReleaseAnalysis", strconv.FormatBool(view.AdvancedOptions.IncludeMultiReleaseAnalysis))
-
-		// Add variant options from view
-		if view.VariantOptions.ColumnGroupBy != nil {
-			params.Add("columnGroupBy", strings.Join(view.VariantOptions.ColumnGroupBy.List(), ","))
-		}
-		if view.VariantOptions.DBGroupBy != nil {
-			params.Add("dbGroupBy", strings.Join(view.VariantOptions.DBGroupBy.List(), ","))
-		}
-
-		// Add include variants from view
-		for variantKey, variantValues := range view.VariantOptions.IncludeVariants {
-			for _, variantValue := range variantValues {
-				params.Add("includeVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
-			}
-		}
-	} else {
+	}
+	/*
 		// Fallback to defaults if view not found
-		params.Add("baseRelease", regression.Release)
-		params.Add("sampleRelease", regression.Release)
 
 		// Add simplified time ranges
 		now := time.Now()
@@ -253,15 +263,20 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 		for _, variant := range defaultIncludeVariants {
 			params.Add("includeVariant", variant)
 		}
-	}
 
-	// Add test identification
-	params.Add("testId", regression.TestID)
-	params.Add("testBasisRelease", regression.Release)
+	*/
 
 	// Add the specific variants from the regression as individual parameters
+	// Sort the keys to ensure consistent environment parameter ordering
+	variantKeys := make([]string, 0, len(variantMap))
+	for key := range variantMap {
+		variantKeys = append(variantKeys, key)
+	}
+	sort.Strings(variantKeys)
+
 	environment := make([]string, 0, len(variantMap))
-	for key, value := range variantMap {
+	for _, key := range variantKeys {
+		value := variantMap[key]
 		params.Add(key, value)
 		environment = append(environment, fmt.Sprintf("%s:%s", key, value))
 	}
