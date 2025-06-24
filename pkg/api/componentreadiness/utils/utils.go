@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/sirupsen/logrus"
 )
 
@@ -41,7 +43,7 @@ func getMinor(in string) (int, error) {
 	return int(minor), err
 }
 
-func FindStartEndTimesForRelease(releases []componentreport.Release, release string) (*time.Time, *time.Time, error) {
+func FindStartEndTimesForRelease(releases []crtest.Release, release string) (*time.Time, *time.Time, error) {
 	for _, r := range releases {
 		if r.Release == release {
 			return r.Start, r.End, nil
@@ -50,15 +52,15 @@ func FindStartEndTimesForRelease(releases []componentreport.Release, release str
 	return nil, nil, fmt.Errorf("release %s not found", release)
 }
 
-func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOptions) string {
+func NormalizeProwJobName(prowName string, reqOptions reqopts.RequestOptions) string {
 	name := prowName
 	// Build a list of all releases involved in this request to replace with X.X in normalized prow job names.
 	releases := []string{}
-	if reqOptions.BaseRelease.Release != "" {
-		releases = append(releases, reqOptions.BaseRelease.Release)
+	if reqOptions.BaseRelease.Name != "" {
+		releases = append(releases, reqOptions.BaseRelease.Name)
 	}
-	if reqOptions.SampleRelease.Release != "" {
-		releases = append(releases, reqOptions.SampleRelease.Release)
+	if reqOptions.SampleRelease.Name != "" {
+		releases = append(releases, reqOptions.SampleRelease.Name)
 	}
 	for _, tid := range reqOptions.TestIDOptions {
 		if tid.BaseOverrideRelease != "" {
@@ -83,21 +85,21 @@ func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOpt
 // DeserializeTestKey helps us workaround the limitations of a struct as a map key, where
 // we instead serialize a very small struct to json for a unit test key that includes test
 // ID and a specific set of variants. This function deserializes back to a struct.
-func DeserializeTestKey(stats componentreport.TestStatus, testKeyStr string) (componentreport.ReportTestIdentification, error) {
-	var testKey componentreport.TestWithVariantsKey
+func DeserializeTestKey(stats bq.TestStatus, testKeyStr string) (crtest.Identification, error) {
+	var testKey crtest.KeyWithVariants
 	err := json.Unmarshal([]byte(testKeyStr), &testKey)
 	if err != nil {
 		logrus.WithError(err).Errorf("trying to unmarshel %s", testKeyStr)
-		return componentreport.ReportTestIdentification{}, err
+		return crtest.Identification{}, err
 	}
-	testID := componentreport.ReportTestIdentification{
-		RowIdentification: componentreport.RowIdentification{
+	testID := crtest.Identification{
+		RowIdentification: crtest.RowIdentification{
 			Component: stats.Component,
 			TestName:  stats.TestName,
 			TestSuite: stats.TestSuite,
 			TestID:    testKey.TestID,
 		},
-		ColumnIdentification: componentreport.ColumnIdentification{
+		ColumnIdentification: crtest.ColumnIdentification{
 			Variants: testKey.Variants,
 		},
 	}

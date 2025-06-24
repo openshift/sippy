@@ -5,7 +5,9 @@ import (
 	"reflect"
 	"testing"
 
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,7 +19,7 @@ func Test_PreAnalysis(t *testing.T) {
 		"Arch":     "amd64",
 		"Platform": "aws",
 	}
-	regressionGetter := func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression {
+	regressionGetter := func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression {
 		if releaseString == "4.18" && reflect.DeepEqual(variant.Variants, variants) && testID == test1ID {
 			return &regressionallowances.IntentionalRegression{
 				TestID:             test1ID,
@@ -46,47 +48,47 @@ func Test_PreAnalysis(t *testing.T) {
 		}
 		return nil
 	}
-	reqOpts419 := crtype.RequestOptions{
-		SampleRelease: crtype.RequestReleaseOptions{Release: "4.19"},
-		BaseRelease:   crtype.RequestReleaseOptions{Release: "4.18"},
-		AdvancedOption: crtype.RequestAdvancedOptions{
+	reqOpts419 := reqopts.RequestOptions{
+		SampleRelease: reqopts.Release{Name: "4.19"},
+		BaseRelease:   reqopts.Release{Name: "4.18"},
+		AdvancedOption: reqopts.Advanced{
 			IncludeMultiReleaseAnalysis: true,
 			PassRateRequiredNewTests:    95,
 		},
 	}
 	reqOpts419Fallback := reqOpts419
-	reqOpts419Fallback.TestIDOptions = []crtype.RequestTestIdentificationOptions{{BaseOverrideRelease: "4.17"}}
+	reqOpts419Fallback.TestIDOptions = []reqopts.TestIdentification{{BaseOverrideRelease: "4.17"}}
 	reqOpts420Fallback := reqOpts419
-	reqOpts420Fallback.SampleRelease.Release = "4.20"
-	reqOpts420Fallback.BaseRelease.Release = "4.19"
+	reqOpts420Fallback.SampleRelease.Name = "4.20"
+	reqOpts420Fallback.BaseRelease.Name = "4.19"
 
-	test1Key := crtype.ReportTestIdentification{
-		RowIdentification: crtype.RowIdentification{
+	test1Key := crtest.Identification{
+		RowIdentification: crtest.RowIdentification{
 			TestName: "test 1",
 			TestID:   test1ID,
 		},
-		ColumnIdentification: crtype.ColumnIdentification{
+		ColumnIdentification: crtest.ColumnIdentification{
 			Variants: variants,
 		},
 	}
 
-	test2Key := crtype.ReportTestIdentification{
-		RowIdentification: crtype.RowIdentification{
+	test2Key := crtest.Identification{
+		RowIdentification: crtest.RowIdentification{
 			TestName: "test 2",
 			TestID:   test2ID,
 		},
-		ColumnIdentification: crtype.ColumnIdentification{
+		ColumnIdentification: crtest.ColumnIdentification{
 			Variants: variants,
 		},
 	}
 
 	tests := []struct {
 		name             string
-		testKey          crtype.ReportTestIdentification
-		reqOpts          crtype.RequestOptions
-		regressionGetter func(releaseString string, variant crtype.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
-		testStatus       *crtype.ReportTestStats
-		expectedStatus   *crtype.ReportTestStats
+		testKey          crtest.Identification
+		reqOpts          reqopts.RequestOptions
+		regressionGetter func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
+		testStatus       *testdetails.TestComparison
+		expectedStatus   *testdetails.TestComparison
 	}{
 		{
 			name:             "swap base stats using regression allowance",
@@ -158,16 +160,16 @@ func maskFLOPError(f1, f2 *float64) {
 	}
 }
 
-func buildTestStatus(total, success, flake int, baseRelease string) *crtype.ReportTestStats {
+func buildTestStatus(total, success, flake int, baseRelease string) *testdetails.TestComparison {
 	fails := total - success - flake
-	ts := &crtype.ReportTestStats{
-		BaseStats: &crtype.TestDetailsReleaseStats{
+	ts := &testdetails.TestComparison{
+		BaseStats: &testdetails.ReleaseStats{
 			Release: baseRelease,
-			TestDetailsTestStats: crtype.TestDetailsTestStats{
+			Stats: crtest.Stats{
 				FailureCount: fails,
 				SuccessCount: success,
 				FlakeCount:   flake,
-				SuccessRate:  crtype.CalculatePassRate(success, fails, flake, false),
+				SuccessRate:  crtest.CalculatePassRate(success, fails, flake, false),
 			},
 		},
 	}
@@ -175,19 +177,19 @@ func buildTestStatus(total, success, flake int, baseRelease string) *crtype.Repo
 }
 
 //nolint:unparam
-func buildTestStatus2(total, success, flake int, baseRelease, sampleRelease string, regressed int, pityAdjust, passRateAdjust float64) *crtype.ReportTestStats {
+func buildTestStatus2(total, success, flake int, baseRelease, sampleRelease string, regressed int, pityAdjust, passRateAdjust float64) *testdetails.TestComparison {
 	fails := total - success - flake
 	ts := buildTestStatus(total, success, flake, baseRelease) // set up the base stats as before
 
 	fails += regressed // set up sample stats as base with regressed included
 	success -= regressed
-	ts.SampleStats = crtype.TestDetailsReleaseStats{
+	ts.SampleStats = testdetails.ReleaseStats{
 		Release: sampleRelease,
-		TestDetailsTestStats: crtype.TestDetailsTestStats{
+		Stats: crtest.Stats{
 			FailureCount: fails,
 			SuccessCount: success,
 			FlakeCount:   flake,
-			SuccessRate:  crtype.CalculatePassRate(success, fails, flake, false),
+			SuccessRate:  crtest.CalculatePassRate(success, fails, flake, false),
 		},
 	}
 	ts.PityAdjustment = pityAdjust

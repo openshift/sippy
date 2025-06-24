@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
 	"google.golang.org/api/iterator"
@@ -50,7 +53,7 @@ type JiraAutomator struct {
 	bqClient     *bqclient.Client
 	dbc          *db.DB
 	cacheOptions cache.RequestOptions
-	views        []crtype.View
+	views        []crview.View
 	releases     []v1.Release
 	sippyURL     string
 	// columnThresholds defines a threshold for the number of red cells in a column.
@@ -69,7 +72,7 @@ func NewJiraAutomator(
 	bqClient *bqclient.Client,
 	dbc *db.DB,
 	cacheOptions cache.RequestOptions,
-	views []crtype.View,
+	views []crview.View,
 	releases []v1.Release,
 	sippyURL, jiraAccount string,
 	includeComponents sets.String,
@@ -109,25 +112,25 @@ func NewJiraAutomator(
 	return j, nil
 }
 
-func (j JiraAutomator) getRequestOptionForView(view crtype.View) (crtype.RequestOptions, error) {
+func (j JiraAutomator) getRequestOptionForView(view crview.View) (reqopts.RequestOptions, error) {
 	baseRelease, err := componentreadiness.GetViewReleaseOptions(j.releases, "basis", view.BaseRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
-		return crtype.RequestOptions{}, err
+		return reqopts.RequestOptions{}, err
 	}
 
 	sampleRelease, err := componentreadiness.GetViewReleaseOptions(j.releases, "sample", view.SampleRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
-		return crtype.RequestOptions{}, err
+		return reqopts.RequestOptions{}, err
 	}
 
 	variantOption := view.VariantOptions
 	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
-	reportOpts := crtype.RequestOptions{
+	reportOpts := reqopts.RequestOptions{
 		BaseRelease:   baseRelease,
 		SampleRelease: sampleRelease,
-		TestIDOptions: []crtype.RequestTestIdentificationOptions{
+		TestIDOptions: []reqopts.TestIdentification{
 			view.TestIDOption,
 		},
 		VariantOption:  variantOption,
@@ -137,7 +140,7 @@ func (j JiraAutomator) getRequestOptionForView(view crtype.View) (crtype.Request
 	return reportOpts, nil
 }
 
-func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.ComponentReport, error) {
+func (j JiraAutomator) getComponentReportForView(view crview.View) (crtype.ComponentReport, error) {
 	reportOpts, err := j.getRequestOptionForView(view)
 	if err != nil {
 		return crtype.ComponentReport{}, fmt.Errorf("failed to get request option for view %s with error %v", view.Name, err)
@@ -160,7 +163,7 @@ func (j JiraAutomator) getComponentReportForView(view crtype.View) (crtype.Compo
 // (b) has the "Affects Version/s" set to the sample version,
 // (c) were reported by the CR JIRA service account
 // Issues will be ordered by creation time
-func (j JiraAutomator) getExistingIssuesForComponent(view crtype.View, component JiraComponent) ([]jira.Issue, error) {
+func (j JiraAutomator) getExistingIssuesForComponent(view crview.View, component JiraComponent) ([]jira.Issue, error) {
 	searchOptions := jira.SearchOptions{
 		MaxResults: 1,
 		Fields: []string{
@@ -172,7 +175,7 @@ func (j JiraAutomator) getExistingIssuesForComponent(view crtype.View, component
 		},
 	}
 	jqlQuery := fmt.Sprintf("project=%s&&component='%s'&&creator='%s'&&affectedVersion=%s&&labels in (%s) ORDER BY createdDate",
-		component.Project, component.Component, j.jiraAccount, view.SampleRelease.Release, jiratype.LabelJiraAutomator)
+		component.Project, component.Component, j.jiraAccount, view.SampleRelease.Name, jiratype.LabelJiraAutomator)
 	issues, _, err := j.jiraClient.SearchWithContext(context.Background(), jqlQuery, &searchOptions)
 	return issues, err
 }
@@ -210,7 +213,7 @@ func isReleaseBlockerApproved(existing *jira.Issue) bool {
 // updateExistingJiraIssue updates existing issue by
 // a. adding a new comment containing a CR link with the most recently analyzed time window where the regression is still manifesting.
 // b. if pre-release, label the ticket as a Release Blocker if someone removed it
-func (j JiraAutomator) updateExistingJiraIssue(view crtype.View, existing *jira.Issue) error {
+func (j JiraAutomator) updateExistingJiraIssue(view crview.View, existing *jira.Issue) error {
 	absURL, _, err := j.getComponentReadinessURLsForView(view)
 	if err != nil {
 		return err
@@ -230,7 +233,7 @@ func (j JiraAutomator) updateExistingJiraIssue(view crtype.View, existing *jira.
 
 	// Set Release Blocker
 	if !isReleaseBlockerApproved(existing) {
-		return j.updateReleaseBlocker(existing, view.SampleRelease.Release)
+		return j.updateReleaseBlocker(existing, view.SampleRelease.Name)
 	}
 
 	return nil
@@ -238,7 +241,7 @@ func (j JiraAutomator) updateExistingJiraIssue(view crtype.View, existing *jira.
 
 // getComponentReadinessURLsForView generates two URL, one with absolute timing params at this moment this is called
 // and one with view.
-func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (string, string, error) {
+func (j JiraAutomator) getComponentReadinessURLsForView(view crview.View) (string, string, error) {
 	reportOpts, err := j.getRequestOptionForView(view)
 	if err != nil {
 		return "", "", err
@@ -264,13 +267,13 @@ func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (strin
 		absURL += "main?"
 	}
 
-	if reportOpts.BaseRelease.Release != "" {
-		values.Add("baseRelease", reportOpts.BaseRelease.Release)
+	if reportOpts.BaseRelease.Name != "" {
+		values.Add("baseRelease", reportOpts.BaseRelease.Name)
 		values.Add("baseStartTime", reportOpts.BaseRelease.Start.UTC().Format(time.RFC3339))
 		values.Add("baseEndTime", reportOpts.BaseRelease.End.UTC().Format(time.RFC3339))
 	}
-	if reportOpts.SampleRelease.Release != "" {
-		values.Add("sampleRelease", reportOpts.SampleRelease.Release)
+	if reportOpts.SampleRelease.Name != "" {
+		values.Add("sampleRelease", reportOpts.SampleRelease.Name)
 		values.Add("sampleStartTime", reportOpts.SampleRelease.Start.UTC().Format(time.RFC3339))
 		values.Add("sampleEndTime", reportOpts.SampleRelease.End.UTC().Format(time.RFC3339))
 	}
@@ -305,7 +308,7 @@ func (j JiraAutomator) getComponentReadinessURLsForView(view crtype.View) (strin
 // b  adding the Regression label defined by LabelJiraAutomator.
 // c. setting a description with links to CR
 // d. for pre-release, setting "Release Blocker" label to Approved
-func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, component JiraComponent, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) error {
+func (j JiraAutomator) createNewJiraIssueForRegressions(view crview.View, component JiraComponent, tests []crtype.ReportTestSummary, linkedIssue *jira.Issue) error {
 	if len(tests) > 0 {
 		description := `Component Readiness has found a potential regression in the following tests:`
 		for _, test := range tests {
@@ -349,7 +352,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 				Summary: summary,
 				AffectsVersions: []*jira.AffectsVersion{
 					{
-						Name: view.SampleRelease.Release,
+						Name: view.SampleRelease.Name,
 					},
 				},
 				Labels: []string{jiratype.LabelJiraAutomator},
@@ -361,7 +364,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 				return err
 			}
 			// Set Release Blocker field. Jira does not allow setting those during creation. So do it in separate step.
-			return j.updateReleaseBlocker(created, view.SampleRelease.Release)
+			return j.updateReleaseBlocker(created, view.SampleRelease.Name)
 		}
 		issueStr, err := json.MarshalIndent(issue, "", "  ")
 		if err != nil {
@@ -374,7 +377,7 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crtype.View, compon
 	return nil
 }
 
-func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crtype.View, component JiraComponent, tests []crtype.ReportTestSummary) error {
+func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crview.View, component JiraComponent, tests []crtype.ReportTestSummary) error {
 	switch issue.Fields.Status.Name {
 	case jiratype.StatusNew, jiratype.StatusInProgress, jiratype.StatusAssigned, jiratype.StatusModified:
 		// New/Assigned/In Progress/Modified
@@ -407,18 +410,18 @@ func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crty
 			}
 
 			// Identify tests only appearing in current report, not scope report
-			scopeRegressedTests := map[crtype.RowIdentification]map[crtype.ColumnID]crtype.ReportTestSummary{}
+			scopeRegressedTests := map[crtest.RowIdentification]map[crtest.ColumnID]crtype.ReportTestSummary{}
 			for _, row := range scopeReport.Rows {
 				for _, col := range row.Columns {
 					for _, test := range col.RegressedTests {
 						if _, ok := scopeRegressedTests[test.RowIdentification]; !ok {
-							scopeRegressedTests[row.RowIdentification] = map[crtype.ColumnID]crtype.ReportTestSummary{}
+							scopeRegressedTests[row.RowIdentification] = map[crtest.ColumnID]crtype.ReportTestSummary{}
 						}
 						columnKeyBytes, err := json.Marshal(test.ColumnIdentification)
 						if err != nil {
 							return err
 						}
-						scopeRegressedTests[test.RowIdentification][crtype.ColumnID(columnKeyBytes)] = test
+						scopeRegressedTests[test.RowIdentification][crtest.ColumnID(columnKeyBytes)] = test
 					}
 				}
 			}
@@ -431,7 +434,7 @@ func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crty
 				_, ok := scopeRegressedTests[test.RowIdentification]
 				if !ok {
 					newTests = append(newTests, test)
-				} else if _, ok := scopeRegressedTests[test.RowIdentification][crtype.ColumnID(columnKeyBytes)]; !ok {
+				} else if _, ok := scopeRegressedTests[test.RowIdentification][crtest.ColumnID(columnKeyBytes)]; !ok {
 					newTests = append(newTests, test)
 				}
 			}
@@ -553,7 +556,7 @@ func (j JiraAutomator) groupRegressedTestsByComponents(report crtype.ComponentRe
 	return componentRegressedTests, nil
 }
 
-func (j JiraAutomator) automateJirasForView(view crtype.View) error {
+func (j JiraAutomator) automateJirasForView(view crview.View) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("automate jiras for view")

@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/componentreadiness/jobrunannotator"
@@ -29,7 +30,7 @@ type AnnotateJobRunsFlags struct {
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	ConfigFlags             *configflags.ConfigFlags
 	VariantStr              []string
-	Variants                []crtype.Variant
+	Variants                []bq.Variant
 	Release                 string
 	Label                   string
 	BuildClusters           []string
@@ -82,7 +83,7 @@ func (f *AnnotateJobRunsFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.User, "user", f.User, "User who is applying the label.")
 }
 
-func (f *AnnotateJobRunsFlags) Validate(allVariants crtype.JobVariants) error {
+func (f *AnnotateJobRunsFlags) Validate(allVariants crtest.JobVariants) error {
 	for _, variantStr := range f.VariantStr {
 		vt := strings.Split(variantStr, ":")
 		if len(vt) != 2 {
@@ -101,7 +102,7 @@ func (f *AnnotateJobRunsFlags) Validate(allVariants crtype.JobVariants) error {
 		if !found {
 			return fmt.Errorf("--variant %s has wrong variant value %s", variantStr, vt[1])
 		}
-		f.Variants = append(f.Variants, crtype.Variant{Key: vt[0], Value: vt[1]})
+		f.Variants = append(f.Variants, bq.Variant{Key: vt[0], Value: vt[1]})
 	}
 	if len(f.Label) == 0 {
 		return fmt.Errorf("--label is required")

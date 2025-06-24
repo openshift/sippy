@@ -4,26 +4,28 @@ import (
 	"context"
 	"sync"
 
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 )
 
 type List []Middleware
 
-func (l List) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crtype.TestStatus, errCh chan error) {
+func (l List) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]bq.TestStatus, errCh chan error) {
 	// Invoke the Query phase for each middleware configured:
 	for _, mw := range l {
 		mw.Query(ctx, wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
 	}
 }
 
-func (l List) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
+func (l List) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
 	// Invoke the QueryTestDetails phase for each middleware configured:
 	for _, mw := range l {
 		mw.QueryTestDetails(ctx, wg, errCh, allJobVariants)
 	}
 }
 
-func (l List) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (l List) PreAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	for _, mw := range l {
 		if err := mw.PreAnalysis(testKey, testStats); err != nil {
 			return err
@@ -32,7 +34,7 @@ func (l List) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *cr
 	return nil
 }
 
-func (l List) PostAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (l List) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	for _, mw := range l {
 		if err := mw.PostAnalysis(testKey, testStats); err != nil {
 			return err
@@ -41,7 +43,7 @@ func (l List) PostAnalysis(testKey crtype.ReportTestIdentification, testStats *c
 	return nil
 }
 
-func (l List) PreTestDetailsAnalysis(testKey crtype.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error {
+func (l List) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *bq.TestJobRunStatuses) error {
 	for _, mw := range l {
 		if err := mw.PreTestDetailsAnalysis(testKey, status); err != nil {
 			return err

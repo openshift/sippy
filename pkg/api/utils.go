@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
 
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
@@ -178,7 +178,7 @@ func GetReleases(ctx context.Context, bqc *bqclient.Client) ([]v1.Release, error
 }
 
 // VariantsStringToSet converts comma separated variant string into a set; also validates that the variants are known
-func VariantsStringToSet(allJobVariants crtype.JobVariants, variantsString string) (sets.String, error) {
+func VariantsStringToSet(allJobVariants crtest.JobVariants, variantsString string) (sets.String, error) {
 	variantSet := sets.String{}
 	variants := strings.Split(variantsString, ",")
 	for _, v := range variants {
@@ -193,7 +193,7 @@ func VariantsStringToSet(allJobVariants crtype.JobVariants, variantsString strin
 
 // VariantListToMap collects a list of variants like "Architecture:amd64" into a map [Architecture -> amd64];
 // it also validates that the variants are known
-func VariantListToMap(allJobVariants crtype.JobVariants, variants []string) (map[string][]string, error) {
+func VariantListToMap(allJobVariants crtest.JobVariants, variants []string) (map[string][]string, error) {
 	variantsMap := map[string][]string{}
 	var err error
 	for _, variant := range variants {

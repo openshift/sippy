@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -23,7 +26,7 @@ const (
 
 var _ middleware.Middleware = &RegressionTracker{}
 
-func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions crtype.RequestOptions) *RegressionTracker {
+func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions reqopts.RequestOptions) *RegressionTracker {
 	return &RegressionTracker{
 		log:        log.WithField("middleware", "RegressionTracker"),
 		reqOptions: reqOptions,
@@ -36,21 +39,21 @@ func NewRegressionTrackerMiddleware(dbc *db.DB, reqOptions crtype.RequestOptions
 // It also handles adjustments if those regressions are triaged to bugs.
 type RegressionTracker struct {
 	log             log.FieldLogger
-	reqOptions      crtype.RequestOptions
+	reqOptions      reqopts.RequestOptions
 	dbc             *db.DB
 	openRegressions []*models.TestRegression
 	// hasLoadedRegressions will be true once we've loaded regression data
 	hasLoadedRegressions bool
 }
 
-func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtype.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crtype.TestStatus, errCh chan error) {
+func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]bq.TestStatus, errCh chan error) {
 	err := r.ensureRegressionsLoaded()
 	if err != nil {
 		errCh <- err
 	}
 }
 
-func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtype.JobVariants) {
+func (r *RegressionTracker) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
 	err := r.ensureRegressionsLoaded()
 	if err != nil {
 		errCh <- err
@@ -64,7 +67,7 @@ func (r *RegressionTracker) ensureRegressionsLoaded() error {
 
 	// Load all known regressions for this release:
 	var err error
-	r.openRegressions, err = query.ListOpenRegressions(r.dbc, r.reqOptions.SampleRelease.Release)
+	r.openRegressions, err = query.ListOpenRegressions(r.dbc, r.reqOptions.SampleRelease.Name)
 	if err != nil {
 		return err
 	}
@@ -73,7 +76,7 @@ func (r *RegressionTracker) ensureRegressionsLoaded() error {
 	return nil
 }
 
-func (r *RegressionTracker) PreAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
+func (r *RegressionTracker) PreAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	if len(r.openRegressions) > 0 {
 		view := r.openRegressions[0].View // grab view from first regression, they were queried only for sample release
 		or := FindOpenRegression(view, testKey.TestID, testKey.Variants, r.openRegressions)
@@ -97,8 +100,8 @@ func (r *RegressionTracker) PreAnalysis(testKey crtype.ReportTestIdentification,
 }
 
 // PostAnalysis adjusts status code (and thus icons) based on the triaged state of open regressions.
-func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification, testStats *crtype.ReportTestStats) error {
-	if testStats.ReportStatus > crtype.SignificantTriagedRegression {
+func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
+	if testStats.ReportStatus > crtest.SignificantTriagedRegression {
 		// no need to adjust status for triage if this is no longer a regression
 		return nil
 	}
@@ -130,22 +133,22 @@ func (r *RegressionTracker) PostAnalysis(testKey crtype.ReportTestIdentification
 			case allTriagesResolved && testStats.LastFailure != nil && lastResolution.Before(*testStats.LastFailure):
 				// claimed fixed but does not appear to be
 				// aka liar liar pants on fire
-				testStats.ReportStatus = crtype.FailedFixedRegression
+				testStats.ReportStatus = crtest.FailedFixedRegression
 				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
 					"Regression is triaged, and believed fixed as of %s, but failures have been observed as recently as %s.",
 					lastResolution.Format(time.RFC3339), testStats.LastFailure.Format(time.RFC3339)))
 			case allTriagesResolved:
 				// claimed fixed, no failures since resolution date
-				testStats.ReportStatus = crtype.FixedRegression
+				testStats.ReportStatus = crtest.FixedRegression
 				testStats.Explanations = append(testStats.Explanations, fmt.Sprintf(
 					"Regression is triaged and believed fixed as of %s.",
 					lastResolution.Format(time.RFC3339)))
-			case testStats.ReportStatus == crtype.SignificantRegression:
-				testStats.ReportStatus = crtype.SignificantTriagedRegression
+			case testStats.ReportStatus == crtest.SignificantRegression:
+				testStats.ReportStatus = crtest.SignificantTriagedRegression
 				testStats.Explanations = append(testStats.Explanations,
 					"Regression has been triaged to one or more bugs.")
-			case testStats.ReportStatus == crtype.ExtremeRegression:
-				testStats.ReportStatus = crtype.ExtremeTriagedRegression
+			case testStats.ReportStatus == crtest.ExtremeRegression:
+				testStats.ReportStatus = crtest.ExtremeTriagedRegression
 				testStats.Explanations = append(testStats.Explanations,
 					"Extreme regression has been triaged to one or more bugs.")
 			}
@@ -195,6 +198,6 @@ func findVariant(variantName string, testReg *models.TestRegression) string {
 	return ""
 }
 
-func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtype.TestWithVariantsKey, status *crtype.TestJobRunStatuses) error {
+func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *bq.TestJobRunStatuses) error {
 	return nil
 }

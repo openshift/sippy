@@ -19,6 +19,10 @@ import (
 	fischer "github.com/glycerine/golang-fisher-exact"
 	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -80,30 +84,30 @@ func getSingleColumnResultToSlice(ctx context.Context, q *bigquery.Query) ([]str
 // to fetch some small piece of data. These look like they should be broken out. The partial
 // instantiation of a complex object is risky in terms of bugs and maintenance.
 
-func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (crtype.TestVariants, []error) {
+func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (CacheVariants, []error) {
 	generator := ComponentReportGenerator{
 		client: client,
 	}
 
-	return api.GetDataFromCacheOrGenerate[crtype.TestVariants](ctx, client.Cache, cache.RequestOptions{},
-		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, crtype.TestVariants{})
+	return api.GetDataFromCacheOrGenerate[CacheVariants](ctx, client.Cache, cache.RequestOptions{},
+		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateCacheVariants, CacheVariants{})
 }
 
-func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (crtype.JobVariants,
+func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (crtest.JobVariants,
 	[]error) {
 	generator := ComponentReportGenerator{
 		client: client,
 	}
 
-	return api.GetDataFromCacheOrGenerate[crtype.JobVariants](ctx, client.Cache, cache.RequestOptions{},
-		api.GetPrefixedCacheKey("TestAllVariants~", generator), generator.GenerateJobVariants, crtype.JobVariants{})
+	return api.GetDataFromCacheOrGenerate[crtest.JobVariants](ctx, client.Cache, cache.RequestOptions{},
+		api.GetPrefixedCacheKey("TestAllVariants~", generator), generator.GenerateJobVariants, crtest.JobVariants{})
 }
 
 func GetComponentReportFromBigQuery(
 	ctx context.Context,
 	client *bqcachedclient.Client,
 	dbc *db.DB,
-	reqOptions crtype.RequestOptions,
+	reqOptions reqopts.RequestOptions,
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (crtype.ComponentReport, []error) {
 
@@ -144,15 +148,15 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 				// good because we know the cell status can't be improved or missing basis/sample.
 				// All we need to do now is track the lowest (i.e. worst) status we see after PostAnalysis,
 				// and make that our new cell status.
-				var initialStatus crtype.Status
-				testKey := crtype.ReportTestIdentification{
+				var initialStatus crtest.Status
+				testKey := crtest.Identification{
 					RowIdentification:    col.RegressedTests[rti].RowIdentification,
 					ColumnIdentification: col.RegressedTests[rti].ColumnIdentification,
 				}
-				if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats); err != nil {
+				if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].TestComparison); err != nil {
 					return err
 				}
-				if newStatus := report.Rows[ri].Columns[ci].RegressedTests[rti].ReportTestStats.ReportStatus; newStatus < initialStatus {
+				if newStatus := report.Rows[ri].Columns[ci].RegressedTests[rti].TestComparison.ReportStatus; newStatus < initialStatus {
 					// After PostAnalysis this is our new worst status observed, so update the cell's status in the grid
 					report.Rows[ri].Columns[ci].Status = newStatus
 				}
@@ -163,7 +167,7 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 	return nil
 }
 
-func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtype.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride) ComponentReportGenerator {
+func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions reqopts.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride) ComponentReportGenerator {
 	generator := ComponentReportGenerator{
 		client:                     client,
 		ReqOptions:                 reqOptions,
@@ -183,18 +187,18 @@ func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions crtyp
 type ComponentReportGenerator struct {
 	client                     *bqcachedclient.Client
 	dbc                        *db.DB
-	ReqOptions                 crtype.RequestOptions
+	ReqOptions                 reqopts.RequestOptions
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 	middlewares                middleware.List
 }
 
 type GeneratorCacheKey struct {
 	ReportModified *time.Time
-	BaseRelease    crtype.RequestReleaseOptions
-	SampleRelease  crtype.RequestReleaseOptions
-	VariantOption  crtype.RequestVariantOptions
-	AdvancedOption crtype.RequestAdvancedOptions
-	TestIDOptions  []crtype.RequestTestIdentificationOptions
+	BaseRelease    reqopts.Release
+	SampleRelease  reqopts.Release
+	VariantOption  reqopts.Variants
+	AdvancedOption reqopts.Advanced
+	TestIDOptions  []reqopts.TestIdentification
 }
 
 // GetCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -212,7 +216,7 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 
 	// TestIDOptions initialization differences caused many cache misses. This hacky bit of code attempts to handle
 	// them all and ensure we end up with the same cache key if the slice is null, empty, or has one empty element
-	if len(c.ReqOptions.TestIDOptions) == 1 && (reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], crtype.RequestTestIdentificationOptions{}) ||
+	if len(c.ReqOptions.TestIDOptions) == 1 && (reflect.DeepEqual(c.ReqOptions.TestIDOptions[0], reqopts.TestIdentification{}) ||
 		(c.ReqOptions.TestIDOptions[0].Component == "" &&
 			c.ReqOptions.TestIDOptions[0].Capability == "" &&
 			c.ReqOptions.TestIDOptions[0].TestID == "" &&
@@ -238,7 +242,16 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 	return cacheKey
 }
 
-func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype.TestVariants, []error) {
+// CacheVariants is used only in the cache key, not in the actual report.
+type CacheVariants struct {
+	Network  []string `json:"network,omitempty"`
+	Upgrade  []string `json:"upgrade,omitempty"`
+	Arch     []string `json:"arch,omitempty"`
+	Platform []string `json:"platform,omitempty"`
+	Variant  []string `json:"variant,omitempty"`
+}
+
+func (c *ComponentReportGenerator) GenerateCacheVariants(ctx context.Context) (CacheVariants, []error) {
 	errs := []error{}
 	columns := make(map[string][]string)
 
@@ -252,7 +265,7 @@ func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype
 		columns[column] = values
 	}
 
-	return crtype.TestVariants{
+	return CacheVariants{
 		Platform: columns["platform"],
 		Network:  columns["network"],
 		Arch:     columns["arch"],
@@ -261,9 +274,9 @@ func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (crtype
 	}, errs
 }
 
-func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crtype.JobVariants, []error) {
+func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crtest.JobVariants, []error) {
 	errs := []error{}
-	variants := crtype.JobVariants{Variants: map[string][]string{}}
+	variants := crtest.JobVariants{Variants: map[string][]string{}}
 	queryString := fmt.Sprintf(`SELECT variant_name, ARRAY_AGG(DISTINCT variant_value ORDER BY variant_value) AS variant_values
 					FROM
 						%s.job_variants
@@ -280,7 +293,7 @@ func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 
 	floatVariants := sets.NewString("FromRelease", "FromReleaseMajor", "FromReleaseMinor", "Release", "ReleaseMajor", "ReleaseMinor")
 	for {
-		row := crtype.JobVariant{}
+		row := bq.JobVariant{}
 		err := it.Next(&row)
 		if err == iterator.Done {
 			break
@@ -361,12 +374,12 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 
 // getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
 func (c *ComponentReportGenerator) getBaseQueryStatus(ctx context.Context,
-	allJobVariants crtype.JobVariants) (map[string]crtype.TestStatus, []error) {
+	allJobVariants crtest.JobVariants) (map[string]bq.TestStatus, []error) {
 
 	generator := query.NewBaseQueryGenerator(c.client, c.ReqOptions, allJobVariants)
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx, c.client.Cache,
-		generator.ReqOptions.CacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.QueryTestStatus, crtype.ReportTestStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx, c.client.Cache,
+		generator.ReqOptions.CacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.QueryTestStatus, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -378,17 +391,17 @@ func (c *ComponentReportGenerator) getBaseQueryStatus(ctx context.Context,
 // getSampleQueryStatus builds the sample query, executes it, and returns the sample test status.
 func (c *ComponentReportGenerator) getSampleQueryStatus(
 	ctx context.Context,
-	allJobVariants crtype.JobVariants,
+	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time,
-	junitTable string) (map[string]crtype.TestStatus, []error) {
+	junitTable string) (map[string]bq.TestStatus, []error) {
 
 	generator := query.NewSampleQueryGenerator(c.client, c.ReqOptions, allJobVariants, includeVariants, start, end, junitTable)
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[crtype.ReportTestStatus](ctx,
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx,
 		c.client.Cache, c.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey("SampleTestStatus~", generator),
-		generator.QueryTestStatus, crtype.ReportTestStatus{})
+		generator.QueryTestStatus, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -399,22 +412,22 @@ func (c *ComponentReportGenerator) getSampleQueryStatus(
 
 // getTestStatusFromBigQuery orchestrates the actual fetching of junit test run data for both basis and sample.
 // goroutines are used to concurrently request the data for basis, sample, and various other edge cases.
-func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (crtype.ReportTestStatus, []error) {
+func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context) (bq.ReportTestStatus, []error) {
 	before := time.Now()
 	fLog := log.WithField("func", "getTestStatusFromBigQuery")
 	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client)
 	if len(errs) > 0 {
 		fLog.Errorf("failed to get variants from bigquery")
-		return crtype.ReportTestStatus{}, errs
+		return bq.ReportTestStatus{}, errs
 	}
 
-	var baseStatus, sampleStatus map[string]crtype.TestStatus
-	baseStatusCh := make(chan map[string]crtype.TestStatus) // TODO: not hooked up yet, just in place for the interface for now
+	var baseStatus, sampleStatus map[string]bq.TestStatus
+	baseStatusCh := make(chan map[string]bq.TestStatus) // TODO: not hooked up yet, just in place for the interface for now
 	var baseErrs, sampleErrs []error
 	wg := &sync.WaitGroup{}
 
 	// channels for status as we may collect status from multiple queries run in separate goroutines
-	sampleStatusCh := make(chan map[string]crtype.TestStatus)
+	sampleStatusCh := make(chan map[string]bq.TestStatus)
 	errCh := make(chan error)
 	statusDoneCh := make(chan struct{})     // To signal when all processing is done
 	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
@@ -454,7 +467,7 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 			for k, v := range status {
 				if sampleStatus == nil {
 					fLog.Warnf("initializing sampleStatus map")
-					sampleStatus = make(map[string]crtype.TestStatus)
+					sampleStatus = make(map[string]bq.TestStatus)
 				}
 				if v2, ok := sampleStatus[k]; ok {
 					fLog.Warnf("sampleStatus already had key: %+v", k)
@@ -485,14 +498,14 @@ func (c *ComponentReportGenerator) getTestStatusFromBigQuery(ctx context.Context
 	log.Infof("getTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db",
 		time.Since(before), len(sampleStatus), len(baseStatus))
 	now := time.Now()
-	return crtype.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
+	return bq.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
 }
 
 // fork additional sample queries for the overrides
 func (c *ComponentReportGenerator) goRunOverrideSampleQueries(
 	ctx context.Context, wg *sync.WaitGroup, fLog *log.Entry,
-	allJobVariants crtype.JobVariants,
-	sampleStatusCh chan map[string]crtype.TestStatus,
+	allJobVariants crtest.JobVariants,
+	sampleStatusCh chan map[string]bq.TestStatus,
 	errCh chan error,
 ) {
 	for i, or := range c.variantJunitTableOverrides {
@@ -610,16 +623,16 @@ func containsOverriddenVariant(includeVariants map[string][]string, key, value s
 	return false
 }
 
-var componentAndCapabilityGetter func(test crtype.TestWithVariantsKey, stats crtype.TestStatus) (string, []string)
+var componentAndCapabilityGetter func(test crtest.KeyWithVariants, stats bq.TestStatus) (string, []string)
 
-func testToComponentAndCapability(_ crtype.TestWithVariantsKey, stats crtype.TestStatus) (string, []string) {
+func testToComponentAndCapability(_ crtest.KeyWithVariants, stats bq.TestStatus) (string, []string) {
 	return stats.Component, stats.Capabilities
 }
 
 // getRowColumnIdentifications defines the rows and columns since they are variable. For rows, different pages have different row titles (component, capability etc)
 // Columns titles depends on the columnGroupBy parameter user requests. A particular test can belong to multiple rows of different capabilities.
-func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string, stats crtype.TestStatus) ([]crtype.RowIdentification, []crtype.ColumnID, error) {
-	var test crtype.TestWithVariantsKey
+func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string, stats bq.TestStatus) ([]crtest.RowIdentification, []crtest.ColumnID, error) {
+	var test crtest.KeyWithVariants
 	columnGroupByVariants := c.ReqOptions.VariantOption.ColumnGroupBy
 	// We show column groups by DBGroupBy only for the last page before test details
 	if len(c.ReqOptions.TestIDOptions) > 0 && c.ReqOptions.TestIDOptions[0].TestID != "" {
@@ -629,11 +642,11 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	// TODO: is this too slow?
 	err := json.Unmarshal([]byte(testIDStr), &test)
 	if err != nil {
-		return []crtype.RowIdentification{}, []crtype.ColumnID{}, err
+		return []crtest.RowIdentification{}, []crtest.ColumnID{}, err
 	}
 
 	testComponent, testCapabilities := componentAndCapabilityGetter(test, stats)
-	rows := []crtype.RowIdentification{}
+	rows := []crtest.RowIdentification{}
 	// First Page with no component requested
 	requestedComponent, requestedCapability, requestedTestID := "", "", ""
 	if len(c.ReqOptions.TestIDOptions) > 0 {
@@ -645,11 +658,11 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 
 	if requestedComponent == "" {
 		// No component filter specified for this report, include a row for all components:
-		rows = append(rows, crtype.RowIdentification{Component: testComponent})
+		rows = append(rows, crtest.RowIdentification{Component: testComponent})
 	} else if requestedComponent == testComponent {
 		// A component filter was specified and this test matches that component:
 
-		row := crtype.RowIdentification{
+		row := crtest.RowIdentification{
 			Component: testComponent,
 			TestID:    test.TestID,
 			TestName:  stats.TestName,
@@ -671,14 +684,14 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 						break
 					}
 				} else {
-					rows = append(rows, crtype.RowIdentification{Component: testComponent, Capability: capability})
+					rows = append(rows, crtest.RowIdentification{Component: testComponent, Capability: capability})
 				}
 			}
 		}
 	}
 
-	columns := []crtype.ColumnID{}
-	column := crtype.ColumnIdentification{Variants: map[string]string{}}
+	columns := []crtest.ColumnID{}
+	column := crtest.ColumnIdentification{Variants: map[string]string{}}
 	for key, value := range test.Variants {
 		if columnGroupByVariants.Has(key) {
 			column.Variants[key] = value
@@ -686,23 +699,23 @@ func (c *ComponentReportGenerator) getRowColumnIdentifications(testIDStr string,
 	}
 	columnKeyBytes, err := json.Marshal(column)
 	if err != nil {
-		return []crtype.RowIdentification{}, []crtype.ColumnID{}, err
+		return []crtest.RowIdentification{}, []crtest.ColumnID{}, err
 	}
-	columns = append(columns, crtype.ColumnID(columnKeyBytes))
+	columns = append(columns, crtest.ColumnID(columnKeyBytes))
 
 	return rows, columns, nil
 }
 
 type cellStatus struct {
-	status         crtype.Status
+	status         crtest.Status
 	regressedTests []crtype.ReportTestSummary
 }
 
-func getNewCellStatus(testID crtype.ReportTestIdentification, testStats crtype.ReportTestStats, existingCellStatus *cellStatus) cellStatus {
+func getNewCellStatus(testID crtest.Identification, testStats testdetails.TestComparison, existingCellStatus *cellStatus) cellStatus {
 	var newCellStatus cellStatus
 	if existingCellStatus != nil {
-		if (testStats.ReportStatus < crtype.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
-			(existingCellStatus.status == crtype.NotSignificant && testStats.ReportStatus == crtype.SignificantImprovement) {
+		if (testStats.ReportStatus < crtest.NotSignificant && testStats.ReportStatus < existingCellStatus.status) ||
+			(existingCellStatus.status == crtest.NotSignificant && testStats.ReportStatus == crtest.SignificantImprovement) {
 			// We want to show the significant improvement if assessment is not regression
 			newCellStatus.status = testStats.ReportStatus
 		} else {
@@ -712,10 +725,10 @@ func getNewCellStatus(testID crtype.ReportTestIdentification, testStats crtype.R
 	} else {
 		newCellStatus.status = testStats.ReportStatus
 	}
-	if testStats.ReportStatus < crtype.MissingSample {
+	if testStats.ReportStatus < crtest.MissingSample {
 		rt := crtype.ReportTestSummary{
-			ReportTestIdentification: testID,
-			ReportTestStats:          testStats,
+			Identification: testID,
+			TestComparison: testStats,
 		}
 		newCellStatus.regressedTests = append(newCellStatus.regressedTests, rt)
 	}
@@ -723,14 +736,14 @@ func getNewCellStatus(testID crtype.ReportTestIdentification, testStats crtype.R
 }
 
 func updateCellStatus(
-	rowIdentifications []crtype.RowIdentification,
-	columnIdentifications []crtype.ColumnID,
-	testID crtype.ReportTestIdentification,
-	testStats crtype.ReportTestStats,
+	rowIdentifications []crtest.RowIdentification,
+	columnIdentifications []crtest.ColumnID,
+	testID crtest.Identification,
+	testStats testdetails.TestComparison,
 	// use the inputs above to update the maps below (golang passes maps by reference)
-	status map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus,
-	allRows map[crtype.RowIdentification]struct{},
-	allColumns map[crtype.ColumnID]struct{},
+	status map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus,
+	allRows map[crtest.RowIdentification]struct{},
+	allColumns map[crtest.ColumnID]struct{},
 ) {
 	for _, columnIdentification := range columnIdentifications {
 		if _, ok := allColumns[columnIdentification]; !ok {
@@ -749,7 +762,7 @@ func updateCellStatus(
 		}
 		row, ok := status[rowIdentification]
 		if !ok {
-			row = map[crtype.ColumnID]cellStatus{}
+			row = map[crtest.ColumnID]cellStatus{}
 			for _, columnIdentification := range columnIdentifications {
 				row[columnIdentification] = getNewCellStatus(testID, testStats, nil)
 				status[rowIdentification] = row
@@ -768,42 +781,42 @@ func updateCellStatus(
 }
 
 func initTestAnalysisStruct(
-	testStats *crtype.ReportTestStats,
-	reqOptions crtype.RequestOptions,
-	sampleStatus crtype.TestStatus,
-	baseStatus *crtype.TestStatus) {
+	testStats *testdetails.TestComparison,
+	reqOptions reqopts.RequestOptions,
+	sampleStatus bq.TestStatus,
+	baseStatus *bq.TestStatus) {
 
 	// Default to required confidence from request, middleware may adjust later.
 	testStats.RequiredConfidence = reqOptions.AdvancedOption.Confidence
 
-	testStats.SampleStats = crtype.TestDetailsReleaseStats{
-		Release:              reqOptions.SampleRelease.Release,
-		Start:                &reqOptions.SampleRelease.Start,
-		End:                  &reqOptions.SampleRelease.End,
-		TestDetailsTestStats: sampleStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
+	testStats.SampleStats = testdetails.ReleaseStats{
+		Release: reqOptions.SampleRelease.Name,
+		Start:   &reqOptions.SampleRelease.Start,
+		End:     &reqOptions.SampleRelease.End,
+		Stats:   sampleStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 	}
 	if baseStatus != nil {
-		testStats.BaseStats = &crtype.TestDetailsReleaseStats{
-			Release:              reqOptions.BaseRelease.Release,
-			Start:                &reqOptions.BaseRelease.Start,
-			End:                  &reqOptions.BaseRelease.End,
-			TestDetailsTestStats: baseStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
+		testStats.BaseStats = &testdetails.ReleaseStats{
+			Release: reqOptions.BaseRelease.Name,
+			Start:   &reqOptions.BaseRelease.Start,
+			End:     &reqOptions.BaseRelease.End,
+			Stats:   baseStatus.ToTestStats(reqOptions.AdvancedOption.FlakeAsFailure),
 		}
 	}
 }
 
-func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, sampleStatusMap map[string]crtype.TestStatus) (crtype.ComponentReport, error) {
+func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, sampleStatusMap map[string]bq.TestStatus) (crtype.ComponentReport, error) {
 	// aggregatedStatus is the aggregated status based on the requested rows and columns
-	aggregatedStatus := map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus{}
+	aggregatedStatus := map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus{}
 	// allRows and allColumns are used to make sure rows are ordered and all rows have the same columns in the same order
-	allRows := map[crtype.RowIdentification]struct{}{}
-	allColumns := map[crtype.ColumnID]struct{}{}
+	allRows := map[crtest.RowIdentification]struct{}{}
+	allColumns := map[crtest.ColumnID]struct{}{}
 
 	// merge basis and sample map keys and evaluate each key once
 	keySet := sets.NewString(slices.Collect(maps.Keys(basisStatusMap))...)
 	keySet.Insert(slices.Collect(maps.Keys(sampleStatusMap))...)
 	for testKeyStr := range keySet {
-		var cellReport crtype.ReportTestStats // The actual stats we return over the API
+		var cellReport testdetails.TestComparison // The actual stats we return over the API
 		sampleStatus, sampleThere := sampleStatusMap[testKeyStr]
 		basisStatus, basisThere := basisStatusMap[testKeyStr]
 
@@ -820,7 +833,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 		if !sampleThere {
 			// we use this to find tests associated with the basis that we don't see now in sample,
 			// meaning they have been renamed or removed. no further analysis is needed.
-			cellReport.ReportStatus = crtype.MissingSample
+			cellReport.ReportStatus = crtest.MissingSample
 		} else {
 			// Initialize the test analysis before we start passing it around to the middleware
 			if basisThere {
@@ -857,8 +870,8 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 	return crtype.ComponentReport{Rows: rows}, nil
 }
 
-func sortRowIdentifications(allRows map[crtype.RowIdentification]struct{}) []crtype.RowIdentification {
-	sortedRows := []crtype.RowIdentification{}
+func sortRowIdentifications(allRows map[crtest.RowIdentification]struct{}) []crtest.RowIdentification {
+	sortedRows := []crtest.RowIdentification{}
 	for rowID := range allRows {
 		sortedRows = append(sortedRows, rowID)
 	}
@@ -878,8 +891,8 @@ func sortRowIdentifications(allRows map[crtype.RowIdentification]struct{}) []crt
 	return sortedRows
 }
 
-func sortColumnIdentifications(allColumns map[crtype.ColumnID]struct{}) []crtype.ColumnID {
-	sortedColumns := []crtype.ColumnID{}
+func sortColumnIdentifications(allColumns map[crtest.ColumnID]struct{}) []crtest.ColumnID {
+	sortedColumns := []crtest.ColumnID{}
 	for columnID := range allColumns {
 		sortedColumns = append(sortedColumns, columnID)
 	}
@@ -889,7 +902,7 @@ func sortColumnIdentifications(allColumns map[crtype.ColumnID]struct{}) []crtype
 	return sortedColumns
 }
 
-func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.ColumnID, aggregatedStatus map[crtype.RowIdentification]map[crtype.ColumnID]cellStatus) ([]crtype.ReportRow, error) {
+func buildReport(sortedRows []crtest.RowIdentification, sortedColumns []crtest.ColumnID, aggregatedStatus map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus) ([]crtype.ReportRow, error) {
 	// Now build the report
 	var regressionRows, goodRows []crtype.ReportRow
 	for _, rowID := range sortedRows {
@@ -903,7 +916,7 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 			if reportRow.Columns == nil {
 				reportRow.Columns = []crtype.ReportColumn{}
 			}
-			var colIDStruct crtype.ColumnIdentification
+			var colIDStruct crtest.ColumnIdentification
 			err := json.Unmarshal([]byte(columnID), &colIDStruct)
 			if err != nil {
 				return nil, err
@@ -911,7 +924,7 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 			reportColumn := crtype.ReportColumn{ColumnIdentification: colIDStruct}
 			status, ok := columns[columnID]
 			if !ok {
-				reportColumn.Status = crtype.MissingBasisAndSample
+				reportColumn.Status = crtest.MissingBasisAndSample
 			} else {
 				reportColumn.Status = status.status
 				reportColumn.RegressedTests = status.regressedTests
@@ -920,7 +933,7 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 				})
 			}
 			reportRow.Columns = append(reportRow.Columns, reportColumn)
-			if reportColumn.Status <= crtype.SignificantTriagedRegression {
+			if reportColumn.Status <= crtest.SignificantTriagedRegression {
 				hasRegression = true
 			}
 		}
@@ -937,19 +950,19 @@ func buildReport(sortedRows []crtype.RowIdentification, sortedColumns []crtype.C
 	return regressionRows, nil
 }
 
-func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crtype.Status {
+func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crtest.Status {
 	if (basisPassPercentage - samplePassPercentage) > 0.15 {
-		return crtype.ExtremeRegression
+		return crtest.ExtremeRegression
 	}
 
-	return crtype.SignificantRegression
+	return crtest.SignificantRegression
 }
 
 // TODO: this will eventually become the analyze step on a Middleware, or possibly a separate
 // set of objects relating to analysis, as there's not a lot of overlap between the analyzers
 // (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
 // cross variant compare, rarely run jobs, etc.)
-func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.ReportTestStats) {
+func (c *ComponentReportGenerator) assessComponentStatus(testStats *testdetails.TestComparison) {
 	// Catch unset required confidence, typically unit tests
 	opts := c.ReqOptions.AdvancedOption
 	if testStats.RequiredConfidence == 0 {
@@ -961,8 +974,8 @@ func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.Repor
 		c.buildPassRateTestStats(testStats, float64(opts.PassRateRequiredNewTests))
 		// If a new test reports no regression, and we're not using pass rate mode for all tests, we alter
 		// status to be missing basis for the pre-existing Fisher Exact behavior:
-		if testStats.ReportStatus == crtype.NotSignificant && opts.PassRateRequiredAllTests == 0 {
-			testStats.ReportStatus = crtype.MissingBasis
+		if testStats.ReportStatus == crtest.NotSignificant && opts.PassRateRequiredAllTests == 0 {
+			testStats.ReportStatus = crtest.MissingBasis
 		}
 		return
 	} else if opts.PassRateRequiredAllTests > 0 {
@@ -975,18 +988,18 @@ func (c *ComponentReportGenerator) assessComponentStatus(testStats *crtype.Repor
 	c.buildFisherExactTestStats(testStats)
 }
 
-func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.ReportTestStats) {
+func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdetails.TestComparison) {
 
 	fisherExact := 0.0
-	testStats.Comparison = crtype.FisherExact
+	testStats.Comparison = crtest.FisherExact
 
-	status := crtype.MissingBasis
+	status := crtest.MissingBasis
 	opts := c.ReqOptions.AdvancedOption
 	if testStats.SampleStats.Total() == 0 {
 		if opts.IgnoreMissing {
-			status = crtype.NotSignificant
+			status = crtest.NotSignificant
 		} else {
-			status = crtype.MissingSample
+			status = crtest.MissingSample
 		}
 		testStats.ReportStatus = status
 		testStats.FisherExact = thrift.Float64Ptr(0.0)
@@ -998,7 +1011,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		effectivePityFactor := float64(opts.PityFactor) + testStats.PityAdjustment
 
 		// default starting status now that we know we have basis and sample
-		status = crtype.NotSignificant
+		status = crtest.NotSignificant
 
 		// now that we know sampleTotal is non zero
 		samplePassPercentage := float64(samplePass) / float64(testStats.SampleStats.Total())
@@ -1006,9 +1019,9 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		// are we below the MinimumFailure threshold?
 		if opts.MinimumFailure != 0 &&
 			(testStats.SampleStats.Total()-samplePass) < opts.MinimumFailure {
-			if status <= crtype.SignificantTriagedRegression {
+			if status <= crtest.SignificantTriagedRegression {
 				testStats.Explanations = append(testStats.Explanations,
-					fmt.Sprintf("%s regression detected.", crtype.StringForStatus(status)))
+					fmt.Sprintf("%s regression detected.", crtest.StringForStatus(status)))
 			}
 			testStats.ReportStatus = status
 			testStats.FisherExact = thrift.Float64Ptr(0.0)
@@ -1025,7 +1038,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 		}
 		if significant {
 			if improved {
-				status = crtype.SignificantImprovement
+				status = crtest.SignificantImprovement
 			} else {
 				status = getRegressionStatus(basisPassPercentage, samplePassPercentage)
 			}
@@ -1035,11 +1048,11 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 	testStats.FisherExact = thrift.Float64Ptr(fisherExact)
 
 	// If we have a regression, include explanations:
-	if testStats.ReportStatus <= crtype.SignificantTriagedRegression {
+	if testStats.ReportStatus <= crtest.SignificantTriagedRegression {
 
-		if testStats.ReportStatus <= crtype.SignificantRegression {
+		if testStats.ReportStatus <= crtest.SignificantRegression {
 			testStats.Explanations = append(testStats.Explanations,
-				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)))
+				fmt.Sprintf("%s regression detected.", crtest.StringForStatus(testStats.ReportStatus)))
 			testStats.Explanations = append(testStats.Explanations,
 				fmt.Sprintf("Fishers Exact probability of a regression: %.2f%%.", float64(100)-*testStats.FisherExact))
 			testStats.Explanations = append(testStats.Explanations,
@@ -1048,12 +1061,12 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *crtype.R
 					testStats.SampleStats.SuccessRate*float64(100)))
 		} else {
 			testStats.Explanations = append(testStats.Explanations,
-				fmt.Sprintf("%s regression detected.", crtype.StringForStatus(testStats.ReportStatus)))
+				fmt.Sprintf("%s regression detected.", crtest.StringForStatus(testStats.ReportStatus)))
 		}
 	}
 }
 
-func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.ReportTestStats, requiredSuccessRate float64) {
+func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *testdetails.TestComparison, requiredSuccessRate float64) {
 
 	effectiveSuccessReq := requiredSuccessRate + testStats.RequiredPassRateAdjustment
 
@@ -1069,19 +1082,19 @@ func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *crtype.Repo
 	opts := c.ReqOptions.AdvancedOption
 	successRate := testStats.SampleStats.PassRate(opts.FlakeAsFailure)
 	if sufficientRuns && successRate*100 < effectiveSuccessReq && testStats.SampleStats.FailureCount >= opts.MinimumFailure {
-		rStatus := crtype.SignificantRegression
+		rStatus := crtest.SignificantRegression
 		if successRate*100 < severeRegressionSuccessRate {
-			rStatus = crtype.ExtremeRegression
+			rStatus = crtest.ExtremeRegression
 		}
 		testStats.ReportStatus = rStatus
 		testStats.Explanations = append(testStats.Explanations,
 			fmt.Sprintf("Test has a %.2f%% pass rate, but %.2f%% is required.", successRate*100, effectiveSuccessReq))
-		testStats.Comparison = crtype.PassRate
+		testStats.Comparison = crtest.PassRate
 		testStats.SampleStats.SuccessRate = successRate
 		return
 	}
 
-	testStats.ReportStatus = crtype.NotSignificant
+	testStats.ReportStatus = crtest.NotSignificant
 	testStats.Explanations = append(testStats.Explanations, explanationNoRegression)
 }
 
