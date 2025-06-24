@@ -1388,6 +1388,31 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// jsonRegressions handles GET requests for component readiness regression records.
+func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		failureResponse(w, http.StatusBadRequest, "Only GET method is supported")
+		return
+	}
+
+	// Read query parameters
+	view := param.SafeRead(req, "view")
+	release := param.SafeRead(req, "release")
+
+	// Error if both view and release are specified
+	if view != "" && release != "" {
+		failureResponse(w, http.StatusBadRequest, "Cannot specify both 'view' and 'release' parameters. Please use only one.")
+		return
+	}
+
+	regressions, err := componentreadiness.ListRegressions(s.db, view, release)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, regressions)
+}
+
 // queryJobArtifacts is an API to query GCS for artifacts from a set of job runs. Parameters:
 // - prowJobRuns (required): a comma-separated list of prow job run IDs to query
 // - pathGlob (required): a glob pattern to match against the GCS path (ref. https://cloud.google.com/storage/docs/json_api/v1/objects/list#list-object-glob)
@@ -1807,6 +1832,12 @@ func (s *Server) Serve() {
 			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonTriages,
+		},
+		{
+			EndpointPath: "/api/component_readiness/regressions",
+			Description:  "List component readiness test regressions. Supports view OR release query parameters (not both).",
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
+			HandlerFunc:  s.jsonRegressions,
 		},
 		{
 			EndpointPath: "/api/capabilities",

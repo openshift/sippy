@@ -35,6 +35,13 @@ func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	return triages, err
 }
 
+func ListRegressions(dbc *db.DB, view, release string) ([]models.TestRegression, error) {
+	var regressions []models.TestRegression
+	var err error
+	regressions, err = query.ListRegressions(dbc, view, release)
+	return regressions, err
+}
+
 // validateTriage ensures the Triage record coming into the API appears valid. Small
 // changes in logic for create vs update are controlled by the update param.
 func validateTriage(triage models.Triage, update bool) error {
