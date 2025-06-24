@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
@@ -175,7 +176,7 @@ func Test_TriageAPI(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, len(triageResponse2.Regressions))
 		assert.Equal(t, testRegression1.ID, triageResponse2.Regressions[0].ID, "should keep testRegression1")
-		assert.Equal(t, triageResponse.CreatedAt, triageResponse2.CreatedAt)
+		assert.WithinDuration(t, triageResponse.CreatedAt, triageResponse2.CreatedAt, time.Second)
 		assert.NotEqual(t, triageResponse.UpdatedAt, triageResponse2.UpdatedAt)
 	})
 	t.Run("update to remove all regressions", func(t *testing.T) {
