@@ -84,13 +84,13 @@ func getSingleColumnResultToSlice(ctx context.Context, q *bigquery.Query) ([]str
 // to fetch some small piece of data. These look like they should be broken out. The partial
 // instantiation of a complex object is risky in terms of bugs and maintenance.
 
-func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (TestVariants, []error) {
+func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (CacheVariants, []error) {
 	generator := ComponentReportGenerator{
 		client: client,
 	}
 
-	return api.GetDataFromCacheOrGenerate[TestVariants](ctx, client.Cache, cache.RequestOptions{},
-		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateVariants, TestVariants{})
+	return api.GetDataFromCacheOrGenerate[CacheVariants](ctx, client.Cache, cache.RequestOptions{},
+		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateCacheVariants, CacheVariants{})
 }
 
 func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (crtest.JobVariants,
@@ -242,7 +242,16 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 	return cacheKey
 }
 
-func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (TestVariants, []error) {
+// CacheVariants is used only in the cache key, not in the actual report.
+type CacheVariants struct {
+	Network  []string `json:"network,omitempty"`
+	Upgrade  []string `json:"upgrade,omitempty"`
+	Arch     []string `json:"arch,omitempty"`
+	Platform []string `json:"platform,omitempty"`
+	Variant  []string `json:"variant,omitempty"`
+}
+
+func (c *ComponentReportGenerator) GenerateCacheVariants(ctx context.Context) (CacheVariants, []error) {
 	errs := []error{}
 	columns := make(map[string][]string)
 
@@ -256,7 +265,7 @@ func (c *ComponentReportGenerator) GenerateVariants(ctx context.Context) (TestVa
 		columns[column] = values
 	}
 
-	return TestVariants{
+	return CacheVariants{
 		Platform: columns["platform"],
 		Network:  columns["network"],
 		Arch:     columns["arch"],
@@ -731,7 +740,7 @@ func updateCellStatus(
 	columnIdentifications []crtest.ColumnID,
 	testID crtest.Identification,
 	testStats testdetails.TestComparison,
-	// use the inputs above to update the maps below (golang passes maps by reference)
+// use the inputs above to update the maps below (golang passes maps by reference)
 	status map[crtest.RowIdentification]map[crtest.ColumnID]cellStatus,
 	allRows map[crtest.RowIdentification]struct{},
 	allColumns map[crtest.ColumnID]struct{},
@@ -1121,12 +1130,4 @@ func (c *ComponentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx cont
 
 func init() {
 	componentAndCapabilityGetter = testToComponentAndCapability
-}
-
-type TestVariants struct {
-	Network  []string `json:"network,omitempty"`
-	Upgrade  []string `json:"upgrade,omitempty"`
-	Arch     []string `json:"arch,omitempty"`
-	Platform []string `json:"platform,omitempty"`
-	Variant  []string `json:"variant,omitempty"`
 }
