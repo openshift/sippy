@@ -187,6 +187,13 @@ func Test_RegressionAPI(t *testing.T) {
 		assert.Equal(t, testRegression1.TestName, foundRegression.TestName)
 		assert.Equal(t, testRegression1.View, foundRegression.View)
 		assert.Equal(t, testRegression1.Release, foundRegression.Release)
+
+		// Verify HATEOAS links are present
+		assert.NotNil(t, foundRegression.Links, "regression should have HATEOAS links")
+		assert.Contains(t, foundRegression.Links, "test_details", "regression should have test_details link")
+		testDetailsLink := foundRegression.Links["test_details"]
+		assert.Contains(t, testDetailsLink, "/api/component_readiness/test_details", "test_details link should point to correct endpoint")
+		assert.Contains(t, testDetailsLink, "testId="+testRegression1.TestID, "test_details link should contain testId")
 	})
 	t.Run("list regressions with view filter", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)

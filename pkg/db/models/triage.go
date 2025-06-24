@@ -96,4 +96,7 @@ type TestRegression struct {
 	// This is intended to help inform the min fail thresholds we should be using, and what kind of regressions
 	// disappear on their own.
 	MaxFailures int `json:"max_failures"`
+
+	// Links contains HATEOAS-style links for this regression record (not stored in database)
+	Links map[string]string `json:"links,omitempty" gorm:"-"`
 }

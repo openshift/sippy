@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -39,6 +40,15 @@ func ListRegressions(dbc *db.DB, view, release string) ([]models.TestRegression,
 	var regressions []models.TestRegression
 	var err error
 	regressions, err = query.ListRegressions(dbc, view, release)
+	if err != nil {
+		return regressions, err
+	}
+
+	// Add HATEOAS links to each regression
+	for i := range regressions {
+		injectRegressionHATEOASLinks(&regressions[i])
+	}
+
 	return regressions, err
 }
 
@@ -207,4 +217,22 @@ func injectHATEOASLinks(triage *models.Triage) {
 	triage.Links = map[string]string{
 		"self": fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
 	}
+}
+
+// injectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
+func injectRegressionHATEOASLinks(regression *models.TestRegression) {
+	if regression.Links == nil {
+		regression.Links = make(map[string]string)
+	}
+
+	// Generate test details URL - use empty baseURL since we want relative URLs
+	testDetailsURL, err := utils.GenerateTestDetailsURL(regression, "")
+	if err != nil {
+		log.WithError(err).Warnf("failed to generate test details URL for regression %d", regression.ID)
+		// Still provide a basic link even if URL generation fails
+		testDetailsURL = fmt.Sprintf("/api/component_readiness/test_details?testId=%s&baseRelease=%s&sampleRelease=%s",
+			regression.TestID, regression.Release, regression.Release)
+	}
+
+	regression.Links["test_details"] = testDetailsURL
 }
