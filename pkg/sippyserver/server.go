@@ -1405,7 +1405,14 @@ func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	regressions, err := componentreadiness.ListRegressions(s.db, view, release)
+	// Get releases for view processing
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting releases: %v", err))
+		return
+	}
+
+	regressions, err := componentreadiness.ListRegressions(s.db, view, release, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return

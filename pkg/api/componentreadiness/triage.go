@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -36,7 +38,7 @@ func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	return triages, err
 }
 
-func ListRegressions(dbc *db.DB, view, release string) ([]models.TestRegression, error) {
+func ListRegressions(dbc *db.DB, view, release string, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
 	var err error
 	regressions, err = query.ListRegressions(dbc, view, release)
@@ -46,7 +48,7 @@ func ListRegressions(dbc *db.DB, view, release string) ([]models.TestRegression,
 
 	// Add HATEOAS links to each regression
 	for i := range regressions {
-		injectRegressionHATEOASLinks(&regressions[i])
+		injectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor)
 	}
 
 	return regressions, err
@@ -220,13 +222,13 @@ func injectHATEOASLinks(triage *models.Triage) {
 }
 
 // injectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
-func injectRegressionHATEOASLinks(regression *models.TestRegression) {
+func injectRegressionHATEOASLinks(regression *models.TestRegression, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration) {
 	if regression.Links == nil {
 		regression.Links = make(map[string]string)
 	}
 
 	// Generate test details URL - use empty baseURL since we want relative URLs
-	testDetailsURL, err := utils.GenerateTestDetailsURL(regression, "")
+	testDetailsURL, err := utils.GenerateTestDetailsURL(regression, "", views, releases, crTimeRoundingFactor)
 	if err != nil {
 		log.WithError(err).Warnf("failed to generate test details URL for regression %d", regression.ID)
 		// Still provide a basic link even if URL generation fails

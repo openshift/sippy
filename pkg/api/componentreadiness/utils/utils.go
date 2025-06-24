@@ -10,7 +10,10 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -122,10 +125,19 @@ func VariantsMapToStringSlice(variants map[string]string) []string {
 
 // GenerateTestDetailsURL creates a HATEOAS-style URL for the test_details API endpoint
 // based on a TestRegression record. This mimics the URL construction logic from the UI
-// in TestDetailsReport.js but uses default values for missing information.
-func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string) (string, error) {
+// in TestDetailsReport.js and uses the view configuration to populate URL parameters.
+func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration) (string, error) {
 	if regression == nil {
 		return "", fmt.Errorf("regression cannot be nil")
+	}
+
+	// Find the view for this regression
+	var view *crtype.View
+	for i := range views {
+		if views[i].Name == regression.View {
+			view = &views[i]
+			break
+		}
 	}
 
 	// Parse variants from the regression's Variants field (which is a []string of "key:value" pairs)
@@ -145,72 +157,107 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string) (
 
 	params := url.Values{}
 
-	// Add basic release and time parameters
-	// For now, we'll use simplified defaults since we don't have access to the full view configuration
-	params.Add("baseRelease", regression.Release)
-	params.Add("sampleRelease", regression.Release)
+	if view != nil {
+		// Use view configuration to populate parameters
 
-	// Add simplified time ranges (these would normally come from the view configuration)
-	now := time.Now()
-	baseEndTime := now.Format("2006-01-02T15:04:05Z")
-	baseStartTime := now.AddDate(0, 0, -30).Format("2006-01-02T15:04:05Z") // 30 days ago
-	sampleEndTime := now.Format("2006-01-02T15:04:05Z")
-	sampleStartTime := now.AddDate(0, 0, -7).Format("2006-01-02T15:04:05Z") // 7 days ago
+		// Get base and sample release options from the view
+		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor)
+		if err != nil {
+			return "", fmt.Errorf("failed to get base release options: %w", err)
+		}
 
-	params.Add("baseStartTime", baseStartTime)
-	params.Add("baseEndTime", baseEndTime)
-	params.Add("sampleStartTime", sampleStartTime)
-	params.Add("sampleEndTime", sampleEndTime)
+		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor)
+		if err != nil {
+			return "", fmt.Errorf("failed to get sample release options: %w", err)
+		}
+
+		// Add release and time parameters from view
+		params.Add("baseRelease", baseReleaseOpts.Release)
+		params.Add("sampleRelease", sampleReleaseOpts.Release)
+		params.Add("baseStartTime", baseReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
+		params.Add("baseEndTime", baseReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
+		params.Add("sampleStartTime", sampleReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
+		params.Add("sampleEndTime", sampleReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
+
+		// Add advanced options from view
+		params.Add("confidence", strconv.Itoa(view.AdvancedOptions.Confidence))
+		params.Add("minFail", strconv.Itoa(view.AdvancedOptions.MinimumFailure))
+		params.Add("pity", strconv.Itoa(view.AdvancedOptions.PityFactor))
+		params.Add("passRateNewTests", strconv.Itoa(view.AdvancedOptions.PassRateRequiredNewTests))
+		params.Add("passRateAllTests", strconv.Itoa(view.AdvancedOptions.PassRateRequiredAllTests))
+		params.Add("ignoreDisruption", strconv.FormatBool(view.AdvancedOptions.IgnoreDisruption))
+		params.Add("ignoreMissing", strconv.FormatBool(view.AdvancedOptions.IgnoreMissing))
+		params.Add("flakeAsFailure", strconv.FormatBool(view.AdvancedOptions.FlakeAsFailure))
+		params.Add("includeMultiReleaseAnalysis", strconv.FormatBool(view.AdvancedOptions.IncludeMultiReleaseAnalysis))
+
+		// Add variant options from view
+		if view.VariantOptions.ColumnGroupBy != nil {
+			params.Add("columnGroupBy", strings.Join(view.VariantOptions.ColumnGroupBy.List(), ","))
+		}
+		if view.VariantOptions.DBGroupBy != nil {
+			params.Add("dbGroupBy", strings.Join(view.VariantOptions.DBGroupBy.List(), ","))
+		}
+
+		// Add include variants from view
+		for variantKey, variantValues := range view.VariantOptions.IncludeVariants {
+			for _, variantValue := range variantValues {
+				params.Add("includeVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
+			}
+		}
+	} else {
+		// Fallback to defaults if view not found
+		params.Add("baseRelease", regression.Release)
+		params.Add("sampleRelease", regression.Release)
+
+		// Add simplified time ranges
+		now := time.Now()
+		baseEndTime := now.Format("2006-01-02T15:04:05Z")
+		baseStartTime := now.AddDate(0, 0, -30).Format("2006-01-02T15:04:05Z") // 30 days ago
+		sampleEndTime := now.Format("2006-01-02T15:04:05Z")
+		sampleStartTime := now.AddDate(0, 0, -7).Format("2006-01-02T15:04:05Z") // 7 days ago
+
+		params.Add("baseStartTime", baseStartTime)
+		params.Add("baseEndTime", baseEndTime)
+		params.Add("sampleStartTime", sampleStartTime)
+		params.Add("sampleEndTime", sampleEndTime)
+
+		// Add default configuration parameters
+		params.Add("confidence", "95")
+		params.Add("minFail", "3")
+		params.Add("pity", "5")
+		params.Add("passRateNewTests", "95")
+		params.Add("passRateAllTests", "0")
+		params.Add("ignoreDisruption", "true")
+		params.Add("ignoreMissing", "false")
+		params.Add("flakeAsFailure", "false")
+		params.Add("includeMultiReleaseAnalysis", "true")
+
+		// Add column grouping (common defaults)
+		params.Add("columnGroupBy", "Architecture,Network,Platform,Topology")
+		params.Add("dbGroupBy", "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer")
+
+		// Add default include variants
+		defaultIncludeVariants := []string{
+			"Architecture:amd64",
+			"FeatureSet:default",
+			"FeatureSet:techpreview",
+			"Installer:ipi",
+			"Installer:upi",
+			"Network:ovn",
+			"Platform:aws",
+			"Platform:azure",
+			"Platform:gcp",
+			"Topology:ha",
+		}
+
+		for _, variant := range defaultIncludeVariants {
+			params.Add("includeVariant", variant)
+		}
+	}
 
 	// Add test identification
 	params.Add("testId", regression.TestID)
 	params.Add("testBasisRelease", regression.Release)
-
-	// Add default configuration parameters (matching typical UI defaults)
-	params.Add("confidence", "95")
-	params.Add("minFail", "3")
-	params.Add("pity", "5")
-	params.Add("passRateNewTests", "95")
-	params.Add("passRateAllTests", "0")
-	params.Add("ignoreDisruption", "true")
-	params.Add("ignoreMissing", "false")
-	params.Add("flakeAsFailure", "false")
-	params.Add("includeMultiReleaseAnalysis", "true")
-
-	// Add column grouping (common defaults)
-	params.Add("columnGroupBy", "Architecture,Network,Platform,Topology")
-	params.Add("dbGroupBy", "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer")
-
-	// Add default include variants (common ones that are typically selected)
-	defaultIncludeVariants := []string{
-		"Architecture:amd64",
-		"CGroupMode:v2",
-		"ContainerRuntime:crun",
-		"ContainerRuntime:runc",
-		"FeatureSet:default",
-		"FeatureSet:techpreview",
-		"Installer:ipi",
-		"Installer:upi",
-		"JobTier:blocking",
-		"JobTier:informing",
-		"JobTier:standard",
-		"LayeredProduct:none",
-		"Network:ovn",
-		"Owner:eng",
-		"Owner:service-delivery",
-		"Platform:aws",
-		"Platform:azure",
-		"Platform:gcp",
-		"Platform:metal",
-		"Platform:rosa",
-		"Platform:vsphere",
-		"Topology:ha",
-		"Topology:microshift",
-	}
-
-	for _, variant := range defaultIncludeVariants {
-		params.Add("includeVariant", variant)
-	}
 
 	// Add the specific variants from the regression as individual parameters
 	environment := make([]string, 0, len(variantMap))
@@ -226,4 +273,26 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string) (
 
 	u.RawQuery = params.Encode()
 	return u.String(), nil
+}
+
+// GetViewReleaseOptions translates relative start/end times to actual time.Time values.
+// This is a copy of the function from queryparamparser.go to avoid circular imports.
+func GetViewReleaseOptions(
+	releases []v1.Release,
+	releaseType string,
+	viewRelease crtype.RequestRelativeReleaseOptions,
+	roundingFactor time.Duration,
+) (crtype.RequestReleaseOptions, error) {
+
+	var err error
+	opts := crtype.RequestReleaseOptions{Release: viewRelease.Release}
+	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeStart, true, nil, roundingFactor)
+	if err != nil {
+		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
+	}
+	opts.End, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeEnd, false, nil, roundingFactor)
+	if err != nil {
+		return opts, fmt.Errorf("%s end time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
+	}
+	return opts, nil
 }
