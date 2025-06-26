@@ -187,7 +187,7 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 	params.Add("sampleEndTime", sampleReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
 
 	// Check if release fallback was used and the regression matched an older release:
-	if regression.BaseRelease != baseReleaseOpts.Release {
+	if regression.BaseRelease != "" && regression.BaseRelease != baseReleaseOpts.Release {
 		params.Add("testBasisRelease", regression.BaseRelease)
 	}
 

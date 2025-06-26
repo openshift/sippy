@@ -149,6 +149,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		assert.Contains(t, url, "includeMultiReleaseAnalysis=true")
 		assert.Contains(t, url, "Architecture=amd64")
 		assert.Contains(t, url, "Platform=aws")
+		assert.NotContains(t, url, "testBasisRelease")
 	})
 
 	t.Run("URL generation with release fallback", func(t *testing.T) {
