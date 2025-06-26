@@ -1303,7 +1303,6 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusBadRequest, "unknown ID format: "+idStr)
 			return
 		}
-		log.Infof("Extracted triage ID: %d", triageID)
 	}
 
 	if req.Method == http.MethodPost || req.Method == http.MethodPut {
@@ -1402,26 +1401,63 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 }
 
 // jsonRegressions handles GET requests for component readiness regression records.
+// This supports both listing all regressions and querying a single regression by ID.
 func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
 		failureResponse(w, http.StatusBadRequest, "Only GET method is supported")
 		return
 	}
 
-	// Read query parameters
-	view := param.SafeRead(req, "view")
-	release := param.SafeRead(req, "release")
-
-	// Error if both view and release are specified
-	if view != "" && release != "" {
-		failureResponse(w, http.StatusBadRequest, "Cannot specify both 'view' and 'release' parameters. Please use only one.")
+	path := req.URL.Path
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) > 4 {
+		failureResponse(w, http.StatusBadRequest, "unknown url format: "+path)
 		return
+	}
+
+	// Extract a specific resource ID if we were given one
+	var regressionID int
+	if len(parts) == 4 {
+		// Expecting URL format: /api/component_readiness/regressions/{id}
+		// If we can extract a regression ID from the URL, get that specific record:
+		idStr := parts[3] // Extracts the ID
+		var err error
+		regressionID, err = strconv.Atoi(idStr)
+		if err != nil {
+			failureResponse(w, http.StatusBadRequest, "unknown ID format: "+idStr)
+			return
+		}
 	}
 
 	// Get releases for view processing
 	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting releases: %v", err))
+		return
+	}
+
+	// Was a specific record requested?
+	if regressionID > 0 {
+		existingRegression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if existingRegression == nil {
+			failureResponse(w, http.StatusNotFound, "regression not found")
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, existingRegression)
+		return
+	}
+
+	// Read query parameters for listing
+	view := param.SafeRead(req, "view")
+	release := param.SafeRead(req, "release")
+
+	// Error if both view and release are specified
+	if view != "" && release != "" {
+		failureResponse(w, http.StatusBadRequest, "Cannot specify both 'view' and 'release' parameters. Please use only one.")
 		return
 	}
 
@@ -1855,7 +1891,13 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/component_readiness/regressions",
-			Description:  "List component readiness test regressions. Supports view OR release query parameters (not both).",
+			Description:  "List component readiness test regressions or get a specific regression by ID. Supports view OR release query parameters (not both).",
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
+			HandlerFunc:  s.jsonRegressions,
+		},
+		{
+			EndpointPath: "/api/component_readiness/regressions/",
+			Description:  "List component readiness test regressions or get a specific regression by ID. Supports view OR release query parameters (not both).",
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonRegressions,
 		},

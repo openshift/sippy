@@ -38,6 +38,19 @@ func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	return triages, err
 }
 
+func GetRegression(dbc *db.DB, id int, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration) (*models.TestRegression, error) {
+	existingRegression := &models.TestRegression{}
+	res := dbc.DB.Preload("Triages").First(existingRegression, id)
+	if res.Error != nil {
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
+			return nil, nil
+		}
+		log.WithError(res.Error).Errorf("error looking up existing regression record: %d", id)
+	}
+	InjectRegressionHATEOASLinks(existingRegression, views, releases, crTimeRoundingFactor)
+	return existingRegression, res.Error
+}
+
 func ListRegressions(dbc *db.DB, view, release string, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
 	var err error
@@ -226,6 +239,9 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crt
 	if regression.Links == nil {
 		regression.Links = make(map[string]string)
 	}
+
+	// Add self link
+	regression.Links["self"] = fmt.Sprintf("/api/component_readiness/regressions/%d", regression.ID)
 
 	// Generate test details URL - use empty baseURL since we want relative URLs
 	testDetailsURL, err := utils.GenerateTestDetailsURL(regression, "", views, releases, crTimeRoundingFactor)
