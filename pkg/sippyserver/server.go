@@ -724,6 +724,19 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying component from big query: %v", errs))
 		return
 	}
+
+	// Iterate through all RegressedTests in outputs.Rows and inject HATEOAS links for regressions
+	for i := range outputs.Rows {
+		for j := range outputs.Rows[i].Columns {
+			for k := range outputs.Rows[i].Columns[j].RegressedTests {
+				regressedTest := &outputs.Rows[i].Columns[j].RegressedTests[k]
+				if regressedTest.Regression != nil {
+					componentreadiness.InjectRegressionHATEOASLinks(regressedTest.Regression, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor)
+				}
+			}
+		}
+	}
+
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 

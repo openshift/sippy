@@ -229,7 +229,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 				IgnoreMissing:               false,
 			},
 		}
-		testViews := []crtype.View{testView, realWorldView}
+		testViews := []crtype.View{realWorldView}
 
 		url, err := GenerateTestDetailsURL(regression, "https://sippy-auth.dptools.openshift.org", testViews, releases, time.Hour)
 		require.NoError(t, err)
@@ -248,6 +248,10 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		assert.Contains(t, url, "minFail=3")
 		assert.Contains(t, url, "pity=5")
 		assert.Contains(t, url, "includeMultiReleaseAnalysis=true")
+		assert.Contains(t, url, "passRateNewTests=95")
+		assert.Contains(t, url, "passRateAllTests=0")
+		assert.Contains(t, url, "ignoreDisruption=true")
+		assert.Contains(t, url, "flakeAsFailure=false")
 
 		// Verify all variants are included in the environment parameter
 		assert.Contains(t, url, "environment=Architecture%3Aamd64+FeatureSet%3Adefault+Installer%3Aipi+Network%3Aovn+Platform%3Avsphere+Suite%3Aserial+Topology%3Aha+Upgrade%3Anone")

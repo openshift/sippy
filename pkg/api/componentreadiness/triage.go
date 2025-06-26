@@ -48,7 +48,7 @@ func ListRegressions(dbc *db.DB, view, release string, views []crtype.View, rele
 
 	// Add HATEOAS links to each regression
 	for i := range regressions {
-		injectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor)
+		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor)
 	}
 
 	return regressions, err
@@ -221,8 +221,8 @@ func injectHATEOASLinks(triage *models.Triage) {
 	}
 }
 
-// injectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
-func injectRegressionHATEOASLinks(regression *models.TestRegression, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration) {
+// InjectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
+func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration) {
 	if regression.Links == nil {
 		regression.Links = make(map[string]string)
 	}
