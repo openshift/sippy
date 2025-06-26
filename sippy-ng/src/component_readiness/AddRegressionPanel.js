@@ -25,7 +25,9 @@ export default function AddRegressionPanel({
     setTabIndex(newValue)
   }
 
-  const [existingTriageId, setExistingTriageId] = React.useState(triages[0].id)
+  const [existingTriageId, setExistingTriageId] = React.useState(
+    triages.length > 0 ? triages[0].id : null
+  )
 
   const handleAddToExistingTriageSubmit = () => {
     const existingTriage = triages.find(
@@ -106,29 +108,42 @@ export default function AddRegressionPanel({
         {addToExisting && (
           <Fragment>
             <h3>Add to existing Triage</h3>
-            <Autocomplete
-              id="existing-triage"
-              name="existing-triage"
-              options={triages}
-              value={triages.find((t) => t.id === existingTriageId)}
-              getOptionLabel={(triage) => {
-                return formatTriageURLDescription(triage)
-              }}
-              isOptionEqualToValue={(triage, value) => triage.id === value?.id}
-              renderInput={(params) => (
-                <TextField {...params} label="Existing Triage" />
-              )}
-              onChange={handleExistingTriageChange}
-            />
+            {triages.length === 0 ? (
+              <p>No existing triages available. Please create a new triage.</p>
+            ) : (
+              <Fragment>
+                <Autocomplete
+                  id="existing-triage"
+                  name="existing-triage"
+                  options={triages}
+                  value={
+                    existingTriageId
+                      ? triages.find((t) => t.id === existingTriageId)
+                      : null
+                  }
+                  getOptionLabel={(triage) => {
+                    return formatTriageURLDescription(triage)
+                  }}
+                  isOptionEqualToValue={(triage, value) =>
+                    triage.id === value?.id
+                  }
+                  renderInput={(params) => (
+                    <TextField {...params} label="Existing Triage" />
+                  )}
+                  onChange={handleExistingTriageChange}
+                />
 
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ margin: '10px 0' }}
-              onClick={handleAddToExistingTriageSubmit}
-            >
-              Add to Entry
-            </Button>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  sx={{ margin: '10px 0' }}
+                  onClick={handleAddToExistingTriageSubmit}
+                  disabled={triages.length === 0}
+                >
+                  Add to Entry
+                </Button>
+              </Fragment>
+            )}
           </Fragment>
         )}
         {addToNew && (
