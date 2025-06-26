@@ -267,4 +267,64 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		assert.Contains(t, url, "Upgrade=none")
 	})
 
+	t.Run("includeVariant parameters are sorted", func(t *testing.T) {
+		// Create a view with includeVariants in non-alphabetical order
+		viewWithVariants := crtype.View{
+			Name: "test-view-with-variants",
+			BaseRelease: crtype.RequestRelativeReleaseOptions{
+				RequestReleaseOptions: crtype.RequestReleaseOptions{
+					Release: "4.19",
+				},
+				RelativeStart: "ga-30d",
+				RelativeEnd:   "ga",
+			},
+			SampleRelease: crtype.RequestRelativeReleaseOptions{
+				RequestReleaseOptions: crtype.RequestReleaseOptions{
+					Release: "4.20",
+				},
+				RelativeStart: "ga-7d",
+				RelativeEnd:   "ga",
+			},
+			VariantOptions: crtype.RequestVariantOptions{
+				IncludeVariants: map[string][]string{
+					// Keys and values in non-alphabetical order to test sorting
+					"Platform":     {"gcp", "aws", "azure"},
+					"Architecture": {"amd64"},
+					"Network":      {"ovn", "sdn"},
+				},
+			},
+			AdvancedOptions: crtype.RequestAdvancedOptions{
+				MinimumFailure:              3,
+				Confidence:                  95,
+				PityFactor:                  5,
+				IncludeMultiReleaseAnalysis: true,
+			},
+		}
+		viewsWithVariants := []crtype.View{viewWithVariants}
+
+		regression := &models.TestRegression{
+			ID:      123,
+			View:    "test-view-with-variants",
+			Release: "4.20",
+			TestID:  "test-id",
+		}
+
+		url, err := GenerateTestDetailsURL(regression, "https://example.com", viewsWithVariants, releases, 0)
+		require.NoError(t, err)
+
+		// Verify that includeVariant parameters are sorted by key and value
+		// Architecture should come first (alphabetically), then Network, then Platform
+		// Within Platform, values should be sorted: aws, azure, gcp
+		assert.Contains(t, url, "includeVariant=Architecture%3Aamd64")
+		assert.Contains(t, url, "includeVariant=Network%3Aovn")
+		assert.Contains(t, url, "includeVariant=Network%3Asdn")
+		assert.Contains(t, url, "includeVariant=Platform%3Aaws")
+		assert.Contains(t, url, "includeVariant=Platform%3Aazure")
+		assert.Contains(t, url, "includeVariant=Platform%3Agcp")
+
+		// Check that the order is correct by looking at the raw query
+		// The URL encoding makes this a bit tricky, but we can check the pattern
+		assert.Regexp(t, `includeVariant=Architecture.*includeVariant=Network.*includeVariant=Platform`, url)
+	})
+
 }

@@ -211,8 +211,21 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 	}
 
 	// Add include variants from view
-	for variantKey, variantValues := range view.VariantOptions.IncludeVariants {
-		for _, variantValue := range variantValues {
+	// Sort variant keys to ensure consistent parameter ordering
+	includeVariantKeys := make([]string, 0, len(view.VariantOptions.IncludeVariants))
+	for variantKey := range view.VariantOptions.IncludeVariants {
+		includeVariantKeys = append(includeVariantKeys, variantKey)
+	}
+	sort.Strings(includeVariantKeys)
+
+	for _, variantKey := range includeVariantKeys {
+		variantValues := view.VariantOptions.IncludeVariants[variantKey]
+		// Sort variant values to ensure consistent parameter ordering
+		sortedValues := make([]string, len(variantValues))
+		copy(sortedValues, variantValues)
+		sort.Strings(sortedValues)
+
+		for _, variantValue := range sortedValues {
 			params.Add("includeVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
 		}
 	}
