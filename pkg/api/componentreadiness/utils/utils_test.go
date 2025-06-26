@@ -131,6 +131,8 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			BaseRelease: "4.19",
 			TestID:      "openshift-tests:abc123",
 			TestName:    "test-example",
+			Component:   "component-example",
+			Capability:  "capability-example",
 			Variants:    pq.StringArray{"Architecture:amd64", "Platform:aws"},
 		}
 
@@ -149,6 +151,8 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		assert.Contains(t, url, "includeMultiReleaseAnalysis=true")
 		assert.Contains(t, url, "Architecture=amd64")
 		assert.Contains(t, url, "Platform=aws")
+		assert.Contains(t, url, "component=component-example")
+		assert.Contains(t, url, "capability=capability-example")
 		assert.NotContains(t, url, "testBasisRelease")
 	})
 

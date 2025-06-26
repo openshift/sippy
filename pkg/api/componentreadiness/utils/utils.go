@@ -202,6 +202,13 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 	params.Add("flakeAsFailure", strconv.FormatBool(view.AdvancedOptions.FlakeAsFailure))
 	params.Add("includeMultiReleaseAnalysis", strconv.FormatBool(view.AdvancedOptions.IncludeMultiReleaseAnalysis))
 
+	if regression.Component != "" {
+		params.Add("component", regression.Component)
+	}
+	if regression.Capability != "" {
+		params.Add("capability", regression.Capability)
+	}
+
 	// Add variant options from view
 	if view.VariantOptions.ColumnGroupBy != nil {
 		params.Add("columnGroupBy", strings.Join(view.VariantOptions.ColumnGroupBy.List(), ","))

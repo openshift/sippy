@@ -87,6 +87,8 @@ type TestRegression struct {
 	// BaseRelease is the release this test was marked regressed against. It may not match the view's base release
 	// if the view uses release fallback and this test was flagged regressed against a prior release with better pass rate.
 	BaseRelease string         `json:"base_release"`
+	Component   string         `json:"component"`
+	Capability  string         `json:"capability"`
 	TestID      string         `json:"test_id" gorm:"not null"`
 	TestName    string         `json:"test_name" gorm:"not null;index:idx_test_regression_test_name"`
 	Variants    pq.StringArray `json:"variants" gorm:"not null;type:text[]"`

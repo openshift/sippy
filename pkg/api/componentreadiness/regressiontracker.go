@@ -73,9 +73,12 @@ func (prs *PostgresRegressionStore) OpenRegression(view crtype.View, newRegresse
 		MaxFailures: newRegressedTest.SampleStats.FailureCount,
 	}
 
-	// We must be using release fallback and matched a prior base release. Stamp this data on the regression as well
+	// Store the base release
 	// so we can generate accurate test_details API links.
 	newRegression.BaseRelease = newRegressedTest.BaseStats.Release
+
+	newRegression.Capability = newRegressedTest.Capability
+	newRegression.Component = newRegressedTest.Component
 
 	if newRegressedTest.LastFailure != nil {
 		newRegression.LastFailure = sql.NullTime{Valid: true, Time: *newRegressedTest.LastFailure}
@@ -222,6 +225,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 					modifiedRegression = true
 				}
 			}
+
 			// BaseRelease was added to test_regressions later, this block allows us to set it for any pre-existing
 			// regressions as soon as the reg tracker runs.
 			// TODO: remove this block and make the field non-nullable once the db is updated
@@ -229,6 +233,18 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 				openReg.BaseRelease = regTest.BaseStats.Release
 				modifiedRegression = true
 			}
+
+			// Technically component and capability could get remapped during the time the regression is open,
+			// and we need this to roll out the storing of these fields initially:
+			if regTest.Component != openReg.Component {
+				openReg.Component = regTest.Component
+				modifiedRegression = true
+			}
+			if regTest.Capability != openReg.Capability {
+				openReg.Capability = regTest.Capability
+				modifiedRegression = true
+			}
+
 			if modifiedRegression {
 				statsUpdatedRegs++
 				err := rt.backend.UpdateRegression(openReg)
