@@ -539,7 +539,12 @@ export function validateData(data) {
 export function mergeRegressionData(data, triageEntries) {
   let ret = validateData(data)
   if (ret[0] !== '') {
-    return ret
+    // Return empty arrays when data is invalid to maintain expected structure
+    return {
+      untriagedRegressedTests: [],
+      allRegressions: [],
+      unresolvedRegressedTests: [],
+    }
   }
 
   // the set of regressionIds from the triageEntries will be used to determine if a test that has other not been triaged should be marked as such
