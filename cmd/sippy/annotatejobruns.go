@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -80,7 +81,7 @@ func (f *AnnotateJobRunsFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.PathGlob, "path-glob", f.PathGlob, "The path glob from which to search for artifacts")
 	f.JobRunIDs = fs.Int64Slice("job-run-id", []int64{}, "A list of job runs to apply the label. Can be used if you already know the job IDs you want to apply the label. This list can be further filtered by other arguments")
 	fs.StringVar(&f.Comment, "comment", f.Comment, "Comment you want to add with the label. This can serve as breadcrumbs to show where the label is from.")
-	fs.StringVar(&f.User, "user", f.User, "User who is applying the label.")
+	fs.StringVar(&f.User, "user", os.Getenv("USER"), "User who is applying the label.")
 }
 
 func (f *AnnotateJobRunsFlags) Validate(allVariants crtest.JobVariants) error {
@@ -118,8 +119,8 @@ func (f *AnnotateJobRunsFlags) Validate(allVariants crtest.JobVariants) error {
 	if len(f.PathGlob) != 0 && (len(f.TextContains) == 0 && len(f.TextRegex) == 0) {
 		return fmt.Errorf("--text-contains or --text-regex must be provided when using --path-glob")
 	}
-	if len(f.User) == 0 {
-		return fmt.Errorf("--user is required")
+	if len(f.User) == 0 || f.User == "root" {
+		return fmt.Errorf("--user is required and cannot be set to root")
 	}
 	return f.GoogleCloudFlags.Validate()
 }
