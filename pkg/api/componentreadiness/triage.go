@@ -1,6 +1,7 @@
 package componentreadiness
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -55,7 +56,7 @@ func validateTriage(triage models.Triage, update bool) error {
 	return nil
 }
 
-func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
+func CreateTriage(dbc *gorm.DB, triage models.Triage) (models.Triage, error) {
 	err := validateTriage(triage, false)
 	if err != nil {
 		log.WithError(err).Error("error validating triage record")
@@ -73,7 +74,7 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	// If we have a bug in the db matching the url we were given, link them up now.
 	// If not, this should be handled later during the next fetchdata cron job.
 	var bug models.Bug
-	res := dbc.DB.Where("url = ?", triage.URL).First(&bug)
+	res := dbc.Where("url = ?", triage.URL).First(&bug)
 	switch {
 	case res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound):
 		log.WithError(res.Error).Errorf("unexpected error looking up bug: %s", triage.URL)
@@ -83,7 +84,7 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 		triage.BugID = &bug.ID
 	}
 
-	res = dbc.DB.Create(&triage)
+	res = dbc.Create(&triage)
 	if res.Error != nil {
 		log.WithError(res.Error).Error("error creating triage record")
 		return triage, res.Error
@@ -94,7 +95,7 @@ func CreateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	return triage, nil
 }
 
-func linkRegressions(dbc *db.DB, triage *models.Triage) error {
+func linkRegressions(dbc *gorm.DB, triage *models.Triage) error {
 	// We support linking to regressions by just setting the ID in the request, lookup
 	// full regressions for association.
 	regressionIDs := []uint{}
@@ -102,7 +103,7 @@ func linkRegressions(dbc *db.DB, triage *models.Triage) error {
 		regressionIDs = append(regressionIDs, trIDR.ID)
 	}
 	var linkedRegressions []models.TestRegression
-	res := dbc.DB.Where("id IN ?", regressionIDs).Find(&linkedRegressions)
+	res := dbc.Where("id IN ?", regressionIDs).Find(&linkedRegressions)
 	if res.Error != nil {
 		log.WithError(res.Error).Errorf("error looking up regression IDs: %v", regressionIDs)
 		return res.Error
@@ -132,7 +133,7 @@ func linkRegressions(dbc *db.DB, triage *models.Triage) error {
 	return nil
 }
 
-func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
+func UpdateTriage(dbc *gorm.DB, triage models.Triage) (models.Triage, error) {
 	err := validateTriage(triage, true)
 	if err != nil {
 		log.WithError(err).Error("error validating triage record")
@@ -142,7 +143,7 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	// Ensure the record exists and preserve fields you're not allowed to update:
 	// Side effect of not requiring you to specify them in your json.
 	existingTriage := models.Triage{}
-	res := dbc.DB.First(&existingTriage, triage.ID)
+	res := dbc.First(&existingTriage, triage.ID)
 	if res.Error != nil {
 		log.WithError(res.Error).Errorf("error looking up existing triage record: %v", triage.ID)
 		return triage, res.Error
@@ -157,7 +158,7 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 	// If we have a bug in the db matching the url we were given, link them up now.
 	// If not, this should be handled later during the next fetchdata cron job.
 	var bug models.Bug
-	res = dbc.DB.Where("url = ?", triage.URL).First(&bug)
+	res = dbc.Where("url = ?", triage.URL).First(&bug)
 	switch {
 	case res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound):
 		log.WithError(res.Error).Errorf("unexpected error looking up bug: %s", triage.URL)
@@ -167,28 +168,35 @@ func UpdateTriage(dbc *db.DB, triage models.Triage) (models.Triage, error) {
 		triage.BugID = &bug.ID
 	}
 
-	// When we have removed regressions, we must replace the associations directly, as Save will not handle it.
-	// This results in rows being deleted and re-created even when there are no changes, but this shouldn't happen
-	// enough that it makes a difference.
-	err = dbc.DB.Model(&triage).Association("Regressions").Replace(triage.Regressions)
-	if err != nil {
-		log.WithError(res.Error).Error("error replacing regressions on triage record")
-		return triage, res.Error
-	}
+	// Use a transaction to handle both model update and association changes atomically
+	// Gorm is unable to handle this in a single save operation when regressions are removed
+	err = dbc.Transaction(func(tx *gorm.DB) error {
+		// Capture the old triage state before making any changes, this is necessary to avoid multiple audit logs for the transaction
+		var oldTriage models.Triage
+		if err := tx.Preload("Regressions").First(&oldTriage, triage.ID).Error; err != nil {
+			return err
+		}
+		ctx := context.WithValue(tx.Statement.Context, models.OldTriageKey, oldTriage)
+		txWithContext := tx.WithContext(ctx)
 
-	res = dbc.DB.Save(&triage)
-	if res.Error != nil {
-		log.WithError(res.Error).Error("error updating triage record")
-		return triage, res.Error
+		if err := txWithContext.Session(&gorm.Session{SkipHooks: true}).Model(&triage).Association("Regressions").Replace(triage.Regressions); err != nil {
+			return err
+		}
+
+		return txWithContext.Save(&triage).Error
+	})
+	if err != nil {
+		log.WithError(err).Error("error updating triage record and associations")
+		return triage, err
 	}
 
 	injectHATEOASLinks(&triage)
 	return triage, nil
 }
 
-func DeleteTriage(dbc *db.DB, id int) error {
+func DeleteTriage(dbc *gorm.DB, id int) error {
 	existingTriage := &models.Triage{}
-	res := dbc.DB.First(existingTriage, id).Delete(existingTriage)
+	res := dbc.First(existingTriage, id).Delete(existingTriage)
 	if res.Error != nil {
 		return fmt.Errorf("error deleting triage record: %v", res.Error)
 	}

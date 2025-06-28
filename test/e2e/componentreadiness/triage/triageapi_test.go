@@ -1,8 +1,11 @@
 package triage
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
@@ -16,6 +19,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 var view = crview.View{
@@ -40,7 +44,7 @@ func Test_TriageAPI(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
 
-	jiraBug := createBug(t, dbc)
+	jiraBug := createBug(t, dbc.DB)
 	defer dbc.DB.Delete(jiraBug)
 
 	testRegression1 := createTestRegression(t, tracker, view, "faketestid")
@@ -66,6 +70,40 @@ func Test_TriageAPI(t *testing.T) {
 		triage1.Type = "fake"
 		err = util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse)
 		require.Error(t, err)
+	})
+
+	t.Run("create generates audit_log record", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		triage1 := models.Triage{
+			URL: jiraBug.URL,
+			Regressions: []models.TestRegression{
+				{
+					ID: testRegression1.ID,
+				},
+			},
+			Type: "test",
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse)
+		require.NoError(t, err)
+
+		var auditLog models.AuditLog
+		res := dbc.DB.
+			Where("table_name = ?", "triage").
+			Where("row_id = ?", triageResponse.ID).
+			First(&auditLog)
+		require.NoError(t, res.Error)
+
+		assert.Equal(t, models.Create, models.OperationType(auditLog.Operation))
+		assert.Equal(t, "developer", auditLog.User)
+		assert.NotEmpty(t, auditLog.NewData, "NewData should contain the created triage record")
+
+		var auditedTriage models.Triage
+		err = json.Unmarshal(auditLog.NewData, &auditedTriage)
+		require.NoError(t, err, "NewData should be valid JSON")
+
+		assertTriageDataMatches(t, triageResponse, auditedTriage, "NewData")
 	})
 
 	t.Run("get", func(t *testing.T) {
@@ -117,6 +155,33 @@ func Test_TriageAPI(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse2.ID),
 			triageResponse2.Links["self"])
 	})
+	t.Run("update to remove a regression", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		triage := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: testRegression1.ID},
+				{ID: testRegression2.ID},
+			},
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.NoError(t, err)
+		assert.Equal(t, 2, len(triageResponse.Regressions))
+
+		// Update to remove one regression - keep only testRegression1
+		triageResponse.Regressions = []models.TestRegression{{ID: testRegression1.ID}}
+		var triageResponse2 models.Triage
+		err = util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &triageResponse2)
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(triageResponse2.Regressions))
+		assert.Equal(t, testRegression1.ID, triageResponse2.Regressions[0].ID, "should keep testRegression1")
+		assert.WithinDuration(t, triageResponse.CreatedAt, triageResponse2.CreatedAt, time.Second)
+		assert.NotEqual(t, triageResponse.UpdatedAt, triageResponse2.UpdatedAt)
+	})
 	t.Run("update to remove all regressions", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
@@ -153,6 +218,66 @@ func Test_TriageAPI(t *testing.T) {
 		err := util.SippyPut("/api/component_readiness/triages/128736182736128736", &triageResponse, &triageResponse2)
 		require.Error(t, err)
 	})
+	t.Run("update generates audit_log record", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		originalTriage := deepCopyTriage(t, triageResponse)
+
+		// Update with a new regression, and a changed description:
+		triageResponse.Regressions = append(triageResponse.Regressions, models.TestRegression{ID: testRegression2.ID})
+		triageResponse.Description = "updated description"
+		var triageResponse2 models.Triage
+		err := util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &triageResponse2)
+		require.NoError(t, err)
+
+		var auditLog models.AuditLog
+		res := dbc.DB.
+			Where("table_name = ?", "triage").
+			Where("operation = ?", models.Update).
+			Where("row_id = ?", triageResponse.ID).
+			First(&auditLog)
+		require.NoError(t, res.Error)
+
+		assert.Equal(t, "developer", auditLog.User)
+		assert.NotEmpty(t, auditLog.NewData, "NewData should contain the updated triage record")
+		assert.NotEmpty(t, auditLog.OldData, "OldData should contain the original triage record")
+
+		var newTriageData models.Triage
+		err = json.Unmarshal(auditLog.NewData, &newTriageData)
+		require.NoError(t, err, "NewData should be valid JSON")
+		assertTriageDataMatches(t, triageResponse2, newTriageData, "NewData")
+
+		var oldTriageData models.Triage
+		err = json.Unmarshal(auditLog.OldData, &oldTriageData)
+		require.NoError(t, err, "OldData should be valid JSON")
+		assertTriageDataMatches(t, originalTriage, oldTriageData, "OldData")
+	})
+	t.Run("delete generates audit_log record", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		originalTriage := deepCopyTriage(t, triageResponse)
+
+		// Delete the triage record
+		err := util.SippyDelete(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID))
+		require.NoError(t, err)
+
+		var auditLog models.AuditLog
+		res := dbc.DB.
+			Where("table_name = ?", "triage").
+			Where("operation = ?", models.Delete).
+			Where("row_id = ?", triageResponse.ID).
+			First(&auditLog)
+		require.NoError(t, res.Error)
+
+		assert.Equal(t, "developer", auditLog.User)
+		assert.NotEmpty(t, auditLog.OldData, "OldData should contain the deleted triage record")
+		assert.Empty(t, auditLog.NewData, "NewData should be empty for delete operations")
+
+		var oldTriageData models.Triage
+		err = json.Unmarshal(auditLog.OldData, &oldTriageData)
+		require.NoError(t, err, "OldData should be valid JSON")
+		assertTriageDataMatches(t, originalTriage, oldTriageData, "OldData")
+	})
 }
 
 func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 *models.TestRegression) models.Triage {
@@ -180,7 +305,7 @@ func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 
 	return lookupTriage
 }
 
-func createBug(t *testing.T, dbc *db.DB) *models.Bug {
+func createBug(t *testing.T, dbc *gorm.DB) *models.Bug {
 	jiraBug := models.Bug{
 		Key:        "MYBUGS-100",
 		Status:     "New",
@@ -189,7 +314,7 @@ func createBug(t *testing.T, dbc *db.DB) *models.Bug {
 		Labels:     pq.StringArray{"label1", "label2"},
 		URL:        "https://issues.redhat.com/browse/MYBUGS-100",
 	}
-	res := dbc.DB.Create(&jiraBug)
+	res := dbc.Create(&jiraBug)
 	require.NoError(t, res.Error)
 	return &jiraBug
 }
@@ -197,6 +322,7 @@ func createBug(t *testing.T, dbc *db.DB) *models.Bug {
 // Test_TriageRawDB ensures our gorm postgresql mappings are working as we'd expect.
 func Test_TriageRawDB(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
+	dbWithContext := dbc.DB.WithContext(context.WithValue(context.TODO(), models.CurrentUserKey, "developer"))
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
 
 	testRegression := createTestRegression(t, tracker, view, "faketestid")
@@ -211,26 +337,26 @@ func Test_TriageRawDB(t *testing.T) {
 				*testRegression,
 			},
 		}
-		res := dbc.DB.Create(&triage1)
+		res := dbWithContext.Create(&triage1)
 		require.NoError(t, res.Error)
 		testRegression.Triages = append(testRegression.Triages, triage1)
-		res = dbc.DB.Save(&testRegression)
+		res = dbWithContext.Save(&testRegression)
 		require.NoError(t, res.Error)
 
 		// Lookup the Triage again to ensure we persisted what we expect:
-		res = dbc.DB.First(&triage1, triage1.ID)
+		res = dbWithContext.First(&triage1, triage1.ID)
 		require.NoError(t, res.Error)
 		assert.Equal(t, 1, len(triage1.Regressions))
 
 		// Ensure loading a regression can load the triage records for it:
 		var lookupRegression models.TestRegression
-		res = dbc.DB.First(&lookupRegression, testRegression.ID).Preload("Triages")
+		res = dbWithContext.First(&lookupRegression, testRegression.ID).Preload("Triages")
 		require.NoError(t, res.Error)
 		assert.Equal(t, 1, len(testRegression.Triages))
 
 		openRegressions := make([]*models.TestRegression, 0)
 
-		res = dbc.DB.
+		res = dbWithContext.
 			Model(&models.TestRegression{}).
 			Preload("Triages").
 			Where("test_regressions.release = ?", view.SampleRelease.Name).
@@ -248,44 +374,44 @@ func Test_TriageRawDB(t *testing.T) {
 				*testRegression,
 			},
 		}
-		res = dbc.DB.Create(&triage2)
+		res = dbWithContext.Create(&triage2)
 		require.NoError(t, res.Error)
 		testRegression.Triages = append(testRegression.Triages, triage2)
-		res = dbc.DB.Save(&testRegression)
+		res = dbWithContext.Save(&testRegression)
 		require.NoError(t, res.Error)
 
 		// Query for triages for a specific regression:
-		res = dbc.DB.First(&testRegression, testRegression.ID).Preload("Triages")
+		res = dbWithContext.First(&testRegression, testRegression.ID).Preload("Triages")
 		require.NoError(t, res.Error)
 		assert.Equal(t, 2, len(testRegression.Triages))
 
 		// Delete the association:
 		triage1.Regressions = []models.TestRegression{}
-		res = dbc.DB.Save(&triage1)
+		res = dbWithContext.Save(&triage1)
 		require.NoError(t, res.Error)
-		res = dbc.DB.First(&triage1, triage1.ID)
+		res = dbWithContext.First(&triage1, triage1.ID)
 		require.Nil(t, res.Error)
 		assert.Equal(t, 0, len(triage1.Regressions))
 		// Make sure we didn't wipe out the regression itself:
-		res = dbc.DB.First(&lookupRegression, testRegression.ID)
+		res = dbWithContext.First(&lookupRegression, testRegression.ID)
 		require.NoError(t, res.Error)
 	})
 
 	t.Run("test Triage model Bug relationship", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 
-		jiraBug := createBug(t, dbc)
-		defer dbc.DB.Delete(jiraBug)
+		jiraBug := createBug(t, dbWithContext)
+		defer dbWithContext.Delete(jiraBug)
 
 		triage1 := models.Triage{
 			URL: "http://myjira",
 			Bug: jiraBug,
 		}
-		res := dbc.DB.Create(&triage1)
+		res := dbWithContext.Create(&triage1)
 		require.NoError(t, res.Error)
 
 		// Lookup the Triage again to ensure we persisted what we expect:
-		res = dbc.DB.First(&triage1, triage1.ID)
+		res = dbWithContext.First(&triage1, triage1.ID)
 		require.NoError(t, res.Error)
 		assert.Equal(t, "MYBUGS-100", triage1.Bug.Key)
 
@@ -313,4 +439,26 @@ func createTestRegression(t *testing.T, tracker componentreadiness.RegressionSto
 	testRegression, err := tracker.OpenRegression(view, newRegression)
 	require.NoError(t, err)
 	return testRegression
+}
+
+// deepCopyTriage creates a deep copy of a Triage struct using JSON marshal/unmarshal
+func deepCopyTriage(t *testing.T, original models.Triage) models.Triage {
+	data, err := json.Marshal(original)
+	require.NoError(t, err, "Failed to marshal triage for deep copy")
+
+	var triageCopy models.Triage
+	err = json.Unmarshal(data, &triageCopy)
+	require.NoError(t, err, "Failed to unmarshal triage for deep copy")
+
+	return triageCopy
+}
+
+func assertTriageDataMatches(t *testing.T, expectedTriage, actualTriage models.Triage, field string) {
+	assert.Equal(t, expectedTriage.ID, actualTriage.ID, "%s ID should match the expected triage ID", field)
+	assert.Equal(t, expectedTriage.URL, actualTriage.URL, "%s URL should match the expected triage URL", field)
+	assert.Len(t, actualTriage.Regressions, len(expectedTriage.Regressions), "%s regressions count should match", field)
+
+	if len(actualTriage.Regressions) > 0 && len(expectedTriage.Regressions) > 0 {
+		assert.Equal(t, expectedTriage.Regressions[0].ID, actualTriage.Regressions[0].ID, "%s regression ID should match", field)
+	}
 }
