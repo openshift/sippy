@@ -1,4 +1,4 @@
-import { Button, Tooltip } from '@mui/material'
+import { Box, Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { formatDateToSeconds, relativeTime } from '../helpers'
@@ -87,7 +87,31 @@ export default function Triage({ id }) {
 
   return (
     <Fragment>
-      <h2>Triage Details</h2>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
+      >
+        <h2 style={{ margin: 0 }}>Triage Details</h2>
+        {triageEnabled && (
+          <Box>
+            <UpsertTriageModal
+              triage={triage}
+              buttonText={'Update'}
+              setComplete={setIsUpdated}
+            />
+            <Button
+              onClick={deleteTriage}
+              variant="contained"
+              color="secondary"
+              sx={{ marginLeft: '10px' }}
+            >
+              Delete
+            </Button>
+          </Box>
+        )}
+      </Box>
       <Table>
         <TableBody>
           <TableRow>
@@ -201,23 +225,6 @@ export default function Triage({ id }) {
       </Table>
       <h2>Included Tests</h2>
       <TriagedRegressionTestList regressions={triage.regressions} />
-      {triageEnabled && (
-        <Fragment>
-          <UpsertTriageModal
-            triage={triage}
-            buttonText={'Update'}
-            setComplete={setIsUpdated}
-          />
-          <Button
-            onClick={deleteTriage}
-            variant="contained"
-            color="secondary"
-            sx={{ marginLeft: '10px' }}
-          >
-            Delete
-          </Button>
-        </Fragment>
-      )}
     </Fragment>
   )
 }
