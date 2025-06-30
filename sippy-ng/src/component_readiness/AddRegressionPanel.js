@@ -1,11 +1,10 @@
-import { Button, Tab, Tabs } from '@mui/material'
-import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
-import Autocomplete from '@mui/lab/Autocomplete'
+import { getTriagesAPIUrl } from './CompReadyUtils'
+import { Tab, Tabs } from '@mui/material'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import ExistingTriageSelector from './ExistingTriageSelector'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import TextField from '@mui/material/TextField'
 import TriageFields from './TriageFields'
 
 export default function AddRegressionPanel({
@@ -63,8 +62,7 @@ export default function AddRegressionPanel({
       }
 
       setAlertText(
-        'successfully added test to triage record: ' +
-          formatTriageURLDescription(existingTriage)
+        'successfully added test to triage record: ' + existingTriage.url
       )
       setAlertSeverity('success')
       if (triages.length > 0) {
@@ -72,18 +70,6 @@ export default function AddRegressionPanel({
       }
       completeTriageSubmission()
     })
-  }
-
-  const handleExistingTriageChange = (event, newValue) => {
-    setExistingTriageId(newValue.id)
-  }
-
-  const formatTriageURLDescription = (triage) => {
-    let url = triage.url
-    if (url.startsWith(jiraUrlPrefix)) {
-      url = url.slice(jiraUrlPrefix.length)
-    }
-    return url + ' - ' + triage.description
   }
 
   const addToExisting = tabIndex === 0
@@ -106,41 +92,28 @@ export default function AddRegressionPanel({
         {addToExisting && (
           <Fragment>
             <h3>Add to existing Triage</h3>
-            <Autocomplete
-              id="existing-triage"
-              name="existing-triage"
-              options={triages}
-              value={triages.find((t) => t.id === existingTriageId)}
-              getOptionLabel={(triage) => {
-                return formatTriageURLDescription(triage)
-              }}
-              isOptionEqualToValue={(triage, value) => triage.id === value?.id}
-              renderInput={(params) => (
-                <TextField {...params} label="Existing Triage" />
-              )}
-              onChange={handleExistingTriageChange}
+            <ExistingTriageSelector
+              triages={triages}
+              existingTriageId={existingTriageId}
+              setExistingTriageId={setExistingTriageId}
+              onSubmit={handleAddToExistingTriageSubmit}
             />
-
-            <Button
-              variant="contained"
-              color="primary"
-              sx={{ margin: '10px 0' }}
-              onClick={handleAddToExistingTriageSubmit}
-            >
-              Add to Entry
-            </Button>
           </Fragment>
         )}
         {addToNew && (
           <Fragment>
             <h3>Create new Triage</h3>
             <TriageFields
+              triages={triages}
               setAlertText={setAlertText}
               setAlertSeverity={setAlertSeverity}
               triageEntryData={triageEntryData}
               handleFormCompletion={handleNewTriageFormCompletion}
               setTriageEntryData={setTriageEntryData}
               submitButtonText={'Create Entry'}
+              existingTriageId={existingTriageId}
+              setExistingTriageId={setExistingTriageId}
+              handleAddToExistingTriage={handleAddToExistingTriageSubmit}
             />
           </Fragment>
         )}
