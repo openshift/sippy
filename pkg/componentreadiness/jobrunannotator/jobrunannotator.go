@@ -376,7 +376,7 @@ func (j JobRunAnnotator) filterJobRunByArtifact(ctx context.Context, jobRunIDs [
 	}
 	for _, jobRun := range result.JobRuns {
 		for _, a := range jobRun.Artifacts {
-			if a.MatchedContent.ContentLineMatches != nil {
+			if a.ContentLineMatches != nil {
 				id, err := strconv.ParseInt(a.JobRunID, 10, 64)
 				if err != nil {
 					log.WithError(err).Errorf("error parsing job run ID %s", a.JobRunID)
@@ -429,7 +429,7 @@ func (j JobRunAnnotator) generateComment() string {
 	return comment
 }
 
-func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (map[int64]jobRunAnnotation, error) { //lint:ignore
+func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (map[int64]jobRunAnnotation, error) {
 	now := time.Now()
 	queryStr := fmt.Sprintf(`
 		SELECT
@@ -443,7 +443,7 @@ func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (
 
 	errs := []error{}
 	result := make(map[int64]jobRunAnnotation)
-	log.Infof("Fetching job run annotations with:\n%s\n", q.Q)
+	log.Debugf("Fetching job run annotations with:\n%s\n", q.Q)
 
 	it, err := q.Read(ctx)
 	if err != nil {
