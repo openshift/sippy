@@ -20,6 +20,7 @@ export function useChatWebSocket(settings = {}) {
   const wsRef = useRef(null)
   const reconnectTimeoutRef = useRef(null)
   const reconnectAttemptsRef = useRef(0)
+  const currentIterationRef = useRef(0)
   const maxReconnectAttempts = 5
 
   // Connect to WebSocket
@@ -128,24 +129,35 @@ export function useChatWebSocket(settings = {}) {
     if (data.complete) {
       // Thinking step completed
       setMessages((prev) => {
+        // Look for existing thinking step from the CURRENT iteration only
         const existing = prev.find(
           (msg) =>
             msg.type === MESSAGE_TYPES.THINKING_STEP &&
-            msg.data?.step_number === data.step_number
+            msg.data?.step_number === data.step_number &&
+            msg.data?.iteration === currentIterationRef.current
         )
 
         if (existing) {
-          // Update existing thinking step
+          // Update existing thinking step from current iteration
           return prev.map((msg) =>
             msg.id === existing.id
-              ? { ...msg, data: { ...msg.data, ...data } }
+              ? {
+                  ...msg,
+                  data: {
+                    ...msg.data,
+                    ...data,
+                    iteration: currentIterationRef.current,
+                  },
+                }
               : msg
           )
         } else {
-          // Add new thinking step
+          // Add new thinking step with current iteration
           return [
             ...prev,
-            createMessage(MESSAGE_TYPES.THINKING_STEP, '', { data }),
+            createMessage(MESSAGE_TYPES.THINKING_STEP, '', {
+              data: { ...data, iteration: currentIterationRef.current },
+            }),
           ]
         }
       })
@@ -155,7 +167,7 @@ export function useChatWebSocket(settings = {}) {
     } else {
       // Thinking step in progress
       setIsTyping(true)
-      setCurrentThinking(data)
+      setCurrentThinking({ ...data, iteration: currentIterationRef.current })
     }
   }, [])
 
@@ -198,6 +210,9 @@ export function useChatWebSocket(settings = {}) {
       }
 
       try {
+        // Increment iteration counter for new conversation turn
+        currentIterationRef.current += 1
+
         // Add user message to chat
         const userMessage = createMessage(MESSAGE_TYPES.USER, content)
         setMessages((prev) => [...prev, userMessage])
@@ -228,6 +243,7 @@ export function useChatWebSocket(settings = {}) {
     setCurrentThinking(null)
     setError(null)
     setIsTyping(false)
+    currentIterationRef.current = 0 // Reset iteration counter
   }, [])
 
   // Auto-connect on mount
