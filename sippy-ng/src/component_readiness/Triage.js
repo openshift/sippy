@@ -142,58 +142,6 @@ export default function Triage({ id }) {
             <TableCell>{triage.type}</TableCell>
           </TableRow>
           <TableRow>
-            <TableCell>Jira</TableCell>
-            <TableCell>
-              <SecureLink address={triage.url}>{displayUrl}</SecureLink>
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>Resolution Date</TableCell>
-            <TableCell>
-              {triage.resolved?.Valid ? (
-                <Tooltip
-                  title={relativeTime(
-                    new Date(triage.resolved.Time),
-                    new Date()
-                  )}
-                >
-                  <span>{formatDateToSeconds(triage.resolved.Time)}</span>
-                </Tooltip>
-              ) : (
-                ''
-              )}
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>State</TableCell>
-            <TableCell>{triage.bug?.status}</TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>Version</TableCell>
-            <TableCell>
-              {triage.bug?.target_versions || triage.bug?.affects_versions}
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>Jira updated</TableCell>
-            <TableCell>
-              {triage.bug?.last_change_time ? (
-                <Tooltip
-                  title={relativeTime(
-                    new Date(triage.bug.last_change_time),
-                    new Date()
-                  )}
-                >
-                  <span>
-                    {formatDateToSeconds(triage.bug.last_change_time)}
-                  </span>
-                </Tooltip>
-              ) : (
-                ''
-              )}
-            </TableCell>
-          </TableRow>
-          <TableRow>
             <TableCell>Record Created</TableCell>
             <TableCell>
               {triage.created_at ? (
@@ -215,6 +163,58 @@ export default function Triage({ id }) {
                   title={relativeTime(new Date(triage.updated_at), new Date())}
                 >
                   <span>{formatDateToSeconds(triage.updated_at)}</span>
+                </Tooltip>
+              ) : (
+                ''
+              )}
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Resolution Date</TableCell>
+            <TableCell>
+              {triage.resolved?.Valid ? (
+                <Tooltip
+                  title={relativeTime(
+                    new Date(triage.resolved.Time),
+                    new Date()
+                  )}
+                >
+                  <span>{formatDateToSeconds(triage.resolved.Time)}</span>
+                </Tooltip>
+              ) : (
+                ''
+              )}
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Jira</TableCell>
+            <TableCell>
+              <SecureLink address={triage.url}>{displayUrl}</SecureLink>
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Jira State</TableCell>
+            <TableCell>{triage.bug?.status}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Jira Version</TableCell>
+            <TableCell>
+              {triage.bug?.target_versions || triage.bug?.affects_versions}
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Jira updated</TableCell>
+            <TableCell>
+              {triage.bug?.last_change_time ? (
+                <Tooltip
+                  title={relativeTime(
+                    new Date(triage.bug.last_change_time),
+                    new Date()
+                  )}
+                >
+                  <span>
+                    {formatDateToSeconds(triage.bug.last_change_time)}
+                  </span>
                 </Tooltip>
               ) : (
                 ''
