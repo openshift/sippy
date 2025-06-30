@@ -170,13 +170,16 @@ func (j JobRunAnnotator) Run(ctx context.Context) error {
 type jobRun struct {
 	ID        string         `bigquery:"prowjob_build_id"`
 	StartTime civil.DateTime `bigquery:"prowjob_start"`
+	URL       string         `bigquery:"prowjob_url"`
 }
 
 type jobRunAnnotation struct {
-	jobRun
-	Label   string `bigquery:"label"`
-	Comment string `bigquery:"comment"`
-	User    string `bigquery:"user"`
+	ID        string              `bigquery:"prowjob_build_id"`
+	StartTime civil.DateTime      `bigquery:"prowjob_start"`
+	Label     string              `bigquery:"label"`
+	Comment   string              `bigquery:"comment"`
+	User      bigquery.NullString `bigquery:"user"`
+	url       string
 }
 
 func (j JobRunAnnotator) getJobRunsFromBigQuery(ctx context.Context) (map[int64]jobRun, error) { //lint:ignore
@@ -255,11 +258,13 @@ func (j JobRunAnnotator) getJobRunsFromBigQuery(ctx context.Context) (map[int64]
 		SELECT
 			prowjob_build_id AS job_run_id,
 			prowjob_start,
+			prowjob_url,
 		FROM filtered_job_runs_with_filtered_variants
 	),
 	candidate_job_run_stats AS (
 		SELECT
 			prowjob_build_id,
+			ANY_VALUE(jobs.prowjob_url) as prowjob_url,
 			ANY_VALUE(jobs.prowjob_start) as prowjob_start,
 			COUNT(prowjob_build_id) AS total_count,
 			SUM(adjusted_success_val) AS success_count,
@@ -273,6 +278,7 @@ func (j JobRunAnnotator) getJobRunsFromBigQuery(ctx context.Context) (map[int64]
 	SELECT
 		prowjob_build_id,
 		prowjob_start,
+		prowjob_url,
 	FROM candidate_job_run_stats
 	%s
 	`, j.bqClient.Dataset, jobRunWhereStr, selectVariants, joinVariantsStr, filterVariantsStr, dedupedJunitTable, junitWhereStr, minimumFailureStr)
@@ -371,7 +377,7 @@ func (j JobRunAnnotator) filterJobRunByArtifact(ctx context.Context, jobRunIDs [
 	}
 	for _, jobRun := range result.JobRuns {
 		for _, a := range jobRun.Artifacts {
-			if a.MatchedContent.ContentLineMatches != nil {
+			if a.ContentLineMatches != nil {
 				id, err := strconv.ParseInt(a.JobRunID, 10, 64)
 				if err != nil {
 					log.WithError(err).Errorf("error parsing job run ID %s", a.JobRunID)
@@ -390,8 +396,11 @@ func (j JobRunAnnotator) bulkInsertJobRunAnnotations(ctx context.Context, insert
 	var batchSize = 500
 
 	if !j.execute {
-		log.Infof("\n===========================================================\nDry run mode enabled\nBulk inserting\n%+v", inserts)
-		log.Infof("\n\nTo write the label to DB, please use --execute argument\n")
+		jobsStr := ""
+		for _, jobRun := range inserts {
+			jobsStr += fmt.Sprintf("StartTime: %v; URL: %s\n", jobRun.StartTime, jobRun.url)
+		}
+		log.Infof("\n===========================================================\nDry run mode enabled\nBulk inserting\n%s\n\nTo write the label to DB, please use --execute argument\n", jobsStr)
 		return nil
 	}
 
@@ -421,11 +430,82 @@ func (j JobRunAnnotator) generateComment() string {
 	return comment
 }
 
+func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (map[int64]jobRunAnnotation, error) {
+	now := time.Now()
+	queryStr := fmt.Sprintf(`
+		SELECT
+			*
+		FROM %s.%s
+		WHERE prowjob_start BETWEEN DATETIME(TIMESTAMP('%s')) AND DATETIME(TIMESTAMP('%s'))
+		`,
+		j.bqClient.Dataset, jobAnnotationTable, j.StartTime.UTC().Format(time.RFC3339), j.StartTime.Add(j.Duration).UTC().Format(time.RFC3339))
+
+	q := j.bqClient.BQ.Query(queryStr)
+
+	errs := []error{}
+	result := make(map[int64]jobRunAnnotation)
+	log.Debugf("Fetching job run annotations with:\n%s\n", q.Q)
+
+	it, err := q.Read(ctx)
+	if err != nil {
+		log.WithError(err).Error("error querying job run annotations from bigquery")
+		return result, err
+	}
+
+	for {
+		row := jobRunAnnotation{}
+		err := it.Next(&row)
+		if errors.Is(err, iterator.Done) {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing job run annotation from bigquery")
+			errs = append(errs, errors.Wrap(err, "error parsing job run annotation from bigquery"))
+			continue
+		}
+		id, err := strconv.ParseInt(row.ID, 10, 64)
+		if err != nil {
+			log.WithError(err).Errorf("error parsing job run ID %s from bigquery", row.ID)
+			errs = append(errs, errors.Wrap(err, "error parsing job run IDs from bigquery"))
+		} else {
+			result[id] = row
+		}
+	}
+
+	if len(errs) > 0 {
+		return result, errs[0]
+	}
+
+	elapsed := time.Since(now)
+	log.WithFields(log.Fields{
+		"elapsed": elapsed,
+		"reports": len(result),
+	}).Debug("getJobRunAnnotationsFromBigQuery completed")
+
+	return result, nil
+}
+
 func (j JobRunAnnotator) annotateJobRuns(ctx context.Context, jobRunIDs []int64, jobRuns map[int64]jobRun) error {
 	jobRunAnnotations := make([]jobRunAnnotation, 0, len(jobRunIDs))
+	existingAnnotations, err := j.getJobRunAnnotationsFromBigQuery(ctx)
+	if err != nil {
+		return err
+	}
+	log.Infof("Found %d existing job run annotations.", len(existingAnnotations))
 	for _, jobRunID := range jobRunIDs {
 		if jobRun, ok := jobRuns[jobRunID]; ok {
-			jobRunAnnotations = append(jobRunAnnotations, jobRunAnnotation{jobRun, j.Label, j.generateComment(), j.user})
+			// Skip if the same label already exists
+			if annotation, existing := existingAnnotations[jobRunID]; existing && annotation.Label == j.Label {
+				continue
+			}
+			jobRunAnnotations = append(jobRunAnnotations, jobRunAnnotation{
+				ID:        jobRun.ID,
+				StartTime: jobRun.StartTime,
+				Label:     j.Label,
+				Comment:   j.generateComment(),
+				User:      bigquery.NullString{Valid: true, StringVal: j.user},
+				url:       jobRun.URL,
+			})
 		}
 	}
 	return j.bulkInsertJobRunAnnotations(ctx, jobRunAnnotations)
