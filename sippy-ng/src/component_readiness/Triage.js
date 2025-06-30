@@ -1,4 +1,4 @@
-import { Button, Tooltip } from '@mui/material'
+import { Box, Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { formatDateToSeconds, relativeTime } from '../helpers'
@@ -87,7 +87,31 @@ export default function Triage({ id }) {
 
   return (
     <Fragment>
-      <h2>Triage Details</h2>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
+      >
+        <h2 style={{ margin: 0 }}>Triage Details</h2>
+        {triageEnabled && (
+          <Box>
+            <UpsertTriageModal
+              triage={triage}
+              buttonText={'Update'}
+              setComplete={setIsUpdated}
+            />
+            <Button
+              onClick={deleteTriage}
+              variant="contained"
+              color="secondary"
+              sx={{ marginLeft: '10px' }}
+            >
+              Delete
+            </Button>
+          </Box>
+        )}
+      </Box>
       <Table>
         <TableBody>
           <TableRow>
@@ -118,58 +142,6 @@ export default function Triage({ id }) {
             <TableCell>{triage.type}</TableCell>
           </TableRow>
           <TableRow>
-            <TableCell>Jira</TableCell>
-            <TableCell>
-              <SecureLink address={triage.url}>{displayUrl}</SecureLink>
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>Resolution Date</TableCell>
-            <TableCell>
-              {triage.resolved?.Valid ? (
-                <Tooltip
-                  title={relativeTime(
-                    new Date(triage.resolved.Time),
-                    new Date()
-                  )}
-                >
-                  <span>{formatDateToSeconds(triage.resolved.Time)}</span>
-                </Tooltip>
-              ) : (
-                ''
-              )}
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>State</TableCell>
-            <TableCell>{triage.bug?.status}</TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>Version</TableCell>
-            <TableCell>
-              {triage.bug?.target_versions || triage.bug?.affects_versions}
-            </TableCell>
-          </TableRow>
-          <TableRow>
-            <TableCell>Jira updated</TableCell>
-            <TableCell>
-              {triage.bug?.last_change_time ? (
-                <Tooltip
-                  title={relativeTime(
-                    new Date(triage.bug.last_change_time),
-                    new Date()
-                  )}
-                >
-                  <span>
-                    {formatDateToSeconds(triage.bug.last_change_time)}
-                  </span>
-                </Tooltip>
-              ) : (
-                ''
-              )}
-            </TableCell>
-          </TableRow>
-          <TableRow>
             <TableCell>Record Created</TableCell>
             <TableCell>
               {triage.created_at ? (
@@ -197,27 +169,62 @@ export default function Triage({ id }) {
               )}
             </TableCell>
           </TableRow>
+          <TableRow>
+            <TableCell>Resolution Date</TableCell>
+            <TableCell>
+              {triage.resolved?.Valid ? (
+                <Tooltip
+                  title={relativeTime(
+                    new Date(triage.resolved.Time),
+                    new Date()
+                  )}
+                >
+                  <span>{formatDateToSeconds(triage.resolved.Time)}</span>
+                </Tooltip>
+              ) : (
+                ''
+              )}
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Jira</TableCell>
+            <TableCell>
+              <SecureLink address={triage.url}>{displayUrl}</SecureLink>
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Jira State</TableCell>
+            <TableCell>{triage.bug?.status}</TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Jira Version</TableCell>
+            <TableCell>
+              {triage.bug?.target_versions || triage.bug?.affects_versions}
+            </TableCell>
+          </TableRow>
+          <TableRow>
+            <TableCell>Jira updated</TableCell>
+            <TableCell>
+              {triage.bug?.last_change_time ? (
+                <Tooltip
+                  title={relativeTime(
+                    new Date(triage.bug.last_change_time),
+                    new Date()
+                  )}
+                >
+                  <span>
+                    {formatDateToSeconds(triage.bug.last_change_time)}
+                  </span>
+                </Tooltip>
+              ) : (
+                ''
+              )}
+            </TableCell>
+          </TableRow>
         </TableBody>
       </Table>
       <h2>Included Tests</h2>
       <TriagedRegressionTestList regressions={triage.regressions} />
-      {triageEnabled && (
-        <Fragment>
-          <UpsertTriageModal
-            triage={triage}
-            buttonText={'Update'}
-            setComplete={setIsUpdated}
-          />
-          <Button
-            onClick={deleteTriage}
-            variant="contained"
-            color="secondary"
-            sx={{ marginLeft: '10px' }}
-          >
-            Delete
-          </Button>
-        </Fragment>
-      )}
     </Fragment>
   )
 }
