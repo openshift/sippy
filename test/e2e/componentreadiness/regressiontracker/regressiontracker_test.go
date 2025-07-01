@@ -1,6 +1,7 @@
 package regressiontracker
 
 import (
+	"context"
 	"database/sql"
 	"testing"
 	"time"
@@ -129,6 +130,93 @@ func Test_RegressionTracker(t *testing.T) {
 			assert.True(t, rel.ID == open419.ID || rel.ID == recentlyClosed419.ID,
 				"unexpected regression was returned: %+v", *rel)
 		}
+	})
+
+	t.Run("closing a regression should resolve associated triages that have no other active regressions", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+
+		regressionToClose, err := tracker.OpenRegression(view, newRegression)
+		require.NoError(t, err)
+
+		// Create a second regression that will remain open
+		secondRegression := componentreport.ReportTestSummary{
+			Identification: crtest.Identification{
+				RowIdentification: crtest.RowIdentification{
+					Component:  "comp2",
+					Capability: "cap2",
+					TestName:   "second test",
+					TestSuite:  "fakesuite",
+					TestID:     "secondtestid",
+				},
+				ColumnIdentification: crtest.ColumnIdentification{
+					Variants: map[string]string{
+						"a": "b",
+						"c": "d",
+					},
+				},
+			},
+		}
+		regressionToRemainOpened, err := tracker.OpenRegression(view, secondRegression)
+		require.NoError(t, err)
+
+		// Create first triage associated only with the first regression
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/TEST-123",
+			Description: "Test triage for auto-resolution",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				*regressionToClose,
+			},
+		}
+		dbWithContext := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "e2e-test"))
+		res := dbWithContext.Create(&triage)
+		require.NoError(t, res.Error)
+
+		// Create second triage associated with both regressions
+		triage2 := models.Triage{
+			URL:         "https://issues.redhat.com/browse/TEST-456",
+			Description: "Test triage with multiple regressions",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				*regressionToClose,
+				*regressionToRemainOpened,
+			},
+		}
+		res = dbWithContext.Create(&triage2)
+		require.NoError(t, res.Error)
+
+		regressionToClose.Closed = sql.NullTime{Valid: true, Time: time.Now()}
+		err = tracker.UpdateRegression(regressionToClose)
+		require.NoError(t, err)
+
+		// Verify the regression is closed
+		var checkRegression models.TestRegression
+		res = dbc.DB.First(&checkRegression, regressionToClose.ID)
+		require.NoError(t, res.Error)
+		assert.True(t, checkRegression.Closed.Valid, "Regression should be closed by SyncRegressionsForReport")
+
+		// Verify the triage is now resolved
+		checkTriage := models.Triage{}
+		res = dbc.DB.First(&checkTriage, triage.ID)
+		require.NoError(t, res.Error)
+		assert.True(t, checkTriage.Resolved.Valid, "Triage should be automatically resolved when its only regression is closed")
+		assert.WithinDuration(t, checkRegression.Closed.Time, checkTriage.Resolved.Time, time.Second, "Triage resolution time should match regression closing time")
+
+		// Verify triage2 is NOT resolved because it still has an open regression
+		checkTriage2 := models.Triage{}
+		res = dbc.DB.First(&checkTriage2, triage2.ID)
+		require.NoError(t, res.Error)
+		assert.False(t, checkTriage2.Resolved.Valid, "Triage2 should not be resolved because it still has an open regression")
+
+		// Verify an audit log entry was created correctly for the triage resolution
+		var auditLog models.AuditLog
+		res = dbc.DB.Where("table_name = ?", "triage").
+			Where("row_id = ?", triage.ID).
+			Where("operation = ?", models.Update).
+			Order("created_at DESC").
+			First(&auditLog)
+		require.NoError(t, res.Error)
+		assert.Equal(t, "regression-tracker", auditLog.User, "Audit log should show regression-tracker as the user for auto-resolution")
 	})
 
 }

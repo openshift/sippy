@@ -89,7 +89,55 @@ func (prs *PostgresRegressionStore) OpenRegression(view crview.View, newRegresse
 
 func (prs *PostgresRegressionStore) UpdateRegression(reg *models.TestRegression) error {
 	res := prs.dbc.DB.Save(&reg)
-	return res.Error
+	if res.Error != nil {
+		return fmt.Errorf("error saving regression: %v", res.Error)
+	}
+
+	if reg.Closed.Valid {
+		var associatedTriages []models.Triage
+		res = prs.dbc.DB.
+			Joins("JOIN triage_regressions ON triage_regressions.triage_id = triages.id").
+			Where("triage_regressions.test_regression_id = ?", reg.ID).
+			Preload("Regressions").
+			Find(&associatedTriages)
+
+		if res.Error != nil {
+			log.WithError(res.Error).Errorf("error loading triages for regression: %d", reg.ID)
+			return fmt.Errorf("error loading triages for regression %d: %v", reg.ID, res.Error)
+		}
+		log.Infof("found %d triages associated with regression %d", len(associatedTriages), reg.ID)
+
+		for _, triage := range associatedTriages {
+			log.Debugf("checking triage: %d", triage.ID)
+			if triage.Resolved.Valid {
+				continue
+			}
+
+			var hasActiveRegression bool
+			for _, r := range triage.Regressions {
+				if r.ID == reg.ID {
+					continue
+				}
+				if !r.Closed.Valid {
+					hasActiveRegression = true
+					break
+				}
+			}
+			if !hasActiveRegression {
+				log.Infof("unresolved triage: %d has no more active regressions, resolving", triage.ID)
+				triage.Resolved = reg.Closed
+
+				// Audit logs will show regression-tracker as the reason for the change
+				dbWithContext := prs.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "regression-tracker"))
+				res = dbWithContext.Save(&triage)
+				if res.Error != nil {
+					log.WithError(res.Error).Errorf("error resolving triage: %v", triage)
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func NewRegressionTracker(
