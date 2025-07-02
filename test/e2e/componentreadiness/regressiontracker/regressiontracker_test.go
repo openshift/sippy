@@ -195,6 +195,9 @@ func Test_RegressionTracker(t *testing.T) {
 		require.NoError(t, res.Error)
 		assert.True(t, checkRegression.Closed.Valid, "Regression should be closed by SyncRegressionsForReport")
 
+		err = tracker.ResolveTriages()
+		require.NoError(t, err)
+
 		// Verify the triage is now resolved
 		checkTriage := models.Triage{}
 		res = dbc.DB.First(&checkTriage, triage.ID)
