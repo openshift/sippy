@@ -99,7 +99,7 @@ func (r *RegressionTracker) PreAnalysis(testKey crtest.Identification, testStats
 	return nil
 }
 
-// PostAnalysis adjusts triages and status code (and thus icons) based on the triaged state of open regressions.
+// PostAnalysis adjusts status code (and thus icons) based on the triaged state of open regressions.
 func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	if testStats.ReportStatus > crtest.SignificantTriagedRegression {
 		// no need to adjust status for triage if this is no longer a regression
@@ -118,8 +118,6 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 		}
 
 		if len(or.Triages) > 0 {
-			// triages need to be included, in case they are not in the cache, in order to show the list on the report
-			testStats.Regression.Triages = or.Triages
 
 			allTriagesResolved := true
 			var lastResolution time.Time
