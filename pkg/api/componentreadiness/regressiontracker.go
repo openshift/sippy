@@ -40,6 +40,8 @@ type RegressionStore interface {
 	ListCurrentRegressionsForRelease(release string) ([]*models.TestRegression, error)
 	OpenRegression(view crview.View, newRegressedTest crtype.ReportTestSummary) (*models.TestRegression, error)
 	UpdateRegression(reg *models.TestRegression) error
+	// ResolveTriages sets the resolution time on any triages that no longer have active regressions
+	ResolveTriages() error
 }
 
 type PostgresRegressionStore struct {
@@ -90,6 +92,60 @@ func (prs *PostgresRegressionStore) OpenRegression(view crview.View, newRegresse
 func (prs *PostgresRegressionStore) UpdateRegression(reg *models.TestRegression) error {
 	res := prs.dbc.DB.Save(&reg)
 	return res.Error
+}
+
+// ResolveTriages sets the resolution time on any triages that no longer have active regressions
+// It only does so when all the regressions have been closed for at least regressionHysteresisDays (5) days
+func (prs *PostgresRegressionStore) ResolveTriages() error {
+	hysteresisTime := time.Now().Add(-regressionHysteresisDays * 24 * time.Hour)
+	var triagesToResolve []models.Triage
+	subQuery := prs.dbc.DB.Table("triage_regressions tr").
+		Joins("JOIN test_regressions r ON tr.test_regression_id = r.id").
+		Where("tr.triage_id = triages.id").
+		Where("r.closed IS NULL OR r.closed > ?", hysteresisTime).
+		Select("1")
+
+	res := prs.dbc.DB.Table("triages").
+		Where("resolved IS NULL").
+		Where("NOT EXISTS (?)", subQuery).
+		Preload("Regressions").
+		Find(&triagesToResolve)
+
+	if res.Error != nil {
+		return fmt.Errorf("error finding triages to resolve: %v", res.Error)
+	}
+
+	log.Infof("Found %d triages to resolve", len(triagesToResolve))
+
+	for _, triage := range triagesToResolve {
+		var mostRecentClosedRegression models.TestRegression
+
+		// Find the latest, closed regression in order to get the resolution time
+		regQuery := prs.dbc.DB.Table("test_regressions").
+			Joins("JOIN triage_regressions ON triage_regressions.test_regression_id = test_regressions.id").
+			Where("triage_regressions.triage_id = ?", triage.ID).
+			Where("test_regressions.closed IS NOT NULL").
+			Order("test_regressions.closed DESC").
+			Limit(1)
+
+		res := regQuery.First(&mostRecentClosedRegression)
+		if res.Error != nil {
+			log.WithError(res.Error).Errorf("error finding most recent closed regression for triage %d", triage.ID)
+			continue
+		}
+
+		triage.Resolved = mostRecentClosedRegression.Closed
+		dbWithContext := prs.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "regression-tracker"))
+		res = dbWithContext.Save(&triage)
+		if res.Error != nil {
+			log.WithError(res.Error).Errorf("error resolving triage %d", triage.ID)
+			continue
+		}
+
+		log.Infof("Resolved triage %d with resolution time %v", triage.ID, triage.Resolved.Time)
+	}
+
+	return nil
 }
 
 func NewRegressionTracker(
@@ -293,6 +349,14 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 		}
 
 	}
+
+	rLog.Infof("resolving triages that have had all of their regressions closed")
+	err = rt.backend.ResolveTriages()
+	if err != nil {
+		rLog.WithError(err).Error("error resolving triages")
+		return errors.Wrap(err, "error resolving triages")
+	}
+
 	rLog.Infof("regression tracking sync completed, opened=%d, reopened=%d, closed=%d ongoing=%d statsUpdated=%d",
 		openedRegs, reopenedRegs, closedRegs, ongoingRegs, statsUpdatedRegs)
 
