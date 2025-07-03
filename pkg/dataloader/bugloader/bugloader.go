@@ -218,7 +218,7 @@ func (bl *BugLoader) updateTriageBugLinks(triages []models.Triage) {
 		logger.Info(info)
 		t.Bug = &bug
 		t.BugID = &bug.ID
-		res = bl.dbc.DB.Save(t)
+		res = bl.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "bug-loader")).Save(t)
 		if res.Error != nil {
 			bl.addError(logger, res.Error, "error "+info)
 		}
