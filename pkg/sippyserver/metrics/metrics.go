@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -16,7 +18,6 @@ import (
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
@@ -116,7 +117,7 @@ func getReleaseStatus(releases []v1.Release, release string) string {
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crtype.View, variantJunitTableOverrides []configv1.VariantJunitTableOverride) error {
+func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crview.View, variantJunitTableOverrides []configv1.VariantJunitTableOverride) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 	releases, err := api.GetReleases(context.Background(), bqc)
@@ -180,7 +181,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, rep
 }
 
 func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Client, dbc *db.DB,
-	cacheOptions cache.RequestOptions, views []crtype.View, releases []v1.Release, variantJunitTableOverrides []configv1.VariantJunitTableOverride) {
+	cacheOptions cache.RequestOptions, views []crview.View, releases []v1.Release, variantJunitTableOverrides []configv1.VariantJunitTableOverride) {
 	if client == nil || client.BQ == nil {
 		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
 		return
@@ -204,7 +205,7 @@ func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Clie
 }
 
 // updateComponentReadinessTrackingForView queries the report for the given view, and then updates metrics.
-func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclient.Client, dbc *db.DB, cacheOptions cache.RequestOptions, view crtype.View, releases []v1.Release, overrides []configv1.VariantJunitTableOverride) error {
+func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclient.Client, dbc *db.DB, cacheOptions cache.RequestOptions, view crview.View, releases []v1.Release, overrides []configv1.VariantJunitTableOverride) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
@@ -225,7 +226,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
-	reportOpts := crtype.RequestOptions{
+	reportOpts := reqopts.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
 		VariantOption:  variantOption,
@@ -244,7 +245,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 
 	logger.Info("publishing metrics for view")
 
-	releaseStatus := getReleaseStatus(releases, view.SampleRelease.Release)
+	releaseStatus := getReleaseStatus(releases, view.SampleRelease.Name)
 	for _, row := range report.Rows {
 		totalRegressedTestsByComponent := 0
 		uniqueRegressedTestsByComponent := sets.NewString()
@@ -269,11 +270,11 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 			if !ok {
 				platLabel = ""
 			}
-			componentReadinessMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name,
+			componentReadinessMetric.WithLabelValues(view.SampleRelease.Name, releaseStatus, view.Name,
 				row.Component, networkLabel, archLabel, platLabel).Set(float64(col.Status))
 		}
-		componentReadinessTotalRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(totalRegressedTestsByComponent))
-		componentReadinessUniqueRegressionsMetric.WithLabelValues(view.SampleRelease.Release, releaseStatus, view.Name, row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
+		componentReadinessTotalRegressionsMetric.WithLabelValues(view.SampleRelease.Name, releaseStatus, view.Name, row.Component).Set(float64(totalRegressedTestsByComponent))
+		componentReadinessUniqueRegressionsMetric.WithLabelValues(view.SampleRelease.Name, releaseStatus, view.Name, row.Component).Set(float64(uniqueRegressedTestsByComponent.Len()))
 	}
 
 	return nil

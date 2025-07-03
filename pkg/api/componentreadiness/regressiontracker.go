@@ -10,6 +10,8 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -36,7 +38,7 @@ type RegressionStore interface {
 	// when the views file is loaded. This is because we want to display regression tracking data on any report that shows
 	// a regressed test, so people using custom reporting can see what is regressed in main as well.
 	ListCurrentRegressionsForRelease(release string) ([]*models.TestRegression, error)
-	OpenRegression(view crtype.View, newRegressedTest crtype.ReportTestSummary) (*models.TestRegression, error)
+	OpenRegression(view crview.View, newRegressedTest crtype.ReportTestSummary) (*models.TestRegression, error)
 	UpdateRegression(reg *models.TestRegression) error
 }
 
@@ -59,13 +61,13 @@ func (prs *PostgresRegressionStore) ListCurrentRegressionsForRelease(release str
 	return regressions, res.Error
 }
 
-func (prs *PostgresRegressionStore) OpenRegression(view crtype.View, newRegressedTest crtype.ReportTestSummary) (*models.TestRegression, error) {
+func (prs *PostgresRegressionStore) OpenRegression(view crview.View, newRegressedTest crtype.ReportTestSummary) (*models.TestRegression, error) {
 
 	variants := utils.VariantsMapToStringSlice(newRegressedTest.Variants)
 
 	newRegression := &models.TestRegression{
 		View:        view.Name,
-		Release:     view.SampleRelease.Release,
+		Release:     view.SampleRelease.Name,
 		TestID:      newRegressedTest.TestID,
 		TestName:    newRegressedTest.TestName,
 		Opened:      time.Now(),
@@ -103,7 +105,7 @@ func NewRegressionTracker(
 	cacheOptions cache.RequestOptions,
 	releases []v1.Release,
 	backend RegressionStore,
-	views []crtype.View,
+	views []crview.View,
 	overrides []configv1.VariantJunitTableOverride,
 	dryRun bool) *RegressionTracker {
 
@@ -128,7 +130,7 @@ type RegressionTracker struct {
 	cacheOpts                  cache.RequestOptions
 	releases                   []v1.Release
 	dryRun                     bool
-	views                      []crtype.View
+	views                      []crview.View
 	logger                     log.FieldLogger
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 }
@@ -152,7 +154,7 @@ func (rt *RegressionTracker) Run(ctx context.Context) error {
 
 }
 
-func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view crtype.View) error {
+func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view crview.View) error {
 	rLog := rt.logger.WithField("view", view.Name)
 
 	baseRelease, err := GetViewReleaseOptions(
@@ -171,7 +173,7 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 	advancedOption := view.AdvancedOptions
 
 	// Get component readiness report
-	reportOpts := crtype.RequestOptions{
+	reportOpts := reqopts.RequestOptions{
 		BaseRelease:    baseRelease,
 		SampleRelease:  sampleRelease,
 		VariantOption:  variantOption,
@@ -192,12 +194,12 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 	return rt.SyncRegressionsForReport(ctx, view, rLog, &report)
 }
 
-func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view crtype.View, rLog *log.Entry, report *crtype.ComponentReport) error {
-	regressions, err := rt.backend.ListCurrentRegressionsForRelease(view.SampleRelease.Release)
+func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view crview.View, rLog *log.Entry, report *crtype.ComponentReport) error {
+	regressions, err := rt.backend.ListCurrentRegressionsForRelease(view.SampleRelease.Name)
 	if err != nil {
 		return err
 	}
-	rLog.Infof("loaded %d regressions from db for release %s", len(regressions), view.SampleRelease.Release)
+	rLog.Infof("loaded %d regressions from db for release %s", len(regressions), view.SampleRelease.Name)
 
 	// All regressed tests, both triaged and not:
 	allRegressedTests := []crtype.ReportTestSummary{}

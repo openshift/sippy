@@ -10,8 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/apis/api/componentreport"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util"
@@ -47,7 +49,7 @@ func getMinor(in string) (int, error) {
 	return int(minor), err
 }
 
-func FindStartEndTimesForRelease(releases []componentreport.Release, release string) (*time.Time, *time.Time, error) {
+func FindStartEndTimesForRelease(releases []crtest.Release, release string) (*time.Time, *time.Time, error) {
 	for _, r := range releases {
 		if r.Release == release {
 			return r.Start, r.End, nil
@@ -56,15 +58,15 @@ func FindStartEndTimesForRelease(releases []componentreport.Release, release str
 	return nil, nil, fmt.Errorf("release %s not found", release)
 }
 
-func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOptions) string {
+func NormalizeProwJobName(prowName string, reqOptions reqopts.RequestOptions) string {
 	name := prowName
 	// Build a list of all releases involved in this request to replace with X.X in normalized prow job names.
 	releases := []string{}
-	if reqOptions.BaseRelease.Release != "" {
-		releases = append(releases, reqOptions.BaseRelease.Release)
+	if reqOptions.BaseRelease.Name != "" {
+		releases = append(releases, reqOptions.BaseRelease.Name)
 	}
-	if reqOptions.SampleRelease.Release != "" {
-		releases = append(releases, reqOptions.SampleRelease.Release)
+	if reqOptions.SampleRelease.Name != "" {
+		releases = append(releases, reqOptions.SampleRelease.Name)
 	}
 	for _, tid := range reqOptions.TestIDOptions {
 		if tid.BaseOverrideRelease != "" {
@@ -89,21 +91,21 @@ func NormalizeProwJobName(prowName string, reqOptions componentreport.RequestOpt
 // DeserializeTestKey helps us workaround the limitations of a struct as a map key, where
 // we instead serialize a very small struct to json for a unit test key that includes test
 // ID and a specific set of variants. This function deserializes back to a struct.
-func DeserializeTestKey(stats componentreport.TestStatus, testKeyStr string) (componentreport.ReportTestIdentification, error) {
-	var testKey componentreport.TestWithVariantsKey
+func DeserializeTestKey(stats bq.TestStatus, testKeyStr string) (crtest.Identification, error) {
+	var testKey crtest.KeyWithVariants
 	err := json.Unmarshal([]byte(testKeyStr), &testKey)
 	if err != nil {
 		logrus.WithError(err).Errorf("trying to unmarshel %s", testKeyStr)
-		return componentreport.ReportTestIdentification{}, err
+		return crtest.Identification{}, err
 	}
-	testID := componentreport.ReportTestIdentification{
-		RowIdentification: componentreport.RowIdentification{
+	testID := crtest.Identification{
+		RowIdentification: crtest.RowIdentification{
 			Component: stats.Component,
 			TestName:  stats.TestName,
 			TestSuite: stats.TestSuite,
 			TestID:    testKey.TestID,
 		},
-		ColumnIdentification: componentreport.ColumnIdentification{
+		ColumnIdentification: crtest.ColumnIdentification{
 			Variants: testKey.Variants,
 		},
 	}
@@ -127,13 +129,13 @@ func VariantsMapToStringSlice(variants map[string]string) []string {
 // GenerateTestDetailsURL creates a HATEOAS-style URL for the test_details API endpoint
 // based on a TestRegression record. This mimics the URL construction logic from the UI
 // in TestDetailsReport.js and uses the view configuration to populate URL parameters.
-func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration) (string, error) {
+func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration) (string, error) {
 	if regression == nil {
 		return "", fmt.Errorf("regression cannot be nil")
 	}
 
 	// Find the view for this regression
-	var view crtype.View
+	var view crview.View
 	var found bool
 	for i := range views {
 		if views[i].Name == regression.View {
@@ -190,15 +192,15 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 	}
 
 	// Add release and time parameters from view
-	params.Add("baseRelease", baseReleaseOpts.Release)
-	params.Add("sampleRelease", sampleReleaseOpts.Release)
+	params.Add("baseRelease", baseReleaseOpts.Name)
+	params.Add("sampleRelease", sampleReleaseOpts.Name)
 	params.Add("baseStartTime", baseReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
 	params.Add("baseEndTime", baseReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
 	params.Add("sampleStartTime", sampleReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
 	params.Add("sampleEndTime", sampleReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
 
 	// Check if release fallback was used and the regression matched an older release:
-	if regression.BaseRelease != "" && regression.BaseRelease != baseReleaseOpts.Release {
+	if regression.BaseRelease != "" && regression.BaseRelease != baseReleaseOpts.Name {
 		params.Add("testBasisRelease", regression.BaseRelease)
 	}
 
@@ -326,17 +328,17 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 func GetViewReleaseOptions(
 	releases []v1.Release,
 	releaseType string,
-	viewRelease crtype.RequestRelativeReleaseOptions,
+	viewRelease reqopts.RelativeRelease,
 	roundingFactor time.Duration,
-) (crtype.RequestReleaseOptions, error) {
+) (reqopts.Release, error) {
 
 	var err error
-	opts := crtype.RequestReleaseOptions{Release: viewRelease.Release}
-	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeStart, true, nil, roundingFactor)
+	opts := reqopts.Release{Name: viewRelease.Release.Name}
+	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeStart, true, nil, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
 	}
-	opts.End, err = util.ParseCRReleaseTime(releases, opts.Release, viewRelease.RelativeEnd, false, nil, roundingFactor)
+	opts.End, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor)
 	if err != nil {
 		return opts, fmt.Errorf("%s end time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
 	}

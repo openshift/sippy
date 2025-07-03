@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -16,7 +17,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -72,7 +72,7 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&f.DryRun, "dry-run", f.DryRun, "Print the tasks of automating jiras without real interaction with jira.")
 }
 
-func (f *AutomateJiraFlags) Validate(allVariants crtype.JobVariants) error {
+func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
 	if len(f.SippyURL) == 0 {
 		return fmt.Errorf("--sippy-url is required")
 	}

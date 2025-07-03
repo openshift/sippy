@@ -8,6 +8,9 @@ import (
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/test/e2e/util"
@@ -28,15 +31,15 @@ func Test_RegressionTracker(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
 	newRegression := componentreport.ReportTestSummary{
-		ReportTestIdentification: componentreport.ReportTestIdentification{
-			RowIdentification: componentreport.RowIdentification{
+		Identification: crtest.Identification{
+			RowIdentification: crtest.RowIdentification{
 				Component:  "comp",
 				Capability: "cap",
 				TestName:   "fake test",
 				TestSuite:  "fakesuite",
 				TestID:     "faketestid",
 			},
-			ColumnIdentification: componentreport.ColumnIdentification{
+			ColumnIdentification: crtest.ColumnIdentification{
 				Variants: map[string]string{
 					"a": "b",
 					"c": "d",
@@ -44,11 +47,11 @@ func Test_RegressionTracker(t *testing.T) {
 			},
 		},
 	}
-	view := componentreport.View{
+	view := crview.View{
 		Name: "4.19-main",
-		SampleRelease: componentreport.RequestRelativeReleaseOptions{
-			RequestReleaseOptions: componentreport.RequestReleaseOptions{
-				Release: "4.19",
+		SampleRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{
+				Name: "4.19",
 			},
 		},
 	}

@@ -5,33 +5,35 @@ import (
 	"testing"
 
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetComponentRegressedTestsFromReport(t *testing.T) {
-	columnAWSAMD64OVN := crtype.ColumnIdentification{
+	columnAWSAMD64OVN := crtest.ColumnIdentification{
 		Variants: map[string]string{
 			"Platform":     "aws",
 			"Architecture": "amd64",
 			"Network":      "ovn",
 		},
 	}
-	columnAzureAMD64OVN := crtype.ColumnIdentification{
+	columnAzureAMD64OVN := crtest.ColumnIdentification{
 		Variants: map[string]string{
 			"Platform":     "aws",
 			"Architecture": "amd64",
 			"Network":      "ovn",
 		},
 	}
-	columnMetalAMD64OVN := crtype.ColumnIdentification{
+	columnMetalAMD64OVN := crtest.ColumnIdentification{
 		Variants: map[string]string{
 			"Platform":     "metal",
 			"Architecture": "amd64",
 			"Network":      "ovn",
 		},
 	}
-	awsAMD64OVNTest := crtype.TestWithVariantsKey{
+	awsAMD64OVNTest := crtest.KeyWithVariants{
 		TestID: "1",
 		Variants: map[string]string{
 			"Platform":     "aws",
@@ -52,44 +54,44 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 			report: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
 					{
-						RowIdentification: crtype.RowIdentification{
+						RowIdentification: crtest.RowIdentification{
 							Component: "component 1",
 						},
 						Columns: []crtype.ReportColumn{
 							{
 								ColumnIdentification: columnAWSAMD64OVN,
-								Status:               crtype.ExtremeRegression,
+								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtype.ReportTestIdentification{
-											RowIdentification: crtype.RowIdentification{
+										Identification: crtest.Identification{
+											RowIdentification: crtest.RowIdentification{
 												TestName: testName1,
 											},
-											ColumnIdentification: crtype.ColumnIdentification{
+											ColumnIdentification: crtest.ColumnIdentification{
 												Variants: awsAMD64OVNTest.Variants,
 											},
 										},
-										ReportTestStats: crtype.ReportTestStats{
-											ReportStatus: crtype.ExtremeRegression,
+										TestComparison: testdetails.TestComparison{
+											ReportStatus: crtest.ExtremeRegression,
 										},
 									},
 								},
 							},
 							{
 								ColumnIdentification: columnAzureAMD64OVN,
-								Status:               crtype.ExtremeRegression,
+								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtype.ReportTestIdentification{
-											RowIdentification: crtype.RowIdentification{
+										Identification: crtest.Identification{
+											RowIdentification: crtest.RowIdentification{
 												TestName: testName1,
 											},
-											ColumnIdentification: crtype.ColumnIdentification{
+											ColumnIdentification: crtest.ColumnIdentification{
 												Variants: columnAzureAMD64OVN.Variants,
 											},
 										},
-										ReportTestStats: crtype.ReportTestStats{
-											ReportStatus: crtype.ExtremeRegression,
+										TestComparison: testdetails.TestComparison{
+											ReportStatus: crtest.ExtremeRegression,
 										},
 									},
 								},
@@ -97,30 +99,30 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 						},
 					},
 					{
-						RowIdentification: crtype.RowIdentification{
+						RowIdentification: crtest.RowIdentification{
 							Component: "component 2",
 						},
 						Columns: []crtype.ReportColumn{
 							{
 								ColumnIdentification: columnAWSAMD64OVN,
-								Status:               crtype.NotSignificant,
+								Status:               crtest.NotSignificant,
 								RegressedTests:       []crtype.ReportTestSummary{},
 							},
 							{
 								ColumnIdentification: columnAzureAMD64OVN,
-								Status:               crtype.ExtremeRegression,
+								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtype.ReportTestIdentification{
-											RowIdentification: crtype.RowIdentification{
+										Identification: crtest.Identification{
+											RowIdentification: crtest.RowIdentification{
 												TestName: testName2,
 											},
-											ColumnIdentification: crtype.ColumnIdentification{
+											ColumnIdentification: crtest.ColumnIdentification{
 												Variants: columnAzureAMD64OVN.Variants,
 											},
 										},
-										ReportTestStats: crtype.ReportTestStats{
-											ReportStatus: crtype.ExtremeRegression,
+										TestComparison: testdetails.TestComparison{
+											ReportStatus: crtest.ExtremeRegression,
 										},
 									},
 								},
@@ -132,44 +134,44 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 			expectedResult: map[JiraComponent][]crtype.ReportTestSummary{
 				{Project: "OCPBUGS", Component: "component 1"}: {
 					{
-						ReportTestIdentification: crtype.ReportTestIdentification{
-							RowIdentification: crtype.RowIdentification{
+						Identification: crtest.Identification{
+							RowIdentification: crtest.RowIdentification{
 								TestName: testName1,
 							},
-							ColumnIdentification: crtype.ColumnIdentification{
+							ColumnIdentification: crtest.ColumnIdentification{
 								Variants: awsAMD64OVNTest.Variants,
 							},
 						},
-						ReportTestStats: crtype.ReportTestStats{
-							ReportStatus: crtype.ExtremeRegression,
+						TestComparison: testdetails.TestComparison{
+							ReportStatus: crtest.ExtremeRegression,
 						},
 					},
 					{
-						ReportTestIdentification: crtype.ReportTestIdentification{
-							RowIdentification: crtype.RowIdentification{
+						Identification: crtest.Identification{
+							RowIdentification: crtest.RowIdentification{
 								TestName: testName1,
 							},
-							ColumnIdentification: crtype.ColumnIdentification{
+							ColumnIdentification: crtest.ColumnIdentification{
 								Variants: columnAzureAMD64OVN.Variants,
 							},
 						},
-						ReportTestStats: crtype.ReportTestStats{
-							ReportStatus: crtype.ExtremeRegression,
+						TestComparison: testdetails.TestComparison{
+							ReportStatus: crtest.ExtremeRegression,
 						},
 					},
 				},
 				{Project: "OCPBUGS", Component: "component 2"}: {
 					{
-						ReportTestIdentification: crtype.ReportTestIdentification{
-							RowIdentification: crtype.RowIdentification{
+						Identification: crtest.Identification{
+							RowIdentification: crtest.RowIdentification{
 								TestName: testName2,
 							},
-							ColumnIdentification: crtype.ColumnIdentification{
+							ColumnIdentification: crtest.ColumnIdentification{
 								Variants: columnAzureAMD64OVN.Variants,
 							},
 						},
-						ReportTestStats: crtype.ReportTestStats{
-							ReportStatus: crtype.ExtremeRegression,
+						TestComparison: testdetails.TestComparison{
+							ReportStatus: crtest.ExtremeRegression,
 						},
 					},
 				},
@@ -180,44 +182,44 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 			report: crtype.ComponentReport{
 				Rows: []crtype.ReportRow{
 					{
-						RowIdentification: crtype.RowIdentification{
+						RowIdentification: crtest.RowIdentification{
 							Component: "component 1",
 						},
 						Columns: []crtype.ReportColumn{
 							{
 								ColumnIdentification: columnAWSAMD64OVN,
-								Status:               crtype.ExtremeRegression,
+								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtype.ReportTestIdentification{
-											RowIdentification: crtype.RowIdentification{
+										Identification: crtest.Identification{
+											RowIdentification: crtest.RowIdentification{
 												TestName: testName1,
 											},
-											ColumnIdentification: crtype.ColumnIdentification{
+											ColumnIdentification: crtest.ColumnIdentification{
 												Variants: awsAMD64OVNTest.Variants,
 											},
 										},
-										ReportTestStats: crtype.ReportTestStats{
-											ReportStatus: crtype.ExtremeRegression,
+										TestComparison: testdetails.TestComparison{
+											ReportStatus: crtest.ExtremeRegression,
 										},
 									},
 								},
 							},
 							{
 								ColumnIdentification: columnMetalAMD64OVN,
-								Status:               crtype.ExtremeRegression,
+								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtype.ReportTestIdentification{
-											RowIdentification: crtype.RowIdentification{
+										Identification: crtest.Identification{
+											RowIdentification: crtest.RowIdentification{
 												TestName: testName1,
 											},
-											ColumnIdentification: crtype.ColumnIdentification{
+											ColumnIdentification: crtest.ColumnIdentification{
 												Variants: columnMetalAMD64OVN.Variants,
 											},
 										},
-										ReportTestStats: crtype.ReportTestStats{
-											ReportStatus: crtype.ExtremeRegression,
+										TestComparison: testdetails.TestComparison{
+											ReportStatus: crtest.ExtremeRegression,
 										},
 									},
 								},
@@ -225,30 +227,30 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 						},
 					},
 					{
-						RowIdentification: crtype.RowIdentification{
+						RowIdentification: crtest.RowIdentification{
 							Component: "component 2",
 						},
 						Columns: []crtype.ReportColumn{
 							{
 								ColumnIdentification: columnAWSAMD64OVN,
-								Status:               crtype.NotSignificant,
+								Status:               crtest.NotSignificant,
 								RegressedTests:       []crtype.ReportTestSummary{},
 							},
 							{
 								ColumnIdentification: columnMetalAMD64OVN,
-								Status:               crtype.ExtremeRegression,
+								Status:               crtest.ExtremeRegression,
 								RegressedTests: []crtype.ReportTestSummary{
 									{
-										ReportTestIdentification: crtype.ReportTestIdentification{
-											RowIdentification: crtype.RowIdentification{
+										Identification: crtest.Identification{
+											RowIdentification: crtest.RowIdentification{
 												TestName: testName2,
 											},
-											ColumnIdentification: crtype.ColumnIdentification{
+											ColumnIdentification: crtest.ColumnIdentification{
 												Variants: columnMetalAMD64OVN.Variants,
 											},
 										},
-										ReportTestStats: crtype.ReportTestStats{
-											ReportStatus: crtype.ExtremeRegression,
+										TestComparison: testdetails.TestComparison{
+											ReportStatus: crtest.ExtremeRegression,
 										},
 									},
 								},
@@ -260,44 +262,44 @@ func TestGetComponentRegressedTestsFromReport(t *testing.T) {
 			expectedResult: map[JiraComponent][]crtype.ReportTestSummary{
 				{Project: "OCPBUGS", Component: "component 1"}: {
 					{
-						ReportTestIdentification: crtype.ReportTestIdentification{
-							RowIdentification: crtype.RowIdentification{
+						Identification: crtest.Identification{
+							RowIdentification: crtest.RowIdentification{
 								TestName: testName1,
 							},
-							ColumnIdentification: crtype.ColumnIdentification{
+							ColumnIdentification: crtest.ColumnIdentification{
 								Variants: awsAMD64OVNTest.Variants,
 							},
 						},
-						ReportTestStats: crtype.ReportTestStats{
-							ReportStatus: crtype.ExtremeRegression,
+						TestComparison: testdetails.TestComparison{
+							ReportStatus: crtest.ExtremeRegression,
 						},
 					},
 				},
 				{Project: "OCPBUGS", Component: "Bare Metal Hardware Provisioning"}: {
 					{
-						ReportTestIdentification: crtype.ReportTestIdentification{
-							RowIdentification: crtype.RowIdentification{
+						Identification: crtest.Identification{
+							RowIdentification: crtest.RowIdentification{
 								TestName: testName1,
 							},
-							ColumnIdentification: crtype.ColumnIdentification{
+							ColumnIdentification: crtest.ColumnIdentification{
 								Variants: columnMetalAMD64OVN.Variants,
 							},
 						},
-						ReportTestStats: crtype.ReportTestStats{
-							ReportStatus: crtype.ExtremeRegression,
+						TestComparison: testdetails.TestComparison{
+							ReportStatus: crtest.ExtremeRegression,
 						},
 					},
 					{
-						ReportTestIdentification: crtype.ReportTestIdentification{
-							RowIdentification: crtype.RowIdentification{
+						Identification: crtest.Identification{
+							RowIdentification: crtest.RowIdentification{
 								TestName: testName2,
 							},
-							ColumnIdentification: crtype.ColumnIdentification{
+							ColumnIdentification: crtest.ColumnIdentification{
 								Variants: columnMetalAMD64OVN.Variants,
 							},
 						},
-						ReportTestStats: crtype.ReportTestStats{
-							ReportStatus: crtype.ExtremeRegression,
+						TestComparison: testdetails.TestComparison{
+							ReportStatus: crtest.ExtremeRegression,
 						},
 					},
 				},

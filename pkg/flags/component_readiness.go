@@ -72,10 +72,10 @@ func (f *ComponentReadinessFlags) validateViews(views *api.SippyViews) error {
 
 		if view.RegressionTracking.Enabled {
 
-			if _, ok := viewsWithRegressionTracking[view.SampleRelease.Release]; !ok {
-				viewsWithRegressionTracking[view.SampleRelease.Release] = []string{}
+			if _, ok := viewsWithRegressionTracking[view.SampleRelease.Name]; !ok {
+				viewsWithRegressionTracking[view.SampleRelease.Name] = []string{}
 			}
-			viewsWithRegressionTracking[view.SampleRelease.Release] = append(viewsWithRegressionTracking[view.SampleRelease.Release], view.Name)
+			viewsWithRegressionTracking[view.SampleRelease.Name] = append(viewsWithRegressionTracking[view.SampleRelease.Name], view.Name)
 		}
 
 	}

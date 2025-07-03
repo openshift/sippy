@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/test/e2e/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestComponentReadinessViews(t *testing.T) {
-	var views []componentreport.View
+	var views []crview.View
 	err := util.SippyGet("/api/component_readiness/views", &views)
 	require.NoError(t, err, "error making http request")
 	t.Logf("found %d views", len(views))

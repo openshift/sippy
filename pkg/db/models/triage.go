@@ -1,10 +1,14 @@
 package models
 
 import (
+	"context"
 	"database/sql"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/lib/pq"
+	"gorm.io/gorm"
 )
 
 // Triage contains data tying failures or regressions to specific bugs.
@@ -49,6 +53,113 @@ type Triage struct {
 	// Setting this will immediately change the regressions icon to one indicate the issue is believed to
 	// be fixed. If we see failures beyond the resolved time, you will see another icon to highlight this situation.
 	Resolved sql.NullTime `json:"resolved"`
+}
+type contextKey string
+
+const (
+	OldTriageKey   contextKey = "old_triage"
+	CurrentUserKey contextKey = "current_user"
+)
+
+func (t *Triage) BeforeUpdate(db *gorm.DB) error {
+	return t.before(db)
+}
+
+func (t *Triage) BeforeDelete(db *gorm.DB) error {
+	return t.before(db)
+}
+
+func (t *Triage) before(db *gorm.DB) error {
+	// Check if we've already captured the old triage in this transaction
+	if existing := db.Statement.Context.Value(OldTriageKey); existing != nil {
+		return nil
+	}
+
+	var old Triage
+	if err := db.Preload("Regressions").First(&old, t.ID).Error; err != nil {
+		return err
+	}
+
+	db.Statement.Context = context.WithValue(db.Statement.Context, OldTriageKey, old)
+	return nil
+}
+
+func (t *Triage) AfterUpdate(db *gorm.DB) error {
+	return t.after(db, Update)
+}
+
+func (t *Triage) AfterCreate(db *gorm.DB) error {
+	return t.after(db, Create)
+}
+
+func (t *Triage) AfterDelete(db *gorm.DB) error {
+	return t.after(db, Delete)
+}
+
+func (t *Triage) after(db *gorm.DB, operation OperationType) error {
+	var oldTriageJSON []byte
+	if operation == Update || operation == Delete {
+		var err error
+		oldTriage, ok := db.Statement.Context.Value(OldTriageKey).(Triage)
+		if !ok {
+			return fmt.Errorf("value of old_triage is not a Triage type")
+		}
+		oldTriageJSON, err = oldTriage.marshalJSONForAudit()
+		if err != nil {
+			return fmt.Errorf("error marshalling old triage record: %w", err)
+		}
+	}
+
+	var newTriageJSON []byte
+	if operation != Delete {
+		var err error
+		newTriageJSON, err = t.marshalJSONForAudit()
+		if err != nil {
+			return fmt.Errorf("error marshalling new triage record: %w", err)
+		}
+	}
+	user := db.Statement.Context.Value(CurrentUserKey)
+	if user == nil {
+		return fmt.Errorf("current user not found in context")
+	}
+	audit := AuditLog{
+		TableName: "triage",
+		Operation: string(operation),
+		RowID:     t.ID,
+		User:      user.(string),
+		OldData:   oldTriageJSON,
+		NewData:   newTriageJSON,
+	}
+
+	return db.Create(&audit).Error
+}
+
+// marshalJSONForAudit serializes only the necessary details for audit purposes, leaving out the rest.
+// Critically, it removes all details except for the id from the included regressions.
+func (t *Triage) marshalJSONForAudit() ([]byte, error) {
+	type Alias Triage
+
+	type MinimalRegression struct {
+		ID uint `json:"id"`
+	}
+	regressions := make([]MinimalRegression, len(t.Regressions))
+	for i, reg := range t.Regressions {
+		regressions[i] = MinimalRegression{ID: reg.ID}
+	}
+
+	auditJSON := struct {
+		Alias
+		Bug         *Bug                `json:"bug,omitempty"`
+		Links       map[string]string   `json:"links,omitempty"`
+		Regressions []MinimalRegression `json:"regressions"`
+	}{
+		Alias:       Alias(*t),
+		Bug:         nil,
+		Links:       nil,
+		Regressions: regressions,
+	}
+
+	return json.Marshal(auditJSON)
 }
 
 type TriageType string
