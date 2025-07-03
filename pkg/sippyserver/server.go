@@ -1309,7 +1309,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 	case http.MethodGet:
 		// Was a specific record requested?
 		if triageID > 0 {
-			existingTriage, err := componentreadiness.GetTriage(s.db, triageID)
+			existingTriage, err := componentreadiness.GetTriage(s.db, triageID, req.Host)
 			if err != nil {
 				failureResponse(w, http.StatusInternalServerError, err.Error())
 				return
@@ -1322,7 +1322,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		triages, err := componentreadiness.ListTriages(s.db)
+		triages, err := componentreadiness.ListTriages(s.db, req.Host)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
@@ -1344,7 +1344,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-		triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage)
+		triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage, req.Host)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -1372,7 +1372,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-		triage, err := componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage)
+		triage, err := componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage, req.Host)
 		if err != nil {
 			log.WithError(err).Error("error updating triage")
 			failureResponse(w, http.StatusBadRequest, err.Error())

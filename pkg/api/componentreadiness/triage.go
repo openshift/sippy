@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetTriage(dbc *db.DB, id int) (*models.Triage, error) {
+func GetTriage(dbc *db.DB, id int, baseURL string) (*models.Triage, error) {
 	existingTriage := &models.Triage{}
 	res := dbc.DB.Preload("Bug").Preload("Regressions").First(existingTriage, id)
 	if res.Error != nil {
@@ -25,16 +25,16 @@ func GetTriage(dbc *db.DB, id int) (*models.Triage, error) {
 		}
 		log.WithError(res.Error).Errorf("error looking up existing triage record: %d", id)
 	}
-	injectHATEOASLinks(existingTriage)
+	injectHATEOASLinks(existingTriage, baseURL)
 	return existingTriage, res.Error
 }
 
-func ListTriages(dbc *db.DB) ([]models.Triage, error) {
+func ListTriages(dbc *db.DB, baseURL string) ([]models.Triage, error) {
 	var triages []models.Triage
 	var err error
 	triages, err = query.ListTriages(dbc)
 	for i := range triages {
-		injectHATEOASLinks(&triages[i])
+		injectHATEOASLinks(&triages[i], baseURL)
 	}
 	return triages, err
 }
@@ -88,7 +88,7 @@ func validateTriage(triage models.Triage, update bool) error {
 	return nil
 }
 
-func CreateTriage(dbc *gorm.DB, triage models.Triage) (models.Triage, error) {
+func CreateTriage(dbc *gorm.DB, triage models.Triage, baseURL string) (models.Triage, error) {
 	err := validateTriage(triage, false)
 	if err != nil {
 		log.WithError(err).Error("error validating triage record")
@@ -123,7 +123,7 @@ func CreateTriage(dbc *gorm.DB, triage models.Triage) (models.Triage, error) {
 	}
 	log.WithField("triageID", triage.ID).Info("triage record created")
 
-	injectHATEOASLinks(&triage)
+	injectHATEOASLinks(&triage, baseURL)
 	return triage, nil
 }
 
@@ -165,7 +165,7 @@ func linkRegressions(dbc *gorm.DB, triage *models.Triage) error {
 	return nil
 }
 
-func UpdateTriage(dbc *gorm.DB, triage models.Triage) (models.Triage, error) {
+func UpdateTriage(dbc *gorm.DB, triage models.Triage, baseURL string) (models.Triage, error) {
 	err := validateTriage(triage, true)
 	if err != nil {
 		log.WithError(err).Error("error validating triage record")
@@ -222,7 +222,7 @@ func UpdateTriage(dbc *gorm.DB, triage models.Triage) (models.Triage, error) {
 		return triage, err
 	}
 
-	injectHATEOASLinks(&triage)
+	injectHATEOASLinks(&triage, baseURL)
 	return triage, nil
 }
 
@@ -236,9 +236,17 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 }
 
 // injectHATEOASLinks adds restful links clients can follow for this triage record.
-func injectHATEOASLinks(triage *models.Triage) {
-	triage.Links = map[string]string{
-		"self": fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
+func injectHATEOASLinks(triage *models.Triage, baseURL string) {
+	if baseURL == "" {
+		// For backward compatibility, return relative URL if no baseURL provided
+		triage.Links = map[string]string{
+			"self": fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
+		}
+	} else {
+		// Create fully qualified URL
+		triage.Links = map[string]string{
+			"self": fmt.Sprintf("https://%s/api/component_readiness/triages/%d", baseURL, triage.ID),
+		}
 	}
 }
 
