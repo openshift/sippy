@@ -726,12 +726,20 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	}
 
 	// Iterate through all RegressedTests in outputs.Rows and inject HATEOAS links for regressions
+	protocol := "http"
+	if req.TLS != nil {
+		protocol = "https"
+	}
+	if proto := req.Header.Get("X-Forwarded-Proto"); proto != "" {
+		protocol = proto
+	}
+
 	for i := range outputs.Rows {
 		for j := range outputs.Rows[i].Columns {
 			for k := range outputs.Rows[i].Columns[j].RegressedTests {
 				regressedTest := &outputs.Rows[i].Columns[j].RegressedTests[k]
 				if regressedTest.Regression != nil {
-					componentreadiness.InjectRegressionHATEOASLinks(regressedTest.Regression, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req.Host)
+					componentreadiness.InjectRegressionHATEOASLinks(regressedTest.Regression, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, protocol, req.Host)
 				}
 			}
 		}
@@ -1309,7 +1317,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 	case http.MethodGet:
 		// Was a specific record requested?
 		if triageID > 0 {
-			existingTriage, err := componentreadiness.GetTriage(s.db, triageID, req.Host)
+			existingTriage, err := componentreadiness.GetTriage(s.db, triageID, req)
 			if err != nil {
 				failureResponse(w, http.StatusInternalServerError, err.Error())
 				return
@@ -1322,7 +1330,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		triages, err := componentreadiness.ListTriages(s.db, req.Host)
+		triages, err := componentreadiness.ListTriages(s.db, req)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
@@ -1344,7 +1352,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-		triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage, req.Host)
+		triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage, req)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -1372,7 +1380,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-		triage, err := componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage, req.Host)
+		triage, err := componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage, req)
 		if err != nil {
 			log.WithError(err).Error("error updating triage")
 			failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1440,7 +1448,7 @@ func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
 
 	// Was a specific record requested?
 	if regressionID > 0 {
-		existingRegression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req.Host)
+		existingRegression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
@@ -1463,7 +1471,7 @@ func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	regressions, err := componentreadiness.ListRegressions(s.db, view, release, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req.Host)
+	regressions, err := componentreadiness.ListRegressions(s.db, view, release, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
