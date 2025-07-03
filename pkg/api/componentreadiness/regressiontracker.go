@@ -94,12 +94,15 @@ func (prs *PostgresRegressionStore) UpdateRegression(reg *models.TestRegression)
 	return res.Error
 }
 
+// ResolveTriages sets the resolution time on any triages that no longer have active regressions
+// It only does so when all the regressions have been closed for at least regressionHysteresisDays (5) days
 func (prs *PostgresRegressionStore) ResolveTriages() error {
+	hysteresisTime := time.Now().Add(-regressionHysteresisDays * 24 * time.Hour)
 	var triagesToResolve []models.Triage
 	subQuery := prs.dbc.DB.Table("triage_regressions tr").
 		Joins("JOIN test_regressions r ON tr.test_regression_id = r.id").
 		Where("tr.triage_id = triages.id").
-		Where("r.closed IS NULL").
+		Where("r.closed IS NULL OR r.closed > ?", hysteresisTime).
 		Select("1")
 
 	res := prs.dbc.DB.Table("triages").

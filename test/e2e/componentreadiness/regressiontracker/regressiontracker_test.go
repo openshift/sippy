@@ -185,21 +185,40 @@ func Test_RegressionTracker(t *testing.T) {
 		res = dbWithContext.Create(&triage2)
 		require.NoError(t, res.Error)
 
+		// Close the regression with a time of NOW, this should not result in resolved triage
 		regressionToClose.Closed = sql.NullTime{Valid: true, Time: time.Now()}
 		err = tracker.UpdateRegression(regressionToClose)
 		require.NoError(t, err)
 
 		// Verify the regression is closed
 		var checkRegression models.TestRegression
-		res = dbc.DB.First(&checkRegression, regressionToClose.ID)
-		require.NoError(t, res.Error)
+		_ = dbc.DB.First(&checkRegression, regressionToClose.ID)
 		assert.True(t, checkRegression.Closed.Valid, "Regression should be closed by SyncRegressionsForReport")
 
 		err = tracker.ResolveTriages()
 		require.NoError(t, err)
 
-		// Verify the triage is now resolved
+		// Verify the triage is NOT resolved
 		checkTriage := models.Triage{}
+		res = dbc.DB.First(&checkTriage, triage.ID)
+		require.NoError(t, res.Error)
+		assert.False(t, checkTriage.Resolved.Valid, "Triage should NOT be automatically resolved when its regression has been closed less than 5 days ago")
+
+		// Close the regression with a time > 5 days in the past, this should result in resolved triage
+		sixDaysAgo := time.Now().Add(-6 * 24 * time.Hour)
+		regressionToClose.Closed = sql.NullTime{Valid: true, Time: sixDaysAgo}
+		err = tracker.UpdateRegression(regressionToClose)
+		require.NoError(t, err)
+
+		// Verify the regression is closed at the proper time
+		_ = dbc.DB.First(&checkRegression, regressionToClose.ID)
+		assert.True(t, checkRegression.Closed.Valid, "Regression should be closed by SyncRegressionsForReport")
+		assert.WithinDuration(t, sixDaysAgo, checkRegression.Closed.Time, time.Second, "regression closing time should be six days ago")
+
+		err = tracker.ResolveTriages()
+		require.NoError(t, err)
+
+		// Verify the triage is now resolved
 		res = dbc.DB.First(&checkTriage, triage.ID)
 		require.NoError(t, res.Error)
 		assert.True(t, checkTriage.Resolved.Valid, "Triage should be automatically resolved when its only regression is closed")
