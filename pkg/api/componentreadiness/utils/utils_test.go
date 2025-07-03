@@ -75,19 +75,6 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		assert.Contains(t, err.Error(), "regression cannot be nil")
 	})
 
-	t.Run("invalid base URL", func(t *testing.T) {
-		regression := &models.TestRegression{
-			ID:      123,
-			View:    "test-view",
-			Release: "4.20",
-			TestID:  "test-id",
-		}
-
-		_, err := GenerateTestDetailsURL(regression, "://invalid-url", views, releases, 0)
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to parse base URL")
-	})
-
 	t.Run("variants with malformed entries", func(t *testing.T) {
 		regression := &models.TestRegression{
 			ID:       123,

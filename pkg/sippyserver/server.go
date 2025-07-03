@@ -731,7 +731,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 			for k := range outputs.Rows[i].Columns[j].RegressedTests {
 				regressedTest := &outputs.Rows[i].Columns[j].RegressedTests[k]
 				if regressedTest.Regression != nil {
-					componentreadiness.InjectRegressionHATEOASLinks(regressedTest.Regression, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor)
+					componentreadiness.InjectRegressionHATEOASLinks(regressedTest.Regression, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req.URL.Host)
 				}
 			}
 		}
@@ -1438,7 +1438,7 @@ func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
 
 	// Was a specific record requested?
 	if regressionID > 0 {
-		existingRegression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor)
+		existingRegression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req.URL.Host)
 		if err != nil {
 			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
@@ -1461,7 +1461,7 @@ func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	regressions, err := componentreadiness.ListRegressions(s.db, view, release, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor)
+	regressions, err := componentreadiness.ListRegressions(s.db, view, release, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req.URL.Host)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return

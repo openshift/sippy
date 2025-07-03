@@ -156,9 +156,20 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 	}
 
 	// Build the URL with query parameters
-	u, err := url.Parse(baseURL + "/api/component_readiness/test_details")
+	var fullURL string
+	if baseURL == "" {
+		// For backward compatibility, return relative URL if no baseURL provided
+		logrus.Warn("GenerateTestDetailsURL was given an empty baseURL")
+		fullURL = "/api/component_readiness/test_details"
+	} else {
+		// Create fully qualified URL
+		fullURL = fmt.Sprintf("https://%s/api/component_readiness/test_details", baseURL)
+	}
+	fmt.Println("foo " + fullURL)
+
+	u, err := url.Parse(fullURL)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse base URL: %w", err)
+		return "", fmt.Errorf("failed to parse URL: %w", err)
 	}
 
 	params := url.Values{}
