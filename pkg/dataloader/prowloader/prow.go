@@ -398,7 +398,7 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
     %s.jobs jobs
   ON
     junit.prowjob_build_id = jobs.prowjob_build_id
-    AND DATE(jobs.prowjob_start) = DATE(@DateToImport)
+    AND DATE(jobs.prowjob_start) <= DATE(@DateToImport)
   WHERE
     DATE(junit.modified_time) = DATE(@DateToImport)
     AND skipped = FALSE )
