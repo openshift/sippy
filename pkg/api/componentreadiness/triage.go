@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -39,7 +39,7 @@ func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	return triages, err
 }
 
-func GetRegression(dbc *db.DB, id int, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) (*models.TestRegression, error) {
+func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) (*models.TestRegression, error) {
 	existingRegression := &models.TestRegression{}
 	res := dbc.DB.Preload("Triages").First(existingRegression, id)
 	if res.Error != nil {
@@ -52,7 +52,7 @@ func GetRegression(dbc *db.DB, id int, views []crtype.View, releases []v1.Releas
 	return existingRegression, res.Error
 }
 
-func ListRegressions(dbc *db.DB, view, release string, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) ([]models.TestRegression, error) {
+func ListRegressions(dbc *db.DB, view, release string, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
 	var err error
 	regressions, err = query.ListRegressions(dbc, view, release)
@@ -243,7 +243,7 @@ func injectHATEOASLinks(triage *models.Triage) {
 }
 
 // InjectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
-func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crtype.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) {
+func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) {
 	if regression.Links == nil {
 		regression.Links = make(map[string]string)
 	}

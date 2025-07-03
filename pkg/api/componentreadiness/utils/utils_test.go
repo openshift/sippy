@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/stretchr/testify/assert"
@@ -30,30 +31,30 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 	}
 
 	// Define a common view to use across all tests
-	testView := crtype.View{
+	testView := crview.View{
 		Name: "test-view",
-		BaseRelease: crtype.RequestRelativeReleaseOptions{
-			RequestReleaseOptions: crtype.RequestReleaseOptions{
-				Release: "4.19",
+		BaseRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{
+				Name: "4.19",
 			},
 			RelativeStart: "ga-30d",
 			RelativeEnd:   "ga",
 		},
-		SampleRelease: crtype.RequestRelativeReleaseOptions{
-			RequestReleaseOptions: crtype.RequestReleaseOptions{
-				Release: "4.20",
+		SampleRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{
+				Name: "4.20",
 			},
 			RelativeStart: "ga-7d",
 			RelativeEnd:   "ga",
 		},
-		AdvancedOptions: crtype.RequestAdvancedOptions{
+		AdvancedOptions: reqopts.Advanced{
 			MinimumFailure:              3,
 			Confidence:                  95,
 			PityFactor:                  5,
 			IncludeMultiReleaseAnalysis: true,
 		},
 	}
-	views := []crtype.View{testView}
+	views := []crview.View{testView}
 
 	t.Run("empty base URL", func(t *testing.T) {
 		regression := &models.TestRegression{
@@ -193,23 +194,23 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		}
 
 		// Add a more comprehensive view for this test
-		realWorldView := crtype.View{
+		realWorldView := crview.View{
 			Name: "4.20-main",
-			BaseRelease: crtype.RequestRelativeReleaseOptions{
-				RequestReleaseOptions: crtype.RequestReleaseOptions{
-					Release: "4.19",
+			BaseRelease: reqopts.RelativeRelease{
+				Release: reqopts.Release{
+					Name: "4.19",
 				},
 				RelativeStart: "ga-30d",
 				RelativeEnd:   "ga",
 			},
-			SampleRelease: crtype.RequestRelativeReleaseOptions{
-				RequestReleaseOptions: crtype.RequestReleaseOptions{
-					Release: "4.20",
+			SampleRelease: reqopts.RelativeRelease{
+				Release: reqopts.Release{
+					Name: "4.20",
 				},
 				RelativeStart: "ga-7d",
 				RelativeEnd:   "ga",
 			},
-			AdvancedOptions: crtype.RequestAdvancedOptions{
+			AdvancedOptions: reqopts.Advanced{
 				MinimumFailure:              3,
 				Confidence:                  95,
 				PityFactor:                  5,
@@ -221,7 +222,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 				IgnoreMissing:               false,
 			},
 		}
-		testViews := []crtype.View{realWorldView}
+		testViews := []crview.View{realWorldView}
 
 		url, err := GenerateTestDetailsURL(regression, "https://sippy-auth.dptools.openshift.org", testViews, releases, time.Hour)
 		require.NoError(t, err)
@@ -261,23 +262,23 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 
 	t.Run("includeVariant parameters are sorted", func(t *testing.T) {
 		// Create a view with includeVariants in non-alphabetical order
-		viewWithVariants := crtype.View{
+		viewWithVariants := crview.View{
 			Name: "test-view-with-variants",
-			BaseRelease: crtype.RequestRelativeReleaseOptions{
-				RequestReleaseOptions: crtype.RequestReleaseOptions{
-					Release: "4.19",
+			BaseRelease: reqopts.RelativeRelease{
+				Release: reqopts.Release{
+					Name: "4.19",
 				},
 				RelativeStart: "ga-30d",
 				RelativeEnd:   "ga",
 			},
-			SampleRelease: crtype.RequestRelativeReleaseOptions{
-				RequestReleaseOptions: crtype.RequestReleaseOptions{
-					Release: "4.20",
+			SampleRelease: reqopts.RelativeRelease{
+				Release: reqopts.Release{
+					Name: "4.20",
 				},
 				RelativeStart: "ga-7d",
 				RelativeEnd:   "ga",
 			},
-			VariantOptions: crtype.RequestVariantOptions{
+			VariantOptions: reqopts.Variants{
 				IncludeVariants: map[string][]string{
 					// Keys and values in non-alphabetical order to test sorting
 					"Platform":     {"gcp", "aws", "azure"},
@@ -285,14 +286,14 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 					"Network":      {"ovn", "sdn"},
 				},
 			},
-			AdvancedOptions: crtype.RequestAdvancedOptions{
+			AdvancedOptions: reqopts.Advanced{
 				MinimumFailure:              3,
 				Confidence:                  95,
 				PityFactor:                  5,
 				IncludeMultiReleaseAnalysis: true,
 			},
 		}
-		viewsWithVariants := []crtype.View{viewWithVariants}
+		viewsWithVariants := []crview.View{viewWithVariants}
 
 		regression := &models.TestRegression{
 			ID:      123,
