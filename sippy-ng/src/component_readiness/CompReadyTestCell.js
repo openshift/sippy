@@ -27,24 +27,6 @@ export default function CompReadyTestCell(props) {
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
 
-  const [componentParam, setComponentParam] = useQueryParam(
-    'component',
-    StringParam
-  )
-  const [capabilityParam, setCapabilityParam] = useQueryParam(
-    'capability',
-    StringParam
-  )
-  const [environmentParam, setEnvironmentParam] = useQueryParam(
-    'environment',
-    StringParam
-  )
-  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
-  const [testNameParam, setTestNameParam] = useQueryParam(
-    'testName',
-    StringParam
-  )
-
   const { expandEnvironment } = useContext(CompReadyVarsContext)
 
   if (status === undefined) {

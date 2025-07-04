@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	sippyapi "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -17,22 +18,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// getProtocolFromRequest extracts the protocol (http or https) from the request
-func getProtocolFromRequest(req *http.Request) string {
-	// Check X-Forwarded-Proto header first (common in load balancers/proxies)
-	if proto := req.Header.Get("X-Forwarded-Proto"); proto != "" {
-		return proto
-	}
-
-	// Check if TLS is enabled
-	if req.TLS != nil {
-		return "https"
-	}
-
-	// Default to http for local development
-	return "http"
-}
-
 func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
 	existingTriage := &models.Triage{}
 	res := dbc.DB.Preload("Bug").Preload("Regressions").First(existingTriage, id)
@@ -42,7 +27,7 @@ func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
 		}
 		log.WithError(res.Error).Errorf("error looking up existing triage record: %d", id)
 	}
-	injectHATEOASLinks(existingTriage, getProtocolFromRequest(req), req.Host)
+	injectHATEOASLinks(existingTriage, sippyapi.GetBaseURL(req))
 	return existingTriage, res.Error
 }
 
@@ -50,9 +35,8 @@ func ListTriages(dbc *db.DB, req *http.Request) ([]models.Triage, error) {
 	var triages []models.Triage
 	var err error
 	triages, err = query.ListTriages(dbc)
-	protocol := getProtocolFromRequest(req)
 	for i := range triages {
-		injectHATEOASLinks(&triages[i], protocol, req.Host)
+		injectHATEOASLinks(&triages[i], sippyapi.GetBaseURL(req))
 	}
 	return triages, err
 }
@@ -66,7 +50,7 @@ func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Releas
 		}
 		log.WithError(res.Error).Errorf("error looking up existing regression record: %d", id)
 	}
-	InjectRegressionHATEOASLinks(existingRegression, views, releases, crTimeRoundingFactor, getProtocolFromRequest(req), req.Host)
+	InjectRegressionHATEOASLinks(existingRegression, views, releases, crTimeRoundingFactor, sippyapi.GetBaseURL(req))
 	return existingRegression, res.Error
 }
 
@@ -79,9 +63,8 @@ func ListRegressions(dbc *db.DB, view, release string, views []crview.View, rele
 	}
 
 	// Add HATEOAS links to each regression
-	protocol := getProtocolFromRequest(req)
 	for i := range regressions {
-		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, protocol, req.Host)
+		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, req.Host)
 	}
 
 	return regressions, err
@@ -142,7 +125,7 @@ func CreateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models
 	}
 	log.WithField("triageID", triage.ID).Info("triage record created")
 
-	injectHATEOASLinks(&triage, getProtocolFromRequest(req), req.Host)
+	injectHATEOASLinks(&triage, sippyapi.GetBaseURL(req))
 	return triage, nil
 }
 
@@ -241,7 +224,7 @@ func UpdateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models
 		return triage, err
 	}
 
-	injectHATEOASLinks(&triage, getProtocolFromRequest(req), req.Host)
+	injectHATEOASLinks(&triage, sippyapi.GetBaseURL(req))
 	return triage, nil
 }
 
@@ -255,7 +238,7 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 }
 
 // injectHATEOASLinks adds restful links clients can follow for this triage record.
-func injectHATEOASLinks(triage *models.Triage, protocol, baseURL string) {
+func injectHATEOASLinks(triage *models.Triage, baseURL string) {
 	if baseURL == "" {
 		// For backward compatibility, return relative URL if no baseURL provided
 		triage.Links = map[string]string{
@@ -264,27 +247,27 @@ func injectHATEOASLinks(triage *models.Triage, protocol, baseURL string) {
 	} else {
 		// Create fully qualified URL with the correct protocol
 		triage.Links = map[string]string{
-			"self": fmt.Sprintf("%s://%s/api/component_readiness/triages/%d", protocol, baseURL, triage.ID),
+			"self": fmt.Sprintf("%s/api/component_readiness/triages/%d", baseURL, triage.ID),
 		}
 	}
 }
 
 // InjectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
-func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, protocol, baseURL string) {
+func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) {
 	if regression.Links == nil {
 		regression.Links = make(map[string]string)
 	}
 
 	// Add self link with fully qualified URL using the correct protocol
-	regression.Links["self"] = fmt.Sprintf("%s://%s/api/component_readiness/regressions/%d", protocol, baseURL, regression.ID)
+	regression.Links["self"] = fmt.Sprintf("%s/api/component_readiness/regressions/%d", baseURL, regression.ID)
 
 	// Generate test details URL - extract the required data from the regression and view
-	testDetailsURL, err := generateTestDetailsURLFromRegression(regression, views, releases, crTimeRoundingFactor, protocol, baseURL)
+	testDetailsURL, err := generateTestDetailsURLFromRegression(regression, views, releases, crTimeRoundingFactor, baseURL)
 	if err != nil {
 		log.WithError(err).Warnf("failed to generate test details URL for regression %d", regression.ID)
 		// Still provide a basic link even if URL generation fails
-		testDetailsURL = fmt.Sprintf("%s://%s/api/component_readiness/test_details?testId=%s&baseRelease=%s&sampleRelease=%s",
-			protocol, baseURL, regression.TestID, regression.Release, regression.Release)
+		testDetailsURL = fmt.Sprintf("%s/api/component_readiness/test_details?testId=%s&baseRelease=%s&sampleRelease=%s",
+			baseURL, regression.TestID, regression.Release, regression.Release)
 	}
 
 	regression.Links["test_details"] = testDetailsURL
@@ -292,7 +275,7 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crv
 
 // generateTestDetailsURLFromRegression extracts the required data from a regression and view
 // and calls the refactored GenerateTestDetailsURL function.
-func generateTestDetailsURLFromRegression(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, protocol, baseURL string) (string, error) {
+func generateTestDetailsURLFromRegression(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) (string, error) {
 	if regression == nil {
 		return "", fmt.Errorf("regression cannot be nil")
 	}
@@ -325,7 +308,7 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 	// Call the refactored GenerateTestDetailsURL function with explicit parameters
 	return utils.GenerateTestDetailsURL(
 		regression.TestID,
-		fmt.Sprintf("%s://%s", protocol, baseURL),
+		baseURL,
 		baseReleaseOpts,
 		sampleReleaseOpts,
 		view.AdvancedOptions,

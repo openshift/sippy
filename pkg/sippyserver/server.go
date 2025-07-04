@@ -709,14 +709,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 
-	protocol := "http"
-	if req.TLS != nil {
-		protocol = "https"
-	}
-	if proto := req.Header.Get("X-Forwarded-Proto"); proto != "" {
-		protocol = proto
-	}
-	baseURL := protocol + "://" + req.Host
+	baseURL := api.GetBaseURL(req)
 
 	outputs, errs := componentreadiness.GetComponentReportFromBigQuery(
 		req.Context(),
@@ -742,7 +735,8 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 			for k := range outputs.Rows[i].Columns[j].RegressedTests {
 				regressedTest := &outputs.Rows[i].Columns[j].RegressedTests[k]
 				if regressedTest.Regression != nil {
-					componentreadiness.InjectRegressionHATEOASLinks(regressedTest.Regression, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, protocol, req.Host)
+					componentreadiness.InjectRegressionHATEOASLinks(regressedTest.Regression, s.views.ComponentReadiness,
+						allReleases, s.crTimeRoundingFactor, api.GetBaseURL(req))
 				}
 			}
 		}
@@ -775,7 +769,10 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, s.db, reqOptions)
+
+	baseURL := api.GetBaseURL(req)
+
+	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, s.db, reqOptions, baseURL)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
 		for _, err := range errs {

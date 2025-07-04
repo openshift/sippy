@@ -29,8 +29,9 @@ import (
 )
 
 func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions reqopts.RequestOptions,
+	baseURL string,
 ) (testdetails.Report, []error) {
-	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil)
+	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil, baseURL)
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateTestDetailsReport(ctx)
 	}
