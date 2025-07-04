@@ -1,10 +1,10 @@
-import { useHistory } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import PropTypes from 'prop-types'
 import React from 'react'
 
 export default function NotYetImplemented(props) {
   const { path } = props
-  const history = useHistory()
+  const navigate = useNavigate()
 
   const goBack = () => {
     history.goBack()
