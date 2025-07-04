@@ -6,11 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -54,38 +52,66 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			IncludeMultiReleaseAnalysis: true,
 		},
 	}
-	views := []crview.View{testView}
+
+	// Helper function to get release options from view
+	getBaseReleaseOpts := func() reqopts.Release {
+		opts, err := GetViewReleaseOptions(releases, "basis", testView.BaseRelease, 0)
+		require.NoError(t, err)
+		return opts
+	}
+	getSampleReleaseOpts := func() reqopts.Release {
+		opts, err := GetViewReleaseOptions(releases, "sample", testView.SampleRelease, 0)
+		require.NoError(t, err)
+		return opts
+	}
 
 	t.Run("empty base URL", func(t *testing.T) {
-		regression := &models.TestRegression{
-			ID:       123,
-			View:     "test-view",
-			Release:  "4.20",
-			TestID:   "test-id",
-			Variants: pq.StringArray{"Platform:aws"},
-		}
-
-		url, err := GenerateTestDetailsURL(regression, "", views, releases, 0)
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			"",
+			"",
+			[]string{"Platform:aws"},
+			"",
+		)
 		require.NoError(t, err)
 		assert.True(t, strings.HasPrefix(url, "/api/component_readiness/test_details"))
 	})
 
-	t.Run("nil regression", func(t *testing.T) {
-		_, err := GenerateTestDetailsURL(nil, "https://example.com", views, releases, 0)
+	t.Run("empty test ID", func(t *testing.T) {
+		_, err := GenerateTestDetailsURL(
+			"",
+			"https://example.com",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			"",
+			"",
+			[]string{},
+			"",
+		)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "regression cannot be nil")
+		assert.Contains(t, err.Error(), "testID cannot be empty")
 	})
 
 	t.Run("variants with malformed entries", func(t *testing.T) {
-		regression := &models.TestRegression{
-			ID:       123,
-			View:     "test-view",
-			Release:  "4.20",
-			TestID:   "test-id",
-			Variants: pq.StringArray{"Architecture:amd64", "InvalidVariant", "Platform:aws"},
-		}
-
-		url, err := GenerateTestDetailsURL(regression, "", views, releases, 0)
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			"",
+			"",
+			[]string{"Architecture:amd64", "InvalidVariant", "Platform:aws"},
+			"",
+		)
 		require.NoError(t, err)
 
 		// Should still work, just ignoring malformed variants
@@ -95,16 +121,19 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 	})
 
 	t.Run("environment parameter is sorted", func(t *testing.T) {
-		regression := &models.TestRegression{
-			ID:      123,
-			View:    "test-view",
-			Release: "4.20",
-			TestID:  "test-id",
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			"",
+			"",
 			// Use variants in non-alphabetical order to test sorting
-			Variants: pq.StringArray{"Topology:ha", "Architecture:amd64", "Platform:aws", "Network:ovn"},
-		}
-
-		url, err := GenerateTestDetailsURL(regression, "", views, releases, 0)
+			[]string{"Topology:ha", "Architecture:amd64", "Platform:aws", "Network:ovn"},
+			"",
+		)
 		require.NoError(t, err)
 
 		// Environment should be sorted alphabetically regardless of input order
@@ -112,19 +141,18 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 	})
 
 	t.Run("URL generation with view", func(t *testing.T) {
-		regression := &models.TestRegression{
-			ID:          123,
-			View:        "test-view",
-			Release:     "4.20",
-			BaseRelease: "4.19",
-			TestID:      "openshift-tests:abc123",
-			TestName:    "test-example",
-			Component:   "component-example",
-			Capability:  "capability-example",
-			Variants:    pq.StringArray{"Architecture:amd64", "Platform:aws"},
-		}
-
-		url, err := GenerateTestDetailsURL(regression, "https://sippy.example.com", views, releases, time.Hour)
+		url, err := GenerateTestDetailsURL(
+			"openshift-tests:abc123",
+			"https://sippy.example.com",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			"component-example",
+			"capability-example",
+			[]string{"Architecture:amd64", "Platform:aws"},
+			"",
+		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
 
@@ -145,17 +173,18 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 	})
 
 	t.Run("URL generation with release fallback", func(t *testing.T) {
-		regression := &models.TestRegression{
-			ID:          123,
-			View:        "test-view",
-			Release:     "4.20",
-			BaseRelease: "4.17", // Different from view's base release
-			TestID:      "openshift-tests:abc123",
-			TestName:    "test-example",
-			Variants:    pq.StringArray{"Architecture:amd64", "Platform:aws"},
-		}
-
-		url, err := GenerateTestDetailsURL(regression, "https://sippy.example.com", views, releases, time.Hour)
+		url, err := GenerateTestDetailsURL(
+			"openshift-tests:abc123",
+			"https://sippy.example.com",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			"",
+			"",
+			[]string{"Architecture:amd64", "Platform:aws"},
+			"4.17", // Different from view's base release
+		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
 
@@ -173,26 +202,6 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 	})
 
 	t.Run("URL generation with real-world regression data", func(t *testing.T) {
-		// Real-world regression data
-		regression := &models.TestRegression{
-			ID:       1948,
-			View:     "4.20-main",
-			Release:  "4.20",
-			TestID:   "openshift-tests:9f3fb60052539c29ab66564689f616ce",
-			TestName: "[sig-cluster-lifecycle][Feature:Machines][Serial] Managed cluster should grow and decrease when scaling different machineSets simultaneously [Timeout:30m][apigroup:machine.openshift.io] [Suite:openshift/conformance/serial]",
-			Variants: pq.StringArray{
-				"Installer:ipi",
-				"Network:ovn",
-				"Platform:vsphere",
-				"Suite:serial",
-				"Topology:ha",
-				"Upgrade:none",
-				"Architecture:amd64",
-				"FeatureSet:default",
-			},
-			BaseRelease: "4.18",
-		}
-
 		// Add a more comprehensive view for this test
 		realWorldView := crview.View{
 			Name: "4.20-main",
@@ -222,9 +231,34 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 				IgnoreMissing:               false,
 			},
 		}
-		testViews := []crview.View{realWorldView}
 
-		url, err := GenerateTestDetailsURL(regression, "https://sippy-auth.dptools.openshift.org", testViews, releases, time.Hour)
+		// Get release options from the real-world view
+		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", realWorldView.BaseRelease, time.Hour)
+		require.NoError(t, err)
+		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", realWorldView.SampleRelease, time.Hour)
+		require.NoError(t, err)
+
+		url, err := GenerateTestDetailsURL(
+			"openshift-tests:9f3fb60052539c29ab66564689f616ce",
+			"https://sippy-auth.dptools.openshift.org",
+			baseReleaseOpts,
+			sampleReleaseOpts,
+			realWorldView.AdvancedOptions,
+			realWorldView.VariantOptions,
+			"",
+			"",
+			[]string{
+				"Installer:ipi",
+				"Network:ovn",
+				"Platform:vsphere",
+				"Suite:serial",
+				"Topology:ha",
+				"Upgrade:none",
+				"Architecture:amd64",
+				"FeatureSet:default",
+			},
+			"4.18",
+		)
 		require.NoError(t, err)
 		assert.NotEmpty(t, url)
 		fmt.Println(url)
@@ -293,16 +327,25 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 				IncludeMultiReleaseAnalysis: true,
 			},
 		}
-		viewsWithVariants := []crview.View{viewWithVariants}
 
-		regression := &models.TestRegression{
-			ID:      123,
-			View:    "test-view-with-variants",
-			Release: "4.20",
-			TestID:  "test-id",
-		}
+		// Get release options from the view with variants
+		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", viewWithVariants.BaseRelease, 0)
+		require.NoError(t, err)
+		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", viewWithVariants.SampleRelease, 0)
+		require.NoError(t, err)
 
-		url, err := GenerateTestDetailsURL(regression, "https://example.com", viewsWithVariants, releases, 0)
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"https://example.com",
+			baseReleaseOpts,
+			sampleReleaseOpts,
+			viewWithVariants.AdvancedOptions,
+			viewWithVariants.VariantOptions,
+			"",
+			"",
+			[]string{},
+			"",
+		)
 		require.NoError(t, err)
 
 		// Verify that includeVariant parameters are sorted by key and value

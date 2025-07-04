@@ -278,8 +278,8 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crv
 	// Add self link with fully qualified URL using the correct protocol
 	regression.Links["self"] = fmt.Sprintf("%s://%s/api/component_readiness/regressions/%d", protocol, baseURL, regression.ID)
 
-	// Generate test details URL - use protocol and baseURL to create fully qualified URLs
-	testDetailsURL, err := utils.GenerateTestDetailsURL(regression, fmt.Sprintf("%s://%s", protocol, baseURL), views, releases, crTimeRoundingFactor)
+	// Generate test details URL - extract the required data from the regression and view
+	testDetailsURL, err := generateTestDetailsURLFromRegression(regression, views, releases, crTimeRoundingFactor, protocol, baseURL)
 	if err != nil {
 		log.WithError(err).Warnf("failed to generate test details URL for regression %d", regression.ID)
 		// Still provide a basic link even if URL generation fails
@@ -288,4 +288,51 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crv
 	}
 
 	regression.Links["test_details"] = testDetailsURL
+}
+
+// generateTestDetailsURLFromRegression extracts the required data from a regression and view
+// and calls the refactored GenerateTestDetailsURL function.
+func generateTestDetailsURLFromRegression(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, protocol, baseURL string) (string, error) {
+	if regression == nil {
+		return "", fmt.Errorf("regression cannot be nil")
+	}
+
+	// Find the view for this regression
+	var view crview.View
+	var found bool
+	for i := range views {
+		if views[i].Name == regression.View {
+			view = views[i]
+			found = true
+			break
+		}
+	}
+	if !found {
+		return "", fmt.Errorf("view %s not found", regression.View)
+	}
+
+	// Get base and sample release options from the view
+	baseReleaseOpts, err := utils.GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor)
+	if err != nil {
+		return "", fmt.Errorf("failed to get base release options: %w", err)
+	}
+
+	sampleReleaseOpts, err := utils.GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor)
+	if err != nil {
+		return "", fmt.Errorf("failed to get sample release options: %w", err)
+	}
+
+	// Call the refactored GenerateTestDetailsURL function with explicit parameters
+	return utils.GenerateTestDetailsURL(
+		regression.TestID,
+		fmt.Sprintf("%s://%s", protocol, baseURL),
+		baseReleaseOpts,
+		sampleReleaseOpts,
+		view.AdvancedOptions,
+		view.VariantOptions,
+		regression.Component,
+		regression.Capability,
+		regression.Variants,
+		regression.BaseRelease,
+	)
 }
