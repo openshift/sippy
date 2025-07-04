@@ -147,7 +147,7 @@ func (j JiraAutomator) getComponentReportForView(view crview.View) (crtype.Compo
 	}
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, j.dbc, reportOpts, j.variantJunitTableOverrides)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, j.dbc, reportOpts, j.variantJunitTableOverrides, "")
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

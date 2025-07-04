@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"reflect"
 	"strings"
 	"time"
@@ -222,4 +223,17 @@ func VariantListToMap(allJobVariants crtest.JobVariants, variants []string) (map
 		}
 	}
 	return variantsMap, err
+}
+
+// GetBaseURL returns the base URL (protocol + host) from the request.
+// It handles TLS and X-Forwarded-Proto header to determine the protocol.
+func GetBaseURL(req *http.Request) string {
+	protocol := "http"
+	if req.TLS != nil {
+		protocol = "https"
+	}
+	if proto := req.Header.Get("X-Forwarded-Proto"); proto != "" {
+		protocol = proto
+	}
+	return protocol + "://" + req.Host
 }
