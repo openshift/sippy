@@ -709,12 +709,22 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 
+	protocol := "http"
+	if req.TLS != nil {
+		protocol = "https"
+	}
+	if proto := req.Header.Get("X-Forwarded-Proto"); proto != "" {
+		protocol = proto
+	}
+	baseURL := protocol + "://" + req.Host
+
 	outputs, errs := componentreadiness.GetComponentReportFromBigQuery(
 		req.Context(),
 		s.bigQueryClient,
 		s.db,
 		options,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides,
+		baseURL,
 	)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))
@@ -726,13 +736,6 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 	}
 
 	// Iterate through all RegressedTests in outputs.Rows and inject HATEOAS links for regressions
-	protocol := "http"
-	if req.TLS != nil {
-		protocol = "https"
-	}
-	if proto := req.Header.Get("X-Forwarded-Proto"); proto != "" {
-		protocol = proto
-	}
 
 	for i := range outputs.Rows {
 		for j := range outputs.Rows[i].Columns {

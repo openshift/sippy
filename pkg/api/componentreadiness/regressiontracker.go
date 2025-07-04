@@ -182,7 +182,7 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 	}
 
 	report, errs := GetComponentReportFromBigQuery(
-		ctx, rt.bigqueryClient, rt.dbc, reportOpts, rt.variantJunitTableOverrides)
+		ctx, rt.bigqueryClient, rt.dbc, reportOpts, rt.variantJunitTableOverrides, "")
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

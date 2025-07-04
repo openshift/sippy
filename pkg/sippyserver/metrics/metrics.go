@@ -234,7 +234,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 		CacheOption:    cacheOptions,
 	}
 
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(ctx, client, dbc, reportOpts, overrides)
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(ctx, client, dbc, reportOpts, overrides, "")
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
