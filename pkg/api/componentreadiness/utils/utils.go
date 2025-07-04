@@ -129,7 +129,13 @@ func VariantsMapToStringSlice(variants map[string]string) []string {
 // GenerateTestDetailsURL creates a HATEOAS-style URL for the test_details API endpoint
 // based on a TestRegression record. This mimics the URL construction logic from the UI
 // in TestDetailsReport.js and uses the view configuration to populate URL parameters.
-func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration) (string, error) {
+func GenerateTestDetailsURL(
+	regression *models.TestRegression,
+	baseURL string,
+	views []crview.View,
+	releases []v1.Release,
+	crTimeRoundingFactor time.Duration) (string, error) {
+
 	if regression == nil {
 		return "", fmt.Errorf("regression cannot be nil")
 	}
@@ -167,7 +173,6 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 		// Create fully qualified URL
 		fullURL = fmt.Sprintf("https://%s/api/component_readiness/test_details", baseURL)
 	}
-	fmt.Println("foo " + fullURL)
 
 	u, err := url.Parse(fullURL)
 	if err != nil {
@@ -249,55 +254,6 @@ func GenerateTestDetailsURL(regression *models.TestRegression, baseURL string, v
 			params.Add("includeVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
 		}
 	}
-	/*
-		// Fallback to defaults if view not found
-
-		// Add simplified time ranges
-		now := time.Now()
-		baseEndTime := now.Format("2006-01-02T15:04:05Z")
-		baseStartTime := now.AddDate(0, 0, -30).Format("2006-01-02T15:04:05Z") // 30 days ago
-		sampleEndTime := now.Format("2006-01-02T15:04:05Z")
-		sampleStartTime := now.AddDate(0, 0, -7).Format("2006-01-02T15:04:05Z") // 7 days ago
-
-		params.Add("baseStartTime", baseStartTime)
-		params.Add("baseEndTime", baseEndTime)
-		params.Add("sampleStartTime", sampleStartTime)
-		params.Add("sampleEndTime", sampleEndTime)
-
-		// Add default configuration parameters
-		params.Add("confidence", "95")
-		params.Add("minFail", "3")
-		params.Add("pity", "5")
-		params.Add("passRateNewTests", "95")
-		params.Add("passRateAllTests", "0")
-		params.Add("ignoreDisruption", "true")
-		params.Add("ignoreMissing", "false")
-		params.Add("flakeAsFailure", "false")
-		params.Add("includeMultiReleaseAnalysis", "true")
-
-		// Add column grouping (common defaults)
-		params.Add("columnGroupBy", "Architecture,Network,Platform,Topology")
-		params.Add("dbGroupBy", "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer")
-
-		// Add default include variants
-		defaultIncludeVariants := []string{
-			"Architecture:amd64",
-			"FeatureSet:default",
-			"FeatureSet:techpreview",
-			"Installer:ipi",
-			"Installer:upi",
-			"Network:ovn",
-			"Platform:aws",
-			"Platform:azure",
-			"Platform:gcp",
-			"Topology:ha",
-		}
-
-		for _, variant := range defaultIncludeVariants {
-			params.Add("includeVariant", variant)
-		}
-
-	*/
 
 	// Add the specific variants from the regression as individual parameters
 	// Sort the keys to ensure consistent environment parameter ordering
