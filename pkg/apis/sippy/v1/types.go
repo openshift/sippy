@@ -3,6 +3,7 @@ package v1
 import (
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
@@ -69,11 +70,30 @@ type FailureGroup struct {
 	TestFailures int    `json:"testFailures"`
 }
 
-type Release struct {
-	Release              string
-	Status               string
-	GADate               *time.Time
-	DevelopmentStartDate *time.Time
+type Release struct { // this is the Release that gets cached
+	Release                 string
+	Status                  string
+	GADate                  *time.Time
+	DevelopmentStartDate    *time.Time
+	PreviousRelease         string
+	InstallIndicatorsSchema int64
+	ReleaseBools
+}
+type ReleaseBools struct { // boolean modifiers for a release
+	// ExcludeComponentReadiness excludes the release as an option for component readiness comparisons.
+	ExcludeComponentReadiness bool `json:"exclude_component_readiness"`
+	// ExcludeSippyClassic excludes the release in the Sippy Classic UI.
+	ExcludeSippyClassic bool `json:"exclude_sippy_classic"`
+	// ExcludeFetchData skips syncing job data from the release to sippy's DB
+	ExcludeFetchData bool `json:"exclude_fetch_data"`
+	// ExcludeMetrics skips metrics collection and analysis for the release.
+	ExcludeMetrics bool `json:"exclude_metrics"`
+	// IncludePullRequests enables the Sippy Classic pull request UI for this release
+	IncludePullRequests bool `json:"include_pull_requests"`
+	// ExcludeFeatureGates omits sippy classic link for seeing release feature gates
+	ExcludeFeatureGates bool `json:"exclude_feature_gates"`
+	// ExcludePayloadTags omits sippy classic link for seeing release tags for payloads
+	ExcludePayloadTags bool `json:"exclude_payload_tags"`
 }
 
 type VariantMapping struct {
@@ -102,4 +122,52 @@ type VariantMapping struct {
 
 	// CreatedAt is the time this particular record was created.
 	CreatedAt civil.DateTime `bigquery:"created_at" json:"-"`
+}
+
+type ReleaseRow struct { // a Release as it emerges from the BQ DB
+	// Release contains the X.Y version of the payload, e.g. 4.8
+	Release string `bigquery:"Release"`
+
+	// Major contains the major part of the release, e.g. 4
+	Major int `bigquery:"Major"`
+
+	// Minor contains the minor part of the release, e.g. 8
+	Minor int `bigquery:"Minor"`
+
+	// Patch contains the patch version number of the release, e.g. 1
+	Patch bigquery.NullInt64 `bigquery:"Patch"`
+
+	// PreviousRelease specifies the preceding release in CR comparisons, e.g. "foo-1.2" precedes "foo-1.3"
+	PreviousRelease bigquery.NullString `bigquery:"PreviousRelease"`
+
+	// InstallIndicatorsSchema indicates which set of tests to use in sippy classic install indicators
+	// Currently, 1 for <4.11, 2 for everything else. (Might need another revision some day)
+	InstallIndicatorsSchema bigquery.NullInt64 `bigquery:"InstallIndicatorsSchema"`
+
+	// GADate contains GA date for the release, i.e. the -YYYY-MM-DD
+	GADate bigquery.NullDate `bigquery:"GADate"`
+
+	// DevelStartDate contains start date of development of the release, i.e. the -YYYY-MM-DD
+	DevelStartDate civil.Date `bigquery:"DevelStartDate"`
+
+	// Product contains the product for the release, e.g. OCP
+	Product bigquery.NullString `bigquery:"Product"`
+
+	// ReleaseStatus contains the status of the release, e.g. Full Support
+	ReleaseStatus bigquery.NullString `bigquery:"ReleaseStatus"`
+
+	// ExcludeComponentReadiness excludes the release as an option for component readiness comparisons.
+	ExcludeComponentReadiness bigquery.NullBool `bigquery:"ExcludeComponentReadiness"`
+	// ExcludeSippyClassic excludes the release in the Sippy Classic UI.
+	ExcludeSippyClassic bigquery.NullBool `bigquery:"ExcludeSippyClassic"`
+	// ExcludeFetchData skips syncing job data from the release to sippy's DB
+	ExcludeFetchData bigquery.NullBool `bigquery:"ExcludeFetchData"`
+	// ExcludeMetrics skips metrics collection and analysis for the release.
+	ExcludeMetrics bigquery.NullBool `bigquery:"ExcludeMetrics"`
+	// IncludePullRequests enables the Sippy Classic pull request UI for this release
+	IncludePullRequests bigquery.NullBool `bigquery:"IncludePullRequests"`
+	// ExcludeFeatureGates omits sippy classic link for seeing release feature gates
+	ExcludeFeatureGates bigquery.NullBool `bigquery:"ExcludeFeatureGates"`
+	// ExcludePayloadTags omits sippy classic link for seeing release tags for payloads
+	ExcludePayloadTags bigquery.NullBool `bigquery:"ExcludePayloadTags"`
 }
