@@ -55,8 +55,8 @@ function ReleaseSelector(props) {
     pullRequestNumber,
     setPullRequestNumber,
     payloadSupport,
-    payloadTag,
-    setPayloadTag,
+    payloadTags,
+    setPayloadTags,
   } = props
 
   const days = 24 * 60 * 60 * 1000
@@ -68,7 +68,7 @@ function ReleaseSelector(props) {
   const [pullRequestURL, setPullRequestURL] = useState('')
   const [pullRequestURLError, setPullRequestURLError] = useState(false)
 
-  const [payloadTagError, setPayloadTagError] = useState(false)
+  const [payloadTagsError, setPayloadTagsError] = useState(false)
 
   const setGADate = () => {
     let start = new Date(versions[version])
@@ -115,17 +115,17 @@ function ReleaseSelector(props) {
   }, [pullRequestOrg, pullRequestRepo, pullRequestNumber])
 
   useEffect(() => {
-    if (payloadTag) {
-      setPayloadTag(payloadTag)
+    if (payloadTags && payloadTags.length !== 0) {
+      setPayloadTags(payloadTags)
     }
-  }, [payloadTag])
+  }, [payloadTags])
 
   const handlePullRequestURLChange = (e) => {
     const newURL = e.target.value
     setPullRequestURL(newURL)
 
     // Don't allow PRURL and payload tag at the same time
-    if (payloadTag !== '') {
+    if (payloadTags && payloadTags.length !== 0) {
       setPullRequestURLError(true)
       return
     }
@@ -150,32 +150,41 @@ function ReleaseSelector(props) {
     }
   }
 
-  const handlePayloadTagChange = (e) => {
-    const newTag = e.target.value
+  const handlePayloadTagsChange = (e) => {
+    const newTags = e.target.value
 
     // Don't allow PRURL and payload tag at the same time
     if (pullRequestURL !== '') {
-      setPayloadTagError(true)
+      setPayloadTagsError(true)
       return
     }
     // Allow clearing the URL:
-    if (newTag === '') {
-      setPayloadTagError(false)
-      setPayloadTag('')
+    if (newTags === '') {
+      setPayloadTagsError(false)
+      setPayloadTags([])
       return
     }
 
-    // Match string like 4.19.0-0.nightly-2025-03-14-061055
+    // Match string like
+    // 4.20.0-ec.3,
+    // 4.19.0-rc.5,
+    // 4.19.0,
+    // 4.20.0-0.ci-2025-06-30-145044,
+    // 4.20.0-0.konflux-nightly-2025-05-21-161707 and
+    // 4.19.0-0.nightly-2025-06-30-135545
     const regex =
-      /^\d+\.\d+\.\d+-\d+\.(nightly|ci|konflux-nightly)-\d{4}-\d{2}-\d{2}-(\d+)$/
-    const match = newTag.match(regex)
-    if (match) {
-      setPayloadTagError(false)
-      setPayloadTag(newTag)
-    } else {
-      setPayloadTagError(true)
-      setPayloadTag('')
+      /^\d+\.\d+\.\d+(?:-(?:ec\.\d+|rc\.\d+|\d+\.(?:ci|konflux-nightly|nightly)-\d{4}-\d{2}-\d{2}-\d{6}))?$/
+
+    const tags = newTags.split(',')
+    for (const tag of tags) {
+      if (!tag.match(regex)) {
+        setPayloadTagsError(true)
+        setPayloadTags([])
+        return
+      }
     }
+    setPayloadTagsError(false)
+    setPayloadTags(tags)
   }
 
   // Ensure that versions has a list of versions before trying to display the Form
@@ -223,38 +232,42 @@ function ReleaseSelector(props) {
                   value={pullRequestURL}
                   onChange={handlePullRequestURLChange}
                 />
-                {pullRequestURLError && payloadTag !== '' && (
-                  <FormHelperText>
-                    Cannot have payload tag and pull request URL at the same
-                    time!
-                  </FormHelperText>
-                )}
-                {pullRequestURLError && payloadTag === '' && (
-                  <FormHelperText>Invalid Pull Request URL</FormHelperText>
-                )}
+                {pullRequestURLError &&
+                  payloadTags &&
+                  payloadTags.length !== 0 && (
+                    <FormHelperText>
+                      Cannot have payload tags and pull request URL at the same
+                      time!
+                    </FormHelperText>
+                  )}
+                {pullRequestURLError &&
+                  (!payloadTags || payloadTags.length === 0) && (
+                    <FormHelperText>Invalid Pull Request URL</FormHelperText>
+                  )}
               </FormControl>
             )}
           </div>
           <div>
             {payloadSupport && (
-              <FormControl error={payloadTagError}>
-                <InputLabel htmlFor="payloadTag">
-                  Payload Tag (optional)
+              <FormControl error={payloadTagsError}>
+                <InputLabel htmlFor="payloadTags">
+                  Payload Tags (optional)
                 </InputLabel>
                 <Input
-                  id="payloadTag"
-                  value={payloadTag}
-                  onChange={handlePayloadTagChange}
+                  id="payloadTags"
+                  value={payloadTags}
+                  onChange={handlePayloadTagsChange}
                 />
-                {payloadTagError && pullRequestURL !== '' && (
+                {payloadTagsError && pullRequestURL !== '' && (
                   <FormHelperText>
                     Cannot have pull request URL and payload tag at the same
                     time!
                   </FormHelperText>
                 )}
-                {payloadTagError && pullRequestURL === '' && (
+                {payloadTagsError && pullRequestURL === '' && (
                   <FormHelperText>
-                    Valid tag format: 4.19.0-0.ci-2025-05-17-032906
+                    Valid format: comma separately tags like
+                    4.19.0-0.ci-2025-05-17-032906,4.20.0-ec.3,4.19.0-rc.5,4.19.0
                   </FormHelperText>
                 )}
               </FormControl>
@@ -365,8 +378,8 @@ ReleaseSelector.propTypes = {
   pullRequestNumber: PropTypes.string,
   setPullRequestNumber: PropTypes.func,
   payloadSupport: PropTypes.bool,
-  payloadTag: PropTypes.string,
-  setPayloadTag: PropTypes.func,
+  payloadTags: PropTypes.string,
+  setPayloadTags: PropTypes.func,
 }
 
 ReleaseSelector.defaultProps = {
