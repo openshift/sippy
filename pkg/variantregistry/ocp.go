@@ -707,6 +707,9 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-console-operator-", "console-operator"},
 		{"-ipsec", "ipsec"},
 		{"-machine-config-operator", "machine-config-operator"},
+		{"-serial", "serial"},
+		{"conformance", "parallel"},
+		{"-e2e-external-", "parallel"},
 	}
 
 	for _, entry := range procedurePatterns {
