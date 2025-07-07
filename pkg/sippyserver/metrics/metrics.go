@@ -298,6 +298,9 @@ func refreshBuildClusterMetrics(dbc *db.DB, reportEnd time.Time) error {
 
 func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []v1.Release) {
 	for _, r := range releases {
+		if !r.Capabilities[v1.MetricsCap] {
+			continue
+		}
 		results, err := api.ReleaseHealthReports(dbc, r.Release, reportEnd)
 		if err != nil {
 			log.WithError(err).Error("error calling ReleaseHealthReports")
@@ -388,6 +391,9 @@ func buildPromReportTypes(releases []v1.Release) []promReportType {
 	var promReportTypes []promReportType
 
 	for _, release := range releases {
+		if !release.Capabilities[v1.MetricsCap] {
+			continue
+		}
 		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.TwoDayReport)})
 		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.CurrentReport)})
 	}

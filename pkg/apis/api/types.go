@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"time"
 
-	"cloud.google.com/go/bigquery"
-	"cloud.google.com/go/civil"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 
@@ -873,11 +871,18 @@ type ReleaseDates struct {
 	GA               *time.Time `json:"ga,omitempty"`
 	DevelopmentStart *time.Time `json:"development_start,omitempty"`
 }
+type Release struct { // this is the Release that goes out to the UI
+	Name string `json:"name"`
+	ReleaseDates
+	PreviousRelease string                             `json:"previous_release"`
+	Capabilities    map[sippyv1.ReleaseCapability]bool `json:"capabilities"`
+}
 type Releases struct {
 	Releases          []string                `json:"releases"`
 	DeprecatedGADates map[string]time.Time    `json:"ga_dates"`
 	Dates             map[string]ReleaseDates `json:"dates"`
 	LastUpdated       time.Time               `json:"last_updated"`
+	ReleaseAttrs      map[string]Release      `json:"release_attrs"`
 }
 
 type Indicator struct {
@@ -979,32 +984,6 @@ type DisruptionReportRow struct {
 	Architecture             string  `json:"architecture"`
 	Relevance                int     `json:"relevance"`
 	FeatureSet               string  `json:"feature_set"`
-}
-
-type ReleaseRow struct {
-	// Release contains the X.Y version of the payload, e.g. 4.8
-	Release string `bigquery:"release"`
-
-	// Major contains the major part of the release, e.g. 4
-	Major int `bigquery:"Major"`
-
-	// Minor contains the minor part of the release, e.g. 8
-	Minor int `bigquery:"Minor"`
-
-	// GADate contains GA date for the release, i.e. the -YYYY-MM-DD
-	GADate bigquery.NullDate `bigquery:"GADate"`
-
-	// DevelStartDate contains start date of development of the release, i.e. the -YYYY-MM-DD
-	DevelStartDate civil.Date `bigquery:"DevelStartDate"`
-
-	// Product contains the product for the release, e.g. OCP
-	Product bigquery.NullString `bigquery:"Product"`
-
-	// Patch contains the patch version number of the release, e.g. 1
-	Patch bigquery.NullInt64 `bigquery:"Patch"`
-
-	// ReleaseStatus contains the status of the release, e.g. Full Support
-	ReleaseStatus bigquery.NullString `bigquery:"ReleaseStatus"`
 }
 
 type SippyViews struct {

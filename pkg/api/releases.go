@@ -15,7 +15,7 @@ import (
 	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -445,10 +445,11 @@ func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {
 }
 
 // GetReleasesFromBigQuery gets all releases defined in the Releases table in BigQuery
-func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]v1.Release, error) {
-	releases := []v1.Release{}
+func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]sippyv1.Release, error) {
+	releases := []sippyv1.Release{}
 
-	queryString := "SELECT * FROM openshift-ci-data-analysis.ci_data.Releases ORDER BY DevelStartDate DESC"
+	//queryString := "SELECT * FROM `openshift-ci-data-analysis.ci_data.Releases` ORDER BY DevelStartDate DESC"
+	queryString := "SELECT * FROM `openshift-ci-data-analysis.lmeyer_test.Releases` ORDER BY DevelStartDate DESC"
 
 	q := client.BQ.Query(queryString)
 	it, err := q.Read(ctx)
@@ -458,7 +459,7 @@ func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client)
 	}
 
 	for {
-		r := apitype.ReleaseRow{}
+		r := sippyv1.ReleaseRow{}
 		err := it.Next(&r)
 		if err == iterator.Done {
 			break
@@ -473,8 +474,13 @@ func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client)
 }
 
 // transformRelease converts the BQ release row to v1.Release type
-func transformRelease(r apitype.ReleaseRow) v1.Release {
-	release := v1.Release{Release: r.Release, Status: r.ReleaseStatus.String()}
+func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
+	release := sippyv1.Release{
+		Release:         r.Release,
+		Status:          r.ReleaseStatus.String(),
+		PreviousRelease: r.PreviousRelease.StringVal,
+		Capabilities:    make(map[sippyv1.ReleaseCapability]bool),
+	}
 	if r.GADate.Valid {
 		gaDate := r.GADate.Date.In(time.UTC)
 		release.GADate = &gaDate
@@ -482,6 +488,11 @@ func transformRelease(r apitype.ReleaseRow) v1.Release {
 	if r.DevelStartDate.IsValid() {
 		develStartDate := r.DevelStartDate.In(time.UTC)
 		release.DevelopmentStartDate = &develStartDate
+	}
+	if r.Capabilities != nil {
+		for _, capability := range r.Capabilities {
+			release.Capabilities[capability] = true
+		}
 	}
 	return release
 }

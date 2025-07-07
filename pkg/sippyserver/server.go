@@ -826,17 +826,19 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Request) {
-	gaDateMap := make(map[string]time.Time)
-	dateMap := make(map[string]apitype.ReleaseDates)
-	response := apitype.Releases{
-		DeprecatedGADates: gaDateMap,
-		Dates:             dateMap,
-	}
 	releases, err := api.GetReleases(req.Context(), s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying releases")
 		failureResponse(w, http.StatusInternalServerError, "error querying releases")
 		return
+	}
+
+	gaDateMap := make(map[string]time.Time)
+	dateMap := make(map[string]apitype.ReleaseDates)
+	response := apitype.Releases{
+		DeprecatedGADates: gaDateMap,
+		Dates:             dateMap,
+		ReleaseAttrs:      make(map[string]apitype.Release, len(releases)),
 	}
 
 	for _, release := range releases {
@@ -850,6 +852,12 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 		if release.DevelopmentStartDate != nil {
 			releaseDate.DevelopmentStart = release.DevelopmentStartDate
 			response.Dates[release.Release] = releaseDate
+		}
+		response.ReleaseAttrs[release.Release] = apitype.Release{
+			Name:            release.Release,
+			PreviousRelease: release.PreviousRelease,
+			ReleaseDates:    releaseDate,
+			Capabilities:    release.Capabilities,
 		}
 	}
 
