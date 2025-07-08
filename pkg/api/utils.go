@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/pkg/errors"
 
 	log "github.com/sirupsen/logrus"
@@ -154,13 +155,11 @@ func (r *releaseGenerator) ListReleases(ctx context.Context) ([]v1.Release, []er
 		log.WithError(err).Error("error getting releases from bigquery")
 		return releases, []error{err}
 	}
-	// Add special release Presubmits for prow jobs
-	releases = append(releases, v1.Release{Release: releasePresubmits})
 	return releases, nil
 }
 
 // GetReleases gets all the releases defined in the BQ Releases table.
-func GetReleases(ctx context.Context, bqc *bqclient.Client) ([]v1.Release, error) {
+func GetReleases(ctx context.Context, bqc *bqclient.Client, config *configv1.SippyConfig) ([]v1.Release, error) {
 	releaseGen := releaseGenerator{bqc}
 
 	var err error
@@ -173,6 +172,13 @@ func GetReleases(ctx context.Context, bqc *bqclient.Client) ([]v1.Release, error
 		[]v1.Release{})
 	if len(errs) > 0 {
 		err = errs[0]
+	} else if config != nil {
+		// Add designated releases from config that aren't represented in the DB
+		for name, release := range config.Releases {
+			if release.AddRelease {
+				rels = append(rels, v1.Release{Release: name})
+			}
+		}
 	}
 	return rels, err
 }

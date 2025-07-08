@@ -13,7 +13,12 @@ releases:
       periodic-ci-openshift-openshift-ansible-release-3.11-e2e-aws-nightly: true
       periodic-ci-openshift-openshift-ansible-release-3.11-e2e-gcp-nightly: true
       periodic-ci-openshift-origin-release-3.11-e2e-gcp: true
-  "Presubmits":
+  hcm-integration:
+    addRelease: true
+    jobs:
+          periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-integration: true
+  Presubmits:
+    addRelease: true
     regexp:
       - "^pull-ci-openshift-.*-(master|main).*-e2e-.*"
       - "^pull-ci-operator-framework.*-(master|main).*-e2e-.*"

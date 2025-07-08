@@ -92,7 +92,7 @@ func NewTrackRegressionsCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("unable to load views")
 			}
-			releases, err := api.GetReleases(context.TODO(), bigQueryClient)
+			releases, err := api.GetReleases(context.TODO(), bigQueryClient, nil)
 			if err != nil {
 				log.WithError(err).Fatal("error querying releases")
 			}

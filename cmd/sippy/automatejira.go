@@ -152,7 +152,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("unable to load views")
 			}
-			releases, err := api.GetReleases(context.Background(), bigQueryClient)
+			releases, err := api.GetReleases(context.Background(), bigQueryClient, nil)
 			if err != nil {
 				log.WithError(err).Fatal("error querying releases")
 			}

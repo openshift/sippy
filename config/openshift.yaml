@@ -12982,7 +12982,12 @@ releases:
         jobs:
             periodic-ci-openshift-aws-karpenter-provider-aws-release-4.21-periodics-e2e-aws: true
             periodic-ci-openshift-aws-karpenter-provider-aws-release-4.21-periodics-e2e-hypershift: true
+    hcm-integration:
+        addRelease: true
+        jobs:
+          periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-integration: true
     Presubmits:
+        addRelease: true
         regexp:
             - ^pull-ci-openshift-.*-(master|main).*-e2e-.*
             - ^pull-ci-operator-framework.*-(master|main).*-e2e-.*
