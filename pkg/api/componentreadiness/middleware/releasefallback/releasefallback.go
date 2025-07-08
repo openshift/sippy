@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
+	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
@@ -177,7 +178,7 @@ func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 
 	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*FallbackReleases](
 		ctx, r.client.Cache, generator.cacheOption,
-		api.GetPrefixedCacheKey("FallbackReleases~", generator),
+		api.GetPrefixedCacheKey("FallbackReleases~", generator.getCacheKey()),
 		generator.getTestFallbackReleases,
 		&FallbackReleases{})
 
@@ -341,7 +342,31 @@ func newFallbackTestQueryReleasesGenerator(
 		ReqOptions:  reqOptions,
 	}
 	return generator
+}
 
+type fallbackTestQueryReleasesGeneratorCacheKey struct {
+	BaseRelease     string
+	BaseStart       time.Time
+	BaseEnd         time.Time
+	AdvancedOptions reqopts.Advanced
+	// VariantDBGroupBy is the only field within VariantOption that is used here
+	VariantDBGroupBy sets.String
+	// CRTimeRoundingFactor is used by GetReleaseDatesFromBigQuery
+	CRTimeRoundingFactor time.Duration
+}
+
+// getCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
+// we cache. This provides a safer option than using the generator previously which carries some public fields
+// which would be serialized and thus cause unnecessary cache misses.
+func (f *fallbackTestQueryReleasesGenerator) getCacheKey() fallbackTestQueryReleasesGeneratorCacheKey {
+	return fallbackTestQueryReleasesGeneratorCacheKey{
+		BaseRelease:          f.BaseRelease,
+		BaseStart:            f.BaseStart,
+		BaseEnd:              f.BaseEnd,
+		AdvancedOptions:      f.ReqOptions.AdvancedOption,
+		VariantDBGroupBy:     f.ReqOptions.VariantOption.DBGroupBy,
+		CRTimeRoundingFactor: f.ReqOptions.CacheOption.CRTimeRoundingFactor,
+	}
 }
 
 func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context.Context) (*FallbackReleases, []error) {
@@ -441,7 +466,7 @@ func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtest.R
 
 func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.Context, client *bqcachedclient.Client, release string, start, end time.Time) (bq.ReportTestStatus, []error) {
 	generator := newFallbackBaseQueryGenerator(client, f.ReqOptions, f.allJobVariants, release, start, end)
-	cacheKey := api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator)
+	cacheKey := api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator.getCacheKey())
 	testStatuses, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, cacheKey, generator.getTestFallbackRelease, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
@@ -479,11 +504,34 @@ func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions req
 	return generator
 }
 
+type fallbackTestQueryGeneratorCacheKey struct {
+	BaseRelease     string
+	BaseStart       time.Time
+	BaseEnd         time.Time
+	AdvancedOptions reqopts.Advanced
+	// VariantDBGroupBy is the only field within VariantOption that is used here
+	VariantDBGroupBy sets.String
+}
+
+// getCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
+// we cache. This provides a safer option than using the generator previously which carries some public fields
+// which would be serialized and thus cause unnecessary cache misses.
+func (f *fallbackTestQueryGenerator) getCacheKey() fallbackTestQueryGeneratorCacheKey {
+	return fallbackTestQueryGeneratorCacheKey{
+		BaseRelease:      f.BaseRelease,
+		BaseStart:        f.BaseStart,
+		BaseEnd:          f.BaseEnd,
+		AdvancedOptions:  f.ReqOptions.AdvancedOption,
+		VariantDBGroupBy: f.ReqOptions.VariantOption.DBGroupBy,
+	}
+}
+
 func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (bq.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := query.BuildComponentReportQuery(
 		f.client,
 		f.ReqOptions,
-		f.allVariants, f.ReqOptions.VariantOption.IncludeVariants,
+		f.allVariants,
+		nil, // explicitly pass a nil map for includeVariants as it should not be used for fallback queries
 		query.DefaultJunitTable, false, true)
 	before := time.Now()
 	log.Infof("Starting Fallback (%s) QueryTestStatus", f.BaseRelease)
