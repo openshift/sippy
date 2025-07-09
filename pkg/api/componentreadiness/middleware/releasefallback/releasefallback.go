@@ -101,11 +101,6 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *
 	testIDBytes, _ := json.Marshal(testIDVariantsKey)
 	testKeyStr := string(testIDBytes)
 
-	if !r.reqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
-		// nothing to do if this feature is disabled
-		return nil
-	}
-
 	if r.cachedFallbackTestStatuses == nil {
 		// In the test details path, this map is not initialized and we have no work to do for pre analysis.
 		// Fallback is treated as a separate second report entirely, rather than swapping out values on the fly,
@@ -345,10 +340,9 @@ func newFallbackTestQueryReleasesGenerator(
 }
 
 type fallbackTestQueryReleasesGeneratorCacheKey struct {
-	BaseRelease     string
-	BaseStart       time.Time
-	BaseEnd         time.Time
-	AdvancedOptions reqopts.Advanced
+	BaseRelease string
+	BaseStart   time.Time
+	BaseEnd     time.Time
 	// VariantDBGroupBy is the only field within VariantOption that is used here
 	VariantDBGroupBy sets.String
 	// CRTimeRoundingFactor is used by GetReleaseDatesFromBigQuery
@@ -363,7 +357,6 @@ func (f *fallbackTestQueryReleasesGenerator) getCacheKey() fallbackTestQueryRele
 		BaseRelease:          f.BaseRelease,
 		BaseStart:            f.BaseStart,
 		BaseEnd:              f.BaseEnd,
-		AdvancedOptions:      f.ReqOptions.AdvancedOption,
 		VariantDBGroupBy:     f.ReqOptions.VariantOption.DBGroupBy,
 		CRTimeRoundingFactor: f.ReqOptions.CacheOption.CRTimeRoundingFactor,
 	}
