@@ -163,6 +163,20 @@ In development, you can start a Redis cache using Podman or Docker:
 podman run --name sippy-redis -p 6379:6379 -d redis
 ```
 
+## Regressions and Triage
+In order to develop Triage functionality, it is necessary to track regressions.
+The `load` command can be used for this purpose:
+```bash
+sippy load \
+  --loader component-readiness-cache \
+  --loader regression-tracker \
+  --views ./config/views.yaml \
+  --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
+  --redis-url "redis://localhost:6379" \
+  --config ./config/openshift.yaml \
+  --google-service-account-credential-file ~/google-service-account-credential-file.json
+```
+
 ## Run Sippy comment processing
 
 If you want to run Sippy PR Commenting you likely want to first load data so that you have the PR commenting table populated.
