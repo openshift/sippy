@@ -333,7 +333,7 @@ func JobRunRiskAnalysis(dbc *db.DB, bqc *bigquery.Client, jobRun *models.ProwJob
 
 	// NOTE: we are including bugs for all releases, may want to filter here in future to just those
 	// with an AffectsVersions that seems to match our compareRelease?
-	jobBugs, err := query.LoadBugsForJobs(dbc, []int{int(jobRun.ProwJob.ID)}, true)
+	jobBugs, err := query.LoadBugsForJobs(dbc, []int{int(jobRun.ProwJob.ID)}, true) // nolint:gosec
 	if err != nil {
 		logger.WithError(err).Errorf("Error evaluating bugs for prow job: %d", jobRun.ProwJob.ID)
 	} else {

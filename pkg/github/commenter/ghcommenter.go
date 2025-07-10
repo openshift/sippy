@@ -46,7 +46,7 @@ func NewGitHubCommenter(githubClient *github.Client, dbc *db.DB, excludedRepos, 
 }
 
 func buildOrgRepos(in []string) (map[string]sets.String, error) {
-	if in == nil || len(in) < 1 {
+	if len(in) < 1 {
 		return nil, nil
 	}
 

@@ -254,7 +254,7 @@ func (jobs jobDetailAPIResult) limit(req *http.Request) jobDetailAPIResult {
 
 // PrintJobDetailsReportFromDB renders the detailed list of runs for matching jobs.
 func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB, release, jobSearchStr string, reportEnd time.Time) error {
-	var min, max int
+	var start, end int
 
 	// List all ProwJobRuns for the given release in the last two weeks.
 	// TODO: 14 days matches orig API behavior, may want to add query params in future to control.
@@ -311,8 +311,8 @@ func PrintJobDetailsReportFromDB(w http.ResponseWriter, req *http.Request, dbc *
 
 	RespondWithJSON(http.StatusOK, w, jobDetailAPIResult{
 		Jobs:  jobs,
-		Start: min,
-		End:   max,
+		Start: start,
+		End:   end,
 	}.limit(req))
 	return nil
 }

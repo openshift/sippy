@@ -191,7 +191,7 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 	return &junit.TestSuite{
 		Name:      testidentification.SippySuiteName,
 		NumTests:  uint(len(results)),
-		NumFailed: uint(jrr.TestFailures),
+		NumFailed: uint(jrr.TestFailures), // nolint:gosec
 		TestCases: results,
 	}
 }

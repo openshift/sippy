@@ -333,13 +333,13 @@ func (c *CacheRecord) Save() (row map[string]bigquery.Value, insertID string, er
 
 func chunk(value []byte, maxChunk int) [][]byte {
 	var ret [][]byte
-	max := len(value)
+	maxValue := len(value)
 
-	for i := 0; i < max; i += maxChunk {
+	for i := 0; i < maxValue; i += maxChunk {
 		end := i + maxChunk
 
-		if end > max {
-			end = max
+		if end > maxValue {
+			end = maxValue
 		}
 
 		ret = append(ret, value[i:end])
