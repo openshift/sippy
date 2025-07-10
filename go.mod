@@ -1,8 +1,6 @@
 module github.com/openshift/sippy
 
-go 1.22.3
-
-toolchain go1.22.5
+go 1.24
 
 require (
 	cloud.google.com/go v0.115.0
@@ -13,6 +11,7 @@ require (
 	github.com/apache/thrift v0.17.0
 	github.com/glycerine/golang-fisher-exact v0.0.0-20230401153517-53168ae38651
 	github.com/go-git/go-git/v5 v5.12.0
+	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v45 v45.2.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-version v1.7.0
@@ -32,6 +31,7 @@ require (
 	github.com/tcnksm/go-gitconfig v0.1.2
 	github.com/tidwall/gjson v1.14.4
 	github.com/trivago/tgo v1.0.7
+	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e
 	golang.org/x/oauth2 v0.23.0
 	google.golang.org/api v0.191.0
 	gopkg.in/redis.v5 v5.2.9
@@ -113,7 +113,6 @@ require (
 	github.com/google/cel-go v0.20.1 // indirect
 	github.com/google/flatbuffers v23.5.26+incompatible // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/go-github/v62 v62.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.1-0.20210504230335-f78f29fc09ea // indirect
@@ -180,7 +179,6 @@ require (
 	go4.org v0.0.0-20201209231011-d4a079459e60 // indirect
 	gocloud.dev v0.40.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect
 	golang.org/x/mod v0.20.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect

@@ -380,7 +380,7 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 			continue
 
 		}
-		bwj.ID = uint(intID)
+		bwj.ID = uint(intID) // nolint:gosec
 
 		if _, ok := jobCache[bwj.LinkName]; !ok {
 			// This is probably common because sippy probably doesn't know about *all* jobs like the BQ table does
@@ -449,7 +449,7 @@ func (bl *BugLoader) getTriageBugMappings(ctx context.Context, triages []models.
 			bl.errors = append(bl.errors, errors.WithMessagef(err, "failed to convert jira id %s", bwt.JiraID))
 			continue
 		}
-		bwt.ID = uint(intID)
+		bwt.ID = uint(intID) // nolint:gosec
 
 		if _, ok := bugs[bwt.ID]; !ok {
 			bugs[bwt.ID] = bigQueryBugToModel(bwt)
