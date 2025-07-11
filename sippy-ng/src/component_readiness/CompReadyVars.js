@@ -213,10 +213,12 @@ export const CompReadyVarsProvider = ({ children }) => {
   )
   const [samplePRNumber, setSamplePRNumber] =
     React.useState(samplePRNumberParam)
-  const [samplePayloadTagsParam = [], setSamplePayloadTagsParam] =
-    useQueryParam('samplePayloadTag', ArrayParam)
-  const [samplePayloadTags, setSamplePayloadTags] = React.useState(
-    samplePayloadTagsParam
+  const [samplePayloadTagParam = '', setSamplePayloadTagParam] = useQueryParam(
+    'samplePayloadTag',
+    StringParam
+  )
+  const [samplePayloadTag, setSamplePayloadTag] = React.useState(
+    samplePayloadTagParam
   )
 
   const setBaseReleaseWithDates = (event) => {
@@ -391,7 +393,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setSamplePROrgParam(samplePROrg)
     setSamplePRRepoParam(samplePRRepo)
     setSamplePRNumberParam(samplePRNumber)
-    setSamplePayloadTagsParam(samplePayloadTags)
+    setSamplePayloadTagParam(samplePayloadTag)
     setPityParam(pity)
     setMinFailParam(minFail)
     setPassRateNewTestsParam(passRateNewTests)
@@ -653,8 +655,8 @@ export const CompReadyVarsProvider = ({ children }) => {
         setSamplePRRepo,
         samplePRNumber,
         setSamplePRNumber,
-        samplePayloadTags,
-        setSamplePayloadTags,
+        samplePayloadTag,
+        setSamplePayloadTag,
         columnGroupByCheckedItems,
         setColumnGroupByCheckedItems,
         dbGroupByVariants,
