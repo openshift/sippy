@@ -390,6 +390,10 @@ export function getUpdatedUrlParts(vars) {
 
   // TODO: inject the PR vars into query params
 
+  if (vars.samplePayloadTag) {
+    valuesMap.samplePayloadTag = vars.samplePayloadTag
+  }
+
   function filterOutVariantCC(values) {
     return values.filter((value) => !vars.variantCrossCompare.includes(value))
   }
@@ -431,9 +435,6 @@ export function getUpdatedUrlParts(vars) {
   )
   vars.variantCrossCompare.forEach((item) => {
     queryParams.append('variantCrossCompare', item)
-  })
-  vars.samplePayloadTags.forEach((item) => {
-    queryParams.append('samplePayloadTag', item)
   })
 
   // Stringify and put the begin param character.

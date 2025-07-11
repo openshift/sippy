@@ -200,13 +200,13 @@ func parsePROptions(req *http.Request) *reqopts.PullRequest {
 }
 
 func parsePayloadOptions(req *http.Request) *reqopts.Payload {
-	tags := req.URL.Query()["samplePayloadTag"]
-	if len(tags) == 0 {
+	po := reqopts.Payload{
+		Tag: param.SafeRead(req, "samplePayloadTag"),
+	}
+	if po.Tag == "" {
 		return nil
 	}
-	return &reqopts.Payload{
-		Tags: tags,
-	}
+	return &po
 }
 
 func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts reqopts.Variants, err error) {

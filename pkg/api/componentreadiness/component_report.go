@@ -853,7 +853,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 			}
 		}
 
-		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, status)
+		rowIdentifications, columnIdentifications, err := c.getRowColumnIdentifications(testKeyStr, sampleStatus)
 		if err != nil {
 			return crtype.ComponentReport{}, err
 		}
