@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/dataloader/crcacheloader"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -143,7 +146,7 @@ func NewLoadCommand() *cobra.Command {
 			for _, l := range f.Loaders {
 				if l == "component-readiness-cache" {
 					if bigqueryErr != nil {
-						return errors.Wrap(err, "CRITICAL error getting BigQuery client which prevents regression tracking")
+						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents cache loading")
 					}
 					if dbErr != nil {
 						return dbErr
@@ -252,6 +255,36 @@ func NewLoadCommand() *cobra.Command {
 					refreshMatviews = true
 					fgLoader := featuregateloader.New(dbc)
 					loaders = append(loaders, fgLoader)
+				}
+
+				if l == "regression-tracker" {
+					if bigqueryErr != nil {
+						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents regression tracking")
+					}
+					if dbErr != nil {
+						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents regression tracking")
+					}
+					cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
+
+					views, err := f.ComponentReadinessFlags.ParseViewsFile()
+					if err != nil {
+						return errors.Wrap(err, "error parsing views file")
+					}
+					if len(views.ComponentReadiness) == 0 {
+						return fmt.Errorf("no component readiness views provided")
+					}
+					releases, err := api.GetReleases(context.TODO(), bqc)
+					if err != nil {
+						log.WithError(err).Fatal("error querying releases")
+					}
+
+					regressionTracker := componentreadiness.NewRegressionTracker(
+						bqc, dbc, cacheOpts, releases,
+						componentreadiness.NewPostgresRegressionStore(dbc),
+						views.ComponentReadiness,
+						config.ComponentReadinessConfig.VariantJunitTableOverrides,
+						false)
+					loaders = append(loaders, regressionTracker)
 				}
 			}
 

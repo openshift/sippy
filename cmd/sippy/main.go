@@ -41,7 +41,6 @@ func main() {
 		NewRefreshCommand(),
 		NewComponentReadinessCommand(),
 		NewAutomateJiraCommand(),
-		NewTrackRegressionsCommand(),
 		NewVariantsCommand(),
 		NewVersionCommand(),
 		NewAnnotateJobRunsCommand(),

@@ -3,6 +3,7 @@ package loaderwithmetrics
 import (
 	"fmt"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/pkg/errors"
@@ -45,7 +46,34 @@ func New(wrappedLoaders []dataloader.DataLoader) *LoaderWithMetrics {
 	return loader
 }
 
+var loaderOrder = []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "component-readiness-cache", "regression-tracker"}
+
+// sortLoaders guarantees that the loaders run in a predicable and proper order
+// this is mostly necessary to guarantee that "component-readiness-cache" runs prior to "regression-tracker"
+func (l *LoaderWithMetrics) sortLoaders() {
+	orderIndex := func() map[string]int {
+		m := make(map[string]int, len(loaderOrder))
+		for i, v := range loaderOrder {
+			m[v] = i
+		}
+		return m
+	}()
+
+	getLoaderIndex := func(name string) int {
+		if index, exists := orderIndex[name]; exists {
+			return index
+		}
+		// Unknown loaders get placed at the end
+		return len(loaderOrder)
+	}
+
+	sort.Slice(l.loaders, func(i, j int) bool {
+		return getLoaderIndex(l.loaders[i].Name()) < getLoaderIndex(l.loaders[j].Name())
+	})
+}
+
 func (l *LoaderWithMetrics) Load() {
+	l.sortLoaders()
 	overallStart := time.Now()
 	log.Infof("starting %d loaders...", len(l.loaders))
 	for _, loader := range l.loaders {
