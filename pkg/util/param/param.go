@@ -53,6 +53,7 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"samplePRRepo":     nameRegexp,
 	"samplePRNumber":   uintRegexp,
 	"samplePayloadTag": nameRegexp,
+	"view":             nameRegexp, // component readiness view name
 	// jobartifacts params
 	"prowJobRuns":        regexp.MustCompile(`^\d+(,\d+)*$`), // comma-separated integers
 	"pathGlob":           nonEmptyRegex,                      // a glob can be anything
