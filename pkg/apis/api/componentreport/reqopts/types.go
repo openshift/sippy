@@ -32,7 +32,7 @@ type PullRequest struct {
 // Payload specifies a specific payload tag to use as the
 // sample for the report. This is only used for sample, not basis.
 type Payload struct {
-	Tag string
+	Tags []string
 }
 
 type Release struct {

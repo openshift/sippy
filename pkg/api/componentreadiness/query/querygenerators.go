@@ -215,12 +215,16 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 
 	before := time.Now()
 	errs := []error{}
-	sampleString := commonQuery + ` AND branch = @SampleRelease`
+	sampleString := commonQuery
+	// Only set sample release when PR and payload options are not set
+	if s.ReqOptions.SampleRelease.PullRequestOptions == nil && s.ReqOptions.SampleRelease.PayloadOptions == nil {
+		sampleString += ` AND branch = @SampleRelease`
+	}
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleString += `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
 	}
 	if s.ReqOptions.SampleRelease.PayloadOptions != nil {
-		sampleString += `  AND release_verify_tag = @Tag`
+		sampleString += `  AND release_verify_tag IN UNNEST(@Tags)`
 	}
 	sampleQuery := s.client.BQ.Query(sampleString + groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, queryParameters...)
@@ -233,11 +237,15 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 			Name:  "To",
 			Value: s.End,
 		},
-		{
-			Name:  "SampleRelease",
-			Value: s.ReqOptions.SampleRelease.Name,
-		},
 	}...)
+	if s.ReqOptions.SampleRelease.PullRequestOptions == nil && s.ReqOptions.SampleRelease.PayloadOptions == nil {
+		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+			{
+				Name:  "SampleRelease",
+				Value: s.ReqOptions.SampleRelease.Name,
+			},
+		}...)
+	}
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 			{
@@ -257,8 +265,8 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 	if s.ReqOptions.SampleRelease.PayloadOptions != nil {
 		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 			{
-				Name:  "Tag",
-				Value: s.ReqOptions.SampleRelease.PayloadOptions.Tag,
+				Name:  "Tags",
+				Value: s.ReqOptions.SampleRelease.PayloadOptions.Tags,
 			},
 		}...)
 	}
@@ -480,14 +488,19 @@ func buildTestDetailsQuery(
 	commonParams := []bigquery.QueryParameter{}
 
 	for i, testIDOption := range testIDOpts {
-		queryString = addTestFilters(testIDOption, i, queryString, c, includeVariants, isSample)
+		queryString = addTestFilters(testIDOption, i, queryString, c, includeVariants)
 
 	}
 
 	if isSample {
 		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, c.VariantOption.CompareVariants, &commonParams)
+		// Only set sample release when PR and payload options are not set
+		if c.SampleRelease.PayloadOptions == nil && c.SampleRelease.PullRequestOptions == nil {
+			queryString += ` AND branch = @SampleRelease`
+		}
 	} else {
 		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, includeVariants, &commonParams)
+		queryString += ` AND branch = @BaseRelease`
 	}
 	return queryString, groupString, commonParams
 }
@@ -498,21 +511,16 @@ func addTestFilters(
 	index int,
 	queryString string,
 	c reqopts.RequestOptions,
-	includeVariants map[string][]string,
-	isSample bool) string {
+	includeVariants map[string][]string) string {
 
 	if index > 0 {
 		queryString += " OR "
 	}
-	if isSample {
-		queryString += fmt.Sprintf(`(cm.id = '%s' AND branch = @SampleRelease
+
+	queryString += fmt.Sprintf(`(cm.id = '%s'
 
 `, param.Cleanse(testIDOption.TestID))
-	} else {
-		queryString += fmt.Sprintf(`(cm.id = '%s' AND branch = @BaseRelease
 
-`, param.Cleanse(testIDOption.TestID))
-	}
 	for _, key := range sortedKeys(includeVariants) {
 		// only add in include variants that aren't part of the requested or cross-compared variants
 		if _, ok := testIDOption.RequestedVariants[key]; ok {
@@ -806,7 +814,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		sampleString += `  AND jobs.org = @Org AND jobs.repo = @Repo AND jobs.pr_number = @PRNumber`
 	}
 	if s.ReqOptions.SampleRelease.PayloadOptions != nil {
-		sampleString += `  AND jobs.release_verify_tag = @Tag`
+		sampleString += `  AND jobs.release_verify_tag IN UNNEST(@Tags)`
 	}
 	sampleQuery := s.client.BQ.Query(sampleString + groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, queryParameters...)
@@ -819,11 +827,15 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 			Name:  "To",
 			Value: s.End,
 		},
-		{
-			Name:  "SampleRelease",
-			Value: s.ReqOptions.SampleRelease.Name,
-		},
 	}...)
+	if s.ReqOptions.SampleRelease.PullRequestOptions == nil && s.ReqOptions.SampleRelease.PayloadOptions == nil {
+		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
+			{
+				Name:  "SampleRelease",
+				Value: s.ReqOptions.SampleRelease.Name,
+			},
+		}...)
+	}
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 			{
@@ -843,8 +855,8 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 	if s.ReqOptions.SampleRelease.PayloadOptions != nil {
 		sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 			{
-				Name:  "Tag",
-				Value: s.ReqOptions.SampleRelease.PayloadOptions.Tag,
+				Name:  "Tags",
+				Value: s.ReqOptions.SampleRelease.PayloadOptions.Tags,
 			},
 		}...)
 	}
