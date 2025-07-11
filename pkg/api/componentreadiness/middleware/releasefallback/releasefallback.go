@@ -498,10 +498,11 @@ func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions req
 }
 
 type fallbackTestQueryGeneratorCacheKey struct {
-	BaseRelease     string
-	BaseStart       time.Time
-	BaseEnd         time.Time
-	AdvancedOptions reqopts.Advanced
+	BaseRelease string
+	BaseStart   time.Time
+	BaseEnd     time.Time
+	// IgnoreDisruption is the only field within AdvancedOption that is used here
+	IgnoreDisruption bool
 	// VariantDBGroupBy is the only field within VariantOption that is used here
 	VariantDBGroupBy sets.String
 }
@@ -514,7 +515,7 @@ func (f *fallbackTestQueryGenerator) getCacheKey() fallbackTestQueryGeneratorCac
 		BaseRelease:      f.BaseRelease,
 		BaseStart:        f.BaseStart,
 		BaseEnd:          f.BaseEnd,
-		AdvancedOptions:  f.ReqOptions.AdvancedOption,
+		IgnoreDisruption: f.ReqOptions.AdvancedOption.IgnoreDisruption,
 		VariantDBGroupBy: f.ReqOptions.VariantOption.DBGroupBy,
 	}
 }
