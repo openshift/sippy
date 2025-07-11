@@ -487,10 +487,12 @@ func buildTestDetailsQuery(
 `
 	commonParams := []bigquery.QueryParameter{}
 
+	queryString += "("
 	for i, testIDOption := range testIDOpts {
 		queryString = addTestFilters(testIDOption, i, queryString, c, includeVariants)
 
 	}
+	queryString += ")"
 
 	if isSample {
 		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, c.VariantOption.CompareVariants, &commonParams)
