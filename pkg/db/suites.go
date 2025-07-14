@@ -47,6 +47,7 @@ var testSuites = []string{
 	"github.com/openshift/console-operator/test/e2e",
 	"prowjob-junit",
 	"OLM-Catalog-Validation",
+	"insights-operator-tests",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {
