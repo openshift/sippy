@@ -355,7 +355,12 @@ Flakes: ${stats.flake_count}`
           )}
 
           <h2>Bugs Mentioning This Test</h2>
-          <BugTable testName={testName} />
+          <BugTable
+            testName={testName}
+            writeEndpointsEnabled={writeEndpointsEnabled}
+            regressionId={regressionId}
+            setHasBeenTriaged={setHasBeenTriaged}
+          />
           <Box
             sx={{
               display: 'flex',
