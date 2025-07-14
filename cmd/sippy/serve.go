@@ -160,6 +160,7 @@ func NewServeCommand() *cobra.Command {
 				config,
 				f.APIFlags.EnableWriteEndpoints,
 				llmClient,
+				f.APIFlags.ChatAPIURL,
 			)
 
 			if f.APIFlags.MetricsAddr != "" {

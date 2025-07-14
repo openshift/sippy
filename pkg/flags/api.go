@@ -9,6 +9,7 @@ type APIFlags struct {
 	EnableWriteEndpoints bool
 	ListenAddr           string
 	MetricsAddr          string
+	ChatAPIURL           string
 }
 
 func NewAPIFlags() *APIFlags {
@@ -22,4 +23,5 @@ func (f *APIFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&f.EnableWriteEndpoints, "enable-write-endpoints", false, "Enable write-endpoints for triage etc")
 	fs.StringVar(&f.ListenAddr, "listen", f.ListenAddr, "The address to serve analysis reports on (default :8080)")
 	fs.StringVar(&f.MetricsAddr, "listen-metrics", f.MetricsAddr, "The address to serve prometheus metrics on (default :2112)")
+	fs.StringVar(&f.ChatAPIURL, "chat-api", f.ChatAPIURL, "URL of the sippy-chat service to proxy chat requests to")
 }
