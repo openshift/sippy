@@ -326,7 +326,8 @@ func newFallbackTestQueryReleasesGenerator(
 		client:         client,
 		allJobVariants: allJobVariants,
 		cacheOption: cache.RequestOptions{
-			ForceRefresh: reqOptions.CacheOption.ForceRefresh,
+			// never force a refresh, this data should be valid until cache expiry, and it is expensive to refresh it
+			ForceRefresh: false,
 			// increase the time that fallback queries are cached for
 			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
 		},
@@ -486,7 +487,8 @@ func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions req
 		allVariants: allVariants,
 		ReqOptions:  reqOptions,
 		cacheOption: cache.RequestOptions{
-			ForceRefresh: reqOptions.CacheOption.ForceRefresh,
+			// never force a refresh, this data should be valid until cache expiry, and it is expensive to refresh it
+			ForceRefresh: false,
 			// increase the time that base query is cached for since it shouldn't be changing
 			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
 		},
