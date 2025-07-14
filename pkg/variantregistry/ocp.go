@@ -695,19 +695,27 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	jobNameLower := strings.ToLower(jobName)
 
+	// with multi value support we need a build up the value
+	base := ""
+	procedureValue := VariantNoValue
+
+	if strings.Contains(jobNameLower, "-serial") {
+		base = concatProcedureValues(base, "serial")
+		procedureValue = base
+	}
 	// Job procedure patterns
 	procedurePatterns := []struct {
 		substring string
 		procedure string
 	}{
-		{"-etcd-scaling", "etcd-scaling"},
-		{"-cpu-partitioning", "cpu-partitioning"},
-		{"-automated-release", "automated-release"},
-		{"-cert-rotation-shutdown-", "cert-rotation-shutdown"},
-		{"-console-operator-", "console-operator"},
-		{"-ipsec", "ipsec"},
-		{"-ocl", "on-cluster-layering"},
-		{"-machine-config-operator", "machine-config-operator"},
+		{"-etcd-scaling", concatProcedureValues(base, "etcd-scaling")},
+		{"-cpu-partitioning", concatProcedureValues(base, "cpu-partitioning")},
+		{"-automated-release", concatProcedureValues(base, "automated-release")},
+		{"-cert-rotation-shutdown-", concatProcedureValues(base, "cert-rotation-shutdown")},
+		{"-console-operator-", concatProcedureValues(base, "console-operator")},
+		{"-ipsec", concatProcedureValues(base, "ipsec")},
+		{"-ocl", concatProcedureValues(base, "on-cluster-layering")},
+		{"-machine-config-operator", concatProcedureValues(base, "machine-config-operator")},
 	}
 
 	for _, entry := range procedurePatterns {
@@ -718,7 +726,19 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 	}
 
 	// Default procedure
-	variants[VariantProcedure] = VariantNoValue
+	variants[VariantProcedure] = procedureValue
+}
+
+func concatProcedureValues(base, addition string) string {
+	if len(base) == 0 {
+		return addition
+	}
+	// shouldn't get called this way
+	if len(addition) == 0 {
+		return base
+	}
+
+	return fmt.Sprintf("%s-%s", base, addition)
 }
 
 func setTopology(_ logrus.FieldLogger, variants map[string]string, jobName string) {
