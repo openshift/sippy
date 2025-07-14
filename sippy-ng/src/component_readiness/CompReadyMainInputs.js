@@ -128,8 +128,8 @@ export default function CompReadyMainInputs(props) {
           pullRequestNumber={varsContext.samplePRNumber}
           setPullRequestNumber={varsContext.setSamplePRNumber}
           payloadSupport={true}
-          payloadTag={varsContext.samplePayloadTag}
-          setPayloadTag={varsContext.setSamplePayloadTag}
+          payloadTags={varsContext.samplePayloadTags}
+          setPayloadTags={varsContext.setSamplePayloadTags}
         ></ReleaseSelector>
       </div>
       <div className={classes.crRelease}>
