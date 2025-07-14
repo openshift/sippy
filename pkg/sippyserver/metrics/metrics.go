@@ -120,7 +120,7 @@ func getReleaseStatus(releases []v1.Release, release string) string {
 func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crview.View, variantJunitTableOverrides []configv1.VariantJunitTableOverride) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
-	releases, err := api.GetReleases(context.Background(), bqc)
+	releases, err := api.GetReleases(context.Background(), bqc, nil)
 	if err != nil {
 		return err
 	}
