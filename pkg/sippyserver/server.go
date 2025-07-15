@@ -1375,7 +1375,7 @@ func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if triageID != int(triage.ID) {
+		if triageID != int(triage.ID) { // nolint:gosec
 			failureResponse(w, http.StatusBadRequest, "resource triage ID does not match URL")
 			return
 		}

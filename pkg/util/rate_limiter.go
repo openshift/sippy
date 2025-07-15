@@ -31,10 +31,10 @@ func (rl *RateLimiter) Close() {
 	}
 }
 
-func (rl *RateLimiter) UpdateRate(error bool) {
+func (rl *RateLimiter) UpdateRate(isError bool) {
 
 	update := false
-	if error {
+	if isError {
 
 		if rl.errorCount < maxBackoff {
 			rl.errorCount++

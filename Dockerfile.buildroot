@@ -4,7 +4,7 @@
 # [1] https://docs.ci.openshift.org/docs/architecture/ci-operator/#build-root-image
 #
 FROM registry.access.redhat.com/ubi9/ubi:latest
-ARG GOLANGCI_LINT_VERSION="1.60.1"
+ARG GOLANGCI_LINT_VERSION="1.64.8"
 RUN curl -Lso /tmp/golangci-lint.rpm \
           "https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-amd64.rpm" && \
       dnf module enable nodejs:18 -y && \

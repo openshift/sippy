@@ -12,7 +12,7 @@ var TriageMatchVariants = buildTriageMatchVariants([]string{variantregistry.Vari
 	variantregistry.VariantSuite, variantregistry.VariantInstaller})
 
 func buildTriageMatchVariants(in []string) sets.String {
-	if in == nil || len(in) < 1 {
+	if len(in) < 1 {
 		return nil
 	}
 

@@ -83,8 +83,8 @@ func URLForJob(dashboard, jobName string) *gourl.URL {
 	return url
 }
 
-func DatePtr(year int, month time.Month, day, hour, min, sec, nsec int, loc *time.Location) *time.Time {
-	d := time.Date(year, month, day, hour, min, sec, nsec, loc)
+func DatePtr(year int, month time.Month, day, hour, minute, sec, nsec int, loc *time.Location) *time.Time {
+	d := time.Date(year, month, day, hour, minute, sec, nsec, loc)
 	return &d
 }
 
