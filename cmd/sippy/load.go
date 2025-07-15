@@ -42,8 +42,7 @@ import (
 )
 
 type LoadFlags struct {
-	LoadOpenShiftCIBigQuery bool
-	Loaders                 []string
+	Loaders []string
 
 	InitDatabase bool
 
@@ -85,7 +84,6 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.ComponentReadinessFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
-	fs.BoolVar(&f.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
 	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates"}, "Which data sources to use for data loading")
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
@@ -366,13 +364,10 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		return nil, err
 	}
 
-	var bigQueryClient *bqcachedclient.Client
-	if f.LoadOpenShiftCIBigQuery {
-		bigQueryClient, err = bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, nil)
-		if err != nil {
-			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
-			return nil, err
-		}
+	bigQueryClient, err := bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, nil)
+	if err != nil {
+		log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
+		return nil, err
 	}
 
 	var githubClient *github.Client
