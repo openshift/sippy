@@ -44,6 +44,7 @@ func main() {
 		NewVariantsCommand(),
 		NewVersionCommand(),
 		NewAnnotateJobRunsCommand(),
+		NewSeedDataCommand(),
 	)
 
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",

@@ -37,7 +37,7 @@ func NewSeedDataFlags() *SeedDataFlags {
 
 func (f *SeedDataFlags) BindFlags(fs *pflag.FlagSet) {
 	f.DBFlags.BindFlags(fs)
-	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before seeding data")
+	fs.BoolVar(&f.InitDatabase, "init-database", false, "Initialize the DB schema before seeding data")
 	fs.StringSliceVar(&f.Releases, "release", f.Releases, "Releases to create ProwJobs for (can be specified multiple times)")
 	fs.IntVar(&f.JobsPerRelease, "jobs", f.JobsPerRelease, "Number of ProwJobs to create for each release")
 	fs.IntVar(&f.NumTests, "tests", f.NumTests, "Number of Test models to create")
@@ -54,22 +54,18 @@ func NewSeedDataCommand() *cobra.Command {
 This command creates sample ProwJob and Test records with realistic test data
 that can be used for local development and testing.
 
-Creates (with defaults):
-- ProwJob records (3 per release, for releases 4.20 and 4.19 by default)
-- Test records (5 by default, named test01, test02, etc.)
-- Suite record ("ourtests" suite for organizing test results)
-- ProwJobRun records (50 per ProwJob by default, spread over past 2 weeks)
-- ProwJobRunTest records (one for each Test per ProwJobRun, with randomized pass/fail/flake results)
-
 Test results are randomized with 85% pass rate, 10% flake rate, and 5% failure rate.
-All counts and releases are configurable via command-line flags.`,
+All counts and releases are configurable via command-line flags.
+
+The command can be re-run as needed to add more runs, or because your old job runs 
+rolled off the 1 week window.
+`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			dbc, err := f.DBFlags.GetDBClient()
 			if err != nil {
 				return errors.WithMessage(err, "could not connect to database")
 			}
 
-			// Initialize database schema if requested
 			if f.InitDatabase {
 				log.Info("Initializing database schema...")
 				t := f.DBFlags.GetPinnedTime()
@@ -126,7 +122,6 @@ All counts and releases are configurable via command-line flags.`,
 }
 
 func createProwJobsForRelease(dbc *db.DB, release string, jobsPerRelease int) error {
-	// Create 5 ProwJobs for this release
 	for i := 1; i <= jobsPerRelease; i++ {
 		prowJob := models.ProwJob{
 			Kind:    models.ProwKind("periodic"),
@@ -154,11 +149,9 @@ func createProwJobsForRelease(dbc *db.DB, release string, jobsPerRelease int) er
 }
 
 func createTestModels(dbc *db.DB, numTests int) error {
-	// Create 20 Test models with names test01 through test20
 	for i := 1; i <= numTests; i++ {
 		testModel := models.Test{
-			Name: fmt.Sprintf("test%02d", i), // Format as test01, test02, ..., test20
-			// Bugs and TestOwnerships are left empty as requested
+			Name: fmt.Sprintf("test%02d", i),
 		}
 
 		// Use FirstOrCreate to avoid duplicates - only creates if a Test with this name doesn't exist
@@ -167,7 +160,6 @@ func createTestModels(dbc *db.DB, numTests int) error {
 			return fmt.Errorf("failed to create or find Test %s: %v", testModel.Name, err)
 		}
 
-		// Log whether we created a new test or found an existing one
 		if existingTest.CreatedAt.IsZero() || existingTest.CreatedAt.Equal(existingTest.UpdatedAt) {
 			log.Debugf("Created new Test: %s", testModel.Name)
 		} else {
@@ -193,19 +185,16 @@ func createTestSuite(dbc *db.DB) error {
 }
 
 func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
-	// First, get all existing ProwJobs from the database
 	var prowJobs []models.ProwJob
 	if err := dbc.DB.Find(&prowJobs).Error; err != nil {
 		return fmt.Errorf("failed to fetch existing ProwJobs: %v", err)
 	}
 
-	// Get all existing Tests from the database
 	var tests []models.Test
 	if err := dbc.DB.Find(&tests).Error; err != nil {
 		return fmt.Errorf("failed to fetch existing Tests: %v", err)
 	}
 
-	// Get the test suite
 	var suite models.Suite
 	if err := dbc.DB.Where("name = ?", "ourtests").First(&suite).Error; err != nil {
 		return fmt.Errorf("failed to find Suite 'ourtests': %v", err)
@@ -223,7 +212,6 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 	for _, prowJob := range prowJobs {
 		log.Infof("Creating %d ProwJobRuns for ProwJob: %s", runsPerJob, prowJob.Name)
 
-		// Create ProwJobRuns for this ProwJob
 		for i := 0; i < runsPerJob; i++ {
 			// Log progress every 10 runs to show activity
 			if (i+1)%10 == 0 {
@@ -231,13 +219,11 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 			}
 
 			// Calculate timestamp: spread evenly over the past 2 weeks
-			// Total duration: 14 days = 14 * 24 * time.Hour
 			totalDuration := 14 * 24 * time.Hour
 			// Time between runs = total duration / runs
 			timeBetweenRuns := totalDuration / time.Duration(runsPerJob)
 			timestamp := twoWeeksAgo.Add(time.Duration(i) * timeBetweenRuns)
 
-			// Create ProwJobRun first
 			prowJobRun := models.ProwJobRun{
 				ProwJobID: prowJob.ID,
 				Cluster:   "build01",
@@ -246,12 +232,10 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 				TestCount: len(tests),
 			}
 
-			// Create the ProwJobRun
 			if err := dbc.DB.Create(&prowJobRun).Error; err != nil {
 				return fmt.Errorf("failed to create ProwJobRun for ProwJob %s: %v", prowJob.Name, err)
 			}
 
-			// Now create ProwJobRunTest records for each test
 			var testFailures int
 			for _, test := range tests {
 				// Determine test status based on random chance
@@ -281,7 +265,6 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 				}
 			}
 
-			// Update the ProwJobRun based on test results
 			if testFailures > 0 {
 				prowJobRun.Failed = true
 				prowJobRun.Succeeded = false
@@ -292,7 +275,6 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 				prowJobRun.TestFailures = 0
 			}
 
-			// Save the updated ProwJobRun
 			if err := dbc.DB.Save(&prowJobRun).Error; err != nil {
 				return fmt.Errorf("failed to update ProwJobRun for ProwJob %s: %v", prowJob.Name, err)
 			}
