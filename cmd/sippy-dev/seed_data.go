@@ -133,6 +133,7 @@ func createProwJobsForRelease(dbc *db.DB, release string, jobsPerRelease int) er
 			Name:    fmt.Sprintf("sippy-test-job-%s-test-%d", release, i),
 			Release: release,
 			// TestGridURL, Bugs, and JobRuns are left empty as requested
+			Variants: []string{"Platform:aws", "Upgrade:none"},
 		}
 
 		// Use FirstOrCreate to avoid duplicates - only creates if a ProwJob with this name doesn't exist
