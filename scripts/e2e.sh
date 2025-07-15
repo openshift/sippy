@@ -43,7 +43,7 @@ export SIPPY_E2E_DSN="postgresql://postgres:password@localhost:$PSQL_PORT/postgr
 echo "Loading database..."
 # use an old release here as they have very few job runs and thus import quickly, ~5 minutes
 make build
-./sippy load --init-database --loader prow --loader prow --load-openshift-ci-bigquery \
+./sippy load --init-database --loader prow --loader prow \
   --mode ocp \
   --release 4.14 \
   --init-database \
