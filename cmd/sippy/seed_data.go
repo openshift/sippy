@@ -21,7 +21,7 @@ type SeedDataFlags struct {
 	InitDatabase   bool
 	Releases       []string
 	JobsPerRelease int
-	NumTests       int
+	TestNames      []string
 	RunsPerJob     int
 }
 
@@ -30,8 +30,17 @@ func NewSeedDataFlags() *SeedDataFlags {
 		DBFlags:        flags.NewPostgresDatabaseFlags(),
 		Releases:       []string{"4.20", "4.19"}, // Default releases
 		JobsPerRelease: 3,                        // Default jobs per release
-		NumTests:       5,                        // Default number of tests
-		RunsPerJob:     20,                       // Default runs per job
+		TestNames: []string{
+			"install should succeed: infrastructure",
+			"install should succeed: overall",
+			"install should succeed: configuration",
+			"install should succeed: cluster bootstrap",
+			"install should succeed: other",
+			"[sig-cluster-lifecycle] Cluster completes upgrade",
+			"[sig-sippy] upgrade should work",
+			"[sig-sippy] openshift-tests should work",
+		}, // Default test names
+		RunsPerJob: 20, // Default runs per job
 	}
 }
 
@@ -40,7 +49,7 @@ func (f *SeedDataFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Initialize the DB schema before seeding data")
 	fs.StringSliceVar(&f.Releases, "release", f.Releases, "Releases to create ProwJobs for (can be specified multiple times)")
 	fs.IntVar(&f.JobsPerRelease, "jobs", f.JobsPerRelease, "Number of ProwJobs to create for each release")
-	fs.IntVar(&f.NumTests, "tests", f.NumTests, "Number of Test models to create")
+	fs.StringSliceVar(&f.TestNames, "test", f.TestNames, "Test names to create (can be specified multiple times)")
 	fs.IntVar(&f.RunsPerJob, "runs", f.RunsPerJob, "Number of ProwJobRuns to create for each ProwJob")
 }
 
@@ -55,7 +64,7 @@ This command creates sample ProwJob and Test records with realistic test data
 that can be used for local development and testing.
 
 Test results are randomized with 85% pass rate, 10% flake rate, and 5% failure rate.
-All counts and releases are configurable via command-line flags.
+All counts, releases, and test names are configurable via command-line flags.
 
 The command can be re-run as needed to add more runs, or because your old job runs 
 rolled off the 1 week window.
@@ -92,10 +101,10 @@ rolled off the 1 week window.
 			}
 
 			// Create Test models
-			if err := createTestModels(dbc, f.NumTests); err != nil {
+			if err := createTestModels(dbc, f.TestNames); err != nil {
 				return errors.WithMessage(err, "failed to create Test models")
 			}
-			log.Infof("Processed %d Test models", f.NumTests)
+			log.Infof("Processed %d Test models", len(f.TestNames))
 
 			// Create ProwJobRuns for each ProwJob
 			if err := createProwJobRuns(dbc, f.RunsPerJob); err != nil {
@@ -105,13 +114,13 @@ rolled off the 1 week window.
 
 			totalProwJobs := len(f.Releases) * f.JobsPerRelease
 			totalRuns := totalProwJobs * f.RunsPerJob
-			totalTestResults := totalRuns * f.NumTests
+			totalTestResults := totalRuns * len(f.TestNames)
 
 			log.Info("Refreshing materialized views...")
 			sippyserver.RefreshData(dbc, nil, false)
 
 			log.Infof("Successfully seeded test data! Created %d ProwJobs, %d Tests, %d ProwJobRuns, and %d test results",
-				totalProwJobs, f.NumTests, totalRuns, totalTestResults)
+				totalProwJobs, len(f.TestNames), totalRuns, totalTestResults)
 			return nil
 		},
 	}
@@ -148,10 +157,10 @@ func createProwJobsForRelease(dbc *db.DB, release string, jobsPerRelease int) er
 	return nil
 }
 
-func createTestModels(dbc *db.DB, numTests int) error {
-	for i := 1; i <= numTests; i++ {
+func createTestModels(dbc *db.DB, testNames []string) error {
+	for _, testName := range testNames {
 		testModel := models.Test{
-			Name: fmt.Sprintf("test%02d", i),
+			Name: testName,
 		}
 
 		// Use FirstOrCreate to avoid duplicates - only creates if a Test with this name doesn't exist
