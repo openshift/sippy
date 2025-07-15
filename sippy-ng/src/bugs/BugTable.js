@@ -1,5 +1,6 @@
 import {
   Button,
+  Link,
   Paper,
   Table,
   TableBody,
@@ -156,9 +157,23 @@ export default function BugTable(props) {
               <TableCell>
                 {bugToPotentialTriage[bug.id] && (
                   <Tooltip
-                    title={`Add this regression to matching triage entry: "${
-                      bugToPotentialTriage[bug.id].url
-                    }: ${bugToPotentialTriage[bug.id].description}"`}
+                    title={
+                      <div>
+                        Add this regression to triage entry matching bug:{' '}
+                        {bug.key}
+                        <br />
+                        <Link
+                          href={`/sippy-ng/triages/${
+                            bugToPotentialTriage[bug.id].id
+                          }`}
+                          color="inherit"
+                          sx={{ textDecoration: 'underline' }}
+                          target="_blank"
+                        >
+                          View triage details →
+                        </Link>
+                      </div>
+                    }
                   >
                     <Button
                       variant="contained"
