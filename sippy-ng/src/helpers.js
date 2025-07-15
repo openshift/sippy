@@ -157,7 +157,7 @@ export function pathForExactTestAnalysisWithFilter(release, test, filter) {
       }
     })
   }
-  return `/sippy-ng/tests/${release}/analysis?test=${safeEncodeURIComponent(
+  return `/tests/${release}/analysis?test=${safeEncodeURIComponent(
     test
   )}&${multiple(...filters)}`
 }
