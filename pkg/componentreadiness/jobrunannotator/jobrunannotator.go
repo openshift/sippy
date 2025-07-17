@@ -152,11 +152,11 @@ func (j JobRunAnnotator) Run(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not perform artifact search: %v", err)
 		}
-		log.Infof("Limit to %d job runs based on artifact search", len(jobRuns))
+		log.Infof("Limit to %d job runs based on artifact search", len(jobRunIDs))
 	}
 
 	if len(jobRunIDs) != 0 {
-		log.Infof("Going to annotate %d job runs", len(jobRuns))
+		log.Infof("Attempting to annotate %d job runs", len(jobRunIDs))
 		err = j.annotateJobRuns(ctx, jobRunIDs, jobRuns)
 		if err != nil {
 			return fmt.Errorf("error annotating job runs: %v", err)
@@ -508,5 +508,6 @@ func (j JobRunAnnotator) annotateJobRuns(ctx context.Context, jobRunIDs []int64,
 			})
 		}
 	}
+	log.Infof("Going to annotate %d new job runs", len(jobRunAnnotations))
 	return j.bulkInsertJobRunAnnotations(ctx, jobRunAnnotations)
 }
