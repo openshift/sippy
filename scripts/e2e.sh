@@ -49,24 +49,41 @@ go build -mod vendor ./cmd/sippy
   --release="4.20"
 
 # Spawn sippy server off into a separate process:
+export SIPPY_API_PORT="18080"
+export SIPPY_ENDPOINT="127.0.0.1"
 (
 ./sippy serve \
-  --listen ":18080" \
+  --listen ":$SIPPY_API_PORT" \
   --listen-metrics ":12112" \
   --database-dsn="$SIPPY_E2E_DSN" \
   --enable-write-endpoints \
   --log-level debug \
-  --google-service-account-credential-file $GCS_SA_JSON_PATH
+  --views config/views.yaml \
+  --google-service-account-credential-file $GCS_SA_JSON_PATH > e2e.log 2>&1
 )&
 # store the child process for cleanup
 CHILD_PID=$!
 
 # Give it time to start up
-echo "Wait 30s for sippy API to start..."
-sleep 30
+echo "Waiting for sippy API to start on port $SIPPY_API_PORT, see e2e.log for output..."
+TIMEOUT=120
+ELAPSED=0
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    if curl -s "http://localhost:$SIPPY_API_PORT/api/health" > /dev/null 2>&1; then
+        echo "Sippy API is ready after ${ELAPSED}s"
+        break
+    fi
+    sleep 2
+    ELAPSED=$((ELAPSED + 2))
+done
+
+if [ $ELAPSED -ge $TIMEOUT ]; then
+    echo "Timeout waiting for sippy API to start after ${TIMEOUT}s"
+    exit 1
+fi
 
 
-# Run our tests that request against the API:
-gotestsum ./test/e2e/...
+# Run our tests that request against the API, args ensure serially and fresh test code compile:
+gotestsum ./test/e2e/... -count 1 -p 1
 
 # WARNING: do not place more commands here without addressing return code from go test not being overridden by the cleanup func

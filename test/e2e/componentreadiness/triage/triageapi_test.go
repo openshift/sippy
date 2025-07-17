@@ -23,10 +23,10 @@ import (
 )
 
 var view = crview.View{
-	Name: "4.19-main",
+	Name: "4.20-main",
 	SampleRelease: reqopts.RelativeRelease{
 		Release: reqopts.Release{
-			Name: "4.19",
+			Name: "4.20",
 		},
 	},
 }
@@ -437,6 +437,7 @@ func createTestRegression(t *testing.T, tracker componentreadiness.RegressionSto
 		},
 	}
 	testRegression, err := tracker.OpenRegression(view, newRegression)
+	t.Logf("created testRegression: %+v", testRegression)
 	require.NoError(t, err)
 	return testRegression
 }
