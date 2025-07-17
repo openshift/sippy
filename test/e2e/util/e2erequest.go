@@ -13,7 +13,7 @@ import (
 
 const (
 	// Needs to match what we import in the e2e sh scripts and the
-	Release = "4.20"
+	Release = "4.14"
 
 	// APIPort is the port e2e.sh launches the sippy API on. These values must be kept in sync.
 	APIPort = 18080
