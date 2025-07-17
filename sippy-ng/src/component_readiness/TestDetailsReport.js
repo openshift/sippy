@@ -355,7 +355,12 @@ Flakes: ${stats.flake_count}`
           )}
 
           <h2>Bugs Mentioning This Test</h2>
-          <BugTable testName={testName} />
+          <BugTable
+            testName={testName}
+            writeEndpointsEnabled={writeEndpointsEnabled}
+            regressionId={regressionId}
+            setHasBeenTriaged={setHasBeenTriaged}
+          />
           <Box
             sx={{
               display: 'flex',
@@ -426,17 +431,16 @@ View the [test details report|${document.location.href}] for additional context.
             >
               View other open regressions
             </Button>
-            <Button
-              variant="contained"
-              color="secondary"
-              href={pathForExactTestAnalysisWithFilter(
-                sampleRelease,
-                testName,
-                { items: [] }
-              )}
+            <Link
+              to={pathForExactTestAnalysisWithFilter(sampleRelease, testName, {
+                items: [],
+              })}
+              style={{ textDecoration: 'none' }}
             >
-              View Test Analysis
-            </Button>
+              <Button variant="contained" color="secondary">
+                View Test Analysis
+              </Button>
+            </Link>
           </Box>
         </Grid>
       </Grid>
