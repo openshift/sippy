@@ -1,8 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
 	"fmt"
-	"math/rand"
 	"time"
 
 	"github.com/pkg/errors"
@@ -39,7 +39,7 @@ func NewSeedDataFlags() *SeedDataFlags {
 			"[sig-cluster-lifecycle] Cluster completes upgrade",
 			"[sig-sippy] upgrade should work",
 			"[sig-sippy] openshift-tests should work",
-		}, // Default test names
+		},              // Default test names
 		RunsPerJob: 20, // Default runs per job
 	}
 }
