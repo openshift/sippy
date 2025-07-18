@@ -17,6 +17,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/apache/thrift/lib/go/thrift"
 	fischer "github.com/glycerine/golang-fisher-exact"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/linkinjector"
 	regressionallowances2 "github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressionallowances"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
@@ -109,9 +110,10 @@ func GetComponentReportFromBigQuery(
 	dbc *db.DB,
 	reqOptions reqopts.RequestOptions,
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
+	baseURL string,
 ) (crtype.ComponentReport, []error) {
 
-	generator := NewComponentReportGenerator(client, reqOptions, dbc, variantJunitTableOverrides)
+	generator := NewComponentReportGenerator(client, reqOptions, dbc, variantJunitTableOverrides, baseURL)
 
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateReport(ctx)
@@ -167,12 +169,13 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 	return nil
 }
 
-func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions reqopts.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride) ComponentReportGenerator {
+func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions reqopts.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride, baseURL string) ComponentReportGenerator {
 	generator := ComponentReportGenerator{
 		client:                     client,
 		ReqOptions:                 reqOptions,
 		dbc:                        dbc,
 		variantJunitTableOverrides: variantJunitTableOverrides,
+		baseURL:                    baseURL,
 	}
 	generator.initializeMiddleware()
 	return generator
@@ -190,6 +193,7 @@ type ComponentReportGenerator struct {
 	ReqOptions                 reqopts.RequestOptions
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 	middlewares                middleware.List
+	baseURL                    string
 }
 
 type GeneratorCacheKey struct {
@@ -339,6 +343,10 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 		log.Warnf("no db connection provided, skipping regressiontracker middleware")
 	}
 	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
+
+	// Initialize LinkInjector middleware
+	linkInjector := linkinjector.NewLinkInjectorMiddleware(c.ReqOptions, c.baseURL)
+	c.middlewares = append(c.middlewares, linkInjector)
 }
 
 // GenerateReport is the main entry point for generation of a component readiness report.
