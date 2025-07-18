@@ -243,9 +243,9 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 	querySQL := fmt.Sprintf(
 		`%s
 		JOIN %s.%s.%s j
-		  ON STRPOS(t.summary, j.name) > 0
-		  OR STRPOS(t.description, j.name) > 0
-		  OR STRPOS(t.comment, j.name ) > 0
+		  ON STRPOS(REGEXP_REPLACE(t.summary, r'\s+', ''), REGEXP_REPLACE(j.name, r'\s+', '')) > 0
+		  OR STRPOS(REGEXP_REPLACE(t.description, r'\s+', ''), REGEXP_REPLACE(j.name, r'\s+', '')) > 0
+		  OR STRPOS(REGEXP_REPLACE(t.comment, r'\s+', ''), REGEXP_REPLACE(j.name, r'\s+', '')) > 0
         WHERE j.name != "upgrade"`,
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
 	log.Debug(querySQL)
