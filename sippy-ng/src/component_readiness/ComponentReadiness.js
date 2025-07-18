@@ -212,18 +212,9 @@ export default function ComponentReadiness(props) {
 
   const varsContext = useContext(CompReadyVarsContext)
 
-  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
-  const [testNameParam, setTestNameParam] = useQueryParam('testName', String)
-  const [testBasisReleaseParam, setTestBasisReleaseParam] = useQueryParam(
-    'testBasisRelease',
-    String
-  )
-
-  const [testId, setTestId] = React.useState(testIdParam)
-  const [testName, setTestName] = React.useState(testNameParam)
-  const [testBasisRelease, setTestBasisRelease] = React.useState(
-    testBasisReleaseParam
-  )
+  const [testId] = useQueryParam('testId', StringParam)
+  const [testName] = useQueryParam('testName', StringParam)
+  const [testBasisRelease] = useQueryParam('testBasisRelease', StringParam)
 
   const { path, url } = useRouteMatch()
 
@@ -425,9 +416,6 @@ export default function ComponentReadiness(props) {
                   const filterVals = getUpdatedUrlParts(varsContext)
                   varsContext.setComponentParam(varsContext.component)
                   varsContext.setCapabilityParam(varsContext.capability)
-                  setTestIdParam(testId)
-                  setTestNameParam(testName)
-                  setTestBasisReleaseParam(testBasisRelease)
                   varsContext.setEnvironmentParam(varsContext.environment)
                   return (
                     <TestDetailsReport
@@ -450,7 +438,6 @@ export default function ComponentReadiness(props) {
                   const filterVals = getUpdatedUrlParts(varsContext)
                   varsContext.setComponentParam(varsContext.component)
                   varsContext.setCapabilityParam(varsContext.capability)
-                  setTestIdParam(testId)
                   return (
                     <CompReadyEnvCapabilityTest
                       key="capabilitytest"
@@ -470,7 +457,6 @@ export default function ComponentReadiness(props) {
                   varsContext.setComponentParam(varsContext.component)
                   varsContext.setCapabilityParam(varsContext.capability)
                   varsContext.setEnvironmentParam(varsContext.environment)
-                  setTestIdParam(testId)
                   return (
                     <CompReadyEnvCapabilityTest
                       key="capabilitytest"
