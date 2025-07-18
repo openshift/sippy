@@ -35,6 +35,7 @@ var importantVariants = []string{
 	"SecurityMode",
 	"Installer",
 	"JobTier",
+	"Procedure",
 }
 
 const (
