@@ -1,8 +1,8 @@
 package main
 
 import (
-	"crypto/rand"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/pkg/errors"
@@ -39,7 +39,7 @@ func NewSeedDataFlags() *SeedDataFlags {
 			"[sig-cluster-lifecycle] Cluster completes upgrade",
 			"[sig-sippy] upgrade should work",
 			"[sig-sippy] openshift-tests should work",
-		},              // Default test names
+		},
 		RunsPerJob: 20, // Default runs per job
 	}
 }
@@ -249,6 +249,7 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 			for _, test := range tests {
 				// Determine test status based on random chance
 				// 5% chance of failure, 10% chance of flake, 85% chance of pass
+				// nolint: gosec
 				randNum := rand.Float64()
 				var status int
 				if randNum < 0.05 {
