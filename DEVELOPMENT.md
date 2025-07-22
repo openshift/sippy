@@ -64,7 +64,6 @@ available [here](config/README.md).
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
   --config ./config/openshift.yaml \
-  --load-openshift-ci-bigquery \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json
 ```
 
@@ -83,7 +82,6 @@ or [configure GitHub in your gitconfig](https://stackoverflow.com/questions/8505
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --mode=ocp \
   --config ./config/openshift.yaml \
-  --load-openshift-ci-bigquery \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json
 ```
 
@@ -102,7 +100,6 @@ releases and architectures like this:
   --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
   --google-service-account-credential-file ~/Downloads/openshift-ci-data-analysis-1b68cb387203.json \
   --mode=ocp \
-  --load-openshift-ci-bigquery \
   --config ./config/openshift.yaml
 ```
 
@@ -161,6 +158,20 @@ In development, you can start a Redis cache using Podman or Docker:
 
 ```
 podman run --name sippy-redis -p 6379:6379 -d redis
+```
+
+## Regressions and Triage
+In order to develop Triage functionality, it is necessary to track regressions.
+The `load` command can be used for this purpose:
+```bash
+sippy load \
+  --loader component-readiness-cache \
+  --loader regression-tracker \
+  --views ./config/views.yaml \
+  --database-dsn="postgresql://postgres:password@localhost:5432/postgres" \
+  --redis-url "redis://localhost:6379" \
+  --config ./config/openshift.yaml \
+  --google-service-account-credential-file ~/google-service-account-credential-file.json
 ```
 
 ## Run Sippy comment processing

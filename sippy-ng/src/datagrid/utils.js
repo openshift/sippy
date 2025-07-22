@@ -40,7 +40,7 @@ export function generateClasses(threshold, invert = false) {
     theme.palette.success.light,
   ]
   if (invert) {
-    let scaleColors = [
+    scaleColors = [
       theme.palette.success.light,
       theme.palette.warning.light,
       theme.palette.error.light,

@@ -189,25 +189,30 @@ type RegressionTracker struct {
 	views                      []crview.View
 	logger                     log.FieldLogger
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
+	errors                     []error
 }
 
-// Run iterates all views with regression tracking enabled and syncs the results of its
-// component report to the regression tables.
-func (rt *RegressionTracker) Run(ctx context.Context) error {
+func (rt *RegressionTracker) Name() string {
+	return "regression-tracker"
+}
 
-	// Run the existing logic
-	var err error
+// Load iterates all views with regression tracking enabled and syncs the results of its
+// component report to the regression tables.
+func (rt *RegressionTracker) Load() {
 	for _, view := range rt.views {
 		if view.RegressionTracking.Enabled {
-			err = rt.SyncRegressionsForView(ctx, view)
+			err := rt.SyncRegressionsForView(context.Background(), view)
 			if err != nil {
 				log.WithError(err).WithField("view", view.Name).Error("error refreshing regressions for view")
+				rt.errors = append(rt.errors, err)
 				// keep processing other views
 			}
 		}
 	}
-	return err // return last error
+}
 
+func (rt *RegressionTracker) Errors() []error {
+	return rt.errors
 }
 
 func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view crview.View) error {

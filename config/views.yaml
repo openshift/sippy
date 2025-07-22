@@ -105,9 +105,11 @@ component_readiness:
           - amd64
         FeatureSet:
           - default
+          - techpreview
         Installer:
           - ipi
           - upi
+          - hypershift
         JobTier:
           - blocking
           - informing
@@ -115,14 +117,22 @@ component_readiness:
         LayeredProduct:
           - none
           - virt
+        Network:
+          - ovn
         Owner:
           - eng
+          - service-delivery
         Platform:
           - aws
           - azure
           - gcp
+          - metal
+          - rosa
+          - vsphere
         Topology:
           - ha
+          - microshift
+          - external
         CGroupMode:
           - v2
         ContainerRuntime:

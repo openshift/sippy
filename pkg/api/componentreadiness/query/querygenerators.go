@@ -323,8 +323,8 @@ func BuildComponentReportQuery(
 								SELECT MAX(created_at)
 								FROM %s.component_mapping))
 					SELECT
-						ANY_VALUE(test_name) AS test_name,
-						ANY_VALUE(testsuite) AS test_suite,
+						ANY_VALUE(test_name HAVING MAX prowjob_start) AS test_name,
+						ANY_VALUE(testsuite HAVING MAX prowjob_start) AS test_suite,
 						cm.id as test_id,
 						%s
 						COUNT(cm.id) AS total_count,

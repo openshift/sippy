@@ -9,6 +9,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/api"
+	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/dataloader/crcacheloader"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -39,8 +42,7 @@ import (
 )
 
 type LoadFlags struct {
-	LoadOpenShiftCIBigQuery bool
-	Loaders                 []string
+	Loaders []string
 
 	InitDatabase bool
 
@@ -82,7 +84,6 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.ComponentReadinessFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
-	fs.BoolVar(&f.LoadOpenShiftCIBigQuery, "load-openshift-ci-bigquery", false, "Load ProwJobs from OpenShift CI BigQuery")
 	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates"}, "Which data sources to use for data loading")
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
@@ -143,7 +144,7 @@ func NewLoadCommand() *cobra.Command {
 			for _, l := range f.Loaders {
 				if l == "component-readiness-cache" {
 					if bigqueryErr != nil {
-						return errors.Wrap(err, "CRITICAL error getting BigQuery client which prevents regression tracking")
+						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents cache loading")
 					}
 					if dbErr != nil {
 						return dbErr
@@ -253,6 +254,36 @@ func NewLoadCommand() *cobra.Command {
 					fgLoader := featuregateloader.New(dbc)
 					loaders = append(loaders, fgLoader)
 				}
+
+				if l == "regression-tracker" {
+					if bigqueryErr != nil {
+						return errors.Wrap(bigqueryErr, "CRITICAL error getting BigQuery client which prevents regression tracking")
+					}
+					if dbErr != nil {
+						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents regression tracking")
+					}
+					cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
+
+					views, err := f.ComponentReadinessFlags.ParseViewsFile()
+					if err != nil {
+						return errors.Wrap(err, "error parsing views file")
+					}
+					if len(views.ComponentReadiness) == 0 {
+						return fmt.Errorf("no component readiness views provided")
+					}
+					releases, err := api.GetReleases(context.TODO(), bqc)
+					if err != nil {
+						log.WithError(err).Fatal("error querying releases")
+					}
+
+					regressionTracker := componentreadiness.NewRegressionTracker(
+						bqc, dbc, cacheOpts, releases,
+						componentreadiness.NewPostgresRegressionStore(dbc),
+						views.ComponentReadiness,
+						config.ComponentReadinessConfig.VariantJunitTableOverrides,
+						false)
+					loaders = append(loaders, regressionTracker)
+				}
 			}
 
 			// Run loaders with the metrics wrapper
@@ -333,13 +364,10 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		return nil, err
 	}
 
-	var bigQueryClient *bqcachedclient.Client
-	if f.LoadOpenShiftCIBigQuery {
-		bigQueryClient, err = bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, nil)
-		if err != nil {
-			log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
-			return nil, err
-		}
+	bigQueryClient, err := bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, nil)
+	if err != nil {
+		log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
+		return nil, err
 	}
 
 	var githubClient *github.Client
