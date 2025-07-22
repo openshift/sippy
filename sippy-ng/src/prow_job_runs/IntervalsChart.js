@@ -36,6 +36,7 @@ const sourceOrder = [
   'OperatorDegraded',
   'NodeState',
   'Disruption',
+  'CertificateRotation',
   'KubeletLog',
   'EtcdLog',
   'EtcdLeadership',
@@ -178,6 +179,34 @@ const intervalColorizers = {
         return ['ContainerReadinessErrored', '#d0312d']
       case 'StartupProbeFailed':
         return ['StartupProbeFailed', '#c90076']
+    }
+  },
+  CertificateRotation: function (interval) {
+    switch (interval.message.reason) {
+      case 'CertificateUpdated':
+        return ['CertificateUpdated', '#96cbff']
+      case 'CertificateRemoved':
+        return ['CertificateRemoved', '#1e7bd9']
+      case 'CertificateUpdateFailed':
+        return ['CertificateUpdateFailed', '#fada5e']
+      case 'ConfigMapUpdated':
+        return ['ConfigMapUpdated', '#9300ff']
+      case 'SignerUpdateRequired':
+        return ['SignerUpdateRequired', '#ca8dfd']
+      case 'CABundleUpdateRequired':
+        return ['CABundleUpdateRequired', '#3cb043']
+      case 'NoValidCertificateFound':
+        return ['NoValidCertificateFound', '#d0312d']
+      case 'TargetUpdateRequired':
+        return ['TargetUpdateRequired', '#6E6E6E']
+      case 'CSRCreated':
+        return ['CSRCreated', '#ffa500']
+      case 'CSRApproved':
+        return ['CSRApproved', '#000000']
+      case 'CertificateRotationStarted':
+        return ['CertificateRotationStarted', '#6aaef2']
+      case 'ClientCertificateCreated':
+        return ['ClientCertificateCreated', '#96cbff']
     }
   },
 }
