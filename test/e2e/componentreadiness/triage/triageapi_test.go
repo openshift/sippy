@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/test/e2e/util"
@@ -111,7 +113,7 @@ func Test_TriageAPI(t *testing.T) {
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		// ensure hateoas links are present
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
+		assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triageResponse.ID),
 			triageResponse.Links["self"])
 	})
 	t.Run("list", func(t *testing.T) {
@@ -134,7 +136,7 @@ func Test_TriageAPI(t *testing.T) {
 
 		// ensure hateoas links are present
 		for _, triage := range allTriages {
-			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
+			assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triage.ID),
 				triage.Links["self"])
 		}
 	})
@@ -152,7 +154,7 @@ func Test_TriageAPI(t *testing.T) {
 		assert.NotEqual(t, triageResponse.UpdatedAt, triageResponse2.UpdatedAt)
 
 		// ensure hateoas links are present
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse2.ID),
+		assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triageResponse2.ID),
 			triageResponse2.Links["self"])
 	})
 	t.Run("update to remove a regression", func(t *testing.T) {
@@ -302,7 +304,7 @@ func Test_RegressionAPI(t *testing.T) {
 			}
 		}
 		require.NotNil(t, foundRegression, "expected regression was not found in release filtered list")
-		assert.Equal(t, view.SampleRelease.Release, foundRegression.Release)
+		assert.Equal(t, view.SampleRelease.Release.Name, foundRegression.Release)
 	})
 	t.Run("error when both view and release are specified", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
@@ -515,6 +517,11 @@ func Test_TriageRawDB(t *testing.T) {
 
 func createTestRegression(t *testing.T, tracker componentreadiness.RegressionStore, view crview.View, testID string) *models.TestRegression {
 	newRegression := componentreport.ReportTestSummary{
+		TestComparison: testdetails.TestComparison{
+			BaseStats: &testdetails.ReleaseStats{
+				Release: "4.18",
+			},
+		},
 		Identification: crtest.Identification{
 			RowIdentification: crtest.RowIdentification{
 				Component:  "comp",
