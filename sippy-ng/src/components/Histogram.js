@@ -1,7 +1,7 @@
 import { Bar } from 'react-chartjs-2'
 import { Chart } from 'chart.js'
 import { pathForJobsInPercentile } from '../helpers'
-import { useHistory } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTheme } from '@mui/material/styles'
 import annotationPlugin from 'chartjs-plugin-annotation'
 import chroma from 'chroma-js'
@@ -12,11 +12,11 @@ Chart.register(annotationPlugin)
 
 export default function Histogram(props) {
   const theme = useTheme()
-  const history = useHistory()
+  const navigate = useNavigate()
 
   const handleClick = (e) => {
     let percentile = e[0].index * 10
-    history.push(
+    navigate(
       pathForJobsInPercentile(props.release, percentile, percentile + 10)
     )
   }
