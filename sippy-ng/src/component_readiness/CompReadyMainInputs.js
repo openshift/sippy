@@ -5,7 +5,6 @@ import {
   formatLongDate,
   getUpdatedUrlParts,
 } from './CompReadyUtils'
-import { Fragment } from 'react'
 import { makeStyles, useTheme } from '@mui/styles'
 import { useNavigate } from 'react-router-dom'
 import AdvancedOptions from './AdvancedOptions'
@@ -13,7 +12,7 @@ import Button from '@mui/material/Button'
 import GroupByCheckboxList from './GroupByCheckboxList'
 import IncludeVariantCheckBoxList from './IncludeVariantCheckboxList'
 import PropTypes from 'prop-types'
-import React, { useContext } from 'react'
+import React, { Fragment, useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
 import Tooltip from '@mui/material/Tooltip'
 import ViewPicker from './ViewPicker'
@@ -150,13 +149,18 @@ export default function CompReadyMainInputs(props) {
           size="large"
           variant="contained"
           color="primary"
-          to={'/component_readiness/main' + getUpdatedUrlParts(varsContext)}
-          onClick={varsContext.handleGenerateReport}
+          onClick={(event) => {
+            varsContext.handleGenerateReport(event, () => {
+              navigate(
+                '/component_readiness/main' + getUpdatedUrlParts(varsContext)
+              )
+            })
+          }}
         >
           <Tooltip
             title={
               'Click here to generate a custom report that compares the release you wish to evaluate\
-                                                     against a historical (previous) release using all the specific parameters specified'
+                                                                   against a historical (previous) release using all the specific parameters specified'
             }
           >
             <Fragment>Generate Report</Fragment>

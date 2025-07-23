@@ -388,6 +388,30 @@ export default function ComponentReadiness(props) {
     fetchData(true)
   }
 
+  // Helper function to get only report-related parameters (excluding UI state params)
+  const getReportParams = () => {
+    const params = new URLSearchParams(location.search)
+    const uiOnlyParams = [
+      'regressedModal',
+      'regressedModalTab',
+      'regressedModalRow',
+      'regressedModalPage',
+      'regressedModalTestRow',
+      'regressedModalTestPage',
+      'searchComponent',
+      'searchColumn',
+      'searchRow',
+      'redOnly',
+    ]
+
+    // Remove UI-only parameters
+    uiOnlyParams.forEach((param) => params.delete(param))
+
+    return params.toString()
+  }
+
+  const reportParams = getReportParams()
+
   useEffect(() => {
     setIsLoaded(false)
     if (
@@ -399,7 +423,7 @@ export default function ComponentReadiness(props) {
       setIsLoaded(true)
     }
     setTriageActionTaken(false)
-  }, [triageActionTaken, location.pathname])
+  }, [triageActionTaken, location.pathname, reportParams])
 
   if (!isLoaded) {
     return (
