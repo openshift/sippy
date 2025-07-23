@@ -7,7 +7,7 @@ import {
 } from './CompReadyUtils'
 import { Fragment } from 'react'
 import { makeStyles, useTheme } from '@mui/styles'
-import { useNavigate } from 'react-router-dom'
+import { useHistory } from 'react-router-dom'
 import AdvancedOptions from './AdvancedOptions'
 import Button from '@mui/material/Button'
 import GroupByCheckboxList from './GroupByCheckboxList'
@@ -50,7 +50,7 @@ export default function CompReadyMainInputs(props) {
   ])
 
   const varsContext = useContext(CompReadyVarsContext)
-  const navigate = useNavigate()
+  const history = useHistory()
   const compReadyEnvOptions = (
     <div>
       <GroupByCheckboxList

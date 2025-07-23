@@ -1,6 +1,6 @@
 import './Upgrades.css'
 import { Grid, Typography } from '@mui/material'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -11,8 +11,7 @@ import TestByVariantTable from '../tests/TestByVariantTable'
  *  Upgrades is the landing page for upgrades.
  */
 export default function Upgrades(props) {
-  const location = useLocation()
-  const basePath = `/upgrade/${props.release}`
+  const { path, url } = useRouteMatch()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -60,24 +59,23 @@ export default function Upgrades(props) {
           Upgrade health for {props.release}
         </Typography>
       </Grid>
-      <Fragment>
-        <Routes>
-          <Route
-            path="operators"
-            element={
-              <TestByVariantTable
-                release={props.release}
-                colorScale={[90, 100]}
-                data={data}
-              />
-            }
-          />
-          <Route
-            path="/"
-            element={<Navigate to={basePath + '/operators'} replace />}
-          />
-        </Routes>
-      </Fragment>
+      <Route
+        path="/"
+        render={({ location }) => (
+          <Fragment>
+            <Switch>
+              <Route path={path + '/operators'}>
+                <TestByVariantTable
+                  release={props.release}
+                  colorScale={[90, 100]}
+                  data={data}
+                />
+              </Route>
+              <Redirect from="/" to={url + '/operators'} />
+            </Switch>
+          </Fragment>
+        )}
+      />
     </Fragment>
   )
 }

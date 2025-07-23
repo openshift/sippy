@@ -38,14 +38,11 @@ function getDefaultIncludeMultiReleaseAnalysis() {
 // Use of booleans in URL params does not seem to parse properly as a BooleanParam.
 // Use this custom param parser instead.
 const CustomBooleanParam = {
-  encode: (value) => {
-    if (value === null || value === undefined) return undefined
-    return String(value)
-  },
+  encode: (value) => String(value),
   decode: (value) => {
     if (value === 'true' || value === '1' || value === '') return true
     if (value === 'false' || value === '0') return false
-    return undefined
+    return null
   },
 }
 

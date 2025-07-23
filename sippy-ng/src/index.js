@@ -7,7 +7,7 @@ import ReactDOM from 'react-dom'
 
 ReactDOM.render(
   <React.StrictMode>
-    <Router basename="/sippy-ng">
+    <Router basename="/sippy-ng/">
       <QueryParamProvider options={{ enableBatching: true }}>
         <App />
       </QueryParamProvider>
