@@ -5,7 +5,7 @@ import React, { useEffect } from 'react'
 
 import './JobAnalysis.css'
 import { safeEncodeURIComponent } from '../helpers'
-import { useNavigate } from 'react-router-dom'
+import { useHistory } from 'react-router-dom'
 
 export const dayFilter = (days, startDate) => {
   return [
@@ -33,7 +33,7 @@ export const hourFilter = (dayOffset, startDate) => {
 }
 
 export function JobStackedChart(props) {
-  const navigate = useNavigate()
+  const history = useHistory()
 
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({})
@@ -132,7 +132,7 @@ export function JobStackedChart(props) {
   }
 
   const handleClick = (e) => {
-    navigate(
+    history.push(
       `/jobs/${
         props.release
       }/analysis?period=day&filters=${safeEncodeURIComponent(

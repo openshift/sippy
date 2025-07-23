@@ -19,7 +19,7 @@ import {
 import { escapeRegex } from '../helpers'
 import { makeStyles } from '@mui/styles'
 import { stringify } from 'query-string'
-import { useNavigate } from 'react-router-dom'
+import { useHistory } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
@@ -212,7 +212,7 @@ const intervalColorizers = {
 }
 
 export default function IntervalsChart(props) {
-  const navigate = useNavigate()
+  const history = useHistory()
   const classes = useStyles()
 
   const [fetchError, setFetchError] = React.useState('')
@@ -415,7 +415,9 @@ export default function IntervalsChart(props) {
       }
     )
 
-    navigate('?' + stringify(queryString), { replace: true })
+    history.replace({
+      search: stringify(queryString),
+    })
 
     let filteredResult = filterIntervals(
       eventIntervals,

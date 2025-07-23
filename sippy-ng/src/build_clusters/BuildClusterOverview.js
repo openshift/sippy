@@ -1,7 +1,7 @@
 import { Card, Container, Tooltip, Typography } from '@mui/material'
 import { makeStyles } from '@mui/styles'
 import { React } from 'react'
-
+import { useRouteMatch } from 'react-router-dom'
 import BuildClusterHealthChart from './BuildClusterHealthChart'
 import BuildClusterTable from './BuildClusterTable'
 import Grid from '@mui/material/Grid'
@@ -23,6 +23,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function BuildClusterOverview(props) {
   const classes = useStyles()
+  const { path, url } = useRouteMatch()
 
   return (
     <Container size="xl">

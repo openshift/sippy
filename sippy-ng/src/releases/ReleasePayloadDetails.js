@@ -10,7 +10,7 @@ import {
 } from '@mui/material'
 import { filterFor, safeEncodeURIComponent } from '../helpers'
 import { Fragment } from 'react'
-import { Link, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { WarningOutlined } from '@mui/icons-material'
@@ -34,8 +34,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function ReleasePayloadDetails(props) {
   const classes = useStyles()
-  const location = useLocation()
-  const basePath = `/release/${props.release}/tags/${props.releaseTag}`
+  const { path, url } = useRouteMatch()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -143,19 +142,19 @@ export default function ReleasePayloadDetails(props) {
                 label="Job runs"
                 value={releaseTag}
                 component={Link}
-                to={basePath}
+                to={url}
               />
               <Tab
                 label="Test Failures"
                 value="failures"
                 component={Link}
-                to={basePath + '/testfailures'}
+                to={url + '/testfailures'}
               />
               <Tab
                 label="Pull requests"
                 value="pull_requests"
                 component={Link}
-                to={basePath + '/pull_requests'}
+                to={url + '/pull_requests'}
               />
               <Tab
                 label="Release controller"
@@ -171,51 +170,42 @@ export default function ReleasePayloadDetails(props) {
         <Card elevation={5} style={{ margin: 20 }}>
           {statusAlert}
         </Card>
-        <Routes>
-          <Route
-            path="pull_requests"
-            element={
-              <Card
-                elevation={5}
-                style={{ margin: 20, padding: 20, height: '100%' }}
-              >
-                <ReleasePayloadPullRequests
-                  filterModel={{
-                    items: [filterFor('release_tag', 'equals', releaseTag)],
-                  }}
-                />
-              </Card>
-            }
-          />
+        <Switch>
+          <Route path={path + '/pull_requests'}>
+            <Card
+              elevation={5}
+              style={{ margin: 20, padding: 20, height: '100%' }}
+            >
+              <ReleasePayloadPullRequests
+                filterModel={{
+                  items: [filterFor('release_tag', 'equals', releaseTag)],
+                }}
+              />
+            </Card>
+          </Route>
 
-          <Route
-            path="testfailures"
-            element={
-              <Card
-                elevation={5}
-                style={{ margin: 20, padding: 20, height: '100%' }}
-              >
-                <PayloadTestFailures payload={props.releaseTag} />
-              </Card>
-            }
-          />
+          <Route path={path + '/testfailures'}>
+            <Card
+              elevation={5}
+              style={{ margin: 20, padding: 20, height: '100%' }}
+            >
+              <PayloadTestFailures payload={props.releaseTag} />
+            </Card>
+          </Route>
 
-          <Route
-            path="/"
-            element={
-              <Card
-                elevation={5}
-                style={{ margin: 20, padding: 20, height: '100%' }}
-              >
-                <ReleasePayloadJobRuns
-                  filterModel={{
-                    items: [filterFor('release_tag', 'equals', releaseTag)],
-                  }}
-                />
-              </Card>
-            }
-          />
-        </Routes>
+          <Route path={path + '/'}>
+            <Card
+              elevation={5}
+              style={{ margin: 20, padding: 20, height: '100%' }}
+            >
+              <ReleasePayloadJobRuns
+                filterModel={{
+                  items: [filterFor('release_tag', 'equals', releaseTag)],
+                }}
+              />
+            </Card>
+          </Route>
+        </Switch>
       </Container>
     </Fragment>
   )

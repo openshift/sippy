@@ -2,7 +2,7 @@ import FullCalendar from '@fullcalendar/react'
 
 import { Alert, Grid } from '@mui/material'
 import { filterFor } from '../helpers'
-import { useNavigate } from 'react-router-dom'
+import { useHistory } from 'react-router-dom'
 import { useTheme } from '@mui/material/styles'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import PayloadCalendarLegend from './PayloadCalendarLegend'
@@ -11,7 +11,7 @@ import React, { Fragment, useState } from 'react'
 
 export default function PayloadCalendar(props) {
   const theme = useTheme()
-  const navigate = useNavigate()
+  const history = useHistory()
 
   const [acceptedFound, setAcceptedFound] = useState(true)
 
@@ -96,7 +96,7 @@ export default function PayloadCalendar(props) {
         '_blank'
       )
     } else {
-      navigate(`/release/${props.release}/tags/${info.event.title}`)
+      history.push(`/release/${props.release}/tags/${info.event.title}`)
     }
   }
 

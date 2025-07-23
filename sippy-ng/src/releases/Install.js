@@ -1,6 +1,6 @@
 import './Install.css'
 import { Grid, Typography } from '@mui/material'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -9,8 +9,7 @@ import TestByVariantTable from '../tests/TestByVariantTable'
 import TopLevelIndicators from './InstallTopLevelIndicators'
 
 export default function Install(props) {
-  const location = useLocation()
-  const basePath = `/install/${props.release}`
+  const { path, url } = useRouteMatch()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -72,38 +71,37 @@ export default function Install(props) {
           Install health for {props.release}
         </Typography>
       </Grid>
-      <Fragment>
-        <Grid container justifyContent="center" spacing={3}>
-          <TopLevelIndicators
-            release={props.release}
-            indicators={health.indicators}
-          />
-        </Grid>
+      <Route
+        path="/"
+        render={({ location }) => (
+          <Fragment>
+            <Grid container justifyContent="center" spacing={3}>
+              <TopLevelIndicators
+                release={props.release}
+                indicators={health.indicators}
+              />
+            </Grid>
 
-        <Grid>
-          <Routes>
-            <Route
-              path="operators"
-              element={
-                <TestByVariantTable
-                  release={props.release}
-                  colorScale={[90, 100]}
-                  data={data}
-                  excludedVariants={[
-                    'upgrade-minor',
-                    'aggregated',
-                    'never-stable',
-                  ]}
-                />
-              }
-            />
-            <Route
-              path="/"
-              element={<Navigate to={basePath + '/operators'} replace />}
-            />
-          </Routes>
-        </Grid>
-      </Fragment>
+            <Grid>
+              <Switch>
+                <Route path={path + '/operators'}>
+                  <TestByVariantTable
+                    release={props.release}
+                    colorScale={[90, 100]}
+                    data={data}
+                    excludedVariants={[
+                      'upgrade-minor',
+                      'aggregated',
+                      'never-stable',
+                    ]}
+                  />
+                </Route>
+                <Redirect from="/" to={url + '/operators'} />
+              </Switch>
+            </Grid>
+          </Fragment>
+        )}
+      />
     </Fragment>
   )
 }

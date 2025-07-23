@@ -1,6 +1,6 @@
 import { Container, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useHistory } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import {
   pathForTestSubstringByVariant,
@@ -17,7 +17,7 @@ import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
  * Feature gates is the landing page for feature gates.
  */
 export default function FeatureGates(props) {
-  const navigate = useNavigate()
+  const history = useHistory()
 
   const { classes } = props
   const [fetchError, setFetchError] = React.useState('')
@@ -309,7 +309,7 @@ export default function FeatureGates(props) {
 
   const onRowClick = (params) => {
     console.log('clicked')
-    navigate(linkForFGTests(params))
+    history.push(linkForFGTests(params))
   }
 
   useEffect(() => {

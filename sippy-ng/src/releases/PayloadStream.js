@@ -1,6 +1,6 @@
 import { filterFor } from '../helpers'
 import { Grid, Paper, Tab, Tabs, Typography } from '@mui/material'
-import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Redirect, Route, Switch, useRouteMatch } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { StringParam, useQueryParam } from 'use-query-params'
 import { TabContext } from '@mui/lab'
@@ -24,8 +24,7 @@ const useStyles = makeStyles((theme) => ({
 
 export default function PayloadStream(props) {
   const classes = useStyles()
-  const location = useLocation()
-  const basePath = `/release/${props.release}/streams/${props.arch}/${props.stream}`
+  const { path, url } = useRouteMatch()
 
   const [currentTab, setCurrentTab] = useState(0)
   function handleTabChange(event, newValue) {
@@ -61,102 +60,96 @@ export default function PayloadStream(props) {
         }
         currentPage={currPage}
       />
-      <TabContext value={location.pathname}>
-        <Fragment>
-          <Typography variant="h4" gutterBottom className={classes.title}>
-            {arch} {stream} {props.release} Payload Stream
-          </Typography>
+      <Route
+        path="/"
+        render={({ location }) => (
+          <TabContext value={path}>
+            <Fragment>
+              <Typography variant="h4" gutterBottom className={classes.title}>
+                {arch} {stream} {props.release} Payload Stream
+              </Typography>
 
-          <Grid
-            container
-            justifyContent="center"
-            width="100%"
-            style={{ margin: 20 }}
-          >
-            <Paper>
-              <Tabs
-                value={location.pathname.substring(
-                  location.pathname.lastIndexOf('/') + 1
-                )}
-                indicatorColor="primary"
-                textColor="primary"
+              <Grid
+                container
+                justifyContent="center"
+                width="100%"
+                style={{ margin: 20 }}
               >
-                <Tab
-                  label="Overview"
-                  value="overview"
-                  component={Link}
-                  to={basePath + '/overview'}
-                />
-                <Tab
-                  label="Calendar"
-                  value="calendar"
-                  component={Link}
-                  to={basePath + '/calendar'}
-                />
-                <Tab
-                  label="Payloads"
-                  value="payloads"
-                  component={Link}
-                  to={basePath + '/payloads'}
-                />
-                <Tab
-                  label="Test Failures"
-                  value="testfailures"
-                  component={Link}
-                  to={basePath + '/testfailures'}
-                />
-              </Tabs>
-            </Paper>
-          </Grid>
-          <Routes>
-            <Route
-              path="overview"
-              element={
-                <PayloadStreamOverview
-                  release={props.release}
-                  stream={props.stream}
-                  arch={props.arch}
-                />
-              }
-            />
-            <Route
-              path="calendar"
-              element={
-                <PayloadCalendar
-                  release={props.release}
-                  arch={props.arch}
-                  stream={props.stream}
-                />
-              }
-            />
-            <Route
-              path="testfailures"
-              element={
-                <PayloadStreamTestFailures
-                  release={props.release}
-                  stream={props.stream}
-                  arch={props.arch}
-                />
-              }
-            />
-            <Route
-              path="payloads"
-              element={
-                <Typography variant="h4" gutterBottom className={classes.title}>
-                  <ReleasePayloadTable
+                <Paper>
+                  <Tabs
+                    value={location.pathname.substring(
+                      location.pathname.lastIndexOf('/') + 1
+                    )}
+                    indicatorColor="primary"
+                    textColor="primary"
+                  >
+                    <Tab
+                      label="Overview"
+                      value="overview"
+                      component={Link}
+                      to={url + '/overview'}
+                    />
+                    <Tab
+                      label="Calendar"
+                      value="calendar"
+                      component={Link}
+                      to={url + '/calendar'}
+                    />
+                    <Tab
+                      label="Payloads"
+                      value="payloads"
+                      component={Link}
+                      to={url + '/payloads'}
+                    />
+                    <Tab
+                      label="Test Failures"
+                      value="testfailures"
+                      component={Link}
+                      to={url + '/testfailures'}
+                    />
+                  </Tabs>
+                </Paper>
+              </Grid>
+              <Switch>
+                <Route path={path + '/overview'}>
+                  <PayloadStreamOverview
                     release={props.release}
-                    filterModel={payloadsFilterModel}
+                    stream={props.stream}
+                    arch={props.arch}
                   />
-                </Typography>
-              }
-            />
-            <Route
-              path="/"
-              element={<Navigate to={basePath + '/overview'} replace />}
-            />
-          </Routes>
-        </Fragment>
-      </TabContext>
+                </Route>
+                <Route path={path + '/calendar'}>
+                  <PayloadCalendar
+                    release={props.release}
+                    arch={props.arch}
+                    stream={props.stream}
+                  />
+                </Route>
+                <Route path={path + '/testfailures'}>
+                  <PayloadStreamTestFailures
+                    release={props.release}
+                    stream={props.stream}
+                    arch={props.arch}
+                  />
+                </Route>
+                <Route path={path + '/payloads'}>
+                  <Typography
+                    variant="h4"
+                    gutterBottom
+                    className={classes.title}
+                  >
+                    <ReleasePayloadTable
+                      release={props.release}
+                      filterModel={payloadsFilterModel}
+                    />
+                  </Typography>
+                </Route>
+                <Redirect from="/" to={url + '/overview'} />
+              </Switch>
+            </Fragment>
+          </TabContext>
+        )}
+      />
     </Fragment>
   )
 }
