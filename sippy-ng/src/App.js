@@ -20,10 +20,10 @@ import {
 } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { makeStyles, styled } from '@mui/styles'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
-import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5'
-import { Redirect, Route, Switch } from 'react-router-dom'
+import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
 import AccessibilityToggle from './components/AccessibilityToggle'
@@ -160,6 +160,363 @@ const themes = {
 }
 
 // Default theme, restore settings from v4 color schemes. v5 is much darker.
+
+/**
+ * Wrapper components for React Router v6+ upgrade
+ *
+ * These wrapper components are needed because React Router v6 changed how route props work:
+ * - In v5: Route components received props like `match.params` automatically
+ * - In v6: Route components must use `useParams()` hook to access URL parameters
+ *
+ * These wrappers are using useParams() hook and pass them as props to the original components
+ *
+ * This approach allows us to upgrade to React Router v6 while keeping the original component
+ * interfaces unchanged, minimizing code changes throughout the application.
+ */
+const ReleasePayloadDetailsWrapper = () => {
+  const { release, tag } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return (
+    <ReleasePayloadDetails
+      key={'release-details-' + release}
+      release={release}
+      releaseTag={tag}
+    />
+  )
+}
+
+const PayloadStreamWrapper = () => {
+  const { release, arch, stream } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <PayloadStream release={release} arch={arch} stream={stream} />
+}
+
+const PayloadStreamsWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <PayloadStreams key={'release-streams-' + release} release={release} />
+}
+
+const ReleasePayloadsWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <ReleasePayloads key={'release-tags-' + release} release={release} />
+}
+
+const ReleaseOverviewWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return (
+    <ReleaseOverview key={'release-overview-' + release} release={release} />
+  )
+}
+
+const VariantStatusWrapper = () => {
+  const { release, variant } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <VariantStatus release={release} variant={variant} />
+}
+
+const JobAnalysisWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <JobAnalysis release={release} />
+}
+
+const JobsWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return (
+    <Jobs
+      key={'jobs-' + release}
+      title={'Job results for ' + release}
+      release={release}
+    />
+  )
+}
+
+const FeatureGateRedirectWrapper = () => {
+  const { release, feature_gate } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return (
+    <Navigate
+      to={pathForTestSubstringByVariant(release, 'FeatureGate:' + feature_gate)}
+      replace
+    />
+  )
+}
+
+const FeatureGatesWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <FeatureGates key={'jobs-' + release} release={release} />
+}
+
+const TestAnalysisWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <TestAnalysis release={release} />
+}
+
+const TestsWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <Tests key={'tests-' + release} release={release} />
+}
+
+const TriageWrapper = () => {
+  const { id } = useParams()
+
+  return (
+    <CompReadyVarsProvider>
+      <Triage id={id} />
+    </CompReadyVarsProvider>
+  )
+}
+
+const TriageListWrapper = () => {
+  return (
+    <CompReadyVarsProvider>
+      <TriageList />
+    </CompReadyVarsProvider>
+  )
+}
+
+const UpgradesWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <Upgrades key={'upgrades-' + release} release={release} />
+}
+
+const ComponentReadinessWrapper = () => {
+  return (
+    <CompReadyVarsProvider>
+      <ComponentReadiness
+        key={getUrlWithoutParams([
+          'regressedModal',
+          'regressedModalTab',
+          'regressedModalRow',
+          'regressedModalPage',
+          'regressedModalTestRow',
+          'regressedModalTestPage',
+        ])}
+      />
+    </CompReadyVarsProvider>
+  )
+}
+
+const InstallWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <Install key={'install-' + release} release={release} />
+}
+
+const BuildClusterDetailsWrapper = () => {
+  const { cluster } = useParams()
+
+  return <BuildClusterDetails key={'cluster-' + cluster} cluster={cluster} />
+}
+
+const RepositoryDetailsWrapper = () => {
+  const { release, org, repo } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <RepositoryDetails release={release} org={org} repo={repo} />
+}
+
+const RepositoriesWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <Repositories release={release} />
+}
+
+const PullRequestsWrapper = () => {
+  const { release } = useParams()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    const newPath = window.location.pathname.replace(
+      '/latest',
+      '/' + defaultRelease
+    )
+    return <Navigate to={newPath} replace />
+  }
+
+  return <PullRequests key={'pr-' + release} release={release} />
+}
+
+const IntervalsChartWrapper = () => {
+  const { jobrunid, jobname, repoinfo, pullnumber } = useParams()
+
+  return (
+    <IntervalsChart
+      jobRunID={jobrunid}
+      jobName={jobname}
+      repoInfo={repoinfo}
+      pullNumber={pullnumber}
+    />
+  )
+}
 
 export default function App(props) {
   const classes = useStyles()
@@ -317,19 +674,6 @@ export default function App(props) {
     landingPage = 'No releases found! Have you configured Sippy correctly?'
   }
 
-  /* eslint-disable react/prop-types */
-  const redirectIfLatest = (props, component) => {
-    const { release } = props.match.params
-    if (release === 'latest') {
-      const newPath = props.location.pathname.replace(
-        '/latest',
-        '/' + defaultRelease
-      )
-      return <Redirect to={newPath} />
-    }
-    return component
-  }
-
   const startDate = getReportStartDate(reportDate)
   return (
     <ColorModeContext.Provider value={colorMode}>
@@ -341,8 +685,7 @@ export default function App(props) {
                 <AccessibilityModeProvider>
                   <CssBaseline />
                   <QueryParamProvider
-                    ReactRouterRoute={Route}
-                    adapter={ReactRouter5Adapter}
+                    adapter={ReactRouter6Adapter}
                     options={{
                       searchStringToObject: parse,
                       objectToSearchString: stringify,
@@ -458,334 +801,141 @@ export default function App(props) {
                         <ErrorBoundary
                           fallback={<h2>An unknown error has occurred.</h2>}
                         >
-                          {/* eslint-disable react/prop-types */}
-                          <Switch>
+                          <Routes>
                             <Route
-                              path="/release/:release/tags/:tag"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <ReleasePayloadDetails
-                                    key={
-                                      'release-details-' +
-                                      props.match.params.release
-                                    }
-                                    release={props.match.params.release}
-                                    releaseTag={props.match.params.tag}
-                                  />
-                                )
-                              }
+                              path="/release/:release/tags/:tag/*"
+                              element={<ReleasePayloadDetailsWrapper />}
                             />
 
                             <Route
-                              path="/release/:release/streams/:arch/:stream"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <PayloadStream
-                                    release={props.match.params.release}
-                                    arch={props.match.params.arch}
-                                    stream={props.match.params.stream}
-                                  />
-                                )
-                              }
+                              path="/release/:release/streams/:arch/:stream/*"
+                              element={<PayloadStreamWrapper />}
                             />
 
                             <Route
                               path="/release/:release/streams"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <PayloadStreams
-                                    key={
-                                      'release-streams-' +
-                                      props.match.params.release
-                                    }
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              element={<PayloadStreamsWrapper />}
                             />
 
                             <Route
                               path="/release/:release/tags"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  <ReleasePayloads
-                                    key={
-                                      'release-tags-' +
-                                      props.match.params.release
-                                    }
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              element={<ReleasePayloadsWrapper />}
                             />
 
                             <Route
                               path="/release/:release"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <ReleaseOverview
-                                    key={
-                                      'release-overview-' +
-                                      props.match.params.release
-                                    }
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              element={<ReleaseOverviewWrapper />}
                             />
 
                             <Route
                               path="/variants/:release/:variant"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <VariantStatus
-                                    release={props.match.params.release}
-                                    variant={props.match.params.variant}
-                                  />
-                                )
-                              }
+                              element={<VariantStatusWrapper />}
                             />
 
                             <Route
                               path="/jobs/:release/analysis"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <JobAnalysis
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              element={<JobAnalysisWrapper />}
                             />
 
                             <Route
-                              path="/jobs/:release"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <Jobs
-                                    key={'jobs-' + props.match.params.release}
-                                    title={
-                                      'Job results for ' +
-                                      props.match.params.release
-                                    }
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              path="/jobs/:release/*"
+                              element={<JobsWrapper />}
                             />
 
                             <Route
                               path="/feature_gates/:release/:feature_gate"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <Redirect
-                                    to={pathForTestSubstringByVariant(
-                                      props.match.params.release,
-                                      'FeatureGate:' +
-                                        props.match.params.feature_gate
-                                    )}
-                                  />
-                                )
-                              }
+                              element={<FeatureGateRedirectWrapper />}
                             />
 
                             <Route
                               path="/feature_gates/:release"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <FeatureGates
-                                    key={'jobs-' + props.match.params.release}
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              element={<FeatureGatesWrapper />}
                             />
 
                             <Route
                               path="/tests/:release/analysis"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <TestAnalysis
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              element={<TestAnalysisWrapper />}
                             />
 
                             <Route
-                              path="/tests/:release"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <Tests
-                                    key={'tests-' + props.match.params.release}
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              path="/tests/:release/*"
+                              element={<TestsWrapper />}
                             />
 
                             <Route
                               path="/triages/:id"
-                              render={(props) => (
-                                <CompReadyVarsProvider>
-                                  <Triage id={props.match.params.id} />
-                                </CompReadyVarsProvider>
-                              )}
+                              element={<TriageWrapper />}
                             />
 
                             <Route
                               path="/triages"
-                              render={() => (
-                                <CompReadyVarsProvider>
-                                  <TriageList />
-                                </CompReadyVarsProvider>
-                              )}
+                              element={<TriageListWrapper />}
                             />
 
                             <Route
-                              path="/upgrade/:release"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <Upgrades
-                                    key={
-                                      'upgrades-' + props.match.params.release
-                                    }
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              path="/upgrade/:release/*"
+                              element={<UpgradesWrapper />}
                             />
 
                             <Route
-                              path="/component_readiness"
-                              render={(props) => {
-                                return (
-                                  <CompReadyVarsProvider>
-                                    <ComponentReadiness
-                                      key={getUrlWithoutParams([
-                                        'regressedModal',
-                                        'regressedModalTab',
-                                        'regressedModalRow',
-                                        'regressedModalPage',
-                                        'regressedModalTestRow',
-                                        'regressedModalTestPage',
-                                      ])}
-                                    />
-                                  </CompReadyVarsProvider>
-                                )
-                              }}
+                              path="/component_readiness/*"
+                              element={<ComponentReadinessWrapper />}
                             />
 
                             <Route
-                              path="/install/:release"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <Install
-                                    key={
-                                      'install-' + props.match.params.release
-                                    }
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              path="/install/:release/*"
+                              element={<InstallWrapper />}
                             />
 
                             <Route
                               path="/build_clusters/:cluster"
-                              render={(props) => (
-                                <BuildClusterDetails
-                                  key={'cluster-' + props.match.params.cluster}
-                                  cluster={props.match.params.cluster}
-                                />
-                              )}
+                              element={<BuildClusterDetailsWrapper />}
                             />
 
                             <Route
                               path="/build_clusters"
-                              render={() => <BuildClusterOverview />}
+                              element={<BuildClusterOverview />}
                             />
 
                             <Route
                               path="/repositories/:release/:org/:repo"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <RepositoryDetails
-                                    release={props.match.params.release}
-                                    org={props.match.params.org}
-                                    repo={props.match.params.repo}
-                                  />
-                                )
-                              }
+                              element={<RepositoryDetailsWrapper />}
                             />
 
                             <Route
                               path="/repositories/:release"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <Repositories
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              element={<RepositoriesWrapper />}
                             />
 
                             <Route
                               path="/pull_requests/:release"
-                              render={(props) =>
-                                redirectIfLatest(
-                                  props,
-                                  <PullRequests
-                                    key={'pr-' + props.match.params.release}
-                                    release={props.match.params.release}
-                                  />
-                                )
-                              }
+                              element={<PullRequestsWrapper />}
                             />
 
                             <Route
                               path="/job_runs/:jobrunid/:jobname?/:repoinfo?/:pullnumber?/intervals"
-                              render={(props) => (
-                                <IntervalsChart
-                                  jobRunID={props.match.params.jobrunid}
-                                  jobName={props.match.params.jobname}
-                                  repoInfo={props.match.params.repoinfo}
-                                  pullNumber={props.match.params.pullnumber}
-                                />
-                              )}
+                              element={<IntervalsChartWrapper />}
                             />
 
                             {/* Only show /chat route if REACT_APP_CHAT_API_URL is set */}
                             {process.env.REACT_APP_CHAT_API_URL && (
-                              <Route
-                                path="/chat"
-                                render={() => <ChatAgent />}
-                              />
+                              <Route path="/chat" element={<ChatAgent />} />
                             )}
 
-                            {capabilities.includes('local_db') ? (
-                              <Route path="/">{landingPage}</Route>
-                            ) : (
-                              <Redirect
-                                exact
-                                from="/"
-                                to="/component_readiness/main"
-                              />
-                            )}
-                          </Switch>
+                            <Route
+                              path="/"
+                              element={
+                                capabilities.includes('local_db') ? (
+                                  landingPage
+                                ) : (
+                                  <Navigate
+                                    to="/component_readiness/main"
+                                    replace
+                                  />
+                                )
+                              }
+                            />
+                          </Routes>
                         </ErrorBoundary>
                         {/* eslint-enable react/prop-types */}
                       </Main>
