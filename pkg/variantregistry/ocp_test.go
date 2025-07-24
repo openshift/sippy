@@ -1342,11 +1342,11 @@ func TestVariantSyncer(t *testing.T) {
 				VariantArch:             "amd64",
 				VariantInstaller:        "ipi",
 				VariantPlatform:         "aws",
-				VariantProcedure:        "none", // TODO: we need mpiit to find a way to extract procedure from their job names. may not be needed if we use layered product properly.
+				VariantProcedure:        "none",
 				VariantJobTier:          "candidate",
 				VariantNetwork:          "ovn",
 				VariantNetworkStack:     "ipv4",
-				VariantOwner:            "eng", // TODO: mpiit for now
+				VariantOwner:            "mpiit",
 				VariantSuite:            "unknown",
 				VariantTopology:         "ha",
 				VariantUpgrade:          VariantNoValue,
@@ -1357,7 +1357,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantSecurityMode:     VariantDefaultValue,
 				VariantContainerRuntime: "crun",
 				VariantCGroupMode:       "v2",
-				VariantLayeredProduct:   "virt", // TODO: is this correct for this job?
+				VariantLayeredProduct:   "virt",
 			},
 		},
 	}
