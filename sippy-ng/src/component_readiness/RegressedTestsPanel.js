@@ -2,7 +2,10 @@ import { CapabilitiesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
-import { formColumnName, generateTestDetailsReportLink } from './CompReadyUtils'
+import {
+  formColumnName,
+  generateTestReportForRegressedTest,
+} from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
 import { relativeTime } from '../helpers'
@@ -213,7 +216,7 @@ export default function RegressedTestsPanel(props) {
           className="status"
         >
           <a
-            href={generateTestDetailsReportLink(
+            href={generateTestReportForRegressedTest(
               params.row,
               filterVals,
               expandEnvironment
