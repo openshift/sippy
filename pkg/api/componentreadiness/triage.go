@@ -265,9 +265,7 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crv
 	testDetailsURL, err := generateTestDetailsURLFromRegression(regression, views, releases, crTimeRoundingFactor, baseURL)
 	if err != nil {
 		log.WithError(err).Warnf("failed to generate test details URL for regression %d", regression.ID)
-		// Still provide a basic link even if URL generation fails
-		testDetailsURL = fmt.Sprintf("%s/api/component_readiness/test_details?testId=%s&baseRelease=%s&sampleRelease=%s",
-			baseURL, regression.TestID, regression.Release, regression.Release)
+		return
 	}
 
 	regression.Links["test_details"] = testDetailsURL
