@@ -1332,6 +1332,34 @@ func TestVariantSyncer(t *testing.T) {
 				VariantLayeredProduct:   VariantNoValue,
 			},
 		},
+		{
+			job:          "periodic-ci-RedHatQE-interop-testing-master-cnv-odf-ocp4.20-lp-interop-cnv-component-readiness-aws-ipi-ocp420",
+			variantsFile: map[string]string{},
+			expected: map[string]string{
+				VariantRelease:          "4.20",
+				VariantReleaseMajor:     "4",
+				VariantReleaseMinor:     "20",
+				VariantArch:             "amd64",
+				VariantInstaller:        "ipi",
+				VariantPlatform:         "aws",
+				VariantProcedure:        "none", // TODO: we need mpiit to find a way to extract procedure from their job names. may not be needed if we use layered product properly.
+				VariantJobTier:          "candidate",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "eng", // TODO: mpiit for now
+				VariantSuite:            "unknown",
+				VariantTopology:         "ha",
+				VariantUpgrade:          VariantNoValue,
+				VariantAggregation:      VariantNoValue,
+				VariantFeatureSet:       VariantDefaultValue,
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantContainerRuntime: "crun",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   "virt", // TODO: is this correct for this job?
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.job, func(t *testing.T) {
