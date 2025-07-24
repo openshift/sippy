@@ -517,7 +517,7 @@ func (c *ComponentReportGenerator) goRunOverrideSampleQueries(
 	errCh chan error,
 ) {
 	for i, or := range c.variantJunitTableOverrides {
-		if !containsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
+		if !utils.ContainsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
 			continue
 		}
 
@@ -612,20 +612,6 @@ func shouldSkipVariant(overrides []configv1.VariantJunitTableOverride, currOverr
 		}
 		if override.VariantName == key && override.VariantValue == value {
 			return true
-		}
-	}
-	return false
-}
-
-func containsOverriddenVariant(includeVariants map[string][]string, key, value string) bool {
-	for k, v := range includeVariants {
-		if k != key {
-			continue
-		}
-		for _, vv := range v {
-			if vv == value {
-				return true
-			}
 		}
 	}
 	return false

@@ -13,8 +13,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/sirupsen/logrus"
 )
 
@@ -256,24 +254,16 @@ func GenerateTestDetailsURL(
 	return u.String(), nil
 }
 
-// GetViewReleaseOptions translates relative start/end times to actual time.Time values.
-// This is a copy of the function from queryparamparser.go to avoid circular imports.
-func GetViewReleaseOptions(
-	releases []v1.Release,
-	releaseType string,
-	viewRelease reqopts.RelativeRelease,
-	roundingFactor time.Duration,
-) (reqopts.Release, error) {
-
-	var err error
-	opts := reqopts.Release{Name: viewRelease.Release.Name}
-	opts.Start, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeStart, true, nil, roundingFactor)
-	if err != nil {
-		return opts, fmt.Errorf("%s start time %q in wrong format: %v", releaseType, viewRelease.RelativeStart, err)
+func ContainsOverriddenVariant(includeVariants map[string][]string, key, value string) bool {
+	for k, v := range includeVariants {
+		if k != key {
+			continue
+		}
+		for _, vv := range v {
+			if vv == value {
+				return true
+			}
+		}
 	}
-	opts.End, err = util.ParseCRReleaseTime(releases, opts.Name, viewRelease.RelativeEnd, false, nil, roundingFactor)
-	if err != nil {
-		return opts, fmt.Errorf("%s end time %q in wrong format: %v", releaseType, viewRelease.RelativeEnd, err)
-	}
-	return opts, nil
+	return false
 }

@@ -369,7 +369,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 
 	// fork additional sample queries for the overrides
 	for i, or := range c.variantJunitTableOverrides {
-		if !containsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
+		if !utils.ContainsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
 			continue
 		}
 		// only do this additional query if the specified override variant is actually included in this request

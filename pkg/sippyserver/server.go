@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/pkg/errors"
@@ -666,7 +667,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 	viewsCopy := make([]crview.View, len(s.views.ComponentReadiness))
 	copy(viewsCopy, s.views.ComponentReadiness)
 	for i := range viewsCopy {
-		rro, err := componentreadiness.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
+		rro, err := utils.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -674,7 +675,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 		viewsCopy[i].BaseRelease.Start = rro.Start
 		viewsCopy[i].BaseRelease.End = rro.End
 
-		rro, err = componentreadiness.GetViewReleaseOptions(allReleases, "sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
+		rro, err = utils.GetViewReleaseOptions(allReleases, "sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -702,7 +703,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 
-	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
+	options, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -763,7 +764,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		return
 	}
 
-	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
+	reqOptions, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())

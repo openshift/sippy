@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hashicorp/go-version"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
@@ -210,13 +211,13 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
 
-	baseRelease, err := componentreadiness.GetViewReleaseOptions(
+	baseRelease, err := utils.GetViewReleaseOptions(
 		releases, "basis", view.BaseRelease, cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
 
-	sampleRelease, err := componentreadiness.GetViewReleaseOptions(
+	sampleRelease, err := utils.GetViewReleaseOptions(
 		releases, "sample", view.SampleRelease, cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return err

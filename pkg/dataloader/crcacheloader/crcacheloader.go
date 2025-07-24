@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	sippytypes "github.com/openshift/sippy/pkg/apis/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
@@ -233,13 +234,13 @@ func buildGenerator(
 	dbc *db.DB,
 	config *v1.SippyConfig) (*componentreadiness.ComponentReportGenerator, error) {
 
-	baseRelease, err := componentreadiness.GetViewReleaseOptions(
+	baseRelease, err := utils.GetViewReleaseOptions(
 		releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return nil, err
 	}
 
-	sampleRelease, err := componentreadiness.GetViewReleaseOptions(
+	sampleRelease, err := utils.GetViewReleaseOptions(
 		releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return nil, err

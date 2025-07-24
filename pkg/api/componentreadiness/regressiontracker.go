@@ -218,13 +218,13 @@ func (rt *RegressionTracker) Errors() []error {
 func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view crview.View) error {
 	rLog := rt.logger.WithField("view", view.Name)
 
-	baseRelease, err := GetViewReleaseOptions(
+	baseRelease, err := utils.GetViewReleaseOptions(
 		rt.releases, "basis", view.BaseRelease, rt.cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
 
-	sampleRelease, err := GetViewReleaseOptions(
+	sampleRelease, err := utils.GetViewReleaseOptions(
 		rt.releases, "sample", view.SampleRelease, rt.cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return err
