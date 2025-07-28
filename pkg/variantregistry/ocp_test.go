@@ -228,6 +228,33 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
+			job: "periodic-ci-openshift-hypershift-release-4.20-periodics-e2e-aws-multi",
+			expected: map[string]string{
+				VariantRelease:          "4.20",
+				VariantReleaseMajor:     "4",
+				VariantReleaseMinor:     "20",
+				VariantArch:             "heterogeneous",
+				VariantInstaller:        "hypershift", // hypershift uses it's own installer
+				VariantPlatform:         "aws",
+				VariantProcedure:        "none",
+				VariantJobTier:          "candidate",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "eng",
+				VariantTopology:         "external",
+				VariantSuite:            "unknown",
+				VariantUpgrade:          VariantNoValue,
+				VariantAggregation:      VariantNoValue,
+				VariantFeatureSet:       VariantDefaultValue,
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantContainerRuntime: "crun",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
+			},
+		},
+		{
 			job: "periodic-ci-openshift-release-master-nightly-4.16-e2e-aws-ovn-single-node-serial",
 			expected: map[string]string{
 				VariantRelease:          "4.16",
