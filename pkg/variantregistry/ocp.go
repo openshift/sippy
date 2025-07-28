@@ -883,11 +883,18 @@ func setArchitecture(_ logrus.FieldLogger, variants map[string]string, jobName s
 		{"-s390x", "s390x"},
 		{"-multi-z-z", "s390x"},
 		{"-heterogeneous", "heterogeneous"},
-		{"-multi-", "heterogeneous"},
+		{"-multi", "heterogeneous"},
 	}
 
 	// the use of multi in these cases do not apply to architecture so drop them out from evaluation
-	ignorePatterns := []string{"-multi-vcenter-", "-multi-network-"}
+	ignorePatterns := []string{
+		"-multi-vcenter-",
+		"-multi-network-",
+		"-multisubnets-",
+		"-multitenant",
+		"-multiarch",
+		"-multinet",
+	}
 	for _, ignore := range ignorePatterns {
 		jobNameLower = strings.ReplaceAll(jobNameLower, ignore, "-")
 	}
