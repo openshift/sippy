@@ -714,6 +714,7 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-cert-rotation-shutdown-", concatProcedureValues(base, "cert-rotation-shutdown")},
 		{"-console-operator-", concatProcedureValues(base, "console-operator")},
 		{"-ipsec", concatProcedureValues(base, "ipsec")},
+		{"-network-flow-matrix", concatProcedureValues(base, "network-flow-matrix")},
 		{"-ocl", concatProcedureValues(base, "on-cluster-layering")},
 		{"-machine-config-operator", concatProcedureValues(base, "machine-config-operator")},
 	}
