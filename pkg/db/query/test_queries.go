@@ -208,7 +208,7 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 	results := []models.Bug{}
 
 	test := models.Test{}
-	q := dbc.DB.Where("REGEXP_REPLACE(name, '\\s+', '', 'g') = REGEXP_REPLACE(?, '\\s+', '', 'g')", testName)
+	q := dbc.DB.Where("name = ?", testName)
 	timeLimit := "NOW() - last_change_time < interval '14 days'" // filter bugs since we no longer delete them
 	if filterClosed {
 		q = q.Preload("Bugs", timeLimit+" and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
