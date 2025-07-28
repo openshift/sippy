@@ -212,21 +212,9 @@ export default function ComponentReadiness(props) {
 
   const varsContext = useContext(CompReadyVarsContext)
 
-  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
-  const [testNameParam, setTestNameParam] = useQueryParam(
-    'testName',
-    StringParam
-  )
-  const [testBasisReleaseParam, setTestBasisReleaseParam] = useQueryParam(
-    'testBasisRelease',
-    StringParam
-  )
-
-  const [testId, setTestId] = React.useState(testIdParam)
-  const [testName, setTestName] = React.useState(testNameParam)
-  const [testBasisRelease, setTestBasisRelease] = React.useState(
-    testBasisReleaseParam
-  )
+  // Get test-related parameters from context instead of local state
+  const { testId, testName, testBasisRelease } =
+    useContext(CompReadyVarsContext)
 
   const location = useLocation()
   const currentPath = location.pathname
