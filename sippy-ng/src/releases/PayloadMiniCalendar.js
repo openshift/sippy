@@ -2,7 +2,7 @@ import FullCalendar from '@fullcalendar/react'
 
 import { filterFor, safeEncodeURIComponent } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
-import { useHistory } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useTheme } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -12,7 +12,7 @@ import React, { Fragment, useEffect } from 'react'
 
 export default function PayloadMiniCalendar(props) {
   const theme = useTheme()
-  const history = useHistory()
+  const navigate = useNavigate()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -42,7 +42,7 @@ export default function PayloadMiniCalendar(props) {
       })
     )
 
-    history.push(
+    navigate(
       `/release/${props.release}/streams/${props.arch}/${props.stream}/payloads?filters=${filter}`
     )
   }

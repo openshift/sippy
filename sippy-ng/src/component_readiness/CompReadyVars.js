@@ -38,11 +38,14 @@ function getDefaultIncludeMultiReleaseAnalysis() {
 // Use of booleans in URL params does not seem to parse properly as a BooleanParam.
 // Use this custom param parser instead.
 const CustomBooleanParam = {
-  encode: (value) => String(value),
+  encode: (value) => {
+    if (value === null || value === undefined) return undefined
+    return String(value)
+  },
   decode: (value) => {
     if (value === 'true' || value === '1' || value === '') return true
     if (value === 'false' || value === '0') return false
-    return null
+    return undefined
   },
 }
 
@@ -365,8 +368,10 @@ export const CompReadyVarsProvider = ({ children }) => {
 
   // This runs when someone pushes the "Generate Report" button.
   // It sets all parameters based on current state; this causes the URL to be updated and page to load with new params.
-  const handleGenerateReport = (event) => {
-    event.preventDefault()
+  const handleGenerateReport = (event, callback) => {
+    if (event && event.preventDefault) {
+      event.preventDefault()
+    }
 
     // If the generate report button was pressed, views are out of the question and we're now
     // fully qualifying all params:
@@ -403,6 +408,11 @@ export const CompReadyVarsProvider = ({ children }) => {
     setComponentParam(component)
     setEnvironmentParam(environment)
     setCapabilityParam(capability)
+
+    // Execute callback after a short delay to allow URL params to update
+    if (callback) {
+      setTimeout(callback, 100)
+    }
   }
 
   const clearAllQueryParams = () => {
