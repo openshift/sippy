@@ -3,6 +3,7 @@ import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { generateTestReport } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -25,6 +26,24 @@ export default function CompReadyTestCell(props) {
   } = props
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
+
+  const [componentParam, setComponentParam] = useQueryParam(
+    'component',
+    StringParam
+  )
+  const [capabilityParam, setCapabilityParam] = useQueryParam(
+    'capability',
+    StringParam
+  )
+  const [environmentParam, setEnvironmentParam] = useQueryParam(
+    'environment',
+    StringParam
+  )
+  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
+  const [testNameParam, setTestNameParam] = useQueryParam(
+    'testName',
+    StringParam
+  )
 
   const { expandEnvironment } = useContext(CompReadyVarsContext)
 

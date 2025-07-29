@@ -4,6 +4,7 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { sortQueryParams } from './CompReadyUtils'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -17,6 +18,15 @@ export default function CompReadyCapsCell(props) {
     props
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
+
+  const [capabilityParam, setCapabilityParam] = useQueryParam(
+    'capability',
+    StringParam
+  )
+  const [environmentParam, setEnvironmentParam] = useQueryParam(
+    'environment',
+    StringParam
+  )
 
   const { expandEnvironment } = useContext(CompReadyVarsContext)
 
