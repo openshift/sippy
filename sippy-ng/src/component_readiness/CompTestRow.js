@@ -4,6 +4,7 @@ import { Fragment, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
 import { sortQueryParams } from './CompReadyUtils'
+import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import CompReadyCapCell from './CompReadyCapCell'
 import PropTypes from 'prop-types'
@@ -47,6 +48,16 @@ export default function CompTestRow(props) {
     component,
     capability,
   } = props
+
+  const [componentParam, setComponentParam] = useQueryParam(
+    'component',
+    StringParam
+  )
+  const [capabilityParam, setCapabilityParam] = useQueryParam(
+    'capability',
+    StringParam
+  )
+  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
 
   // Put the testName on the left side with a link to a test specific
   // test report.
