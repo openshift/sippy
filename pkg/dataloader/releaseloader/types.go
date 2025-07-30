@@ -10,6 +10,7 @@ type ReleaseTags struct {
 	Name         string       `json:"name"`
 	Tags         []ReleaseTag `json:"tags"`
 	Architecture string       `json:"architecture"`
+	Platform     string       `json:"platform"`
 }
 
 // ReleaseTag is an individual release tag.
