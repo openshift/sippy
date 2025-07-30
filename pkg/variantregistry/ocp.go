@@ -716,6 +716,7 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-ipsec", concatProcedureValues(base, "ipsec")},
 		{"-ocl", concatProcedureValues(base, "on-cluster-layering")},
 		{"-machine-config-operator", concatProcedureValues(base, "machine-config-operator")},
+		{"-usernamespace", concatProcedureValues(base, "usernamespace")},
 	}
 
 	for _, entry := range procedurePatterns {
