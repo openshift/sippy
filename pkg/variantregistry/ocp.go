@@ -84,6 +84,7 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
           OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
   GROUP BY prowjob_job_name
 )
@@ -102,6 +103,7 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
         OR j.prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
         OR j.prowjob_job_name LIKE 'release-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
       OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
 GROUP BY j.prowjob_job_name, r.prowjob_url, r.successful_start
@@ -421,6 +423,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-tests-private", "qe"},
 		{"-openshift-verification-tests", "qe"},
 		{"-openshift-distributed-tracing", "qe"},
+		{"-lp-interop", "mpiit"}, // MPEX Integrity and Interop Team
 	}
 
 	for _, entry := range ownerPatterns {
