@@ -3,11 +3,9 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-version"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/pkg/errors"
@@ -399,32 +397,4 @@ func buildPromReportTypes(releases []v1.Release) []promReportType {
 	}
 
 	return promReportTypes
-}
-
-func nextMinor(vStr string) (string, error) {
-	// Parse the version string
-	v, err := version.NewVersion(vStr)
-	if err != nil {
-		return "", err
-	}
-
-	// Get the segments of the version
-	segments := v.Segments()
-	if len(segments) < 2 {
-		return "", fmt.Errorf("version '%s' does not have enough segments to determine minor", vStr)
-	}
-
-	// Increment the minor segment
-	segments[1]++
-
-	// Reconstruct version string with incremented minor version
-	// Only consider major and minor segments
-	nextMinorSegments := segments[:2]
-	nextMinorVersionStr := make([]string, len(nextMinorSegments))
-	for i, seg := range nextMinorSegments {
-		nextMinorVersionStr[i] = strconv.Itoa(seg)
-	}
-
-	// Concatenate the segments to form the new version string
-	return strings.Join(nextMinorVersionStr, "."), nil
 }
