@@ -105,12 +105,33 @@ func (r *ReleaseLoader) buildReleaseTag(architecture, release string, tag Releas
 		return nil
 	}
 
-	// PR is many-to-many, find the existing relation. TODO: There must be a more clever way to do this...
+	if len(releaseTag.PullRequests) == 0 {
+		return releaseTag
+	}
+
+	type prKey struct{ url, name string }
+	prIndexMap := make(map[prKey]int, len(releaseTag.PullRequests))
+	orConditions := make([]string, 0, len(releaseTag.PullRequests))
+	args := make([]interface{}, 0, len(releaseTag.PullRequests)*2)
+
 	for i, pr := range releaseTag.PullRequests {
-		existingPR := models.ReleasePullRequest{}
-		result := r.db.DB.Table("release_pull_requests").Where("url = ?", pr.URL).Where("name = ?", pr.Name).First(&existingPR)
-		if result.Error == nil {
-			releaseTag.PullRequests[i] = existingPR
+		key := prKey{pr.URL, pr.Name}
+		if _, exists := prIndexMap[key]; !exists {
+			prIndexMap[key] = i
+			orConditions = append(orConditions, "(url = ? AND name = ?)")
+			args = append(args, key.url, key.name)
+		}
+	}
+
+	// Execute batch query and map results back
+	var existingPRs []models.ReleasePullRequest
+	if err := r.db.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&existingPRs).Error; err != nil {
+		panic(err)
+	}
+
+	for _, existingPR := range existingPRs {
+		if index, ok := prIndexMap[prKey{existingPR.URL, existingPR.Name}]; ok {
+			releaseTag.PullRequests[index] = existingPR
 		}
 	}
 
