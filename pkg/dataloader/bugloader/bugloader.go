@@ -2,6 +2,7 @@ package bugloader
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/url"
 	"slices"
@@ -17,8 +18,6 @@ import (
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm/clause"
 	"k8s.io/apimachinery/pkg/util/sets"
-
-	"database/sql"
 
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
@@ -199,7 +198,6 @@ func (bl *BugLoader) updateBugsInDb(latestBugs []*models.Bug) {
 }
 
 var statusesForResolution = []string{
-	"MODIFIED",
 	"ON_QA",
 	"Verified",
 	"Release Pending",
@@ -208,7 +206,7 @@ var statusesForResolution = []string{
 
 // updateTriages reconciles triage records with their associated bugs by:
 // 1. Linking triages to bug records and handling URL changes
-// 2. Auto-resolving triages when bugs reach "MODIFIED" or higher status
+// 2. Auto-resolving triages when bugs reach "ON_QA" or higher status
 func (bl *BugLoader) updateTriages(triages []models.Triage) {
 	logger := log.WithField("func", "bugloader.updateTriages")
 	logger.Infof("ensuring triages have correct refs to their bugs, and are resolved where appropriate")
