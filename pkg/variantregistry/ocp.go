@@ -443,7 +443,6 @@ func setSuite(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-serial", "serial"},
 		{"-etcd-scaling", "etcd-scaling"},
 		{"conformance", "parallel"}, // Jobs with "conformance" but no explicit serial are probably parallel
-		{"usernamespace", "usernamespace"},
 		{"-e2e-external-", "parallel"},
 	}
 
@@ -717,6 +716,7 @@ func setProcedure(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		{"-network-flow-matrix", concatProcedureValues(base, "network-flow-matrix")},
 		{"-ocl", concatProcedureValues(base, "on-cluster-layering")},
 		{"-machine-config-operator", concatProcedureValues(base, "machine-config-operator")},
+		{"-usernamespace", concatProcedureValues(base, "usernamespace")},
 	}
 
 	for _, entry := range procedurePatterns {
