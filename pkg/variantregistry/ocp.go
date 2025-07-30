@@ -84,6 +84,7 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
           OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
   GROUP BY prowjob_job_name
 )
