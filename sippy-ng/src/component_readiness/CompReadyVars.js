@@ -176,6 +176,15 @@ export const CompReadyVarsProvider = ({ children }) => {
     'capability',
     StringParam
   )
+  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
+  const [testNameParam, setTestNameParam] = useQueryParam(
+    'testName',
+    StringParam
+  )
+  const [testBasisReleaseParam, setTestBasisReleaseParam] = useQueryParam(
+    'testBasisRelease',
+    StringParam
+  )
 
   const [baseRelease, setBaseRelease] = React.useState(
     baseReleaseParam || defaultBaseRelease
@@ -341,13 +350,32 @@ export const CompReadyVarsProvider = ({ children }) => {
   if (component != componentParam) {
     setComponent(componentParam)
   }
+
   const [environment, setEnvironment] = React.useState(environmentParam)
   if (environment != environmentParam) {
     setEnvironment(environmentParam)
   }
+
   const [capability, setCapability] = React.useState(capabilityParam)
   if (capability != capabilityParam) {
     setCapability(capabilityParam)
+  }
+
+  const [testId, setTestId] = React.useState(testIdParam)
+  if (testId != testIdParam) {
+    setTestId(testIdParam)
+  }
+
+  const [testName, setTestName] = React.useState(testNameParam)
+  if (testName != testNameParam) {
+    setTestName(testNameParam)
+  }
+
+  const [testBasisRelease, setTestBasisRelease] = React.useState(
+    testBasisReleaseParam
+  )
+  if (testBasisRelease != testBasisReleaseParam) {
+    setTestBasisRelease(testBasisReleaseParam)
   }
 
   /******************************************************************************
@@ -408,6 +436,9 @@ export const CompReadyVarsProvider = ({ children }) => {
     setComponentParam(component)
     setEnvironmentParam(environment)
     setCapabilityParam(capability)
+    setTestIdParam(testId)
+    setTestNameParam(testName)
+    setTestBasisReleaseParam(testBasisRelease)
 
     // Execute callback after a short delay to allow URL params to update
     if (callback) {
@@ -698,6 +729,12 @@ export const CompReadyVarsProvider = ({ children }) => {
         setCapabilityParam,
         environment,
         setEnvironmentParam,
+        testId,
+        setTestIdParam,
+        testName,
+        setTestNameParam,
+        testBasisRelease,
+        setTestBasisReleaseParam,
         handleGenerateReport,
         syncView,
         isLoaded,
