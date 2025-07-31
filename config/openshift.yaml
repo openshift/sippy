@@ -13150,4 +13150,7 @@ releases:
             - ^pull-ci-openshift-.*-(master|main).*-e2e-.*
             - ^pull-ci-operator-framework.*-(master|main).*-e2e-.*
             - ^pull-ci-openshift-online.*-(master|main).*-(verify|unit).*
+    aro-integration:
+        jobs:
+          periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-integration: true
 
