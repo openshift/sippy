@@ -448,8 +448,7 @@ func releaseFilter(req *http.Request, dbc *gorm.DB) *gorm.DB {
 func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client) ([]sippyv1.Release, error) {
 	releases := []sippyv1.Release{}
 
-	//queryString := "SELECT * FROM `openshift-ci-data-analysis.ci_data.Releases` ORDER BY DevelStartDate DESC"
-	queryString := "SELECT * FROM `openshift-ci-data-analysis.lmeyer_test.Releases` ORDER BY DevelStartDate DESC"
+	queryString := fmt.Sprintf("SELECT * FROM `%s` ORDER BY DevelStartDate DESC", client.ReleasesTable)
 
 	q := client.BQ.Query(queryString)
 	it, err := q.Read(ctx)
