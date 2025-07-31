@@ -126,7 +126,7 @@ func NewLoadCommand() *cobra.Command {
 			bqc, bigqueryErr := bqcachedclient.New(ctx,
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.BigQueryFlags.BigQueryProject,
-				f.BigQueryFlags.BigQueryDataset, cacheClient)
+				f.BigQueryFlags.BigQueryDataset, cacheClient, f.BigQueryFlags.ReleasesTable)
 			if bigqueryErr == nil {
 				if f.CacheFlags.EnablePersistentCaching {
 					bqc = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bqc)
@@ -364,7 +364,7 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		return nil, err
 	}
 
-	bigQueryClient, err := bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, nil)
+	bigQueryClient, err := bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, nil, f.BigQueryFlags.ReleasesTable)
 	if err != nil {
 		log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
 		return nil, err
