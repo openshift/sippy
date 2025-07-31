@@ -3,19 +3,12 @@ package releaseloader
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
-	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/util"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestReleaseTagForcedFlag(t *testing.T) {
@@ -296,457 +289,314 @@ func TestChangeLog(t *testing.T) {
 	}
 }
 
-func TestBuildReleaseTag(t *testing.T) {
-	// Skip test if no database connection is available
-	dbc := util.GetDbHandle(t)
+func TestResolveReleasePullRequests(t *testing.T) {
+	originalBulkFetch := bulkFetchPRsFromTbl
+	t.Cleanup(func() {
+		bulkFetchPRsFromTbl = originalBulkFetch
+	})
 
 	tests := []struct {
-		name               string
-		architecture       string
-		release            string
-		inputTag           ReleaseTag
-		mockReleaseDetails ReleaseDetails
-		setupDB            func(*testing.T, *db.DB)
-		teardownDB         func(*testing.T, *db.DB)
-		expectedResult     *expectedReleaseTag
-		shouldReturnNil    bool
-		description        string
+		name                   string
+		inputPRs               []models.ReleasePullRequest
+		mockDBResults          []models.ReleasePullRequest
+		expectedPRs            []models.ReleasePullRequest
+		expectedDBQueryCount   int
+		expectedConditionCount int
+		description            string
 	}{
 		{
-			name:         "Returns nil for pending phase",
-			architecture: "amd64",
-			release:      "4.14.0-0.ci",
-			inputTag: ReleaseTag{
-				Name:  "4.14.0-0.ci-2023-01-01-120000",
-				Phase: "Pending", // Not Accepted or Rejected
-			},
-			mockReleaseDetails: buildMockReleaseDetails("4.14.0-0.ci-2023-01-01-120000", "Pending", false),
-			setupDB:            func(t *testing.T, db *db.DB) {},
-			teardownDB:         cleanupTestDB,
-			shouldReturnNil:    true,
-			description:        "Should return nil for releases not in Accepted or Rejected phase",
+			name:                   "Empty input returns empty slice",
+			inputPRs:               []models.ReleasePullRequest{},
+			mockDBResults:          []models.ReleasePullRequest{},
+			expectedPRs:            []models.ReleasePullRequest{},
+			expectedDBQueryCount:   0,
+			expectedConditionCount: 0,
+			description:            "Should return empty slice for empty input without querying database",
 		},
 		{
-			name:         "Returns nil when releaseDetailsToDB returns nil",
-			architecture: "amd64",
-			release:      "4.14.0-0.ci",
-			inputTag: ReleaseTag{
-				Name:  "4.14.0-0.ci-2023-01-01-120000",
-				Phase: api.PayloadAccepted,
+			name: "New PRs remain unchanged when not in database",
+			inputPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "New API PR", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "New Origin PR", PullRequestID: "456"},
 			},
-			mockReleaseDetails: buildMockReleaseDetailsNoChangelog("4.14.0-0.ci-2023-01-01-120000"),
-			setupDB:            func(t *testing.T, db *db.DB) {},
-			teardownDB:         cleanupTestDB,
-			shouldReturnNil:    true,
-			description:        "Should return nil when no changelog is available",
+			mockDBResults: []models.ReleasePullRequest{}, // No existing PRs
+			expectedPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "New API PR", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "New Origin PR", PullRequestID: "456"},
+			},
+			expectedDBQueryCount:   1,
+			expectedConditionCount: 2,
+			description:            "Should return original PRs unchanged when none exist in database",
 		},
 		{
-			name:         "Processes accepted release with no PRs",
-			architecture: "amd64",
-			release:      "4.14.0-0.ci",
-			inputTag: ReleaseTag{
-				Name:  "4.14.0-0.ci-2023-01-01-120000",
-				Phase: api.PayloadAccepted,
+			name: "Existing PRs are replaced with database versions",
+			inputPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "New API PR", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "New Origin PR", PullRequestID: "456"},
 			},
-			mockReleaseDetails: buildMockReleaseDetails("4.14.0-0.ci-2023-01-01-120000", api.PayloadAccepted, false),
-			setupDB:            func(t *testing.T, db *db.DB) {},
-			teardownDB:         cleanupTestDB,
-			expectedResult: &expectedReleaseTag{
-				releaseTag: "4.14.0-0.ci-2023-01-01-120000",
-				phase:      api.PayloadAccepted,
-				prCount:    0,
+			mockDBResults: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Existing API PR from DB", PullRequestID: "123", BugURL: "https://bugzilla.redhat.com/123"},
 			},
-			description: "Should process release with no pull requests successfully",
+			expectedPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Existing API PR from DB", PullRequestID: "123", BugURL: "https://bugzilla.redhat.com/123"},
+				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "New Origin PR", PullRequestID: "456"},
+			},
+			expectedDBQueryCount:   1,
+			expectedConditionCount: 2,
+			description:            "Should replace matching PRs with database versions while keeping new ones",
 		},
 		{
-			name:         "Processes rejected release with no PRs",
-			architecture: "amd64",
-			release:      "4.14.0-0.ci",
-			inputTag: ReleaseTag{
-				Name:  "4.14.0-0.ci-2023-01-01-120000",
-				Phase: api.PayloadRejected,
+			name: "All PRs exist in database",
+			inputPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "New API PR", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "New Origin PR", PullRequestID: "456"},
 			},
-			mockReleaseDetails: buildMockReleaseDetails("4.14.0-0.ci-2023-01-01-120000", api.PayloadRejected, true),
-			setupDB:            func(t *testing.T, db *db.DB) {},
-			teardownDB:         cleanupTestDB,
-			expectedResult: &expectedReleaseTag{
-				releaseTag: "4.14.0-0.ci-2023-01-01-120000",
-				phase:      api.PayloadRejected,
-				prCount:    0,
+			mockDBResults: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Existing API PR", PullRequestID: "123", BugURL: "https://bugzilla.redhat.com/123"},
+				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "Existing Origin PR", PullRequestID: "456", BugURL: "https://bugzilla.redhat.com/456"},
 			},
-			description: "Should process rejected release successfully",
+			expectedPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Existing API PR", PullRequestID: "123", BugURL: "https://bugzilla.redhat.com/123"},
+				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "Existing Origin PR", PullRequestID: "456", BugURL: "https://bugzilla.redhat.com/456"},
+			},
+			expectedDBQueryCount:   1,
+			expectedConditionCount: 2,
+			description:            "Should replace all PRs with database versions when all exist",
 		},
 		{
-			name:         "Processes release with new PRs",
-			architecture: "amd64",
-			release:      "4.14.0-0.ci",
-			inputTag: ReleaseTag{
-				Name:  "4.14.0-0.ci-2023-01-01-120000",
-				Phase: api.PayloadAccepted,
+			name: "Duplicate PRs are deduplicated in database query",
+			inputPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "First API PR", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Duplicate API PR", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "Origin PR", PullRequestID: "456"},
 			},
-			mockReleaseDetails: buildMockReleaseDetailsWithPRs("4.14.0-0.ci-2023-01-01-120000", []testPR{
-				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "New API PR"},
-				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "New Origin PR"},
-			}),
-			setupDB:    func(t *testing.T, db *db.DB) {},
-			teardownDB: cleanupTestDB,
-			expectedResult: &expectedReleaseTag{
-				releaseTag:     "4.14.0-0.ci-2023-01-01-120000",
-				phase:          api.PayloadAccepted,
-				prCount:        2,
-				prDescriptions: []string{"New API PR", "New Origin PR"},
+			mockDBResults: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "DB API PR", PullRequestID: "123", BugURL: "https://bugzilla.redhat.com/123"},
 			},
-			description: "Should process release with new pull requests",
+			expectedPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "DB API PR", PullRequestID: "123", BugURL: "https://bugzilla.redhat.com/123"},
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Duplicate API PR", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "Origin PR", PullRequestID: "456"},
+			},
+			expectedDBQueryCount:   1,
+			expectedConditionCount: 2, // Only 2 unique keys, not 3
+			description:            "Should deduplicate database queries while preserving original order and duplicates",
 		},
 		{
-			name:         "Processes release with existing PRs in database",
-			architecture: "amd64",
-			release:      "4.14.0-0.ci",
-			inputTag: ReleaseTag{
-				Name:  "4.14.0-0.ci-2023-01-01-120000",
-				Phase: api.PayloadAccepted,
+			name: "PRs with different names but same URL are treated separately",
+			inputPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/repo/pull/123", Name: "repo1", Description: "Repo1 PR", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/repo/pull/123", Name: "repo2", Description: "Repo2 PR", PullRequestID: "123"},
 			},
-			mockReleaseDetails: buildMockReleaseDetailsWithPRs("4.14.0-0.ci-2023-01-01-120000", []testPR{
-				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "New API PR"},
-				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "New Origin PR"},
-			}),
-			setupDB: func(t *testing.T, db *db.DB) {
-				// Create existing PR in database
-				existingPR := models.ReleasePullRequest{
-					URL:           "https://github.com/openshift/api/pull/123",
-					Name:          "api",
-					Description:   "Existing API PR from DB",
-					PullRequestID: "123",
-				}
-				err := db.DB.Create(&existingPR).Error
-				require.NoError(t, err)
+			mockDBResults: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/repo/pull/123", Name: "repo1", Description: "Existing Repo1 PR", PullRequestID: "123"},
 			},
-			teardownDB: cleanupTestDB,
-			expectedResult: &expectedReleaseTag{
-				releaseTag:     "4.14.0-0.ci-2023-01-01-120000",
-				phase:          api.PayloadAccepted,
-				prCount:        2,
-				prDescriptions: []string{"Existing API PR from DB", "New Origin PR"}, // First PR should use DB description
+			expectedPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/repo/pull/123", Name: "repo1", Description: "Existing Repo1 PR", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/repo/pull/123", Name: "repo2", Description: "Repo2 PR", PullRequestID: "123"},
 			},
-			description: "Should use existing PR data from database and merge with new PRs",
+			expectedDBQueryCount:   1,
+			expectedConditionCount: 2,
+			description:            "Should treat PRs with same URL but different names as separate entities",
 		},
 		{
-			name:         "Handles duplicate PRs in release data",
-			architecture: "amd64",
-			release:      "4.14.0-0.ci",
-			inputTag: ReleaseTag{
-				Name:  "4.14.0-0.ci-2023-01-01-120000",
-				Phase: api.PayloadAccepted,
+			name: "PRs with same name but different URLs are treated separately",
+			inputPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "API PR 123", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/api/pull/456", Name: "api", Description: "API PR 456", PullRequestID: "456"},
 			},
-			mockReleaseDetails: buildMockReleaseDetailsWithPRs("4.14.0-0.ci-2023-01-01-120000", []testPR{
-				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "API PR"},
-				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Duplicate API PR"},
-				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "Origin PR"},
-			}),
-			setupDB:    func(t *testing.T, db *db.DB) {},
-			teardownDB: cleanupTestDB,
-			expectedResult: &expectedReleaseTag{
-				releaseTag: "4.14.0-0.ci-2023-01-01-120000",
-				phase:      api.PayloadAccepted,
-				prCount:    2, // Duplicates are removed during changelog parsing
+			mockDBResults: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Existing API PR 123", PullRequestID: "123"},
 			},
-			description: "Should handle duplicate PRs efficiently by deduplicating database queries",
-		},
-		{
-			name:         "Handles large number of PRs efficiently",
-			architecture: "amd64",
-			release:      "4.14.0-0.ci",
-			inputTag: ReleaseTag{
-				Name:  "4.14.0-0.ci-2023-01-01-120000",
-				Phase: api.PayloadAccepted,
+			expectedPRs: []models.ReleasePullRequest{
+				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Existing API PR 123", PullRequestID: "123"},
+				{URL: "https://github.com/openshift/api/pull/456", Name: "api", Description: "API PR 456", PullRequestID: "456"},
 			},
-			mockReleaseDetails: buildMockReleaseDetailsWithManyPRs("4.14.0-0.ci-2023-01-01-120000", 100),
-			setupDB: func(t *testing.T, db *db.DB) {
-				// Create some existing PRs
-				for i := 0; i < 10; i++ {
-					existingPR := models.ReleasePullRequest{
-						URL:           fmt.Sprintf("https://github.com/openshift/repo%d/pull/%d", i, i),
-						Name:          fmt.Sprintf("repo%d", i),
-						Description:   fmt.Sprintf("Existing PR %d from DB", i),
-						PullRequestID: fmt.Sprintf("%d", i),
-					}
-					err := db.DB.Create(&existingPR).Error
-					require.NoError(t, err)
-				}
-			},
-			teardownDB: cleanupTestDB,
-			expectedResult: &expectedReleaseTag{
-				releaseTag: "4.14.0-0.ci-2023-01-01-120000",
-				phase:      api.PayloadAccepted,
-				prCount:    100,
-			},
-			description: "Should handle large numbers of PRs efficiently with batch database queries",
+			expectedDBQueryCount:   1,
+			expectedConditionCount: 2,
+			description:            "Should treat PRs with same name but different URLs as separate entities",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup test database
-			tt.setupDB(t, dbc)
-			defer tt.teardownDB(t, dbc)
+			// Track database calls for verification
+			dbQueryCount := 0
+			actualConditionCount := 0
+
+			// Mock the database function to return test data
+			bulkFetchPRsFromTbl = func(db *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
+				dbQueryCount++
+				actualConditionCount = len(orConditions)
+				return tt.mockDBResults
+			}
 
 			// Create a test loader
-			loader := &testReleaseLoader{
-				db:                 dbc,
-				httpClient:         &http.Client{Timeout: 60 * time.Second},
-				mockReleaseDetails: tt.mockReleaseDetails,
-			}
+			loader := &ReleaseLoader{} // db not needed since we're mocking bulkFetchPRsFromTbl
 
-			// Execute function under test
-			result := loader.buildReleaseTag(tt.architecture, tt.release, tt.inputTag)
+			// Execute the function under test
+			result := loader.resolveReleasePullRequests(tt.inputPRs)
 
 			// Verify results
-			if tt.shouldReturnNil {
-				assert.Nil(t, result, tt.description)
-				return
+			if len(result) != len(tt.expectedPRs) {
+				t.Errorf("Expected %d PRs, got %d", len(tt.expectedPRs), len(result))
 			}
 
-			require.NotNil(t, result, tt.description)
-			assert.Equal(t, tt.expectedResult.releaseTag, result.ReleaseTag, "Release tag should match")
-			assert.Equal(t, tt.expectedResult.phase, result.Phase, "Phase should match")
-			assert.Equal(t, tt.expectedResult.prCount, len(result.PullRequests), "PR count should match")
-
-			// Verify PR descriptions if specified
-			if tt.expectedResult.prDescriptions != nil {
-				actualDescriptions := make([]string, len(result.PullRequests))
-				for i, pr := range result.PullRequests {
-					actualDescriptions[i] = pr.Description
+			// Check each PR matches expected
+			for i, expected := range tt.expectedPRs {
+				if i >= len(result) {
+					t.Errorf("Missing PR at index %d", i)
+					continue
 				}
-				assert.ElementsMatch(t, tt.expectedResult.prDescriptions, actualDescriptions, "PR descriptions should match")
+				actual := result[i]
+				if actual.URL != expected.URL {
+					t.Errorf("PR %d: Expected URL %s, got %s", i, expected.URL, actual.URL)
+				}
+				if actual.Name != expected.Name {
+					t.Errorf("PR %d: Expected Name %s, got %s", i, expected.Name, actual.Name)
+				}
+				if actual.Description != expected.Description {
+					t.Errorf("PR %d: Expected Description %s, got %s", i, expected.Description, actual.Description)
+				}
+				if actual.BugURL != expected.BugURL {
+					t.Errorf("PR %d: Expected BugURL %s, got %s", i, expected.BugURL, actual.BugURL)
+				}
+			}
+
+			// Verify database interaction efficiency
+			if dbQueryCount != tt.expectedDBQueryCount {
+				t.Errorf("Expected %d database queries, got %d", tt.expectedDBQueryCount, dbQueryCount)
+			}
+
+			if actualConditionCount != tt.expectedConditionCount {
+				t.Errorf("Expected %d OR conditions in query, got %d", tt.expectedConditionCount, actualConditionCount)
 			}
 		})
 	}
 }
 
-// Test helper types and functions
+func TestResolveReleasePullRequestsLargeDataset(t *testing.T) {
+	// Use t.Cleanup instead of defer - it's safer and always runs
+	originalBulkFetch := bulkFetchPRsFromTbl
+	t.Cleanup(func() {
+		bulkFetchPRsFromTbl = originalBulkFetch
+	})
 
-type expectedReleaseTag struct {
-	releaseTag     string
-	phase          string
-	prCount        int
-	prDescriptions []string
-}
+	// Test with a large number of PRs to ensure performance
+	const prCount = 1000
 
-type testPR struct {
-	URL         string
-	Name        string
-	Description string
-}
+	inputPRs := make([]models.ReleasePullRequest, prCount)
+	existingPRs := make([]models.ReleasePullRequest, prCount/2) // Half exist in DB
 
-// testReleaseLoader is a test version of ReleaseLoader that mocks fetchReleaseDetails
-type testReleaseLoader struct {
-	db                 *db.DB
-	httpClient         *http.Client
-	mockReleaseDetails ReleaseDetails
-	releases           []string
-	architectures      []string
-	errors             []error
-}
-
-func (t *testReleaseLoader) fetchReleaseDetails(arch, rel string, tag ReleaseTag) ReleaseDetails {
-	return t.mockReleaseDetails
-}
-
-func (t *testReleaseLoader) buildReleaseTag(architecture, release string, tag ReleaseTag) *models.ReleaseTag {
-	releaseDetails := t.fetchReleaseDetails(architecture, release, tag)
-	releaseTag := releaseDetailsToDB(architecture, tag, releaseDetails)
-
-	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
-	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
-		return nil
-	}
-
-	if len(releaseTag.PullRequests) == 0 {
-		return releaseTag
-	}
-
-	// PR lookup logic - same as the original
-	type prKey struct{ url, name string }
-	prIndexMap := make(map[prKey]int, len(releaseTag.PullRequests))
-	orConditions := make([]string, 0, len(releaseTag.PullRequests))
-	args := make([]interface{}, 0, len(releaseTag.PullRequests)*2)
-
-	for i, pr := range releaseTag.PullRequests {
-		key := prKey{pr.URL, pr.Name}
-		if _, exists := prIndexMap[key]; !exists {
-			prIndexMap[key] = i
-			orConditions = append(orConditions, "(url = ? AND name = ?)")
-			args = append(args, key.url, key.name)
-		}
-	}
-
-	// Execute batch query and map results back
-	var existingPRs []models.ReleasePullRequest
-	if err := t.db.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&existingPRs).Error; err != nil {
-		panic(err)
-	}
-
-	for _, existingPR := range existingPRs {
-		if index, ok := prIndexMap[prKey{existingPR.URL, existingPR.Name}]; ok {
-			releaseTag.PullRequests[index] = existingPR
-		}
-	}
-
-	return releaseTag
-}
-
-func buildMockReleaseDetails(name, phase string, hasFailedBlocking bool) ReleaseDetails {
-	details := buildReleaseDetails(hasFailedBlocking)
-	details.Name = name
-	details.ChangeLog = []uint8("Mock changelog content") // Ensure non-empty changelog
-
-	// Provide mock ChangeLogJSON to avoid HTML parsing issues
-	details.ChangeLogJSON = ChangeLog{
-		From: ChangeLogRelease{Name: "previous-release"},
-		Components: []ChangeLogComponent{
-			{Name: "Kubernetes", Version: "1.28.5"},
-			{Name: "CoreOS", Version: "413.92.202301031521-0", VersionURL: "https://example.com/coreos"},
-		},
-		UpdatedImages: []UpdatedImage{}, // Empty for basic test
-	}
-
-	return details
-}
-
-func buildMockReleaseDetailsNoChangelog(name string) ReleaseDetails {
-	details := ReleaseDetails{
-		Name:    name,
-		Results: make(map[string]map[string]JobRunResult),
-		// No ChangeLog - this will cause releaseDetailsToDB to return nil
-	}
-	return details
-}
-
-func buildMockReleaseDetailsWithPRs(name string, prs []testPR) ReleaseDetails {
-	details := buildMockReleaseDetails(name, api.PayloadAccepted, false)
-
-	// Create mock changelog JSON with PRs
-	changelog := ChangeLog{
-		From: ChangeLogRelease{Name: "previous-release"},
-		Components: []ChangeLogComponent{
-			{Name: "Kubernetes", Version: "1.28.5"},
-		},
-		UpdatedImages: make([]UpdatedImage, 0),
-	}
-
-	// Add PRs to changelog
-	for i, pr := range prs {
-		changelog.UpdatedImages = append(changelog.UpdatedImages, UpdatedImage{
-			Name:          pr.Name,
-			Path:          fmt.Sprintf("sha256:hash%d", i),
-			FullChangeLog: fmt.Sprintf("https://github.com/openshift/%s/compare/old..new", pr.Name),
-			Commits: []UpdatedImageCommits{
-				{
-					Subject: pr.Description,
-					PullURL: pr.URL,
-					PullID:  extractPRNumber(pr.URL),
-				},
-			},
-		})
-	}
-
-	details.ChangeLogJSON = changelog
-	return details
-}
-
-func buildMockReleaseDetailsWithManyPRs(name string, count int) ReleaseDetails {
-	prs := make([]testPR, count)
-	for i := 0; i < count; i++ {
-		prs[i] = testPR{
-			URL:         fmt.Sprintf("https://github.com/openshift/repo%d/pull/%d", i, i),
-			Name:        fmt.Sprintf("repo%d", i),
-			Description: fmt.Sprintf("PR %d description", i),
-		}
-	}
-	return buildMockReleaseDetailsWithPRs(name, prs)
-}
-
-func extractPRNumber(url string) int {
-	// Simple extraction for test purposes
-	parts := strings.Split(url, "/")
-	if len(parts) > 0 {
-		if num, err := strconv.Atoi(parts[len(parts)-1]); err == nil {
-			return num
-		}
-	}
-	return 123 // Default for tests
-}
-
-func cleanupTestDB(t *testing.T, db *db.DB) {
-	// Clean up test data
-	db.DB.Exec("DELETE FROM release_tag_pull_requests")
-	db.DB.Exec("DELETE FROM release_pull_requests")
-	db.DB.Exec("DELETE FROM release_tags")
-	db.DB.Exec("DELETE FROM release_repositories")
-	db.DB.Exec("DELETE FROM release_job_runs")
-}
-
-func cleanupTestDBBenchmark(b *testing.B, db *db.DB) {
-	// Clean up test data for benchmark
-	db.DB.Exec("DELETE FROM release_tag_pull_requests")
-	db.DB.Exec("DELETE FROM release_pull_requests")
-	db.DB.Exec("DELETE FROM release_tags")
-	db.DB.Exec("DELETE FROM release_repositories")
-	db.DB.Exec("DELETE FROM release_job_runs")
-}
-
-// Benchmark test for performance validation
-func BenchmarkBuildReleaseTagPRLookup(b *testing.B) {
-	// Get database handle (requires TEST_SIPPY_DATABASE_DSN)
-	if os.Getenv("TEST_SIPPY_DATABASE_DSN") == "" {
-		b.Skip("TEST_SIPPY_DATABASE_DSN environment variable not set, skipping benchmark")
-	}
-
-	dbc := util.GetDbHandle(&testing.T{})
-
-	// Setup many PRs in database
-	setupManyPRsForBenchmark(b, dbc, 1000)
-	defer cleanupTestDBBenchmark(b, dbc)
-
-	loader := &testReleaseLoader{
-		db:                 dbc,
-		httpClient:         &http.Client{Timeout: 60 * time.Second},
-		mockReleaseDetails: buildMockReleaseDetailsWithManyPRs("4.14.0-0.ci-2023-01-01-120000", 1000),
-	}
-
-	inputTag := ReleaseTag{
-		Name:  "4.14.0-0.ci-2023-01-01-120000",
-		Phase: api.PayloadAccepted,
-	}
-
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		result := loader.buildReleaseTag("amd64", "4.14.0-0.ci", inputTag)
-		if result == nil {
-			b.Fatal("Expected non-nil result")
-		}
-	}
-}
-
-func setupManyPRsForBenchmark(b *testing.B, db *db.DB, count int) {
-	prs := make([]models.ReleasePullRequest, count)
-	for i := 0; i < count; i++ {
-		prs[i] = models.ReleasePullRequest{
-			URL:           fmt.Sprintf("https://github.com/openshift/repo%d/pull/%d", i, i),
-			Name:          fmt.Sprintf("repo%d", i),
-			Description:   fmt.Sprintf("Benchmark PR %d", i),
+	for i := 0; i < prCount; i++ {
+		inputPRs[i] = models.ReleasePullRequest{
+			URL:           fmt.Sprintf("https://github.com/openshift/repo%d/pull/%d", i%10, i),
+			Name:          fmt.Sprintf("repo%d", i%10),
+			Description:   fmt.Sprintf("PR %d description", i),
 			PullRequestID: fmt.Sprintf("%d", i),
 		}
+
+		// Create DB version for first half
+		if i < prCount/2 {
+			existingPRs[i] = models.ReleasePullRequest{
+				URL:           inputPRs[i].URL,
+				Name:          inputPRs[i].Name,
+				Description:   fmt.Sprintf("DB PR %d description", i),
+				PullRequestID: inputPRs[i].PullRequestID,
+				BugURL:        fmt.Sprintf("https://bugzilla.redhat.com/%d", i),
+			}
+		}
 	}
 
-	// Create in batches for performance
-	batchSize := 100
-	for i := 0; i < len(prs); i += batchSize {
-		end := i + batchSize
-		if end > len(prs) {
-			end = len(prs)
+	dbQueryCount := 0
+
+	// Mock the database function
+	bulkFetchPRsFromTbl = func(db *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
+		dbQueryCount++
+		return existingPRs
+	}
+
+	loader := &ReleaseLoader{}
+	result := loader.resolveReleasePullRequests(inputPRs)
+
+	// Verify results
+	if len(result) != prCount {
+		t.Errorf("Expected %d PRs, got %d", prCount, len(result))
+	}
+
+	// Verify only one database query was made
+	if dbQueryCount != 1 {
+		t.Errorf("Expected 1 database query, got %d", dbQueryCount)
+	}
+
+	// Verify first half have DB descriptions, second half have original descriptions
+	for i := 0; i < prCount/2; i++ {
+		if result[i].Description != fmt.Sprintf("DB PR %d description", i) {
+			t.Errorf("PR %d should have DB description, got %s", i, result[i].Description)
 		}
-		err := db.DB.CreateInBatches(prs[i:end], batchSize).Error
-		require.NoError(b, err)
+		if result[i].BugURL != fmt.Sprintf("https://bugzilla.redhat.com/%d", i) {
+			t.Errorf("PR %d should have DB BugURL, got %s", i, result[i].BugURL)
+		}
+	}
+	for i := prCount / 2; i < prCount; i++ {
+		if result[i].Description != fmt.Sprintf("PR %d description", i) {
+			t.Errorf("PR %d should have original description, got %s", i, result[i].Description)
+		}
+		if result[i].BugURL != "" {
+			t.Errorf("PR %d should have empty BugURL, got %s", i, result[i].BugURL)
+		}
+	}
+}
+
+func TestResolveReleasePullRequestsMemoryDeduplication(t *testing.T) {
+	originalBulkFetch := bulkFetchPRsFromTbl
+	t.Cleanup(func() {
+		bulkFetchPRsFromTbl = originalBulkFetch
+	})
+
+	// Test memory efficiency with duplicate PRs
+	const uniquePRs = 100
+	const totalPRs = 1000 // 10x duplicates
+
+	inputPRs := make([]models.ReleasePullRequest, totalPRs)
+
+	// Create many duplicates of the same PRs
+	for i := 0; i < totalPRs; i++ {
+		prIndex := i % uniquePRs
+		inputPRs[i] = models.ReleasePullRequest{
+			URL:           fmt.Sprintf("https://github.com/openshift/repo%d/pull/%d", prIndex, prIndex),
+			Name:          fmt.Sprintf("repo%d", prIndex),
+			Description:   fmt.Sprintf("PR %d description %d", prIndex, i), // Different descriptions for duplicates
+			PullRequestID: fmt.Sprintf("%d", prIndex),
+		}
+	}
+
+	dbQueryCount := 0
+	actualConditionCount := 0
+
+	// Mock the database function
+	bulkFetchPRsFromTbl = func(db *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
+		dbQueryCount++
+		actualConditionCount = len(orConditions)
+		return []models.ReleasePullRequest{} // No existing PRs
+	}
+
+	loader := &ReleaseLoader{}
+	result := loader.resolveReleasePullRequests(inputPRs)
+
+	// Verify results
+	if len(result) != totalPRs {
+		t.Errorf("Expected %d PRs, got %d", totalPRs, len(result))
+	}
+
+	// Verify only one database query was made despite many duplicates
+	if dbQueryCount != 1 {
+		t.Errorf("Expected 1 database query, got %d", dbQueryCount)
+	}
+
+	// Verify the query was built efficiently (should have only uniquePRs conditions)
+	expectedConditions := uniquePRs
+	if actualConditionCount != expectedConditions {
+		t.Errorf("Expected %d query conditions, got %d", expectedConditions, actualConditionCount)
 	}
 }

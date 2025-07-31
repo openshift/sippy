@@ -105,16 +105,24 @@ func (r *ReleaseLoader) buildReleaseTag(architecture, release string, tag Releas
 		return nil
 	}
 
-	if len(releaseTag.PullRequests) == 0 {
-		return releaseTag
+	if len(releaseTag.PullRequests) > 0 {
+		releaseTag.PullRequests = r.resolveReleasePullRequests(releaseTag.PullRequests)
+	}
+
+	return releaseTag
+}
+
+func (r *ReleaseLoader) resolveReleasePullRequests(pullRequests []models.ReleasePullRequest) []models.ReleasePullRequest {
+	if len(pullRequests) == 0 {
+		return pullRequests
 	}
 
 	type prKey struct{ url, name string }
-	prIndexMap := make(map[prKey]int, len(releaseTag.PullRequests))
-	orConditions := make([]string, 0, len(releaseTag.PullRequests))
-	args := make([]interface{}, 0, len(releaseTag.PullRequests)*2)
+	prIndexMap := make(map[prKey]int, len(pullRequests))
+	orConditions := make([]string, 0, len(pullRequests))
+	args := make([]any, 0, len(pullRequests)*2)
 
-	for i, pr := range releaseTag.PullRequests {
+	for i, pr := range pullRequests {
 		key := prKey{pr.URL, pr.Name}
 		if _, exists := prIndexMap[key]; !exists {
 			prIndexMap[key] = i
@@ -123,19 +131,26 @@ func (r *ReleaseLoader) buildReleaseTag(architecture, release string, tag Releas
 		}
 	}
 
-	// Execute batch query and map results back
-	var existingPRs []models.ReleasePullRequest
-	if err := r.db.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&existingPRs).Error; err != nil {
-		panic(err)
-	}
+	existingPRs := bulkFetchPRsFromTbl(r.db, orConditions, args)
 
 	for _, existingPR := range existingPRs {
 		if index, ok := prIndexMap[prKey{existingPR.URL, existingPR.Name}]; ok {
-			releaseTag.PullRequests[index] = existingPR
+			pullRequests[index] = existingPR
 		}
 	}
 
-	return releaseTag
+	return pullRequests
+}
+
+// bulkFetchPRsFromTbl is a function variable to allow mocking in tests
+var bulkFetchPRsFromTbl = func(db *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
+	// Execute batch query to find existing PRs
+	var pullRequests []models.ReleasePullRequest
+	if err := db.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&pullRequests).Error; err != nil {
+		panic(err)
+	}
+
+	return pullRequests
 }
 
 func (r *ReleaseLoader) fetchReleaseDetails(architecture, release string, tag ReleaseTag) ReleaseDetails {
