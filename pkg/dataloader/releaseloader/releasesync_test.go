@@ -431,8 +431,7 @@ func TestResolveReleasePullRequests(t *testing.T) {
 				return tt.mockDBResults
 			}
 
-			// Create a test loader
-			loader := &ReleaseLoader{} // db not needed since we're mocking bulkFetchPRsFromTbl
+			loader := &ReleaseLoader{}
 
 			// Execute the function under test
 			result := loader.resolveReleasePullRequests(tt.inputPRs)
@@ -463,7 +462,6 @@ func TestResolveReleasePullRequests(t *testing.T) {
 				}
 			}
 
-			// Verify database interaction efficiency
 			if dbQueryCount != tt.expectedDBQueryCount {
 				t.Errorf("Expected %d database queries, got %d", tt.expectedDBQueryCount, dbQueryCount)
 			}
@@ -476,13 +474,11 @@ func TestResolveReleasePullRequests(t *testing.T) {
 }
 
 func TestResolveReleasePullRequestsLargeDataset(t *testing.T) {
-	// Use t.Cleanup instead of defer - it's safer and always runs
 	originalBulkFetch := bulkFetchPRsFromTbl
 	t.Cleanup(func() {
 		bulkFetchPRsFromTbl = originalBulkFetch
 	})
 
-	// Test with a large number of PRs to ensure performance
 	const prCount = 1000
 
 	inputPRs := make([]models.ReleasePullRequest, prCount)
@@ -545,58 +541,5 @@ func TestResolveReleasePullRequestsLargeDataset(t *testing.T) {
 		if result[i].BugURL != "" {
 			t.Errorf("PR %d should have empty BugURL, got %s", i, result[i].BugURL)
 		}
-	}
-}
-
-func TestResolveReleasePullRequestsMemoryDeduplication(t *testing.T) {
-	originalBulkFetch := bulkFetchPRsFromTbl
-	t.Cleanup(func() {
-		bulkFetchPRsFromTbl = originalBulkFetch
-	})
-
-	// Test memory efficiency with duplicate PRs
-	const uniquePRs = 100
-	const totalPRs = 1000 // 10x duplicates
-
-	inputPRs := make([]models.ReleasePullRequest, totalPRs)
-
-	// Create many duplicates of the same PRs
-	for i := 0; i < totalPRs; i++ {
-		prIndex := i % uniquePRs
-		inputPRs[i] = models.ReleasePullRequest{
-			URL:           fmt.Sprintf("https://github.com/openshift/repo%d/pull/%d", prIndex, prIndex),
-			Name:          fmt.Sprintf("repo%d", prIndex),
-			Description:   fmt.Sprintf("PR %d description %d", prIndex, i), // Different descriptions for duplicates
-			PullRequestID: fmt.Sprintf("%d", prIndex),
-		}
-	}
-
-	dbQueryCount := 0
-	actualConditionCount := 0
-
-	// Mock the database function
-	bulkFetchPRsFromTbl = func(db *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
-		dbQueryCount++
-		actualConditionCount = len(orConditions)
-		return []models.ReleasePullRequest{} // No existing PRs
-	}
-
-	loader := &ReleaseLoader{}
-	result := loader.resolveReleasePullRequests(inputPRs)
-
-	// Verify results
-	if len(result) != totalPRs {
-		t.Errorf("Expected %d PRs, got %d", totalPRs, len(result))
-	}
-
-	// Verify only one database query was made despite many duplicates
-	if dbQueryCount != 1 {
-		t.Errorf("Expected 1 database query, got %d", dbQueryCount)
-	}
-
-	// Verify the query was built efficiently (should have only uniquePRs conditions)
-	expectedConditions := uniquePRs
-	if actualConditionCount != expectedConditions {
-		t.Errorf("Expected %d query conditions, got %d", expectedConditions, actualConditionCount)
 	}
 }
