@@ -43,10 +43,10 @@ func New(dbc *db.DB, releases, architectures []string) *ReleaseLoader {
 	}
 	return &ReleaseLoader{
 		db:            dbc,
-		httpClient:    &http.Client{Timeout: 60 * time.Second},
 		releases:      releases,
 		architectures: architectures,
 		platforms:     platformReleases,
+		httpClient:    &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
@@ -60,7 +60,6 @@ func (r *ReleaseLoader) Errors() []error {
 
 func (r *ReleaseLoader) Load() {
 	for _, platform := range r.platforms {
-		log.Debugf("Loading platform %s", platform.GetName())
 		platformName := platform.GetName()
 		releaseStreams := platform.BuildReleaseStreams(r.releases)
 		for _, release := range releaseStreams {
