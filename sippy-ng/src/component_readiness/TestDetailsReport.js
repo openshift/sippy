@@ -36,6 +36,7 @@ import CompReadyPageTitle from './CompReadyPageTitle'
 import CompReadyProgress from './CompReadyProgress'
 import CompReadyTestPanel from './CompReadyTestPanel'
 import CopyPageURL from './CopyPageURL'
+import FileBug from '../bugs/FileBug'
 import GeneratedAt from './GeneratedAt'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
@@ -303,6 +304,62 @@ Failures: ${stats.failure_count}
 Flakes: ${stats.flake_count}`
   }
 
+  const getBugFilingComponent = () => {
+    const hasBaseStats = data.analyses[0].base_stats
+    const contextWithStats = `
+(_Feel free to update this bug's summary to be more specific._)
+Component Readiness has found a potential regression in the following test:
+
+{code:none}${testName}{code}
+
+${(data.analyses[0].explanations || []).join('\n')}
+${printStatsText(
+  'Sample (being evaluated)',
+  data.analyses[0].sample_stats,
+  data.analyses[0].sample_stats.Start,
+  data.analyses[0].sample_stats.End
+)}${
+      hasBaseStats
+        ? printStatsText(
+            'Base (historical)',
+            data.analyses[0].base_stats,
+            data.analyses[0].base_stats.Start,
+            data.analyses[0].base_stats.End
+          )
+        : ''
+    }
+
+View the [test details report|${document.location.href}] for additional context.
+            `
+
+    const commonProps = {
+      testName,
+      component,
+      capability,
+      labels: ['component-regression'],
+      context: contextWithStats,
+    }
+
+    if (writeEndpointsEnabled) {
+      return (
+        <FileBug
+          {...commonProps}
+          regressionId={regressionId}
+          version={sampleRelease}
+          jiraComponentID={Number(data.jira_component_id)}
+          setHasBeenTriaged={setHasBeenTriaged}
+        />
+      )
+    } else {
+      return (
+        <BugButton
+          {...commonProps}
+          jiraComponentID={String(data.jira_component_id)}
+        />
+      )
+    }
+  }
+
   return (
     <Fragment>
       <Sidebar isTestDetails={true} />
@@ -369,61 +426,7 @@ Flakes: ${stats.flake_count}`
               gap: 2,
             }}
           >
-            {data.analyses[0].base_stats ? (
-              <BugButton
-                testName={testName}
-                component={component}
-                capability={capability}
-                jiraComponentID={data.jira_component_id}
-                labels={['component-regression']}
-                context={`
-(_Feel free to update this bug's summary to be more specific._)
-Component Readiness has found a potential regression in the following test:
-
-{code:none}${testName}{code}
-
-${(data.analyses[0].explanations || []).join('\n')}
-${printStatsText(
-  'Sample (being evaluated)',
-  data.analyses[0].sample_stats,
-  data.analyses[0].sample_stats.Start,
-  data.analyses[0].sample_stats.End
-)}
-${printStatsText(
-  'Base (historical)',
-  data.analyses[0].base_stats,
-  data.analyses[0].base_stats.Start,
-  data.analyses[0].base_stats.End
-)}
-
-View the [test details report|${document.location.href}] for additional context.
-            `}
-              />
-            ) : (
-              <BugButton
-                testName={testName}
-                component={component}
-                capability={capability}
-                jiraComponentID={data.jira_component_id}
-                labels={['component-regression']}
-                context={`
-(_Feel free to update this bug's summary to be more specific._)
-Component Readiness has found a potential regression in the following test:
-
-{code:none}${testName}{code}
-
-${(data.analyses[0].explanations || []).join('\n')}
-${printStatsText(
-  'Sample (being evaluated)',
-  data.analyses[0].sample_stats,
-  data.analyses[0].sample_stats.Start,
-  data.analyses[0].sample_stats.End
-)}
-
-View the [test details report|${document.location.href}] for additional context.
-            `}
-              />
-            )}
+            {getBugFilingComponent()}
             <Button
               variant="contained"
               color="secondary"
