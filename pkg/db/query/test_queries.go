@@ -126,7 +126,7 @@ WITH results AS (
            unnest(variants)        AS variant
     FROM prow_test_report_7d_matview
 	WHERE release = @release AND name ~* @testsubstrings
-          AND NOT(@excluded && variants)
+          AND NOT(variants is not null and @excluded && variants)
     GROUP BY name, release, variant
 )
 SELECT *,
@@ -182,7 +182,7 @@ func TestReportExcludeVariants(
            sum(previous_flakes)    AS previous_flakes
     FROM prow_test_report_7d_matview
     WHERE release = @release AND name = @testname
-          AND NOT(@excluded && variants)
+          AND NOT(variants is not null and @excluded && variants)
     GROUP BY name, release
 ) SELECT *, %s FROM results;`
 
