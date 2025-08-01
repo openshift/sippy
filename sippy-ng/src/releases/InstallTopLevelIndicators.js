@@ -39,10 +39,8 @@ export default function TopLevelIndicators(props) {
     'bootstrap',
     'install',
   ].forEach((indicator) => {
-    if (
-      props.indicators[indicator].current_runs !== 0 ||
-      props.indicators[indicator].previous_runs !== 0
-    ) {
+    let ind = props.indicators[indicator]
+    if (ind && (ind.current_runs !== 0 || ind.previous_runs !== 0)) {
       noData = false
     }
   })
@@ -54,87 +52,97 @@ export default function TopLevelIndicators(props) {
 
   return (
     <Fragment>
-      <Grid item md={2} sm={4}>
-        <SummaryCard
-          key="infrastructure-summary"
-          threshold={INFRASTRUCTURE_THRESHOLDS}
-          name="Infrastructure"
-          link={pathForTestByVariant(
-            props.release,
-            'install should succeed: infrastructure'
-          )}
-          success={props.indicators.infrastructure.current_pass_percentage}
-          flakes={props.indicators.infrastructure.current_flake_percentage}
-          fail={props.indicators.infrastructure.current_failure_percentage}
-          caption={indicatorCaption(props.indicators.infrastructure)}
-          tooltip="How often install fails due to infrastructure failures."
-        />
-      </Grid>
+      {props.indicators.infrastructure && (
+        <Grid item md={2} sm={4}>
+          <SummaryCard
+            key="infrastructure-summary"
+            threshold={INFRASTRUCTURE_THRESHOLDS}
+            name="Infrastructure"
+            link={pathForTestByVariant(
+              props.release,
+              'install should succeed: infrastructure'
+            )}
+            success={props.indicators.infrastructure.current_pass_percentage}
+            flakes={props.indicators.infrastructure.current_flake_percentage}
+            fail={props.indicators.infrastructure.current_failure_percentage}
+            caption={indicatorCaption(props.indicators.infrastructure)}
+            tooltip="How often install fails due to infrastructure failures."
+          />
+        </Grid>
+      )}
 
-      <Grid item md={2} sm={4}>
-        <SummaryCard
-          key="install-config-summary"
-          threshold={INSTALL_CONFIG_THRESHOLDS}
-          name="Install-Config"
-          link={pathForTestByVariant(
-            props.release,
-            'install should succeed: configuration'
-          )}
-          success={props.indicators.installConfig.current_pass_percentage}
-          flakes={props.indicators.installConfig.current_flake_percentage}
-          fail={props.indicators.installConfig.current_failure_percentage}
-          caption={indicatorCaption(props.indicators.installConfig)}
-          tooltip="How often the install configuration check completes successfully."
-        />
-      </Grid>
+      {props.indicators.installConfig && (
+        <Grid item md={2} sm={4}>
+          <SummaryCard
+            key="install-config-summary"
+            threshold={INSTALL_CONFIG_THRESHOLDS}
+            name="Install-Config"
+            link={pathForTestByVariant(
+              props.release,
+              'install should succeed: configuration'
+            )}
+            success={props.indicators.installConfig.current_pass_percentage}
+            flakes={props.indicators.installConfig.current_flake_percentage}
+            fail={props.indicators.installConfig.current_failure_percentage}
+            caption={indicatorCaption(props.indicators.installConfig)}
+            tooltip="How often the install configuration check completes successfully."
+          />
+        </Grid>
+      )}
 
-      <Grid item md={2} sm={4}>
-        <SummaryCard
-          key="bootstrap-summary"
-          threshold={BOOTSTRAP_THRESHOLDS}
-          name="Bootstrap"
-          link={pathForTestByVariant(
-            props.release,
-            'install should succeed: cluster bootstrap'
-          )}
-          success={props.indicators.bootstrap.current_pass_percentage}
-          flakes={props.indicators.bootstrap.current_flake_percentage}
-          fail={props.indicators.bootstrap.current_failure_percentage}
-          caption={indicatorCaption(props.indicators.bootstrap)}
-          tooltip="How often bootstrap completes successfully."
-        />
-      </Grid>
+      {props.indicators.bootstrap && (
+        <Grid item md={2} sm={4}>
+          <SummaryCard
+            key="bootstrap-summary"
+            threshold={BOOTSTRAP_THRESHOLDS}
+            name="Bootstrap"
+            link={pathForTestByVariant(
+              props.release,
+              'install should succeed: cluster bootstrap'
+            )}
+            success={props.indicators.bootstrap.current_pass_percentage}
+            flakes={props.indicators.bootstrap.current_flake_percentage}
+            fail={props.indicators.bootstrap.current_failure_percentage}
+            caption={indicatorCaption(props.indicators.bootstrap)}
+            tooltip="How often bootstrap completes successfully."
+          />
+        </Grid>
+      )}
 
-      <Grid item md={2} sm={4}>
-        <SummaryCard
-          key="install-other"
-          threshold={INSTALL_OTHER_THRESHOLDS}
-          name="Install Other"
-          link={pathForTestByVariant(
-            props.release,
-            'install should succeed: other'
-          )}
-          success={props.indicators.installOther.current_pass_percentage}
-          flakes={props.indicators.installOther.current_flake_percentage}
-          fail={props.indicators.installOther.current_failure_percentage}
-          caption={indicatorCaption(props.indicators.installOther)}
-          tooltip="How often install fails because other reasons."
-        />
-      </Grid>
+      {props.indicators.installOther && (
+        <Grid item md={2} sm={4}>
+          <SummaryCard
+            key="install-other"
+            threshold={INSTALL_OTHER_THRESHOLDS}
+            name="Install Other"
+            link={pathForTestByVariant(
+              props.release,
+              'install should succeed: other'
+            )}
+            success={props.indicators.installOther.current_pass_percentage}
+            flakes={props.indicators.installOther.current_flake_percentage}
+            fail={props.indicators.installOther.current_failure_percentage}
+            caption={indicatorCaption(props.indicators.installOther)}
+            tooltip="How often install fails because other reasons."
+          />
+        </Grid>
+      )}
 
-      <Grid item md={2} sm={4}>
-        <SummaryCard
-          key="install-summary"
-          threshold={INSTALL_THRESHOLDS}
-          name="Install"
-          link={'/install/' + props.release}
-          success={props.indicators.install.current_pass_percentage}
-          flakes={props.indicators.install.current_flake_percentage}
-          fail={props.indicators.install.current_failure_percentage}
-          caption={indicatorCaption(props.indicators.install)}
-          tooltip="How often the install completes successfully."
-        />
-      </Grid>
+      {props.indicators.install && (
+        <Grid item md={2} sm={4}>
+          <SummaryCard
+            key="install-summary"
+            threshold={INSTALL_THRESHOLDS}
+            name="Install"
+            link={'/install/' + props.release}
+            success={props.indicators.install.current_pass_percentage}
+            flakes={props.indicators.install.current_flake_percentage}
+            fail={props.indicators.install.current_failure_percentage}
+            caption={indicatorCaption(props.indicators.install)}
+            tooltip="How often the install completes successfully."
+          />
+        </Grid>
+      )}
     </Fragment>
   )
 }
