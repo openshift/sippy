@@ -109,16 +109,54 @@ func (r *ReleaseLoader) buildReleaseTag(platform PlatformRelease, architecture, 
 		return nil
 	}
 
-	// PR is many-to-many, find the existing relation. TODO: There must be a more clever way to do this...
-	for i, pr := range releaseTag.PullRequests {
-		existingPR := models.ReleasePullRequest{}
-		result := r.db.DB.Table("release_pull_requests").Where("url = ?", pr.URL).Where("name = ?", pr.Name).First(&existingPR)
-		if result.Error == nil {
-			releaseTag.PullRequests[i] = existingPR
-		}
+	if len(releaseTag.PullRequests) > 0 {
+		releaseTag.PullRequests = r.resolveReleasePullRequests(releaseTag.PullRequests)
 	}
 
 	return releaseTag
+}
+
+func (r *ReleaseLoader) resolveReleasePullRequests(pullRequests []models.ReleasePullRequest) []models.ReleasePullRequest {
+	if len(pullRequests) == 0 {
+		return pullRequests
+	}
+
+	type prKey struct{ url, name string }
+	prIndexMap := make(map[prKey]int, len(pullRequests))
+	orConditions := make([]string, 0, len(pullRequests))
+	args := make([]any, 0, len(pullRequests)*2)
+
+	for i, pr := range pullRequests {
+		key := prKey{pr.URL, pr.Name}
+		if _, exists := prIndexMap[key]; !exists {
+			prIndexMap[key] = i
+			orConditions = append(orConditions, "(url = ? AND name = ?)")
+			args = append(args, key.url, key.name)
+		}
+	}
+
+	existingPRs := bulkFetchPRsFromTbl(r.db, orConditions, args)
+
+	for _, existingPR := range existingPRs {
+		if index, ok := prIndexMap[prKey{existingPR.URL, existingPR.Name}]; ok {
+			pullRequests[index] = existingPR
+		}
+	}
+
+	return pullRequests
+}
+
+// bulkFetchPRsFromTbl is a function variable to allow mocking in tests
+var bulkFetchPRsFromTbl = func(db *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
+	// Execute batch query to find existing PRs
+	var pullRequests []models.ReleasePullRequest
+	if err := db.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&pullRequests).Error; err != nil {
+		log.WithError(err).Errorf("failed to query release pull requests")
+		// Return empty slice rather than panic - allows graceful degradation
+		return []models.ReleasePullRequest{}
+	}
+
+	return pullRequests
 }
 
 func (r *ReleaseLoader) fetchReleaseDetails(platform PlatformRelease, architecture, release string, tag ReleaseTag) ReleaseDetails {
