@@ -369,8 +369,7 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 			log.WithError(res.Error).Error("error creating partition")
 			return res.Error
 		}
-		dLog.Info("partition created")
-		dLog.Warn(pl.releases)
+		dLog.Warnf("partition created for releases %v", pl.releases)
 
 		q := pl.bigQueryClient.BQ.Query(fmt.Sprintf(`WITH
   deduped_testcases AS (
