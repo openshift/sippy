@@ -29,9 +29,9 @@ const (
 type ReleaseLoader struct {
 	db            *db.DB
 	httpClient    *http.Client
-	platforms     []PlatformRelease
 	releases      []string
 	architectures []string
+	platforms     []PlatformRelease
 	errors        []error
 }
 
@@ -43,9 +43,9 @@ func New(dbc *db.DB, releases, architectures []string) *ReleaseLoader {
 	}
 	return &ReleaseLoader{
 		db:            dbc,
+		httpClient:    &http.Client{Timeout: 60 * time.Second},
 		releases:      releases,
 		architectures: architectures,
-		httpClient:    &http.Client{Timeout: 60 * time.Second},
 		platforms:     platformReleases,
 	}
 }
@@ -60,6 +60,7 @@ func (r *ReleaseLoader) Errors() []error {
 
 func (r *ReleaseLoader) Load() {
 	for _, platform := range r.platforms {
+		log.Debugf("Loading platform %s", platform.GetName())
 		platformName := platform.GetName()
 		releaseStreams := platform.BuildReleaseStreams(r.releases)
 		for _, release := range releaseStreams {

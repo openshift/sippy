@@ -86,3 +86,27 @@ type UpdatedImageCommits struct {
 	PullID  int               `json:"pullID"`
 	PullURL string            `json:"pullURL"`
 }
+
+// OCPRelease implements PlatformRelease for OpenShift Container Platform
+type OCPRelease struct{}
+
+// OKDRelease implements PlatformRelease for Origin Kubernetes Distribution
+type OKDRelease struct{}
+
+// PlatformRelease represents a platform that releases are built for (OCP, OKD, etc)
+type PlatformRelease interface {
+	GetName() string
+	GetAlias() string
+
+	// GetStreams returns the available release streams for this platform
+	GetStreams() []string
+
+	// BuildReleaseStreams builds the full stream names for given releases
+	BuildReleaseStreams(releases []string) []string
+
+	// BuildTagsURL builds the URL to fetch release tags for a specific release and architecture
+	BuildTagsURL(release, architecture string) string
+
+	// BuildDetailsURL builds the URL to fetch release details for a specific tag
+	BuildDetailsURL(release, architecture, tag string) string
+}
