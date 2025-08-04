@@ -152,7 +152,6 @@ var bulkFetchPRsFromTbl = func(db *db.DB, orConditions []string, args []any) []m
 	var pullRequests []models.ReleasePullRequest
 	if err := db.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&pullRequests).Error; err != nil {
 		log.WithError(err).Errorf("failed to query release pull requests")
-		// Return empty slice rather than panic - allows graceful degradation
 		return []models.ReleasePullRequest{}
 	}
 
