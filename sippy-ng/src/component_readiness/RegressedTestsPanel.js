@@ -28,7 +28,7 @@ export default function RegressedTestsPanel(props) {
     NumberParam,
     { updateType: 'replaceIn' }
   )
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
+  const { expandEnvironment, views, view } = useContext(CompReadyVarsContext)
   const { filterVals, regressedTests, setTriageActionTaken } = props
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
@@ -47,6 +47,12 @@ export default function RegressedTestsPanel(props) {
   // Helpers to create triage entries
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
+
+  const currentView = views.find((v) => v.name === view)
+  const regressionTrackingEnabled =
+    currentView?.regression_tracking?.enabled || false
+  const triageButtonEnabled = triageEnabled && regressionTrackingEnabled
+
   const [triaging, setTriaging] = React.useState(false)
   const [regressionIds, setRegressionIds] = React.useState([])
 
@@ -295,14 +301,25 @@ export default function RegressedTestsPanel(props) {
         />
       )}
       {triageEnabled ? (
-        <Button
-          variant="contained"
-          color="secondary"
-          sx={'margin: 10px'}
-          onClick={() => setTriaging(!triaging)}
+        <Tooltip
+          title={
+            !regressionTrackingEnabled
+              ? 'Triage is not available because regression tracking is not enabled for this view'
+              : ''
+          }
         >
-          {triaging ? 'Cancel' : 'Triage'}
-        </Button>
+          <span>
+            <Button
+              variant="contained"
+              color="secondary"
+              sx={'margin: 10px'}
+              onClick={() => setTriaging(!triaging)}
+              disabled={!triageButtonEnabled}
+            >
+              {triaging ? 'Cancel' : 'Triage'}
+            </Button>
+          </span>
+        </Tooltip>
       ) : null}
 
       <Popover
