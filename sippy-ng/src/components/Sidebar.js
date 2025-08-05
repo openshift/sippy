@@ -59,14 +59,16 @@ export default function Sidebar(props) {
       let parts = location.pathname.split('/')
       let tmpOpen = open
       if (parts.length >= 3) {
-        let index = props.releases.indexOf(parts[2])
+        let index = props.releaseConfig.releases.indexOf(parts[2])
         if (index !== -1) {
           tmpOpen[index] = true
         }
       } else {
         let defaultIndex = 0
         if (props.defaultRelease != undefined) {
-          defaultIndex = props.releases.indexOf(props.defaultRelease)
+          defaultIndex = props.releaseConfig.releases.indexOf(
+            props.defaultRelease
+          )
           if (defaultIndex < 0) {
             defaultIndex = 0
           }
@@ -213,7 +215,7 @@ export default function Sidebar(props) {
                     </ListSubheader>
                   }
                 >
-                  {props.releases.map((release, index) => (
+                  {props.releaseConfig.releases.map((release, index) => (
                     <Fragment key={'section-release-' + index}>
                       <ListItem
                         key={'item-release-' + index}
@@ -239,7 +241,8 @@ export default function Sidebar(props) {
                               <ListItemText primary="Overview" />
                             </StyledListItemButton>
                           </ListItem>
-                          {release !== 'Presubmits' ? (
+                          {!props.releaseConfig.release_attrs[release]
+                            .exclude_payload_tags && (
                             <CapabilitiesContext.Consumer>
                               {(value) => {
                                 if (value.includes('openshift_releases')) {
@@ -261,8 +264,6 @@ export default function Sidebar(props) {
                                 }
                               }}
                             </CapabilitiesContext.Consumer>
-                          ) : (
-                            ''
                           )}
                           <ListItem
                             key={'release-jobs-' + index}
@@ -284,41 +285,37 @@ export default function Sidebar(props) {
                             </StyledListItemButton>
                           </ListItem>
 
-                          {
-                            // FIXME: Base this on something like a per-release capabilities feature instead.
-                            release === 'Presubmits' ? (
-                              <Fragment>
-                                <ListItem
-                                  key={'release-pull-requests-' + index}
-                                  component={Link}
-                                  to={`/pull_requests/${release}`}
-                                  className={classes.nested}
-                                >
-                                  <StyledListItemButton>
-                                    <ListItemIcon>
-                                      <GitHub />
-                                    </ListItemIcon>
-                                    <ListItemText primary="Pull Requests" />
-                                  </StyledListItemButton>
-                                </ListItem>
-                                <ListItem
-                                  key={'release-repositories-' + index}
-                                  component={Link}
-                                  to={`/repositories/${release}`}
-                                  className={classes.nested}
-                                >
-                                  <StyledListItemButton>
-                                    <ListItemIcon>
-                                      <Code />
-                                    </ListItemIcon>
-                                    <ListItemText primary="Repositories" />
-                                  </StyledListItemButton>
-                                </ListItem>
-                              </Fragment>
-                            ) : (
-                              ''
-                            )
-                          }
+                          {props.releaseConfig.release_attrs[release]
+                            .include_pull_requests && (
+                            <Fragment>
+                              <ListItem
+                                key={'release-pull-requests-' + index}
+                                component={Link}
+                                to={`/pull_requests/${release}`}
+                                className={classes.nested}
+                              >
+                                <StyledListItemButton>
+                                  <ListItemIcon>
+                                    <GitHub />
+                                  </ListItemIcon>
+                                  <ListItemText primary="Pull Requests" />
+                                </StyledListItemButton>
+                              </ListItem>
+                              <ListItem
+                                key={'release-repositories-' + index}
+                                component={Link}
+                                to={`/repositories/${release}`}
+                                className={classes.nested}
+                              >
+                                <StyledListItemButton>
+                                  <ListItemIcon>
+                                    <Code />
+                                  </ListItemIcon>
+                                  <ListItemText primary="Repositories" />
+                                </StyledListItemButton>
+                              </ListItem>
+                            </Fragment>
+                          )}
 
                           <ListItem
                             key={'release-tests-' + index}
@@ -349,27 +346,30 @@ export default function Sidebar(props) {
                             </StyledListItemButton>
                           </ListItem>
 
-                          <CapabilitiesContext.Consumer>
-                            {(value) => {
-                              if (value.includes('openshift_releases')) {
-                                return (
-                                  <ListItem
-                                    key={'release-feature-gates-' + index}
-                                    component={Link}
-                                    to={'/feature_gates/' + release}
-                                    className={classes.nested}
-                                  >
-                                    <StyledListItemButton>
-                                      <ListItemIcon>
-                                        <Apps />
-                                      </ListItemIcon>
-                                      <ListItemText primary="Feature Gates" />
-                                    </StyledListItemButton>
-                                  </ListItem>
-                                )
-                              }
-                            }}
-                          </CapabilitiesContext.Consumer>
+                          {!props.releaseConfig.release_attrs[release]
+                            .exclude_feature_gates && (
+                            <CapabilitiesContext.Consumer>
+                              {(value) => {
+                                if (value.includes('openshift_releases')) {
+                                  return (
+                                    <ListItem
+                                      key={'release-feature-gates-' + index}
+                                      component={Link}
+                                      to={'/feature_gates/' + release}
+                                      className={classes.nested}
+                                    >
+                                      <StyledListItemButton>
+                                        <ListItemIcon>
+                                          <Apps />
+                                        </ListItemIcon>
+                                        <ListItemText primary="Feature Gates" />
+                                      </StyledListItemButton>
+                                    </ListItem>
+                                  )
+                                }
+                              }}
+                            </CapabilitiesContext.Consumer>
+                          )}
 
                           <CapabilitiesContext.Consumer>
                             {(value) => {
@@ -502,6 +502,6 @@ export default function Sidebar(props) {
 }
 
 Sidebar.propTypes = {
-  releases: PropTypes.array,
+  releaseConfig: PropTypes.object,
   defaultRelease: PropTypes.string,
 }

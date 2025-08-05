@@ -791,7 +791,7 @@ export default function App(props) {
                           </IconButton>
                         </DrawerHeader>
                         <Sidebar
-                          releases={releases['releases']}
+                          releaseConfig={releases}
                           defaultRelease={defaultRelease}
                         />
                       </Drawer>
