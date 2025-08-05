@@ -88,7 +88,7 @@ func (l *FeatureGateLoader) getTargetReleases() ([]string, error) {
 
 		v, err := version.NewVersion(release.Release)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing release version %s", release)
+			return nil, errors.Wrapf(err, "error parsing release version %s", release.Release)
 		}
 
 		if v.GreaterThanOrEqual(minimumRelease) {
