@@ -81,7 +81,7 @@ func (l *FeatureGateLoader) getTargetReleases() ([]string, error) {
 	}
 
 	for _, release := range releases {
-		if release.Release == "Presubmits" {
+		if release.ExcludeFeatureGates {
 			continue
 		}
 

@@ -23,8 +23,6 @@ var (
 	defaultCacheDuration = 8 * time.Hour
 )
 
-const releasePresubmits = "Presubmits"
-
 type CacheData struct {
 	cacheKey func() ([]byte, error)
 }
@@ -154,8 +152,6 @@ func (r *releaseGenerator) ListReleases(ctx context.Context) ([]v1.Release, []er
 		log.WithError(err).Error("error getting releases from bigquery")
 		return releases, []error{err}
 	}
-	// Add special release Presubmits for prow jobs
-	releases = append(releases, v1.Release{Release: releasePresubmits})
 	return releases, nil
 }
 
