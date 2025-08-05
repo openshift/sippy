@@ -575,25 +575,28 @@ func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]
 
 	// Prefer core release from sippy config -- only if the job name references the release. Too many jobs
 	// are attached to "master" and move between releases.
-	for version, release := range v.config.Releases {
-		if _, ok := release.Jobs[jobName]; ok && strings.Contains(jobName, version) {
-			variants[VariantRelease] = version
+	for releaseName, releaseConfig := range v.config.Releases {
+		if _, ok := releaseConfig.Jobs[jobName]; ok && strings.Contains(jobName, releaseName) {
+			variants[VariantRelease] = releaseName
 		}
 	}
 
+	// for jobs with version number(s) in the name, extract lowest and highest to inform upgrade designation
 	release, fromRelease := extractReleases(jobName)
-	releaseMajorMinor := strings.Split(release, ".")
 	if release != "" {
+		releaseMajorMinor := strings.Split(release, ".")
 		variants[VariantRelease] = release
 		variants[VariantReleaseMajor] = releaseMajorMinor[0]
 		variants[VariantReleaseMinor] = releaseMajorMinor[1]
 	}
-	fromReleaseMajorMinor := strings.Split(fromRelease, ".")
 	if fromRelease != "" {
+		fromReleaseMajorMinor := strings.Split(fromRelease, ".")
 		variants[VariantFromRelease] = fromRelease
 		variants[VariantFromReleaseMajor] = fromReleaseMajorMinor[0]
 		variants[VariantFromReleaseMinor] = fromReleaseMajorMinor[1]
 	}
+
+	// for jobs that look like upgrades, determine upgrade variant
 	if upgradeRegex.MatchString(jobName) {
 		switch {
 		case upgradeOutOfChangeRegex.MatchString(jobName):
