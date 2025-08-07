@@ -105,6 +105,10 @@ export function getTriagesAPIUrl(id = null) {
   )
 }
 
+export function getBugsAPIUrl() {
+  return getAPIUrl(`component_readiness/bugs`)
+}
+
 export function getArtifactQueryAPIUrl() {
   return getAPIUrl('jobs/artifacts')
 }
