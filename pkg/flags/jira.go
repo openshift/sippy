@@ -12,10 +12,13 @@ import (
 // JiraFlags holds Jira configuration information for Sippy.
 type JiraFlags struct {
 	JiraTokenFile string
+	JiraURL       string
 }
 
 func NewJiraFlags() *JiraFlags {
-	return &JiraFlags{}
+	return &JiraFlags{
+		JiraURL: "https://issues.redhat.com/",
+	}
 }
 
 func (f *JiraFlags) BindFlags(fs *pflag.FlagSet) {
@@ -23,6 +26,7 @@ func (f *JiraFlags) BindFlags(fs *pflag.FlagSet) {
 		"jira-token-file",
 		f.JiraTokenFile,
 		"file containing Jira token")
+	fs.StringVar(&f.JiraURL, "jira-url", f.JiraURL, "Jira URL")
 }
 
 type bearerAuthTransport struct {
@@ -68,7 +72,7 @@ func (f *JiraFlags) GetJiraClient() (*jira.Client, error) {
 
 	httpClient := &http.Client{Transport: &bearerAuthTransport{Token: jiraToken}}
 
-	jiraClient, err := jira.NewClient(httpClient, "https://issues.redhat.com/")
+	jiraClient, err := jira.NewClient(httpClient, f.JiraURL)
 	if err != nil {
 		return nil, err
 	}
