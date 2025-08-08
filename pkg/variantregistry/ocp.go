@@ -914,8 +914,8 @@ func setArchitecture(_ logrus.FieldLogger, variants map[string]string, jobName s
 		{"-multi-p-p", "ppc64le"},
 		{"-s390x", "s390x"},
 		{"-multi-z-z", "s390x"},
-		{"-heterogeneous", "heterogeneous"},
-		{"-multi", "heterogeneous"},
+		{"-heterogeneous", "multi"},
+		{"-multi", "multi"},
 	}
 
 	// the use of multi in these cases do not apply to architecture so drop them out from evaluation
