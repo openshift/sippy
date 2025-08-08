@@ -655,7 +655,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -696,7 +696,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -739,7 +739,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -826,7 +826,8 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Request) {
-	releases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	forceRefresh := req.URL.Query().Get("forceRefresh") != "" // use to refresh cached releases from BQ
+	releases, err := api.GetReleases(req.Context(), s.bigQueryClient, forceRefresh)
 	if err != nil {
 		log.WithError(err).Error("error querying releases")
 		failureResponse(w, http.StatusInternalServerError, "error querying releases")

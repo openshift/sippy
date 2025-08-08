@@ -271,7 +271,7 @@ func NewLoadCommand() *cobra.Command {
 					if len(views.ComponentReadiness) == 0 {
 						return fmt.Errorf("no component readiness views provided")
 					}
-					releases, err := api.GetReleases(context.TODO(), bqc)
+					releases, err := api.GetReleases(context.TODO(), bqc, false)
 					if err != nil {
 						log.WithError(err).Fatal("error querying releases")
 					}

@@ -156,14 +156,14 @@ func (r *releaseGenerator) ListReleases(ctx context.Context) ([]v1.Release, []er
 }
 
 // GetReleases gets all the releases defined in the BQ Releases table.
-func GetReleases(ctx context.Context, bqc *bqclient.Client) ([]v1.Release, error) {
+func GetReleases(ctx context.Context, bqc *bqclient.Client, forceRefresh bool) ([]v1.Release, error) {
 	releaseGen := releaseGenerator{bqc}
 
 	var err error
 	rels, errs := GetDataFromCacheOrGenerate[[]v1.Release](
 		ctx,
 		bqc.Cache,
-		cache.RequestOptions{},
+		cache.RequestOptions{ForceRefresh: forceRefresh},
 		GetPrefixedCacheKey("Releases~", v1.Release{}), // no cache options needed here, global list
 		releaseGen.ListReleases,
 		[]v1.Release{})
