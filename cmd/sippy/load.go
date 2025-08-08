@@ -251,7 +251,7 @@ func NewLoadCommand() *cobra.Command {
 				// Feature gates
 				if l == "feature-gates" {
 					refreshMatviews = true
-					fgLoader := featuregateloader.New(dbc)
+					fgLoader := featuregateloader.New(dbc, bqc)
 					loaders = append(loaders, fgLoader)
 				}
 
