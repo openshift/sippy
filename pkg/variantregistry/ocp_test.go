@@ -1388,7 +1388,9 @@ func TestVariantSyncer(t *testing.T) {
 			},
 		},
 		{
-			job:          "periodic-ci-RedHatQE-interop-testing-master-cnv-odf-ocp4.20-lp-interop-cnv-component-readiness-aws-ipi-ocp420",
+			// we are more forgiving with our release parsing than the ci-to-bigquery cf.  It requires -4.20- for the 'branch' value of the job
+			// and we rely on the branch value for CR.
+			job:          "periodic-ci-RedHatQE-interop-testing-master-cnv-odf-ocp-4.20-lp-interop-cnv-component-readiness-aws-ipi-ocp420",
 			variantsFile: map[string]string{},
 			expected: map[string]string{
 				VariantRelease:          "4.20",
@@ -1415,6 +1417,36 @@ func TestVariantSyncer(t *testing.T) {
 				VariantLayeredProduct:   "virt",
 			},
 		},
+		{
+			job:          "periodic-ci-openshift-hypershift-release-4.20-periodics-e2e-aks",
+			variantsFile: map[string]string{},
+			expected: map[string]string{
+				VariantRelease:          "4.20",
+				VariantReleaseMajor:     "4",
+				VariantReleaseMinor:     "20",
+				VariantArch:             "amd64",
+				VariantInstaller:        "hypershift",
+				VariantPlatform:         "azure",
+				VariantProcedure:        "none",
+				VariantJobTier:          "candidate",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "eng",
+				VariantSuite:            "unknown",
+				VariantTopology:         "external",
+				VariantUpgrade:          VariantNoValue,
+				VariantAggregation:      VariantNoValue,
+				VariantFeatureSet:       VariantDefaultValue,
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantContainerRuntime: "crun",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
+			},
+		},
+
+		//
 	}
 	for _, test := range tests {
 		t.Run(test.job, func(t *testing.T) {
