@@ -82,6 +82,7 @@ WITH RecentSuccessfulJobs AS (
         (prowjob_job_name LIKE 'periodic-ci-openshift-%%'
           OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
           OR prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-Azure-ARO-HCP-%%'
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
@@ -102,6 +103,7 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
       ((j.prowjob_job_name LIKE 'periodic-ci-openshift-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-Azure-ARO-HCP-%%'
         OR j.prowjob_job_name LIKE 'release-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
@@ -419,6 +421,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-telco5g", "cnf"},
 		{"-perfscale", "perfscale"},
 		{"-chaos-", "chaos"},
+		{"-azure-aro-hcp", "aro"},
 		{"-qe", "qe"}, // Keep this one below perfscale
 		{"-openshift-tests-private", "qe"},
 		{"-openshift-verification-tests", "qe"},
@@ -572,25 +575,28 @@ func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]
 
 	// Prefer core release from sippy config -- only if the job name references the release. Too many jobs
 	// are attached to "master" and move between releases.
-	for version, release := range v.config.Releases {
-		if _, ok := release.Jobs[jobName]; ok && strings.Contains(jobName, version) {
-			variants[VariantRelease] = version
+	for releaseName, releaseConfig := range v.config.Releases {
+		if _, ok := releaseConfig.Jobs[jobName]; ok && strings.Contains(jobName, releaseName) {
+			variants[VariantRelease] = releaseName
 		}
 	}
 
+	// for jobs with version number(s) in the name, extract lowest and highest to inform upgrade designation
 	release, fromRelease := extractReleases(jobName)
-	releaseMajorMinor := strings.Split(release, ".")
 	if release != "" {
+		releaseMajorMinor := strings.Split(release, ".")
 		variants[VariantRelease] = release
 		variants[VariantReleaseMajor] = releaseMajorMinor[0]
 		variants[VariantReleaseMinor] = releaseMajorMinor[1]
 	}
-	fromReleaseMajorMinor := strings.Split(fromRelease, ".")
 	if fromRelease != "" {
+		fromReleaseMajorMinor := strings.Split(fromRelease, ".")
 		variants[VariantFromRelease] = fromRelease
 		variants[VariantFromReleaseMajor] = fromReleaseMajorMinor[0]
 		variants[VariantFromReleaseMinor] = fromReleaseMajorMinor[1]
 	}
+
+	// for jobs that look like upgrades, determine upgrade variant
 	if upgradeRegex.MatchString(jobName) {
 		switch {
 		case upgradeOutOfChangeRegex.MatchString(jobName):
@@ -781,6 +787,7 @@ func setInstaller(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		installer string
 	}{
 		{"-assisted", "assisted"},
+		{"-azure-aro-hcp", "aro"}, // check before hypershift as job name includes -hcp
 		{"-hypershift", "hypershift"},
 		{"-hcp", "hypershift"},
 		{"_hcp", "hypershift"},
@@ -838,6 +845,7 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-rosa", "rosa"}, // Keep above AWS as many ROSA jobs also mention AWS
 		{"-aws", "aws"},
 		{"-alibaba", "alibaba"},
+		{"-azure-aro-hcp", "aro"},
 		{"-azure", "azure"},
 		{"-osd-ccs-gcp", "osd-gcp"},
 		{"-gcp", "gcp"},

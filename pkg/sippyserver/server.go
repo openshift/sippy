@@ -660,7 +660,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -701,7 +701,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -744,7 +744,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -831,17 +831,20 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Request) {
+	forceRefresh := req.URL.Query().Get("forceRefresh") != "" // use to refresh cached releases from BQ
+	releases, err := api.GetReleases(req.Context(), s.bigQueryClient, forceRefresh)
+	if err != nil {
+		log.WithError(err).Error("error querying releases")
+		failureResponse(w, http.StatusInternalServerError, "error querying releases")
+		return
+	}
+
 	gaDateMap := make(map[string]time.Time)
 	dateMap := make(map[string]apitype.ReleaseDates)
 	response := apitype.Releases{
 		DeprecatedGADates: gaDateMap,
 		Dates:             dateMap,
-	}
-	releases, err := api.GetReleases(req.Context(), s.bigQueryClient)
-	if err != nil {
-		log.WithError(err).Error("error querying releases")
-		failureResponse(w, http.StatusInternalServerError, "error querying releases")
-		return
+		ReleaseAttrs:      make(map[string]apitype.Release, len(releases)),
 	}
 
 	for _, release := range releases {
@@ -855,6 +858,12 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 		if release.DevelopmentStartDate != nil {
 			releaseDate.DevelopmentStart = release.DevelopmentStartDate
 			response.Dates[release.Release] = releaseDate
+		}
+		response.ReleaseAttrs[release.Release] = apitype.Release{
+			Name:            release.Release,
+			PreviousRelease: release.PreviousRelease,
+			ReleaseDates:    releaseDate,
+			Capabilities:    release.Capabilities,
 		}
 	}
 

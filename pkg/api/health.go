@@ -58,68 +58,35 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		infraTestName = testidentification.NewInfrastructureTestName
 		installTestName = testidentification.NewInstallTestName
 	}
-	// Infrastructure
-	infraIndicator, err := query.TestReportExcludeVariants(dbc, release, infraTestName, excludedVariants)
-	if err != nil {
-		log.WithError(err).Error("error querying infrastructure test report")
-		return
-	}
-	indicators["infrastructure"] = infraIndicator
 
-	// Install Configuration
-	installConfigIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants)
-	if err != nil {
-		log.WithError(err).Error("error querying install test report")
-		return
+	if infraIndicator, found := query.TestReportExcludeVariants(dbc, release, infraTestName, excludedVariants); found {
+		indicators["infrastructure"] = infraIndicator
 	}
-	indicators["installConfig"] = installConfigIndicator
-
-	// Bootstrap
-	bootstrapIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants)
-	if err != nil {
-		log.WithError(err).Error("error querying bootstrap test report")
-		return
+	if installConfigIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallConfigTestName, excludedInstallVariants); found {
+		indicators["installConfig"] = installConfigIndicator
 	}
-	indicators["bootstrap"] = bootstrapIndicator
-
-	// Install Other
-	installOtherIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants)
-	if err != nil {
-		log.WithError(err).Error("error querying install (other) test report")
-		return
+	if bootstrapIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallBootstrapTestName, excludedInstallVariants); found {
+		indicators["bootstrap"] = bootstrapIndicator
 	}
-	indicators["installOther"] = installOtherIndicator
-
-	// Install
-	installIndicator, err := query.TestReportExcludeVariants(dbc, release, installTestName, excludedInstallVariants)
-	if err != nil {
-		log.WithError(err).Error("error querying install test report")
-		return
+	if installOtherIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.InstallOtherTestName, excludedInstallVariants); found {
+		indicators["installOther"] = installOtherIndicator
 	}
-	indicators["install"] = installIndicator
-
-	// Upgrade
-	upgradeIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.UpgradeTestName, excludedVariants)
-	if err != nil {
-		log.WithError(err).Error("error querying upgrade test report")
-		return
+	if installIndicator, found := query.TestReportExcludeVariants(dbc, release, installTestName, excludedInstallVariants); found {
+		indicators["install"] = installIndicator
 	}
-	indicators["upgrade"] = upgradeIndicator
+	if upgradeIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.UpgradeTestName, excludedVariants); found {
+		indicators["upgrade"] = upgradeIndicator
+	}
 
-	// Tests
 	// NOTE: this is not actually representing the percentage of tests that passed, it's representing
 	// the percentage of time that all tests passed. We should probably fix that.
-	testsIndicator, err := query.TestReportExcludeVariants(dbc, release, testidentification.OpenShiftTestsName, excludedVariants)
-	if err != nil {
-		log.WithError(err).Error("error querying test report")
-		return
+	if testsIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.OpenShiftTestsName, excludedVariants); found {
+		indicators["tests"] = testsIndicator
 	}
-	indicators["tests"] = testsIndicator
 
 	var lastUpdated time.Time
-	r := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
-	if r.Error != nil {
-		log.WithError(err).Error("error querying last update time")
+	if r := dbc.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated); r.Error != nil {
+		log.WithError(r.Error).Error("error querying last update time")
 		return
 	}
 	log.WithField("lastUpdated", lastUpdated).Info("ran the last update query")

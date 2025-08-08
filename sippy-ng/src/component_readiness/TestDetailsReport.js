@@ -209,8 +209,7 @@ export default function TestDetailsReport(props) {
     let tmpRelease = {}
     releases.releases
       .filter((aVersion) => {
-        // We won't process Presubmits or 3.11
-        return aVersion !== 'Presubmits' && aVersion != '3.11'
+        return !releases.release_attrs[aVersion].capabilities.componentReadiness
       })
       .forEach((r) => {
         tmpRelease[r] = releases.ga_dates[r]

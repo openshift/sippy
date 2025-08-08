@@ -145,7 +145,7 @@ Example run: sippy annotate-job-runs  --google-service-account-credential-file=f
 			bigQueryClient, err := bqcachedclient.New(ctx,
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.BigQueryFlags.BigQueryProject,
-				f.BigQueryFlags.BigQueryDataset, cacheClient)
+				f.BigQueryFlags.BigQueryDataset, cacheClient, f.BigQueryFlags.ReleasesTable)
 			if err != nil {
 				log.WithError(err).Fatal("error getting BigQuery client")
 			}

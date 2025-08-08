@@ -7,7 +7,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
 
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 
 	"github.com/stretchr/testify/assert"
 
@@ -23,26 +23,26 @@ func TestTransformRelease(t *testing.T) {
 
 	tests := []struct {
 		name            string
-		releaseRow      apitype.ReleaseRow
-		expectedRelease v1.Release
+		releaseRow      sippyv1.ReleaseRow
+		expectedRelease sippyv1.Release
 	}{
 		{
 			name:            "release without devel start",
-			releaseRow:      apitype.ReleaseRow{Release: "4.20", ReleaseStatus: bigquery.NullString{Valid: true, StringVal: "Development"}},
-			expectedRelease: v1.Release{Release: "4.20", Status: "Development"},
+			releaseRow:      sippyv1.ReleaseRow{Release: "4.20", ReleaseStatus: bigquery.NullString{Valid: true, StringVal: "Development"}},
+			expectedRelease: sippyv1.Release{Release: "4.20", Status: "Development"},
 		},
 		{
 			name: "release with devel start",
-			releaseRow: apitype.ReleaseRow{Release: "4.20", ReleaseStatus: bigquery.NullString{Valid: true, StringVal: "Development"}, DevelStartDate: civil.Date{
+			releaseRow: sippyv1.ReleaseRow{Release: "4.20", ReleaseStatus: bigquery.NullString{Valid: true, StringVal: "Development"}, DevelStartDate: civil.Date{
 				Year:  2025,
 				Month: 4,
 				Day:   18,
 			}},
-			expectedRelease: v1.Release{Release: "4.20", Status: "Development", DevelopmentStartDate: &devStart420},
+			expectedRelease: sippyv1.Release{Release: "4.20", Status: "Development", DevelopmentStartDate: &devStart420},
 		},
 		{
 			name: "release with ga date",
-			releaseRow: apitype.ReleaseRow{Release: "4.19", ReleaseStatus: bigquery.NullString{Valid: true, StringVal: "Development"}, DevelStartDate: civil.Date{
+			releaseRow: sippyv1.ReleaseRow{Release: "4.19", ReleaseStatus: bigquery.NullString{Valid: true, StringVal: "Development"}, DevelStartDate: civil.Date{
 				Year:  2024,
 				Month: 11,
 				Day:   25,
@@ -53,7 +53,7 @@ func TestTransformRelease(t *testing.T) {
 					Day:   9},
 				Valid: true,
 			}},
-			expectedRelease: v1.Release{Release: "4.19", Status: "Development", DevelopmentStartDate: &devStart419, GADate: &gaDate419},
+			expectedRelease: sippyv1.Release{Release: "4.19", Status: "Development", DevelopmentStartDate: &devStart419, GADate: &gaDate419},
 		},
 	}
 

@@ -23,8 +23,6 @@ var (
 	defaultCacheDuration = 8 * time.Hour
 )
 
-const releasePresubmits = "Presubmits"
-
 type CacheData struct {
 	cacheKey func() ([]byte, error)
 }
@@ -154,20 +152,18 @@ func (r *releaseGenerator) ListReleases(ctx context.Context) ([]v1.Release, []er
 		log.WithError(err).Error("error getting releases from bigquery")
 		return releases, []error{err}
 	}
-	// Add special release Presubmits for prow jobs
-	releases = append(releases, v1.Release{Release: releasePresubmits})
 	return releases, nil
 }
 
 // GetReleases gets all the releases defined in the BQ Releases table.
-func GetReleases(ctx context.Context, bqc *bqclient.Client) ([]v1.Release, error) {
+func GetReleases(ctx context.Context, bqc *bqclient.Client, forceRefresh bool) ([]v1.Release, error) {
 	releaseGen := releaseGenerator{bqc}
 
 	var err error
 	rels, errs := GetDataFromCacheOrGenerate[[]v1.Release](
 		ctx,
 		bqc.Cache,
-		cache.RequestOptions{},
+		cache.RequestOptions{ForceRefresh: forceRefresh},
 		GetPrefixedCacheKey("Releases~", v1.Release{}), // no cache options needed here, global list
 		releaseGen.ListReleases,
 		[]v1.Release{})

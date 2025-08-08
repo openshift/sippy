@@ -11,6 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/hashicorp/go-version"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -81,13 +82,13 @@ func (l *FeatureGateLoader) getTargetReleases() ([]string, error) {
 	}
 
 	for _, release := range releases {
-		if release.Release == "Presubmits" {
+		if !release.Capabilities[v1.FeatureGatesCap] {
 			continue
 		}
 
 		v, err := version.NewVersion(release.Release)
 		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing release version %s", release)
+			return nil, errors.Wrapf(err, "error parsing release version %s", release.Release)
 		}
 
 		if v.GreaterThanOrEqual(minimumRelease) {
