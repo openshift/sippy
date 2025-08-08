@@ -881,18 +881,28 @@ func logQueryWithParamsReplaced(logger log.FieldLogger, query *bigquery.Query) {
 			paramName := "@" + p.Name
 			paramValue := p.Value
 
-			// Special handling for time.Time values
-			if t, ok := paramValue.(time.Time); ok {
+			switch v := paramValue.(type) {
+			case time.Time:
 				// Format time.Time to "YYYY-MM-DD HH:MM:SS"
 				// Note: BigQuery's DATETIME type does not store timezone info.
 				// This format aligns with what BigQuery expects for DATETIME literals.
 				// Without it, you'll copy the query and attempt to run it and be told you're not filtering on
 				// modified time.
-				formattedTime := t.Format("2006-01-02 15:04:05")
+				formattedTime := v.Format("2006-01-02 15:04:05")
 				strQuery = strings.ReplaceAll(strQuery, paramName, fmt.Sprintf(`DATETIME("%s")`, formattedTime))
-			} else {
-				// Default handling for other types, wrap in quotes for string literals
-				strQuery = strings.ReplaceAll(strQuery, paramName, fmt.Sprintf(`"%v"`, paramValue))
+			case []string:
+				// Convert a slice of strings to a formatted array string
+				quotedArr := make([]string, len(v))
+				for i, val := range v {
+					quotedArr[i] = fmt.Sprintf("%q", val)
+				}
+				joinedStrings := strings.Join(quotedArr, ",")
+				strArr := fmt.Sprintf("[%s]", joinedStrings)
+				strQuery = strings.ReplaceAll(strQuery, paramName, strArr)
+			default:
+				// Default handling for all other types
+				strQuery = strings.ReplaceAll(strQuery, paramName, fmt.Sprintf(`"%v"`, v))
+
 			}
 		}
 		logger.Debugf("fetching bigquery data with query:")
