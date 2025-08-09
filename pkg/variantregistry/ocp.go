@@ -847,6 +847,7 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-alibaba", "alibaba"},
 		{"-azure-aro-hcp", "aro"},
 		{"-azure", "azure"},
+		{"-aks", "azure"},
 		{"-osd-ccs-gcp", "osd-gcp"},
 		{"-gcp", "gcp"},
 		{"-libvirt", "libvirt"},
@@ -872,24 +873,25 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 }
 
 func extractReleases(jobName string) (release, fromRelease string) {
-	re := regexp.MustCompile(`\d+\.\d+`)
-	matches := re.FindAllString(jobName, -1)
+	// lines up with ci-to-bigquery regex requiring the release be hyphenated
+	re := regexp.MustCompile(`-(\d+\.\d+)-`)
+	matches := re.FindAllStringSubmatch(jobName, -1)
 
 	if len(matches) > 0 {
-		minRelease := matches[0]
-		maxRelease := matches[0]
+		minRelease := matches[0][1]
+		maxRelease := matches[0][1]
 
 		for _, match := range matches {
-			matchNum, _ := strconv.ParseFloat(match, 64)
+			matchNum, _ := strconv.ParseFloat(match[1], 64)
 			minNum, _ := strconv.ParseFloat(minRelease, 64)
 			maxNum, _ := strconv.ParseFloat(maxRelease, 64)
 
 			if matchNum < minNum {
-				minRelease = match
+				minRelease = match[1]
 			}
 
 			if matchNum > maxNum {
-				maxRelease = match
+				maxRelease = match[1]
 			}
 		}
 
