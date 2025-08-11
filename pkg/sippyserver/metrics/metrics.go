@@ -3,11 +3,9 @@ package metrics
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/hashicorp/go-version"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -121,7 +119,7 @@ func getReleaseStatus(releases []v1.Release, release string) string {
 func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crview.View, variantJunitTableOverrides []configv1.VariantJunitTableOverride) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
-	releases, err := api.GetReleases(context.Background(), bqc)
+	releases, err := api.GetReleases(context.Background(), bqc, false)
 	if err != nil {
 		return err
 	}
@@ -299,6 +297,9 @@ func refreshBuildClusterMetrics(dbc *db.DB, reportEnd time.Time) error {
 
 func refreshPayloadMetrics(dbc *db.DB, reportEnd time.Time, releases []v1.Release) {
 	for _, r := range releases {
+		if !r.Capabilities[v1.MetricsCap] {
+			continue
+		}
 		results, err := api.ReleaseHealthReports(dbc, r.Release, reportEnd)
 		if err != nil {
 			log.WithError(err).Error("error calling ReleaseHealthReports")
@@ -389,37 +390,12 @@ func buildPromReportTypes(releases []v1.Release) []promReportType {
 	var promReportTypes []promReportType
 
 	for _, release := range releases {
+		if !release.Capabilities[v1.MetricsCap] {
+			continue
+		}
 		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.TwoDayReport)})
 		promReportTypes = append(promReportTypes, promReportType{release: release.Release, period: string(sippyprocessingv1.CurrentReport)})
 	}
 
 	return promReportTypes
-}
-
-func nextMinor(vStr string) (string, error) {
-	// Parse the version string
-	v, err := version.NewVersion(vStr)
-	if err != nil {
-		return "", err
-	}
-
-	// Get the segments of the version
-	segments := v.Segments()
-	if len(segments) < 2 {
-		return "", fmt.Errorf("version '%s' does not have enough segments to determine minor", vStr)
-	}
-
-	// Increment the minor segment
-	segments[1]++
-
-	// Reconstruct version string with incremented minor version
-	// Only consider major and minor segments
-	nextMinorSegments := segments[:2]
-	nextMinorVersionStr := make([]string, len(nextMinorSegments))
-	for i, seg := range nextMinorSegments {
-		nextMinorVersionStr[i] = strconv.Itoa(seg)
-	}
-
-	// Concatenate the segments to form the new version string
-	return strings.Join(nextMinorVersionStr, "."), nil
 }

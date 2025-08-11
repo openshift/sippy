@@ -55,7 +55,7 @@ var (
 	// TODO: centralize these configurations for consumption by both the front and backends
 
 	DefaultColumnGroupBy = "Platform,Architecture,Network"
-	DefaultDBGroupBy     = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer"
+	DefaultDBGroupBy     = "Platform,Architecture,Network,Topology,FeatureSet,Upgrade,Suite,Installer,LayeredProduct"
 )
 
 func getSingleColumnResultToSlice(ctx context.Context, q *bigquery.Query) ([]string, error) {

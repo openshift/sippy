@@ -2,8 +2,10 @@ package bugloader
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -195,15 +197,28 @@ func (bl *BugLoader) updateBugsInDb(latestBugs []*models.Bug) {
 	logger.WithField("bugs", updatedBugs).Info("created or updated bugs")
 }
 
-// Some triage records may have been aligned to bugs that did not mention a test name and were just imported.
-// If so we need to establish the db link between these and the new bug records in postgres.
-// Also watch out for triages that changed bug url, and fix that linkage.
-func (bl *BugLoader) updateTriageBugLinks(triages []models.Triage) {
-	logger := log.WithField("func", "bugloader.updateTriageBugLinks")
-	logger.Infof("ensuring triages have correct refs to their bugs")
+var statusesForResolution = []string{
+	"ON_QA",
+	"Verified",
+	"Release Pending",
+	"Closed",
+}
+
+// updateTriages reconciles triage records with their associated bugs by:
+// 1. Linking triages to bug records and handling URL changes
+// 2. Auto-resolving triages when bugs reach "ON_QA" or higher status
+func (bl *BugLoader) updateTriages(triages []models.Triage) {
+	logger := log.WithField("func", "bugloader.updateTriages")
+	logger.Infof("ensuring triages have correct refs to their bugs, and are resolved where appropriate")
 	for _, t := range triages {
-		if t.BugID != nil && t.URL == t.Bug.URL {
-			continue // Ignore bugs that already seem properly linked
+		if t.URL == "" {
+			continue // If we have no URL, we can't do anything
+		}
+
+		resolved := t.Resolved.Valid
+		bugLinked := t.BugID != nil && t.URL == t.Bug.URL
+		if resolved && bugLinked {
+			continue // There is no action to take
 		}
 
 		var bug models.Bug
@@ -214,13 +229,27 @@ func (bl *BugLoader) updateTriageBugLinks(triages []models.Triage) {
 			continue
 		}
 
-		info := fmt.Sprintf("linking triage %q (%d) to bug %q (%d)", t.Description, t.ID, bug.Summary, bug.ID)
-		logger.Info(info)
-		t.Bug = &bug
-		t.BugID = &bug.ID
+		// If the triage is not resolved, we should resolve it if the bug is at least in the "Modified" status
+		if !resolved && slices.Contains(statusesForResolution, bug.Status) {
+			now := time.Now()
+			t.Resolved = sql.NullTime{
+				Time:  now,
+				Valid: true,
+			}
+			logger.Infof("resolving triage %q (%d) due to bug %q (%d) reaching status %q",
+				t.Description, t.ID, bug.Summary, bug.ID, bug.Status)
+		}
+
+		// If the bug hasn't been linked yet, link it now
+		if !bugLinked {
+			logger.Infof("linking triage %q (%d) to bug %q (%d)", t.Description, t.ID, bug.Summary, bug.ID)
+			t.Bug = &bug
+			t.BugID = &bug.ID
+		}
+
 		res = bl.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "bug-loader")).Save(&t)
 		if res.Error != nil {
-			bl.addError(logger, res.Error, "error "+info)
+			bl.addError(logger, res.Error, fmt.Sprintf("error updating triage: %q (%d)", t.Description, t.ID))
 		}
 	}
 }
@@ -229,7 +258,7 @@ func (bl *BugLoader) Load() {
 	// methods below record errors in bl.errors, so we don't need to return them
 	if latestBugs, triages, ok := bl.loadLatestBugs(); ok { // no errors preventing processing
 		bl.updateBugsInDb(latestBugs)
-		bl.updateTriageBugLinks(triages)
+		bl.updateTriages(triages)
 	}
 }
 
@@ -243,9 +272,9 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
 	querySQL := fmt.Sprintf(
 		`%s
 		JOIN %s.%s.%s j
-		  ON STRPOS(REGEXP_REPLACE(t.summary, r'\s+', ''), REGEXP_REPLACE(j.name, r'\s+', '')) > 0
-		  OR STRPOS(REGEXP_REPLACE(t.description, r'\s+', ''), REGEXP_REPLACE(j.name, r'\s+', '')) > 0
-		  OR STRPOS(REGEXP_REPLACE(t.comment, r'\s+', ''), REGEXP_REPLACE(j.name, r'\s+', '')) > 0
+		  ON STRPOS(t.summary, j.name) > 0
+		  OR STRPOS(t.description, j.name) > 0
+		  OR STRPOS(t.comment, j.name ) > 0
         WHERE j.name != "upgrade"`,
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
 	log.Debug(querySQL)
@@ -398,8 +427,8 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
 	return bugs, nil
 }
 
-// getTriageBugMappings looks for jira cards in bigquery that were traiged to a regression n bigquery.
-// Once found we then associate them to their records in the triage table.
+// getTriageBugMappings looks for jira cards in bigquery that were triaged to a regression in bigquery.
+// Once found, we then associate them to their records in the triage table.
 func (bl *BugLoader) getTriageBugMappings(ctx context.Context, triages []models.Triage) (map[uint]*models.Bug, error) {
 	bugs := make(map[uint]*models.Bug)
 

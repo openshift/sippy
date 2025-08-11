@@ -77,8 +77,8 @@ func (f *AnnotateJobRunsFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&f.Execute, "execute", f.Execute, "By default, the command only prints the tasks of annotating job runs without really affecting DB items. This option will execute the DB actions.")
 	fs.BoolVar(&f.FlakeAsFailure, "flake-as-failure", f.FlakeAsFailure, "Treat flakes as failures when counting failed tests.")
 	fs.StringVar(&f.TextContains, "text-contains", f.TextContains, "Text to search in artifact path.")
-	fs.StringVar(&f.TextRegex, "text-regex", f.TextRegex, "Regex to use when searching ini artifact path.")
-	fs.StringVar(&f.PathGlob, "path-glob", f.PathGlob, "The path glob from which to search for artifacts")
+	fs.StringVar(&f.TextRegex, "text-regex", f.TextRegex, "Regex to use when searching in artifact path.")
+	fs.StringVar(&f.PathGlob, "path-glob", f.PathGlob, "The path glob from which to search for artifacts.")
 	f.JobRunIDs = fs.Int64Slice("job-run-id", []int64{}, "A list of job runs to apply the label. Can be used if you already know the job IDs you want to apply the label. This list can be further filtered by other arguments")
 	fs.StringVar(&f.Comment, "comment", f.Comment, "Comment you want to add with the label. This can serve as breadcrumbs to show where the label is from.")
 	fs.StringVar(&f.User, "user", os.Getenv("USER"), "User who is applying the label.")
@@ -145,7 +145,7 @@ Example run: sippy annotate-job-runs  --google-service-account-credential-file=f
 			bigQueryClient, err := bqcachedclient.New(ctx,
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.BigQueryFlags.BigQueryProject,
-				f.BigQueryFlags.BigQueryDataset, cacheClient)
+				f.BigQueryFlags.BigQueryDataset, cacheClient, f.BigQueryFlags.ReleasesTable)
 			if err != nil {
 				log.WithError(err).Fatal("error getting BigQuery client")
 			}

@@ -29,7 +29,7 @@ var releaseRegexp = regexp.MustCompile(`^\d+\.\d+$`)
 var nonEmptyRegex = regexp.MustCompile(`^.+$`)
 var paramRegexp = map[string]*regexp.Regexp{
 	// sippy classic params
-	"release":         regexp.MustCompile(`^(Presubmits|\d+\.\d+)$`),
+	"release":         regexp.MustCompile(`^[\w.-]+$`), // usually 4.x or Presubmit, but allow any "word"
 	"period":          wordRegexp,
 	"stream":          wordRegexp,
 	"arch":            wordRegexp,

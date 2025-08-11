@@ -1,6 +1,7 @@
 package featuregateloader
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,7 +11,9 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/hashicorp/go-version"
+	"github.com/openshift/sippy/pkg/api"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -18,17 +21,18 @@ import (
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/db/query"
 )
 
 type FeatureGateLoader struct {
 	dbc  *db.DB
 	errs []error
+	bqc  *bigquery.Client
 }
 
-func New(dbc *db.DB) *FeatureGateLoader {
+func New(dbc *db.DB, bqc *bigquery.Client) *FeatureGateLoader {
 	return &FeatureGateLoader{
 		dbc: dbc,
+		bqc: bqc,
 	}
 }
 
@@ -73,24 +77,13 @@ func (l *FeatureGateLoader) Errors() []error {
 
 func (l *FeatureGateLoader) getTargetReleases() ([]string, error) {
 	var targetReleases []string
-	minimumRelease, _ := version.NewVersion("4.15") // first added to o/api in 4.15
-
-	releases, err := query.ReleasesFromDB(l.dbc)
+	releases, err := api.GetReleasesFromBigQuery(context.Background(), l.bqc)
 	if err != nil {
-		return nil, errors.Wrapf(err, "error querying releases from db")
+		return nil, errors.Wrapf(err, "error querying releases from bq")
 	}
 
 	for _, release := range releases {
-		if release.Release == "Presubmits" {
-			continue
-		}
-
-		v, err := version.NewVersion(release.Release)
-		if err != nil {
-			return nil, errors.Wrapf(err, "error parsing release version %s", release)
-		}
-
-		if v.GreaterThanOrEqual(minimumRelease) {
+		if release.Capabilities[v1.FeatureGatesCap] {
 			targetReleases = append(targetReleases, release.Release)
 		}
 	}

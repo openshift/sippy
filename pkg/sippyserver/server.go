@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"net"
 	"net/http"
@@ -32,6 +33,7 @@ import (
 	"github.com/openshift/sippy/pkg/ai"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
@@ -74,6 +76,7 @@ func NewServer(
 	config *v1.SippyConfig,
 	enableWriteEndpoints bool,
 	llmClient *ai.LLMClient,
+	jiraClient *jira.Client,
 ) *Server {
 
 	server := &Server{
@@ -95,6 +98,7 @@ func NewServer(
 		config:               config,
 		enableWriteAPIs:      enableWriteEndpoints,
 		llmClient:            llmClient,
+		jiraClient:           jiraClient,
 	}
 
 	if bigQueryClient != nil {
@@ -137,6 +141,7 @@ type Server struct {
 	config               *v1.SippyConfig
 	enableWriteAPIs      bool
 	llmClient            *ai.LLMClient
+	jiraClient           *jira.Client
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -656,7 +661,7 @@ func (s *Server) jsonJobVariantsFromBigQuery(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Request) {
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -697,7 +702,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		return
 	}
 
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -744,7 +749,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -834,17 +839,20 @@ func (s *Server) jsonTestDetailsReportFromDB(w http.ResponseWriter, req *http.Re
 }
 
 func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Request) {
+	forceRefresh := req.URL.Query().Get("forceRefresh") != "" // use to refresh cached releases from BQ
+	releases, err := api.GetReleases(req.Context(), s.bigQueryClient, forceRefresh)
+	if err != nil {
+		log.WithError(err).Error("error querying releases")
+		failureResponse(w, http.StatusInternalServerError, "error querying releases")
+		return
+	}
+
 	gaDateMap := make(map[string]time.Time)
 	dateMap := make(map[string]apitype.ReleaseDates)
 	response := apitype.Releases{
 		DeprecatedGADates: gaDateMap,
 		Dates:             dateMap,
-	}
-	releases, err := api.GetReleases(req.Context(), s.bigQueryClient)
-	if err != nil {
-		log.WithError(err).Error("error querying releases")
-		failureResponse(w, http.StatusInternalServerError, "error querying releases")
-		return
+		ReleaseAttrs:      make(map[string]apitype.Release, len(releases)),
 	}
 
 	for _, release := range releases {
@@ -858,6 +866,12 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 		if release.DevelopmentStartDate != nil {
 			releaseDate.DevelopmentStart = release.DevelopmentStartDate
 			response.Dates[release.Release] = releaseDate
+		}
+		response.ReleaseAttrs[release.Release] = apitype.Release{
+			Name:            release.Release,
+			PreviousRelease: release.PreviousRelease,
+			ReleaseDates:    releaseDate,
+			Capabilities:    release.Capabilities,
 		}
 	}
 
@@ -1427,7 +1441,7 @@ func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
 	}
 
 	// Get releases for view processing
-	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient)
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting releases: %v", err))
 		return
@@ -1472,6 +1486,149 @@ func getUserForRequest(req *http.Request) string {
 		user = "developer"
 	}
 	return user
+}
+
+// FileBugRequest represents the JSON request structure for filing Jira bugs
+type FileBugRequest struct {
+	Summary         string   `json:"summary"`
+	Description     string   `json:"description"`
+	AffectsVersions []string `json:"affects_versions"`
+	Components      []string `json:"components"`
+	ComponentID     string   `json:"component_id"`
+	Labels          []string `json:"labels"`
+}
+
+// FileBugResponse represents the JSON response structure for filing Jira bugs
+type FileBugResponse struct {
+	Success bool   `json:"success"`
+	DryRun  bool   `json:"dry_run"`
+	JiraKey string `json:"jira_key"`
+	JiraURL string `json:"jira_url"`
+}
+
+// jsonFileJiraBug allows for a Jira "OCPBUGS" card to be created for the given FileBugRequest
+// If successful, the response is a jsonified FileBugResponse
+func (s *Server) jsonFileJiraBug(w http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case http.MethodPost:
+		if s.jiraClient == nil {
+			log.Warn("jira client not initialized, will not create jira bug, dry run only")
+		}
+
+		user := getUserForRequest(req)
+		if user == "" {
+			failureResponse(w, http.StatusUnauthorized, "User authentication required")
+			return
+		}
+		log.Infof("jira bug creation requested by user: %s", user)
+
+		var bugRequest FileBugRequest
+		if err := json.NewDecoder(req.Body).Decode(&bugRequest); err != nil {
+			log.WithError(err).Error("error parsing jira bug request")
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %s", err.Error()))
+			return
+		}
+
+		var validationErrors []string
+		if bugRequest.Summary == "" {
+			validationErrors = append(validationErrors, "Summary is required")
+		}
+		if bugRequest.Description == "" {
+			validationErrors = append(validationErrors, "Description is required")
+		}
+		if len(bugRequest.AffectsVersions) == 0 {
+			validationErrors = append(validationErrors, "AffectsVersions is required")
+		}
+		if bugRequest.ComponentID == "" && len(bugRequest.Components) == 0 {
+			validationErrors = append(validationErrors, "At least one Component is required when there is no computed component ID available")
+		}
+
+		if len(validationErrors) > 0 {
+			failureResponse(w, http.StatusBadRequest, strings.Join(validationErrors, "; "))
+			return
+		}
+
+		// Due to the way the OCPBUGS project is configured, we cannot set the "Reporter", so we add it to the description for some tracking
+		description := fmt.Sprintf("%s\n\nFiled by: [~%s@redhat.com]", bugRequest.Description, user)
+
+		issue := jira.Issue{
+			Fields: &jira.IssueFields{
+				Description: description,
+				Type: jira.IssueType{
+					Name: "Bug",
+				},
+				Project: jira.Project{
+					Key: "OCPBUGS",
+				},
+				Summary: bugRequest.Summary,
+			},
+		}
+
+		affectsVersions := make([]*jira.AffectsVersion, len(bugRequest.AffectsVersions))
+		for i, version := range bugRequest.AffectsVersions {
+			affectsVersions[i] = &jira.AffectsVersion{
+				Name: version,
+			}
+		}
+		issue.Fields.AffectsVersions = affectsVersions
+
+		components := make([]*jira.Component, 0)
+		for _, comp := range bugRequest.Components {
+			components = append(components, &jira.Component{Name: comp})
+		}
+		components = append(components, &jira.Component{ID: bugRequest.ComponentID})
+		issue.Fields.Components = components
+
+		if len(bugRequest.Labels) > 0 {
+			issue.Fields.Labels = bugRequest.Labels
+		}
+
+		var createdIssue *jira.Issue
+		dryRun := false
+		if s.jiraClient != nil {
+			var res *jira.Response
+			var err error
+			createdIssue, res, err = s.jiraClient.Issue.Create(&issue)
+			if err != nil {
+				logJiraError(res, err)
+				failureResponse(w, http.StatusBadRequest, fmt.Sprintf("couldn't create jira issue: %s", err.Error()))
+				return
+			}
+		} else {
+			// No jiraClient, results in dry run for local development and testing
+			issue.Key = "OCPBUGS-1234"
+			createdIssue = &issue
+			dryRun = true
+		}
+
+		log.Infof("created jira issue %s for user %s", createdIssue.Key, user)
+
+		jiraURL := fmt.Sprintf("https://issues.redhat.com/browse/%s", createdIssue.Key)
+		response := FileBugResponse{
+			Success: true,
+			DryRun:  dryRun,
+			JiraKey: createdIssue.Key,
+			JiraURL: jiraURL,
+		}
+		api.RespondWithJSON(http.StatusOK, w, response)
+	case http.MethodOptions:
+		// TODO(sgoeddel): should we enable CORS? If so, we will have to do some special logic to allow localhost as well until gorilla is utilized
+		// w.Header().Set("Access-Control-Allow-Origin", "https://sippy-auth.dptools.openshift.org")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		api.RespondWithJSON(http.StatusOK, w, nil)
+	default:
+		failureResponse(w, http.StatusMethodNotAllowed, "Only POST method is allowed")
+		return
+	}
+}
+
+func logJiraError(response *jira.Response, err error) {
+	body, readErr := io.ReadAll(response.Body)
+	if readErr != nil {
+		log.WithError(readErr).Errorf("error reading response body. original error is: %v", err)
+	} else {
+		log.WithError(err).Errorf("error creating or updating jira issue: %q", body)
+	}
 }
 
 // queryJobArtifacts is an API to query GCS for artifacts from a set of job runs. Parameters:
@@ -1905,6 +2062,12 @@ func (s *Server) Serve() {
 			Description:  "List component readiness test regressions or get a specific regression by ID. Supports view OR release query parameters (not both).",
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonRegressions,
+		},
+		{
+			EndpointPath: "/api/component_readiness/bugs",
+			Description:  "Create Jira Bugs from component readiness",
+			Capabilities: []string{WriteEndpointsCapability, ComponentReadinessCapability},
+			HandlerFunc:  s.jsonFileJiraBug,
 		},
 		{
 			EndpointPath: "/api/capabilities",

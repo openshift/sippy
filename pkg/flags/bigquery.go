@@ -14,15 +14,19 @@ import (
 type BigQueryFlags struct {
 	BigQueryProject string
 	BigQueryDataset string
+	ReleasesTable   string
 }
 
 func NewBigQueryFlags() *BigQueryFlags {
-	return &BigQueryFlags{}
+	return &BigQueryFlags{
+		ReleasesTable: "openshift-ci-data-analysis.ci_data.Releases",
+	}
 }
 
 func (f *BigQueryFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.BigQueryProject, "bigquery-project", "openshift-gce-devel", "BigQuery project to use")
 	fs.StringVar(&f.BigQueryDataset, "bigquery-dataset", "ci_analysis_us", "Dataset to use")
+	fs.StringVar(&f.ReleasesTable, "bigquery-releases-table", f.ReleasesTable, "BigQuery table containing release information")
 }
 
 func (f *BigQueryFlags) GetBigQueryClient(ctx context.Context, cacheClient cache.Cache, googleServiceAccountCredentialFile string) (*bqcachedclient.Client, error) {
@@ -30,5 +34,5 @@ func (f *BigQueryFlags) GetBigQueryClient(ctx context.Context, cacheClient cache
 		return nil, fmt.Errorf("service account required")
 	}
 
-	return bqcachedclient.New(ctx, googleServiceAccountCredentialFile, f.BigQueryProject, f.BigQueryDataset, cacheClient)
+	return bqcachedclient.New(ctx, googleServiceAccountCredentialFile, f.BigQueryProject, f.BigQueryDataset, cacheClient, f.ReleasesTable)
 }
