@@ -94,11 +94,6 @@ export function getComponentReadinessViewsAPIUrl() {
   return getAPIUrl('component_readiness/views')
 }
 
-// Make one place to create the Component Readiness test_details api call
-export function getTestDetailsAPIUrl() {
-  return getAPIUrl('component_readiness/test_details')
-}
-
 export function getTriagesAPIUrl(id = null) {
   return getAPIUrl(
     id ? `component_readiness/triages/${id}` : 'component_readiness/triages'
@@ -831,16 +826,29 @@ export function generateTestDetailsReportLink(
 
   const sortedGeneratedUrl = sortQueryParams(generatedUrl)
   // Check if regressedTest.links.test_details is defined
-  if (regressedTest.links && regressedTest.links.test_details) {
+  if (regressedTest.links?.test_details) {
     // Compare the query parameters between the two URLs
     console.log(
       'Comparing query parameters between provided URL and generated URL:'
     )
     compareUrlQueryParams(regressedTest.links.test_details, sortedGeneratedUrl)
 
-    // Return the provided URL
-    return regressedTest.links.test_details
+    // We are assuming the API query params are identical to the UI query params, but we have to adjust the host port and prefix from
+    // http://localhost:8080/api/ to http://localhost:3000/sippy-ng/
+    // This hack allows us to keep the param generation logic in one place. (server side)
+    const testDetailsUrl = regressedTest.links.test_details
+    const apiIndex = testDetailsUrl.indexOf('/api/')
+    if (apiIndex !== -1) {
+      const pathAfterApi = testDetailsUrl.substring(apiIndex + 5) // +5 to skip '/api/'
+      const modifiedUrl = '/sippy-ng/' + pathAfterApi
+      return modifiedUrl
+    }
+    return testDetailsUrl
   }
+  console.log(
+    'WARNING: report had no test details url, using old generated url: ' +
+      generatedUrl
+  )
 
   return generatedUrl
 }
