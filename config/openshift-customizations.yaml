@@ -21,3 +21,5 @@ releases:
   aro-integration:
       jobs:
         periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-integration: true
+        periodic-ci-Azure-ARO-HCP-main-periodic-integration-e2e-parallel: true
+
