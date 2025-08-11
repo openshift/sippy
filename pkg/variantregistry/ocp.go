@@ -834,6 +834,8 @@ func isMultiUpgrade(release, fromRelease string) bool {
 }
 
 func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
 	// Order matters here: patterns must be checked in a specific sequence
 	platformPatterns := []struct {
 		substring string
@@ -847,6 +849,7 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-alibaba", "alibaba"},
 		{"-azure-aro-hcp", "aro"},
 		{"-azure", "azure"},
+		{"-aks", "azure"},
 		{"-osd-ccs-gcp", "osd-gcp"},
 		{"-gcp", "gcp"},
 		{"-libvirt", "libvirt"},
@@ -862,7 +865,7 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 	}
 
 	for _, entry := range platformPatterns {
-		if strings.Contains(jobName, entry.substring) {
+		if strings.Contains(jobNameLower, entry.substring) {
 			variants[VariantPlatform] = entry.platform
 			return
 		}
