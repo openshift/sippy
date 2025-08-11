@@ -142,7 +142,7 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTest
 
 	before := time.Now()
 	errs := []error{}
-	baseString := commonQuery + ` AND branch = @BaseRelease`
+	baseString := commonQuery + ` AND jv_Release.variant_value = @BaseRelease`
 	baseQuery := b.client.BQ.Query(baseString + groupByQuery)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, queryParameters...)
@@ -218,7 +218,7 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 	sampleString := commonQuery
 	// Only set sample release when PR and payload options are not set
 	if s.ReqOptions.SampleRelease.PullRequestOptions == nil && s.ReqOptions.SampleRelease.PayloadOptions == nil {
-		sampleString += ` AND branch = @SampleRelease`
+		sampleString += ` AND jv_Release.variant_value = @SampleRelease`
 	}
 	if s.ReqOptions.SampleRelease.PullRequestOptions != nil {
 		sampleString += `  AND org = @Org AND repo = @Repo AND pr_number = @PRNumber`
@@ -498,11 +498,11 @@ func buildTestDetailsQuery(
 		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, c.VariantOption.CompareVariants, &commonParams)
 		// Only set sample release when PR and payload options are not set
 		if c.SampleRelease.PayloadOptions == nil && c.SampleRelease.PullRequestOptions == nil {
-			queryString += ` AND branch = @SampleRelease`
+			queryString += ` AND jv_Release.variant_value = @SampleRelease`
 		}
 	} else {
 		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, includeVariants, &commonParams)
-		queryString += ` AND branch = @BaseRelease`
+		queryString += ` AND jv_Release.variant_value = @BaseRelease`
 	}
 	return queryString, groupString, commonParams
 }
