@@ -138,8 +138,7 @@ export default function TestDetailsReport(props) {
     const pathAfterSippyNg = currentUrl.substring(sippyNgIndex + 10) // +10 to skip '/sippy-ng/'
     testDetailsApiCall = getAPIUrl(pathAfterSippyNg)
   } else {
-    // Fallback if no /sippy-ng/ found
-    testDetailsApiCall = currentUrl.replace('/sippy-ng/', '/api/')
+    console.error('No /sippy-ng/ found in URL, this is a bug')
   }
 
   useEffect(() => {
