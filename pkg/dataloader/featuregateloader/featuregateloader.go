@@ -1,7 +1,6 @@
 package featuregateloader
 
 import (
-	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,9 +10,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
-	"github.com/openshift/sippy/pkg/api"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
@@ -24,15 +21,15 @@ import (
 )
 
 type FeatureGateLoader struct {
-	dbc  *db.DB
-	errs []error
-	bqc  *bigquery.Client
+	dbc            *db.DB
+	errs           []error
+	releaseConfigs []v1.Release
 }
 
-func New(dbc *db.DB, bqc *bigquery.Client) *FeatureGateLoader {
+func New(dbc *db.DB, configs []v1.Release) *FeatureGateLoader {
 	return &FeatureGateLoader{
-		dbc: dbc,
-		bqc: bqc,
+		dbc:            dbc,
+		releaseConfigs: configs,
 	}
 }
 
@@ -41,13 +38,7 @@ func (l *FeatureGateLoader) Name() string {
 }
 
 func (l *FeatureGateLoader) Load() {
-	targetReleases, err := l.getTargetReleases()
-	if err != nil {
-		l.errs = append(l.errs, errors.Wrapf(err, "error getting target releases from db"))
-		return
-	}
-
-	dbFeatureGates, err := getFeatureGatesForReleases(targetReleases)
+	dbFeatureGates, err := getFeatureGatesForReleases(l.getTargetReleases())
 	if err != nil {
 		l.errs = append(l.errs, errors.Wrapf(err, "error querying feature gates for releases"))
 		return
@@ -75,21 +66,16 @@ func (l *FeatureGateLoader) Errors() []error {
 	return l.errs
 }
 
-func (l *FeatureGateLoader) getTargetReleases() ([]string, error) {
+func (l *FeatureGateLoader) getTargetReleases() []string {
 	var targetReleases []string
-	releases, err := api.GetReleasesFromBigQuery(context.Background(), l.bqc)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error querying releases from bq")
-	}
-
-	for _, release := range releases {
+	for _, release := range l.releaseConfigs {
 		if release.Capabilities[v1.FeatureGatesCap] {
 			targetReleases = append(targetReleases, release.Release)
 		}
 	}
 
 	log.Infof("Found %d target releases from db: %s", len(targetReleases), strings.Join(targetReleases, ","))
-	return targetReleases, nil
+	return targetReleases
 }
 
 func getFeatureGatesForReleases(releases []string) ([]models.FeatureGate, error) {
