@@ -64,7 +64,7 @@ func ListRegressions(dbc *db.DB, view, release string, views []crview.View, rele
 
 	// Add HATEOAS links to each regression
 	for i := range regressions {
-		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, req.Host)
+		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, sippyapi.GetBaseURL(req))
 	}
 
 	return regressions, err
