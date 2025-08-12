@@ -79,7 +79,11 @@ func (prs *PostgresRegressionStore) OpenRegression(view crview.View, newRegresse
 
 	// Store the base release
 	// so we can generate accurate test_details API links.
-	newRegression.BaseRelease = newRegressedTest.BaseStats.Release
+	// Start with the view's base release, but if the test got a base release override to a prior release, we use that instead.
+	newRegression.BaseRelease = view.BaseRelease.Name
+	if newRegressedTest.BaseStats != nil {
+		newRegression.BaseRelease = newRegressedTest.BaseStats.Release
+	}
 
 	newRegression.Capability = newRegressedTest.Capability
 	newRegression.Component = newRegressedTest.Component
