@@ -241,8 +241,8 @@ export default function Sidebar(props) {
                               <ListItemText primary="Overview" />
                             </StyledListItemButton>
                           </ListItem>
-                          {props.releaseConfig.release_attrs[release]
-                            .capabilities.payloadTags && (
+                          {props.releaseConfig.release_attrs?.[release]
+                            ?.capabilities?.payloadTags && (
                             <CapabilitiesContext.Consumer>
                               {(value) => {
                                 if (value.includes('openshift_releases')) {
@@ -285,8 +285,8 @@ export default function Sidebar(props) {
                             </StyledListItemButton>
                           </ListItem>
 
-                          {props.releaseConfig.release_attrs[release]
-                            .capabilities.pullRequests && (
+                          {props.releaseConfig.release_attrs?.[release]
+                            ?.capabilities?.pullRequests && (
                             <Fragment>
                               <ListItem
                                 key={'release-pull-requests-' + index}
@@ -346,8 +346,8 @@ export default function Sidebar(props) {
                             </StyledListItemButton>
                           </ListItem>
 
-                          {props.releaseConfig.release_attrs[release]
-                            .capabilities.featureGates && (
+                          {props.releaseConfig.release_attrs?.[release]
+                            ?.capabilities?.featureGates && (
                             <CapabilitiesContext.Consumer>
                               {(value) => {
                                 if (value.includes('openshift_releases')) {
