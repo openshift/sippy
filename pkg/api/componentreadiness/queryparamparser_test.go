@@ -234,7 +234,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			},
 			variantOption: reqopts.Variants{
 				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
-				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
+				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer"),
 				IncludeVariants: map[string][]string{
 					"Architecture": {"amd64"},
 					"FeatureSet":   {"default", "techpreview"},
