@@ -14,6 +14,8 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/go-github/v45 v45.2.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/handlers v1.5.2
+	github.com/gorilla/mux v1.8.1
 	github.com/hashicorp/go-version v1.7.0
 	github.com/jackc/pgtype v1.8.1
 	github.com/jferrl/go-githubauth v1.1.0
