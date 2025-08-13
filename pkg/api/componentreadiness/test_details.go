@@ -28,9 +28,8 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions reqopts.RequestOptions,
-) (testdetails.Report, []error) {
-	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil)
+func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release) (testdetails.Report, []error) {
+	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil, releases)
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateTestDetailsReport(ctx)
 	}

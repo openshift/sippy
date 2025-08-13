@@ -4,43 +4,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/sirupsen/logrus"
 )
 
-func PreviousRelease(release string) (string, error) {
-	prev := release
-	var err error
-	var major, minor int
-	if major, err = getMajor(release); err == nil {
-		if minor, err = getMinor(release); err == nil && minor > 0 {
-			prev = fmt.Sprintf("%d.%d", major, minor-1)
+func PreviousRelease(release string, releaseConfigs []sippyv1.Release) (string, error) {
+	for _, config := range releaseConfigs {
+		if config.Release == release {
+			if config.PreviousRelease != "" {
+				return config.PreviousRelease, nil
+			}
+			return "", fmt.Errorf("release %s has no previous release", release)
 		}
 	}
-
-	return prev, err
-}
-
-func getMajor(in string) (int, error) {
-	major, err := strconv.ParseInt(strings.Split(in, ".")[0], 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return int(major), err
-}
-
-func getMinor(in string) (int, error) {
-	minor, err := strconv.ParseInt(strings.Split(in, ".")[1], 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return int(minor), err
+	return "", fmt.Errorf("release %s not found in release list", release)
 }
 
 func FindStartEndTimesForRelease(releases []crtest.Release, release string) (*time.Time, *time.Time, error) {

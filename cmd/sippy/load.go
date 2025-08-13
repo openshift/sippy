@@ -169,7 +169,7 @@ func NewLoadCommand() *cobra.Command {
 					if len(views.ComponentReadiness) == 0 {
 						return fmt.Errorf("no component readiness views provided")
 					}
-					loaders = append(loaders, crcacheloader.New(dbc, cacheClient, bqc, config, views,
+					loaders = append(loaders, crcacheloader.New(dbc, cacheClient, bqc, config, views, releaseConfigs,
 						f.ComponentReadinessFlags.CRTimeRoundingFactor))
 
 				}

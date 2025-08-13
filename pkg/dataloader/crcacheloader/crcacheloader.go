@@ -18,7 +18,6 @@ import (
 	apiv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -31,6 +30,7 @@ type ComponentReadinessCacheLoader struct {
 	dbc                  *db.DB
 	errs                 []error
 	views                *sippytypes.SippyViews
+	releases             []apiv1.Release
 	cacheClient          cache.Cache
 	bqClient             *bigquery.Client
 	config               *v1.SippyConfig
@@ -43,6 +43,7 @@ func New(
 	bqClient *bigquery.Client,
 	config *v1.SippyConfig,
 	views *sippytypes.SippyViews,
+	releases []apiv1.Release,
 	crTimeRoundingFactor time.Duration) *ComponentReadinessCacheLoader {
 
 	return &ComponentReadinessCacheLoader{
@@ -50,6 +51,7 @@ func New(
 		cacheClient:          cacheClient,
 		errs:                 []error{},
 		views:                views,
+		releases:             releases,
 		bqClient:             bqClient,
 		config:               config,
 		crTimeRoundingFactor: crTimeRoundingFactor,
@@ -75,21 +77,12 @@ func (l *ComponentReadinessCacheLoader) Load() {
 		ForceRefresh:         true,
 	}
 
-	releases, err := api.GetReleases(context.TODO(), l.bqClient, false)
-	if err != nil {
-		l.errs = append(l.errs, errors.Wrap(err, "error querying releases"))
-		return
-	}
-
 	for _, view := range l.views.ComponentReadiness {
 		if view.PrimeCache.Enabled {
-
-			err2 := primeCacheForView(ctx, view, releases, cacheOpts, l.bqClient, l.dbc, l.config)
-			if err2 != nil {
+			if err := l.primeCacheForView(ctx, view, cacheOpts); err != nil {
 				l.errs = append(l.errs, err)
 				continue
 			}
-
 		}
 	}
 }
@@ -98,15 +91,15 @@ func (l *ComponentReadinessCacheLoader) Errors() []error {
 	return l.errs
 }
 
-func primeCacheForView(ctx context.Context, view crview.View, releases []apiv1.Release, cacheOpts cache.RequestOptions, bigQueryClient *bigquery.Client, dbc *db.DB, config *v1.SippyConfig) error {
+func (l *ComponentReadinessCacheLoader) primeCacheForView(ctx context.Context, view crview.View, cacheOpts cache.RequestOptions) error {
 	rLog := log.WithField("view", view.Name)
 
 	rLog.Infof("priming cache for view")
-	generator, err := buildGenerator(view, releases, cacheOpts, []reqopts.TestIdentification{{}}, bigQueryClient, dbc, config)
+	generator, err := l.buildGenerator(view, cacheOpts, []reqopts.TestIdentification{{}})
 	if err != nil {
 		return err
 	}
-	report, err := generateReport(ctx, generator, bigQueryClient)
+	report, err := l.generateReport(ctx, generator)
 	if err != nil {
 		return err
 	}
@@ -157,7 +150,7 @@ func primeCacheForView(ctx context.Context, view crview.View, releases []apiv1.R
 	}
 
 	// make a fresh generator for the test details report to avoid state issues in middleware etc.
-	generator, err = buildGenerator(view, releases, cacheOpts, testIDOptions, bigQueryClient, dbc, config)
+	generator, err = l.buildGenerator(view, cacheOpts, testIDOptions)
 	if err != nil {
 		return err
 	}
@@ -197,19 +190,19 @@ func primeCacheForView(ctx context.Context, view crview.View, releases []apiv1.R
 			return err
 		}
 		cacheDuration := api.CalculateRoundedCacheDuration(cacheOpts)
-		api.CacheSet(ctx, bigQueryClient.Cache, report, cacheKey, cacheDuration)
+		api.CacheSet(ctx, l.bqClient.Cache, report, cacheKey, cacheDuration)
 
 	}
 
 	return nil
 }
 
-func generateReport(ctx context.Context, generator *componentreadiness.ComponentReportGenerator, bigQueryClient *bigquery.Client) (*crtype.ComponentReport, error) {
+func (l *ComponentReadinessCacheLoader) generateReport(ctx context.Context, generator *componentreadiness.ComponentReportGenerator) (*crtype.ComponentReport, error) {
 
 	// Update the cache for the main report
 	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
-		bigQueryClient.Cache, generator.ReqOptions.CacheOption,
+		l.bqClient.Cache, generator.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey(componentreadiness.ComponentReportCacheKeyPrefix, generator.GetCacheKey(ctx)),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
@@ -224,23 +217,20 @@ func generateReport(ctx context.Context, generator *componentreadiness.Component
 	return &report, err
 }
 
-func buildGenerator(
+func (l *ComponentReadinessCacheLoader) buildGenerator(
 	view crview.View,
-	releases []apiv1.Release,
 	cacheOpts cache.RequestOptions,
 	testIDOpts []reqopts.TestIdentification,
-	bigQueryClient *bigquery.Client,
-	dbc *db.DB,
-	config *v1.SippyConfig) (*componentreadiness.ComponentReportGenerator, error) {
+) (*componentreadiness.ComponentReportGenerator, error) {
 
 	baseRelease, err := componentreadiness.GetViewReleaseOptions(
-		releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor)
+		l.releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return nil, err
 	}
 
 	sampleRelease, err := componentreadiness.GetViewReleaseOptions(
-		releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor)
+		l.releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return nil, err
 	}
@@ -261,6 +251,6 @@ func buildGenerator(
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,
 	// explicitly set our reports in the cache, thus resetting the timer for all expiry and keeping the cache
 	// primed.
-	generator := componentreadiness.NewComponentReportGenerator(bigQueryClient, reqOpts, dbc, config.ComponentReadinessConfig.VariantJunitTableOverrides)
+	generator := componentreadiness.NewComponentReportGenerator(l.bqClient, reqOpts, l.dbc, l.config.ComponentReadinessConfig.VariantJunitTableOverrides, l.releases)
 	return &generator, nil
 }

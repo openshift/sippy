@@ -9,6 +9,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -80,6 +81,12 @@ func Test_PreAnalysis(t *testing.T) {
 		Tests: map[string]bq.TestStatus{
 			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 98, 0),
 		},
+	}
+
+	releaseConfigs := []v1.Release{
+		{Release: "4.19", PreviousRelease: "4.18"},
+		{Release: "4.18", PreviousRelease: "4.17"},
+		{Release: "4.17", PreviousRelease: "4.16"},
 	}
 
 	tests := []struct {
@@ -157,7 +164,7 @@ func Test_PreAnalysis(t *testing.T) {
 	}
 	for i, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			rfb := NewReleaseFallbackMiddleware(nil, test.reqOpts)
+			rfb := NewReleaseFallbackMiddleware(nil, test.reqOpts, releaseConfigs)
 			rfb.cachedFallbackTestStatuses = &tests[i].fallbackReleases
 			err := rfb.PreAnalysis(test.testKey, test.testStats)
 			assert.NoError(t, err)
@@ -200,8 +207,15 @@ func TestCalculateFallbackReleases(t *testing.T) {
 
 	allReleases := []crtest.Release{release419, release418, release417, release416}
 	expectedReleases := []crtest.Release{release419, release418, release417}
+	releaseConfigs := []v1.Release{
+		{Release: "4.20", PreviousRelease: "4.19"},
+		{Release: "4.19", PreviousRelease: "4.18"},
+		{Release: "4.18", PreviousRelease: "4.17"},
+		{Release: "4.17", PreviousRelease: "4.16"},
+		{Release: "4.16", PreviousRelease: ""},
+	}
 
-	fallbackReleases := calculateFallbackReleases("4.20", allReleases)
+	fallbackReleases := calculateFallbackReleases("4.20", allReleases, releaseConfigs)
 	for i := range expectedReleases {
 		assert.Equal(t, expectedReleases[i].Release, fallbackReleases[i].Release)
 		assert.Equal(t, expectedReleases[i].Start, fallbackReleases[i].Start)
