@@ -24,9 +24,7 @@ export default function AddRegressionPanel({
     setTabIndex(newValue)
   }
 
-  const [existingTriageId, setExistingTriageId] = React.useState(
-    triages.length > 0 ? triages[0].id : null
-  )
+  const [existingTriageId, setExistingTriageId] = React.useState(triages[0].id)
 
   const handleAddToExistingTriageSubmit = () => {
     const existingTriage = triages.find(

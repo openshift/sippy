@@ -28,21 +28,3 @@ func ListOpenRegressions(dbc *db.DB, release string) ([]*models.TestRegression, 
 	}
 	return openRegressions, res.Error
 }
-
-func ListRegressions(dbc *db.DB, view, release string) ([]models.TestRegression, error) {
-	var regressions []models.TestRegression
-	query := dbc.DB.Model(&models.TestRegression{}).Preload("Triages")
-
-	if view != "" {
-		query = query.Where("test_regressions.view = ?", view)
-	}
-	if release != "" {
-		query = query.Where("test_regressions.release = ?", release)
-	}
-
-	res := query.Find(&regressions)
-	if res.Error != nil {
-		log.WithError(res.Error).Error("error listing regressions")
-	}
-	return regressions, res.Error
-}

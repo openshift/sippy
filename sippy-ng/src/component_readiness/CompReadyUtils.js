@@ -94,6 +94,11 @@ export function getComponentReadinessViewsAPIUrl() {
   return getAPIUrl('component_readiness/views')
 }
 
+// Make one place to create the Component Readiness test_details api call
+export function getTestDetailsAPIUrl() {
+  return getAPIUrl('component_readiness/test_details')
+}
+
 export function getTriagesAPIUrl(id = null) {
   return getAPIUrl(
     id ? `component_readiness/triages/${id}` : 'component_readiness/triages'
@@ -684,7 +689,6 @@ export function generateTestReport(
   regressedTests
 ) {
   let testBasisRelease = ''
-  console.log(regressedTests)
   if (
     typeof regressedTests != 'undefined' &&
     regressedTests.length > 0 &&
@@ -709,100 +713,13 @@ export function generateTestReport(
   return sortQueryParams(retUrl)
 }
 
-// Helper function to compare query parameters between two URLs
-export function compareUrlQueryParams(newURL, oldURL) {
-  // Extract query parameters from both URLs
-  const [, queryString1] = newURL.split('?')
-  const [, queryString2] = oldURL.split('?')
-
-  if (!queryString1 || !queryString2) {
-    console.log('One or both URLs do not have query parameters')
-    return
-  }
-
-  // Parse query parameters
-  const params1 = new URLSearchParams(queryString1)
-  const params2 = new URLSearchParams(queryString2)
-
-  // Convert to objects for easier comparison
-  const paramsObjNew = {}
-  const paramsObjOld = {}
-
-  for (const [key, value] of params1.entries()) {
-    paramsObjNew[key] = value
-  }
-
-  for (const [key, value] of params2.entries()) {
-    paramsObjOld[key] = value
-  }
-
-  // Find differences
-  const differences = {
-    onlyInNew: {},
-    onlyInOld: {},
-    differentValues: {},
-  }
-
-  // Check for params in url1 but not in url2 or with different values
-  for (const key in paramsObjNew) {
-    if (!(key in paramsObjOld)) {
-      differences.onlyInNew[key] = paramsObjNew[key]
-    } else if (paramsObjNew[key] !== paramsObjOld[key]) {
-      differences.differentValues[key] = {
-        newURL: paramsObjNew[key],
-        oldURL: paramsObjOld[key],
-      }
-    }
-  }
-
-  // Check for params in old but not in new
-  for (const key in paramsObjOld) {
-    if (!(key in paramsObjNew)) {
-      differences.onlyInOld[key] = paramsObjOld[key]
-    }
-  }
-
-  // Log differences
-  if (Object.keys(differences.onlyInNew).length > 0) {
-    console.log(
-      'Parameters only in new URL from server:',
-      differences.onlyInNew
-    )
-  }
-
-  if (Object.keys(differences.onlyInOld).length > 0) {
-    console.log(
-      'Parameters only in old URL from frontend:',
-      differences.onlyInOld
-    )
-  }
-
-  if (Object.keys(differences.differentValues).length > 0) {
-    console.log(
-      'Parameters with different values:',
-      differences.differentValues
-    )
-  }
-
-  if (
-    Object.keys(differences.onlyInNew).length === 0 &&
-    Object.keys(differences.onlyInOld).length === 0 &&
-    Object.keys(differences.differentValues).length === 0
-  ) {
-    console.log('Both URLs have identical query parameters')
-  }
-
-  return differences
-}
-
 // Construct a URL with all existing filters utilizing the necessary info from the regressed test.
 // We pass these arguments to the component that generates the test details report.
-export function generateTestDetailsReportLink(
+export function generateTestReportForRegressedTest(
   regressedTest,
   filterVals,
   expandEnvironment
 ) {
-  // Generate the URL we would have created for comparison
   const environmentVal = formColumnName({ variants: regressedTest.variants })
   const safeComponentName = safeEncodeURIComponent(regressedTest.component)
   const safeTestId = safeEncodeURIComponent(regressedTest.test_id)
@@ -810,11 +727,7 @@ export function generateTestDetailsReportLink(
   const safeTestBasisRelease = safeEncodeURIComponent(
     regressedTest.base_stats?.release
   )
-
-  // The old code generated these URLs here, but now we expect the server to always include them.
-  // I'm keeping backward compatability plus adding a compare function, so we can check the console to see
-  // differences.
-  const generatedUrl =
+  const retUrl =
     '/sippy-ng/component_readiness/test_details' +
     filterVals +
     `&testBasisRelease=${safeTestBasisRelease}` +
@@ -824,31 +737,5 @@ export function generateTestDetailsReportLink(
     `&capability=${regressedTest.capability}` +
     `&testName=${safeTestName}`
 
-  const sortedGeneratedUrl = sortQueryParams(generatedUrl)
-  // Check if regressedTest.links.test_details is defined
-  if (regressedTest.links?.test_details) {
-    // Compare the query parameters between the two URLs
-    console.log(
-      'Comparing query parameters between provided URL and generated URL:'
-    )
-    compareUrlQueryParams(regressedTest.links.test_details, sortedGeneratedUrl)
-
-    // We are assuming the API query params are identical to the UI query params, but we have to adjust the host port and prefix from
-    // http://localhost:8080/api/ to http://localhost:3000/sippy-ng/
-    // This hack allows us to keep the param generation logic in one place. (server side)
-    const testDetailsUrl = regressedTest.links.test_details
-    const apiIndex = testDetailsUrl.indexOf('/api/')
-    if (apiIndex !== -1) {
-      const pathAfterApi = testDetailsUrl.substring(apiIndex + 5) // +5 to skip '/api/'
-      const modifiedUrl = '/sippy-ng/' + pathAfterApi
-      return modifiedUrl
-    }
-    return testDetailsUrl
-  }
-  console.log(
-    'WARNING: report had no test details url, using old generated url: ' +
-      generatedUrl
-  )
-
-  return generatedUrl
+  return sortQueryParams(retUrl)
 }

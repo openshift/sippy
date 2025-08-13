@@ -66,6 +66,7 @@ func (prs *PostgresRegressionStore) ListCurrentRegressionsForRelease(release str
 func (prs *PostgresRegressionStore) OpenRegression(view crview.View, newRegressedTest crtype.ReportTestSummary) (*models.TestRegression, error) {
 
 	variants := utils.VariantsMapToStringSlice(newRegressedTest.Variants)
+	log.Infof("variants: %s", strings.Join(variants, ","))
 
 	newRegression := &models.TestRegression{
 		View:        view.Name,
@@ -76,18 +77,6 @@ func (prs *PostgresRegressionStore) OpenRegression(view crview.View, newRegresse
 		Variants:    variants,
 		MaxFailures: newRegressedTest.SampleStats.FailureCount,
 	}
-
-	// Store the base release
-	// so we can generate accurate test_details API links.
-	// Start with the view's base release, but if the test got a base release override to a prior release, we use that instead.
-	newRegression.BaseRelease = view.BaseRelease.Name
-	if newRegressedTest.BaseStats != nil {
-		newRegression.BaseRelease = newRegressedTest.BaseStats.Release
-	}
-
-	newRegression.Capability = newRegressedTest.Capability
-	newRegression.Component = newRegressedTest.Component
-
 	if newRegressedTest.LastFailure != nil {
 		newRegression.LastFailure = sql.NullTime{Valid: true, Time: *newRegressedTest.LastFailure}
 	}
@@ -222,13 +211,13 @@ func (rt *RegressionTracker) Errors() []error {
 func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view crview.View) error {
 	rLog := rt.logger.WithField("view", view.Name)
 
-	baseRelease, err := utils.GetViewReleaseOptions(
+	baseRelease, err := GetViewReleaseOptions(
 		rt.releases, "basis", view.BaseRelease, rt.cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return err
 	}
 
-	sampleRelease, err := utils.GetViewReleaseOptions(
+	sampleRelease, err := GetViewReleaseOptions(
 		rt.releases, "sample", view.SampleRelease, rt.cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return err
@@ -247,7 +236,7 @@ func (rt *RegressionTracker) SyncRegressionsForView(ctx context.Context, view cr
 	}
 
 	report, errs := GetComponentReportFromBigQuery(
-		ctx, rt.bigqueryClient, rt.dbc, reportOpts, rt.variantJunitTableOverrides, "")
+		ctx, rt.bigqueryClient, rt.dbc, reportOpts, rt.variantJunitTableOverrides)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
@@ -292,26 +281,6 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 					modifiedRegression = true
 				}
 			}
-
-			// BaseRelease was added to test_regressions later, this block allows us to set it for any pre-existing
-			// regressions as soon as the reg tracker runs.
-			// TODO: remove this block and make the field non-nullable once the db is updated
-			if regTest.BaseStats.Release != openReg.BaseRelease {
-				openReg.BaseRelease = regTest.BaseStats.Release
-				modifiedRegression = true
-			}
-
-			// Technically component and capability could get remapped during the time the regression is open,
-			// and we need this to roll out the storing of these fields initially:
-			if regTest.Component != openReg.Component {
-				openReg.Component = regTest.Component
-				modifiedRegression = true
-			}
-			if regTest.Capability != openReg.Capability {
-				openReg.Capability = regTest.Capability
-				modifiedRegression = true
-			}
-
 			if modifiedRegression {
 				statsUpdatedRegs++
 				err := rt.backend.UpdateRegression(openReg)

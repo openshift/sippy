@@ -60,9 +60,6 @@ type TestComparison struct {
 	// RequiredPassRateAdjustment can be used to adjust the tolerance for failures for a new test.
 	RequiredPassRateAdjustment float64 `json:"-"`
 
-	// Links contains HATEOAS-style links for this regression record (not stored in database)
-	Links map[string]string `json:"links,omitempty"`
-
 	// Optional fields depending on the Comparison mode
 
 	// FisherExact indicates the confidence of a regression after applying Fisher's Exact Test.

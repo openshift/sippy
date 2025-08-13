@@ -112,8 +112,6 @@ ${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server.log
 
 echo "Setup services and port forwarding for the sippy api server ..."
 
-export SIPPY_ENDPOINT="127.0.0.1"
-
 # Random port between 18000 and 18500 so we don't collide with other test jobs
 SIPPY_API_PORT=$((RANDOM % 501 + 18000))
 export SIPPY_API_PORT

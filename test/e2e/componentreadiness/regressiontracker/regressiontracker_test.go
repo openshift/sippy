@@ -12,7 +12,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/test/e2e/util"
@@ -33,11 +32,6 @@ func Test_RegressionTracker(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
 	newRegression := componentreport.ReportTestSummary{
-		TestComparison: testdetails.TestComparison{
-			BaseStats: &testdetails.ReleaseStats{
-				Release: "4.18",
-			},
-		},
 		Identification: crtest.Identification{
 			RowIdentification: crtest.RowIdentification{
 				Component:  "comp",
@@ -146,11 +140,6 @@ func Test_RegressionTracker(t *testing.T) {
 
 		// Create a second regression that will remain open
 		secondRegression := componentreport.ReportTestSummary{
-			TestComparison: testdetails.TestComparison{
-				BaseStats: &testdetails.ReleaseStats{
-					Release: "4.18",
-				},
-			},
 			Identification: crtest.Identification{
 				RowIdentification: crtest.RowIdentification{
 					Component:  "comp2",
