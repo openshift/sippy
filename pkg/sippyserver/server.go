@@ -19,6 +19,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
@@ -678,7 +679,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 	viewsCopy := make([]crview.View, len(s.views.ComponentReadiness))
 	copy(viewsCopy, s.views.ComponentReadiness)
 	for i := range viewsCopy {
-		rro, err := componentreadiness.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
+		rro, err := utils.GetViewReleaseOptions(allReleases, "basis", viewsCopy[i].BaseRelease, s.crTimeRoundingFactor)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -686,7 +687,7 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 		viewsCopy[i].BaseRelease.Start = rro.Start
 		viewsCopy[i].BaseRelease.End = rro.End
 
-		rro, err = componentreadiness.GetViewReleaseOptions(allReleases, "sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
+		rro, err = utils.GetViewReleaseOptions(allReleases, "sample", viewsCopy[i].SampleRelease, s.crTimeRoundingFactor)
 		if err != nil {
 			failureResponse(w, http.StatusBadRequest, err.Error())
 			return
@@ -713,11 +714,13 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		return componentreport.ComponentReport{}, err
 	}
 
-	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
+	options, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	if err != nil {
 		return componentreport.ComponentReport{}, err
 	}
+
+	baseURL := api.GetBaseURL(req)
 
 	outputs, errs := componentreadiness.GetComponentReportFromBigQuery(
 		req.Context(),
@@ -725,6 +728,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		s.db,
 		options,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides,
+		baseURL,
 	)
 	if len(errs) > 0 {
 		return componentreport.ComponentReport{}, fmt.Errorf("error querying component from big query: %v", errs)
@@ -739,6 +743,7 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
+
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
@@ -760,13 +765,14 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		return
 	}
 
-	reqOptions, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
+	reqOptions, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, s.db, reqOptions, allReleases)
+	baseURL := api.GetBaseURL(req)
+	outputs, errs := componentreadiness.GetTestDetails(req.Context(), s.bigQueryClient, s.db, reqOptions, allReleases, baseURL)
 	if len(errs) > 0 {
 		log.Warningf("%d errors were encountered while querying component test details from big query:", len(errs))
 		for _, err := range errs {
@@ -1292,8 +1298,8 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
-func (s *Server) jsonGetTriages(w http.ResponseWriter, _ *http.Request) {
-	triages, err := componentreadiness.ListTriages(s.db)
+func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
+	triages, err := componentreadiness.ListTriages(s.db, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1324,7 +1330,7 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	triage, err := componentreadiness.GetTriage(s.db, triageID)
+	triage, err := componentreadiness.GetTriage(s.db, triageID, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1365,7 +1371,7 @@ func (s *Server) jsonCreateTriage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-	triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage)
+	triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage, req)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -1395,7 +1401,7 @@ func (s *Server) jsonUpdateTriage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-	triage, err = componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage)
+	triage, err = componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage, req)
 	if err != nil {
 		log.WithError(err).Error("error updating triage")
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -1435,7 +1441,7 @@ func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, r
 		return
 	}
 
-	triage, err := componentreadiness.GetTriage(s.db, triageID)
+	triage, err := componentreadiness.GetTriage(s.db, triageID, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1487,6 +1493,71 @@ func (s *Server) jsonGetTriageAuditDetails(w http.ResponseWriter, req *http.Requ
 	api.RespondWithJSON(http.StatusOK, w, responseAuditLogs)
 }
 
+// jsonRegressions handles GET requests for component readiness regression records.
+// This supports both listing all regressions and querying a single regression by ID.
+func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodGet {
+		failureResponse(w, http.StatusBadRequest, "Only GET method is supported")
+		return
+	}
+
+	path := req.URL.Path
+	parts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(parts) > 4 {
+		failureResponse(w, http.StatusBadRequest, "unknown url format: "+path)
+		return
+	}
+
+	// Extract a specific resource ID if we were given one
+	var regressionID int
+	if len(parts) == 4 {
+		// Expecting URL format: /api/component_readiness/regressions/{id}
+		// If we can extract a regression ID from the URL, get that specific record:
+		idStr := parts[3] // Extracts the ID
+		var err error
+		regressionID, err = strconv.Atoi(idStr)
+		if err != nil {
+			failureResponse(w, http.StatusBadRequest, "unknown ID format: "+idStr)
+			return
+		}
+	}
+
+	// Get releases for view processing
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting releases: %v", err))
+		return
+	}
+
+	// Was a specific record requested?
+	if regressionID > 0 {
+		existingRegression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if existingRegression == nil {
+			failureResponse(w, http.StatusNotFound, "regression not found")
+			return
+		}
+		api.RespondWithJSON(http.StatusOK, w, existingRegression)
+		return
+	}
+
+	// Read query parameters for listing
+	view := param.SafeRead(req, "view")
+	release := param.SafeRead(req, "release")
+
+	// Error if both view and release are specified
+	if view != "" && release != "" {
+		failureResponse(w, http.StatusBadRequest, "Cannot specify both 'view' and 'release' parameters. Please use only one.")
+		return
+	}
+
+	regressions, err := componentreadiness.ListRegressions(s.db, view, release, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
+	api.RespondWithJSON(http.StatusOK, w, regressions)
+}
+
 func getUserForRequest(req *http.Request) string {
 	user := req.Header.Get("X-Forwarded-User")
 	if user == "" && os.Getenv("DEV_MODE") == "1" {
@@ -1506,11 +1577,17 @@ func (s *Server) jsonRegressionPotentialMatchingTriages(w http.ResponseWriter, r
 		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
 		return
 	}
-	regression, err := componentreadiness.GetRegression(s.db.DB, regressionID)
+	// Get releases for view processing
+	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting releases: %v", err))
+		return
+	}
+	regression, err := componentreadiness.GetRegression(s.db, regressionID, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting regression: %v", err))
 	}
-	triages, err := componentreadiness.ListTriages(s.db)
+	triages, err := componentreadiness.ListTriages(s.db, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("failed to list triages: %v", err))
 		return
@@ -2125,6 +2202,18 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodGet},
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonRegressionPotentialMatchingTriages,
+		},
+		{
+			EndpointPath: "/api/component_readiness/regressions",
+			Description:  "List component readiness test regressions or get a specific regression by ID. Supports view OR release query parameters (not both).",
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
+			HandlerFunc:  s.jsonRegressions,
+		},
+		{
+			EndpointPath: "/api/component_readiness/regressions/",
+			Description:  "List component readiness test regressions or get a specific regression by ID. Supports view OR release query parameters (not both).",
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
+			HandlerFunc:  s.jsonRegressions,
 		},
 		{
 			EndpointPath: "/api/component_readiness/bugs",
