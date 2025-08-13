@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -114,12 +113,12 @@ func NewJiraAutomator(
 }
 
 func (j JiraAutomator) getRequestOptionForView(view crview.View) (reqopts.RequestOptions, error) {
-	baseRelease, err := utils.GetViewReleaseOptions(j.releases, "basis", view.BaseRelease, j.cacheOptions.CRTimeRoundingFactor)
+	baseRelease, err := componentreadiness.GetViewReleaseOptions(j.releases, "basis", view.BaseRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return reqopts.RequestOptions{}, err
 	}
 
-	sampleRelease, err := utils.GetViewReleaseOptions(j.releases, "sample", view.SampleRelease, j.cacheOptions.CRTimeRoundingFactor)
+	sampleRelease, err := componentreadiness.GetViewReleaseOptions(j.releases, "sample", view.SampleRelease, j.cacheOptions.CRTimeRoundingFactor)
 	if err != nil {
 		return reqopts.RequestOptions{}, err
 	}
@@ -148,7 +147,7 @@ func (j JiraAutomator) getComponentReportForView(view crview.View) (crtype.Compo
 	}
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, j.dbc, reportOpts, j.variantJunitTableOverrides, "")
+	report, errs := componentreadiness.GetComponentReportFromBigQuery(context.Background(), j.bqClient, j.dbc, reportOpts, j.variantJunitTableOverrides)
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

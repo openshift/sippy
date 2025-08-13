@@ -19,7 +19,7 @@ const (
 	APIPort = 18080
 )
 
-func BuildE2EURL(apiPath string) string {
+func buildURL(apiPath string) string {
 	envSippyAPIPort := os.Getenv("SIPPY_API_PORT")
 	envSippyEndpoint := os.Getenv("SIPPY_ENDPOINT")
 
@@ -38,7 +38,7 @@ func BuildE2EURL(apiPath string) string {
 }
 
 func SippyGet(path string, data interface{}) error {
-	req, err := http.Get(BuildE2EURL(path))
+	req, err := http.Get(buildURL(path))
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func sippyMutatingRequest(method, path string, bodyData, responseData interface{
 		bodyReader = strings.NewReader(string(bodyBytes))
 	}
 
-	req, err := http.NewRequest(method, BuildE2EURL(path), bodyReader)
+	req, err := http.NewRequest(method, buildURL(path), bodyReader)
 	if err != nil {
 		return err
 	}

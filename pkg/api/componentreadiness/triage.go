@@ -4,13 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 
-	sippyapi "github.com/openshift/sippy/pkg/api"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
-	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -18,7 +13,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
+func GetTriage(dbc *db.DB, id int) (*models.Triage, error) {
 	existingTriage := &models.Triage{}
 	res := dbc.DB.Preload("Bug").Preload("Regressions").First(existingTriage, id)
 	if res.Error != nil {
@@ -27,47 +22,18 @@ func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
 		}
 		log.WithError(res.Error).Errorf("error looking up existing triage record: %d", id)
 	}
-	injectHATEOASLinks(existingTriage, sippyapi.GetBaseURL(req))
+	injectHATEOASLinks(existingTriage)
 	return existingTriage, res.Error
 }
 
-func ListTriages(dbc *db.DB, req *http.Request) ([]models.Triage, error) {
+func ListTriages(dbc *db.DB) ([]models.Triage, error) {
 	var triages []models.Triage
 	var err error
 	triages, err = query.ListTriages(dbc)
 	for i := range triages {
-		injectHATEOASLinks(&triages[i], sippyapi.GetBaseURL(req))
+		injectHATEOASLinks(&triages[i])
 	}
 	return triages, err
-}
-
-func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, req *http.Request) (*models.TestRegression, error) {
-	existingRegression := &models.TestRegression{}
-	res := dbc.DB.Preload("Triages").First(existingRegression, id)
-	if res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return nil, nil
-		}
-		log.WithError(res.Error).Errorf("error looking up existing regression record: %d", id)
-	}
-	InjectRegressionHATEOASLinks(existingRegression, views, releases, crTimeRoundingFactor, sippyapi.GetBaseURL(req))
-	return existingRegression, res.Error
-}
-
-func ListRegressions(dbc *db.DB, view, release string, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, req *http.Request) ([]models.TestRegression, error) {
-	var regressions []models.TestRegression
-	var err error
-	regressions, err = query.ListRegressions(dbc, view, release)
-	if err != nil {
-		return regressions, err
-	}
-
-	// Add HATEOAS links to each regression
-	for i := range regressions {
-		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, sippyapi.GetBaseURL(req))
-	}
-
-	return regressions, err
 }
 
 // validateTriage ensures the Triage record coming into the API appears valid. Small
@@ -90,7 +56,7 @@ func validateTriage(triage models.Triage, update bool) error {
 	return nil
 }
 
-func CreateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models.Triage, error) {
+func CreateTriage(dbc *gorm.DB, triage models.Triage) (models.Triage, error) {
 	err := validateTriage(triage, false)
 	if err != nil {
 		log.WithError(err).Error("error validating triage record")
@@ -125,7 +91,7 @@ func CreateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models
 	}
 	log.WithField("triageID", triage.ID).Info("triage record created")
 
-	injectHATEOASLinks(&triage, sippyapi.GetBaseURL(req))
+	injectHATEOASLinks(&triage)
 	return triage, nil
 }
 
@@ -167,7 +133,7 @@ func linkRegressions(dbc *gorm.DB, triage *models.Triage) error {
 	return nil
 }
 
-func UpdateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models.Triage, error) {
+func UpdateTriage(dbc *gorm.DB, triage models.Triage) (models.Triage, error) {
 	err := validateTriage(triage, true)
 	if err != nil {
 		log.WithError(err).Error("error validating triage record")
@@ -224,7 +190,7 @@ func UpdateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models
 		return triage, err
 	}
 
-	injectHATEOASLinks(&triage, sippyapi.GetBaseURL(req))
+	injectHATEOASLinks(&triage)
 	return triage, nil
 }
 
@@ -238,82 +204,8 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 }
 
 // injectHATEOASLinks adds restful links clients can follow for this triage record.
-func injectHATEOASLinks(triage *models.Triage, baseURL string) {
-	if baseURL == "" {
-		// For backward compatibility, return relative URL if no baseURL provided
-		triage.Links = map[string]string{
-			"self": fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
-		}
-	} else {
-		// Create fully qualified URL with the correct protocol
-		triage.Links = map[string]string{
-			"self": fmt.Sprintf("%s/api/component_readiness/triages/%d", baseURL, triage.ID),
-		}
+func injectHATEOASLinks(triage *models.Triage) {
+	triage.Links = map[string]string{
+		"self": fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
 	}
-}
-
-// InjectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
-func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) {
-	if regression.Links == nil {
-		regression.Links = make(map[string]string)
-	}
-
-	// Add self link with fully qualified URL using the correct protocol
-	regression.Links["self"] = fmt.Sprintf("%s/api/component_readiness/regressions/%d", baseURL, regression.ID)
-
-	// Generate test details URL - extract the required data from the regression and view
-	testDetailsURL, err := generateTestDetailsURLFromRegression(regression, views, releases, crTimeRoundingFactor, baseURL)
-	if err != nil {
-		log.WithError(err).Warnf("failed to generate test details URL for regression %d", regression.ID)
-		return
-	}
-
-	regression.Links["test_details"] = testDetailsURL
-}
-
-// generateTestDetailsURLFromRegression extracts the required data from a regression and view
-// and calls the refactored GenerateTestDetailsURL function.
-func generateTestDetailsURLFromRegression(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) (string, error) {
-	if regression == nil {
-		return "", fmt.Errorf("regression cannot be nil")
-	}
-
-	// Find the view for this regression
-	var view crview.View
-	var found bool
-	for i := range views {
-		if views[i].Name == regression.View {
-			view = views[i]
-			found = true
-			break
-		}
-	}
-	if !found {
-		return "", fmt.Errorf("view %s not found", regression.View)
-	}
-
-	// Get base and sample release options from the view
-	baseReleaseOpts, err := utils.GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor)
-	if err != nil {
-		return "", fmt.Errorf("failed to get base release options: %w", err)
-	}
-
-	sampleReleaseOpts, err := utils.GetViewReleaseOptions(releases, "sample", view.SampleRelease, crTimeRoundingFactor)
-	if err != nil {
-		return "", fmt.Errorf("failed to get sample release options: %w", err)
-	}
-
-	// Call the refactored GenerateTestDetailsURL function with explicit parameters
-	return utils.GenerateTestDetailsURL(
-		regression.TestID,
-		baseURL,
-		baseReleaseOpts,
-		sampleReleaseOpts,
-		view.AdvancedOptions,
-		view.VariantOptions,
-		regression.Component,
-		regression.Capability,
-		regression.Variants,
-		regression.BaseRelease,
-	)
 }

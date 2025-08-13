@@ -192,27 +192,19 @@ func ValidTriageType(triageType TriageType) bool {
 // TestRegression is used for rows in the test_regressions table and is used to track when we detect test
 // regressions opening and closing.
 type TestRegression struct {
-	ID      uint   `json:"id" gorm:"primaryKey,column:id"`
-	View    string `json:"view" gorm:"not null"`
-	Release string `json:"release" gorm:"not null;index:idx_test_regression_release"`
-	// BaseRelease is the release this test was marked regressed against. It may not match the view's base release
-	// if the view uses release fallback and this test was flagged regressed against a prior release with better pass rate.
-	BaseRelease string         `json:"base_release"`
-	Component   string         `json:"component"`
-	Capability  string         `json:"capability"`
-	TestID      string         `json:"test_id" gorm:"not null"`
-	TestName    string         `json:"test_name" gorm:"not null;index:idx_test_regression_test_name"`
-	Variants    pq.StringArray `json:"variants" gorm:"not null;type:text[]"`
-	Opened      time.Time      `json:"opened" gorm:"not null"`
-	Closed      sql.NullTime   `json:"closed"`
-	Triages     []Triage       `json:"triages" gorm:"many2many:triage_regressions;"`
+	ID       uint           `json:"id" gorm:"primaryKey,column:id"`
+	View     string         `json:"view" gorm:"not null"`
+	Release  string         `json:"release" gorm:"not null;index:idx_test_regression_release"`
+	TestID   string         `json:"test_id" gorm:"not null"`
+	TestName string         `json:"test_name" gorm:"not null;index:idx_test_regression_test_name"`
+	Variants pq.StringArray `json:"variants" gorm:"not null;type:text[]"`
+	Opened   time.Time      `json:"opened" gorm:"not null"`
+	Closed   sql.NullTime   `json:"closed"`
+	Triages  []Triage       `json:"triages" gorm:"many2many:triage_regressions;"`
 	// LastFailure is the last failure in the sample we saw while this regression was open.
 	LastFailure sql.NullTime `json:"last_failure"`
 	// MaxFailures is the maximum number of failures we found in the reporting window while this regression was open.
 	// This is intended to help inform the min fail thresholds we should be using, and what kind of regressions
 	// disappear on their own.
 	MaxFailures int `json:"max_failures"`
-
-	// Links contains HATEOAS-style links for this regression record (not stored in database)
-	Links map[string]string `json:"links,omitempty" gorm:"-"`
 }
