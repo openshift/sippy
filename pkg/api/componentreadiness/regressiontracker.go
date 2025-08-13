@@ -296,7 +296,11 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 			// BaseRelease was added to test_regressions later, this block allows us to set it for any pre-existing
 			// regressions as soon as the reg tracker runs.
 			// TODO: remove this block and make the field non-nullable once the db is updated
-			if regTest.BaseStats.Release != openReg.BaseRelease {
+			baseRelease := view.BaseRelease.Name
+			if regTest.BaseStats != nil {
+				baseRelease = regTest.BaseStats.Release
+			}
+			if baseRelease != openReg.BaseRelease {
 				openReg.BaseRelease = regTest.BaseStats.Release
 				modifiedRegression = true
 			}
