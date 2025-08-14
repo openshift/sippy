@@ -630,57 +630,64 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 	jobNameLower := strings.ToLower(jobName)
 
 	jobTierPatterns := []struct {
-		pattern *regexp.Regexp
-		jobTier string
+		substrings []string
+		jobTier    string
 	}{
 		// Rarely run
-		{regexp.MustCompile(`-cpu-partitioning`), "rare"},
-		{regexp.MustCompile(`-etcd-scaling`), "rare"},
+		{[]string{"-cpu-partitioning"}, "rare"},
+		{[]string{"-etcd-scaling"}, "rare"},
 
 		// QE jobs allowlisted for Component Readiness
-		{regexp.MustCompile(`-automated-release`), "standard"},
+		{[]string{"-automated-release"}, "standard"},
 
 		// Excluded jobs
-		{regexp.MustCompile(`-okd`), "excluded"},
-		{regexp.MustCompile(`-recovery`), "excluded"},
-		{regexp.MustCompile(`alibaba`), "excluded"},
-		{regexp.MustCompile(`-osde2e-`), "excluded"},
+		{[]string{"-okd"}, "excluded"},
+		{[]string{"-recovery"}, "excluded"},
+		{[]string{"alibaba"}, "excluded"},
+		{[]string{"-osde2e-"}, "excluded"},
 
 		// Experimental new jobs using nested vsphere lvl 2 environment,
 		// not ready to make release blocking yet.
-		{regexp.MustCompile(`-vsphere-host-groups`), "candidate"},
+		{[]string{"-vsphere-host-groups"}, "candidate"},
 
 		// Konflux jobs aren't ready yet
-		{regexp.MustCompile(`-konflux`), "candidate"},
-		{regexp.MustCompile(`-console-operator-`), "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
+		{[]string{"-konflux"}, "candidate"},
+		{[]string{"-console-operator-"}, "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
 
-		{regexp.MustCompile(`-nat-instance`), "candidate"},
+		{[]string{"-nat-instance"}, "candidate"},
 
 		// Hidden jobs
-		{regexp.MustCompile(`-cilium`), "hidden"},
-		{regexp.MustCompile(`-disruptive`), "hidden"},
-		{regexp.MustCompile(`-rollback`), "hidden"},
-		{regexp.MustCompile(`aggregator-`), "hidden"},
-		{regexp.MustCompile(`-out-of-change`), "hidden"},
-		{regexp.MustCompile(`-sno-fips-recert`), "hidden"},
-		{regexp.MustCompile(`-bgp-`), "hidden"},
-		{regexp.MustCompile(`aggregated`), "hidden"},
-		{regexp.MustCompile(`-cert-rotation-shutdown-`), "hidden"}, // may want to go to rare at some point
-		{regexp.MustCompile(`-vsphere-insights-runtime`), "hidden"},
+		{[]string{"-cilium"}, "hidden"},
+		{[]string{"-disruptive"}, "hidden"},
+		{[]string{"-rollback"}, "hidden"},
+		{[]string{"aggregator-"}, "hidden"},
+		{[]string{"-out-of-change"}, "hidden"},
+		{[]string{"-sno-fips-recert"}, "hidden"},
+		{[]string{"-bgp-"}, "hidden"},
+		{[]string{"aggregated"}, "hidden"},
+		{[]string{"-cert-rotation-shutdown-"}, "hidden"}, // may want to go to rare at some point
+		{[]string{"-vsphere-insights-runtime"}, "hidden"},
 
-		{regexp.MustCompile(`-4\.19-e2e-metal-ipi-serial-ovn-ipv6-techpreview-`), "candidate"},      // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
-		{regexp.MustCompile(`-4\.19-e2e-metal-ipi-serial-ovn-dualstack-techpreview-`), "candidate"}, // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
+		{[]string{"-4.19-e2e-metal-ipi-serial-ovn-ipv6-techpreview-"}, "candidate"},      // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
+		{[]string{"-4.19-e2e-metal-ipi-serial-ovn-dualstack-techpreview-"}, "candidate"}, // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
 
 		// Hypershift jobs that could not be stabilized in time for 4.20, we hope to restore in 4.21.
 		// Mark candidate and add a view for hypershift to see their jobs specifically including these so work can continue.
-		{regexp.MustCompile(`periodic-ci-openshift-hypershift-release-.*-periodics-e2e-openstack-aws`), "candidate"},
-		{regexp.MustCompile(`periodic-ci-openshift-hypershift-release-.*-periodics-e2e-azure-aks-ovn-conformance`), "candidate"},
-		{regexp.MustCompile(`periodic-ci-openshift-hypershift-release-.*-periodics-e2e-kubevirt-metal-ovn`), "candidate"},
-		{regexp.MustCompile(`periodic-ci-openshift-hypershift-release-.*-periodics-e2e-aws-ovn-conformance-serial`), "candidate"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-openstack-aws"}, "candidate"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-azure-aks-ovn-conformance"}, "candidate"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-kubevirt-metal-ovn"}, "candidate"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance-serial"}, "candidate"},
 	}
 
 	for _, jobTierPattern := range jobTierPatterns {
-		if jobTierPattern.pattern.MatchString(jobNameLower) {
+		allMatch := true
+		for _, substring := range jobTierPattern.substrings {
+			if !strings.Contains(jobNameLower, substring) {
+				allMatch = false
+				break
+			}
+		}
+		if allMatch {
 			variants[VariantJobTier] = jobTierPattern.jobTier
 			return
 		}
