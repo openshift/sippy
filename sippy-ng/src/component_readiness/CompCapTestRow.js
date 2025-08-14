@@ -12,49 +12,39 @@ import TableRow from '@mui/material/TableRow'
 export default function CompCapTestRow(props) {
   const classes = useContext(ComponentReadinessStyleContext)
 
-  // testName is the name of the test (called testName)
-  // testId is the unique test ID that maps to the testName
-  // results is an array of columns and contains the status value per columnName
+  // regressedTestCols is the full test data structure
   // columnNames is the calculated array of columns
   // filterVals: the parts of the url containing input values
-  // component, capability: these are passed because we need them in the /test endpoint
-  const {
-    testName,
-    testSuite,
-    testId,
-    results,
-    columnNames,
-    filterVals,
-    component,
-    capability,
-  } = props
+  const { regressedTestCols, columnNames, filterVals } = props
 
   // Put the testName on the left side with no link.
   const testNameColumn = (
-    <TableCell className={classes.componentName} key={testName}>
-      <Tooltip title={testId}>
+    <TableCell
+      className={classes.componentName}
+      key={regressedTestCols.test_name}
+    >
+      <Tooltip title={regressedTestCols.test_id}>
         <Typography className={classes.crCellName}>
-          {[testSuite, testName].filter(Boolean).join('.')}
+          {[regressedTestCols.test_suite, regressedTestCols.test_name]
+            .filter(Boolean)
+            .join('.')}
         </Typography>
       </Tooltip>
     </TableCell>
   )
 
+  console.log(regressedTestCols)
   return (
     <Fragment>
       <TableRow>
         {testNameColumn}
-        {results.map((columnVal, idx) => (
+        {regressedTestCols.columns.map((columnVal, idx) => (
           <CompReadyTestCell
             key={'testName-' + idx}
             status={columnVal.status}
             environment={columnNames[idx]}
-            testId={testId}
             filterVals={filterVals}
-            component={component}
-            capability={capability}
-            testName={testName}
-            regressedTests={columnVal.regressed_tests}
+            regressedTest={columnVal.regressed_tests[0]}
           />
         ))}
       </TableRow>
@@ -63,12 +53,7 @@ export default function CompCapTestRow(props) {
 }
 
 CompCapTestRow.propTypes = {
-  testName: PropTypes.string.isRequired,
-  testSuite: PropTypes.string.isRequired,
-  testId: PropTypes.string.isRequired,
-  results: PropTypes.array.isRequired,
+  regressedTestCols: PropTypes.object.isRequired,
   columnNames: PropTypes.array.isRequired,
   filterVals: PropTypes.string.isRequired,
-  component: PropTypes.string.isRequired,
-  capability: PropTypes.string.isRequired,
 }

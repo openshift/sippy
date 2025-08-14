@@ -841,10 +841,12 @@ export function generateTestDetailsReportLink(
     // http://localhost:8080/api/ to http://localhost:3000/sippy-ng/
     // This hack allows us to keep the param generation logic in one place. (server side)
     const testDetailsUrl = regressedTest.links.test_details
+    console.log('testDetailsUrl', testDetailsUrl)
     const apiIndex = testDetailsUrl.indexOf('/api/')
     if (apiIndex !== -1) {
       const pathAfterApi = testDetailsUrl.substring(apiIndex + 5) // +5 to skip '/api/'
       const modifiedUrl = '/sippy-ng/' + pathAfterApi
+      console.log('modifiedUrl', modifiedUrl)
       return modifiedUrl
     }
     return testDetailsUrl
