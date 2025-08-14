@@ -79,6 +79,68 @@ component_readiness:
       enabled: true
     automate_jira:
       enabled: true
+  - name: 4.20-hypershift-candidates
+    base_release:
+      release: "4.19"
+      relative_start: ga-30d
+      relative_end: ga
+    sample_release:
+      release: "4.20"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+        Topology: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+          - techpreview
+        Installer:
+          - ipi
+          - upi
+          - hypershift
+        JobTier:
+          - blocking
+          - informing
+          - standard
+          - candidate
+        Network:
+          - ovn
+        Owner:
+          - eng
+          - service-delivery
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - metal
+          - rosa
+          - vsphere
+        Topology:
+          - external
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+      flake_as_failure: false
+      pass_rate_required_new_tests: 95
+      include_multi_release_analysis: true
   - name: 4.20-x86-vs-multi-arm
     base_release:
       release: "4.20"
