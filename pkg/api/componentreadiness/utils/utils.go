@@ -52,34 +52,14 @@ func FindStartEndTimesForRelease(releases []crtest.Release, release string) (*ti
 	return nil, nil, fmt.Errorf("release %s not found", release)
 }
 
-func NormalizeProwJobName(prowName string, reqOptions reqopts.RequestOptions) string {
-	name := prowName
-	// Build a list of all releases involved in this request to replace with X.X in normalized prow job names.
-	releases := []string{}
-	if reqOptions.BaseRelease.Name != "" {
-		releases = append(releases, reqOptions.BaseRelease.Name)
-	}
-	if reqOptions.SampleRelease.Name != "" {
-		releases = append(releases, reqOptions.SampleRelease.Name)
-	}
-	for _, tid := range reqOptions.TestIDOptions {
-		if tid.BaseOverrideRelease != "" {
-			releases = append(releases, tid.BaseOverrideRelease)
-		}
-	}
-
-	for _, release := range releases {
-		name = strings.ReplaceAll(name, release, "X.X")
-		if prev, err := PreviousRelease(release); err == nil {
-			name = strings.ReplaceAll(name, prev, "X.X")
-		}
-	}
+func NormalizeProwJobName(prowName string) string {
+	// Remove anything that looks like versioning from the job name
+	prowName = regexp.MustCompile(`\b\d+\.\d+\b`).ReplaceAllString(prowName, "X.X")
 
 	// Some jobs encode frequency in their name, which can change
-	re := regexp.MustCompile(`-f\d+`)
-	name = re.ReplaceAllString(name, "-fXX")
+	prowName = regexp.MustCompile(`-f\d+`).ReplaceAllString(prowName, "-fXX")
 
-	return name
+	return prowName
 }
 
 // DeserializeTestKey helps us workaround the limitations of a struct as a map key, where
