@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/pkg/errors"
@@ -60,6 +62,7 @@ const (
 func NewServer(
 	mode Mode,
 	listenAddr string,
+	corsAllowedOrigin string,
 	syntheticTestManager synthetictests.SyntheticTestManager,
 	variantManager testidentification.VariantManager,
 	sippyNG fs.FS,
@@ -81,6 +84,7 @@ func NewServer(
 	server := &Server{
 		mode:                 mode,
 		listenAddr:           listenAddr,
+		corsAllowedOrigin:    corsAllowedOrigin,
 		syntheticTestManager: syntheticTestManager,
 		variantManager:       variantManager,
 		jobartifactsManager:  jobartifacts.NewManager(context.Background()),
@@ -122,6 +126,7 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 type Server struct {
 	mode                 Mode
 	listenAddr           string
+	corsAllowedOrigin    string
 	syntheticTestManager synthetictests.SyntheticTestManager
 	variantManager       testidentification.VariantManager
 	jobartifactsManager  *jobartifacts.Manager
@@ -1282,126 +1287,103 @@ func (s *Server) jsonJobsAnalysisFromDB(w http.ResponseWriter, req *http.Request
 	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
-// jsonTriages handles multiple http verbs for managing component readiness triage records.
-func (s *Server) jsonTriages(w http.ResponseWriter, req *http.Request) {
-	path := req.URL.Path
-	parts := strings.Split(strings.Trim(path, "/"), "/")
-	if len(parts) > 4 {
-		failureResponse(w, http.StatusBadRequest, "unknown url format: "+path)
+func (s *Server) jsonGetTriages(w http.ResponseWriter, _ *http.Request) {
+	triages, err := componentreadiness.ListTriages(s.db)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, triages)
+}
+
+func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	idStr := vars["id"]
+
+	triageID, err := strconv.Atoi(idStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
 		return
 	}
 
-	// Extract a specific resource ID if we were given one. Verbs will decide to use it or not,
-	// as well as error if it is required.
-	var triageID int
-	if len(parts) == 4 {
-		// Expecting URL format: /api/component_readiness/triages/{id}
-		// If we can extract a triage ID from the URL, get that specific record:
-		idStr := parts[3] // Extracts "789"
-		var err error
-		triageID, err = strconv.Atoi(idStr)
-		if err != nil {
-			failureResponse(w, http.StatusBadRequest, "unknown ID format: "+idStr)
-			return
-		}
-		log.Infof("Extracted triage ID: %d", triageID)
-	}
-
-	switch req.Method {
-	case http.MethodGet:
-		// Was a specific record requested?
-		if triageID > 0 {
-			existingTriage, err := componentreadiness.GetTriage(s.db, triageID)
-			if err != nil {
-				failureResponse(w, http.StatusInternalServerError, err.Error())
-				return
-			}
-			if existingTriage == nil {
-				failureResponse(w, http.StatusNotFound, "triage not found")
-				return
-			}
-			api.RespondWithJSON(http.StatusOK, w, existingTriage)
-			return
-		}
-
-		triages, err := componentreadiness.ListTriages(s.db)
-		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		api.RespondWithJSON(http.StatusOK, w, triages)
+	existingTriage, err := componentreadiness.GetTriage(s.db, triageID)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
-
-	case http.MethodPost: // create
-		if !s.enableWriteAPIs {
-			failureResponse(w, http.StatusNotImplemented, "POST triages is not available on this server")
-			return
-		}
-		user := getUserForRequest(req)
-		log.Infof("triage POST made by user: %s", user)
-		var triage models.Triage
-		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
-			log.WithError(err).Error("error parsing new triage record")
-			failureResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-		triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage)
-		if err != nil {
-			failureResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		api.RespondWithJSON(http.StatusOK, w, triage)
-	case http.MethodPut: // update
-		if !s.enableWriteAPIs {
-			failureResponse(w, http.StatusNotImplemented, "PUT triages is not available on this server")
-			return
-		}
-		if triageID == 0 {
-			failureResponse(w, http.StatusBadRequest, "no triage ID specified in URL")
-			return
-		}
-		user := getUserForRequest(req)
-		log.Infof("triage PUT made by user: %s", user)
-		var triage models.Triage
-		if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
-			log.WithError(err).Error("error parsing new triage record")
-			failureResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		if triageID != int(triage.ID) { // nolint:gosec
-			failureResponse(w, http.StatusBadRequest, "resource triage ID does not match URL")
-			return
-		}
-		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-		triage, err := componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage)
-		if err != nil {
-			log.WithError(err).Error("error updating triage")
-			failureResponse(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		api.RespondWithJSON(http.StatusOK, w, triage)
-	case http.MethodDelete:
-		if !s.enableWriteAPIs {
-			failureResponse(w, http.StatusNotImplemented, "DELETE triages is not available on this server")
-			return
-		}
-		user := getUserForRequest(req)
-		log.Infof("triage DELETE made by user: %s", user)
-		ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-		if err := componentreadiness.DeleteTriage(s.db.DB.WithContext(ctx), triageID); err != nil {
-			failureResponse(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		api.RespondWithJSON(http.StatusOK, w, nil)
-	case http.MethodOptions:
-		// TODO(sgoeddel): should we enable CORS? If so, we will have to do some special logic to allow localhost as well until gorilla is utilized
-		// w.Header().Set("Access-Control-Allow-Origin", "https://sippy-auth.dptools.openshift.org")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		api.RespondWithJSON(http.StatusOK, w, nil)
-	default:
-		failureResponse(w, http.StatusBadRequest, "Unsupported method")
 	}
+	if existingTriage == nil {
+		failureResponse(w, http.StatusNotFound, "triage not found")
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, existingTriage)
+}
+
+func (s *Server) jsonCreateTriage(w http.ResponseWriter, req *http.Request) {
+	user := getUserForRequest(req)
+	log.Infof("triage POST made by user: %s", user)
+	var triage models.Triage
+	if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
+		log.WithError(err).Error("error parsing new triage record")
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
+	triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, triage)
+}
+
+func (s *Server) jsonUpdateTriage(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	idStr := vars["id"]
+	triageID, err := strconv.Atoi(idStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
+		return
+	}
+
+	user := getUserForRequest(req)
+	log.Infof("triage PUT made by user: %s", user)
+	var triage models.Triage
+	if err := json.NewDecoder(req.Body).Decode(&triage); err != nil {
+		log.WithError(err).Error("error parsing new triage record")
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if triageID != int(triage.ID) { // nolint:gosec
+		failureResponse(w, http.StatusBadRequest, "resource triage ID does not match URL")
+		return
+	}
+	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
+	triage, err = componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage)
+	if err != nil {
+		log.WithError(err).Error("error updating triage")
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, triage)
+}
+
+func (s *Server) jsonDeleteTriage(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	idStr := vars["id"]
+	triageID, err := strconv.Atoi(idStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
+		return
+	}
+
+	user := getUserForRequest(req)
+	log.Infof("triage DELETE made by user: %s", user)
+	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
+	if err := componentreadiness.DeleteTriage(s.db.DB.WithContext(ctx), triageID); err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, nil)
 }
 
 func getUserForRequest(req *http.Request) string {
@@ -1673,12 +1655,11 @@ func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.R
 func (s *Server) Serve() {
 	s.determineCapabilities()
 
-	// Use private ServeMux to prevent tests from stomping on http.DefaultServeMux
-	serveMux := http.NewServeMux()
+	router := mux.NewRouter()
 
 	// Handle serving React version of frontend with support for browser router, i.e. anything not found
 	// goes to index.html
-	serveMux.HandleFunc("/sippy-ng/", func(w http.ResponseWriter, r *http.Request) {
+	router.PathPrefix("/sippy-ng/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fs := s.sippyNG
 		if r.URL.Path != "/sippy-ng/" {
 			fullPath := strings.TrimPrefix(r.URL.Path, "/sippy-ng/")
@@ -1697,22 +1678,23 @@ func (s *Server) Serve() {
 		http.StripPrefix("/sippy-ng/", http.FileServer(http.FS(fs))).ServeHTTP(w, r)
 	})
 
-	serveMux.Handle("/static/", http.FileServer(http.FS(s.static)))
+	router.PathPrefix("/static/").Handler(http.FileServer(http.FS(s.static)))
 
 	// Re-direct "/" to sippy-ng
-	serveMux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+	router.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		if req.URL.Path != "/" {
 			http.NotFound(w, req)
 			return
 		}
-		http.Redirect(w, req, "/sippy-ng/", 301)
-	})
+		http.Redirect(w, req, "/sippy-ng/", http.StatusMovedPermanently)
+	}).Methods(http.MethodGet)
 
 	type apiEndpoints struct {
 		EndpointPath string                                       `json:"path"`
 		Description  string                                       `json:"description"`
 		Capabilities []string                                     `json:"required_capabilities"`
 		CacheTime    time.Duration                                `json:"cache_time"`
+		Methods      []string                                     `json:"methods,omitempty"`
 		HandlerFunc  func(w http.ResponseWriter, r *http.Request) `json:"-"`
 	}
 
@@ -1721,6 +1703,7 @@ func (s *Server) Serve() {
 		{
 			EndpointPath: "/api",
 			Description:  "API docs",
+			Methods:      []string{http.MethodGet},
 			HandlerFunc: func(w http.ResponseWriter, r *http.Request) {
 				var availableEndpoints []apiEndpoints
 				for _, ep := range endpoints {
@@ -1961,19 +1944,38 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/component_readiness/triages",
-			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
+			Description:  "List component readiness regression triage records",
+			Methods:      []string{http.MethodGet},
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
-			HandlerFunc:  s.jsonTriages,
+			HandlerFunc:  s.jsonGetTriages,
 		},
 		{
-			// TODO: had to duplicate above for trailing slash for GET/PUT on specific records
-			// Switch to gorilla mux for cleaner handling of this, specific verbs, and extracting params from url.
-			// Because we don't have control over verbs, we're also not listing the write endpoints capability here.
-			// Instead, we check it for specific verbs in the jsonTriages function.
-			EndpointPath: "/api/component_readiness/triages/",
-			Description:  "Manage component readiness regression triage records. (GET, POST, PUT)",
+			EndpointPath: "/api/component_readiness/triages",
+			Description:  "Create component readiness regression triage record",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCreateTriage,
+		},
+		{
+			EndpointPath: "/api/component_readiness/triages/{id}",
+			Description:  "Get specific component readiness regression triage record",
+			Methods:      []string{http.MethodGet},
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
-			HandlerFunc:  s.jsonTriages,
+			HandlerFunc:  s.jsonGetTriageByID,
+		},
+		{
+			EndpointPath: "/api/component_readiness/triages/{id}",
+			Description:  "Update component readiness regression triage record",
+			Methods:      []string{http.MethodPut},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonUpdateTriage,
+		},
+		{
+			EndpointPath: "/api/component_readiness/triages/{id}",
+			Description:  "Delete component readiness regression triage record",
+			Methods:      []string{http.MethodDelete},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonDeleteTriage,
 		},
 		{
 			EndpointPath: "/api/component_readiness/bugs",
@@ -2057,11 +2059,15 @@ func (s *Server) Serve() {
 		if len(ep.Capabilities) > 0 {
 			fn = s.requireCapabilities(ep.Capabilities, fn)
 		}
-		serveMux.HandleFunc(ep.EndpointPath, fn)
+
+		// Register endpoint with proper HTTP methods
+		route := router.HandleFunc(ep.EndpointPath, fn)
+		if len(ep.Methods) > 0 {
+			route.Methods(ep.Methods...)
+		}
 	}
 
-	var handler http.Handler = serveMux
-	// wrap mux with our logger. this will
+	var handler http.Handler = router
 	handler = logRequestHandler(handler)
 
 	// Middleware for http metrics
@@ -2071,11 +2077,14 @@ func (s *Server) Serve() {
 		}),
 	})
 	handler = middlewarestd.Handler("", metricsMiddleware, handler)
+	cors := handlers.CORS(
+		handlers.AllowedOrigins([]string{s.corsAllowedOrigin}),
+		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}))
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
 		Addr:              s.listenAddr,
-		Handler:           handler,
+		Handler:           cors(handler),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 

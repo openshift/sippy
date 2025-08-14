@@ -181,6 +181,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
 		f.APIFlags.ListenAddr,
+		f.ComponentReadinessFlags.CORSAllowedOrigin,
 		nil,
 		nil,
 		webRoot,
