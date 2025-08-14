@@ -630,50 +630,57 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 	jobNameLower := strings.ToLower(jobName)
 
 	jobTierPatterns := []struct {
-		substring string
-		jobTier   string
+		pattern *regexp.Regexp
+		jobTier string
 	}{
 		// Rarely run
-		{"-cpu-partitioning", "rare"},
-		{"-etcd-scaling", "rare"},
+		{regexp.MustCompile(`-cpu-partitioning`), "rare"},
+		{regexp.MustCompile(`-etcd-scaling`), "rare"},
 
 		// QE jobs allowlisted for Component Readiness
-		{"-automated-release", "standard"},
+		{regexp.MustCompile(`-automated-release`), "standard"},
 
 		// Excluded jobs
-		{"-okd", "excluded"},
-		{"-recovery", "excluded"},
-		{"alibaba", "excluded"},
-		{"-osde2e-", "excluded"},
+		{regexp.MustCompile(`-okd`), "excluded"},
+		{regexp.MustCompile(`-recovery`), "excluded"},
+		{regexp.MustCompile(`alibaba`), "excluded"},
+		{regexp.MustCompile(`-osde2e-`), "excluded"},
 
 		// Experimental new jobs using nested vsphere lvl 2 environment,
 		// not ready to make release blocking yet.
-		{"-vsphere-host-groups", "candidate"},
+		{regexp.MustCompile(`-vsphere-host-groups`), "candidate"},
 
 		// Konflux jobs aren't ready yet
-		{"-konflux", "candidate"},
-		{"-console-operator-", "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
+		{regexp.MustCompile(`-konflux`), "candidate"},
+		{regexp.MustCompile(`-console-operator-`), "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
 
-		{"-nat-instance", "candidate"},
+		{regexp.MustCompile(`-nat-instance`), "candidate"},
 
 		// Hidden jobs
-		{"-cilium", "hidden"},
-		{"-disruptive", "hidden"},
-		{"-rollback", "hidden"},
-		{"aggregator-", "hidden"},
-		{"-out-of-change", "hidden"},
-		{"-sno-fips-recert", "hidden"},
-		{"-bgp-", "hidden"},
-		{"aggregated", "hidden"},
-		{"-cert-rotation-shutdown-", "hidden"}, // may want to go to rare at some point
-		{"-vsphere-insights-runtime-", "hidden"},
+		{regexp.MustCompile(`-cilium`), "hidden"},
+		{regexp.MustCompile(`-disruptive`), "hidden"},
+		{regexp.MustCompile(`-rollback`), "hidden"},
+		{regexp.MustCompile(`aggregator-`), "hidden"},
+		{regexp.MustCompile(`-out-of-change`), "hidden"},
+		{regexp.MustCompile(`-sno-fips-recert`), "hidden"},
+		{regexp.MustCompile(`-bgp-`), "hidden"},
+		{regexp.MustCompile(`aggregated`), "hidden"},
+		{regexp.MustCompile(`-cert-rotation-shutdown-`), "hidden"}, // may want to go to rare at some point
+		{regexp.MustCompile(`-vsphere-insights-runtime`), "hidden"},
 
-		{"-4.19-e2e-metal-ipi-serial-ovn-ipv6-techpreview-", "candidate"},      // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
-		{"-4.19-e2e-metal-ipi-serial-ovn-dualstack-techpreview-", "candidate"}, // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
+		{regexp.MustCompile(`-4\.19-e2e-metal-ipi-serial-ovn-ipv6-techpreview-`), "candidate"},      // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
+		{regexp.MustCompile(`-4\.19-e2e-metal-ipi-serial-ovn-dualstack-techpreview-`), "candidate"}, // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
+
+		// Hypershift jobs that could not be stabilized in time for 4.20, we hope to restore in 4.21.
+		// Mark candidate and add a view for hypershift to see their jobs specifically including these so work can continue.
+		{regexp.MustCompile(`periodic-ci-openshift-hypershift-release-.*-periodics-e2e-openstack-aws`), "candidate"},
+		{regexp.MustCompile(`periodic-ci-openshift-hypershift-release-.*-periodics-e2e-azure-aks-ovn-conformance`), "candidate"},
+		{regexp.MustCompile(`periodic-ci-openshift-hypershift-release-.*-periodics-e2e-kubevirt-metal-ovn`), "candidate"},
+		{regexp.MustCompile(`periodic-ci-openshift-hypershift-release-.*-periodics-e2e-aws-ovn-conformance-serial`), "candidate"},
 	}
 
 	for _, jobTierPattern := range jobTierPatterns {
-		if strings.Contains(jobNameLower, jobTierPattern.substring) {
+		if jobTierPattern.pattern.MatchString(jobNameLower) {
 			variants[VariantJobTier] = jobTierPattern.jobTier
 			return
 		}
