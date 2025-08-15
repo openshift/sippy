@@ -49,7 +49,7 @@ func Test_PreAnalysis(t *testing.T) {
 	// 4.19 will be our assumed requested base release, which may trigger fallback to 4.18 or 4.17 in these tests
 	start419 := time.Date(2025, 3, 2, 0, 0, 0, 0, time.UTC)
 	end419 := time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC)
-	release419 := crtest.Release{
+	release419 := crtest.ReleaseTimeRange{
 		Release: "4.19",
 		Start:   &start419,
 		End:     &end419,
@@ -57,13 +57,13 @@ func Test_PreAnalysis(t *testing.T) {
 
 	start418 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 	end418 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	release418 := crtest.Release{
+	release418 := crtest.ReleaseTimeRange{
 		Release: "4.18",
 		Start:   &start418,
 		End:     &end418,
 	}
 	fallbackMap418 := ReleaseTestMap{
-		Release: release418,
+		ReleaseTimeRange: release418,
 		Tests: map[string]bq.TestStatus{
 			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 95, 0),
 		},
@@ -71,13 +71,13 @@ func Test_PreAnalysis(t *testing.T) {
 
 	start417 := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
 	end417 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	release417 := crtest.Release{
+	release417 := crtest.ReleaseTimeRange{
 		Release: "4.17",
 		Start:   &start417,
 		End:     &end417,
 	}
 	fallbackMap417 := ReleaseTestMap{
-		Release: release417,
+		ReleaseTimeRange: release417,
 		Tests: map[string]bq.TestStatus{
 			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 98, 0),
 		},
@@ -103,7 +103,7 @@ func Test_PreAnalysis(t *testing.T) {
 			testKey: test1RTI,
 			fallbackReleases: FallbackReleases{
 				Releases: map[string]ReleaseTestMap{
-					fallbackMap418.Release.Release: fallbackMap418,
+					fallbackMap418.Release: fallbackMap418,
 				},
 			},
 			testStats:      buildTestStats(100, 93, release419, nil),
@@ -115,8 +115,8 @@ func Test_PreAnalysis(t *testing.T) {
 			testKey: test1RTI,
 			fallbackReleases: FallbackReleases{
 				Releases: map[string]ReleaseTestMap{
-					fallbackMap418.Release.Release: fallbackMap418,
-					fallbackMap417.Release.Release: fallbackMap417, // 4.17 improves even further
+					fallbackMap418.Release: fallbackMap418,
+					fallbackMap417.Release: fallbackMap417, // 4.17 improves even further
 				},
 			},
 			testStats:      buildTestStats(100, 93, release419, nil),
@@ -128,8 +128,8 @@ func Test_PreAnalysis(t *testing.T) {
 			testKey: test1RTI,
 			fallbackReleases: FallbackReleases{
 				Releases: map[string]ReleaseTestMap{
-					fallbackMap418.Release.Release: fallbackMap418,
-					fallbackMap417.Release.Release: fallbackMap417, // 4.17 improves even further
+					fallbackMap418.Release: fallbackMap418,
+					fallbackMap417.Release: fallbackMap417, // 4.17 improves even further
 				},
 			},
 			testStats:      buildTestStats(100, 97, release419, nil),
@@ -141,7 +141,7 @@ func Test_PreAnalysis(t *testing.T) {
 			testKey: test1RTI,
 			fallbackReleases: FallbackReleases{
 				Releases: map[string]ReleaseTestMap{
-					fallbackMap418.Release.Release: fallbackMap418,
+					fallbackMap418.Release: fallbackMap418,
 				},
 			},
 			testStats:      buildTestStats(100, 100, release419, nil),
@@ -153,8 +153,8 @@ func Test_PreAnalysis(t *testing.T) {
 			testKey: test1RTI,
 			fallbackReleases: FallbackReleases{
 				Releases: map[string]ReleaseTestMap{
-					fallbackMap418.Release.Release: fallbackMap418,
-					fallbackMap417.Release.Release: fallbackMap417,
+					fallbackMap418.Release: fallbackMap418,
+					fallbackMap417.Release: fallbackMap417,
 				},
 			},
 			testStats: buildTestStats(10000, 9700, release419, nil),
@@ -175,7 +175,7 @@ func Test_PreAnalysis(t *testing.T) {
 func TestCalculateFallbackReleases(t *testing.T) {
 	start419 := time.Date(2025, 3, 2, 0, 0, 0, 0, time.UTC)
 	end419 := time.Date(2025, 4, 30, 0, 0, 0, 0, time.UTC)
-	release419 := crtest.Release{
+	release419 := crtest.ReleaseTimeRange{
 		Release: "4.19",
 		Start:   &start419,
 		End:     &end419,
@@ -183,7 +183,7 @@ func TestCalculateFallbackReleases(t *testing.T) {
 
 	start418 := time.Date(2025, 2, 1, 0, 0, 0, 0, time.UTC)
 	end418 := time.Date(2025, 3, 1, 0, 0, 0, 0, time.UTC)
-	release418 := crtest.Release{
+	release418 := crtest.ReleaseTimeRange{
 		Release: "4.18",
 		Start:   &start418,
 		End:     &end418,
@@ -191,7 +191,7 @@ func TestCalculateFallbackReleases(t *testing.T) {
 
 	start417 := time.Date(2024, 12, 1, 0, 0, 0, 0, time.UTC)
 	end417 := time.Date(2024, 12, 31, 0, 0, 0, 0, time.UTC)
-	release417 := crtest.Release{
+	release417 := crtest.ReleaseTimeRange{
 		Release: "4.17",
 		Start:   &start417,
 		End:     &end417,
@@ -199,14 +199,14 @@ func TestCalculateFallbackReleases(t *testing.T) {
 
 	start416 := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
 	end416 := time.Date(2024, 6, 30, 0, 0, 0, 0, time.UTC)
-	release416 := crtest.Release{
+	release416 := crtest.ReleaseTimeRange{
 		Release: "4.16",
 		Start:   &start416,
 		End:     &end416,
 	}
 
-	allReleases := []crtest.Release{release419, release418, release417, release416}
-	expectedReleases := []crtest.Release{release419, release418, release417}
+	allTimeRanges := []crtest.ReleaseTimeRange{release419, release418, release417, release416}
+	expectedTimeRanges := []crtest.ReleaseTimeRange{release419, release418, release417}
 	releaseConfigs := []v1.Release{
 		{Release: "4.20", PreviousRelease: "4.19"},
 		{Release: "4.19", PreviousRelease: "4.18"},
@@ -215,11 +215,11 @@ func TestCalculateFallbackReleases(t *testing.T) {
 		{Release: "4.16", PreviousRelease: ""},
 	}
 
-	fallbackReleases := calculateFallbackReleases("4.20", allReleases, releaseConfigs)
-	for i := range expectedReleases {
-		assert.Equal(t, expectedReleases[i].Release, fallbackReleases[i].Release)
-		assert.Equal(t, expectedReleases[i].Start, fallbackReleases[i].Start)
-		assert.Equal(t, expectedReleases[i].End, fallbackReleases[i].End)
+	fallbackReleases := calculateFallbackReleases("4.20", allTimeRanges, releaseConfigs)
+	for i := range expectedTimeRanges {
+		assert.Equal(t, expectedTimeRanges[i].Release, fallbackReleases[i].Release)
+		assert.Equal(t, expectedTimeRanges[i].Start, fallbackReleases[i].Start)
+		assert.Equal(t, expectedTimeRanges[i].End, fallbackReleases[i].End)
 	}
 }
 
@@ -239,7 +239,7 @@ func buildTestStatus(testName string, variants []string, total, success, flake i
 	}
 }
 
-func buildTestStats(total, success int, baseRelease crtest.Release, explanations []string) *testdetails.TestComparison {
+func buildTestStats(total, success int, baseRelease crtest.ReleaseTimeRange, explanations []string) *testdetails.TestComparison {
 	fails := total - success
 	ts := &testdetails.TestComparison{
 		BaseStats: &testdetails.ReleaseStats{

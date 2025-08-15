@@ -24,8 +24,10 @@ func PreviousRelease(release string, releaseConfigs []sippyv1.Release) (string, 
 	return "", fmt.Errorf("release %s not found in release list", release)
 }
 
-func FindStartEndTimesForRelease(releases []crtest.Release, release string) (*time.Time, *time.Time, error) {
-	for _, r := range releases {
+// FindStartEndTimesForRelease finds the start and end times for a release from sippyv1.Release objects.
+// The start time is calculated as 30 days before the GA date, and the end time is the GA date.
+func FindStartEndTimesForRelease(timeRanges []crtest.ReleaseTimeRange, release string) (*time.Time, *time.Time, error) {
+	for _, r := range timeRanges {
 		if r.Release == release {
 			return r.Start, r.End, nil
 		}

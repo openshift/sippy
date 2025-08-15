@@ -194,7 +194,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 		}
 	}
 
-	releases, errs := query.GetReleaseDatesFromBigQuery(ctx, c.client, c.ReqOptions)
+	timeRanges, errs := query.GetReleaseDatesFromBigQuery(ctx, c.client, c.ReqOptions)
 	if errs != nil {
 		return testdetails.Report{}, errs
 	}
@@ -229,7 +229,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 			return testdetails.Report{}, []error{err}
 		}
 
-		start, end, err := utils.FindStartEndTimesForRelease(releases, testIDOption.BaseOverrideRelease)
+		start, end, err := utils.FindStartEndTimesForRelease(timeRanges, testIDOption.BaseOverrideRelease)
 		if err != nil {
 			return testdetails.Report{}, []error{err}
 		}
