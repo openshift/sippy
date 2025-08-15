@@ -1727,7 +1727,7 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonJobRunSummary,
 		},
 		{
-			EndpointPath: "/api/autocomplete/",
+			EndpointPath: "/api/autocomplete/{field}",
 			Description:  "Autocompletes queries from database",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonAutocompleteFromDB,
