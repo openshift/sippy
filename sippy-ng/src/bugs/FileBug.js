@@ -53,6 +53,7 @@ export default function FileBug({
   context,
   labels = [],
   jiraComponentID,
+  jiraComponentName,
   version,
   setHasBeenTriaged,
 }) {
@@ -461,9 +462,11 @@ See the [sippy test details|${document.location.href}] for additional context.
             }
           />
           <Box className={classes.chipContainer}>
-            {!isNaN(jiraComponentID) && (
+            {(!isNaN(jiraComponentID) || jiraComponentName) && (
               <Chip
-                label={`Computed Component ID: ${jiraComponentID}`}
+                label={`Computed Component: ${jiraComponentName || 'Unknown'}${
+                  !isNaN(jiraComponentID) ? ` (ID: ${jiraComponentID})` : ''
+                }`}
                 color="primary"
                 variant="outlined"
               />
@@ -537,27 +540,41 @@ See the [sippy test details|${document.location.href}] for additional context.
           )}
         </DialogContent>
 
-        <DialogActions sx={{ justifyContent: 'flex-start' }}>
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleCloseModal}
-            disabled={isSubmitting}
+        <DialogActions
+          sx={{ justifyContent: 'space-between', alignItems: 'center' }}
+        >
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleCloseModal}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleSubmit}
+              disabled={
+                isSubmitting ||
+                !formData.summary.trim() ||
+                !formData.description.trim()
+              }
+            >
+              {isSubmitting ? 'Filing Bug...' : 'File Bug'}
+            </Button>
+          </Box>
+          <Typography
+            variant="body2"
+            sx={{
+              fontStyle: 'italic',
+              color: 'text.secondary',
+              textAlign: 'right',
+            }}
           >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleSubmit}
-            disabled={
-              isSubmitting ||
-              !formData.summary.trim() ||
-              !formData.description.trim()
-            }
-          >
-            {isSubmitting ? 'Filing Bug...' : 'File Bug'}
-          </Button>
+            Note: All fields can be edited after the bug is submitted to Jira.
+          </Typography>
         </DialogActions>
       </Dialog>
     </Fragment>
@@ -572,6 +589,7 @@ FileBug.propTypes = {
   context: PropTypes.string,
   labels: PropTypes.array,
   jiraComponentID: PropTypes.number,
+  jiraComponentName: PropTypes.string,
   version: PropTypes.string,
   setHasBeenTriaged: PropTypes.func.isRequired,
 }
