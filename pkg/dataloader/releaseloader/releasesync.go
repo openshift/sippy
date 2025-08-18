@@ -91,6 +91,11 @@ func (r *ReleaseLoader) Load() {
 						continue
 					}
 
+					if platform.GetAlias() == "origin" {
+						// For origin, we need to add the -okd suffix to the release tag before saving it to the database ie. 4.15 -> 4.15-okd
+						releaseTag.Release = fmt.Sprintf("%v%s", releaseTag.Release, "-okd")
+					}
+
 					if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
 						r.errors = append(r.errors, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
 					}
