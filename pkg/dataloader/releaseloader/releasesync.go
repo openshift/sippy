@@ -143,10 +143,10 @@ func (r *ReleaseLoader) resolveReleasePullRequests(pullRequests []models.Release
 }
 
 // bulkFetchPRsFromTbl is a function variable to allow mocking in tests
-var bulkFetchPRsFromTbl = func(db *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
+var bulkFetchPRsFromTbl = func(dbConn *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
 	// Execute batch query to find existing PRs
 	var pullRequests []models.ReleasePullRequest
-	if err := db.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&pullRequests).Error; err != nil {
+	if err := dbConn.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&pullRequests).Error; err != nil {
 		panic(err)
 	}
 
