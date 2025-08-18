@@ -36,6 +36,7 @@ type ServerFlags struct {
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	ConfigFlags             *configflags.ConfigFlags
 	APIFlags                *flags.APIFlags
+	JiraFlags               *flags.JiraFlags
 }
 
 func NewServerFlags() *ServerFlags {
@@ -49,6 +50,7 @@ func NewServerFlags() *ServerFlags {
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),
 		APIFlags:                flags.NewAPIFlags(),
+		JiraFlags:               flags.NewJiraFlags(),
 	}
 }
 
@@ -62,6 +64,7 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.ComponentReadinessFlags.BindFlags(flagSet)
 	f.ConfigFlags.BindFlags(flagSet)
 	f.APIFlags.BindFlags(flagSet)
+	f.JiraFlags.BindFlags(flagSet)
 }
 
 func (f *ServerFlags) Validate() error {
@@ -142,9 +145,15 @@ func NewServeCommand() *cobra.Command {
 
 			}
 
+			jiraClient, err := f.JiraFlags.GetJiraClient()
+			if err != nil {
+				log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
+			}
+
 			server := sippyserver.NewServer(
 				f.ModeFlags.GetServerMode(),
 				f.APIFlags.ListenAddr,
+				f.ComponentReadinessFlags.CORSAllowedOrigin,
 				f.ModeFlags.GetSyntheticTestManager(),
 				variantManager,
 				webRoot,
@@ -160,6 +169,7 @@ func NewServeCommand() *cobra.Command {
 				config,
 				f.APIFlags.EnableWriteEndpoints,
 				llmClient,
+				jiraClient,
 			)
 
 			if f.APIFlags.MetricsAddr != "" {

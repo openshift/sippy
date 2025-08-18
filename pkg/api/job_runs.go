@@ -257,7 +257,7 @@ func JobRunRiskAnalysis(dbc *db.DB, bqc *bigquery.Client, jobRun *models.ProwJob
 	neverStableJob := false
 	if compareRelease == "Presubmits" {
 		// Get latest release from the DB:
-		ar, err := query.ReleasesFromDB(dbc)
+		ar, err := GetReleases(context.Background(), bqc, false)
 		if err != nil {
 			return apitype.ProwJobRunRiskAnalysis{}, err
 		}

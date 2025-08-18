@@ -2,6 +2,7 @@ package query
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -126,7 +127,7 @@ WITH results AS (
            unnest(variants)        AS variant
     FROM prow_test_report_7d_matview
 	WHERE release = @release AND name ~* @testsubstrings
-          AND NOT(@excluded && variants)
+          AND NOT(variants is not null and @excluded && variants)
     GROUP BY name, release, variant
 )
 SELECT *,
@@ -159,13 +160,12 @@ FROM results;
 
 // TestReportExcludeVariants returns a single test report the given test name in the db,
 // all variants collapsed, optionally with some excluded.
-func TestReportExcludeVariants(
-	dbc *db.DB,
-	release string,
-	testName string,
-	excludeVariants []string,
-) (api.Test, error) {
+// If the query fails, it is logged and the bool is left false.
+func TestReportExcludeVariants(dbc *db.DB, release, testName string, excludeVariants []string) (api.Test, bool) {
 	now := time.Now()
+	logger := log.WithField("func", "TestReportExcludeVariants").
+		WithField("release", release).
+		WithField("test", testName)
 
 	// Query and group by variant:
 	var testReport api.Test
@@ -182,7 +182,7 @@ func TestReportExcludeVariants(
            sum(previous_flakes)    AS previous_flakes
     FROM prow_test_report_7d_matview
     WHERE release = @release AND name = @testname
-          AND NOT(@excluded && variants)
+          AND NOT(variants is not null and @excluded && variants)
     GROUP BY name, release
 ) SELECT *, %s FROM results;`
 
@@ -192,15 +192,17 @@ func TestReportExcludeVariants(
 		sql.Named("release", release),
 		sql.Named("testname", testName),
 	}
-	r := dbc.DB.Raw(q, qParams...).First(&testReport)
-	if r.Error != nil {
-		log.Error(r.Error)
-		return testReport, r.Error
+	if r := dbc.DB.Raw(q, qParams...).First(&testReport); r.Error != nil {
+		if errors.Is(r.Error, gorm.ErrRecordNotFound) {
+			logger.Debug("test not found")
+		} else {
+			logger.WithError(r.Error).Error("query failed")
+		}
+		return testReport, false
 	}
 
-	elapsed := time.Since(now)
-	log.Infof("TestReportExcludeVariants completed in %s for release %s and test %q", elapsed, release, testName)
-	return testReport, nil
+	logger.Debugf("completed in %s", time.Since(now))
+	return testReport, true
 }
 
 // LoadBugsForTest returns all bugs in the database for the given test, across all releases.

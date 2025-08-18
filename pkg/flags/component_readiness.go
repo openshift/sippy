@@ -21,6 +21,7 @@ var (
 type ComponentReadinessFlags struct {
 	ComponentReadinessViewsFile string
 	CRTimeRoundingFactor        time.Duration
+	CORSAllowedOrigin           string
 }
 
 func NewComponentReadinessFlags() *ComponentReadinessFlags {
@@ -31,6 +32,7 @@ func (f *ComponentReadinessFlags) BindFlags(fs *pflag.FlagSet) {
 	factorUsage := fmt.Sprintf("Set the rounding factor for component readiness release time. The time will be rounded down to the nearest multiple of the factor. Maximum value is %v", maxCRTimeRoundingFactor)
 	fs.StringVar(&f.ComponentReadinessViewsFile, "views", "", "Optional yaml file for predefined Component Readiness views")
 	fs.DurationVar(&f.CRTimeRoundingFactor, "component-readiness-time-rounding-factor", defaultCRTimeRoundingFactor, factorUsage)
+	fs.StringVar(&f.CORSAllowedOrigin, "cors-allowed-origin", "*", "Optional allowed origin for CORS")
 }
 
 func (f *ComponentReadinessFlags) ParseViewsFile() (*api.SippyViews, error) {

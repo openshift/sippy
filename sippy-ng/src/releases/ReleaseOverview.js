@@ -128,52 +128,57 @@ export default function ReleaseOverview(props) {
               indicators={data.indicators}
             />
 
-            <Grid item md={5} sm={12}>
-              <Card elevation={5} style={{ padding: 20, height: '100%' }}>
-                <Typography variant="h6">
-                  <Link
-                    to={withSort(
-                      pathForJobsWithFilter(props.release, {
-                        items: withoutUnstable(),
-                      }),
-                      'current_pass_percentage',
-                      'asc'
-                    )}
-                  >
-                    Job histogram
-                  </Link>
-                  <Tooltip
-                    title={
-                      'Histogram of job pass rates for frequently running jobs. Bucketed by current period pass percentage. ' +
-                      'Tech preview and never-stable jobs are excluded. The solid line indicates the current ' +
-                      "period's mean, and the dashed line is the previous period."
-                    }
-                  >
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-                <Histogram
-                  data={data.current_statistics.histogram}
-                  current_mean={data.current_statistics.mean}
-                  previous_mean={data.previous_statistics.mean}
-                  release={props.release}
-                />
-                <div align="center">
-                  <span style={{ marginRight: 10 }}>
-                    1Q: {data.current_statistics.quartiles[0].toFixed(0)}%
-                  </span>
-                  <span style={{ marginRight: 10 }}>
-                    2Q: {data.current_statistics.quartiles[1].toFixed(0)}%
-                  </span>
-                  <span style={{ marginRight: 10 }}>
-                    3Q: {data.current_statistics.quartiles[2].toFixed(0)}%
-                  </span>
-                  <span style={{ marginRight: 10 }}>
-                    SD: {data.current_statistics.standard_deviation.toFixed(2)}
-                  </span>
-                </div>
-              </Card>
-            </Grid>
+            {data && data.current_statistics && data.previous_statistics && (
+              <Grid item md={5} sm={12}>
+                <Card elevation={5} style={{ padding: 20, height: '100%' }}>
+                  <Typography variant="h6">
+                    <Link
+                      to={withSort(
+                        pathForJobsWithFilter(props.release, {
+                          items: withoutUnstable(),
+                        }),
+                        'current_pass_percentage',
+                        'asc'
+                      )}
+                    >
+                      Job histogram
+                    </Link>
+                    <Tooltip
+                      title={
+                        'Histogram of job pass rates for frequently running jobs. Bucketed by current period pass percentage. ' +
+                        'Tech preview and never-stable jobs are excluded. The solid line indicates the current ' +
+                        "period's mean, and the dashed line is the previous period."
+                      }
+                    >
+                      <InfoIcon />
+                    </Tooltip>
+                  </Typography>
+                  <Histogram
+                    data={data.current_statistics.histogram}
+                    current_mean={data.current_statistics.mean}
+                    previous_mean={data.previous_statistics.mean}
+                    release={props.release}
+                  />
+                  {data.current_statistics.quartiles && (
+                    <div align="center">
+                      <span style={{ marginRight: 10 }}>
+                        1Q: {data.current_statistics.quartiles[0].toFixed(0)}%
+                      </span>
+                      <span style={{ marginRight: 10 }}>
+                        2Q: {data.current_statistics.quartiles[1].toFixed(0)}%
+                      </span>
+                      <span style={{ marginRight: 10 }}>
+                        3Q: {data.current_statistics.quartiles[2].toFixed(0)}%
+                      </span>
+                      <span style={{ marginRight: 10 }}>
+                        SD:{' '}
+                        {data.current_statistics.standard_deviation.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </Card>
+              </Grid>
+            )}
 
             <Grid item md={7}>
               <Card elevation={5} style={{ padding: 20, height: '100%' }}>

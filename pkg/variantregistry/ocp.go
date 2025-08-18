@@ -82,6 +82,7 @@ WITH RecentSuccessfulJobs AS (
         (prowjob_job_name LIKE 'periodic-ci-openshift-%%'
           OR prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
           OR prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-Azure-ARO-HCP-%%'
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
@@ -102,6 +103,7 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
       ((j.prowjob_job_name LIKE 'periodic-ci-openshift-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-shiftstack-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-redhat-chaos-prow-scripts-main-cr-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-Azure-ARO-HCP-%%'
         OR j.prowjob_job_name LIKE 'release-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
@@ -419,6 +421,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-telco5g", "cnf"},
 		{"-perfscale", "perfscale"},
 		{"-chaos-", "chaos"},
+		{"-azure-aro-hcp", "aro"},
 		{"-qe", "qe"}, // Keep this one below perfscale
 		{"-openshift-tests-private", "qe"},
 		{"-openshift-verification-tests", "qe"},
@@ -572,25 +575,28 @@ func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]
 
 	// Prefer core release from sippy config -- only if the job name references the release. Too many jobs
 	// are attached to "master" and move between releases.
-	for version, release := range v.config.Releases {
-		if _, ok := release.Jobs[jobName]; ok && strings.Contains(jobName, version) {
-			variants[VariantRelease] = version
+	for releaseName, releaseConfig := range v.config.Releases {
+		if _, ok := releaseConfig.Jobs[jobName]; ok && strings.Contains(jobName, releaseName) {
+			variants[VariantRelease] = releaseName
 		}
 	}
 
+	// for jobs with version number(s) in the name, extract lowest and highest to inform upgrade designation
 	release, fromRelease := extractReleases(jobName)
-	releaseMajorMinor := strings.Split(release, ".")
 	if release != "" {
+		releaseMajorMinor := strings.Split(release, ".")
 		variants[VariantRelease] = release
 		variants[VariantReleaseMajor] = releaseMajorMinor[0]
 		variants[VariantReleaseMinor] = releaseMajorMinor[1]
 	}
-	fromReleaseMajorMinor := strings.Split(fromRelease, ".")
 	if fromRelease != "" {
+		fromReleaseMajorMinor := strings.Split(fromRelease, ".")
 		variants[VariantFromRelease] = fromRelease
 		variants[VariantFromReleaseMajor] = fromReleaseMajorMinor[0]
 		variants[VariantFromReleaseMinor] = fromReleaseMajorMinor[1]
 	}
+
+	// for jobs that look like upgrades, determine upgrade variant
 	if upgradeRegex.MatchString(jobName) {
 		switch {
 		case upgradeOutOfChangeRegex.MatchString(jobName):
@@ -624,49 +630,64 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 	jobNameLower := strings.ToLower(jobName)
 
 	jobTierPatterns := []struct {
-		substring string
-		jobTier   string
+		substrings []string
+		jobTier    string
 	}{
 		// Rarely run
-		{"-cpu-partitioning", "rare"},
-		{"-etcd-scaling", "rare"},
+		{[]string{"-cpu-partitioning"}, "rare"},
+		{[]string{"-etcd-scaling"}, "rare"},
 
 		// QE jobs allowlisted for Component Readiness
-		{"-automated-release", "standard"},
+		{[]string{"-automated-release"}, "standard"},
 
 		// Excluded jobs
-		{"-okd", "excluded"},
-		{"-recovery", "excluded"},
-		{"alibaba", "excluded"},
-		{"-osde2e-", "excluded"},
+		{[]string{"-okd"}, "excluded"},
+		{[]string{"-recovery"}, "excluded"},
+		{[]string{"alibaba"}, "excluded"},
+		{[]string{"-osde2e-"}, "excluded"},
 
 		// Experimental new jobs using nested vsphere lvl 2 environment,
 		// not ready to make release blocking yet.
-		{"-vsphere-host-groups", "candidate"},
+		{[]string{"-vsphere-host-groups"}, "candidate"},
 
 		// Konflux jobs aren't ready yet
-		{"-konflux", "candidate"},
-		{"-console-operator-", "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
+		{[]string{"-konflux"}, "candidate"},
+		{[]string{"-console-operator-"}, "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
 
-		{"-nat-instance", "candidate"},
+		{[]string{"-nat-instance"}, "candidate"},
 
 		// Hidden jobs
-		{"-cilium", "hidden"},
-		{"-disruptive", "hidden"},
-		{"-rollback", "hidden"},
-		{"aggregator-", "hidden"},
-		{"-out-of-change", "hidden"},
-		{"-sno-fips-recert", "hidden"},
-		{"-bgp-", "hidden"},
-		{"aggregated", "hidden"},
-		{"-cert-rotation-shutdown-", "hidden"}, // may want to go to rare at some point
+		{[]string{"-cilium"}, "hidden"},
+		{[]string{"-disruptive"}, "hidden"},
+		{[]string{"-rollback"}, "hidden"},
+		{[]string{"aggregator-"}, "hidden"},
+		{[]string{"-out-of-change"}, "hidden"},
+		{[]string{"-sno-fips-recert"}, "hidden"},
+		{[]string{"-bgp-"}, "hidden"},
+		{[]string{"aggregated"}, "hidden"},
+		{[]string{"-cert-rotation-shutdown-"}, "hidden"}, // may want to go to rare at some point
+		{[]string{"-vsphere-insights-runtime"}, "hidden"},
 
-		{"-4.19-e2e-metal-ipi-serial-ovn-ipv6-techpreview-", "candidate"},      // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
-		{"-4.19-e2e-metal-ipi-serial-ovn-dualstack-techpreview-", "candidate"}, // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
+		{[]string{"-4.19-e2e-metal-ipi-serial-ovn-ipv6-techpreview-"}, "candidate"},      // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
+		{[]string{"-4.19-e2e-metal-ipi-serial-ovn-dualstack-techpreview-"}, "candidate"}, // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
+
+		// Hypershift jobs that could not be stabilized in time for 4.20, we hope to restore in 4.21.
+		// Mark candidate and add a view for hypershift to see their jobs specifically including these so work can continue.
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-openstack-aws"}, "candidate"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-azure-aks-ovn-conformance"}, "candidate"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-kubevirt-metal-ovn"}, "candidate"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance-serial"}, "candidate"},
 	}
 
 	for _, jobTierPattern := range jobTierPatterns {
-		if strings.Contains(jobNameLower, jobTierPattern.substring) {
+		allMatch := true
+		for _, substring := range jobTierPattern.substrings {
+			if !strings.Contains(jobNameLower, substring) {
+				allMatch = false
+				break
+			}
+		}
+		if allMatch {
 			variants[VariantJobTier] = jobTierPattern.jobTier
 			return
 		}
@@ -781,6 +802,7 @@ func setInstaller(_ logrus.FieldLogger, variants map[string]string, jobName stri
 		installer string
 	}{
 		{"-assisted", "assisted"},
+		{"-azure-aro-hcp", "aro"}, // check before hypershift as job name includes -hcp
 		{"-hypershift", "hypershift"},
 		{"-hcp", "hypershift"},
 		{"_hcp", "hypershift"},
@@ -827,6 +849,8 @@ func isMultiUpgrade(release, fromRelease string) bool {
 }
 
 func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
 	// Order matters here: patterns must be checked in a specific sequence
 	platformPatterns := []struct {
 		substring string
@@ -838,7 +862,9 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-rosa", "rosa"}, // Keep above AWS as many ROSA jobs also mention AWS
 		{"-aws", "aws"},
 		{"-alibaba", "alibaba"},
+		{"-azure-aro-hcp", "aro"},
 		{"-azure", "azure"},
+		{"-aks", "azure"},
 		{"-osd-ccs-gcp", "osd-gcp"},
 		{"-gcp", "gcp"},
 		{"-libvirt", "libvirt"},
@@ -854,7 +880,7 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 	}
 
 	for _, entry := range platformPatterns {
-		if strings.Contains(jobName, entry.substring) {
+		if strings.Contains(jobNameLower, entry.substring) {
 			variants[VariantPlatform] = entry.platform
 			return
 		}
@@ -906,8 +932,8 @@ func setArchitecture(_ logrus.FieldLogger, variants map[string]string, jobName s
 		{"-multi-p-p", "ppc64le"},
 		{"-s390x", "s390x"},
 		{"-multi-z-z", "s390x"},
-		{"-heterogeneous", "heterogeneous"},
-		{"-multi", "heterogeneous"},
+		{"-heterogeneous", "multi"},
+		{"-multi", "multi"},
 	}
 
 	// the use of multi in these cases do not apply to architecture so drop them out from evaluation

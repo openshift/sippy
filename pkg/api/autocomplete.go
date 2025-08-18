@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strings"
 
+	"github.com/gorilla/mux"
 	"github.com/openshift/sippy/pkg/db"
 )
 
@@ -12,7 +12,8 @@ import (
 // such as test or job names. It optionally takes a release and search query filter.
 func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB) {
 	result := make([]string, 0)
-	field := strings.TrimPrefix(req.URL.Path, "/api/autocomplete/")
+	vars := mux.Vars(req)
+	field := vars["field"]
 	search := req.URL.Query().Get("search")
 	release := req.URL.Query().Get("release")
 

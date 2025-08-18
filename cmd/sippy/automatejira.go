@@ -141,7 +141,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 			bigQueryClient, err := bqcachedclient.New(ctx,
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.BigQueryFlags.BigQueryProject,
-				f.BigQueryFlags.BigQueryDataset, cacheClient)
+				f.BigQueryFlags.BigQueryDataset, cacheClient, f.BigQueryFlags.ReleasesTable)
 			if err != nil {
 				log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents regression tracking")
 			}
@@ -152,7 +152,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 			if err != nil {
 				log.WithError(err).Fatal("unable to load views")
 			}
-			releases, err := api.GetReleases(context.Background(), bigQueryClient)
+			releases, err := api.GetReleases(context.Background(), bigQueryClient, false)
 			if err != nil {
 				log.WithError(err).Fatal("error querying releases")
 			}

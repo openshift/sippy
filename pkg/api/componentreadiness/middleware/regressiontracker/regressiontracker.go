@@ -117,11 +117,12 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 			return nil
 		}
 
+		// rare circumstances result in the regression not being set during pre-analysis, but being present now
+		// This also could happen when report is from cache and PreAnalysis was never run.
+		if testStats.Regression == nil {
+			testStats.Regression = or
+		}
 		if len(or.Triages) > 0 {
-			// rare circumstances result in the regression not being set during pre-analysis, but being present now
-			if testStats.Regression == nil {
-				testStats.Regression = or
-			}
 			// triages need to be included, in case they are not in the cache, in order to show the list on the report
 			testStats.Regression.Triages = or.Triages
 

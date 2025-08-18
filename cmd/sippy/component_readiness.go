@@ -34,6 +34,7 @@ type ComponentReadinessFlags struct {
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	ConfigFlags             *configflags.ConfigFlags
 	APIFlags                *flags.APIFlags
+	JiraFlags               *flags.JiraFlags
 
 	Config   string
 	LogLevel string
@@ -50,6 +51,7 @@ func NewComponentReadinessCommand() *cobra.Command {
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 		ConfigFlags:             configflags.NewConfigFlags(),
 		APIFlags:                flags.NewAPIFlags(),
+		JiraFlags:               flags.NewJiraFlags(),
 	}
 
 	cmd := &cobra.Command{
@@ -82,6 +84,7 @@ func (f *ComponentReadinessFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.ComponentReadinessFlags.BindFlags(flagSet)
 	f.ConfigFlags.BindFlags(flagSet)
 	f.APIFlags.BindFlags(flagSet)
+	f.JiraFlags.BindFlags(flagSet)
 	flagSet.StringVar(&f.LogLevel, "log-level", f.LogLevel, "Log level (trace,debug,info,warn,error) (default info)")
 }
 
@@ -169,9 +172,16 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 	if err != nil {
 		log.WithError(err).Warn("unable to connect to postgres, regression tracking will be disabled")
 	}
+
+	jiraClient, err := f.JiraFlags.GetJiraClient()
+	if err != nil {
+		log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
+	}
+
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
 		f.APIFlags.ListenAddr,
+		f.ComponentReadinessFlags.CORSAllowedOrigin,
 		nil,
 		nil,
 		webRoot,
@@ -187,6 +197,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		config,
 		f.APIFlags.EnableWriteEndpoints,
 		nil, // No AI use yet in Component Readiness
+		jiraClient,
 	)
 
 	if f.APIFlags.MetricsAddr != "" {

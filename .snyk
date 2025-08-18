@@ -15,5 +15,6 @@ exclude:
     - "**/*_test.go"
     - gen-resolved-issue.py
     - pkg/cache/compressed/cache.go
+    - sippy-ng/src/prow_job_runs/IntervalsChart.js
     - sippy-ng/src/releases/ReleaseOverview.js
     - scripts/add-intentional-regression.py

@@ -3,6 +3,7 @@ package v1
 import (
 	"time"
 
+	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
 	bugsv1 "github.com/openshift/sippy/pkg/apis/bugs/v1"
 )
@@ -69,11 +70,13 @@ type FailureGroup struct {
 	TestFailures int    `json:"testFailures"`
 }
 
-type Release struct {
+type Release struct { // this is the Release that gets cached
 	Release              string
 	Status               string
 	GADate               *time.Time
 	DevelopmentStartDate *time.Time
+	PreviousRelease      string
+	Capabilities         map[ReleaseCapability]bool
 }
 
 type VariantMapping struct {
@@ -103,3 +106,44 @@ type VariantMapping struct {
 	// CreatedAt is the time this particular record was created.
 	CreatedAt civil.DateTime `bigquery:"created_at" json:"-"`
 }
+
+type ReleaseRow struct { // a Release as it emerges from the BQ DB
+	// Release contains the X.Y version of the payload, e.g. 4.8
+	Release string `bigquery:"Release"`
+
+	// Major contains the major part of the release, e.g. 4
+	Major int `bigquery:"Major"`
+
+	// Minor contains the minor part of the release, e.g. 8
+	Minor int `bigquery:"Minor"`
+
+	// Patch contains the patch version number of the release, e.g. 1
+	Patch bigquery.NullInt64 `bigquery:"Patch"`
+
+	// PreviousRelease specifies the preceding release in CR comparisons, e.g. "foo-1.2" precedes "foo-1.3"
+	PreviousRelease bigquery.NullString `bigquery:"PreviousRelease"`
+
+	// GADate contains GA date for the release, i.e. the -YYYY-MM-DD
+	GADate bigquery.NullDate `bigquery:"GADate"`
+
+	// DevelStartDate contains start date of development of the release, i.e. the -YYYY-MM-DD
+	DevelStartDate civil.Date `bigquery:"DevelStartDate"`
+
+	// Product contains the product for the release, e.g. OCP
+	Product bigquery.NullString `bigquery:"Product"`
+
+	// ReleaseStatus contains the status of the release, e.g. Full Support
+	ReleaseStatus bigquery.NullString `bigquery:"ReleaseStatus"`
+
+	// Capabilities contains capabilities available with each release:
+	Capabilities []ReleaseCapability `bigquery:"Capabilities"`
+}
+
+type ReleaseCapability string
+
+const ComponentReadinessCap ReleaseCapability = "componentReadiness" // enables the release as an option for component readiness comparisons.
+const SippyClassicCap ReleaseCapability = "sippyClassic"             // enables the release in the Sippy Classic UI.
+const MetricsCap ReleaseCapability = "metrics"                       // enables metrics collection and analysis for the release.
+const PullRequestsCap ReleaseCapability = "pullRequests"             // enables the Sippy Classic pull request UI for this release
+const FeatureGatesCap ReleaseCapability = "featureGates"             // enables sippy classic link for seeing release feature gates
+const PayloadTagsCap ReleaseCapability = "payloadTags"               // enables sippy classic link for seeing release tags for payloads

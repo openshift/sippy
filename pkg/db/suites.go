@@ -24,6 +24,10 @@ var testSuites = []string{
 	// Sippy synthetic tests
 	"sippy",
 
+	// ARO
+	"integration/parallel",
+	"stage/parallel",
+
 	// ROSA
 	"OSD e2e suite",
 
@@ -48,6 +52,7 @@ var testSuites = []string{
 	"prowjob-junit",
 	"OLM-Catalog-Validation",
 	"insights-operator-tests",
+	"CNV-lp-interop",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {

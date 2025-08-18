@@ -712,7 +712,8 @@ function filterIntervals(
 ) {
   let re = null
   if (filterText) {
-    re = new RegExp(escapeRegex(filterText))
+    // escapeRegex(filterText) causes loss of functionality like | in this case
+    re = new RegExp(filterText)
   }
 
   let startFilter = new Date(start)

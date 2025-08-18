@@ -75,7 +75,7 @@ func (l *ComponentReadinessCacheLoader) Load() {
 		ForceRefresh:         true,
 	}
 
-	releases, err := api.GetReleases(context.TODO(), l.bqClient)
+	releases, err := api.GetReleases(context.TODO(), l.bqClient, false)
 	if err != nil {
 		l.errs = append(l.errs, errors.Wrap(err, "error querying releases"))
 		return

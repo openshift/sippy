@@ -12,12 +12,13 @@ import (
 )
 
 type Client struct {
-	BQ      *bigquery.Client
-	Cache   cache.Cache
-	Dataset string
+	BQ            *bigquery.Client
+	Cache         cache.Cache
+	Dataset       string
+	ReleasesTable string
 }
 
-func New(ctx context.Context, credentialFile, project, dataset string, c cache.Cache) (*Client, error) {
+func New(ctx context.Context, credentialFile, project, dataset string, c cache.Cache, releasesTable string) (*Client, error) {
 	bqc, err := bigquery.NewClient(ctx, project, option.WithCredentialsFile(credentialFile))
 	if err != nil {
 		return nil, err
@@ -29,9 +30,10 @@ func New(ctx context.Context, credentialFile, project, dataset string, c cache.C
 	}
 
 	return &Client{
-		BQ:      bqc,
-		Cache:   c,
-		Dataset: dataset,
+		BQ:            bqc,
+		Cache:         c,
+		Dataset:       dataset,
+		ReleasesTable: releasesTable,
 	}, nil
 }
 
