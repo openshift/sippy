@@ -382,6 +382,9 @@ export const CompReadyVarsProvider = ({ children }) => {
    * Generating the report parameters:
    ****************************************************************************** */
 
+  // use a simple counter to force re-rendering after pushing the "Generate Report" button
+  const [generatorButtonPushes, setGeneratorButtonPushes] = React.useState(0)
+
   // dbGroupByVariants defines what variants are used for GroupBy in DB query
   const dbGroupByVariants = [
     'Platform',
@@ -396,7 +399,7 @@ export const CompReadyVarsProvider = ({ children }) => {
 
   // This runs when someone pushes the "Generate Report" button.
   // It sets all parameters based on current state; this causes the URL to be updated and page to load with new params.
-  const handleGenerateReport = (event, callback) => {
+  const handleGenerateReport = (event) => {
     if (event && event.preventDefault) {
       event.preventDefault()
     }
@@ -440,10 +443,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setTestNameParam(testName)
     setTestBasisReleaseParam(testBasisRelease)
 
-    // Execute callback after a short delay to allow URL params to update
-    if (callback) {
-      setTimeout(callback, 100)
-    }
+    setGeneratorButtonPushes(generatorButtonPushes + 1)
   }
 
   const clearAllQueryParams = () => {
@@ -738,6 +738,7 @@ export const CompReadyVarsProvider = ({ children }) => {
         handleGenerateReport,
         syncView,
         isLoaded,
+        generatorButtonPushes,
       }}
     >
       {children}
