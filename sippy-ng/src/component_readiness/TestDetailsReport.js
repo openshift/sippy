@@ -346,6 +346,7 @@ View the [test details report|${document.location.href}] for additional context.
           regressionId={regressionId}
           version={sampleRelease}
           jiraComponentID={Number(data.jira_component_id)}
+          jiraComponentName={data.jira_component}
           setHasBeenTriaged={setHasBeenTriaged}
         />
       )
