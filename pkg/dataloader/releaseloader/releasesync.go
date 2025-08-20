@@ -91,11 +91,6 @@ func (r *ReleaseLoader) Load() {
 						continue
 					}
 
-					if platform.GetAlias() == "origin" {
-						// For origin, we need to add the -okd suffix to the release tag before saving it to the database ie. 4.15 -> 4.15-okd
-						releaseTag.Release = fmt.Sprintf("%v%s", releaseTag.Release, "-okd")
-					}
-
 					if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
 						r.errors = append(r.errors, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
 					}
@@ -107,7 +102,7 @@ func (r *ReleaseLoader) Load() {
 
 func (r *ReleaseLoader) buildReleaseTag(platform PlatformRelease, architecture, release string, tag ReleaseTag) *models.ReleaseTag {
 	releaseDetails := r.fetchReleaseDetails(platform, architecture, release, tag)
-	releaseTag := releaseDetailsToDB(architecture, tag, releaseDetails)
+	releaseTag := releaseDetailsToDB(platform.GetAlias(), architecture, tag, releaseDetails)
 
 	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
 	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
@@ -208,7 +203,7 @@ func (r *ReleaseLoader) fetchReleaseTags(platform PlatformRelease, release strin
 	return allTags
 }
 
-func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
+func releaseDetailsToDB(platformAlias, architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
 	release := models.ReleaseTag{
 		Architecture: architecture,
 		ReleaseTag:   details.Name,
@@ -218,6 +213,11 @@ func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDeta
 	parts := strings.Split(details.Name, ".")
 	if len(parts) >= 2 {
 		release.Release = strings.Join(parts[:2], ".")
+	}
+
+	if platformAlias == "origin" {
+		// For origin, we need to add the -okd suffix to the release tag before saving it to the database ie. 4.15 -> 4.15-okd
+		release.Release = fmt.Sprintf("%v%s", release.Release, "-okd")
 	}
 
 	// Get "nightly" or "ci" from the string
