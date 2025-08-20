@@ -9,8 +9,9 @@ import (
 
 func GetFeatureGatesFromDB(dbc *gorm.DB, release string, filterOpts *filter.FilterOptions) ([]api.FeatureGate, error) {
 	// Get tests by feature gate
+	// Install related FG is special and is covered by install should succeed case.
 	subQuery := dbc.Table("prow_test_report_7d_matview").
-		Select("name, release, regexp_matches(name, '\\[(FeatureGate|OCPFeatureGate):([^\\]]+)\\]') AS match").
+		Select("name, release, regexp_matches(name, '\\[(FeatureGate|OCPFeatureGate):([^\\]]+)\\]|install should succeed') AS match").
 		Where("release = ?", release)
 
 	// Figure out the first release we ever saw a FG
@@ -37,7 +38,7 @@ func GetFeatureGatesFromDB(dbc *gorm.DB, release string, filterOpts *filter.Filt
 			COUNT(DISTINCT mt.name) AS unique_test_count,
 			ARRAY_AGG(DISTINCT fg.feature_set || ':' || fg.topology) AS enabled
 		`).
-		Joins("LEFT JOIN (?) AS mt ON fg.feature_gate = mt.match[2]", subQuery).
+		Joins("LEFT JOIN (?) AS mt ON fg.feature_gate = mt.match[2] OR (fg.feature_gate LIKE '%Install%' AND name LIKE '%install should succeed%')", subQuery).
 		Joins("LEFT JOIN (?) AS fs ON fg.feature_gate = fs.feature_gate", firstSeenQuery).
 		Where("fg.release = ? AND fg.status = 'enabled'", release).
 		Group("fg.feature_gate, fg.release, fs.first_seen_in, fs.first_seen_in_major, fs.first_seen_in_minor").
