@@ -651,6 +651,8 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// not ready to make release blocking yet.
 		{[]string{"-vsphere-host-groups"}, "candidate"},
 
+		{[]string{"-gcp-custom-dns"}, "candidate"},
+
 		// Konflux jobs aren't ready yet
 		{[]string{"-konflux"}, "candidate"},
 		{[]string{"-console-operator-"}, "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
