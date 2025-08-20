@@ -426,6 +426,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-tests-private", "qe"},
 		{"-openshift-verification-tests", "qe"},
 		{"-openshift-distributed-tracing", "qe"},
+		{"-oadp-", "oadp"},
 		{"-lp-interop", "mpiit"}, // MPEX Integrity and Interop Team
 	}
 
@@ -1075,6 +1076,7 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},
+		{"-oadp-", "oadp"},
 	}
 
 	variants[VariantLayeredProduct] = VariantNoValue
