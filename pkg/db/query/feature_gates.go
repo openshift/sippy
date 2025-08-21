@@ -11,7 +11,7 @@ func GetFeatureGatesFromDB(dbc *gorm.DB, release string, filterOpts *filter.Filt
 	// Get tests by feature gate
 	// Install related FG is special and is covered by install should succeed case.
 	subQuery := dbc.Table("prow_test_report_7d_matview").
-		Select("name, release, regexp_matches(name, '\\[(FeatureGate|OCPFeatureGate):([^\\]]+)\\]|install should succeed') AS match").
+		Select(`name, release, regexp_matches(name, '\[(FeatureGate|OCPFeatureGate):([^\]]+)\]|install should succeed') AS match`).
 		Where("release = ?", release)
 
 	// Figure out the first release we ever saw a FG
