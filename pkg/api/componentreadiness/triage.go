@@ -2,10 +2,12 @@ package componentreadiness
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -201,6 +203,180 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 		return fmt.Errorf("error deleting triage record: %v", res.Error)
 	}
 	return nil
+}
+
+// GetRegressions returns all regressions for the provided view
+func GetRegressions(dbc *gorm.DB, view string) ([]models.TestRegression, error) {
+	var regressions []models.TestRegression
+	res := dbc.Preload("Triages").Where("view = ?", view).Find(&regressions)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	return regressions, nil
+}
+
+// GetTriagePotentialMatches returns a list of PotentialMatch including all possible matching regressions for a given
+// triage, and componentReport. It calculates this based on similarly named tests being regressed, and regressions that
+// have the same last failure time. It includes a confidence level for each match that states how likely the match is to be relevant.
+func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.TestRegression, componentReport componentreport.ComponentReport) ([]PotentialMatch, error) {
+	var potentialMatches []PotentialMatch
+	for _, reg := range allRegressions {
+		if reg.Closed.Valid {
+			// Don't bother listing closed regressions as potential matches
+			continue
+		}
+		regressedTest := GetMatchingRegressedTestForRegression(reg, componentReport)
+		if regressedTest == nil {
+			// This would only happen if the regression data in postgres is stale, and this regression has rolled off
+			log.Warnf("no regression found for test %s, excluding", reg.TestID)
+			continue
+		}
+		match := PotentialMatch{
+			RegressedTest: *regressedTest,
+		}
+		for _, tr := range triage.Regressions {
+			if tr.ID == reg.ID {
+				// if this regression is already associated with the triage, never list it as a potential match
+				match = PotentialMatch{}
+				break
+			}
+			similarTestName, editDistance := isSimilarTestName(reg.TestName, tr.TestName)
+			if similarTestName {
+				match.SimilarlyNamedTests = append(match.SimilarlyNamedTests, SimilarlyNamedTest{
+					Regression:   tr,
+					EditDistance: editDistance,
+				})
+			}
+			if isSameLastFailure(reg.LastFailure, tr.LastFailure) {
+				match.SameLastFailures = append(match.SameLastFailures, tr)
+			}
+		}
+		// Only add the potential match if it is valid
+		if len(match.SimilarlyNamedTests) > 0 || len(match.SameLastFailures) > 0 {
+			match.ConfidenceLevel = calculateConfidenceLevel(match)
+			potentialMatches = append(potentialMatches, match)
+		}
+	}
+
+	return potentialMatches, nil
+}
+
+type PotentialMatch struct {
+	// SimilarlyNamedTests contains each of the already associated regressions that have a similar name, and their editDistance difference
+	SimilarlyNamedTests []SimilarlyNamedTest `json:"similarly_named_tests"`
+	// SameLastFailures contains each of the already associated regressions that have the same last failure time
+	SameLastFailures []models.TestRegression `json:"same_last_failures"`
+	// RegressedTest contains all the info about the potentially matching regression
+	RegressedTest componentreport.ReportTestSummary `json:"regressed_test"`
+	// ConfidenceLevel is a number between 0-10 with a higher number being more likely to be a proper match
+	ConfidenceLevel int `json:"confidence_level"`
+}
+
+type SimilarlyNamedTest struct {
+	Regression   models.TestRegression `json:"regression"`
+	EditDistance int                   `json:"edit_distance"`
+}
+
+func GetMatchingRegressedTestForRegression(regression models.TestRegression, report componentreport.ComponentReport) *componentreport.ReportTestSummary {
+	for _, row := range report.Rows {
+		for _, column := range row.Columns {
+			for _, regressedTest := range column.RegressedTests {
+				if regressedTest.Regression != nil && regressedTest.Regression.ID == regression.ID {
+					return &regressedTest
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// calculateEditDistance calculates the Levenshtein distance between two strings
+func calculateEditDistance(s1, s2 string) int {
+	if s1 == s2 {
+		return 0
+	}
+
+	len1, len2 := len(s1), len(s2)
+	if len1 == 0 {
+		return len2
+	}
+	if len2 == 0 {
+		return len1
+	}
+
+	// Create a matrix to store distances
+	matrix := make([][]int, len1+1)
+	for i := range matrix {
+		matrix[i] = make([]int, len2+1)
+	}
+
+	// Initialize first row and column
+	for i := 0; i <= len1; i++ {
+		matrix[i][0] = i
+	}
+	for j := 0; j <= len2; j++ {
+		matrix[0][j] = j
+	}
+
+	// Fill the matrix
+	for i := 1; i <= len1; i++ {
+		for j := 1; j <= len2; j++ {
+			cost := 0
+			if s1[i-1] != s2[j-1] {
+				cost = 1
+			}
+
+			matrix[i][j] = min(
+				matrix[i-1][j]+1,      // deletion
+				matrix[i][j-1]+1,      // insertion
+				matrix[i-1][j-1]+cost, // substitution
+			)
+		}
+	}
+
+	return matrix[len1][len2]
+}
+
+// isSimilarTestName checks if two test names are similar based on edit distance
+// Returns true if the edit distance is 5 or less, false otherwise.
+// It also returns the edit distance
+func isSimilarTestName(testName1, testName2 string) (bool, int) {
+	editDistance := calculateEditDistance(testName1, testName2)
+	return editDistance <= 5, editDistance
+}
+
+// isSameLastFailure simply returns if the times are the same, including that they both have the same validity
+func isSameLastFailure(time1, time2 sql.NullTime) bool {
+	if !time1.Valid && !time2.Valid {
+		return true
+	}
+	if time1.Valid != time2.Valid {
+		return false
+	}
+
+	return time1.Time.Equal(time2.Time)
+}
+
+// calculateConfidenceLevel calculates confidence level (1-10) for a potential match
+// based on the number and type of matches, with edit distance affecting name match scores
+func calculateConfidenceLevel(match PotentialMatch) int {
+	score := 0
+
+	// Calculate score for similarly named tests based on edit distance
+	for _, similarTest := range match.SimilarlyNamedTests {
+		editDistanceScore := 5 - similarTest.EditDistance // 0->5, 1->4, 2->3, 3->2, 4->1, 5->0
+		score += editDistanceScore
+	}
+
+	// Add 1 point for each same last failure match
+	score += len(match.SameLastFailures)
+
+	if score > 10 {
+		score = 10
+	}
+
+	return score
 }
 
 // injectHATEOASLinks adds restful links clients can follow for this triage record.

@@ -139,20 +139,73 @@ spec:
     app: postgres
 END
 
-echo "Waiting for postgres pod to be Ready ..."
+e2e_pause
+
+echo "Starting redis on cluster-pool cluster..."
+
+cat << END | ${KUBECTL_CMD} apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis1
+  namespace: sippy-e2e
+  labels:
+    app: redis
+spec:
+  containers:
+  - name: redis
+    image: quay.io/openshiftci/redis:latest
+    ports:
+    - containerPort: 6379
+    securityContext:
+      privileged: false
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      runAsNonRoot: true
+      runAsUser: 999
+      seccompProfile:
+        type: RuntimeDefault
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: redis
+  name: redis
+  namespace: sippy-e2e
+spec:
+  ports:
+  - name: redis
+    port: 6379
+    protocol: TCP
+  selector:
+    app: redis
+END
+
+echo "Waiting for postgres and redis pods to be Ready ..."
 
 # We set +e to avoid the script aborting before we can retrieve logs.
 set +e
 TIMEOUT=120s
-echo "Waiting up to ${TIMEOUT} for the postgres to come up..."
+echo "Waiting up to ${TIMEOUT} for the postgres and redis to come up..."
 ${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/postg1 --timeout=${TIMEOUT}
-retVal=$?
+postgres_retVal=$?
+${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/redis1 --timeout=${TIMEOUT}
+redis_retVal=$?
 set -e
 echo
 echo "Saving postgres logs ..."
 ${KUBECTL_CMD} -n sippy-e2e logs postg1 > ${ARTIFACT_DIR}/postgres.log
-if [ ${retVal} -ne 0 ]; then
+echo "Saving redis logs ..."
+${KUBECTL_CMD} -n sippy-e2e logs redis1 > ${ARTIFACT_DIR}/redis.log
+if [ ${postgres_retVal} -ne 0 ]; then
   echo "Postgres pod never came up"
+  exit 1
+fi
+if [ ${redis_retVal} -ne 0 ]; then
+  echo "Redis pod never came up"
   exit 1
 fi
 
@@ -190,7 +243,7 @@ spec:
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy load --init-database --log-level=debug --release 4.14 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
+          - /bin/sippy load --init-database --log-level=debug --release 4.14 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --redis-url=redis://redis.sippy-e2e.svc.cluster.local:6379 --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
         env:
         - name: GCS_SA_JSON_PATH
           value: /tmp/secrets/gcs-cred

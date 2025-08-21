@@ -1,0 +1,81 @@
+---
+component_readiness:
+- name: 4.14-main
+  base_release:
+    release: "4.13"
+    relative_start: ga-30d
+    relative_end: ga
+  sample_release:
+    release: "4.14"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: {}
+      Network: {}
+      Platform: {}
+      Topology: {}
+    db_group_by:
+      Architecture: {}
+      FeatureSet: {}
+      Installer: {}
+      Network: {}
+      Platform: {}
+      Suite: {}
+      Topology: {}
+      Upgrade: {}
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      - hypershift
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      LayeredProduct:
+      - none
+      - virt
+      Network:
+      - ovn
+      Owner:
+      - eng
+      - service-delivery
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - rosa
+      - vsphere
+      Topology:
+      - ha
+      - microshift
+      - external
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+    pass_rate_required_new_tests: 95
+    include_multi_release_analysis: true
+  metrics:
+    enabled: true
+  regression_tracking:
+    enabled: true
+  prime_cache:
+    enabled: true
+  automate_jira:
+    enabled: true

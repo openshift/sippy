@@ -127,6 +127,11 @@ export default function TriagedRegressionTestList(props) {
           {
             field: 'status',
             headerName: 'Status',
+            renderHeader: () => (
+              <Tooltip title="Status information is only available for regressions that have not rolled off the reporting window">
+                <span>Status</span>
+              </Tooltip>
+            ),
             valueGetter: (params) => {
               const value = {
                 status: '',
@@ -135,7 +140,7 @@ export default function TriagedRegressionTestList(props) {
               }
               const regressionId = params.row.id
               const matchingRegression = props.allRegressedTests.find(
-                (rt) => rt.regression?.id === regressionId
+                (rt) => rt?.regression?.id === regressionId
               )
               if (matchingRegression) {
                 value.status = matchingRegression.status
