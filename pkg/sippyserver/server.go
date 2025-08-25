@@ -20,7 +20,9 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -695,28 +697,26 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 	api.RespondWithJSON(http.StatusOK, w, viewsCopy)
 }
 
-func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
+// getComponentReportFromRequest creates a component report based on the HTTP request parameters
+func (s *Server) getComponentReportFromRequest(req *http.Request) (componentreport.ComponentReport, error) {
 	if s.bigQueryClient == nil {
-		failureResponse(w, http.StatusBadRequest, "component report API is only available when google-service-account-credential-file is configured")
-		return
+		return componentreport.ComponentReport{}, fmt.Errorf("component report API is only available when google-service-account-credential-file is configured")
 	}
+
 	allJobVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(req.Context(), s.bigQueryClient)
 	if len(errs) > 0 {
-		failureResponse(w, http.StatusBadRequest, "failed to get variants from bigquery")
-		return
+		return componentreport.ComponentReport{}, fmt.Errorf("failed to get variants from bigquery")
 	}
 
 	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
-		return
+		return componentreport.ComponentReport{}, err
 	}
 
 	options, err := componentreadiness.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	if err != nil {
-		failureResponse(w, http.StatusBadRequest, err.Error())
-		return
+		return componentreport.ComponentReport{}, err
 	}
 
 	outputs, errs := componentreadiness.GetComponentReportFromBigQuery(
@@ -727,11 +727,16 @@ func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *htt
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides,
 	)
 	if len(errs) > 0 {
-		log.Warningf("%d errors were encountered while querying component from big query:", len(errs))
-		for _, err := range errs {
-			log.Error(err.Error())
-		}
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error querying component from big query: %v", errs))
+		return componentreport.ComponentReport{}, fmt.Errorf("error querying component from big query: %v", errs)
+	}
+
+	return outputs, nil
+}
+
+func (s *Server) jsonComponentReportFromBigQuery(w http.ResponseWriter, req *http.Request) {
+	outputs, err := s.getComponentReportFromRequest(req)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, outputs)
@@ -1296,9 +1301,22 @@ func (s *Server) jsonGetTriages(w http.ResponseWriter, _ *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, triages)
 }
 
+// ExpandedTriage allows for additional information to be included in the triage response.
+// Currently, this is only the associated ReportTestSummaries which are useful for linking to the test_details report.
+type ExpandedTriage struct {
+	*models.Triage
+	RegressedTests []*componentreport.ReportTestSummary `json:"regressed_tests"`
+}
+
 func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	idStr := vars["id"]
+
+	var expandRegressions bool
+	expand := req.URL.Query().Get("expand")
+	if expand == "regressions" {
+		expandRegressions = true
+	}
 
 	triageID, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -1306,16 +1324,35 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	existingTriage, err := componentreadiness.GetTriage(s.db, triageID)
+	triage, err := componentreadiness.GetTriage(s.db, triageID)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	if existingTriage == nil {
+	if triage == nil {
 		failureResponse(w, http.StatusNotFound, "triage not found")
 		return
 	}
-	api.RespondWithJSON(http.StatusOK, w, existingTriage)
+	if !expandRegressions {
+		api.RespondWithJSON(http.StatusOK, w, triage)
+		return
+	}
+
+	et := ExpandedTriage{
+		Triage: triage,
+	}
+	componentReport, err := s.getComponentReportFromRequest(req)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("unable to get component report: %v", err))
+		return
+	}
+
+	for _, regression := range triage.Regressions {
+		regressedTest := componentreadiness.GetMatchingRegressedTestForRegression(regression, componentReport)
+		et.RegressedTests = append(et.RegressedTests, regressedTest)
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, et)
 }
 
 func (s *Server) jsonCreateTriage(w http.ResponseWriter, req *http.Request) {
@@ -1384,6 +1421,51 @@ func (s *Server) jsonDeleteTriage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	api.RespondWithJSON(http.StatusOK, w, nil)
+}
+
+// jsonTriagePotentialMatchingRegressions returns a json response containing potential matching regressions that to be
+// added to the given triage. These are grouped by existing associated regression(s), and given a confidence level
+func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	idStr := vars["id"]
+
+	triageID, err := strconv.Atoi(idStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
+		return
+	}
+
+	triage, err := componentreadiness.GetTriage(s.db, triageID)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if triage == nil {
+		failureResponse(w, http.StatusNotFound, "triage not found")
+		return
+	}
+	view := req.URL.Query().Get("view")
+	if view == "" {
+		failureResponse(w, http.StatusBadRequest, "no view provided")
+		return
+	}
+	componentReport, err := s.getComponentReportFromRequest(req)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	regressions, err := componentreadiness.GetRegressions(s.db.DB, view)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	potentialMatches, err := componentreadiness.GetTriagePotentialMatches(triage, regressions, componentReport)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	api.RespondWithJSON(http.StatusOK, w, potentialMatches)
 }
 
 func getUserForRequest(req *http.Request) string {
@@ -1976,6 +2058,13 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodDelete},
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonDeleteTriage,
+		},
+		{
+			EndpointPath: "/api/component_readiness/triages/{id}/matches",
+			Description:  "List potential matching regressions for a given triage.",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
+			HandlerFunc:  s.jsonTriagePotentialMatchingRegressions,
 		},
 		{
 			EndpointPath: "/api/component_readiness/bugs",
