@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm/clause"
@@ -34,7 +35,14 @@ type ReleaseLoader struct {
 	errors        []error
 }
 
-func New(dbc *db.DB, releases, architectures []string) *ReleaseLoader {
+func New(dbc *db.DB, releases, architectures []string, releaseConfigs []v1.Release) *ReleaseLoader {
+	if len(releases) == 0 {
+		for _, config := range releaseConfigs {
+			if config.Capabilities[v1.PayloadTagsCap] {
+				releases = append(releases, config.Release)
+			}
+		}
+	}
 	releaseStreams := make([]string, 0)
 	for _, release := range releases {
 		for _, stream := range []string{"nightly", "ci"} {

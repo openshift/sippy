@@ -761,7 +761,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (bq
 		},
 	}...)
 
-	baseStatus, errs := fetchJobRunTestStatusResults(ctx, b.logger, baseQuery, b.ReqOptions)
+	baseStatus, errs := fetchJobRunTestStatusResults(ctx, b.logger, baseQuery)
 	return bq.TestJobRunStatuses{BaseStatus: baseStatus}, errs
 }
 
@@ -863,7 +863,7 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 		}...)
 	}
 
-	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, log.WithField("generator", "SampleQuery"), sampleQuery, s.ReqOptions)
+	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, log.WithField("generator", "SampleQuery"), sampleQuery)
 
 	return bq.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }
@@ -910,7 +910,7 @@ func logQueryWithParamsReplaced(logger log.FieldLogger, query *bigquery.Query) {
 	}
 }
 
-func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query, reqOptions reqopts.RequestOptions) (map[string][]bq.TestJobRunRows, []error) {
+func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query) (map[string][]bq.TestJobRunRows, []error) {
 	errs := []error{}
 	status := map[string][]bq.TestJobRunRows{}
 
@@ -943,7 +943,7 @@ func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, q
 			errs = append(errs, err2)
 			continue
 		}
-		prowName := utils.NormalizeProwJobName(jobRunTestStatusRow.ProwJob, reqOptions)
+		prowName := utils.NormalizeProwJobName(jobRunTestStatusRow.ProwJob)
 		status[prowName] = append(status[prowName], jobRunTestStatusRow)
 	}
 	return status, errs

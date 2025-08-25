@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 
@@ -30,13 +31,16 @@ const (
 
 var _ middleware.Middleware = &ReleaseFallback{}
 
-func NewReleaseFallbackMiddleware(client *bqcachedclient.Client,
+func NewReleaseFallbackMiddleware(
+	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
+	releaseConfigs []v1.Release,
 ) *ReleaseFallback {
 	return &ReleaseFallback{
-		client:     client,
-		log:        log.WithField("middleware", "ReleaseFallback"),
-		reqOptions: reqOptions,
+		client:         client,
+		log:            log.WithField("middleware", "ReleaseFallback"),
+		reqOptions:     reqOptions,
+		releaseConfigs: releaseConfigs,
 	}
 }
 
@@ -60,6 +64,7 @@ type ReleaseFallback struct {
 	// test ID, but when cache priming for a view, we may have multiple.
 	baseOverrideStatus map[string]map[string][]bq.TestJobRunRows
 	baseOverrideMutex  sync.Mutex // Mutex to protect the map
+	releaseConfigs     []v1.Release
 }
 
 func (r *ReleaseFallback) Analyze(testID string, variants map[string]string, report *testdetails.TestComparison) error {
@@ -116,7 +121,7 @@ func (r *ReleaseFallback) PreAnalysis(testKey crtest.Identification, testStats *
 		var cachedReleaseTestStatuses ReleaseTestMap
 		var cTestStatus bq.TestStatus
 		ok := false
-		priorRelease, err = utils.PreviousRelease(priorRelease)
+		priorRelease, err = utils.PreviousRelease(priorRelease, r.releaseConfigs)
 		// if we fail to determine the previous release then stop
 		if err != nil {
 			break
@@ -169,7 +174,7 @@ func (r *ReleaseFallback) PostAnalysis(testKey crtest.Identification, testStats 
 func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	allJobVariants crtest.JobVariants,
 	release string, start, end time.Time) []error {
-	generator := newFallbackTestQueryReleasesGenerator(r.client, r.reqOptions, allJobVariants, release, start, end)
+	generator := newFallbackTestQueryReleasesGenerator(r.client, r.reqOptions, allJobVariants, release, start, end, r.releaseConfigs)
 
 	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*FallbackReleases](
 		ctx, r.client.Cache, generator.cacheOption,
@@ -189,7 +194,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 	r.log.Infof("Querying fallback override test statuses for %d test ID options", len(r.reqOptions.TestIDOptions))
 
 	// Lookup all release dates, we're going to need them
-	releases, errs := query.GetReleaseDatesFromBigQuery(ctx, r.client, r.reqOptions)
+	timeRanges, errs := query.GetReleaseDatesFromBigQuery(ctx, r.client, r.reqOptions)
 	for _, err := range errs {
 		errCh <- err
 	}
@@ -219,7 +224,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 	for release, testIDOpts := range releaseToTestIDOptions {
 		r.log.Infof("Querying %d fallback override test statuses for release %s", len(testIDOpts), release)
 
-		start, end, err := utils.FindStartEndTimesForRelease(releases, release)
+		start, end, err := utils.FindStartEndTimesForRelease(timeRanges, release)
 		if err != nil {
 			errCh <- err
 			return
@@ -314,13 +319,16 @@ type fallbackTestQueryReleasesGenerator struct {
 	CachedFallbackTestStatuses FallbackReleases
 	lock                       *sync.Mutex
 	ReqOptions                 reqopts.RequestOptions
+	releaseConfigs             []v1.Release
 }
 
 func newFallbackTestQueryReleasesGenerator(
 	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
-	release string, start, end time.Time) fallbackTestQueryReleasesGenerator {
+	release string, start, end time.Time,
+	releaseConfigs []v1.Release,
+) fallbackTestQueryReleasesGenerator {
 
 	generator := fallbackTestQueryReleasesGenerator{
 		client:         client,
@@ -331,11 +339,12 @@ func newFallbackTestQueryReleasesGenerator(
 			// increase the time that fallback queries are cached for
 			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
 		},
-		BaseRelease: release,
-		BaseStart:   start,
-		BaseEnd:     end,
-		lock:        &sync.Mutex{},
-		ReqOptions:  reqOptions,
+		BaseRelease:    release,
+		BaseStart:      start,
+		BaseEnd:        end,
+		lock:           &sync.Mutex{},
+		ReqOptions:     reqOptions,
+		releaseConfigs: releaseConfigs,
 	}
 	return generator
 }
@@ -366,7 +375,7 @@ func (f *fallbackTestQueryReleasesGenerator) getCacheKey() fallbackTestQueryRele
 func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context.Context) (*FallbackReleases, []error) {
 	wg := sync.WaitGroup{}
 	f.CachedFallbackTestStatuses = newFallbackReleases()
-	releases, errs := query.GetReleaseDatesFromBigQuery(ctx, f.client, f.ReqOptions)
+	timeRanges, errs := query.GetReleaseDatesFromBigQuery(ctx, f.client, f.ReqOptions)
 
 	if errs != nil {
 		return nil, errs
@@ -375,9 +384,9 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 	// currently gets current base plus previous 3
 	// current base is just for testing but use could be
 	// extended to no longer require the base query
-	selectedReleases := calculateFallbackReleases(f.BaseRelease, releases)
+	selectedTimeRanges := calculateFallbackReleases(f.BaseRelease, timeRanges, f.releaseConfigs)
 
-	for _, crRelease := range selectedReleases {
+	for _, crRelease := range selectedTimeRanges {
 
 		start := f.BaseStart
 		end := f.BaseEnd
@@ -389,7 +398,7 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 		}
 
 		wg.Add(1)
-		go func(queryRelease crtest.Release, queryStart, queryEnd time.Time) {
+		go func(queryRelease crtest.ReleaseTimeRange, queryStart, queryEnd time.Time) {
 			defer wg.Done()
 			select {
 			case <-ctx.Done():
@@ -411,36 +420,36 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackReleases(ctx context
 	return &f.CachedFallbackTestStatuses, nil
 }
 
-func calculateFallbackReleases(startingRelease string, releases []crtest.Release) []*crtest.Release {
-	var selectedReleases []*crtest.Release
+func calculateFallbackReleases(startingRelease string, timeRanges []crtest.ReleaseTimeRange, releaseConfigs []v1.Release) []*crtest.ReleaseTimeRange {
+	var selectedTimeRanges []*crtest.ReleaseTimeRange
 	fallbackRelease := startingRelease
 
 	// Get up to 3 fallback releases
 	for i := 0; i < 3; i++ {
-		var crRelease *crtest.Release
+		var crRelease *crtest.ReleaseTimeRange
 
 		var err error
-		fallbackRelease, err = utils.PreviousRelease(fallbackRelease)
+		fallbackRelease, err = utils.PreviousRelease(fallbackRelease, releaseConfigs)
 		if err != nil {
 			log.WithError(err).Errorf("Failure determining fallback release for %s", fallbackRelease)
 			break
 		}
 
-		for i := range releases {
-			if releases[i].Release == fallbackRelease {
-				crRelease = &releases[i]
+		for i := range timeRanges {
+			if timeRanges[i].Release == fallbackRelease {
+				crRelease = &timeRanges[i]
 				break
 			}
 		}
 
 		if crRelease != nil {
-			selectedReleases = append(selectedReleases, crRelease)
+			selectedTimeRanges = append(selectedTimeRanges, crRelease)
 		}
 	}
-	return selectedReleases
+	return selectedTimeRanges
 }
 
-func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtest.Release, updateStatuses map[string]bq.TestStatus) {
+func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtest.ReleaseTimeRange, updateStatuses map[string]bq.TestStatus) {
 
 	var testStatuses ReleaseTestMap
 	var ok bool
@@ -449,7 +458,10 @@ func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtest.R
 	f.lock.Lock()
 	defer f.lock.Unlock()
 	if testStatuses, ok = f.CachedFallbackTestStatuses.Releases[release.Release]; !ok {
-		testStatuses = ReleaseTestMap{Release: release, Tests: map[string]bq.TestStatus{}}
+		testStatuses = ReleaseTestMap{
+			ReleaseTimeRange: release,
+			Tests:            map[string]bq.TestStatus{},
+		}
 		f.CachedFallbackTestStatuses.Releases[release.Release] = testStatuses
 	}
 
@@ -570,7 +582,7 @@ func newFallbackReleases() FallbackReleases {
 }
 
 type ReleaseTestMap struct {
-	crtest.Release
+	crtest.ReleaseTimeRange
 	Tests map[string]bq.TestStatus
 }
 
