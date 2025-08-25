@@ -1656,16 +1656,14 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 		want          string
 	}{
 		{
-			name:        "base release is removed",
-			baseRelease: "4.16",
-			jobName:     "periodic-ci-openshift-release-master-ci-4.16-e2e-azure-ovn-upgrade",
-			want:        "periodic-ci-openshift-release-master-ci-X.X-e2e-azure-ovn-upgrade",
+			name:    "release is removed",
+			jobName: "periodic-ci-openshift-release-master-ci-4.16-e2e-azure-ovn-upgrade",
+			want:    "periodic-ci-openshift-release-master-ci-X.X-e2e-azure-ovn-upgrade",
 		},
 		{
-			name:          "sample release is removed",
-			sampleRelease: "4.16",
-			jobName:       "periodic-ci-openshift-release-master-ci-4.16-e2e-azure-ovn-upgrade",
-			want:          "periodic-ci-openshift-release-master-ci-X.X-e2e-azure-ovn-upgrade",
+			name:    "not-quite-release is NOT removed",
+			jobName: "periodic-ci-openshift-release-master-ci-4.20-with-openssl3.2",
+			want:    "periodic-ci-openshift-release-master-ci-X.X-with-openssl3.2",
 		},
 		{
 			name:    "frequency is removed",
@@ -1675,15 +1673,7 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			c := &ComponentReportGenerator{}
-			if tt.baseRelease != "" {
-				c.ReqOptions.BaseRelease = reqopts.Release{Name: tt.baseRelease}
-			}
-			if tt.sampleRelease != "" {
-				c.ReqOptions.SampleRelease = reqopts.Release{Name: tt.sampleRelease}
-			}
-
-			assert.Equalf(t, tt.want, utils.NormalizeProwJobName(tt.jobName, c.ReqOptions), "normalizeProwJobName(%v)", tt.jobName)
+			assert.Equalf(t, tt.want, utils.NormalizeProwJobName(tt.jobName), "normalizeProwJobName(%v)", tt.jobName)
 		})
 	}
 }

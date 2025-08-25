@@ -106,7 +106,7 @@ func (t KeyWithVariants) KeyOrDie() string {
 	return string(testIDBytes)
 }
 
-type Release struct {
+type ReleaseTimeRange struct {
 	Release string
 	End     *time.Time
 	Start   *time.Time

@@ -109,15 +109,19 @@ func GetComponentReportFromBigQuery(
 	dbc *db.DB,
 	reqOptions reqopts.RequestOptions,
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
-) (crtype.ComponentReport, []error) {
+) (report crtype.ComponentReport, errs []error) {
+	releaseConfigs, err := api.GetReleases(ctx, client, false)
+	if err != nil {
+		return report, []error{err}
+	}
 
-	generator := NewComponentReportGenerator(client, reqOptions, dbc, variantJunitTableOverrides)
+	generator := NewComponentReportGenerator(client, reqOptions, dbc, variantJunitTableOverrides, releaseConfigs)
 
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateReport(ctx)
 	}
 
-	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
+	report, errs = api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		generator.client.Cache, generator.ReqOptions.CacheOption,
 		api.GetPrefixedCacheKey(ComponentReportCacheKeyPrefix, generator.GetCacheKey(ctx)),
@@ -127,7 +131,7 @@ func GetComponentReportFromBigQuery(
 		return report, errs
 	}
 
-	err := generator.PostAnalysis(&report)
+	err = generator.PostAnalysis(&report)
 	if err != nil {
 		return report, []error{err}
 	}
@@ -167,12 +171,13 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 	return nil
 }
 
-func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions reqopts.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride) ComponentReportGenerator {
+func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions reqopts.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride, releaseConfigs []v1.Release) ComponentReportGenerator {
 	generator := ComponentReportGenerator{
 		client:                     client,
 		ReqOptions:                 reqOptions,
 		dbc:                        dbc,
 		variantJunitTableOverrides: variantJunitTableOverrides,
+		releaseConfigs:             releaseConfigs,
 	}
 	generator.initializeMiddleware()
 	return generator
@@ -190,6 +195,7 @@ type ComponentReportGenerator struct {
 	ReqOptions                 reqopts.RequestOptions
 	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 	middlewares                middleware.List
+	releaseConfigs             []v1.Release
 }
 
 type GeneratorCacheKey struct {
@@ -331,14 +337,14 @@ func (c *ComponentReportGenerator) initializeMiddleware() {
 	c.middlewares = middleware.List{}
 	// Initialize all our middleware applicable to this request.
 	if c.ReqOptions.AdvancedOption.IncludeMultiReleaseAnalysis {
-		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions))
+		c.middlewares = append(c.middlewares, releasefallback.NewReleaseFallbackMiddleware(c.client, c.ReqOptions, c.releaseConfigs))
 	}
 	if c.dbc != nil {
 		c.middlewares = append(c.middlewares, regressiontracker.NewRegressionTrackerMiddleware(c.dbc, c.ReqOptions))
 	} else {
 		log.Warnf("no db connection provided, skipping regressiontracker middleware")
 	}
-	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions))
+	c.middlewares = append(c.middlewares, regressionallowances2.NewRegressionAllowancesMiddleware(c.ReqOptions, c.releaseConfigs))
 }
 
 // GenerateReport is the main entry point for generation of a component readiness report.

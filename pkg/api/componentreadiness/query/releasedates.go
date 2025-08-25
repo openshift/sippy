@@ -11,13 +11,13 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetReleaseDatesFromBigQuery(ctx context.Context, client *bigquery.Client, reqOptions reqopts.RequestOptions) ([]crtest.Release, []error) {
+func GetReleaseDatesFromBigQuery(ctx context.Context, client *bigquery.Client, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error) {
 	queries := &releaseDateQuerier{client: client, reqOptions: reqOptions}
-	return api.GetDataFromCacheOrGenerate[[]crtest.Release](ctx,
+	return api.GetDataFromCacheOrGenerate[[]crtest.ReleaseTimeRange](ctx,
 		client.Cache,
 		cache.RequestOptions{},
-		api.GetPrefixedCacheKey("CRReleaseDates~", crtest.Release{}), // global singleton instance
-		queries.QueryReleaseDates, []crtest.Release{})
+		api.GetPrefixedCacheKey("CRReleaseDates~", reqOptions), // global singleton instance
+		queries.QueryReleaseDates, []crtest.ReleaseTimeRange{})
 }
 
 type releaseDateQuerier struct {
@@ -25,20 +25,20 @@ type releaseDateQuerier struct {
 	reqOptions reqopts.RequestOptions
 }
 
-func (c *releaseDateQuerier) QueryReleaseDates(ctx context.Context) ([]crtest.Release, []error) {
+func (c *releaseDateQuerier) QueryReleaseDates(ctx context.Context) ([]crtest.ReleaseTimeRange, []error) {
 	releases, err := api.GetReleasesFromBigQuery(ctx, c.client)
 	if err != nil {
 		return nil, []error{err}
 	}
-	crReleases := []crtest.Release{}
+	timeRanges := []crtest.ReleaseTimeRange{}
 	for _, release := range releases {
-		crRelease := crtest.Release{Release: release.Release}
+		timeRange := crtest.ReleaseTimeRange{Release: release.Release}
 		if release.GADate != nil {
 			prior := util.AdjustReleaseTime(*release.GADate, true, "30", c.reqOptions.CacheOption.CRTimeRoundingFactor)
-			crRelease.Start = &prior
-			crRelease.End = release.GADate
+			timeRange.Start = &prior
+			timeRange.End = release.GADate
 		}
-		crReleases = append(crReleases, crRelease)
+		timeRanges = append(timeRanges, timeRange)
 	}
-	return crReleases, nil
+	return timeRanges, nil
 }

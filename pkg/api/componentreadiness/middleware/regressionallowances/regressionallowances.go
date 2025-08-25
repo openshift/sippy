@@ -11,17 +11,19 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/regressionallowances"
 	log "github.com/sirupsen/logrus"
 )
 
 var _ middleware.Middleware = &RegressionAllowances{}
 
-func NewRegressionAllowancesMiddleware(reqOptions reqopts.RequestOptions) *RegressionAllowances {
+func NewRegressionAllowancesMiddleware(reqOptions reqopts.RequestOptions, releaseConfigs []v1.Release) *RegressionAllowances {
 	return &RegressionAllowances{
 		log:                  log.WithField("middleware", "RegressionAllowances"),
 		reqOptions:           reqOptions,
 		regressionGetterFunc: regressionallowances.IntentionalRegressionFor,
+		releaseConfigs:       releaseConfigs,
 	}
 }
 
@@ -30,8 +32,9 @@ func NewRegressionAllowancesMiddleware(reqOptions reqopts.RequestOptions) *Regre
 // This allows us to make sure the current branch compares against the good data from two releases ago, instead of the
 // prior release which had a regression in the window prior to GA.
 type RegressionAllowances struct {
-	log        log.FieldLogger
-	reqOptions reqopts.RequestOptions
+	log            log.FieldLogger
+	reqOptions     reqopts.RequestOptions
+	releaseConfigs []v1.Release
 
 	// regressionGetterFunc allows us to unit test without relying on real regression data
 	regressionGetterFunc func(releaseString string, variant crtest.ColumnIdentification, testID string) *regressionallowances.IntentionalRegression
@@ -95,7 +98,7 @@ func (r *RegressionAllowances) matchBaseRegression(testID crtest.Identification,
 	if overrideTestStats.SuccessRate > baseStats.PassRate(opts.FlakeAsFailure) {
 		// override with  the basis regression previous values
 		// testStats will reflect the expected threshold, not the computed values from the release with the allowed regression
-		baseRegressionPreviousRelease, err := utils.PreviousRelease(r.reqOptions.BaseRelease.Name)
+		baseRegressionPreviousRelease, err := utils.PreviousRelease(r.reqOptions.BaseRelease.Name, r.releaseConfigs)
 		if err != nil {
 			r.log.WithError(err).Error("Failed to determine the previous release for base regression")
 		} else if overrideTestStats.Total() > 0 { // only override if there is history to override with

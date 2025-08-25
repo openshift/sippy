@@ -4,47 +4,30 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/sirupsen/logrus"
 )
 
-func PreviousRelease(release string) (string, error) {
-	prev := release
-	var err error
-	var major, minor int
-	if major, err = getMajor(release); err == nil {
-		if minor, err = getMinor(release); err == nil && minor > 0 {
-			prev = fmt.Sprintf("%d.%d", major, minor-1)
+func PreviousRelease(release string, releaseConfigs []sippyv1.Release) (string, error) {
+	for _, config := range releaseConfigs {
+		if config.Release == release {
+			if config.PreviousRelease != "" {
+				return config.PreviousRelease, nil
+			}
+			return "", fmt.Errorf("release %s has no previous release", release)
 		}
 	}
-
-	return prev, err
+	return "", fmt.Errorf("release %s not found in release list", release)
 }
 
-func getMajor(in string) (int, error) {
-	major, err := strconv.ParseInt(strings.Split(in, ".")[0], 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return int(major), err
-}
-
-func getMinor(in string) (int, error) {
-	minor, err := strconv.ParseInt(strings.Split(in, ".")[1], 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	return int(minor), err
-}
-
-func FindStartEndTimesForRelease(releases []crtest.Release, release string) (*time.Time, *time.Time, error) {
-	for _, r := range releases {
+// FindStartEndTimesForRelease finds the start and end times for a release from sippyv1.Release objects.
+// The start time is calculated as 30 days before the GA date, and the end time is the GA date.
+func FindStartEndTimesForRelease(timeRanges []crtest.ReleaseTimeRange, release string) (*time.Time, *time.Time, error) {
+	for _, r := range timeRanges {
 		if r.Release == release {
 			return r.Start, r.End, nil
 		}
@@ -52,34 +35,14 @@ func FindStartEndTimesForRelease(releases []crtest.Release, release string) (*ti
 	return nil, nil, fmt.Errorf("release %s not found", release)
 }
 
-func NormalizeProwJobName(prowName string, reqOptions reqopts.RequestOptions) string {
-	name := prowName
-	// Build a list of all releases involved in this request to replace with X.X in normalized prow job names.
-	releases := []string{}
-	if reqOptions.BaseRelease.Name != "" {
-		releases = append(releases, reqOptions.BaseRelease.Name)
-	}
-	if reqOptions.SampleRelease.Name != "" {
-		releases = append(releases, reqOptions.SampleRelease.Name)
-	}
-	for _, tid := range reqOptions.TestIDOptions {
-		if tid.BaseOverrideRelease != "" {
-			releases = append(releases, tid.BaseOverrideRelease)
-		}
-	}
-
-	for _, release := range releases {
-		name = strings.ReplaceAll(name, release, "X.X")
-		if prev, err := PreviousRelease(release); err == nil {
-			name = strings.ReplaceAll(name, prev, "X.X")
-		}
-	}
+func NormalizeProwJobName(prowName string) string {
+	// Remove anything that looks like versioning from the job name
+	prowName = regexp.MustCompile(`\b\d+\.\d+\b`).ReplaceAllString(prowName, "X.X")
 
 	// Some jobs encode frequency in their name, which can change
-	re := regexp.MustCompile(`-f\d+`)
-	name = re.ReplaceAllString(name, "-fXX")
+	prowName = regexp.MustCompile(`-f\d+`).ReplaceAllString(prowName, "-fXX")
 
-	return name
+	return prowName
 }
 
 // DeserializeTestKey helps us workaround the limitations of a struct as a map key, where

@@ -28,9 +28,8 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions reqopts.RequestOptions,
-) (testdetails.Report, []error) {
-	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil)
+func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release) (testdetails.Report, []error) {
+	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil, releases)
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateTestDetailsReport(ctx)
 	}
@@ -195,7 +194,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 		}
 	}
 
-	releases, errs := query.GetReleaseDatesFromBigQuery(ctx, c.client, c.ReqOptions)
+	timeRanges, errs := query.GetReleaseDatesFromBigQuery(ctx, c.client, c.ReqOptions)
 	if errs != nil {
 		return testdetails.Report{}, errs
 	}
@@ -230,7 +229,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 			return testdetails.Report{}, []error{err}
 		}
 
-		start, end, err := utils.FindStartEndTimesForRelease(releases, testIDOption.BaseOverrideRelease)
+		start, end, err := utils.FindStartEndTimesForRelease(timeRanges, testIDOption.BaseOverrideRelease)
 		if err != nil {
 			return testdetails.Report{}, []error{err}
 		}
