@@ -238,7 +238,7 @@ spec:
         imagePullPolicy: ${SIPPY_IMAGE_PULL_POLICY:-Always}
         resources:
           limits:
-            memory: 3G
+            memory: 6G
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]

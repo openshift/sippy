@@ -59,7 +59,7 @@ spec:
         command:
         - echo
         - "Wait for a short time"
-      initialDelaySeconds: 10
+      initialDelaySeconds: 300
     resources:
       limits:
         memory: 2Gi
