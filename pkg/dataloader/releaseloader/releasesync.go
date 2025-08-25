@@ -31,21 +31,21 @@ type ReleaseLoader struct {
 	httpClient    *http.Client
 	releases      []string
 	architectures []string
+	platforms     []PlatformRelease
 	errors        []error
 }
 
+// Backwards compatibility for the old loader
 func New(dbc *db.DB, releases, architectures []string) *ReleaseLoader {
-	releaseStreams := make([]string, 0)
-	for _, release := range releases {
-		for _, stream := range []string{"nightly", "ci"} {
-			releaseStreams = append(releaseStreams, fmt.Sprintf("%s.0-0.%s", release, stream))
-		}
+	platformReleases, err := GetPlatformReleases("all")
+	if err != nil {
+		panic(err)
 	}
-
 	return &ReleaseLoader{
 		db:            dbc,
-		releases:      releaseStreams,
+		releases:      releases,
 		architectures: architectures,
+		platforms:     platformReleases,
 		httpClient:    &http.Client{Timeout: 60 * time.Second},
 	}
 }
@@ -59,72 +59,107 @@ func (r *ReleaseLoader) Errors() []error {
 }
 
 func (r *ReleaseLoader) Load() {
-	for _, release := range r.releases {
-		log.Infof("Fetching release %s from release controller...", release)
-		allTags := r.fetchReleaseTags(release)
+	for _, platform := range r.platforms {
+		platformName := platform.GetName()
+		releaseStreams := platform.BuildReleaseStreams(r.releases)
+		for _, release := range releaseStreams {
+			log.Infof("Fetching release %s from %s release controller...", release, platformName)
+			allTags := r.fetchReleaseTags(platform, release)
 
-		for _, tags := range allTags {
-			for _, tag := range tags.Tags {
-				mReleaseTag := models.ReleaseTag{}
-				r.db.DB.Table(releaseTagsTable).Where(`"release_tag" = ?`, tag.Name).Find(&mReleaseTag)
-				// expect Phase to be populated if the record is present
-				if len(mReleaseTag.Phase) > 0 {
-					if mReleaseTag.Phase != tag.Phase {
-						log.Warningf("Phase change detected (%q to %q) -- updating tag %s...", mReleaseTag.Phase, tag.Phase, tag.Name)
-						mReleaseTag.Phase = tag.Phase
-						mReleaseTag.Forced = true
-						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
-							log.WithError(err).Errorf("error updating release tag")
-							r.errors = append(r.errors, errors.Wrapf(err, "error updating release tag %s for new phase: %s -> %s", tag.Name, mReleaseTag.Phase, tag.Phase))
+			for _, tags := range allTags {
+				for _, tag := range tags.Tags {
+					mReleaseTag := models.ReleaseTag{}
+					r.db.DB.Table(releaseTagsTable).Where(`"release_tag" = ?`, tag.Name).Find(&mReleaseTag)
+					// expect Phase to be populated if the record is present
+					if len(mReleaseTag.Phase) > 0 {
+						if mReleaseTag.Phase != tag.Phase {
+							log.Warningf("Phase change detected (%q to %q) -- updating tag %s...", mReleaseTag.Phase, tag.Phase, tag.Name)
+							mReleaseTag.Phase = tag.Phase
+							mReleaseTag.Forced = true
+							if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
+								log.WithError(err).Errorf("error updating release tag")
+								r.errors = append(r.errors, errors.Wrapf(err, "error updating release tag %s for new phase: %s -> %s", tag.Name, mReleaseTag.Phase, tag.Phase))
+							}
 						}
+						continue
 					}
-					continue
-				}
 
-				log.Infof("Fetching tag %s from release controller...", tag.Name)
-				releaseTag := r.buildReleaseTag(tags.Architecture, release, tag)
+					log.Infof("Fetching tag %s from %s release controller...", tag.Name, platformName)
+					releaseTag := r.buildReleaseTag(platform, tags.Architecture, release, tag)
 
-				if releaseTag == nil {
-					continue
-				}
+					if releaseTag == nil {
+						continue
+					}
 
-				if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
-					r.errors = append(r.errors, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
+					if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
+						r.errors = append(r.errors, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
+					}
 				}
 			}
 		}
 	}
 }
 
-func (r *ReleaseLoader) buildReleaseTag(architecture, release string, tag ReleaseTag) *models.ReleaseTag {
-	releaseDetails := r.fetchReleaseDetails(architecture, release, tag)
-	releaseTag := releaseDetailsToDB(architecture, tag, releaseDetails)
+func (r *ReleaseLoader) buildReleaseTag(platform PlatformRelease, architecture, release string, tag ReleaseTag) *models.ReleaseTag {
+	releaseDetails := r.fetchReleaseDetails(platform, architecture, release, tag)
+	releaseTag := releaseDetailsToDB(platform.GetAlias(), architecture, tag, releaseDetails)
 
 	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
 	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
 		return nil
 	}
 
-	// PR is many-to-many, find the existing relation. TODO: There must be a more clever way to do this...
-	for i, pr := range releaseTag.PullRequests {
-		existingPR := models.ReleasePullRequest{}
-		result := r.db.DB.Table("release_pull_requests").Where("url = ?", pr.URL).Where("name = ?", pr.Name).First(&existingPR)
-		if result.Error == nil {
-			releaseTag.PullRequests[i] = existingPR
-		}
+	if len(releaseTag.PullRequests) > 0 {
+		releaseTag.PullRequests = r.resolveReleasePullRequests(releaseTag.PullRequests)
 	}
 
 	return releaseTag
 }
 
-func (r *ReleaseLoader) fetchReleaseDetails(architecture, release string, tag ReleaseTag) ReleaseDetails {
-	releaseDetails := ReleaseDetails{}
-	releaseName := release
-	if architecture != "amd64" {
-		releaseName += "-" + architecture
+func (r *ReleaseLoader) resolveReleasePullRequests(pullRequests []models.ReleasePullRequest) []models.ReleasePullRequest {
+	if len(pullRequests) == 0 {
+		return pullRequests
 	}
 
-	rcURL := fmt.Sprintf("https://%s.ocp.releases.ci.openshift.org/api/v1/releasestream/%s/release/%s", architecture, releaseName, tag.Name)
+	type prKey struct{ url, name string }
+	prIndexMap := make(map[prKey]int, len(pullRequests))
+	orConditions := make([]string, 0, len(pullRequests))
+	args := make([]any, 0, len(pullRequests)*2)
+
+	for i, pr := range pullRequests {
+		key := prKey{pr.URL, pr.Name}
+		if _, exists := prIndexMap[key]; !exists {
+			prIndexMap[key] = i
+			orConditions = append(orConditions, "(url = ? AND name = ?)")
+			args = append(args, key.url, key.name)
+		}
+	}
+
+	existingPRs := bulkFetchPRsFromTbl(r.db, orConditions, args)
+
+	for _, existingPR := range existingPRs {
+		if index, ok := prIndexMap[prKey{existingPR.URL, existingPR.Name}]; ok {
+			pullRequests[index] = existingPR
+		}
+	}
+
+	return pullRequests
+}
+
+// bulkFetchPRsFromTbl is a function variable to allow mocking in tests
+var bulkFetchPRsFromTbl = func(dbConn *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
+	// Execute batch query to find existing PRs
+	var pullRequests []models.ReleasePullRequest
+	if err := dbConn.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&pullRequests).Error; err != nil {
+		panic(err)
+	}
+
+	return pullRequests
+}
+
+func (r *ReleaseLoader) fetchReleaseDetails(platform PlatformRelease, architecture, release string, tag ReleaseTag) ReleaseDetails {
+	releaseDetails := ReleaseDetails{}
+	rcURL := platform.BuildDetailsURL(release, architecture, tag.Name)
 
 	resp, err := r.httpClient.Get(rcURL)
 	if err != nil {
@@ -138,17 +173,16 @@ func (r *ReleaseLoader) fetchReleaseDetails(architecture, release string, tag Re
 	return releaseDetails
 }
 
-func (r *ReleaseLoader) fetchReleaseTags(release string) []ReleaseTags {
+func (r *ReleaseLoader) fetchReleaseTags(platform PlatformRelease, release string) []ReleaseTags {
 	allTags := make([]ReleaseTags, 0)
+
 	for _, arch := range r.architectures {
 		tags := ReleaseTags{
 			Architecture: arch,
+			Platform:     platform.GetAlias(),
 		}
-		releaseName := release
-		if arch != "amd64" {
-			releaseName += "-" + arch
-		}
-		uri := fmt.Sprintf("https://%s.ocp.releases.ci.openshift.org/api/v1/releasestream/%s/tags", arch, releaseName)
+
+		uri := platform.BuildTagsURL(release, arch)
 		resp, err := r.httpClient.Get(uri)
 		if err != nil {
 			panic(err)
@@ -169,7 +203,7 @@ func (r *ReleaseLoader) fetchReleaseTags(release string) []ReleaseTags {
 	return allTags
 }
 
-func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
+func releaseDetailsToDB(platformAlias, architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
 	release := models.ReleaseTag{
 		Architecture: architecture,
 		ReleaseTag:   details.Name,
@@ -179,6 +213,11 @@ func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDeta
 	parts := strings.Split(details.Name, ".")
 	if len(parts) >= 2 {
 		release.Release = strings.Join(parts[:2], ".")
+	}
+
+	if platformAlias == "origin" {
+		// For origin, we need to add the -okd suffix to the release tag before saving it to the database ie. 4.15 -> 4.15-okd
+		release.Release = fmt.Sprintf("%v%s", release.Release, "-okd")
 	}
 
 	// Get "nightly" or "ci" from the string
