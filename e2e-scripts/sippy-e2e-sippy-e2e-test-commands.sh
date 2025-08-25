@@ -106,7 +106,7 @@ END
 
 # The basic readiness probe will give us at least 10 seconds before declaring the pod as ready.
 echo "Waiting for sippy api server pod to be Ready ..."
-${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/sippy-server --timeout=300s
+${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/sippy-server --timeout=600s
 
 ${KUBECTL_CMD} -n sippy-e2e get pod -o wide
 ${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server.log
