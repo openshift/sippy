@@ -1075,11 +1075,11 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		substring string
 		product   string
 	}{
+		{"-lp-interop-cr-cnv", "lp-interop-virt"},
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},
 		{"-oadp-", "oadp"},
-		{"-lp-interop-cr-cnv", "lp-interop-virt"},
 	}
 
 	variants[VariantLayeredProduct] = VariantNoValue
