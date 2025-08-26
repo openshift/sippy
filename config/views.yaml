@@ -311,8 +311,7 @@ component_readiness:
         Upgrade: {}
       include_variants:
         LayeredProduct:
-          - none
-          - virt
+          - lp-interop-virt
         Network:
           - ovn
         Owner:
