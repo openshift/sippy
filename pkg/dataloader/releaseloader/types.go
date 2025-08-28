@@ -10,7 +10,6 @@ type ReleaseTags struct {
 	Name         string       `json:"name"`
 	Tags         []ReleaseTag `json:"tags"`
 	Architecture string       `json:"architecture"`
-	Platform     string       `json:"platform"`
 }
 
 // ReleaseTag is an individual release tag.
@@ -87,19 +86,24 @@ type UpdatedImageCommits struct {
 	PullURL string            `json:"pullURL"`
 }
 
-// OCPRelease implements PlatformRelease for OpenShift Container Platform
-type OCPRelease struct{}
+// OCPProject implements PayloadProject for OpenShift Container Platform
+type OCPProject struct{}
 
-// OKDRelease implements PlatformRelease for Origin Kubernetes Distribution
-type OKDRelease struct{}
+// OKDProject implements PayloadProject for Origin Kubernetes Distribution
+type OKDProject struct{}
 
-// PlatformRelease represents a platform that releases are built for (OCP, OKD, etc)
-type PlatformRelease interface {
+// PayloadProject defines an interface for projects (such as OCP, OKD, etc.),
+// providing methods to look up payloads from the release-controller of a project
+// retrieve stream information, resolve release names, and construct
+// URLs for fetching release tags and details.
+type PayloadProject interface {
 	GetName() string
-	GetAlias() string
 
 	// GetStreams returns the available release streams for this platform
 	GetStreams() []string
+
+	// ResolveRelease resolves the release to the full release tag
+	ResolveRelease(release string) string
 
 	// BuildReleaseStreams builds the full stream names for given releases
 	BuildReleaseStreams(releases []string) []string

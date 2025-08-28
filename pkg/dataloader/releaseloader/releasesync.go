@@ -31,21 +31,17 @@ type ReleaseLoader struct {
 	httpClient    *http.Client
 	releases      []string
 	architectures []string
-	platforms     []PlatformRelease
+	projects      []PayloadProject
 	errors        []error
 }
 
 // Backwards compatibility for the old loader
 func New(dbc *db.DB, releases, architectures []string) *ReleaseLoader {
-	platformReleases, err := GetPlatformReleases("all")
-	if err != nil {
-		panic(err)
-	}
 	return &ReleaseLoader{
 		db:            dbc,
 		releases:      releases,
 		architectures: architectures,
-		platforms:     platformReleases,
+		projects:      []PayloadProject{&OCPProject{}, &OKDProject{}},
 		httpClient:    &http.Client{Timeout: 60 * time.Second},
 	}
 }
@@ -59,12 +55,12 @@ func (r *ReleaseLoader) Errors() []error {
 }
 
 func (r *ReleaseLoader) Load() {
-	for _, platform := range r.platforms {
-		platformName := platform.GetName()
-		releaseStreams := platform.BuildReleaseStreams(r.releases)
+	for _, project := range r.projects {
+		projectName := project.GetName()
+		releaseStreams := project.BuildReleaseStreams(r.releases)
 		for _, release := range releaseStreams {
-			log.Infof("Fetching release %s from %s release controller...", release, platformName)
-			allTags := r.fetchReleaseTags(platform, release)
+			log.Infof("Fetching release %s from %s release controller...", release, projectName)
+			allTags := r.fetchReleaseTags(project, release)
 
 			for _, tags := range allTags {
 				for _, tag := range tags.Tags {
@@ -84,8 +80,8 @@ func (r *ReleaseLoader) Load() {
 						continue
 					}
 
-					log.Infof("Fetching tag %s from %s release controller...", tag.Name, platformName)
-					releaseTag := r.buildReleaseTag(platform, tags.Architecture, release, tag)
+					log.Infof("Fetching tag %s from %s release controller...", tag.Name, projectName)
+					releaseTag := r.buildReleaseTag(project, tags.Architecture, release, tag)
 
 					if releaseTag == nil {
 						continue
@@ -100,9 +96,9 @@ func (r *ReleaseLoader) Load() {
 	}
 }
 
-func (r *ReleaseLoader) buildReleaseTag(platform PlatformRelease, architecture, release string, tag ReleaseTag) *models.ReleaseTag {
+func (r *ReleaseLoader) buildReleaseTag(platform PayloadProject, architecture, release string, tag ReleaseTag) *models.ReleaseTag {
 	releaseDetails := r.fetchReleaseDetails(platform, architecture, release, tag)
-	releaseTag := releaseDetailsToDB(platform.GetAlias(), architecture, tag, releaseDetails)
+	releaseTag := releaseDetailsToDB(platform, architecture, tag, releaseDetails)
 
 	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
 	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
@@ -157,7 +153,7 @@ var bulkFetchPRsFromTbl = func(dbConn *db.DB, orConditions []string, args []any)
 	return pullRequests
 }
 
-func (r *ReleaseLoader) fetchReleaseDetails(platform PlatformRelease, architecture, release string, tag ReleaseTag) ReleaseDetails {
+func (r *ReleaseLoader) fetchReleaseDetails(platform PayloadProject, architecture, release string, tag ReleaseTag) ReleaseDetails {
 	releaseDetails := ReleaseDetails{}
 	rcURL := platform.BuildDetailsURL(release, architecture, tag.Name)
 
@@ -173,13 +169,12 @@ func (r *ReleaseLoader) fetchReleaseDetails(platform PlatformRelease, architectu
 	return releaseDetails
 }
 
-func (r *ReleaseLoader) fetchReleaseTags(platform PlatformRelease, release string) []ReleaseTags {
+func (r *ReleaseLoader) fetchReleaseTags(platform PayloadProject, release string) []ReleaseTags {
 	allTags := make([]ReleaseTags, 0)
 
 	for _, arch := range r.architectures {
 		tags := ReleaseTags{
 			Architecture: arch,
-			Platform:     platform.GetAlias(),
 		}
 
 		uri := platform.BuildTagsURL(release, arch)
@@ -203,7 +198,7 @@ func (r *ReleaseLoader) fetchReleaseTags(platform PlatformRelease, release strin
 	return allTags
 }
 
-func releaseDetailsToDB(platformAlias, architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
+func releaseDetailsToDB(platform PayloadProject, architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
 	release := models.ReleaseTag{
 		Architecture: architecture,
 		ReleaseTag:   details.Name,
@@ -215,10 +210,7 @@ func releaseDetailsToDB(platformAlias, architecture string, tag ReleaseTag, deta
 		release.Release = strings.Join(parts[:2], ".")
 	}
 
-	if platformAlias == "origin" {
-		// For origin, we need to add the -okd suffix to the release tag before saving it to the database ie. 4.15 -> 4.15-okd
-		release.Release = fmt.Sprintf("%v%s", release.Release, "-okd")
-	}
+	release.Release = platform.ResolveRelease(release.Release)
 
 	// Get "nightly" or "ci" from the string
 	if len(parts) >= 4 {

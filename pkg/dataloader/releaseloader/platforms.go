@@ -2,55 +2,55 @@ package releaseloader
 
 import (
 	"fmt"
-	"strings"
 )
 
-func (ocp *OCPRelease) GetName() string {
+func (ocp *OCPProject) GetName() string {
 	return "OpenShift Container Platform (OCP)"
 }
 
-func (ocp *OCPRelease) GetAlias() string {
-	return "ocp"
-}
-
-func (ocp *OCPRelease) GetStreams() []string {
+func (ocp *OCPProject) GetStreams() []string {
 	return []string{"nightly", "ci"}
 }
 
-func (ocp *OCPRelease) BuildReleaseStreams(releases []string) []string {
+func (ocp *OCPProject) ResolveRelease(release string) string {
+	return release
+}
+
+func (ocp *OCPProject) BuildReleaseStreams(releases []string) []string {
 	return buildReleaseStreams(releases, ocp.GetStreams())
 }
 
-func (ocp *OCPRelease) BuildTagsURL(release, architecture string) string {
-	return buildTagsURL(architecture, ocp.GetAlias(), buildReleaseName(release, architecture))
+func (ocp *OCPProject) BuildTagsURL(release, architecture string) string {
+	return buildTagsURL(architecture, "ocp", buildReleaseName(release, architecture))
 }
 
-func (ocp *OCPRelease) BuildDetailsURL(release, architecture, tag string) string {
-	return buildDetailsURL(architecture, ocp.GetAlias(), buildReleaseName(release, architecture), tag)
+func (ocp *OCPProject) BuildDetailsURL(release, architecture, tag string) string {
+	return buildDetailsURL(architecture, "ocp", buildReleaseName(release, architecture), tag)
 }
 
-func (okd *OKDRelease) GetName() string {
+func (okd *OKDProject) GetName() string {
 	return "Origin Kubernetes Distribution (OKD)"
 }
 
-func (okd *OKDRelease) GetAlias() string {
-	return "origin"
-}
-
-func (okd *OKDRelease) GetStreams() []string {
+func (okd *OKDProject) GetStreams() []string {
 	return []string{"okd-scos"}
 }
 
-func (okd *OKDRelease) BuildReleaseStreams(releases []string) []string {
+func (okd *OKDProject) ResolveRelease(release string) string {
+	// For origin, we need to add the -okd suffix to the release tag before saving it to the database ie. 4.15 -> 4.15-okd
+	return fmt.Sprintf("%v%s", release, "-okd")
+}
+
+func (okd *OKDProject) BuildReleaseStreams(releases []string) []string {
 	return buildReleaseStreams(releases, okd.GetStreams())
 }
 
-func (okd *OKDRelease) BuildTagsURL(release, architecture string) string {
-	return buildTagsURL(architecture, okd.GetAlias(), buildReleaseName(release, architecture))
+func (okd *OKDProject) BuildTagsURL(release, architecture string) string {
+	return buildTagsURL(architecture, "origin", buildReleaseName(release, architecture))
 }
 
-func (okd *OKDRelease) BuildDetailsURL(release, architecture, tag string) string {
-	return buildDetailsURL(architecture, okd.GetAlias(), buildReleaseName(release, architecture), tag)
+func (okd *OKDProject) BuildDetailsURL(release, architecture, tag string) string {
+	return buildDetailsURL(architecture, "origin", buildReleaseName(release, architecture), tag)
 }
 
 func buildReleaseStreams(releases []string, streams []string) []string {
@@ -80,17 +80,4 @@ func buildDetailsURL(arch, platform, release, tag string) string {
 
 func buildReleaseURL(arch, platform string) string {
 	return fmt.Sprintf("https://%s.%s.releases.ci.openshift.org/api/v1/releasestream", arch, platform)
-}
-
-func GetPlatformReleases(platform string) ([]PlatformRelease, error) {
-	switch strings.ToLower(platform) {
-	case "ocp":
-		return []PlatformRelease{&OCPRelease{}}, nil
-	case "okd":
-		return []PlatformRelease{&OKDRelease{}}, nil
-	case "all":
-		return []PlatformRelease{&OCPRelease{}, &OKDRelease{}}, nil
-	default:
-		return nil, fmt.Errorf("invalid platform: %s", platform)
-	}
 }
