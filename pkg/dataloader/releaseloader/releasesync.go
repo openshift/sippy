@@ -96,9 +96,9 @@ func (r *ReleaseLoader) Load() {
 	}
 }
 
-func (r *ReleaseLoader) buildReleaseTag(platform PayloadProject, architecture, release string, tag ReleaseTag) *models.ReleaseTag {
-	releaseDetails := r.fetchReleaseDetails(platform, architecture, release, tag)
-	releaseTag := releaseDetailsToDB(platform, architecture, tag, releaseDetails)
+func (r *ReleaseLoader) buildReleaseTag(project PayloadProject, architecture, release string, tag ReleaseTag) *models.ReleaseTag {
+	releaseDetails := r.fetchReleaseDetails(project, architecture, release, tag)
+	releaseTag := releaseDetailsToDB(project, architecture, tag, releaseDetails)
 
 	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
 	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
@@ -153,9 +153,9 @@ var bulkFetchPRsFromTbl = func(dbConn *db.DB, orConditions []string, args []any)
 	return pullRequests
 }
 
-func (r *ReleaseLoader) fetchReleaseDetails(platform PayloadProject, architecture, release string, tag ReleaseTag) ReleaseDetails {
+func (r *ReleaseLoader) fetchReleaseDetails(project PayloadProject, architecture, release string, tag ReleaseTag) ReleaseDetails {
 	releaseDetails := ReleaseDetails{}
-	rcURL := platform.BuildDetailsURL(release, architecture, tag.Name)
+	rcURL := project.BuildDetailsURL(release, architecture, tag.Name)
 
 	resp, err := r.httpClient.Get(rcURL)
 	if err != nil {
@@ -169,7 +169,7 @@ func (r *ReleaseLoader) fetchReleaseDetails(platform PayloadProject, architectur
 	return releaseDetails
 }
 
-func (r *ReleaseLoader) fetchReleaseTags(platform PayloadProject, release string) []ReleaseTags {
+func (r *ReleaseLoader) fetchReleaseTags(project PayloadProject, release string) []ReleaseTags {
 	allTags := make([]ReleaseTags, 0)
 
 	for _, arch := range r.architectures {
@@ -177,7 +177,7 @@ func (r *ReleaseLoader) fetchReleaseTags(platform PayloadProject, release string
 			Architecture: arch,
 		}
 
-		uri := platform.BuildTagsURL(release, arch)
+		uri := project.BuildTagsURL(release, arch)
 		resp, err := r.httpClient.Get(uri)
 		if err != nil {
 			panic(err)
@@ -198,7 +198,7 @@ func (r *ReleaseLoader) fetchReleaseTags(platform PayloadProject, release string
 	return allTags
 }
 
-func releaseDetailsToDB(platform PayloadProject, architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
+func releaseDetailsToDB(project PayloadProject, architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
 	release := models.ReleaseTag{
 		Architecture: architecture,
 		ReleaseTag:   details.Name,
@@ -210,7 +210,7 @@ func releaseDetailsToDB(platform PayloadProject, architecture string, tag Releas
 		release.Release = strings.Join(parts[:2], ".")
 	}
 
-	release.Release = platform.ResolveRelease(release.Release)
+	release.Release = project.ResolveRelease(release.Release)
 
 	// Get "nightly" or "ci" from the string
 	if len(parts) >= 4 {
