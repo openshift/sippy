@@ -426,6 +426,7 @@ func setOwner(_ logrus.FieldLogger, variants map[string]string, jobName string) 
 		{"-openshift-tests-private", "qe"},
 		{"-openshift-verification-tests", "qe"},
 		{"-openshift-distributed-tracing", "qe"},
+		{"-oadp-", "oadp"},
 		{"-lp-interop", "mpiit"}, // MPEX Integrity and Interop Team
 	}
 
@@ -649,6 +650,8 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// Experimental new jobs using nested vsphere lvl 2 environment,
 		// not ready to make release blocking yet.
 		{[]string{"-vsphere-host-groups"}, "candidate"},
+
+		{[]string{"-gcp-custom-dns"}, "candidate"},
 
 		// Konflux jobs aren't ready yet
 		{[]string{"-konflux"}, "candidate"},
@@ -1072,9 +1075,11 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		substring string
 		product   string
 	}{
+		{"-lp-interop-cr-cnv", "lp-interop-virt"},
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},
+		{"-oadp-", "oadp"},
 	}
 
 	variants[VariantLayeredProduct] = VariantNoValue

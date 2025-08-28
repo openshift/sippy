@@ -428,7 +428,7 @@ function TestTable(props) {
       field: 'variants',
       headerName: 'Variants',
       autocomplete: 'variants',
-      type: 'string',
+      type: 'array',
       renderCell: (params) => (
         <Tooltip
           sx={{ whiteSpace: 'pre' }}

@@ -26,4 +26,7 @@ releases:
       jobs:
         periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-stage: true
         periodic-ci-Azure-ARO-HCP-main-periodic-stage-e2e-parallel: true
-
+  aro-production:
+      jobs:
+        periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-prod: true
+        periodic-ci-Azure-ARO-HCP-main-periodic-prod-e2e-parallel: true

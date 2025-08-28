@@ -285,7 +285,7 @@ component_readiness:
       enabled: false
     regression_tracking:
       enabled: false
-  - name: 4.20-mpiit
+  - name: 4.20-LP-Interop
     base_release:
       release: "4.19"
       relative_start: ga-30d
@@ -311,8 +311,7 @@ component_readiness:
         Upgrade: {}
       include_variants:
         LayeredProduct:
-          - none
-          - virt
+          - lp-interop-virt
         Network:
           - ovn
         Owner:

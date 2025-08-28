@@ -12,6 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/cache"
+	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/dataloader/crcacheloader"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -121,6 +122,7 @@ func NewLoadCommand() *cobra.Command {
 			}
 
 			cacheClient, cacheErr := f.CacheFlags.GetCacheClient()
+			releaseConfigs := []sippyv1.Release{}
 
 			// initializing a different bigquery client to the normal one
 			bqc, bigqueryErr := bqcachedclient.New(ctx,
@@ -130,6 +132,10 @@ func NewLoadCommand() *cobra.Command {
 			if bigqueryErr == nil {
 				if f.CacheFlags.EnablePersistentCaching {
 					bqc = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bqc)
+				}
+				releaseConfigs, err = api.GetReleasesFromBigQuery(context.Background(), bqc)
+				if err != nil {
+					return errors.Wrapf(err, "error querying releases from bq")
 				}
 			}
 
@@ -163,7 +169,7 @@ func NewLoadCommand() *cobra.Command {
 					if len(views.ComponentReadiness) == 0 {
 						return fmt.Errorf("no component readiness views provided")
 					}
-					loaders = append(loaders, crcacheloader.New(dbc, cacheClient, bqc, config, views,
+					loaders = append(loaders, crcacheloader.New(dbc, cacheClient, bqc, config, views, releaseConfigs,
 						f.ComponentReadinessFlags.CRTimeRoundingFactor))
 
 				}
@@ -172,7 +178,7 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					loaders = append(loaders, releaseloader.New(dbc, f.Releases, f.Architectures))
+					loaders = append(loaders, releaseloader.New(dbc, f.Releases, f.Architectures, releaseConfigs))
 				}
 
 				// Prow Loader
@@ -181,7 +187,7 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					prowLoader, err := f.prowLoader(ctx, dbc, config)
+					prowLoader, err := f.prowLoader(ctx, dbc, config, releaseConfigs)
 					if err != nil {
 						return err
 					}
@@ -251,7 +257,7 @@ func NewLoadCommand() *cobra.Command {
 				// Feature gates
 				if l == "feature-gates" {
 					refreshMatviews = true
-					fgLoader := featuregateloader.New(dbc, bqc)
+					fgLoader := featuregateloader.New(dbc, releaseConfigs)
 					loaders = append(loaders, fgLoader)
 				}
 
@@ -354,7 +360,7 @@ func (f *LoadFlags) jobVariantsLoader(ctx context.Context) (dataloader.DataLoade
 
 }
 
-func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.SippyConfig) (dataloader.DataLoader, error) {
+func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.SippyConfig, releaseConfigs []sippyv1.Release) (dataloader.DataLoader, error) {
 	gcsClient, err := gcs.NewGCSClient(ctx,
 		f.GoogleCloudFlags.ServiceAccountCredentialFile,
 		f.GoogleCloudFlags.OAuthClientCredentialFile,
@@ -384,6 +390,13 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		return nil, err
 	}
 
+	releases := f.Releases
+	if len(releases) == 0 { // if not specified, use those defined in the Releases table
+		for _, config := range releaseConfigs {
+			releases = append(releases, config.Release) // could filter by capability if needed
+		}
+	}
+
 	return prowloader.New(
 		ctx,
 		dbc,
@@ -392,7 +405,7 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		githubClient,
 		f.ModeFlags.GetVariantManager(ctx, bigQueryClient),
 		f.ModeFlags.GetSyntheticTestManager(),
-		f.Releases,
+		releases,
 		sippyConfig,
 		ghCommenter), nil
 }
