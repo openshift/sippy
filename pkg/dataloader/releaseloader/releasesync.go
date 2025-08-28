@@ -43,11 +43,11 @@ func New(dbc *db.DB, releases, architectures []string, releaseConfigs []v1.Relea
 				releases = append(releases, config.Release)
 			}
 		}
-  }
-  
+	}
+
 	return &ReleaseLoader{
 		db:            dbc,
-    httpClient:    &http.Client{Timeout: 60 * time.Second},
+		httpClient:    &http.Client{Timeout: 60 * time.Second},
 		releases:      releases,
 		architectures: architectures,
 		projects:      []PayloadProject{&OCPProject{}, &OKDProject{}},
