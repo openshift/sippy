@@ -870,7 +870,7 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-alibaba", "alibaba"},
 		{"-azure-aro-hcp", "aro"},
 		{"-azure", "azure"},
-		{"-aks", "azure"},
+		{"-aks", "aks"},
 		{"-osd-ccs-gcp", "osd-gcp"},
 		{"-gcp", "gcp"},
 		{"-libvirt", "libvirt"},
