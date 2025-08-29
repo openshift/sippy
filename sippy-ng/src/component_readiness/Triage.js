@@ -1,17 +1,19 @@
 import { Box, Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
 import { useTheme } from '@mui/material/styles'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useContext } from 'react'
 import SecureLink from '../components/SecureLink'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
 import TriagedRegressionTestList from './TriagedRegressionTestList'
+import TriagePotentialMatches from './TriagePotentialMatches'
 import UpsertTriageModal from './UpsertTriageModal'
 
 export default function Triage({ id }) {
@@ -23,34 +25,40 @@ export default function Triage({ id }) {
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
+  const { view } = useContext(CompReadyVarsContext)
 
   React.useEffect(() => {
-    setIsLoaded(false)
-    setIsUpdated(false)
+    // can't do anything if we have no view set (this is sometimes not true on initial page load)
+    if (view !== undefined) {
+      setIsLoaded(false)
+      setIsUpdated(false)
 
-    let triageFetch
-    // triage entries will only be available when there is a postgres connection
-    if (localDBEnabled) {
-      triageFetch = fetch(getTriagesAPIUrl(id)).then((response) => {
-        if (response.status !== 200) {
-          throw new Error('API server returned ' + response.status)
-        }
-        return response.json()
-      })
-    } else {
-      triageFetch = Promise.resolve({})
+      let triageFetch
+      // triage entries will only be available when there is a postgres connection
+      if (localDBEnabled) {
+        triageFetch = fetch(
+          `${getTriagesAPIUrl(id)}?view=${view}&expand=regressions`
+        ).then((response) => {
+          if (response.status !== 200) {
+            throw new Error('API server returned ' + response.status)
+          }
+          return response.json()
+        })
+      } else {
+        triageFetch = Promise.resolve({})
+      }
+
+      triageFetch
+        .then((t) => {
+          setTriage(t)
+          setIsLoaded(true)
+          document.title = 'Triage "' + t.description + '" (' + t.id + ')'
+        })
+        .catch((error) => {
+          setMessage(error.toString())
+        })
     }
-
-    triageFetch
-      .then((t) => {
-        setTriage(t)
-        setIsLoaded(true)
-        document.title = 'Triage "' + t.description + '" (' + t.id + ')'
-      })
-      .catch((error) => {
-        setMessage(error.toString())
-      })
-  }, [isUpdated])
+  }, [isUpdated, localDBEnabled, view])
 
   const deleteTriage = () => {
     const confirmed = window.confirm(
@@ -224,7 +232,16 @@ export default function Triage({ id }) {
         </TableBody>
       </Table>
       <h2>Included Tests</h2>
-      <TriagedRegressionTestList regressions={triage.regressions} />
+      <TriagedRegressionTestList
+        allRegressedTests={triage.regressed_tests}
+        regressions={triage.regressions}
+        filterVals={`?view=${view}`}
+      />
+      <TriagePotentialMatches
+        triage={triage}
+        setMessage={setMessage}
+        setLinkingComplete={setIsUpdated}
+      />
     </Fragment>
   )
 }
