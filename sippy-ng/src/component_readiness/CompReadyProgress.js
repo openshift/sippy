@@ -10,8 +10,6 @@ import React from 'react'
 export default function CompReadyProgress(props) {
   const { apiLink, cancelFunc } = props
 
-  document.title = 'Loading...'
-
   return (
     <Fragment>
       <p>

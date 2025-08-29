@@ -442,7 +442,7 @@ export default function ComponentReadiness(props) {
           className="cr-view"
         ></Grid>
         {/* eslint-disable react/prop-types */}
-        <Routes>
+        <Routes key={'routes-' + varsContext.generatorButtonPushes}>
           <Route index element={<Navigate to="main" replace />} />
           <Route
             path="help"
