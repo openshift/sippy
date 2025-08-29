@@ -14000,6 +14000,10 @@ releases:
         jobs:
             periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-prod: true
             periodic-ci-Azure-ARO-HCP-main-periodic-prod-e2e-parallel: true
+            periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-prod-uksouth: true
+            periodic-ci-Azure-ARO-HCP-main-periodic-prod-brazilsouth-e2e-parallel: true
+            periodic-ci-Azure-ARO-HCP-main-periodic-prod-centralindia-e2e-parallel: true
+            periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
     aro-stage:
         jobs:
             periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-stage: true
