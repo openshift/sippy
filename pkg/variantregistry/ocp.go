@@ -680,6 +680,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-azure-aks-ovn-conformance"}, "candidate"},
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-kubevirt-metal-ovn"}, "candidate"},
 		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance-serial"}, "candidate"},
+
+		// Storage team job preparing for RHEL 10 to detect regressions early, not yet stable, jsafrane would like to promote eventually:
+		{[]string{"periodic-ci-openshift-cluster-storage-operator", "upgrade-check-dev-symlinks"}, "candidate"},
 	}
 
 	for _, jobTierPattern := range jobTierPatterns {
