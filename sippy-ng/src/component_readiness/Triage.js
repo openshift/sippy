@@ -237,11 +237,13 @@ export default function Triage({ id }) {
         regressions={triage.regressions}
         filterVals={`?view=${view}`}
       />
-      <TriagePotentialMatches
-        triage={triage}
-        setMessage={setMessage}
-        setLinkingComplete={setIsUpdated}
-      />
+      {triageEnabled && (
+        <TriagePotentialMatches
+          triage={triage}
+          setMessage={setMessage}
+          setLinkingComplete={setIsUpdated}
+        />
+      )}
     </Fragment>
   )
 }
