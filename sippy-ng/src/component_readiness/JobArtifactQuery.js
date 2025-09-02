@@ -844,10 +844,14 @@ export default function JobArtifactQuery(props) {
         />
         {apiCallURL && (
           <Tooltip title="Link to the API call that provides the match data">
-            <a href={apiCallURL} target="_blank" rel="noreferrer nofollow">
+            <SecureLink
+              address={apiCallURL}
+              target="_blank"
+              rel="noreferrer nofollow"
+            >
               <LinkIcon fontSize="small" />
               API URL
-            </a>
+            </SecureLink>
           </Tooltip>
         )}
       </Stack>
