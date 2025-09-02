@@ -59,10 +59,9 @@ spec:
         command:
         - echo
         - "Wait for a short time"
-      initialDelaySeconds: 10
     resources:
       limits:
-        memory: 2Gi
+        memory: 5Gi
     terminationMessagePath: /dev/termination-log
     terminationMessagePolicy: File
     command:
@@ -74,6 +73,7 @@ spec:
     - --listen-metrics
     -  ":12112"
     - --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres
+    - --redis-url=redis://redis.sippy-e2e.svc.cluster.local:6379
     - --google-service-account-credential-file
     - /tmp/secrets/gcs-cred
     - --log-level
@@ -82,7 +82,7 @@ spec:
     - --mode
     - ocp
     - --views
-    - ./config/views.yaml
+    - ./config/e2e-views.yaml
     env:
     - name: GCS_SA_JSON_PATH
       value: /tmp/secrets/gcs-cred
@@ -105,7 +105,7 @@ END
 
 # The basic readiness probe will give us at least 10 seconds before declaring the pod as ready.
 echo "Waiting for sippy api server pod to be Ready ..."
-${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/sippy-server --timeout=30s
+${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/sippy-server --timeout=600s
 
 ${KUBECTL_CMD} -n sippy-e2e get pod -o wide
 ${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server.log
@@ -130,6 +130,15 @@ export SIPPY_E2E_DSN="postgresql://postgres:password@localhost:${SIPPY_PSQL_PORT
 echo $SIPPY_E2E_DSN
 ${KUBECTL_CMD} -n sippy-e2e expose pod postg1
 ${KUBECTL_CMD} -n sippy-e2e port-forward pod/postg1 ${SIPPY_PSQL_PORT}:5432 &
+
+# Random port for redis as well, between 19000 and 19500
+# Direct redis access is used for e2e tests to manipulate cache during testing.
+SIPPY_REDIS_PORT=$((RANDOM % 501 + 19000))
+export SIPPY_REDIS_PORT
+export REDIS_URL="redis://localhost:${SIPPY_REDIS_PORT}"
+echo $REDIS_URL
+${KUBECTL_CMD} -n sippy-e2e expose pod redis1
+${KUBECTL_CMD} -n sippy-e2e port-forward pod/redis1 ${SIPPY_REDIS_PORT}:6379 &
 
 ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 

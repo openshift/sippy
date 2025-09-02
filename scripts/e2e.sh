@@ -8,6 +8,8 @@
 DOCKER="podman"
 PSQL_CONTAINER="sippy-e2e-test-postgresql"
 PSQL_PORT="23433"
+REDIS_CONTAINER="sippy-e2e-test-redis"
+REDIS_PORT="23479"
 
 if [[ -z "$GCS_SA_JSON_PATH" ]]; then
     echo "Must provide path to GCS credential in GCS_SA_JSON_PATH env var" 1>&2
@@ -22,23 +24,34 @@ clean_up () {
 	echo "Tearing down container $PSQL_CONTAINER"
 	$DOCKER stop -i $PSQL_CONTAINER
 	$DOCKER rm -i $PSQL_CONTAINER
+	echo "Tearing down container $REDIS_CONTAINER"
+	$DOCKER stop -i $REDIS_CONTAINER
+	$DOCKER rm -i $REDIS_CONTAINER
     exit $ARG
 }
 trap clean_up EXIT
 
-# make sure no old container running
+# make sure no old containers are running
 echo "Cleaning up old sippy postgresql container if present"
 $DOCKER stop -i $PSQL_CONTAINER
 $DOCKER rm -i $PSQL_CONTAINER
+echo "Cleaning up old sippy redis container if present"
+$DOCKER stop -i $REDIS_CONTAINER
+$DOCKER rm -i $REDIS_CONTAINER
 
 # start postgresql in a container:
 echo "Starting new sippy postgresql container: $PSQL_CONTAINER"
 $DOCKER run --name $PSQL_CONTAINER -e POSTGRES_PASSWORD=password -p $PSQL_PORT:5432 -d quay.io/enterprisedb/postgresql
 
-echo "Wait 5s for postgresql to start..."
+# start redis in a container:
+echo "Starting new sippy redis container: $REDIS_CONTAINER"
+$DOCKER run --name $REDIS_CONTAINER -p $REDIS_PORT:6379 -d quay.io/openshiftci/redis:latest
+
+echo "Wait 5s for postgresql and redis to start..."
 sleep 5
 
 export SIPPY_E2E_DSN="postgresql://postgres:password@localhost:$PSQL_PORT/postgres"
+export REDIS_URL="redis://localhost:$REDIS_PORT"
 
 echo "Loading database..."
 # use an old release here as they have very few job runs and thus import quickly, ~5 minutes
@@ -58,15 +71,16 @@ export SIPPY_ENDPOINT="127.0.0.1"
   --database-dsn="$SIPPY_E2E_DSN" \
   --enable-write-endpoints \
   --log-level debug \
-  --views config/views.yaml \
-  --google-service-account-credential-file $GCS_SA_JSON_PATH > e2e.log 2>&1
+  --views config/e2e-views.yaml \
+  --google-service-account-credential-file $GCS_SA_JSON_PATH \
+  --redis-url="$REDIS_URL" > e2e.log 2>&1
 )&
 # store the child process for cleanup
 CHILD_PID=$!
 
-# Give it time to start up
+# Give it time to start up, and fill the redis cache
 echo "Waiting for sippy API to start on port $SIPPY_API_PORT, see e2e.log for output..."
-TIMEOUT=120
+TIMEOUT=600
 ELAPSED=0
 while [ $ELAPSED -lt $TIMEOUT ]; do
     if curl -s "http://localhost:$SIPPY_API_PORT/api/health" > /dev/null 2>&1; then

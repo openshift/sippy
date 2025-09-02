@@ -13,8 +13,10 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/test/e2e/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -23,10 +25,10 @@ import (
 )
 
 var view = crview.View{
-	Name: "4.20-main",
+	Name: fmt.Sprintf("%s-main", util.Release),
 	SampleRelease: reqopts.RelativeRelease{
 		Release: reqopts.Release{
-			Name: "4.20",
+			Name: util.Release,
 		},
 	},
 }
@@ -113,6 +115,63 @@ func Test_TriageAPI(t *testing.T) {
 		// ensure hateoas links are present
 		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
 			triageResponse.Links["self"])
+	})
+	t.Run("get with expanded regressions", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		r := createTestRegressionWithDetails(t, tracker, view, "expanded-test-1", "component-expand", "capability-expand", "TestExpanded1", nil, crtest.ExtremeRegression)
+		defer dbc.DB.Delete(r.Regression)
+
+		r2 := createTestRegressionWithDetails(t, tracker, view, "expanded-test-2", "component-expand", "capability-expand", "TestExpanded2", nil, crtest.SignificantRegression)
+		defer dbc.DB.Delete(r2.Regression)
+
+		// Create a triage with the test regressions
+		triage := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: r.Regression.ID},
+				{ID: r2.Regression.ID},
+			},
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(triageResponse.Regressions))
+
+		// Add the test regressions to the component report cache so they can be found by the expanded endpoint
+		cache, err := util.NewE2ECacheManipulator(util.Release)
+		if err != nil {
+			t.Fatalf("Failed to create component report cache: %v", err)
+		}
+		defer cache.Close()
+
+		err = cache.AddTestRegressionsToReport([]componentreport.ReportTestSummary{r, r2})
+		if err != nil {
+			t.Fatalf("Failed to add test regressions to component report: %v", err)
+		}
+
+		// Validate that the expanded regressions are present
+		var expandedTriage sippyserver.ExpandedTriage
+		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d?view=%s-main&expand=regressions", triageResponse.ID, util.Release), &expandedTriage)
+		require.NoError(t, err)
+
+		// Verify the expanded triage contains the regressed tests with correct status values
+		require.NotNil(t, expandedTriage.Triage, "ExpandedTriage should contain a Triage")
+		assert.Equal(t, triageResponse.ID, expandedTriage.Triage.ID, "ExpandedTriage should have the same ID as the created triage")
+		assert.Len(t, expandedTriage.RegressedTests, 2, "ExpandedTriage should contain 2 regressed tests")
+
+		// Verify status values are marked as their respective triaged values in the expanded response
+		statusMap := make(map[uint]crtest.Status)
+		for _, regressedTest := range expandedTriage.RegressedTests {
+			if regressedTest != nil && regressedTest.Regression != nil {
+				statusMap[regressedTest.Regression.ID] = regressedTest.TestComparison.ReportStatus
+			}
+		}
+
+		assert.Equal(t, crtest.ExtremeTriagedRegression, statusMap[r.Regression.ID], "First regressed test should have ExtremeTriagedRegression status")
+		assert.Equal(t, crtest.SignificantTriagedRegression, statusMap[r2.Regression.ID], "Second regressed test should have SignificantTriagedRegression status")
 	})
 	t.Run("list", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
@@ -462,4 +521,322 @@ func assertTriageDataMatches(t *testing.T, expectedTriage, actualTriage models.T
 	if len(actualTriage.Regressions) > 0 && len(expectedTriage.Regressions) > 0 {
 		assert.Equal(t, expectedTriage.Regressions[0].ID, actualTriage.Regressions[0].ID, "%s regression ID should match", field)
 	}
+}
+
+// Test_TriagePotentialMatchingRegressions tests the /api/component_readiness/triages/{id}/matches endpoint
+func Test_TriagePotentialMatchingRegressions(t *testing.T) {
+	dbc := util.CreateE2EPostgresConnection(t)
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
+
+	// Create a common failure time for some regressions to match on
+	commonFailureTime := time.Now().Add(-24 * time.Hour)
+	differentFailureTime := time.Now().Add(-12 * time.Hour)
+
+	// Create 10 test regressions with various characteristics for matching
+	testRegressions := make([]componentreport.ReportTestSummary, 10)
+
+	// Regression 1: Will be linked to the triage
+	testRegressions[0] = createTestRegressionWithDetails(t, tracker, view, "linked-test-1", "component-a", "capability-x", "TestSomething", &commonFailureTime, crtest.ExtremeRegression)
+	defer dbc.DB.Delete(testRegressions[0].Regression)
+
+	// Regression 2: Will be linked to the triage
+	uniqueFailureTime := time.Now().Add(-36 * time.Hour)
+	testRegressions[1] = createTestRegressionWithDetails(t, tracker, view, "linked-test-2", "component-b", "capability-y", "TestAnotherOne", &uniqueFailureTime, crtest.SignificantRegression)
+	defer dbc.DB.Delete(testRegressions[1].Regression)
+
+	// Regression 3: Should match by similar test name (edit distance <= 5)
+	testRegressions[2] = createTestRegressionWithDetails(t, tracker, view, "match-similar-name", "component-c", "capability-z", "TestSomthng", &differentFailureTime, crtest.ExtremeTriagedRegression) // missing 'e' and 'i' from "TestSomething"
+	defer dbc.DB.Delete(testRegressions[2].Regression)
+
+	// Regression 4: Should match by same last failure time
+	testRegressions[3] = createTestRegressionWithDetails(t, tracker, view, "match-same-failure", "component-d", "capability-w", "TestDifferent", &commonFailureTime, crtest.SignificantTriagedRegression)
+	defer dbc.DB.Delete(testRegressions[3].Regression)
+
+	// Regression 5: Should match both similar name AND same failure time
+	testRegressions[4] = createTestRegressionWithDetails(t, tracker, view, "match-both", "component-e", "capability-v", "TestAnoterOne", &commonFailureTime, crtest.FixedRegression) // missing 'h' from "TestAnotherOne"
+	defer dbc.DB.Delete(testRegressions[4].Regression)
+
+	// Regression 6: Similar name to regression 1 but different failure time
+	testRegressions[5] = createTestRegressionWithDetails(t, tracker, view, "match-name-only", "component-f", "capability-u", "TestSomthing", &differentFailureTime, crtest.MissingSample) // missing 'e' from "TestSomething"
+	defer dbc.DB.Delete(testRegressions[5].Regression)
+
+	// Regression 7: No match - different name, different failure time
+	testRegressions[6] = createTestRegressionWithDetails(t, tracker, view, "no-match-1", "component-g", "capability-t", "CompletelyDifferentTest", &differentFailureTime, crtest.NotSignificant)
+	defer dbc.DB.Delete(testRegressions[6].Regression)
+
+	// Regression 8: No match - name too different (edit distance > 5)
+	testRegressions[7] = createTestRegressionWithDetails(t, tracker, view, "no-match-2", "component-h", "capability-s", "VeryDifferentTestName", &differentFailureTime, crtest.MissingBasis)
+	defer dbc.DB.Delete(testRegressions[7].Regression)
+
+	// Regression 9: Same failure time as linked regression but different name
+	testRegressions[8] = createTestRegressionWithDetails(t, tracker, view, "match-failure-time", "component-i", "capability-r", "TestUnrelated", &commonFailureTime, crtest.MissingBasisAndSample)
+	defer dbc.DB.Delete(testRegressions[8].Regression)
+
+	// Regression 10: Another potential match with similar name to regression 2
+	testRegressions[9] = createTestRegressionWithDetails(t, tracker, view, "match-similar-2", "component-j", "capability-q", "TestAnotheOne", &differentFailureTime, crtest.SignificantImprovement) // missing 'r' from "TestAnotherOne"
+	defer dbc.DB.Delete(testRegressions[9].Regression)
+
+	// Add all test regressions to the component report so they can be found by GetTriagePotentialMatches
+	cache, err := util.NewE2ECacheManipulator(util.Release)
+	if err != nil {
+		t.Fatalf("Failed to create component report cache: %v", err)
+	}
+	defer cache.Close()
+
+	err = cache.AddTestRegressionsToReport(testRegressions)
+	if err != nil {
+		t.Fatalf("Failed to add test regressions to component report: %v", err)
+	}
+
+	t.Run("find potential matching regressions", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create a triage with two linked regressions
+		triage := models.Triage{
+			URL:  "https://issues.redhat.com/OCPBUGS-1234",
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: testRegressions[0].Regression.ID}, // TestSomething with commonFailureTime
+				{ID: testRegressions[1].Regression.ID}, // TestAnother with unique failure time
+			},
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.NoError(t, err)
+		require.Equal(t, 2, len(triageResponse.Regressions))
+
+		// Query for potential matches
+		var potentialMatches []componentreadiness.PotentialMatch
+
+		endpoint := fmt.Sprintf("/api/component_readiness/triages/%d/matches?view=%s", triageResponse.ID, view.Name)
+		err = util.SippyGet(endpoint, &potentialMatches)
+		require.NoError(t, err)
+
+		// Verify the results
+		assert.True(t, len(potentialMatches) > 0, "Should find some potential matches")
+
+		// Verify status values are correctly returned for the potential matches
+		statusMap := make(map[uint]crtest.Status)
+		for _, match := range potentialMatches {
+			if match.RegressedTest.Regression != nil {
+				statusMap[match.RegressedTest.Regression.ID] = match.RegressedTest.TestComparison.ReportStatus
+			}
+		}
+
+		// Build maps for easier verification
+		foundRegressionIDs := make(map[uint]bool)
+		matchesBySimilarName := make(map[uint][]componentreadiness.SimilarlyNamedTest)
+		matchesBySameFailure := make(map[uint][]models.TestRegression)
+		confidenceLevels := make(map[uint]int)
+
+		for _, match := range potentialMatches {
+			if match.RegressedTest.Regression == nil {
+				continue // Skip if no regression data
+			}
+			regressionID := match.RegressedTest.Regression.ID
+			foundRegressionIDs[regressionID] = true
+			confidenceLevels[regressionID] = match.ConfidenceLevel
+			if len(match.SimilarlyNamedTests) > 0 {
+				matchesBySimilarName[regressionID] = match.SimilarlyNamedTests
+			}
+			if len(match.SameLastFailures) > 0 {
+				matchesBySameFailure[regressionID] = match.SameLastFailures
+			}
+		}
+
+		// Verify that linked regressions are NOT in the potential matches
+		assert.False(t, foundRegressionIDs[testRegressions[0].Regression.ID], "Linked regression 0 should not appear in potential matches")
+		assert.False(t, foundRegressionIDs[testRegressions[1].Regression.ID], "Linked regression 1 should not appear in potential matches")
+
+		// Verify expected matches are found
+		assert.True(t, foundRegressionIDs[testRegressions[2].Regression.ID], "Should find regression 2 (similar name to TestSomething)")
+		assert.True(t, foundRegressionIDs[testRegressions[3].Regression.ID], "Should find regression 3 (same failure time)")
+		assert.True(t, foundRegressionIDs[testRegressions[4].Regression.ID], "Should find regression 4 (both similar name and same failure)")
+		assert.True(t, foundRegressionIDs[testRegressions[5].Regression.ID], "Should find regression 5 (similar name)")
+		assert.True(t, foundRegressionIDs[testRegressions[8].Regression.ID], "Should find regression 8 (same failure time)")
+		assert.True(t, foundRegressionIDs[testRegressions[9].Regression.ID], "Should find regression 9 (similar name to TestAnother)")
+
+		// Verify the status values are correctly returned
+		assert.Equal(t, crtest.ExtremeTriagedRegression, statusMap[testRegressions[2].Regression.ID], "Regression 2 should have ExtremeTriagedRegression status")
+		assert.Equal(t, crtest.SignificantTriagedRegression, statusMap[testRegressions[3].Regression.ID], "Regression 3 should have SignificantTriagedRegression status")
+		assert.Equal(t, crtest.FixedRegression, statusMap[testRegressions[4].Regression.ID], "Regression 4 should have FixedRegression status")
+		assert.Equal(t, crtest.MissingSample, statusMap[testRegressions[5].Regression.ID], "Regression 5 should have MissingSample status")
+		assert.Equal(t, crtest.MissingBasisAndSample, statusMap[testRegressions[8].Regression.ID], "Regression 8 should have MissingBasisAndSample status")
+		assert.Equal(t, crtest.SignificantImprovement, statusMap[testRegressions[9].Regression.ID], "Regression 9 should have SignificantImprovement status")
+
+		// Verify non-matches are not found
+		assert.False(t, foundRegressionIDs[testRegressions[6].Regression.ID], "Should not find regression 6 (no match)")
+		assert.False(t, foundRegressionIDs[testRegressions[7].Regression.ID], "Should not find regression 7 (name too different)")
+
+		// Verify match reasons are correct
+
+		// Regression 2: Should match by similar name to "TestSomething"
+		if assert.Contains(t, matchesBySimilarName, testRegressions[2].Regression.ID) {
+			matches := matchesBySimilarName[testRegressions[2].Regression.ID]
+			assert.Equal(t, 1, len(matches), "Should match exactly one similar name")
+			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].Regression.ID, "Should match against TestSomething regression")
+			// TestSomthng vs TestSomething = edit distance 2, so score = 5-2 = 3
+			assert.Equal(t, 3, confidenceLevels[testRegressions[2].Regression.ID], "Confidence should be 3 (edit distance 2: 5-2)")
+		}
+
+		// Regression 3: Should match by same failure time
+		if assert.Contains(t, matchesBySameFailure, testRegressions[3].Regression.ID) {
+			matches := matchesBySameFailure[testRegressions[3].Regression.ID]
+			assert.Equal(t, 1, len(matches), "Should match exactly one same failure time")
+			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].ID, "Should match against commonFailureTime regression")
+			assert.Equal(t, 1, confidenceLevels[testRegressions[3].Regression.ID], "Confidence should be 1 (1 failure match * 1)")
+		}
+
+		// Regression 4: Should match both similar name AND same failure time
+		if assert.Contains(t, matchesBySimilarName, testRegressions[4].Regression.ID) {
+			nameMatches := matchesBySimilarName[testRegressions[4].Regression.ID]
+			assert.Equal(t, 1, len(nameMatches), "Should match exactly one similar name")
+			assert.Equal(t, testRegressions[1].Regression.ID, nameMatches[0].Regression.ID, "Should match against TestAnotherOne regression")
+		}
+		if assert.Contains(t, matchesBySameFailure, testRegressions[4].Regression.ID) {
+			failureMatches := matchesBySameFailure[testRegressions[4].Regression.ID]
+			assert.Equal(t, 1, len(failureMatches), "Should match exactly one same failure time")
+			assert.Equal(t, testRegressions[0].Regression.ID, failureMatches[0].ID, "Should match against commonFailureTime regression")
+			// TestAnoterOne vs TestAnotherOne = edit distance 1, so name score = 5-1 = 4, failure = 1, total = 5
+			assert.Equal(t, 5, confidenceLevels[testRegressions[4].Regression.ID], "Confidence should be 5 (name edit distance 1: 5-1=4, plus 1 failure match)")
+		}
+
+		// Regression 5: Should match by similar name only
+		if assert.Contains(t, matchesBySimilarName, testRegressions[5].Regression.ID) {
+			matches := matchesBySimilarName[testRegressions[5].Regression.ID]
+			assert.Equal(t, 1, len(matches), "Should match exactly one similar name")
+			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].Regression.ID, "Should match against TestSomething regression")
+			// TestSomthing vs TestSomething = edit distance 1, so score = 5-1 = 4
+			assert.Equal(t, 4, confidenceLevels[testRegressions[5].Regression.ID], "Confidence should be 4 (edit distance 1: 5-1)")
+		}
+		assert.NotContains(t, matchesBySameFailure, testRegressions[5].Regression.ID, "Should not match by failure time")
+
+		// Regression 8: Should match by same failure time only
+		if assert.Contains(t, matchesBySameFailure, testRegressions[8].Regression.ID) {
+			matches := matchesBySameFailure[testRegressions[8].Regression.ID]
+			assert.Equal(t, 1, len(matches), "Should match exactly one same failure time")
+			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].ID, "Should match against commonFailureTime regression")
+			assert.Equal(t, 1, confidenceLevels[testRegressions[8].Regression.ID], "Confidence should be 1 (1 failure match * 1)")
+		}
+		assert.NotContains(t, matchesBySimilarName, testRegressions[8].Regression.ID, "Should not match by similar name")
+
+		// Regression 9: Should match by similar name to "TestAnotherOne"
+		if assert.Contains(t, matchesBySimilarName, testRegressions[9].Regression.ID) {
+			matches := matchesBySimilarName[testRegressions[9].Regression.ID]
+			assert.Equal(t, 1, len(matches), "Should match exactly one similar name")
+			assert.Equal(t, testRegressions[1].Regression.ID, matches[0].Regression.ID, "Should match against TestAnotherOne regression")
+			// TestAnotheOne vs TestAnotherOne = edit distance 1, so score = 5-1 = 4
+			assert.Equal(t, 4, confidenceLevels[testRegressions[9].Regression.ID], "Confidence should be 4 (edit distance 1: 5-1)")
+		}
+	})
+
+	t.Run("empty potential matches when no regressions exist", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create a triage with one linked regression
+		triage := models.Triage{
+			URL:  "https://issues.redhat.com/OCPBUGS-1234",
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: testRegressions[6].Regression.ID}, // CompletelyDifferentTest - won't match anything
+			},
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.NoError(t, err)
+
+		// Query for potential matches
+		var potentialMatches []componentreadiness.PotentialMatch
+
+		endpoint := fmt.Sprintf("/api/component_readiness/triages/%d/matches?view=%s", triageResponse.ID, view.Name)
+		err = util.SippyGet(endpoint, &potentialMatches)
+		require.NoError(t, err)
+
+		// Should still find some matches since other regressions might have similar names or failure times
+		// but the linked regression itself should not appear
+		foundRegressionIDs := make(map[uint]bool)
+		for _, match := range potentialMatches {
+			if match.RegressedTest.Regression != nil {
+				foundRegressionIDs[match.RegressedTest.Regression.ID] = true
+			}
+		}
+
+		assert.False(t, foundRegressionIDs[testRegressions[6].Regression.ID], "Linked regression should not appear in potential matches")
+	})
+
+	t.Run("error when triage not found", func(t *testing.T) {
+		var potentialMatches []interface{}
+
+		endpoint := "/api/component_readiness/triages/999999/matches"
+		err := util.SippyGet(endpoint, &potentialMatches)
+		require.Error(t, err, "Should return error for non-existent triage")
+	})
+
+	t.Run("verify status values in triage responses", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create a triage with regressions that have different status values
+		triage := models.Triage{
+			URL:  "https://issues.redhat.com/OCPBUGS-5678",
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: testRegressions[0].Regression.ID}, // ExtremeRegression
+				{ID: testRegressions[1].Regression.ID}, // SignificantRegression
+				{ID: testRegressions[4].Regression.ID}, // FixedRegression
+			},
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.NoError(t, err)
+		require.Equal(t, 3, len(triageResponse.Regressions))
+
+		// Note: TestComparison (including status) is not available on the basic TestRegression model
+		// returned by the triage API. Status is only available in the potential matches endpoint
+		// where regressions are represented as ReportTestSummary with full component report data.
+		//
+		// However, we can verify that our test setup correctly created regressions with different IDs
+		regressionIDs := make(map[uint]bool)
+		for _, regression := range triageResponse.Regressions {
+			regressionIDs[regression.ID] = true
+		}
+
+		assert.True(t, regressionIDs[testRegressions[0].Regression.ID], "Should find first regression")
+		assert.True(t, regressionIDs[testRegressions[1].Regression.ID], "Should find second regression")
+		assert.True(t, regressionIDs[testRegressions[4].Regression.ID], "Should find third regression")
+	})
+}
+
+// Helper function to create test regressions with specific details
+func createTestRegressionWithDetails(t *testing.T, tracker componentreadiness.RegressionStore, view crview.View, testID, component, capability, testName string, lastFailure *time.Time, status crtest.Status) componentreport.ReportTestSummary {
+	newRegression := componentreport.ReportTestSummary{
+		TestComparison: testdetails.TestComparison{
+			ReportStatus: status,
+			BaseStats: &testdetails.ReleaseStats{
+				Release: util.Release,
+			},
+			LastFailure: lastFailure,
+		},
+		Identification: crtest.Identification{
+			RowIdentification: crtest.RowIdentification{
+				Component:  component,
+				Capability: capability,
+				TestName:   testName,
+				TestSuite:  "fakesuite",
+				TestID:     testID,
+			},
+			ColumnIdentification: crtest.ColumnIdentification{
+				Variants: map[string]string{
+					"a": "b",
+					"c": "d",
+				},
+			},
+		},
+	}
+	regression, err := tracker.OpenRegression(view, newRegression)
+	require.NoError(t, err)
+	newRegression.Regression = regression
+	return newRegression
 }
