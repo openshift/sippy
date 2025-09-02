@@ -636,7 +636,7 @@ function JobTable(props) {
         sortingMode="server"
         disableColumnFilter={props.briefTable}
         disableColumnMenu={true}
-        checkboxSelection={!props.briefTable}
+        checkboxSelection={!props.briefTable && !props.hideControls}
         onSelectionModelChange={(rows) => setSelectedJobs(rows)}
         rowsPerPageOptions={props.rowsPerPageOptions}
         pageSize={pageSize}
@@ -667,8 +667,8 @@ function JobTable(props) {
           },
         }}
       />
-      {props.briefTable ? '' : detailsButton}
-      {props.briefTable ? '' : copyButton}
+      {props.briefTable || props.hideControls ? '' : detailsButton}
+      {props.briefTable || props.hideControls ? '' : copyButton}
     </Container>
   )
 }

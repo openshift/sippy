@@ -41,6 +41,7 @@ import Divider from '@mui/material/Divider'
 import GridToolbar from '../datagrid/GridToolbar'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@mui/icons-material/Info'
+import JobTable from './JobTable'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
@@ -442,6 +443,24 @@ export function JobAnalysis(props) {
                   View matching job runs
                 </Button>
               </Grid>
+            </Card>
+          </Grid>
+
+          <Grid item md={12}>
+            <Card className="job-variants-card" elevation={5}>
+              <Typography variant="h5">
+                Matching Jobs
+                <Tooltip title="Matching Jobs shows all jobs matching the selected filters">
+                  <InfoIcon />
+                </Tooltip>
+              </Typography>
+              <JobTable
+                view="Variants"
+                hideControls={true}
+                pageSize={5}
+                release={props.release}
+                filterModel={filterModel}
+              />
             </Card>
           </Grid>
 
