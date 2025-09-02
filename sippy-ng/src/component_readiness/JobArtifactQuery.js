@@ -843,12 +843,16 @@ export default function JobArtifactQuery(props) {
           disabled={contentMatch.type === 'none'}
         />
         {apiCallURL && (
-          <Tooltip title="Link to the API call that provides the match data">
-            <a href={apiCallURL} target="_blank" rel="noreferrer nofollow">
+          <SecureLink
+            address={apiCallURL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Tooltip title="Link to the API call that provides the match data">
               <LinkIcon fontSize="small" />
               API URL
-            </a>
-          </Tooltip>
+            </Tooltip>
+          </SecureLink>
         )}
       </Stack>
       <JAQResultTable />
