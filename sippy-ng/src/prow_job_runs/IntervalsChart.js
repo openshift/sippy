@@ -684,6 +684,7 @@ IntervalsChart.defaultProps = {
     'APIServerGracefulShutdown',
     'KubeEvent',
     'NodeState',
+    'CPUMonitor',
   ],
   intervalFile: '',
   overrideDisplayFlag: false,
