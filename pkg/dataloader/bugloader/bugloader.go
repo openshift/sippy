@@ -229,8 +229,10 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 			continue
 		}
 
+		updated := false
 		// If the triage is not resolved, we should resolve it if the bug is at least in the "Modified" status
 		if !resolved && slices.Contains(statusesForResolution, bug.Status) {
+			updated = true
 			now := time.Now()
 			t.Resolved = sql.NullTime{
 				Time:  now,
@@ -240,16 +242,19 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 				t.Description, t.ID, bug.Summary, bug.ID, bug.Status)
 		}
 
-		// If the bug hasn't been linked yet, link it now
 		if !bugLinked {
+			// If the bug hasn't been linked yet, link it now
+			updated = true
 			logger.Infof("linking triage %q (%d) to bug %q (%d)", t.Description, t.ID, bug.Summary, bug.ID)
 			t.Bug = &bug
 			t.BugID = &bug.ID
 		}
 
-		res = bl.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "bug-loader")).Save(&t)
-		if res.Error != nil {
-			bl.addError(logger, res.Error, fmt.Sprintf("error updating triage: %q (%d)", t.Description, t.ID))
+		if updated {
+			res = bl.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "bug-loader")).Save(&t)
+			if res.Error != nil {
+				bl.addError(logger, res.Error, fmt.Sprintf("error updating triage: %q (%d)", t.Description, t.ID))
+			}
 		}
 	}
 }
