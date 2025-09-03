@@ -20,7 +20,13 @@ import {
 } from './helpers'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { makeStyles, styled } from '@mui/styles'
-import { Navigate, Route, Routes, useParams } from 'react-router-dom'
+import {
+  Navigate,
+  Route,
+  Routes,
+  useNavigate,
+  useParams,
+} from 'react-router-dom'
 import { parse, stringify } from 'query-string'
 import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
@@ -161,6 +167,20 @@ const themes = {
 
 // Default theme, restore settings from v4 color schemes. v5 is much darker.
 
+// for redirecting paths for /<something>/latest to the first non-GA release
+const RedirectLatestReleaseWrapper = (component) => {
+  const { release } = useParams()
+  const navigate = useNavigate()
+
+  if (release === 'latest') {
+    const releases = React.useContext(ReleasesContext)
+    const defaultRelease = findFirstNonGARelease(releases)
+    navigate('../' + defaultRelease, { relative: 'path', replace: true })
+  }
+
+  return component
+}
+
 /**
  * Wrapper components for React Router v6+ upgrade
  *
@@ -176,17 +196,7 @@ const themes = {
 const ReleasePayloadDetailsWrapper = () => {
   const { release, tag } = useParams()
 
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return (
+  return RedirectLatestReleaseWrapper(
     <ReleasePayloadDetails
       key={'release-details-' + release}
       release={release}
@@ -197,116 +207,47 @@ const ReleasePayloadDetailsWrapper = () => {
 
 const PayloadStreamWrapper = () => {
   const { release, arch, stream } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <PayloadStream release={release} arch={arch} stream={stream} />
+  return RedirectLatestReleaseWrapper(
+    <PayloadStream release={release} arch={arch} stream={stream} />
+  )
 }
 
 const PayloadStreamsWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <PayloadStreams key={'release-streams-' + release} release={release} />
+  return RedirectLatestReleaseWrapper(
+    <PayloadStreams key={'release-streams-' + release} release={release} />
+  )
 }
 
 const ReleasePayloadsWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <ReleasePayloads key={'release-tags-' + release} release={release} />
+  return RedirectLatestReleaseWrapper(
+    <ReleasePayloads key={'release-tags-' + release} release={release} />
+  )
 }
 
 const ReleaseOverviewWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return (
+  return RedirectLatestReleaseWrapper(
     <ReleaseOverview key={'release-overview-' + release} release={release} />
   )
 }
 
 const VariantStatusWrapper = () => {
   const { release, variant } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <VariantStatus release={release} variant={variant} />
+  return RedirectLatestReleaseWrapper(
+    <VariantStatus release={release} variant={variant} />
+  )
 }
 
 const JobAnalysisWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <JobAnalysis release={release} />
+  return RedirectLatestReleaseWrapper(<JobAnalysis release={release} />)
 }
 
 const JobsWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return (
+  return RedirectLatestReleaseWrapper(
     <Jobs
       key={'jobs-' + release}
       title={'Job results for ' + release}
@@ -316,16 +257,9 @@ const JobsWrapper = () => {
 }
 
 const FeatureGateRedirectWrapper = () => {
-  const { release, feature_gate } = useParams()
-
+  let { release, feature_gate } = useParams()
   if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
+    release = findFirstNonGARelease(React.useContext(ReleasesContext))
   }
 
   return (
@@ -338,50 +272,21 @@ const FeatureGateRedirectWrapper = () => {
 
 const FeatureGatesWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <FeatureGates key={'jobs-' + release} release={release} />
+  return RedirectLatestReleaseWrapper(
+    <FeatureGates key={'jobs-' + release} release={release} />
+  )
 }
 
 const TestAnalysisWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <TestAnalysis release={release} />
+  return RedirectLatestReleaseWrapper(<TestAnalysis release={release} />)
 }
 
 const TestsWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <Tests key={'tests-' + release} release={release} />
+  return RedirectLatestReleaseWrapper(
+    <Tests key={'tests-' + release} release={release} />
+  )
 }
 
 const TriageWrapper = () => {
@@ -404,18 +309,9 @@ const TriageListWrapper = () => {
 
 const UpgradesWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <Upgrades key={'upgrades-' + release} release={release} />
+  return RedirectLatestReleaseWrapper(
+    <Upgrades key={'upgrades-' + release} release={release} />
+  )
 }
 
 const ComponentReadinessWrapper = () => {
@@ -437,18 +333,9 @@ const ComponentReadinessWrapper = () => {
 
 const InstallWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <Install key={'install-' + release} release={release} />
+  return RedirectLatestReleaseWrapper(
+    <Install key={'install-' + release} release={release} />
+  )
 }
 
 const BuildClusterDetailsWrapper = () => {
@@ -459,50 +346,21 @@ const BuildClusterDetailsWrapper = () => {
 
 const RepositoryDetailsWrapper = () => {
   const { release, org, repo } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <RepositoryDetails release={release} org={org} repo={repo} />
+  return RedirectLatestReleaseWrapper(
+    <RepositoryDetails release={release} org={org} repo={repo} />
+  )
 }
 
 const RepositoriesWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <Repositories release={release} />
+  return RedirectLatestReleaseWrapper(<Repositories release={release} />)
 }
 
 const PullRequestsWrapper = () => {
   const { release } = useParams()
-
-  if (release === 'latest') {
-    const releases = React.useContext(ReleasesContext)
-    const defaultRelease = findFirstNonGARelease(releases)
-    const newPath = window.location.pathname.replace(
-      '/latest',
-      '/' + defaultRelease
-    )
-    return <Navigate to={newPath} replace />
-  }
-
-  return <PullRequests key={'pr-' + release} release={release} />
+  return RedirectLatestReleaseWrapper(
+    <PullRequests key={'pr-' + release} release={release} />
+  )
 }
 
 const IntervalsChartWrapper = () => {
