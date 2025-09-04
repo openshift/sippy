@@ -683,6 +683,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 		// Storage team job preparing for RHEL 10 to detect regressions early, not yet stable, jsafrane would like to promote eventually:
 		{[]string{"periodic-ci-openshift-cluster-storage-operator", "upgrade-check-dev-symlinks"}, "candidate"},
+
+		// z-stream techpreview jobs should generally upgrade correctly, however also get wedged in some cases (e.g. when we forcibly change an API from alpha to stable).
+		{[]string{"-techpreview-upgrade"}, "candidate"},
 	}
 
 	for _, jobTierPattern := range jobTierPatterns {
