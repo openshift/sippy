@@ -66,3 +66,7 @@
   border-radius: 4px;
   border-color: grey;
 }
+
+.variants-list {
+  white-space: pre;
+}

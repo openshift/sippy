@@ -1,9 +1,6 @@
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
-import {
-  formColumnName,
-  generateTestReportForRegressedTest,
-} from './CompReadyUtils'
+import { generateTestReportForRegressedTest } from './CompReadyUtils'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { relativeTime } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
@@ -60,7 +57,7 @@ export default function TriagedRegressionTestList(props) {
     {
       field: 'test_name',
       headerName: 'Test Name',
-      flex: 40,
+      flex: 50,
       valueGetter: (params) => {
         return params.row.test_name
       },
@@ -69,7 +66,7 @@ export default function TriagedRegressionTestList(props) {
     {
       field: 'release',
       headerName: 'Release',
-      flex: 20,
+      flex: 7,
       valueGetter: (params) => {
         return params.row.release
       },
@@ -78,11 +75,12 @@ export default function TriagedRegressionTestList(props) {
     {
       field: 'variants',
       headerName: 'Variants',
-      flex: 30,
-      valueGetter: (params) => {
-        return formColumnName({ variants: params.row.variants })
-      },
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      flex: 20,
+      renderCell: (params) => (
+        <div className="variants-list">
+          {params.value ? params.value.sort().join('\n') : ''}
+        </div>
+      ),
     },
     {
       field: 'opened',
@@ -188,6 +186,7 @@ export default function TriagedRegressionTestList(props) {
           components={{ Toolbar: GridToolbar }}
           rows={triagedRegressions}
           columns={columns}
+          getRowHeight={() => 'auto'}
           getRowId={(row) => row.id}
           selectionModel={activeRow}
           onSelectionModelChange={(newRow) => {
