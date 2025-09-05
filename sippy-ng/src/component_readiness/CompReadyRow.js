@@ -3,7 +3,6 @@ import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { Fragment, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { safeEncodeURIComponent } from '../helpers'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import CompReadyCell from './CompReadyCell'
 import PropTypes from 'prop-types'
@@ -29,11 +28,6 @@ export default function CompReadyRow(props) {
   // columnNames is the calculated array of columns
   // filterVals: the parts of the url containing input values
   const { componentName, results, columnNames, filterVals, grayFactor } = props
-
-  const [componentParam, setComponentParam] = useQueryParam(
-    'component',
-    StringParam
-  )
 
   // Put the componentName on the left side with a link to a component specific
   // capabilities report.

@@ -4,7 +4,6 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import { Fragment, useContext } from 'react'
 import { Link } from 'react-router-dom'
 import { sortQueryParams } from './CompReadyUtils'
-import { StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import CompReadyCapsCell from './CompReadyCapsCell'
 import PropTypes from 'prop-types'
@@ -23,11 +22,6 @@ export default function CompCapRow(props) {
   // filterVals: the parts of the url containing input values
   const { capabilityName, results, columnNames, filterVals, environment } =
     props
-
-  const [capabilityParam, setCapabilityParam] = useQueryParam(
-    'capability',
-    StringParam
-  )
 
   const { expandEnvironment } = useContext(CompReadyVarsContext)
 
