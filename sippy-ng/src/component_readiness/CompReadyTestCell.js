@@ -41,15 +41,19 @@ export default function CompReadyTestCell(props) {
           textAlign: 'center',
         }}
       >
-        <a
-          href={generateTestDetailsReportLink(
-            regressedTest,
-            filterVals,
-            expandEnvironment
-          )}
-        >
+        {regressedTest ? (
+          <a
+            href={generateTestDetailsReportLink(
+              regressedTest,
+              filterVals,
+              expandEnvironment
+            )}
+          >
+            <CompSeverityIcon status={status} />
+          </a>
+        ) : (
           <CompSeverityIcon status={status} />
-        </a>
+        )}
       </TableCell>
     )
   }
@@ -59,5 +63,5 @@ CompReadyTestCell.propTypes = {
   status: PropTypes.number.isRequired,
   environment: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
-  regressedTest: PropTypes.object.isRequired,
+  regressedTest: PropTypes.object,
 }
