@@ -19,9 +19,6 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-	"github.com/openshift/sippy/pkg/api/jobartifacts"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,10 +30,16 @@ import (
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
+	"github.com/openshift/sippy/pkg/api/jobartifacts"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/mcp"
+
 	"github.com/openshift/sippy/pkg/ai"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/andygrunwald/go-jira"
+
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
@@ -1771,6 +1774,9 @@ func (s *Server) Serve() {
 		http.Redirect(w, req, "/sippy-ng/", http.StatusMovedPermanently)
 	}).Methods(http.MethodGet)
 
+	// Setup MCP Server
+	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db)
+
 	type apiEndpoints struct {
 		EndpointPath string                                       `json:"path"`
 		Description  string                                       `json:"description"`
@@ -1782,6 +1788,12 @@ func (s *Server) Serve() {
 
 	var endpoints []apiEndpoints
 	endpoints = []apiEndpoints{
+		{
+			EndpointPath: "/mcp/v1/",
+			Description:  "Handles MCP Requests",
+			Capabilities: []string{},
+			HandlerFunc:  http.StripPrefix("/mcp/v1", mcpServer.Handler()).ServeHTTP,
+		},
 		{
 			EndpointPath: "/api",
 			Description:  "API docs",
