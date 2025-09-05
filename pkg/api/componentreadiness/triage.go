@@ -3,8 +3,10 @@ package componentreadiness
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -377,6 +379,152 @@ func calculateConfidenceLevel(match PotentialMatch) int {
 	}
 
 	return score
+}
+
+func getAuditLogsForTriageID(dbc *gorm.DB, triageID int) ([]models.AuditLog, error) {
+	var auditLogs []models.AuditLog
+	res := dbc.Where("table_name = 'triage' and row_id = ?", triageID).Order("created_at DESC").Find(&auditLogs)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	return auditLogs, nil
+}
+
+// TriageAuditLog represents an audit log with processed change data
+type TriageAuditLog struct {
+	Operation string        `json:"operation"`
+	Changes   []FieldChange `json:"changes,omitempty"`
+	User      string        `json:"user"`
+	CreatedAt time.Time     `json:"created_at"`
+}
+
+// FieldChange represents a change to a specific field
+type FieldChange struct {
+	FieldName string `json:"field_name"`
+	Original  string `json:"original"`
+	Modified  string `json:"modified"`
+}
+
+// newFieldChange creates a new FieldChange with the given parameters
+func newFieldChange(fieldName, original, modified string) FieldChange {
+	return FieldChange{
+		FieldName: fieldName,
+		Original:  original,
+		Modified:  modified,
+	}
+}
+
+// compareTriageObjects compares two Triage objects and returns a list of field changes.
+// It only checks the fields that a user can change, and we care about.
+func compareTriageObjects(oldTriage, newTriage *models.Triage) []FieldChange {
+	var changes []FieldChange
+
+	if oldTriage.URL != newTriage.URL {
+		changes = append(changes, newFieldChange("url", oldTriage.URL, newTriage.URL))
+	}
+
+	if oldTriage.Description != newTriage.Description {
+		changes = append(changes, newFieldChange("description", oldTriage.Description, newTriage.Description))
+	}
+
+	if oldTriage.Type != newTriage.Type {
+		changes = append(changes, newFieldChange("type", string(oldTriage.Type), string(newTriage.Type)))
+	}
+
+	if oldTriage.Resolved != newTriage.Resolved {
+		var oldResolved, newResolved string
+		if oldTriage.Resolved.Valid {
+			oldResolved = oldTriage.Resolved.Time.String()
+		}
+		if newTriage.Resolved.Valid {
+			newResolved = newTriage.Resolved.Time.String()
+		}
+
+		changes = append(changes, newFieldChange("resolved", oldResolved, newResolved))
+	}
+
+	var oldBugID, newBugID string
+	if oldTriage.BugID != nil {
+		oldBugID = fmt.Sprintf("%v", *oldTriage.BugID)
+	}
+	if newTriage.BugID != nil {
+		newBugID = fmt.Sprintf("%v", *newTriage.BugID)
+	}
+
+	if oldBugID != newBugID {
+		changes = append(changes, newFieldChange("bug_id", oldBugID, newBugID))
+	}
+
+	// Compare regressions by extracting just the IDs, and sorting them as order doesn't matter for comparison
+	oldRegressionIDs := make([]uint, len(oldTriage.Regressions))
+	for i, reg := range oldTriage.Regressions {
+		oldRegressionIDs[i] = reg.ID
+	}
+	slices.Sort(oldRegressionIDs)
+
+	newRegressionIDs := make([]uint, len(newTriage.Regressions))
+	for i, reg := range newTriage.Regressions {
+		newRegressionIDs[i] = reg.ID
+	}
+	slices.Sort(newRegressionIDs)
+
+	if !slices.Equal(oldRegressionIDs, newRegressionIDs) {
+		var oldRegressionsStr, newRegressionsStr string
+		if len(oldRegressionIDs) > 0 {
+			oldRegressionsStr = fmt.Sprintf("%v", oldRegressionIDs)
+		}
+		if len(newRegressionIDs) > 0 {
+			newRegressionsStr = fmt.Sprintf("%v", newRegressionIDs)
+		}
+		changes = append(changes, newFieldChange("regressions", oldRegressionsStr, newRegressionsStr))
+	}
+
+	return changes
+}
+
+// GetTriageAuditDetails processes audit logs for a triage and returns response-ready audit log data
+func GetTriageAuditDetails(dbc *gorm.DB, triageID int) ([]TriageAuditLog, error) {
+	auditLogs, err := getAuditLogsForTriageID(dbc, triageID)
+	if err != nil {
+		return nil, err
+	}
+
+	var responseAuditLogs []TriageAuditLog
+	for _, auditLog := range auditLogs {
+		response := TriageAuditLog{
+			Operation: auditLog.Operation,
+			User:      auditLog.User,
+			CreatedAt: auditLog.CreatedAt,
+		}
+
+		switch models.OperationType(auditLog.Operation) {
+		case models.Create:
+			var newTriage models.Triage
+			if err = json.Unmarshal(auditLog.NewData, &newTriage); err != nil {
+				return nil, fmt.Errorf("error unmarshalling new data: %w", err)
+			}
+			response.Changes = compareTriageObjects(&models.Triage{}, &newTriage)
+		case models.Delete:
+			var oldTriage models.Triage
+			if err = json.Unmarshal(auditLog.OldData, &oldTriage); err != nil {
+				return nil, fmt.Errorf("error unmarshalling old data: %w", err)
+			}
+			response.Changes = compareTriageObjects(&oldTriage, &models.Triage{})
+		case models.Update:
+			var oldTriage, newTriage models.Triage
+			if err = json.Unmarshal(auditLog.OldData, &oldTriage); err != nil {
+				return nil, fmt.Errorf("error unmarshalling old data: %w", err)
+			}
+			if err = json.Unmarshal(auditLog.NewData, &newTriage); err != nil {
+				return nil, fmt.Errorf("error unmarshalling new data: %w", err)
+			}
+			response.Changes = compareTriageObjects(&oldTriage, &newTriage)
+		}
+
+		responseAuditLogs = append(responseAuditLogs, response)
+	}
+
+	return responseAuditLogs, nil
 }
 
 // injectHATEOASLinks adds restful links clients can follow for this triage record.

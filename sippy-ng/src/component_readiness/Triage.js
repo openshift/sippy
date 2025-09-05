@@ -12,6 +12,7 @@ import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableRow from '@mui/material/TableRow'
+import TriageAuditLogsModal from './TriageAuditLogsModal'
 import TriagedRegressionTestList from './TriagedRegressionTestList'
 import TriagePotentialMatches from './TriagePotentialMatches'
 import UpsertTriageModal from './UpsertTriageModal'
@@ -102,23 +103,26 @@ export default function Triage({ id }) {
         mb={2}
       >
         <h2 style={{ margin: 0 }}>Triage Details</h2>
-        {triageEnabled && (
-          <Box>
-            <UpsertTriageModal
-              triage={triage}
-              buttonText={'Update'}
-              setComplete={setIsUpdated}
-            />
-            <Button
-              onClick={deleteTriage}
-              variant="contained"
-              color="secondary"
-              sx={{ marginLeft: '10px' }}
-            >
-              Delete
-            </Button>
-          </Box>
-        )}
+        <Box>
+          {localDBEnabled && <TriageAuditLogsModal triageId={id} />}
+          {triageEnabled && (
+            <Fragment>
+              <UpsertTriageModal
+                triage={triage}
+                buttonText={'Update'}
+                setComplete={setIsUpdated}
+              />
+              <Button
+                onClick={deleteTriage}
+                variant="contained"
+                color="secondary"
+                sx={{ marginLeft: '10px' }}
+              >
+                Delete
+              </Button>
+            </Fragment>
+          )}
+        </Box>
       </Box>
       <Table>
         <TableBody>

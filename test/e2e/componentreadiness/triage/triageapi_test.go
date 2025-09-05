@@ -337,6 +337,136 @@ func Test_TriageAPI(t *testing.T) {
 		require.NoError(t, err, "OldData should be valid JSON")
 		assertTriageDataMatches(t, originalTriage, oldTriageData, "OldData")
 	})
+
+	t.Run("audit endpoint returns full lifecycle operations", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create a triage
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/OCPBUGS-8888",
+			Description: "Initial description for audit test",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: testRegression1.ID},
+			},
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.NoError(t, err)
+		require.True(t, triageResponse.ID > 0)
+
+		// Small delay to ensure different timestamps
+		time.Sleep(10 * time.Millisecond)
+
+		// Update the triage
+		triageResponse.Description = "Updated description for audit test"
+		triageResponse.Type = models.TriageTypeCIInfra
+		triageResponse.Regressions = append(triageResponse.Regressions, models.TestRegression{ID: testRegression2.ID})
+
+		var updatedTriageResponse models.Triage
+		err = util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &updatedTriageResponse)
+		require.NoError(t, err)
+
+		// Small delay to ensure different timestamps
+		time.Sleep(10 * time.Millisecond)
+
+		// Delete the triage
+		err = util.SippyDelete(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID))
+		require.NoError(t, err)
+
+		// Call the audit endpoint
+		var auditLogs []componentreadiness.TriageAuditLog
+		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d/audit", triageResponse.ID), &auditLogs)
+		require.NoError(t, err)
+
+		// Verify we have exactly 3 audit log entries (create, update, delete)
+		require.Len(t, auditLogs, 3, "Should have exactly 3 audit log entries")
+
+		// Ensure most recent first
+		require.True(t, auditLogs[0].CreatedAt.After(auditLogs[1].CreatedAt), "Audit logs should be ordered by creation time (newest first)")
+		require.True(t, auditLogs[1].CreatedAt.After(auditLogs[2].CreatedAt), "Audit logs should be ordered by creation time (newest first)")
+
+		// Verify DELETE operation (most recent)
+		deleteLog := auditLogs[0]
+		assert.Equal(t, "DELETE", deleteLog.Operation)
+		assert.Equal(t, "developer", deleteLog.User)
+		assert.NotEmpty(t, deleteLog.Changes, "Delete operation should have changes")
+
+		// Verify DELETE changes show fields going from values to empty
+		deleteChangesByField := make(map[string]componentreadiness.FieldChange)
+		for _, change := range deleteLog.Changes {
+			deleteChangesByField[change.FieldName] = change
+		}
+
+		assert.Contains(t, deleteChangesByField, "url")
+		assert.Equal(t, "https://issues.redhat.com/browse/OCPBUGS-8888", deleteChangesByField["url"].Original)
+		assert.Equal(t, "", deleteChangesByField["url"].Modified)
+
+		assert.Contains(t, deleteChangesByField, "description")
+		assert.Equal(t, "Updated description for audit test", deleteChangesByField["description"].Original)
+		assert.Equal(t, "", deleteChangesByField["description"].Modified)
+
+		assert.Contains(t, deleteChangesByField, "type")
+		assert.Equal(t, "ci-infra", deleteChangesByField["type"].Original)
+		assert.Equal(t, "", deleteChangesByField["type"].Modified)
+
+		// Verify UPDATE operation (middle)
+		updateLog := auditLogs[1]
+		assert.Equal(t, "UPDATE", updateLog.Operation)
+		assert.Equal(t, "developer", updateLog.User)
+		assert.NotEmpty(t, updateLog.Changes, "Update operation should have changes")
+
+		// Verify UPDATE changes show field transitions
+		updateChangesByField := make(map[string]componentreadiness.FieldChange)
+		for _, change := range updateLog.Changes {
+			updateChangesByField[change.FieldName] = change
+		}
+
+		assert.Contains(t, updateChangesByField, "description")
+		assert.Equal(t, "Initial description for audit test", updateChangesByField["description"].Original)
+		assert.Equal(t, "Updated description for audit test", updateChangesByField["description"].Modified)
+
+		assert.Contains(t, updateChangesByField, "type")
+		assert.Equal(t, "product", updateChangesByField["type"].Original)
+		assert.Equal(t, "ci-infra", updateChangesByField["type"].Modified)
+
+		assert.Contains(t, updateChangesByField, "regressions")
+		assert.NotEmpty(t, updateChangesByField["regressions"].Original, "Should show original regression IDs")
+		assert.NotEmpty(t, updateChangesByField["regressions"].Modified, "Should show updated regression IDs")
+
+		// Verify CREATE operation (oldest)
+		createLog := auditLogs[2]
+		assert.Equal(t, "CREATE", createLog.Operation)
+		assert.Equal(t, "developer", createLog.User)
+		assert.NotEmpty(t, createLog.Changes, "Create operation should have changes")
+
+		// Verify CREATE changes show fields going from empty to values
+		createChangesByField := make(map[string]componentreadiness.FieldChange)
+		for _, change := range createLog.Changes {
+			createChangesByField[change.FieldName] = change
+		}
+
+		assert.Contains(t, createChangesByField, "url")
+		assert.Equal(t, "", createChangesByField["url"].Original)
+		assert.Equal(t, "https://issues.redhat.com/browse/OCPBUGS-8888", createChangesByField["url"].Modified)
+
+		assert.Contains(t, createChangesByField, "description")
+		assert.Equal(t, "", createChangesByField["description"].Original)
+		assert.Equal(t, "Initial description for audit test", createChangesByField["description"].Modified)
+
+		assert.Contains(t, createChangesByField, "type")
+		assert.Equal(t, "", createChangesByField["type"].Original)
+		assert.Equal(t, "product", createChangesByField["type"].Modified)
+
+		assert.Contains(t, createChangesByField, "regressions")
+		assert.Equal(t, "", createChangesByField["regressions"].Original)
+		assert.NotEmpty(t, createChangesByField["regressions"].Modified, "Should show created regression IDs")
+
+		// Verify timestamps are in chronological order
+		assert.True(t, createLog.CreatedAt.Before(updateLog.CreatedAt), "Create should be before update")
+		assert.True(t, updateLog.CreatedAt.Before(deleteLog.CreatedAt), "Update should be before delete")
+	})
 }
 
 func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 *models.TestRegression) models.Triage {

@@ -1468,6 +1468,25 @@ func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, r
 	api.RespondWithJSON(http.StatusOK, w, potentialMatches)
 }
 
+func (s *Server) jsonGetTriageAuditDetails(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	idStr := vars["id"]
+
+	triageID, err := strconv.Atoi(idStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
+		return
+	}
+
+	responseAuditLogs, err := componentreadiness.GetTriageAuditDetails(s.db.DB, triageID)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, responseAuditLogs)
+}
+
 func getUserForRequest(req *http.Request) string {
 	user := req.Header.Get("X-Forwarded-User")
 	if user == "" && os.Getenv("DEV_MODE") == "1" {
@@ -2065,6 +2084,13 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodGet},
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonTriagePotentialMatchingRegressions,
+		},
+		{
+			EndpointPath: "/api/component_readiness/triages/{id}/audit",
+			Description:  "Get audit logs for a given triage.",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
+			HandlerFunc:  s.jsonGetTriageAuditDetails,
 		},
 		{
 			EndpointPath: "/api/component_readiness/bugs",

@@ -240,3 +240,156 @@ func TestCalculateConfidenceLevel(t *testing.T) {
 		})
 	}
 }
+
+func TestCompareTriageObjects(t *testing.T) {
+	now := time.Now()
+	resolvedTime := sql.NullTime{Time: now, Valid: true}
+	bugID1 := uint(123)
+	bugID2 := uint(456)
+
+	testCases := []struct {
+		name            string
+		oldTriage       *models.Triage
+		newTriage       *models.Triage
+		expectedChanges []FieldChange
+	}{
+		{
+			name:            "no changes - identical triages",
+			oldTriage:       &models.Triage{URL: "https://issues.redhat.com/browse/OCPBUGS-1234", Description: "test"},
+			newTriage:       &models.Triage{URL: "https://issues.redhat.com/browse/OCPBUGS-1234", Description: "test"},
+			expectedChanges: nil,
+		},
+		{
+			name:      "create operation - empty old triage",
+			oldTriage: &models.Triage{},
+			newTriage: &models.Triage{
+				URL:         "https://issues.redhat.com/browse/OCPBUGS-5678",
+				Description: "New triage",
+				Type:        models.TriageTypeProduct,
+				BugID:       &bugID1,
+				Regressions: []models.TestRegression{{ID: 1}, {ID: 2}},
+			},
+			expectedChanges: []FieldChange{
+				{FieldName: "url", Original: "", Modified: "https://issues.redhat.com/browse/OCPBUGS-5678"},
+				{FieldName: "description", Original: "", Modified: "New triage"},
+				{FieldName: "type", Original: "", Modified: "product"},
+				{FieldName: "bug_id", Original: "", Modified: "123"},
+				{FieldName: "regressions", Original: "", Modified: "[1 2]"},
+			},
+		},
+		{
+			name: "delete operation - empty new triage",
+			oldTriage: &models.Triage{
+				URL:         "https://issues.redhat.com/browse/OCPBUGS-9999",
+				Description: "Old triage",
+				Type:        models.TriageTypeProduct,
+				BugID:       &bugID1,
+				Regressions: []models.TestRegression{{ID: 3}, {ID: 4}},
+			},
+			newTriage: &models.Triage{},
+			expectedChanges: []FieldChange{
+				{FieldName: "url", Original: "https://issues.redhat.com/browse/OCPBUGS-9999", Modified: ""},
+				{FieldName: "description", Original: "Old triage", Modified: ""},
+				{FieldName: "type", Original: "product", Modified: ""},
+				{FieldName: "bug_id", Original: "123", Modified: ""},
+				{FieldName: "regressions", Original: "[3 4]", Modified: ""},
+			},
+		},
+		{
+			name: "update operation - multiple field changes",
+			oldTriage: &models.Triage{
+				URL:         "https://issues.redhat.com/browse/OCPBUGS-1111",
+				Description: "Old description",
+				Type:        models.TriageTypeProduct,
+				BugID:       &bugID1,
+				Regressions: []models.TestRegression{{ID: 1}, {ID: 2}},
+			},
+			newTriage: &models.Triage{
+				URL:         "https://issues.redhat.com/browse/OCPBUGS-2222",
+				Description: "New description",
+				Type:        models.TriageTypeCIInfra,
+				BugID:       &bugID2,
+				Regressions: []models.TestRegression{{ID: 3}, {ID: 4}},
+			},
+			expectedChanges: []FieldChange{
+				{FieldName: "url", Original: "https://issues.redhat.com/browse/OCPBUGS-1111", Modified: "https://issues.redhat.com/browse/OCPBUGS-2222"},
+				{FieldName: "description", Original: "Old description", Modified: "New description"},
+				{FieldName: "type", Original: "product", Modified: "ci-infra"},
+				{FieldName: "bug_id", Original: "123", Modified: "456"},
+				{FieldName: "regressions", Original: "[1 2]", Modified: "[3 4]"},
+			},
+		},
+		{
+			name: "resolved field changes",
+			oldTriage: &models.Triage{
+				URL: "https://issues.redhat.com/browse/OCPBUGS-3333",
+			},
+			newTriage: &models.Triage{
+				URL:      "https://issues.redhat.com/browse/OCPBUGS-3333",
+				Resolved: resolvedTime,
+			},
+			expectedChanges: []FieldChange{
+				{FieldName: "resolved", Original: "", Modified: now.String()},
+			},
+		},
+		{
+			name: "bug ID nil to value",
+			oldTriage: &models.Triage{
+				URL: "https://issues.redhat.com/browse/OCPBUGS-4444",
+			},
+			newTriage: &models.Triage{
+				URL:   "https://issues.redhat.com/browse/OCPBUGS-4444",
+				BugID: &bugID1,
+			},
+			expectedChanges: []FieldChange{
+				{FieldName: "bug_id", Original: "", Modified: "123"},
+			},
+		},
+		{
+			name: "bug ID value to nil",
+			oldTriage: &models.Triage{
+				URL:   "https://issues.redhat.com/browse/OCPBUGS-5555",
+				BugID: &bugID1,
+			},
+			newTriage: &models.Triage{
+				URL: "https://issues.redhat.com/browse/OCPBUGS-5555",
+			},
+			expectedChanges: []FieldChange{
+				{FieldName: "bug_id", Original: "123", Modified: ""},
+			},
+		},
+		{
+			name: "regressions order independence",
+			oldTriage: &models.Triage{
+				URL:         "https://issues.redhat.com/browse/OCPBUGS-6666",
+				Regressions: []models.TestRegression{{ID: 2}, {ID: 1}}, // Different order
+			},
+			newTriage: &models.Triage{
+				URL:         "https://issues.redhat.com/browse/OCPBUGS-6666",
+				Regressions: []models.TestRegression{{ID: 1}, {ID: 2}}, // Different order
+			},
+			expectedChanges: nil, // Should be no changes due to sorting
+		},
+		{
+			name: "empty regressions",
+			oldTriage: &models.Triage{
+				URL:         "https://issues.redhat.com/browse/OCPBUGS-7777",
+				Regressions: []models.TestRegression{{ID: 1}, {ID: 2}},
+			},
+			newTriage: &models.Triage{
+				URL:         "https://issues.redhat.com/browse/OCPBUGS-7777",
+				Regressions: []models.TestRegression{}, // Empty slice
+			},
+			expectedChanges: []FieldChange{
+				{FieldName: "regressions", Original: "[1 2]", Modified: ""},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := compareTriageObjects(tc.oldTriage, tc.newTriage)
+			assert.Equal(t, tc.expectedChanges, result, "Expected changes should match actual changes")
+		})
+	}
+}
