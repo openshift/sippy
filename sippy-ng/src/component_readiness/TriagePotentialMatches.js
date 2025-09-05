@@ -17,7 +17,7 @@ import { Close } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import {
-  generateTestReportForRegressedTest,
+  generateTestDetailsReportLink,
   getTriagesAPIUrl,
 } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
@@ -271,7 +271,7 @@ export default function TriagePotentialMatches({
       valueGetter: (params) => {
         const regressedTest = params.row.regressed_test
         const filterVals = `?view=${view}`
-        const testDetailsUrl = generateTestReportForRegressedTest(
+        const testDetailsUrl = generateTestDetailsReportLink(
           regressedTest,
           filterVals,
           expandEnvironment
