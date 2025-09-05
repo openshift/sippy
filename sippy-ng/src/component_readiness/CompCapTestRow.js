@@ -33,7 +33,6 @@ export default function CompCapTestRow(props) {
     </TableCell>
   )
 
-  console.log(regressedTestCols)
   return (
     <Fragment>
       <TableRow>
@@ -44,7 +43,7 @@ export default function CompCapTestRow(props) {
             status={columnVal.status}
             environment={columnNames[idx]}
             filterVals={filterVals}
-            regressedTest={columnVal.regressed_tests[0]}
+            regressedTest={columnVal.regressed_tests?.[0] || null}
           />
         ))}
       </TableRow>
