@@ -19,6 +19,7 @@ import { safeEncodeURIComponent, SafeStringParam } from '../helpers'
 import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
 import React, { createContext, useContext, useEffect, useState } from 'react'
+
 export const CompReadyVarsContext = createContext({})
 
 // Use of booleans in URL params does not seem to parse properly as a BooleanParam.
@@ -86,6 +87,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     samplePRRepo: StringParam,
     samplePRNumber: StringParam,
     samplePayloadTags: ArrayParam,
+    dbGroupBy: StringParam, // This is comma-separated in the URL, e.g. Platform,Architecture,...
     columnGroupBy: StringParam, // This is comma-separated in the URL, e.g. Platform,Network,Architecture
     includeVariant: ArrayParam, // variants selected for inclusion in the basis and sample (unless cross-compared)
     variantCrossCompare: ArrayParam, // variant groups (e.g. "Architecture") selected for cross-variant comparison
@@ -126,9 +128,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const initialBaseEndTime =
     getReleaseDate(defaultBaseRelease).getTime() + 1 * days - 1 * seconds
 
-  // Create the variables for the URL and set any initial values.
-
-  // Create the variables to be used for api calls; these are initialized to the
+  // Create the variables to be used for UI URLs or api calls; these are initialized to the
   // value of the variables that got their values from the URL.
   const [columnGroupByCheckedItems, setColumnGroupByCheckedItems] =
     React.useState(() =>
@@ -136,6 +136,21 @@ export const CompReadyVarsProvider = ({ children }) => {
         ? params.columnGroupBy.split(',')
         : ['Platform', 'Architecture', 'Network']
     )
+
+  const [dbGroupByVariants, setDbGroupByVariants] = React.useState(
+    params.dbGroupBy
+      ? params.dbGroupBy.split(',')
+      : [
+          'Platform',
+          'Architecture',
+          'Network',
+          'Topology',
+          'FeatureSet',
+          'Upgrade',
+          'Suite',
+          'Installer',
+        ]
+  )
 
   const [baseRelease, setBaseRelease] = React.useState(
     params.baseRelease || defaultBaseRelease
@@ -292,18 +307,6 @@ export const CompReadyVarsProvider = ({ children }) => {
    * Generating the report parameters:
    ****************************************************************************** */
 
-  // dbGroupByVariants defines what variants are used for GroupBy in DB query
-  const dbGroupByVariants = [
-    'Platform',
-    'Architecture',
-    'Network',
-    'Topology',
-    'FeatureSet',
-    'Upgrade',
-    'Suite',
-    'Installer',
-  ]
-
   // This runs when someone pushes the "Generate Report" button.
   // It sets all parameters based on current state; this causes the URL to be updated and page to load with new params.
   const handleGenerateReport = (event, callback) => {
@@ -338,6 +341,7 @@ export const CompReadyVarsProvider = ({ children }) => {
       samplePRRepo,
       samplePRNumber,
       samplePayloadTags,
+      dbGroupBy: dbGroupByVariants.join(','),
       columnGroupBy: columnGroupByCheckedItems.join(','),
       includeVariant: convertVariantItemsToParam(includeVariantsCheckedItems),
       variantCrossCompare: variantCrossCompare,
@@ -370,6 +374,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setColumnGroupByCheckedItems(
       Object.keys(view.variant_options.column_group_by)
     )
+    setDbGroupByVariants(Object.keys(view.variant_options.db_group_by))
 
     if (view.variant_options.hasOwnProperty('include_variants')) {
       setIncludeVariantsCheckedItems(view.variant_options.include_variants)
