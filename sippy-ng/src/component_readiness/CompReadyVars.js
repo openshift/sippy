@@ -52,6 +52,28 @@ const defaultIncludeVariants = [
   'ContainerRuntime:runc',
 ]
 
+// with ReleaseContext, use the list of GA releases and their dates to determine the default base and sample releases.
+function gaReleaseInfo(releases) {
+  const gaReleases = Object.keys(releases.ga_dates)
+  gaReleases.sort(
+    (a, b) => new Date(releases.ga_dates[b]) - new Date(releases.ga_dates[a])
+  )
+  const defaultBaseRelease = gaReleases[0]
+
+  // Find the release after that
+  const nextReleaseIndex = releases.releases.indexOf(defaultBaseRelease) - 1
+  const defaultSampleRelease = releases.releases[nextReleaseIndex]
+
+  const getReleaseDate = (release) => {
+    if (releases.ga_dates && releases.ga_dates[release]) {
+      return new Date(releases.ga_dates[release])
+    }
+
+    return new Date()
+  }
+  return { defaultBaseRelease, defaultSampleRelease, getReleaseDate }
+}
+
 export const CompReadyVarsProvider = ({ children }) => {
   // some state for the actual process of loading data from the API
   const [allJobVariants, setAllJobVariants] = useState([])
@@ -94,25 +116,9 @@ export const CompReadyVarsProvider = ({ children }) => {
     compareVariant: ArrayParam, // individual variants (e.g. "Architecture:arm64") checked for cross-variant comparison
   })
 
-  // Find the most recent GA release
-  const releases = useContext(ReleasesContext)
-  const gaReleases = Object.keys(releases.ga_dates)
-  gaReleases.sort(
-    (a, b) => new Date(releases.ga_dates[b]) - new Date(releases.ga_dates[a])
-  )
-  const defaultBaseRelease = gaReleases[0]
-
-  // Find the release after that
-  const nextReleaseIndex = releases.releases.indexOf(defaultBaseRelease) - 1
-  const defaultSampleRelease = releases.releases[nextReleaseIndex]
-
-  const getReleaseDate = (release) => {
-    if (releases.ga_dates && releases.ga_dates[release]) {
-      return new Date(releases.ga_dates[release])
-    }
-
-    return new Date()
-  }
+  // Find the most recent GA releases
+  const { defaultBaseRelease, defaultSampleRelease, getReleaseDate } =
+    gaReleaseInfo(useContext(ReleasesContext))
   const days = 24 * 60 * 60 * 1000
   const seconds = 1000
   const now = new Date()
