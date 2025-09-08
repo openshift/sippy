@@ -50,7 +50,7 @@ func TestMarshalJSONForAudit(t *testing.T) {
 					},
 				},
 			},
-			expected: `{"id":1,"created_at":"2025-01-02T03:04:05Z","updated_at":"2025-01-02T04:05:06Z","url":"https://issues.redhat.com/browse/OCPBUGS-1234","description":"Example bug","type":"infra","resolved":{"Time":"0001-01-01T00:00:00Z","Valid":false},"regressions":[{"id":42},{"id":100}]}`,
+			expected: `{"id":1,"created_at":"2025-01-02T03:04:05Z","updated_at":"2025-01-02T04:05:06Z","url":"https://issues.redhat.com/browse/OCPBUGS-1234","description":"Example bug","type":"infra","resolved":{"Time":"0001-01-01T00:00:00Z","Valid":false},"resolution_reason":"","regressions":[{"id":42},{"id":100}]}`,
 		},
 		{
 			name: "triage with no regressions",
@@ -61,7 +61,7 @@ func TestMarshalJSONForAudit(t *testing.T) {
 				URL:       "https://issues.redhat.com/browse/OCPBUGS-1234",
 				Type:      TriageType("ci-infra"),
 			},
-			expected: `{"id":2,"created_at":"2025-06-01T00:00:00Z","updated_at":"2025-06-01T01:00:00Z","url":"https://issues.redhat.com/browse/OCPBUGS-1234","type":"ci-infra","resolved":{"Time":"0001-01-01T00:00:00Z","Valid":false},"regressions":[]}`,
+			expected: `{"id":2,"created_at":"2025-06-01T00:00:00Z","updated_at":"2025-06-01T01:00:00Z","url":"https://issues.redhat.com/browse/OCPBUGS-1234","type":"ci-infra","resolved":{"Time":"0001-01-01T00:00:00Z","Valid":false},"resolution_reason":"","regressions":[]}`,
 		},
 		{
 			name: "triage with bug populated, but bug should be omitted from audit json",
@@ -84,7 +84,7 @@ func TestMarshalJSONForAudit(t *testing.T) {
 				},
 				Resolved: sql.NullTime{},
 			},
-			expected: `{"id":3,"created_at":"2023-03-01T12:00:00Z","updated_at":"2023-03-01T13:00:00Z","url":"https://issues.redhat.com/browse/OCPBUGS-1234","type":"test","bug_id":99,"resolved":{"Time":"0001-01-01T00:00:00Z","Valid":false},"regressions":[{"id":100}]}`,
+			expected: `{"id":3,"created_at":"2023-03-01T12:00:00Z","updated_at":"2023-03-01T13:00:00Z","url":"https://issues.redhat.com/browse/OCPBUGS-1234","type":"test","bug_id":99,"resolved":{"Time":"0001-01-01T00:00:00Z","Valid":false},"resolution_reason":"","regressions":[{"id":100}]}`,
 		},
 	}
 

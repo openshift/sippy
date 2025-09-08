@@ -199,6 +199,10 @@ export default function Triage({ id }) {
             </TableCell>
           </TableRow>
           <TableRow>
+            <TableCell>Resolution Reason</TableCell>
+            <TableCell>{triage.resolution_reason}</TableCell>
+          </TableRow>
+          <TableRow>
             <TableCell>Jira</TableCell>
             <TableCell>
               <SecureLink address={triage.url}>{displayUrl}</SecureLink>

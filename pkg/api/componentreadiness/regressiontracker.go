@@ -135,6 +135,7 @@ func (prs *PostgresRegressionStore) ResolveTriages() error {
 		}
 
 		triage.Resolved = mostRecentClosedRegression.Closed
+		triage.ResolutionReason = models.RegressionsRolledOff
 		dbWithContext := prs.dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "regression-tracker"))
 		res = dbWithContext.Save(&triage)
 		if res.Error != nil {

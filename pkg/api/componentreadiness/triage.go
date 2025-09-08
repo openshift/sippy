@@ -159,6 +159,15 @@ func UpdateTriage(dbc *gorm.DB, triage models.Triage) (models.Triage, error) {
 		return triage, err
 	}
 
+	// If the resolution has been set/modified set the reason to "user"
+	if existingTriage.Resolved.Time != triage.Resolved.Time {
+		triage.ResolutionReason = models.User
+	}
+	// If the triage is unresolved, make sure the reason is unset
+	if !triage.Resolved.Valid {
+		triage.ResolutionReason = ""
+	}
+
 	// If we have a bug in the db matching the url we were given, link them up now.
 	// If not, this should be handled later during the next fetchdata cron job.
 	var bug models.Bug
@@ -449,6 +458,10 @@ func compareTriageObjects(oldTriage, newTriage *models.Triage) []FieldChange {
 		}
 
 		changes = append(changes, newFieldChange("resolved", oldResolved, newResolved))
+	}
+
+	if oldTriage.ResolutionReason != newTriage.ResolutionReason {
+		changes = append(changes, newFieldChange("resolution_reason", string(oldTriage.ResolutionReason), string(newTriage.ResolutionReason)))
 	}
 
 	var oldBugID, newBugID string
