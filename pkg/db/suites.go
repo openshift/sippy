@@ -27,6 +27,8 @@ var testSuites = []string{
 	// ARO
 	"integration/parallel",
 	"stage/parallel",
+	"prod/parallel",
+	"aro-hcp-tests",
 
 	// ROSA
 	"OSD e2e suite",
