@@ -1,10 +1,6 @@
 import './ComponentReadiness.css'
 import { CompReadyVarsContext } from './CompReadyVars'
-import {
-  dateFormat,
-  formatLongDate,
-  getUpdatedUrlParts,
-} from './CompReadyUtils'
+import { dateFormat, formatLongDate } from './CompReadyUtils'
 import { makeStyles, useTheme } from '@mui/styles'
 import { useNavigate } from 'react-router-dom'
 import AdvancedOptions from './AdvancedOptions'
@@ -149,13 +145,7 @@ export default function CompReadyMainInputs(props) {
           size="large"
           variant="contained"
           color="primary"
-          onClick={(event) => {
-            varsContext.handleGenerateReport(event, () => {
-              navigate(
-                '/component_readiness/main' + getUpdatedUrlParts(varsContext)
-              )
-            })
-          }}
+          onClick={(event) => varsContext.handleGenerateReport(event)}
         >
           <Tooltip
             title={

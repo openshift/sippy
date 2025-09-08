@@ -57,7 +57,7 @@ export default function CompReadyEnvCapabilities(props) {
     'Sippy > Component Readiness > Capabilities' +
     (environment ? ` by Environment` : '')
 
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
+  const { expandEnvironment, urlParams } = useContext(CompReadyVarsContext)
   const safeComponent = safeEncodeURIComponent(component)
 
   let apiCallStr =
@@ -71,9 +71,10 @@ export default function CompReadyEnvCapabilities(props) {
 
   useEffect(() => {
     setIsLoaded(false)
+    if (!component) return // wait until the vars are initialized from params
     fetchData()
     setTriageActionTaken(false)
-  }, [triageActionTaken])
+  }, [triageActionTaken, component, urlParams])
 
   const fetchData = (fresh) => {
     if (fresh) {

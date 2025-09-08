@@ -137,58 +137,18 @@ export const CompReadyVarsProvider = ({ children }) => {
   // Create the variables to be used for UI URLs or api calls; these are initialized to the
   // value of the variables that got their values from the URL.
   const [columnGroupByCheckedItems, setColumnGroupByCheckedItems] =
-    React.useState(() =>
-      params.columnGroupBy
-        ? params.columnGroupBy.split(',')
-        : ['Platform', 'Architecture', 'Network']
-    )
-
-  const [dbGroupByVariants, setDbGroupByVariants] = React.useState(
-    params.dbGroupBy
-      ? params.dbGroupBy.split(',')
-      : [
-          'Platform',
-          'Architecture',
-          'Network',
-          'Topology',
-          'FeatureSet',
-          'Upgrade',
-          'Suite',
-          'Installer',
-        ]
-  )
-
-  const [baseRelease, setBaseRelease] = React.useState(
-    params.baseRelease || defaultBaseRelease
-  )
-
-  const [sampleRelease, setSampleRelease] = React.useState(
-    params.sampleRelease || defaultSampleRelease
-  )
-
-  const [baseStartTime, setBaseStartTime] = React.useState(
-    params.baseStartTime || formatLongDate(initialBaseStartTime, dateFormat)
-  )
-
-  const [baseEndTime, setBaseEndTime] = React.useState(
-    params.baseEndTime || formatLongDate(initialBaseEndTime, dateEndFormat)
-  )
-
-  const [sampleStartTime, setSampleStartTime] = React.useState(
-    params.sampleStartTime || formatLongDate(initialSampleStartTime, dateFormat)
-  )
-  const [sampleEndTime, setSampleEndTime] = React.useState(
-    params.sampleEndTime || formatLongDate(initialSampleEndTime, dateEndFormat)
-  )
-
-  const [samplePROrg, setSamplePROrg] = React.useState(params.samplePROrg)
-  const [samplePRRepo, setSamplePRRepo] = React.useState(params.samplePRRepo)
-  const [samplePRNumber, setSamplePRNumber] = React.useState(
-    params.samplePRNumber
-  )
-  const [samplePayloadTags, setSamplePayloadTags] = React.useState(
-    params.samplePayloadTags || []
-  )
+    React.useState([])
+  const [dbGroupByVariants, setDbGroupByVariants] = React.useState([])
+  const [baseRelease, setBaseRelease] = React.useState('')
+  const [sampleRelease, setSampleRelease] = React.useState('')
+  const [baseStartTime, setBaseStartTime] = React.useState('')
+  const [baseEndTime, setBaseEndTime] = React.useState('')
+  const [sampleStartTime, setSampleStartTime] = React.useState('')
+  const [sampleEndTime, setSampleEndTime] = React.useState('')
+  const [samplePROrg, setSamplePROrg] = React.useState('')
+  const [samplePRRepo, setSamplePRRepo] = React.useState('')
+  const [samplePRNumber, setSamplePRNumber] = React.useState('')
+  const [samplePayloadTags, setSamplePayloadTags] = React.useState([])
 
   const setBaseReleaseWithDates = (event) => {
     let release = event.target.value
@@ -213,28 +173,20 @@ export const CompReadyVarsProvider = ({ children }) => {
   /** some state variables and related handlers for managing the display of variants in the UI **/
   // The grouped variants that have been selected for inclusion in the basis and sample (unless they are in the cross-compare list)
   const [includeVariantsCheckedItems, setIncludeVariantsCheckedItems] =
-    useState(
-      convertParamToVariantItems(
-        params.includeVariant || defaultIncludeVariants
-      )
-    )
+    useState({})
   const replaceIncludeVariantsCheckedItems = (variant, checkedItems) => {
     includeVariantsCheckedItems[variant] = checkedItems
-    // this state stuff seems redundant but when omitted, params don't update reliably
     setIncludeVariantsCheckedItems(includeVariantsCheckedItems)
   }
   // The list of individual variants (e.g. "Architecture:arm64") that are checked for cross-variant comparison
   const [compareVariantsCheckedItems, setCompareVariantsCheckedItems] =
-    useState(convertParamToVariantItems(params.compareVariant || []))
+    useState([])
   const replaceCompareVariantsCheckedItems = (variant, checkedItems) => {
     compareVariantsCheckedItems[variant] = checkedItems
-    // this state stuff seems redundant but when omitted, params don't update reliably
     setCompareVariantsCheckedItems(compareVariantsCheckedItems)
   }
   // The list of variant groups (e.g. "Architecture") that have been selected for cross-variant comparison
-  const [variantCrossCompare, setVariantCrossCompare] = useState(
-    params.variantCrossCompare || []
-  )
+  const [variantCrossCompare, setVariantCrossCompare] = useState([])
   // This is run when the user (un)selects a variant group (e.g. "Platform") for cross-variant comparison.
   const updateVariantCrossCompare = (variantGroupName, isCompareMode) => {
     setVariantCrossCompare(
@@ -248,66 +200,127 @@ export const CompReadyVarsProvider = ({ children }) => {
    * All things related to the "Advanced" section
    ******************************************************** */
 
-  const [confidence, setConfidence] = React.useState(params.confidence || 95)
-  const [pity, setPity] = React.useState(params.pity || 5)
-  const [minFail, setMinFail] = React.useState(params.minFail || 3)
-  const [passRateNewTests, setPassRateNewTests] = React.useState(
-    params.passRateNewTests || 0
-  )
-  const [passRateAllTests, setPassRateAllTests] = React.useState(
-    params.passRateAllTests || 0
-  )
+  const [confidence, setConfidence] = React.useState(0)
+  const [pity, setPity] = React.useState(0)
+  const [minFail, setMinFail] = React.useState(0)
+  const [passRateNewTests, setPassRateNewTests] = React.useState(0)
+  const [passRateAllTests, setPassRateAllTests] = React.useState(0)
 
-  // for the two boolean values here, we need the || false because otherwise
-  // the value will be null.
-  const [ignoreMissing, setIgnoreMissing] = React.useState(
-    params.ignoreMissing || false
-  )
-  const [ignoreDisruption, setIgnoreDisruption] = React.useState(
-    params.ignoreDisruption || true
-  )
-
-  const [flakeAsFailure, setFlakeAsFailure] = React.useState(
-    params.flakeAsFailure || false
-  )
-
+  const [ignoreMissing, setIgnoreMissing] = React.useState(false)
+  const [ignoreDisruption, setIgnoreDisruption] = React.useState(false)
+  const [flakeAsFailure, setFlakeAsFailure] = React.useState(false)
   const [includeMultiReleaseAnalysis, setIncludeMultiReleaseAnalysis] =
-    React.useState(params.includeMultiReleaseAnalysis)
+    React.useState(false)
   /******************************************************************************
    * Parameters that are used to refine the query as the user drills down into CR
    ****************************************************************************** */
 
-  const [component, setComponent] = React.useState(params.component)
-  if (component !== params.component) {
+  const [component, setComponent] = React.useState(undefined)
+  const [environment, setEnvironment] = React.useState(undefined)
+  const [capability, setCapability] = React.useState(undefined)
+  const [testId, setTestId] = React.useState(undefined)
+  const [testName, setTestName] = React.useState(undefined)
+  const [testBasisRelease, setTestBasisRelease] = React.useState(undefined)
+
+  // at initialization and whenever URL params change, update the state variables to match the URL and view.
+  useEffect(() => {
+    // Initialize pity
+    setPity(params.pity || 5)
+
+    // Initialize columnGroupByCheckedItems
+    setColumnGroupByCheckedItems(
+      params.columnGroupBy
+        ? params.columnGroupBy.split(',')
+        : ['Platform', 'Architecture', 'Network']
+    )
+
+    // Initialize dbGroupByVariants
+    setDbGroupByVariants(
+      params.dbGroupBy
+        ? params.dbGroupBy.split(',')
+        : [
+            'Platform',
+            'Architecture',
+            'Network',
+            'Topology',
+            'FeatureSet',
+            'Upgrade',
+            'Suite',
+            'Installer',
+          ]
+    )
+
+    // Initialize baseRelease
+    setBaseRelease(params.baseRelease || defaultBaseRelease)
+
+    // Initialize sampleRelease
+    setSampleRelease(params.sampleRelease || defaultSampleRelease)
+
+    // Initialize baseStartTime
+    setBaseStartTime(
+      params.baseStartTime || formatLongDate(initialBaseStartTime, dateFormat)
+    )
+
+    // Initialize baseEndTime
+    setBaseEndTime(
+      params.baseEndTime || formatLongDate(initialBaseEndTime, dateEndFormat)
+    )
+
+    // Initialize sampleStartTime
+    setSampleStartTime(
+      params.sampleStartTime ||
+        formatLongDate(initialSampleStartTime, dateFormat)
+    )
+
+    // Initialize sampleEndTime
+    setSampleEndTime(
+      params.sampleEndTime ||
+        formatLongDate(initialSampleEndTime, dateEndFormat)
+    )
+
+    // Initialize samplePR related fields
+    setSamplePROrg(params.samplePROrg || '')
+    setSamplePRRepo(params.samplePRRepo || '')
+    setSamplePRNumber(params.samplePRNumber || '')
+    setSamplePayloadTags(params.samplePayloadTags || [])
+
+    // Initialize includeVariantsCheckedItems
+    setIncludeVariantsCheckedItems(
+      convertParamToVariantItems(
+        params.includeVariant || defaultIncludeVariants
+      )
+    )
+
+    // Initialize compareVariantsCheckedItems
+    setCompareVariantsCheckedItems(
+      convertParamToVariantItems(params.compareVariant || [])
+    )
+
+    // Initialize variantCrossCompare
+    setVariantCrossCompare(params.variantCrossCompare || [])
+
+    // Initialize advanced section fields
+    setConfidence(params.confidence || 95)
+    setMinFail(params.minFail || 3)
+    setPassRateNewTests(params.passRateNewTests || 0)
+    setPassRateAllTests(params.passRateAllTests || 0)
+
+    // Initialize boolean fields
+    setIgnoreMissing(params.ignoreMissing || false)
+    setIgnoreDisruption(params.ignoreDisruption || true)
+    setFlakeAsFailure(params.flakeAsFailure || false)
+    setIncludeMultiReleaseAnalysis(params.includeMultiReleaseAnalysis || false)
+
+    // Initialize drill-down parameters
     setComponent(params.component)
-  }
-
-  const [environment, setEnvironment] = React.useState(params.environment)
-  if (environment !== params.environment) {
     setEnvironment(params.environment)
-  }
-
-  const [capability, setCapability] = React.useState(params.capability)
-  if (capability !== params.capability) {
     setCapability(params.capability)
-  }
-
-  const [testId, setTestId] = React.useState(params.testId)
-  if (testId !== params.testId) {
     setTestId(params.testId)
-  }
-
-  const [testName, setTestName] = React.useState(params.testName)
-  if (testName !== params.testName) {
     setTestName(params.testName)
-  }
-
-  const [testBasisRelease, setTestBasisRelease] = React.useState(
-    params.testBasisRelease
-  )
-  if (testBasisRelease !== params.testBasisRelease) {
     setTestBasisRelease(params.testBasisRelease)
-  }
+
+    updateVarsFromView(params.view, views)
+  }, [params])
 
   /******************************************************************************
    * Generating the report parameters:
@@ -320,8 +333,9 @@ export const CompReadyVarsProvider = ({ children }) => {
       event.preventDefault()
     }
 
-    // "Generate report" button was pressed, omit "view" param while specifying all others
+    // "Generate report" button was pressed, unset "view" while specifying all other params
     setParams({
+      view: undefined,
       baseRelease,
       baseStartTime: formatLongDate(baseStartTime, dateFormat),
       baseEndTime: formatLongDate(baseEndTime, dateEndFormat),
@@ -353,11 +367,6 @@ export const CompReadyVarsProvider = ({ children }) => {
       variantCrossCompare: variantCrossCompare,
       compareVariant: convertVariantItemsToParam(compareVariantsCheckedItems),
     })
-
-    // Execute callback after a short delay to allow URL params to update
-    if (callback) {
-      setTimeout(callback, 100)
-    }
   }
 
   // syncView updates all vars and thus their respective inputs to match a server side view that was
@@ -368,6 +377,14 @@ export const CompReadyVarsProvider = ({ children }) => {
       nonView[key] = undefined
     }
     setParams({ ...nonView, view: view.name })
+    updateVarsFromView(view.name, views)
+  }
+
+  const updateVarsFromView = (viewName, loadedViews = []) => {
+    if (params.view === undefined || loadedViews.length === 0) return
+    // A view query param was requested and we have our views list; sync the controls to match:
+    let view = loadedViews.find((v) => v.name === viewName)
+    if (!view) return // TODO: alert when view not found in loaded views?
 
     setBaseRelease(view.base_release.release)
     setBaseStartTime(formatLongDate(view.base_release.start, dateFormat))
@@ -382,47 +399,32 @@ export const CompReadyVarsProvider = ({ children }) => {
     )
     setDbGroupByVariants(Object.keys(view.variant_options.db_group_by))
 
-    if (view.variant_options.hasOwnProperty('include_variants')) {
+    if (view.variant_options.hasOwnProperty('include_variants'))
       setIncludeVariantsCheckedItems(view.variant_options.include_variants)
-    }
-    if (view.variant_options.hasOwnProperty('variant_cross_compare')) {
+    if (view.variant_options.hasOwnProperty('variant_cross_compare'))
       setVariantCrossCompare(view.variant_options.variant_cross_compare)
-    }
-    if (view.variant_options.hasOwnProperty('compare_variants')) {
+    if (view.variant_options.hasOwnProperty('compare_variants'))
       setCompareVariantsCheckedItems(view.variant_options.compare_variants)
-    }
-
-    if (view.advanced_options.hasOwnProperty('confidence')) {
+    if (view.advanced_options.hasOwnProperty('confidence'))
       setConfidence(view.advanced_options.confidence)
-    }
-    if (view.advanced_options.hasOwnProperty('pity_factor')) {
+    if (view.advanced_options.hasOwnProperty('pity_factor'))
       setPity(view.advanced_options.pity_factor)
-    }
-    if (view.advanced_options.hasOwnProperty('minimum_failure')) {
+    if (view.advanced_options.hasOwnProperty('minimum_failure'))
       setMinFail(view.advanced_options.minimum_failure)
-    }
-    if (view.advanced_options.hasOwnProperty('pass_rate_required_new_tests')) {
+    if (view.advanced_options.hasOwnProperty('pass_rate_required_new_tests'))
       setPassRateNewTests(view.advanced_options.pass_rate_required_new_tests)
-    }
-    if (view.advanced_options.hasOwnProperty('pass_rate_required_all_tests')) {
+    if (view.advanced_options.hasOwnProperty('pass_rate_required_all_tests'))
       setPassRateAllTests(view.advanced_options.pass_rate_required_all_tests)
-    }
-    if (view.advanced_options.hasOwnProperty('ignore_disruption')) {
+    if (view.advanced_options.hasOwnProperty('ignore_disruption'))
       setIgnoreDisruption(view.advanced_options.ignore_disruption)
-    }
-    if (view.advanced_options.hasOwnProperty('ignore_missing')) {
+    if (view.advanced_options.hasOwnProperty('ignore_missing'))
       setIgnoreMissing(view.advanced_options.ignore_missing)
-    }
-    if (view.advanced_options.hasOwnProperty('flake_as_failure')) {
+    if (view.advanced_options.hasOwnProperty('flake_as_failure'))
       setFlakeAsFailure(view.advanced_options.flake_as_failure)
-    }
-    if (
-      view.advanced_options.hasOwnProperty('include_multi_release_analysis')
-    ) {
+    if (view.advanced_options.hasOwnProperty('include_multi_release_analysis'))
       setIncludeMultiReleaseAnalysis(
         view.advanced_options.include_multi_release_analysis
       )
-    }
   }
 
   useEffect(() => {
@@ -466,14 +468,7 @@ export const CompReadyVarsProvider = ({ children }) => {
             if (!foundView) {
               syncView(views[0])
             }
-          } else if (params.view !== undefined) {
-            // A view query param was requested, sync the controls to match as soon as we receive our views list:
-            views.forEach((v) => {
-              if (v.name === params.view) {
-                syncView(v)
-              }
-            })
-          }
+          } else updateVarsFromView(params.view, views)
         }
         setIsLoaded(true)
       })

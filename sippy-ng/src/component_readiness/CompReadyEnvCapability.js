@@ -60,7 +60,7 @@ export default function CompReadyEnvCapability(props) {
   const safeComponent = safeEncodeURIComponent(component)
   const safeCapability = safeEncodeURIComponent(capability)
 
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
+  const { expandEnvironment, urlParams } = useContext(CompReadyVarsContext)
   let apiCallStr =
     getCRMainAPIUrl() +
     makeRFC3339Time(filterVals) +
@@ -70,9 +70,10 @@ export default function CompReadyEnvCapability(props) {
 
   useEffect(() => {
     setIsLoaded(false)
+    if (!capability) return // wait until var is defined
     fetchData()
     setTriageActionTaken(false)
-  }, [triageActionTaken])
+  }, [triageActionTaken, urlParams, capability])
 
   const fetchData = (fresh) => {
     if (fresh) {

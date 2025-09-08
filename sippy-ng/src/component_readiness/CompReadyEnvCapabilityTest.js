@@ -107,7 +107,7 @@ export default function CompReadyEnvCapabilityTest(props) {
   const safeCapability = safeEncodeURIComponent(capability)
   const safeTestId = safeEncodeURIComponent(testId)
 
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
+  const { expandEnvironment, urlParams } = useContext(CompReadyVarsContext)
   let apiCallStr =
     getCRMainAPIUrl() +
     makeRFC3339Time(filterVals) +
@@ -123,9 +123,10 @@ export default function CompReadyEnvCapabilityTest(props) {
 
   useEffect(() => {
     setIsLoaded(false)
+    if (!testId) return // wait until vars are initialized from params
     fetchData()
     setTriageActionTaken(false)
-  }, [triageActionTaken])
+  }, [triageActionTaken, urlParams, testId])
 
   const fetchData = (fresh) => {
     if (fresh) {
