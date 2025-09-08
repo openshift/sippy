@@ -2,6 +2,7 @@ package triage
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -262,6 +263,23 @@ func Test_TriageAPI(t *testing.T) {
 		err := util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &triageResponse2)
 		require.NoError(t, err)
 		assert.Equal(t, 0, len(triageResponse2.Regressions))
+	})
+	t.Run("update to resolve triage sets resolution reason to user", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+
+		// Resolve the triage by setting the Resolved timestamp
+		resolvedTime := time.Now()
+		triageResponse.Resolved = sql.NullTime{Time: resolvedTime, Valid: true}
+
+		var updateResponse models.Triage
+		err := util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID), &triageResponse, &updateResponse)
+		require.NoError(t, err)
+
+		// Verify the triage was resolved and resolution reason was set correctly
+		assert.True(t, updateResponse.Resolved.Valid, "Triage should be marked as resolved")
+		assert.WithinDuration(t, resolvedTime, updateResponse.Resolved.Time, time.Second, "Resolved time should match")
+		assert.Equal(t, models.User, updateResponse.ResolutionReason, "Resolution reason should be set to 'user'")
 	})
 	t.Run("update fails if resource has no ID", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)

@@ -53,7 +53,20 @@ type Triage struct {
 	// Setting this will immediately change the regressions icon to one indicate the issue is believed to
 	// be fixed. If we see failures beyond the resolved time, you will see another icon to highlight this situation.
 	Resolved sql.NullTime `json:"resolved"`
+
+	// ResolutionReason details the cause of the triage being resolved. It will be set by the system, and not be editable
+	// by the user. If the triage is resolved multiple times, this will store the latest reason
+	ResolutionReason resolutionReason `json:"resolution_reason"`
 }
+
+type resolutionReason string
+
+const (
+	User                 resolutionReason = "user"
+	RegressionsRolledOff resolutionReason = "regressions-rolled-off"
+	JiraProgression      resolutionReason = "jira-progression"
+)
+
 type contextKey string
 
 const (

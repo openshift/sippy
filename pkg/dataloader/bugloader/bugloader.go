@@ -238,6 +238,7 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 				Time:  now,
 				Valid: true,
 			}
+			t.ResolutionReason = models.JiraProgression
 			logger.Infof("resolving triage %q (%d) due to bug %q (%d) reaching status %q",
 				t.Description, t.ID, bug.Summary, bug.ID, bug.Status)
 		}
