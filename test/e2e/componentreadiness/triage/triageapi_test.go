@@ -115,6 +115,10 @@ func Test_TriageAPI(t *testing.T) {
 		// ensure hateoas links are present
 		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
 			triageResponse.Links["self"])
+		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/matches", triageResponse.ID),
+			triageResponse.Links["potential_matches"])
+		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/audit", triageResponse.ID),
+			triageResponse.Links["audit_logs"])
 	})
 	t.Run("get with expanded regressions", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
@@ -195,6 +199,10 @@ func Test_TriageAPI(t *testing.T) {
 		for _, triage := range allTriages {
 			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
 				triage.Links["self"])
+			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/matches", triage.ID),
+				triage.Links["potential_matches"])
+			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/audit", triage.ID),
+				triage.Links["audit_logs"])
 		}
 	})
 	t.Run("update to add regression", func(t *testing.T) {
@@ -213,6 +221,10 @@ func Test_TriageAPI(t *testing.T) {
 		// ensure hateoas links are present
 		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse2.ID),
 			triageResponse2.Links["self"])
+		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/matches", triageResponse2.ID),
+			triageResponse2.Links["potential_matches"])
+		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/audit", triageResponse2.ID),
+			triageResponse2.Links["audit_logs"])
 	})
 	t.Run("update to remove a regression", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
@@ -466,6 +478,14 @@ func Test_TriageAPI(t *testing.T) {
 		// Verify timestamps are in chronological order
 		assert.True(t, createLog.CreatedAt.Before(updateLog.CreatedAt), "Create should be before update")
 		assert.True(t, updateLog.CreatedAt.Before(deleteLog.CreatedAt), "Update should be before delete")
+
+		// Verify HATEOAS links are present in audit log responses
+		for _, auditLog := range auditLogs {
+			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/audit", triageResponse.ID),
+				auditLog.Links["self"], "Audit log should have self link")
+			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
+				auditLog.Links["triage"], "Audit log should have triage link")
+		}
 	})
 }
 
@@ -745,6 +765,14 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 
 		// Verify the results
 		assert.True(t, len(potentialMatches) > 0, "Should find some potential matches")
+
+		// Verify HATEOAS links are present in potential match responses
+		for _, match := range potentialMatches {
+			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/matches", triageResponse.ID),
+				match.Links["self"], "Potential match should have self link")
+			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
+				match.Links["triage"], "Potential match should have triage link")
+		}
 
 		// Verify status values are correctly returned for the potential matches
 		statusMap := make(map[uint]crtest.Status)

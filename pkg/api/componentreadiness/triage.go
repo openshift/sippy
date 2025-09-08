@@ -256,6 +256,10 @@ func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.Te
 		// Only add the potential match if it is valid
 		if len(match.SimilarlyNamedTests) > 0 || len(match.SameLastFailures) > 0 {
 			match.ConfidenceLevel = calculateConfidenceLevel(match)
+			match.Links = map[string]string{
+				"self":   fmt.Sprintf(potentialMatchesLink, triage.ID),
+				"triage": fmt.Sprintf(triageLink, triage.ID),
+			}
 			potentialMatches = append(potentialMatches, match)
 		}
 	}
@@ -272,6 +276,8 @@ type PotentialMatch struct {
 	RegressedTest componentreport.ReportTestSummary `json:"regressed_test"`
 	// ConfidenceLevel is a number between 0-10 with a higher number being more likely to be a proper match
 	ConfidenceLevel int `json:"confidence_level"`
+	// Links include HATEOAS links to related resources
+	Links map[string]string `json:"links"`
 }
 
 type SimilarlyNamedTest struct {
@@ -396,6 +402,8 @@ type TriageAuditLog struct {
 	Changes   []FieldChange `json:"changes,omitempty"`
 	User      string        `json:"user"`
 	CreatedAt time.Time     `json:"created_at"`
+	// Links include HATEOAS links to related resources
+	Links map[string]string `json:"links"`
 }
 
 // FieldChange represents a change to a specific field
@@ -495,6 +503,10 @@ func GetTriageAuditDetails(dbc *gorm.DB, triageID int) ([]TriageAuditLog, error)
 			Operation: auditLog.Operation,
 			User:      auditLog.User,
 			CreatedAt: auditLog.CreatedAt,
+			Links: map[string]string{
+				"self":   fmt.Sprintf(auditLogsLink, triageID),
+				"triage": fmt.Sprintf(triageLink, triageID),
+			},
 		}
 
 		switch models.OperationType(auditLog.Operation) {
@@ -527,9 +539,17 @@ func GetTriageAuditDetails(dbc *gorm.DB, triageID int) ([]TriageAuditLog, error)
 	return responseAuditLogs, nil
 }
 
+const (
+	triageLink           = "/api/component_readiness/triages/%d"
+	potentialMatchesLink = "/api/component_readiness/triages/%d/matches"
+	auditLogsLink        = "/api/component_readiness/triages/%d/audit"
+)
+
 // injectHATEOASLinks adds restful links clients can follow for this triage record.
 func injectHATEOASLinks(triage *models.Triage) {
 	triage.Links = map[string]string{
-		"self": fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
+		"self":              fmt.Sprintf(triageLink, triage.ID),
+		"potential_matches": fmt.Sprintf(potentialMatchesLink, triage.ID),
+		"audit_logs":        fmt.Sprintf(auditLogsLink, triage.ID),
 	}
 }
