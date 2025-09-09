@@ -14,16 +14,18 @@ import {
 } from '@mui/icons-material'
 import { BOOKMARKS } from '../constants'
 import { CapabilitiesContext } from '../App'
+import { LaunderedListItem } from './SecureLink'
 import { Link, useLocation } from 'react-router-dom'
 import { ListItemButton, ListSubheader, useTheme } from '@mui/material'
 import {
   pathForJobsWithFilter,
+  pathForTestByVariant,
   pathForTestsWithFilter,
   safeEncodeURIComponent,
+  useNewInstallTests,
   withoutUnstable,
   withSort,
 } from '../helpers'
-import { pathForTestByVariant, useNewInstallTests } from '../helpers'
 import { styled } from '@mui/styles'
 import ApartmentIcon from '@mui/icons-material/Apartment'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
@@ -469,17 +471,17 @@ export default function Sidebar(props) {
           </ListSubheader>
         }
       >
-        <ListItem
+        <LaunderedListItem
           component="a"
           target="_blank"
-          href={reportAnIssueURI()}
+          address={reportAnIssueURI()}
           key="ReportAnIssue"
         >
           <ListItemIcon>
             <BugReport />
           </ListItemIcon>
           <ListItemText primary="Report an Issue" />
-        </ListItem>
+        </LaunderedListItem>
 
         <ListItem
           component="a"
