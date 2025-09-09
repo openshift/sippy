@@ -33,6 +33,9 @@ var testSuites = []string{
 	// ROSA
 	"OSD e2e suite",
 
+	// Performance
+	"olmv1-GCP nightly compare",
+
 	// Other
 	"BackendDisruption",
 	"Cluster upgrade",
