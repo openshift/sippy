@@ -1,4 +1,4 @@
-import { Link } from '@mui/material'
+import { Link, ListItem } from '@mui/material'
 import PropTypes from 'prop-types'
 import React from 'react'
 
@@ -14,5 +14,18 @@ export default function SecureLink({ address, ...props }) {
 }
 
 SecureLink.propTypes = {
+  address: PropTypes.string.isRequired,
+}
+
+// same approach but for a ListItem with a link
+export function LaunderedListItem({ address, ...props }) {
+  let match = address.match('https?://[^"]+')
+  if (!match) {
+    throw new Error('Invalid URL format: ' + address)
+  }
+  return <ListItem {...props} href={match[0]} />
+}
+
+LaunderedListItem.propTypes = {
   address: PropTypes.string.isRequired,
 }
