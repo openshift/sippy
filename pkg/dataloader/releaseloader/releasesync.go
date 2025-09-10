@@ -220,11 +220,15 @@ func releaseDetailsToDB(project PayloadProject, architecture string, tag Release
 
 	release.Release = project.ResolveRelease(release.Release)
 
-	// Get "nightly" or "ci" from the string
+	// Extract the stream from the release tag
 	if len(parts) >= 4 {
-		stream := strings.Split(parts[3], "-")
-		if len(stream) >= 2 {
-			release.Stream = stream[0]
+		streamPart := parts[3]
+		// Check against the project's defined streams
+		for _, stream := range project.GetStreams() {
+			if strings.Contains(streamPart, stream) {
+				release.Stream = stream
+				break
+			}
 		}
 	}
 
