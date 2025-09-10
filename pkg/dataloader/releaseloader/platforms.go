@@ -2,6 +2,7 @@ package releaseloader
 
 import (
 	"fmt"
+	"strings"
 )
 
 func (ocp *OCPProject) GetName() string {
@@ -17,7 +18,15 @@ func (ocp *OCPProject) ResolveRelease(release string) string {
 }
 
 func (ocp *OCPProject) BuildReleaseStreams(releases []string) []string {
-	return buildReleaseStreams(releases, ocp.GetStreams())
+	releaseStreams := make([]string, 0, len(releases)*len(ocp.GetStreams()))
+	for _, release := range releases {
+		if !strings.Contains(release, "-") {
+			for _, stream := range ocp.GetStreams() {
+				releaseStreams = append(releaseStreams, fmt.Sprintf("%s.0-0.%s", release, stream))
+			}
+		}
+	}
+	return releaseStreams
 }
 
 func (ocp *OCPProject) BuildTagsURL(release, architecture string) string {
@@ -42,7 +51,15 @@ func (okd *OKDProject) ResolveRelease(release string) string {
 }
 
 func (okd *OKDProject) BuildReleaseStreams(releases []string) []string {
-	return buildReleaseStreams(releases, okd.GetStreams())
+	releaseStreams := []string{}
+	for _, release := range releases {
+		if strings.HasSuffix(release, "-okd") {
+			for _, stream := range okd.GetStreams() {
+				releaseStreams = append(releaseStreams, strings.Replace(release, "-okd", ".0-0.", 1)+stream)
+			}
+		}
+	}
+	return releaseStreams
 }
 
 func (okd *OKDProject) BuildTagsURL(release, architecture string) string {
@@ -51,16 +68,6 @@ func (okd *OKDProject) BuildTagsURL(release, architecture string) string {
 
 func (okd *OKDProject) BuildDetailsURL(release, architecture, tag string) string {
 	return buildDetailsURL(architecture, "origin", buildReleaseName(release, architecture), tag)
-}
-
-func buildReleaseStreams(releases []string, streams []string) []string {
-	releaseStreams := make([]string, 0, len(releases)*len(streams))
-	for _, release := range releases {
-		for _, stream := range streams {
-			releaseStreams = append(releaseStreams, fmt.Sprintf("%s.0-0.%s", release, stream))
-		}
-	}
-	return releaseStreams
 }
 
 func buildReleaseName(release, architecture string) string {
