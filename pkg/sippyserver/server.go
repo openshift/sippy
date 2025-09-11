@@ -1495,6 +1495,33 @@ func getUserForRequest(req *http.Request) string {
 	return user
 }
 
+// jsonRegressionPotentialMatchingTriages finds the triage entries that currently have regressions that match
+// the regression in question. These matches are based on test name and last failure time similarity.
+func (s *Server) jsonRegressionPotentialMatchingTriages(w http.ResponseWriter, req *http.Request) {
+	vars := mux.Vars(req)
+	idStr := vars["id"]
+
+	regressionID, err := strconv.Atoi(idStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "invalid ID format: "+idStr)
+		return
+	}
+	regression, err := componentreadiness.GetRegression(s.db.DB, regressionID)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting regression: %v", err))
+	}
+	triages, err := componentreadiness.ListTriages(s.db)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("failed to list triages: %v", err))
+		return
+	}
+	matches, err := componentreadiness.GetRegressionPotentialMatches(*regression, triages)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("failed to list potential matches: %v", err))
+	}
+	api.RespondWithJSON(http.StatusOK, w, matches)
+}
+
 // FileBugRequest represents the JSON request structure for filing Jira bugs
 type FileBugRequest struct {
 	Summary         string   `json:"summary"`
@@ -2091,6 +2118,13 @@ func (s *Server) Serve() {
 			Methods:      []string{http.MethodGet},
 			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
 			HandlerFunc:  s.jsonGetTriageAuditDetails,
+		},
+		{
+			EndpointPath: "/api/component_readiness/regressions/{id}/matches",
+			Description:  "List potential matching regressions for a given triage.",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability, ComponentReadinessCapability},
+			HandlerFunc:  s.jsonRegressionPotentialMatchingTriages,
 		},
 		{
 			EndpointPath: "/api/component_readiness/bugs",

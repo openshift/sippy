@@ -1,11 +1,24 @@
 import { getTriagesAPIUrl } from './CompReadyUtils'
+import { makeStyles } from '@mui/styles'
 import { Tab, Tabs } from '@mui/material'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import ExistingTriageSelector from './ExistingTriageSelector'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
+import RegressionPotentialMatchesTab from './RegressionPotentialMatchesTab'
 import TriageFields from './TriageFields'
+
+const useStyles = makeStyles((theme) => ({
+  noMatchesMessage: {
+    textAlign: 'center',
+    padding: '8px',
+    fontStyle: 'italic',
+    backgroundColor: '#f5f5f5',
+    borderRadius: '4px',
+    margin: '8px 0',
+  },
+}))
 
 export default function AddRegressionPanel({
   triages,
@@ -16,12 +29,32 @@ export default function AddRegressionPanel({
   completeTriageSubmission,
   triageEntryData,
   setTriageEntryData,
+  commonClasses,
 }) {
+  const localClasses = useStyles()
+  const classes = { ...commonClasses, ...localClasses }
   triages.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
 
+  // We can only find potential matching triages when we are triaging a single regression at a time
+  const hasSingleRegression = regressionIds.length === 1
+  const [hasMatches, setHasMatches] = React.useState(true)
+  // Start with potential matches if single regression, otherwise existing triage
   const [tabIndex, setTabIndex] = React.useState(0)
+
   const handleTabChange = (event, newValue) => {
+    // Only prevent switching to potential matches tab if it's disabled or doesn't exist
+    if (newValue === 0 && !hasMatches) {
+      return
+    }
     setTabIndex(newValue)
+  }
+
+  // We only want to enable the "Potential Matches" tab when we actually have matches
+  const handleMatchingTriagesFetched = (foundMatches) => {
+    setHasMatches(foundMatches)
+    if (!foundMatches) {
+      setTabIndex(1) // Switch to existing triage tab if no matches found
+    }
   }
 
   const [existingTriageId, setExistingTriageId] = React.useState(triages[0].id)
@@ -72,26 +105,48 @@ export default function AddRegressionPanel({
     })
   }
 
-  const addToExisting = tabIndex === 0
-  const addToNew = tabIndex === 1
+  const showPotentialMatches =
+    hasSingleRegression && tabIndex === 0 && hasMatches
+  const addToExisting = tabIndex === (hasSingleRegression ? 1 : 0)
+  const addToNew = tabIndex === (hasSingleRegression ? 2 : 1)
 
   return (
     <Fragment>
       <DialogTitle>Triage</DialogTitle>
-      <DialogContent>
+      <DialogContent className={classes.dialogContent}>
         <Tabs
           value={tabIndex}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="primary"
           variant="fullWidth"
+          className={classes.tabsContainer}
         >
+          {hasSingleRegression && (
+            <Tab
+              label={
+                hasMatches
+                  ? 'Potential Matches'
+                  : 'Potential Matches (none found)'
+              }
+              disabled={!hasMatches}
+            />
+          )}
           <Tab label="Existing Triage" />
           <Tab label="New Triage" />
         </Tabs>
+        {showPotentialMatches && (
+          <RegressionPotentialMatchesTab
+            regressionId={regressionIds[0]}
+            setAlertText={setAlertText}
+            setAlertSeverity={setAlertSeverity}
+            completeTriageSubmission={completeTriageSubmission}
+            onMatchesFound={handleMatchingTriagesFetched}
+          />
+        )}
         {addToExisting && (
           <Fragment>
-            <h3>Add to existing Triage</h3>
+            <h3 className={classes.centeredHeading}>Add to existing Triage</h3>
             <ExistingTriageSelector
               triages={triages}
               existingTriageId={existingTriageId}
@@ -102,7 +157,7 @@ export default function AddRegressionPanel({
         )}
         {addToNew && (
           <Fragment>
-            <h3>Create new Triage</h3>
+            <h3 className={classes.centeredHeading}>Create new Triage</h3>
             <TriageFields
               triages={triages}
               setAlertText={setAlertText}
@@ -131,4 +186,5 @@ AddRegressionPanel.propTypes = {
   setAlertSeverity: PropTypes.func.isRequired,
   handleNewTriageFormCompletion: PropTypes.func.isRequired,
   completeTriageSubmission: PropTypes.func.isRequired,
+  commonClasses: PropTypes.object.isRequired,
 }

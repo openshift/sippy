@@ -166,7 +166,7 @@ func TestIsSameLastFailure(t *testing.T) {
 	}
 }
 
-func TestCalculateConfidenceLevel(t *testing.T) {
+func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 	tests := []struct {
 		name     string
 		match    PotentialMatch
@@ -235,7 +235,7 @@ func TestCalculateConfidenceLevel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := calculateConfidenceLevel(tt.match)
+			result := tt.match.calculateConfidenceLevel()
 			assert.Equal(t, tt.expected, result)
 		})
 	}
