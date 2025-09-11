@@ -308,9 +308,29 @@ export default function TriagePotentialMatches({
         </Tooltip>
       ),
       flex: 6,
-      renderCell: (params) => (
-        <div className={classes.confidenceTooltip}>{params.value}/10</div>
-      ),
+      renderCell: (params) => {
+        const row = params.row
+        const similarlyNamedCount = row.similarly_named_tests
+          ? row.similarly_named_tests.length
+          : 0
+        const sameLastFailureCount = row.same_last_failures
+          ? row.same_last_failures.length
+          : 0
+
+        const tooltipContent = (
+          <div>
+            <div>Match Breakdown:</div>
+            <div>• Similarly Named Tests: {similarlyNamedCount}</div>
+            <div>• Same Last Failure: {sameLastFailureCount}</div>
+          </div>
+        )
+
+        return (
+          <Tooltip title={tooltipContent} arrow placement="top">
+            <div className={classes.confidenceTooltip}>{params.value}</div>
+          </Tooltip>
+        )
+      },
     },
   ]
 
