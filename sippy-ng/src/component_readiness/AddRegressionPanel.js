@@ -57,7 +57,9 @@ export default function AddRegressionPanel({
     }
   }
 
-  const [existingTriageId, setExistingTriageId] = React.useState(triages[0].id)
+  const defaultTriageId = triages.length > 0 ? triages[0].id : null
+  const [existingTriageId, setExistingTriageId] =
+    React.useState(defaultTriageId)
 
   const handleAddToExistingTriageSubmit = () => {
     const existingTriage = triages.find(
@@ -99,7 +101,7 @@ export default function AddRegressionPanel({
       )
       setAlertSeverity('success')
       if (triages.length > 0) {
-        setExistingTriageId(triages[0].id) //reset the form to the first element
+        setExistingTriageId(defaultTriageId) //reset the form to the first element
       }
       completeTriageSubmission()
     })

@@ -321,6 +321,7 @@ type PotentialMatch struct {
 	// SimilarlyNamedTests contains each of the already associated regressions that have a similar name, and their editDistance difference
 	SimilarlyNamedTests []SimilarlyNamedTest `json:"similarly_named_tests"`
 	// SameLastFailures contains each of the already associated regressions that have the same last failure time
+	// This shows us that the regressions were found in the same job, indicating a higher likelihood of correlation.
 	SameLastFailures []models.TestRegression `json:"same_last_failures"`
 	// ConfidenceLevel is a number between 0-10 with a higher number being more likely to be a proper match
 	ConfidenceLevel int `json:"confidence_level"`

@@ -256,11 +256,21 @@ export default function RegressionPotentialMatchesTab({
     },
     {
       field: 'confidence_level',
-      headerName: 'Confidence Level',
+      headerName: (
+        <Tooltip
+          title={
+            'Confidence Level (0-10) - Higher values indicate higher likelihood of matching based on: Similar test names (edit distance scoring), Same last failure times (fails in the same job runs)'
+          }
+          arrow
+          placement="top"
+        >
+          <span>Confidence Level</span>
+        </Tooltip>
+      ),
       flex: 6,
       align: 'center',
       renderCell: (param) => (
-        <Typography variant="body2">{param.value}</Typography>
+        <Typography variant="body2">{param.value}/10</Typography>
       ),
     },
     {

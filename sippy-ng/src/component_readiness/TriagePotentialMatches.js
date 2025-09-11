@@ -296,31 +296,21 @@ export default function TriagePotentialMatches({
     },
     {
       field: 'confidence_level',
-      headerName: 'Confidence',
+      headerName: (
+        <Tooltip
+          title={
+            'Confidence Level (0-10) - Higher values indicate higher likelihood of matching based on: Similar test names (edit distance scoring), Same last failure times (fails in the same job runs)'
+          }
+          arrow
+          placement="top"
+        >
+          <span>Confidence</span>
+        </Tooltip>
+      ),
       flex: 6,
-      renderCell: (params) => {
-        const row = params.row
-        const similarlyNamedCount = row.similarly_named_tests
-          ? row.similarly_named_tests.length
-          : 0
-        const sameLastFailureCount = row.same_last_failures
-          ? row.same_last_failures.length
-          : 0
-
-        const tooltipContent = (
-          <div>
-            <div>Match Breakdown:</div>
-            <div>• Similarly Named Tests: {similarlyNamedCount}</div>
-            <div>• Same Last Failure: {sameLastFailureCount}</div>
-          </div>
-        )
-
-        return (
-          <Tooltip title={tooltipContent} arrow placement="top">
-            <div className={classes.confidenceTooltip}>{params.value}</div>
-          </Tooltip>
-        )
-      },
+      renderCell: (params) => (
+        <div className={classes.confidenceTooltip}>{params.value}/10</div>
+      ),
     },
   ]
 
