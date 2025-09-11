@@ -25,17 +25,26 @@ const useStyles = makeStyles({
   triageForm: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 16,
-    padding: '10px 0',
+    gap: 12,
+    padding: '8px 0',
   },
   formFields: {
     display: 'flex',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 12,
+    width: '100%',
   },
   validationErrors: {
     color: 'red',
+  },
+  submitButton: {
+    alignSelf: 'flex-start',
+    minWidth: '120px',
+  },
+  infoIcon: {
+    marginLeft: 8,
+    verticalAlign: 'middle',
   },
 })
 
@@ -228,18 +237,21 @@ export default function TriageFields({
           label="Jira URL"
           value={triageEntryData.url}
           onChange={handleTriageChange}
+          fullWidth
         />
         <TextField
           name="description"
           label="Description"
           value={triageEntryData.description}
           onChange={handleTriageChange}
+          fullWidth
         />
         <Select
           name="type"
           label="Type"
           value={triageEntryData.type}
           onChange={handleTriageChange}
+          fullWidth
         >
           {triageTypeOptions.map((option, index) => (
             <MenuItem key={index} value={option}>
@@ -263,7 +275,7 @@ export default function TriageFields({
                 }))
               }
               renderInput={(props) => (
-                <TextField variant="standard" {...props} />
+                <TextField variant="standard" fullWidth {...props} />
               )}
             />
           </LocalizationProvider>
@@ -272,6 +284,7 @@ export default function TriageFields({
           variant="contained"
           color="primary"
           onClick={handleTriageEntrySubmit}
+          className={classes.submitButton}
         >
           {submitButtonText}
         </Button>
@@ -291,10 +304,7 @@ export default function TriageFields({
           <h4>
             Triage Entries with Matching Jira Exist
             <Tooltip title="It is likely unwanted to create a new triage entry for the same Jira. Please select an existing triage entry to add to instead.">
-              <InfoIcon
-                fontSize="small"
-                style={{ marginLeft: 8, verticalAlign: 'middle' }}
-              />
+              <InfoIcon fontSize="small" className={classes.infoIcon} />
             </Tooltip>
           </h4>
           <ExistingTriageSelector
@@ -342,7 +352,7 @@ export default function TriageFields({
 
 TriageFields.propTypes = {
   triageId: PropTypes.number,
-  triages: PropTypes.array.isRequired,
+  triages: PropTypes.array,
   setAlertText: PropTypes.func.isRequired,
   setAlertSeverity: PropTypes.func.isRequired,
   triageEntryData: PropTypes.object.isRequired,
@@ -350,7 +360,7 @@ TriageFields.propTypes = {
   handleFormCompletion: PropTypes.func.isRequired,
   submitButtonText: PropTypes.string.isRequired,
   // used when the user opts to add to existing triage with matching url
-  existingTriageId: PropTypes.number.isRequired,
-  setExistingTriageId: PropTypes.func.isRequired,
-  handleAddToExistingTriage: PropTypes.func.isRequired,
+  existingTriageId: PropTypes.number,
+  setExistingTriageId: PropTypes.func,
+  handleAddToExistingTriage: PropTypes.func,
 }

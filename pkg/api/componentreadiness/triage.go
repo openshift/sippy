@@ -226,11 +226,21 @@ func GetRegressions(dbc *gorm.DB, view string) ([]models.TestRegression, error) 
 	return regressions, nil
 }
 
-// GetTriagePotentialMatches returns a list of PotentialMatch including all possible matching regressions for a given
+// GetRegression returns the regression with the matching ID
+func GetRegression(dbc *gorm.DB, id int) (*models.TestRegression, error) {
+	var regression models.TestRegression
+	res := dbc.Preload("Triages").First(&regression, id)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+	return &regression, nil
+}
+
+// GetTriagePotentialMatches returns a list of PotentialMatchingRegression including all possible matching regressions for a given
 // triage, and componentReport. It calculates this based on similarly named tests being regressed, and regressions that
 // have the same last failure time. It includes a confidence level for each match that states how likely the match is to be relevant.
-func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.TestRegression, componentReport componentreport.ComponentReport) ([]PotentialMatch, error) {
-	var potentialMatches []PotentialMatch
+func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.TestRegression, componentReport componentreport.ComponentReport) ([]PotentialMatchingRegression, error) {
+	var potentialMatches []PotentialMatchingRegression
 	for _, reg := range allRegressions {
 		if reg.Closed.Valid {
 			// Don't bother listing closed regressions as potential matches
@@ -242,32 +252,72 @@ func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.Te
 			log.Warnf("no regression found for test %s, excluding", reg.TestID)
 			continue
 		}
-		match := PotentialMatch{
-			RegressedTest: *regressedTest,
+		match := PotentialMatchingRegression{
+			RegressedTest:  *regressedTest,
+			PotentialMatch: determinePotentialMatch(reg, triage),
 		}
-		for _, tr := range triage.Regressions {
-			if tr.ID == reg.ID {
-				// if this regression is already associated with the triage, never list it as a potential match
-				match = PotentialMatch{}
-				break
-			}
-			similarTestName, editDistance := isSimilarTestName(reg.TestName, tr.TestName)
-			if similarTestName {
-				match.SimilarlyNamedTests = append(match.SimilarlyNamedTests, SimilarlyNamedTest{
-					Regression:   tr,
-					EditDistance: editDistance,
-				})
-			}
-			if isSameLastFailure(reg.LastFailure, tr.LastFailure) {
-				match.SameLastFailures = append(match.SameLastFailures, tr)
-			}
-		}
-		// Only add the potential match if it is valid
-		if len(match.SimilarlyNamedTests) > 0 || len(match.SameLastFailures) > 0 {
-			match.ConfidenceLevel = calculateConfidenceLevel(match)
+		if match.PotentialMatch != nil {
+			match.ConfidenceLevel = match.PotentialMatch.calculateConfidenceLevel()
 			match.Links = map[string]string{
 				"self":   fmt.Sprintf(potentialMatchesLink, triage.ID),
 				"triage": fmt.Sprintf(triageLink, triage.ID),
+			}
+			potentialMatches = append(potentialMatches, match)
+		}
+	}
+
+	return potentialMatches, nil
+}
+
+// determinePotentialMatch decides if the given regression has the potential to be associated with the given triage
+func determinePotentialMatch(regression models.TestRegression, triage *models.Triage) *PotentialMatch {
+	match := &PotentialMatch{}
+	for _, tr := range triage.Regressions {
+		if tr.ID == regression.ID {
+			// if this regression is already associated with the triage, never list it as a potential match
+			return nil
+		}
+		similarTestName, editDistance := isSimilarTestName(regression.TestName, tr.TestName)
+		if similarTestName {
+			match.SimilarlyNamedTests = append(match.SimilarlyNamedTests, SimilarlyNamedTest{
+				Regression:   tr,
+				EditDistance: editDistance,
+			})
+		}
+		if isSameLastFailure(regression.LastFailure, tr.LastFailure) {
+			match.SameLastFailures = append(match.SameLastFailures, tr)
+		}
+	}
+
+	// If we haven't hit any matching criteria, there is no potential match
+	if len(match.SimilarlyNamedTests) == 0 && len(match.SameLastFailures) == 0 {
+		return nil
+	}
+
+	return match
+}
+
+// GetRegressionPotentialMatches returns a list of PotentialMatchingTriage including all possible matching triages for a given
+// regression. It calculates this based on similarly named tests being regressed, and associated regressions that
+// have the same last failure time. It includes a confidence level for each match that states how likely the match is to be relevant.
+func GetRegressionPotentialMatches(regression models.TestRegression, triages []models.Triage) ([]PotentialMatchingTriage, error) {
+	var potentialMatches []PotentialMatchingTriage
+	for _, triage := range triages {
+		// If the triage already contains the regression, don't consider it a potential match
+		for _, reg := range triage.Regressions {
+			if reg.ID == regression.ID {
+				continue
+			}
+		}
+
+		match := PotentialMatchingTriage{
+			Triage:         triage,
+			PotentialMatch: determinePotentialMatch(regression, &triage),
+		}
+		if match.PotentialMatch != nil {
+			match.ConfidenceLevel = match.PotentialMatch.calculateConfidenceLevel()
+			match.Links = map[string]string{
+				"self": fmt.Sprintf(potentialMatchingTriagesLink, triage.ID),
 			}
 			potentialMatches = append(potentialMatches, match)
 		}
@@ -280,13 +330,45 @@ type PotentialMatch struct {
 	// SimilarlyNamedTests contains each of the already associated regressions that have a similar name, and their editDistance difference
 	SimilarlyNamedTests []SimilarlyNamedTest `json:"similarly_named_tests"`
 	// SameLastFailures contains each of the already associated regressions that have the same last failure time
+	// This shows us that the regressions were found in the same job, indicating a higher likelihood of correlation.
 	SameLastFailures []models.TestRegression `json:"same_last_failures"`
-	// RegressedTest contains all the info about the potentially matching regression
-	RegressedTest componentreport.ReportTestSummary `json:"regressed_test"`
 	// ConfidenceLevel is a number between 0-10 with a higher number being more likely to be a proper match
 	ConfidenceLevel int `json:"confidence_level"`
 	// Links include HATEOAS links to related resources
 	Links map[string]string `json:"links"`
+}
+
+// calculateConfidenceLevel calculates confidence level (1-10) for a potential match
+// based on the number and type of matches, with edit distance affecting name match scores
+func (pm PotentialMatch) calculateConfidenceLevel() int {
+	score := 0
+
+	// Calculate score for similarly named tests based on edit distance
+	for _, similarTest := range pm.SimilarlyNamedTests {
+		editDistanceScore := 5 - similarTest.EditDistance // 0->5, 1->4, 2->3, 3->2, 4->1, 5->0
+		score += editDistanceScore
+	}
+
+	// Add 1 point for each same last failure match
+	score += len(pm.SameLastFailures)
+
+	if score > 10 {
+		score = 10
+	}
+
+	return score
+}
+
+type PotentialMatchingRegression struct {
+	*PotentialMatch
+	// RegressedTest contains all the info about the potentially matching regression
+	RegressedTest componentreport.ReportTestSummary `json:"regressed_test"`
+}
+
+type PotentialMatchingTriage struct {
+	*PotentialMatch
+	// Triage is the triage that this regression potentially matches
+	Triage models.Triage `json:"triage"`
 }
 
 type SimilarlyNamedTest struct {
@@ -373,27 +455,6 @@ func isSameLastFailure(time1, time2 sql.NullTime) bool {
 	}
 
 	return time1.Time.Equal(time2.Time)
-}
-
-// calculateConfidenceLevel calculates confidence level (1-10) for a potential match
-// based on the number and type of matches, with edit distance affecting name match scores
-func calculateConfidenceLevel(match PotentialMatch) int {
-	score := 0
-
-	// Calculate score for similarly named tests based on edit distance
-	for _, similarTest := range match.SimilarlyNamedTests {
-		editDistanceScore := 5 - similarTest.EditDistance // 0->5, 1->4, 2->3, 3->2, 4->1, 5->0
-		score += editDistanceScore
-	}
-
-	// Add 1 point for each same last failure match
-	score += len(match.SameLastFailures)
-
-	if score > 10 {
-		score = 10
-	}
-
-	return score
 }
 
 func getAuditLogsForTriageID(dbc *gorm.DB, triageID int) ([]models.AuditLog, error) {
@@ -556,6 +617,8 @@ const (
 	triageLink           = "/api/component_readiness/triages/%d"
 	potentialMatchesLink = "/api/component_readiness/triages/%d/matches"
 	auditLogsLink        = "/api/component_readiness/triages/%d/audit"
+
+	potentialMatchingTriagesLink = "/api/component_readiness/regressions/%d/matches"
 )
 
 // injectHATEOASLinks adds restful links clients can follow for this triage record.

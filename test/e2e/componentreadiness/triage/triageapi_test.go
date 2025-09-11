@@ -507,6 +507,136 @@ func Test_TriageAPI(t *testing.T) {
 	})
 }
 
+// Test_RegressionPotentialMatchingTriages tests the /api/component_readiness/regressions/{id}/matches endpoint
+func Test_RegressionPotentialMatchingTriages(t *testing.T) {
+	dbc := util.CreateE2EPostgresConnection(t)
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
+
+	jiraBug := createBug(t, dbc.DB)
+	defer dbc.DB.Delete(jiraBug)
+
+	// Create test regressions with specific characteristics for matching
+	commonFailureTime := time.Now().Add(-24 * time.Hour)
+	differentFailureTime := time.Now().Add(-12 * time.Hour)
+
+	// Regression 1: Will be the target regression for matching
+	targetRegression := createTestRegressionWithDetails(t, tracker, view, "target-test", "component-a", "capability-x", "TestTargetFunction", &commonFailureTime, crtest.ExtremeRegression)
+	defer dbc.DB.Delete(targetRegression.Regression)
+
+	// Regression 2: Will match by similar test name (edit distance <= 5)
+	matchByNameRegression := createTestRegressionWithDetails(t, tracker, view, "match-name", "component-b", "capability-y", "TestTargetFunctin", &differentFailureTime, crtest.SignificantRegression) // missing 'o' from "TestTargetFunction"
+	defer dbc.DB.Delete(matchByNameRegression.Regression)
+
+	// Regression 3: Will match by same last failure time
+	matchByTimeRegression := createTestRegressionWithDetails(t, tracker, view, "match-time", "component-c", "capability-z", "TestDifferentName", &commonFailureTime, crtest.ExtremeTriagedRegression)
+	defer dbc.DB.Delete(matchByTimeRegression.Regression)
+
+	// Regression 4: No match - different name and different failure time
+	noMatchRegression := createTestRegressionWithDetails(t, tracker, view, "no-match", "component-d", "capability-w", "CompletelyDifferentTest", &differentFailureTime, crtest.NotSignificant)
+	defer dbc.DB.Delete(noMatchRegression.Regression)
+
+	t.Run("find potential matching triages", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create triages with the matching regressions
+		triage1 := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: matchByNameRegression.Regression.ID},
+			},
+		}
+		var triageResponse1 models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse1)
+		require.NoError(t, err)
+
+		triage2 := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeCIInfra,
+			Regressions: []models.TestRegression{
+				{ID: matchByTimeRegression.Regression.ID},
+			},
+		}
+		var triageResponse2 models.Triage
+		err = util.SippyPost("/api/component_readiness/triages", &triage2, &triageResponse2)
+		require.NoError(t, err)
+
+		// Create a triage with the no-match regression (should not appear in results)
+		triageNoMatch := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeTest,
+			Regressions: []models.TestRegression{
+				{ID: noMatchRegression.Regression.ID},
+			},
+		}
+		var triageResponseNoMatch models.Triage
+		err = util.SippyPost("/api/component_readiness/triages", &triageNoMatch, &triageResponseNoMatch)
+		require.NoError(t, err)
+
+		// Query for potential matches for the target regression
+		var potentialMatches []componentreadiness.PotentialMatchingTriage
+		endpoint := fmt.Sprintf("/api/component_readiness/regressions/%d/matches", targetRegression.Regression.ID)
+		err = util.SippyGet(endpoint, &potentialMatches)
+		require.NoError(t, err)
+
+		// Verify we found 2 potential matches
+		assert.Len(t, potentialMatches, 2, "Should find 2 potential matching triages")
+
+		// Verify HATEOAS links are present
+		for _, match := range potentialMatches {
+			assert.Contains(t, match.Links, "self", "Potential match should have self link")
+		}
+
+		// Build map for easier verification
+		triagesByID := make(map[uint]componentreadiness.PotentialMatchingTriage)
+		for _, match := range potentialMatches {
+			triagesByID[match.Triage.ID] = match
+		}
+
+		// Verify match by similar name
+		nameMatch, found := triagesByID[triageResponse1.ID]
+		assert.True(t, found, "Should find triage with similar named test")
+		assert.Len(t, nameMatch.SimilarlyNamedTests, 1, "Should have one similarly named test")
+		assert.Equal(t, 1, nameMatch.SimilarlyNamedTests[0].EditDistance, "Edit distance should be 1")
+		assert.Equal(t, 4, nameMatch.ConfidenceLevel, "Confidence should be 4 (5-1)")
+
+		// Verify match by same failure time
+		timeMatch, found := triagesByID[triageResponse2.ID]
+		assert.True(t, found, "Should find triage with same failure time")
+		assert.Len(t, timeMatch.SameLastFailures, 1, "Should have one same failure time match")
+		assert.Equal(t, 1, timeMatch.ConfidenceLevel, "Confidence should be 1")
+
+		// Verify non-matching triage is not included
+		_, found = triagesByID[triageResponseNoMatch.ID]
+		assert.False(t, found, "Should not find triage with no matching criteria")
+	})
+
+	t.Run("no potential matches found", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create a triage with the no-match regression (different name and time)
+		triage := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: noMatchRegression.Regression.ID},
+			},
+		}
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.NoError(t, err)
+
+		// Query for potential matches for the target regression
+		var potentialMatches []componentreadiness.PotentialMatchingTriage
+		endpoint := fmt.Sprintf("/api/component_readiness/regressions/%d/matches", targetRegression.Regression.ID)
+		err = util.SippyGet(endpoint, &potentialMatches)
+		require.NoError(t, err)
+
+		// Should find no matches since the test name and failure time are too different
+		assert.Len(t, potentialMatches, 0, "Should find no potential matching triages")
+	})
+}
+
 func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 *models.TestRegression) models.Triage {
 	triage1 := models.Triage{
 		URL:  bugURL,
@@ -775,7 +905,7 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		require.Equal(t, 2, len(triageResponse.Regressions))
 
 		// Query for potential matches
-		var potentialMatches []componentreadiness.PotentialMatch
+		var potentialMatches []componentreadiness.PotentialMatchingRegression
 
 		endpoint := fmt.Sprintf("/api/component_readiness/triages/%d/matches?view=%s", triageResponse.ID, view.Name)
 		err = util.SippyGet(endpoint, &potentialMatches)
@@ -924,7 +1054,7 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		require.NoError(t, err)
 
 		// Query for potential matches
-		var potentialMatches []componentreadiness.PotentialMatch
+		var potentialMatches []componentreadiness.PotentialMatchingRegression
 
 		endpoint := fmt.Sprintf("/api/component_readiness/triages/%d/matches?view=%s", triageResponse.ID, view.Name)
 		err = util.SippyGet(endpoint, &potentialMatches)

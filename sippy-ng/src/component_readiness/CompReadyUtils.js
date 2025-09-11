@@ -109,6 +109,10 @@ export function getBugsAPIUrl() {
   return getAPIUrl(`component_readiness/bugs`)
 }
 
+export function getRegressionAPIUrl(id) {
+  return getAPIUrl(`component_readiness/regressions/${id}`)
+}
+
 export function getArtifactQueryAPIUrl() {
   return getAPIUrl('jobs/artifacts')
 }

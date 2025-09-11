@@ -1,10 +1,23 @@
 import { Button, FormHelperText, Tab, Tabs } from '@mui/material'
 import { getTriagesAPIUrl } from './CompReadyUtils'
+import { makeStyles } from '@mui/styles'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 import TriageFields from './TriageFields'
+
+const useStyles = makeStyles((theme) => ({
+  regressionList: {
+    listStyle: 'none',
+  },
+  removeButton: {
+    marginTop: theme.spacing(2),
+  },
+  errorText: {
+    color: 'red',
+  },
+}))
 
 export default function UpdateTriagePanel({
   triage,
@@ -13,7 +26,10 @@ export default function UpdateTriagePanel({
   setAlertText,
   setAlertSeverity,
   handleTriageFormCompletion,
+  commonClasses,
 }) {
+  const localClasses = useStyles()
+  const classes = { ...commonClasses, ...localClasses }
   const [removedRegressions, setRemovedRegressions] = React.useState([])
   const [validationMessage, setValidationMessage] = React.useState('')
 
@@ -87,13 +103,14 @@ export default function UpdateTriagePanel({
   return (
     <Fragment>
       <DialogTitle>Update Triage</DialogTitle>
-      <DialogContent>
+      <DialogContent className={classes.dialogContent}>
         <Tabs
           value={tabIndex}
           onChange={handleTabChange}
           indicatorColor="secondary"
           textColor="primary"
           variant="fullWidth"
+          className={classes.tabsContainer}
         >
           <Tab label="Update Fields" />
           <Tab
@@ -103,19 +120,23 @@ export default function UpdateTriagePanel({
         </Tabs>
 
         {updateFields && (
-          <TriageFields
-            triageId={triage.id}
-            setAlertText={setAlertText}
-            setAlertSeverity={setAlertSeverity}
-            triageEntryData={triageEntryData}
-            setTriageEntryData={setTriageEntryData}
-            handleFormCompletion={handleTriageFormCompletion}
-            submitButtonText={'Update'}
-          />
+          <Fragment>
+            <h3 className={classes.centeredHeading}>Update Information</h3>
+            <TriageFields
+              triageId={triage.id}
+              setAlertText={setAlertText}
+              setAlertSeverity={setAlertSeverity}
+              triageEntryData={triageEntryData}
+              setTriageEntryData={setTriageEntryData}
+              handleFormCompletion={handleTriageFormCompletion}
+              submitButtonText={'Update'}
+            />
+          </Fragment>
         )}
         {updateRegressions && (
           <Fragment>
-            <ul style={{ listStyle: 'none' }}>
+            <h3 className={classes.centeredHeading}>Remove Regressions</h3>
+            <ul className={classes.regressionList}>
               {triage.regressions.map((regression) => {
                 return (
                   <li key={regression.id}>
@@ -135,7 +156,7 @@ export default function UpdateTriagePanel({
               })}
             </ul>
             {validationMessage !== '' && (
-              <FormHelperText sx={{ color: 'red' }}>
+              <FormHelperText className={classes.errorText}>
                 {validationMessage}
               </FormHelperText>
             )}
@@ -156,4 +177,5 @@ UpdateTriagePanel.propTypes = {
   setAlertText: PropTypes.func.isRequired,
   setAlertSeverity: PropTypes.func.isRequired,
   handleTriageFormCompletion: PropTypes.func.isRequired,
+  commonClasses: PropTypes.object.isRequired,
 }
