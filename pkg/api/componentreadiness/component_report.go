@@ -853,7 +853,7 @@ func (c *ComponentReportGenerator) generateComponentTestReport(basisStatusMap, s
 				return crtype.ComponentReport{}, err
 			}
 
-			c.assessComponentStatus(&cellReport, log.NewEntry(log.New()))
+			c.assessComponentStatus(&cellReport)
 			if lastFailure := sampleStatus.LastFailure; !lastFailure.IsZero() {
 				cellReport.LastFailure = &lastFailure // it's a copy, for pointer hygiene
 			}
@@ -968,7 +968,7 @@ func getRegressionStatus(basisPassPercentage, samplePassPercentage float64) crte
 // set of objects relating to analysis, as there's not a lot of overlap between the analyzers
 // (fishers, pass rate, bayes (future)) and the middlewares (fallback, intentional regressions,
 // cross variant compare, rarely run jobs, etc.)
-func (c *ComponentReportGenerator) assessComponentStatus(testStats *testdetails.TestComparison, logger *log.Entry) {
+func (c *ComponentReportGenerator) assessComponentStatus(testStats *testdetails.TestComparison) {
 	// Catch unset required confidence, typically unit tests
 	opts := c.ReqOptions.AdvancedOption
 	if testStats.RequiredConfidence == 0 {
@@ -991,10 +991,10 @@ func (c *ComponentReportGenerator) assessComponentStatus(testStats *testdetails.
 	}
 
 	// Otherwise we fall back to default behavior of Fishers Exact test:
-	c.buildFisherExactTestStats(testStats, logger)
+	c.buildFisherExactTestStats(testStats)
 }
 
-func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdetails.TestComparison, logger *log.Entry) {
+func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdetails.TestComparison) {
 
 	fisherExact := 0.0
 	testStats.Comparison = crtest.FisherExact
@@ -1042,7 +1042,6 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdeta
 		} else if basisPassPercentage-samplePassPercentage > effectivePityFactor/100 {
 			significant, fisherExact = c.fischerExactTest(testStats.RequiredConfidence, testStats.SampleStats.Total()-samplePass, samplePass, testStats.BaseStats.Total()-basePass, basePass)
 		}
-		logger.Debugf("computed Fisher info: signifcant: %v, fisherExact: %v", significant, fisherExact)
 		if significant {
 			if improved {
 				status = crtest.SignificantImprovement
@@ -1051,13 +1050,11 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdeta
 			}
 		}
 	}
-	logger.Debugf("computed status: %d", int(status))
 	testStats.ReportStatus = status
 	testStats.FisherExact = thrift.Float64Ptr(fisherExact)
 
 	// If we have a regression, include explanations:
 	if testStats.ReportStatus <= crtest.SignificantTriagedRegression {
-		logger.Debugf("regression detected against %s", testStats.BaseStats.Release)
 
 		if testStats.ReportStatus <= crtest.SignificantRegression {
 			testStats.Explanations = append(testStats.Explanations,
@@ -1072,8 +1069,6 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdeta
 			testStats.Explanations = append(testStats.Explanations,
 				fmt.Sprintf("%s regression detected.", crtest.StringForStatus(testStats.ReportStatus)))
 		}
-	} else {
-		logger.Debugf("NO regression detected against %s", testStats.BaseStats.Release)
 	}
 }
 
