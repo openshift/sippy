@@ -85,3 +85,32 @@ type UpdatedImageCommits struct {
 	PullID  int               `json:"pullID"`
 	PullURL string            `json:"pullURL"`
 }
+
+// OCPProject implements PayloadProject for OpenShift Container Platform
+type OCPProject struct{}
+
+// OKDProject implements PayloadProject for Origin Kubernetes Distribution
+type OKDProject struct{}
+
+// PayloadProject defines an interface for projects (such as OCP, OKD, etc.),
+// providing methods to look up payloads from the release-controller of a project
+// retrieve stream information, resolve release names, and construct
+// URLs for fetching release tags and details.
+type PayloadProject interface {
+	GetName() string
+
+	// GetStreams returns the available release streams for this platform
+	GetStreams() []string
+
+	// ResolveRelease resolves the release to the full release tag
+	ResolveRelease(release string) string
+
+	// BuildReleaseStreams builds the full stream names for given releases
+	BuildReleaseStreams(releases []string) []string
+
+	// BuildTagsURL builds the URL to fetch release tags for a specific release and architecture
+	BuildTagsURL(release, architecture string) string
+
+	// BuildDetailsURL builds the URL to fetch release details for a specific tag
+	BuildDetailsURL(release, architecture, tag string) string
+}
