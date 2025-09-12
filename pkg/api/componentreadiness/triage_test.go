@@ -178,7 +178,7 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 				SimilarlyNamedTests: []SimilarlyNamedTest{},
 				SameLastFailures:    []models.TestRegression{},
 			},
-			expected: 0,
+			expected: 1, // min of 1
 		},
 		{
 			name: "single similar name with low edit distance",
@@ -188,7 +188,7 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 				},
 				SameLastFailures: []models.TestRegression{},
 			},
-			expected: 4, // 5 - 1 = 4
+			expected: 5, // 6 - 1 = 5
 		},
 		{
 			name: "single similar name with high edit distance",
@@ -198,7 +198,7 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 				},
 				SameLastFailures: []models.TestRegression{},
 			},
-			expected: 0, // 5 - 5 = 0
+			expected: 1, // 5 - 5 = 0; min of 1
 		},
 		{
 			name: "single same last failure",
@@ -212,12 +212,13 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 			name: "multiple matches",
 			match: PotentialMatch{
 				SimilarlyNamedTests: []SimilarlyNamedTest{
-					{EditDistance: 1}, // 4 points
+					{EditDistance: 1}, // 5 points
 					{EditDistance: 2}, // 3 points
 				},
 				SameLastFailures: []models.TestRegression{{}, {}}, // 2 points
 			},
-			expected: 9, // 4 + 3 + 2 = 9
+			// nolint:gocritic
+			expected: 10, // 5 + 3 + 2 = 10
 		},
 		{
 			name: "score capped at 10",
