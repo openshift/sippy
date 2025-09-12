@@ -19,6 +19,7 @@ export const SafeStringParam = {
     return safeEncodeURIComponent(s)
   },
   decode: (s) => {
+    if (s === undefined || s === null) return s
     try {
       return decodeURIComponent(s)
     } catch (e) {
@@ -31,6 +32,7 @@ export const SafeStringParam = {
 // square brackets.  Square brackets are NOT unsafe per RFC1738, but Google and
 // others mishandle them.
 export function safeEncodeURIComponent(value) {
+  if (value === undefined || value === null) return value
   return encodeURIComponent(value)
     .replace('[', '%5B')
     .replace(']', '%5D')

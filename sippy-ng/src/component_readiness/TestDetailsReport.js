@@ -131,7 +131,8 @@ export default function TestDetailsReport(props) {
 
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const writeEndpointsEnabled = capabilitiesContext.includes('write_endpoints')
-  const { expandEnvironment, sampleRelease } = useContext(CompReadyVarsContext)
+  const { expandEnvironment, sampleRelease, urlParams } =
+    useContext(CompReadyVarsContext)
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -157,6 +158,7 @@ export default function TestDetailsReport(props) {
   useEffect(() => {
     setIsLoaded(false)
     setHasBeenTriaged(false)
+    if (!testName) return // wait until the vars are initialized from params
 
     // fetch the test_details data followed by any triage records that match the regressionId (if found)
     fetch(testDetailsApiCall, { signal: abortController.signal })
@@ -203,7 +205,7 @@ export default function TestDetailsReport(props) {
       .finally(() => {
         setIsLoaded(true)
       })
-  }, [hasBeenTriaged])
+  }, [hasBeenTriaged, urlParams, testName])
 
   useEffect(() => {
     let tmpRelease = {}

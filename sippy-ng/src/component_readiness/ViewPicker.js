@@ -18,7 +18,6 @@ export default function ViewPicker(props) {
           value={props.varsContext.view}
           onChange={(e) => {
             console.log('changed view to: ' + e.target.value)
-            props.varsContext.setView(e.target.value)
             props.varsContext.views.forEach(function (item) {
               if (item.name === e.target.value) {
                 // Update all inputs to match the values of the selected view, allowing the user

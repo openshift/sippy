@@ -324,7 +324,7 @@ export default function ComponentReadiness(props) {
       varsContext.views !== undefined &&
       varsContext.views.length > 0 &&
       varsContext.view === undefined &&
-      varsContext.baseReleaseParam === undefined &&
+      varsContext.urlParams.baseRelease === undefined &&
       !hasOtherParams &&
       data &&
       Object.keys(data).length > 0 // Only skip if we already have data
