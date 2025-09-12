@@ -598,7 +598,7 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		assert.True(t, found, "Should find triage with similar named test")
 		assert.Len(t, nameMatch.SimilarlyNamedTests, 1, "Should have one similarly named test")
 		assert.Equal(t, 1, nameMatch.SimilarlyNamedTests[0].EditDistance, "Edit distance should be 1")
-		assert.Equal(t, 4, nameMatch.ConfidenceLevel, "Confidence should be 4 (5-1)")
+		assert.Equal(t, 5, nameMatch.ConfidenceLevel, "Confidence should be 5 (6-1)")
 
 		// Verify match by same failure time
 		timeMatch, found := triagesByID[triageResponse2.ID]
@@ -982,8 +982,8 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 			matches := matchesBySimilarName[testRegressions[2].Regression.ID]
 			assert.Equal(t, 1, len(matches), "Should match exactly one similar name")
 			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].Regression.ID, "Should match against TestSomething regression")
-			// TestSomthng vs TestSomething = edit distance 2, so score = 5-2 = 3
-			assert.Equal(t, 3, confidenceLevels[testRegressions[2].Regression.ID], "Confidence should be 3 (edit distance 2: 5-2)")
+			// TestSomthng vs TestSomething = edit distance 2, so score = 6-2 = 4
+			assert.Equal(t, 4, confidenceLevels[testRegressions[2].Regression.ID], "Confidence should be 4 (edit distance 2: 6-2)")
 		}
 
 		// Regression 3: Should match by same failure time
@@ -1004,8 +1004,8 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 			failureMatches := matchesBySameFailure[testRegressions[4].Regression.ID]
 			assert.Equal(t, 1, len(failureMatches), "Should match exactly one same failure time")
 			assert.Equal(t, testRegressions[0].Regression.ID, failureMatches[0].ID, "Should match against commonFailureTime regression")
-			// TestAnoterOne vs TestAnotherOne = edit distance 1, so name score = 5-1 = 4, failure = 1, total = 5
-			assert.Equal(t, 5, confidenceLevels[testRegressions[4].Regression.ID], "Confidence should be 5 (name edit distance 1: 5-1=4, plus 1 failure match)")
+			// TestAnoterOne vs TestAnotherOne = edit distance 1, so name score = 6-1 = 5, failure = 1, total = 6
+			assert.Equal(t, 6, confidenceLevels[testRegressions[4].Regression.ID], "Confidence should be 6 (name edit distance 1: 6-1=5, plus 1 failure match)")
 		}
 
 		// Regression 5: Should match by similar name only
@@ -1013,8 +1013,8 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 			matches := matchesBySimilarName[testRegressions[5].Regression.ID]
 			assert.Equal(t, 1, len(matches), "Should match exactly one similar name")
 			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].Regression.ID, "Should match against TestSomething regression")
-			// TestSomthing vs TestSomething = edit distance 1, so score = 5-1 = 4
-			assert.Equal(t, 4, confidenceLevels[testRegressions[5].Regression.ID], "Confidence should be 4 (edit distance 1: 5-1)")
+			// TestSomthing vs TestSomething = edit distance 1, so score = 6-1 = 5
+			assert.Equal(t, 5, confidenceLevels[testRegressions[5].Regression.ID], "Confidence should be 5 (edit distance 1: 6-1)")
 		}
 		assert.NotContains(t, matchesBySameFailure, testRegressions[5].Regression.ID, "Should not match by failure time")
 
@@ -1032,8 +1032,8 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 			matches := matchesBySimilarName[testRegressions[9].Regression.ID]
 			assert.Equal(t, 1, len(matches), "Should match exactly one similar name")
 			assert.Equal(t, testRegressions[1].Regression.ID, matches[0].Regression.ID, "Should match against TestAnotherOne regression")
-			// TestAnotheOne vs TestAnotherOne = edit distance 1, so score = 5-1 = 4
-			assert.Equal(t, 4, confidenceLevels[testRegressions[9].Regression.ID], "Confidence should be 4 (edit distance 1: 5-1)")
+			// TestAnotheOne vs TestAnotherOne = edit distance 1, so score = 6-1 = 5
+			assert.Equal(t, 5, confidenceLevels[testRegressions[9].Regression.ID], "Confidence should be 5 (edit distance 1: 6-1)")
 		}
 	})
 

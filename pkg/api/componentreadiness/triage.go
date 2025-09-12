@@ -345,7 +345,7 @@ func (pm PotentialMatch) calculateConfidenceLevel() int {
 
 	// Calculate score for similarly named tests based on edit distance
 	for _, similarTest := range pm.SimilarlyNamedTests {
-		editDistanceScore := 5 - similarTest.EditDistance // 0->5, 1->4, 2->3, 3->2, 4->1, 5->0
+		editDistanceScore := 6 - similarTest.EditDistance // 1 point for 5 edit distance, 2 points for 4, etc.
 		score += editDistanceScore
 	}
 
@@ -354,6 +354,10 @@ func (pm PotentialMatch) calculateConfidenceLevel() int {
 
 	if score > 10 {
 		score = 10
+	}
+	// This should never happen, but we should never return a score less than 1
+	if score < 1 {
+		score = 1
 	}
 
 	return score
