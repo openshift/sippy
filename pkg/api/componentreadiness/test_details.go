@@ -82,7 +82,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 		return testdetails.Report{}, errs
 	}
 
-	return c.GenerateDetailsReportForTest(ctx, testIDOptions, componentJobRunTestReportStatus)
+	return c.GenerateDetailsReportForTest(ctx, testIDOptions, componentJobRunTestReportStatus, true)
 }
 
 // GenerateTestDetailsReportMultiTest variant of the function is for multi-test reports, used for cache priming all test detail reports for a view.
@@ -164,7 +164,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		}
 		testKeyStr := testKey.KeyOrDie()
 		if statuses, ok := testKeyTestJobRunStatuses[testKeyStr]; ok {
-			report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses)
+			report, generateReportErrs := c.GenerateDetailsReportForTest(ctx, tOpt, statuses, false)
 			if len(generateReportErrs) > 0 {
 				errs = append(errs, generateReportErrs...)
 				continue
@@ -180,7 +180,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 }
 
 // GenerateDetailsReportForTest generates a test detail report for a per-test + variant combo.
-func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption reqopts.TestIdentification, componentJobRunTestReportStatus bq.TestJobRunStatuses) (testdetails.Report, []error) {
+func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption reqopts.TestIdentification, componentJobRunTestReportStatus bq.TestJobRunStatuses, allowUnregressedReports bool) (testdetails.Report, []error) {
 
 	if testIDOption.TestID == "" {
 		return testdetails.Report{}, []error{fmt.Errorf("test_id has to be defined for test details")}
@@ -246,6 +246,19 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 		// Inject the override report stats into the first position on the main report,
 		// which callers will interpret as the authoritative report in the event multiple are returned
 		report.Analyses = append([]testdetails.Analysis{baseOverrideReport.Analyses[0]}, report.Analyses...)
+	}
+
+	if !allowUnregressedReports {
+		regressed := false
+		for _, analysis := range report.Analyses {
+			if analysis.ReportStatus < crtest.NotSignificant {
+				regressed = true
+				break
+			}
+		}
+		if !regressed {
+			return testdetails.Report{}, []error{fmt.Errorf("report for test: %s is not showing as regressed", report.TestID)}
+		}
 	}
 
 	return report, nil
@@ -487,12 +500,14 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	if !lastFailure.IsZero() {
 		testStats.LastFailure = &lastFailure
 	}
+	log := logrus.WithFields(logrus.Fields{"testID": testIDOption.TestID, "variants": testIDOption.RequestedVariants})
+	log.Debugf("computed test stats prior to PreAnalysis: %+v", testStats)
 
 	if err := c.middlewares.PreAnalysis(testKey, &testStats); err != nil {
 		logrus.WithError(err).Error("Failure from middleware analysis")
 	}
 
-	c.assessComponentStatus(&testStats)
+	c.assessComponentStatus(&testStats, log)
 	report.TestComparison = testStats
 	result.Analyses = []testdetails.Analysis{report}
 
