@@ -14,7 +14,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
@@ -1839,7 +1838,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 				},
 			}
 
-			c.assessComponentStatus(testAnalysis, logrus.NewEntry(logrus.New()))
+			c.assessComponentStatus(testAnalysis)
 			assert.Equalf(t, tt.expectedStatus, testAnalysis.ReportStatus, "assessComponentStatus expected status not equal")
 			if tt.expectedFischers != nil {
 				// Mac and Linux do not matchup on floating point precision, so lets approximate the comparison:
