@@ -1055,9 +1055,13 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdeta
 	testStats.ReportStatus = status
 	testStats.FisherExact = thrift.Float64Ptr(fisherExact)
 
+	baseRelease := "no basis"
+	if testStats.BaseStats != nil {
+		baseRelease = testStats.BaseStats.Release
+	}
 	// If we have a regression, include explanations:
 	if testStats.ReportStatus <= crtest.SignificantTriagedRegression {
-		logger.Debugf("regression detected against %s", testStats.BaseStats.Release)
+		logger.Debugf("regression detected against: %s", baseRelease)
 
 		if testStats.ReportStatus <= crtest.SignificantRegression {
 			testStats.Explanations = append(testStats.Explanations,
@@ -1073,7 +1077,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdeta
 				fmt.Sprintf("%s regression detected.", crtest.StringForStatus(testStats.ReportStatus)))
 		}
 	} else {
-		logger.Debugf("NO regression detected against %s", testStats.BaseStats.Release)
+		logger.Debugf("NO regression detected against: %s", baseRelease)
 	}
 }
 
