@@ -1,4 +1,4 @@
-package componentreadiness
+package utils
 
 import (
 	"errors"
@@ -230,7 +230,7 @@ func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants, o
 	// check if any included variants have a junit table override:
 	var overriddenVariant string
 	for _, or := range overrides {
-		if containsOverriddenVariant(opts.IncludeVariants, or.VariantName, or.VariantValue) {
+		if ContainsOverriddenVariant(opts.IncludeVariants, or.VariantName, or.VariantValue) {
 			overriddenVariant = fmt.Sprintf("%s=%s", or.VariantName, or.VariantValue)
 			break
 		}

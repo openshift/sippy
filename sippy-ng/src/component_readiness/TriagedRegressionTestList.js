@@ -1,6 +1,6 @@
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
-import { generateTestReportForRegressedTest } from './CompReadyUtils'
+import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { relativeTime } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
@@ -143,7 +143,7 @@ export default function TriagedRegressionTestList(props) {
               if (matchingRegression) {
                 value.status = matchingRegression.status
                 value.explanations = matchingRegression.explanations
-                value.url = generateTestReportForRegressedTest(
+                value.url = generateTestDetailsReportLink(
                   matchingRegression,
                   props.filterVals,
                   expandEnvironment
