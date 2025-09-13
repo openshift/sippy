@@ -30,25 +30,35 @@ const (
 type ReleaseLoader struct {
 	db            *db.DB
 	httpClient    *http.Client
-	releases      []string
+	releases      map[string]v1.Release
 	architectures []string
 	projects      []PayloadProject
 	errors        []error
 }
 
 func New(dbc *db.DB, releases, architectures []string, releaseConfigs []v1.Release) *ReleaseLoader {
-	if len(releases) == 0 {
-		for _, config := range releaseConfigs {
-			if config.Capabilities[v1.PayloadTagsCap] {
-				releases = append(releases, config.Release)
+	configForRelease := make(map[string]v1.Release, len(releaseConfigs))
+	for _, config := range releaseConfigs {
+		if config.Capabilities[v1.PayloadTagsCap] {
+			configForRelease[config.Release] = config
+		}
+	}
+	if len(releases) > 0 {
+		filteredRCs := make(map[string]v1.Release, len(releases))
+		for _, release := range releases {
+			if config, ok := configForRelease[release]; ok {
+				filteredRCs[release] = config
+			} else {
+				log.Warningf("release %q is not configured to load payload tags", release)
 			}
 		}
+		configForRelease = filteredRCs
 	}
 
 	return &ReleaseLoader{
 		db:            dbc,
 		httpClient:    &http.Client{Timeout: 60 * time.Second},
-		releases:      releases,
+		releases:      configForRelease,
 		architectures: architectures,
 		projects:      []PayloadProject{&OCPProject{}, &OKDProject{}},
 	}
@@ -65,48 +75,46 @@ func (r *ReleaseLoader) Errors() []error {
 func (r *ReleaseLoader) Load() {
 	for _, project := range r.projects {
 		projectName := project.GetName()
-		releaseStreams := project.BuildReleaseStreams(r.releases)
-		for _, release := range releaseStreams {
-			log.Infof("Fetching release %s from %s release controller...", release, projectName)
-			allTags := r.fetchReleaseTags(project, release)
-
-			for _, tags := range allTags {
-				for _, tag := range tags.Tags {
-					mReleaseTag := models.ReleaseTag{}
-					r.db.DB.Table(releaseTagsTable).Where(`"release_tag" = ?`, tag.Name).Find(&mReleaseTag)
-					// expect Phase to be populated if the record is present
-					if len(mReleaseTag.Phase) > 0 {
-						if mReleaseTag.Phase != tag.Phase {
-							log.Warningf("Phase change detected (%q to %q) -- updating tag %s...", mReleaseTag.Phase, tag.Phase, tag.Name)
-							mReleaseTag.Phase = tag.Phase
-							mReleaseTag.Forced = true
-							if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
-								log.WithError(err).Errorf("error updating release tag")
-								r.errors = append(r.errors, errors.Wrapf(err, "error updating release tag %s for new phase: %s -> %s", tag.Name, mReleaseTag.Phase, tag.Phase))
-							}
+		for _, rs := range buildReleaseStreams(r.releases, r.architectures, project) {
+			log.Infof("Fetching releaseStream %s from %s release controller...", rs.Name, projectName)
+			for _, tag := range r.fetchReleaseTags(rs) {
+				mReleaseTag := models.ReleaseTag{}
+				r.db.DB.Table(releaseTagsTable).Where(`"release_tag" = ?`, tag.Name).Find(&mReleaseTag)
+				// expect Phase to be populated if the record is present
+				if len(mReleaseTag.Phase) > 0 {
+					if mReleaseTag.Phase != tag.Phase {
+						log.Warningf("Phase change detected (%q to %q) -- updating tag %s...", mReleaseTag.Phase, tag.Phase, tag.Name)
+						mReleaseTag.Phase = tag.Phase
+						mReleaseTag.Forced = true
+						if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).Table(releaseTagsTable).Save(mReleaseTag).Error; err != nil {
+							log.WithError(err).Errorf("error updating release tag")
+							r.errors = append(r.errors, errors.Wrapf(err, "error updating release tag %s for new phase: %s -> %s", tag.Name, mReleaseTag.Phase, tag.Phase))
 						}
-						continue
 					}
+					continue
+				}
 
-					log.Infof("Fetching tag %s from %s release controller...", tag.Name, projectName)
-					releaseTag := r.buildReleaseTag(project, tags.Architecture, release, tag)
+				log.Infof("Fetching tag %s from %s release controller...", tag.Name, projectName)
+				releaseTag := r.buildReleaseTag(rs, tag)
 
-					if releaseTag == nil {
-						continue
-					}
+				if releaseTag == nil {
+					continue
+				}
 
-					if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
-						r.errors = append(r.errors, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
-					}
+				if err := r.db.DB.Clauses(clause.OnConflict{UpdateAll: true}).CreateInBatches(&releaseTag, 100).Error; err != nil {
+					r.errors = append(r.errors, errors.Wrapf(err, "error creating release tag: %s", releaseTag.ReleaseTag))
 				}
 			}
 		}
 	}
 }
 
-func (r *ReleaseLoader) buildReleaseTag(project PayloadProject, architecture, release string, tag ReleaseTag) *models.ReleaseTag {
-	releaseDetails := r.fetchReleaseDetails(project, architecture, release, tag)
-	releaseTag := releaseDetailsToDB(project, architecture, tag, releaseDetails)
+func (r *ReleaseLoader) buildReleaseTag(rs ReleaseStream, tag ReleaseTag) *models.ReleaseTag {
+	releaseDetails := r.fetchReleaseDetails(rs, tag)
+	if releaseDetails == nil {
+		return nil
+	}
+	releaseTag := releaseDetailsToDB(rs, tag, *releaseDetails)
 
 	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
 	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
@@ -161,75 +169,53 @@ var bulkFetchPRsFromTbl = func(dbConn *db.DB, orConditions []string, args []any)
 	return pullRequests
 }
 
-func (r *ReleaseLoader) fetchReleaseDetails(project PayloadProject, architecture, release string, tag ReleaseTag) ReleaseDetails {
+func (r *ReleaseLoader) fetchReleaseDetails(rs ReleaseStream, tag ReleaseTag) *ReleaseDetails {
 	releaseDetails := ReleaseDetails{}
-	rcURL := project.BuildDetailsURL(release, architecture, tag.Name)
+	rcURL := rs.buildDetailsURL(tag.Name)
 
 	resp, err := r.httpClient.Get(rcURL)
 	if err != nil {
-		panic(err)
+		log.WithError(err).Errorf("error fetching release details from %s", rcURL)
+		return nil
 	}
 	defer resp.Body.Close()
 	if err := json.NewDecoder(resp.Body).Decode(&releaseDetails); err != nil {
-		panic(err)
+		log.WithError(err).Errorf("error decoding release details JSON from %s", rcURL)
+		return nil
 	}
 
-	return releaseDetails
+	return &releaseDetails
 }
 
-func (r *ReleaseLoader) fetchReleaseTags(project PayloadProject, release string) []ReleaseTags {
-	allTags := make([]ReleaseTags, 0)
-
-	for _, arch := range r.architectures {
-		tags := ReleaseTags{
-			Architecture: arch,
-		}
-
-		uri := project.BuildTagsURL(release, arch)
-		resp, err := r.httpClient.Get(uri)
-		if err != nil {
-			panic(err)
-		}
-		if resp.StatusCode != http.StatusOK {
-			log.Errorf("release controller returned non-200 error code for %s: %d %s", uri, resp.StatusCode, resp.Status)
-			continue
-		}
-
-		if err := json.NewDecoder(resp.Body).Decode(&tags); err != nil {
-			log.Errorf("couldn't decode json: %v", err)
-			resp.Body.Close()
-			continue
-		}
-		resp.Body.Close()
-		allTags = append(allTags, tags)
+func (r *ReleaseLoader) fetchReleaseTags(rs ReleaseStream) []ReleaseTag {
+	uri := rs.buildTagsURL()
+	resp, err := r.httpClient.Get(uri)
+	if err != nil {
+		log.WithError(err).Errorf("failed to connect to release controller at %s", uri)
+		return nil
 	}
-	return allTags
+	if resp.StatusCode != http.StatusOK {
+		log.Warnf("release controller returned non-200 error code for %s: %d %s", uri, resp.StatusCode, resp.Status)
+		return nil
+	}
+
+	tags := ReleaseTags{}
+	err = json.NewDecoder(resp.Body).Decode(&tags)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Errorf("couldn't decode json: %v", err)
+		return nil
+	}
+	return tags.Tags
 }
 
-func releaseDetailsToDB(project PayloadProject, architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
+func releaseDetailsToDB(rs ReleaseStream, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
 	release := models.ReleaseTag{
-		Architecture: architecture,
+		Release:      rs.Release.Release,
+		Stream:       rs.Stream,
+		Architecture: rs.Architecture,
 		ReleaseTag:   details.Name,
 		Phase:        tag.Phase,
-	}
-	// 4.10.0-0.nightly-2021-11-04-001635 -> 4.10
-	parts := strings.Split(details.Name, ".")
-	if len(parts) >= 2 {
-		release.Release = strings.Join(parts[:2], ".")
-	}
-
-	release.Release = project.ResolveRelease(release.Release)
-
-	// Extract the stream from the release tag
-	if len(parts) >= 4 {
-		streamPart := parts[3]
-		// Check against the project's defined streams
-		for _, stream := range project.GetStreams() {
-			if strings.Contains(streamPart, stream) {
-				release.Stream = stream
-				break
-			}
-		}
 	}
 
 	dateTime := regexp.MustCompile(`.*([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6})`)
@@ -477,4 +463,39 @@ func idFromURL(prowURL string) (uint, error) {
 		return 0, err
 	}
 	return uint(prowID), nil
+}
+
+func (rs *ReleaseStream) buildTagsURL() string {
+	return fmt.Sprintf("%s/%s/tags", rs.baseReleaseStreamURL(), rs.Name)
+}
+
+func (rs *ReleaseStream) buildDetailsURL(tag string) string {
+	return fmt.Sprintf("%s/%s/release/%s", rs.baseReleaseStreamURL(), rs.Name, tag)
+}
+
+func (rs *ReleaseStream) baseReleaseStreamURL() string {
+	return fmt.Sprintf("https://%s/api/v1/releasestream", rs.Domain)
+}
+
+// buildReleaseStreams builds relevant release streams for specified releases that belong to the project.
+func buildReleaseStreams(releases map[string]v1.Release, architectures []string, project PayloadProject) []ReleaseStream {
+	releaseStreams := make([]ReleaseStream, 0, len(releases)*len(project.GetStreams()))
+	for release, config := range releases {
+		if project.IsProjectRelease(config) {
+			for _, stream := range project.GetStreams() {
+				for _, arch := range architectures {
+					if name := project.FullReleaseStream(release, stream, arch); name != "" {
+						releaseStreams = append(releaseStreams, ReleaseStream{
+							Name:         name,
+							Release:      config,
+							Stream:       stream,
+							Architecture: arch,
+							Domain:       project.GetRcDomain(arch),
+						})
+					}
+				}
+			}
+		}
+	}
+	return releaseStreams
 }

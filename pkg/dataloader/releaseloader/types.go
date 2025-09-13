@@ -2,7 +2,17 @@ package releaseloader
 
 import (
 	"time"
+
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
+
+type ReleaseStream struct {
+	Name         string
+	Release      v1.Release
+	Stream       string
+	Architecture string
+	Domain       string
+}
 
 // ReleaseTags represents the type returned from a release controller endpoint
 // like https://amd64.ocp.releases.ci.openshift.org/api/v1/releasestream/4.9.0-0.nightly/tags
@@ -99,18 +109,15 @@ type OKDProject struct{}
 type PayloadProject interface {
 	GetName() string
 
-	// GetStreams returns the available release streams for this platform
+	// GetStreams returns the available stream types for this project (e.g. nightly, ci)
 	GetStreams() []string
 
-	// ResolveRelease resolves the release to the full release tag
-	ResolveRelease(release string) string
+	// GetRcDomain returns the release-controller domain for the specified architecture.
+	GetRcDomain(architecture string) (domain string)
 
-	// BuildReleaseStreams builds the full stream names for given releases
-	BuildReleaseStreams(releases []string) []string
+	// IsProjectRelease returns true if the release (from Releases table) belongs to this project
+	IsProjectRelease(release v1.Release) bool
 
-	// BuildTagsURL builds the URL to fetch release tags for a specific release and architecture
-	BuildTagsURL(release, architecture string) string
-
-	// BuildDetailsURL builds the URL to fetch release details for a specific tag
-	BuildDetailsURL(release, architecture, tag string) string
+	// FullReleaseStream builds a full releaseStream name to look for on the release-controller, or empty string if n/a
+	FullReleaseStream(release, stream, architecture string) string
 }

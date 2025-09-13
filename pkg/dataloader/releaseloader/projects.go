@@ -3,6 +3,8 @@ package releaseloader
 import (
 	"fmt"
 	"strings"
+
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 )
 
 func (ocp *OCPProject) GetName() string {
@@ -13,28 +15,20 @@ func (ocp *OCPProject) GetStreams() []string {
 	return []string{"nightly", "ci"}
 }
 
-func (ocp *OCPProject) ResolveRelease(release string) string {
-	return release
+func (ocp *OCPProject) GetRcDomain(architecture string) (domain string) {
+	return architecture + ".ocp.releases.ci.openshift.org"
 }
 
-func (ocp *OCPProject) BuildReleaseStreams(releases []string) []string {
-	releaseStreams := make([]string, 0, len(releases)*len(ocp.GetStreams()))
-	for _, release := range releases {
-		if !strings.Contains(release, "-") {
-			for _, stream := range ocp.GetStreams() {
-				releaseStreams = append(releaseStreams, fmt.Sprintf("%s.0-0.%s", release, stream))
-			}
-		}
+func (ocp *OCPProject) IsProjectRelease(release v1.Release) bool {
+	return release.Product == "OCP"
+}
+
+func (ocp *OCPProject) FullReleaseStream(release, stream, architecture string) string {
+	releaseStream := fmt.Sprintf("%s.0-0.%s", release, stream)
+	if architecture != "amd64" {
+		releaseStream += "-" + architecture
 	}
-	return releaseStreams
-}
-
-func (ocp *OCPProject) BuildTagsURL(release, architecture string) string {
-	return buildTagsURL(architecture, "ocp", buildReleaseName(release, architecture))
-}
-
-func (ocp *OCPProject) BuildDetailsURL(release, architecture, tag string) string {
-	return buildDetailsURL(architecture, "ocp", buildReleaseName(release, architecture), tag)
+	return releaseStream
 }
 
 func (okd *OKDProject) GetName() string {
@@ -45,46 +39,17 @@ func (okd *OKDProject) GetStreams() []string {
 	return []string{"okd-scos"}
 }
 
-func (okd *OKDProject) ResolveRelease(release string) string {
-	// For origin, we need to add the -okd suffix to the release tag before saving it to the database ie. 4.15 -> 4.15-okd
-	return fmt.Sprintf("%v%s", release, "-okd")
+func (okd *OKDProject) GetRcDomain(architecture string) (domain string) {
+	return architecture + ".origin.releases.ci.openshift.org"
 }
 
-func (okd *OKDProject) BuildReleaseStreams(releases []string) []string {
-	releaseStreams := []string{}
-	for _, release := range releases {
-		if strings.HasSuffix(release, "-okd") {
-			for _, stream := range okd.GetStreams() {
-				releaseStreams = append(releaseStreams, strings.Replace(release, "-okd", ".0-0.", 1)+stream)
-			}
-		}
-	}
-	return releaseStreams
+func (okd *OKDProject) IsProjectRelease(release v1.Release) bool {
+	return release.Product == "OKD"
 }
 
-func (okd *OKDProject) BuildTagsURL(release, architecture string) string {
-	return buildTagsURL(architecture, "origin", buildReleaseName(release, architecture))
-}
-
-func (okd *OKDProject) BuildDetailsURL(release, architecture, tag string) string {
-	return buildDetailsURL(architecture, "origin", buildReleaseName(release, architecture), tag)
-}
-
-func buildReleaseName(release, architecture string) string {
+func (okd *OKDProject) FullReleaseStream(release, stream, architecture string) string {
 	if architecture != "amd64" {
-		release += "-" + architecture
+		return "" // OKD only ever uses amd64 for now
 	}
-	return release
-}
-
-func buildTagsURL(arch, platform, release string) string {
-	return fmt.Sprintf("%s/%s/tags", buildReleaseURL(arch, platform), release)
-}
-
-func buildDetailsURL(arch, platform, release, tag string) string {
-	return fmt.Sprintf("%s/%s/release/%s", buildReleaseURL(arch, platform), release, tag)
-}
-
-func buildReleaseURL(arch, platform string) string {
-	return fmt.Sprintf("https://%s.%s.releases.ci.openshift.org/api/v1/releasestream", arch, platform)
+	return strings.Replace(release, "-okd", ".0-0.", 1) + stream
 }
