@@ -479,6 +479,7 @@ func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
 		Status:          r.ReleaseStatus.String(),
 		PreviousRelease: r.PreviousRelease.StringVal,
 		Capabilities:    make(map[sippyv1.ReleaseCapability]bool),
+		Product:         r.Product.StringVal,
 	}
 	if r.GADate.Valid {
 		gaDate := r.GADate.Date.In(time.UTC)

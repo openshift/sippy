@@ -77,6 +77,7 @@ type Release struct { // this is the Release that gets cached
 	DevelopmentStartDate *time.Time
 	PreviousRelease      string
 	Capabilities         map[ReleaseCapability]bool
+	Product              string
 }
 
 type VariantMapping struct {
