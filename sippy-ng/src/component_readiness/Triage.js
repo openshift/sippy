@@ -66,7 +66,7 @@ export default function Triage({ id }) {
       'Are you sure you want to delete this triage record?'
     )
     if (confirmed) {
-      fetch(getTriagesAPIUrl(id), {
+      fetch(triage.links.self, {
         method: 'DELETE',
       })
         .then((response) => {
@@ -104,7 +104,7 @@ export default function Triage({ id }) {
       >
         <h2 style={{ margin: 0 }}>Triage Details</h2>
         <Box>
-          {localDBEnabled && <TriageAuditLogsModal triageId={id} />}
+          {localDBEnabled && <TriageAuditLogsModal triage={triage} />}
           {triageEnabled && (
             <Fragment>
               <UpsertTriageModal

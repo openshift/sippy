@@ -17,7 +17,6 @@ import {
   Typography,
 } from '@mui/material'
 import { formatDateToSeconds, relativeTime } from '../helpers'
-import { getTriagesAPIUrl } from './CompReadyUtils'
 import { History } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
@@ -55,7 +54,7 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export default function TriageAuditLogsModal({ triageId }) {
+export default function TriageAuditLogsModal({ triage }) {
   const classes = useStyles()
   const [auditLogs, setAuditLogs] = useState([])
   const [loading, setLoading] = useState(false)
@@ -63,13 +62,11 @@ export default function TriageAuditLogsModal({ triageId }) {
   const [open, setOpen] = useState(false)
 
   const fetchAuditLogs = async () => {
-    if (!triageId) return
-
     setLoading(true)
     setError('')
 
     try {
-      const response = await fetch(`${getTriagesAPIUrl(triageId)}/audit`)
+      const response = await fetch(triage.links.audit_logs)
       if (response.status !== 200) {
         throw new Error(`API server returned ${response.status}`)
       }
@@ -92,10 +89,10 @@ export default function TriageAuditLogsModal({ triageId }) {
 
   // Fetch audit logs when modal opens
   React.useEffect(() => {
-    if (open && triageId) {
+    if (open) {
       fetchAuditLogs()
     }
-  }, [open, triageId])
+  }, [open])
 
   const formatOperation = (operation) => {
     switch (operation?.toLowerCase()) {
@@ -255,5 +252,5 @@ export default function TriageAuditLogsModal({ triageId }) {
 }
 
 TriageAuditLogsModal.propTypes = {
-  triageId: PropTypes.string.isRequired,
+  triage: PropTypes.object.isRequired,
 }
