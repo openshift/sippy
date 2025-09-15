@@ -59,6 +59,7 @@ type LoadFlags struct {
 	CacheFlags              *flags.CacheFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	JobVariantsInputFile    string
+	LogLevel                string
 }
 
 func NewLoadFlags() *LoadFlags {
@@ -89,6 +90,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVar(&f.Releases, "release", f.Releases, "Which releases to load (one per arg instance)")
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
 	fs.StringVar(&f.JobVariantsInputFile, "job-variants-input-file", "expected-job-variants.json", "JSON input file for the job-variants loader")
+	fs.StringVar(&f.LogLevel, "log-level", "info", "Log level")
 }
 
 // nolint:gocyclo
@@ -99,6 +101,12 @@ func NewLoadCommand() *cobra.Command {
 		Use:   "load",
 		Short: "Load data in the database",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			level, err := log.ParseLevel(f.LogLevel)
+			if err != nil {
+				log.WithError(err).Fatal("cannot parse log-level")
+			}
+			log.SetLevel(level)
+
 			loaders := make([]dataloader.DataLoader, 0)
 			allErrs := []error{}
 
