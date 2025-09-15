@@ -1555,6 +1555,10 @@ func (s *Server) jsonRegressions(w http.ResponseWriter, req *http.Request) {
 	}
 
 	regressions, err := componentreadiness.ListRegressions(s.db, view, release, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	api.RespondWithJSON(http.StatusOK, w, regressions)
 }
 
