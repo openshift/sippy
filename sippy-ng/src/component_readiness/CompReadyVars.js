@@ -1,9 +1,8 @@
 import {
   ArrayParam,
   NumberParam,
-  SafeStringParam,
   StringParam,
-  useQueryParam,
+  useQueryParams,
 } from 'use-query-params'
 import {
   convertParamToVariantItems,
@@ -16,24 +15,12 @@ import {
   gotFetchError,
 } from './CompReadyUtils'
 import { ReleasesContext } from '../App'
-import { safeEncodeURIComponent } from '../helpers'
-import { useLocation } from 'react-router-dom'
+import { safeEncodeURIComponent, SafeStringParam } from '../helpers'
 import CompReadyProgress from './CompReadyProgress'
 import PropTypes from 'prop-types'
 import React, { createContext, useContext, useEffect, useState } from 'react'
-export const CompReadyVarsContext = createContext()
 
-let params = null
-
-function getDefaultIncludeMultiReleaseAnalysis() {
-  if (params != null) {
-    let fallback = params.get('includeMultiReleaseAnalysis')
-    if (fallback != undefined) {
-      return fallback
-    }
-  }
-  return false
-}
+export const CompReadyVarsContext = createContext({})
 
 // Use of booleans in URL params does not seem to parse properly as a BooleanParam.
 // Use this custom param parser instead.
@@ -49,18 +36,24 @@ const CustomBooleanParam = {
   },
 }
 
-export const CompReadyVarsProvider = ({ children }) => {
-  const [allJobVariants, setAllJobVariants] = useState([])
-  const [views, setViews] = useState([])
-  const [view, setView] = useQueryParam('view', StringParam)
-  const [isLoaded, setIsLoaded] = useState(false)
-  const [fetchError, setFetchError] = useState('')
+const defaultIncludeVariants = [
+  'Architecture:amd64',
+  'FeatureSet:default',
+  'Installer:ipi',
+  'Installer:upi',
+  'Owner:eng',
+  'Platform:aws',
+  'Platform:azure',
+  'Platform:gcp',
+  'Platform:metal',
+  'Platform:vsphere',
+  'Topology:ha',
+  'CGroupMode:v2',
+  'ContainerRuntime:runc',
+]
 
-  let location = useLocation()
-  params = new URLSearchParams(location.search)
-  const releases = useContext(ReleasesContext)
-
-  // Find the most recent GA
+// with ReleaseContext, use the list of GA releases and their dates to determine the default base and sample releases.
+function gaReleaseInfo(releases) {
   const gaReleases = Object.keys(releases.ga_dates)
   gaReleases.sort(
     (a, b) => new Date(releases.ga_dates[b]) - new Date(releases.ga_dates[a])
@@ -78,6 +71,54 @@ export const CompReadyVarsProvider = ({ children }) => {
 
     return new Date()
   }
+  return { defaultBaseRelease, defaultSampleRelease, getReleaseDate }
+}
+
+export const CompReadyVarsProvider = ({ children }) => {
+  // some state for the actual process of loading data from the API
+  const [allJobVariants, setAllJobVariants] = useState([])
+  const [views, setViews] = useState([])
+  const [isLoaded, setIsLoaded] = useState(false)
+  const [fetchError, setFetchError] = useState('')
+
+  // read all the parameters from the URL that we care about for component readiness pages.
+  const [params, setParams] = useQueryParams({
+    view: StringParam,
+    baseRelease: StringParam,
+    baseStartTime: StringParam,
+    baseEndTime: StringParam,
+    sampleRelease: StringParam,
+    sampleStartTime: StringParam,
+    sampleEndTime: StringParam,
+    confidence: NumberParam,
+    pity: NumberParam,
+    minFail: NumberParam,
+    passRateNewTests: NumberParam,
+    passRateAllTests: NumberParam,
+    ignoreMissing: CustomBooleanParam,
+    ignoreDisruption: CustomBooleanParam,
+    includeMultiReleaseAnalysis: CustomBooleanParam,
+    flakeAsFailure: CustomBooleanParam,
+    component: SafeStringParam,
+    environment: StringParam,
+    capability: StringParam,
+    testId: StringParam,
+    testName: StringParam,
+    testBasisRelease: StringParam,
+    samplePROrg: StringParam,
+    samplePRRepo: StringParam,
+    samplePRNumber: StringParam,
+    samplePayloadTags: ArrayParam,
+    dbGroupBy: StringParam, // This is comma-separated in the URL, e.g. Platform,Architecture,...
+    columnGroupBy: StringParam, // This is comma-separated in the URL, e.g. Platform,Network,Architecture
+    includeVariant: ArrayParam, // variants selected for inclusion in the basis and sample (unless cross-compared)
+    variantCrossCompare: ArrayParam, // variant groups (e.g. "Architecture") selected for cross-variant comparison
+    compareVariant: ArrayParam, // individual variants (e.g. "Architecture:arm64") checked for cross-variant comparison
+  })
+
+  // Find the most recent GA releases
+  const { defaultBaseRelease, defaultSampleRelease, getReleaseDate } =
+    gaReleaseInfo(useContext(ReleasesContext))
   const days = 24 * 60 * 60 * 1000
   const seconds = 1000
   const now = new Date()
@@ -93,143 +134,21 @@ export const CompReadyVarsProvider = ({ children }) => {
   const initialBaseEndTime =
     getReleaseDate(defaultBaseRelease).getTime() + 1 * days - 1 * seconds
 
-  // Create the variables for the URL and set any initial values.
-  const [baseReleaseParam, setBaseReleaseParam] = useQueryParam(
-    'baseRelease',
-    StringParam
-  )
-  const [baseStartTimeParam, setBaseStartTimeParam] = useQueryParam(
-    'baseStartTime',
-    StringParam
-  )
-  const [baseEndTimeParam, setBaseEndTimeParam] = useQueryParam(
-    'baseEndTime',
-    StringParam
-  )
-  const [sampleReleaseParam, setSampleReleaseParam] = useQueryParam(
-    'sampleRelease',
-    StringParam
-  )
-  const [sampleStartTimeParam, setSampleStartTimeParam] = useQueryParam(
-    'sampleStartTime',
-    StringParam
-  )
-  const [sampleEndTimeParam, setSampleEndTimeParam] = useQueryParam(
-    'sampleEndTime',
-    StringParam
-  )
-
-  // This is comma-separated in the URL, i.e. Platform,Network,Architecture
-  const [columnGroupByCheckedItemsParam, setColumnGroupByCheckedItemsParam] =
-    useQueryParam('columnGroupBy', StringParam)
-
-  const [confidenceParam, setConfidenceParam] = useQueryParam(
-    'confidence',
-    NumberParam
-  )
-  const [pityParam, setPityParam] = useQueryParam('pity', NumberParam)
-  const [minFailParam, setMinFailParam] = useQueryParam('minFail', NumberParam)
-  const [passRateNewTestsParam, setPassRateNewTestsParam] = useQueryParam(
-    'passRateNewTests',
-    NumberParam
-  )
-  const [passRateAllTestsParam, setPassRateAllTestsParam] = useQueryParam(
-    'passRateAllTests',
-    NumberParam
-  )
-  const [ignoreMissingParam, setIgnoreMissingParam] = useQueryParam(
-    'ignoreMissing',
-    CustomBooleanParam
-  )
-  const [ignoreDisruptionParam, setIgnoreDisruptionParam] = useQueryParam(
-    'ignoreDisruption',
-    CustomBooleanParam
-  )
-  const [
-    includeMultiReleaseAnalysisParam,
-    setIncludeMultiReleaseAnalysisParam,
-  ] = useQueryParam('includeMultiReleaseAnalysis', CustomBooleanParam)
-
-  const [flakeAsFailureParam, setFlakeAsFailureParam] = useQueryParam(
-    'flakeAsFailure',
-    CustomBooleanParam
-  )
-
-  // Create the variables to be used for api calls; these are initialized to the
+  // Create the variables to be used for UI URLs or api calls; these are initialized to the
   // value of the variables that got their values from the URL.
   const [columnGroupByCheckedItems, setColumnGroupByCheckedItems] =
-    React.useState(() =>
-      columnGroupByCheckedItemsParam
-        ? columnGroupByCheckedItemsParam.split(',')
-        : ['Platform', 'Architecture', 'Network']
-    )
-
-  const [componentParam, setComponentParam] = useQueryParam(
-    'component',
-    SafeStringParam
-  )
-  const [environmentParam, setEnvironmentParam] = useQueryParam(
-    'environment',
-    StringParam
-  )
-  const [capabilityParam, setCapabilityParam] = useQueryParam(
-    'capability',
-    StringParam
-  )
-  const [testIdParam, setTestIdParam] = useQueryParam('testId', StringParam)
-  const [testNameParam, setTestNameParam] = useQueryParam(
-    'testName',
-    StringParam
-  )
-  const [testBasisReleaseParam, setTestBasisReleaseParam] = useQueryParam(
-    'testBasisRelease',
-    StringParam
-  )
-
-  const [baseRelease, setBaseRelease] = React.useState(
-    baseReleaseParam || defaultBaseRelease
-  )
-
-  const [sampleRelease, setSampleRelease] = React.useState(
-    sampleReleaseParam || defaultSampleRelease
-  )
-
-  const [baseStartTime, setBaseStartTime] = React.useState(
-    baseStartTimeParam || formatLongDate(initialBaseStartTime, dateFormat)
-  )
-
-  const [baseEndTime, setBaseEndTime] = React.useState(
-    baseEndTimeParam || formatLongDate(initialBaseEndTime, dateEndFormat)
-  )
-
-  const [sampleStartTime, setSampleStartTime] = React.useState(
-    sampleStartTimeParam || formatLongDate(initialSampleStartTime, dateFormat)
-  )
-  const [sampleEndTime, setSampleEndTime] = React.useState(
-    sampleEndTimeParam || formatLongDate(initialSampleEndTime, dateEndFormat)
-  )
-
-  const [samplePROrgParam = '', setSamplePROrgParam] = useQueryParam(
-    'samplePROrg',
-    StringParam
-  )
-  const [samplePROrg, setSamplePROrg] = React.useState(samplePROrgParam)
-  const [samplePRRepoParam = '', setSamplePRRepoParam] = useQueryParam(
-    'samplePRRepo',
-    StringParam
-  )
-  const [samplePRRepo, setSamplePRRepo] = React.useState(samplePRRepoParam)
-  const [samplePRNumberParam = '', setSamplePRNumberParam] = useQueryParam(
-    'samplePRNumber',
-    StringParam
-  )
-  const [samplePRNumber, setSamplePRNumber] =
-    React.useState(samplePRNumberParam)
-  const [samplePayloadTagsParam = [], setSamplePayloadTagsParam] =
-    useQueryParam('samplePayloadTag', ArrayParam)
-  const [samplePayloadTags, setSamplePayloadTags] = React.useState(
-    samplePayloadTagsParam
-  )
+    React.useState([])
+  const [dbGroupByVariants, setDbGroupByVariants] = React.useState([])
+  const [baseRelease, setBaseRelease] = React.useState('')
+  const [sampleRelease, setSampleRelease] = React.useState('')
+  const [baseStartTime, setBaseStartTime] = React.useState('')
+  const [baseEndTime, setBaseEndTime] = React.useState('')
+  const [sampleStartTime, setSampleStartTime] = React.useState('')
+  const [sampleEndTime, setSampleEndTime] = React.useState('')
+  const [samplePROrg, setSamplePROrg] = React.useState('')
+  const [samplePRRepo, setSamplePRRepo] = React.useState('')
+  const [samplePRNumber, setSamplePRNumber] = React.useState('')
+  const [samplePayloadTags, setSamplePayloadTags] = React.useState([])
 
   const setBaseReleaseWithDates = (event) => {
     let release = event.target.value
@@ -251,56 +170,23 @@ export const CompReadyVarsProvider = ({ children }) => {
    * All things related to parameter selection for variants
    ******************************************************** */
 
-  /** URL parameters for variants **/
-  // The variants that have been selected for inclusion in the basis and sample (unless they are in the cross-compare list)
-  const [
-    includeVariantsCheckedItemsParam = [
-      'Architecture:amd64',
-      'FeatureSet:default',
-      'Installer:ipi',
-      'Installer:upi',
-      'Owner:eng',
-      'Platform:aws',
-      'Platform:azure',
-      'Platform:gcp',
-      'Platform:metal',
-      'Platform:vsphere',
-      'Topology:ha',
-      'CGroupMode:v2',
-      'ContainerRuntime:runc',
-    ],
-    setIncludeVariantsCheckedItemsParam,
-  ] = useQueryParam('includeVariant', ArrayParam)
-  // The list of variant groups (e.g. "Architecture") that have been selected for cross-variant comparison
-  const [variantCrossCompareParam = [], setVariantCrossCompareParam] =
-    useQueryParam('variantCrossCompare', ArrayParam)
-  // The list of individual variants (e.g. "Architecture:arm64") that are checked for cross-variant comparison
-  const [
-    compareVariantsCheckedItemsParam = [],
-    setCompareVariantsCheckedItemsParam,
-  ] = useQueryParam('compareVariant', ArrayParam)
-
   /** some state variables and related handlers for managing the display of variants in the UI **/
   // The grouped variants that have been selected for inclusion in the basis and sample (unless they are in the cross-compare list)
   const [includeVariantsCheckedItems, setIncludeVariantsCheckedItems] =
-    useState(convertParamToVariantItems(includeVariantsCheckedItemsParam))
+    useState({})
   const replaceIncludeVariantsCheckedItems = (variant, checkedItems) => {
     includeVariantsCheckedItems[variant] = checkedItems
-    // this state stuff seems redundant but when omitted, params don't update reliably
     setIncludeVariantsCheckedItems(includeVariantsCheckedItems)
   }
-  // The grouped variants that have been selected for cross-comparison in the sample
+  // The list of individual variants (e.g. "Architecture:arm64") that are checked for cross-variant comparison
   const [compareVariantsCheckedItems, setCompareVariantsCheckedItems] =
-    useState(convertParamToVariantItems(compareVariantsCheckedItemsParam))
+    useState([])
   const replaceCompareVariantsCheckedItems = (variant, checkedItems) => {
     compareVariantsCheckedItems[variant] = checkedItems
-    // this state stuff seems redundant but when omitted, params don't update reliably
     setCompareVariantsCheckedItems(compareVariantsCheckedItems)
   }
-  // This is the list of variant groups (e.g. "Architecture") that have been selected for cross-variant comparison
-  const [variantCrossCompare, setVariantCrossCompare] = useState(
-    variantCrossCompareParam
-  )
+  // The list of variant groups (e.g. "Architecture") that have been selected for cross-variant comparison
+  const [variantCrossCompare, setVariantCrossCompare] = useState([])
   // This is run when the user (un)selects a variant group (e.g. "Platform") for cross-variant comparison.
   const updateVariantCrossCompare = (variantGroupName, isCompareMode) => {
     setVariantCrossCompare(
@@ -314,85 +200,131 @@ export const CompReadyVarsProvider = ({ children }) => {
    * All things related to the "Advanced" section
    ******************************************************** */
 
-  const [confidence, setConfidence] = React.useState(confidenceParam || 95)
-  const [pity, setPity] = React.useState(pityParam || 5)
-  const [minFail, setMinFail] = React.useState(minFailParam || 3)
-  const [passRateNewTests, setPassRateNewTests] = React.useState(
-    passRateNewTestsParam || 0
-  )
-  const [passRateAllTests, setPassRateAllTests] = React.useState(
-    passRateAllTestsParam || 0
-  )
+  const [confidence, setConfidence] = React.useState(0)
+  const [pity, setPity] = React.useState(0)
+  const [minFail, setMinFail] = React.useState(0)
+  const [passRateNewTests, setPassRateNewTests] = React.useState(0)
+  const [passRateAllTests, setPassRateAllTests] = React.useState(0)
 
-  // for the two boolean values here, we need the || false because otherwise
-  // the value will be null.
-  const [ignoreMissing, setIgnoreMissing] = React.useState(
-    ignoreMissingParam || false
-  )
-  const [ignoreDisruption, setIgnoreDisruption] = React.useState(
-    ignoreDisruptionParam || true
-  )
-
-  const [flakeAsFailure, setFlakeAsFailure] = React.useState(
-    flakeAsFailureParam || false
-  )
-
+  const [ignoreMissing, setIgnoreMissing] = React.useState(false)
+  const [ignoreDisruption, setIgnoreDisruption] = React.useState(false)
+  const [flakeAsFailure, setFlakeAsFailure] = React.useState(false)
   const [includeMultiReleaseAnalysis, setIncludeMultiReleaseAnalysis] =
-    React.useState(
-      includeMultiReleaseAnalysisParam ||
-        getDefaultIncludeMultiReleaseAnalysis() === 'true'
-    )
+    React.useState(false)
   /******************************************************************************
    * Parameters that are used to refine the query as the user drills down into CR
    ****************************************************************************** */
 
-  const [component, setComponent] = React.useState(componentParam)
-  if (component != componentParam) {
-    setComponent(componentParam)
-  }
+  const [component, setComponent] = React.useState(undefined)
+  const [environment, setEnvironment] = React.useState(undefined)
+  const [capability, setCapability] = React.useState(undefined)
+  const [testId, setTestId] = React.useState(undefined)
+  const [testName, setTestName] = React.useState(undefined)
+  const [testBasisRelease, setTestBasisRelease] = React.useState(undefined)
 
-  const [environment, setEnvironment] = React.useState(environmentParam)
-  if (environment != environmentParam) {
-    setEnvironment(environmentParam)
-  }
+  // at initialization and whenever URL params change, update the state variables to match the URL and view.
+  useEffect(() => {
+    // Initialize pity
+    setPity(params.pity || 5)
 
-  const [capability, setCapability] = React.useState(capabilityParam)
-  if (capability != capabilityParam) {
-    setCapability(capabilityParam)
-  }
+    // Initialize columnGroupByCheckedItems
+    setColumnGroupByCheckedItems(
+      params.columnGroupBy
+        ? params.columnGroupBy.split(',')
+        : ['Platform', 'Architecture', 'Network']
+    )
 
-  const [testId, setTestId] = React.useState(testIdParam)
-  if (testId != testIdParam) {
-    setTestId(testIdParam)
-  }
+    // Initialize dbGroupByVariants
+    setDbGroupByVariants(
+      params.dbGroupBy
+        ? params.dbGroupBy.split(',')
+        : [
+            'Platform',
+            'Architecture',
+            'Network',
+            'Topology',
+            'FeatureSet',
+            'Upgrade',
+            'Suite',
+            'Installer',
+          ]
+    )
 
-  const [testName, setTestName] = React.useState(testNameParam)
-  if (testName != testNameParam) {
-    setTestName(testNameParam)
-  }
+    // Initialize baseRelease
+    setBaseRelease(params.baseRelease || defaultBaseRelease)
 
-  const [testBasisRelease, setTestBasisRelease] = React.useState(
-    testBasisReleaseParam
-  )
-  if (testBasisRelease != testBasisReleaseParam) {
-    setTestBasisRelease(testBasisReleaseParam)
-  }
+    // Initialize sampleRelease
+    setSampleRelease(params.sampleRelease || defaultSampleRelease)
+
+    // Initialize baseStartTime
+    setBaseStartTime(
+      params.baseStartTime || formatLongDate(initialBaseStartTime, dateFormat)
+    )
+
+    // Initialize baseEndTime
+    setBaseEndTime(
+      params.baseEndTime || formatLongDate(initialBaseEndTime, dateEndFormat)
+    )
+
+    // Initialize sampleStartTime
+    setSampleStartTime(
+      params.sampleStartTime ||
+        formatLongDate(initialSampleStartTime, dateFormat)
+    )
+
+    // Initialize sampleEndTime
+    setSampleEndTime(
+      params.sampleEndTime ||
+        formatLongDate(initialSampleEndTime, dateEndFormat)
+    )
+
+    // Initialize samplePR related fields
+    setSamplePROrg(params.samplePROrg || '')
+    setSamplePRRepo(params.samplePRRepo || '')
+    setSamplePRNumber(params.samplePRNumber || '')
+    setSamplePayloadTags(params.samplePayloadTags || [])
+
+    // Initialize includeVariantsCheckedItems
+    setIncludeVariantsCheckedItems(
+      convertParamToVariantItems(
+        params.includeVariant || defaultIncludeVariants
+      )
+    )
+
+    // Initialize compareVariantsCheckedItems
+    setCompareVariantsCheckedItems(
+      convertParamToVariantItems(params.compareVariant || [])
+    )
+
+    // Initialize variantCrossCompare
+    setVariantCrossCompare(params.variantCrossCompare || [])
+
+    // Initialize advanced section fields
+    setConfidence(params.confidence || 95)
+    setMinFail(params.minFail || 3)
+    setPassRateNewTests(params.passRateNewTests || 0)
+    setPassRateAllTests(params.passRateAllTests || 0)
+
+    // Initialize boolean fields
+    setIgnoreMissing(params.ignoreMissing || false)
+    setIgnoreDisruption(params.ignoreDisruption || true)
+    setFlakeAsFailure(params.flakeAsFailure || false)
+    setIncludeMultiReleaseAnalysis(params.includeMultiReleaseAnalysis || false)
+
+    // Initialize drill-down parameters
+    setComponent(params.component)
+    setEnvironment(params.environment)
+    setCapability(params.capability)
+    setTestId(params.testId)
+    setTestName(params.testName)
+    setTestBasisRelease(params.testBasisRelease)
+
+    updateVarsFromView(params.view, views)
+  }, [params])
 
   /******************************************************************************
    * Generating the report parameters:
    ****************************************************************************** */
-
-  // dbGroupByVariants defines what variants are used for GroupBy in DB query
-  const dbGroupByVariants = [
-    'Platform',
-    'Architecture',
-    'Network',
-    'Topology',
-    'FeatureSet',
-    'Upgrade',
-    'Suite',
-    'Installer',
-  ]
 
   // This runs when someone pushes the "Generate Report" button.
   // It sets all parameters based on current state; this causes the URL to be updated and page to load with new params.
@@ -401,87 +333,59 @@ export const CompReadyVarsProvider = ({ children }) => {
       event.preventDefault()
     }
 
-    // If the generate report button was pressed, views are out of the question and we're now
-    // fully qualifying all params:
-    setView('')
-
-    setBaseReleaseParam(baseRelease)
-    setBaseStartTimeParam(formatLongDate(baseStartTime, dateFormat))
-    setBaseEndTimeParam(formatLongDate(baseEndTime, dateEndFormat))
-    setSampleReleaseParam(sampleRelease)
-    setSampleStartTimeParam(formatLongDate(sampleStartTime, dateFormat))
-    setSampleEndTimeParam(formatLongDate(sampleEndTime, dateEndFormat))
-
-    setColumnGroupByCheckedItemsParam(columnGroupByCheckedItems)
-    setIncludeVariantsCheckedItemsParam(
-      convertVariantItemsToParam(includeVariantsCheckedItems)
-    )
-    setCompareVariantsCheckedItemsParam(
-      convertVariantItemsToParam(compareVariantsCheckedItems)
-    )
-    setVariantCrossCompareParam(variantCrossCompare)
-    setConfidenceParam(confidence)
-    setSamplePROrgParam(samplePROrg)
-    setSamplePRRepoParam(samplePRRepo)
-    setSamplePRNumberParam(samplePRNumber)
-    setSamplePayloadTagsParam(samplePayloadTags)
-    setPityParam(pity)
-    setMinFailParam(minFail)
-    setPassRateNewTestsParam(passRateNewTests)
-    setPassRateAllTestsParam(passRateAllTests)
-    setIgnoreDisruptionParam(ignoreDisruption)
-    setIgnoreMissingParam(ignoreMissing)
-    setFlakeAsFailureParam(flakeAsFailure)
-    setIncludeMultiReleaseAnalysisParam(includeMultiReleaseAnalysis)
-    setComponentParam(component)
-    setEnvironmentParam(environment)
-    setCapabilityParam(capability)
-    setTestIdParam(testId)
-    setTestNameParam(testName)
-    setTestBasisReleaseParam(testBasisRelease)
-
-    // Execute callback after a short delay to allow URL params to update
-    if (callback) {
-      setTimeout(callback, 100)
-    }
-  }
-
-  const clearAllQueryParams = () => {
-    // Because all our Param properties have state linked to the URL shown, if we select a view,
-    // we have to clear them all out otherwise we see the view, but the URL continues to
-    // show our last selected query params.
-    setBaseStartTimeParam(undefined)
-    setBaseEndTimeParam(undefined)
-    setBaseReleaseParam(undefined)
-
-    setSampleStartTimeParam(undefined)
-    setSampleEndTimeParam(undefined)
-    setSampleReleaseParam(undefined)
-
-    setColumnGroupByCheckedItemsParam(undefined)
-    setIncludeVariantsCheckedItemsParam(undefined)
-    setVariantCrossCompareParam(undefined)
-    setCompareVariantsCheckedItemsParam(undefined)
-
-    setConfidenceParam(undefined)
-    setPityParam(undefined)
-    setMinFailParam(undefined)
-    setPassRateNewTestsParam(undefined)
-    setPassRateAllTestsParam(undefined)
-    setIgnoreDisruptionParam(undefined)
-    setIgnoreMissingParam(undefined)
-    setFlakeAsFailureParam(undefined)
-    setIncludeMultiReleaseAnalysisParam(undefined)
-
-    setSamplePROrgParam(undefined)
-    setSamplePRRepoParam(undefined)
-    setSamplePRNumberParam(undefined)
+    // "Generate report" button was pressed, unset "view" while specifying all other params
+    setParams({
+      view: undefined,
+      baseRelease,
+      baseStartTime: formatLongDate(baseStartTime, dateFormat),
+      baseEndTime: formatLongDate(baseEndTime, dateEndFormat),
+      sampleRelease,
+      sampleStartTime: formatLongDate(sampleStartTime, dateFormat),
+      sampleEndTime: formatLongDate(sampleEndTime, dateEndFormat),
+      confidence,
+      pity,
+      minFail,
+      passRateNewTests,
+      passRateAllTests,
+      ignoreMissing,
+      ignoreDisruption,
+      includeMultiReleaseAnalysis,
+      flakeAsFailure,
+      component,
+      environment,
+      capability,
+      testId,
+      testName,
+      testBasisRelease,
+      samplePROrg,
+      samplePRRepo,
+      samplePRNumber,
+      samplePayloadTags,
+      dbGroupBy: dbGroupByVariants.join(','),
+      columnGroupBy: columnGroupByCheckedItems.join(','),
+      includeVariant: convertVariantItemsToParam(includeVariantsCheckedItems),
+      variantCrossCompare: variantCrossCompare,
+      compareVariant: convertVariantItemsToParam(compareVariantsCheckedItems),
+    })
   }
 
   // syncView updates all vars and thus their respective inputs to match a server side view that was
   // just selected by the user.
   const syncView = (view) => {
-    clearAllQueryParams()
+    let nonView = {} // wipe out current URL params except the view
+    for (const key in params) {
+      nonView[key] = undefined
+    }
+    setParams({ ...nonView, view: view.name })
+    updateVarsFromView(view.name, views)
+  }
+
+  const updateVarsFromView = (viewName, loadedViews = []) => {
+    if (params.view === undefined || loadedViews.length === 0) return
+    // A view query param was requested and we have our views list; sync the controls to match:
+    let view = loadedViews.find((v) => v.name === viewName)
+    if (!view) return // TODO: alert when view not found in loaded views?
+
     setBaseRelease(view.base_release.release)
     setBaseStartTime(formatLongDate(view.base_release.start, dateFormat))
     setBaseEndTime(formatLongDate(view.base_release.end, dateFormat))
@@ -493,48 +397,34 @@ export const CompReadyVarsProvider = ({ children }) => {
     setColumnGroupByCheckedItems(
       Object.keys(view.variant_options.column_group_by)
     )
+    setDbGroupByVariants(Object.keys(view.variant_options.db_group_by))
 
-    if (view.variant_options.hasOwnProperty('include_variants')) {
+    if (view.variant_options.hasOwnProperty('include_variants'))
       setIncludeVariantsCheckedItems(view.variant_options.include_variants)
-    }
-    if (view.variant_options.hasOwnProperty('variant_cross_compare')) {
+    if (view.variant_options.hasOwnProperty('variant_cross_compare'))
       setVariantCrossCompare(view.variant_options.variant_cross_compare)
-    }
-    if (view.variant_options.hasOwnProperty('compare_variants')) {
+    if (view.variant_options.hasOwnProperty('compare_variants'))
       setCompareVariantsCheckedItems(view.variant_options.compare_variants)
-    }
-
-    if (view.advanced_options.hasOwnProperty('confidence')) {
+    if (view.advanced_options.hasOwnProperty('confidence'))
       setConfidence(view.advanced_options.confidence)
-    }
-    if (view.advanced_options.hasOwnProperty('pity_factor')) {
+    if (view.advanced_options.hasOwnProperty('pity_factor'))
       setPity(view.advanced_options.pity_factor)
-    }
-    if (view.advanced_options.hasOwnProperty('minimum_failure')) {
+    if (view.advanced_options.hasOwnProperty('minimum_failure'))
       setMinFail(view.advanced_options.minimum_failure)
-    }
-    if (view.advanced_options.hasOwnProperty('pass_rate_required_new_tests')) {
+    if (view.advanced_options.hasOwnProperty('pass_rate_required_new_tests'))
       setPassRateNewTests(view.advanced_options.pass_rate_required_new_tests)
-    }
-    if (view.advanced_options.hasOwnProperty('pass_rate_required_all_tests')) {
+    if (view.advanced_options.hasOwnProperty('pass_rate_required_all_tests'))
       setPassRateAllTests(view.advanced_options.pass_rate_required_all_tests)
-    }
-    if (view.advanced_options.hasOwnProperty('ignore_disruption')) {
+    if (view.advanced_options.hasOwnProperty('ignore_disruption'))
       setIgnoreDisruption(view.advanced_options.ignore_disruption)
-    }
-    if (view.advanced_options.hasOwnProperty('ignore_missing')) {
+    if (view.advanced_options.hasOwnProperty('ignore_missing'))
       setIgnoreMissing(view.advanced_options.ignore_missing)
-    }
-    if (view.advanced_options.hasOwnProperty('flake_as_failure')) {
+    if (view.advanced_options.hasOwnProperty('flake_as_failure'))
       setFlakeAsFailure(view.advanced_options.flake_as_failure)
-    }
-    if (
-      view.advanced_options.hasOwnProperty('include_multi_release_analysis')
-    ) {
+    if (view.advanced_options.hasOwnProperty('include_multi_release_analysis'))
       setIncludeMultiReleaseAnalysis(
         view.advanced_options.include_multi_release_analysis
       )
-    }
   }
 
   useEffect(() => {
@@ -570,24 +460,15 @@ export const CompReadyVarsProvider = ({ children }) => {
               var foundView = false
               if (v.sample_release.release === defaultSampleRelease) {
                 foundView = true
-                setView(v.name)
                 syncView(v)
                 break
               }
             }
             // Catch case where the views file has no entry for the current default sample release:
             if (!foundView) {
-              setView(views[0].name)
               syncView(views[0])
             }
-          } else if (view !== undefined) {
-            // A view query param was requested, sync the controls to match as soon as we receive our views list:
-            views.forEach((v) => {
-              if (v.name === view) {
-                syncView(v)
-              }
-            })
-          }
+          } else updateVarsFromView(params.view, views)
         }
         setIsLoaded(true)
       })
@@ -602,7 +483,7 @@ export const CompReadyVarsProvider = ({ children }) => {
 
   const shouldLoadDefaultView = () => {
     // Attempt to decide if we should pre-select the default view, or if we were given params:
-    return view === undefined && baseReleaseParam === undefined
+    return params.view === undefined && params.baseRelease === undefined
   }
 
   // Take a string that is an "environment" (environment is a list of strings that describe
@@ -670,13 +551,12 @@ export const CompReadyVarsProvider = ({ children }) => {
   return (
     <CompReadyVarsContext.Provider
       value={{
-        allJobVariants,
+        urlParams: params,
+        view: params.view,
         views,
-        view,
-        setView,
+        allJobVariants,
         expandEnvironment,
         baseRelease,
-        baseReleaseParam,
         setBaseReleaseWithDates,
         sampleRelease,
         setSampleReleaseWithDates,
@@ -724,17 +604,11 @@ export const CompReadyVarsProvider = ({ children }) => {
         includeMultiReleaseAnalysis,
         setIncludeMultiReleaseAnalysis,
         component,
-        setComponentParam,
         capability,
-        setCapabilityParam,
         environment,
-        setEnvironmentParam,
         testId,
-        setTestIdParam,
         testName,
-        setTestNameParam,
         testBasisRelease,
-        setTestBasisReleaseParam,
         handleGenerateReport,
         syncView,
         isLoaded,
