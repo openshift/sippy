@@ -653,6 +653,10 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 		{[]string{"-gcp-custom-dns"}, "candidate"},
 
+		// Periodic MCO jobs used for component readiness; not ready to make
+		// release blocking yet.
+		{[]string{"-mco-disruptive"}, "candidate"},
+
 		// Konflux jobs aren't ready yet
 		{[]string{"-konflux"}, "candidate"},
 		{[]string{"-console-operator-"}, "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
