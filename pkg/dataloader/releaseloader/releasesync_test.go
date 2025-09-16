@@ -1,9 +1,12 @@
 package releaseloader
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -364,7 +367,7 @@ func TestResolveReleasePullRequests(t *testing.T) {
 			description:            "Should replace all PRs with database versions when all exist",
 		},
 		{
-			name: "Duplicate PRs are deduplicated in database query",
+			name: "Duplicate PRs are deduplicated for database query",
 			inputPRs: []models.ReleasePullRequest{
 				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "First API PR", PullRequestID: "123"},
 				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Duplicate API PR", PullRequestID: "123"},
@@ -375,12 +378,11 @@ func TestResolveReleasePullRequests(t *testing.T) {
 			},
 			expectedPRs: []models.ReleasePullRequest{
 				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "DB API PR", PullRequestID: "123", BugURL: "https://bugzilla.redhat.com/123"},
-				{URL: "https://github.com/openshift/api/pull/123", Name: "api", Description: "Duplicate API PR", PullRequestID: "123"},
 				{URL: "https://github.com/openshift/origin/pull/456", Name: "origin", Description: "Origin PR", PullRequestID: "456"},
 			},
 			expectedDBQueryCount:   1,
 			expectedConditionCount: 2, // Only 2 unique keys, not 3
-			description:            "Should deduplicate database queries while preserving original order and duplicates",
+			description:            "Should deduplicate inputs before querying database",
 		},
 		{
 			name: "PRs with different names but same URL are treated separately",
@@ -514,6 +516,11 @@ func TestResolveReleasePullRequestsLargeDataset(t *testing.T) {
 
 	loader := &ReleaseLoader{}
 	result := loader.resolveReleasePullRequests(inputPRs)
+	slices.SortFunc(result, func(i, j models.ReleasePullRequest) int {
+		a, _ := strconv.Atoi(i.PullRequestID)
+		b, _ := strconv.Atoi(j.PullRequestID)
+		return cmp.Compare(a, b)
+	})
 
 	// Verify results
 	if len(result) != prCount {

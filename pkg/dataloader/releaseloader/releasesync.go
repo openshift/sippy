@@ -14,6 +14,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
 	"gorm.io/gorm/clause"
 
 	"github.com/openshift/sippy/pkg/apis/api"
@@ -121,51 +122,47 @@ func (r *ReleaseLoader) buildReleaseTag(rs ReleaseStream, tag ReleaseTag) *model
 		return nil
 	}
 
-	if len(releaseTag.PullRequests) > 0 {
-		releaseTag.PullRequests = r.resolveReleasePullRequests(releaseTag.PullRequests)
-	}
+	releaseTag.PullRequests = r.resolveReleasePullRequests(releaseTag.PullRequests)
 
 	return releaseTag
 }
 
+// look up DB records for PRs if they already exist.
 func (r *ReleaseLoader) resolveReleasePullRequests(pullRequests []models.ReleasePullRequest) []models.ReleasePullRequest {
 	if len(pullRequests) == 0 {
 		return pullRequests
 	}
 
 	type prKey struct{ url, name string }
-	prIndexMap := make(map[prKey]int, len(pullRequests))
+	prMap := make(map[prKey]models.ReleasePullRequest, len(pullRequests))
+
+	// make one query to find all listed PRs
 	orConditions := make([]string, 0, len(pullRequests))
 	args := make([]any, 0, len(pullRequests)*2)
-
-	for i, pr := range pullRequests {
+	for _, pr := range pullRequests {
 		key := prKey{pr.URL, pr.Name}
-		if _, exists := prIndexMap[key]; !exists {
-			prIndexMap[key] = i
+		if _, exists := prMap[key]; !exists {
+			prMap[key] = pr
 			orConditions = append(orConditions, "(url = ? AND name = ?)")
 			args = append(args, key.url, key.name)
 		}
 	}
 
-	existingPRs := bulkFetchPRsFromTbl(r.db, orConditions, args)
-
-	for _, existingPR := range existingPRs {
-		if index, ok := prIndexMap[prKey{existingPR.URL, existingPR.Name}]; ok {
-			pullRequests[index] = existingPR
-		}
+	// update all PRs found in the DB
+	for _, pr := range bulkFetchPRsFromTbl(r.db, orConditions, args) {
+		prMap[prKey{pr.URL, pr.Name}] = pr
 	}
 
-	return pullRequests
+	return maps.Values(prMap)
 }
 
-// bulkFetchPRsFromTbl is a function variable to allow mocking in tests
+// bulkFetchPRsFromTbl is a batch query to find existing PRs; as a function variable to allow mocking in tests
 var bulkFetchPRsFromTbl = func(dbConn *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
-	// Execute batch query to find existing PRs
 	var pullRequests []models.ReleasePullRequest
 	if err := dbConn.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&pullRequests).Error; err != nil {
-		panic(err)
+		// this shouldn't happen and managing it would be too much of a pain
+		log.WithError(err).Fatalf("error fetching release pull requests")
 	}
-
 	return pullRequests
 }
 
