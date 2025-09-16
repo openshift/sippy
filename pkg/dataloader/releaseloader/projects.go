@@ -26,6 +26,9 @@ func (ocp *OCPProject) IsProjectRelease(release v1.Release) bool {
 func (ocp *OCPProject) FullReleaseStream(release, stream, architecture string) string {
 	releaseStream := fmt.Sprintf("%s.0-0.%s", release, stream)
 	if architecture != "amd64" {
+		if stream == "ci" {
+			return "" // ci only ever uses amd64 for now
+		}
 		releaseStream += "-" + architecture
 	}
 	return releaseStream
