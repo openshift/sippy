@@ -14,6 +14,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
 	"gorm.io/gorm/clause"
 
 	"github.com/openshift/sippy/pkg/apis/api"
@@ -30,31 +31,37 @@ const (
 type ReleaseLoader struct {
 	db            *db.DB
 	httpClient    *http.Client
-	releases      []string
+	releases      map[string]v1.Release
 	architectures []string
+	projects      []PayloadProject
 	errors        []error
 }
 
 func New(dbc *db.DB, releases, architectures []string, releaseConfigs []v1.Release) *ReleaseLoader {
-	if len(releases) == 0 {
-		for _, config := range releaseConfigs {
-			if config.Capabilities[v1.PayloadTagsCap] {
-				releases = append(releases, config.Release)
-			}
+	configForRelease := make(map[string]v1.Release, len(releaseConfigs))
+	for _, config := range releaseConfigs {
+		if config.Capabilities[v1.PayloadTagsCap] {
+			configForRelease[config.Release] = config
 		}
 	}
-	releaseStreams := make([]string, 0)
-	for _, release := range releases {
-		for _, stream := range []string{"nightly", "ci"} {
-			releaseStreams = append(releaseStreams, fmt.Sprintf("%s.0-0.%s", release, stream))
+	if len(releases) > 0 {
+		filteredRCs := make(map[string]v1.Release, len(releases))
+		for _, release := range releases {
+			if config, ok := configForRelease[release]; ok {
+				filteredRCs[release] = config
+			} else {
+				log.Warningf("release %q is not configured to load payload tags", release)
+			}
 		}
+		configForRelease = filteredRCs
 	}
 
 	return &ReleaseLoader{
 		db:            dbc,
-		releases:      releaseStreams,
-		architectures: architectures,
 		httpClient:    &http.Client{Timeout: 60 * time.Second},
+		releases:      configForRelease,
+		architectures: architectures,
+		projects:      []PayloadProject{&OCPProject{}, &OKDProject{}},
 	}
 }
 
@@ -67,12 +74,11 @@ func (r *ReleaseLoader) Errors() []error {
 }
 
 func (r *ReleaseLoader) Load() {
-	for _, release := range r.releases {
-		log.Infof("Fetching release %s from release controller...", release)
-		allTags := r.fetchReleaseTags(release)
-
-		for _, tags := range allTags {
-			for _, tag := range tags.Tags {
+	for _, project := range r.projects {
+		projectName := project.GetName()
+		for _, rs := range buildReleaseStreams(r.releases, r.architectures, project) {
+			log.Infof("Fetching releaseStream %s from %s release controller...", rs.Name, projectName)
+			for _, tag := range r.fetchReleaseTags(rs) {
 				mReleaseTag := models.ReleaseTag{}
 				r.db.DB.Table(releaseTagsTable).Where(`"release_tag" = ?`, tag.Name).Find(&mReleaseTag)
 				// expect Phase to be populated if the record is present
@@ -89,8 +95,8 @@ func (r *ReleaseLoader) Load() {
 					continue
 				}
 
-				log.Infof("Fetching tag %s from release controller...", tag.Name)
-				releaseTag := r.buildReleaseTag(tags.Architecture, release, tag)
+				log.Infof("Fetching tag %s from %s release controller...", tag.Name, projectName)
+				releaseTag := r.buildReleaseTag(rs, tag)
 
 				if releaseTag == nil {
 					continue
@@ -104,97 +110,109 @@ func (r *ReleaseLoader) Load() {
 	}
 }
 
-func (r *ReleaseLoader) buildReleaseTag(architecture, release string, tag ReleaseTag) *models.ReleaseTag {
-	releaseDetails := r.fetchReleaseDetails(architecture, release, tag)
-	releaseTag := releaseDetailsToDB(architecture, tag, releaseDetails)
+func (r *ReleaseLoader) buildReleaseTag(rs ReleaseStream, tag ReleaseTag) *models.ReleaseTag {
+	releaseDetails := r.fetchReleaseDetails(rs, tag)
+	if releaseDetails == nil {
+		return nil
+	}
+	releaseTag := releaseDetailsToDB(rs, tag, *releaseDetails)
 
 	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
 	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
 		return nil
 	}
 
-	// PR is many-to-many, find the existing relation. TODO: There must be a more clever way to do this...
-	for i, pr := range releaseTag.PullRequests {
-		existingPR := models.ReleasePullRequest{}
-		result := r.db.DB.Table("release_pull_requests").Where("url = ?", pr.URL).Where("name = ?", pr.Name).First(&existingPR)
-		if result.Error == nil {
-			releaseTag.PullRequests[i] = existingPR
-		}
-	}
+	releaseTag.PullRequests = r.resolveReleasePullRequests(releaseTag.PullRequests)
 
 	return releaseTag
 }
 
-func (r *ReleaseLoader) fetchReleaseDetails(architecture, release string, tag ReleaseTag) ReleaseDetails {
-	releaseDetails := ReleaseDetails{}
-	releaseName := release
-	if architecture != "amd64" {
-		releaseName += "-" + architecture
+// look up DB records for PRs if they already exist.
+func (r *ReleaseLoader) resolveReleasePullRequests(pullRequests []models.ReleasePullRequest) []models.ReleasePullRequest {
+	if len(pullRequests) == 0 {
+		return pullRequests
 	}
 
-	rcURL := fmt.Sprintf("https://%s.ocp.releases.ci.openshift.org/api/v1/releasestream/%s/release/%s", architecture, releaseName, tag.Name)
+	type prKey struct{ url, name string }
+	prMap := make(map[prKey]models.ReleasePullRequest, len(pullRequests))
+
+	// make one query to find all listed PRs
+	orConditions := make([]string, 0, len(pullRequests))
+	args := make([]any, 0, len(pullRequests)*2)
+	for _, pr := range pullRequests {
+		key := prKey{pr.URL, pr.Name}
+		if _, exists := prMap[key]; !exists {
+			prMap[key] = pr
+			orConditions = append(orConditions, "(url = ? AND name = ?)")
+			args = append(args, key.url, key.name)
+		}
+	}
+
+	// update all PRs found in the DB
+	for _, pr := range bulkFetchPRsFromTbl(r.db, orConditions, args) {
+		prMap[prKey{pr.URL, pr.Name}] = pr
+	}
+
+	return maps.Values(prMap)
+}
+
+// bulkFetchPRsFromTbl is a batch query to find existing PRs; as a function variable to allow mocking in tests
+var bulkFetchPRsFromTbl = func(dbConn *db.DB, orConditions []string, args []any) []models.ReleasePullRequest {
+	var pullRequests []models.ReleasePullRequest
+	if err := dbConn.DB.Table("release_pull_requests").Where(strings.Join(orConditions, " OR "), args...).Find(&pullRequests).Error; err != nil {
+		// this shouldn't happen and managing it would be too much of a pain
+		log.WithError(err).Fatalf("error fetching release pull requests")
+	}
+	return pullRequests
+}
+
+func (r *ReleaseLoader) fetchReleaseDetails(rs ReleaseStream, tag ReleaseTag) *ReleaseDetails {
+	releaseDetails := ReleaseDetails{}
+	rcURL := rs.buildDetailsURL(tag.Name)
 
 	resp, err := r.httpClient.Get(rcURL)
 	if err != nil {
-		panic(err)
+		log.WithError(err).Errorf("error fetching release details from %s", rcURL)
+		return nil
 	}
 	defer resp.Body.Close()
 	if err := json.NewDecoder(resp.Body).Decode(&releaseDetails); err != nil {
-		panic(err)
+		log.WithError(err).Errorf("error decoding release details JSON from %s", rcURL)
+		return nil
 	}
 
-	return releaseDetails
+	return &releaseDetails
 }
 
-func (r *ReleaseLoader) fetchReleaseTags(release string) []ReleaseTags {
-	allTags := make([]ReleaseTags, 0)
-	for _, arch := range r.architectures {
-		tags := ReleaseTags{
-			Architecture: arch,
-		}
-		releaseName := release
-		if arch != "amd64" {
-			releaseName += "-" + arch
-		}
-		uri := fmt.Sprintf("https://%s.ocp.releases.ci.openshift.org/api/v1/releasestream/%s/tags", arch, releaseName)
-		resp, err := r.httpClient.Get(uri)
-		if err != nil {
-			panic(err)
-		}
-		if resp.StatusCode != http.StatusOK {
-			log.Errorf("release controller returned non-200 error code for %s: %d %s", uri, resp.StatusCode, resp.Status)
-			continue
-		}
-
-		if err := json.NewDecoder(resp.Body).Decode(&tags); err != nil {
-			log.Errorf("couldn't decode json: %v", err)
-			resp.Body.Close()
-			continue
-		}
-		resp.Body.Close()
-		allTags = append(allTags, tags)
+func (r *ReleaseLoader) fetchReleaseTags(rs ReleaseStream) []ReleaseTag {
+	uri := rs.buildTagsURL()
+	resp, err := r.httpClient.Get(uri)
+	if err != nil {
+		log.WithError(err).Errorf("failed to connect to release controller at %s", uri)
+		return nil
 	}
-	return allTags
+	if resp.StatusCode != http.StatusOK {
+		log.Warnf("release controller returned non-200 error code for %s: %d %s", uri, resp.StatusCode, resp.Status)
+		return nil
+	}
+
+	tags := ReleaseTags{}
+	err = json.NewDecoder(resp.Body).Decode(&tags)
+	defer resp.Body.Close()
+	if err != nil {
+		log.Errorf("couldn't decode json: %v", err)
+		return nil
+	}
+	return tags.Tags
 }
 
-func releaseDetailsToDB(architecture string, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
+func releaseDetailsToDB(rs ReleaseStream, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
 	release := models.ReleaseTag{
-		Architecture: architecture,
+		Release:      rs.Release.Release,
+		Stream:       rs.Stream,
+		Architecture: rs.Architecture,
 		ReleaseTag:   details.Name,
 		Phase:        tag.Phase,
-	}
-	// 4.10.0-0.nightly-2021-11-04-001635 -> 4.10
-	parts := strings.Split(details.Name, ".")
-	if len(parts) >= 2 {
-		release.Release = strings.Join(parts[:2], ".")
-	}
-
-	// Get "nightly" or "ci" from the string
-	if len(parts) >= 4 {
-		stream := strings.Split(parts[3], "-")
-		if len(stream) >= 2 {
-			release.Stream = stream[0]
-		}
 	}
 
 	dateTime := regexp.MustCompile(`.*([0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{6})`)
@@ -442,4 +460,39 @@ func idFromURL(prowURL string) (uint, error) {
 		return 0, err
 	}
 	return uint(prowID), nil
+}
+
+func (rs *ReleaseStream) buildTagsURL() string {
+	return fmt.Sprintf("%s/%s/tags", rs.baseReleaseStreamURL(), rs.Name)
+}
+
+func (rs *ReleaseStream) buildDetailsURL(tag string) string {
+	return fmt.Sprintf("%s/%s/release/%s", rs.baseReleaseStreamURL(), rs.Name, tag)
+}
+
+func (rs *ReleaseStream) baseReleaseStreamURL() string {
+	return fmt.Sprintf("https://%s/api/v1/releasestream", rs.Domain)
+}
+
+// buildReleaseStreams builds relevant release streams for specified releases that belong to the project.
+func buildReleaseStreams(releases map[string]v1.Release, architectures []string, project PayloadProject) []ReleaseStream {
+	releaseStreams := make([]ReleaseStream, 0, len(releases)*len(project.GetStreams()))
+	for release, config := range releases {
+		if project.IsProjectRelease(config) {
+			for _, stream := range project.GetStreams() {
+				for _, arch := range architectures {
+					if name := project.FullReleaseStream(release, stream, arch); name != "" {
+						releaseStreams = append(releaseStreams, ReleaseStream{
+							Name:         name,
+							Release:      config,
+							Stream:       stream,
+							Architecture: arch,
+							Domain:       project.GetRcDomain(arch),
+						})
+					}
+				}
+			}
+		}
+	}
+	return releaseStreams
 }
