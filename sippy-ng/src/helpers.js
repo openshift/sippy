@@ -364,7 +364,13 @@ export function findFirstNonGARelease(releases) {
   }
   let firstNonGA = releases.releases[0]
   releases.releases.forEach((r) => {
-    if (r.includes('.') && releases.ga_dates[r] === undefined) {
+    let attrs = releases.release_attrs[r]
+    if (
+      attrs &&
+      !attrs.ga &&
+      attrs.previous_release &&
+      attrs.previous_release in releases.ga_dates
+    ) {
       firstNonGA = r
     }
   })
