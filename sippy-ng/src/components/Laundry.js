@@ -5,7 +5,7 @@ import React from 'react'
 // this is a simple link component that takes a URL and renders it via Link, but only if the URL is valid.
 // using this soothes snyk's paranoia about insecure links from state vars.
 // only the `address` prop is used, all others are passed through to Link.
-export default function SecureLink({ address, ...props }) {
+export default function LaunderedLink({ address, ...props }) {
   let match = address.match('^(https?:/)?/[^"]+')
   if (!match) {
     throw new Error('Invalid URL format: ' + address)
@@ -13,7 +13,7 @@ export default function SecureLink({ address, ...props }) {
   return <Link style={{ cursor: 'pointer' }} {...props} href={match[0]} />
 }
 
-SecureLink.propTypes = {
+LaunderedLink.propTypes = {
   address: PropTypes.string.isRequired,
 }
 
