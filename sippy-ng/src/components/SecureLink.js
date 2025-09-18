@@ -6,7 +6,7 @@ import React from 'react'
 // using this soothes snyk's paranoia about insecure links from state vars.
 // only the `address` prop is used, all others are passed through to Link.
 export default function SecureLink({ address, ...props }) {
-  let match = address.match('https?://[^"]+')
+  let match = address.match('^(https?:/)?/[^"]+')
   if (!match) {
     throw new Error('Invalid URL format: ' + address)
   }
@@ -19,7 +19,7 @@ SecureLink.propTypes = {
 
 // same approach but for a ListItem with a link
 export function LaunderedListItem({ address, ...props }) {
-  let match = address.match('https?://[^"]+')
+  let match = address.match('^(https?:/)?/[^"]+')
   if (!match) {
     throw new Error('Invalid URL format: ' + address)
   }
