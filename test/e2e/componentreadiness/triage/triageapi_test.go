@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -114,11 +115,11 @@ func Test_TriageAPI(t *testing.T) {
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
 
 		// ensure hateoas links are present
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
+		assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triageResponse.ID),
 			triageResponse.Links["self"])
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/matches", triageResponse.ID),
+		assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d/matches", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triageResponse.ID),
 			triageResponse.Links["potential_matches"])
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/audit", triageResponse.ID),
+		assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d/audit", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triageResponse.ID),
 			triageResponse.Links["audit_logs"])
 	})
 	t.Run("get with expanded regressions", func(t *testing.T) {
@@ -198,11 +199,11 @@ func Test_TriageAPI(t *testing.T) {
 
 		// ensure hateoas links are present
 		for _, triage := range allTriages {
-			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triage.ID),
+			assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triage.ID),
 				triage.Links["self"])
-			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/matches", triage.ID),
+			assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d/matches", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triage.ID),
 				triage.Links["potential_matches"])
-			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/audit", triage.ID),
+			assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d/audit", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triage.ID),
 				triage.Links["audit_logs"])
 		}
 	})
@@ -220,11 +221,11 @@ func Test_TriageAPI(t *testing.T) {
 		assert.NotEqual(t, triageResponse.UpdatedAt, triageResponse2.UpdatedAt)
 
 		// ensure hateoas links are present
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse2.ID),
+		assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triageResponse2.ID),
 			triageResponse2.Links["self"])
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/matches", triageResponse2.ID),
+		assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d/matches", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triageResponse2.ID),
 			triageResponse2.Links["potential_matches"])
-		assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/audit", triageResponse2.ID),
+		assert.Equal(t, fmt.Sprintf("http://%s:%s/api/component_readiness/triages/%d/audit", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"), triageResponse2.ID),
 			triageResponse2.Links["audit_logs"])
 	})
 	t.Run("update to remove a regression", func(t *testing.T) {
@@ -498,12 +499,108 @@ func Test_TriageAPI(t *testing.T) {
 		assert.True(t, updateLog.CreatedAt.Before(deleteLog.CreatedAt), "Update should be before delete")
 
 		// Verify HATEOAS links are present in audit log responses
+		baseURL := fmt.Sprintf("http://%s:%s", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"))
 		for _, auditLog := range auditLogs {
-			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/audit", triageResponse.ID),
+			assert.Equal(t, fmt.Sprintf("%s/api/component_readiness/triages/%d/audit", baseURL, triageResponse.ID),
 				auditLog.Links["self"], "Audit log should have self link")
-			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
+			assert.Equal(t, fmt.Sprintf("%s/api/component_readiness/triages/%d", baseURL, triageResponse.ID),
 				auditLog.Links["triage"], "Audit log should have triage link")
 		}
+	})
+
+}
+
+func Test_RegressionAPI(t *testing.T) {
+	dbc := util.CreateE2EPostgresConnection(t)
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
+
+	testRegression1 := createTestRegression(t, tracker, view, "faketestid1")
+	defer dbc.DB.Delete(testRegression1)
+
+	testRegression2 := createTestRegression(t, tracker, view, "faketestid2")
+	defer dbc.DB.Delete(testRegression2)
+
+	jiraBug := createBug(t, dbc.DB)
+	defer dbc.DB.Delete(jiraBug)
+
+	t.Run("list regressions", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		_ = createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+
+		// Test listing all regressions
+		var allRegressions []models.TestRegression
+		err := util.SippyGet("/api/component_readiness/regressions", &allRegressions)
+		require.NoError(t, err)
+
+		// Should find at least our test regression
+		var foundRegression *models.TestRegression
+		for i, regression := range allRegressions {
+			if regression.ID == testRegression1.ID {
+				foundRegression = &allRegressions[i]
+				break
+			}
+		}
+		require.NotNil(t, foundRegression, "expected regression was not found in list")
+		assert.Equal(t, testRegression1.TestName, foundRegression.TestName)
+		assert.Equal(t, testRegression1.View, foundRegression.View)
+		assert.Equal(t, testRegression1.Release, foundRegression.Release)
+
+		// Verify HATEOAS links are present
+		assert.NotNil(t, foundRegression.Links, "regression should have HATEOAS links")
+		assert.Contains(t, foundRegression.Links, "test_details", "regression should have test_details link")
+		testDetailsLink := foundRegression.Links["test_details"]
+		assert.Contains(t, testDetailsLink, fmt.Sprintf("http://%s:%s/api/component_readiness/test_details", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT")), "test_details link should point to correct endpoint")
+		// Note: testId will be URL encoded, so we check for the encoded version
+		assert.Contains(t, testDetailsLink, "testId=", "test_details link should contain testId parameter")
+	})
+	t.Run("list regressions with view filter", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		_ = createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+
+		// Test listing regressions filtered by view
+		var filteredRegressions []models.TestRegression
+		err := util.SippyGet("/api/component_readiness/regressions?view="+view.Name, &filteredRegressions)
+		require.NoError(t, err)
+
+		// Should find our test regression
+		var foundRegression *models.TestRegression
+		for i, regression := range filteredRegressions {
+			if regression.ID == testRegression1.ID {
+				foundRegression = &filteredRegressions[i]
+				break
+			}
+		}
+		require.NotNil(t, foundRegression, "expected regression was not found in filtered list")
+		assert.Equal(t, view.Name, foundRegression.View)
+	})
+	t.Run("list regressions with release filter", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		_ = createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+
+		// Test listing regressions filtered by release
+		var filteredRegressions []models.TestRegression
+		err := util.SippyGet("/api/component_readiness/regressions?release="+view.SampleRelease.Name, &filteredRegressions)
+		require.NoError(t, err)
+
+		// Should find our test regression
+		var foundRegression *models.TestRegression
+		for i, regression := range filteredRegressions {
+			if regression.ID == testRegression1.ID {
+				foundRegression = &filteredRegressions[i]
+				break
+			}
+		}
+		require.NotNil(t, foundRegression, "expected regression was not found in release filtered list")
+		assert.Equal(t, view.SampleRelease.Release.Name, foundRegression.Release)
+	})
+	t.Run("error when both view and release are specified", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		_ = createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+
+		// Test that specifying both view and release parameters returns an error
+		var regressions []models.TestRegression
+		err := util.SippyGet("/api/component_readiness/regressions?view="+view.Name+"&release="+view.SampleRelease.Name, &regressions)
+		require.Error(t, err, "Expected error when both view and release are specified")
 	})
 }
 
@@ -777,6 +874,11 @@ func Test_TriageRawDB(t *testing.T) {
 
 func createTestRegression(t *testing.T, tracker componentreadiness.RegressionStore, view crview.View, testID string) *models.TestRegression {
 	newRegression := componentreport.ReportTestSummary{
+		TestComparison: testdetails.TestComparison{
+			BaseStats: &testdetails.ReleaseStats{
+				Release: "4.18",
+			},
+		},
 		Identification: crtest.Identification{
 			RowIdentification: crtest.RowIdentification{
 				Component:  "comp",
@@ -915,10 +1017,11 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		assert.True(t, len(potentialMatches) > 0, "Should find some potential matches")
 
 		// Verify HATEOAS links are present in potential match responses
+		baseURL := fmt.Sprintf("http://%s:%s", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"))
 		for _, match := range potentialMatches {
-			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d/matches", triageResponse.ID),
+			assert.Equal(t, fmt.Sprintf("%s/api/component_readiness/triages/%d/matches", baseURL, triageResponse.ID),
 				match.Links["self"], "Potential match should have self link")
-			assert.Equal(t, fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID),
+			assert.Equal(t, fmt.Sprintf("%s/api/component_readiness/triages/%d", baseURL, triageResponse.ID),
 				match.Links["triage"], "Potential match should have triage link")
 		}
 

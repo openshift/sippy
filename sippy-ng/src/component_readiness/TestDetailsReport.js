@@ -11,23 +11,19 @@ import {
 } from '@mui/material'
 import {
   cancelledDataTable,
+  getAPIUrl,
   getColumns,
   getStatusAndIcon,
-  getTestDetailsAPIUrl,
   gotFetchError,
   makePageTitle,
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
 import { CapabilitiesContext, ReleasesContext } from '../App'
-import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
-import {
-  pathForExactTestAnalysisWithFilter,
-  safeEncodeURIComponent,
-} from '../helpers'
+import { pathForExactTestAnalysisWithFilter } from '../helpers'
 import { Tooltip } from '@mui/material'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
@@ -93,7 +89,6 @@ function TestsReportTabPanel(props) {
 // This component runs when we see /component_readiness/test_details
 // This is page 5 which runs when you click a test cell on the right of page 4 or page 4a
 export default function TestDetailsReport(props) {
-  const classes = useContext(ComponentReadinessStyleContext)
   const { accessibilityModeOn } = useContext(AccessibilityModeContext)
 
   const [activeTabIndex, setActiveTabIndex] = React.useState(0)
@@ -102,15 +97,7 @@ export default function TestDetailsReport(props) {
     setActiveTabIndex(newValue)
   }
 
-  const {
-    filterVals,
-    component,
-    capability,
-    testId,
-    environment,
-    testName,
-    testBasisRelease,
-  } = props
+  const { component, capability, testId, environment } = props
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -124,15 +111,10 @@ export default function TestDetailsReport(props) {
   document.title =
     'Sippy > Component Readiness > Capabilities > Tests > Capability Tests > Test Details' +
     (environment ? `Env` : '')
-  const safeComponent = safeEncodeURIComponent(component)
-  const safeCapability = safeEncodeURIComponent(capability)
-  const safeTestId = safeEncodeURIComponent(testId)
-  const safeTestBasisRelease = safeEncodeURIComponent(testBasisRelease)
 
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const writeEndpointsEnabled = capabilitiesContext.includes('write_endpoints')
-  const { expandEnvironment, sampleRelease, urlParams } =
-    useContext(CompReadyVarsContext)
+  const { sampleRelease, urlParams } = useContext(CompReadyVarsContext)
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -146,19 +128,25 @@ export default function TestDetailsReport(props) {
 
   const [hasBeenTriaged, setHasBeenTriaged] = React.useState(false)
 
-  const testDetailsApiCall =
-    getTestDetailsAPIUrl() +
-    makeRFC3339Time(filterVals) +
-    `&component=${safeComponent}` +
-    `&capability=${safeCapability}` +
-    `&testId=${safeTestId}` +
-    `&testBasisRelease=${safeTestBasisRelease}` +
-    (environment ? expandEnvironment(environment) : '')
+  // This is the inverse of the hack in CompReadyUtils.generateTestDetailsReportLink.
+  // We are assuming the API query params are identical to the UI query params, but we have to adjust the host port and prefix from
+  // http://localhost:3000/sippy-ng/ to http://localhost:8080/api/
+  // This hack allows us to keep the param generation logic in one place. (server side)
+  const currentUrl = window.location.href
+  const sippyNgIndex = currentUrl.indexOf('/sippy-ng/')
+  let testDetailsApiCall
+  if (sippyNgIndex !== -1) {
+    const pathAfterSippyNg = currentUrl.substring(sippyNgIndex + 10) // +10 to skip '/sippy-ng/'
+    // We have to format the url to RFC3339Time in case the date picker has been used to update report params
+    testDetailsApiCall = makeRFC3339Time(getAPIUrl(pathAfterSippyNg))
+  } else {
+    console.error('No /sippy-ng/ found in URL, this is a bug')
+  }
 
   useEffect(() => {
     setIsLoaded(false)
     setHasBeenTriaged(false)
-    if (!testName) return // wait until the vars are initialized from params
+    if (!testId) return // wait until the vars are initialized from params
 
     // fetch the test_details data followed by any triage records that match the regressionId (if found)
     fetch(testDetailsApiCall, { signal: abortController.signal })
@@ -205,7 +193,7 @@ export default function TestDetailsReport(props) {
       .finally(() => {
         setIsLoaded(true)
       })
-  }, [hasBeenTriaged, urlParams, testName])
+  }, [hasBeenTriaged, urlParams, testId])
 
   useEffect(() => {
     let tmpRelease = {}
@@ -235,7 +223,7 @@ export default function TestDetailsReport(props) {
     `component: ${component}`,
     `capability: ${capability}`,
     `testId: ${testId}`,
-    `testName: ${testName}`,
+    `testName: ${data.test_name}`,
     `environment: ${environment}`
   )
 
@@ -311,7 +299,7 @@ Flakes: ${stats.flake_count}`
 (_Feel free to update this bug's summary to be more specific._)
 Component Readiness has found a potential regression in the following test:
 
-{code:none}${testName}{code}
+{code:none}${data.test_name}{code}
 
 ${(data.analyses[0].explanations || []).join('\n')}
 ${printStatsText(
@@ -334,7 +322,7 @@ View the [test details report|${document.location.href}] for additional context.
             `
 
     const commonProps = {
-      testName,
+      testName: data.test_name,
       component,
       capability,
       labels: ['component-regression'],
@@ -389,11 +377,11 @@ View the [test details report|${document.location.href}] for additional context.
       <h3>
         <Link to="/component_readiness">
           / {environment} &gt; {component}
-          &gt; {testName}
+          &gt; {data.test_name}
         </Link>
       </h3>
       <div align="center" style={{ marginTop: 50 }}>
-        <h2>{testName}</h2>
+        <h2>{data.test_name}</h2>
       </div>
       <Grid container>
         <Grid item xs={12}>
@@ -415,7 +403,7 @@ View the [test details report|${document.location.href}] for additional context.
 
           <h2>Bugs Mentioning This Test</h2>
           <BugTable
-            testName={testName}
+            testName={data.test_name}
             writeEndpointsEnabled={writeEndpointsEnabled}
             regressionId={regressionId}
             setHasBeenTriaged={setHasBeenTriaged}
@@ -437,9 +425,13 @@ View the [test details report|${document.location.href}] for additional context.
               View other open regressions
             </Button>
             <Link
-              to={pathForExactTestAnalysisWithFilter(sampleRelease, testName, {
-                items: [],
-              })}
+              to={pathForExactTestAnalysisWithFilter(
+                sampleRelease,
+                data.test_name,
+                {
+                  items: [],
+                }
+              )}
               style={{ textDecoration: 'none' }}
             >
               <Button variant="contained" color="secondary">
@@ -449,9 +441,7 @@ View the [test details report|${document.location.href}] for additional context.
           </Box>
         </Grid>
       </Grid>
-
       <h2>Regression Report</h2>
-
       <Table>
         <TableBody>
           <TableRow>
@@ -508,7 +498,7 @@ View the [test details report|${document.location.href}] for additional context.
               data={data.analyses[0]}
               versions={versions}
               loadedParams={loadedParams}
-              testName={testName}
+              testName={data.test_name}
               environment={environment}
               component={component}
             />
@@ -518,7 +508,7 @@ View the [test details report|${document.location.href}] for additional context.
               data={data.analyses[1]}
               versions={versions}
               loadedParams={loadedParams}
-              testName={testName}
+              testName={data.test_name}
               environment={environment}
               component={component}
             />
@@ -529,7 +519,7 @@ View the [test details report|${document.location.href}] for additional context.
           data={data.analyses[0]}
           versions={versions}
           loadedParams={loadedParams}
-          testName={testName}
+          testName={data.test_name}
           environment={environment}
           component={component}
         />
@@ -557,11 +547,8 @@ View the [test details report|${document.location.href}] for additional context.
 }
 
 TestDetailsReport.propTypes = {
-  filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,
   capability: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   environment: PropTypes.string.isRequired,
-  testName: PropTypes.string.isRequired,
-  testBasisRelease: PropTypes.string.isRequired,
 }

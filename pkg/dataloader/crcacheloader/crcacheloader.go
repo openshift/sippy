@@ -8,6 +8,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	sippytypes "github.com/openshift/sippy/pkg/apis/api"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
@@ -223,13 +224,13 @@ func (l *ComponentReadinessCacheLoader) buildGenerator(
 	testIDOpts []reqopts.TestIdentification,
 ) (*componentreadiness.ComponentReportGenerator, error) {
 
-	baseRelease, err := componentreadiness.GetViewReleaseOptions(
+	baseRelease, err := utils.GetViewReleaseOptions(
 		l.releases, "basis", view.BaseRelease, cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return nil, err
 	}
 
-	sampleRelease, err := componentreadiness.GetViewReleaseOptions(
+	sampleRelease, err := utils.GetViewReleaseOptions(
 		l.releases, "sample", view.SampleRelease, cacheOpts.CRTimeRoundingFactor)
 	if err != nil {
 		return nil, err
@@ -251,6 +252,6 @@ func (l *ComponentReadinessCacheLoader) buildGenerator(
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,
 	// explicitly set our reports in the cache, thus resetting the timer for all expiry and keeping the cache
 	// primed.
-	generator := componentreadiness.NewComponentReportGenerator(l.bqClient, reqOpts, l.dbc, l.config.ComponentReadinessConfig.VariantJunitTableOverrides, l.releases)
+	generator := componentreadiness.NewComponentReportGenerator(l.bqClient, reqOpts, l.dbc, l.config.ComponentReadinessConfig.VariantJunitTableOverrides, l.releases, "")
 	return &generator, nil
 }

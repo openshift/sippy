@@ -16,10 +16,7 @@ import {
 import { Close } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
-import {
-  generateTestReportForRegressedTest,
-  getTriagesAPIUrl,
-} from './CompReadyUtils'
+import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
 import { relativeTime } from '../helpers'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -101,7 +98,7 @@ export default function TriagePotentialMatches({
   const findPotentialMatches = () => {
     setIsLoading(true)
     setIsModalOpen(true)
-    fetch(`${getTriagesAPIUrl(triage.id)}/matches?view=${view}`)
+    fetch(`${triage.links.potential_matches}?view=${view}`)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('API server returned ' + response.status)
@@ -147,7 +144,7 @@ export default function TriagePotentialMatches({
       ],
     }
 
-    fetch(getTriagesAPIUrl(triage.id), {
+    fetch(triage.links.self, {
       method: 'PUT',
       body: JSON.stringify(updatedTriage),
     })
@@ -271,7 +268,9 @@ export default function TriagePotentialMatches({
       valueGetter: (params) => {
         const regressedTest = params.row.regressed_test
         const filterVals = `?view=${view}`
-        const testDetailsUrl = generateTestReportForRegressedTest(
+        //TODO(sgoeddel): we should be able to get this link off of the regression,
+        // and stop needing to get the regressedTest off the report at all
+        const testDetailsUrl = generateTestDetailsReportLink(
           regressedTest,
           filterVals,
           expandEnvironment
