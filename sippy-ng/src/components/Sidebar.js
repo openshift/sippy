@@ -14,7 +14,7 @@ import {
 } from '@mui/icons-material'
 import { BOOKMARKS } from '../constants'
 import { CapabilitiesContext } from '../App'
-import { LaunderedListItem } from './SecureLink'
+import { LaunderedListItem } from './Laundry'
 import { Link, useLocation } from 'react-router-dom'
 import { ListItemButton, ListSubheader, useTheme } from '@mui/material'
 import {

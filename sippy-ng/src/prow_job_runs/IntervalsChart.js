@@ -23,9 +23,9 @@ import { useNavigate } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
+import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect, useState } from 'react'
-import SecureLink from '../components/SecureLink'
 import TimelineChart from '../components/TimelineChart'
 
 // sourceOrder is our preferred ordering of the sections of the chart (interval sources), assuming that
@@ -572,8 +572,8 @@ export default function IntervalsChart(props) {
     <Fragment>
       <p>
         Loaded {eventIntervals.length} intervals from{' '}
-        <SecureLink address={jobRunUrl}>GCS job run</SecureLink>, filtered down
-        to {filteredIntervals.length}.
+        <LaunderedLink address={jobRunUrl}>GCS job run</LaunderedLink>, filtered
+        down to {filteredIntervals.length}.
       </p>
       <div className={classes.filterRow}>
         Categories:
