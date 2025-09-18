@@ -16,6 +16,7 @@ import {
   getStatusAndIcon,
   gotFetchError,
   makePageTitle,
+  makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
 import { CapabilitiesContext, ReleasesContext } from '../App'
@@ -136,7 +137,8 @@ export default function TestDetailsReport(props) {
   let testDetailsApiCall
   if (sippyNgIndex !== -1) {
     const pathAfterSippyNg = currentUrl.substring(sippyNgIndex + 10) // +10 to skip '/sippy-ng/'
-    testDetailsApiCall = getAPIUrl(pathAfterSippyNg)
+    // We have to format the url to RFC3339Time in case the date picker has been used to update report params
+    testDetailsApiCall = makeRFC3339Time(getAPIUrl(pathAfterSippyNg))
   } else {
     console.error('No /sippy-ng/ found in URL, this is a bug')
   }
@@ -144,7 +146,7 @@ export default function TestDetailsReport(props) {
   useEffect(() => {
     setIsLoaded(false)
     setHasBeenTriaged(false)
-    if (!testName) return // wait until the vars are initialized from params
+    if (!testId) return // wait until the vars are initialized from params
 
     // fetch the test_details data followed by any triage records that match the regressionId (if found)
     fetch(testDetailsApiCall, { signal: abortController.signal })
@@ -191,7 +193,7 @@ export default function TestDetailsReport(props) {
       .finally(() => {
         setIsLoaded(true)
       })
-  }, [hasBeenTriaged, urlParams, testName])
+  }, [hasBeenTriaged, urlParams, testId])
 
   useEffect(() => {
     let tmpRelease = {}
@@ -320,6 +322,7 @@ View the [test details report|${document.location.href}] for additional context.
             `
 
     const commonProps = {
+      testName: data.test_name,
       component,
       capability,
       labels: ['component-regression'],
@@ -544,10 +547,8 @@ View the [test details report|${document.location.href}] for additional context.
 }
 
 TestDetailsReport.propTypes = {
-  filterVals: PropTypes.string.isRequired,
   component: PropTypes.string.isRequired,
   capability: PropTypes.string.isRequired,
   testId: PropTypes.string.isRequired,
   environment: PropTypes.string.isRequired,
-  testBasisRelease: PropTypes.string.isRequired,
 }
