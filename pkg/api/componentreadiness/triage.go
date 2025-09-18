@@ -223,7 +223,7 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 
 // ListRegressions lists all regressions for the provided view OR release
 func ListRegressions(dbc *db.DB, view, release string, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, req *http.Request) ([]models.TestRegression, error) {
-	//TODO(sgoeddel): We should convert this into a response object that also contains the status.
+	// TODO(sgoeddel): We should convert this into a response object that also contains the status.
 	// Now that we have the test_details link, the status would allow us to stop returning the component_report regressed_tests in many (all) of these endpoints.
 	var regressions []models.TestRegression
 	var err error
@@ -260,7 +260,7 @@ func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Releas
 // have the same last failure time. It includes a confidence level for each match that states how likely the match is to be relevant.
 func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.TestRegression, componentReport componentreport.ComponentReport, req *http.Request) ([]PotentialMatchingRegression, error) {
 	var potentialMatches []PotentialMatchingRegression
-	baseUrl := sippyapi.GetBaseURL(req)
+	baseURL := sippyapi.GetBaseURL(req)
 	for _, reg := range allRegressions {
 		if reg.Closed.Valid {
 			// Don't bother listing closed regressions as potential matches
@@ -279,8 +279,8 @@ func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.Te
 		if match.PotentialMatch != nil {
 			match.ConfidenceLevel = match.PotentialMatch.calculateConfidenceLevel()
 			match.Links = map[string]string{
-				"self":   fmt.Sprintf(potentialMatchesLink, baseUrl, triage.ID),
-				"triage": fmt.Sprintf(triageLink, baseUrl, triage.ID),
+				"self":   fmt.Sprintf(potentialMatchesLink, baseURL, triage.ID),
+				"triage": fmt.Sprintf(triageLink, baseURL, triage.ID),
 			}
 			potentialMatches = append(potentialMatches, match)
 		}
@@ -322,7 +322,7 @@ func determinePotentialMatch(regression models.TestRegression, triage *models.Tr
 // have the same last failure time. It includes a confidence level for each match that states how likely the match is to be relevant.
 func GetRegressionPotentialMatchingTriages(regression models.TestRegression, triages []models.Triage, req *http.Request) ([]PotentialMatchingTriage, error) {
 	var potentialMatches []PotentialMatchingTriage
-	baseUrl := sippyapi.GetBaseURL(req)
+	baseURL := sippyapi.GetBaseURL(req)
 	for _, triage := range triages {
 		// If the triage already contains the regression, don't consider it a potential match
 		for _, reg := range triage.Regressions {
@@ -338,8 +338,8 @@ func GetRegressionPotentialMatchingTriages(regression models.TestRegression, tri
 		if match.PotentialMatch != nil {
 			match.ConfidenceLevel = match.PotentialMatch.calculateConfidenceLevel()
 			match.Links = map[string]string{
-				"self":       fmt.Sprintf(potentialMatchingTriagesLink, baseUrl, regression.ID),
-				"regression": fmt.Sprintf(regressionLink, baseUrl, regression.ID),
+				"self":       fmt.Sprintf(potentialMatchingTriagesLink, baseURL, regression.ID),
+				"regression": fmt.Sprintf(regressionLink, baseURL, regression.ID),
 			}
 			potentialMatches = append(potentialMatches, match)
 		}
@@ -597,7 +597,7 @@ func GetTriageAuditDetails(dbc *gorm.DB, triageID int, req *http.Request) ([]Tri
 		return nil, err
 	}
 
-	baseUrl := sippyapi.GetBaseURL(req)
+	baseURL := sippyapi.GetBaseURL(req)
 	var responseAuditLogs []TriageAuditLog
 	for _, auditLog := range auditLogs {
 		response := TriageAuditLog{
@@ -605,8 +605,8 @@ func GetTriageAuditDetails(dbc *gorm.DB, triageID int, req *http.Request) ([]Tri
 			User:      auditLog.User,
 			CreatedAt: auditLog.CreatedAt,
 			Links: map[string]string{
-				"self":   fmt.Sprintf(auditLogsLink, baseUrl, triageID),
-				"triage": fmt.Sprintf(triageLink, baseUrl, triageID),
+				"self":   fmt.Sprintf(auditLogsLink, baseURL, triageID),
+				"triage": fmt.Sprintf(triageLink, baseURL, triageID),
 			},
 		}
 

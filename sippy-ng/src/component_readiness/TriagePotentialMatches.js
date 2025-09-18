@@ -268,7 +268,8 @@ export default function TriagePotentialMatches({
       valueGetter: (params) => {
         const regressedTest = params.row.regressed_test
         const filterVals = `?view=${view}`
-        //TODO: we need to get this off of the regression...
+        //TODO(sgoeddel): we should be able to get this link off of the regression,
+        // and stop needing to get the regressedTest off the report at all
         const testDetailsUrl = generateTestDetailsReportLink(
           regressedTest,
           filterVals,

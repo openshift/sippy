@@ -1455,7 +1455,7 @@ func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, r
 		failureResponse(w, http.StatusBadRequest, "no view provided")
 		return
 	}
-	//TODO(sgoeddel): I don't think we need the component report anymore, the regressions should contain the test_details link, but do they contain the status?
+	// TODO(sgoeddel): I don't think we need the component report anymore, the regressions should contain the test_details link, but do they contain the status?
 	componentReport, err := s.getComponentReportFromRequest(req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
