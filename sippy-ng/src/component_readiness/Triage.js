@@ -5,6 +5,7 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
 import { useTheme } from '@mui/material/styles'
+import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import SecureLink from '../components/SecureLink'
@@ -82,6 +83,16 @@ export default function Triage({ id }) {
     }
   }
 
+  // Helper function to check if triage has any regressions with status -1000
+  const hasStatus1000Regression = () => {
+    if (!triage.regressed_tests || !triage.regressed_tests.length) {
+      return false
+    }
+
+    // Check if any regressed tests have status -1000
+    return triage.regressed_tests.some((rt) => rt && rt.status === -1000)
+  }
+
   if (message !== '') {
     return <h2>{message}</h2>
   }
@@ -136,7 +147,13 @@ export default function Triage({ id }) {
                     new Date()
                   )} (${formatDateToSeconds(triage.resolved.Time)})`}
                 >
-                  <CheckCircle style={{ color: theme.palette.success.light }} />
+                  {hasStatus1000Regression() ? (
+                    <CompSeverityIcon status={-1000} />
+                  ) : (
+                    <CheckCircle
+                      style={{ color: theme.palette.success.light }}
+                    />
+                  )}
                 </Tooltip>
               ) : (
                 <Tooltip title="Not resolved">
