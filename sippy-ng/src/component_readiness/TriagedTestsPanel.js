@@ -15,6 +15,7 @@ export default function TriagedTestsPanel(props) {
           eventEmitter={eventEmitter}
           triageEntries={props.triageEntries}
           entriesPerPage={props.triageEntriesPerPage}
+          allRegressedTests={props.allRegressedTests}
         />
         <TriagedRegressionTestList
           eventEmitter={eventEmitter}

@@ -5,6 +5,7 @@ import { jiraUrlPrefix } from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
+import CompSeverityIcon from './CompSeverityIcon'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -13,6 +14,7 @@ export default function TriagedRegressions({
   triageEntries,
   eventEmitter,
   entriesPerPage = 10,
+  allRegressedTests,
 }) {
   const theme = useTheme()
   const [sortModel, setSortModel] = React.useState([
@@ -72,6 +74,29 @@ export default function TriagedRegressions({
     }
   }
 
+  // Helper function to check if triage has any regressions with status -1000
+  const hasStatus1000Regression = (triage) => {
+    if (
+      !allRegressedTests ||
+      !allRegressedTests.length ||
+      !triage.regressions
+    ) {
+      return false
+    }
+
+    // Get regression IDs from this triage
+    const triageRegressionIds = triage.regressions.map((r) => r.id)
+
+    // Filter allRegressedTests to find those matching this triage's regressions
+    const relevantRegressedTests = allRegressedTests.filter(
+      (rt) =>
+        rt?.regression?.id && triageRegressionIds.includes(rt.regression.id)
+    )
+
+    // Check if any have status -1000
+    return relevantRegressedTests.some((rt) => rt.status === -1000)
+  }
+
   const columns = [
     {
       field: 'resolution_date',
@@ -81,21 +106,29 @@ export default function TriagedRegressions({
       headerName: 'Resolved',
       flex: 4,
       align: 'center',
-      renderCell: (param) =>
-        param.value ? (
+      renderCell: (param) => {
+        const triage = triageEntries.find((t) => t.id === param.row.id)
+        const hasStatus1000 = hasStatus1000Regression(triage)
+
+        return param.value ? (
           <Tooltip
             title={`${relativeTime(
               new Date(param.value),
               new Date()
             )} (${formatDateToSeconds(param.value)})`}
           >
-            <CheckCircle style={{ color: theme.palette.success.light }} />
+            {hasStatus1000 ? (
+              <CompSeverityIcon status={-1000} />
+            ) : (
+              <CheckCircle style={{ color: theme.palette.success.light }} />
+            )}
           </Tooltip>
         ) : (
           <Tooltip title="Not resolved">
             <ErrorIcon style={{ color: theme.palette.error.light }} />
           </Tooltip>
-        ),
+        )
+      },
     },
     {
       field: 'description',
@@ -259,4 +292,5 @@ TriagedRegressions.propTypes = {
   eventEmitter: PropTypes.object,
   triageEntries: PropTypes.array,
   entriesPerPage: PropTypes.number,
+  allRegressedTests: PropTypes.array,
 }
