@@ -312,26 +312,21 @@ export default function ComponentReadiness(props) {
   }
 
   const fetchData = (fresh) => {
-    let formattedApiCallStr = showValuesForReport()
-
     // prevent a slightly expensive duplicate request when user navs to /main with no query params,
     // and we're still in the process of setting the default view to use
     // Only skip if we have views AND we're in the process of setting a default view
-    // (indicated by having some other query params that suggest we're in a transition state)
-    const hasOtherParams =
-      Object.keys(new URLSearchParams(location.search)).length > 0
+    // (indicated by missing query params since any normal report request would specify baseRelease or view)
     if (
       varsContext.views !== undefined &&
       varsContext.views.length > 0 &&
       varsContext.view === undefined &&
-      varsContext.urlParams.baseRelease === undefined &&
-      !hasOtherParams &&
-      data &&
-      Object.keys(data).length > 0 // Only skip if we already have data
+      varsContext.urlParams.view === undefined &&
+      varsContext.urlParams.baseRelease === undefined
     ) {
       return
     }
 
+    let formattedApiCallStr = showValuesForReport()
     console.log('fetchData api call str: ' + formattedApiCallStr)
     if (fresh) {
       formattedApiCallStr += '&forceRefresh=true'
