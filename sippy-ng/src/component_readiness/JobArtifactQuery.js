@@ -30,9 +30,9 @@ import {
 } from '@mui/icons-material'
 import { getArtifactQueryAPIUrl } from './CompReadyUtils'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
+import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
-import SecureLink from '../components/SecureLink'
 
 const emptyContentMatch = {
   type: 'none',
@@ -630,13 +630,13 @@ export default function JobArtifactQuery(props) {
                     <SelectingCheckbox jobRunID={row.job_run_id} />
                   </TableCell>
                   <TableCell>
-                    <SecureLink
+                    <LaunderedLink
                       address={row.url}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
                       {row.job_name}
-                    </SecureLink>
+                    </LaunderedLink>
                   </TableCell>
                   <TableCell>
                     <Tooltip
@@ -648,13 +648,13 @@ export default function JobArtifactQuery(props) {
                       }
                     >
                       <div className="test-name">
-                        <SecureLink
+                        <LaunderedLink
                           address={row.url}
                           target="_blank"
                           rel="noopener noreferrer"
                         >
                           {relativeTime(new Date(row.start_time), new Date())}
-                        </SecureLink>
+                        </LaunderedLink>
                       </div>
                     </Tooltip>
                   </TableCell>
@@ -671,14 +671,14 @@ export default function JobArtifactQuery(props) {
                       <Stack direction="column" spacing={2}>
                         {row.searchResult.artifacts.map((artifact) => (
                           <Fragment key={artifact.artifact_url}>
-                            <SecureLink
+                            <LaunderedLink
                               className="cr-artifacts-truncate"
                               address={artifact.artifact_url}
                               target="_blank"
                               rel="noreferrer noopener"
                             >
                               {artifact.artifact_path}
-                            </SecureLink>
+                            </LaunderedLink>
                             {artifact.matched_content?.line_matches?.matches &&
                               artifact.matched_content.line_matches.matches.map(
                                 (match, index) => (
@@ -843,7 +843,7 @@ export default function JobArtifactQuery(props) {
           disabled={contentMatch.type === 'none'}
         />
         {apiCallURL && (
-          <SecureLink
+          <LaunderedLink
             address={apiCallURL}
             target="_blank"
             rel="noopener noreferrer"
@@ -852,7 +852,7 @@ export default function JobArtifactQuery(props) {
               <LinkIcon fontSize="small" />
               API URL
             </Tooltip>
-          </SecureLink>
+          </LaunderedLink>
         )}
       </Stack>
       <JAQResultTable />
