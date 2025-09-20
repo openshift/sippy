@@ -58,11 +58,15 @@ function gaReleaseInfo(releases) {
   gaReleases.sort(
     (a, b) => new Date(releases.ga_dates[b]) - new Date(releases.ga_dates[a])
   )
-  const defaultBaseRelease = gaReleases[0]
+  let defaultBaseRelease = gaReleases[0]
 
-  // Find the release after that
-  const nextReleaseIndex = releases.releases.indexOf(defaultBaseRelease) - 1
-  const defaultSampleRelease = releases.releases[nextReleaseIndex]
+  // default sample is the first release that has previous_release = defaultBaseRelease
+  let defaultSampleRelease = null
+  for (let name of releases.releases) {
+    if (releases.release_attrs[name]?.previous_release === defaultBaseRelease) {
+      defaultSampleRelease = name
+    }
+  }
 
   const getReleaseDate = (release) => {
     if (releases.ga_dates && releases.ga_dates[release]) {
