@@ -19,7 +19,7 @@ func ListOpenRegressions(dbc *db.DB, release string) ([]*models.TestRegression, 
 	var openRegressions []*models.TestRegression
 	res := dbc.DB.
 		Model(&models.TestRegression{}).
-		Preload("Triages").
+		Preload("Triages.Bug").
 		Where("test_regressions.release = ?", release).
 		Where("test_regressions.closed IS NULL").
 		Find(&openRegressions)
