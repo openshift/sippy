@@ -3,7 +3,11 @@ import { CapabilitiesContext } from '../App'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
-import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
+import {
+  getTriagesAPIUrl,
+  hasFailedFixRegression,
+  jiraUrlPrefix,
+} from './CompReadyUtils'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
@@ -83,16 +87,6 @@ export default function Triage({ id }) {
     }
   }
 
-  // Helper function to check if triage has any regressions with status -1000
-  const hasStatus1000Regression = () => {
-    if (!triage.regressed_tests || !triage.regressed_tests.length) {
-      return false
-    }
-
-    // Check if any regressed tests have status -1000
-    return triage.regressed_tests.some((rt) => rt && rt.status === -1000)
-  }
-
   if (message !== '') {
     return <h2>{message}</h2>
   }
@@ -147,7 +141,7 @@ export default function Triage({ id }) {
                     new Date()
                   )} (${formatDateToSeconds(triage.resolved.Time)})`}
                 >
-                  {hasStatus1000Regression() ? (
+                  {hasFailedFixRegression(triage, triage.regressed_tests) ? (
                     <CompSeverityIcon status={-1000} />
                   ) : (
                     <CheckCircle

@@ -1,7 +1,7 @@
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { formatDateToSeconds, relativeTime } from '../helpers'
-import { jiraUrlPrefix } from './CompReadyUtils'
+import { hasFailedFixRegression, jiraUrlPrefix } from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -74,29 +74,6 @@ export default function TriagedRegressions({
     }
   }
 
-  // Helper function to check if triage has any regressions with status -1000
-  const hasStatus1000Regression = (triage) => {
-    if (
-      !allRegressedTests ||
-      !allRegressedTests.length ||
-      !triage.regressions
-    ) {
-      return false
-    }
-
-    // Get regression IDs from this triage
-    const triageRegressionIds = triage.regressions.map((r) => r.id)
-
-    // Filter allRegressedTests to find those matching this triage's regressions
-    const relevantRegressedTests = allRegressedTests.filter(
-      (rt) =>
-        rt?.regression?.id && triageRegressionIds.includes(rt.regression.id)
-    )
-
-    // Check if any have status -1000
-    return relevantRegressedTests.some((rt) => rt.status === -1000)
-  }
-
   const columns = [
     {
       field: 'resolution_date',
@@ -108,7 +85,7 @@ export default function TriagedRegressions({
       align: 'center',
       renderCell: (param) => {
         const triage = triageEntries.find((t) => t.id === param.row.id)
-        const hasStatus1000 = hasStatus1000Regression(triage)
+        const hasFailedFix = hasFailedFixRegression(triage, allRegressedTests)
 
         return param.value ? (
           <Tooltip
@@ -117,7 +94,7 @@ export default function TriagedRegressions({
               new Date()
             )} (${formatDateToSeconds(param.value)})`}
           >
-            {hasStatus1000 ? (
+            {hasFailedFix ? (
               <CompSeverityIcon status={-1000} />
             ) : (
               <CheckCircle style={{ color: theme.palette.success.light }} />
