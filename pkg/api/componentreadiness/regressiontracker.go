@@ -300,10 +300,10 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 			baseRelease := view.BaseRelease.Name
 			if regTest.BaseStats != nil {
 				baseRelease = regTest.BaseStats.Release
-				if baseRelease != openReg.BaseRelease {
-					openReg.BaseRelease = regTest.BaseStats.Release
-					modifiedRegression = true
-				}
+			}
+			if baseRelease != openReg.BaseRelease {
+				openReg.BaseRelease = baseRelease
+				modifiedRegression = true
 			}
 
 			// Technically component and capability could get remapped during the time the regression is open,
