@@ -302,7 +302,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(ctx context.Context, view 
 				baseRelease = regTest.BaseStats.Release
 			}
 			if baseRelease != openReg.BaseRelease {
-				openReg.BaseRelease = regTest.BaseStats.Release
+				openReg.BaseRelease = baseRelease
 				modifiedRegression = true
 			}
 
