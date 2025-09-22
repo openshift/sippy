@@ -60,8 +60,6 @@ import RepositoryDetails from './repositories/RepositoryDetails'
 import Sidebar from './components/Sidebar'
 import Tests from './tests/Tests'
 import Toolbar from '@mui/material/Toolbar'
-import Triage from './component_readiness/Triage'
-import TriageList from './component_readiness/TriageList'
 import Typography from '@mui/material/Typography'
 import Upgrades from './releases/Upgrades'
 import VariantStatus from './jobs/VariantStatus'
@@ -286,24 +284,6 @@ const TestsWrapper = () => {
   const { release } = useParams()
   return RedirectLatestReleaseWrapper(
     <Tests key={'tests-' + release} release={release} />
-  )
-}
-
-const TriageWrapper = () => {
-  const { id } = useParams()
-
-  return (
-    <CompReadyVarsProvider>
-      <Triage id={id} />
-    </CompReadyVarsProvider>
-  )
-}
-
-const TriageListWrapper = () => {
-  return (
-    <CompReadyVarsProvider>
-      <TriageList />
-    </CompReadyVarsProvider>
   )
 }
 
@@ -718,16 +698,6 @@ export default function App(props) {
                             <Route
                               path="/tests/:release/*"
                               element={<TestsWrapper />}
-                            />
-
-                            <Route
-                              path="/triages/:id"
-                              element={<TriageWrapper />}
-                            />
-
-                            <Route
-                              path="/triages"
-                              element={<TriageListWrapper />}
                             />
 
                             <Route

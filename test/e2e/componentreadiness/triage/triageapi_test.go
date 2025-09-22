@@ -131,6 +131,9 @@ func Test_TriageAPI(t *testing.T) {
 		r2 := createTestRegressionWithDetails(t, tracker, view, "expanded-test-2", "component-expand", "capability-expand", "TestExpanded2", nil, crtest.SignificantRegression)
 		defer dbc.DB.Delete(r2.Regression)
 
+		// TODO(sgoeddel): If we ever have a need for another view available within e2e tests we could verify that we could get regressed_tests
+		// for multiple views at once here, but it isn't worth the overhead now.
+
 		// Create a triage with the test regressions
 		triage := models.Triage{
 			URL:  jiraBug.URL,

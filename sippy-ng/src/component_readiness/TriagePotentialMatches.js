@@ -7,9 +7,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
   FormControlLabel,
   FormGroup,
   IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Tooltip,
   Typography,
 } from '@mui/material'
@@ -55,6 +59,7 @@ const useStyles = makeStyles((theme) => ({
     marginBottom: theme.spacing(2),
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'space-between',
     gap: theme.spacing(2),
   },
   filterGroup: {
@@ -67,6 +72,14 @@ const useStyles = makeStyles((theme) => ({
     marginRight: theme.spacing(1),
     fontWeight: 'bold',
   },
+  viewDropdown: {
+    minWidth: 150,
+  },
+  filterSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(2),
+  },
 }))
 
 export default function TriagePotentialMatches({
@@ -76,6 +89,8 @@ export default function TriagePotentialMatches({
 }) {
   const classes = useStyles()
   const [isModalOpen, setIsModalOpen] = React.useState(false)
+  const [selectedView, setSelectedView] = React.useState('')
+  const [availableViews, setAvailableViews] = React.useState([])
   const [potentialMatches, setPotentialMatches] = React.useState([])
   const [isLoading, setIsLoading] = React.useState(false)
   const [selectedRegressions, setSelectedRegressions] = React.useState([])
@@ -83,11 +98,35 @@ export default function TriagePotentialMatches({
   const [filterSimilarNames, setFilterSimilarNames] = React.useState(true)
   const [filterSameLastFailures, setFilterSameLastFailures] =
     React.useState(true)
-  const { view, expandEnvironment } = useContext(CompReadyVarsContext)
+  const { expandEnvironment } = useContext(CompReadyVarsContext)
+
   const [autoOpenMatches, setAutoOpenMatches] = useQueryParam(
     'openMatches',
     BooleanParam
   )
+
+  // Extract and sort views from triage regressions by frequency
+  React.useEffect(() => {
+    if (triage.regressions && triage.regressions.length > 0) {
+      const viewCounts = {}
+      triage.regressions.forEach((regression) => {
+        if (regression.view) {
+          viewCounts[regression.view] = (viewCounts[regression.view] || 0) + 1
+        }
+      })
+
+      const sortedViews = Object.entries(viewCounts)
+        .sort(([, a], [, b]) => b - a) // Sort by frequency descending
+        .map(([view]) => view)
+
+      setAvailableViews(sortedViews)
+
+      // Set default to the most frequent view
+      if (sortedViews.length > 0 && !selectedView) {
+        setSelectedView(sortedViews[0])
+      }
+    }
+  }, [triage.regressions])
 
   React.useEffect(() => {
     if (autoOpenMatches === true) {
@@ -95,10 +134,16 @@ export default function TriagePotentialMatches({
     }
   }, [autoOpenMatches])
 
+  React.useEffect(() => {
+    if (selectedView !== '' && isModalOpen) {
+      findPotentialMatches()
+    }
+  }, [selectedView])
+
   const findPotentialMatches = () => {
     setIsLoading(true)
     setIsModalOpen(true)
-    fetch(`${triage.links.potential_matches}?view=${view}`)
+    fetch(`${triage.links.potential_matches}?view=${selectedView}`)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('API server returned ' + response.status)
@@ -267,7 +312,8 @@ export default function TriagePotentialMatches({
       flex: 4,
       valueGetter: (params) => {
         const regressedTest = params.row.regressed_test
-        const filterVals = `?view=${view}`
+        const viewToUse = selectedView || view
+        const filterVals = `?view=${viewToUse}`
         //TODO(sgoeddel): we should be able to get this link off of the regression,
         // and stop needing to get the regressedTest off the report at all
         const testDetailsUrl = generateTestDetailsReportLink(
@@ -376,41 +422,62 @@ export default function TriagePotentialMatches({
           ) : (
             <>
               <div className={classes.filterContainer}>
-                <Typography className={classes.filterTitle}>
-                  Filter by:
-                </Typography>
-                <FormGroup className={classes.filterGroup}>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={filterSimilarNames}
-                        onChange={(e) =>
-                          setFilterSimilarNames(e.target.checked)
-                        }
-                      />
-                    }
-                    label={`Similar Names (${
-                      potentialMatches.filter(
-                        (m) => m.similarly_named_tests?.length > 0
-                      ).length
-                    })`}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={filterSameLastFailures}
-                        onChange={(e) =>
-                          setFilterSameLastFailures(e.target.checked)
-                        }
-                      />
-                    }
-                    label={`Same Last Failures (${
-                      potentialMatches.filter(
-                        (m) => m.same_last_failures?.length > 0
-                      ).length
-                    })`}
-                  />
-                </FormGroup>
+                <div>
+                  <FormControl size="small" className={classes.viewDropdown}>
+                    <InputLabel>View</InputLabel>
+                    <Select
+                      value={selectedView}
+                      label="View"
+                      onChange={(event) => setSelectedView(event.target.value)}
+                      disabled={availableViews.length <= 1}
+                    >
+                      {availableViews.map((viewOption) => (
+                        <MenuItem key={viewOption} value={viewOption}>
+                          {viewOption}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </div>
+                <div
+                  style={{ display: 'flex', alignItems: 'center', gap: '16px' }}
+                >
+                  <Typography className={classes.filterTitle}>
+                    Filter by:
+                  </Typography>
+                  <FormGroup className={classes.filterGroup}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={filterSimilarNames}
+                          onChange={(e) =>
+                            setFilterSimilarNames(e.target.checked)
+                          }
+                        />
+                      }
+                      label={`Similar Names (${
+                        potentialMatches.filter(
+                          (m) => m.similarly_named_tests?.length > 0
+                        ).length
+                      })`}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={filterSameLastFailures}
+                          onChange={(e) =>
+                            setFilterSameLastFailures(e.target.checked)
+                          }
+                        />
+                      }
+                      label={`Same Last Failures (${
+                        potentialMatches.filter(
+                          (m) => m.same_last_failures?.length > 0
+                        ).length
+                      })`}
+                    />
+                  </FormGroup>
+                </div>
               </div>
               <DataGrid
                 rows={filteredMatches}

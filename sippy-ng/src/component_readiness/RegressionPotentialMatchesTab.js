@@ -284,7 +284,7 @@ export default function RegressionPotentialMatchesTab({
       },
       renderCell: (param) => (
         <a
-          href={'/sippy-ng/triages/' + param.value}
+          href={'/sippy-ng/component_readiness/triages/' + param.value}
           target="_blank"
           rel="noopener noreferrer"
         >

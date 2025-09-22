@@ -2,6 +2,7 @@ import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import { hasFailedFixRegression, jiraUrlPrefix } from './CompReadyUtils'
+import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
@@ -223,15 +224,14 @@ export default function TriagedRegressions({
       },
       headerName: 'Details',
       flex: 2,
-      renderCell: (param) => (
-        <a
-          href={'/sippy-ng/triages/' + param.value}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <InfoIcon />
-        </a>
-      ),
+      renderCell: (param) => {
+        const triageUrl = '/component_readiness/triages/' + param.value
+        return (
+          <Link to={triageUrl} target="_blank" rel="noopener noreferrer">
+            <InfoIcon />
+          </Link>
+        )
+      },
     },
   ]
 

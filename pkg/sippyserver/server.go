@@ -23,6 +23,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/util/sets"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
@@ -1347,15 +1348,28 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 	et := ExpandedTriage{
 		Triage: triage,
 	}
-	componentReport, err := s.getComponentReportFromRequest(req)
-	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("unable to get component report: %v", err))
-		return
+
+	associatedViews := sets.NewString()
+	for _, regression := range triage.Regressions {
+		associatedViews.Insert(regression.View)
 	}
 
-	for _, regression := range triage.Regressions {
-		regressedTest := componentreadiness.GetMatchingRegressedTestForRegression(regression, componentReport)
-		et.RegressedTests = append(et.RegressedTests, regressedTest)
+	for _, view := range associatedViews.List() {
+		// Set the view in the request so that we can obtain the component report to get the regressed test(s) for display
+		q := req.URL.Query()
+		q.Set("view", view)
+		req.URL.RawQuery = q.Encode()
+		componentReport, err := s.getComponentReportFromRequest(req)
+		if err != nil {
+			failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("unable to get component report: %v", err))
+			return
+		}
+		for _, regression := range triage.Regressions {
+			regressedTest := componentreadiness.GetMatchingRegressedTestForRegression(regression, componentReport)
+			if regressedTest != nil {
+				et.RegressedTests = append(et.RegressedTests, regressedTest)
+			}
+		}
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, et)

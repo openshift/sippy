@@ -163,7 +163,7 @@ export default function BugTable(props) {
                         {bug.key}
                         <br />
                         <Link
-                          href={`/sippy-ng/triages/${
+                          href={`/sippy-ng/component_readiness/triages/${
                             bugToPotentialTriage[bug.id].id
                           }`}
                           color="inherit"

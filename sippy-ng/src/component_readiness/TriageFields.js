@@ -75,7 +75,7 @@ export default function TriageFields({
   const updating = triageId > 0
 
   const handlePotentialMatchesYes = () => {
-    const triageDetailsUrl = `/sippy-ng/triages/${potentialMatchesDialog.triageId}?openMatches=1`
+    const triageDetailsUrl = `/sippy-ng/component_readiness/triages/${potentialMatchesDialog.triageId}?openMatches=1`
     window.open(triageDetailsUrl, '_blank', 'noopener,noreferrer')
     setPotentialMatchesDialog({ open: false, count: 0, triageId: null })
     setAlertText('successfully created triage entry')

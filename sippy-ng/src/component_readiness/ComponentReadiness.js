@@ -18,7 +18,13 @@ import { escapeRegex } from '../helpers'
 import { grey } from '@mui/material/colors'
 import { Grid, TableContainer, Tooltip, Typography } from '@mui/material'
 import { makeStyles, useTheme } from '@mui/styles'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+} from 'react-router-dom'
 import ComponentReadinessHelp from './ComponentReadinessHelp'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'
 import CompReadyCancelled from './CompReadyCancelled'
@@ -38,6 +44,8 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TestDetailsReport from './TestDetailsReport'
+import Triage from './Triage'
+import TriageList from './TriageList'
 
 const drawerWidth = 240
 
@@ -166,6 +174,11 @@ const useStyles = makeStyles((theme) => ({
     width: '300px',
   },
 }))
+
+function TriageWrapper() {
+  const { triageId } = useParams()
+  return <Triage id={triageId} />
+}
 
 export const ComponentReadinessStyleContext = React.createContext({})
 
@@ -530,6 +543,8 @@ export default function ComponentReadiness(props) {
               />
             }
           />
+          <Route path="/triages/:triageId" element={<TriageWrapper />} />
+          <Route path="/triages" element={<TriageList />} />
           <Route
             path="main"
             element={
