@@ -28,8 +28,8 @@ import (
 	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release) (testdetails.Report, []error) {
-	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil, releases)
+func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release, baseURL string) (testdetails.Report, []error) {
+	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil, releases, baseURL)
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateTestDetailsReport(ctx)
 	}
@@ -380,7 +380,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 
 	// fork additional sample queries for the overrides
 	for i, or := range c.variantJunitTableOverrides {
-		if !containsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
+		if !utils.ContainsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
 			continue
 		}
 		// only do this additional query if the specified override variant is actually included in this request

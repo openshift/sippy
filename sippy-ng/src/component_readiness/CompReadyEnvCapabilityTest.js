@@ -243,14 +243,9 @@ export default function CompReadyEnvCapabilityTest(props) {
                 return (
                   <CompCapTestRow
                     key={componentIndex}
-                    testSuite={data.rows[componentIndex].test_suite}
-                    testName={data.rows[componentIndex].test_name}
-                    testId={data.rows[componentIndex].test_id}
-                    results={data.rows[componentIndex].columns}
+                    regressedTestCols={data.rows[componentIndex]}
                     columnNames={columnNames}
                     filterVals={filterVals}
-                    component={component}
-                    capability={capability}
                   />
                 )
               })

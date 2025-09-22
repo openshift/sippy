@@ -1,8 +1,7 @@
 import './ComponentReadiness.css'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { generateTestReport } from './CompReadyUtils'
-import { Link } from 'react-router-dom'
+import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { Tooltip } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -13,16 +12,7 @@ import TableCell from '@mui/material/TableCell'
 
 // CompReadyTestCall is for rendering the cells on the right of page4 or page4a
 export default function CompReadyTestCell(props) {
-  const {
-    status,
-    environment,
-    testId,
-    filterVals,
-    component,
-    capability,
-    testName,
-    regressedTests,
-  } = props
+  const { status, environment, filterVals, regressedTest } = props
   const theme = useTheme()
   const classes = useContext(ComponentReadinessStyleContext)
 
@@ -43,6 +33,7 @@ export default function CompReadyTestCell(props) {
       </Tooltip>
     )
   } else {
+    console.log('regressedTest', regressedTest)
     return (
       <TableCell
         className={classes.crCellResult}
@@ -50,19 +41,19 @@ export default function CompReadyTestCell(props) {
           textAlign: 'center',
         }}
       >
-        <Link
-          to={generateTestReport(
-            testId,
-            expandEnvironment(environment),
-            filterVals,
-            component,
-            capability,
-            testName,
-            regressedTests
-          )}
-        >
+        {regressedTest ? (
+          <a
+            href={generateTestDetailsReportLink(
+              regressedTest,
+              filterVals,
+              expandEnvironment
+            )}
+          >
+            <CompSeverityIcon status={status} />
+          </a>
+        ) : (
           <CompSeverityIcon status={status} />
-        </Link>
+        )}
       </TableCell>
     )
   }
@@ -71,10 +62,6 @@ export default function CompReadyTestCell(props) {
 CompReadyTestCell.propTypes = {
   status: PropTypes.number.isRequired,
   environment: PropTypes.string.isRequired,
-  testId: PropTypes.string.isRequired,
   filterVals: PropTypes.string.isRequired,
-  component: PropTypes.string.isRequired,
-  capability: PropTypes.string.isRequired,
-  testName: PropTypes.string.isRequired,
-  regressedTests: PropTypes.object,
+  regressedTest: PropTypes.object,
 }
