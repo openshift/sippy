@@ -3,8 +3,13 @@ import { CapabilitiesContext } from '../App'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
-import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
+import {
+  getTriagesAPIUrl,
+  hasFailedFixRegression,
+  jiraUrlPrefix,
+} from './CompReadyUtils'
 import { useTheme } from '@mui/material/styles'
+import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import SecureLink from '../components/SecureLink'
@@ -136,7 +141,13 @@ export default function Triage({ id }) {
                     new Date()
                   )} (${formatDateToSeconds(triage.resolved.Time)})`}
                 >
-                  <CheckCircle style={{ color: theme.palette.success.light }} />
+                  {hasFailedFixRegression(triage, triage.regressed_tests) ? (
+                    <CompSeverityIcon status={-1000} />
+                  ) : (
+                    <CheckCircle
+                      style={{ color: theme.palette.success.light }}
+                    />
+                  )}
                 </Tooltip>
               ) : (
                 <Tooltip title="Not resolved">

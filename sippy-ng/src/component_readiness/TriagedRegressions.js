@@ -1,10 +1,11 @@
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { formatDateToSeconds, relativeTime } from '../helpers'
-import { jiraUrlPrefix } from './CompReadyUtils'
+import { hasFailedFixRegression, jiraUrlPrefix } from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
+import CompSeverityIcon from './CompSeverityIcon'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -13,6 +14,7 @@ export default function TriagedRegressions({
   triageEntries,
   eventEmitter,
   entriesPerPage = 10,
+  allRegressedTests,
 }) {
   const theme = useTheme()
   const [sortModel, setSortModel] = React.useState([
@@ -81,21 +83,29 @@ export default function TriagedRegressions({
       headerName: 'Resolved',
       flex: 4,
       align: 'center',
-      renderCell: (param) =>
-        param.value ? (
+      renderCell: (param) => {
+        const triage = triageEntries.find((t) => t.id === param.row.id)
+        const hasFailedFix = hasFailedFixRegression(triage, allRegressedTests)
+
+        return param.value ? (
           <Tooltip
             title={`${relativeTime(
               new Date(param.value),
               new Date()
             )} (${formatDateToSeconds(param.value)})`}
           >
-            <CheckCircle style={{ color: theme.palette.success.light }} />
+            {hasFailedFix ? (
+              <CompSeverityIcon status={-1000} />
+            ) : (
+              <CheckCircle style={{ color: theme.palette.success.light }} />
+            )}
           </Tooltip>
         ) : (
           <Tooltip title="Not resolved">
             <ErrorIcon style={{ color: theme.palette.error.light }} />
           </Tooltip>
-        ),
+        )
+      },
     },
     {
       field: 'description',
@@ -259,4 +269,5 @@ TriagedRegressions.propTypes = {
   eventEmitter: PropTypes.object,
   triageEntries: PropTypes.array,
   entriesPerPage: PropTypes.number,
+  allRegressedTests: PropTypes.array,
 }
