@@ -1,6 +1,8 @@
 import { Button, FormHelperText, Tab, Tabs } from '@mui/material'
-import { getTriagesAPIUrl } from './CompReadyUtils'
+import { DataGrid } from '@mui/x-data-grid'
+import { formColumnName, getTriagesAPIUrl } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
+import { relativeTime } from '../helpers'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import PropTypes from 'prop-types'
@@ -16,6 +18,12 @@ const useStyles = makeStyles((theme) => ({
   },
   errorText: {
     color: 'red',
+  },
+  dataGrid: {
+    marginBottom: theme.spacing(2),
+    '& .MuiDataGrid-columnHeaders': {
+      backgroundColor: 'rgba(0, 0, 0, 0.04)',
+    },
   },
 }))
 
@@ -136,25 +144,79 @@ export default function UpdateTriagePanel({
         {updateRegressions && (
           <Fragment>
             <h3 className={classes.centeredHeading}>Remove Regressions</h3>
-            <ul className={classes.regressionList}>
-              {triage.regressions.map((regression) => {
-                return (
-                  <li key={regression.id}>
+            <DataGrid
+              rows={triage.regressions}
+              columns={[
+                {
+                  field: 'select',
+                  headerName: 'Remove',
+                  flex: 6,
+                  sortable: false,
+                  filterable: false,
+                  disableColumnMenu: true,
+                  renderCell: (params) => (
                     <input
                       type="checkbox"
                       name="regression"
-                      value={regression.id}
+                      value={params.row.id}
                       onChange={handleRegressionChange}
                       checked={removedRegressions.includes(
-                        String(regression.id)
+                        String(params.row.id)
                       )}
-                    />{' '}
-                    {regression.test_name}
-                    <hr />
-                  </li>
-                )
-              })}
-            </ul>
+                    />
+                  ),
+                },
+                {
+                  field: 'test_name',
+                  headerName: 'Test Name',
+                  flex: 50,
+                  renderCell: (param) => (
+                    <div className="test-name">{param.value}</div>
+                  ),
+                },
+                {
+                  field: 'variants',
+                  headerName: 'Variants',
+                  flex: 35,
+                  valueGetter: (params) => {
+                    if (
+                      params.row.variants &&
+                      typeof params.row.variants === 'object'
+                    ) {
+                      return formColumnName({ variants: params.row.variants })
+                    }
+                    return params.row.variants || ''
+                  },
+                  renderCell: (param) => (
+                    <div className="test-name">{param.value}</div>
+                  ),
+                },
+                {
+                  field: 'opened',
+                  headerName: 'Regressed Since',
+                  flex: 12,
+                  valueGetter: (params) => {
+                    if (!params.row.opened) {
+                      return ''
+                    }
+                    const regressedSinceDate = new Date(params.row.opened)
+                    return relativeTime(regressedSinceDate, new Date())
+                  },
+                  renderCell: (param) => (
+                    <div className="regressed-since">{param.value}</div>
+                  ),
+                },
+              ]}
+              getRowId={(row) => row.id}
+              autoHeight={true}
+              getRowHeight={() => 80}
+              disableSelectionOnClick
+              hideFooter={triage.regressions.length <= 10}
+              pageSize={10}
+              rowsPerPageOptions={[10, 25, 50]}
+              disableColumnMenu={true}
+              className={classes.dataGrid}
+            />
             {validationMessage !== '' && (
               <FormHelperText className={classes.errorText}>
                 {validationMessage}
