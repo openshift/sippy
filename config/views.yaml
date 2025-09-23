@@ -24,6 +24,7 @@ component_readiness:
         Suite: { }
         Topology: { }
         Upgrade: { }
+        LayeredProduct: { }
       include_variants:
         Architecture:
           - amd64
@@ -103,6 +104,7 @@ component_readiness:
         Suite: { }
         Topology: { }
         Upgrade: { }
+        LayeredProduct: { }
       include_variants:
         Architecture:
           - amd64
@@ -165,6 +167,7 @@ component_readiness:
         Suite: { }
         Topology: { }
         Upgrade: { }
+        LayeredProduct: { }
       include_variants:
         Architecture:
           - amd64
@@ -243,6 +246,7 @@ component_readiness:
         Suite: { }
         Topology: { }
         Upgrade: { }
+        LayeredProduct: { }
       include_variants:
         Architecture:
           - amd64
@@ -320,6 +324,7 @@ component_readiness:
         Platform: { }
         Suite: { }
         Upgrade: { }
+        LayeredProduct: { }
       include_variants:
         Architecture:
           - amd64
@@ -440,6 +445,7 @@ component_readiness:
         Upgrade: { }
         Procedure: { }
         JobTier: { }
+        LayeredProduct: { }
       include_variants:
         Architecture:
           - amd64
