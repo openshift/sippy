@@ -50,7 +50,8 @@ SELECT
   ARRAY(SELECT name FROM UNNEST(fix_versions)) as fix_versions,
   ARRAY(SELECT name FROM UNNEST(target_versions)) as target_versions,
   ARRAY(SELECT name FROM UNNEST(components)) as components,
-  t.labels as labels
+  t.labels as labels,
+  t.release_blocker.value as release_blocker
 FROM
   TicketData t`
 )
@@ -74,6 +75,7 @@ type bigQueryBug struct {
 	Labels          []string           `json:"labels" bigquery:"labels"`
 	JiraID          string             `bigquery:"jira_id"`
 	LinkName        string             `bigquery:"link_name"`
+	ReleaseBlocker  string             `bigquery:"release_blocker"`
 }
 
 func New(dbc *db.DB, bqc *bigquery.Client) *BugLoader {
@@ -512,6 +514,7 @@ func bigQueryBugToModel(bqBug bigQueryBug) *models.Bug {
 		TargetVersions:  pq.StringArray(bqBug.TargetVersions),
 		Components:      pq.StringArray(bqBug.Components),
 		Labels:          pq.StringArray(bqBug.Labels),
+		ReleaseBlocker:  bqBug.ReleaseBlocker,
 		URL:             fmt.Sprintf("https://issues.redhat.com/browse/%s", bqBug.Key),
 	}
 }

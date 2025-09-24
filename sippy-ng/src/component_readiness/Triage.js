@@ -230,6 +230,10 @@ export default function Triage({ id }) {
             </TableCell>
           </TableRow>
           <TableRow>
+            <TableCell>Jira Release Blocker</TableCell>
+            <TableCell>{triage.bug?.release_blocker}</TableCell>
+          </TableRow>
+          <TableRow>
             <TableCell>Jira updated</TableCell>
             <TableCell>
               {triage.bug?.last_change_time ? (

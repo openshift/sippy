@@ -146,7 +146,6 @@ export default function TriagedRegressions({
         </a>
       ),
     },
-
     {
       field: 'bug_state',
       valueGetter: (value) => {
@@ -166,6 +165,15 @@ export default function TriagedRegressions({
         )
       },
       headerName: 'Version',
+      flex: 5,
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
+      field: 'release_blocker',
+      valueGetter: (value) => {
+        return value.row.bug?.release_blocker || ''
+      },
+      headerName: 'Release Blocker',
       flex: 5,
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
