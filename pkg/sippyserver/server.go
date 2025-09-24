@@ -1371,7 +1371,7 @@ func (s *Server) jsonCreateTriage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-	triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), triage, req)
+	triage, err := componentreadiness.CreateTriage(s.db.DB.WithContext(ctx), s.jiraClient, triage, req)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -1401,7 +1401,7 @@ func (s *Server) jsonUpdateTriage(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	ctx := context.WithValue(req.Context(), models.CurrentUserKey, user)
-	triage, err = componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), triage, req)
+	triage, err = componentreadiness.UpdateTriage(s.db.DB.WithContext(ctx), s.jiraClient, triage, req)
 	if err != nil {
 		log.WithError(err).Error("error updating triage")
 		failureResponse(w, http.StatusBadRequest, err.Error())
