@@ -19,4 +19,7 @@ const (
 
 	// AI capability is whether this sippy instance is configured with credentials for Generative AI.
 	AICapability = "ai"
+
+	// ChatCapability is whether this sippy instance is configured to proxy chat requests to sippy-chat service.
+	ChatCapability = "chat"
 )

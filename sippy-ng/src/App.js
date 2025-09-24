@@ -775,8 +775,7 @@ export default function App(props) {
                               element={<IntervalsChartWrapper />}
                             />
 
-                            {/* Only show /chat route if REACT_APP_CHAT_API_URL is set */}
-                            {process.env.REACT_APP_CHAT_API_URL && (
+                            {capabilities.includes('chat') && (
                               <Route path="/chat" element={<ChatAgent />} />
                             )}
 
