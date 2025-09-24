@@ -10,9 +10,9 @@ import {
 } from './CompReadyUtils'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
+import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
-import SecureLink from '../components/SecureLink'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -216,7 +216,7 @@ export default function Triage({ id }) {
           <TableRow>
             <TableCell>Jira</TableCell>
             <TableCell>
-              <SecureLink address={triage.url}>{displayUrl}</SecureLink>
+              <LaunderedLink address={triage.url}>{displayUrl}</LaunderedLink>
             </TableCell>
           </TableRow>
           <TableRow>
