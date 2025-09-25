@@ -1,7 +1,6 @@
 import { Box, Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
-import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import {
   getTriagesAPIUrl,
@@ -12,7 +11,7 @@ import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext } from 'react'
+import React, { Fragment } from 'react'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -31,40 +30,36 @@ export default function Triage({ id }) {
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
-  const { view } = useContext(CompReadyVarsContext)
 
   React.useEffect(() => {
-    // can't do anything if we have no view set (this is sometimes not true on initial page load)
-    if (view !== undefined) {
-      setIsLoaded(false)
-      setIsUpdated(false)
+    setIsLoaded(false)
+    setIsUpdated(false)
 
-      let triageFetch
-      // triage entries will only be available when there is a postgres connection
-      if (localDBEnabled) {
-        triageFetch = fetch(
-          `${getTriagesAPIUrl(id)}?view=${view}&expand=regressions`
-        ).then((response) => {
+    let triageFetch
+    // triage entries will only be available when there is a postgres connection
+    if (localDBEnabled) {
+      triageFetch = fetch(`${getTriagesAPIUrl(id)}?expand=regressions`).then(
+        (response) => {
           if (response.status !== 200) {
             throw new Error('API server returned ' + response.status)
           }
           return response.json()
-        })
-      } else {
-        triageFetch = Promise.resolve({})
-      }
-
-      triageFetch
-        .then((t) => {
-          setTriage(t)
-          setIsLoaded(true)
-          document.title = 'Triage "' + t.description + '" (' + t.id + ')'
-        })
-        .catch((error) => {
-          setMessage(error.toString())
-        })
+        }
+      )
+    } else {
+      triageFetch = Promise.resolve({})
     }
-  }, [isUpdated, localDBEnabled, view])
+
+    triageFetch
+      .then((t) => {
+        setTriage(t)
+        setIsLoaded(true)
+        document.title = 'Triage "' + t.description + '" (' + t.id + ')'
+      })
+      .catch((error) => {
+        setMessage(error.toString())
+      })
+  }, [isUpdated, localDBEnabled, id])
 
   const deleteTriage = () => {
     const confirmed = window.confirm(
@@ -258,7 +253,6 @@ export default function Triage({ id }) {
       <TriagedRegressionTestList
         allRegressedTests={triage.regressed_tests}
         regressions={triage.regressions}
-        filterVals={`?view=${view}`}
       />
       {triageEnabled && (
         <TriagePotentialMatches
