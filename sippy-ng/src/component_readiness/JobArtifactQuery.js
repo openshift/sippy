@@ -98,6 +98,20 @@ const prefilledOptions = new Map([
       },
     },
   ],
+  [
+    'LimitExceeded in CCO pod log',
+    {
+      fileMatch:
+        'artifacts/*e2e*/gather-extra/artifacts/pods/openshift-cloud-credential-operator_cloud-credential-operator-*_cloud-credential-operator.log',
+      type: 'regex',
+      regex: {
+        match: 'level=error.*LimitExceeded',
+        limit: 12,
+        before: 0,
+        after: 0,
+      },
+    },
+  ],
 ])
 
 export default function JobArtifactQuery(props) {
