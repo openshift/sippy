@@ -131,6 +131,7 @@ type Bug struct {
 	Components      pq.StringArray `json:"components" gorm:"type:text[]"`
 	Labels          pq.StringArray `json:"labels" gorm:"type:text[]"`
 	URL             string         `json:"url"`
+	ReleaseBlocker  string         `json:"release_blocker"`
 	Tests           []Test         `json:"-" gorm:"many2many:bug_tests;constraint:OnDelete:CASCADE;"`
 	Jobs            []ProwJob      `json:"-" gorm:"many2many:bug_jobs;constraint:OnDelete:CASCADE;"`
 }
