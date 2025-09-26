@@ -690,6 +690,8 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 		// z-stream techpreview jobs should generally upgrade correctly, however also get wedged in some cases (e.g. when we forcibly change an API from alpha to stable).
 		{[]string{"-techpreview-upgrade"}, "candidate"},
+
+		{[]string{"periodic-ci-openshift-hypershift-", "-mce-e2e-agent-", "-metal-conformance"}, "candidate"},
 	}
 
 	for _, jobTierPattern := range jobTierPatterns {
