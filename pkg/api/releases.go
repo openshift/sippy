@@ -496,3 +496,37 @@ func transformRelease(r sippyv1.ReleaseRow) sippyv1.Release {
 	}
 	return release
 }
+
+// BuildReleasesResponse creates the API response structure for releases
+func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) apitype.Releases {
+	gaDateMap := make(map[string]time.Time)
+	dateMap := make(map[string]apitype.ReleaseDates)
+	response := apitype.Releases{
+		DeprecatedGADates: gaDateMap,
+		Dates:             dateMap,
+		ReleaseAttrs:      make(map[string]apitype.Release, len(releases)),
+		LastUpdated:       lastUpdated,
+	}
+
+	for _, release := range releases {
+		response.Releases = append(response.Releases, release.Release)
+		releaseDate := apitype.ReleaseDates{}
+		if release.GADate != nil {
+			response.DeprecatedGADates[release.Release] = *release.GADate
+			releaseDate.GA = release.GADate
+			response.Dates[release.Release] = releaseDate
+		}
+		if release.DevelopmentStartDate != nil {
+			releaseDate.DevelopmentStart = release.DevelopmentStartDate
+			response.Dates[release.Release] = releaseDate
+		}
+		response.ReleaseAttrs[release.Release] = apitype.Release{
+			Name:            release.Release,
+			PreviousRelease: release.PreviousRelease,
+			ReleaseDates:    releaseDate,
+			Capabilities:    release.Capabilities,
+		}
+	}
+
+	return response
+}

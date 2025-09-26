@@ -19,6 +19,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -35,10 +36,13 @@ import (
 	middlewarestd "github.com/slok/go-http-metrics/middleware/std"
 	"gorm.io/gorm"
 
+	"github.com/openshift/sippy/pkg/mcp"
+
 	"github.com/openshift/sippy/pkg/ai"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/andygrunwald/go-jira"
+
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
@@ -863,51 +867,25 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 		return
 	}
 
-	gaDateMap := make(map[string]time.Time)
-	dateMap := make(map[string]apitype.ReleaseDates)
-	response := apitype.Releases{
-		DeprecatedGADates: gaDateMap,
-		Dates:             dateMap,
-		ReleaseAttrs:      make(map[string]apitype.Release, len(releases)),
-	}
-
-	for _, release := range releases {
-		response.Releases = append(response.Releases, release.Release)
-		releaseDate := apitype.ReleaseDates{}
-		if release.GADate != nil {
-			response.DeprecatedGADates[release.Release] = *release.GADate
-			releaseDate.GA = release.GADate
-			response.Dates[release.Release] = releaseDate
-		}
-		if release.DevelopmentStartDate != nil {
-			releaseDate.DevelopmentStart = release.DevelopmentStartDate
-			response.Dates[release.Release] = releaseDate
-		}
-		response.ReleaseAttrs[release.Release] = apitype.Release{
-			Name:            release.Release,
-			PreviousRelease: release.PreviousRelease,
-			ReleaseDates:    releaseDate,
-			Capabilities:    release.Capabilities,
-		}
-	}
-
-	type LastUpdated struct {
-		Max time.Time
-	}
-
+	// Get last updated time from database if available
+	var lastUpdated time.Time
 	if s.db != nil {
-		var lastUpdated LastUpdated
+		type LastUpdatedQuery struct {
+			Max time.Time
+		}
+		var result LastUpdatedQuery
 		// Assume our last update is the last time we inserted a prow job run.
-		res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&lastUpdated)
+		res := s.db.DB.Raw("SELECT MAX(created_at) FROM prow_job_runs").Scan(&result)
 		if res.Error != nil {
 			log.WithError(res.Error).Error("error querying last updated from db")
 			failureResponse(w, http.StatusInternalServerError, "error querying last updated from db")
 			return
 		}
-
-		response.LastUpdated = lastUpdated.Max
+		lastUpdated = result.Max
 	}
 
+	// Build response using shared function
+	response := api.BuildReleasesResponse(releases, lastUpdated)
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
@@ -1914,6 +1892,9 @@ func (s *Server) Serve() {
 		http.Redirect(w, req, "/sippy-ng/", http.StatusMovedPermanently)
 	}).Methods(http.MethodGet)
 
+	// Setup MCP Server
+	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
+
 	type apiEndpoints struct {
 		EndpointPath string                                       `json:"path"`
 		Description  string                                       `json:"description"`
@@ -1925,6 +1906,12 @@ func (s *Server) Serve() {
 
 	var endpoints []apiEndpoints
 	endpoints = []apiEndpoints{
+		{
+			EndpointPath: "/mcp/v1/",
+			Description:  "Handles MCP Requests",
+			Capabilities: []string{},
+			HandlerFunc:  http.StripPrefix("/mcp/v1", mcpServer.Handler()).ServeHTTP,
+		},
 		{
 			EndpointPath: "/api",
 			Description:  "API docs",
