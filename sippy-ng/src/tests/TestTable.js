@@ -104,6 +104,14 @@ function chooseVariantsToDisplay(variants) {
   return result
 }
 
+function isComponentReadinessIncludedJobTier(variant) {
+  return (
+    variant === 'JobTier:blocking' ||
+    variant === 'JobTier:informing' ||
+    variant === 'JobTier:standard'
+  )
+}
+
 const useStyles = makeStyles((theme) => ({
   backdrop: {
     zIndex: 999999,
@@ -450,11 +458,7 @@ function TestTable(props) {
 
   const getVariantStyle = (variant) => {
     // Special treatment for JobTier to help users better understand if their test is feeding component readiness or not
-    if (
-      variant === 'JobTier:blocking' ||
-      variant === 'JobTier:informing' ||
-      variant === 'JobTier:standard'
-    ) {
+    if (isComponentReadinessIncludedJobTier(variant)) {
       return { color: 'green' }
     } else if (variant.startsWith('JobTier:')) {
       return { color: 'darkred' }
@@ -507,11 +511,24 @@ function TestTable(props) {
       renderCell: (params) => {
         const displayVariants = chooseVariantsToDisplay(params.value)
 
+        // Check if there are any excluded JobTier variants for the warning
+        const hasExcludedJobTier =
+          params.value &&
+          params.value.some(
+            (variant) =>
+              variant.startsWith('JobTier:') &&
+              !isComponentReadinessIncludedJobTier(variant)
+          )
+
+        const tooltipTitle = params.value
+          ? params.value.join('\n') +
+            (hasExcludedJobTier
+              ? '\n\nWARNING: Test results from jobs with this JobTier are not included in the main release blocking views for component readiness, and will not be monitored for regressions.'
+              : '')
+          : ''
+
         return (
-          <Tooltip
-            sx={{ whiteSpace: 'pre' }}
-            title={params.value ? params.value.join('\n') : ''}
-          >
+          <Tooltip sx={{ whiteSpace: 'pre' }} title={tooltipTitle}>
             <div className="variants-list">
               {displayVariants.map((variant, index) => (
                 <div key={index} style={getVariantStyle(variant)}>
