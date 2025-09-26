@@ -395,7 +395,7 @@ export default function CompReadyTestPanel(props) {
             </Typography>
           </Box>
 
-          <Box sx={{ flex: 1, overflow: 'hidden' }}>
+          <Box sx={{ flex: 1 }}>
             <JobArtifactQuery
               searchJobRunIds={searchJobRunIds}
               jobRunsLookup={jobRuns}
