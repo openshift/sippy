@@ -93,7 +93,8 @@ function chooseVariantsToDisplay(variants) {
     }
   })
 
-  // Fill remaining slots with other variants
+  // Fill remaining slots with other variants, for non OCP sippy users it will
+  // just be whatever order their variants appear in the prow_jobs table.
   let i = 0
   while (result.length < 8 && i < remainingVariants.length) {
     result.push(remainingVariants[i])
@@ -447,6 +448,20 @@ function TestTable(props) {
     </div>
   )
 
+  const getVariantStyle = (variant) => {
+    // Special treatment for JobTier to help users better understand if their test is feeding component readiness or not
+    if (
+      variant === 'JobTier:blocking' ||
+      variant === 'JobTier:informing' ||
+      variant === 'JobTier:standard'
+    ) {
+      return { color: 'green' }
+    } else if (variant.startsWith('JobTier:')) {
+      return { color: 'darkred' }
+    }
+    return {}
+  }
+
   const columns = {
     name: {
       field: 'name',
@@ -491,12 +506,19 @@ function TestTable(props) {
       type: 'array',
       renderCell: (params) => {
         const displayVariants = chooseVariantsToDisplay(params.value)
+
         return (
           <Tooltip
             sx={{ whiteSpace: 'pre' }}
             title={params.value ? params.value.join('\n') : ''}
           >
-            <div className="variants-list">{displayVariants.join('\n')}</div>
+            <div className="variants-list">
+              {displayVariants.map((variant, index) => (
+                <div key={index} style={getVariantStyle(variant)}>
+                  {variant}
+                </div>
+              ))}
+            </div>
           </Tooltip>
         )
       },
