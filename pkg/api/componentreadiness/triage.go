@@ -6,10 +6,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
 	"slices"
+	"strings"
 	"time"
 
+	"github.com/andygrunwald/go-jira"
 	sippyapi "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -65,7 +69,7 @@ func validateTriage(triage models.Triage, update bool) error {
 	return nil
 }
 
-func CreateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models.Triage, error) {
+func CreateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, req *http.Request) (models.Triage, error) {
 	err := validateTriage(triage, false)
 	if err != nil {
 		log.WithError(err).Error("error validating triage record")
@@ -99,9 +103,60 @@ func CreateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models
 		return triage, res.Error
 	}
 	log.WithField("triageID", triage.ID).Info("triage record created")
-
 	injectHATEOASLinks(&triage, sippyapi.GetBaseURL(req))
+	err = reportJiraUsedForTriage(jiraClient, triage, req)
+	if err != nil {
+		log.WithError(err).Error("error reporting jira used for triage")
+		return triage, err
+	}
 	return triage, nil
+}
+
+const jiraPrefix = "https://issues.redhat.com/browse/"
+
+func reportJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, req *http.Request) error {
+	logger := log.WithField("triageID", triage.ID)
+	logger.Info("reporting jira used for triage")
+	// No jiraClient will be provided in e2e testing
+	if jiraClient == nil {
+		logger.Warn("no jira client provided, will not comment link to Triage entry")
+		return nil
+	}
+
+	if !strings.HasPrefix(triage.URL, jiraPrefix) {
+		logger.Warnf("URL (%s) is not a Jira card, cannot comment", triage.URL)
+		return nil
+	}
+	jiraCard := strings.TrimPrefix(triage.URL, jiraPrefix)
+	if !strings.HasPrefix(jiraCard, "OCPBUGS") {
+		logger.Warnf("URL (%s) is not an OCPBUGS card, cannot comment", triage.URL)
+		return nil
+	}
+
+	baseURL := "https://sippy-auth.dptools.openshift.org"
+	// If we have an Origin header, we can get the proper triage URL from it.
+	// This is useful for local development, and future-proofing
+	if origin := req.Header.Get("Origin"); origin != "" {
+		if u, err := url.Parse(origin); err == nil {
+			baseURL = u.Scheme + "://" + u.Host
+		}
+	}
+
+	comment := fmt.Sprintf("This bug has been triaged to one or more component readiness regressions. More information can be found at: %s/sippy-ng/component_readiness/triages/%d", baseURL, triage.ID)
+	_, response, err := jiraClient.Issue.AddComment(jiraCard, &jira.Comment{Body: comment})
+	if err != nil {
+		if response != nil {
+			body, readErr := io.ReadAll(response.Body)
+			if readErr != nil {
+				logger.WithError(readErr).Errorf("error reading response body. original error is: %v", err)
+			} else {
+				logger.WithError(err).Errorf("error commenting on jira issue: %q", body)
+			}
+		}
+		return fmt.Errorf("error commenting on Jira issue for triage record: %v", err)
+	}
+
+	return nil
 }
 
 func linkRegressions(dbc *gorm.DB, triage *models.Triage) error {
@@ -142,7 +197,7 @@ func linkRegressions(dbc *gorm.DB, triage *models.Triage) error {
 	return nil
 }
 
-func UpdateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models.Triage, error) {
+func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, req *http.Request) (models.Triage, error) {
 	err := validateTriage(triage, true)
 	if err != nil {
 		log.WithError(err).Error("error validating triage record")
@@ -209,6 +264,15 @@ func UpdateTriage(dbc *gorm.DB, triage models.Triage, req *http.Request) (models
 	}
 
 	injectHATEOASLinks(&triage, sippyapi.GetBaseURL(req))
+
+	// If the Jira URL has been updated, report on the new Jira
+	if existingTriage.URL != triage.URL {
+		err = reportJiraUsedForTriage(jiraClient, triage, req)
+		if err != nil {
+			log.WithError(err).Error("error reporting jira used for triage")
+			return triage, err
+		}
+	}
 	return triage, nil
 }
 
