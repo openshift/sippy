@@ -70,3 +70,13 @@
 .variants-list {
   white-space: pre;
 }
+
+.jaq-dialog {
+  height: 95vh;
+  width: 95vw;
+  max-height: 95vh;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}

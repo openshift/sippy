@@ -1,10 +1,10 @@
 import {
+  Box,
   Button,
   Dialog,
   FormControlLabel,
   FormGroup,
   Grid,
-  Stack,
   Switch,
   Table,
   TableBody,
@@ -354,36 +354,55 @@ export default function CompReadyTestPanel(props) {
           Compare selected
         </Button>
       )}
-      <Dialog fullScreen open={openJAQ} onClose={handleToggleJAQOpen}>
-        <Stack direction="row" spacing={2} width="100%" display="flex">
-          <h1>Test Details Job Artifact Query</h1>
-          <Tooltip title="Return to details report">
-            <Button
-              size="large"
-              variant="contained"
-              onClick={handleToggleJAQOpen}
-            >
-              Close
-            </Button>
-          </Tooltip>
-        </Stack>
-        <ul>
-          <li>
-            Test name: <b>{testName}</b>
-          </li>
-          <li>
-            Variants: <b>{environment}</b>{' '}
-          </li>
-          <li>
-            Component: <b>{component}</b>
-          </li>
-        </ul>
+      <Dialog
+        fullWidth={true}
+        maxWidth={false}
+        open={openJAQ}
+        onClose={handleToggleJAQOpen}
+      >
+        <Grid className="jaq-dialog">
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              mb: 2,
+            }}
+          >
+            <Typography variant="h4" component="h1">
+              Test Details Job Artifact Query
+            </Typography>
+            <Tooltip title="Return to details report">
+              <Button
+                size="large"
+                variant="contained"
+                onClick={handleToggleJAQOpen}
+              >
+                Close
+              </Button>
+            </Tooltip>
+          </Box>
 
-        <JobArtifactQuery
-          searchJobRunIds={searchJobRunIds}
-          jobRunsLookup={jobRuns}
-          handleToggleJAQOpen={handleToggleJAQOpen}
-        />
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              <strong>Test name:</strong> {testName}
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              <strong>Variants:</strong> {environment}
+            </Typography>
+            <Typography variant="body1" sx={{ mb: 1 }}>
+              <strong>Component:</strong> {component}
+            </Typography>
+          </Box>
+
+          <Box sx={{ flex: 1, overflow: 'hidden' }}>
+            <JobArtifactQuery
+              searchJobRunIds={searchJobRunIds}
+              jobRunsLookup={jobRuns}
+              handleToggleJAQOpen={handleToggleJAQOpen}
+            />
+          </Box>
+        </Grid>
       </Dialog>
     </Fragment>
   )
