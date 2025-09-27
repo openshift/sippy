@@ -43,6 +43,75 @@ const bookmarks = [
   },
 ]
 
+/**
+ * Chooses which variants to display in the table based on priority and limits.
+ * @param {Array<string>} variants - Array of variant strings in "key:value" format
+ * @returns {Array<string>} - Up to 8 selected variants
+ */
+function chooseVariantsToDisplay(variants) {
+  if (!variants || variants.length === 0) {
+    return []
+  }
+
+  // Filter out default variants first
+  const filteredVariants = variants.filter((item) => !item.endsWith(':default'))
+
+  // Priority order for variant keys
+  const priorityKeys = [
+    'JobTier',
+    'Platform',
+    'Architecture',
+    'NetworkStack',
+    'Topology',
+    'FeatureSet',
+    'Upgrade',
+  ]
+
+  // Parse variants into key-value pairs
+  const variantMap = new Map()
+  const remainingVariants = []
+
+  filteredVariants.forEach((variant) => {
+    const colonIndex = variant.indexOf(':')
+    if (colonIndex > 0) {
+      const key = variant.substring(0, colonIndex)
+      if (priorityKeys.includes(key)) {
+        variantMap.set(key, variant)
+      } else {
+        remainingVariants.push(variant)
+      }
+    } else {
+      remainingVariants.push(variant)
+    }
+  })
+
+  // Build result array starting with priority keys
+  const result = []
+  priorityKeys.forEach((key) => {
+    if (variantMap.has(key) && result.length < 8) {
+      result.push(variantMap.get(key))
+    }
+  })
+
+  // Fill remaining slots with other variants, for non OCP sippy users it will
+  // just be whatever order their variants appear in the prow_jobs table.
+  let i = 0
+  while (result.length < 8 && i < remainingVariants.length) {
+    result.push(remainingVariants[i])
+    i++
+  }
+
+  return result
+}
+
+function isComponentReadinessIncludedJobTier(variant) {
+  return (
+    variant === 'JobTier:blocking' ||
+    variant === 'JobTier:informing' ||
+    variant === 'JobTier:standard'
+  )
+}
+
 const useStyles = makeStyles((theme) => ({
   backdrop: {
     zIndex: 999999,
@@ -387,6 +456,16 @@ function TestTable(props) {
     </div>
   )
 
+  const getVariantStyle = (variant) => {
+    // Special treatment for JobTier to help users better understand if their test is feeding component readiness or not
+    if (isComponentReadinessIncludedJobTier(variant)) {
+      return { color: 'green' }
+    } else if (variant.startsWith('JobTier:')) {
+      return { color: 'darkred' }
+    }
+    return {}
+  }
+
   const columns = {
     name: {
       field: 'name',
@@ -429,21 +508,37 @@ function TestTable(props) {
       headerName: 'Variants',
       autocomplete: 'variants',
       type: 'array',
-      renderCell: (params) => (
-        <Tooltip
-          sx={{ whiteSpace: 'pre' }}
-          title={params.value ? params.value.join('\n') : ''}
-        >
-          <div className="variants-list">
-            {params.value
-              ? params.value
-                  .slice(0, 8)
-                  .filter((item) => !item.endsWith(':default'))
-                  .join('\n')
-              : ''}
-          </div>
-        </Tooltip>
-      ),
+      renderCell: (params) => {
+        const displayVariants = chooseVariantsToDisplay(params.value)
+
+        // Check if there are any excluded JobTier variants for the warning
+        const hasExcludedJobTier =
+          params.value &&
+          params.value.some(
+            (variant) =>
+              variant.startsWith('JobTier:') &&
+              !isComponentReadinessIncludedJobTier(variant)
+          )
+
+        const tooltipTitle = params.value
+          ? params.value.join('\n') +
+            (hasExcludedJobTier
+              ? '\n\nWARNING: Test results from jobs with this JobTier are not included in the main release blocking views for component readiness, and will not be monitored for regressions.'
+              : '')
+          : ''
+
+        return (
+          <Tooltip sx={{ whiteSpace: 'pre' }} title={tooltipTitle}>
+            <div className="variants-list">
+              {displayVariants.map((variant, index) => (
+                <div key={index} style={getVariantStyle(variant)}>
+                  {variant}
+                </div>
+              ))}
+            </div>
+          </Tooltip>
+        )
+      },
     },
     delta_from_working_average: {
       field: 'delta_from_working_average',
