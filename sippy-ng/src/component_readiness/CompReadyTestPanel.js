@@ -360,7 +360,7 @@ export default function CompReadyTestPanel(props) {
         open={openJAQ}
         onClose={handleToggleJAQOpen}
       >
-        <Grid className="jaq-dialog">
+        <Grid className="jaq-dialog" tabIndex="0">
           <Box
             sx={{
               display: 'flex',

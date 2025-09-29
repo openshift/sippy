@@ -696,6 +696,7 @@ export default function JobArtifactQuery(props) {
                             {artifact.matched_content?.line_matches
                               ?.matches && (
                               <samp
+                                tabIndex="0"
                                 key={'samp-' + artifact.artifact_url}
                                 className="cr-artifacts-contents"
                               >
