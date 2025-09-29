@@ -22,7 +22,7 @@ import {
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link, useLocation } from 'react-router-dom'
-import { makeStyles } from '@mui/styles'
+import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { StyledDataGrid } from '../datagrid/StyledDataGrid'
 import { useCookies } from 'react-cookie'
@@ -122,6 +122,7 @@ const useStyles = makeStyles((theme) => ({
 function TestTable(props) {
   const { classes } = props
   const gridClasses = useStyles()
+  const theme = useTheme()
   const location = useLocation().pathname
 
   const [testDetails, setTestDetails] = React.useState({ bugs: [] })
@@ -459,9 +460,9 @@ function TestTable(props) {
   const getVariantStyle = (variant) => {
     // Special treatment for JobTier to help users better understand if their test is feeding component readiness or not
     if (isComponentReadinessIncludedJobTier(variant)) {
-      return { color: 'green' }
+      return { color: theme.palette.success.dark }
     } else if (variant.startsWith('JobTier:')) {
-      return { color: 'darkred' }
+      return { color: theme.palette.error.dark }
     }
     return {}
   }
