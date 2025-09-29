@@ -34,7 +34,6 @@ component_readiness:
         Installer:
           - ipi
           - upi
-          - hypershift
         JobTier:
           - blocking
           - informing
@@ -57,7 +56,6 @@ component_readiness:
         Topology:
           - ha
           - microshift
-          - external
         CGroupMode:
           - v2
         ContainerRuntime:
@@ -516,7 +514,6 @@ component_readiness:
         Installer:
           - ipi
           - upi
-          - hypershift
         JobTier:
           - blocking
           - informing
@@ -539,7 +536,6 @@ component_readiness:
         Topology:
           - ha
           - microshift
-          - external
         CGroupMode:
           - v2
         ContainerRuntime:
