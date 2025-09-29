@@ -54,6 +54,9 @@
   overflow: auto;
   font-family: monospace;
   max-width: 800px;
+  max-height: 40em;
+  padding: 5px;
+  border-radius: 4px;
 }
 
 .cr-triage-panel-element {

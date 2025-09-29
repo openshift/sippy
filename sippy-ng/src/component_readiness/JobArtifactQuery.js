@@ -693,31 +693,38 @@ export default function JobArtifactQuery(props) {
                             >
                               {artifact.artifact_path}
                             </LaunderedLink>
-                            {artifact.matched_content?.line_matches?.matches &&
-                              artifact.matched_content.line_matches.matches.map(
-                                (match, index) => (
-                                  <samp
-                                    key={index}
-                                    className="cr-artifacts-contents"
-                                  >
-                                    {match.before &&
-                                      match.before.map((text, idx) => (
-                                        <i key={idx}>
-                                          {text}
-                                          <br />
-                                        </i>
-                                      ))}
-                                    <b>{match.match}</b>
-                                    {match.after &&
-                                      match.after.map((text, idx) => (
-                                        <i key={idx}>
-                                          <br />
-                                          {text}
-                                        </i>
-                                      ))}
-                                  </samp>
-                                )
-                              )}
+                            {artifact.matched_content?.line_matches
+                              ?.matches && (
+                              <samp
+                                key={'samp-' + artifact.artifact_url}
+                                className="cr-artifacts-contents"
+                              >
+                                {artifact.matched_content.line_matches.matches.map(
+                                  (match, index) => (
+                                    <Fragment
+                                      key={index + artifact.artifact_url}
+                                    >
+                                      {index > 0 && <hr />}
+                                      {match.before &&
+                                        match.before.map((text, idx) => (
+                                          <i key={idx}>
+                                            {text}
+                                            <br />
+                                          </i>
+                                        ))}
+                                      <b>{match.match}</b>
+                                      {match.after &&
+                                        match.after.map((text, idx) => (
+                                          <i key={idx}>
+                                            <br />
+                                            {text}
+                                          </i>
+                                        ))}
+                                    </Fragment>
+                                  )
+                                )}
+                              </samp>
+                            )}
                           </Fragment>
                         ))}
                       </Stack>
