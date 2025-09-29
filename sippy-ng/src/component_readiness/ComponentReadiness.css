@@ -41,6 +41,21 @@
   border-top: none;
 }
 
+.cr-artifacts-jobname {
+  white-space: nowrap;
+  max-width: 50vw; /* don't crowd the other columns */
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  direction: rtl;  /* see below */
+}
+
+/* this hocus-pocus makes the ellipsis work at the beginning instead of the end */
+.cr-artifacts-jobname > * {
+  direction: ltr;
+  unicode-bidi: bidi-override;
+}
+
 .cr-artifacts-truncate {
   overflow: hidden;
   text-overflow: ellipsis;

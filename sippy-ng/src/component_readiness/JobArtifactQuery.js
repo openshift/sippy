@@ -643,24 +643,19 @@ export default function JobArtifactQuery(props) {
                   <TableCell>
                     <SelectingCheckbox jobRunID={row.job_run_id} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="cr-artifacts-jobname">
                     <LaunderedLink
                       address={row.url}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {row.job_name}
+                      <Tooltip title={row.job_name + ' ' + row.job_run_id}>
+                        {row.job_name}/{row.job_run_id}
+                      </Tooltip>
                     </LaunderedLink>
                   </TableCell>
                   <TableCell>
-                    <Tooltip
-                      title={
-                        new Date(row.start_time).toUTCString() +
-                        ' (#' +
-                        row.job_run_id +
-                        ')'
-                      }
-                    >
+                    <Tooltip title={new Date(row.start_time).toUTCString()}>
                       <div className="test-name">
                         <LaunderedLink
                           address={row.url}
