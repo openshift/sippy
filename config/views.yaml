@@ -11,7 +11,6 @@ component_readiness:
       relative_end: now
     variant_options:
       column_group_by:
-        Architecture: { }
         Network: { }
         Platform: { }
         Topology: { }
@@ -28,6 +27,8 @@ component_readiness:
       include_variants:
         Architecture:
           - amd64
+          - arm64
+          - multi
         FeatureSet:
           - default
           - techpreview
@@ -141,88 +142,6 @@ component_readiness:
       flake_as_failure: false
       pass_rate_required_new_tests: 95
       include_multi_release_analysis: true
-  - name: 4.21-multi-arm
-    base_release:
-      release: "4.20"
-      relative_start: now-30d
-      relative_end: now
-    sample_release:
-      release: "4.21"
-      relative_start: now-7d
-      relative_end: now
-    variant_options:
-      column_group_by:
-        Architecture: { }
-        Network: { }
-        Platform: { }
-        Topology: { }
-      db_group_by:
-        Architecture: { }
-        FeatureSet: { }
-        Installer: { }
-        Network: { }
-        Platform: { }
-        Suite: { }
-        Topology: { }
-        Upgrade: { }
-        LayeredProduct: { }
-      include_variants:
-        Architecture:
-          - amd64
-          - arm64
-          - multi
-        FeatureSet:
-          - default
-          - techpreview
-        Installer:
-          - ipi
-          - upi
-          - hypershift
-        JobTier:
-          - blocking
-          - informing
-          - standard
-        LayeredProduct:
-          - none
-          - virt
-        Network:
-          - ovn
-        Owner:
-          - eng
-          - service-delivery
-        Platform:
-          - aws
-          - azure
-          - gcp
-          - metal
-          - rosa
-          - vsphere
-        Topology:
-          - ha
-          - microshift
-          - external
-        CGroupMode:
-          - v2
-        ContainerRuntime:
-          - runc
-          - crun
-    advanced_options:
-      minimum_failure: 3
-      confidence: 95
-      pity_factor: 5
-      ignore_missing: false
-      ignore_disruption: true
-      flake_as_failure: false
-      pass_rate_required_new_tests: 95
-      include_multi_release_analysis: true
-    metrics:
-      enabled: false
-    regression_tracking:
-      enabled: false
-    prime_cache:
-      enabled: false
-    automate_jira:
-      enabled: false
   - name: 4.21-x86-vs-multi-arm
     base_release:
       release: "4.21"
