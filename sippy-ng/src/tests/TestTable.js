@@ -520,15 +520,28 @@ function TestTable(props) {
               !isComponentReadinessIncludedJobTier(variant)
           )
 
-        const tooltipTitle = params.value
-          ? params.value.join('\n') +
-            (hasExcludedJobTier
-              ? '\n\nWARNING: Test results from jobs with this JobTier are not included in the main release blocking views for component readiness, and will not be monitored for regressions.'
-              : '')
-          : ''
+        const tooltipContent = params.value ? (
+          <div>
+            {params.value.map((variant, index) => (
+              <div key={index}>{variant}</div>
+            ))}
+            {hasExcludedJobTier && (
+              <>
+                <br />
+                <div>
+                  <b>WARNING:</b> Test results from jobs with this JobTier are
+                  not included in the main release blocking views for component
+                  readiness, and will not be monitored for regressions.
+                </div>
+              </>
+            )}
+          </div>
+        ) : (
+          ''
+        )
 
         return (
-          <Tooltip sx={{ whiteSpace: 'pre' }} title={tooltipTitle}>
+          <Tooltip sx={{ whiteSpace: 'pre' }} title={tooltipContent}>
             <div className="variants-list">
               {displayVariants.map((variant, index) => (
                 <div key={index} style={getVariantStyle(variant)}>
