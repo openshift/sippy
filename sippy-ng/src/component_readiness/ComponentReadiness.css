@@ -41,6 +41,21 @@
   border-top: none;
 }
 
+.cr-artifacts-jobname {
+  white-space: nowrap;
+  max-width: 50vw; /* don't crowd the other columns */
+  overflow: hidden;
+  text-align: left;
+  text-overflow: ellipsis;
+  direction: rtl;  /* see below */
+}
+
+/* this hocus-pocus makes the ellipsis work at the beginning instead of the end */
+.cr-artifacts-jobname > * {
+  direction: ltr;
+  unicode-bidi: bidi-override;
+}
+
 .cr-artifacts-truncate {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -53,7 +68,17 @@
   white-space: nowrap;
   overflow: auto;
   font-family: monospace;
-  max-width: 800px;
+  max-height: 40em;
+  padding: 5px;
+  border-radius: 4px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.cr-artifacts-cell {
+  max-width: 0;
+  width: 100%;
 }
 
 .cr-triage-panel-element {
@@ -69,4 +94,28 @@
 
 .variants-list {
   white-space: pre;
+}
+
+.jaq-dialog {
+  height: 95vh;
+  max-height: 95vh;
+  max-width: 95vw;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow-y: auto;
+  overflow-x: auto;
+}
+
+.jaq-control-box {
+  border: solid 1px;
+  border-radius: 4px;
+  padding: 1em;
+  flex: 1;
+}
+
+.jaq-form-control {
+  min-width: 5em;
+  max-width: 10em;
+  flex: 1;
 }

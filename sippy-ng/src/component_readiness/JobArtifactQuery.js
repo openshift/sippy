@@ -98,6 +98,20 @@ const prefilledOptions = new Map([
       },
     },
   ],
+  [
+    'LimitExceeded in CCO pod log',
+    {
+      fileMatch:
+        'artifacts/*e2e*/gather-extra/artifacts/pods/openshift-cloud-credential-operator_cloud-credential-operator-*_cloud-credential-operator.log',
+      type: 'regex',
+      regex: {
+        match: 'level=error.*LimitExceeded',
+        limit: 12,
+        before: 0,
+        after: 0,
+      },
+    },
+  ],
 ])
 
 export default function JobArtifactQuery(props) {
@@ -389,6 +403,7 @@ export default function JobArtifactQuery(props) {
             <InputLabel id="contentMatchTypeLabel">Type</InputLabel>
             <Select
               size="small"
+              sx={{ minWidth: '5em' }}
               variant="standard"
               labelId="contentMatchTypeLabel"
               label="Type"
@@ -396,8 +411,8 @@ export default function JobArtifactQuery(props) {
               onChange={handleMatchTypeChange}
             >
               <MenuItem value={'none'}>None</MenuItem>
-              <MenuItem value={'string'}>String match</MenuItem>
-              <MenuItem value={'regex'}>Regex match</MenuItem>
+              <MenuItem value={'string'}>String</MenuItem>
+              <MenuItem value={'regex'}>Regex</MenuItem>
             </Select>
           </FormControl>
           {contentMatch.type === 'string' ? (
@@ -435,13 +450,12 @@ export default function JobArtifactQuery(props) {
         </Stack>
         {['string', 'regex'].includes(contentMatch.type) && (
           <Stack direction="row" spacing={2} alignItems="left">
-            <FormControl>
+            <FormControl className="jaq-form-control">
               <InputLabel id="contentMatchLimitLabel">Matches Limit</InputLabel>
               <Select
                 autoWidth={true}
                 variant="standard"
                 size="small"
-                sx={{ minWidth: '10em' }}
                 labelId="contentMatchLimitLabel"
                 label="Matches Limit"
                 value={contentMatch[contentMatch.type].limit}
@@ -458,14 +472,16 @@ export default function JobArtifactQuery(props) {
               </Select>
             </FormControl>
             {['Before', 'After'].map((context) => (
-              <FormControl key={context.toLowerCase() + 'Lines'}>
+              <FormControl
+                key={context.toLowerCase() + 'Lines'}
+                className="jaq-form-control"
+              >
                 <InputLabel id="contextLinesLabel">
-                  {'Context Lines ' + context}
+                  {'Lines ' + context}
                 </InputLabel>
                 <Select
                   size="small"
                   variant="standard"
-                  sx={{ minWidth: '10em' }}
                   labelId="contextLinesLabel"
                   label={'Context Lines ' + context}
                   value={contentMatch[contentMatch.type][context.toLowerCase()]}
@@ -629,24 +645,19 @@ export default function JobArtifactQuery(props) {
                   <TableCell>
                     <SelectingCheckbox jobRunID={row.job_run_id} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="cr-artifacts-jobname">
                     <LaunderedLink
                       address={row.url}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {row.job_name}
+                      <Tooltip title={row.job_name + ' ' + row.job_run_id}>
+                        {row.job_name}/{row.job_run_id}
+                      </Tooltip>
                     </LaunderedLink>
                   </TableCell>
                   <TableCell>
-                    <Tooltip
-                      title={
-                        new Date(row.start_time).toUTCString() +
-                        ' (#' +
-                        row.job_run_id +
-                        ')'
-                      }
-                    >
+                    <Tooltip title={new Date(row.start_time).toUTCString()}>
                       <div className="test-name">
                         <LaunderedLink
                           address={row.url}
@@ -667,7 +678,7 @@ export default function JobArtifactQuery(props) {
                         artifacts={row.searchResult.artifacts}
                       />
                     </TableCell>
-                    <TableCell colSpan={3}>
+                    <TableCell colSpan={3} className="cr-artifacts-cell">
                       <Stack direction="column" spacing={2}>
                         {row.searchResult.artifacts.map((artifact) => (
                           <Fragment key={artifact.artifact_url}>
@@ -679,31 +690,39 @@ export default function JobArtifactQuery(props) {
                             >
                               {artifact.artifact_path}
                             </LaunderedLink>
-                            {artifact.matched_content?.line_matches?.matches &&
-                              artifact.matched_content.line_matches.matches.map(
-                                (match, index) => (
-                                  <samp
-                                    key={index}
-                                    className="cr-artifacts-contents"
-                                  >
-                                    {match.before &&
-                                      match.before.map((text, idx) => (
-                                        <i key={idx}>
-                                          {text}
-                                          <br />
-                                        </i>
-                                      ))}
-                                    <b>{match.match}</b>
-                                    {match.after &&
-                                      match.after.map((text, idx) => (
-                                        <i key={idx}>
-                                          <br />
-                                          {text}
-                                        </i>
-                                      ))}
-                                  </samp>
-                                )
-                              )}
+                            {artifact.matched_content?.line_matches
+                              ?.matches && (
+                              <samp
+                                tabIndex="0"
+                                key={'samp-' + artifact.artifact_url}
+                                className="cr-artifacts-contents"
+                              >
+                                {artifact.matched_content.line_matches.matches.map(
+                                  (match, index) => (
+                                    <Fragment
+                                      key={index + artifact.artifact_url}
+                                    >
+                                      {index > 0 && <hr />}
+                                      {match.before &&
+                                        match.before.map((text, idx) => (
+                                          <i key={idx}>
+                                            {text}
+                                            <br />
+                                          </i>
+                                        ))}
+                                      <b>{match.match}</b>
+                                      {match.after &&
+                                        match.after.map((text, idx) => (
+                                          <i key={idx}>
+                                            <br />
+                                            {text}
+                                          </i>
+                                        ))}
+                                    </Fragment>
+                                  )
+                                )}
+                              </samp>
+                            )}
                           </Fragment>
                         ))}
                       </Stack>
@@ -812,16 +831,18 @@ export default function JobArtifactQuery(props) {
         />
         &nbsp;
       </Stack>
-      <div>
-        <h3>Artifact File Match</h3>
-        <JAQFileMatch />
-      </div>
-      {fileMatch && (
-        <div>
-          <h3>Content match</h3>
-          <JAQContentMatch />
+      <Stack direction="row" spacing={2}>
+        <div className="jaq-control-box">
+          <h3>Artifact File Match</h3>
+          <JAQFileMatch />
         </div>
-      )}
+        {fileMatch && (
+          <div className="jaq-control-box">
+            <h3>Content match</h3>
+            <JAQContentMatch />
+          </div>
+        )}
+      </Stack>
       <Stack direction="row" spacing={2} alignItems="left">
         <span>Display:</span>
         <JAQContentFilterSwitch
