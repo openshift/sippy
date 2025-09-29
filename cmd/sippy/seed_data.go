@@ -132,12 +132,18 @@ rolled off the 1 week window.
 
 func createProwJobsForRelease(dbc *db.DB, release string, jobsPerRelease int) error {
 	for i := 1; i <= jobsPerRelease; i++ {
+		// Choose JobTier based on whether i is even or odd
+		var jobTier = "JobTier:standard" // even number job index = standard
+		if i%2 != 0 {
+			jobTier = "JobTier:hidden" // odd = hidden
+		}
+
 		prowJob := models.ProwJob{
 			Kind:    models.ProwKind("periodic"),
 			Name:    fmt.Sprintf("sippy-test-job-%s-test-%d", release, i),
 			Release: release,
 			// TestGridURL, Bugs, and JobRuns are left empty as requested
-			Variants: []string{"Platform:aws", "Upgrade:none"},
+			Variants: []string{"Platform:aws", "Upgrade:none", jobTier},
 		}
 
 		// Use FirstOrCreate to avoid duplicates - only creates if a ProwJob with this name doesn't exist
