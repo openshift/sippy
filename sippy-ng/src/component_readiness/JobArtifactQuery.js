@@ -681,7 +681,7 @@ export default function JobArtifactQuery(props) {
                         artifacts={row.searchResult.artifacts}
                       />
                     </TableCell>
-                    <TableCell colSpan={3}>
+                    <TableCell colSpan={3} className="cr-artifacts-cell">
                       <Stack direction="column" spacing={2}>
                         {row.searchResult.artifacts.map((artifact) => (
                           <Fragment key={artifact.artifact_url}>

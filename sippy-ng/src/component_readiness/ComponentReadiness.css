@@ -53,10 +53,17 @@
   white-space: nowrap;
   overflow: auto;
   font-family: monospace;
-  max-width: 800px;
   max-height: 40em;
   padding: 5px;
   border-radius: 4px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.cr-artifacts-cell {
+  max-width: 0;
+  width: 100%;
 }
 
 .cr-triage-panel-element {
