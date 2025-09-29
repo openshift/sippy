@@ -106,3 +106,16 @@
   overflow-y: auto;
   overflow-x: auto;
 }
+
+.jaq-control-box {
+  border: solid 1px;
+  border-radius: 4px;
+  padding: 1em;
+  flex: 1;
+}
+
+.jaq-form-control {
+  min-width: 5em;
+  max-width: 10em;
+  flex: 1;
+}

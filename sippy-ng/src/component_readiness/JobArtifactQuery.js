@@ -403,6 +403,7 @@ export default function JobArtifactQuery(props) {
             <InputLabel id="contentMatchTypeLabel">Type</InputLabel>
             <Select
               size="small"
+              sx={{ minWidth: '5em' }}
               variant="standard"
               labelId="contentMatchTypeLabel"
               label="Type"
@@ -410,8 +411,8 @@ export default function JobArtifactQuery(props) {
               onChange={handleMatchTypeChange}
             >
               <MenuItem value={'none'}>None</MenuItem>
-              <MenuItem value={'string'}>String match</MenuItem>
-              <MenuItem value={'regex'}>Regex match</MenuItem>
+              <MenuItem value={'string'}>String</MenuItem>
+              <MenuItem value={'regex'}>Regex</MenuItem>
             </Select>
           </FormControl>
           {contentMatch.type === 'string' ? (
@@ -449,13 +450,12 @@ export default function JobArtifactQuery(props) {
         </Stack>
         {['string', 'regex'].includes(contentMatch.type) && (
           <Stack direction="row" spacing={2} alignItems="left">
-            <FormControl>
+            <FormControl className="jaq-form-control">
               <InputLabel id="contentMatchLimitLabel">Matches Limit</InputLabel>
               <Select
                 autoWidth={true}
                 variant="standard"
                 size="small"
-                sx={{ minWidth: '10em' }}
                 labelId="contentMatchLimitLabel"
                 label="Matches Limit"
                 value={contentMatch[contentMatch.type].limit}
@@ -472,14 +472,16 @@ export default function JobArtifactQuery(props) {
               </Select>
             </FormControl>
             {['Before', 'After'].map((context) => (
-              <FormControl key={context.toLowerCase() + 'Lines'}>
+              <FormControl
+                key={context.toLowerCase() + 'Lines'}
+                className="jaq-form-control"
+              >
                 <InputLabel id="contextLinesLabel">
-                  {'Context Lines ' + context}
+                  {'Lines ' + context}
                 </InputLabel>
                 <Select
                   size="small"
                   variant="standard"
-                  sx={{ minWidth: '10em' }}
                   labelId="contextLinesLabel"
                   label={'Context Lines ' + context}
                   value={contentMatch[contentMatch.type][context.toLowerCase()]}
@@ -829,16 +831,18 @@ export default function JobArtifactQuery(props) {
         />
         &nbsp;
       </Stack>
-      <div>
-        <h3>Artifact File Match</h3>
-        <JAQFileMatch />
-      </div>
-      {fileMatch && (
-        <div>
-          <h3>Content match</h3>
-          <JAQContentMatch />
+      <Stack direction="row" spacing={2}>
+        <div className="jaq-control-box">
+          <h3>Artifact File Match</h3>
+          <JAQFileMatch />
         </div>
-      )}
+        {fileMatch && (
+          <div className="jaq-control-box">
+            <h3>Content match</h3>
+            <JAQContentMatch />
+          </div>
+        )}
+      </Stack>
       <Stack direction="row" spacing={2} alignItems="left">
         <span>Display:</span>
         <JAQContentFilterSwitch
