@@ -37,7 +37,12 @@ const (
   FROM
     openshift-ci-data-analysis.jira_data.tickets_dedup t
   LEFT JOIN UNNEST(t.comments) AS c
-  WHERE t.summary IS NOT NULL AND last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)
+  WHERE t.summary IS NOT NULL 
+    AND (
+      (last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))
+      OR
+      (t.status.name != "Closed" AND last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY))
+    )
 )
 SELECT
   t.issue.key as key,
