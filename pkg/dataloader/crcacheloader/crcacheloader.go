@@ -169,6 +169,9 @@ func (l *ComponentReadinessCacheLoader) primeCacheForView(ctx context.Context, v
 		return fmt.Errorf("multi test details report generation encountered errors: %s", strings.Join(strErrors, "; "))
 	}
 	rLog.Infof("got %d test details reports", len(tdReports))
+	if len(testIDOptions) != len(tdReports) {
+		rLog.Warnf("test details report generation returned %d reports, but %d test details requests were made", len(tdReports), len(testIDOptions))
+	}
 
 	// Now we cache each test details report:
 	for _, report := range tdReports {
