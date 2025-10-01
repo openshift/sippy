@@ -180,7 +180,12 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 }
 
 // GenerateDetailsReportForTest generates a test detail report for a per-test + variant combo.
-func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Context, testIDOption reqopts.TestIdentification, componentJobRunTestReportStatus bq.TestJobRunStatuses, allowUnregressedReports bool) (testdetails.Report, []error) {
+func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
+	ctx context.Context,
+	testIDOption reqopts.TestIdentification,
+	componentJobRunTestReportStatus bq.TestJobRunStatuses,
+	allowUnregressedReports bool,
+) (testdetails.Report, []error) {
 
 	if testIDOption.TestID == "" {
 		return testdetails.Report{}, []error{fmt.Errorf("test_id has to be defined for test details")}
@@ -257,7 +262,9 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(ctx context.Cont
 			}
 		}
 		if !regressed {
-			return testdetails.Report{}, []error{fmt.Errorf("report for test: %s is not showing as regressed", report.TestID)}
+			return testdetails.Report{}, []error{fmt.Errorf(
+				"report for test is not regressed as expected in release %s; ID=%v", c.ReqOptions.SampleRelease.Name, testIDOption,
+			)}
 		}
 	}
 
