@@ -3,7 +3,8 @@ Tool for parsing JUnit XML files and extracting test failures and flakes.
 """
 
 import logging
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
+from xml.etree.ElementTree import Element
 from typing import Any, Dict, List, Optional, Type
 from pydantic import Field
 import httpx
@@ -95,7 +96,7 @@ class JUnitParserTool(SippyBaseTool):
             logger.error(f"Unexpected error parsing JUnit XML: {e}")
             return {"error": f"Unexpected error - {str(e)}"}
 
-    def _extract_test_results(self, root: ET.Element) -> List[Dict[str, Any]]:
+    def _extract_test_results(self, root: Element) -> List[Dict[str, Any]]:
         """Extract all test results from the JUnit XML."""
         test_results = []
 
@@ -168,7 +169,7 @@ class JUnitParserTool(SippyBaseTool):
 
         return test_results
 
-    def _extract_aggregated_yaml_from_xml(self, root: ET.Element) -> Optional[List[Dict[str, Any]]]:
+    def _extract_aggregated_yaml_from_xml(self, root: Element) -> Optional[List[Dict[str, Any]]]:
         """Extract aggregated YAML data from JUnit XML system-out sections, but only for failed tests."""
         import yaml
 

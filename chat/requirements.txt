@@ -16,3 +16,4 @@ watchfiles
 websockets
 langchain-mcp-adapters
 mcp-client
+defusedxml>=0.7.0
