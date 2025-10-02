@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sippy-mcp": {
+      "type": "http",
+      "url": "${env:SIPPY_API_URL}/mcp/v1/",
+    }
+  }
+}

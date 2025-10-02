@@ -135,6 +135,7 @@ const useStyles = makeStyles((theme) => ({
     minWidth: 0, // Allow markdown content to shrink
     overflow: 'hidden', // Prevent overflow
     wordBreak: 'break-word', // Break long words
+    whiteSpace: 'normal', // Override pre-wrap from messageText
     '& p': {
       margin: '0 0 8px 0',
       wordBreak: 'break-word', // Break long words in paragraphs
