@@ -148,7 +148,7 @@ export default function Sidebar(props) {
                               <ListItemIcon>
                                 <SmartToy />
                               </ListItemIcon>
-                              <ListItemText primary="Chat Agent" />
+                              <ListItemText primary="Chat Assistant" />
                             </StyledListItemButton>
                           </ListItem>
                         )

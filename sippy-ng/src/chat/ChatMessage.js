@@ -1,17 +1,18 @@
-import { Alert, Avatar, Chip, IconButton, Paper, Tooltip } from '@mui/material'
+import { Alert, Avatar, IconButton, Paper, Tooltip } from '@mui/material'
 import {
   ContentCopy as ContentCopyIcon,
   Error as ErrorIcon,
   Info as InfoIcon,
+  OpenInNew as OpenInNewIcon,
   Person as PersonIcon,
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material'
 import { formatChatTimestamp, MESSAGE_TYPES } from './chatUtils'
+import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
-import ThinkingStep from './ThinkingStep'
 
 // Custom link component for ReactMarkdown that opens external links in new tabs
 const ChatLink = ({ href, children, ...props }) => {
@@ -135,6 +136,7 @@ const useStyles = makeStyles((theme) => ({
     minWidth: 0, // Allow markdown content to shrink
     overflow: 'hidden', // Prevent overflow
     wordBreak: 'break-word', // Break long words
+    whiteSpace: 'normal', // Override pre-wrap from messageText
     '& p': {
       margin: '0 0 8px 0',
       wordBreak: 'break-word', // Break long words in paragraphs
@@ -219,12 +221,6 @@ const useStyles = makeStyles((theme) => ({
   systemMessage: {
     maxWidth: '80%',
   },
-  thinkingContainer: {
-    width: '100%',
-    minWidth: 0, // Allow container to shrink
-    overflow: 'hidden', // Prevent overflow
-    marginLeft: theme.spacing(5), // Add left margin to align with other assistant messages
-  },
 }))
 
 export default function ChatMessage({
@@ -296,46 +292,40 @@ export default function ChatMessage({
           <div className={classes.messageFooter}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {formatTimestamp(message.timestamp)}
-              {showTools &&
-                message.tools_used &&
-                message.tools_used.length > 0 && (
-                  <div className={classes.toolsUsed}>
-                    {message.tools_used.map((tool, index) => (
-                      <Chip
-                        key={index}
-                        label={tool.replace(/_/g, ' ')}
-                        size="small"
-                        variant="outlined"
-                        className={classes.toolChip}
-                      />
-                    ))}
-                  </div>
-                )}
             </div>
-            <IconButton
-              size="small"
-              onClick={handleCopyMessage}
-              className={classes.copyButton}
-              title="Copy message"
-            >
-              <ContentCopyIcon fontSize="small" />
-            </IconButton>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {message.pageContext &&
+                message.pageContext.url &&
+                message.pageContext.page && (
+                  <Tooltip
+                    title={`View ${message.pageContext.page
+                      .split('-')
+                      .map(
+                        (word) => word.charAt(0).toUpperCase() + word.slice(1)
+                      )
+                      .join(' ')}`}
+                  >
+                    <IconButton
+                      size="small"
+                      component={Link}
+                      to={message.pageContext.url}
+                      className={classes.copyButton}
+                    >
+                      <OpenInNewIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              <IconButton
+                size="small"
+                onClick={handleCopyMessage}
+                className={classes.copyButton}
+                title="Copy message"
+              >
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            </div>
           </div>
         </Paper>
-      </div>
-    </div>
-  )
-
-  const renderThinkingStep = () => (
-    <div className={`${classes.messageContainer} assistant`}>
-      <div className={`${classes.messageContent} assistant`}>
-        <div className={classes.thinkingContainer}>
-          <ThinkingStep
-            data={message.data}
-            isInProgress={!message.data?.complete}
-            defaultExpanded={!message.data?.complete}
-          />
-        </div>
       </div>
     </div>
   )
@@ -392,9 +382,6 @@ export default function ChatMessage({
     case MESSAGE_TYPES.ASSISTANT:
       return renderAssistantMessage()
 
-    case MESSAGE_TYPES.THINKING_STEP:
-      return renderThinkingStep()
-
     case MESSAGE_TYPES.ERROR:
       return renderErrorMessage()
 
@@ -415,6 +402,11 @@ ChatMessage.propTypes = {
     timestamp: PropTypes.string.isRequired,
     data: PropTypes.object,
     tools_used: PropTypes.arrayOf(PropTypes.string),
+    pageContext: PropTypes.shape({
+      page: PropTypes.string,
+      url: PropTypes.string,
+      data: PropTypes.object,
+    }),
   }).isRequired,
   showTimestamp: PropTypes.bool,
   showTools: PropTypes.bool,
