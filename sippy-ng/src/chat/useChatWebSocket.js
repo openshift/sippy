@@ -222,6 +222,7 @@ export function useChatWebSocket(settings = {}) {
           message: content,
           chat_history: formatChatHistoryForAPI(messages),
           show_thinking: settings.showThinking !== false,
+          persona: settings.persona || 'default',
         }
 
         wsRef.current.send(JSON.stringify(payload))
@@ -234,7 +235,7 @@ export function useChatWebSocket(settings = {}) {
         return false
       }
     },
-    [connectionState, messages, settings.showThinking]
+    [connectionState, messages, settings.showThinking, settings.persona]
   )
 
   // Clear chat history

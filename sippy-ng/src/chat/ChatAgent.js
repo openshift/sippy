@@ -1,5 +1,6 @@
 import {
   Alert,
+  Chip,
   Fade,
   IconButton,
   Paper,
@@ -9,11 +10,14 @@ import {
 import { DEFAULT_CHAT_SETTINGS, MESSAGE_TYPES } from './chatUtils'
 import { makeStyles } from '@mui/styles'
 import {
+  Masks as MasksIcon,
   Psychology as PsychologyIcon,
   Settings as SettingsIcon,
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material'
 import { useChatWebSocket } from './useChatWebSocket'
+import { useCookies } from 'react-cookie'
+import { usePersonas } from './usePersonas'
 import ChatInput from './ChatInput'
 import ChatMessage from './ChatMessage'
 import ChatSettings from './ChatSettings'
@@ -106,7 +110,16 @@ const useStyles = makeStyles((theme) => ({
 
 export default function ChatAgent() {
   const classes = useStyles()
-  const [settings, setSettings] = useState(DEFAULT_CHAT_SETTINGS)
+  const [cookies, setCookie] = useCookies(['sippyChatSettings'])
+
+  // Load settings from cookie or use defaults
+  const [settings, setSettings] = useState(() => {
+    if (cookies.sippyChatSettings) {
+      return { ...DEFAULT_CHAT_SETTINGS, ...cookies.sippyChatSettings }
+    }
+    return DEFAULT_CHAT_SETTINGS
+  })
+
   const [settingsOpen, setSettingsOpen] = useState(false)
   const messagesEndRef = useRef(null)
   const messagesListRef = useRef(null)
@@ -123,6 +136,21 @@ export default function ChatAgent() {
     disconnect,
     isConnected,
   } = useChatWebSocket(settings)
+
+  const { personas } = usePersonas()
+
+  const getCurrentPersonaDisplay = () => {
+    const personaName = settings.persona || 'default'
+    return (
+      personaName.charAt(0).toUpperCase() +
+      personaName.slice(1).replace(/_/g, ' ')
+    )
+  }
+
+  const getCurrentPersonaTooltip = () => {
+    const persona = personas.find((p) => p.name === settings.persona)
+    return persona ? persona.description : 'Default AI assistant'
+  }
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -155,6 +183,12 @@ export default function ChatAgent() {
 
   const handleSettingsChange = (newSettings) => {
     setSettings(newSettings)
+    // Save settings to cookie
+    setCookie('sippyChatSettings', newSettings, {
+      path: '/',
+      sameSite: 'Strict',
+      expires: new Date('3000-12-31'),
+    })
   }
 
   const filteredMessages = settings.showThinking
@@ -219,6 +253,17 @@ export default function ChatAgent() {
           {isTyping && (
             <Tooltip title="Agent is thinking">
               <PsychologyIcon color="primary" />
+            </Tooltip>
+          )}
+          {personas.length > 0 && settings.persona !== 'default' && (
+            <Tooltip title={getCurrentPersonaTooltip()}>
+              <Chip
+                icon={<MasksIcon />}
+                label={getCurrentPersonaDisplay()}
+                size="small"
+                color="secondary"
+                variant="outlined"
+              />
             </Tooltip>
           )}
         </div>
