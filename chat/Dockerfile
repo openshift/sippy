@@ -1,5 +1,5 @@
-# Use Red Hat Universal Base Image 10 with Python 3.11
-FROM registry.access.redhat.com/ubi9/python-311:latest
+# CentOS until we can get Python3.13 in UBI+
+FROM quay.io/centos/centos:10
 
 # Set metadata
 LABEL name="sippy-chat" \
@@ -12,12 +12,18 @@ LABEL name="sippy-chat" \
       io.k8s.display-name="Sippy AI Agent" \
       io.openshift.tags="ai,ci-cd,analysis,langchain,python"
 
+ARG PYTHON_VERSION=3.13.0
+
 # Switch to root to install system packages
 USER root
 
 # Install system dependencies
-RUN dnf update -y && \
+RUN dnf install -y 'https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm' && \
+    dnf config-manager --set-enabled crb && \
+    dnf update -y && \
     dnf install -y \
+        python3.13 \
+        python3.13-pip \
         git \
         curl-minimal \
         ca-certificates \
@@ -36,8 +42,8 @@ RUN groupadd -r sippy && \
 COPY requirements.txt ./
 
 # Upgrade pip and install Python dependencies
-RUN python -m pip install --upgrade pip && \
-    python -m pip install --no-cache-dir -r requirements.txt
+RUN python3.13 -m pip install --upgrade pip && \
+    python3.13 -m pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
@@ -71,4 +77,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
 # Default command runs the web server
-CMD ["python", "main.py", "serve", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python3.13", "main.py", "serve", "--host", "0.0.0.0", "--port", "8000"]
