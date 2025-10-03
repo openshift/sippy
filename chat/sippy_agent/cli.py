@@ -166,7 +166,7 @@ class SippyCLI:
 
         console.print()
 
-    def streaming_thinking_callback(self, thought: str, action: str, action_input: str, observation: str) -> None:
+    async def streaming_thinking_callback(self, thought: str, action: str, action_input: str, observation: str) -> None:
         """Callback for streaming thinking process."""
         if thought and action:
             # New step starting

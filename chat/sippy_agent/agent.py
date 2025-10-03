@@ -67,17 +67,12 @@ class TokenCountingHandler(BaseCallbackHandler):
         elif hasattr(response, "generations") and response.generations:
             for generation_list in response.generations:
                 for generation in generation_list:
-                    if (
-                        hasattr(generation, "generation_info")
-                        and generation.generation_info
-                    ):
+                    if hasattr(generation, "generation_info") and generation.generation_info:
                         usage = generation.generation_info.get("usage_metadata", {})
                         if usage:
                             prompt_tokens = usage.get("prompt_token_count", 0)
                             completion_tokens = usage.get("candidates_token_count", 0)
-                            total_tokens = usage.get(
-                                "total_token_count", prompt_tokens + completion_tokens
-                            )
+                            total_tokens = usage.get("total_token_count", prompt_tokens + completion_tokens)
 
                             self.total_tokens += total_tokens
                             self.prompt_tokens += prompt_tokens
@@ -127,13 +122,8 @@ class SippyAgent:
 
         # Use ChatGoogleGenerativeAI for Gemini models
         if self.config.is_gemini_model():
-            if (
-                not self.config.google_api_key
-                and not self.config.google_credentials_file
-            ):
-                raise ValueError(
-                    "Google API key or service account credentials file is required for Gemini models"
-                )
+            if not self.config.google_api_key and not self.config.google_credentials_file:
+                raise ValueError("Google API key or service account credentials file is required for Gemini models")
 
             llm_kwargs = {
                 "model": self.config.model_name,
@@ -144,16 +134,12 @@ class SippyAgent:
             if self.config.google_api_key:
                 llm_kwargs["google_api_key"] = self.config.google_api_key
                 if self.config.verbose:
-                    logger.info(
-                        f"Using ChatGoogleGenerativeAI for Gemini model with API key"
-                    )
+                    logger.info(f"Using ChatGoogleGenerativeAI for Gemini model with API key")
             elif self.config.google_credentials_file:
                 # Set the environment variable for Google credentials
                 import os
 
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
-                    self.config.google_credentials_file
-                )
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.config.google_credentials_file
                 if self.config.verbose:
                     logger.info(
                         f"Using ChatGoogleGenerativeAI for Gemini model with service account: {self.config.google_credentials_file}"
@@ -177,9 +163,7 @@ class SippyAgent:
                 llm_kwargs["openai_api_key"] = "dummy-key"
 
             if self.config.verbose:
-                logger.info(
-                    f"Using ChatOpenAI with base_url: {self.config.llm_endpoint}"
-                )
+                logger.info(f"Using ChatOpenAI with base_url: {self.config.llm_endpoint}")
 
             return ChatOpenAI(**llm_kwargs)
 
@@ -206,9 +190,7 @@ class SippyAgent:
             mcp_tools = await load_tools_from_mcp(self.config.mcp_config_file)
             if mcp_tools:
                 tools.extend(mcp_tools)
-                logger.info(
-                    f"Successfully loaded {len(mcp_tools)} tools from MCP servers."
-                )
+                logger.info(f"Successfully loaded {len(mcp_tools)} tools from MCP servers.")
 
         if self.config.verbose:
             logger.info(f"Created {len(tools)} tools: {[tool.name for tool in tools]}")
@@ -225,9 +207,20 @@ class SippyAgent:
 ### Guiding Principles
 
 1. **Avoid Redundancy:** Never call the same tool with the same parameters more than once.
-2. **Be Resilient:** If a tool call fails, don’t retry immediately—try a different approach or inform the user.
+2. **Be Resilient:** If a tool call fails, don't retry immediately—try a different approach or inform the user.
 3. **Provide Evidence:** Always ground your analysis in tool results.
 4. **Present Clearly:** Use markdown links for URLs (e.g., `[Job Name](link)`), no raw JSON, and format for readability.
+5. **Maximize Efficiency:** When multiple tools can be called independently (no data dependencies), call them in parallel rather than sequentially. For example, if analyzing multiple failed jobs, call `get_prow_job_summary` for all jobs simultaneously.
+
+#### Examples of Parallel Tool Calls:
+
+* **Multiple Job Analysis:** If analyzing jobs J1, J2, J3 → Call `get_prow_job_summary(J1)`, `get_prow_job_summary(J2)`, `get_prow_job_summary(J3)` all at once.
+* **Job Summary + Incidents:** `get_prow_job_summary(job_id)` and `check_known_incidents()` have no dependencies → call together.
+* **Multiple JUnit Files:** If parsing multiple test result files → call `parse_junit_xml()` for each in parallel.
+
+**When NOT to call in parallel:**
+* When one tool's output is needed as input for another (e.g., must get payload details before getting job IDs).
+* When the same tool needs results from a previous call to inform parameters.
 
 ---
 
@@ -264,7 +257,7 @@ class SippyAgent:
 **Goal:** Explain why a payload (e.g., X) was rejected.
 
 1. Use `get_payload_details` to list failed blocking jobs.
-2. For **each failed blocking job**, call `get_prow_job_summary` to get failed tests.
+2. For **all failed blocking jobs**, call `get_prow_job_summary` **in parallel** to get failed tests (these are independent calls).
 3. **Always check `check_known_incidents`** to see if failures correlate with ongoing issues.
 
    * A job failure may be linked if it started within **12 hours before** the incident was created.
@@ -331,9 +324,7 @@ Your final answer must be **comprehensive**:
         self,
         message: str,
         chat_history: Optional[List[ChatMessage]] = None,
-        thinking_callback: Optional[
-            Callable[[str, str, str, str], Awaitable[None]]
-        ] = None,
+        thinking_callback: Optional[Callable[[str, str, str, str], Awaitable[None]]] = None,
     ) -> Union[str, Dict[str, Any]]:
         """Process a chat message and return the agent's response.
 
@@ -367,9 +358,7 @@ Your final answer must be **comprehensive**:
 
         except Exception as e:
             logger.error(f"Error processing message: {e}", exc_info=True)
-            error_msg = (
-                f"I encountered an error while processing your request: {str(e)}"
-            )
+            error_msg = f"I encountered an error while processing your request: {str(e)}"
             if self.config.show_thinking:
                 return {"output": error_msg, "thinking_steps": []}
             else:
@@ -480,13 +469,9 @@ Your final answer must be **comprehensive**:
 
             # Warn if approaching common limits
             if token_usage["total_tokens"] > 100000:  # 100K tokens
-                logger.warning(
-                    f"High token usage detected: {token_usage['total_tokens']} tokens"
-                )
+                logger.warning(f"High token usage detected: {token_usage['total_tokens']} tokens")
             elif token_usage["total_tokens"] > 50000:  # 50K tokens
-                logger.info(
-                    f"Moderate token usage: {token_usage['total_tokens']} tokens"
-                )
+                logger.info(f"Moderate token usage: {token_usage['total_tokens']} tokens")
 
         # Extract final response
         final_response = get_final_response(all_messages)
@@ -502,9 +487,7 @@ Your final answer must be **comprehensive**:
 
         return response_dict
 
-    async def _achat_non_streaming(
-        self, history_messages: List[BaseMessage]
-    ) -> Union[str, Dict[str, Any]]:
+    async def _achat_non_streaming(self, history_messages: List[BaseMessage]) -> Union[str, Dict[str, Any]]:
         """Non-streaming version for backward compatibility."""
         # Invoke the graph
         result = await self.graph.ainvoke(
@@ -524,13 +507,9 @@ Your final answer must be **comprehensive**:
 
             # Warn if approaching common limits
             if token_usage["total_tokens"] > 100000:  # 100K tokens
-                logger.warning(
-                    f"High token usage detected: {token_usage['total_tokens']} tokens"
-                )
+                logger.warning(f"High token usage detected: {token_usage['total_tokens']} tokens")
             elif token_usage["total_tokens"] > 50000:  # 50K tokens
-                logger.info(
-                    f"Moderate token usage: {token_usage['total_tokens']} tokens"
-                )
+                logger.info(f"Moderate token usage: {token_usage['total_tokens']} tokens")
 
         # Extract final response
         final_response = get_final_response(messages)

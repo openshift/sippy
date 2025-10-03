@@ -111,9 +111,7 @@ class SippyWebServer:
                 for name, p in PERSONAS.items()
             ]
 
-            return PersonasResponse(
-                personas=personas, current_persona=self.config.persona
-            )
+            return PersonasResponse(personas=personas, current_persona=self.config.persona)
 
         @self.app.post("/chat", response_model=ChatResponse)
         async def chat(request: ChatRequest):
@@ -135,9 +133,7 @@ class SippyWebServer:
 
                 try:
                     # Process the message
-                    result = await self.agent.achat(
-                        request.message, request.chat_history
-                    )
+                    result = await self.agent.achat(request.message, request.chat_history)
 
                     if isinstance(result, dict) and "thinking_steps" in result:
                         # Convert thinking steps to API format
@@ -156,14 +152,10 @@ class SippyWebServer:
                         return ChatResponse(
                             response=result["output"],
                             thinking_steps=thinking_steps,
-                            tools_used=self._extract_tools_used(
-                                result["thinking_steps"]
-                            ),
+                            tools_used=self._extract_tools_used(result["thinking_steps"]),
                         )
                     else:
-                        return ChatResponse(
-                            response=result, thinking_steps=None, tools_used=None
-                        )
+                        return ChatResponse(response=result, thinking_steps=None, tools_used=None)
 
                 finally:
                     # Restore original settings
@@ -197,9 +189,7 @@ class SippyWebServer:
                     message = request_data.get("message", "")
                     chat_history_data = request_data.get("chat_history", [])
                     chat_history = [ChatMessage(**msg) for msg in chat_history_data]
-                    show_thinking = request_data.get(
-                        "show_thinking", self.config.show_thinking
-                    )
+                    show_thinking = request_data.get("show_thinking", self.config.show_thinking)
                     persona = request_data.get("persona", self.config.persona)
 
                     # Override settings
@@ -217,7 +207,9 @@ class SippyWebServer:
 
                     try:
                         # Track step number for streaming
-                        step_counter = {"count": 0, "current_step": 0}
+                        step_counter = {"count": 0}
+                        # Map tool calls to their step numbers for parallel execution
+                        tool_call_steps = {}
 
                         # Define async thinking callback for real-time streaming
                         async def thinking_callback(
@@ -227,10 +219,18 @@ class SippyWebServer:
                             observation: str,
                         ):
                             """Stream thinking steps in real-time over WebSocket."""
+                            # Create a unique key for this tool call based on action and input
+                            tool_key = f"{action}:{action_input}"
+
                             # Only increment step counter on new tool calls (no observation yet)
                             if not observation:
                                 step_counter["count"] += 1
-                                step_counter["current_step"] = step_counter["count"]
+                                current_step = step_counter["count"]
+                                # Store the step number for this tool call
+                                tool_call_steps[tool_key] = current_step
+                            else:
+                                # Retrieve the step number for this tool call
+                                current_step = tool_call_steps.get(tool_key, step_counter["count"])
 
                             # Send the thinking step immediately
                             await self.websocket_manager.send_message(
@@ -238,14 +238,12 @@ class SippyWebServer:
                                 StreamMessage(
                                     type="thinking_step",
                                     data={
-                                        "step_number": step_counter["current_step"],
+                                        "step_number": current_step,
                                         "thought": thought,
                                         "action": action,
                                         "action_input": action_input,
                                         "observation": observation,
-                                        "complete": bool(
-                                            observation
-                                        ),  # Complete when we have observation
+                                        "complete": bool(observation),  # Complete when we have observation
                                     },
                                 ),
                             )
@@ -254,17 +252,13 @@ class SippyWebServer:
                         result = await self.agent.achat(
                             message,
                             chat_history,
-                            thinking_callback=(
-                                thinking_callback if show_thinking else None
-                            ),
+                            thinking_callback=(thinking_callback if show_thinking else None),
                         )
 
                         # Send final response
                         if isinstance(result, dict) and "output" in result:
                             response_text = result["output"]
-                            tools_used = self._extract_tools_used(
-                                result.get("thinking_steps", [])
-                            )
+                            tools_used = self._extract_tools_used(result.get("thinking_steps", []))
                         else:
                             response_text = result
                             tools_used = []
