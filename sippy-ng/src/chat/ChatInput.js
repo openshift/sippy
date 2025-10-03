@@ -83,7 +83,6 @@ const EXAMPLE_QUERIES = [
   'What is the latest 4.20 payload?',
   'When did 4.16 go GA?',
   'Why did [prow job ID] fail?',
-  'When did we start development on 4.15?',
 ]
 
 export default function ChatInput({
@@ -169,7 +168,7 @@ export default function ChatInput({
 
   const getConnectionStatusText = () => {
     if (!isConnected) return 'Disconnected'
-    if (isTyping) return 'Agent is thinking...'
+    if (isTyping) return 'Sippy is thinking...'
     return 'Connected'
   }
 

@@ -1,163 +1,165 @@
-# Global Chat Widget
+# Chat Components
 
-The global chat widget is available on every page in Sippy and provides contextual AI assistance.
+## AskSippyButton
 
-## Features
+The `AskSippyButton` component provides a reusable button that opens the chat widget and pre-sends a question to Sippy.
 
-- **Global Access**: Available on every page via a floating action button (FAB)
-- **Contextual Awareness**: Automatically knows what page you're on and can access page-specific data
-- **Streaming Responses**: Real-time streaming of AI responses with thinking steps
-- **Personas**: Support for different AI personas (if configured)
-- **WebSocket Connection**: Low-latency bidirectional communication
+### Basic Usage
 
-## Components
+```jsx
+import AskSippyButton from '../chat/AskSippyButton'
 
-### GlobalChatWidget
-The main chat drawer that slides out from the right side of the screen.
-
-**Props:**
-- `open` (boolean): Controls whether the drawer is visible
-- `onClose` (function): Callback when the drawer should close
-- `pageContext` (object): Context information about the current page
-
-### FloatingChatButton
-The floating action button that opens the chat widget.
-
-**Props:**
-- `onClick` (function): Callback when the button is clicked
-- `unreadCount` (number): Number of unread messages (optional)
-- `hasContext` (boolean): Whether page context is available
-- `disabled` (boolean): Whether the button is disabled
-
-### useGlobalChat Hook
-React hook for managing global chat state.
-
-**Provides:**
-- `isOpen` (boolean): Whether the chat is currently open
-- `pageContext` (object): Current page context
-- `unreadCount` (number): Number of unread messages
-- `openChat(context)` (function): Opens the chat with optional context
-- `closeChat()` (function): Closes the chat
-- `toggleChat(context)` (function): Toggles the chat open/closed
-- `updatePageContext(context)` (function): Updates the current page context
-- `incrementUnreadCount()` (function): Increments the unread message counter
-
-## Adding Page Context
-
-To provide context from your page to the chat assistant, use the `useGlobalChat` hook:
-
-```javascript
-import { useGlobalChat } from '../chat/useGlobalChat'
-
-function MyPageComponent() {
-  const { updatePageContext } = useGlobalChat()
-  
-  // Update context when relevant data changes
-  useEffect(() => {
-    updatePageContext({
-      page: 'payload-details',
-      url: window.location.href,
-      data: {
-        release: release,
-        payload: payloadTag,
-        blockingJobs: failedJobs.map(j => ({
-          name: j.name,
-          id: j.id,
-          url: j.url
-        })),
-        state: payloadState
-      }
-    })
-  }, [release, payloadTag, failedJobs, payloadState, updatePageContext])
-  
+function MyComponent() {
   return (
-    // ... your page content
+    <AskSippyButton
+      question="Why is this test failing?"
+      tooltip="Ask Sippy about this test"
+    />
   )
 }
 ```
 
-## Page Context Structure
+### With Dynamic Content
 
-The page context should follow this structure:
+```jsx
+<AskSippyButton
+  question={`Why is test "${testName}" failing in version ${version}?`}
+  tooltip="Ask Sippy about this test failure"
+  variant="contained"
+  color="primary"
+/>
+```
 
-```javascript
-{
-  page: string,        // Page identifier (e.g., 'payload-details', 'job-analysis')
-  url: string,         // Current page URL
-  data: {              // Page-specific data
-    // Any relevant data the AI might need to help the user
-    // Keep it focused on what's currently visible/relevant
+### With Page Context
+
+You can provide additional context to help Sippy answer questions more accurately:
+
+```jsx
+<AskSippyButton
+  question="What are the common failures in this job?"
+  context={{
+    page: 'job-details',
+    url: window.location.href,
+    data: {
+      jobName: jobName,
+      jobId: jobId,
+    },
+  }}
+  tooltip="Ask Sippy about job failures"
+/>
+```
+
+### Props
+
+| Prop        | Type    | Required | Default      | Description                                        |
+| ----------- | ------- | -------- | ------------ | -------------------------------------------------- |
+| `question`  | string  | Yes      | -            | The question to pre-send to Sippy                  |
+| `context`   | object  | No       | undefined    | Page context to provide to the chat                |
+| `tooltip`   | string  | No       | undefined    | Tooltip text to display on hover                   |
+| `variant`   | string  | No       | 'outlined'   | Button variant: 'text', 'outlined', or 'contained' |
+| `size`      | string  | No       | 'small'      | Button size: 'small', 'medium', or 'large'         |
+| `color`     | string  | No       | 'primary'    | Button color theme                                 |
+| `label`     | string  | No       | 'Ask Sippy'     | Button label text                                  |
+| `startIcon` | node    | No       | AutoAwesomeIcon | Icon to display at the start of the button         |
+| `disabled`  | boolean | No       | false        | Whether the button is disabled                     |
+| `sx`        | object  | No       | undefined    | Additional Material-UI sx prop for custom styling  |
+
+### Examples
+
+#### Simple Question Button
+
+```jsx
+<AskSippyButton
+  question="What is the current health of 4.15?"
+  tooltip="Ask about release health"
+/>
+```
+
+#### Custom Styling
+
+```jsx
+<AskSippyButton
+  question="Show me the top 10 failing tests"
+  variant="contained"
+  color="secondary"
+  size="large"
+  label="Get Test Report"
+  sx={{ marginTop: 2 }}
+/>
+```
+
+#### Fancy Button with Gradient and Animation
+
+```jsx
+<AskSippyButton
+  question="Why is this test failing?"
+  tooltip="Ask Sippy AI about this test"
+  variant="contained"
+  size="medium"
+  sx={{
+    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+    boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+    color: 'white',
+    fontWeight: 'bold',
+    textTransform: 'none',
+    transition: 'all 0.3s ease',
+    animation: 'pulse 2s ease-in-out infinite',
+    '@keyframes pulse': {
+      '0%, 100%': {
+        boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+      },
+      '50%': {
+        boxShadow: '0 3px 15px 5px rgba(33, 203, 243, .5)',
+      },
+    },
+    '&:hover': {
+      background: 'linear-gradient(45deg, #1976D2 30%, #00BCD4 90%)',
+      boxShadow: '0 6px 20px 4px rgba(33, 203, 243, .4)',
+      transform: 'translateY(-2px)',
+    },
+  }}
+/>
+```
+
+#### Icon-only Button
+
+```jsx
+<AskSippyButton
+  question="Help me debug this issue"
+  label=""
+  tooltip="Ask Sippy for help"
+  variant="text"
+  size="small"
+/>
+```
+
+### Direct API Usage
+
+If you need more control, you can use the `askQuestion` function directly:
+
+```jsx
+import { useGlobalChat } from '../chat/useGlobalChat'
+
+function MyComponent() {
+  const { askQuestion } = useGlobalChat()
+
+  const handleClick = () => {
+    askQuestion('Why is this test failing?', {
+      page: 'my-page',
+      data: { someData: 'value' },
+    })
   }
+
+  return <Button onClick={handleClick}>Custom Button</Button>
 }
 ```
 
-### Example Contexts
+## Implementation Details
 
-**Payload Details Page:**
-```javascript
-{
-  page: 'payload-details',
-  url: '/sippy-ng/release/4.16/payloads/4.16.0-0.nightly-2025-10-03-123456',
-  data: {
-    release: '4.16',
-    payload: '4.16.0-0.nightly-2025-10-03-123456',
-    state: 'Rejected',
-    blockingJobs: [
-      { name: 'periodic-ci-openshift-release-master-ci-4.16...', id: '1234', url: '...' }
-    ]
-  }
-}
-```
+The `askQuestion` function:
 
-**Job Analysis Page:**
-```javascript
-{
-  page: 'job-analysis',
-  url: '/sippy-ng/jobs/analysis/1234',
-  data: {
-    jobName: 'periodic-ci-openshift-release-master-ci-4.16-e2e-gcp',
-    jobId: '1234',
-    jobUrl: 'https://prow.ci.openshift.org/view/gs/...',
-    failedTests: ['test1', 'test2', 'test3']
-  }
-}
-```
+1. Updates the page context if provided
+2. Opens the chat widget
+3. Automatically sends the question after a brief delay (100ms) to ensure the chat is rendered
 
-**Release Overview Page:**
-```javascript
-{
-  page: 'release-overview',
-  url: '/sippy-ng/release/4.16',
-  data: {
-    release: '4.16',
-    currentHealth: 85.5,
-    recentPayloads: [...],
-    majorFailures: [...]
-  }
-}
-```
-
-## Best Practices
-
-1. **Keep Context Minimal**: Only include data that's currently visible or relevant to the user
-2. **Update on Change**: Update the context when significant page state changes
-3. **Clear IDs**: Include unique identifiers (job IDs, payload tags, etc.) for the AI to use with tools
-4. **User-Facing Names**: Include user-friendly display names alongside IDs
-5. **URLs**: Include relevant URLs for easy reference
-
-## Backend Integration
-
-The page context is sent to the backend with each message:
-
-```python
-# In web_server.py
-data = await websocket.receive_text()
-request_data = json.loads(data)
-
-message = request_data.get("message", "")
-page_context = request_data.get("page_context", {})  # Page context from frontend
-```
-
-The agent can then use this context to provide more relevant assistance without requiring the user to provide details manually.
-
-
+The chat widget will display with the question already sent, and Sippy will begin processing it immediately.

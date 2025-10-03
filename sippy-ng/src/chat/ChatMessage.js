@@ -3,10 +3,12 @@ import {
   ContentCopy as ContentCopyIcon,
   Error as ErrorIcon,
   Info as InfoIcon,
+  OpenInNew as OpenInNewIcon,
   Person as PersonIcon,
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material'
 import { formatChatTimestamp, MESSAGE_TYPES } from './chatUtils'
+import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -313,14 +315,37 @@ export default function ChatMessage({
                   </div>
                 )}
             </div>
-            <IconButton
-              size="small"
-              onClick={handleCopyMessage}
-              className={classes.copyButton}
-              title="Copy message"
-            >
-              <ContentCopyIcon fontSize="small" />
-            </IconButton>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {message.pageContext &&
+                message.pageContext.url &&
+                message.pageContext.page && (
+                  <Tooltip
+                    title={`View ${message.pageContext.page
+                      .split('-')
+                      .map(
+                        (word) => word.charAt(0).toUpperCase() + word.slice(1)
+                      )
+                      .join(' ')}`}
+                  >
+                    <IconButton
+                      size="small"
+                      component={Link}
+                      to={message.pageContext.url}
+                      className={classes.copyButton}
+                    >
+                      <OpenInNewIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              <IconButton
+                size="small"
+                onClick={handleCopyMessage}
+                className={classes.copyButton}
+                title="Copy message"
+              >
+                <ContentCopyIcon fontSize="small" />
+              </IconButton>
+            </div>
           </div>
         </Paper>
       </div>
@@ -416,6 +441,11 @@ ChatMessage.propTypes = {
     timestamp: PropTypes.string.isRequired,
     data: PropTypes.object,
     tools_used: PropTypes.arrayOf(PropTypes.string),
+    pageContext: PropTypes.shape({
+      page: PropTypes.string,
+      url: PropTypes.string,
+      data: PropTypes.object,
+    }),
   }).isRequired,
   showTimestamp: PropTypes.bool,
   showTools: PropTypes.bool,

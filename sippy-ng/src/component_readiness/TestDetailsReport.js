@@ -26,6 +26,7 @@ import { Link } from 'react-router-dom'
 import { pathForExactTestAnalysisWithFilter } from '../helpers'
 import { Tooltip } from '@mui/material'
 import { useGlobalChat } from '../chat/useGlobalChat'
+import AskSippyButton from '../chat/AskSippyButton'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
 import CompReadyCancelled from './CompReadyCancelled'
@@ -545,9 +546,38 @@ View the [test details report|${document.location.href}] for additional context.
       <Box
         display="flex"
         justifyContent="right"
-        alignItems="right"
+        alignItems="center"
+        gap={1}
         width="100%"
       >
+        <AskSippyButton
+          question="Please summarize this test details report."
+          tooltip="Ask Sippy AI to summarize this test report"
+          variant="contained"
+          size="medium"
+          sx={{
+            background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+            boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+            color: 'white',
+            fontWeight: 'bold',
+            textTransform: 'none',
+            transition: 'all 0.3s ease',
+            animation: 'pulse 2s ease-in-out infinite',
+            '@keyframes pulse': {
+              '0%, 100%': {
+                boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+              },
+              '50%': {
+                boxShadow: '0 3px 15px 5px rgba(33, 203, 243, .5)',
+              },
+            },
+            '&:hover': {
+              background: 'linear-gradient(45deg, #1976D2 30%, #00BCD4 90%)',
+              boxShadow: '0 6px 20px 4px rgba(33, 203, 243, .4)',
+              transform: 'translateY(-2px)',
+            },
+          }}
+        />
         <Tooltip title="Frequently Asked Questions">
           <Link
             to="/component_readiness/help"

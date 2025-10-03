@@ -41,10 +41,10 @@ import BuildClusterOverview from './build_clusters/BuildClusterOverview'
 import ChatInterface from './chat/ChatInterface'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import CollapsibleChatDrawer from './chat/CollapsibleChatDrawer'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@mui/material/Drawer'
 import FeatureGates from './tests/FeatureGates'
-import FloatingChatButton from './chat/FloatingChatButton'
 import IconButton from '@mui/material/IconButton'
 import Install from './releases/Install'
 import IntervalsChart from './prow_job_runs/IntervalsChart'
@@ -789,33 +789,27 @@ function App(props) {
 // Component that uses the global chat context
 function GlobalChatControls() {
   const capabilities = React.useContext(CapabilitiesContext)
-  const { isOpen, closeChat, toggleChat, pageContext } = useGlobalChat()
+  const { isOpen, openChat, closeChat, pageContext, unreadCount } =
+    useGlobalChat()
   const location = useLocation()
 
   const chatEnabled = capabilities.includes('chat')
-  // Don't show floating button on the main /chat page
+  // Don't show chat drawer on the main /chat page
   const isOnChatPage = location.pathname.includes('/chat')
 
-  if (!chatEnabled) {
+  if (!chatEnabled || isOnChatPage) {
     return null
   }
 
   return (
-    <>
-      {!isOnChatPage && (
-        <FloatingChatButton
-          onClick={() => toggleChat()}
-          hasContext={pageContext !== null && pageContext?.page !== undefined}
-          disabled={!chatEnabled}
-        />
-      )}
-      <ChatInterface
-        mode="drawer"
-        open={isOpen}
-        onClose={closeChat}
-        pageContext={pageContext}
-      />
-    </>
+    <CollapsibleChatDrawer
+      open={isOpen}
+      onOpen={openChat}
+      onClose={closeChat}
+      pageContext={pageContext}
+      hasContext={pageContext !== null && pageContext?.page !== undefined}
+      unreadCount={unreadCount}
+    />
   )
 }
 

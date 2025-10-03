@@ -189,6 +189,7 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
       {
         tools_used: data.tools_used,
         timestamp: data.timestamp,
+        pageContext: pageContextRef.current,
       }
     )
 
@@ -220,8 +221,10 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
         // Increment iteration counter for new conversation turn
         currentIterationRef.current += 1
 
-        // Add user message to chat
-        const userMessage = createMessage(MESSAGE_TYPES.USER, content)
+        // Add user message to chat with page context
+        const userMessage = createMessage(MESSAGE_TYPES.USER, content, {
+          pageContext: pageContextRef.current,
+        })
         setMessages((prev) => [...prev, userMessage])
 
         // Send to WebSocket

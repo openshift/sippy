@@ -1,4 +1,13 @@
 import {
+  AddCircleOutline as AddCircleOutlineIcon,
+  ExpandMore as ExpandMoreIcon,
+  Masks as MasksIcon,
+  Fullscreen as MaximizeIcon,
+  FullscreenExit as MinimizeIcon,
+  Settings as SettingsIcon,
+  SmartToy as SmartToyIcon,
+} from '@mui/icons-material'
+import {
   Alert,
   Chip,
   Drawer,
@@ -8,14 +17,6 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import {
-  Close as CloseIcon,
-  Masks as MasksIcon,
-  Fullscreen as MaximizeIcon,
-  FullscreenExit as MinimizeIcon,
-  Settings as SettingsIcon,
-  SmartToy as SmartToyIcon,
-} from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import { MESSAGE_TYPES } from './chatUtils'
 import { useChatInterface } from './useChatInterface'
@@ -27,8 +28,8 @@ import React, { useEffect, useState } from 'react'
 import SippyLogo from '../components/SippyLogo'
 import ThinkingStep from './ThinkingStep'
 
-const DRAWER_WIDTH = 500
-const DRAWER_WIDTH_MAXIMIZED = '80%'
+const DRAWER_HEIGHT = 600
+const DRAWER_HEIGHT_MAXIMIZED = '90vh'
 
 const useStyles = makeStyles((theme) => ({
   // Full page styles
@@ -55,14 +56,25 @@ const useStyles = makeStyles((theme) => ({
     flexShrink: 0,
   },
   drawerPaper: {
-    width: DRAWER_WIDTH,
-    transition: theme.transitions.create('width', {
+    height: DRAWER_HEIGHT,
+    width: 600,
+    maxWidth: '100vw',
+    right: theme.spacing(3),
+    left: 'auto',
+    borderTopLeftRadius: theme.shape.borderRadius * 2,
+    borderTopRightRadius: theme.shape.borderRadius * 2,
+    borderTop: `2px solid ${theme.palette.divider}`,
+    borderLeft: `1px solid ${theme.palette.divider}`,
+    borderRight: `1px solid ${theme.palette.divider}`,
+    boxShadow: theme.shadows[8],
+    transition: theme.transitions.create(['height', 'width'], {
       easing: theme.transitions.easing.sharp,
       duration: theme.transitions.duration.enteringScreen,
     }),
   },
   drawerPaperMaximized: {
-    width: DRAWER_WIDTH_MAXIMIZED,
+    height: DRAWER_HEIGHT_MAXIMIZED,
+    width: '80vw',
   },
   drawerHeader: {
     display: 'flex',
@@ -71,6 +83,8 @@ const useStyles = makeStyles((theme) => ({
     justifyContent: 'space-between',
     borderBottom: `1px solid ${theme.palette.divider}`,
     backgroundColor: theme.palette.background.paper,
+    flexWrap: 'nowrap',
+    overflow: 'hidden',
   },
 
   // Shared styles
@@ -78,11 +92,15 @@ const useStyles = makeStyles((theme) => ({
     display: 'flex',
     gap: theme.spacing(1),
     alignItems: 'center',
+    flexShrink: 0,
   },
   headerTitle: {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(1),
+    minWidth: 0,
+    flexShrink: 1,
+    overflow: 'hidden',
   },
   messagesContainer: {
     flex: 1,
@@ -201,24 +219,27 @@ export default function ChatInterface({
     return (
       <>
         {filteredMessages.map((msg, index) => {
-          if (msg.type === MESSAGE_TYPES.THINKING_STEP) {
+          if (msg.type === MESSAGE_TYPES.THINKING_STEP && msg.data) {
             return (
               <div key={index} className={classes.messageWrapper}>
-                <ThinkingStep step={msg} />
+                <ThinkingStep data={msg.data} />
               </div>
             )
           }
-          return (
-            <div key={index} className={classes.messageWrapper}>
-              <ChatMessage message={msg} />
-            </div>
-          )
+          if (msg.type !== MESSAGE_TYPES.THINKING_STEP) {
+            return (
+              <div key={index} className={classes.messageWrapper}>
+                <ChatMessage message={msg} />
+              </div>
+            )
+          }
+          return null
         })}
 
         {currentThinking && settings.showThinking && (
           <Fade in timeout={300}>
             <div className={classes.currentThinking}>
-              <ThinkingStep step={currentThinking} />
+              <ThinkingStep data={currentThinking} isInProgress={true} />
             </div>
           </Fade>
         )}
@@ -235,6 +256,8 @@ export default function ChatInterface({
   }
 
   const renderHeader = () => {
+    const contextDisplay = getContextDisplay()
+
     return (
       <div
         className={
@@ -242,13 +265,27 @@ export default function ChatInterface({
         }
       >
         <div className={classes.headerTitle}>
-          <SmartToyIcon />
-          <Typography variant="h6">
+          <SmartToyIcon sx={{ flexShrink: 0 }} />
+          <Typography
+            variant="h6"
+            sx={{
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0,
+            }}
+          >
             {mode === 'fullPage' ? 'Chat Agent' : 'Chat Assistant'}
           </Typography>
         </div>
 
         <div className={classes.headerActions}>
+          <Tooltip title="New chat">
+            <IconButton size="small" onClick={handleClearMessages}>
+              <AddCircleOutlineIcon />
+            </IconButton>
+          </Tooltip>
+
           <Tooltip title="Settings">
             <IconButton size="small" onClick={() => setSettingsOpen(true)}>
               <SettingsIcon />
@@ -266,9 +303,9 @@ export default function ChatInterface({
                 </IconButton>
               </Tooltip>
 
-              <Tooltip title="Close">
+              <Tooltip title="Minimize">
                 <IconButton size="small" onClick={onClose}>
-                  <CloseIcon />
+                  <ExpandMoreIcon />
                 </IconButton>
               </Tooltip>
             </>
@@ -307,7 +344,7 @@ export default function ChatInterface({
             ) : null
           }
           personaChip={
-            settings.persona !== 'default' ? (
+            personas.length > 0 && settings.persona !== 'default' ? (
               <Tooltip title={getCurrentPersonaTooltip()}>
                 <Chip
                   icon={<MasksIcon />}
@@ -341,7 +378,7 @@ export default function ChatInterface({
       <Drawer
         className={classes.drawer}
         variant="persistent"
-        anchor="right"
+        anchor="bottom"
         open={open}
         classes={{
           paper: `${classes.drawerPaper} ${

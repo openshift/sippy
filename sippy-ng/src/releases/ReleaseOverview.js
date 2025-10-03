@@ -16,6 +16,7 @@ import { NumberParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
 import { useGlobalChat } from '../chat/useGlobalChat'
 import Alert from '@mui/material/Alert'
+import AskSippyButton from '../chat/AskSippyButton'
 import Grid from '@mui/material/Grid'
 import Histogram from '../components/Histogram'
 import InfoIcon from '@mui/icons-material/Info'
@@ -98,6 +99,7 @@ export default function ReleaseOverview(props) {
     updatePageContext({
       page: 'release-overview',
       url: window.location.href,
+      suggestedQuestions: ['How is the overall health of the release?'],
       data: {
         release: props.release,
         indicators: {
@@ -193,6 +195,45 @@ export default function ReleaseOverview(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} />
+      <div style={{ position: 'relative' }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: 20,
+            right: 20,
+            zIndex: 1000,
+          }}
+        >
+          <AskSippyButton
+            question="How is the overall health of the release?"
+            tooltip="Ask Sippy about this release"
+            variant="contained"
+            size="medium"
+            sx={{
+              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+              boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+              color: 'white',
+              fontWeight: 'bold',
+              textTransform: 'none',
+              transition: 'all 0.3s ease',
+              animation: 'pulse 2s ease-in-out infinite',
+              '@keyframes pulse': {
+                '0%, 100%': {
+                  boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                },
+                '50%': {
+                  boxShadow: '0 3px 15px 5px rgba(33, 203, 243, .5)',
+                },
+              },
+              '&:hover': {
+                background: 'linear-gradient(45deg, #1976D2 30%, #00BCD4 90%)',
+                boxShadow: '0 6px 20px 4px rgba(33, 203, 243, .4)',
+                transform: 'translateY(-2px)',
+              },
+            }}
+          />
+        </div>
+      </div>
       <div className="{classes.root}" style={{ padding: 20 }}>
         <Container maxWidth="lg">
           <Typography variant="h4" gutterBottom className={classes.title}>

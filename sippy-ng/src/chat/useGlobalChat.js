@@ -20,9 +20,9 @@ export function GlobalChatProvider({ children }) {
   console.log('GlobalChatProvider rendering with pageContext:', pageContext)
   const chatWebSocket = useChatWebSocket(settings, pageContext)
 
-  const openChat = useCallback((context = undefined) => {
-    // Only update pageContext if explicitly provided
-    if (context !== undefined) {
+  const openChat = useCallback((context) => {
+    // Only update pageContext if explicitly provided and is a valid object
+    if (context && typeof context === 'object' && !context.nativeEvent) {
       setPageContext(context)
     }
     setIsOpen(true)
@@ -53,6 +53,23 @@ export function GlobalChatProvider({ children }) {
     setUnreadCount((prev) => prev + 1)
   }, [])
 
+  const askQuestion = useCallback(
+    (question, context) => {
+      // Update context only if explicitly provided and is a valid object
+      if (context && typeof context === 'object' && !context.nativeEvent) {
+        setPageContext(context)
+      }
+      // Open chat
+      setIsOpen(true)
+      setUnreadCount(0)
+      // Send the message after a brief delay to ensure chat is rendered
+      setTimeout(() => {
+        chatWebSocket.sendMessage(question)
+      }, 100)
+    },
+    [chatWebSocket]
+  )
+
   return (
     <GlobalChatContext.Provider
       value={{
@@ -64,6 +81,7 @@ export function GlobalChatProvider({ children }) {
         toggleChat,
         updatePageContext,
         incrementUnreadCount,
+        askQuestion,
         // Expose chat WebSocket functionality
         ...chatWebSocket,
       }}
