@@ -95,11 +95,15 @@ export default function ChatInput({
   placeholder = 'Ask about OpenShift releases, job failures, or payload status...',
   contextChip = null,
   personaChip = null,
+  suggestedQuestions = null,
 }) {
   const classes = useStyles()
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const textFieldRef = useRef(null)
+
+  // Use suggestedQuestions if provided, otherwise use default EXAMPLE_QUERIES
+  const displayQuestions = suggestedQuestions || EXAMPLE_QUERIES
 
   // Focus input on mount
   useEffect(() => {
@@ -206,7 +210,7 @@ export default function ChatInput({
       {/* Example suggestions (show when input is empty) */}
       {message.length === 0 && (
         <div className={classes.suggestions}>
-          {EXAMPLE_QUERIES.slice(0, 3).map((suggestion, index) => (
+          {displayQuestions.slice(0, 5).map((suggestion, index) => (
             <Chip
               key={index}
               label={suggestion}
@@ -273,4 +277,5 @@ ChatInput.propTypes = {
   placeholder: PropTypes.string,
   contextChip: PropTypes.node,
   personaChip: PropTypes.node,
+  suggestedQuestions: PropTypes.arrayOf(PropTypes.string),
 }

@@ -38,14 +38,13 @@ import AccessibilityToggle from './components/AccessibilityToggle'
 import Alert from '@mui/material/Alert'
 import BuildClusterDetails from './build_clusters/BuildClusterDetails'
 import BuildClusterOverview from './build_clusters/BuildClusterOverview'
-import ChatAgent from './chat/ChatAgent'
+import ChatInterface from './chat/ChatInterface'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@mui/material/Drawer'
 import FeatureGates from './tests/FeatureGates'
 import FloatingChatButton from './chat/FloatingChatButton'
-import GlobalChatWidget from './chat/GlobalChatWidget'
 import IconButton from '@mui/material/IconButton'
 import Install from './releases/Install'
 import IntervalsChart from './prow_job_runs/IntervalsChart'
@@ -750,7 +749,10 @@ function App(props) {
                             />
 
                             {capabilities.includes('chat') && (
-                              <Route path="/chat" element={<ChatAgent />} />
+                              <Route
+                                path="/chat"
+                                element={<ChatInterface mode="fullPage" />}
+                              />
                             )}
 
                             <Route
@@ -807,7 +809,8 @@ function GlobalChatControls() {
           disabled={!chatEnabled}
         />
       )}
-      <GlobalChatWidget
+      <ChatInterface
+        mode="drawer"
         open={isOpen}
         onClose={closeChat}
         pageContext={pageContext}

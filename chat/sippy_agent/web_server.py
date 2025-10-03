@@ -111,7 +111,9 @@ class SippyWebServer:
                 for name, p in PERSONAS.items()
             ]
 
-            return PersonasResponse(personas=personas, current_persona=self.config.persona)
+            return PersonasResponse(
+                personas=personas, current_persona=self.config.persona
+            )
 
         @self.app.post("/chat", response_model=ChatResponse)
         async def chat(request: ChatRequest):
@@ -133,7 +135,9 @@ class SippyWebServer:
 
                 try:
                     # Process the message
-                    result = await self.agent.achat(request.message, request.chat_history)
+                    result = await self.agent.achat(
+                        request.message, request.chat_history
+                    )
 
                     if isinstance(result, dict) and "thinking_steps" in result:
                         # Convert thinking steps to API format
@@ -152,10 +156,14 @@ class SippyWebServer:
                         return ChatResponse(
                             response=result["output"],
                             thinking_steps=thinking_steps,
-                            tools_used=self._extract_tools_used(result["thinking_steps"]),
+                            tools_used=self._extract_tools_used(
+                                result["thinking_steps"]
+                            ),
                         )
                     else:
-                        return ChatResponse(response=result, thinking_steps=None, tools_used=None)
+                        return ChatResponse(
+                            response=result, thinking_steps=None, tools_used=None
+                        )
 
                 finally:
                     # Restore original settings
@@ -189,10 +197,12 @@ class SippyWebServer:
                     message = request_data.get("message", "")
                     chat_history_data = request_data.get("chat_history", [])
                     chat_history = [ChatMessage(**msg) for msg in chat_history_data]
-                    show_thinking = request_data.get("show_thinking", self.config.show_thinking)
+                    show_thinking = request_data.get(
+                        "show_thinking", self.config.show_thinking
+                    )
                     persona = request_data.get("persona", self.config.persona)
                     page_context = request_data.get("page_context")
-                    
+
                     logger.info(f"Received page context: {page_context}")
 
                     # Override settings
@@ -233,7 +243,9 @@ class SippyWebServer:
                                 tool_call_steps[tool_key] = current_step
                             else:
                                 # Retrieve the step number for this tool call
-                                current_step = tool_call_steps.get(tool_key, step_counter["count"])
+                                current_step = tool_call_steps.get(
+                                    tool_key, step_counter["count"]
+                                )
 
                             # Send the thinking step immediately
                             await self.websocket_manager.send_message(
@@ -246,7 +258,9 @@ class SippyWebServer:
                                         "action": action,
                                         "action_input": action_input,
                                         "observation": observation,
-                                        "complete": bool(observation),  # Complete when we have observation
+                                        "complete": bool(
+                                            observation
+                                        ),  # Complete when we have observation
                                     },
                                 ),
                             )
@@ -255,20 +269,28 @@ class SippyWebServer:
                         enhanced_message = message
                         if page_context:
                             context_str = self._format_page_context(page_context)
-                            enhanced_message = f"{context_str}\n\nUser question: {message}"
-                            logger.info(f"Enhanced message with context: {enhanced_message[:200]}...")
+                            enhanced_message = (
+                                f"{context_str}\n\nUser question: {message}"
+                            )
+                            logger.info(
+                                f"Enhanced message with context: {enhanced_message[:200]}..."
+                            )
 
                         # Process message with streaming callback
                         result = await self.agent.achat(
                             enhanced_message,
                             chat_history,
-                            thinking_callback=(thinking_callback if show_thinking else None),
+                            thinking_callback=(
+                                thinking_callback if show_thinking else None
+                            ),
                         )
 
                         # Send final response
                         if isinstance(result, dict) and "output" in result:
                             response_text = result["output"]
-                            tools_used = self._extract_tools_used(result.get("thinking_steps", []))
+                            tools_used = self._extract_tools_used(
+                                result.get("thinking_steps", [])
+                            )
                         else:
                             response_text = result
                             tools_used = []
@@ -319,12 +341,26 @@ class SippyWebServer:
         """Format page context as JSON for the agent."""
         if not page_context:
             return ""
-        
-        context_str = f"""[Current Page Context]
-The user is viewing the following page. Use this context to better answer their question:
 
-{json.dumps(page_context, indent=2)}"""
-        
+        # Extract special fields
+        instructions = page_context.get("instructions", "")
+
+        # Create a copy without instructions and suggestedQuestions for the data section
+        data_context = {
+            k: v
+            for k, v in page_context.items()
+            if k not in ["instructions", "suggestedQuestions"]
+        }
+
+        context_str = "[Current Page Context]\n"
+        context_str += "The user is viewing the following page. Use this context to better answer their question:\n\n"
+        context_str += json.dumps(data_context, indent=2)
+
+        # Append page-specific instructions if present
+        if instructions:
+            context_str += "\n\n[Page-Specific Instructions]\n"
+            context_str += instructions
+
         return context_str
 
     def _extract_tools_used(self, thinking_steps: List[Dict[str, Any]]) -> List[str]:

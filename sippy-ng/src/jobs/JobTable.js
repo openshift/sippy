@@ -472,6 +472,11 @@ function JobTable(props) {
         visibleJobs: visibleJobs,
       },
     })
+
+    // Cleanup: Clear context when component unmounts
+    return () => {
+      updatePageContext(null)
+    }
   }, [
     rows,
     selectedJobs.length,

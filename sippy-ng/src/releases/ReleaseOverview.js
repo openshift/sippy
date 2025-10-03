@@ -157,7 +157,12 @@ export default function ReleaseOverview(props) {
         },
       },
     })
-  }, [isLoaded])
+
+    // Cleanup: Clear context when component unmounts
+    return () => {
+      updatePageContext(null)
+    }
+  }, [isLoaded, updatePageContext])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

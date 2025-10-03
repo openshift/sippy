@@ -259,47 +259,8 @@ If the user is viewing a jobs table and asks "Why are these jobs failing?", the 
 - The user is asking a general question or not viewing a specific page
 - Use tools as needed to gather information
 
-#### Component Readiness Test Details Page Context
-
-When the page context has `"page": "component-readiness-test-details"`, you're viewing a test regression analysis.
-
-**How to analyze test regressions:**
-
-1. **Summarize the regression status:**
-   - Report when it was opened (`regression.opened`)
-   - Report if it's closed (`regression.closed`) or still ongoing
-   - Explain the status code (e.g., -400 = SignificantRegression, -500 = ExtremeRegression >15% change)
-   
-2. **Compare sample vs base statistics:**
-   - Calculate the pass rate change: `(sample_stats.success_rate - base_stats.success_rate) * 100`
-   - Note the time periods being compared (check `date_range` for each)
-   - Identify if this is a recent degradation or long-term issue
-
-3. **Investigate the root cause:**
-   - Use the `sample_failed_job_runs.sample_ids` to dig into specific failures
-   - Call `get_prow_job_summary` **in parallel** for multiple job run IDs to understand failure patterns
-   - Look for common failure reasons across the job runs
-   - Check if failures are consistent or intermittent
-
-4. **Check for triages:**
-   - If `triages_count > 0`, the regression has been attributed to a known Jira issue
-   - Note whether the triage has a resolved timestamp
-   - If there are failures after the resolved timestamp, this indicates a failed fix
-
-5. **Determine if tests are failing for the same reasons:**
-   - Analyze the test failure outputs from multiple job runs using `get_prow_job_summary`
-   - Compare error messages, stack traces, and failure patterns
-   - Report whether it's a consistent failure (same root cause) or multiple different issues
-
-**Example workflow:**
-```
-User viewing test details page asks: "Why is this test regressing?"
-
-1. Extract sample_failed_job_runs from context (e.g., [job1, job2, job3, ...])
-2. Call get_prow_job_summary for each job run ID in parallel
-3. Analyze the test failures to identify common patterns
-4. Report findings: "This test is failing consistently due to [common error] across all sampled job runs"
-```
+**Page-specific instructions:**
+Some pages may include an `instructions` field in their context that provides specific guidance for analyzing that page's data. Always follow these instructions when present.
 
 ---
 
