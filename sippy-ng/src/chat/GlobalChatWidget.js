@@ -1,39 +1,54 @@
 import {
   Alert,
   Chip,
+  Drawer,
   Fade,
   IconButton,
   Paper,
   Tooltip,
   Typography,
 } from '@mui/material'
-import { DEFAULT_CHAT_SETTINGS, MESSAGE_TYPES } from './chatUtils'
-import { makeStyles } from '@mui/styles'
 import {
+  Close as CloseIcon,
+  FullscreenExit as FullscreenExitIcon,
+  Fullscreen as FullscreenIcon,
   Masks as MasksIcon,
   Psychology as PsychologyIcon,
   Settings as SettingsIcon,
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material'
+import { DEFAULT_CHAT_SETTINGS, MESSAGE_TYPES } from './chatUtils'
+import { makeStyles } from '@mui/styles'
 import { useCookies } from 'react-cookie'
 import { useGlobalChat } from './useGlobalChat'
 import { usePersonas } from './usePersonas'
 import ChatInput from './ChatInput'
 import ChatMessage from './ChatMessage'
 import ChatSettings from './ChatSettings'
+import PropTypes from 'prop-types'
 import React, { useEffect, useRef, useState } from 'react'
 import SippyLogo from '../components/SippyLogo'
 import ThinkingStep from './ThinkingStep'
 
+const DRAWER_WIDTH = 500
+const DRAWER_WIDTH_MAXIMIZED = '80%'
+
 const useStyles = makeStyles((theme) => ({
-  root: {
-    height: 'calc(100vh - 64px - 48px)', // App bar (64px) + Main padding (24px top + 24px bottom)
+  drawer: {
+    flexShrink: 0,
+  },
+  drawerPaper: {
     display: 'flex',
     flexDirection: 'column',
-    backgroundColor: theme.palette.background.default,
-    overflow: 'hidden',
-    margin: -theme.spacing(3), // Counteract Main component's padding
-    marginTop: 0, // Keep top margin as 0 since DrawerHeader handles spacing
+    [theme.breakpoints.down('sm')]: {
+      width: '100%',
+    },
+  },
+  drawerPaperNormal: {
+    width: DRAWER_WIDTH,
+  },
+  drawerPaperMaximized: {
+    width: DRAWER_WIDTH_MAXIMIZED,
   },
   header: {
     padding: theme.spacing(2),
@@ -42,27 +57,36 @@ const useStyles = makeStyles((theme) => ({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexShrink: 0,
   },
   headerTitle: {
     display: 'flex',
     alignItems: 'center',
     gap: theme.spacing(1),
+    flex: 1,
+    minWidth: 0,
   },
   headerActions: {
     display: 'flex',
     alignItems: 'center',
-    gap: theme.spacing(1),
+    gap: theme.spacing(0.5),
+    flexShrink: 0,
+  },
+  contextBadge: {
+    marginLeft: theme.spacing(1),
   },
   messagesContainer: {
     flex: 1,
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column',
+    minHeight: 0,
   },
   messagesList: {
     flex: 1,
     overflowY: 'auto',
     padding: theme.spacing(1, 2),
+    minHeight: 0,
     '&::-webkit-scrollbar': {
       width: 8,
     },
@@ -105,10 +129,14 @@ const useStyles = makeStyles((theme) => ({
   },
   errorAlert: {
     margin: theme.spacing(1, 2),
+    flexShrink: 0,
+  },
+  inputContainer: {
+    flexShrink: 0,
   },
 }))
 
-export default function ChatAgent() {
+export default function GlobalChatWidget({ open, onClose, pageContext }) {
   const classes = useStyles()
   const [cookies, setCookie] = useCookies(['sippyChatSettings'])
 
@@ -121,6 +149,7 @@ export default function ChatAgent() {
   })
 
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [isMaximized, setIsMaximized] = useState(false)
   const messagesEndRef = useRef(null)
   const messagesListRef = useRef(null)
 
@@ -153,20 +182,23 @@ export default function ChatAgent() {
     return persona ? persona.description : 'Default AI assistant'
   }
 
+  const getContextDisplay = () => {
+    if (!pageContext || !pageContext.page) {
+      return null
+    }
+    const pageName = pageContext.page
+      .split('-')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+    return pageName
+  }
+
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (settings.autoScroll && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages, currentThinking, settings.autoScroll])
-
-  // Set page title
-  useEffect(() => {
-    document.title = 'Sippy > Chat Agent'
-    return () => {
-      document.title = 'Sippy'
-    }
-  }, [])
 
   const handleSendMessage = (content) => {
     return sendMessage(content)
@@ -199,13 +231,19 @@ export default function ChatAgent() {
   const renderEmptyState = () => (
     <div className={classes.emptyState}>
       <SippyLogo />
-      <Typography variant="h5" gutterBottom>
-        Sippy Chat Agent
+      <Typography variant="h6" gutterBottom>
+        Sippy Chat Assistant
       </Typography>
       <Typography variant="body2" color="textSecondary" paragraph>
-        I can help you analyze Prow jobs, investigate test failures, check
-        release payloads, and correlate issues with known incidents.
+        I can help you analyze jobs, investigate failures, check payloads, and
+        correlate issues.
       </Typography>
+      {pageContext && pageContext.page && (
+        <Typography variant="caption" color="textSecondary">
+          I have context from the current page and can answer questions about
+          what you&apos;re viewing.
+        </Typography>
+      )}
     </div>
   )
 
@@ -244,77 +282,109 @@ export default function ChatAgent() {
     </div>
   )
 
+  const contextDisplay = getContextDisplay()
+
   return (
-    <div className={classes.root}>
-      {/* Header */}
-      <div className={classes.header}>
-        <div className={classes.headerTitle}>
-          <SmartToyIcon color="primary" />
-          <Typography variant="h6">Chat Agent</Typography>
-          {isTyping && (
-            <Tooltip title="Agent is thinking">
-              <PsychologyIcon color="primary" />
-            </Tooltip>
-          )}
-          {personas.length > 0 && settings.persona !== 'default' && (
-            <Tooltip title={getCurrentPersonaTooltip()}>
-              <Chip
-                icon={<MasksIcon />}
-                label={getCurrentPersonaDisplay()}
+    <>
+      <Drawer
+        className={classes.drawer}
+        anchor="right"
+        open={open}
+        onClose={onClose}
+        classes={{
+          paper: `${classes.drawerPaper} ${
+            isMaximized
+              ? classes.drawerPaperMaximized
+              : classes.drawerPaperNormal
+          }`,
+        }}
+      >
+        {/* Header */}
+        <div className={classes.header}>
+          <div className={classes.headerTitle}>
+            <SmartToyIcon color="primary" />
+            <Typography variant="h6" noWrap>
+              Chat
+            </Typography>
+            {isTyping && (
+              <Tooltip title="Agent is thinking">
+                <PsychologyIcon color="primary" fontSize="small" />
+              </Tooltip>
+            )}
+          </div>
+
+          <div className={classes.headerActions}>
+            <Tooltip title={isMaximized ? 'Restore' : 'Maximize'}>
+              <IconButton
                 size="small"
-                color="secondary"
-                variant="outlined"
-              />
+                onClick={() => setIsMaximized(!isMaximized)}
+              >
+                {isMaximized ? (
+                  <FullscreenExitIcon fontSize="small" />
+                ) : (
+                  <FullscreenIcon fontSize="small" />
+                )}
+              </IconButton>
             </Tooltip>
-          )}
+            <Tooltip title="Settings">
+              <IconButton size="small" onClick={() => setSettingsOpen(true)}>
+                <SettingsIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="Close">
+              <IconButton size="small" onClick={onClose}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </div>
         </div>
 
-        <div className={classes.headerActions}>
-          <Tooltip title="Chat settings">
-            <IconButton onClick={() => setSettingsOpen(true)}>
-              <SettingsIcon />
-            </IconButton>
-          </Tooltip>
+        {/* Error display */}
+        {error && (
+          <Alert severity="error" className={classes.errorAlert}>
+            {error}
+          </Alert>
+        )}
+
+        {/* Messages */}
+        <div className={classes.messagesContainer}>{renderMessages()}</div>
+
+        {/* Input */}
+        <div className={classes.inputContainer}>
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            disabled={!isConnected}
+            isConnected={isConnected}
+            isTyping={isTyping}
+            onRetry={handleReconnect}
+            contextChip={
+              contextDisplay ? (
+                <Tooltip title={`Context: ${contextDisplay}`}>
+                  <Chip
+                    label={contextDisplay}
+                    size="small"
+                    color="primary"
+                    variant="outlined"
+                  />
+                </Tooltip>
+              ) : null
+            }
+            personaChip={
+              personas.length > 0 && settings.persona !== 'default' ? (
+                <Tooltip title={getCurrentPersonaTooltip()}>
+                  <Chip
+                    icon={<MasksIcon />}
+                    label={getCurrentPersonaDisplay()}
+                    size="small"
+                    color="secondary"
+                    variant="outlined"
+                  />
+                </Tooltip>
+              ) : null
+            }
+          />
         </div>
-      </div>
-
-      {/* Error display */}
-      {error && (
-        <Alert
-          severity="error"
-          className={classes.errorAlert}
-          onClose={() => {
-            /* Could add error dismissal */
-          }}
-        >
-          {error}
-        </Alert>
-      )}
-
-      {/* Messages */}
-      <div className={classes.messagesContainer}>{renderMessages()}</div>
-
-      {/* Input */}
-      <ChatInput
-        onSendMessage={handleSendMessage}
-        disabled={!isConnected}
-        isConnected={isConnected}
-        isTyping={isTyping}
-        onRetry={handleReconnect}
-        personaChip={
-          personas.length > 0 && settings.persona !== 'default' ? (
-            <Tooltip title={getCurrentPersonaTooltip()}>
-              <Chip
-                icon={<MasksIcon />}
-                label={getCurrentPersonaDisplay()}
-                size="small"
-                color="secondary"
-                variant="outlined"
-              />
-            </Tooltip>
-          ) : null
-        }
-      />
+      </Drawer>
 
       {/* Settings Drawer */}
       <ChatSettings
@@ -328,6 +398,16 @@ export default function ChatAgent() {
         messageCount={messages.length}
         isConnected={isConnected}
       />
-    </div>
+    </>
   )
+}
+
+GlobalChatWidget.propTypes = {
+  open: PropTypes.bool.isRequired,
+  onClose: PropTypes.func.isRequired,
+  pageContext: PropTypes.shape({
+    page: PropTypes.string,
+    url: PropTypes.string,
+    data: PropTypes.object,
+  }),
 }

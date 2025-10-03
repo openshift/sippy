@@ -67,12 +67,17 @@ class TokenCountingHandler(BaseCallbackHandler):
         elif hasattr(response, "generations") and response.generations:
             for generation_list in response.generations:
                 for generation in generation_list:
-                    if hasattr(generation, "generation_info") and generation.generation_info:
+                    if (
+                        hasattr(generation, "generation_info")
+                        and generation.generation_info
+                    ):
                         usage = generation.generation_info.get("usage_metadata", {})
                         if usage:
                             prompt_tokens = usage.get("prompt_token_count", 0)
                             completion_tokens = usage.get("candidates_token_count", 0)
-                            total_tokens = usage.get("total_token_count", prompt_tokens + completion_tokens)
+                            total_tokens = usage.get(
+                                "total_token_count", prompt_tokens + completion_tokens
+                            )
 
                             self.total_tokens += total_tokens
                             self.prompt_tokens += prompt_tokens
@@ -122,8 +127,13 @@ class SippyAgent:
 
         # Use ChatGoogleGenerativeAI for Gemini models
         if self.config.is_gemini_model():
-            if not self.config.google_api_key and not self.config.google_credentials_file:
-                raise ValueError("Google API key or service account credentials file is required for Gemini models")
+            if (
+                not self.config.google_api_key
+                and not self.config.google_credentials_file
+            ):
+                raise ValueError(
+                    "Google API key or service account credentials file is required for Gemini models"
+                )
 
             llm_kwargs = {
                 "model": self.config.model_name,
@@ -134,12 +144,16 @@ class SippyAgent:
             if self.config.google_api_key:
                 llm_kwargs["google_api_key"] = self.config.google_api_key
                 if self.config.verbose:
-                    logger.info(f"Using ChatGoogleGenerativeAI for Gemini model with API key")
+                    logger.info(
+                        f"Using ChatGoogleGenerativeAI for Gemini model with API key"
+                    )
             elif self.config.google_credentials_file:
                 # Set the environment variable for Google credentials
                 import os
 
-                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.config.google_credentials_file
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
+                    self.config.google_credentials_file
+                )
                 if self.config.verbose:
                     logger.info(
                         f"Using ChatGoogleGenerativeAI for Gemini model with service account: {self.config.google_credentials_file}"
@@ -163,7 +177,9 @@ class SippyAgent:
                 llm_kwargs["openai_api_key"] = "dummy-key"
 
             if self.config.verbose:
-                logger.info(f"Using ChatOpenAI with base_url: {self.config.llm_endpoint}")
+                logger.info(
+                    f"Using ChatOpenAI with base_url: {self.config.llm_endpoint}"
+                )
 
             return ChatOpenAI(**llm_kwargs)
 
@@ -190,7 +206,9 @@ class SippyAgent:
             mcp_tools = await load_tools_from_mcp(self.config.mcp_config_file)
             if mcp_tools:
                 tools.extend(mcp_tools)
-                logger.info(f"Successfully loaded {len(mcp_tools)} tools from MCP servers.")
+                logger.info(
+                    f"Successfully loaded {len(mcp_tools)} tools from MCP servers."
+                )
 
         if self.config.verbose:
             logger.info(f"Created {len(tools)} tools: {[tool.name for tool in tools]}")
@@ -221,6 +239,67 @@ class SippyAgent:
 **When NOT to call in parallel:**
 * When one tool's output is needed as input for another (e.g., must get payload details before getting job IDs).
 * When the same tool needs results from a previous call to inform parameters.
+
+---
+
+### Page Context
+
+When a user asks a question, you may receive **page context** showing what they're currently viewing in Sippy. This context is provided as JSON at the beginning of the user's message.
+
+**If page context is provided:**
+1. **Use it as your primary source** for answering the user's question
+2. The context contains the exact data visible to the user (e.g., list of jobs, payloads, test results)
+3. You can reference specific items from the context without needing to call tools
+4. Only call tools if you need additional details not present in the context (e.g., log analysis, detailed test results)
+
+**Example:**
+If the user is viewing a jobs table and asks "Why are these jobs failing?", the context will include the visible jobs with their pass rates and other metrics. Analyze those jobs directly from the context.
+
+**If no page context is provided:**
+- The user is asking a general question or not viewing a specific page
+- Use tools as needed to gather information
+
+#### Component Readiness Test Details Page Context
+
+When the page context has `"page": "component-readiness-test-details"`, you're viewing a test regression analysis.
+
+**How to analyze test regressions:**
+
+1. **Summarize the regression status:**
+   - Report when it was opened (`regression.opened`)
+   - Report if it's closed (`regression.closed`) or still ongoing
+   - Explain the status code (e.g., -400 = SignificantRegression, -500 = ExtremeRegression >15% change)
+   
+2. **Compare sample vs base statistics:**
+   - Calculate the pass rate change: `(sample_stats.success_rate - base_stats.success_rate) * 100`
+   - Note the time periods being compared (check `date_range` for each)
+   - Identify if this is a recent degradation or long-term issue
+
+3. **Investigate the root cause:**
+   - Use the `sample_failed_job_runs.sample_ids` to dig into specific failures
+   - Call `get_prow_job_summary` **in parallel** for multiple job run IDs to understand failure patterns
+   - Look for common failure reasons across the job runs
+   - Check if failures are consistent or intermittent
+
+4. **Check for triages:**
+   - If `triages_count > 0`, the regression has been attributed to a known Jira issue
+   - Note whether the triage has a resolved timestamp
+   - If there are failures after the resolved timestamp, this indicates a failed fix
+
+5. **Determine if tests are failing for the same reasons:**
+   - Analyze the test failure outputs from multiple job runs using `get_prow_job_summary`
+   - Compare error messages, stack traces, and failure patterns
+   - Report whether it's a consistent failure (same root cause) or multiple different issues
+
+**Example workflow:**
+```
+User viewing test details page asks: "Why is this test regressing?"
+
+1. Extract sample_failed_job_runs from context (e.g., [job1, job2, job3, ...])
+2. Call get_prow_job_summary for each job run ID in parallel
+3. Analyze the test failures to identify common patterns
+4. Report findings: "This test is failing consistently due to [common error] across all sampled job runs"
+```
 
 ---
 
@@ -324,7 +403,9 @@ Your final answer must be **comprehensive**:
         self,
         message: str,
         chat_history: Optional[List[ChatMessage]] = None,
-        thinking_callback: Optional[Callable[[str, str, str, str], Awaitable[None]]] = None,
+        thinking_callback: Optional[
+            Callable[[str, str, str, str], Awaitable[None]]
+        ] = None,
     ) -> Union[str, Dict[str, Any]]:
         """Process a chat message and return the agent's response.
 
@@ -358,7 +439,9 @@ Your final answer must be **comprehensive**:
 
         except Exception as e:
             logger.error(f"Error processing message: {e}", exc_info=True)
-            error_msg = f"I encountered an error while processing your request: {str(e)}"
+            error_msg = (
+                f"I encountered an error while processing your request: {str(e)}"
+            )
             if self.config.show_thinking:
                 return {"output": error_msg, "thinking_steps": []}
             else:
@@ -469,9 +552,13 @@ Your final answer must be **comprehensive**:
 
             # Warn if approaching common limits
             if token_usage["total_tokens"] > 100000:  # 100K tokens
-                logger.warning(f"High token usage detected: {token_usage['total_tokens']} tokens")
+                logger.warning(
+                    f"High token usage detected: {token_usage['total_tokens']} tokens"
+                )
             elif token_usage["total_tokens"] > 50000:  # 50K tokens
-                logger.info(f"Moderate token usage: {token_usage['total_tokens']} tokens")
+                logger.info(
+                    f"Moderate token usage: {token_usage['total_tokens']} tokens"
+                )
 
         # Extract final response
         final_response = get_final_response(all_messages)
@@ -487,7 +574,9 @@ Your final answer must be **comprehensive**:
 
         return response_dict
 
-    async def _achat_non_streaming(self, history_messages: List[BaseMessage]) -> Union[str, Dict[str, Any]]:
+    async def _achat_non_streaming(
+        self, history_messages: List[BaseMessage]
+    ) -> Union[str, Dict[str, Any]]:
         """Non-streaming version for backward compatibility."""
         # Invoke the graph
         result = await self.graph.ainvoke(
@@ -507,9 +596,13 @@ Your final answer must be **comprehensive**:
 
             # Warn if approaching common limits
             if token_usage["total_tokens"] > 100000:  # 100K tokens
-                logger.warning(f"High token usage detected: {token_usage['total_tokens']} tokens")
+                logger.warning(
+                    f"High token usage detected: {token_usage['total_tokens']} tokens"
+                )
             elif token_usage["total_tokens"] > 50000:  # 50K tokens
-                logger.info(f"Moderate token usage: {token_usage['total_tokens']} tokens")
+                logger.info(
+                    f"Moderate token usage: {token_usage['total_tokens']} tokens"
+                )
 
         # Extract final response
         final_response = get_final_response(messages)

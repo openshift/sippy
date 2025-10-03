@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
+import { useGlobalChat } from '../chat/useGlobalChat'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
 import Histogram from '../components/Histogram'
@@ -54,12 +55,14 @@ const useStyles = makeStyles((theme) => ({
 
 export default function ReleaseOverview(props) {
   const classes = useStyles()
+  const { updatePageContext } = useGlobalChat()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
   const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
+  const hasSetContextRef = React.useRef(false)
 
   const fetchData = () => {
     fetch(
@@ -86,6 +89,75 @@ export default function ReleaseOverview(props) {
     document.title = `Sippy > ${props.release} > Health Summary`
     fetchData()
   }, [])
+
+  // Update page context for chat
+  useEffect(() => {
+    if (!isLoaded || !data.indicators || hasSetContextRef.current) return
+
+    hasSetContextRef.current = true
+    updatePageContext({
+      page: 'release-overview',
+      url: window.location.href,
+      data: {
+        release: props.release,
+        indicators: {
+          infrastructure: data.indicators.infrastructure
+            ? {
+                current_pass_percentage:
+                  data.indicators.infrastructure.current_working_percentage,
+                current_runs: data.indicators.infrastructure.current_runs,
+                previous_pass_percentage:
+                  data.indicators.infrastructure.previous_working_percentage,
+                previous_runs: data.indicators.infrastructure.previous_runs,
+                net_improvement:
+                  data.indicators.infrastructure.net_working_improvement,
+              }
+            : null,
+          install: data.indicators.install
+            ? {
+                current_pass_percentage:
+                  data.indicators.install.current_working_percentage,
+                current_runs: data.indicators.install.current_runs,
+                previous_pass_percentage:
+                  data.indicators.install.previous_working_percentage,
+                previous_runs: data.indicators.install.previous_runs,
+                net_improvement:
+                  data.indicators.install.net_working_improvement,
+              }
+            : null,
+          tests: data.indicators.tests
+            ? {
+                current_pass_percentage:
+                  data.indicators.tests.current_working_percentage,
+                current_runs: data.indicators.tests.current_runs,
+                previous_pass_percentage:
+                  data.indicators.tests.previous_working_percentage,
+                previous_runs: data.indicators.tests.previous_runs,
+                net_improvement: data.indicators.tests.net_working_improvement,
+              }
+            : null,
+          upgrade: data.indicators.upgrade
+            ? {
+                current_pass_percentage:
+                  data.indicators.upgrade.current_working_percentage,
+                current_runs: data.indicators.upgrade.current_runs,
+                previous_pass_percentage:
+                  data.indicators.upgrade.previous_working_percentage,
+                previous_runs: data.indicators.upgrade.previous_runs,
+                net_improvement:
+                  data.indicators.upgrade.net_working_improvement,
+              }
+            : null,
+        },
+        statistics: {
+          current_mean: data.current_statistics?.mean,
+          previous_mean: data.previous_statistics?.mean,
+          quartiles: data.current_statistics?.quartiles,
+          standard_deviation: data.current_statistics?.standard_deviation,
+        },
+      },
+    })
+  }, [isLoaded])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

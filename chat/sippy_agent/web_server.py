@@ -191,6 +191,9 @@ class SippyWebServer:
                     chat_history = [ChatMessage(**msg) for msg in chat_history_data]
                     show_thinking = request_data.get("show_thinking", self.config.show_thinking)
                     persona = request_data.get("persona", self.config.persona)
+                    page_context = request_data.get("page_context")
+                    
+                    logger.info(f"Received page context: {page_context}")
 
                     # Override settings
                     original_thinking = self.config.show_thinking
@@ -248,9 +251,16 @@ class SippyWebServer:
                                 ),
                             )
 
+                        # Enhance message with page context if provided
+                        enhanced_message = message
+                        if page_context:
+                            context_str = self._format_page_context(page_context)
+                            enhanced_message = f"{context_str}\n\nUser question: {message}"
+                            logger.info(f"Enhanced message with context: {enhanced_message[:200]}...")
+
                         # Process message with streaming callback
                         result = await self.agent.achat(
-                            message,
+                            enhanced_message,
                             chat_history,
                             thinking_callback=(thinking_callback if show_thinking else None),
                         )
@@ -304,6 +314,18 @@ class SippyWebServer:
             except Exception as e:
                 logger.error(f"WebSocket error: {e}")
                 self.websocket_manager.disconnect(websocket)
+
+    def _format_page_context(self, page_context: Dict[str, Any]) -> str:
+        """Format page context as JSON for the agent."""
+        if not page_context:
+            return ""
+        
+        context_str = f"""[Current Page Context]
+The user is viewing the following page. Use this context to better answer their question:
+
+{json.dumps(page_context, indent=2)}"""
+        
+        return context_str
 
     def _extract_tools_used(self, thinking_steps: List[Dict[str, Any]]) -> List[str]:
         """Extract unique tool names from thinking steps."""

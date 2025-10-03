@@ -93,6 +93,8 @@ export default function ChatInput({
   isTyping = false,
   onRetry,
   placeholder = 'Ask about OpenShift releases, job failures, or payload status...',
+  contextChip = null,
+  personaChip = null,
 }) {
   const classes = useStyles()
   const [message, setMessage] = useState('')
@@ -183,6 +185,8 @@ export default function ChatInput({
             className={classes.connectionStatus}
             icon={isTyping ? <CircularProgress size={12} /> : undefined}
           />
+          {contextChip}
+          {personaChip}
           {onRetry && !isConnected && (
             <Tooltip title="Retry connection">
               <IconButton size="small" onClick={onRetry}>
@@ -267,4 +271,6 @@ ChatInput.propTypes = {
   isTyping: PropTypes.bool,
   onRetry: PropTypes.func,
   placeholder: PropTypes.string,
+  contextChip: PropTypes.node,
+  personaChip: PropTypes.node,
 }

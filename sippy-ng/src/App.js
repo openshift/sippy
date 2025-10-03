@@ -18,12 +18,14 @@ import {
   pathForTestSubstringByVariant,
   relativeTime,
 } from './helpers'
+import { GlobalChatProvider, useGlobalChat } from './chat/useGlobalChat'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { makeStyles, styled } from '@mui/styles'
 import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   useParams,
 } from 'react-router-dom'
@@ -42,6 +44,8 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@mui/material/Drawer'
 import FeatureGates from './tests/FeatureGates'
+import FloatingChatButton from './chat/FloatingChatButton'
+import GlobalChatWidget from './chat/GlobalChatWidget'
 import IconButton from '@mui/material/IconButton'
 import Install from './releases/Install'
 import IntervalsChart from './prow_job_runs/IntervalsChart'
@@ -356,7 +360,7 @@ const IntervalsChartWrapper = () => {
   )
 }
 
-export default function App(props) {
+function App(props) {
   const classes = useStyles()
   const theme = useTheme()
 
@@ -769,6 +773,8 @@ export default function App(props) {
                     </div>
                   </QueryParamProvider>
                 </AccessibilityModeProvider>
+                {/* Global chat controls - rendered inside theme and capabilities providers */}
+                <GlobalChatControls />
               </CapabilitiesContext.Provider>
             </ReportEndContext.Provider>
           </ReleasesContext.Provider>
@@ -777,3 +783,46 @@ export default function App(props) {
     </ColorModeContext.Provider>
   )
 }
+
+// Component that uses the global chat context
+function GlobalChatControls() {
+  const capabilities = React.useContext(CapabilitiesContext)
+  const { isOpen, closeChat, toggleChat, pageContext } = useGlobalChat()
+  const location = useLocation()
+
+  const chatEnabled = capabilities.includes('chat')
+  // Don't show floating button on the main /chat page
+  const isOnChatPage = location.pathname.includes('/chat')
+
+  if (!chatEnabled) {
+    return null
+  }
+
+  return (
+    <>
+      {!isOnChatPage && (
+        <FloatingChatButton
+          onClick={() => toggleChat()}
+          hasContext={pageContext !== null && pageContext?.page !== undefined}
+          disabled={!chatEnabled}
+        />
+      )}
+      <GlobalChatWidget
+        open={isOpen}
+        onClose={closeChat}
+        pageContext={pageContext}
+      />
+    </>
+  )
+}
+
+// Wrapper component to provide global chat functionality
+function AppWithGlobalChat(props) {
+  return (
+    <GlobalChatProvider>
+      <App {...props} />
+    </GlobalChatProvider>
+  )
+}
+
+export default AppWithGlobalChat
