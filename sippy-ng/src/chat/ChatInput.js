@@ -83,7 +83,6 @@ const EXAMPLE_QUERIES = [
   'What is the latest 4.20 payload?',
   'When did 4.16 go GA?',
   'Why did [prow job ID] fail?',
-  'When did we start development on 4.15?',
 ]
 
 export default function ChatInput({
@@ -93,11 +92,17 @@ export default function ChatInput({
   isTyping = false,
   onRetry,
   placeholder = 'Ask about OpenShift releases, job failures, or payload status...',
+  contextChip = null,
+  personaChip = null,
+  suggestedQuestions = null,
 }) {
   const classes = useStyles()
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const textFieldRef = useRef(null)
+
+  // Use suggestedQuestions if provided, otherwise use default EXAMPLE_QUERIES
+  const displayQuestions = suggestedQuestions || EXAMPLE_QUERIES
 
   // Focus input on mount
   useEffect(() => {
@@ -163,7 +168,7 @@ export default function ChatInput({
 
   const getConnectionStatusText = () => {
     if (!isConnected) return 'Disconnected'
-    if (isTyping) return 'Agent is thinking...'
+    if (isTyping) return 'Sippy is thinking...'
     return 'Connected'
   }
 
@@ -183,6 +188,8 @@ export default function ChatInput({
             className={classes.connectionStatus}
             icon={isTyping ? <CircularProgress size={12} /> : undefined}
           />
+          {contextChip}
+          {personaChip}
           {onRetry && !isConnected && (
             <Tooltip title="Retry connection">
               <IconButton size="small" onClick={onRetry}>
@@ -202,7 +209,7 @@ export default function ChatInput({
       {/* Example suggestions (show when input is empty) */}
       {message.length === 0 && (
         <div className={classes.suggestions}>
-          {EXAMPLE_QUERIES.slice(0, 3).map((suggestion, index) => (
+          {displayQuestions.slice(0, 5).map((suggestion, index) => (
             <Chip
               key={index}
               label={suggestion}
@@ -267,4 +274,7 @@ ChatInput.propTypes = {
   isTyping: PropTypes.bool,
   onRetry: PropTypes.func,
   placeholder: PropTypes.string,
+  contextChip: PropTypes.node,
+  personaChip: PropTypes.node,
+  suggestedQuestions: PropTypes.arrayOf(PropTypes.string),
 }

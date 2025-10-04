@@ -106,6 +106,7 @@ export const DEFAULT_CHAT_SETTINGS = {
   maxHistory: 100,
   retryFailedMessages: true,
   streamingMode: true,
+  persona: 'default',
 }
 
 // Validate message content

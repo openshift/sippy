@@ -8,7 +8,7 @@ import {
 } from './chatUtils'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-export function useChatWebSocket(settings = {}) {
+export function useChatWebSocket(settings = {}, pageContext = null) {
   const [messages, setMessages] = useState([])
   const [connectionState, setConnectionState] = useState(
     WEBSOCKET_STATES.CLOSED
@@ -21,7 +21,14 @@ export function useChatWebSocket(settings = {}) {
   const reconnectTimeoutRef = useRef(null)
   const reconnectAttemptsRef = useRef(0)
   const currentIterationRef = useRef(0)
+  const pageContextRef = useRef(pageContext)
   const maxReconnectAttempts = 5
+
+  // Update pageContext ref when it changes
+  useEffect(() => {
+    console.log('useChatWebSocket: updating pageContextRef to:', pageContext)
+    pageContextRef.current = pageContext
+  }, [pageContext])
 
   // Connect to WebSocket
   const connect = useCallback(() => {
@@ -182,6 +189,7 @@ export function useChatWebSocket(settings = {}) {
       {
         tools_used: data.tools_used,
         timestamp: data.timestamp,
+        pageContext: pageContextRef.current,
       }
     )
 
@@ -213,8 +221,10 @@ export function useChatWebSocket(settings = {}) {
         // Increment iteration counter for new conversation turn
         currentIterationRef.current += 1
 
-        // Add user message to chat
-        const userMessage = createMessage(MESSAGE_TYPES.USER, content)
+        // Add user message to chat with page context
+        const userMessage = createMessage(MESSAGE_TYPES.USER, content, {
+          pageContext: pageContextRef.current,
+        })
         setMessages((prev) => [...prev, userMessage])
 
         // Send to WebSocket
@@ -222,8 +232,14 @@ export function useChatWebSocket(settings = {}) {
           message: content,
           chat_history: formatChatHistoryForAPI(messages),
           show_thinking: settings.showThinking !== false,
+          persona: settings.persona || 'default',
+          page_context: pageContextRef.current,
         }
 
+        console.log(
+          'Sending message with page context:',
+          pageContextRef.current
+        )
         wsRef.current.send(JSON.stringify(payload))
         setError(null)
         setIsTyping(true) // Start typing indicator when message is sent
@@ -234,7 +250,7 @@ export function useChatWebSocket(settings = {}) {
         return false
       }
     },
-    [connectionState, messages, settings.showThinking]
+    [connectionState, messages, settings.showThinking, settings.persona]
   )
 
   // Clear chat history

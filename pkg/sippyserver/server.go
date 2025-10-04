@@ -2307,6 +2307,12 @@ func (s *Server) Serve() {
 			Capabilities: []string{ChatCapability},
 			HandlerFunc:  s.handleChatProxy,
 		},
+		{
+			EndpointPath: "/api/chat/personas",
+			Description:  "Proxy for listing personas from sippy-chat service.",
+			Capabilities: []string{ChatCapability},
+			HandlerFunc:  s.handleChatProxy,
+		},
 	}
 
 	for _, ep := range endpoints {

@@ -2,13 +2,18 @@ import {
   Alert,
   Box,
   Button,
+  CircularProgress,
   Divider,
   Drawer,
+  FormControl,
   IconButton,
+  InputLabel,
   List,
   ListItem,
   ListItemSecondaryAction,
   ListItemText,
+  MenuItem,
+  Select,
   Switch,
   Typography,
 } from '@mui/material'
@@ -16,11 +21,13 @@ import {
   VerticalAlignBottom as AutoScrollIcon,
   Close as CloseIcon,
   Delete as DeleteIcon,
+  Masks as MasksIcon,
   Psychology as PsychologyIcon,
   Refresh as RefreshIcon,
   Settings as SettingsIcon,
 } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
+import { usePersonas } from './usePersonas'
 import PropTypes from 'prop-types'
 import React from 'react'
 
@@ -49,6 +56,10 @@ const useStyles = makeStyles((theme) => ({
   settingItem: {
     paddingLeft: 0,
     paddingRight: 0,
+    alignItems: 'center',
+  },
+  settingItemAction: {
+    top: 20,
   },
   dangerButton: {
     color: theme.palette.error.main,
@@ -60,6 +71,19 @@ const useStyles = makeStyles((theme) => ({
   },
   connectionInfo: {
     marginBottom: theme.spacing(2),
+  },
+  personaSelect: {
+    width: '100%',
+  },
+  personaDescription: {
+    marginTop: theme.spacing(1),
+    marginBottom: theme.spacing(1),
+    padding: theme.spacing(1),
+    backgroundColor:
+      theme.palette.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.05)'
+        : 'rgba(0, 0, 0, 0.02)',
+    borderRadius: theme.shape.borderRadius,
   },
 }))
 
@@ -75,12 +99,28 @@ export default function ChatSettings({
   isConnected,
 }) {
   const classes = useStyles()
+  const {
+    personas,
+    loading: personasLoading,
+    error: personasError,
+  } = usePersonas()
 
   const handleSettingChange = (key) => (event) => {
     onSettingsChange({
       ...settings,
       [key]: event.target.checked,
     })
+  }
+
+  const handlePersonaChange = (event) => {
+    onSettingsChange({
+      ...settings,
+      persona: event.target.value,
+    })
+  }
+
+  const getSelectedPersona = () => {
+    return personas.find((p) => p.name === settings.persona) || personas[0]
   }
 
   const getConnectionStatusText = () => {
@@ -153,6 +193,61 @@ export default function ChatSettings({
         </Alert>
       </div>
 
+      {/* Persona Selection */}
+      <div className={classes.section}>
+        <Typography variant="subtitle2" className={classes.sectionTitle}>
+          AI Persona
+        </Typography>
+
+        {personasLoading ? (
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <CircularProgress size={20} />
+            <Typography variant="body2" color="textSecondary">
+              Loading personas...
+            </Typography>
+          </Box>
+        ) : personasError ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Could not load personas. Using default.
+          </Alert>
+        ) : (
+          <>
+            <FormControl className={classes.personaSelect}>
+              <InputLabel id="persona-select-label">Select Persona</InputLabel>
+              <Select
+                labelId="persona-select-label"
+                value={settings.persona || 'default'}
+                onChange={handlePersonaChange}
+                label="Select Persona"
+                startAdornment={<MasksIcon sx={{ mr: 1 }} />}
+              >
+                {personas.map((persona) => (
+                  <MenuItem key={persona.name} value={persona.name}>
+                    {persona.name.charAt(0).toUpperCase() +
+                      persona.name.slice(1).replace(/_/g, ' ')}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {getSelectedPersona() && (
+              <Box className={classes.personaDescription}>
+                <Typography variant="body2" color="textPrimary" gutterBottom>
+                  {getSelectedPersona().description}
+                </Typography>
+                {getSelectedPersona().style_instructions && (
+                  <Typography variant="caption" color="textSecondary">
+                    {getSelectedPersona().style_instructions}
+                  </Typography>
+                )}
+              </Box>
+            )}
+          </>
+        )}
+      </div>
+
+      <Divider />
+
       {/* Display Settings */}
       <div className={classes.section}>
         <Typography variant="subtitle2" className={classes.sectionTitle}>
@@ -163,9 +258,12 @@ export default function ChatSettings({
             <ListItemText
               primary="Show Thinking Steps"
               secondary="Display the agent's reasoning process"
+              primaryTypographyProps={{ variant: 'body2' }}
+              secondaryTypographyProps={{ variant: 'caption' }}
             />
-            <ListItemSecondaryAction>
+            <ListItemSecondaryAction className={classes.settingItemAction}>
               <Switch
+                edge="end"
                 checked={settings.showThinking}
                 onChange={handleSettingChange('showThinking')}
                 color="primary"
@@ -179,9 +277,12 @@ export default function ChatSettings({
             <ListItemText
               primary="Auto Scroll"
               secondary="Automatically scroll to new messages"
+              primaryTypographyProps={{ variant: 'body2' }}
+              secondaryTypographyProps={{ variant: 'caption' }}
             />
-            <ListItemSecondaryAction>
+            <ListItemSecondaryAction className={classes.settingItemAction}>
               <Switch
+                edge="end"
                 checked={settings.autoScroll}
                 onChange={handleSettingChange('autoScroll')}
                 color="primary"
@@ -195,9 +296,12 @@ export default function ChatSettings({
             <ListItemText
               primary="Retry Failed Messages"
               secondary="Automatically retry failed messages"
+              primaryTypographyProps={{ variant: 'body2' }}
+              secondaryTypographyProps={{ variant: 'caption' }}
             />
-            <ListItemSecondaryAction>
+            <ListItemSecondaryAction className={classes.settingItemAction}>
               <Switch
+                edge="end"
                 checked={settings.retryFailedMessages}
                 onChange={handleSettingChange('retryFailedMessages')}
                 color="primary"
@@ -275,6 +379,7 @@ ChatSettings.propTypes = {
     showThinking: PropTypes.bool,
     autoScroll: PropTypes.bool,
     retryFailedMessages: PropTypes.bool,
+    persona: PropTypes.string,
   }).isRequired,
   onSettingsChange: PropTypes.func.isRequired,
   onClearMessages: PropTypes.func.isRequired,

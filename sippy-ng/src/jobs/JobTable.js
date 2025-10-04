@@ -16,6 +16,7 @@ import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
+import { useGlobalChat } from '../chat/useGlobalChat'
 import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -408,6 +409,7 @@ const useStyles = makeStyles((theme) => ({
 function JobTable(props) {
   const { classes } = props
   const gridClasses = useStyles()
+  const { updatePageContext } = useGlobalChat()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -439,6 +441,55 @@ function JobTable(props) {
   const [sort = props.sort, setSort] = useQueryParam('sort', StringParam)
 
   const [jobDetails, setJobDetails] = React.useState({ bugs: [] })
+
+  // Update page context for chat (only if this is the main page, not embedded)
+  useEffect(() => {
+    // Don't set context if this is an embedded table (e.g., in ReleaseOverview)
+    if (!isLoaded || rows.length === 0 || props.briefTable) return
+
+    // Send all rows on current page
+    const visibleJobs = rows.map((job) => ({
+      name: job.name,
+      current_pass_percentage: job.current_pass_percentage,
+      current_runs: job.current_runs,
+      previous_pass_percentage: job.previous_pass_percentage,
+      previous_runs: job.previous_runs,
+      net_improvement: job.net_improvement,
+    }))
+
+    updatePageContext({
+      page: 'jobs-table',
+      url: window.location.href,
+      data: {
+        release: props.release,
+        totalJobs: rows.length,
+        period: period,
+        view: view,
+        sortField: sortField,
+        sortOrder: sort,
+        filters: filterModel,
+        selectedJobsCount: selectedJobs.length,
+        visibleJobs: visibleJobs,
+      },
+    })
+
+    // Cleanup: Clear context when component unmounts
+    return () => {
+      updatePageContext(null)
+    }
+  }, [
+    rows,
+    selectedJobs.length,
+    isLoaded,
+    props.release,
+    props.briefTable,
+    period,
+    view,
+    sortField,
+    sort,
+    filterModel,
+    updatePageContext,
+  ])
 
   const fetchData = () => {
     let queryString = ''

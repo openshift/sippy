@@ -14,7 +14,9 @@ import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
+import { useGlobalChat } from '../chat/useGlobalChat'
 import Alert from '@mui/material/Alert'
+import AskSippyButton from '../chat/AskSippyButton'
 import Grid from '@mui/material/Grid'
 import Histogram from '../components/Histogram'
 import InfoIcon from '@mui/icons-material/Info'
@@ -54,12 +56,14 @@ const useStyles = makeStyles((theme) => ({
 
 export default function ReleaseOverview(props) {
   const classes = useStyles()
+  const { updatePageContext } = useGlobalChat()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
   const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
+  const hasSetContextRef = React.useRef(false)
 
   const fetchData = () => {
     fetch(
@@ -86,6 +90,81 @@ export default function ReleaseOverview(props) {
     document.title = `Sippy > ${props.release} > Health Summary`
     fetchData()
   }, [])
+
+  // Update page context for chat
+  useEffect(() => {
+    if (!isLoaded || !data.indicators || hasSetContextRef.current) return
+
+    hasSetContextRef.current = true
+    updatePageContext({
+      page: 'release-overview',
+      url: window.location.href,
+      suggestedQuestions: ['How is the overall health of the release?'],
+      data: {
+        release: props.release,
+        indicators: {
+          infrastructure: data.indicators.infrastructure
+            ? {
+                current_pass_percentage:
+                  data.indicators.infrastructure.current_working_percentage,
+                current_runs: data.indicators.infrastructure.current_runs,
+                previous_pass_percentage:
+                  data.indicators.infrastructure.previous_working_percentage,
+                previous_runs: data.indicators.infrastructure.previous_runs,
+                net_improvement:
+                  data.indicators.infrastructure.net_working_improvement,
+              }
+            : null,
+          install: data.indicators.install
+            ? {
+                current_pass_percentage:
+                  data.indicators.install.current_working_percentage,
+                current_runs: data.indicators.install.current_runs,
+                previous_pass_percentage:
+                  data.indicators.install.previous_working_percentage,
+                previous_runs: data.indicators.install.previous_runs,
+                net_improvement:
+                  data.indicators.install.net_working_improvement,
+              }
+            : null,
+          tests: data.indicators.tests
+            ? {
+                current_pass_percentage:
+                  data.indicators.tests.current_working_percentage,
+                current_runs: data.indicators.tests.current_runs,
+                previous_pass_percentage:
+                  data.indicators.tests.previous_working_percentage,
+                previous_runs: data.indicators.tests.previous_runs,
+                net_improvement: data.indicators.tests.net_working_improvement,
+              }
+            : null,
+          upgrade: data.indicators.upgrade
+            ? {
+                current_pass_percentage:
+                  data.indicators.upgrade.current_working_percentage,
+                current_runs: data.indicators.upgrade.current_runs,
+                previous_pass_percentage:
+                  data.indicators.upgrade.previous_working_percentage,
+                previous_runs: data.indicators.upgrade.previous_runs,
+                net_improvement:
+                  data.indicators.upgrade.net_working_improvement,
+              }
+            : null,
+        },
+        statistics: {
+          current_mean: data.current_statistics?.mean,
+          previous_mean: data.previous_statistics?.mean,
+          quartiles: data.current_statistics?.quartiles,
+          standard_deviation: data.current_statistics?.standard_deviation,
+        },
+      },
+    })
+
+    // Cleanup: Clear context when component unmounts
+    return () => {
+      updatePageContext(null)
+    }
+  }, [isLoaded, updatePageContext])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>
@@ -116,6 +195,45 @@ export default function ReleaseOverview(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} />
+      <div style={{ position: 'relative' }}>
+        <div
+          style={{
+            position: 'absolute',
+            top: 20,
+            right: 20,
+            zIndex: 1000,
+          }}
+        >
+          <AskSippyButton
+            question="How is the overall health of the release?"
+            tooltip="Ask Sippy about this release"
+            variant="contained"
+            size="medium"
+            sx={{
+              background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+              boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+              color: 'white',
+              fontWeight: 'bold',
+              textTransform: 'none',
+              transition: 'all 0.3s ease',
+              animation: 'pulse 2s ease-in-out infinite',
+              '@keyframes pulse': {
+                '0%, 100%': {
+                  boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+                },
+                '50%': {
+                  boxShadow: '0 3px 15px 5px rgba(33, 203, 243, .5)',
+                },
+              },
+              '&:hover': {
+                background: 'linear-gradient(45deg, #1976D2 30%, #00BCD4 90%)',
+                boxShadow: '0 6px 20px 4px rgba(33, 203, 243, .4)',
+                transform: 'translateY(-2px)',
+              },
+            }}
+          />
+        </div>
+      </div>
       <div className="{classes.root}" style={{ padding: 20 }}>
         <Container maxWidth="lg">
           <Typography variant="h4" gutterBottom className={classes.title}>
