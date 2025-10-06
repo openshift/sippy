@@ -1009,6 +1009,10 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdeta
 		basePass := testStats.BaseStats.Passes(opts.FlakeAsFailure)
 		basisPassPercentage := float64(basePass) / float64(testStats.BaseStats.Total())
 		effectivePityFactor := float64(opts.PityFactor) + testStats.PityAdjustment
+		effectiveMinimumFailure := opts.MinimumFailure + testStats.MinimumFailureAdjustment
+		if effectiveMinimumFailure < 0 {
+			effectiveMinimumFailure = 0
+		}
 
 		// default starting status now that we know we have basis and sample
 		status = crtest.NotSignificant
@@ -1017,8 +1021,8 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdeta
 		samplePassPercentage := float64(samplePass) / float64(testStats.SampleStats.Total())
 
 		// are we below the MinimumFailure threshold?
-		if opts.MinimumFailure != 0 &&
-			(testStats.SampleStats.Total()-samplePass) < opts.MinimumFailure {
+		if effectiveMinimumFailure != 0 &&
+			(testStats.SampleStats.Total()-samplePass) < effectiveMinimumFailure {
 			if status <= crtest.SignificantTriagedRegression {
 				testStats.Explanations = append(testStats.Explanations,
 					fmt.Sprintf("%s regression detected.", crtest.StringForStatus(status)))

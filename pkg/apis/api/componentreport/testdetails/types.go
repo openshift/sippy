@@ -57,6 +57,9 @@ type TestComparison struct {
 	// PityAdjustment can be used to adjust the tolerance for failures for this particular test.
 	PityAdjustment float64 `json:"-"`
 
+	// MinimumFailureAdjustment can be used to adjust the tolerance for minimum number of failures for this particular test.
+	MinimumFailureAdjustment int `json:"-"`
+
 	// RequiredPassRateAdjustment can be used to adjust the tolerance for failures for a new test.
 	RequiredPassRateAdjustment float64 `json:"-"`
 
