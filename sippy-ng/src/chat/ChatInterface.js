@@ -96,11 +96,23 @@ const useStyles = makeStyles((theme) => ({
   },
   headerTitle: {
     display: 'flex',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: theme.spacing(1),
     minWidth: 0,
     flexShrink: 1,
     overflow: 'hidden',
+  },
+  headerTextContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: theme.spacing(0.25),
+    minWidth: 0,
+  },
+  aiNotice: {
+    fontSize: '0.65rem',
+    color: theme.palette.text.secondary,
+    fontStyle: 'italic',
+    lineHeight: 1.2,
   },
   messagesContainer: {
     flex: 1,
@@ -275,18 +287,28 @@ export default function ChatInterface({
         }
       >
         <div className={classes.headerTitle}>
-          <SmartToyIcon sx={{ flexShrink: 0 }} />
-          <Typography
-            variant="h6"
-            sx={{
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              minWidth: 0,
-            }}
-          >
-            {mode === 'fullPage' ? 'Chat Agent' : 'Chat Assistant'}
-          </Typography>
+          <SmartToyIcon sx={{ flexShrink: 0, marginTop: '4px' }} />
+          <div className={classes.headerTextContainer}>
+            <Typography
+              variant="h6"
+              sx={{
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                minWidth: 0,
+              }}
+            >
+              {mode === 'fullPage' ? 'Chat Agent' : 'Chat Assistant'}
+            </Typography>
+            <Typography
+              className={classes.aiNotice}
+              sx={{
+                fontSize: '0.65rem !important',
+              }}
+            >
+              Always review AI generated content prior to use.
+            </Typography>
+          </div>
         </div>
 
         <div className={classes.headerActions}>

@@ -1,4 +1,4 @@
-import { Alert, Avatar, IconButton, Paper, Tooltip } from '@mui/material'
+import { Alert, Avatar, Chip, IconButton, Paper, Tooltip } from '@mui/material'
 import {
   ContentCopy as ContentCopyIcon,
   Error as ErrorIcon,
@@ -130,6 +130,14 @@ const useStyles = makeStyles((theme) => ({
     opacity: 0.7,
     '&:hover': {
       opacity: 1,
+    },
+  },
+  aiChip: {
+    height: 18,
+    fontSize: '0.65rem',
+    fontWeight: 600,
+    '& .MuiChip-label': {
+      padding: '0 6px',
     },
   },
   markdownContent: {
@@ -292,6 +300,15 @@ export default function ChatMessage({
           <div className={classes.messageFooter}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {formatTimestamp(message.timestamp)}
+              <Tooltip title="AI-generated response" arrow>
+                <Chip
+                  label="AI"
+                  size="small"
+                  className={classes.aiChip}
+                  color="secondary"
+                  variant="outlined"
+                />
+              </Tooltip>
             </div>
             <div style={{ display: 'flex', gap: 4 }}>
               {message.pageContext &&

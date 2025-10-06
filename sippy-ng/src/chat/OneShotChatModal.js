@@ -67,6 +67,14 @@ const useStyles = makeStyles((theme) => ({
     textAlign: 'center',
     color: theme.palette.text.secondary,
   },
+  aiNotice: {
+    fontSize: '0.65rem',
+    color: theme.palette.text.secondary,
+    fontStyle: 'italic',
+    padding: theme.spacing(2),
+    textAlign: 'center',
+    borderTop: `1px solid ${theme.palette.divider}`,
+  },
 }))
 
 /**
@@ -364,6 +372,16 @@ export default function OneShotChatModal({
             <div ref={messagesEndRef} />
           </div>
         )}
+
+        {/* AI Notice */}
+        <Typography
+          className={classes.aiNotice}
+          sx={{
+            fontSize: '0.65rem !important',
+          }}
+        >
+          Always review AI generated content prior to use.
+        </Typography>
       </DialogContent>
     </Dialog>
   )
