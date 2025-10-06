@@ -41,7 +41,7 @@ const (
     AND (
       (last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))
       OR
-      (t.status.name != "Closed" AND last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY))
+      (UPPER(t.status.name) NOT IN ('CLOSED', 'VERIFIED') AND last_changed_time >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 90 DAY))
     )
 )
 SELECT
