@@ -170,7 +170,9 @@ func LoadBugsForJobs(dbc *db.DB,
 
 	job := models.ProwJob{}
 	q := dbc.DB.Where("id IN ?", jobIDs)
-	timeLimit := "NOW() - last_change_time < interval '14 days'" // filter bugs since we no longer delete them
+	// filter bugs since we no longer delete them, if the bug is not yet Closed (or Verified) we want updates within the last 90 days, otherwise 14
+	timeLimit := "(UPPER(status) IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '14 days') OR " +
+		"(UPPER(status) NOT IN ('CLOSED', 'VERIFIED') AND NOW() - last_change_time < interval '90 days')"
 	if filterClosed {
 		q = q.Preload("Bugs", timeLimit+" and UPPER(status) != 'CLOSED' and UPPER(status) != 'VERIFIED'")
 	} else {
