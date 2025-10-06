@@ -48,6 +48,22 @@ class SippyCLI:
         console.print(welcome_panel)
         console.print()
 
+        # Display AI disclaimer
+        disclaimer_text = Text()
+        disclaimer_text.append("⚠️  ", style="yellow")
+        disclaimer_text.append("AI Disclaimer: ", style="bold yellow")
+        disclaimer_text.append(
+            "You are about to use a Red Hat tool that utilizes AI technology to provide you with relevant information. "
+            "By proceeding to use the tool, you acknowledge that the tool and any output provided are only intended for "
+            "internal use and that information should only be shared with those with a legitimate business purpose. "
+            "Do not include any personal information or customer-specific information in your input. "
+            "Responses provided by tools utilizing AI technology should be reviewed and verified prior to use.",
+            style="dim"
+        )
+        disclaimer_panel = Panel(disclaimer_text, border_style="yellow", padding=(1, 2))
+        console.print(disclaimer_panel)
+        console.print()
+
         # Display available tools
         tools = self.agent.list_tools()
         tools_text = "Available tools: " + ", ".join(f"[bold green]{tool}[/bold green]" for tool in tools)
@@ -59,6 +75,8 @@ class SippyCLI:
         console.print(f"[dim]Thinking display: {thinking_status} (use 'thinking' to toggle)[/dim]")
         console.print(f"[dim]Current persona: {self.config.persona} (use 'personas' to see available)[/dim]")
         console.print("[dim]Type 'help' for commands, 'quit' or 'exit' to leave[/dim]")
+        console.print()
+        console.print("[dim italic]Always review AI generated content prior to use.[/dim italic]")
         console.print()
 
     def display_help(self) -> None:
