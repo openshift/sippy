@@ -35,6 +35,7 @@ import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
 import AccessibilityToggle from './components/AccessibilityToggle'
+import AIDisclaimerDialog from './components/AIDisclaimerDialog'
 import Alert from '@mui/material/Alert'
 import BuildClusterDetails from './build_clusters/BuildClusterDetails'
 import BuildClusterOverview from './build_clusters/BuildClusterOverview'
@@ -533,6 +534,8 @@ function App(props) {
                     }}
                   >
                     <div className={classes.root}>
+                      <AIDisclaimerDialog />
+
                       <AppBar
                         position="fixed"
                         open={drawerOpen}
