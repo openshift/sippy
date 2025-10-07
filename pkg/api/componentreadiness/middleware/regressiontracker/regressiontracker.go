@@ -22,6 +22,14 @@ const (
 	// openRegressionConfidenceAdjustment is subtracted from the requested confidence for regressed tests that have
 	// an open regression.
 	openRegressionConfidenceAdjustment = 5
+	// openRegressionPityAdjustment is used to adjust pity for regressed tests that have an open regression. The goal is
+	// to adjust this to a smaller value so that, if a rate improvement is smaller than the openRegressionPityAdjustment,
+	// we still consider it regressed.
+	openRegressionPityAdjustment = -2
+	// openRegressionMinimumFailureAdjustment is used to adjust minimum failure requirement for regressed tests that have
+	// an open regression. The goal is to adjust this to a smaller value so that we will this test more strict than the ones
+	// without open regressions.
+	openRegressionMinimumFailureAdjustment = -1
 )
 
 var _ middleware.Middleware = &RegressionTracker{}
@@ -94,6 +102,8 @@ func (r *RegressionTracker) PreAnalysis(testKey crtest.Identification, testStats
 			// ie. if the request was for 95% confidence, but we see that a test has an open regression (meaning at some point recently
 			// we were over 95% certain of a regression), we're going to only require 90% certainty to mark that test red.
 			testStats.RequiredConfidence = r.reqOptions.AdvancedOption.Confidence - openRegressionConfidenceAdjustment
+			testStats.PityAdjustment = openRegressionPityAdjustment
+			testStats.MinimumFailureAdjustment = openRegressionMinimumFailureAdjustment
 		}
 	}
 	return nil
