@@ -104,33 +104,29 @@ func CreateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	}
 	log.WithField("triageID", triage.ID).Info("triage record created")
 	injectHATEOASLinks(&triage, sippyapi.GetBaseURL(req))
-	err = reportJiraUsedForTriage(jiraClient, triage, req)
-	if err != nil {
-		log.WithError(err).Error("error reporting jira used for triage")
-		return triage, err
-	}
+	reportJiraUsedForTriage(jiraClient, triage, req)
 	return triage, nil
 }
 
 const jiraPrefix = "https://issues.redhat.com/browse/"
 
-func reportJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, req *http.Request) error {
+func reportJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, req *http.Request) {
 	logger := log.WithField("triageID", triage.ID)
 	logger.Info("reporting jira used for triage")
 	// No jiraClient will be provided in e2e testing
 	if jiraClient == nil {
 		logger.Warn("no jira client provided, will not comment link to Triage entry")
-		return nil
+		return
 	}
 
 	if !strings.HasPrefix(triage.URL, jiraPrefix) {
 		logger.Warnf("URL (%s) is not a Jira card, cannot comment", triage.URL)
-		return nil
+		return
 	}
 	jiraCard := strings.TrimPrefix(triage.URL, jiraPrefix)
 	if !strings.HasPrefix(jiraCard, "OCPBUGS") {
 		logger.Warnf("URL (%s) is not an OCPBUGS card, cannot comment", triage.URL)
-		return nil
+		return
 	}
 
 	baseURL := "https://sippy-auth.dptools.openshift.org"
@@ -145,18 +141,18 @@ func reportJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, req 
 	comment := fmt.Sprintf("This bug has been triaged to one or more component readiness regressions. More information can be found at: %s/sippy-ng/component_readiness/triages/%d", baseURL, triage.ID)
 	_, response, err := jiraClient.Issue.AddComment(jiraCard, &jira.Comment{Body: comment})
 	if err != nil {
+		// We don't have the proper permissions to comment on red hat restricted cards
+		// this error shouldn't be surfaced to users as it will just cause confusion
 		if response != nil {
 			body, readErr := io.ReadAll(response.Body)
 			if readErr != nil {
-				logger.WithError(readErr).Errorf("error reading response body. original error is: %v", err)
+				logger.WithError(readErr).Warnf("error reading response body. original error is: %v", err)
 			} else {
-				logger.WithError(err).Errorf("error commenting on jira issue: %q", body)
+				logger.WithError(err).Warnf("error commenting on jira issue: %q", body)
 			}
 		}
-		return fmt.Errorf("error commenting on Jira issue for triage record: %v", err)
 	}
 
-	return nil
 }
 
 func linkRegressions(dbc *gorm.DB, triage *models.Triage) error {
@@ -267,11 +263,7 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 
 	// If the Jira URL has been updated, report on the new Jira
 	if existingTriage.URL != triage.URL {
-		err = reportJiraUsedForTriage(jiraClient, triage, req)
-		if err != nil {
-			log.WithError(err).Error("error reporting jira used for triage")
-			return triage, err
-		}
+		reportJiraUsedForTriage(jiraClient, triage, req)
 	}
 	return triage, nil
 }
