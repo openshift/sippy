@@ -16,12 +16,15 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
   const [currentThinking, setCurrentThinking] = useState(null)
   const [error, setError] = useState(null)
   const [isTyping, setIsTyping] = useState(false)
+  const [messageQueue, setMessageQueue] = useState([])
 
   const wsRef = useRef(null)
   const reconnectTimeoutRef = useRef(null)
   const reconnectAttemptsRef = useRef(0)
   const currentIterationRef = useRef(0)
   const pageContextRef = useRef(pageContext)
+  const processingQueueRef = useRef(false)
+  const sendMessageNowRef = useRef(null)
   const maxReconnectAttempts = 5
 
   // Update pageContext ref when it changes
@@ -194,6 +197,40 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
     )
 
     setMessages((prev) => [...prev, responseMessage])
+
+    // Process next queued message directly (no effect needed)
+    setTimeout(() => {
+      if (processingQueueRef.current) {
+        console.log('[Queue] Already processing, skipping direct call')
+        return
+      }
+
+      setMessageQueue((queue) => {
+        if (queue.length === 0) {
+          return queue
+        }
+
+        processingQueueRef.current = true
+        const [next, ...rest] = queue
+        console.log(
+          '[Queue] Direct processing:',
+          next,
+          '| Remaining:',
+          rest.length
+        )
+
+        setTimeout(() => {
+          if (sendMessageNowRef.current) {
+            sendMessageNowRef.current(next)
+          }
+          setTimeout(() => {
+            processingQueueRef.current = false
+          }, 1000)
+        }, 300)
+
+        return rest
+      })
+    }, 400)
   }, [])
 
   // Handle error messages
@@ -209,8 +246,8 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
     setError(data.error)
   }, [])
 
-  // Send message
-  const sendMessage = useCallback(
+  // Actually send message to WebSocket (internal function)
+  const sendMessageNow = useCallback(
     (content) => {
       if (connectionState !== WEBSOCKET_STATES.OPEN) {
         setError('Not connected to chat service')
@@ -253,12 +290,40 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
     [connectionState, messages, settings.showThinking, settings.persona]
   )
 
+  // Keep ref updated for queue processing
+  useEffect(() => {
+    sendMessageNowRef.current = sendMessageNow
+  }, [sendMessageNow])
+
+  // Send message (public API) - queues if currently typing
+  const sendMessage = useCallback(
+    (content) => {
+      if (connectionState !== WEBSOCKET_STATES.OPEN) {
+        setError('Not connected to chat service')
+        return false
+      }
+
+      // If currently typing, add to queue
+      if (isTyping) {
+        console.log('Queueing message:', content)
+        setMessageQueue((prev) => [...prev, content])
+        return true
+      }
+
+      // Send immediately if not typing
+      return sendMessageNow(content)
+    },
+    [connectionState, isTyping, sendMessageNow]
+  )
+
   // Clear chat history
   const clearMessages = useCallback(() => {
     setMessages([])
     setCurrentThinking(null)
     setError(null)
     setIsTyping(false)
+    setMessageQueue([])
+    processingQueueRef.current = false
     currentIterationRef.current = 0 // Reset iteration counter
   }, [])
 
@@ -280,14 +345,99 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
     }
   }, [])
 
+  // Stop current generation
+  const stopGeneration = useCallback(() => {
+    console.log('Stopping generation...')
+    setIsTyping(false)
+    setCurrentThinking(null)
+    setMessageQueue([])
+    processingQueueRef.current = false
+
+    const stopMessage = createMessage(
+      MESSAGE_TYPES.SYSTEM,
+      'Generation stopped by user',
+      { variant: 'info' }
+    )
+    setMessages((prev) => [...prev, stopMessage])
+
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.close(1000, 'User stopped generation')
+      wsRef.current = null
+      setTimeout(() => connect(), 100)
+    }
+  }, [connect])
+
+  // Send queued message at index (stop current, send this)
+  const sendMessageAtIndex = useCallback(
+    (index) => {
+      setMessageQueue((queue) => {
+        if (index >= queue.length) return queue
+
+        const messageToSend = queue[index]
+        const newQueue = queue.filter((_, i) => i !== index)
+
+        setIsTyping(false)
+        setCurrentThinking(null)
+        processingQueueRef.current = false
+
+        const switchMessage = createMessage(
+          MESSAGE_TYPES.SYSTEM,
+          'Switching to queued message...',
+          { variant: 'info' }
+        )
+        setMessages((prev) => [...prev, switchMessage])
+
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          const ws = wsRef.current
+          const onClose = () => {
+            ws.removeEventListener('close', onClose)
+            setTimeout(() => {
+              connect()
+              setTimeout(() => {
+                if (
+                  wsRef.current?.readyState === WebSocket.OPEN &&
+                  sendMessageNowRef.current
+                ) {
+                  sendMessageNowRef.current(messageToSend)
+                }
+              }, 500)
+            }, 200)
+          }
+          ws.addEventListener('close', onClose)
+          ws.close(1000, 'Sending queued message')
+          wsRef.current = null
+        }
+
+        return newQueue
+      })
+    },
+    [connect]
+  )
+
+  // Delete queued message at index
+  const deleteMessageAtIndex = useCallback((index) => {
+    setMessageQueue((queue) => queue.filter((_, i) => i !== index))
+  }, [])
+
+  // Clear all queued messages
+  const clearQueue = useCallback(() => {
+    setMessageQueue([])
+    processingQueueRef.current = false
+  }, [])
+
   return {
     messages,
     connectionState,
     currentThinking,
     error,
     isTyping,
+    messageQueue,
     sendMessage,
     clearMessages,
+    stopGeneration,
+    sendMessageAtIndex,
+    deleteMessageAtIndex,
+    clearQueue,
     connect,
     disconnect,
     isConnected: connectionState === WEBSOCKET_STATES.OPEN,

@@ -30,8 +30,13 @@ export function useChatInterface() {
     currentThinking,
     error,
     isTyping,
+    messageQueue,
     sendMessage,
     clearMessages,
+    stopGeneration,
+    sendMessageAtIndex,
+    deleteMessageAtIndex,
+    clearQueue,
     connect,
     disconnect,
     isConnected,
@@ -106,6 +111,7 @@ export function useChatInterface() {
     error,
     isTyping,
     isConnected,
+    messageQueue,
     personas,
 
     // Refs
@@ -118,6 +124,10 @@ export function useChatInterface() {
     handleClearMessages,
     handleReconnect,
     handleSettingsChange,
+    stopGeneration,
+    sendMessageAtIndex,
+    deleteMessageAtIndex,
+    clearQueue,
 
     // Helpers
     getCurrentPersonaDisplay,

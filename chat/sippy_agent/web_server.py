@@ -33,6 +33,8 @@ class WebSocketManager:
 
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        # Track active tasks per connection
+        self.active_tasks: Dict[WebSocket, asyncio.Task] = {}
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -41,6 +43,27 @@ class WebSocketManager:
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+        # Cancel any active task for this connection
+        if websocket in self.active_tasks:
+            task = self.active_tasks[websocket]
+            if not task.done():
+                task.cancel()
+                logger.info(f"Cancelled task for disconnected WebSocket")
+            del self.active_tasks[websocket]
+
+    def register_task(self, websocket: WebSocket, task: asyncio.Task):
+        """Register the current task for this connection."""
+        # Cancel any existing task
+        if websocket in self.active_tasks:
+            old_task = self.active_tasks[websocket]
+            if not old_task.done():
+                old_task.cancel()
+        self.active_tasks[websocket] = task
+
+    def unregister_task(self, websocket: WebSocket):
+        """Unregister task when complete."""
+        if websocket in self.active_tasks:
+            del self.active_tasks[websocket]
 
     async def send_message(self, websocket: WebSocket, message: StreamMessage):
         try:
@@ -218,7 +241,9 @@ class SippyWebServer:
                         # Recreate the agent graph with new persona
                         self.agent.graph = self.agent._create_agent_graph()
 
-                    try:
+                    # Define the agent processing task
+                    async def process_agent_request():
+                        """Process the agent request - can be cancelled."""
                         # Track step number for streaming
                         step_counter = {"count": 0}
                         # Map tool calls to their step numbers for parallel execution
@@ -309,20 +334,38 @@ class SippyWebServer:
                             ),
                         )
 
+                    # Create the agent task and register it
+                    agent_task = asyncio.create_task(process_agent_request())
+                    self.websocket_manager.register_task(websocket, agent_task)
+
+                    try:
+                        # Wait for the task to complete
+                        await agent_task
+                    except asyncio.CancelledError:
+                        # Task was cancelled (connection closed)
+                        logger.info("Agent task cancelled due to connection closure")
+                        # Don't propagate - this is expected behavior
                     except Exception as e:
                         logger.error(f"Error in WebSocket chat: {e}")
-                        await self.websocket_manager.send_message(
-                            websocket,
-                            StreamMessage(
-                                type="error",
-                                data={
-                                    "error": str(e),
-                                    "timestamp": datetime.now().isoformat(),
-                                },
-                            ),
-                        )
+                        try:
+                            await self.websocket_manager.send_message(
+                                websocket,
+                                StreamMessage(
+                                    type="error",
+                                    data={
+                                        "error": str(e),
+                                        "timestamp": datetime.now().isoformat(),
+                                    },
+                                ),
+                            )
+                        except:
+                            # Connection might be closed, ignore
+                            pass
 
                     finally:
+                        # Unregister the task
+                        self.websocket_manager.unregister_task(websocket)
+                        
                         # Restore original settings
                         self.config.show_thinking = original_thinking
                         self.agent.config.show_thinking = original_thinking
