@@ -161,16 +161,17 @@ func (l *ComponentReadinessCacheLoader) primeCacheForView(ctx context.Context, v
 	// sub report, we do so explicitly.
 	generator.ReqOptions.CacheOption.SkipCacheWrites = true
 	tdReports, errs := generator.GenerateTestDetailsReportMultiTest(ctx)
+	// If we have errors, we'll log them, but we'll still continue to cache any test details we successfully retrieved
+	strErrors := make([]string, len(errs))
 	if len(errs) > 0 {
-		var strErrors []string
+		strErrors = append(strErrors, "multi test details report generation encountered errors.")
 		for _, err := range errs {
 			strErrors = append(strErrors, err.Error())
 		}
-		return fmt.Errorf("multi test details report generation encountered errors: %s", strings.Join(strErrors, "; "))
 	}
 	rLog.Infof("got %d test details reports", len(tdReports))
 	if len(testIDOptions) != len(tdReports) {
-		rLog.Warnf("test details report generation returned %d reports, but %d test details requests were made", len(tdReports), len(testIDOptions))
+		strErrors = append(strErrors, fmt.Sprintf("test details report generation returned %d reports, but %d test details requests were made", len(tdReports), len(testIDOptions)))
 	}
 
 	// Now we cache each test details report:
@@ -191,13 +192,17 @@ func (l *ComponentReadinessCacheLoader) primeCacheForView(ctx context.Context, v
 		tempKey := api.GetPrefixedCacheKey("TestDetailsReport~", genCacheKey)
 		cacheKey, err := tempKey.GetCacheKey()
 		if err != nil {
-			return err
+			strErrors = append(strErrors, fmt.Sprintf("error: '%s' getting cache key for: %+v", err.Error(), tempKey))
+			continue
 		}
 		cacheDuration := api.CalculateRoundedCacheDuration(cacheOpts)
 		api.CacheSet(ctx, l.bqClient.Cache, report, cacheKey, cacheDuration)
 
 	}
 
+	if len(strErrors) > 0 {
+		return fmt.Errorf("test details cache generation encountered errors for view '%s':\n%s", view.Name, strings.Join(strErrors, "\n"))
+	}
 	return nil
 }
 
