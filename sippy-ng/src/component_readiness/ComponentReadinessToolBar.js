@@ -26,7 +26,10 @@ import {
   Widgets,
 } from '@mui/icons-material'
 import { CapabilitiesContext } from '../App'
+import { CompReadyVarsContext } from './CompReadyVars'
 import {
+  formColumnName,
+  generateTestDetailsReportLink,
   getTriagesAPIUrl,
   mergeRegressionData,
   Search,
@@ -34,9 +37,10 @@ import {
   StyledInputBase,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { useGlobalChat } from '../chat/useGlobalChat'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useContext, useEffect } from 'react'
 import RegressedTestsModal from './RegressedTestsModal'
 import SwitchControl from '@mui/material/Switch'
 import Toolbar from '@mui/material/Toolbar'
@@ -62,6 +66,8 @@ export default function ComponentReadinessToolBar(props) {
   const [isLoaded, setIsLoaded] = React.useState(false)
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const localDBEnabled = capabilitiesContext.includes('local_db')
+  const varsContext = useContext(CompReadyVarsContext)
+  const { updatePageContext } = useGlobalChat()
 
   React.useEffect(() => {
     // triage entries will only be available when there is a postgres connection
@@ -102,6 +108,86 @@ export default function ComponentReadinessToolBar(props) {
       setIsLoaded(true)
     })
   }, [])
+
+  // Update page context when regression data is loaded
+  useEffect(() => {
+    if (!isLoaded || !varsContext.sampleRelease) {
+      return
+    }
+
+    // Helper to format test data for context
+    const formatTestForContext = (test) => ({
+      component: test.component,
+      capability: test.capability,
+      test_name: test.test_name,
+      test_id: test.test_id,
+      test_suite: test.test_suite,
+      variants: formColumnName({ variants: test.variants }),
+      status: test.status,
+      regression_id: test.regression?.id,
+      regressed_since: test.regression?.opened,
+      last_failure: test.last_failure,
+      details_link: generateTestDetailsReportLink(
+        test,
+        filterVals,
+        varsContext.expandEnvironment
+      ),
+    })
+
+    updatePageContext({
+      page: 'component-readiness',
+      url: window.location.href,
+
+      instructions: `This is the Component Readiness main view showing a matrix of components vs environments with regression status. 
+        Focus on unresolved and untriaged regressions - these are the most important items requiring attention.
+        When providing test detail links, use the details_link field provided for each test.
+        Status values: negative numbers indicate regressions (more negative = more severe), positive numbers indicate stability.
+        Unresolved regressions have status <= -200 (not yet hopefully fixed).`,
+
+      suggestedQuestions: [
+        'What regressions are new today?',
+        "What regressions haven't been triaged?",
+      ],
+
+      data: {
+        sample_release: varsContext.sampleRelease,
+        base_release: varsContext.baseRelease,
+        view: varsContext.view,
+
+        summary: {
+          total_unresolved: unresolvedTests.length,
+          total_untriaged: regressedTests.length,
+          total_all_regressions: allRegressedTests.length,
+        },
+
+        // Unresolved regressions (status <= -200) - most critical
+        unresolved_regressions: unresolvedTests
+          .slice(0, 30)
+          .map(formatTestForContext),
+
+        // Untriaged regressions - need attention
+        untriaged_regressions: regressedTests
+          .slice(0, 30)
+          .map(formatTestForContext),
+      },
+    })
+
+    // Clear context on unmount
+    return () => {
+      updatePageContext(null)
+    }
+  }, [
+    isLoaded,
+    regressedTests,
+    allRegressedTests,
+    unresolvedTests,
+    varsContext.sampleRelease,
+    varsContext.baseRelease,
+    varsContext.view,
+    filterVals,
+    varsContext.expandEnvironment,
+    updatePageContext,
+  ])
 
   const linkToReport = () => {
     const currentUrl = new URL(window.location.href)

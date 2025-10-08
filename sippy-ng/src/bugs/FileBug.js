@@ -19,15 +19,18 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { Close } from '@mui/icons-material'
+import { AutoAwesome as AutoAwesomeIcon, Close } from '@mui/icons-material'
+import { CapabilitiesContext } from '../App'
 import {
   getBugsAPIUrl,
   getTriagesAPIUrl,
 } from '../component_readiness/CompReadyUtils'
 import { makeStyles } from '@mui/styles'
+import { useGlobalChat } from '../chat/useGlobalChat'
 import BugButton from './BugButton'
+import OneShotChatModal from '../chat/OneShotChatModal'
 import PropTypes from 'prop-types'
-import React, { Fragment, useState } from 'react'
+import React, { Fragment, useContext, useState } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   alignedButton: {
@@ -75,6 +78,11 @@ export default function FileBug({
   const [errorAlert, setErrorAlert] = useState('')
   const [successAlert, setSuccessAlert] = useState(null)
   const [isValidationError, setIsValidationError] = useState(false)
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+  const [aiGeneratedDescription, setAiGeneratedDescription] = useState('')
+  const { pageContext } = useGlobalChat()
+  const capabilities = useContext(CapabilitiesContext)
+  const chatEnabled = capabilities.includes('chat')
 
   const handleOpenModal = () => {
     const defaultText = `
@@ -90,7 +98,8 @@ See the [sippy test details|${document.location.href}] for additional context.
         ? `Component Readiness: [${component}] [${capability}] test regressed`
         : ''
 
-    const defaultDescription = context || defaultText
+    // Use AI-generated description if available, otherwise use context or default
+    const defaultDescription = aiGeneratedDescription || context || defaultText
 
     const defaultAffectsVersions = []
     if (version) defaultAffectsVersions.push(version)
@@ -284,6 +293,62 @@ See the [sippy test details|${document.location.href}] for additional context.
     'test',
   ]
 
+  const handleGenerateAIDescription = () => {
+    setIsAIModalOpen(true)
+  }
+
+  const handleAIDescriptionResult = (generatedDescription) => {
+    const currentUrl = window.location.href
+    const descriptionWithNote = `{panel:title=⚠️ AI-Generated Content|borderStyle=dashed|borderColor=#9C27B0|titleBGColor=#F3E5F5}
+Sippy AI-assisted description; please review details for accuracy.
+{panel}
+
+*Filed from:* [Test Regression Details|${currentUrl}]
+
+${generatedDescription}`
+    setAiGeneratedDescription(descriptionWithNote)
+    setFormData((prev) => ({
+      ...prev,
+      description: descriptionWithNote,
+    }))
+    setIsAIModalOpen(false)
+  }
+
+  const buildAIPrompt = () => {
+    return `Draft a Jira bug description for a test regression. Use Jira markup syntax. Include well-structured headings and sections. Perform a brief analysis of the failure based on the available context.
+
+REQUIRED CONTENT - Include these sections in this order:
+1. Brief overview of the test failure
+2. Statistics section with BOTH Sample and Base stats in this exact format:
+   Sample (being evaluated) Release: <release>
+   Start Time: <start_time>
+   End Time: <end_time>
+   Success Rate: <rate>%
+   Successes: <count>
+   Failures: <count>
+   Flakes: <count>
+   
+   Base (historical) Release: <release>
+   Start Time: <start_time>
+   End Time: <end_time>
+   Success Rate: <rate>%
+   Successes: <count>
+   Failures: <count>
+   Flakes: <count>
+3. Sample failure outputs (if available from context)
+4. Links to relevant jobs
+5. Any patterns or insights from the regression data
+
+CRITICAL OUTPUT REQUIREMENTS:
+- Your response must contain ONLY the Jira markup description
+- Do NOT include any "thought", "Plan:", "thinking", "analysis", or reasoning sections
+- Do NOT include any preamble or explanation before the Jira markup
+- Start your response IMMEDIATELY with the first Jira heading (h3.)
+- Do NOT include phrases like "Here is the description:", "Final output:", etc.
+- The entire response must be valid Jira markup that can be directly pasted into a Jira ticket
+- ALWAYS include both Sample and Base statistics in the exact format shown above`
+  }
+
   return (
     <Fragment>
       <Snackbar
@@ -403,9 +468,50 @@ See the [sippy test details|${document.location.href}] for additional context.
             helperText="Title of the issue"
           />
 
-          <Typography variant="subtitle2" className={classes.fieldLabel}>
-            Description *
-          </Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <Typography variant="subtitle2" className={classes.fieldLabel}>
+              Description *
+            </Typography>
+            {chatEnabled && (
+              <Button
+                size="small"
+                startIcon={<AutoAwesomeIcon />}
+                onClick={handleGenerateAIDescription}
+                sx={{
+                  background:
+                    'linear-gradient(45deg, #9C27B0 30%, #E91E63 90%)',
+                  boxShadow: '0 3px 5px 2px rgba(156, 39, 176, .3)',
+                  color: 'white',
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  transition: 'all 0.3s ease',
+                  animation: 'pulse 2s ease-in-out infinite',
+                  '@keyframes pulse': {
+                    '0%, 100%': {
+                      boxShadow: '0 3px 5px 2px rgba(156, 39, 176, .3)',
+                    },
+                    '50%': {
+                      boxShadow: '0 3px 15px 5px rgba(156, 39, 176, .5)',
+                    },
+                  },
+                  '&:hover': {
+                    background:
+                      'linear-gradient(45deg, #7B1FA2 30%, #C2185B 90%)',
+                    boxShadow: '0 6px 20px 4px rgba(156, 39, 176, .4)',
+                    transform: 'translateY(-2px)',
+                  },
+                }}
+              >
+                Generate AI-enhanced Description
+              </Button>
+            )}
+          </Box>
           <TextField
             name="description"
             value={formData.description}
@@ -577,6 +683,17 @@ See the [sippy test details|${document.location.href}] for additional context.
           </Typography>
         </DialogActions>
       </Dialog>
+
+      {chatEnabled && (
+        <OneShotChatModal
+          open={isAIModalOpen}
+          onClose={() => setIsAIModalOpen(false)}
+          prompt={buildAIPrompt()}
+          pageContext={pageContext}
+          onResult={handleAIDescriptionResult}
+          title="Generating AI-Enhanced Bug Description"
+        />
+      )}
     </Fragment>
   )
 }

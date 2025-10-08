@@ -23,3 +23,7 @@ See [the API documentation](pkg/api/README.md)
 ## Frontend
 
 See [the front end documentation](sippy-ng/README.md)
+
+## Chat
+
+See [the chat documentation](chat/README.md)

@@ -18,11 +18,13 @@ import { formatChatTimestamp } from './chatUtils'
 import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
+import ReactMarkdown from 'react-markdown'
 
 const useStyles = makeStyles((theme) => ({
   thinkingStep: {
     marginBottom: theme.spacing(1),
     overflow: 'hidden', // Prevent accordion from overflowing
+    maxWidth: '70%', // Match assistant message width
     '& .MuiAccordionSummary-root': {
       backgroundColor:
         theme.palette.mode === 'dark'
@@ -67,6 +69,26 @@ const useStyles = makeStyles((theme) => ({
     WebkitBoxOrient: 'vertical',
     wordBreak: 'break-word', // Break long words
     maxWidth: '100%',
+    '& p': {
+      margin: 0,
+      display: 'inline',
+    },
+    '& strong': {
+      fontWeight: 700,
+    },
+    '& em': {
+      fontStyle: 'italic',
+    },
+    '& code': {
+      backgroundColor:
+        theme.palette.mode === 'dark'
+          ? 'rgba(0, 0, 0, 0.3)'
+          : 'rgba(0, 0, 0, 0.05)',
+      padding: '2px 4px',
+      borderRadius: theme.shape.borderRadius,
+      fontFamily: 'monospace',
+      fontSize: '0.85em',
+    },
   },
   actionChip: {
     marginLeft: theme.spacing(1),
@@ -95,6 +117,59 @@ const useStyles = makeStyles((theme) => ({
     fontSize: '0.875rem',
     whiteSpace: 'pre-wrap',
     wordBreak: 'break-word',
+  },
+  thoughtMarkdown: {
+    backgroundColor:
+      theme.palette.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.05)'
+        : 'rgba(0, 0, 0, 0.02)',
+    padding: theme.spacing(1),
+    borderRadius: theme.shape.borderRadius,
+    fontSize: '0.875rem',
+    '& p': {
+      margin: 0,
+      marginBottom: theme.spacing(1),
+      '&:last-child': {
+        marginBottom: 0,
+      },
+    },
+    '& strong': {
+      fontWeight: 700,
+    },
+    '& em': {
+      fontStyle: 'italic',
+    },
+    '& code': {
+      backgroundColor:
+        theme.palette.mode === 'dark'
+          ? 'rgba(0, 0, 0, 0.3)'
+          : 'rgba(0, 0, 0, 0.05)',
+      padding: '2px 4px',
+      borderRadius: theme.shape.borderRadius,
+      fontFamily: 'monospace',
+      fontSize: '0.85em',
+    },
+    '& pre': {
+      backgroundColor:
+        theme.palette.mode === 'dark'
+          ? 'rgba(0, 0, 0, 0.3)'
+          : 'rgba(0, 0, 0, 0.05)',
+      padding: theme.spacing(1),
+      borderRadius: theme.shape.borderRadius,
+      overflow: 'auto',
+      '& code': {
+        backgroundColor: 'transparent',
+        padding: 0,
+      },
+    },
+    '& ul, & ol': {
+      marginTop: theme.spacing(0.5),
+      marginBottom: theme.spacing(0.5),
+      paddingLeft: theme.spacing(2.5),
+    },
+    '& li': {
+      marginBottom: theme.spacing(0.5),
+    },
   },
   inProgress: {
     display: 'flex',
@@ -157,18 +232,18 @@ export default function ThinkingStep({
 
   const renderSummary = () => (
     <div className={classes.stepHeader}>
-      <div className={classes.stepNumber}>
-        {isInProgress ? (
-          <CircularProgress size={16} color="inherit" />
-        ) : (
-          data.step_number || '?'
-        )}
-      </div>
-
       <PsychologyIcon color="action" fontSize="small" />
 
-      <Typography variant="body2" className={classes.thoughtText}>
-        {isInProgress ? 'Thinking...' : data.thought || 'Processing...'}
+      <Typography
+        variant="body2"
+        className={classes.thoughtText}
+        component="div"
+      >
+        {isInProgress ? (
+          'Thinking...'
+        ) : (
+          <ReactMarkdown>{data.thought || 'Processing...'}</ReactMarkdown>
+        )}
       </Typography>
 
       {data.action && (
@@ -193,7 +268,9 @@ export default function ThinkingStep({
           <Typography variant="subtitle2" className={classes.detailLabel}>
             Thought Process
           </Typography>
-          <div className={classes.detailContent}>{data.thought}</div>
+          <div className={classes.thoughtMarkdown}>
+            <ReactMarkdown>{data.thought}</ReactMarkdown>
+          </div>
         </div>
       )}
 

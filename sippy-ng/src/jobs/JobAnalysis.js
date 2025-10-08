@@ -35,6 +35,7 @@ import { Line } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { ReportEndContext } from '../App'
 import { scale } from 'chroma-js'
+import { useGlobalChat } from '../chat/useGlobalChat'
 import Alert from '@mui/material/Alert'
 import BugTable from '../bugs/BugTable'
 import Divider from '@mui/material/Divider'
@@ -51,6 +52,7 @@ export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_period: {} })
   const [bugsURL, setBugsURL] = React.useState('')
+  const { updatePageContext } = useGlobalChat()
 
   const [filterModel, setFilterModel] = useQueryParam('filters', SafeJSONParam)
   const [period, setPeriod] = useQueryParam('period', StringParam)
@@ -157,6 +159,32 @@ export function JobAnalysis(props) {
   useEffect(() => {
     fetchData()
   }, [filterModel, period])
+
+  // Update page context for chat
+  useEffect(() => {
+    if (!isLoaded || !analysis) return
+
+    updatePageContext({
+      page: 'job-analysis',
+      url: window.location.href,
+      instructions: `The user is viewing job analysis for multiple jobs matching specific filters.
+        You can use your database query tools to answer additional questions about the jobs being viewed.
+        When querying the database, apply the same filters shown in the context, especially the variant filters.`,
+      suggestedQuestions: [
+        'What are the most common test failures across these jobs?',
+        'Which jobs have the lowest pass rates?',
+      ],
+      data: {
+        release: props.release,
+        filters: filterModel,
+      },
+    })
+
+    // Cleanup: Clear context when component unmounts
+    return () => {
+      updatePageContext(null)
+    }
+  }, [isLoaded, analysis, filterModel, props.release, updatePageContext])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

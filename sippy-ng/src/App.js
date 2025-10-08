@@ -18,12 +18,14 @@ import {
   pathForTestSubstringByVariant,
   relativeTime,
 } from './helpers'
+import { GlobalChatProvider, useGlobalChat } from './chat/useGlobalChat'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { makeStyles, styled } from '@mui/styles'
 import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   useParams,
 } from 'react-router-dom'
@@ -33,12 +35,14 @@ import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
 import AccessibilityToggle from './components/AccessibilityToggle'
+import AIDisclaimerDialog from './components/AIDisclaimerDialog'
 import Alert from '@mui/material/Alert'
 import BuildClusterDetails from './build_clusters/BuildClusterDetails'
 import BuildClusterOverview from './build_clusters/BuildClusterOverview'
-import ChatAgent from './chat/ChatAgent'
+import ChatInterface from './chat/ChatInterface'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import CollapsibleChatDrawer from './chat/CollapsibleChatDrawer'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@mui/material/Drawer'
 import FeatureGates from './tests/FeatureGates'
@@ -356,7 +360,7 @@ const IntervalsChartWrapper = () => {
   )
 }
 
-export default function App(props) {
+function App(props) {
   const classes = useStyles()
   const theme = useTheme()
 
@@ -530,6 +534,8 @@ export default function App(props) {
                     }}
                   >
                     <div className={classes.root}>
+                      <AIDisclaimerDialog />
+
                       <AppBar
                         position="fixed"
                         open={drawerOpen}
@@ -746,7 +752,10 @@ export default function App(props) {
                             />
 
                             {capabilities.includes('chat') && (
-                              <Route path="/chat" element={<ChatAgent />} />
+                              <Route
+                                path="/chat"
+                                element={<ChatInterface mode="fullPage" />}
+                              />
                             )}
 
                             <Route
@@ -769,6 +778,8 @@ export default function App(props) {
                     </div>
                   </QueryParamProvider>
                 </AccessibilityModeProvider>
+                {/* Global chat controls - rendered inside theme and capabilities providers */}
+                <GlobalChatControls />
               </CapabilitiesContext.Provider>
             </ReportEndContext.Provider>
           </ReleasesContext.Provider>
@@ -777,3 +788,41 @@ export default function App(props) {
     </ColorModeContext.Provider>
   )
 }
+
+// Component that uses the global chat context
+function GlobalChatControls() {
+  const capabilities = React.useContext(CapabilitiesContext)
+  const { isOpen, openChat, closeChat, pageContext, unreadCount } =
+    useGlobalChat()
+  const location = useLocation()
+
+  const chatEnabled = capabilities.includes('chat')
+  // Don't show chat drawer on the main /chat page
+  const isOnChatPage = location.pathname.includes('/chat')
+
+  if (!chatEnabled || isOnChatPage) {
+    return null
+  }
+
+  return (
+    <CollapsibleChatDrawer
+      open={isOpen}
+      onOpen={openChat}
+      onClose={closeChat}
+      pageContext={pageContext}
+      hasContext={pageContext !== null && pageContext?.page !== undefined}
+      unreadCount={unreadCount}
+    />
+  )
+}
+
+// Wrapper component to provide global chat functionality
+function AppWithGlobalChat(props) {
+  return (
+    <GlobalChatProvider>
+      <App {...props} />
+    </GlobalChatProvider>
+  )
+}
+
+export default AppWithGlobalChat
