@@ -889,6 +889,17 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
+func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Request) {
+	capabilities, err := api.GetTestCapabilitiesFromDB(s.db)
+	if err != nil {
+		log.WithError(err).Error("error querying test capabilities")
+		failureResponse(w, http.StatusInternalServerError, "error querying test capabilities")
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, capabilities)
+}
+
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
@@ -2074,6 +2085,13 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestDurationsFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/capabilities",
+			Description:  "Returns list of available test capabilities",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestCapabilitiesFromDB,
 		},
 		{
 			EndpointPath: "/api/install",
