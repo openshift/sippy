@@ -17,3 +17,5 @@ websockets
 langchain-mcp-adapters
 mcp-client
 defusedxml>=0.7.0
+psycopg2-binary>=2.9.0
+sqlparse>=0.4.0

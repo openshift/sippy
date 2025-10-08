@@ -5,6 +5,7 @@ Tools package for Sippy Agent.
 from .aggregated_job_analyzer import AggregatedJobAnalyzerTool
 from .aggregated_yaml_parser import AggregatedYAMLParserTool
 from .base_tool import SippyBaseTool, SippyToolInput
+from .database_query import SippyDatabaseQueryTool
 from .jira_incidents import SippyJiraIncidentTool
 from .junit_parser import JUnitParserTool
 from .mcp_tool_loader import load_tools_from_mcp
@@ -18,6 +19,7 @@ __all__ = [
     "AggregatedYAMLParserTool",
     "SippyBaseTool",
     "SippyToolInput",
+    "SippyDatabaseQueryTool",
     "SippyJiraIncidentTool",
     "JUnitParserTool",
     "load_tools_from_mcp",

@@ -22,6 +22,7 @@ from .tools import (
     JUnitParserTool,
     AggregatedJobAnalyzerTool,
     AggregatedYAMLParserTool,
+    SippyDatabaseQueryTool,
     load_tools_from_mcp,
 )
 
@@ -119,6 +120,14 @@ class SippyAgent:
             AggregatedYAMLParserTool(),
         ]
 
+        # Add database query tool if DSN is configured
+        if self.config.sippy_ro_database_dsn:
+            tools.append(SippyDatabaseQueryTool(database_dsn=self.config.sippy_ro_database_dsn))
+            if self.config.verbose:
+                logger.info("Database query tool enabled (read-only access)")
+        elif self.config.verbose:
+            logger.info("Database query tool disabled (no SIPPY_READ_ONLY_DATABASE_DSN configured)")
+
         # Load MCP tools if a config file is provided
         if self.config.mcp_config_file:
             logger.info(f"Loading MCP tools from {self.config.mcp_config_file}")
@@ -179,6 +188,14 @@ If the user is viewing a jobs table and asks "Why are these jobs failing?", the 
 
 **Page-specific instructions:**
 Some pages may include an `instructions` field in their context that provides specific guidance for analyzing that page's data. Always follow these instructions when present.
+
+---
+
+### Database Query Tool
+
+When the `query_sippy_database` tool is available, use it as a **fallback** when specialized tools don't provide the data you need. The database contains the complete Sippy CI/CD dataset.
+
+Before you write any query, carefully review the schema information, query guidelines, and examples.
 
 ---
 

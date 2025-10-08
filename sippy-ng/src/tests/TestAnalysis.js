@@ -26,6 +26,7 @@ import { TEST_THRESHOLDS } from '../constants'
 import { TestDurationChart } from './TestDurationChart'
 import { TestOutputs } from './TestOutputs'
 import { TestStackedChart } from './TestStackedChart'
+import { useGlobalChat } from '../chat/useGlobalChat'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
 import BugButton from '../bugs/BugButton'
@@ -50,6 +51,7 @@ export function TestAnalysis(props) {
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
   const [testName = props.test] = useQueryParam('test', SafeStringParam)
+  const { updatePageContext } = useGlobalChat()
 
   const [
     filterModel = {
@@ -105,6 +107,45 @@ export function TestAnalysis(props) {
   useEffect(() => {
     fetchData()
   }, [])
+
+  // Update page context for chat
+  useEffect(() => {
+    if (!isLoaded || !test || !testName) return
+
+    updatePageContext({
+      page: 'test-analysis',
+      url: window.location.href,
+      instructions: `The user is viewing detailed analysis for a specific test. 
+        You can use your database query tools to answer additional questions about this test.
+        When querying the database, use the test name and apply the same filters shown in the context.
+        The test statistics shown are for the current 7-day period compared to the previous 7-day period.`,
+      suggestedQuestions: [
+        'What are the most common failure modes for this test?',
+        'Which jobs does this test fail most frequently in?',
+      ],
+      data: {
+        release: props.release,
+        test_name: testName,
+        filters: filterModel,
+        statistics: {
+          current_pass_percentage: test.current_pass_percentage,
+          current_runs: test.current_runs,
+          current_successes: test.current_successes,
+          current_failures: test.current_failures,
+          current_flakes: test.current_flakes,
+          previous_pass_percentage: test.previous_pass_percentage,
+          previous_runs: test.previous_runs,
+          net_improvement: test.net_improvement,
+        },
+        jira_component: test.jira_component,
+      },
+    })
+
+    // Cleanup: Clear context when component unmounts
+    return () => {
+      updatePageContext(null)
+    }
+  }, [isLoaded, test, testName, filterModel, props.release, updatePageContext])
 
   const breadcrumbs = (
     <SimpleBreadcrumbs

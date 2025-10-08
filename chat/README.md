@@ -33,6 +33,15 @@ cp .env.example .env
 Edit `.env` for your LLM setup, according to the instructions in the
 .env file.
 
+**Optional: Database Access**
+
+To enable direct database queries (fallback tool for when standard tools don't provide enough information), set:
+
+```bash
+SIPPY_READ_ONLY_DATABASE_DSN=postgresql://readonly_user:password@host:5432/sippy
+```
+
+**Important:** Use a read-only database user for security. The tool enforces read-only queries at the application level as well.
 
 ### 3. Run the Agent
 

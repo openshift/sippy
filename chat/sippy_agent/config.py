@@ -56,6 +56,12 @@ class Config(BaseModel):
         default_factory=lambda: os.getenv("MCP_CONFIG_FILE"), description="Path to the MCP servers JSON configuration file"
     )
 
+    # Database Configuration
+    sippy_ro_database_dsn: Optional[str] = Field(
+        default_factory=lambda: os.getenv("SIPPY_READ_ONLY_DATABASE_DSN"),
+        description="PostgreSQL connection string for read-only database access (e.g., postgresql://user:pass@host:5432/dbname)"
+    )
+
     # Agent Configuration
     max_iterations: int = Field(default=15, description="Maximum number of iterations for the Re-Act agent")
 
