@@ -98,7 +98,9 @@ GlobalChatProvider.propTypes = {
 export function useGlobalChat() {
   const context = useContext(GlobalChatContext)
   if (!context) {
-    throw new Error('useGlobalChat must be used within a GlobalChatProvider')
+    return {
+      updatePageContext: () => {}, // no-op handler for page contexts when chat is not enabled
+    }
   }
   return context
 }
