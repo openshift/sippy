@@ -19,11 +19,11 @@ import {
   makeRFC3339Time,
   noDataTable,
 } from './CompReadyUtils'
-import { CapabilitiesContext, ReleasesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import { pathForExactTestAnalysisWithFilter } from '../helpers'
+import { ReleasesContext, SippyCapabilitiesContext } from '../App'
 import { Tooltip } from '@mui/material'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import AskSippyButton from '../chat/AskSippyButton'
@@ -117,7 +117,7 @@ export default function TestDetailsReport(props) {
     'Sippy > Component Readiness > Capabilities > Tests > Capability Tests > Test Details' +
     (environment ? `Env` : '')
 
-  const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const writeEndpointsEnabled = capabilitiesContext.includes('write_endpoints')
   const { sampleRelease, urlParams } = useContext(CompReadyVarsContext)
 
