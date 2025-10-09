@@ -11,14 +11,28 @@ import {
   safeEncodeURIComponent,
 } from '../helpers'
 import { Link } from 'react-router-dom'
+import { makeStyles } from '@mui/styles'
 import { ReportEndContext } from '../App'
 import Alert from '@mui/material/Alert'
 import Grid from '@mui/material/Grid'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
+const useStyles = makeStyles((theme) => ({
+  payloadItem: {
+    textDecoration: 'none',
+    display: 'flex',
+    alignItems: 'center',
+    padding: theme.spacing(1.5),
+    borderRadius: theme.spacing(1),
+    border: `2px solid ${theme.palette.divider}`,
+    transition: 'all 0.2s',
+  },
+}))
+
 function ReleasePayloadAcceptance(props) {
   const theme = useTheme()
+  const classes = useStyles()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -121,14 +135,8 @@ function ReleasePayloadAcceptance(props) {
           <Box
             component={Link}
             to={`/release/${props.release}/streams/${row.architecture}/${row.stream}/overview`}
+            className={classes.payloadItem}
             sx={{
-              textDecoration: 'none',
-              display: 'flex',
-              alignItems: 'center',
-              p: 1.5,
-              borderRadius: 1,
-              border: `2px solid ${theme.palette.divider}`,
-              transition: 'all 0.2s',
               '&:hover': {
                 backgroundColor: theme.palette.action.hover,
                 borderColor: statusColor,

@@ -11,6 +11,7 @@ import {
 } from '@mui/material'
 import { COMPONENT_READINESS_THRESHOLDS } from '../constants'
 import { Link } from 'react-router-dom'
+import { makeStyles } from '@mui/styles'
 import { relativeTime } from '../helpers'
 import Grid from '@mui/material/Grid'
 import HealingIcon from '@mui/icons-material/Healing'
@@ -20,8 +21,49 @@ import React, { useEffect, useState } from 'react'
 import Tooltip from '@mui/material/Tooltip'
 import WarningIcon from '@mui/icons-material/Warning'
 
+const useStyles = makeStyles((theme) => ({
+  card: {
+    padding: 20,
+  },
+  statBox: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: theme.spacing(2),
+    borderRadius: theme.spacing(2),
+  },
+  unresolvedBox: {
+    backgroundColor:
+      theme.palette.mode === 'dark'
+        ? 'rgba(244, 67, 54, 0.1)'
+        : 'rgba(244, 67, 54, 0.05)',
+  },
+  untriagedBox: {
+    backgroundColor:
+      theme.palette.mode === 'dark'
+        ? 'rgba(255, 152, 0, 0.1)'
+        : 'rgba(255, 152, 0, 0.05)',
+  },
+  regressionList: {
+    maxHeight: 240,
+    overflow: 'auto',
+    backgroundColor:
+      theme.palette.mode === 'dark'
+        ? 'rgba(0, 0, 0, 0.2)'
+        : 'rgba(0, 0, 0, 0.02)',
+    borderRadius: theme.spacing(1),
+  },
+  regressionItem: {
+    textDecoration: 'none',
+    color: 'inherit',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+}))
+
 export default function ComponentReadinessIndicator({ release }) {
   const theme = useTheme()
+  const classes = useStyles()
   const [regressions, setRegressions] = useState(null)
   const [isLoaded, setIsLoaded] = useState(false)
 
@@ -140,7 +182,7 @@ export default function ComponentReadinessIndicator({ release }) {
 
   return (
     <Grid item xs={12}>
-      <Card elevation={5} style={{ padding: 20 }}>
+      <Card elevation={5} className={classes.card}>
         {!isLoaded ? (
           <Box
             sx={{
@@ -188,18 +230,7 @@ export default function ComponentReadinessIndicator({ release }) {
                 </Link>
               </Box>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    p: 2,
-                    borderRadius: 2,
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(244, 67, 54, 0.1)'
-                        : 'rgba(244, 67, 54, 0.05)',
-                  }}
-                >
+                <Box className={`${classes.statBox} ${classes.unresolvedBox}`}>
                   <WarningIcon
                     sx={{ fontSize: 40, color: unresolvedColor, mr: 2 }}
                   />
@@ -213,18 +244,7 @@ export default function ComponentReadinessIndicator({ release }) {
                   </Box>
                 </Box>
 
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    p: 2,
-                    borderRadius: 2,
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(255, 152, 0, 0.1)'
-                        : 'rgba(255, 152, 0, 0.05)',
-                  }}
-                >
+                <Box className={`${classes.statBox} ${classes.untriagedBox}`}>
                   <HealingIcon
                     sx={{
                       fontSize: 40,
@@ -276,17 +296,7 @@ export default function ComponentReadinessIndicator({ release }) {
                   </Typography>
                 </Box>
               ) : (
-                <List
-                  sx={{
-                    maxHeight: 240,
-                    overflow: 'auto',
-                    backgroundColor:
-                      theme.palette.mode === 'dark'
-                        ? 'rgba(0, 0, 0, 0.2)'
-                        : 'rgba(0, 0, 0, 0.02)',
-                    borderRadius: 1,
-                  }}
-                >
+                <List className={classes.regressionList}>
                   {regressions.recent.map((regression, index) => {
                     // Get the test details URL from the regression links
                     let testDetailsUrl = null
@@ -307,16 +317,16 @@ export default function ComponentReadinessIndicator({ release }) {
                           alignItems="flex-start"
                           component={testDetailsUrl ? Link : 'li'}
                           to={testDetailsUrl || undefined}
-                          sx={{
-                            textDecoration: 'none',
-                            color: 'inherit',
-                            '&:hover': testDetailsUrl
+                          className={
+                            testDetailsUrl ? classes.regressionItem : ''
+                          }
+                          sx={
+                            testDetailsUrl
                               ? {
-                                  backgroundColor: theme.palette.action.hover,
                                   cursor: 'pointer',
                                 }
-                              : {},
-                          }}
+                              : {}
+                          }
                         >
                           <ListItemText
                             primary={

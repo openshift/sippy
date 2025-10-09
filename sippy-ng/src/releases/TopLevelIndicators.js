@@ -6,6 +6,7 @@ import {
   UPGRADE_THRESHOLDS,
 } from '../constants'
 import { Link } from 'react-router-dom'
+import { makeStyles } from '@mui/styles'
 import { pathForTestByVariant, useNewInstallTests } from '../helpers'
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown'
 import ArrowDropUpIcon from '@mui/icons-material/ArrowDropUp'
@@ -18,8 +19,32 @@ import React, { Fragment } from 'react'
 import UpgradeIcon from '@mui/icons-material/Upgrade'
 import VerifiedIcon from '@mui/icons-material/Verified'
 
+const useStyles = makeStyles((theme) => ({
+  indicatorCard: {
+    padding: theme.spacing(2.5),
+    height: '100%',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+    '&:hover': {
+      transform: 'translateY(-4px)',
+      boxShadow: theme.shadows[8],
+    },
+  },
+  cardLink: {
+    textDecoration: 'none',
+    display: 'block',
+  },
+  stackedBar: {
+    display: 'flex',
+    height: 8,
+    borderRadius: theme.spacing(1),
+    overflow: 'hidden',
+    backgroundColor: theme.palette.divider,
+  },
+}))
+
 export default function TopLevelIndicators(props) {
   const theme = useTheme()
+  const classes = useStyles()
 
   const getIndicatorColor = (passPercentage, threshold) => {
     if (passPercentage >= threshold.success) return theme.palette.success.main
@@ -63,23 +88,8 @@ export default function TopLevelIndicators(props) {
     return (
       <Grid item md={3} sm={6}>
         <Tooltip title={fullTooltip}>
-          <Box
-            component={Link}
-            to={link}
-            sx={{ textDecoration: 'none', display: 'block' }}
-          >
-            <Card
-              elevation={5}
-              sx={{
-                padding: 2.5,
-                height: '100%',
-                transition: 'transform 0.2s, box-shadow 0.2s',
-                '&:hover': {
-                  transform: 'translateY(-4px)',
-                  boxShadow: 8,
-                },
-              }}
-            >
+          <Box component={Link} to={link} className={classes.cardLink}>
+            <Card elevation={5} className={classes.indicatorCard}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 {icon}
                 <Typography variant="h6" sx={{ ml: 1 }}>
@@ -98,15 +108,7 @@ export default function TopLevelIndicators(props) {
 
               {/* Stacked bar showing pass/flake/fail breakdown */}
               <Box sx={{ mb: 2, px: 1 }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    height: 8,
-                    borderRadius: 1,
-                    overflow: 'hidden',
-                    backgroundColor: theme.palette.divider,
-                  }}
-                >
+                <Box className={classes.stackedBar}>
                   <Box
                     sx={{
                       width: `${indicator.current_pass_percentage}%`,
