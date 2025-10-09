@@ -1,6 +1,7 @@
 import {
   AddCircleOutline as AddCircleOutlineIcon,
   ExpandMore as ExpandMoreIcon,
+  Help as HelpIcon,
   Masks as MasksIcon,
   Fullscreen as MaximizeIcon,
   FullscreenExit as MinimizeIcon,
@@ -315,6 +316,20 @@ export default function ChatInterface({
           <Tooltip title="New chat">
             <IconButton size="small" onClick={handleClearMessages}>
               <AddCircleOutlineIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Help">
+            <IconButton
+              size="small"
+              component="a"
+              href={
+                'https://source.redhat.com/departments/products_and_global_engineering/openshift_development/openshift_wiki/sippy_chat_user_guide'
+              }
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <HelpIcon />
             </IconButton>
           </Tooltip>
 
