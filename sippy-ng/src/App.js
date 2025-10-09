@@ -517,7 +517,8 @@ function App(props) {
   }
 
   const startDate = getReportStartDate(reportDate)
-  return (
+
+  const content = (
     <ColorModeContext.Provider value={colorMode}>
       <ThemeProvider theme={createTheme(themes[mode])}>
         <StyledEngineProvider injectFirst>
@@ -778,8 +779,7 @@ function App(props) {
                     </div>
                   </QueryParamProvider>
                 </AccessibilityModeProvider>
-                {/* Global chat controls - rendered inside theme and capabilities providers */}
-                <GlobalChatControls />
+                {showWithCapability('chat', <GlobalChatControls />)}
               </CapabilitiesContext.Provider>
             </ReportEndContext.Provider>
           </ReleasesContext.Provider>
@@ -787,20 +787,24 @@ function App(props) {
       </ThemeProvider>
     </ColorModeContext.Provider>
   )
+
+  // Conditionally wrap with GlobalChatProvider if chat capability is available
+  if (capabilities.includes('chat')) {
+    return <GlobalChatProvider>{content}</GlobalChatProvider>
+  }
+
+  return content
 }
 
 // Component that uses the global chat context
 function GlobalChatControls() {
-  const capabilities = React.useContext(CapabilitiesContext)
   const { isOpen, openChat, closeChat, pageContext, unreadCount } =
     useGlobalChat()
   const location = useLocation()
 
-  const chatEnabled = capabilities.includes('chat')
   // Don't show chat drawer on the main /chat page
   const isOnChatPage = location.pathname.includes('/chat')
-
-  if (!chatEnabled || isOnChatPage) {
+  if (isOnChatPage) {
     return null
   }
 
@@ -816,13 +820,4 @@ function GlobalChatControls() {
   )
 }
 
-// Wrapper component to provide global chat functionality
-function AppWithGlobalChat(props) {
-  return (
-    <GlobalChatProvider>
-      <App {...props} />
-    </GlobalChatProvider>
-  )
-}
-
-export default AppWithGlobalChat
+export default App
