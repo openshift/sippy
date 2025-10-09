@@ -125,12 +125,10 @@ function TestTable(props) {
   const theme = useTheme()
   const location = useLocation().pathname
 
-  const [testDetails, setTestDetails] = React.useState({ bugs: [] })
-
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
+  const [isSearching, setSearching] = React.useState(false)
   const [rows, setRows] = React.useState([])
-  const [selectedTests, setSelectedTests] = React.useState([])
 
   const [period = props.period, setPeriod] = useQueryParam(
     'period',
@@ -938,11 +936,13 @@ function TestTable(props) {
           setRows([])
         }
         setLoaded(true)
+        setSearching(false)
       })
       .catch((error) => {
         setFetchError(
           'Could not retrieve tests ' + props.release + ', ' + error
         )
+        setSearching(false)
       })
   }
 
@@ -953,6 +953,7 @@ function TestTable(props) {
       setRows([])
       setLoaded(false)
     }
+    setSearching(true)
     fetchData()
     prevLocation.current = location
   }, [
@@ -966,6 +967,7 @@ function TestTable(props) {
   ])
 
   const requestSearch = (searchValue) => {
+    setSearching(true)
     const currentFilters = filterModel
     currentFilters.items = currentFilters.items.filter(
       (f) => f.columnField !== 'name'
@@ -995,11 +997,12 @@ function TestTable(props) {
     }
   }
 
-  const createTestNameQuery = () => {
-    const selectedIDs = new Set(selectedTests)
-    let tests = rows.filter((row) => selectedIDs.has(row.id))
-    tests = tests.map((test) => 'test=' + safeEncodeURIComponent(test.name))
-    return tests.join('&')
+  if (isSearching) {
+    return (
+      <Backdrop className={gridClasses.backdrop} open={true}>
+        <CircularProgress color="inherit" />
+      </Backdrop>
+    )
   }
 
   const addFilters = (filter) => {
@@ -1054,7 +1057,6 @@ function TestTable(props) {
           },
         ]}
         onSortModelChange={(m) => updateSortModel(m)}
-        onSelectionModelChange={(rows) => setSelectedTests(rows)}
         getRowClassName={(params) => {
           let rowClass = []
           if (params.row.name === overallTestName) {
