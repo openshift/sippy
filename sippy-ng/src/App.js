@@ -753,10 +753,16 @@ function App(props) {
                             />
 
                             {capabilities.includes('chat') && (
-                              <Route
-                                path="/chat"
-                                element={<ChatInterface mode="fullPage" />}
-                              />
+                              <>
+                                <Route
+                                  path="/chat"
+                                  element={<ChatInterface mode="fullPage" />}
+                                />
+                                <Route
+                                  path="/chat/:id"
+                                  element={<ChatInterfaceWithId />}
+                                />
+                              </>
                             )}
 
                             <Route
@@ -818,6 +824,12 @@ function GlobalChatControls() {
       unreadCount={unreadCount}
     />
   )
+}
+
+// Wrapper component to extract ID from route params for shared conversations
+function ChatInterfaceWithId() {
+  const { id } = useParams()
+  return <ChatInterface mode="fullPage" conversationId={id} />
 }
 
 export default App

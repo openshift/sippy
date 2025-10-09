@@ -1,26 +1,39 @@
 import {
   AddCircleOutline as AddCircleOutlineIcon,
+  Close as CloseIcon,
+  ContentCopy as ContentCopyIcon,
   ExpandMore as ExpandMoreIcon,
   Help as HelpIcon,
   Masks as MasksIcon,
   Fullscreen as MaximizeIcon,
   FullscreenExit as MinimizeIcon,
   Settings as SettingsIcon,
+  Share as ShareIcon,
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material'
 import {
   Alert,
+  Button,
   Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Drawer,
   Fade,
   IconButton,
   Paper,
+  Snackbar,
+  TextField,
   Tooltip,
   Typography,
 } from '@mui/material'
+import { createMessage, MESSAGE_TYPES } from './chatUtils'
 import { makeStyles } from '@mui/styles'
-import { MESSAGE_TYPES } from './chatUtils'
 import { useChatInterface } from './useChatInterface'
+import { useGlobalChat } from './useGlobalChat'
 import ChatInput from './ChatInput'
 import ChatMessage from './ChatMessage'
 import ChatSettings from './ChatSettings'
@@ -151,6 +164,36 @@ const useStyles = makeStyles((theme) => ({
   inputContainer: {
     flexShrink: 0,
   },
+
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+  },
+
+  shareDialogTitle: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingRight: theme.spacing(1),
+  },
+
+  shareDialogContent: {
+    paddingTop: theme.spacing(2),
+  },
+
+  shareTextField: {
+    marginTop: theme.spacing(2),
+    '& .MuiOutlinedInput-root': {
+      fontFamily: 'monospace',
+      fontSize: '0.9rem',
+    },
+  },
+
+  copyButton: {
+    marginRight: theme.spacing(1),
+  },
 }))
 
 /**
@@ -163,9 +206,20 @@ export default function ChatInterface({
   open = true,
   onClose,
   pageContext = null,
+  conversationId = null,
 }) {
   const classes = useStyles()
   const [isMaximized, setIsMaximized] = useState(false)
+  const [shareLoading, setShareLoading] = useState(false)
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [sharedUrl, setSharedUrl] = useState('') // Cleared when new messages added
+  const [shareSnackbar, setShareSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success',
+  })
+  const [loadingShared, setLoadingShared] = useState(!!conversationId)
+  const [initialMessageCount, setInitialMessageCount] = useState(0)
 
   // Use shared chat interface logic
   const {
@@ -191,15 +245,200 @@ export default function ChatInterface({
     getCurrentPersonaTooltip,
   } = useChatInterface()
 
+  // Access the underlying WebSocket to manipulate messages directly
+  const globalChat = useGlobalChat()
+
   // Set page title for full page mode
   useEffect(() => {
     if (mode === 'fullPage') {
-      document.title = 'Sippy > Chat Agent'
+      document.title = 'Sippy > Chat Assistant'
       return () => {
         document.title = 'Sippy'
       }
     }
   }, [mode])
+
+  // Load shared conversation if conversationId is provided
+  useEffect(() => {
+    if (!conversationId) return
+
+    const fetchConversation = async () => {
+      try {
+        setLoadingShared(true)
+        const response = await fetch(
+          `${process.env.REACT_APP_API_URL}/api/chat/conversations/${conversationId}`
+        )
+
+        if (!response.ok) {
+          let errorMessage = 'Failed to load shared conversation'
+          try {
+            const errorData = await response.json()
+            errorMessage = errorData.message || errorMessage
+          } catch (e) {
+            errorMessage = response.statusText || errorMessage
+          }
+          throw new Error(errorMessage)
+        }
+
+        const data = await response.json()
+
+        // Load shared messages
+        const loadedMessages = data.messages.map((msg, idx) => ({
+          ...msg,
+          id: msg.id || `loaded_${idx}`,
+        }))
+
+        // Add a system message to mark this shared conversation
+        const systemMessage = createMessage(
+          MESSAGE_TYPES.SYSTEM,
+          `Shared by ${data.user} • ${new Date(
+            data.created_at
+          ).toLocaleString()}`,
+          {
+            id: 'system_' + conversationId,
+            conversationId: conversationId,
+          }
+        )
+
+        // Clear any existing messages and load the shared conversation
+        handleClearMessages()
+        globalChat.addMessages([...loadedMessages, systemMessage])
+        setInitialMessageCount(loadedMessages.length + 1)
+
+        // Set the shared URL so clicking share again doesn't create a duplicate
+        const url = `${window.location.origin}/sippy-ng/chat/${conversationId}`
+        setSharedUrl(url)
+      } catch (err) {
+        console.error('Error loading shared conversation:', err)
+        setShareSnackbar({
+          open: true,
+          message: err.message,
+          severity: 'error',
+        })
+      } finally {
+        setLoadingShared(false)
+      }
+    }
+
+    fetchConversation()
+  }, [conversationId])
+
+  const handleSendMessageWrapper = (content) => {
+    // Update URL bar when first message is sent on a shared conversation
+    if (conversationId && messages.length === initialMessageCount) {
+      window.history.pushState(null, '', '/sippy-ng/chat')
+    }
+    // Clear cached share URL since conversation has changed
+    setSharedUrl('')
+    return handleSendMessage(content)
+  }
+
+  const handleClearMessagesWrapper = () => {
+    // Clear URL if viewing a shared conversation
+    if (conversationId) {
+      window.history.pushState(null, '', '/sippy-ng/chat')
+    }
+    setSharedUrl('')
+    setInitialMessageCount(0)
+    return handleClearMessages()
+  }
+
+  const handleShareConversation = async () => {
+    // Save all current messages (including any system messages marking previous shares)
+    if (filteredMessages.length === 0) {
+      setShareSnackbar({
+        open: true,
+        message: 'No messages to share',
+        severity: 'warning',
+      })
+      return
+    }
+
+    // If we already have a shared URL (and it hasn't been cleared by new messages),
+    // just show the existing dialog
+    if (sharedUrl) {
+      setShareDialogOpen(true)
+      return
+    }
+
+    setShareLoading(true)
+
+    try {
+      // Format messages for API - preserve complete message structure
+      const messagesToShare = filteredMessages.map((msg) => ({
+        type: msg.type,
+        content: msg.content,
+        timestamp: msg.timestamp,
+        ...(msg.data && { data: msg.data }),
+        ...(msg.pageContext && { pageContext: msg.pageContext }),
+        ...(msg.conversationId && { conversationId: msg.conversationId }),
+      }))
+
+      // Prepare metadata
+      const metadata = {
+        persona: settings.persona,
+        pageContext: pageContext,
+        sharedAt: new Date().toISOString(),
+      }
+
+      // If we're sharing a forked conversation, include the parent ID
+      const payload = {
+        messages: messagesToShare,
+        metadata: metadata,
+      }
+
+      if (conversationId) {
+        payload.parent_id = conversationId
+      }
+
+      const response = await fetch(
+        process.env.REACT_APP_API_URL + '/api/chat/conversations',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      )
+
+      if (!response.ok) {
+        let errorMessage = 'Failed to share conversation'
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.message || errorMessage
+        } catch (e) {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage
+        }
+        throw new Error(errorMessage)
+      }
+
+      const data = await response.json()
+
+      // Construct the shareable URL from the conversation ID
+      const url = `${window.location.origin}/sippy-ng/chat/${data.id}`
+      setSharedUrl(url)
+      setShareDialogOpen(true)
+
+      // Also copy to clipboard
+      try {
+        await navigator.clipboard.writeText(url)
+      } catch (err) {
+        console.warn('Failed to copy to clipboard:', err)
+        // Continue anyway, user can copy from dialog
+      }
+    } catch (err) {
+      console.error('Error sharing conversation:', err)
+      setShareSnackbar({
+        open: true,
+        message: err.message || 'Failed to share conversation',
+        severity: 'error',
+      })
+    } finally {
+      setShareLoading(false)
+    }
+  }
 
   const getContextDisplay = () => {
     if (!pageContext || !pageContext.page) {
@@ -210,6 +449,16 @@ export default function ChatInterface({
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
     return pageName
+  }
+
+  if (loadingShared) {
+    return (
+      <Paper className={classes.fullPageRoot}>
+        <div className={classes.loadingContainer}>
+          <CircularProgress />
+        </div>
+      </Paper>
+    )
   }
 
   const renderEmptyState = () => (
@@ -299,7 +548,7 @@ export default function ChatInterface({
                 minWidth: 0,
               }}
             >
-              {mode === 'fullPage' ? 'Chat Agent' : 'Chat Assistant'}
+              Chat Assistant
             </Typography>
             <Typography
               className={classes.aiNotice}
@@ -314,9 +563,26 @@ export default function ChatInterface({
 
         <div className={classes.headerActions}>
           <Tooltip title="New chat">
-            <IconButton size="small" onClick={handleClearMessages}>
+            <IconButton size="small" onClick={handleClearMessagesWrapper}>
               <AddCircleOutlineIcon />
             </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Share conversation">
+            <span>
+              <IconButton
+                size="small"
+                onClick={handleShareConversation}
+                disabled={
+                  shareLoading ||
+                  filteredMessages.length === 0 ||
+                  isTyping ||
+                  currentThinking
+                }
+              >
+                {shareLoading ? <CircularProgress size={20} /> : <ShareIcon />}
+              </IconButton>
+            </span>
           </Tooltip>
 
           <Tooltip title="Help">
@@ -372,7 +638,7 @@ export default function ChatInterface({
 
       <div className={classes.inputContainer}>
         <ChatInput
-          onSendMessage={handleSendMessage}
+          onSendMessage={handleSendMessageWrapper}
           disabled={!isConnected}
           isConnected={isConnected}
           isTyping={isTyping}
@@ -411,12 +677,98 @@ export default function ChatInterface({
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onSettingsChange={handleSettingsChange}
-        onClearMessages={handleClearMessages}
+        onClearMessages={handleClearMessagesWrapper}
         onReconnect={handleReconnect}
         connectionState={connectionState}
         messageCount={messages.length}
         isConnected={isConnected}
       />
+
+      <Dialog
+        open={shareDialogOpen}
+        onClose={() => setShareDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle className={classes.shareDialogTitle}>
+          <Typography variant="h6" component="span">
+            Conversation Shared
+          </Typography>
+          <IconButton
+            edge="end"
+            onClick={() => setShareDialogOpen(false)}
+            aria-label="close"
+            size="small"
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent className={classes.shareDialogContent}>
+          <DialogContentText>
+            Your conversation has been shared! Anyone with this link can view
+            and continue the conversation.
+          </DialogContentText>
+          <DialogContentText sx={{ mt: 1, fontStyle: 'italic' }}>
+            Note: Shared conversations will be available for up to 90 days.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Shareable Link"
+            fullWidth
+            variant="outlined"
+            value={sharedUrl}
+            InputProps={{
+              readOnly: true,
+            }}
+            className={classes.shareTextField}
+            onClick={(e) => e.target.select()}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(sharedUrl)
+                setShareSnackbar({
+                  open: true,
+                  message: 'Link copied to clipboard!',
+                  severity: 'success',
+                })
+              } catch (err) {
+                setShareSnackbar({
+                  open: true,
+                  message: 'Failed to copy to clipboard',
+                  severity: 'error',
+                })
+              }
+            }}
+            startIcon={<ContentCopyIcon />}
+            variant="contained"
+            className={classes.copyButton}
+          >
+            Copy Link
+          </Button>
+          <Button onClick={() => setShareDialogOpen(false)} variant="outlined">
+            Close
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={shareSnackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setShareSnackbar({ ...shareSnackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={() => setShareSnackbar({ ...shareSnackbar, open: false })}
+          severity={shareSnackbar.severity}
+          sx={{ width: '100%' }}
+        >
+          {shareSnackbar.message}
+        </Alert>
+      </Snackbar>
     </>
   )
 
@@ -453,4 +805,5 @@ ChatInterface.propTypes = {
     instructions: PropTypes.string,
     suggestedQuestions: PropTypes.arrayOf(PropTypes.string),
   }),
+  conversationId: PropTypes.string,
 }

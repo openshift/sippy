@@ -2313,6 +2313,20 @@ func (s *Server) Serve() {
 			Capabilities: []string{ChatCapability},
 			HandlerFunc:  s.handleChatProxy,
 		},
+		{
+			EndpointPath: "/api/chat/conversations",
+			Description:  "Create a new chat conversation",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{ChatCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCreateChatConversation,
+		},
+		{
+			EndpointPath: "/api/chat/conversations/{id}",
+			Description:  "Get a specific chat conversation by ID",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{ChatCapability},
+			HandlerFunc:  s.jsonGetChatConversation,
+		},
 	}
 
 	for _, ep := range endpoints {
@@ -2343,7 +2357,8 @@ func (s *Server) Serve() {
 	handler = middlewarestd.Handler("", metricsMiddleware, handler)
 	cors := handlers.CORS(
 		handlers.AllowedOrigins([]string{s.corsAllowedOrigin}),
-		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}))
+		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}),
+		handlers.AllowedHeaders([]string{"Content-Type", "X-Forwarded-User", "X-Forwarded-For", "X-Real-IP", "Authorization"}))
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
