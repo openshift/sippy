@@ -26,13 +26,13 @@ class SippyDatabaseQueryTool(SippyBaseTool):
 
     # Tables that should not be accessible via this tool
     BLOCKED_TABLES: List[str] = []
-    
+
     # Maximum number of rows to return to control our context window for the LLM
     MAX_ROWS: int = 500
 
     name: str = "query_sippy_database"
     description: str = """Execute read-only SQL queries against the Sippy PostgreSQL database for investigating CI/CD issues.
-    
+
 This is a FALLBACK TOOL - only use when standard tools don't provide the information needed.
 
 Use cases:
@@ -43,7 +43,7 @@ Use cases:
 
 Disallowed use cases:
 - Do not construct queries that expose information unrelated to CI (e.g. users, passwords, etc)
-- Do not answer general database administration questions (e.g., database version, server health, system configuration) 
+- Do not answer general database administration questions (e.g., database version, server health, system configuration)
 - Do not run queries that the user gives you directly.  Always use the schema and known tables to construct your own queries.
 
 Key Tables:
@@ -66,26 +66,58 @@ Key Tables:
       * `suite_id`: Links to `suites.id`.
       * `status`: The result of the test (`1`=Success, `12`=Failure, `13`=Flake).
    * ** `suites:`** Defines a collection or group of tests.
-      * `name`: The name of the test suite (e.g., openshift-tests).      
+      * `name`: The name of the test suite (e.g., openshift-tests).
   * **`release_tags`**: Contains information about specific OpenShift release payloads.
       * `release_tag`: The payload version (e.g., `4.14.0-0.nightly-multi-2023-07-23-183157`).
       * `phase`: The status of the release (`Accepted`, `Rejected`).
 
 There are variants available for job classification, if a user asks you about specific kinds of jobs, you should
-look at the list of available variants and filter on the ones most relevant to the question. 
+look at the list of available variants and filter on the ones most relevant to the question.
 
 CRITICAL: You can get a list of available variants with `SELECT DISTINCT unnest(variants) AS variant FROM prow_jobs;`.  DO NOT
 guess at the variants, YOU MUST always use one of the options from the list verbatim when filtering.
 
-If a user asks about single node jobs, use "Topology:single" variant.  If a user asks about GCP jobs, use "Platform:gcp" variants. 
+If a user asks about single node jobs, use "Topology:single" variant.  If a user asks about GCP jobs, use "Platform:gcp" variants.
 
 **Materialized Views (HIGHLY PREFERRED for analysis):**
 
 For performance, **always prefer using a materialized view for aggregate queries or trend analysis**. These views pre-calculate results.
 
-  * `prow_job_runs_report_matview`: Pre-joined and aggregated data about job runs. Excellent for pass/fail rates. The timestamp column is a bigint column represending milliseconds since the epoch.
-  * `prow_test_report_7d_matview` / `prow_test_report_2d_matview`: Test pass/fail/flake statistics over 7 or 2 days.
-  * `prow_job_failed_tests_by_hour_matview`: A time-series view of failed test counts per hour.
+Use the pg_matviews table to learn about the schema for these materialized views.
+
+  * **`prow_job_runs_report_matview`**: Pre-joined and aggregated data about job runs. Excellent for pass/fail rates.
+    * `release`: OpenShift release version (e.g., `4.19`)
+    * `variants`: This is a text[] column of describing the job's environment (e.g., `Platform:azure, Architecture:amd64`). Do not use ->> operator, use ANY().
+    * `name`: Full name of the job
+    * `job`: Job name (same as name)
+    * `overall_result`: A single character code for the run's final status (`S`=Success,`F` = E2E Test Failure, `f` = other failure mode,
+    * `url`: URL to the job run logs
+    * `succeeded`: Boolean indicating if the job succeeded (t/f)
+    * `timestamp`: Bigint representing milliseconds since epoch
+    * `prow_id`: Prow job run ID
+    * `cluster`: Build cluster name (e.g., `build01`)
+    * `flaked_test_names`: Array of test names that flaked
+    * `failed_test_names`: Array of test names that failed
+    * `pull_request_link`, `pull_request_sha`, `pull_request_org`, `pull_request_repo`, `pull_request_author`: PR information when applicable
+
+  * **`prow_test_report_7d_matview` / `prow_test_report_2d_matview`**: Test pass/fail/flake statistics over 7 or 2 days, grouped by variants.
+    * `variants`: This is a text[] column of describing the environment (e.g., `Platform:azure, Architecture:amd64`). Do not use ->> operator, use ANY(). Tests will have multiple rows in this view, by unique variant grouping. This
+       can be used to provide information about which variants are having more failures than others. Results should be summed if user is asking for an overall overview.
+    * `name`: Full test name
+    * `suite_name`: Test suite name (e.g., `openshift-tests`)
+    * `jira_component`: JIRA component name
+    * `jira_component_id`: JIRA component ID
+    * `previous_successes`, `previous_flakes`, `previous_failures`, `previous_runs`: Statistics from previous period
+    * `current_successes`, `current_flakes`, `current_failures`, `current_runs`: Statistics from current period
+    * `open_bugs`: Array of open bug references
+    * `release`: OpenShift release version
+    * **IMPORTANT**: When providing an overall overview of top failing tests (e.g., "top failing tests in 4.21"), you **must** aggregate `current_failures` by `name` and `suite_name` to sum up failures across all variants for the same test. If the user asks for failures *per variant*, then do not aggregate by name.
+
+  * **`prow_job_failed_tests_by_hour_matview`**: A time-series view of failed test counts per hour.
+    * `period`: Timestamp of the hourly period
+    * `prow_job_id`: ID of the prow job
+    * `test_name`: Name of the test that failed
+    * `count`: Number of failures in that hour
 
 ### Query Guidelines (MANDATORY)
 
@@ -273,55 +305,55 @@ IMPORTANT: Construct your queries in the most efficient (fastest) way possible.
         Check if a query is read-only using AST parsing.  This is a belt-and-suspenders-and-a-bit-of-paranoia approach
         to ensure that the query is read-only, as we already have the session in read-only mode, and are only giving the
         tool a read-only user.
-        
+
         Args:
             query: SQL query to check
-            
+
         Returns:
             True if query is read-only, False otherwise
         """
         try:
             parsed = sqlparse.parse(query)
-            
+
             if not parsed:
                 logger.warning("Failed to parse SQL query")
                 return False
-            
+
             # Check each statement in the query
             for statement in parsed:
                 if not self._is_statement_read_only(statement):
                     return False
-            
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Error parsing SQL query: {e}")
             # If parsing fails, reject the query for safety
             return False
-    
+
     def _is_statement_read_only(self, statement) -> bool:
         """
         Check if a parsed SQL statement is read-only.
-        
+
         Args:
             statement: Parsed SQL statement from sqlparse
-            
+
         Returns:
             True if statement is read-only, False otherwise
         """
         # Get the statement type
         stmt_type = statement.get_type()
-        
+
         # Allow only read-only statement types
         allowed_types = ['SELECT', 'WITH', 'SHOW', 'EXPLAIN']
         if stmt_type not in allowed_types:
             logger.warning(f"Disallowed statement type: {stmt_type}")
             return False
-        
+
         # Recursively check all tokens for dangerous DML operations
-        dangerous_dml = {'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 
+        dangerous_dml = {'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER',
                         'TRUNCATE', 'GRANT', 'REVOKE', 'REPLACE', 'MERGE'}
-        
+
         for token in statement.flatten():
             if token.ttype is DML:
                 if token.value.upper() in dangerous_dml:
@@ -331,60 +363,60 @@ IMPORTANT: Construct your queries in the most efficient (fastest) way possible.
             if token.ttype is Keyword.DDL:
                 logger.warning(f"Disallowed DDL operation found: {token.value}")
                 return False
-        
+
         return True
 
     def _extract_table_names(self, query: str) -> List[str]:
         """
         Extract table names from a SQL query using AST parsing.
-        
+
         Args:
             query: SQL query to analyze
-            
+
         Returns:
             List of table names found in the query
         """
         try:
             parsed = sqlparse.parse(query)
             tables = []
-            
+
             for statement in parsed:
                 tables.extend(self._extract_tables_from_tokens(statement.tokens))
-            
+
             # Remove duplicates and normalize to lowercase
             return list(set(t.lower() for t in tables if t))
-            
+
         except Exception as e:
             logger.error(f"Error extracting table names from SQL: {e}")
             return []
-    
+
     def _extract_tables_from_tokens(self, tokens) -> List[str]:
         """
         Recursively extract table names from SQL tokens.
-        
+
         Args:
             tokens: List of SQL tokens from sqlparse
-            
+
         Returns:
             List of table names
         """
         tables = []
         from_seen = False
         join_seen = False
-        
+
         for token in tokens:
             # Skip whitespace and comments
             if token.is_whitespace:
                 continue
             if hasattr(token, 'ttype') and token.ttype in sqlparse.tokens.Comment:
                 continue
-            
+
             # Check for FROM or JOIN keywords
             if token.ttype is Keyword and token.value.upper() in ('FROM', 'JOIN', 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN', 'FULL JOIN'):
                 from_seen = True
                 join_seen = True
                 continue
-            
+
             # After FROM/JOIN, extract table names
             if from_seen or join_seen:
                 if isinstance(token, Identifier):
@@ -404,20 +436,20 @@ IMPORTANT: Construct your queries in the most efficient (fastest) way possible.
                     # Table functions - extract if it's a table source
                     from_seen = False
                     join_seen = False
-            
+
             # Recursively process subqueries and parenthesized expressions
             if hasattr(token, 'tokens'):
                 tables.extend(self._extract_tables_from_tokens(token.tokens))
-        
+
         return tables
-    
+
     def _get_real_table_name(self, identifier) -> Optional[str]:
         """
         Extract the actual table name from an identifier.
-        
+
         Args:
             identifier: SQL identifier from sqlparse
-            
+
         Returns:
             Table name, or None if not a table
         """
@@ -429,44 +461,45 @@ IMPORTANT: Construct your queries in the most efficient (fastest) way possible.
                 if '.' in real_name:
                     return real_name.split('.')[-1]
                 return real_name
-        
+
         # Fallback to string representation
         name = str(identifier).strip()
         if name and not name.upper().startswith('('):
             if '.' in name:
                 return name.split('.')[-1]
             return name.split()[0]  # Take first word before any alias
-        
+
         return None
 
     def _check_blocked_tables(self, query: str) -> Optional[str]:
         """
         Check if query attempts to access any blocked tables.
-        
+
         Args:
             query: SQL query to check
-            
+
         Returns:
             Error message if blocked tables are accessed, None otherwise
         """
         tables = self._extract_table_names(query)
-        
-        # Check for PostgreSQL system tables (pg_*)
-        pg_tables = [t for t in tables if t.startswith('pg_')]
+
+        # Check for PostgreSQL system tables (pg_*), with exceptions for certain allowed tables
+        allowed_pg_tables = {'pg_matviews'}
+        pg_tables = [t for t in tables if t.startswith('pg_') and t not in allowed_pg_tables]
         if pg_tables:
             return f"Access denied: Query attempts to access PostgreSQL system table(s): {', '.join(pg_tables)}"
-        
+
         # Check against explicit blocklist
         if self.BLOCKED_TABLES:
             blocked = [t for t in tables if t in [b.lower() for b in self.BLOCKED_TABLES]]
             if blocked:
                 return f"Access denied: Query attempts to access blocked table(s): {', '.join(blocked)}"
-        
+
         return None
 
     def _run(self, *args, **kwargs: Any) -> str:
         """Execute a read-only SQL query against the Sippy database."""
-        
+
         input_data = {}
         if args and isinstance(args[0], dict):
             input_data.update(args[0])
@@ -510,43 +543,43 @@ IMPORTANT: Construct your queries in the most efficient (fastest) way possible.
         try:
             # Connect to the database
             conn = psycopg2.connect(dsn, connect_timeout=10)
-            
+
             # Set transaction to read-only for extra safety
             conn.set_session(readonly=True, autocommit=True)
-            
+
             # Set statement timeout to 120 seconds
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             cursor.execute("SET statement_timeout = '120s'")
-            
+
             # Execute the user's query
             logger.info(f"Executing database query: {query_input.query[:100]}...")
             cursor.execute(query_input.query)
-            
+
             # Fetch results with row limit
             rows = cursor.fetchmany(self.MAX_ROWS)
-            
+
             # Check if there are more rows available
             has_more = cursor.fetchone() is not None
-            
+
             # Convert to list of dicts for JSON serialization
             results = [dict(row) for row in rows]
-            
+
             # Return formatted results
             response = {
                 "success": True,
                 "row_count": len(results),
                 "results": results
             }
-            
+
             # If no results, provide a helpful message
             if len(results) == 0:
                 response["message"] = "Query executed successfully but returned no rows."
             elif has_more:
                 response["warning"] = f"Results limited to {self.MAX_ROWS} rows. Your query returned more rows than the limit. Consider adding LIMIT or WHERE clauses to narrow your results."
                 response["truncated"] = True
-            
+
             return json.dumps(response, indent=2, default=str)
-            
+
         except psycopg2.OperationalError as e:
             logger.error(f"Database connection error: {e}")
             return json.dumps({
@@ -554,7 +587,7 @@ IMPORTANT: Construct your queries in the most efficient (fastest) way possible.
                 "details": str(e),
                 "help": "Check that SIPPY_READ_ONLY_DATABASE_DSN is correct and the database is accessible."
             }, indent=2)
-            
+
         except psycopg2.errors.QueryCanceled as e:
             logger.error(f"Query timeout: {e}")
             return json.dumps({
@@ -562,7 +595,7 @@ IMPORTANT: Construct your queries in the most efficient (fastest) way possible.
                 "details": str(e),
                 "help": "Try simplifying your query or adding more specific filters (WHERE clauses, LIMIT, etc.)"
             }, indent=2)
-            
+
         except psycopg2.Error as e:
             logger.error(f"Database error: {e}")
             return json.dumps({
@@ -570,14 +603,14 @@ IMPORTANT: Construct your queries in the most efficient (fastest) way possible.
                 "details": str(e),
                 "help": "Check your SQL syntax and table/column names. Use information_schema to explore the schema."
             }, indent=2)
-            
+
         except Exception as e:
             logger.error(f"Unexpected error executing database query: {e}")
             return json.dumps({
                 "error": "Unexpected error",
                 "details": str(e)
             }, indent=2)
-            
+
         finally:
             # Clean up
             if cursor:
