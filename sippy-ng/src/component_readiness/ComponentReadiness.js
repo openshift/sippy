@@ -544,7 +544,7 @@ export default function ComponentReadiness(props) {
             path="main"
             element={
               <div className="cr-view">
-                <Sidebar />
+                <Sidebar filterByCapabilities={true} />
                 <CompReadyPageTitle
                   pageTitle={pageTitle}
                   apiCallStr={showValuesForReport()}

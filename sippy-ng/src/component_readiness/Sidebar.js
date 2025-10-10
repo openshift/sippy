@@ -11,10 +11,9 @@ import MenuIcon from '@mui/icons-material/Menu'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 
-export default function Sidebar(props) {
+export default function Sidebar({ filterByCapabilities, isTestDetails }) {
   const classes = useContext(ComponentReadinessStyleContext)
   const theme = useTheme()
-  const { isTestDetails } = props
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const handleDrawerOpen = () => {
     setDrawerOpen(true)
@@ -55,12 +54,16 @@ export default function Sidebar(props) {
             )}
           </IconButton>
         </div>
-        <CompReadyMainInputs isTestDetails={isTestDetails} />
+        <CompReadyMainInputs
+          isTestDetails={isTestDetails}
+          filterByCapabilities={filterByCapabilities}
+        />
       </Drawer>
     </div>
   )
 }
 
 Sidebar.propTypes = {
+  filterByCapabilities: PropTypes.bool, // only makes sense in CR when not already drilled down to a single capability
   isTestDetails: PropTypes.bool,
 }

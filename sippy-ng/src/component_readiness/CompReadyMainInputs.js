@@ -10,6 +10,7 @@ import IncludeVariantCheckBoxList from './IncludeVariantCheckboxList'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
+import SidebarTestFilters from './SidebarTestFilters'
 import Tooltip from '@mui/material/Tooltip'
 import ViewPicker from './ViewPicker'
 
@@ -62,6 +63,10 @@ export default function CompReadyMainInputs(props) {
             variantGroupName={variant}
           />
         ))}
+      <SidebarTestFilters
+        headerName="Test Options"
+        filterByCapabilities={props.filterByCapabilities}
+      />
       <AdvancedOptions
         headerName="Advanced"
         confidence={varsContext.confidence}
@@ -178,5 +183,6 @@ ReportButton.propTypes = { handler: PropTypes.func }
 
 // component and environment may be null so they are not required
 CompReadyMainInputs.propTypes = {
+  filterByCapabilities: PropTypes.bool,
   isTestDetails: PropTypes.bool,
 }
