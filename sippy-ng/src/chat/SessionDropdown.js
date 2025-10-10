@@ -18,12 +18,10 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import {
-  formatSessionTime,
-  getSessionIconName,
-  getSessionTitle,
-} from './useChatSessions'
+import { getSessionIconName, getSessionTitle } from './useChatSessions'
 import { makeStyles } from '@mui/styles'
+import { MESSAGE_TYPES } from './chatUtils'
+import { relativeTime } from '../helpers'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 
@@ -177,7 +175,21 @@ export default function SessionDropdown({
         ) : (
           sortedSessions.map((session) => {
             const isActive = session.id === activeSessionId
-            const messageCount = session.messages?.length || 0
+
+            // Count only user and assistant messages, not thinking steps or system messages
+            const messages = session.messages || []
+            const countableMessages = messages.filter(
+              (msg) =>
+                msg.type === MESSAGE_TYPES.USER ||
+                msg.type === MESSAGE_TYPES.ASSISTANT
+            )
+            const messageCount = countableMessages.length
+
+            // Get the timestamp of the last message, or fall back to updatedAt
+            const lastMessageTime =
+              messages.length > 0
+                ? messages[messages.length - 1].timestamp
+                : session.updatedAt
 
             return (
               <MenuItem
@@ -199,7 +211,9 @@ export default function SessionDropdown({
                     }}
                   />
                   <Box className={classes.sessionMeta}>
-                    <span>{formatSessionTime(session.updatedAt)}</span>
+                    <span>
+                      {relativeTime(new Date(lastMessageTime), new Date())}
+                    </span>
                     <span>•</span>
                     <span>
                       {messageCount} msg{messageCount !== 1 ? 's' : ''}

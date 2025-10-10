@@ -2,6 +2,7 @@ import { Alert, Avatar, Chip, IconButton, Paper, Tooltip } from '@mui/material'
 import {
   ContentCopy as ContentCopyIcon,
   Error as ErrorIcon,
+  Link as LinkIcon,
   OpenInNew as OpenInNewIcon,
   Person as PersonIcon,
   SmartToy as SmartToyIcon,
@@ -394,12 +395,18 @@ export default function ChatMessage({
         {message.content}
         {message.conversationId && (
           <>
-            {' • '}
+            {' '}
             <Link
               to={`/chat/${message.conversationId}`}
-              style={{ color: 'inherit', textDecoration: 'underline' }}
+              style={{
+                color: 'inherit',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                verticalAlign: 'middle',
+              }}
             >
-              view original
+              <LinkIcon fontSize="small" />
             </Link>
           </>
         )}

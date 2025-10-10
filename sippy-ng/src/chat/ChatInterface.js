@@ -31,6 +31,7 @@ import {
 } from '@mui/icons-material'
 import { createMessage, MESSAGE_TYPES } from './chatUtils'
 import { makeStyles } from '@mui/styles'
+import { relativeTime } from '../helpers'
 import { SESSION_TYPES, useChatSessions } from './useChatSessions'
 import { useChatInterface } from './useChatInterface'
 import { useGlobalChat } from './useGlobalChat'
@@ -264,6 +265,42 @@ export default function ChatInterface({
   // Access the underlying WebSocket to manipulate messages directly
   const globalChat = useGlobalChat()
 
+  // Listen for "Ask Sippy" requests that should create a new session
+  useEffect(() => {
+    if (globalChat.shouldCreateNewSession) {
+      // Find or create an empty session
+      const emptySession = sessions.find(
+        (s) =>
+          s.type === SESSION_TYPES.OWN &&
+          (!s.messages || s.messages.length === 0) &&
+          !s.sharedId
+      )
+
+      if (emptySession && emptySession.id !== activeSessionId) {
+        // Switch to existing empty session
+        switchSession(emptySession.id)
+      } else if (!emptySession) {
+        // No empty session exists, create a new one
+        createSession()
+      }
+      // If current session is already empty, stay on it
+
+      // Clear messages in the UI
+      handleClearMessages()
+
+      // Reset the flag
+      globalChat.setShouldCreateNewSession(false)
+    }
+  }, [
+    globalChat.shouldCreateNewSession,
+    sessions,
+    activeSessionId,
+    switchSession,
+    createSession,
+    handleClearMessages,
+    globalChat,
+  ])
+
   // Set page title for full page mode
   useEffect(() => {
     if (mode === 'fullPage') {
@@ -299,6 +336,12 @@ export default function ChatInterface({
         // Use setTimeout to ensure the clear happens before adding messages
         setTimeout(() => {
           globalChat.addMessages(sessionMessages)
+          // Scroll to bottom instantly after loading (no animation to avoid double scroll)
+          setTimeout(() => {
+            if (messagesEndRef.current) {
+              messagesEndRef.current.scrollIntoView({ behavior: 'instant' })
+            }
+          }, 50)
         }, 0)
       }
     }
@@ -359,9 +402,10 @@ export default function ChatInterface({
         // Add a system message to mark this shared conversation
         const systemMessage = createMessage(
           MESSAGE_TYPES.SYSTEM,
-          `Shared by ${data.user} • ${new Date(
-            data.created_at
-          ).toLocaleString()}`,
+          `Shared by ${data.user} ${relativeTime(
+            new Date(data.created_at),
+            new Date()
+          )}`,
           {
             id: 'system_' + conversationId,
             conversationId: conversationId,
