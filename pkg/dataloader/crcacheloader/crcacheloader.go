@@ -162,7 +162,7 @@ func (l *ComponentReadinessCacheLoader) primeCacheForView(ctx context.Context, v
 	generator.ReqOptions.CacheOption.SkipCacheWrites = true
 	tdReports, errs := generator.GenerateTestDetailsReportMultiTest(ctx)
 	// If we have errors, we'll log them, but we'll still continue to cache any test details we successfully retrieved
-	strErrors := make([]string, len(errs))
+	strErrors := make([]string, 0, len(errs))
 	if len(errs) > 0 {
 		strErrors = append(strErrors, "multi test details report generation encountered errors.")
 		for _, err := range errs {
