@@ -55,7 +55,7 @@ export default function StarRating({ messageId, onRate }) {
   const [hoveredStar, setHoveredStar] = useState(null)
   const [selectedRating, setSelectedRating] = useState(null)
   const [showThanks, setShowThanks] = useState(false)
-  const [isVisible, setIsVisible] = useState(true)
+  const [fadeOut, setFadeOut] = useState(false)
 
   const handleStarClick = (rating) => {
     setSelectedRating(rating)
@@ -64,21 +64,16 @@ export default function StarRating({ messageId, onRate }) {
       onRate(messageId, rating)
     }
 
-    // Hide the entire component after showing thanks for 2 seconds
+    // Start fade out after 2 seconds
     setTimeout(() => {
-      setIsVisible(false)
+      setFadeOut(true)
     }, 2000)
-  }
-
-  // Don't render anything if we've hidden the component
-  if (!isVisible) {
-    return null
   }
 
   // Show thank you message after rating
   if (showThanks) {
     return (
-      <Fade in timeout={300}>
+      <Fade in={!fadeOut} timeout={500}>
         <Box className={classes.ratingContainer}>
           <Typography className={classes.thankYouMessage}>
             Thanks for your feedback!
