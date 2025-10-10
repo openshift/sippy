@@ -517,8 +517,10 @@ type fallbackTestQueryGeneratorCacheKey struct {
 	BaseEnd     time.Time
 	// IgnoreDisruption is the only field within AdvancedOption that is used here
 	IgnoreDisruption bool
-	// VariantDBGroupBy is the only field within VariantOption that is used here
+	IncludeVariants  map[string][]string
 	VariantDBGroupBy sets.String
+	// if we ever needed fallback on cross-compare views we should include fields for that,
+	// but that's not likely to ever make sense.
 }
 
 // getCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -530,21 +532,19 @@ func (f *fallbackTestQueryGenerator) getCacheKey() fallbackTestQueryGeneratorCac
 		BaseStart:        f.BaseStart,
 		BaseEnd:          f.BaseEnd,
 		IgnoreDisruption: f.ReqOptions.AdvancedOption.IgnoreDisruption,
+		IncludeVariants:  f.ReqOptions.VariantOption.IncludeVariants,
 		VariantDBGroupBy: f.ReqOptions.VariantOption.DBGroupBy,
 	}
 }
 
 func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (bq.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := query.BuildComponentReportQuery(
-		f.client,
-		f.ReqOptions,
-		f.allVariants,
-		nil, // explicitly pass a nil map for includeVariants as it should not be used for fallback queries
-		query.DefaultJunitTable, false, true)
+		f.client, f.ReqOptions, f.allVariants, f.ReqOptions.VariantOption.IncludeVariants,
+		query.DefaultJunitTable, false)
 	before := time.Now()
 	log.Infof("Starting Fallback (%s) QueryTestStatus", f.BaseRelease)
 	errs := []error{}
-	baseString := commonQuery + ` AND branch = @BaseRelease`
+	baseString := commonQuery + ` AND jv_Release.variant_value = @BaseRelease`
 	baseQuery := f.client.BQ.Query(baseString + groupByQuery)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, queryParameters...)
