@@ -38,7 +38,7 @@ import ChatInput from './ChatInput'
 import ChatMessage from './ChatMessage'
 import ChatSettings from './ChatSettings'
 import PropTypes from 'prop-types'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import SippyLogo from '../components/SippyLogo'
 import ThinkingStep from './ThinkingStep'
 
@@ -220,6 +220,7 @@ export default function ChatInterface({
   })
   const [loadingShared, setLoadingShared] = useState(!!conversationId)
   const [initialMessageCount, setInitialMessageCount] = useState(0)
+  const loadedConversationRef = useRef(null) // Track which conversation we've loaded
 
   // Use shared chat interface logic
   const {
@@ -262,11 +263,19 @@ export default function ChatInterface({
   useEffect(() => {
     if (!conversationId) return
 
+    // Don't fetch if we've already loaded this conversation
+    if (loadedConversationRef.current === conversationId) {
+      return
+    }
+
+    const abortController = new AbortController()
+
     const fetchConversation = async () => {
       try {
         setLoadingShared(true)
         const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/api/chat/conversations/${conversationId}`
+          `${process.env.REACT_APP_API_URL}/api/chat/conversations/${conversationId}`,
+          { signal: abortController.signal }
         )
 
         if (!response.ok) {
@@ -308,7 +317,14 @@ export default function ChatInterface({
         // Set the shared URL so clicking share again doesn't create a duplicate
         const url = `${window.location.origin}/sippy-ng/chat/${conversationId}`
         setSharedUrl(url)
+
+        // Mark this conversation as loaded to prevent re-fetching
+        loadedConversationRef.current = conversationId
       } catch (err) {
+        // Don't show error for aborted requests
+        if (err.name === 'AbortError') {
+          return
+        }
         console.error('Error loading shared conversation:', err)
         setShareSnackbar({
           open: true,
@@ -321,11 +337,20 @@ export default function ChatInterface({
     }
 
     fetchConversation()
+
+    // Cleanup: abort fetch if component unmounts or conversationId changes
+    return () => {
+      abortController.abort()
+    }
   }, [conversationId])
 
   const handleSendMessageWrapper = (content) => {
-    // Update URL bar when first message is sent on a shared conversation
-    if (conversationId && messages.length === initialMessageCount) {
+    // Update URL bar when first message is sent on a shared conversation (only in fullPage mode)
+    if (
+      mode === 'fullPage' &&
+      conversationId &&
+      messages.length === initialMessageCount
+    ) {
       window.history.pushState(null, '', '/sippy-ng/chat')
     }
     // Clear cached share URL since conversation has changed
@@ -334,8 +359,8 @@ export default function ChatInterface({
   }
 
   const handleClearMessagesWrapper = () => {
-    // Clear URL if viewing a shared conversation
-    if (conversationId) {
+    // Clear URL if viewing a shared conversation (only in fullPage mode)
+    if (mode === 'fullPage' && conversationId) {
       window.history.pushState(null, '', '/sippy-ng/chat')
     }
     setSharedUrl('')

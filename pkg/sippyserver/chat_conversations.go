@@ -14,6 +14,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+const (
+	// MaxConversationSizeBytes is the maximum size of a conversation's messages in bytes (4MB)
+	MaxConversationSizeBytes = 4194304
+)
+
 // CreateChatConversationRequest is the request payload for creating a new chat conversation
 type CreateChatConversationRequest struct {
 	Messages []map[string]interface{} `json:"messages"`
@@ -55,6 +60,12 @@ func (s *Server) jsonCreateChatConversation(w http.ResponseWriter, req *http.Req
 	if err != nil {
 		log.WithError(err).Error("error marshaling messages")
 		failureResponse(w, http.StatusInternalServerError, "Failed to process messages")
+		return
+	}
+
+	// Reject payloads larger than MaxConversationSizeBytes to prevent abuse
+	if len(messagesJSON) > MaxConversationSizeBytes {
+		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("Conversation too large (maximum %d bytes)", MaxConversationSizeBytes))
 		return
 	}
 
