@@ -997,14 +997,6 @@ function TestTable(props) {
     }
   }
 
-  if (isSearching) {
-    return (
-      <Backdrop className={gridClasses.backdrop} open={true}>
-        <CircularProgress color="inherit" />
-      </Backdrop>
-    )
-  }
-
   const addFilters = (filter) => {
     const currentFilters = filterModel.items.filter((item) => item.value !== '')
 
@@ -1037,6 +1029,7 @@ function TestTable(props) {
     /* eslint-disable react/prop-types */
     <Fragment>
       <StyledDataGrid
+        loading={isSearching}
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
         rows={rows}
         columns={gridView.columns}
