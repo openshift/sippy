@@ -15,6 +15,7 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
   )
   const [currentThinking, setCurrentThinking] = useState(null)
   const [error, setError] = useState(null)
+  const [sessionRated, setSessionRated] = useState(false)
   const [isTyping, setIsTyping] = useState(false)
 
   const wsRef = useRef(null)
@@ -259,6 +260,7 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
     setCurrentThinking(null)
     setError(null)
     setIsTyping(false)
+    setSessionRated(false)
     currentIterationRef.current = 0 // Reset iteration counter
   }, [])
 
@@ -286,6 +288,8 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
     currentThinking,
     error,
     isTyping,
+    sessionRated,
+    setSessionRated,
     sendMessage,
     clearMessages,
     connect,
