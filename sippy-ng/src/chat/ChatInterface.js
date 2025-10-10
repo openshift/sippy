@@ -27,6 +27,7 @@ import ChatSettings from './ChatSettings'
 import PropTypes from 'prop-types'
 import React, { useEffect, useState } from 'react'
 import SippyLogo from '../components/SippyLogo'
+import StarRating from './StarRating'
 import ThinkingStep from './ThinkingStep'
 
 const DRAWER_HEIGHT = 600
@@ -151,6 +152,16 @@ const useStyles = makeStyles((theme) => ({
   inputContainer: {
     flexShrink: 0,
   },
+  sessionRatingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    padding: theme.spacing(1, 2),
+    borderTop: `1px solid ${theme.palette.divider}`,
+    backgroundColor:
+      theme.palette.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.02)'
+        : 'rgba(0, 0, 0, 0.02)',
+  },
 }))
 
 /**
@@ -179,6 +190,8 @@ export default function ChatInterface({
     error,
     isTyping,
     isConnected,
+    sessionRated,
+    setSessionRated,
     personas,
     messagesEndRef,
     messagesListRef,
@@ -191,10 +204,92 @@ export default function ChatInterface({
     getCurrentPersonaTooltip,
   } = useChatInterface()
 
+  // Check if there are any assistant messages to show rating
+  const hasAssistantMessages = filteredMessages.some(
+    (msg) => msg.type === MESSAGE_TYPES.ASSISTANT
+  )
+
+  const handleSessionRate = (messageId, rating) => {
+    // Calculate session metrics
+    const userMessages = messages.filter(
+      (msg) => msg.type === MESSAGE_TYPES.USER
+    )
+    const assistantMessages = messages.filter(
+      (msg) => msg.type === MESSAGE_TYPES.ASSISTANT
+    )
+    const totalMessages = userMessages.length + assistantMessages.length
+
+    // Get all thinking steps
+    const thinkingSteps = messages.filter(
+      (msg) => msg.type === MESSAGE_TYPES.THINKING_STEP
+    )
+
+    // Count LLM thoughts (thinking steps with action = "thinking")
+    const llmThoughts = thinkingSteps.filter(
+      (msg) => msg.data?.action === 'thinking'
+    ).length
+
+    // Count tool calls (thinking steps with action that is NOT "thinking")
+    const toolCalls = thinkingSteps.filter(
+      (msg) => msg.data?.action && msg.data.action !== 'thinking'
+    ).length
+
+    // Calculate total size of interaction in bytes
+    const interactionSize = new Blob([JSON.stringify(messages)]).size
+
+    // Create rating payload for backend
+    const payload = {
+      rating: rating,
+      metadata: {
+        totalMessages: totalMessages,
+        userMessages: userMessages.length,
+        assistantMessages: assistantMessages.length,
+        toolCalls: toolCalls,
+        llmThoughts: llmThoughts,
+        totalSizeBytes: interactionSize,
+        timestamp: new Date().toISOString(),
+      },
+    }
+
+    console.log('Submitting chat rating:', JSON.stringify(payload, null, 2))
+
+    // Send rating to backend API
+    fetch(process.env.REACT_APP_API_URL + '/api/chat/ratings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        return response.json()
+      })
+      .then((data) => {
+        console.log('Rating submitted successfully:', data)
+      })
+      .catch((error) => {
+        console.error('Failed to submit rating:', error)
+        // Continue with UI flow even if API call fails
+      })
+
+    // Delay hiding the rating component to allow "Thank you" message to show
+    setTimeout(() => {
+      setSessionRated(true)
+    }, 2500) // Slightly longer than the StarRating component's timeout
+  }
+
+  // Reset rating when messages are cleared (handled in clearMessages already)
+  const handleClearMessagesWithRating = () => {
+    handleClearMessages()
+  }
+
   // Set page title for full page mode
   useEffect(() => {
     if (mode === 'fullPage') {
-      document.title = 'Sippy > Chat Agent'
+      document.title = 'Sippy > Chat Assistant'
       return () => {
         document.title = 'Sippy'
       }
@@ -299,7 +394,7 @@ export default function ChatInterface({
                 minWidth: 0,
               }}
             >
-              {mode === 'fullPage' ? 'Chat Agent' : 'Chat Assistant'}
+              Chat Assistant
             </Typography>
             <Typography
               className={classes.aiNotice}
@@ -314,7 +409,7 @@ export default function ChatInterface({
 
         <div className={classes.headerActions}>
           <Tooltip title="New chat">
-            <IconButton size="small" onClick={handleClearMessages}>
+            <IconButton size="small" onClick={handleClearMessagesWithRating}>
               <AddCircleOutlineIcon />
             </IconButton>
           </Tooltip>
@@ -370,6 +465,12 @@ export default function ChatInterface({
         {renderMessages()}
       </div>
 
+      {hasAssistantMessages && !sessionRated && (
+        <div className={classes.sessionRatingContainer}>
+          <StarRating messageId="session" onRate={handleSessionRate} />
+        </div>
+      )}
+
       <div className={classes.inputContainer}>
         <ChatInput
           onSendMessage={handleSendMessage}
@@ -411,7 +512,7 @@ export default function ChatInterface({
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onSettingsChange={handleSettingsChange}
-        onClearMessages={handleClearMessages}
+        onClearMessages={handleClearMessagesWithRating}
         onReconnect={handleReconnect}
         connectionState={connectionState}
         messageCount={messages.length}

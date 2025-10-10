@@ -30,6 +30,8 @@ export function useChatInterface() {
     currentThinking,
     error,
     isTyping,
+    sessionRated,
+    setSessionRated,
     sendMessage,
     clearMessages,
     connect,
@@ -106,6 +108,8 @@ export function useChatInterface() {
     error,
     isTyping,
     isConnected,
+    sessionRated,
+    setSessionRated,
     personas,
 
     // Refs

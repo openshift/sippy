@@ -2313,6 +2313,13 @@ func (s *Server) Serve() {
 			Capabilities: []string{ChatCapability},
 			HandlerFunc:  s.handleChatProxy,
 		},
+		{
+			EndpointPath: "/api/chat/ratings",
+			Description:  "Create a chat rating record",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, ChatCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCreateChatRating,
+		},
 	}
 
 	for _, ep := range endpoints {
@@ -2343,7 +2350,8 @@ func (s *Server) Serve() {
 	handler = middlewarestd.Handler("", metricsMiddleware, handler)
 	cors := handlers.CORS(
 		handlers.AllowedOrigins([]string{s.corsAllowedOrigin}),
-		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}))
+		handlers.AllowedMethods([]string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions}),
+		handlers.AllowedHeaders([]string{"Content-Type", "X-Forwarded-User", "X-Forwarded-For", "X-Real-IP", "Authorization"}))
 
 	// Store a pointer to the HTTP server for later retrieval.
 	s.httpServer = &http.Server{
@@ -2482,4 +2490,24 @@ func (s *Server) handleChatProxy(w http.ResponseWriter, r *http.Request) {
 
 	// Proxy the request
 	chatProxy.ServeHTTP(w, r)
+}
+
+// jsonCreateChatRating handles POST requests to create a new chat rating record
+func (s *Server) jsonCreateChatRating(w http.ResponseWriter, req *http.Request) {
+	var rating models.ChatRating
+	if err := json.NewDecoder(req.Body).Decode(&rating); err != nil {
+		log.WithError(err).Error("error parsing chat rating")
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	// Create the rating in the database
+	if err := s.db.DB.Create(&rating).Error; err != nil {
+		log.WithError(err).Error("error creating chat rating")
+		failureResponse(w, http.StatusInternalServerError, "failed to create rating")
+		return
+	}
+
+	log.Infof("created chat rating with ID %d, rating: %d", rating.ID, rating.Rating)
+	api.RespondWithJSON(http.StatusCreated, w, rating)
 }

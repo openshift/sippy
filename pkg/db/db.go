@@ -154,6 +154,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	if err := d.DB.AutoMigrate(&models.ChatRating{}); err != nil {
+		return err
+	}
+
 	if err := createAuditLogIndexes(d.DB); err != nil {
 		return err
 	}
