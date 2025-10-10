@@ -25,6 +25,7 @@ import ChatInput from './ChatInput'
 import ChatMessage from './ChatMessage'
 import ChatSettings from './ChatSettings'
 import PropTypes from 'prop-types'
+import QueuedMessages from './QueuedMessages'
 import React, { useEffect, useState } from 'react'
 import SippyLogo from '../components/SippyLogo'
 import ThinkingStep from './ThinkingStep'
@@ -179,6 +180,7 @@ export default function ChatInterface({
     error,
     isTyping,
     isConnected,
+    messageQueue,
     personas,
     messagesEndRef,
     messagesListRef,
@@ -187,6 +189,10 @@ export default function ChatInterface({
     handleClearMessages,
     handleReconnect,
     handleSettingsChange,
+    stopGeneration,
+    sendMessageAtIndex,
+    deleteMessageAtIndex,
+    clearQueue,
     getCurrentPersonaDisplay,
     getCurrentPersonaTooltip,
   } = useChatInterface()
@@ -371,11 +377,19 @@ export default function ChatInterface({
       </div>
 
       <div className={classes.inputContainer}>
+        <QueuedMessages
+          queue={messageQueue}
+          onSendNow={sendMessageAtIndex}
+          onDeleteMessage={deleteMessageAtIndex}
+          onClearQueue={clearQueue}
+        />
         <ChatInput
           onSendMessage={handleSendMessage}
+          onStop={stopGeneration}
           disabled={!isConnected}
           isConnected={isConnected}
           isTyping={isTyping}
+          queueCount={messageQueue.length}
           onRetry={handleReconnect}
           suggestedQuestions={pageContext?.suggestedQuestions || null}
           contextChip={

@@ -87,9 +87,11 @@ const EXAMPLE_QUERIES = [
 
 export default function ChatInput({
   onSendMessage,
+  onStop,
   disabled = false,
   isConnected = false,
   isTyping = false,
+  queueCount = 0,
   onRetry,
   placeholder = 'Ask about OpenShift releases, job failures, or payload status...',
   contextChip = null,
@@ -99,15 +101,15 @@ export default function ChatInput({
   const classes = useStyles()
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const textFieldRef = useRef(null)
+  const inputRef = useRef(null)
 
   // Use suggestedQuestions if provided, otherwise use default EXAMPLE_QUERIES
   const displayQuestions = suggestedQuestions || EXAMPLE_QUERIES
 
   // Focus input on mount
   useEffect(() => {
-    if (textFieldRef.current && isConnected) {
-      textFieldRef.current.focus()
+    if (inputRef.current && isConnected) {
+      inputRef.current.focus()
     }
   }, [isConnected])
 
@@ -150,7 +152,10 @@ export default function ChatInput({
 
   const handleSuggestionClick = (suggestion) => {
     setMessage(suggestion)
-    textFieldRef.current?.focus()
+    // Focus the input element
+    if (inputRef.current) {
+      inputRef.current.focus()
+    }
   }
 
   const getCharacterCountClass = () => {
@@ -172,8 +177,7 @@ export default function ChatInput({
     return 'Connected'
   }
 
-  const canSend =
-    message.trim().length > 0 && isConnected && !disabled && !isTyping
+  const canSend = message.trim().length > 0 && isConnected && !disabled
 
   return (
     <Paper className={classes.inputContainer} elevation={3}>
@@ -225,7 +229,7 @@ export default function ChatInput({
       {/* Input box */}
       <div className={classes.inputBox}>
         <TextField
-          ref={textFieldRef}
+          inputRef={inputRef}
           className={classes.textField}
           multiline
           maxRows={4}
@@ -243,22 +247,34 @@ export default function ChatInput({
         <Tooltip
           title={
             canSend
-              ? 'Send message'
-              : isTyping
-              ? 'Stop generation'
-              : 'Send message'
+              ? isTyping
+                ? 'Queue message'
+                : 'Send message'
+              : 'Type a message'
           }
         >
           <span>
             <IconButton
-              className={`${classes.sendButton} ${
-                !canSend && !isTyping ? 'disabled' : ''
-              }`}
-              onClick={isTyping ? undefined : handleSendMessage}
-              disabled={!canSend && !isTyping}
+              className={`${classes.sendButton} ${!canSend ? 'disabled' : ''}`}
+              onClick={handleSendMessage}
+              disabled={!canSend}
               color="primary"
+              sx={{ marginRight: 0.5 }}
             >
-              {isTyping ? <StopIcon /> : <SendIcon />}
+              <SendIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
+
+        <Tooltip title={isTyping ? 'Stop generation' : ''}>
+          <span>
+            <IconButton
+              className={classes.sendButton}
+              onClick={onStop}
+              disabled={!isTyping}
+              color="error"
+            >
+              <StopIcon />
             </IconButton>
           </span>
         </Tooltip>
@@ -269,9 +285,11 @@ export default function ChatInput({
 
 ChatInput.propTypes = {
   onSendMessage: PropTypes.func.isRequired,
+  onStop: PropTypes.func,
   disabled: PropTypes.bool,
   isConnected: PropTypes.bool,
   isTyping: PropTypes.bool,
+  queueCount: PropTypes.number,
   onRetry: PropTypes.func,
   placeholder: PropTypes.string,
   contextChip: PropTypes.node,
