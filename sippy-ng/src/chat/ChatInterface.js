@@ -281,11 +281,6 @@ export default function ChatInterface({
     }, 2500) // Slightly longer than the StarRating component's timeout
   }
 
-  // Reset rating when messages are cleared (handled in clearMessages already)
-  const handleClearMessagesWithRating = () => {
-    handleClearMessages()
-  }
-
   // Set page title for full page mode
   useEffect(() => {
     if (mode === 'fullPage') {
@@ -409,7 +404,7 @@ export default function ChatInterface({
 
         <div className={classes.headerActions}>
           <Tooltip title="New chat">
-            <IconButton size="small" onClick={handleClearMessagesWithRating}>
+            <IconButton size="small" onClick={handleClearMessages}>
               <AddCircleOutlineIcon />
             </IconButton>
           </Tooltip>
@@ -512,7 +507,7 @@ export default function ChatInterface({
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onSettingsChange={handleSettingsChange}
-        onClearMessages={handleClearMessagesWithRating}
+        onClearMessages={handleClearMessages}
         onReconnect={handleReconnect}
         connectionState={connectionState}
         messageCount={messages.length}
