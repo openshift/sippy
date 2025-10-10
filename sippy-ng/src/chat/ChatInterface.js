@@ -1,17 +1,4 @@
 import {
-  AddCircleOutline as AddCircleOutlineIcon,
-  Close as CloseIcon,
-  ContentCopy as ContentCopyIcon,
-  ExpandMore as ExpandMoreIcon,
-  Help as HelpIcon,
-  Masks as MasksIcon,
-  Fullscreen as MaximizeIcon,
-  FullscreenExit as MinimizeIcon,
-  Settings as SettingsIcon,
-  Share as ShareIcon,
-  SmartToy as SmartToyIcon,
-} from '@mui/icons-material'
-import {
   Alert,
   Button,
   Chip,
@@ -30,8 +17,21 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import {
+  Close as CloseIcon,
+  ContentCopy as ContentCopyIcon,
+  ExpandMore as ExpandMoreIcon,
+  Help as HelpIcon,
+  Masks as MasksIcon,
+  Fullscreen as MaximizeIcon,
+  FullscreenExit as MinimizeIcon,
+  Settings as SettingsIcon,
+  Share as ShareIcon,
+  SmartToy as SmartToyIcon,
+} from '@mui/icons-material'
 import { createMessage, MESSAGE_TYPES } from './chatUtils'
 import { makeStyles } from '@mui/styles'
+import { SESSION_TYPES, useChatSessions } from './useChatSessions'
 import { useChatInterface } from './useChatInterface'
 import { useGlobalChat } from './useGlobalChat'
 import ChatInput from './ChatInput'
@@ -39,6 +39,7 @@ import ChatMessage from './ChatMessage'
 import ChatSettings from './ChatSettings'
 import PropTypes from 'prop-types'
 import React, { useEffect, useRef, useState } from 'react'
+import SessionDropdown from './SessionDropdown'
 import SippyLogo from '../components/SippyLogo'
 import ThinkingStep from './ThinkingStep'
 
@@ -219,8 +220,22 @@ export default function ChatInterface({
     severity: 'success',
   })
   const [loadingShared, setLoadingShared] = useState(!!conversationId)
-  const [initialMessageCount, setInitialMessageCount] = useState(0)
   const loadedConversationRef = useRef(null) // Track which conversation we've loaded
+  const justForkedRef = useRef(false) // Track if we just forked to avoid reloading messages
+
+  // Session management
+  const {
+    sessions,
+    activeSessionId,
+    activeSession,
+    createSession,
+    switchSession,
+    deleteSession,
+    updateSessionMessages,
+    updateSessionMetadata,
+    forkActiveSession,
+    loadSharedConversation,
+  } = useChatSessions()
 
   // Use shared chat interface logic
   const {
@@ -258,6 +273,50 @@ export default function ChatInterface({
       }
     }
   }, [mode])
+
+  // Load messages from active session when it changes
+  useEffect(() => {
+    if (!activeSessionId || !activeSession) return
+
+    // Skip loading if we just forked - messages are already correct
+    if (justForkedRef.current) {
+      justForkedRef.current = false
+      return
+    }
+
+    const sessionMessages = activeSession.messages || []
+
+    // Check if we need to load messages - compare message IDs or lengths
+    const needsLoad =
+      messages.length !== sessionMessages.length ||
+      (messages.length > 0 &&
+        sessionMessages.length > 0 &&
+        messages[0]?.id !== sessionMessages[0]?.id)
+
+    if (needsLoad) {
+      handleClearMessages()
+      if (sessionMessages.length > 0) {
+        // Use setTimeout to ensure the clear happens before adding messages
+        setTimeout(() => {
+          globalChat.addMessages(sessionMessages)
+        }, 0)
+      }
+    }
+  }, [activeSessionId])
+
+  // Save messages to active session whenever they change
+  // Debounce the save to avoid excessive updates
+  useEffect(() => {
+    if (!activeSessionId) return
+
+    const timeoutId = setTimeout(() => {
+      if (messages.length >= 0) {
+        updateSessionMessages(messages)
+      }
+    }, 100) // Small debounce to batch updates
+
+    return () => clearTimeout(timeoutId)
+  }, [messages, activeSessionId, updateSessionMessages])
 
   // Load shared conversation if conversationId is provided
   useEffect(() => {
@@ -309,10 +368,17 @@ export default function ChatInterface({
           }
         )
 
+        const allMessages = [...loadedMessages, systemMessage]
+
+        // Load into session management
+        loadSharedConversation(conversationId, allMessages, {
+          createdAt: data.created_at,
+          parentId: data.parent_id,
+        })
+
         // Clear any existing messages and load the shared conversation
         handleClearMessages()
-        globalChat.addMessages([...loadedMessages, systemMessage])
-        setInitialMessageCount(loadedMessages.length + 1)
+        globalChat.addMessages(allMessages)
 
         // Set the shared URL so clicking share again doesn't create a duplicate
         const url = `${window.location.origin}/sippy-ng/chat/${conversationId}`
@@ -342,30 +408,95 @@ export default function ChatInterface({
     return () => {
       abortController.abort()
     }
-  }, [conversationId])
+  }, [conversationId, loadSharedConversation])
 
   const handleSendMessageWrapper = (content) => {
-    // Update URL bar when first message is sent on a shared conversation (only in fullPage mode)
+    // Fork the session if it's a shared conversation (either shared with you or shared by you)
     if (
-      mode === 'fullPage' &&
-      conversationId &&
-      messages.length === initialMessageCount
+      activeSession &&
+      (activeSession.type === SESSION_TYPES.SHARED ||
+        activeSession.type === SESSION_TYPES.SHARED_BY_ME)
     ) {
-      window.history.pushState(null, '', '/sippy-ng/chat')
+      // Set flag to prevent message reload when switching to forked session
+      justForkedRef.current = true
+
+      // Fork creates a new session with current messages copied
+      const forkedSession = forkActiveSession()
+
+      // Update URL bar when forking a shared conversation (only in fullPage mode)
+      if (mode === 'fullPage' && conversationId) {
+        window.history.pushState(null, '', '/sippy-ng/chat')
+      }
+
+      // The forked session now has the messages, so we don't need to reload
+      // Just send the new message
     }
+
     // Clear cached share URL since conversation has changed
     setSharedUrl('')
     return handleSendMessage(content)
   }
 
-  const handleClearMessagesWrapper = () => {
+  const handleNewChat = () => {
+    // Look for an existing empty "New Chat" session
+    const emptySession = sessions.find(
+      (s) =>
+        s.type === SESSION_TYPES.OWN &&
+        (!s.messages || s.messages.length === 0) &&
+        !s.sharedId
+    )
+
+    if (emptySession && emptySession.id !== activeSessionId) {
+      // Switch to existing empty session
+      switchSession(emptySession.id)
+    } else if (!emptySession) {
+      // No empty session exists, create a new one
+      createSession()
+    }
+    // If the current session is already empty, do nothing
+
+    // Clear messages in the UI
+    handleClearMessages()
+
     // Clear URL if viewing a shared conversation (only in fullPage mode)
     if (mode === 'fullPage' && conversationId) {
       window.history.pushState(null, '', '/sippy-ng/chat')
     }
+
     setSharedUrl('')
-    setInitialMessageCount(0)
-    return handleClearMessages()
+  }
+
+  const handleSessionSwitch = (sessionId) => {
+    switchSession(sessionId)
+
+    // Update URL when switching sessions (only in fullPage mode)
+    if (mode === 'fullPage') {
+      const targetSession = sessions.find((s) => s.id === sessionId)
+      if (targetSession && targetSession.sharedId) {
+        // Switch to a shared or forked session - update URL to include the shared ID
+        window.history.pushState(
+          null,
+          '',
+          `/sippy-ng/chat/${targetSession.sharedId}`
+        )
+      } else {
+        // Switch to a local session - clear the URL
+        window.history.pushState(null, '', '/sippy-ng/chat')
+      }
+    }
+  }
+
+  const handleSessionDelete = (sessionId) => {
+    const wasActiveSession = deleteSession(sessionId)
+
+    // If we deleted the active session, clear messages and URL
+    if (wasActiveSession) {
+      handleClearMessages()
+
+      if (mode === 'fullPage') {
+        window.history.pushState(null, '', '/sippy-ng/chat')
+      }
+    }
   }
 
   const handleShareConversation = async () => {
@@ -445,6 +576,20 @@ export default function ChatInterface({
       const url = `${window.location.origin}/sippy-ng/chat/${data.id}`
       setSharedUrl(url)
       setShareDialogOpen(true)
+
+      // Update session metadata to record that it's been shared
+      // and mark it as "shared by me"
+      if (activeSessionId) {
+        updateSessionMetadata(activeSessionId, {
+          sharedId: data.id,
+          type: SESSION_TYPES.SHARED_BY_ME,
+        })
+      }
+
+      // Update browser URL to the shared URL (only in fullPage mode)
+      if (mode === 'fullPage') {
+        window.history.pushState(null, '', `/sippy-ng/chat/${data.id}`)
+      }
 
       // Also copy to clipboard
       try {
@@ -587,12 +732,14 @@ export default function ChatInterface({
         </div>
 
         <div className={classes.headerActions}>
-          <Tooltip title="New chat">
-            <IconButton size="small" onClick={handleClearMessagesWrapper}>
-              <AddCircleOutlineIcon />
-            </IconButton>
-          </Tooltip>
-
+          <SessionDropdown
+            sessions={sessions}
+            activeSessionId={activeSessionId}
+            onSelectSession={handleSessionSwitch}
+            onNewSession={handleNewChat}
+            onDeleteSession={handleSessionDelete}
+            disabled={!isConnected || isTyping}
+          />
           <Tooltip title="Share conversation">
             <span>
               <IconButton
@@ -702,7 +849,7 @@ export default function ChatInterface({
         onClose={() => setSettingsOpen(false)}
         settings={settings}
         onSettingsChange={handleSettingsChange}
-        onClearMessages={handleClearMessagesWrapper}
+        onClearMessages={handleNewChat}
         onReconnect={handleReconnect}
         connectionState={connectionState}
         messageCount={messages.length}
