@@ -335,7 +335,7 @@ REQUIRED CONTENT - Include these sections in this order:
    Successes: <count>
    Failures: <count>
    Flakes: <count>
-3. Sample failure outputs (if available from context)
+3. Sample failure outputs, use your tools to get outputs from up to 5 jobs that failed this test.
 4. Links to relevant jobs
 5. Any patterns or insights from the regression data
 
