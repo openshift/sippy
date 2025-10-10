@@ -262,6 +262,11 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
     currentIterationRef.current = 0 // Reset iteration counter
   }, [])
 
+  // Add messages directly (for loading shared conversations)
+  const addMessages = useCallback((newMessages) => {
+    setMessages((prev) => [...prev, ...newMessages])
+  }, [])
+
   // Auto-connect on mount
   useEffect(() => {
     connect()
@@ -288,6 +293,7 @@ export function useChatWebSocket(settings = {}, pageContext = null) {
     isTyping,
     sendMessage,
     clearMessages,
+    addMessages,
     connect,
     disconnect,
     isConnected: connectionState === WEBSOCKET_STATES.OPEN,

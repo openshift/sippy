@@ -8,6 +8,8 @@ import React, { useContext } from 'react'
 /**
  * AskSippyButton - A reusable button that pre-sends a question to the chat widget
  *
+ * Features a distinctive gradient design to make AI features stand out.
+ *
  * Example usage:
  * ```jsx
  * <AskSippyButton
@@ -20,13 +22,8 @@ export default function AskSippyButton({
   question,
   context,
   tooltip,
-  variant = 'outlined',
-  size = 'small',
-  color = 'primary',
   label = 'Ask Sippy',
-  startIcon = <AutoAwesomeIcon />,
   disabled = false,
-  sx,
 }) {
   const { askQuestion } = useGlobalChat()
   const capabilities = useContext(CapabilitiesContext)
@@ -42,13 +39,18 @@ export default function AskSippyButton({
 
   const button = (
     <Button
-      variant={variant}
-      size={size}
-      color={color}
-      startIcon={startIcon}
+      variant="contained"
+      size="medium"
+      startIcon={<AutoAwesomeIcon />}
       onClick={handleClick}
       disabled={disabled}
-      sx={sx}
+      sx={{
+        background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+        boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+        color: 'white',
+        fontWeight: 'bold',
+        textTransform: 'none',
+      }}
     >
       {label}
     </Button>
@@ -74,25 +76,8 @@ AskSippyButton.propTypes = {
   }),
   // Tooltip text (optional)
   tooltip: PropTypes.string,
-  // Button variant
-  variant: PropTypes.oneOf(['text', 'outlined', 'contained']),
-  // Button size
-  size: PropTypes.oneOf(['small', 'medium', 'large']),
-  // Button color
-  color: PropTypes.oneOf([
-    'primary',
-    'secondary',
-    'success',
-    'error',
-    'info',
-    'warning',
-  ]),
   // Button label text
   label: PropTypes.string,
-  // Start icon (default is AutoAwesomeIcon)
-  startIcon: PropTypes.node,
   // Disabled state
   disabled: PropTypes.bool,
-  // Additional Material-UI sx prop for custom styling
-  sx: PropTypes.object,
 }

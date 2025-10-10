@@ -11,6 +11,7 @@ export function GlobalChatProvider({ children }) {
   const [isOpen, setIsOpen] = useState(false)
   const [pageContext, setPageContext] = useState(null)
   const [unreadCount, setUnreadCount] = useState(0)
+  const [shouldCreateNewSession, setShouldCreateNewSession] = useState(false)
 
   // Load settings from cookie
   const [cookies] = useCookies(['sippyChatSettings'])
@@ -55,6 +56,9 @@ export function GlobalChatProvider({ children }) {
 
   const askQuestion = useCallback(
     (question, context) => {
+      // Signal that we want a new session
+      setShouldCreateNewSession(true)
+
       // Update context only if explicitly provided and is a valid object
       if (context && typeof context === 'object' && !context.nativeEvent) {
         setPageContext(context)
@@ -76,6 +80,8 @@ export function GlobalChatProvider({ children }) {
         isOpen,
         pageContext,
         unreadCount,
+        shouldCreateNewSession,
+        setShouldCreateNewSession,
         openChat,
         closeChat,
         toggleChat,
