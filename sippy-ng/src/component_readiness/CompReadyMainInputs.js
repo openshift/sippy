@@ -140,28 +140,41 @@ export default function CompReadyMainInputs(props) {
         ></ReleaseSelector>
       </div>
 
-      <div className="cr-report-button">
-        <Button
-          size="large"
-          variant="contained"
-          color="primary"
-          onClick={(event) => varsContext.handleGenerateReport(event)}
-        >
-          <Tooltip
-            title={
-              'Click here to generate a custom report that compares the release you wish to evaluate\
-                                                                   against a historical (previous) release using all the specific parameters specified'
-            }
-          >
-            <Fragment>Generate Report</Fragment>
-          </Tooltip>
-        </Button>
-      </div>
+      <ReportButton handler={varsContext.handleGenerateReport} />
 
-      {props.isTestDetails ? '' : compReadyEnvOptions}
+      {props.isTestDetails || (
+        <>
+          {compReadyEnvOptions}
+          <ReportButton handler={varsContext.handleGenerateReport} />
+        </>
+      )}
     </Fragment>
   )
 }
+
+function ReportButton(props) {
+  return (
+    <div className="cr-report-button">
+      <Button
+        size="large"
+        variant="contained"
+        color="primary"
+        onClick={(event) => props.handler(event)}
+      >
+        <Tooltip
+          title={
+            'Click here to generate a custom report that compares the release you wish to evaluate\
+                                                                                     against a historical (previous) release using all the specific parameters specified'
+          }
+        >
+          <Fragment>Generate Report</Fragment>
+        </Tooltip>
+      </Button>
+    </div>
+  )
+}
+
+ReportButton.propTypes = { handler: PropTypes.func }
 
 // component and environment may be null so they are not required
 CompReadyMainInputs.propTypes = {
