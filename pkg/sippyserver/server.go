@@ -2111,6 +2111,7 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/health",
 			Description:  "Reports general health from DB",
 			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonHealthReportFromDB,
 		},
 		{

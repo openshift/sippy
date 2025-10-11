@@ -70,6 +70,12 @@ export const TEST_THRESHOLDS = {
   error: 0,
 }
 
+export const COMPONENT_READINESS_THRESHOLDS = {
+  success: 5,
+  warning: 15,
+  error: 999999,
+}
+
 export const BLOCKER_SCORE_THRESHOLDS = {
   success: 10,
   warning: 50,
