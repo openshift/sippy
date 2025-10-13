@@ -7,7 +7,9 @@ import {
   hasFailedFixRegression,
   jiraUrlPrefix,
 } from './CompReadyUtils'
+import { useGlobalChat } from '../chat/useGlobalChat'
 import { useTheme } from '@mui/material/styles'
+import AskSippyButton from '../chat/AskSippyButton'
 import CompSeverityIcon from './CompSeverityIcon'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
@@ -23,6 +25,7 @@ import UpsertTriageModal from './UpsertTriageModal'
 
 export default function Triage({ id }) {
   const theme = useTheme()
+  const { updatePageContext } = useGlobalChat()
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [triage, setTriage] = React.useState({})
   const [message, setMessage] = React.useState('')
@@ -61,6 +64,96 @@ export default function Triage({ id }) {
       })
   }, [isUpdated, localDBEnabled, id])
 
+  // Update page context for chat
+  React.useEffect(() => {
+    if (!isLoaded || !triage.id) return
+
+    // Generate test details links for regressed tests
+    const regressedTestsWithLinks = []
+    if (triage.regressed_tests && triage.regressed_tests.length > 0) {
+      triage.regressed_tests.forEach((regressedTest) => {
+        regressedTestsWithLinks.push({
+          test_name: regressedTest.test_name,
+          component: regressedTest.component,
+          capability: regressedTest.capability,
+          environment: regressedTest.environment,
+          test_id: regressedTest.test_id,
+          status: regressedTest.status,
+          explanations: regressedTest.explanations || [],
+          test_details_api_url: regressedTest.links?.test_details || null,
+          regression_id: regressedTest.regression?.id,
+          regression_opened: regressedTest.regression?.opened,
+          regression_closed: regressedTest.regression?.closed?.valid
+            ? regressedTest.regression.closed.time
+            : null,
+        })
+      })
+    }
+
+    const contextData = {
+      page: 'triage-details',
+      url: window.location.href,
+      instructions: `You are viewing a triage record that links test regressions to Jira issues.
+
+**Choose the appropriate analysis based on what the user is asking:**
+
+**For questions about test failures, patterns, or technical analysis:**
+- Use the get_test_details_report tool with each test's test_details_api_url as the query_params parameter
+- Use get_prow_job_summary with the failed_job_run_ids to analyze specific job failures
+- Compare failure patterns across tests to identify common causes
+- Compare up to 10 failed job run IDs to analyze specific job failures, choosing a sampling from each test_details report
+- Look for consistency in failures (same root cause vs varied issues)
+- Determine if regressions are related or independent
+
+**For questions about fix status, timeline, or Jira issue:**
+- Use the get_jira_issue_analysis tool with the issue_key from the jira data
+- Review the recent comments to assess fix readiness and timeline
+- Look for indicators of fix completion, testing status, deployment readiness, or blockers
+- Pay attention to the most recent comments as they reflect current status
+- Check the issue status, assignee, and fix versions for additional context
+
+**Do not perform both analyses unless the user specifically asks for both. Focus on what they're actually asking about.**
+
+**Do not summarize triage metadata** (resolution status, dates, etc.) as this information is already displayed on the page.`,
+      suggestedQuestions: [
+        'What are the common failure patterns across these regressed tests?',
+        'What is the current status of the fix in the Jira issue?',
+      ],
+      data: {
+        triage_id: triage.id,
+        description: triage.description,
+        type: triage.type,
+        resolved: triage.resolved?.Valid
+          ? {
+              time: triage.resolved.Time,
+              reason: triage.resolution_reason,
+            }
+          : null,
+        created_at: triage.created_at,
+        updated_at: triage.updated_at,
+        jira: {
+          issue_key: extractJiraIssueKey(triage.url),
+          status: triage.bug?.status,
+          target_versions: triage.bug?.target_versions,
+          affects_versions: triage.bug?.affects_versions,
+          release_blocker: triage.bug?.release_blocker,
+          last_change_time: triage.bug?.last_change_time,
+        },
+        regressed_tests: regressedTestsWithLinks,
+        regressed_tests_count: triage.regressed_tests?.length || 0,
+        regressions_count: triage.regressions?.length || 0,
+        has_failed_fix: hasFailedFixRegression(triage, triage.regressed_tests),
+      },
+    }
+
+    updatePageContext(contextData)
+
+    // Cleanup: Clear context when component unmounts
+    return () => {
+      updatePageContext(null)
+    }
+  }, [isLoaded, triage, updatePageContext])
+
   const deleteTriage = () => {
     const confirmed = window.confirm(
       'Are you sure you want to delete this triage record?'
@@ -82,6 +175,11 @@ export default function Triage({ id }) {
     }
   }
 
+  const extractJiraIssueKey = (url) => {
+    if (!url) return null
+    return url.startsWith(jiraUrlPrefix) ? url.slice(jiraUrlPrefix.length) : url
+  }
+
   if (message !== '') {
     return <h2>{message}</h2>
   }
@@ -89,10 +187,6 @@ export default function Triage({ id }) {
   if (!isLoaded) {
     return <p>Loading...</p>
   }
-
-  const displayUrl = triage.url.startsWith(jiraUrlPrefix)
-    ? triage.url.slice(jiraUrlPrefix.length)
-    : triage.url
 
   return (
     <Fragment>
@@ -103,7 +197,11 @@ export default function Triage({ id }) {
         mb={2}
       >
         <h2 style={{ margin: 0 }}>Triage Details</h2>
-        <Box>
+        <Box display="flex" alignItems="center" gap={1}>
+          <AskSippyButton
+            question="What is the primary cause of these test failures?"
+            tooltip="Ask Sippy AI to analyze this triage record's test failures"
+          />
           {localDBEnabled && <TriageAuditLogsModal triage={triage} />}
           {triageEnabled && (
             <Fragment>
@@ -211,7 +309,9 @@ export default function Triage({ id }) {
           <TableRow>
             <TableCell>Jira</TableCell>
             <TableCell>
-              <LaunderedLink address={triage.url}>{displayUrl}</LaunderedLink>
+              <LaunderedLink address={triage.url}>
+                {extractJiraIssueKey(triage.url)}
+              </LaunderedLink>
             </TableCell>
           </TableRow>
           <TableRow>

@@ -13,6 +13,8 @@ from .payload_details import SippyPayloadDetailsTool
 from .release_payloads import SippyReleasePayloadTool
 from .sippy_job_summary import SippyProwJobSummaryTool
 from .sippy_log_analyzer import SippyLogAnalyzerTool
+from .sippy_test_details import SippyTestDetailsTool
+from .jira_issue import SippyJiraIssueTool
 
 __all__ = [
     "AggregatedJobAnalyzerTool",
@@ -27,4 +29,6 @@ __all__ = [
     "SippyReleasePayloadTool",
     "SippyProwJobSummaryTool",
     "SippyLogAnalyzerTool",
+    "SippyTestDetailsTool",
+    "SippyJiraIssueTool",
 ]

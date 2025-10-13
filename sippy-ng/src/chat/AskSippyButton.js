@@ -1,35 +1,40 @@
 import { AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material'
 import { Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
+import { makeStyles } from '@mui/styles'
 import { useGlobalChat } from './useGlobalChat'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 
-/**
- * AskSippyButton - A reusable button that pre-sends a question to the chat widget
- *
- * Example usage:
- * ```jsx
- * <AskSippyButton
- *   question="Why is this test failing?"
- *   tooltip="Ask Sippy about this test"
- * />
- * ```
- */
-export default function AskSippyButton({
-  question,
-  context,
-  tooltip,
-  variant = 'outlined',
-  size = 'small',
-  color = 'primary',
-  label = 'Ask Sippy',
-  startIcon = <AutoAwesomeIcon />,
-  disabled = false,
-  sx,
-}) {
+const useStyles = makeStyles((theme) => ({
+  defaultStyledButton: {
+    background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+    boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+    color: 'white',
+    fontWeight: 'bold',
+    textTransform: 'none',
+    transition: 'all 0.3s ease',
+    animation: '$pulse 2s ease-in-out infinite',
+    '&:hover': {
+      background: 'linear-gradient(45deg, #1976D2 30%, #00BCD4 90%)',
+      boxShadow: '0 6px 20px 4px rgba(33, 203, 243, .4)',
+      transform: 'translateY(-2px)',
+    },
+  },
+  '@keyframes pulse': {
+    '0%, 100%': {
+      boxShadow: '0 3px 5px 2px rgba(33, 203, 243, .3)',
+    },
+    '50%': {
+      boxShadow: '0 3px 15px 5px rgba(33, 203, 243, .5)',
+    },
+  },
+}))
+
+export default function AskSippyButton({ question, tooltip }) {
   const { askQuestion } = useGlobalChat()
   const capabilities = useContext(CapabilitiesContext)
+  const classes = useStyles()
 
   // Don't render if chat capability is not enabled
   if (!capabilities.includes('chat')) {
@@ -37,20 +42,18 @@ export default function AskSippyButton({
   }
 
   const handleClick = () => {
-    askQuestion(question, context)
+    askQuestion(question)
   }
 
   const button = (
     <Button
-      variant={variant}
-      size={size}
-      color={color}
-      startIcon={startIcon}
+      variant="contained"
+      size="medium"
+      startIcon={<AutoAwesomeIcon />}
       onClick={handleClick}
-      disabled={disabled}
-      sx={sx}
+      className={classes.defaultStyledButton}
     >
-      {label}
+      Ask Sippy
     </Button>
   )
 
@@ -62,37 +65,6 @@ export default function AskSippyButton({
 }
 
 AskSippyButton.propTypes = {
-  // The question to pre-send to Sippy
   question: PropTypes.string.isRequired,
-  // Optional page context to provide to the chat
-  context: PropTypes.shape({
-    page: PropTypes.string,
-    url: PropTypes.string,
-    data: PropTypes.object,
-    instructions: PropTypes.string,
-    suggestedQuestions: PropTypes.arrayOf(PropTypes.string),
-  }),
-  // Tooltip text (optional)
   tooltip: PropTypes.string,
-  // Button variant
-  variant: PropTypes.oneOf(['text', 'outlined', 'contained']),
-  // Button size
-  size: PropTypes.oneOf(['small', 'medium', 'large']),
-  // Button color
-  color: PropTypes.oneOf([
-    'primary',
-    'secondary',
-    'success',
-    'error',
-    'info',
-    'warning',
-  ]),
-  // Button label text
-  label: PropTypes.string,
-  // Start icon (default is AutoAwesomeIcon)
-  startIcon: PropTypes.node,
-  // Disabled state
-  disabled: PropTypes.bool,
-  // Additional Material-UI sx prop for custom styling
-  sx: PropTypes.object,
 }
