@@ -4,7 +4,7 @@ Tool for analyzing Jira issues and their comments.
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, Type
 from pydantic import Field
 import httpx
 from datetime import datetime, timezone
@@ -25,14 +25,12 @@ This tool provides:
 - Recent comments (sorted newest first)
 - Basic metadata (assignee, priority, fix versions, etc.)
 
-Input: jira_issue_url (the full URL to the Jira issue)"""
+Input: issue_key (the Jira issue key, e.g., OCPBUGS-12345)"""
 
-    # Add jira configuration as fields
-    jira_url: Optional[str] = Field(default=None, description="Jira base URL")
+    jira_url: str = Field(description="Jira base URL")
 
     class JiraIssueInput(SippyToolInput):
-        jira_issue_url: str = Field(description="Full URL to the Jira issue (e.g., https://issues.redhat.com/browse/OCPBUGS-12345)")
-        jira_url: Optional[str] = Field(default=None, description="Jira base URL (optional, uses config if not provided)")
+        issue_key: str = Field(description="Jira issue key (e.g., OCPBUGS-12345)")
 
     args_schema: Type[SippyToolInput] = JiraIssueInput
 
@@ -47,22 +45,11 @@ Input: jira_issue_url (the full URL to the Jira issue)"""
         # Pydantic model will have validated and filled in defaults
         args = self.JiraIssueInput(**input_data)
 
-        # Use provided values or fall back to instance values
-        jira_url = args.jira_url or self.jira_url
-
-        if not jira_url:
-            return {
-                "error": "Jira URL missing. Please set JIRA_URL environment variable or provide jira_url parameter."
-            }
-
-        # Extract issue key from URL
-        issue_key = self._extract_issue_key(args.jira_issue_url)
-        if not issue_key:
-            return {"error": f"Could not extract issue key from URL: {args.jira_issue_url}"}
+        issue_key = args.issue_key.strip()
 
         try:
-            # Make API request to get issue details
-            api_url = f"{jira_url.rstrip('/')}/rest/api/2/issue/{issue_key}"
+            # Make API request to get issue details using configured base URL
+            api_url = f"{self.jira_url.rstrip('/')}/rest/api/2/issue/{issue_key}"
             
             logger.info(f"Making request to {api_url}")
             
@@ -90,31 +77,13 @@ Input: jira_issue_url (the full URL to the Jira issue)"""
             return {"error": f"HTTP {e.response.status_code} - {e.response.text}"}
         except httpx.RequestError as e:
             logger.error(f"Request error getting Jira issue: {e}")
-            return {"error": f"Failed to connect to Jira at {jira_url} - {str(e)}"}
+            return {"error": f"Failed to connect to Jira at {self.jira_url} - {str(e)}"}
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error: {e}")
             return {"error": "Invalid JSON response from Jira API"}
         except Exception as e:
             logger.error(f"Unexpected error getting Jira issue: {e}")
             return {"error": f"Unexpected error - {str(e)}"}
-
-    def _extract_issue_key(self, url: str) -> Optional[str]:
-        """Extract issue key from Jira URL."""
-        import re
-        
-        # Common patterns for Jira URLs
-        patterns = [
-            r'/browse/([A-Z]+-\d+)',  # /browse/PROJECT-123
-            r'/issues/([A-Z]+-\d+)',  # /issues/PROJECT-123
-            r'([A-Z]+-\d+)$',         # Just the key at the end
-        ]
-        
-        for pattern in patterns:
-            match = re.search(pattern, url)
-            if match:
-                return match.group(1)
-        
-        return None
 
     def _process_jira_issue(self, issue_data: Dict[str, Any], comments_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process Jira issue data and comments to extract key information."""

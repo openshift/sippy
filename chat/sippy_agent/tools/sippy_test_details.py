@@ -27,14 +27,13 @@ This tool provides:
 - Triage information
 - Pass rate changes
 
-Input: test_details_api_url (the API endpoint URL for the test details report)"""
+Input: query_params (the query parameters for the test details endpoint, e.g., testId=12345&component=...&baseRelease=...)"""
 
     # Add sippy_api_url as a proper field
     sippy_api_url: Optional[str] = Field(default=None, description="Sippy API base URL")
 
     class TestDetailsInput(SippyToolInput):
-        test_details_api_url: str = Field(description="Full API URL for the test details report (e.g., /api/component_readiness/test_details?testId=12345&...)")
-        sippy_api_url: Optional[str] = Field(default=None, description="Sippy API base URL (optional, uses config if not provided)")
+        query_params: str = Field(description="Query parameters for the test details endpoint. Can be either just the query params (e.g., testId=12345&component=foo) or a full URL (the query params will be extracted)")
 
     args_schema: Type[SippyToolInput] = TestDetailsInput
 
@@ -49,24 +48,30 @@ Input: test_details_api_url (the API endpoint URL for the test details report)""
         # Pydantic model will have validated and filled in defaults
         args = self.TestDetailsInput(**input_data)
 
-        # Use provided URL or fall back to instance URL
-        api_url = args.sippy_api_url or self.sippy_api_url
+        # Use the configured API URL
+        api_url = self.sippy_api_url
 
         if not api_url:
             return {
-                "error": "No Sippy API URL configured. Please set SIPPY_API_URL environment variable or provide sippy_api_url parameter."
+                "error": "No Sippy API URL configured. Please set SIPPY_API_URL environment variable."
             }
 
-        # Clean and validate the API URL
-        test_details_url = args.test_details_api_url.strip()
+        # Build the full URL from query params
+        query_params = args.query_params.strip()
         
-        # If it's a relative URL, prepend the API base URL
-        if test_details_url.startswith('/'):
-            full_url = f"{api_url.rstrip('/')}{test_details_url}"
-        elif test_details_url.startswith('http'):
-            full_url = test_details_url
-        else:
-            return {"error": f"Invalid URL format. Expected relative URL starting with '/' or full URL starting with 'http', got: {test_details_url}"}
+        # If query_params is a full URL, extract just the query string
+        if query_params.startswith('http') or query_params.startswith('/'):
+            # Extract query params from URL
+            if '?' in query_params:
+                query_params = query_params.split('?', 1)[1]
+            else:
+                return {"error": f"No query parameters found in URL: {query_params}"}
+        
+        # Ensure query params don't start with ? or &
+        if query_params.startswith('?') or query_params.startswith('&'):
+            query_params = query_params[1:]
+        
+        full_url = f"{api_url.rstrip('/')}/api/component_readiness/test_details?{query_params}"
 
         try:
             # Make the API request

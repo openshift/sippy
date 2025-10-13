@@ -98,7 +98,7 @@ export default function Triage({ id }) {
 **Choose the appropriate analysis based on what the user is asking:**
 
 **For questions about test failures, patterns, or technical analysis:**
-- Use the get_test_details_report tool with each test_details_api_url to get test details and failed job run IDs
+- Use the get_test_details_report tool with each test's test_details_api_url as the query_params parameter
 - Use get_prow_job_summary with the failed_job_run_ids to analyze specific job failures
 - Compare failure patterns across tests to identify common causes
 - Compare up to 10 failed job run IDs to analyze specific job failures, choosing a sampling from each test_details report
@@ -106,7 +106,7 @@ export default function Triage({ id }) {
 - Determine if regressions are related or independent
 
 **For questions about fix status, timeline, or Jira issue:**
-- Use the get_jira_issue_analysis tool with the Jira URL from the triage data to get issue details and recent comments
+- Use the get_jira_issue_analysis tool with the issue_key from the jira data
 - Review the recent comments to assess fix readiness and timeline
 - Look for indicators of fix completion, testing status, deployment readiness, or blockers
 - Pay attention to the most recent comments as they reflect current status
@@ -132,7 +132,7 @@ export default function Triage({ id }) {
         created_at: triage.created_at,
         updated_at: triage.updated_at,
         jira: {
-          url: triage.url,
+          issue_key: extractJiraIssueKey(triage.url),
           status: triage.bug?.status,
           target_versions: triage.bug?.target_versions,
           affects_versions: triage.bug?.affects_versions,
@@ -175,6 +175,11 @@ export default function Triage({ id }) {
     }
   }
 
+  const extractJiraIssueKey = (url) => {
+    if (!url) return null
+    return url.startsWith(jiraUrlPrefix) ? url.slice(jiraUrlPrefix.length) : url
+  }
+
   if (message !== '') {
     return <h2>{message}</h2>
   }
@@ -182,10 +187,6 @@ export default function Triage({ id }) {
   if (!isLoaded) {
     return <p>Loading...</p>
   }
-
-  const displayUrl = triage.url.startsWith(jiraUrlPrefix)
-    ? triage.url.slice(jiraUrlPrefix.length)
-    : triage.url
 
   return (
     <Fragment>
@@ -308,7 +309,9 @@ export default function Triage({ id }) {
           <TableRow>
             <TableCell>Jira</TableCell>
             <TableCell>
-              <LaunderedLink address={triage.url}>{displayUrl}</LaunderedLink>
+              <LaunderedLink address={triage.url}>
+                {extractJiraIssueKey(triage.url)}
+              </LaunderedLink>
             </TableCell>
           </TableRow>
           <TableRow>
