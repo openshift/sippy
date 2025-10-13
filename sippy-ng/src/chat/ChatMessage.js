@@ -2,12 +2,12 @@ import { Alert, Avatar, Chip, IconButton, Paper, Tooltip } from '@mui/material'
 import {
   ContentCopy as ContentCopyIcon,
   Error as ErrorIcon,
-  Info as InfoIcon,
+  Link as LinkIcon,
   OpenInNew as OpenInNewIcon,
   Person as PersonIcon,
   SmartToy as SmartToyIcon,
 } from '@mui/icons-material'
-import { formatChatTimestamp, MESSAGE_TYPES } from './chatUtils'
+import { formatChatTimestamp, humanize, MESSAGE_TYPES } from './chatUtils'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import PropTypes from 'prop-types'
@@ -227,7 +227,22 @@ const useStyles = makeStyles((theme) => ({
     },
   },
   systemMessage: {
-    maxWidth: '80%',
+    textAlign: 'center',
+    padding: theme.spacing(2, 0),
+    margin: theme.spacing(2, 0),
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+  },
+  systemMessageText: {
+    fontSize: '0.75rem',
+    color: theme.palette.text.secondary,
+    fontStyle: 'italic',
+    marginBottom: theme.spacing(1),
+  },
+  systemMessageDivider: {
+    width: '60%',
+    borderBottom: `1px solid ${theme.palette.divider}`,
   },
 }))
 
@@ -314,14 +329,7 @@ export default function ChatMessage({
               {message.pageContext &&
                 message.pageContext.url &&
                 message.pageContext.page && (
-                  <Tooltip
-                    title={`View ${message.pageContext.page
-                      .split('-')
-                      .map(
-                        (word) => word.charAt(0).toUpperCase() + word.slice(1)
-                      )
-                      .join(' ')}`}
-                  >
+                  <Tooltip title={`View ${humanize(message.pageContext.page)}`}>
                     <IconButton
                       size="small"
                       component={Link}
@@ -375,19 +383,28 @@ export default function ChatMessage({
   )
 
   const renderSystemMessage = () => (
-    <div className={`${classes.messageContainer} system`}>
-      <Alert
-        severity="info"
-        icon={<InfoIcon />}
-        className={classes.systemMessage}
-      >
-        <div className={classes.markdownContent}>
-          <ReactMarkdown components={{ a: ChatLink }}>
-            {message.content}
-          </ReactMarkdown>
-        </div>
-        {formatTimestamp(message.timestamp)}
-      </Alert>
+    <div className={classes.systemMessage}>
+      <div className={classes.systemMessageText}>
+        {message.content}
+        {message.conversationId && (
+          <>
+            {' '}
+            <Link
+              to={`/chat/${message.conversationId}`}
+              style={{
+                color: 'inherit',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                verticalAlign: 'middle',
+              }}
+            >
+              <LinkIcon fontSize="small" />
+            </Link>
+          </>
+        )}
+      </div>
+      <div className={classes.systemMessageDivider} />
     </div>
   )
 
@@ -419,6 +436,7 @@ ChatMessage.propTypes = {
     timestamp: PropTypes.string.isRequired,
     data: PropTypes.object,
     tools_used: PropTypes.arrayOf(PropTypes.string),
+    conversationId: PropTypes.string,
     pageContext: PropTypes.shape({
       page: PropTypes.string,
       url: PropTypes.string,

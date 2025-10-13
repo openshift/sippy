@@ -8,7 +8,7 @@ import {
   hasFailedFixRegression,
   jiraUrlPrefix,
 } from './CompReadyUtils'
-import { useGlobalChat } from '../chat/useGlobalChat'
+import { usePageContextForChat } from '../chat/store/useChatStore'
 import { useTheme } from '@mui/material/styles'
 import AskSippyButton from '../chat/AskSippyButton'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -26,7 +26,8 @@ import UpsertTriageModal from './UpsertTriageModal'
 
 export default function Triage({ id }) {
   const theme = useTheme()
-  const { updatePageContext } = useGlobalChat()
+  const { setPageContextForChat, unsetPageContextForChat } =
+    usePageContextForChat()
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [triage, setTriage] = React.useState({})
   const [message, setMessage] = React.useState('')
@@ -153,13 +154,13 @@ export default function Triage({ id }) {
       },
     }
 
-    updatePageContext(contextData)
+    setPageContextForChat(contextData)
 
     // Cleanup: Clear context when component unmounts
     return () => {
-      updatePageContext(null)
+      unsetPageContextForChat()
     }
-  }, [isLoaded, triage, updatePageContext])
+  }, [isLoaded, triage, setPageContextForChat, unsetPageContextForChat])
 
   const deleteTriage = () => {
     const confirmed = window.confirm(

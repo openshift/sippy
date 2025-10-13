@@ -16,7 +16,7 @@ import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { useGlobalChat } from '../chat/useGlobalChat'
+import { usePageContextForChat } from '../chat/store/useChatStore'
 import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -409,7 +409,8 @@ const useStyles = makeStyles((theme) => ({
 function JobTable(props) {
   const { classes } = props
   const gridClasses = useStyles()
-  const { updatePageContext } = useGlobalChat()
+  const { setPageContextForChat, unsetPageContextForChat } =
+    usePageContextForChat()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -457,7 +458,7 @@ function JobTable(props) {
       net_improvement: job.net_improvement,
     }))
 
-    updatePageContext({
+    setPageContextForChat({
       page: 'jobs-table',
       url: window.location.href,
       data: {
@@ -475,7 +476,7 @@ function JobTable(props) {
 
     // Cleanup: Clear context when component unmounts
     return () => {
-      updatePageContext(null)
+      unsetPageContextForChat()
     }
   }, [
     rows,
@@ -488,7 +489,8 @@ function JobTable(props) {
     sortField,
     sort,
     filterModel,
-    updatePageContext,
+    setPageContextForChat,
+    unsetPageContextForChat,
   ])
 
   const fetchData = () => {

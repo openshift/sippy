@@ -1,5 +1,21 @@
 // Chat utility functions and constants
 
+/**
+ * Convert kebab-case or snake_case strings to Title Case
+ * Examples:
+ *   humanize('hello-world') => 'Hello World'
+ *   humanize('hello_world') => 'Hello World'
+ *   humanize('component-readiness') => 'Component Readiness'
+ */
+export function humanize(str) {
+  if (!str) return ''
+
+  return str
+    .split(/[-_]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+}
+
 export const MESSAGE_TYPES = {
   USER: 'user',
   ASSISTANT: 'assistant',
@@ -55,7 +71,6 @@ export function getChatWebSocketUrl() {
   }
 
   url.pathname = url.pathname.replace(/\/$/, '') + '/stream'
-  console.log(url.toString())
   return url.toString()
 }
 
@@ -86,6 +101,7 @@ export function formatChatHistoryForAPI(messages) {
       role: msg.type === MESSAGE_TYPES.USER ? 'user' : 'assistant',
       content: msg.content,
       timestamp: msg.timestamp,
+      page_context: msg.pageContext || null,
     }))
 }
 
@@ -97,16 +113,6 @@ export function parseWebSocketMessage(data) {
     console.error('Failed to parse WebSocket message:', error)
     return null
   }
-}
-
-// Default chat settings
-export const DEFAULT_CHAT_SETTINGS = {
-  showThinking: true,
-  autoScroll: true,
-  maxHistory: 100,
-  retryFailedMessages: true,
-  streamingMode: true,
-  persona: 'default',
 }
 
 // Validate message content
@@ -127,53 +133,4 @@ export function validateMessage(content) {
   }
 
   return { valid: true }
-}
-
-// Extract tool names from thinking steps
-export function extractToolsUsed(messages) {
-  const tools = new Set()
-
-  messages.forEach((msg) => {
-    if (msg.type === MESSAGE_TYPES.THINKING_STEP && msg.data?.action) {
-      tools.add(msg.data.action)
-    }
-  })
-
-  return Array.from(tools)
-}
-
-// Check if message is from today
-export function isMessageFromToday(timestamp) {
-  const messageDate = new Date(timestamp)
-  const today = new Date()
-
-  return messageDate.toDateString() === today.toDateString()
-}
-
-// Group messages by date
-export function groupMessagesByDate(messages) {
-  const groups = {}
-
-  messages.forEach((msg) => {
-    const date = new Date(msg.timestamp).toDateString()
-    if (!groups[date]) {
-      groups[date] = []
-    }
-    groups[date].push(msg)
-  })
-
-  return groups
-}
-
-// Sanitize message content for display
-export function sanitizeMessageContent(content) {
-  if (typeof content !== 'string') return ''
-
-  // Basic HTML escaping
-  return content
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
 }

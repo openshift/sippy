@@ -26,7 +26,6 @@ import {
   getTriagesAPIUrl,
 } from '../component_readiness/CompReadyUtils'
 import { makeStyles } from '@mui/styles'
-import { useGlobalChat } from '../chat/useGlobalChat'
 import BugButton from './BugButton'
 import OneShotChatModal from '../chat/OneShotChatModal'
 import PropTypes from 'prop-types'
@@ -80,7 +79,6 @@ export default function FileBug({
   const [isValidationError, setIsValidationError] = useState(false)
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   const [aiGeneratedDescription, setAiGeneratedDescription] = useState('')
-  const { pageContext } = useGlobalChat()
   const capabilities = useContext(CapabilitiesContext)
   const chatEnabled = capabilities.includes('chat')
 
@@ -689,7 +687,6 @@ CRITICAL OUTPUT REQUIREMENTS:
           open={isAIModalOpen}
           onClose={() => setIsAIModalOpen(false)}
           prompt={buildAIPrompt()}
-          pageContext={pageContext}
           onResult={handleAIDescriptionResult}
           title="Generating AI-Enhanced Bug Description"
         />

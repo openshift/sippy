@@ -41,7 +41,6 @@ export default function SippyLogo() {
           src={logo}
           alt="CIPI (Continuous Integration Private Investigator) aka Sippy."
         />
-        <br />
       </Typography>
       <Popover
         id="mouse-over-popover"
@@ -61,6 +60,7 @@ export default function SippyLogo() {
         }}
         onClose={handlePopoverClose}
         disableRestoreFocus
+        disableScrollLock
       >
         <Typography>
           Hi, I&apos;m Sippy! The Continuous Integration

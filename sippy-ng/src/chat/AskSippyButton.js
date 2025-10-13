@@ -2,7 +2,11 @@ import { AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material'
 import { Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { makeStyles } from '@mui/styles'
-import { useGlobalChat } from './useGlobalChat'
+import {
+  useDrawer,
+  useSessionActions,
+  useWebSocketActions,
+} from './store/useChatStore'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 
@@ -31,18 +35,35 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
+/**
+ * AskSippyButton - A reusable button that pre-sends a question to the chat widget in
+ * a new session.
+ *
+ * Example usage:
+ * ```jsx
+ * <AskSippyButton
+ *   question="Why is this test failing?"
+ *   tooltip="Ask Sippy about this test"
+ * />
+ * ```
+ */
 export default function AskSippyButton({ question, tooltip }) {
-  const { askQuestion } = useGlobalChat()
+  const { openDrawer } = useDrawer()
+  const { startNewSession } = useSessionActions()
+  const { sendMessage } = useWebSocketActions()
   const capabilities = useContext(CapabilitiesContext)
   const classes = useStyles()
 
-  // Don't render if chat capability is not enabled
   if (!capabilities.includes('chat')) {
     return null
   }
 
   const handleClick = () => {
-    askQuestion(question)
+    startNewSession()
+    openDrawer()
+    setTimeout(() => {
+      sendMessage(question)
+    }, 100)
   }
 
   const button = (

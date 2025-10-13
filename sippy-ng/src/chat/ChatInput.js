@@ -6,13 +6,20 @@ import {
   TextField,
   Tooltip,
 } from '@mui/material'
+import { CONNECTION_STATES } from './store/webSocketSlice'
+import { humanize, validateMessage } from './chatUtils'
 import { makeStyles } from '@mui/styles'
 import {
+  Masks as MasksIcon,
   Refresh as RefreshIcon,
   Send as SendIcon,
   Stop as StopIcon,
 } from '@mui/icons-material'
-import { validateMessage } from './chatUtils'
+import {
+  useConnectionState,
+  usePersonas,
+  useSettings,
+} from './store/useChatStore'
 import PropTypes from 'prop-types'
 import React, { useEffect, useRef, useState } from 'react'
 
@@ -87,13 +94,9 @@ const EXAMPLE_QUERIES = [
 
 export default function ChatInput({
   onSendMessage,
-  disabled = false,
-  isConnected = false,
-  isTyping = false,
   onRetry,
   placeholder = 'Ask about OpenShift releases, job failures, or payload status...',
-  contextChip = null,
-  personaChip = null,
+  pageContext = null,
   suggestedQuestions = null,
 }) {
   const classes = useStyles()
@@ -101,8 +104,19 @@ export default function ChatInput({
   const [error, setError] = useState('')
   const textFieldRef = useRef(null)
 
-  // Use suggestedQuestions if provided, otherwise use default EXAMPLE_QUERIES
+  const { settings } = useSettings()
+  const { personas } = usePersonas()
+  const { connectionState, isTyping } = useConnectionState()
+
+  const isConnected = connectionState === CONNECTION_STATES.CONNECTED
+  const disabled = !isConnected
+
   const displayQuestions = suggestedQuestions || EXAMPLE_QUERIES
+
+  const getContextDisplay = () => {
+    if (!pageContext?.page) return null
+    return humanize(pageContext.page)
+  }
 
   // Focus input on mount
   useEffect(() => {
@@ -188,8 +202,35 @@ export default function ChatInput({
             className={classes.connectionStatus}
             icon={isTyping ? <CircularProgress size={12} /> : undefined}
           />
-          {contextChip}
-          {personaChip}
+          {pageContext && getContextDisplay() && (
+            <Tooltip title={`Context: ${getContextDisplay()}`}>
+              <Chip
+                label={getContextDisplay()}
+                size="small"
+                color="primary"
+                variant="outlined"
+              />
+            </Tooltip>
+          )}
+          {personas.length > 0 && settings.persona !== 'default' && (
+            <Tooltip
+              title={
+                personas.find((p) => p.id === settings.persona)?.description ||
+                'Custom persona'
+              }
+            >
+              <Chip
+                icon={<MasksIcon />}
+                label={
+                  personas.find((p) => p.id === settings.persona)?.name ||
+                  humanize(settings.persona)
+                }
+                size="small"
+                color="secondary"
+                variant="outlined"
+              />
+            </Tooltip>
+          )}
           {onRetry && !isConnected && (
             <Tooltip title="Retry connection">
               <IconButton size="small" onClick={onRetry}>
@@ -269,12 +310,13 @@ export default function ChatInput({
 
 ChatInput.propTypes = {
   onSendMessage: PropTypes.func.isRequired,
-  disabled: PropTypes.bool,
-  isConnected: PropTypes.bool,
-  isTyping: PropTypes.bool,
   onRetry: PropTypes.func,
   placeholder: PropTypes.string,
-  contextChip: PropTypes.node,
-  personaChip: PropTypes.node,
+  pageContext: PropTypes.shape({
+    page: PropTypes.string,
+    url: PropTypes.string,
+    data: PropTypes.object,
+    instructions: PropTypes.string,
+  }),
   suggestedQuestions: PropTypes.arrayOf(PropTypes.string),
 }

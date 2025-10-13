@@ -1,33 +1,36 @@
 import {
-  AddCircleOutline as AddCircleOutlineIcon,
-  ExpandMore as ExpandMoreIcon,
-  Help as HelpIcon,
-  Masks as MasksIcon,
-  Fullscreen as MaximizeIcon,
-  FullscreenExit as MinimizeIcon,
-  Settings as SettingsIcon,
-  SmartToy as SmartToyIcon,
-} from '@mui/icons-material'
-import {
   Alert,
-  Chip,
+  CircularProgress,
   Drawer,
   Fade,
-  IconButton,
   Paper,
-  Tooltip,
   Typography,
 } from '@mui/material'
+import { CONNECTION_STATES } from './store/webSocketSlice'
 import { makeStyles } from '@mui/styles'
 import { MESSAGE_TYPES } from './chatUtils'
-import { useChatInterface } from './useChatInterface'
+import { SESSION_TYPES } from './store/sessionSlice'
+import {
+  useConnectionState,
+  usePageContextForChat,
+  useSessionActions,
+  useSessionState,
+  useSettings,
+  useShareActions,
+  useShareState,
+  useWebSocketActions,
+} from './store/useChatStore'
+import { useScrollManagement } from './useScrollManagement'
+import { useSessionRating } from './useSessionRating'
+import ChatHeader from './ChatHeader'
 import ChatInput from './ChatInput'
 import ChatMessage from './ChatMessage'
 import ChatSettings from './ChatSettings'
 import PropTypes from 'prop-types'
+import Rating from './Rating'
 import React, { useEffect, useState } from 'react'
+import ShareDialog from './ShareDialog'
 import SippyLogo from '../components/SippyLogo'
-import StarRating from './StarRating'
 import ThinkingStep from './ThinkingStep'
 
 const DRAWER_HEIGHT = 600
@@ -162,6 +165,13 @@ const useStyles = makeStyles((theme) => ({
         ? 'rgba(255, 255, 255, 0.02)'
         : 'rgba(0, 0, 0, 0.02)',
   },
+
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: '100%',
+  },
 }))
 
 /**
@@ -173,113 +183,55 @@ export default function ChatInterface({
   mode = 'fullPage',
   open = true,
   onClose,
-  pageContext = null,
+  conversationId = null,
 }) {
   const classes = useStyles()
+  const { pageContext } = usePageContextForChat()
   const [isMaximized, setIsMaximized] = useState(false)
 
-  // Use shared chat interface logic
+  // Get state and actions from custom hooks
+  const { sessions, activeSessionId, activeSession } = useSessionState()
   const {
-    settings,
-    settingsOpen,
-    setSettingsOpen,
-    messages,
-    filteredMessages,
-    connectionState,
-    currentThinking,
-    error,
-    isTyping,
-    isConnected,
-    sessionRated,
-    setSessionRated,
-    personas,
-    messagesEndRef,
-    messagesListRef,
-    lastMessageRef,
-    handleSendMessage,
-    handleClearMessages,
-    handleReconnect,
-    handleSettingsChange,
-    getCurrentPersonaDisplay,
-    getCurrentPersonaTooltip,
-  } = useChatInterface()
+    initializeSessions,
+    createSession,
+    switchSession,
+    deleteSession,
+    forkActiveSession,
+  } = useSessionActions()
 
-  // Check if there are any assistant messages to show rating
-  const hasAssistantMessages = filteredMessages.some(
-    (msg) => msg.type === MESSAGE_TYPES.ASSISTANT
-  )
+  const { shareLoading, loadingShared } = useShareState()
+  const { clearSharedUrl, loadSharedConversationFromAPI } = useShareActions()
 
-  const handleSessionRate = (messageId, rating) => {
-    // Calculate session metrics
-    const userMessages = messages.filter(
-      (msg) => msg.type === MESSAGE_TYPES.USER
-    )
-    const assistantMessages = messages.filter(
-      (msg) => msg.type === MESSAGE_TYPES.ASSISTANT
-    )
-    const totalMessages = userMessages.length + assistantMessages.length
+  const { connectionState, isTyping, error, currentThinking } =
+    useConnectionState()
+  const { settings } = useSettings()
 
-    // Get all thinking steps
-    const thinkingSteps = messages.filter(
-      (msg) => msg.type === MESSAGE_TYPES.THINKING_STEP
-    )
+  // Get messages from active session
+  const messages = activeSession?.messages || []
 
-    // Count LLM thoughts (thinking steps with action = "thinking")
-    const llmThoughts = thinkingSteps.filter(
-      (msg) => msg.data?.action === 'thinking'
-    ).length
+  // WebSocket actions
+  const { sendMessage, connectWebSocket } = useWebSocketActions()
 
-    // Count tool calls (thinking steps with action that is NOT "thinking")
-    const toolCalls = thinkingSteps.filter(
-      (msg) => msg.data?.action && msg.data.action !== 'thinking'
-    ).length
+  // Session rating
+  const { submitRating } = useSessionRating()
 
-    // Calculate total size of interaction in bytes
-    const interactionSize = new Blob([JSON.stringify(messages)]).size
+  // Scroll management
+  const { messagesEndRef, messagesListRef, lastMessageRef } =
+    useScrollManagement(activeSessionId, activeSession, messages, settings)
 
-    // Create rating payload for backend
-    const payload = {
-      rating: rating,
-      metadata: {
-        totalMessages: totalMessages,
-        userMessages: userMessages.length,
-        assistantMessages: assistantMessages.length,
-        toolCalls: toolCalls,
-        llmThoughts: llmThoughts,
-        totalSizeBytes: interactionSize,
-        timestamp: new Date().toISOString(),
-      },
+  const isConnected = connectionState === CONNECTION_STATES.CONNECTED
+
+  // Initialize sessions on mount
+  useEffect(() => {
+    initializeSessions()
+  }, [initializeSessions])
+
+  // Load shared conversation if conversationId is provided
+  useEffect(() => {
+    if (conversationId) {
+      loadSharedConversationFromAPI(conversationId)
     }
-
-    console.log('Submitting chat rating:', JSON.stringify(payload, null, 2))
-
-    // Send rating to backend API
-    fetch(process.env.REACT_APP_API_URL + '/api/chat/ratings', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        return response.json()
-      })
-      .then((data) => {
-        console.log('Rating submitted successfully:', data)
-      })
-      .catch((error) => {
-        console.error('Failed to submit rating:', error)
-        // Continue with UI flow even if API call fails
-      })
-
-    // Delay hiding the rating component to allow "Thank you" message to show
-    setTimeout(() => {
-      setSessionRated(true)
-    }, 2500) // Slightly longer than the StarRating component's timeout
-  }
+  }, [conversationId, loadSharedConversationFromAPI])
 
   // Set page title for full page mode
   useEffect(() => {
@@ -291,15 +243,73 @@ export default function ChatInterface({
     }
   }, [mode])
 
-  const getContextDisplay = () => {
-    if (!pageContext || !pageContext.page) {
-      return null
+  // Check if there are any assistant messages to show rating
+  const hasAssistantMessages = messages.some(
+    (msg) => msg.type === MESSAGE_TYPES.ASSISTANT
+  )
+
+  // Get the last non-system, non-thinking message
+  const lastInteractionMessage = messages
+    .filter(
+      (msg) =>
+        msg.type === MESSAGE_TYPES.USER || msg.type === MESSAGE_TYPES.ASSISTANT
+    )
+    .slice(-1)[0]
+
+  // Only show rating if the last interaction was an assistant reply
+  const lastMessageIsAssistant =
+    lastInteractionMessage?.type === MESSAGE_TYPES.ASSISTANT
+
+  // Determine if rating should be shown
+  const canRateConversation =
+    activeSession &&
+    activeSession.type !== 'shared' &&
+    hasAssistantMessages &&
+    lastMessageIsAssistant &&
+    !activeSession.rated
+
+  const handleSessionRate = (messageId, rating) => {
+    if (!activeSession || !activeSession.id) {
+      console.error('No active session to rate')
+      return
     }
-    const pageName = pageContext.page
-      .split('-')
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ')
-    return pageName
+
+    submitRating(activeSession.id, activeSession.type, messages, rating)
+  }
+
+  const handleNewChat = () => {
+    // Side effects only (session creation handled in dropdown)
+    if (mode === 'fullPage' && conversationId) {
+      window.history.pushState(null, '', '/sippy-ng/chat')
+    }
+
+    clearSharedUrl()
+  }
+
+  const handleSendMessageWithFork = (content) => {
+    if (
+      activeSession &&
+      (activeSession.type === SESSION_TYPES.SHARED ||
+        activeSession.type === SESSION_TYPES.SHARED_BY_ME)
+    ) {
+      forkActiveSession()
+      if (mode === 'fullPage' && conversationId) {
+        window.history.pushState(null, '', '/sippy-ng/chat')
+      }
+    }
+
+    clearSharedUrl()
+    return sendMessage(content)
+  }
+
+  if (loadingShared) {
+    return (
+      <Paper className={classes.fullPageRoot}>
+        <div className={classes.loadingContainer}>
+          <CircularProgress />
+        </div>
+      </Paper>
+    )
   }
 
   const renderEmptyState = () => (
@@ -316,15 +326,19 @@ export default function ChatInterface({
   )
 
   const renderMessages = () => {
-    if (filteredMessages.length === 0 && !currentThinking) {
+    if (messages.length === 0 && !currentThinking) {
       return renderEmptyState()
     }
 
     return (
       <>
-        {filteredMessages.map((msg, index) => {
-          const isLastMessage = index === filteredMessages.length - 1
+        {messages.map((msg, index) => {
+          const isLastMessage = index === messages.length - 1
           if (msg.type === MESSAGE_TYPES.THINKING_STEP && msg.data) {
+            // Only show thinking steps if the setting is enabled
+            if (!settings.showThinking) {
+              return null
+            }
             return (
               <div
                 key={index}
@@ -368,151 +382,41 @@ export default function ChatInterface({
     )
   }
 
-  const renderHeader = () => {
-    const contextDisplay = getContextDisplay()
-
-    return (
-      <div
-        className={
-          mode === 'fullPage' ? classes.fullPageHeader : classes.drawerHeader
-        }
-      >
-        <div className={classes.headerTitle}>
-          <SmartToyIcon sx={{ flexShrink: 0, marginTop: '4px' }} />
-          <div className={classes.headerTextContainer}>
-            <Typography
-              variant="h6"
-              sx={{
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                minWidth: 0,
-              }}
-            >
-              Chat Assistant
-            </Typography>
-            <Typography
-              className={classes.aiNotice}
-              sx={{
-                fontSize: '0.65rem !important',
-              }}
-            >
-              Always review AI generated content prior to use.
-            </Typography>
-          </div>
-        </div>
-
-        <div className={classes.headerActions}>
-          <Tooltip title="New chat">
-            <IconButton size="small" onClick={handleClearMessages}>
-              <AddCircleOutlineIcon />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Help">
-            <IconButton
-              size="small"
-              component="a"
-              href={
-                'https://source.redhat.com/departments/products_and_global_engineering/openshift_development/openshift_wiki/sippy_chat_user_guide'
-              }
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <HelpIcon />
-            </IconButton>
-          </Tooltip>
-
-          <Tooltip title="Settings">
-            <IconButton size="small" onClick={() => setSettingsOpen(true)}>
-              <SettingsIcon />
-            </IconButton>
-          </Tooltip>
-
-          {mode === 'drawer' && (
-            <>
-              <Tooltip title={isMaximized ? 'Minimize' : 'Maximize'}>
-                <IconButton
-                  size="small"
-                  onClick={() => setIsMaximized(!isMaximized)}
-                >
-                  {isMaximized ? <MinimizeIcon /> : <MaximizeIcon />}
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Minimize">
-                <IconButton size="small" onClick={onClose}>
-                  <ExpandMoreIcon />
-                </IconButton>
-              </Tooltip>
-            </>
-          )}
-        </div>
-      </div>
-    )
-  }
-
   const renderContent = () => (
     <>
-      {renderHeader()}
+      <ChatHeader
+        mode={mode}
+        onNewSession={handleNewChat}
+        onMaximize={() => setIsMaximized(!isMaximized)}
+        onClose={onClose}
+        isMaximized={isMaximized}
+      />
 
       <div ref={messagesListRef} className={classes.messagesContainer}>
         {renderMessages()}
       </div>
 
-      {hasAssistantMessages && !sessionRated && (
+      {canRateConversation && (
         <div className={classes.sessionRatingContainer}>
-          <StarRating messageId="session" onRate={handleSessionRate} />
+          <Rating messageId="session" onRate={handleSessionRate} />
         </div>
       )}
 
       <div className={classes.inputContainer}>
         <ChatInput
-          onSendMessage={handleSendMessage}
-          disabled={!isConnected}
-          isConnected={isConnected}
-          isTyping={isTyping}
-          onRetry={handleReconnect}
+          onSendMessage={handleSendMessageWithFork}
+          onRetry={connectWebSocket}
+          pageContext={pageContext}
           suggestedQuestions={pageContext?.suggestedQuestions || null}
-          contextChip={
-            pageContext && getContextDisplay() ? (
-              <Tooltip title={`Context: ${getContextDisplay()}`}>
-                <Chip
-                  label={getContextDisplay()}
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                />
-              </Tooltip>
-            ) : null
-          }
-          personaChip={
-            personas.length > 0 && settings.persona !== 'default' ? (
-              <Tooltip title={getCurrentPersonaTooltip()}>
-                <Chip
-                  icon={<MasksIcon />}
-                  label={getCurrentPersonaDisplay()}
-                  size="small"
-                  color="secondary"
-                  variant="outlined"
-                />
-              </Tooltip>
-            ) : null
-          }
         />
       </div>
 
       <ChatSettings
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        settings={settings}
-        onSettingsChange={handleSettingsChange}
-        onClearMessages={handleClearMessages}
-        onReconnect={handleReconnect}
-        connectionState={connectionState}
-        messageCount={messages.length}
-        isConnected={isConnected}
+        onClearMessages={handleNewChat}
+        onReconnect={connectWebSocket}
       />
+
+      <ShareDialog />
     </>
   )
 
@@ -534,7 +438,6 @@ export default function ChatInterface({
     )
   }
 
-  // Full page mode
   return <Paper className={classes.fullPageRoot}>{renderContent()}</Paper>
 }
 
@@ -542,11 +445,5 @@ ChatInterface.propTypes = {
   mode: PropTypes.oneOf(['fullPage', 'drawer']),
   open: PropTypes.bool,
   onClose: PropTypes.func,
-  pageContext: PropTypes.shape({
-    page: PropTypes.string,
-    url: PropTypes.string,
-    data: PropTypes.object,
-    instructions: PropTypes.string,
-    suggestedQuestions: PropTypes.arrayOf(PropTypes.string),
-  }),
+  conversationId: PropTypes.string,
 }
