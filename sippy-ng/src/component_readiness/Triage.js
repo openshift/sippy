@@ -1,6 +1,7 @@
 import { Box, Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
+import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
 import {
   getTriagesAPIUrl,
@@ -13,7 +14,7 @@ import AskSippyButton from '../chat/AskSippyButton'
 import CompSeverityIcon from './CompSeverityIcon'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useContext } from 'react'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -33,6 +34,12 @@ export default function Triage({ id }) {
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
+  // The view is needed in order to formulate test_details links on the frontend, this is still necessary as they are not
+  // always included in the server response. If the triage has regressions from multiple views included on it, and the
+  // page is loaded from the context of one of those component_reports, then the regressions from the other view will not
+  // load properly. This is a better result than not being able to formulate any URLs when links aren't provided.
+  // TODO(sgoeddel): Make it so links are *always* provided, and remove this (https://issues.redhat.com/browse/TRT-2356)
+  const { view } = useContext(CompReadyVarsContext)
 
   React.useEffect(() => {
     setIsLoaded(false)
@@ -353,6 +360,7 @@ export default function Triage({ id }) {
       <TriagedRegressionTestList
         allRegressedTests={triage.regressed_tests}
         regressions={triage.regressions}
+        filterVals={`?view=${view}`}
       />
       {triageEnabled && (
         <TriagePotentialMatches
