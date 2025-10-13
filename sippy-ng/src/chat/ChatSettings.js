@@ -28,6 +28,7 @@ import {
   Refresh as RefreshIcon,
   Settings as SettingsIcon,
   Storage as StorageIcon,
+  TravelExplore as TourIcon,
 } from '@mui/icons-material'
 import { CONNECTION_STATES } from './store/webSocketSlice'
 import { formatBytes, getChatStorageStats } from './store/storageUtils'
@@ -103,7 +104,7 @@ const useStyles = makeStyles((theme) => ({
 export default function ChatSettings({ onClearMessages, onReconnect }) {
   const classes = useStyles()
 
-  const { settings, settingsOpen, updateSettings, setSettingsOpen } =
+  const { settings, settingsOpen, updateSettings, setSettingsOpen, resetTour } =
     useSettings()
   const { connectionState } = useConnectionState()
   const { personas, personasLoading, personasError, loadPersonas } =
@@ -112,6 +113,7 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
   const { clearAllSessions, clearOldSessions } = useSessionActions()
 
   const isConnected = connectionState === 'connected'
+  const tourCompleted = settings.tourCompleted
 
   // Storage stats
   const [storageStats, setStorageStats] = useState({
@@ -210,6 +212,11 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
       await loadStorageStats()
       onClearMessages() // Also clear current messages
     }
+  }
+
+  const handleRestartTour = () => {
+    resetTour()
+    setSettingsOpen(false)
   }
 
   return (
@@ -464,6 +471,34 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
         >
           Reconnect
         </Button>
+      </div>
+
+      <Divider />
+
+      {/* Tour Management */}
+      <div className={classes.section}>
+        <Typography variant="subtitle2" className={classes.sectionTitle}>
+          Help & Guidance
+        </Typography>
+
+        <Button
+          variant="outlined"
+          startIcon={<TourIcon />}
+          onClick={handleRestartTour}
+          fullWidth
+          disabled={!tourCompleted}
+        >
+          Restart Interface Tour
+        </Button>
+        {!tourCompleted && (
+          <Typography
+            variant="caption"
+            color="textSecondary"
+            sx={{ display: 'block', mt: 1, textAlign: 'center' }}
+          >
+            The tour will start automatically on first use
+          </Typography>
+        )}
       </div>
     </Drawer>
   )

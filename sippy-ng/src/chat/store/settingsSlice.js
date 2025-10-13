@@ -7,6 +7,7 @@ export const createSettingsSlice = (set, get) => ({
     showThinking: true,
     autoScroll: true,
     persona: 'default',
+    tourCompleted: false,
   },
   settingsOpen: false,
 
@@ -22,5 +23,24 @@ export const createSettingsSlice = (set, get) => ({
 
   setSettingsOpen: (open) => {
     set({ settingsOpen: open })
+  },
+
+  // Tour actions
+  setTourCompleted: (completed) => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        tourCompleted: completed,
+      },
+    }))
+  },
+
+  resetTour: () => {
+    set((state) => ({
+      settings: {
+        ...state.settings,
+        tourCompleted: false,
+      },
+    }))
   },
 })

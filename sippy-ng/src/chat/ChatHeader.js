@@ -151,6 +151,7 @@ export default function ChatHeader({
               disabled={
                 shareLoading || !hasMessages || isTyping || currentThinking
               }
+              data-tour="share-button"
             >
               {shareLoading ? <CircularProgress size={20} /> : <ShareIcon />}
             </IconButton>
@@ -158,13 +159,17 @@ export default function ChatHeader({
         </Tooltip>
 
         <Tooltip title="Help">
-          <IconButton size="small" onClick={handleHelp}>
+          <IconButton size="small" onClick={handleHelp} data-tour="help-button">
             <HelpIcon />
           </IconButton>
         </Tooltip>
 
         <Tooltip title="Settings">
-          <IconButton size="small" onClick={() => setSettingsOpen(true)}>
+          <IconButton
+            size="small"
+            onClick={() => setSettingsOpen(true)}
+            data-tour="settings-button"
+          >
             <SettingsIcon />
           </IconButton>
         </Tooltip>

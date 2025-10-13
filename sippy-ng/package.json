@@ -35,6 +35,7 @@
     "react-cookie": "^7.2.1",
     "react-dom": "^17.0.2",
     "react-error-boundary": "^5.0.0",
+    "react-joyride": "^2.9.3",
     "react-markdown": "^8.0.7",
     "react-router-dom": "^6.26.0",
     "timelines-chart": "^2.12.1",

@@ -120,6 +120,8 @@ export const useSettings = () =>
       settingsOpen: state.settingsOpen,
       updateSettings: state.updateSettings,
       setSettingsOpen: state.setSettingsOpen,
+      setTourCompleted: state.setTourCompleted,
+      resetTour: state.resetTour,
     }))
   )
 

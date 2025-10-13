@@ -199,6 +199,7 @@ export default function SessionManager({ onNewSession, mode = 'fullPage' }) {
             isCompact ? classes.dropdownButtonCompact : ''
           }`}
           endIcon={isCompact ? null : <ExpandMoreIcon />}
+          data-tour={isCompact ? 'session-dropdown-drawer' : 'session-dropdown'}
         >
           {isCompact ? (
             <ListIcon />
@@ -214,6 +215,7 @@ export default function SessionManager({ onNewSession, mode = 'fullPage' }) {
             size="small"
             onClick={handleNewSession}
             disabled={disabled}
+            data-tour="new-chat"
           >
             <NoteAddIcon />
           </IconButton>

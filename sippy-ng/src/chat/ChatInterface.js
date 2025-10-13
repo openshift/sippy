@@ -26,6 +26,7 @@ import ChatHeader from './ChatHeader'
 import ChatInput from './ChatInput'
 import ChatMessage from './ChatMessage'
 import ChatSettings from './ChatSettings'
+import ChatTour from './ChatTour'
 import PropTypes from 'prop-types'
 import Rating from './Rating'
 import React, { useEffect, useState } from 'react'
@@ -417,6 +418,8 @@ export default function ChatInterface({
       />
 
       <ShareDialog />
+
+      <ChatTour mode={mode} />
     </>
   )
 

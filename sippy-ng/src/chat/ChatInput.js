@@ -193,7 +193,7 @@ export default function ChatInput({
     <Paper className={classes.inputContainer} elevation={3}>
       {/* Status bar */}
       <div className={classes.statusContainer}>
-        <div className={classes.statusChips}>
+        <div className={classes.statusChips} data-tour="status-area">
           <Chip
             size="small"
             label={getConnectionStatusText()}
@@ -249,7 +249,7 @@ export default function ChatInput({
 
       {/* Example suggestions (show when input is empty) */}
       {message.length === 0 && (
-        <div className={classes.suggestions}>
+        <div className={classes.suggestions} data-tour="sample-questions">
           {displayQuestions.slice(0, 5).map((suggestion, index) => (
             <Chip
               key={index}
