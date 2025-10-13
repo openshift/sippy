@@ -51,7 +51,7 @@ export default function TriagedRegressionTestList(props) {
   }
 
   const showStatus =
-    props.allRegressedTests !== undefined && props.allRegressedTests.length > 0
+    props.allRegressedTests && props.allRegressedTests.length > 0
 
   const columns = [
     {
