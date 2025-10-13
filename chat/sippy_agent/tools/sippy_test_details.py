@@ -1,0 +1,156 @@
+"""
+Tool for getting test details reports from Sippy API.
+"""
+
+import json
+import logging
+from typing import Any, Dict, Optional, Type
+from pydantic import Field
+import httpx
+
+from .base_tool import SippyBaseTool, SippyToolInput
+
+logger = logging.getLogger(__name__)
+
+# TODO(sgoeddel): eventually, TestDetailsReport.js should utilize this tool directly and contain minimal other instructions
+# It is very difficult to obtain similar functionality that way, however. For now, this is used on other pages only.
+class SippyTestDetailsTool(SippyBaseTool):
+    """Tool for getting comprehensive test details reports from Sippy API."""
+
+    name: str = "get_test_details_report"
+    description: str = """Get a test details report from Sippy API including regression analysis and statistics.
+    
+This tool provides:
+- Regression status and history
+- Sample vs base statistics comparison
+- Failed job run IDs (use get_prow_job_summary to analyze specific runs)
+- Triage information
+- Pass rate changes
+
+Input: test_details_api_url (the API endpoint URL for the test details report)"""
+
+    # Add sippy_api_url as a proper field
+    sippy_api_url: Optional[str] = Field(default=None, description="Sippy API base URL")
+
+    class TestDetailsInput(SippyToolInput):
+        test_details_api_url: str = Field(description="Full API URL for the test details report (e.g., /api/component_readiness/test_details?testId=12345&...)")
+        sippy_api_url: Optional[str] = Field(default=None, description="Sippy API base URL (optional, uses config if not provided)")
+
+    args_schema: Type[SippyToolInput] = TestDetailsInput
+
+    def _run(self, *args, **kwargs: Any) -> Dict[str, Any]:
+        """Get test details report from Sippy API."""
+
+        input_data = {}
+        if args and isinstance(args[0], dict):
+            input_data.update(args[0])
+        input_data.update(kwargs)
+
+        # Pydantic model will have validated and filled in defaults
+        args = self.TestDetailsInput(**input_data)
+
+        # Use provided URL or fall back to instance URL
+        api_url = args.sippy_api_url or self.sippy_api_url
+
+        if not api_url:
+            return {
+                "error": "No Sippy API URL configured. Please set SIPPY_API_URL environment variable or provide sippy_api_url parameter."
+            }
+
+        # Clean and validate the API URL
+        test_details_url = args.test_details_api_url.strip()
+        
+        # If it's a relative URL, prepend the API base URL
+        if test_details_url.startswith('/'):
+            full_url = f"{api_url.rstrip('/')}{test_details_url}"
+        elif test_details_url.startswith('http'):
+            full_url = test_details_url
+        else:
+            return {"error": f"Invalid URL format. Expected relative URL starting with '/' or full URL starting with 'http', got: {test_details_url}"}
+
+        try:
+            # Make the API request
+            logger.info(f"Making request to {full_url}")
+
+            with httpx.Client(timeout=60.0) as client:
+                response = client.get(full_url)
+                response.raise_for_status()
+
+                data = response.json()
+
+                # Check if the response indicates an error
+                if data.get('code') and (data['code'] < 200 or data['code'] >= 300):
+                    return {
+                        "error": f"API returned error code {data['code']}: {data.get('message', 'Unknown error')}"
+                    }
+
+                # Process the response to extract key information
+                processed_data = self._process_test_details_response(data, api_url)
+                
+                # Return the processed data
+                return processed_data
+
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error getting test details: {e}")
+            return {"error": f"HTTP {e.response.status_code} - {e.response.text}"}
+        except httpx.RequestError as e:
+            logger.error(f"Request error getting test details: {e}")
+            return {"error": f"Failed to connect to Sippy API at {api_url} - {str(e)}"}
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}")
+            return {"error": "Invalid JSON response from Sippy API"}
+        except Exception as e:
+            logger.error(f"Unexpected error getting test details: {e}")
+            return {"error": f"Unexpected error - {str(e)}"}
+
+    def _process_test_details_response(self, data: Dict[str, Any], api_url: str) -> Dict[str, Any]:
+        """Process the raw API response to extract and structure key information."""
+        
+        if not data.get('analyses') or not data['analyses']:
+            return {
+                "error": "No analysis data found in response",
+                "raw_data": data
+            }
+
+        first_analysis = data['analyses'][0]
+
+        # Extract failed job run IDs
+        failed_job_run_ids = []
+        if first_analysis.get('job_stats'):
+            for job_stat in first_analysis['job_stats']:
+                if job_stat.get('sample_job_run_stats'):
+                    for sample_job_run in job_stat['sample_job_run_stats']:
+                        if (sample_job_run.get('test_stats') and 
+                            sample_job_run['test_stats'].get('failure_count', 0) > 0 and
+                            sample_job_run.get('job_run_id')):
+                            failed_job_run_ids.append(sample_job_run['job_run_id'])
+                            if len(failed_job_run_ids) >= 10:  # Limit to 10
+                                break
+                    if len(failed_job_run_ids) >= 10:
+                        break
+
+        # Process regression information
+        regression_info = None
+        if first_analysis.get('regression'):
+            regression = first_analysis['regression']
+            regression_info = {
+                "id": regression.get('id'),
+                "opened": regression.get('opened'),
+                "closed": regression.get('closed', {}).get('time') if regression.get('closed', {}).get('valid') else None,
+            }
+
+        return {
+            "test_name": data.get('test_name'),
+            "test_id": data.get('test_id'),
+            "component": data.get('component'),
+            "capability": data.get('capability'),
+            "environment": data.get('environment'),
+            "regression": regression_info,
+            "status": first_analysis.get('status'),
+            "explanations": first_analysis.get('explanations', []),
+            "sample_stats": first_analysis.get('sample_stats'),
+            "base_stats": first_analysis.get('base_stats'),
+            "failed_job_run_ids": failed_job_run_ids,
+            "triages_count": len(first_analysis.get('triages', [])),
+            "generated_at": data.get('generated_at'),
+        }

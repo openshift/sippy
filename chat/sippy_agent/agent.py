@@ -17,12 +17,14 @@ from .tools import (
     SippyProwJobSummaryTool,
     SippyLogAnalyzerTool,
     SippyJiraIncidentTool,
+    SippyJiraIssueTool,
     SippyReleasePayloadTool,
     SippyPayloadDetailsTool,
     JUnitParserTool,
     AggregatedJobAnalyzerTool,
     AggregatedYAMLParserTool,
     SippyDatabaseQueryTool,
+    SippyTestDetailsTool,
     load_tools_from_mcp,
 )
 
@@ -108,10 +110,14 @@ class SippyAgent:
         tools = [
             SippyProwJobSummaryTool(sippy_api_url=self.config.sippy_api_url),
             SippyLogAnalyzerTool(sippy_api_url=self.config.sippy_api_url),
+            SippyTestDetailsTool(sippy_api_url=self.config.sippy_api_url),
             SippyJiraIncidentTool(
                 jira_url=self.config.jira_url,
                 jira_username=self.config.jira_username,
                 jira_token=self.config.jira_token,
+            ),
+            SippyJiraIssueTool(
+                jira_url=self.config.jira_url,
             ),
             SippyReleasePayloadTool(),
             SippyPayloadDetailsTool(),
