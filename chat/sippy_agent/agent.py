@@ -25,6 +25,7 @@ from .tools import (
     AggregatedYAMLParserTool,
     SippyDatabaseQueryTool,
     SippyTestDetailsTool,
+    TriagePotentialMatchesTool,
     load_tools_from_mcp,
 )
 
@@ -116,9 +117,8 @@ class SippyAgent:
                 jira_username=self.config.jira_username,
                 jira_token=self.config.jira_token,
             ),
-            SippyJiraIssueTool(
-                jira_url=self.config.jira_url,
-            ),
+            SippyJiraIssueTool(jira_url=self.config.jira_url),
+            TriagePotentialMatchesTool(sippy_api_url=self.config.sippy_api_url),
             SippyReleasePayloadTool(),
             SippyPayloadDetailsTool(),
             JUnitParserTool(),

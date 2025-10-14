@@ -15,6 +15,7 @@ from .sippy_job_summary import SippyProwJobSummaryTool
 from .sippy_log_analyzer import SippyLogAnalyzerTool
 from .sippy_test_details import SippyTestDetailsTool
 from .jira_issue import SippyJiraIssueTool
+from .triage_potential_matches import TriagePotentialMatchesTool
 
 __all__ = [
     "AggregatedJobAnalyzerTool",
@@ -31,4 +32,5 @@ __all__ = [
     "SippyLogAnalyzerTool",
     "SippyTestDetailsTool",
     "SippyJiraIssueTool",
+    "TriagePotentialMatchesTool",
 ]

@@ -119,15 +119,28 @@ export default function Triage({ id }) {
 - Pay attention to the most recent comments as they reflect current status
 - Check the issue status, assignee, and fix versions for additional context
 
-**Do not perform both analyses unless the user specifically asks for both. Focus on what they're actually asking about.**
+**For questions about potential matches or which additional tests to add:**
+- ALWAYS follow this process to determine match likelihood:
+  1. Use get_triage_potential_matches with triage_id and view to get candidate tests sorted by confidence
+  2. From the existing triaged tests (in regressed_tests), select 2-4 representative tests that provide a fair sampling of the set (consider different components, test types, or failure patterns if diverse; otherwise just pick the first few). Use get_test_details_report with their test_details_api_url to get failed_job_run_ids
+  3. For the top 2-4 potential matches, use get_test_details_report with regressed_test.links.test_details as the query_params to get failed_job_run_ids
+  4. Compare the failed_job_run_ids: calculate how many job runs each potential match shares with the sampled existing triaged tests
+  5. A potential match with high overlap (many common job runs) is very likely to have the same root cause
+- Tests failing in the same job runs are strong indicators of related failures
+- Prioritize recommendations by: (high API confidence) AND (high job run overlap with existing tests)
+- Present results showing which specific triaged tests each potential match shares job runs with, making sure to include the regression_id (regressed_test.regression.id) for each test
+
+**Do not perform all analyses unless the user specifically asks for each of them. Focus on what they're actually asking about.**
 
 **Do not summarize triage metadata** (resolution status, dates, etc.) as this information is already displayed on the page.`,
       suggestedQuestions: [
         'What are the common failure patterns across these regressed tests?',
         'What is the current status of the fix in the Jira issue?',
+        'Are there any other regressions that should be added to this triage?',
       ],
       data: {
         triage_id: triage.id,
+        view: view,
         description: triage.description,
         type: triage.type,
         resolved: triage.resolved?.Valid

@@ -307,6 +307,15 @@ export default function TriagePotentialMatches({
       ),
     },
     {
+      field: 'regression_id',
+      headerName: 'Regression ID',
+      flex: 8,
+      valueGetter: (params) => {
+        return params.row.regressed_test.regression.id
+      },
+      renderCell: (param) => <div>{param.value}</div>,
+    },
+    {
       field: 'status',
       headerName: 'Status',
       flex: 4,
