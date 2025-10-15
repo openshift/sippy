@@ -13,7 +13,7 @@ import indexedDBStorage from './indexedDBStorage'
 /**
  * Zustand store for the chat interface, state is grouped in slices. Persistent
  * state is stored in IndexedDB; slices persisted are selected by partialization.
- * 
+ *
  * Always useShallow() when creating more slices, to avoid re-rendering the entire
  * store when one of the values changes.
  */

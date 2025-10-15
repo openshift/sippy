@@ -139,13 +139,13 @@ func (s *Server) jsonGetChatConversation(w http.ResponseWriter, req *http.Reques
 		return
 	}
 
-	log := log.WithFields(log.Fields{
+	chatLog := log.WithFields(log.Fields{
 		"conversationID": conversationID,
 	})
 
 	var conversation models.ChatConversation
 	if err := s.db.DB.First(&conversation, "id = ?", conversationID).Error; err != nil {
-		log.WithError(err).Warn("conversation not found")
+		chatLog.WithError(err).Warn("conversation not found")
 		failureResponse(w, http.StatusNotFound, "Conversation not found")
 		return
 	}
