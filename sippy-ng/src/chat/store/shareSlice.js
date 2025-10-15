@@ -18,7 +18,7 @@ export const createShareSlice = (set, get) => ({
   loadingShared: false,
 
   // Load shared conversation from API
-  loadSharedConversationFromAPI: async (conversationId) => {
+  loadSharedConversationFromAPI: (conversationId) => {
     const { sessions, loadSharedConversation } = get()
 
     // Don't fetch if we've already loaded this conversation - just switch to it
@@ -30,80 +30,85 @@ export const createShareSlice = (set, get) => ({
 
     const abortController = new AbortController()
 
-    try {
-      set({ loadingShared: true })
-      const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/chat/conversations/${conversationId}`,
-        { signal: abortController.signal }
-      )
+    set({ loadingShared: true })
 
-      if (!response.ok) {
-        let errorMessage = 'Failed to load shared conversation'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.message || errorMessage
-        } catch (e) {
-          errorMessage = response.statusText || errorMessage
+    fetch(
+      `${process.env.REACT_APP_API_URL}/api/chat/conversations/${conversationId}`,
+      { signal: abortController.signal }
+    )
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then(
+            (errorData) => {
+              throw new Error(
+                errorData.message || 'Failed to load shared conversation'
+              )
+            },
+            () => {
+              throw new Error(
+                response.statusText || 'Failed to load shared conversation'
+              )
+            }
+          )
         }
-        throw new Error(errorMessage)
-      }
+        return response.json()
+      })
+      .then((data) => {
+        // Load shared messages
+        const loadedMessages = data.messages.map((msg, idx) => ({
+          ...msg,
+          id: msg.id || `loaded_${idx}`,
+        }))
 
-      const data = await response.json()
+        // Add a system message to mark this shared conversation
+        const systemMessage = createMessage(
+          MESSAGE_TYPES.SYSTEM,
+          `Shared by ${data.user} ${relativeTime(
+            new Date(data.created_at),
+            new Date()
+          )}`,
+          {
+            id: 'system_' + conversationId,
+            conversationId: conversationId,
+            timestamp: data.created_at,
+          }
+        )
 
-      // Load shared messages
-      const loadedMessages = data.messages.map((msg, idx) => ({
-        ...msg,
-        id: msg.id || `loaded_${idx}`,
-      }))
+        const allMessages = [...loadedMessages, systemMessage]
 
-      // Add a system message to mark this shared conversation
-      const systemMessage = createMessage(
-        MESSAGE_TYPES.SYSTEM,
-        `Shared by ${data.user} ${relativeTime(
-          new Date(data.created_at),
-          new Date()
-        )}`,
-        {
-          id: 'system_' + conversationId,
-          conversationId: conversationId,
-          timestamp: data.created_at,
+        // Load into session management (this will set messages in the session)
+        loadSharedConversation(conversationId, allMessages, {
+          createdAt: data.created_at,
+          parentId: data.parent_id,
+          sharedBy: data.user,
+        })
+
+        // Set the shared URL so clicking share again doesn't create a duplicate
+        const url = `${window.location.origin}/sippy-ng/chat/${conversationId}`
+        set({
+          sharedUrl: url,
+          loadingShared: false,
+        })
+      })
+      .catch((err) => {
+        // Don't show error for aborted requests
+        if (err.name === 'AbortError') {
+          return
         }
-      )
-
-      const allMessages = [...loadedMessages, systemMessage]
-
-      // Load into session management (this will set messages in the session)
-      loadSharedConversation(conversationId, allMessages, {
-        createdAt: data.created_at,
-        parentId: data.parent_id,
-        sharedBy: data.user,
+        console.error('Error loading shared conversation:', err)
+        set({
+          shareSnackbar: {
+            open: true,
+            message: err.message,
+            severity: 'error',
+          },
+          loadingShared: false,
+        })
       })
-
-      // Set the shared URL so clicking share again doesn't create a duplicate
-      const url = `${window.location.origin}/sippy-ng/chat/${conversationId}`
-      set({
-        sharedUrl: url,
-        loadingShared: false,
-      })
-    } catch (err) {
-      // Don't show error for aborted requests
-      if (err.name === 'AbortError') {
-        return
-      }
-      console.error('Error loading shared conversation:', err)
-      set({
-        shareSnackbar: {
-          open: true,
-          message: err.message,
-          severity: 'error',
-        },
-        loadingShared: false,
-      })
-    }
   },
 
   // Share the current conversation
-  shareConversation: async (pageContext, mode = 'fullPage') => {
+  shareConversation: (pageContext, mode = 'fullPage') => {
     const {
       settings,
       getActiveSession,
@@ -142,96 +147,96 @@ export const createShareSlice = (set, get) => ({
 
     set({ shareLoading: true })
 
-    try {
-      // Format messages for API
-      const messagesToShare = filteredMessages.map((msg) => ({
-        type: msg.type,
-        content: msg.content,
-        timestamp: msg.timestamp,
-        ...(msg.data && { data: msg.data }),
-        ...(msg.pageContext && { pageContext: msg.pageContext }),
-        ...(msg.conversationId && { conversationId: msg.conversationId }),
-      }))
+    // Format messages for API
+    const messagesToShare = filteredMessages.map((msg) => ({
+      type: msg.type,
+      content: msg.content,
+      timestamp: msg.timestamp,
+      ...(msg.data && { data: msg.data }),
+      ...(msg.pageContext && { pageContext: msg.pageContext }),
+      ...(msg.conversationId && { conversationId: msg.conversationId }),
+    }))
 
-      // Prepare metadata
-      const metadata = {
-        persona: settings.persona,
-        pageContext: pageContext,
-        sharedAt: new Date().toISOString(),
-      }
-
-      // If we're sharing a forked conversation, include the parent ID
-      const payload = {
-        messages: messagesToShare,
-        metadata: metadata,
-      }
-
-      if (activeSession?.sharedId || activeSession?.parentId) {
-        payload.parent_id = activeSession.sharedId || activeSession.parentId
-      }
-
-      const response = await fetch(
-        process.env.REACT_APP_API_URL + '/api/chat/conversations',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        }
-      )
-
-      if (!response.ok) {
-        let errorMessage = 'Failed to share conversation'
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.message || errorMessage
-        } catch (e) {
-          errorMessage = response.statusText || errorMessage
-        }
-        throw new Error(errorMessage)
-      }
-
-      const data = await response.json()
-
-      // Construct the shareable URL
-      const url = `${window.location.origin}/sippy-ng/chat/${data.id}`
-      set({
-        sharedUrl: url,
-        shareDialogOpen: true,
-      })
-
-      // Update session metadata
-      if (activeSessionId) {
-        updateSessionMetadata(activeSessionId, {
-          sharedId: data.id,
-          type: SESSION_TYPES.SHARED_BY_ME,
-        })
-      }
-
-      // Update browser URL (only in fullPage mode)
-      if (mode === 'fullPage') {
-        window.history.pushState(null, '', `/sippy-ng/chat/${data.id}`)
-      }
-
-      // Copy to clipboard
-      try {
-        await navigator.clipboard.writeText(url)
-      } catch (err) {
-        console.warn('Failed to copy to clipboard:', err)
-      }
-    } catch (err) {
-      console.error('Error sharing conversation:', err)
-      set({
-        shareSnackbar: {
-          open: true,
-          message: err.message || 'Failed to share conversation',
-          severity: 'error',
-        },
-      })
-    } finally {
-      set({ shareLoading: false })
+    // Prepare metadata
+    const metadata = {
+      persona: settings.persona,
+      pageContext: pageContext,
+      sharedAt: new Date().toISOString(),
     }
+
+    // If we're sharing a forked conversation, include the parent ID
+    const payload = {
+      messages: messagesToShare,
+      metadata: metadata,
+    }
+
+    if (activeSession?.sharedId || activeSession?.parentId) {
+      payload.parent_id = activeSession.sharedId || activeSession.parentId
+    }
+
+    fetch(process.env.REACT_APP_API_URL + '/api/chat/conversations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          return response.json().then(
+            (errorData) => {
+              throw new Error(
+                errorData.message || 'Failed to share conversation'
+              )
+            },
+            () => {
+              throw new Error(
+                response.statusText || 'Failed to share conversation'
+              )
+            }
+          )
+        }
+        return response.json()
+      })
+      .then((data) => {
+        // Construct the shareable URL
+        const url = `${window.location.origin}/sippy-ng/chat/${data.id}`
+        set({
+          sharedUrl: url,
+          shareDialogOpen: true,
+        })
+
+        // Update session metadata
+        if (activeSessionId) {
+          updateSessionMetadata(activeSessionId, {
+            sharedId: data.id,
+            type: SESSION_TYPES.SHARED_BY_ME,
+          })
+        }
+
+        // Update browser URL (only in fullPage mode)
+        if (mode === 'fullPage') {
+          window.history.pushState(null, '', `/sippy-ng/chat/${data.id}`)
+        }
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(url).catch((err) => {
+          console.warn('Failed to copy to clipboard:', err)
+        })
+      })
+      .catch((err) => {
+        console.error('Error sharing conversation:', err)
+        set({
+          shareSnackbar: {
+            open: true,
+            message: err.message || 'Failed to share conversation',
+            severity: 'error',
+          },
+        })
+      })
+      .finally(() => {
+        set({ shareLoading: false })
+      })
   },
 
   // Clear shared URL
@@ -254,25 +259,27 @@ export const createShareSlice = (set, get) => ({
     }))
   },
 
-  copyToClipboard: async () => {
+  copyToClipboard: () => {
     const { sharedUrl } = get()
-    try {
-      await navigator.clipboard.writeText(sharedUrl)
-      set({
-        shareSnackbar: {
-          open: true,
-          message: 'Link copied to clipboard!',
-          severity: 'success',
-        },
+    navigator.clipboard
+      .writeText(sharedUrl)
+      .then(() => {
+        set({
+          shareSnackbar: {
+            open: true,
+            message: 'Link copied to clipboard!',
+            severity: 'success',
+          },
+        })
       })
-    } catch (err) {
-      set({
-        shareSnackbar: {
-          open: true,
-          message: 'Failed to copy to clipboard',
-          severity: 'error',
-        },
+      .catch((err) => {
+        set({
+          shareSnackbar: {
+            open: true,
+            message: 'Failed to copy to clipboard',
+            severity: 'error',
+          },
+        })
       })
-    }
   },
 })
