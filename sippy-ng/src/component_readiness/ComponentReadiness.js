@@ -422,12 +422,7 @@ export default function ComponentReadiness(props) {
   }, [triageActionTaken, location.pathname, reportParams])
 
   if (!isLoaded) {
-    return (
-      <CompReadyProgress
-        apiLink={showValuesForReport()}
-        cancelFunc={cancelFetch}
-      />
-    )
+    return <CompReadyProgress apiLink={showValuesForReport()} />
   }
 
   const pageTitle = makePageTitle(

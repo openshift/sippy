@@ -187,7 +187,7 @@ export default function CompReadyEnvCapabilities(props) {
   }
 
   if (!isLoaded) {
-    return <CompReadyProgress apiLink={apiCallStr} cancelFunc={cancelFetch} />
+    return <CompReadyProgress apiLink={apiCallStr} />
   }
 
   if (columnNames[0] === 'Cancelled' || columnNames[0] == 'None') {

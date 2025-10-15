@@ -441,12 +441,7 @@ export default function TestDetailsReport(props) {
   )
 
   if (!isLoaded) {
-    return (
-      <CompReadyProgress
-        apiLink={testDetailsApiCall}
-        cancelFunc={cancelFetch}
-      />
-    )
+    return <CompReadyProgress apiLink={testDetailsApiCall} />
   }
 
   const columnNames = getColumns(data)

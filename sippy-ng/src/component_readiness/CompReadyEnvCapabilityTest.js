@@ -187,7 +187,7 @@ export default function CompReadyEnvCapabilityTest(props) {
   )
 
   if (!isLoaded) {
-    return <CompReadyProgress apiLink={apiCallStr} cancelFunc={cancelFetch} />
+    return <CompReadyProgress apiLink={apiCallStr} />
   }
 
   const columnNames = getColumns(data)

@@ -545,12 +545,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   // the sippy API before any consumers use those variables or the expandEnvironment
   // function that depends on them.I think
   if (!isLoaded) {
-    return (
-      <CompReadyProgress
-        apiLink={'Loading /variant info ...'}
-        cancelFunc={cancelFetch}
-      />
-    )
+    return <CompReadyProgress apiLink={'Loading /variant info ...'} />
   }
   return (
     <CompReadyVarsContext.Provider
