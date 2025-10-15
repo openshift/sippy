@@ -11,20 +11,11 @@ import { useShallow } from 'zustand/react/shallow'
 import indexedDBStorage from './indexedDBStorage'
 
 /**
- * Zustand store for the chat interface, state is grouped in slices:
- * - Sessions (includes message operations)
- * - Sharing
- * - WebSocket
- * - Settings
- * - Personas
- * - PageContext
- * - Drawer
- *
- * Storage: Uses in-browser IndexedDB, supported by all modern browsers
- * - Privacy (only explicitly shared conversations are stored on the backend)
- * - Much larger quota than localStorage
- * - Better performance with large conversations
- * - Asynchronous operations that don't block the UI
+ * Zustand store for the chat interface, state is grouped in slices. Persistent
+ * state is stored in IndexedDB; slices persisted are selected by partialization.
+ * 
+ * Always useShallow() when creating more slices, to avoid re-rendering the entire
+ * store when one of the values changes.
  */
 export const useChatStore = create(
   persist(
