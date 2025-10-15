@@ -663,6 +663,11 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 		{[]string{"-nat-instance"}, "candidate"},
 
+		// Operator Framework extended test jobs are not yet stable enough to make release readiness.
+		// Mark candidate to collect data in Sippy while working on stabilization.
+		{[]string{"periodic-ci-openshift-operator-framework-operator-controller-", "-extended-"}, "candidate"},
+		{[]string{"periodic-ci-openshift-operator-framework-olm-", "-extended-"}, "candidate"},
+
 		// Hidden jobs
 		{[]string{"-cilium"}, "hidden"},
 		{[]string{"-disruptive"}, "hidden"},
