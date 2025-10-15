@@ -47,8 +47,8 @@ func (l *LinkInjector) PreAnalysis(testKey crtest.Identification, testStats *tes
 
 // PostAnalysis injects HATEOAS links into test analysis results
 func (l *LinkInjector) PostAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
-	// Early return if status is above SignificantTriagedRegression (i.e. not a regression)
-	if testStats.ReportStatus > crtest.SignificantTriagedRegression {
+	// Early return if status is above FixedRegression (i.e. regression has not yet rolled off)
+	if testStats.ReportStatus > crtest.FixedRegression {
 		return nil
 	}
 
