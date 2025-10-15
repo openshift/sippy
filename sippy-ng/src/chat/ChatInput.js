@@ -19,6 +19,7 @@ import {
   useConnectionState,
   usePersonas,
   useSettings,
+  useWebSocketActions,
 } from './store/useChatStore'
 import PropTypes from 'prop-types'
 import React, { useEffect, useRef, useState } from 'react'
@@ -107,6 +108,7 @@ export default function ChatInput({
   const { settings } = useSettings()
   const { personas } = usePersonas()
   const { connectionState, isTyping } = useConnectionState()
+  const { stopGeneration } = useWebSocketActions()
 
   const isConnected = connectionState === CONNECTION_STATES.CONNECTED
   const disabled = !isConnected
@@ -158,7 +160,10 @@ export default function ChatInput({
   const handleKeyPress = (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
-      handleSendMessage()
+      // Only send if not typing (same logic as button)
+      if (!isTyping) {
+        handleSendMessage()
+      }
     }
   }
 
@@ -295,7 +300,7 @@ export default function ChatInput({
               className={`${classes.sendButton} ${
                 !canSend && !isTyping ? 'disabled' : ''
               }`}
-              onClick={isTyping ? undefined : handleSendMessage}
+              onClick={isTyping ? stopGeneration : handleSendMessage}
               disabled={!canSend && !isTyping}
               color="primary"
             >

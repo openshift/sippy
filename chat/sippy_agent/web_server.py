@@ -33,6 +33,7 @@ class WebSocketManager:
 
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self.active_tasks: Dict[WebSocket, asyncio.Task] = {}
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -41,6 +42,23 @@ class WebSocketManager:
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+        
+        # Cancel any active task for this websocket
+        if websocket in self.active_tasks:
+            task = self.active_tasks[websocket]
+            if not task.done():
+                task.cancel()
+                logger.info("Cancelled active task for disconnected websocket")
+            del self.active_tasks[websocket]
+
+    def set_active_task(self, websocket: WebSocket, task: asyncio.Task):
+        """Track the active task for a websocket connection."""
+        self.active_tasks[websocket] = task
+
+    def clear_active_task(self, websocket: WebSocket):
+        """Clear the active task for a websocket connection."""
+        if websocket in self.active_tasks:
+            del self.active_tasks[websocket]
 
     async def send_message(self, websocket: WebSocket, message: StreamMessage):
         try:
@@ -218,111 +236,131 @@ class SippyWebServer:
                         # Recreate the agent graph with new persona
                         self.agent.graph = self.agent._create_agent_graph()
 
-                    try:
-                        # Track step number for streaming
-                        step_counter = {"count": 0}
-                        # Map tool calls to their step numbers for parallel execution
-                        tool_call_steps = {}
+                    async def process_message():
+                        """Process the message - can be cancelled if websocket disconnects."""
+                        try:
+                            # Track step number for streaming
+                            step_counter = {"count": 0}
+                            # Map tool calls to their step numbers for parallel execution
+                            tool_call_steps = {}
 
-                        # Define async thinking callback for real-time streaming
-                        async def thinking_callback(
-                            thought: str,
-                            action: str,
-                            action_input: str,
-                            observation: str,
-                        ):
-                            """Stream thinking steps in real-time over WebSocket."""
-                            # For "thinking" actions (Gemini thoughts), mark as complete immediately
-                            # For tool calls, only complete when we have an observation
-                            is_complete = action == "thinking" or bool(observation)
-                            
-                            # Create a unique key for this tool call based on action and input
-                            tool_key = f"{action}:{action_input}"
+                            # Define async thinking callback for real-time streaming
+                            async def thinking_callback(
+                                thought: str,
+                                action: str,
+                                action_input: str,
+                                observation: str,
+                            ):
+                                """Stream thinking steps in real-time over WebSocket."""
+                                # For "thinking" actions (Gemini thoughts), mark as complete immediately
+                                # For tool calls, only complete when we have an observation
+                                is_complete = action == "thinking" or bool(observation)
+                                
+                                # Create a unique key for this tool call based on action and input
+                                tool_key = f"{action}:{action_input}"
 
-                            # Only increment step counter on new calls (no observation yet)
-                            if not observation:
-                                step_counter["count"] += 1
-                                current_step = step_counter["count"]
-                                # Store the step number for this call
-                                tool_call_steps[tool_key] = current_step
-                            else:
-                                # Retrieve the step number for this call
-                                current_step = tool_call_steps.get(
-                                    tool_key, step_counter["count"]
+                                # Only increment step counter on new calls (no observation yet)
+                                if not observation:
+                                    step_counter["count"] += 1
+                                    current_step = step_counter["count"]
+                                    # Store the step number for this call
+                                    tool_call_steps[tool_key] = current_step
+                                else:
+                                    # Retrieve the step number for this call
+                                    current_step = tool_call_steps.get(
+                                        tool_key, step_counter["count"]
+                                    )
+
+                                # Send the thinking step immediately
+                                await self.websocket_manager.send_message(
+                                    websocket,
+                                    StreamMessage(
+                                        type="thinking_step",
+                                        data={
+                                            "step_number": current_step,
+                                            "thought": thought,
+                                            "action": action,
+                                            "action_input": action_input,
+                                            "observation": observation,
+                                            "complete": is_complete,
+                                        },
+                                    ),
                                 )
 
-                            # Send the thinking step immediately
+                            # Enhance message with page context if provided
+                            enhanced_message = message
+                            if page_context:
+                                context_str = self._format_page_context(page_context)
+                                enhanced_message = (
+                                    f"{context_str}\n\nUser question: {message}"
+                                )
+                                logger.info(
+                                    f"Enhanced message with context: {enhanced_message[:200]}..."
+                                )
+
+                            # Process message with streaming callback
+                            result = await self.agent.achat(
+                                enhanced_message,
+                                chat_history,
+                                thinking_callback=(
+                                    thinking_callback if show_thinking else None
+                                ),
+                            )
+
+                            # Send final response
+                            if isinstance(result, dict) and "output" in result:
+                                response_text = result["output"]
+                                tools_used = self._extract_tools_used(
+                                    result.get("thinking_steps", [])
+                                )
+                            else:
+                                response_text = result
+                                tools_used = []
+
                             await self.websocket_manager.send_message(
                                 websocket,
                                 StreamMessage(
-                                    type="thinking_step",
+                                    type="final_response",
                                     data={
-                                        "step_number": current_step,
-                                        "thought": thought,
-                                        "action": action,
-                                        "action_input": action_input,
-                                        "observation": observation,
-                                        "complete": is_complete,
+                                        "response": response_text,
+                                        "tools_used": tools_used,
+                                        "timestamp": datetime.now().isoformat(),
                                     },
                                 ),
                             )
 
-                        # Enhance message with page context if provided
-                        enhanced_message = message
-                        if page_context:
-                            context_str = self._format_page_context(page_context)
-                            enhanced_message = (
-                                f"{context_str}\n\nUser question: {message}"
+                        except asyncio.CancelledError:
+                            logger.info("Message processing cancelled by client")
+                            raise
+                        except Exception as e:
+                            logger.error(f"Error in WebSocket chat: {e}")
+                            await self.websocket_manager.send_message(
+                                websocket,
+                                StreamMessage(
+                                    type="error",
+                                    data={
+                                        "error": str(e),
+                                        "timestamp": datetime.now().isoformat(),
+                                    },
+                                ),
                             )
-                            logger.info(
-                                f"Enhanced message with context: {enhanced_message[:200]}..."
-                            )
 
-                        # Process message with streaming callback
-                        result = await self.agent.achat(
-                            enhanced_message,
-                            chat_history,
-                            thinking_callback=(
-                                thinking_callback if show_thinking else None
-                            ),
-                        )
+                    try:
+                        # Create and track the processing task
+                        task = asyncio.create_task(process_message())
+                        self.websocket_manager.set_active_task(websocket, task)
+                        
+                        # Wait for the task to complete
+                        await task
 
-                        # Send final response
-                        if isinstance(result, dict) and "output" in result:
-                            response_text = result["output"]
-                            tools_used = self._extract_tools_used(
-                                result.get("thinking_steps", [])
-                            )
-                        else:
-                            response_text = result
-                            tools_used = []
-
-                        await self.websocket_manager.send_message(
-                            websocket,
-                            StreamMessage(
-                                type="final_response",
-                                data={
-                                    "response": response_text,
-                                    "tools_used": tools_used,
-                                    "timestamp": datetime.now().isoformat(),
-                                },
-                            ),
-                        )
-
-                    except Exception as e:
-                        logger.error(f"Error in WebSocket chat: {e}")
-                        await self.websocket_manager.send_message(
-                            websocket,
-                            StreamMessage(
-                                type="error",
-                                data={
-                                    "error": str(e),
-                                    "timestamp": datetime.now().isoformat(),
-                                },
-                            ),
-                        )
-
+                    except asyncio.CancelledError:
+                        logger.info("Task cancelled, client stopped generation")
+                        # Task was cancelled, which is fine
+                        pass
                     finally:
+                        # Clear the task tracking
+                        self.websocket_manager.clear_active_task(websocket)
+                        
                         # Restore original settings
                         self.config.show_thinking = original_thinking
                         self.agent.config.show_thinking = original_thinking
