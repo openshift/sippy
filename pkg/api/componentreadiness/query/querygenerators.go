@@ -134,11 +134,7 @@ func NewBaseQueryGenerator(
 
 func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client,
-		b.ReqOptions,
-		b.allVariants,
-		b.ReqOptions.VariantOption.IncludeVariants,
-		DefaultJunitTable, false, false)
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client, b.ReqOptions, b.allVariants, b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
 
 	before := time.Now()
 	errs := []error{}
@@ -210,8 +206,7 @@ func NewSampleQueryGenerator(
 }
 
 func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions,
-		s.allVariants, s.IncludeVariants, s.JunitTable, true, false)
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, s.JunitTable, true)
 
 	before := time.Now()
 	errs := []error{}
@@ -289,7 +284,8 @@ func BuildComponentReportQuery(
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	junitTable string,
-	isSample, isFallback bool) (string, string, []bigquery.QueryParameter) {
+	isSample bool,
+) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
 	// See FetchTestStatusResults for where we dynamically handle these columns.
@@ -352,55 +348,51 @@ func BuildComponentReportQuery(
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
 	}
 
-	// fallback queries get all variants with no filtering
-	// so all tests are fetched then cached
-	if !isFallback {
-		variantGroups := includeVariants
-		// potentially cross-compare variants for the sample
-		if isSample && len(reqOptions.VariantOption.VariantCrossCompare) > 0 {
-			variantGroups = reqOptions.VariantOption.CompareVariants
-		}
-		if variantGroups == nil { // server-side view definitions may omit a variants map
-			variantGroups = map[string][]string{}
-		}
+	variantGroups := includeVariants
+	// potentially cross-compare variants for the sample
+	if isSample && len(reqOptions.VariantOption.VariantCrossCompare) > 0 {
+		variantGroups = reqOptions.VariantOption.CompareVariants
+	}
+	if variantGroups == nil { // server-side view definitions may omit a variants map
+		variantGroups = map[string][]string{}
+	}
 
-		for _, group := range sortedKeys(variantGroups) {
+	for _, group := range sortedKeys(variantGroups) {
+		group = param.Cleanse(group) // should be clean already, but just to make sure
+		paramName := fmt.Sprintf("variantGroup_%s", group)
+		queryString += fmt.Sprintf(" AND (jv_%s.variant_value in UNNEST(@%s))", group, paramName)
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  paramName,
+			Value: variantGroups[group],
+		})
+	}
+
+	// In this context, a component report, multiple test ID options should not be specified. Thus
+	// here we assume just one for the filtering purposes here. This code triggers as you drill down
+	// on a main report into component > capability > tests, but it does not get used on a test details page.
+	if len(reqOptions.TestIDOptions) == 1 {
+		for _, group := range sortedKeys(reqOptions.TestIDOptions[0].RequestedVariants) {
 			group = param.Cleanse(group) // should be clean already, but just to make sure
-			paramName := fmt.Sprintf("variantGroup_%s", group)
-			queryString += fmt.Sprintf(" AND (jv_%s.variant_value in UNNEST(@%s))", group, paramName)
+			paramName := fmt.Sprintf("ReqVariant_%s", group)
+			queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
 			commonParams = append(commonParams, bigquery.QueryParameter{
 				Name:  paramName,
-				Value: variantGroups[group],
+				Value: reqOptions.TestIDOptions[0].RequestedVariants[group],
 			})
 		}
-
-		// In this context, a component report, multiple test ID options should not be specified. Thus
-		// here we assume just one for the filtering purposes here. This code triggers as you drill down
-		// on a main report into component > capability > tests, but it does not get used on a test details page.
-		if len(reqOptions.TestIDOptions) == 1 {
-			for _, group := range sortedKeys(reqOptions.TestIDOptions[0].RequestedVariants) {
-				group = param.Cleanse(group) // should be clean already, but just to make sure
-				paramName := fmt.Sprintf("ReqVariant_%s", group)
-				queryString += fmt.Sprintf(` AND jv_%s.variant_value = @%s`, group, paramName)
-				commonParams = append(commonParams, bigquery.QueryParameter{
-					Name:  paramName,
-					Value: reqOptions.TestIDOptions[0].RequestedVariants[group],
-				})
-			}
-			if reqOptions.TestIDOptions[0].Capability != "" {
-				queryString += " AND @Capability in UNNEST(capabilities)"
-				commonParams = append(commonParams, bigquery.QueryParameter{
-					Name:  "Capability",
-					Value: reqOptions.TestIDOptions[0].Capability,
-				})
-			}
-			if reqOptions.TestIDOptions[0].TestID != "" {
-				queryString += ` AND cm.id = @TestId`
-				commonParams = append(commonParams, bigquery.QueryParameter{
-					Name:  "TestId",
-					Value: reqOptions.TestIDOptions[0].TestID,
-				})
-			}
+		if reqOptions.TestIDOptions[0].Capability != "" {
+			queryString += " AND @Capability in UNNEST(capabilities)"
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  "Capability",
+				Value: reqOptions.TestIDOptions[0].Capability,
+			})
+		}
+		if reqOptions.TestIDOptions[0].TestID != "" {
+			queryString += ` AND cm.id = @TestId`
+			commonParams = append(commonParams, bigquery.QueryParameter{
+				Name:  "TestId",
+				Value: reqOptions.TestIDOptions[0].TestID,
+			})
 		}
 	}
 

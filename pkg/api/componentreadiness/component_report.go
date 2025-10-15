@@ -120,7 +120,16 @@ func GetComponentReportFromBigQuery(
 	generator := NewComponentReportGenerator(client, reqOptions, dbc, variantJunitTableOverrides, releaseConfigs, baseURL)
 
 	if os.Getenv("DEV_MODE") == "1" {
-		return generator.GenerateReport(ctx)
+		report, errs = generator.GenerateReport(ctx)
+		if errs != nil {
+			return report, errs
+		}
+		// Run the PostAnalysis, specifically, to make sure the test_details report links are injected
+		err = generator.PostAnalysis(&report)
+		if err != nil {
+			return report, []error{err}
+		}
+		return report, []error{}
 	}
 
 	report, errs = api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
