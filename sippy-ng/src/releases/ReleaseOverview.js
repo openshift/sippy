@@ -1,56 +1,75 @@
-import { BOOKMARKS } from '../constants'
-import { CapabilitiesContext } from '../App'
-import { Card, Container, Tooltip, Typography } from '@mui/material'
-import { dayFilter, JobStackedChart } from '../jobs/JobStackedChart'
 import {
-  getReportStartDate,
-  pathForJobsWithFilter,
-  queryForBookmark,
-  safeEncodeURIComponent,
-  withoutUnstable,
-  withSort,
-} from '../helpers'
+  Box,
+  Card,
+  CircularProgress,
+  Container,
+  Tooltip,
+  Typography,
+} from '@mui/material'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
-import { NumberParam, useQueryParam } from 'use-query-params'
-import { ReportEndContext } from '../App'
+import { ReleasesContext } from '../App'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import Alert from '@mui/material/Alert'
-import AskSippyButton from '../chat/AskSippyButton'
 import Grid from '@mui/material/Grid'
-import Histogram from '../components/Histogram'
 import InfoIcon from '@mui/icons-material/Info'
-import JobTable from '../jobs/JobTable'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
+import ReleaseKeyDates from './ReleaseKeyDates'
 import ReleasePayloadAcceptance from './ReleasePayloadAcceptance'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
-import TestTable from '../tests/TestTable'
 import TopLevelIndicators from './TopLevelIndicators'
-import VariantCards from '../jobs/VariantCards'
-
-export const REGRESSED_TOOLTIP =
-  'Shows the most regressed items this week vs. last week, for those with more than 10 runs, excluding never-stable.'
-export const TWODAY_WARNING =
-  'Shows the last 2 days compared to the last 7 days, sorted by most regressed, excluding never-stable.'
-export const TOP_FAILERS_TOOLTIP =
-  'Shows the list of tests ordered by their failure percentage.'
 
 const useStyles = makeStyles((theme) => ({
-  root: {
-    flexGrow: 1,
+  errorContainer: {
+    marginTop: theme.spacing(4),
   },
-  card: {
-    minWidth: 275,
-    alignContent: 'center',
-    margin: 'auto',
+  loadingContainer: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    minHeight: '60vh',
   },
-  title: {
+  loadingContent: {
     textAlign: 'center',
   },
-  warning: {
-    margin: 10,
-    width: '100%',
+  loadingText: {
+    marginTop: theme.spacing(2),
+  },
+  pageWrapper: {
+    paddingTop: theme.spacing(3),
+    paddingBottom: theme.spacing(3),
+    paddingLeft: theme.spacing(2.5),
+    paddingRight: theme.spacing(2.5),
+  },
+  titleContainer: {
+    marginBottom: theme.spacing(3),
+  },
+  titleCard: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  title: {
+    fontWeight: 600,
+  },
+  card: {
+    padding: theme.spacing(2.5),
+  },
+  cardHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    marginBottom: theme.spacing(2),
+  },
+  cardTitle: {
+    textDecoration: 'none',
+    color: 'inherit',
+  },
+  infoIcon: {
+    marginLeft: theme.spacing(1),
+    fontSize: 20,
+    opacity: 0.6,
   },
 }))
 
@@ -62,9 +81,8 @@ export default function ReleaseOverview(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
-  const [dayOffset = 1, setDayOffset] = useQueryParam('dayOffset', NumberParam)
-  const startDate = getReportStartDate(React.useContext(ReportEndContext))
   const hasSetContextRef = React.useRef(false)
+  const releases = React.useContext(ReleasesContext)
 
   const fetchData = () => {
     fetch(
@@ -168,27 +186,39 @@ export default function ReleaseOverview(props) {
   }, [isLoaded, setPageContextForChat, unsetPageContextForChat])
 
   if (fetchError !== '') {
-    return <Alert severity="error">{fetchError}</Alert>
+    return (
+      <Container maxWidth="lg" className={classes.errorContainer}>
+        <Alert severity="error">{fetchError}</Alert>
+      </Container>
+    )
   }
 
   if (!isLoaded) {
-    return <p>Loading...</p>
+    return (
+      <Box className={classes.loadingContainer}>
+        <Box className={classes.loadingContent}>
+          <CircularProgress size={48} />
+          <Typography
+            variant="body1"
+            color="text.secondary"
+            className={classes.loadingText}
+          >
+            Loading release overview...
+          </Typography>
+        </Box>
+      </Box>
+    )
   }
 
   const warnings = []
   if (data.warnings && data.warnings.length > 0) {
     data.warnings.forEach((warning, index) => {
       warnings.push(
-        <Alert
-          key={'sippy-warning-' + index}
-          className={classes.warning}
-          severity="warning"
-        >
-          <div
-            style={{ width: '100%' }}
-            dangerouslySetInnerHTML={{ __html: warning }}
-          ></div>
-        </Alert>
+        <Grid item xs={12} key={'sippy-warning-' + index}>
+          <Alert severity="warning">
+            <div dangerouslySetInnerHTML={{ __html: warning }}></div>
+          </Alert>
+        </Grid>
       )
     })
   }
@@ -196,440 +226,68 @@ export default function ReleaseOverview(props) {
   return (
     <Fragment>
       <SimpleBreadcrumbs release={props.release} />
-      <div style={{ position: 'relative' }}>
-        <div
-          style={{
-            position: 'absolute',
-            top: 20,
-            right: 20,
-            zIndex: 1000,
-          }}
-        >
-          <AskSippyButton
-            question="How is the overall health of the release?"
-            tooltip="Ask Sippy about this release"
-          />
-        </div>
-      </div>
-      <div className="{classes.root}" style={{ padding: 20 }}>
+      <Box className={classes.pageWrapper}>
         <Container maxWidth="lg">
-          <Typography variant="h4" gutterBottom className={classes.title}>
-            CI Release {props.release} Health Summary
-          </Typography>
+          <Grid
+            container
+            spacing={3}
+            alignItems="stretch"
+            className={classes.titleContainer}
+          >
+            <Grid item xs={12} md={8}>
+              <Box className={classes.titleCard}>
+                <Typography variant="h4" className={classes.title}>
+                  {props.release} Overview
+                </Typography>
+              </Box>
+            </Grid>
+            <ReleaseKeyDates release={props.release} releases={releases} />
+          </Grid>
+
           <Grid container spacing={3} alignItems="stretch">
             {warnings}
             <TopLevelIndicators
               release={props.release}
               indicators={data.indicators}
+              releases={releases}
             />
 
-            {data && data.current_statistics && data.previous_statistics && (
-              <Grid item md={5} sm={12}>
-                <Card elevation={5} style={{ padding: 20, height: '100%' }}>
-                  <Typography variant="h6">
-                    <Link
-                      to={withSort(
-                        pathForJobsWithFilter(props.release, {
-                          items: withoutUnstable(),
-                        }),
-                        'current_pass_percentage',
-                        'asc'
-                      )}
+            {releases?.release_attrs?.[props.release]?.capabilities
+              ?.payloadTags && (
+              <Grid item xs={12}>
+                <Card elevation={5} className={classes.card}>
+                  <Box className={classes.cardHeader}>
+                    <Typography
+                      variant="h6"
+                      component={Link}
+                      to={`/release/${props.release}/tags`}
+                      className={classes.cardTitle}
                     >
-                      Job histogram
-                    </Link>
+                      Payload Acceptance
+                    </Typography>
                     <Tooltip
                       title={
-                        'Histogram of job pass rates for frequently running jobs. Bucketed by current period pass percentage. ' +
-                        'Tech preview and never-stable jobs are excluded. The solid line indicates the current ' +
-                        "period's mean, and the dashed line is the previous period."
+                        'These cards show the last accepted payload for each architecture/stream combination.'
                       }
                     >
-                      <InfoIcon />
+                      <InfoIcon className={classes.infoIcon} />
                     </Tooltip>
-                  </Typography>
-                  <Histogram
-                    data={data.current_statistics.histogram}
-                    current_mean={data.current_statistics.mean}
-                    previous_mean={data.previous_statistics.mean}
-                    release={props.release}
-                  />
-                  {data.current_statistics.quartiles && (
-                    <div align="center">
-                      <span style={{ marginRight: 10 }}>
-                        1Q: {data.current_statistics.quartiles[0].toFixed(0)}%
-                      </span>
-                      <span style={{ marginRight: 10 }}>
-                        2Q: {data.current_statistics.quartiles[1].toFixed(0)}%
-                      </span>
-                      <span style={{ marginRight: 10 }}>
-                        3Q: {data.current_statistics.quartiles[2].toFixed(0)}%
-                      </span>
-                      <span style={{ marginRight: 10 }}>
-                        SD:{' '}
-                        {data.current_statistics.standard_deviation.toFixed(2)}
-                      </span>
-                    </div>
-                  )}
+                  </Box>
+
+                  <Grid
+                    container
+                    spacing={3}
+                    justifyContent="flex-start"
+                    alignItems="stretch"
+                  >
+                    <ReleasePayloadAcceptance release={props.release} />
+                  </Grid>
                 </Card>
               </Grid>
             )}
-
-            <Grid item md={7}>
-              <Card elevation={5} style={{ padding: 20, height: '100%' }}>
-                <Typography variant="h6">
-                  <Link
-                    to={`/jobs/${
-                      props.release
-                    }/analysis?filters=${safeEncodeURIComponent(
-                      JSON.stringify({
-                        items: [
-                          ...withoutUnstable(),
-                          ...dayFilter(14, startDate),
-                        ],
-                        linkOperator: 'and',
-                      })
-                    )}&period=day}`}
-                  >
-                    Last 14 days
-                  </Link>
-                  <Tooltip
-                    title={
-                      'This chart shows a 14 day period of job runs, excluding never-stable and tech preview. '
-                    }
-                  >
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-                <JobStackedChart
-                  release={props.release}
-                  period="day"
-                  filter={{
-                    items: [...withoutUnstable(), ...dayFilter(14, startDate)],
-                    linkOperator: 'and',
-                  }}
-                />
-              </Card>
-            </Grid>
-
-            <CapabilitiesContext.Consumer>
-              {(value) => {
-                if (!value.includes('openshift_releases')) {
-                  return
-                }
-
-                return (
-                  <Grid item md={12}>
-                    <Typography style={{ textAlign: 'left' }} variant="h5">
-                      <Link to={`/release/${props.release}/tags`}>
-                        Payload acceptance
-                      </Link>
-                      <Tooltip
-                        title={
-                          'These cards show the last accepted payload for each architecture/stream combination.'
-                        }
-                      >
-                        <InfoIcon />
-                      </Tooltip>
-                    </Typography>
-
-                    <Card
-                      elevation={5}
-                      style={{
-                        width: '100%',
-                        padding: 10,
-                        marginRight: 20,
-                        margin: 10,
-                      }}
-                    >
-                      <Grid
-                        container
-                        spacing={3}
-                        justifyContent="center"
-                        alignItems="center"
-                      >
-                        <ReleasePayloadAcceptance release={props.release} />
-                      </Grid>
-                    </Card>
-                  </Grid>
-                )
-              }}
-            </CapabilitiesContext.Consumer>
-
-            <Grid item md={12}>
-              <VariantCards release={props.release} />
-            </Grid>
-
-            <Grid item md={6} sm={12}>
-              <Card elevation={5} style={{ textAlign: 'center' }}>
-                <Typography
-                  component={Link}
-                  to={`/jobs/${
-                    props.release
-                  }?sortField=net_improvement&sort=asc&${queryForBookmark(
-                    BOOKMARKS.RUN_7,
-                    BOOKMARKS.NO_STEP_GRAPH,
-                    ...withoutUnstable()
-                  )}`}
-                  style={{ textAlign: 'center' }}
-                  variant="h5"
-                >
-                  Most regressed jobs
-                  <Tooltip title={REGRESSED_TOOLTIP}>
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-
-                <JobTable
-                  hideControls={true}
-                  sortField="net_improvement"
-                  sort="asc"
-                  limit={10}
-                  rowsPerPageOptions={[5]}
-                  filterModel={{
-                    items: [
-                      BOOKMARKS.RUN_7,
-                      BOOKMARKS.NO_NEVER_STABLE,
-                      BOOKMARKS.NO_STEP_GRAPH,
-                    ],
-                  }}
-                  pageSize={5}
-                  release={props.release}
-                  briefTable={true}
-                />
-              </Card>
-            </Grid>
-            <Grid item md={6} sm={12}>
-              <Card elevation={5} style={{ textAlign: 'center' }}>
-                <Typography
-                  component={Link}
-                  to={`/jobs/${
-                    props.release
-                  }?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(
-                    BOOKMARKS.RUN_2,
-                    ...withoutUnstable()
-                  )}`}
-                  variant="h5"
-                >
-                  Most regressed jobs (two day)
-                  <Tooltip title={TWODAY_WARNING}>
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-
-                <JobTable
-                  hideControls={true}
-                  sortField="net_improvement"
-                  sort="asc"
-                  limit={10}
-                  rowsPerPageOptions={[5]}
-                  filterModel={{
-                    items: [BOOKMARKS.RUN_2, ...withoutUnstable()],
-                  }}
-                  pageSize={5}
-                  period="twoDay"
-                  release={props.release}
-                  briefTable={true}
-                />
-              </Card>
-            </Grid>
-
-            <Grid item md={6} sm={12}>
-              <Card elevation={5} style={{ textAlign: 'center' }}>
-                <Typography
-                  component={Link}
-                  to={`/tests/${props.release}?${queryForBookmark(
-                    BOOKMARKS.RUN_7,
-                    BOOKMARKS.NO_NEVER_STABLE,
-                    BOOKMARKS.NO_AGGREGATED,
-                    BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                    BOOKMARKS.NO_STEP_GRAPH
-                  )}&sortField=net_improvement&sort=asc`}
-                  style={{ textAlign: 'center' }}
-                  variant="h5"
-                >
-                  Most regressed tests
-                  <Tooltip title={REGRESSED_TOOLTIP}>
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-
-                <Container size="xl">
-                  <TestTable
-                    hideControls={true}
-                    sortField="net_improvement"
-                    sort="asc"
-                    limit={10}
-                    rowsPerPageOptions={[5]}
-                    filterModel={{
-                      items: [
-                        BOOKMARKS.RUN_7,
-                        BOOKMARKS.NO_NEVER_STABLE,
-                        BOOKMARKS.NO_AGGREGATED,
-                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                        BOOKMARKS.NO_STEP_GRAPH,
-                        BOOKMARKS.NO_100_FLAKE,
-                      ],
-                    }}
-                    pageSize={5}
-                    briefTable={true}
-                    release={props.release}
-                  />
-                </Container>
-              </Card>
-            </Grid>
-
-            <Grid item md={6} sm={12}>
-              <Card elevation={5} style={{ textAlign: 'center' }}>
-                <Typography
-                  component={Link}
-                  to={`/tests/${
-                    props.release
-                  }?period=twoDay&sortField=net_improvement&sort=asc&${queryForBookmark(
-                    BOOKMARKS.RUN_2,
-                    BOOKMARKS.NO_NEVER_STABLE,
-                    BOOKMARKS.NO_AGGREGATED,
-                    BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                    BOOKMARKS.NO_STEP_GRAPH,
-                    BOOKMARKS.NO_100_FLAKE
-                  )}`}
-                  style={{ textAlign: 'center' }}
-                  variant="h5"
-                >
-                  Most regressed tests (two day)
-                  <Tooltip title={TWODAY_WARNING}>
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-                <Container size="xl">
-                  <TestTable
-                    hideControls={true}
-                    sortField="net_improvement"
-                    sort="asc"
-                    limit={10}
-                    rowsPerPageOptions={[5]}
-                    filterModel={{
-                      items: [
-                        BOOKMARKS.RUN_2,
-                        BOOKMARKS.NO_NEVER_STABLE,
-                        BOOKMARKS.NO_AGGREGATED,
-                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                        BOOKMARKS.NO_STEP_GRAPH,
-                      ],
-                    }}
-                    pageSize={5}
-                    period="twoDay"
-                    release={props.release}
-                    briefTable={true}
-                  />
-                </Container>
-              </Card>
-            </Grid>
-
-            <Grid item md={6} sm={12}>
-              <Card elevation={5} style={{ textAlign: 'center' }}>
-                <Typography
-                  component={Link}
-                  to={`/tests/${props.release}/details?${queryForBookmark(
-                    BOOKMARKS.RUN_7,
-                    BOOKMARKS.NO_NEVER_STABLE,
-                    BOOKMARKS.NO_AGGREGATED,
-                    BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                    BOOKMARKS.NO_STEP_GRAPH,
-                    BOOKMARKS.HIGH_DELTA_FROM_PASSING_AVERAGE,
-                    BOOKMARKS.HIGH_STANDARD_DEVIATION,
-                    BOOKMARKS.NO_100_FLAKE
-                  )}&sortField=delta_from_passing_average&sort=asc`}
-                  style={{ textAlign: 'center' }}
-                  variant="h5"
-                >
-                  Top failing test NURPs
-                  <Tooltip
-                    title={
-                      'Show the list of tests with a variant that perform significantly worse than the other variants of the same tests.'
-                    }
-                  >
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-
-                <Container size="xl">
-                  <TestTable
-                    collapse={false}
-                    overall={false}
-                    hideControls={true}
-                    sortField="delta_from_passing_average"
-                    sort="asc"
-                    limit={10}
-                    rowsPerPageOptions={[5]}
-                    filterModel={{
-                      items: [
-                        BOOKMARKS.RUN_7,
-                        BOOKMARKS.NO_NEVER_STABLE,
-                        BOOKMARKS.NO_AGGREGATED,
-                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                        BOOKMARKS.NO_STEP_GRAPH,
-                        BOOKMARKS.HIGH_DELTA_FROM_PASSING_AVERAGE,
-                        BOOKMARKS.HIGH_STANDARD_DEVIATION,
-                        BOOKMARKS.NO_100_FLAKE,
-                      ],
-                    }}
-                    pageSize={5}
-                    briefTable={true}
-                    release={props.release}
-                  />
-                </Container>
-              </Card>
-            </Grid>
-
-            <Grid item md={6} sm={12}>
-              <Card elevation={5} style={{ textAlign: 'center' }}>
-                <Typography
-                  component={Link}
-                  to={`/tests/${props.release}?${queryForBookmark(
-                    BOOKMARKS.RUN_7,
-                    BOOKMARKS.NO_NEVER_STABLE,
-                    BOOKMARKS.NO_AGGREGATED,
-                    BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                    BOOKMARKS.NO_STEP_GRAPH,
-                    BOOKMARKS.NO_100_FLAKE
-                  )}&sortField=current_pass_percentage&sort=asc`}
-                  style={{ textAlign: 'center' }}
-                  variant="h5"
-                >
-                  Top failing tests
-                  <Tooltip title={TOP_FAILERS_TOOLTIP}>
-                    <InfoIcon />
-                  </Tooltip>
-                </Typography>
-
-                <Container size="xl">
-                  <TestTable
-                    hideControls={true}
-                    sortField="current_pass_percentage"
-                    sort="asc"
-                    limit={10}
-                    rowsPerPageOptions={[5]}
-                    filterModel={{
-                      items: [
-                        BOOKMARKS.RUN_7,
-                        BOOKMARKS.NO_NEVER_STABLE,
-                        BOOKMARKS.NO_AGGREGATED,
-                        BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                        BOOKMARKS.NO_STEP_GRAPH,
-                        BOOKMARKS.NO_100_FLAKE,
-                      ],
-                    }}
-                    pageSize={5}
-                    briefTable={true}
-                    release={props.release}
-                  />
-                </Container>
-              </Card>
-            </Grid>
           </Grid>
         </Container>
-      </div>
+      </Box>
     </Fragment>
   )
 }
