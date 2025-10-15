@@ -1,6 +1,6 @@
 import { MESSAGE_TYPES } from './chatUtils'
 import { useCallback } from 'react'
-import { useSessionActions } from './store/useChatStore'
+import { useSessionActions, useSettings } from './store/useChatStore'
 
 /**
  * Custom hook for handling session rating submission
@@ -8,6 +8,7 @@ import { useSessionActions } from './store/useChatStore'
  */
 export function useSessionRating() {
   const { updateSessionMetadata } = useSessionActions()
+  const { settings } = useSettings()
 
   /**
    * Calculate metrics from messages for rating submission
@@ -63,6 +64,7 @@ export function useSessionRating() {
 
       const payload = {
         rating,
+        clientId: settings.clientId,
         metadata: {
           ...metrics,
           sessionType,
@@ -105,7 +107,7 @@ export function useSessionRating() {
         return { success: false, error: error.message }
       }
     },
-    [calculateMetrics, updateSessionMetadata]
+    [calculateMetrics, updateSessionMetadata, settings.clientId]
   )
 
   return {

@@ -8,6 +8,7 @@ export const createSettingsSlice = (set, get) => ({
     autoScroll: true,
     persona: 'default',
     tourCompleted: false,
+    clientId: null,
   },
   settingsOpen: false,
 
@@ -19,6 +20,19 @@ export const createSettingsSlice = (set, get) => ({
         ...newSettings,
       },
     }))
+  },
+
+  // Initialize client ID if not already set (called on app mount)
+  ensureClientId: () => {
+    const state = get()
+    if (!state.settings.clientId) {
+      set((state) => ({
+        settings: {
+          ...state.settings,
+          clientId: crypto.randomUUID(),
+        },
+      }))
+    }
   },
 
   setSettingsOpen: (open) => {

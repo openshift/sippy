@@ -113,6 +113,7 @@ export const useSettings = () =>
       setSettingsOpen: state.setSettingsOpen,
       setTourCompleted: state.setTourCompleted,
       resetTour: state.resetTour,
+      ensureClientId: state.ensureClientId,
     }))
   )
 
