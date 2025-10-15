@@ -59,9 +59,9 @@ const cancelFetch = () => {
 const getStatusDescription = (statusCode) => {
   const statusMap = {
     '-1000': 'Failed fix detected',
-    '-500': 'ExtremeRegression detected (>15% pass rate change)',
+    '-500': 'ExtremeRegression detected',
     '-400': 'SignificantRegression detected',
-    '-300': 'ExtremeTriagedRegression detected (>15% pass rate change)',
+    '-300': 'ExtremeTriagedRegression detected',
     '-200': 'SignificantTriagedRegression detected',
     '-150': 'Fixed (hopefully) regression detected',
     '-100': 'Missing Sample (sample data missing)',
@@ -308,6 +308,7 @@ export default function TestDetailsReport(props) {
      Do not include the actual time.
    - Report if it's closed (regression.closed) or still ongoing - if closed, format the date similarly and show days ago
    - Explain the status code (e.g., -400 = SignificantRegression, -500 = ExtremeRegression >15% change)
+   - **Always include and explain the explanations from the data** - these provide critical context about why the test is flagged
 
 2. **Compare sample vs base statistics:**
    - Calculate the pass rate change: (sample_stats.success_rate - base_stats.success_rate) * 100

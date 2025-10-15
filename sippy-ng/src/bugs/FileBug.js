@@ -316,8 +316,10 @@ ${generatedDescription}`
     return `Draft a Jira bug description for a test regression. Use Jira markup syntax. Include well-structured headings and sections. Perform a brief analysis of the failure based on the available context.
 
 REQUIRED CONTENT - Include these sections in this order:
-1. Brief overview of the test failure
-2. Statistics section with BOTH Sample and Base stats in this exact format:
+1. The name of the test in this format: {code:none}${testName}{code}
+2. Brief overview of the test failure and explanation from the regression data. Do not include the status code.
+3. Statistics section with BOTH Sample and Base stats in this exact format:
+
    Sample (being evaluated) Release: <release>
    Start Time: <start_time>
    End Time: <end_time>
@@ -325,7 +327,7 @@ REQUIRED CONTENT - Include these sections in this order:
    Successes: <count>
    Failures: <count>
    Flakes: <count>
-   
+
    Base (historical) Release: <release>
    Start Time: <start_time>
    End Time: <end_time>
@@ -333,18 +335,24 @@ REQUIRED CONTENT - Include these sections in this order:
    Successes: <count>
    Failures: <count>
    Flakes: <count>
-3. Sample failure outputs, use your tools to get outputs from up to 5 jobs that failed this test.
-4. Links to relevant jobs
-5. Any patterns or insights from the regression data
+
+   CRITICAL: If the base statistics have no success rate, successes, failures or flakes (all zero values), highlight that this is a
+   NEW test in this release, and must pass at a 95% success threshold, rather than being compared to historical data.
+
+4. Sample failure outputs, use your tools to get outputs from up to 5 jobs that failed this test.
+5. Links to relevant jobs
+6. Any patterns or insights from the regression data
 
 CRITICAL OUTPUT REQUIREMENTS:
 - Your response must contain ONLY the Jira markup description
+- For links in Jira cards, you MUST use the Jira syntax format for links, i.e. [link text|link url] - do not use markdown in this case!
 - Do NOT include any "thought", "Plan:", "thinking", "analysis", or reasoning sections
 - Do NOT include any preamble or explanation before the Jira markup
 - Start your response IMMEDIATELY with the first Jira heading (h3.)
 - Do NOT include phrases like "Here is the description:", "Final output:", etc.
 - The entire response must be valid Jira markup that can be directly pasted into a Jira ticket
-- ALWAYS include both Sample and Base statistics in the exact format shown above`
+- ALWAYS include the explanation from the regression data
+- If base statistics are missing or empty, DO NOT include them; instead explain this is a new test being held to the 95% success rate standard`
   }
 
   return (
