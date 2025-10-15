@@ -205,7 +205,7 @@ export default function ChatInterface({
 
   const { connectionState, isTyping, error, currentThinking } =
     useConnectionState()
-  const { settings } = useSettings()
+  const { settings, ensureClientId } = useSettings()
 
   // Get messages from active session
   const messages = activeSession?.messages || []
@@ -222,10 +222,11 @@ export default function ChatInterface({
 
   const isConnected = connectionState === CONNECTION_STATES.CONNECTED
 
-  // Initialize sessions on mount
+  // Initialize sessions and client ID on mount
   useEffect(() => {
     initializeSessions()
-  }, [initializeSessions])
+    ensureClientId()
+  }, [initializeSessions, ensureClientId])
 
   // Load shared conversation if conversationId is provided
   useEffect(() => {
