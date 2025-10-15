@@ -178,6 +178,23 @@ export const createWebSocketSlice = (set, get) => {
       }
     },
 
+    // Stop current generation by disconnecting and reconnecting
+    stopGeneration: () => {
+      const {
+        disconnectWebSocket,
+        connectWebSocket,
+        setIsTyping,
+        setCurrentThinking,
+      } = get()
+
+      setIsTyping(false)
+      setCurrentThinking(null)
+      disconnectWebSocket()
+      setTimeout(() => {
+        connectWebSocket()
+      }, 100)
+    },
+
     // Send message through WebSocket
     sendMessage: (content) => {
       const {

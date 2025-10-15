@@ -151,5 +151,6 @@ export const useWebSocketActions = () =>
       connectWebSocket: state.connectWebSocket,
       disconnectWebSocket: state.disconnectWebSocket,
       sendMessage: state.sendMessage,
+      stopGeneration: state.stopGeneration,
     }))
   )
