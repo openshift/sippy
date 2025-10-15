@@ -42,15 +42,21 @@ func (s *Server) jsonCreateChatConversation(w http.ResponseWriter, req *http.Req
 		return
 	}
 
+	chatLog := log.WithFields(log.Fields{
+		"user": user,
+	})
+	chatLog.Info("creating chat conversation")
+
 	var request CreateChatConversationRequest
 	if err := json.NewDecoder(req.Body).Decode(&request); err != nil {
-		log.WithError(err).Error("error parsing chat conversation request")
+		chatLog.WithError(err).Error("error parsing chat conversation request")
 		failureResponse(w, http.StatusBadRequest, "Invalid JSON: "+err.Error())
 		return
 	}
 
 	// Validate messages
 	if len(request.Messages) == 0 {
+		chatLog.Error("no messages provided")
 		failureResponse(w, http.StatusBadRequest, "Messages are required")
 		return
 	}
@@ -58,7 +64,7 @@ func (s *Server) jsonCreateChatConversation(w http.ResponseWriter, req *http.Req
 	// Marshal messages to JSON
 	messagesJSON, err := json.Marshal(request.Messages)
 	if err != nil {
-		log.WithError(err).Error("error marshaling messages")
+		chatLog.WithError(err).Error("error marshaling messages")
 		failureResponse(w, http.StatusInternalServerError, "Failed to process messages")
 		return
 	}
@@ -74,12 +80,12 @@ func (s *Server) jsonCreateChatConversation(w http.ResponseWriter, req *http.Req
 	if request.Metadata != nil {
 		metadataJSON, err := json.Marshal(request.Metadata)
 		if err != nil {
-			log.WithError(err).Error("error marshaling metadata")
+			chatLog.WithError(err).Error("error marshaling metadata")
 			failureResponse(w, http.StatusInternalServerError, "Failed to process metadata")
 			return
 		}
 		if err := metadataJSONB.Set(metadataJSON); err != nil {
-			log.WithError(err).Error("error setting metadata JSONB")
+			chatLog.WithError(err).Error("error setting metadata JSONB")
 			failureResponse(w, http.StatusInternalServerError, "Failed to process metadata")
 			return
 		}
@@ -91,7 +97,7 @@ func (s *Server) jsonCreateChatConversation(w http.ResponseWriter, req *http.Req
 		ParentID: request.ParentID,
 	}
 	if err := conversation.Messages.Set(messagesJSON); err != nil {
-		log.WithError(err).Error("error setting messages JSONB")
+		chatLog.WithError(err).Error("error setting messages JSONB")
 		failureResponse(w, http.StatusInternalServerError, "Failed to process messages")
 		return
 	}
@@ -100,7 +106,7 @@ func (s *Server) jsonCreateChatConversation(w http.ResponseWriter, req *http.Req
 	}
 
 	if err := s.db.DB.Create(&conversation).Error; err != nil {
-		log.WithError(err).Error("error creating chat conversation")
+		chatLog.WithError(err).Error("error creating chat conversation")
 		failureResponse(w, http.StatusInternalServerError, "Failed to save conversation")
 		return
 	}
@@ -115,8 +121,7 @@ func (s *Server) jsonCreateChatConversation(w http.ResponseWriter, req *http.Req
 		},
 	}
 
-	log.WithFields(log.Fields{
-		"user":           user,
+	chatLog.WithFields(log.Fields{
 		"conversationID": conversation.ID,
 	}).Info("chat conversation created")
 
@@ -133,6 +138,10 @@ func (s *Server) jsonGetChatConversation(w http.ResponseWriter, req *http.Reques
 		failureResponse(w, http.StatusBadRequest, "Invalid conversation ID format")
 		return
 	}
+
+	log := log.WithFields(log.Fields{
+		"conversationID": conversationID,
+	})
 
 	var conversation models.ChatConversation
 	if err := s.db.DB.First(&conversation, "id = ?", conversationID).Error; err != nil {
