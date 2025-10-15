@@ -14,7 +14,7 @@ import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
-import { useGlobalChat } from '../chat/useGlobalChat'
+import { usePageContextForChat } from '../chat/store/useChatStore'
 import Alert from '@mui/material/Alert'
 import AskSippyButton from '../chat/AskSippyButton'
 import Grid from '@mui/material/Grid'
@@ -56,7 +56,8 @@ const useStyles = makeStyles((theme) => ({
 
 export default function ReleaseOverview(props) {
   const classes = useStyles()
-  const { updatePageContext } = useGlobalChat()
+  const { setPageContextForChat, unsetPageContextForChat } =
+    usePageContextForChat()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -96,7 +97,7 @@ export default function ReleaseOverview(props) {
     if (!isLoaded || !data.indicators || hasSetContextRef.current) return
 
     hasSetContextRef.current = true
-    updatePageContext({
+    setPageContextForChat({
       page: 'release-overview',
       url: window.location.href,
       suggestedQuestions: ['How is the overall health of the release?'],
@@ -162,9 +163,9 @@ export default function ReleaseOverview(props) {
 
     // Cleanup: Clear context when component unmounts
     return () => {
-      updatePageContext(null)
+      unsetPageContextForChat()
     }
-  }, [isLoaded, updatePageContext])
+  }, [isLoaded, setPageContextForChat, unsetPageContextForChat])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

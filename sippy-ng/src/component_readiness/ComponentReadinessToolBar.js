@@ -37,7 +37,7 @@ import {
   StyledInputBase,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
-import { useGlobalChat } from '../chat/useGlobalChat'
+import { usePageContextForChat } from '../chat/store/useChatStore'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext, useEffect } from 'react'
@@ -67,7 +67,8 @@ export default function ComponentReadinessToolBar(props) {
   const capabilitiesContext = React.useContext(CapabilitiesContext)
   const localDBEnabled = capabilitiesContext.includes('local_db')
   const varsContext = useContext(CompReadyVarsContext)
-  const { updatePageContext } = useGlobalChat()
+  const { setPageContextForChat, unsetPageContextForChat } =
+    usePageContextForChat()
 
   React.useEffect(() => {
     // triage entries will only be available when there is a postgres connection
@@ -134,7 +135,7 @@ export default function ComponentReadinessToolBar(props) {
       ),
     })
 
-    updatePageContext({
+    setPageContextForChat({
       page: 'component-readiness',
       url: window.location.href,
 
@@ -174,7 +175,7 @@ export default function ComponentReadinessToolBar(props) {
 
     // Clear context on unmount
     return () => {
-      updatePageContext(null)
+      unsetPageContextForChat()
     }
   }, [
     isLoaded,
@@ -186,7 +187,8 @@ export default function ComponentReadinessToolBar(props) {
     varsContext.view,
     filterVals,
     varsContext.expandEnvironment,
-    updatePageContext,
+    setPageContextForChat,
+    unsetPageContextForChat,
   ])
 
   const linkToReport = () => {

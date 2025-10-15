@@ -25,7 +25,7 @@ import { FileCopy, Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import { pathForExactTestAnalysisWithFilter } from '../helpers'
 import { Tooltip } from '@mui/material'
-import { useGlobalChat } from '../chat/useGlobalChat'
+import { usePageContextForChat } from '../chat/store/useChatStore'
 import AskSippyButton from '../chat/AskSippyButton'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
@@ -111,7 +111,8 @@ function TestsReportTabPanel(props) {
 // This is page 5 which runs when you click a test cell on the right of page 4 or page 4a
 export default function TestDetailsReport(props) {
   const { accessibilityModeOn } = useContext(AccessibilityModeContext)
-  const { updatePageContext } = useGlobalChat()
+  const { setPageContextForChat, unsetPageContextForChat } =
+    usePageContextForChat()
 
   const [activeTabIndex, setActiveTabIndex] = React.useState(0)
 
@@ -407,11 +408,11 @@ export default function TestDetailsReport(props) {
       },
     }
 
-    updatePageContext(contextData)
+    setPageContextForChat(contextData)
 
     // Cleanup: Clear context when component unmounts
     return () => {
-      updatePageContext(null)
+      unsetPageContextForChat()
     }
   }, [
     isLoaded,
@@ -421,7 +422,8 @@ export default function TestDetailsReport(props) {
     capability,
     environment,
     triageEntries.length,
-    updatePageContext,
+    setPageContextForChat,
+    unsetPageContextForChat,
   ])
 
   if (fetchError !== '') {

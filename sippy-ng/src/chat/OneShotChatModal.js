@@ -15,6 +15,7 @@ import {
   WEBSOCKET_STATES,
 } from './chatUtils'
 import { makeStyles } from '@mui/styles'
+import { usePageContextForChat } from './store/useChatStore'
 import PropTypes from 'prop-types'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import ThinkingStep from './ThinkingStep'
@@ -85,11 +86,11 @@ export default function OneShotChatModal({
   open,
   onClose,
   prompt,
-  pageContext,
   onResult,
   title = 'Generating...',
 }) {
   const classes = useStyles()
+  const { pageContext } = usePageContextForChat()
   const [connectionState, setConnectionState] = useState(
     WEBSOCKET_STATES.CLOSED
   )
@@ -99,7 +100,6 @@ export default function OneShotChatModal({
   const [result, setResult] = useState(null)
 
   const wsRef = useRef(null)
-  const currentIterationRef = useRef(0)
   const hasStartedRef = useRef(false)
   const messagesEndRef = useRef(null)
   const lastMessageRef = useRef(null)
@@ -187,9 +187,7 @@ export default function OneShotChatModal({
       // Thinking step completed - add to list
       setThinkingSteps((prev) => {
         const existing = prev.find(
-          (step) =>
-            step.data?.step_number === data.step_number &&
-            step.data?.iteration === currentIterationRef.current
+          (step) => step.data?.step_number === data.step_number
         )
 
         if (existing) {
@@ -200,7 +198,6 @@ export default function OneShotChatModal({
                   data: {
                     ...step.data,
                     ...data,
-                    iteration: currentIterationRef.current,
                   },
                 }
               : step
@@ -209,7 +206,7 @@ export default function OneShotChatModal({
           return [
             ...prev,
             createMessage(MESSAGE_TYPES.THINKING_STEP, '', {
-              data: { ...data, iteration: currentIterationRef.current },
+              data: { ...data },
             }),
           ]
         }
@@ -217,7 +214,7 @@ export default function OneShotChatModal({
       setCurrentThinking(null)
     } else {
       // Thinking step in progress
-      setCurrentThinking({ ...data, iteration: currentIterationRef.current })
+      setCurrentThinking({ ...data })
     }
   }, [])
 
@@ -277,7 +274,6 @@ export default function OneShotChatModal({
       setError(null)
       setResult(null)
       hasStartedRef.current = false
-      currentIterationRef.current = 0
     }
   }, [open])
 
@@ -391,7 +387,6 @@ OneShotChatModal.propTypes = {
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
   prompt: PropTypes.string.isRequired,
-  pageContext: PropTypes.object,
   onResult: PropTypes.func.isRequired,
   title: PropTypes.string,
 }

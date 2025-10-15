@@ -15,21 +15,34 @@ import {
   MenuItem,
   Select,
   Switch,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import {
   VerticalAlignBottom as AutoScrollIcon,
   Close as CloseIcon,
   Delete as DeleteIcon,
+  Info as InfoIcon,
   Masks as MasksIcon,
   Psychology as PsychologyIcon,
   Refresh as RefreshIcon,
   Settings as SettingsIcon,
+  Storage as StorageIcon,
+  TravelExplore as TourIcon,
 } from '@mui/icons-material'
+import { CONNECTION_STATES } from './store/webSocketSlice'
+import { formatBytes, getChatStorageStats } from './store/storageUtils'
+import { humanize } from './chatUtils'
 import { makeStyles } from '@mui/styles'
-import { usePersonas } from './usePersonas'
+import {
+  useConnectionState,
+  usePersonas,
+  useSessionActions,
+  useSessionState,
+  useSettings,
+} from './store/useChatStore'
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   drawer: {
@@ -48,6 +61,7 @@ const useStyles = makeStyles((theme) => ({
   },
   section: {
     marginBottom: theme.spacing(3),
+    marginTop: theme.spacing(2),
   },
   sectionTitle: {
     marginBottom: theme.spacing(1),
@@ -87,34 +101,65 @@ const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export default function ChatSettings({
-  open,
-  onClose,
-  settings,
-  onSettingsChange,
-  onClearMessages,
-  onReconnect,
-  connectionState,
-  messageCount,
-  isConnected,
-}) {
+export default function ChatSettings({ onClearMessages, onReconnect }) {
   const classes = useStyles()
-  const {
-    personas,
-    loading: personasLoading,
-    error: personasError,
-  } = usePersonas()
+
+  const { settings, settingsOpen, updateSettings, setSettingsOpen, resetTour } =
+    useSettings()
+  const { connectionState } = useConnectionState()
+  const { personas, personasLoading, personasError, loadPersonas } =
+    usePersonas()
+  const { sessions, activeSessionId } = useSessionState()
+  const { clearAllSessions, clearOldSessions } = useSessionActions()
+
+  const isConnected = connectionState === 'connected'
+  const tourCompleted = settings.tourCompleted
+
+  // Storage stats
+  const [storageStats, setStorageStats] = useState({
+    conversationCount: 0,
+    sizeBytes: 0,
+  })
+  const [storageLoading, setStorageLoading] = useState(false)
+
+  useEffect(() => {
+    if (personas.length === 0 && !personasLoading) {
+      loadPersonas()
+    }
+  }, [personas.length, personasLoading, loadPersonas])
+
+  // Load storage stats
+  const loadStorageStats = useCallback(async () => {
+    setStorageLoading(true)
+    try {
+      const stats = await getChatStorageStats(
+        sessions,
+        activeSessionId,
+        settings
+      )
+      setStorageStats(stats)
+    } catch (error) {
+      console.error('Error loading storage stats:', error)
+    } finally {
+      setStorageLoading(false)
+    }
+  }, [sessions, activeSessionId, settings])
+
+  // Load storage stats when drawer opens or sessions change
+  useEffect(() => {
+    if (open) {
+      loadStorageStats()
+    }
+  }, [open, loadStorageStats])
 
   const handleSettingChange = (key) => (event) => {
-    onSettingsChange({
-      ...settings,
+    updateSettings({
       [key]: event.target.checked,
     })
   }
 
   const handlePersonaChange = (event) => {
-    onSettingsChange({
-      ...settings,
+    updateSettings({
       persona: event.target.value,
     })
   }
@@ -125,13 +170,11 @@ export default function ChatSettings({
 
   const getConnectionStatusText = () => {
     switch (connectionState) {
-      case 0:
+      case CONNECTION_STATES.CONNECTING:
         return 'Connecting...'
-      case 1:
+      case CONNECTION_STATES.CONNECTED:
         return 'Connected'
-      case 2:
-        return 'Disconnecting...'
-      case 3:
+      case CONNECTION_STATES.DISCONNECTED:
         return 'Disconnected'
       default:
         return 'Unknown'
@@ -140,16 +183,40 @@ export default function ChatSettings({
 
   const getConnectionStatusColor = () => {
     switch (connectionState) {
-      case 1:
+      case CONNECTION_STATES.CONNECTED:
         return 'success'
-      case 0:
-      case 2:
+      case CONNECTION_STATES.CONNECTING:
         return 'warning'
-      case 3:
+      case CONNECTION_STATES.DISCONNECTED:
         return 'error'
       default:
         return 'info'
     }
+  }
+
+  const handleClearOldConversations = async () => {
+    const clearedCount = clearOldSessions(1) // Clear conversations older than 1 day
+    await loadStorageStats()
+    if (clearedCount > 0) {
+      console.log(`Cleared ${clearedCount} old conversation(s)`)
+    }
+  }
+
+  const handleClearAllConversations = async () => {
+    if (
+      window.confirm(
+        'Are you sure you want to clear all saved conversations? This cannot be undone.'
+      )
+    ) {
+      clearAllSessions()
+      await loadStorageStats()
+      onClearMessages() // Also clear current messages
+    }
+  }
+
+  const handleRestartTour = () => {
+    resetTour()
+    setSettingsOpen(false)
   }
 
   return (
@@ -157,8 +224,8 @@ export default function ChatSettings({
       className={classes.drawer}
       variant="temporary"
       anchor="right"
-      open={open}
-      onClose={onClose}
+      open={settingsOpen}
+      onClose={() => setSettingsOpen(false)}
       classes={{
         paper: classes.drawerPaper,
       }}
@@ -168,7 +235,7 @@ export default function ChatSettings({
           <SettingsIcon />
           <Typography variant="h6">Chat Settings</Typography>
         </Box>
-        <IconButton onClick={onClose} size="small">
+        <IconButton onClick={() => setSettingsOpen(false)} size="small">
           <CloseIcon />
         </IconButton>
       </div>
@@ -192,6 +259,8 @@ export default function ChatSettings({
           {getConnectionStatusText()}
         </Alert>
       </div>
+
+      <Divider />
 
       {/* Persona Selection */}
       <div className={classes.section}>
@@ -223,8 +292,7 @@ export default function ChatSettings({
               >
                 {personas.map((persona) => (
                   <MenuItem key={persona.name} value={persona.name}>
-                    {persona.name.charAt(0).toUpperCase() +
-                      persona.name.slice(1).replace(/_/g, ' ')}
+                    {humanize(persona.name)}
                   </MenuItem>
                 ))}
               </Select>
@@ -291,48 +359,99 @@ export default function ChatSettings({
               />
             </ListItemSecondaryAction>
           </ListItem>
-
-          <ListItem className={classes.settingItem}>
-            <ListItemText
-              primary="Retry Failed Messages"
-              secondary="Automatically retry failed messages"
-              primaryTypographyProps={{ variant: 'body2' }}
-              secondaryTypographyProps={{ variant: 'caption' }}
-            />
-            <ListItemSecondaryAction className={classes.settingItemAction}>
-              <Switch
-                edge="end"
-                checked={settings.retryFailedMessages}
-                onChange={handleSettingChange('retryFailedMessages')}
-                color="primary"
-              />
-            </ListItemSecondaryAction>
-          </ListItem>
         </List>
       </div>
 
       <Divider />
 
-      {/* Chat Management */}
+      {/* Storage Management */}
       <div className={classes.section}>
         <Typography variant="subtitle2" className={classes.sectionTitle}>
-          Chat Management
+          <Box display="flex" alignItems="center" gap={0.5}>
+            <StorageIcon fontSize="small" />
+            Storage
+            <Tooltip
+              title="Conversations are stored locally in your browser. Only shared conversations are persisted server-side."
+              placement="top"
+            >
+              <InfoIcon
+                fontSize="small"
+                sx={{ color: 'text.secondary', cursor: 'help' }}
+              />
+            </Tooltip>
+          </Box>
         </Typography>
 
-        <Typography variant="body2" color="textSecondary" gutterBottom>
-          Messages in conversation: {messageCount}
-        </Typography>
+        {storageLoading ? (
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <CircularProgress size={20} />
+            <Typography variant="body2" color="textSecondary">
+              Loading storage info...
+            </Typography>
+          </Box>
+        ) : (
+          <>
+            <Box
+              sx={{
+                mb: 2,
+                p: 1.5,
+                backgroundColor: (theme) =>
+                  theme.palette.mode === 'dark'
+                    ? 'rgba(255, 255, 255, 0.05)'
+                    : 'rgba(0, 0, 0, 0.02)',
+                borderRadius: 1,
+              }}
+            >
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={1}
+              >
+                <Typography variant="body2" color="textSecondary">
+                  Conversations:
+                </Typography>
+                <Typography variant="body2" fontWeight="bold">
+                  {sessions.length}
+                </Typography>
+              </Box>
+              <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+              >
+                <Typography variant="body2" color="textSecondary">
+                  Storage used:
+                </Typography>
+                <Typography variant="body2" fontWeight="bold">
+                  {formatBytes(storageStats.sizeBytes)}
+                </Typography>
+              </Box>
+            </Box>
 
-        <Button
-          variant="outlined"
-          startIcon={<DeleteIcon />}
-          onClick={onClearMessages}
-          className={classes.dangerButton}
-          fullWidth
-          disabled={messageCount === 0}
-        >
-          Clear Chat History
-        </Button>
+            <Box display="flex" flexDirection="column" gap={1}>
+              <Button
+                variant="outlined"
+                startIcon={<DeleteIcon />}
+                onClick={handleClearOldConversations}
+                fullWidth
+                size="small"
+              >
+                Clear Old (1+ day)
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<DeleteIcon />}
+                onClick={handleClearAllConversations}
+                className={classes.dangerButton}
+                fullWidth
+                size="small"
+              >
+                Clear All Conversations
+              </Button>
+            </Box>
+          </>
+        )}
       </div>
 
       <Divider />
@@ -354,37 +473,38 @@ export default function ChatSettings({
         </Button>
       </div>
 
-      {/* Help Text */}
+      <Divider />
+
+      {/* Tour Management */}
       <div className={classes.section}>
         <Typography variant="subtitle2" className={classes.sectionTitle}>
-          Tips
+          Help & Guidance
         </Typography>
-        <Typography variant="body2" color="textSecondary">
-          • Ask about specific job IDs for detailed analysis
-          <br />
-          • Request payload status by version number
-          <br />
-          • Inquire about test failure patterns
-          <br />• Use Shift+Enter for new lines in messages
-        </Typography>
+
+        <Button
+          variant="outlined"
+          startIcon={<TourIcon />}
+          onClick={handleRestartTour}
+          fullWidth
+          disabled={!tourCompleted}
+        >
+          Restart Interface Tour
+        </Button>
+        {!tourCompleted && (
+          <Typography
+            variant="caption"
+            color="textSecondary"
+            sx={{ display: 'block', mt: 1, textAlign: 'center' }}
+          >
+            The tour will start automatically on first use
+          </Typography>
+        )}
       </div>
     </Drawer>
   )
 }
 
 ChatSettings.propTypes = {
-  open: PropTypes.bool.isRequired,
-  onClose: PropTypes.func.isRequired,
-  settings: PropTypes.shape({
-    showThinking: PropTypes.bool,
-    autoScroll: PropTypes.bool,
-    retryFailedMessages: PropTypes.bool,
-    persona: PropTypes.string,
-  }).isRequired,
-  onSettingsChange: PropTypes.func.isRequired,
   onClearMessages: PropTypes.func.isRequired,
   onReconnect: PropTypes.func.isRequired,
-  connectionState: PropTypes.number.isRequired,
-  messageCount: PropTypes.number.isRequired,
-  isConnected: PropTypes.bool.isRequired,
 }

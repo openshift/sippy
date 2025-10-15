@@ -1,6 +1,6 @@
-import { Box, Fade, Typography } from '@mui/material'
+import { Box, Fade, Tooltip, Typography } from '@mui/material'
+import { Info as InfoIcon, Star as StarIcon } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
-import { Star as StarIcon } from '@mui/icons-material'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 
@@ -34,23 +34,32 @@ const useStyles = makeStyles((theme) => ({
     fontSize: '0.75rem',
     color: theme.palette.text.secondary,
     marginRight: theme.spacing(0.5),
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(0.5),
+  },
+  infoIcon: {
+    fontSize: '0.9rem',
+    color: theme.palette.text.secondary,
+    opacity: 0.6,
+    cursor: 'help',
   },
   thankYouMessage: {
     fontSize: '0.75rem',
     color: theme.palette.text.secondary,
     fontStyle: 'italic',
   },
-  privacyNotice: {
-    fontSize: '0.6rem',
-    color: theme.palette.text.secondary,
-    fontStyle: 'italic',
-    marginTop: theme.spacing(0.25),
-    textAlign: 'center',
-    opacity: 0.8,
-  },
 }))
 
-export default function StarRating({ messageId, onRate }) {
+const ratingLabels = {
+  1: 'Wasted my time',
+  2: 'Not helpful',
+  3: 'Neutral',
+  4: 'Saved me time',
+  5: 'Huge time saver!',
+}
+
+export default function Rating({ messageId, onRate }) {
   const classes = useStyles()
   const [hoveredStar, setHoveredStar] = useState(null)
   const [selectedRating, setSelectedRating] = useState(null)
@@ -85,15 +94,21 @@ export default function StarRating({ messageId, onRate }) {
 
   return (
     <Fade in timeout={300}>
-      <Box>
-        <Box className={classes.ratingContainer}>
-          <Typography className={classes.ratingLabel}>
-            How helpful was this conversation?
-          </Typography>
-          <div className={classes.starsContainer}>
-            {[1, 2, 3, 4, 5].map((star) => (
+      <Box className={classes.ratingContainer}>
+        <Typography className={classes.ratingLabel}>
+          Have I saved you time today?
+          <Tooltip
+            title="Ratings collect anonymous usage metrics, and no chat content is shared"
+            arrow
+            placement="top"
+          >
+            <InfoIcon className={classes.infoIcon} />
+          </Tooltip>
+        </Typography>
+        <div className={classes.starsContainer}>
+          {[1, 2, 3, 4, 5].map((star) => (
+            <Tooltip key={star} title={ratingLabels[star]} arrow>
               <StarIcon
-                key={star}
                 fontSize="small"
                 className={`${classes.star} ${
                   star <= (hoveredStar || selectedRating || 0) ? 'filled' : ''
@@ -102,24 +117,15 @@ export default function StarRating({ messageId, onRate }) {
                 onMouseLeave={() => setHoveredStar(null)}
                 onClick={() => handleStarClick(star)}
               />
-            ))}
-          </div>
-        </Box>
-        <Typography
-          className={classes.privacyNotice}
-          sx={{
-            fontSize: '0.6rem !important',
-            opacity: 0.8,
-          }}
-        >
-          Ratings collect anonymous usage metrics, and no chat content is shared
-        </Typography>
+            </Tooltip>
+          ))}
+        </div>
       </Box>
     </Fade>
   )
 }
 
-StarRating.propTypes = {
+Rating.propTypes = {
   messageId: PropTypes.string.isRequired,
   onRate: PropTypes.func,
 }

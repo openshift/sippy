@@ -41,6 +41,7 @@ export default function AIDisclaimerDialog() {
       open={open}
       aria-labelledby="ai-disclaimer-dialog-title"
       aria-describedby="ai-disclaimer-dialog-description"
+      sx={{ zIndex: 1400 }}
     >
       <DialogContent>
         <DialogContentText id="ai-disclaimer-dialog-description">

@@ -35,7 +35,7 @@ import { Line } from 'react-chartjs-2'
 import { Link } from 'react-router-dom'
 import { ReportEndContext } from '../App'
 import { scale } from 'chroma-js'
-import { useGlobalChat } from '../chat/useGlobalChat'
+import { usePageContextForChat } from '../chat/store/useChatStore'
 import Alert from '@mui/material/Alert'
 import BugTable from '../bugs/BugTable'
 import Divider from '@mui/material/Divider'
@@ -52,7 +52,8 @@ export function JobAnalysis(props) {
   const [isLoaded, setLoaded] = React.useState(false)
   const [analysis, setAnalysis] = React.useState({ by_period: {} })
   const [bugsURL, setBugsURL] = React.useState('')
-  const { updatePageContext } = useGlobalChat()
+  const { setPageContextForChat, unsetPageContextForChat } =
+    usePageContextForChat()
 
   const [filterModel, setFilterModel] = useQueryParam('filters', SafeJSONParam)
   const [period, setPeriod] = useQueryParam('period', StringParam)
@@ -164,7 +165,7 @@ export function JobAnalysis(props) {
   useEffect(() => {
     if (!isLoaded || !analysis) return
 
-    updatePageContext({
+    setPageContextForChat({
       page: 'job-analysis',
       url: window.location.href,
       instructions: `The user is viewing job analysis for multiple jobs matching specific filters.
@@ -182,9 +183,16 @@ export function JobAnalysis(props) {
 
     // Cleanup: Clear context when component unmounts
     return () => {
-      updatePageContext(null)
+      unsetPageContextForChat()
     }
-  }, [isLoaded, analysis, filterModel, props.release, updatePageContext])
+  }, [
+    isLoaded,
+    analysis,
+    filterModel,
+    props.release,
+    setPageContextForChat,
+    unsetPageContextForChat,
+  ])
 
   if (fetchError !== '') {
     return <Alert severity="error">{fetchError}</Alert>

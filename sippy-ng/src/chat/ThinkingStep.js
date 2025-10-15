@@ -338,7 +338,6 @@ ThinkingStep.propTypes = {
     observation: PropTypes.string,
     complete: PropTypes.bool,
     timestamp: PropTypes.string,
-    iteration: PropTypes.number,
   }).isRequired,
   isInProgress: PropTypes.bool,
   defaultExpanded: PropTypes.bool,

@@ -1,6 +1,6 @@
-import { Badge, Paper, Typography } from '@mui/material'
 import { ExpandLess as ExpandLessIcon } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
+import { Paper, Typography } from '@mui/material'
 import ChatInterface from './ChatInterface'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -43,44 +43,9 @@ const useStyles = makeStyles((theme) => ({
     width: 32,
     height: 32,
   },
-  badge: {
-    '& .MuiBadge-badge': {
-      backgroundColor: theme.palette.success.main,
-      color: theme.palette.success.main,
-      boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
-      '&::after': {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        borderRadius: '50%',
-        animation: '$ripple 1.2s infinite ease-in-out',
-        border: '1px solid currentColor',
-        content: '""',
-      },
-    },
-  },
-  '@keyframes ripple': {
-    '0%': {
-      transform: 'scale(.8)',
-      opacity: 1,
-    },
-    '100%': {
-      transform: 'scale(2.4)',
-      opacity: 0,
-    },
-  },
 }))
 
-export default function CollapsibleChatDrawer({
-  open,
-  onOpen,
-  onClose,
-  pageContext,
-  hasContext,
-  unreadCount,
-}) {
+export default function CollapsibleChatDrawer({ open, onOpen, onClose }) {
   const classes = useStyles()
 
   const handleOpen = (e) => {
@@ -99,15 +64,7 @@ export default function CollapsibleChatDrawer({
           elevation={3}
         >
           <div className={classes.collapsedContent}>
-            <Badge
-              badgeContent={unreadCount}
-              color="error"
-              overlap="circular"
-              className={hasContext ? classes.badge : ''}
-              variant={hasContext && unreadCount === 0 ? 'dot' : 'standard'}
-            >
-              <img src={sippyLogo} alt="Sippy" className={classes.sippyLogo} />
-            </Badge>
+            <img src={sippyLogo} alt="Sippy" className={classes.sippyLogo} />
             <Typography className={classes.horizontalText}>
               Chat with Sippy
             </Typography>
@@ -117,12 +74,7 @@ export default function CollapsibleChatDrawer({
       )}
 
       {/* Full drawer - shown when open */}
-      <ChatInterface
-        mode="drawer"
-        open={open}
-        onClose={onClose}
-        pageContext={pageContext}
-      />
+      <ChatInterface mode="drawer" open={open} onClose={onClose} />
     </>
   )
 }
@@ -131,7 +83,4 @@ CollapsibleChatDrawer.propTypes = {
   open: PropTypes.bool.isRequired,
   onOpen: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
-  pageContext: PropTypes.object,
-  hasContext: PropTypes.bool,
-  unreadCount: PropTypes.number,
 }

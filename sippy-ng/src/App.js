@@ -18,7 +18,6 @@ import {
   pathForTestSubstringByVariant,
   relativeTime,
 } from './helpers'
-import { GlobalChatProvider, useGlobalChat } from './chat/useGlobalChat'
 import { JobAnalysis } from './jobs/JobAnalysis'
 import { makeStyles, styled } from '@mui/styles'
 import {
@@ -34,6 +33,7 @@ import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
+import { useDrawer, useWebSocketActions } from './chat/store/useChatStore'
 import AccessibilityToggle from './components/AccessibilityToggle'
 import AIDisclaimerDialog from './components/AIDisclaimerDialog'
 import Alert from '@mui/material/Alert'
@@ -358,6 +358,11 @@ const IntervalsChartWrapper = () => {
       pullNumber={pullnumber}
     />
   )
+}
+
+const ChatInterfaceWrapper = () => {
+  const { id } = useParams()
+  return <ChatInterface mode="fullPage" conversationId={id} />
 }
 
 function App(props) {
@@ -753,10 +758,16 @@ function App(props) {
                             />
 
                             {capabilities.includes('chat') && (
-                              <Route
-                                path="/chat"
-                                element={<ChatInterface mode="fullPage" />}
-                              />
+                              <>
+                                <Route
+                                  path="/chat"
+                                  element={<ChatInterface mode="fullPage" />}
+                                />
+                                <Route
+                                  path="/chat/:id"
+                                  element={<ChatInterfaceWrapper />}
+                                />
+                              </>
                             )}
 
                             <Route
@@ -788,19 +799,19 @@ function App(props) {
     </ColorModeContext.Provider>
   )
 
-  // Conditionally wrap with GlobalChatProvider if chat capability is available
-  if (capabilities.includes('chat')) {
-    return <GlobalChatProvider>{content}</GlobalChatProvider>
-  }
-
   return content
 }
 
-// Component that uses the global chat context
+// Component that uses the drawer state
 function GlobalChatControls() {
-  const { isOpen, openChat, closeChat, pageContext, unreadCount } =
-    useGlobalChat()
+  const { isDrawerOpen, openDrawer, closeDrawer } = useDrawer()
+  const { connectWebSocket } = useWebSocketActions()
   const location = useLocation()
+
+  // Initialize WebSocket connection for chat
+  React.useEffect(() => {
+    connectWebSocket()
+  }, [connectWebSocket])
 
   // Don't show chat drawer on the main /chat page
   const isOnChatPage = location.pathname.includes('/chat')
@@ -810,12 +821,9 @@ function GlobalChatControls() {
 
   return (
     <CollapsibleChatDrawer
-      open={isOpen}
-      onOpen={openChat}
-      onClose={closeChat}
-      pageContext={pageContext}
-      hasContext={pageContext !== null && pageContext?.page !== undefined}
-      unreadCount={unreadCount}
+      open={isDrawerOpen}
+      onOpen={openDrawer}
+      onClose={closeDrawer}
     />
   )
 }

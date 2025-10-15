@@ -26,7 +26,7 @@ import { TEST_THRESHOLDS } from '../constants'
 import { TestDurationChart } from './TestDurationChart'
 import { TestOutputs } from './TestOutputs'
 import { TestStackedChart } from './TestStackedChart'
-import { useGlobalChat } from '../chat/useGlobalChat'
+import { usePageContextForChat } from '../chat/store/useChatStore'
 import { useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
 import BugButton from '../bugs/BugButton'
@@ -51,7 +51,8 @@ export function TestAnalysis(props) {
   const [test, setTest] = React.useState({})
   const [fetchError, setFetchError] = React.useState('')
   const [testName = props.test] = useQueryParam('test', SafeStringParam)
-  const { updatePageContext } = useGlobalChat()
+  const { setPageContextForChat, unsetPageContextForChat } =
+    usePageContextForChat()
 
   const [
     filterModel = {
@@ -112,7 +113,7 @@ export function TestAnalysis(props) {
   useEffect(() => {
     if (!isLoaded || !test || !testName) return
 
-    updatePageContext({
+    setPageContextForChat({
       page: 'test-analysis',
       url: window.location.href,
       instructions: `The user is viewing detailed analysis for a specific test. 
@@ -143,9 +144,17 @@ export function TestAnalysis(props) {
 
     // Cleanup: Clear context when component unmounts
     return () => {
-      updatePageContext(null)
+      unsetPageContextForChat()
     }
-  }, [isLoaded, test, testName, filterModel, props.release, updatePageContext])
+  }, [
+    isLoaded,
+    test,
+    testName,
+    filterModel,
+    props.release,
+    setPageContextForChat,
+    unsetPageContextForChat,
+  ])
 
   const breadcrumbs = (
     <SimpleBreadcrumbs

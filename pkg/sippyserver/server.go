@@ -2320,6 +2320,20 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability, ChatCapability, WriteEndpointsCapability},
 			HandlerFunc:  s.jsonCreateChatRating,
 		},
+		{
+			EndpointPath: "/api/chat/conversations",
+			Description:  "Create a new chat conversation",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{ChatCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCreateChatConversation,
+		},
+		{
+			EndpointPath: "/api/chat/conversations/{id}",
+			Description:  "Get a specific chat conversation by ID",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{ChatCapability},
+			HandlerFunc:  s.jsonGetChatConversation,
+		},
 	}
 
 	for _, ep := range endpoints {
