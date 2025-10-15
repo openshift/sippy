@@ -7,7 +7,7 @@ import React from 'react'
 // the triaging workflow.
 export default function CopyPageURL(props) {
   return (
-    <Box align="right">
+    <Box align="right" sx={{ mb: 10 }}>
       <Typography variant="caption">
         <Tooltip title={props.apiCallStr}>
           <Link href={props.apiCallStr} target="_blank">
