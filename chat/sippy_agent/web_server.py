@@ -5,11 +5,14 @@ FastAPI web server for Sippy Agent.
 import asyncio
 import json
 import logging
+import re
+import time
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
 from .agent import SippyAgent
 from .config import Config
@@ -24,6 +27,8 @@ from .api_models import (
     PersonaInfo,
     PersonasResponse,
 )
+from . import metrics
+from .metrics_server import start_metrics_server, stop_metrics_server
 
 logger = logging.getLogger(__name__)
 
@@ -38,10 +43,15 @@ class WebSocketManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        # Track active sessions
+        metrics.active_sessions.inc()
+        metrics.sessions_started_total.inc()
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+            # Track active sessions
+            metrics.active_sessions.dec()
         
         # Cancel any active task for this websocket
         if websocket in self.active_tasks:
@@ -71,8 +81,9 @@ class WebSocketManager:
 class SippyWebServer:
     """FastAPI web server for Sippy Agent."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, metrics_port: Optional[int] = None):
         self.config = config
+        self.metrics_port = metrics_port
         self.agent = SippyAgent(config)
         self.app = FastAPI(
             title="Sippy AI Agent API",
@@ -82,6 +93,14 @@ class SippyWebServer:
         self.websocket_manager = WebSocketManager()
         self._setup_middleware()
         self._setup_routes()
+        
+        # Initialize agent info metrics
+        metrics.agent_info.info({
+            "version": "1.0.0",
+            "model": config.model_name,
+            "endpoint": config.llm_endpoint,
+            "persona": config.persona,
+        })
 
     def _setup_middleware(self):
         """Setup CORS and other middleware."""
@@ -100,6 +119,14 @@ class SippyWebServer:
         async def health_check():
             """Health check endpoint."""
             return HealthResponse(status="healthy", version="1.0.0", agent_ready=True)
+
+        @self.app.get("/metrics")
+        async def prometheus_metrics():
+            """Prometheus metrics endpoint."""
+            return Response(
+                content=generate_latest(),
+                media_type=CONTENT_TYPE_LATEST
+            )
 
         @self.app.get("/status", response_model=AgentStatus)
         async def get_agent_status():
@@ -136,6 +163,14 @@ class SippyWebServer:
         @self.app.post("/chat", response_model=ChatResponse)
         async def chat(request: ChatRequest):
             """Process a chat message and return the response."""
+            # Track message received
+            metrics.messages_received_total.labels(endpoint="http").inc()
+            
+            # Track request message size
+            request_size = len(request.message.encode('utf-8'))
+            metrics.message_size_bytes.labels(direction="request").observe(request_size)
+            
+            start_time = time.time()
             try:
                 # Override thinking setting if provided
                 original_thinking = self.config.show_thinking
@@ -171,14 +206,24 @@ class SippyWebServer:
                                 )
                             )
 
+                        response_text = result["output"]
+                        
+                        # Track response size
+                        response_size = len(response_text.encode('utf-8'))
+                        metrics.message_size_bytes.labels(direction="response").observe(response_size)
+                        
                         return ChatResponse(
-                            response=result["output"],
+                            response=response_text,
                             thinking_steps=thinking_steps,
                             tools_used=self._extract_tools_used(
                                 result["thinking_steps"]
                             ),
                         )
                     else:
+                        # Track response size
+                        response_size = len(result.encode('utf-8'))
+                        metrics.message_size_bytes.labels(direction="response").observe(response_size)
+                        
                         return ChatResponse(
                             response=result, thinking_steps=None, tools_used=None
                         )
@@ -192,9 +237,14 @@ class SippyWebServer:
                         self.agent.config.persona = original_persona
                         # Recreate the agent graph with original persona
                         self.agent.graph = self.agent._create_agent_graph()
+                    
+                    # Track response duration
+                    duration = time.time() - start_time
+                    metrics.response_duration_seconds.labels(endpoint="http").observe(duration)
 
             except Exception as e:
                 logger.error(f"Error processing chat request: {e}")
+                metrics.errors_total.labels(error_type="processing_error").inc()
                 return ChatResponse(
                     response="I encountered an error while processing your request.",
                     error=str(e),
@@ -210,9 +260,16 @@ class SippyWebServer:
                     # Receive message from client
                     data = await websocket.receive_text()
                     request_data = json.loads(data)
+                    
+                    # Track message received
+                    metrics.messages_received_total.labels(endpoint="websocket").inc()
 
                     # Parse request
                     message = request_data.get("message", "")
+                    
+                    # Track request message size
+                    request_size = len(message.encode('utf-8'))
+                    metrics.message_size_bytes.labels(direction="request").observe(request_size)
                     chat_history_data = request_data.get("chat_history", [])
                     chat_history = [ChatMessage(**msg) for msg in chat_history_data]
                     show_thinking = request_data.get(
@@ -222,6 +279,9 @@ class SippyWebServer:
                     page_context = request_data.get("page_context")
 
                     logger.info(f"Received page context: {page_context}")
+                    
+                    # Start timing the response
+                    start_time = time.time()
 
                     # Override settings
                     original_thinking = self.config.show_thinking
@@ -316,6 +376,10 @@ class SippyWebServer:
                             else:
                                 response_text = result
                                 tools_used = []
+                            
+                            # Track response size
+                            response_size = len(response_text.encode('utf-8'))
+                            metrics.message_size_bytes.labels(direction="response").observe(response_size)
 
                             await self.websocket_manager.send_message(
                                 websocket,
@@ -331,9 +395,11 @@ class SippyWebServer:
 
                         except asyncio.CancelledError:
                             logger.info("Message processing cancelled by client")
+                            metrics.cancelled_requests_total.labels(endpoint="websocket").inc()
                             raise
                         except Exception as e:
                             logger.error(f"Error in WebSocket chat: {e}")
+                            metrics.errors_total.labels(error_type="agent_error").inc()
                             await self.websocket_manager.send_message(
                                 websocket,
                                 StreamMessage(
@@ -361,6 +427,10 @@ class SippyWebServer:
                         # Clear the task tracking
                         self.websocket_manager.clear_active_task(websocket)
                         
+                        # Track response duration
+                        duration = time.time() - start_time
+                        metrics.response_duration_seconds.labels(endpoint="websocket").observe(duration)
+                        
                         # Restore original settings
                         self.config.show_thinking = original_thinking
                         self.agent.config.show_thinking = original_thinking
@@ -375,6 +445,7 @@ class SippyWebServer:
                 self.websocket_manager.disconnect(websocket)
             except Exception as e:
                 logger.error(f"WebSocket error: {e}")
+                metrics.errors_total.labels(error_type="websocket_error").inc()
                 self.websocket_manager.disconnect(websocket)
 
     def _format_page_context(self, page_context: Dict[str, Any]) -> str:
@@ -414,18 +485,28 @@ class SippyWebServer:
 
     def run(self, host: str = "0.0.0.0", port: int = 8000, reload: bool = False):
         """Run the web server."""
-        if reload:
-            # For reload mode, use the module path
-            uvicorn.run(
-                "sippy_agent.web_server:app",
-                host=host,
-                port=port,
-                reload=reload,
-                log_level="info",
-            )
-        else:
-            # For non-reload mode, use the app instance directly
-            uvicorn.run(self.app, host=host, port=port, log_level="info")
+        # Start separate metrics server if port is specified
+        if self.metrics_port:
+            logger.info(f"Starting metrics server on port {self.metrics_port}")
+            start_metrics_server(host="0.0.0.0", port=self.metrics_port)
+        
+        try:
+            if reload:
+                # For reload mode, use the module path
+                uvicorn.run(
+                    "sippy_agent.web_server:app",
+                    host=host,
+                    port=port,
+                    reload=reload,
+                    log_level="info",
+                )
+            else:
+                # For non-reload mode, use the app instance directly
+                uvicorn.run(self.app, host=host, port=port, log_level="info")
+        finally:
+            # Stop metrics server on shutdown
+            if self.metrics_port:
+                stop_metrics_server()
 
 
 # Global app instance for uvicorn - initialized lazily

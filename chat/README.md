@@ -110,3 +110,4 @@ The web server provides:
 - **WebSocket streaming** at `ws://localhost:8000/chat/stream` for real-time responses
 - **Interactive API docs** at `http://localhost:8000/docs`
 - **Health check** at `http://localhost:8000/health`
+- **Prometheus metrics** at `http://localhost:8000/metrics`

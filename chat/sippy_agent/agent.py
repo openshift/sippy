@@ -28,6 +28,7 @@ from .tools import (
     TriagePotentialMatchesTool,
     load_tools_from_mcp,
 )
+from . import metrics
 
 logger = logging.getLogger(__name__)
 
@@ -396,6 +397,9 @@ Your final answer must be **comprehensive**:
                         tool_call_id = tool_call.get("id")
                         tool_name = tool_call.get("name", "Unknown")
                         tool_input = tool_call.get("args", {})
+
+                        # Track tool call in metrics
+                        metrics.tool_calls_total.labels(tool_name=tool_name).inc()
 
                         # Store tool call for later matching with results
                         current_tool_calls[tool_call_id] = {

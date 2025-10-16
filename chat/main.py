@@ -6,6 +6,7 @@ Unified entry point for Sippy AI Agent - CLI and Web Server.
 import logging
 import sys
 from functools import wraps
+from typing import Optional
 import click
 from rich.console import Console
 from rich.logging import RichHandler
@@ -72,7 +73,7 @@ def cli():
     """
     Sippy AI Agent - Your CI/CD Analysis Assistant
 
-    Use 'sippy chat' for interactive CLI or 'sippy serve' for the web server.
+    Use 'chat' for interactive CLI or 'serve' for the web server.
     """
     pass
 
@@ -84,9 +85,9 @@ def chat(**kwargs) -> None:
     Start the interactive chat CLI.
 
     Examples:
-      sippy chat
-      sippy chat --verbose --thinking
-      sippy chat --model gpt-4 --temperature 0.7
+      python main.py chat
+      python main.py chat --verbose --thinking
+      python main.py chat --model gpt-4 --temperature 0.7
     """
     setup_logging(kwargs.get("verbose", False))
 
@@ -111,16 +112,18 @@ def chat(**kwargs) -> None:
 @cli.command()
 @click.option("--host", default="0.0.0.0", help="Host to bind the server to")
 @click.option("--port", default=8000, type=int, help="Port to bind the server to")
+@click.option("--metrics-port", default=None, type=int, help="Port for Prometheus metrics (if not set, metrics available on main port at /metrics)")
 @click.option("--reload", is_flag=True, help="Enable auto-reload for development")
 @common_options
-def serve(host: str, port: int, reload: bool, **kwargs) -> None:
+def serve(host: str, port: int, metrics_port: Optional[int], reload: bool, **kwargs) -> None:
     """
     Start the web server with REST API.
 
     Examples:
-      sippy serve
-      sippy serve --port 8080 --reload
-      sippy serve --model gpt-4 --thinking
+      python main.py serve
+      python main.py serve --port 8000 --metrics-port 9090
+      python main.py serve --port 8080 --reload
+      python main.py serve --model gpt-4 --thinking
     """
     setup_logging(kwargs.get("verbose", False))
 
@@ -134,13 +137,17 @@ def serve(host: str, port: int, reload: bool, **kwargs) -> None:
         console.print(f"[green]Starting Sippy AI Agent Web Server...[/green]")
         console.print(f"[blue]Server will be available at: http://{host}:{port}[/blue]")
         console.print(f"[blue]API documentation at: http://{host}:{port}/docs[/blue]")
+        if metrics_port:
+            console.print(f"[blue]Metrics will be available at: http://0.0.0.0:{metrics_port}/metrics[/blue]")
+        else:
+            console.print(f"[blue]Metrics available at: http://{host}:{port}/metrics[/blue]")
         console.print(f"[dim]Model: {config.model_name}[/dim]")
         console.print(f"[dim]Endpoint: {config.llm_endpoint}[/dim]")
         console.print(f"[dim]Thinking enabled: {config.show_thinking}[/dim]")
         console.print(f"[dim]Persona: {config.persona}[/dim]")
         console.print()
 
-        server = SippyWebServer(config)
+        server = SippyWebServer(config, metrics_port=metrics_port)
         server.run(host=host, port=port, reload=reload)
 
     except ValueError as e:
