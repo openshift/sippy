@@ -210,7 +210,7 @@ func TestVariantSyncer(t *testing.T) {
 				VariantInstaller:        "hypershift", // hypershift uses it's own installer
 				VariantPlatform:         "aws",
 				VariantProcedure:        "none",
-				VariantJobTier:          "candidate",
+				VariantJobTier:          "standard",
 				VariantNetwork:          "ovn",
 				VariantNetworkStack:     "ipv4",
 				VariantOwner:            "eng",
