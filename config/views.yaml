@@ -79,6 +79,86 @@ component_readiness:
       enabled: true
     automate_jira:
       enabled: true
+  - name: 4.20-rhcos9-vs-rhcos10
+    base_release:
+      release: "4.20"
+      relative_start: now-7d
+      relative_end: now
+    sample_release:
+      release: "4.20"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Network: { }
+        Platform: { }
+        Topology: { }
+      db_group_by:
+        Architecture: { }
+        FeatureSet: { }
+        Installer: { }
+        Network: { }
+        Platform: { }
+        Suite: { }
+        Topology: { }
+        Upgrade: { }
+        LayeredProduct: { }
+      include_variants:
+        Architecture:
+          - amd64
+          - arm64
+          - multi
+        FeatureSet:
+          - default
+          - techpreview
+        Installer:
+          - ipi
+          - upi
+        JobTier:
+          - blocking
+          - informing
+          - standard
+        LayeredProduct:
+          - none
+          - virt
+        Network:
+          - ovn
+        OS:
+          - rhcos9
+        Owner:
+          - eng
+          - service-delivery
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - metal
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+          - microshift
+        CGroupMode:
+          - v2
+        ContainerRuntime:
+          - runc
+          - crun
+      compare_variants:
+        OS:
+          - rhcos10
+      variant_cross_compare:
+        - OS
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+      flake_as_failure: false
+    metrics:
+      enabled: false
+    regression_tracking:
+      enabled: false
   - name: 4.21-hypershift-candidates
     base_release:
       release: "4.20"
