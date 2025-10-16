@@ -2,15 +2,18 @@ import './JobTable.css'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import { BugReport, DirectionsRun, GridOn } from '@mui/icons-material'
 import { Button, Container, Tooltip, Typography } from '@mui/material'
-import { DataGrid } from '@mui/x-data-grid'
 import {
+  chooseVariantsToDisplay,
   escapeRegex,
+  getVariantStyle,
+  isComponentReadinessIncludedJobTier,
   pathForExactJobAnalysis,
   pathForExactJobRuns,
   relativeTime,
   safeEncodeURIComponent,
   SafeJSONParam,
 } from '../helpers'
+import { DataGrid } from '@mui/x-data-grid'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router-dom'
@@ -31,87 +34,8 @@ const bookmarks = [
   { name: 'Upgrade related', model: [BOOKMARKS.UPGRADE] },
 ]
 
-/**
- * Chooses which variants to display in the table based on priority and limits.
- * @param {Array<string>} variants - Array of variant strings in "key:value" format
- * @returns {Array<string>} - Up to 8 selected variants
- */
-function chooseVariantsToDisplay(variants) {
-  if (!variants || variants.length === 0) {
-    return []
-  }
-
-  // Filter out default variants first
-  const filteredVariants = variants.filter((item) => !item.endsWith(':default'))
-
-  // Priority order for variant keys
-  const priorityKeys = [
-    'JobTier',
-    'Platform',
-    'Architecture',
-    'NetworkStack',
-    'Topology',
-    'FeatureSet',
-    'Upgrade',
-  ]
-
-  // Parse variants into key-value pairs
-  const variantMap = new Map()
-  const remainingVariants = []
-
-  filteredVariants.forEach((variant) => {
-    const colonIndex = variant.indexOf(':')
-    if (colonIndex > 0) {
-      const key = variant.substring(0, colonIndex)
-      if (priorityKeys.includes(key)) {
-        variantMap.set(key, variant)
-      } else {
-        remainingVariants.push(variant)
-      }
-    } else {
-      remainingVariants.push(variant)
-    }
-  })
-
-  // Build result array starting with priority keys
-  const result = []
-  priorityKeys.forEach((key) => {
-    if (variantMap.has(key) && result.length < 8) {
-      result.push(variantMap.get(key))
-    }
-  })
-
-  // Fill remaining slots with other variants, for non OCP sippy users it will
-  // just be whatever order their variants appear in the prow_jobs table.
-  let i = 0
-  while (result.length < 8 && i < remainingVariants.length) {
-    result.push(remainingVariants[i])
-    i++
-  }
-
-  return result
-}
-
-function isComponentReadinessIncludedJobTier(variant) {
-  return (
-    variant === 'JobTier:blocking' ||
-    variant === 'JobTier:informing' ||
-    variant === 'JobTier:standard'
-  )
-}
-
 export const getColumns = (config, openBugzillaDialog) => {
   const theme = useTheme()
-
-  const getVariantStyle = (variant) => {
-    // Special treatment for JobTier to help users better understand if their test is feeding component readiness or not
-    if (isComponentReadinessIncludedJobTier(variant)) {
-      return { color: theme.palette.success.dark }
-    } else if (variant.startsWith('JobTier:')) {
-      return { color: theme.palette.error.dark }
-    }
-    return {}
-  }
 
   return {
     name: {
@@ -334,7 +258,7 @@ export const getColumns = (config, openBugzillaDialog) => {
           <Tooltip sx={{ whiteSpace: 'pre' }} title={tooltipContent}>
             <div className="variants-list">
               {displayVariants.map((variant, index) => (
-                <div key={index} style={getVariantStyle(variant)}>
+                <div key={index} style={getVariantStyle(variant, theme)}>
                   {variant}
                 </div>
               ))}
