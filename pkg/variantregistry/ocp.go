@@ -349,6 +349,7 @@ const (
 	VariantFromReleaseMinor = "FromReleaseMinor"
 	VariantFromReleaseMajor = "FromReleaseMajor"
 	VariantLayeredProduct   = "LayeredProduct"
+	VariantOS               = "OS"
 	VariantDefaultValue     = "default"
 	VariantNoValue          = "none"
 )
@@ -375,6 +376,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		setLayeredProduct,
 		setContainerRuntime,
 		setProcedure,
+		setOS,
 		v.setJobTier, // Keep this near last, it relies on other variants like owner
 	} {
 		setter(jLog, variants, jobName)
@@ -1103,6 +1105,25 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 	for _, entry := range layeredProductPatterns {
 		if strings.Contains(jobNameLower, entry.substring) {
 			variants[VariantLayeredProduct] = entry.product
+			return
+		}
+	}
+}
+
+func setOS(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	jobNameLower := strings.ToLower(jobName)
+
+	osPatterns := []struct {
+		substring string
+		os        string
+	}{
+		{"rhcos10", "rhcos10"},
+	}
+
+	variants[VariantOS] = "rhcos9"
+	for _, entry := range osPatterns {
+		if strings.Contains(jobNameLower, entry.substring) {
+			variants[VariantOS] = entry.os
 			return
 		}
 	}
