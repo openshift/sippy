@@ -33,12 +33,21 @@ class ThinkingStep(BaseModel):
     observation: str
 
 
+class Visualization(BaseModel):
+    """A Plotly visualization specification."""
+
+    data: List[Dict[str, Any]]  # Plotly data traces
+    layout: Dict[str, Any]  # Plotly layout configuration
+    config: Optional[Dict[str, Any]] = None  # Optional Plotly config
+
+
 class ChatResponse(BaseModel):
     """Response model for chat endpoint."""
 
     response: str
     thinking_steps: Optional[List[ThinkingStep]] = None
     tools_used: Optional[List[str]] = None
+    visualizations: Optional[List[Visualization]] = None
     error: Optional[str] = None
 
 

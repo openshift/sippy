@@ -10,6 +10,7 @@ import {
 import { formatChatTimestamp, humanize, MESSAGE_TYPES } from './chatUtils'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
+import MessageChart from './MessageChart'
 import PropTypes from 'prop-types'
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -312,6 +313,9 @@ export default function ChatMessage({
               {message.content}
             </ReactMarkdown>
           </div>
+
+          <MessageChart visualizations={message.visualizations} />
+
           <div className={classes.messageFooter}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               {formatTimestamp(message.timestamp)}
@@ -436,6 +440,13 @@ ChatMessage.propTypes = {
     timestamp: PropTypes.string.isRequired,
     data: PropTypes.object,
     tools_used: PropTypes.arrayOf(PropTypes.string),
+    visualizations: PropTypes.arrayOf(
+      PropTypes.shape({
+        data: PropTypes.array.isRequired,
+        layout: PropTypes.object.isRequired,
+        config: PropTypes.object,
+      })
+    ),
     conversationId: PropTypes.string,
     pageContext: PropTypes.shape({
       page: PropTypes.string,
