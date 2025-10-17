@@ -228,6 +228,13 @@ export default function ChatInterface({
     ensureClientId()
   }, [initializeSessions, ensureClientId])
 
+  // Connect websocket when in full page mode (dedicated chat page)
+  useEffect(() => {
+    if (mode === 'fullPage') {
+      connectWebSocket()
+    }
+  }, [mode, connectWebSocket])
+
   // Load shared conversation if conversationId is provided
   useEffect(() => {
     if (conversationId) {

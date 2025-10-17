@@ -33,7 +33,7 @@ import { QueryParamProvider } from 'use-query-params'
 import { ReactRouter6Adapter } from 'use-query-params/adapters/react-router-6'
 import { TestAnalysis } from './tests/TestAnalysis'
 import { useCookies } from 'react-cookie'
-import { useDrawer, useWebSocketActions } from './chat/store/useChatStore'
+import { useDrawer } from './chat/store/useChatStore'
 import AccessibilityToggle from './components/AccessibilityToggle'
 import AIDisclaimerDialog from './components/AIDisclaimerDialog'
 import Alert from '@mui/material/Alert'
@@ -805,13 +805,7 @@ function App(props) {
 // Component that uses the drawer state
 function GlobalChatControls() {
   const { isDrawerOpen, openDrawer, closeDrawer } = useDrawer()
-  const { connectWebSocket } = useWebSocketActions()
   const location = useLocation()
-
-  // Initialize WebSocket connection for chat
-  React.useEffect(() => {
-    connectWebSocket()
-  }, [connectWebSocket])
 
   // Don't show chat drawer on the main /chat page
   const isOnChatPage = location.pathname.includes('/chat')
