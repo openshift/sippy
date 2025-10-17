@@ -1,6 +1,7 @@
 import { ExpandLess as ExpandLessIcon } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import { Paper, Typography } from '@mui/material'
+import { useWebSocketActions } from './store/useChatStore'
 import ChatInterface from './ChatInterface'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -47,10 +48,13 @@ const useStyles = makeStyles((theme) => ({
 
 export default function CollapsibleChatDrawer({ open, onOpen, onClose }) {
   const classes = useStyles()
+  const { connectWebSocket } = useWebSocketActions()
 
   const handleOpen = (e) => {
     e.preventDefault()
     e.stopPropagation()
+    // Connect websocket when drawer is opened
+    connectWebSocket()
     onOpen()
   }
 
