@@ -39,6 +39,7 @@ func ParseComponentReportRequest(
 		// set params from view
 		opts.VariantOption = view.VariantOptions
 		opts.AdvancedOption = view.AdvancedOptions
+		opts.TestFilters = view.TestFilters
 		opts.BaseRelease, err = GetViewReleaseOptions(releases, "basis", view.BaseRelease, crTimeRoundingFactor)
 		if err != nil {
 			return
@@ -62,6 +63,9 @@ func ParseComponentReportRequest(
 		// We only support pull request and payload jobs as the sample, not the basis:
 		opts.SampleRelease.PullRequestOptions = parsePROptions(req)
 		opts.SampleRelease.PayloadOptions = parsePayloadOptions(req)
+
+		// free-form, not "safe" - used in query filters
+		opts.TestFilters.TestCapabilities = req.URL.Query()["testCapabilities"]
 
 		if opts.VariantOption, err = parseVariantOptions(req, allJobVariants, overrides); err != nil {
 			return
@@ -146,6 +150,7 @@ func getRequestedView(req *http.Request, views []crview.View) (*crview.View, err
 		"includeVariant", "compareVariant", "variantCrossCompare", // variants
 		"confidence", "pity", "minFail", "passRateNewTests", "passRateAllTests",
 		"ignoreMissing", "ignoreDisruption", // advanced opts
+		"testCapabilities", // test filters
 	}
 	found := []string{}
 	for _, p := range incompatible {

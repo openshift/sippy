@@ -438,6 +438,9 @@ export function getUpdatedUrlParts(vars) {
   vars.samplePayloadTags.forEach((item) => {
     queryParams.append('samplePayloadTag', item)
   })
+  vars.testCapabilities.forEach((item) => {
+    queryParams.append('testCapabilities', item)
+  })
 
   // Stringify and put the begin param character.
   queryParams.sort() // ensure they always stay in sorted order to prevent url history changes

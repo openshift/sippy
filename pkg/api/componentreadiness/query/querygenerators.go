@@ -336,11 +336,6 @@ func BuildComponentReportQuery(
 
 	queryString += joinVariants
 
-	groupString := fmt.Sprintf(`
-					GROUP BY
-						%s
-						cm.id `, groupByVariants)
-
 	queryString += `WHERE cm.staff_approved_obsolete = false AND
 						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')`
 	commonParams := []bigquery.QueryParameter{}
@@ -364,6 +359,19 @@ func BuildComponentReportQuery(
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  paramName,
 			Value: variantGroups[group],
+		})
+	}
+
+	// filter by test properties
+	if len(reqOptions.TestCapabilities) > 0 {
+		// include if there is any intersection between the arrays: capabilities filter and test capabilities
+		queryString += ` AND EXISTS(select 1
+		                            from UNNEST(@TestCapabilities) AS tcap
+		                            WHERE tcap in UNNEST(cm.capabilities)
+                                   )`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "TestCapabilities",
+			Value: reqOptions.TestCapabilities,
 		})
 	}
 
@@ -395,6 +403,11 @@ func BuildComponentReportQuery(
 			})
 		}
 	}
+
+	groupString := fmt.Sprintf(`
+					GROUP BY
+						%s
+						cm.id `, groupByVariants)
 
 	return queryString, groupString, commonParams
 }
