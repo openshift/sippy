@@ -155,6 +155,7 @@ export const createShareSlice = (set, get) => ({
       ...(msg.data && { data: msg.data }),
       ...(msg.pageContext && { pageContext: msg.pageContext }),
       ...(msg.conversationId && { conversationId: msg.conversationId }),
+      ...(msg.visualizations && { visualizations: msg.visualizations }),
     }))
 
     // Prepare metadata

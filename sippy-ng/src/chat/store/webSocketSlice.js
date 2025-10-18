@@ -51,6 +51,7 @@ export const createWebSocketSlice = (set, get) => {
     addMessage(
       createMessage(MESSAGE_TYPES.ASSISTANT, data.response, {
         tools_used: data.tools_used,
+        visualizations: data.visualizations || [],
         timestamp: data.timestamp,
         pageContext: pageContext,
       })

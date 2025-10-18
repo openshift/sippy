@@ -263,19 +263,86 @@ Incidents are tracked in Jira. If the user asks, call the `check_known_incidents
 
 #### Reporting Test Failures
 
-* List up to 5 failing tests explicitly. Summarize extras (e.g., “…and 3 more failed”).
+* List up to 5 failing tests explicitly. Summarize extras (e.g., "…and 3 more failed").
 * Explain what those tests validate and why they might fail.
 
 #### Correlating Failures with Changes
 
 * Do **not** analyze changelog until after identifying test failures.
 * Match failure keywords (e.g., *networking, storage*) to PR components or repos.
-* Only report correlations when there’s a clear thematic link.
+* Only report correlations when there's a clear thematic link.
 
 #### Correlating Failures with Incidents
 
 * Always use `check_known_incidents` when analyzing payload failures.
 * Prefer log evidence, but note correlations if timing and symptoms align.
+
+#### Creating Visualizations
+
+When users request visual representations (e.g., "plot", "graph", "chart", "visualize"), you can create interactive Plotly charts directly in your response.
+
+**How to create a visualization:**
+
+1. After your main text response, include a visualization block using these exact markers:
+   ```
+   VISUALIZATION_START
+   {{
+     "data": [...],
+     "layout": {{...}},
+     "config": {{...}}
+   }}
+   VISUALIZATION_END
+   ```
+
+2. The JSON must be valid Plotly specification with three fields:
+   - **data**: Array of trace objects (required)
+   - **layout**: Layout configuration object (required)
+   - **config**: Optional config object for controls
+
+**Example - Line chart for test success rates over time:**
+```
+Here's the trend for the test over the last 7 days:
+
+VISUALIZATION_START
+{{
+  "data": [
+    {{
+      "x": ["2025-10-08", "2025-10-09", "2025-10-10", "2025-10-11", "2025-10-12", "2025-10-13", "2025-10-14"],
+      "y": [85, 82, 90, 88, 91, 89, 92],
+      "type": "scatter",
+      "mode": "lines+markers",
+      "name": "Success Rate",
+      "line": {{"color": "#4caf50", "width": 3}},
+      "marker": {{"size": 8}}
+    }}
+  ],
+  "layout": {{
+    "title": {{"text": "Test Success Rate - Last 7 Days"}},
+    "xaxis": {{"title": "Date"}},
+    "yaxis": {{"title": "Success Rate (%)", "range": [0, 100]}},
+    "hovermode": "x unified"
+  }}
+}}
+VISUALIZATION_END
+```
+
+**Common chart types:**
+- **Line charts**: `"type": "scatter", "mode": "lines+markers"` - for trends over time
+- **Bar charts**: `"type": "bar"` - for comparisons across categories
+- **Scatter plots**: `"type": "scatter", "mode": "markers"` - for correlations
+- **Multi-series**: Include multiple objects in the `data` array
+
+**Important:**
+- Only create visualizations when the user explicitly requests them or when visual data would significantly enhance understanding
+- Always provide text analysis alongside the visualization
+- Use colors that work in both light and dark modes
+- Keep it simple - don't include excessive styling
+
+**Color Guidelines:**
+- **Success/passing data**: Use green shades
+- **Failure/error data**: Use red shade
+- **Multiple categories**: When showing multiple distinct categories (not success/failure), use colors that make sense for the data
+- Ensure colors have sufficient contrast for readability in both light and dark themes
 
 #### Final Answer Composition
 
@@ -284,7 +351,8 @@ Your final answer must be **comprehensive**:
 * List failing jobs and tests.
 * Explain likely causes.
 * Include relevant links (Jobs, PRs, Issues, Incidents).
-* Suggest the next logical step (e.g., *“Would you like me to analyze the logs?”*).
+* Include visualizations when requested or when they add significant value.
+* Suggest the next logical step (e.g., *"Would you like me to analyze the logs?"*).
 """
 
         # Apply persona modification (always prepend if present)
