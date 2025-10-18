@@ -14,6 +14,9 @@ all: test build
 
 build: builddir clean npm frontend sippy sippy-daemon
 
+pip:
+	python3 -m pip install --no-cache-dir -r hack/requirements.txt
+
 verify: lint
 
 builddir:
@@ -29,7 +32,7 @@ sippy: builddir
 sippy-daemon: builddir
 	go build $(LDFLAGS) -mod=vendor ./cmd/sippy-daemon/...
 
-test: builddir npm
+test: builddir npm pip yaml-lint
 ifeq ($(ARTIFACT_DIR),)
 	@echo "ARTIFACT_DIR is not defined. Using default JUnit file location."
 	gotestsum --junitfile ./junit.xml ./pkg/...
@@ -39,12 +42,17 @@ else
 endif
 	LANG=en_US.utf-8 LC_ALL=en_US.utf-8 cd sippy-ng; CI=true npm test -- --coverage --passWithNoTests
 
-lint: builddir npm
+lint: builddir npm pip yaml-lint
 	./hack/go-lint.sh run ./...
 	cd sippy-ng; npx eslint .
 	# See https://github.com/facebook/create-react-app/issues/11174 about
 	# why we only audit production deps:
 	cd sippy-ng; npm audit --production
+
+yaml-lint:
+	@echo "Running YAML linter..."
+	@which yamllint > /dev/null || (echo "yamllint not found. Install with: pip install yamllint" && exit 1)
+	yamllint -c .yamllint --no-warnings config/ resources/ pkg/variantregistry/
 
 npm:
 	# For debugging
