@@ -29,6 +29,7 @@ from .api_models import (
 )
 from . import metrics
 from .metrics_server import start_metrics_server, stop_metrics_server
+from .mcp_server import create_mcp_server
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,10 @@ class SippyWebServer:
             version="1.0.0",
         )
         self.websocket_manager = WebSocketManager()
+        
+        # Initialize MCP server
+        self.mcp_server = create_mcp_server(config)
+        
         self._setup_middleware()
         self._setup_routes()
         
@@ -447,6 +452,12 @@ class SippyWebServer:
                 logger.error(f"WebSocket error: {e}")
                 metrics.errors_total.labels(error_type="websocket_error").inc()
                 self.websocket_manager.disconnect(websocket)
+
+        # Mount FastMCP SSE app
+        # FastMCP's sse_app() provides the SSE transport for MCP
+        # Mounted at /chat/mcp, so the SSE endpoint is /chat/mcp/sse
+        mcp_sse_app = self.mcp_server.get_mcp().sse_app()
+        self.app.mount("/chat/mcp", mcp_sse_app)
 
     def _format_page_context(self, page_context: Dict[str, Any]) -> str:
         """Format page context as JSON for the agent."""

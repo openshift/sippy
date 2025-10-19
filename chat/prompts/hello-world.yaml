@@ -1,0 +1,12 @@
+# Simple hello world prompt for testing Sippy Chat MCP integration
+name: hello-world
+description: A simple hello world prompt for testing Sippy Chat MCP integration with argument support
+arguments:
+  - name: topic
+    description: The topic to ask Sippy about
+    required: true
+messages:
+  - role: user
+    content: |
+      Hello! Can you tell me about {topic}?
+

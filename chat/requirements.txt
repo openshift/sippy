@@ -16,6 +16,8 @@ watchfiles
 websockets
 langchain-mcp-adapters
 mcp-client
+mcp>=1.0.0
+pyyaml>=6.0.0
 defusedxml>=0.7.0
 psycopg2-binary>=2.9.0
 sqlparse>=0.4.0
