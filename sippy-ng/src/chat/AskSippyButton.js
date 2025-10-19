@@ -1,8 +1,9 @@
 import { AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material'
-import { Button, Tooltip } from '@mui/material'
+import { Button, Snackbar, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { makeStyles } from '@mui/styles'
 import { useDrawer, usePrompts, useSessionActions } from './store/useChatStore'
+import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { useContext, useState } from 'react'
 
@@ -64,32 +65,37 @@ export default function AskSippyButton({
   const capabilities = useContext(CapabilitiesContext)
   const classes = useStyles()
   const [isRendering, setIsRendering] = useState(false)
+  const [error, setError] = useState(null)
 
   if (!capabilities.includes('chat')) {
     return null
   }
 
   const handleClick = async () => {
-    openDrawer()
-
     // If using a slash command, render the prompt first
     if (slashCommand && commandArgs) {
       setIsRendering(true)
+      setError(null)
       try {
         const rendered = await renderPrompt(slashCommand, commandArgs)
+        openDrawer()
         startNewSession(rendered)
-      } catch (error) {
-        console.error('Failed to render prompt:', error)
-        // Fall back to showing the command with args
-        startNewSession(
-          `/${slashCommand} ${JSON.stringify(commandArgs, null, 2)}`
+      } catch (err) {
+        console.error('Failed to render prompt:', err)
+        setError(
+          `Failed to load prompt '${slashCommand}': ${err.message || err}`
         )
       } finally {
         setIsRendering(false)
       }
     } else if (question) {
+      openDrawer()
       startNewSession(question)
     }
+  }
+
+  const handleCloseError = () => {
+    setError(null)
   }
 
   const button = (
@@ -105,11 +111,25 @@ export default function AskSippyButton({
     </Button>
   )
 
-  if (tooltip) {
-    return <Tooltip title={tooltip}>{button}</Tooltip>
-  }
-
-  return button
+  return (
+    <>
+      {tooltip ? <Tooltip title={tooltip}>{button}</Tooltip> : button}
+      <Snackbar
+        open={!!error}
+        autoHideDuration={6000}
+        onClose={handleCloseError}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseError}
+          severity="error"
+          sx={{ width: '100%' }}
+        >
+          {error}
+        </Alert>
+      </Snackbar>
+    </>
+  )
 }
 
 AskSippyButton.propTypes = {

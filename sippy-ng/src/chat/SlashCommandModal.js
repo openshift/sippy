@@ -129,6 +129,25 @@ export default function SlashCommandModal({ open, onClose, prompt, onSubmit }) {
     onClose()
   }
 
+  // Check if all required fields are filled
+  const isFormValid = () => {
+    if (!prompt || !prompt.arguments) return true
+
+    return prompt.arguments.every((arg) => {
+      if (!arg.required) return true
+
+      const value = formValues[arg.name]
+
+      // For arrays, check if it has at least one item
+      if (arg.type === 'array') {
+        return Array.isArray(value) && value.length > 0
+      }
+
+      // For strings, check if it's not null/undefined/empty
+      return value !== null && value !== undefined && value !== ''
+    })
+  }
+
   // Fetch autocomplete options for a field
   const fetchAutocompleteOptions = async (field, searchQuery = '') => {
     setAutocompleteLoading((prev) => ({ ...prev, [field]: true }))
@@ -337,7 +356,12 @@ export default function SlashCommandModal({ open, onClose, prompt, onSubmit }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={handleClose}>Cancel</Button>
-        <Button onClick={handleSubmit} variant="contained" color="primary">
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          color="primary"
+          disabled={!isFormValid()}
+        >
           Use Prompt
         </Button>
       </DialogActions>
