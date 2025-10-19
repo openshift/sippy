@@ -2,27 +2,36 @@ import {
   Chip,
   CircularProgress,
   IconButton,
+  List,
+  ListItem,
+  ListItemText,
+  Menu,
+  MenuItem,
   Paper,
+  Popper,
   TextField,
   Tooltip,
 } from '@mui/material'
-import { CONNECTION_STATES } from './store/webSocketSlice'
-import { humanize, validateMessage } from './chatUtils'
-import { makeStyles } from '@mui/styles'
 import {
+  Code as CodeIcon,
   Masks as MasksIcon,
   Refresh as RefreshIcon,
   Send as SendIcon,
   Stop as StopIcon,
 } from '@mui/icons-material'
+import { CONNECTION_STATES } from './store/webSocketSlice'
+import { humanize, validateMessage } from './chatUtils'
+import { makeStyles } from '@mui/styles'
 import {
   useConnectionState,
   usePersonas,
+  usePrompts,
   useSettings,
   useWebSocketActions,
 } from './store/useChatStore'
 import PropTypes from 'prop-types'
 import React, { useEffect, useRef, useState } from 'react'
+import SlashCommandModal from './SlashCommandModal'
 
 const useStyles = makeStyles((theme) => ({
   inputContainer: {
@@ -84,6 +93,22 @@ const useStyles = makeStyles((theme) => ({
       backgroundColor: theme.palette.action.hover,
     },
   },
+  slashCommandPopper: {
+    zIndex: theme.zIndex.modal + 1,
+  },
+  slashCommandList: {
+    maxHeight: 300,
+    overflow: 'auto',
+  },
+  slashCommandItem: {
+    cursor: 'pointer',
+    '&:hover': {
+      backgroundColor: theme.palette.action.hover,
+    },
+  },
+  commandMenuButton: {
+    padding: theme.spacing(1),
+  },
 }))
 
 const EXAMPLE_QUERIES = [
@@ -105,8 +130,17 @@ export default function ChatInput({
   const [error, setError] = useState('')
   const textFieldRef = useRef(null)
 
+  // Slash command state
+  const [showSlashCommands, setShowSlashCommands] = useState(false)
+  const [slashCommandFilter, setSlashCommandFilter] = useState('')
+  const [selectedPrompt, setSelectedPrompt] = useState(null)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [commandMenuAnchor, setCommandMenuAnchor] = useState(null)
+  const [selectedCommandIndex, setSelectedCommandIndex] = useState(0)
+
   const { settings } = useSettings()
   const { personas } = usePersonas()
+  const { prompts } = usePrompts()
   const { connectionState, isTyping } = useConnectionState()
   const { stopGeneration } = useWebSocketActions()
 
@@ -115,10 +149,20 @@ export default function ChatInput({
 
   const displayQuestions = suggestedQuestions || EXAMPLE_QUERIES
 
+  // Filter prompts based on slash command input
+  const filteredPrompts = prompts.filter((prompt) =>
+    prompt.name.toLowerCase().includes(slashCommandFilter.toLowerCase())
+  )
+
   const getContextDisplay = () => {
     if (!pageContext?.page) return null
     return humanize(pageContext.page)
   }
+
+  // Reset selected command index when filtered prompts change
+  useEffect(() => {
+    setSelectedCommandIndex(0)
+  }, [filteredPrompts.length, slashCommandFilter])
 
   // Focus input on mount
   useEffect(() => {
@@ -135,6 +179,51 @@ export default function ChatInput({
     if (error) {
       setError('')
     }
+
+    // Detect slash commands
+    if (value.startsWith('/')) {
+      const command = value.slice(1)
+      setSlashCommandFilter(command)
+      setShowSlashCommands(true)
+    } else {
+      setShowSlashCommands(false)
+      setSlashCommandFilter('')
+    }
+  }
+
+  const handlePromptSelect = (prompt) => {
+    setSelectedPrompt(prompt)
+    setModalOpen(true)
+    setShowSlashCommands(false)
+    setMessage('')
+  }
+
+  const handleModalSubmit = (renderedPrompt) => {
+    const success = onSendMessage(renderedPrompt)
+    if (success) {
+      setMessage('')
+      setError('')
+      setModalOpen(false)
+      setSelectedPrompt(null)
+    }
+  }
+
+  const handleModalClose = () => {
+    setModalOpen(false)
+    setSelectedPrompt(null)
+  }
+
+  const handleCommandMenuOpen = (event) => {
+    setCommandMenuAnchor(event.currentTarget)
+  }
+
+  const handleCommandMenuClose = () => {
+    setCommandMenuAnchor(null)
+  }
+
+  const handleCommandMenuSelect = (prompt) => {
+    handlePromptSelect(prompt)
+    handleCommandMenuClose()
   }
 
   const handleSendMessage = () => {
@@ -158,6 +247,42 @@ export default function ChatInput({
   }
 
   const handleKeyPress = (event) => {
+    // Handle slash command navigation
+    if (showSlashCommands && filteredPrompts.length > 0) {
+      if (event.key === 'Tab') {
+        event.preventDefault()
+        if (event.shiftKey) {
+          // Shift+Tab: move to previous command
+          setSelectedCommandIndex((prev) =>
+            prev <= 0 ? filteredPrompts.length - 1 : prev - 1
+          )
+        } else {
+          // Tab: move to next command
+          setSelectedCommandIndex((prev) =>
+            prev >= filteredPrompts.length - 1 ? 0 : prev + 1
+          )
+        }
+        return
+      }
+
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault()
+        // Select the highlighted command
+        if (filteredPrompts[selectedCommandIndex]) {
+          handlePromptSelect(filteredPrompts[selectedCommandIndex])
+        }
+        return
+      }
+
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setShowSlashCommands(false)
+        setMessage('')
+        return
+      }
+    }
+
+    // Normal message handling
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
       // Only send if not typing (same logic as button)
@@ -277,7 +402,7 @@ export default function ChatInput({
           maxRows={4}
           value={message}
           onChange={handleMessageChange}
-          onKeyPress={handleKeyPress}
+          onKeyDown={handleKeyPress}
           placeholder={placeholder}
           disabled={disabled}
           error={!!error}
@@ -285,6 +410,44 @@ export default function ChatInput({
           variant="outlined"
           size="small"
         />
+
+        {/* Slash command autocomplete popper */}
+        <Popper
+          open={showSlashCommands && filteredPrompts.length > 0}
+          anchorEl={textFieldRef.current}
+          placement="top-start"
+          className={classes.slashCommandPopper}
+        >
+          <Paper elevation={4}>
+            <List className={classes.slashCommandList}>
+              {filteredPrompts.map((prompt, index) => (
+                <ListItem
+                  key={prompt.name}
+                  className={classes.slashCommandItem}
+                  onClick={() => handlePromptSelect(prompt)}
+                  selected={index === selectedCommandIndex}
+                >
+                  <ListItemText
+                    primary={`/${prompt.name}`}
+                    secondary={prompt.description}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Paper>
+        </Popper>
+
+        {/* Command menu button */}
+        <Tooltip title="Insert prompt command">
+          <IconButton
+            className={classes.commandMenuButton}
+            onClick={handleCommandMenuOpen}
+            disabled={disabled}
+            color="primary"
+          >
+            <CodeIcon />
+          </IconButton>
+        </Tooltip>
 
         <Tooltip
           title={
@@ -309,6 +472,37 @@ export default function ChatInput({
           </span>
         </Tooltip>
       </div>
+
+      {/* Command menu */}
+      <Menu
+        anchorEl={commandMenuAnchor}
+        open={Boolean(commandMenuAnchor)}
+        onClose={handleCommandMenuClose}
+      >
+        {prompts.length === 0 ? (
+          <MenuItem disabled>No prompts available</MenuItem>
+        ) : (
+          prompts.map((prompt) => (
+            <MenuItem
+              key={prompt.name}
+              onClick={() => handleCommandMenuSelect(prompt)}
+            >
+              <ListItemText
+                primary={`/${prompt.name}`}
+                secondary={prompt.description}
+              />
+            </MenuItem>
+          ))
+        )}
+      </Menu>
+
+      {/* Slash command modal */}
+      <SlashCommandModal
+        open={modalOpen}
+        onClose={handleModalClose}
+        prompt={selectedPrompt}
+        onSubmit={handleModalSubmit}
+      />
     </Paper>
   )
 }

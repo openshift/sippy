@@ -127,6 +127,12 @@ export const createWebSocketSlice = (set, get) => {
           setConnectionState(CONNECTION_STATES.CONNECTED)
           reconnectAttempts = 0
           setError(null)
+
+          // Fetch prompts whenever we connect/reconnect
+          const { fetchPrompts } = get()
+          if (fetchPrompts) {
+            fetchPrompts()
+          }
         }
 
         wsInstance.onmessage = (event) => {

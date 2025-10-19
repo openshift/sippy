@@ -18,6 +18,8 @@ arguments:
   - name: argument_name
     description: What this argument is for
     required: true  # or false
+    type: string  # or array
+    autocomplete: field_name  # optional, references /api/autocomplete/{field_name}
 
 # Messages (required) - list of messages that make up the prompt
 messages:
@@ -44,6 +46,7 @@ arguments:
   - name: topic
     description: The topic to ask Sippy about
     required: true
+    type: string
 messages:
   - role: user
     content: |

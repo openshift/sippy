@@ -5,6 +5,7 @@ arguments:
   - name: topic
     description: The topic to ask Sippy about
     required: true
+    type: string
 messages:
   - role: user
     content: |
