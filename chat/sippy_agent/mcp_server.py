@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 def load_prompts_from_directory(prompts_dir: Path) -> Dict[str, Dict[str, Any]]:
     """
     Load all prompt definitions from YAML files in the prompts directory.
+    Supports hierarchical organization with subdirectories.
     
     Args:
         prompts_dir: Path to the directory containing prompt YAML files
@@ -47,7 +48,12 @@ def load_prompts_from_directory(prompts_dir: Path) -> Dict[str, Dict[str, Any]]:
         logger.warning(f"Prompts directory not found: {prompts_dir}")
         return prompts
     
-    for yaml_file in prompts_dir.glob("*.yaml"):
+    # Recursively find all YAML files in subdirectories
+    for yaml_file in prompts_dir.rglob("*.yaml"):
+        # Skip example files
+        if yaml_file.name.endswith('.example'):
+            continue
+            
         try:
             with open(yaml_file, "r") as f:
                 prompt_data = yaml.safe_load(f)
@@ -58,7 +64,10 @@ def load_prompts_from_directory(prompts_dir: Path) -> Dict[str, Dict[str, Any]]:
                 
             prompt_name = prompt_data["name"]
             prompts[prompt_name] = prompt_data
-            logger.info(f"Loaded prompt: {prompt_name} from {yaml_file.name}")
+            
+            # Get relative path for better logging
+            rel_path = yaml_file.relative_to(prompts_dir)
+            logger.info(f"Loaded prompt: {prompt_name} from {rel_path}")
             
         except Exception as e:
             logger.error(f"Error loading prompt from {yaml_file}: {e}", exc_info=True)

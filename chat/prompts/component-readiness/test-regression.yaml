@@ -1,0 +1,72 @@
+# Comprehensive analysis of a Component Readiness test regression
+name: component-readiness-regression-analysis
+description: Analyze a Component Readiness test regression with detailed failure patterns, root cause analysis, and triage status
+arguments:
+  - name: url
+    description: URL to the test details page in Sippy
+    required: true
+    type: string
+messages:
+  - role: user
+    content: |
+      Perform a comprehensive regression analysis for the Component Readiness test at:
+      [Test Details Report]({url})
+      
+      Use get_test_details_report to retrieve the regression data, then provide a detailed analysis:
+      
+      ## 1. Regression Overview
+      - Summarize when the regression was opened - format as human-readable date (e.g., "January 15, 2024") and include how many days ago
+      - State if it's closed or still ongoing - if closed, format the date similarly and show days ago
+      - Explain the status code (e.g., -400 = SignificantRegression, -500 = ExtremeRegression >15% change)
+      - **Always include and explain the explanations from the data** - these provide critical context about why the test is flagged
+      
+      ## 2. Statistical Analysis
+      - Calculate and report the pass rate change: (sample_stats.success_rate - base_stats.success_rate) * 100
+      - Display the time periods being compared in human-readable format with "days ago" context
+      - Identify if this is a recent degradation or long-term issue
+      - Note if the BaseRelease appears to be more than one minor version ahead of the sample release
+        (This indicates we found a better pass rate in earlier releases, so we compared against that release
+        instead of the prior one to prevent a test from gradually getting worse)
+      - Check for flake-to-failure conversions:
+        * If base_stats.flake_count > 0 and base_stats.failure_count ≈ 0
+        * But sample_stats.failure_count > 0 and sample_stats.flake_count = 0
+        * This may indicate a test that had its ability to flake removed (a dangerous policy we're working to remove)
+        * Compare the flake rate in base_stats to the fail rate in sample_stats to see if they're comparable
+      
+      ## 3. Root Cause Investigation
+      - Use the failed_job_run_ids from the report to investigate specific failures
+      - Call get_prow_job_summary **in parallel** for multiple job run IDs (up to 5) to understand failure patterns
+      - Look for common failure reasons across the job runs
+      - Determine if failures are consistent or intermittent
+      
+      ## 4. Failure Pattern Analysis
+      - Examine which tests are failing together in each job run
+      - If the same tests fail in each job → likely related to the same root cause
+      - If a job has mass failures (>10 failed tests) → may indicate systemic cluster problems, test might not be at fault
+      - If the test is the only failure in each run → more likely a problem with this specific test or its feature
+      - Analyze test failure outputs from multiple failed job runs
+      - Compare error messages, stack traces, and failure patterns
+      - Report whether it's a consistent failure (same root cause) or multiple different issues
+      
+      ## 5. Triage Status
+      - If triages_count > 0, the regression has been attributed to a known Jira issue
+      - Check if the triage has a resolved timestamp
+      - If there are failures after the resolved timestamp, this indicates a failed fix
+      
+      ## 6. Recommendations
+      Based on the analysis, provide:
+      - Is this a genuine product bug, infrastructure issue, or test issue?
+      - Priority level (how urgently should this be addressed?)
+      - Suggested next steps for investigation or resolution
+      
+      **Important Context:**
+      - Regressions represent the line of quality we're willing to ship in the product
+      - We treat regressions as release blockers
+      - We will not ship a release with a regression unless the team submits an SBAR to leadership for approval
+      
+      **Guidelines:**
+      - Provide specific numbers and data points, not vague statements
+      - Include links to Prow job runs, Sippy pages, or Jira when relevant
+      - If you cannot find certain information, say so explicitly
+      - Focus on actionable insights that help debug or triage the regression
+

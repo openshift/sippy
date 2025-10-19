@@ -84,12 +84,26 @@ messages:
 
 ## Adding New Prompts
 
-1. Create a new `.yaml` file in this directory
+1. Create a new `.yaml` file in this directory (or a subdirectory for organization)
 2. Define your prompt following the format above
 3. Restart the Sippy Chat MCP server to load the new prompt
 4. The prompt will be automatically registered as an MCP tool
 
 For example, if you create `my-analysis.yaml` with name `my-analysis`, it will be available as the MCP tool `my_analysis`.
+
+### Hierarchical Organization
+
+Prompts can be organized into subdirectories for better structure:
+
+```
+prompts/
+├── component-readiness/
+│   └── test-regression.yaml      # name: component-readiness-regression-analysis
+├── test-analysis.yaml             # name: test-analysis
+└── payload-report.yaml            # name: payload-report
+```
+
+The MCP server will recursively scan all subdirectories for `.yaml` files. The prompt's `name` field (not the file path) determines how it's exposed via MCP.
 
 ## Testing Prompts
 
