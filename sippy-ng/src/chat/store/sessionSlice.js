@@ -76,7 +76,8 @@ export const createSessionSlice = (set, get) => ({
   },
 
   // Start a new session (find empty or create new)
-  startNewSession: () => {
+  // If initialMessage is provided, waits for websocket connection and sends it
+  startNewSession: (initialMessage = null) => {
     const {
       sessions,
       activeSessionId,
@@ -85,6 +86,8 @@ export const createSessionSlice = (set, get) => ({
       setCurrentThinking,
       setError,
       setIsTyping,
+      connectionState,
+      sendMessage,
     } = get()
 
     // Try to find an existing empty session
@@ -106,6 +109,27 @@ export const createSessionSlice = (set, get) => ({
     setCurrentThinking(null)
     setError(null)
     setIsTyping(false)
+
+    // If an initial message is provided, wait for connection and send it
+    if (initialMessage) {
+      const maxAttempts = 50 // 5 seconds max (50 * 100ms)
+      let attempts = 0
+
+      const waitForConnection = () => {
+        const store = get()
+        if (store.connectionState === 'connected') {
+          sendMessage(initialMessage)
+        } else if (attempts < maxAttempts) {
+          attempts++
+          setTimeout(waitForConnection, 100)
+        } else {
+          console.error('Failed to connect to websocket after 5 seconds')
+          setError('Failed to connect to chat service')
+        }
+      }
+
+      waitForConnection()
+    }
   },
 
   // Delete a session

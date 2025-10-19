@@ -29,6 +29,7 @@ from .api_models import (
 )
 from . import metrics
 from .metrics_server import start_metrics_server, stop_metrics_server
+from .mcp_server import create_mcp_server
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +92,10 @@ class SippyWebServer:
             version="1.0.0",
         )
         self.websocket_manager = WebSocketManager()
+        
+        # Initialize MCP server
+        self.mcp_server = create_mcp_server(config)
+        
         self._setup_middleware()
         self._setup_routes()
         
@@ -159,6 +164,98 @@ class SippyWebServer:
             return PersonasResponse(
                 personas=personas, current_persona=self.config.persona
             )
+
+        @self.app.get("/chat/prompts")
+        async def get_prompts():
+            """Get list of available prompt templates."""
+            prompts = [
+                {
+                    "name": name,
+                    "description": data.get("description", ""),
+                    "arguments": data.get("arguments", []),
+                }
+                for name, data in self.mcp_server.prompts.items()
+            ]
+            return {"prompts": prompts}
+
+        @self.app.post("/chat/prompts/render")
+        async def render_prompt(request: dict):
+            """Render a prompt template with provided arguments."""
+            prompt_name = request.get("prompt_name")
+            arguments = request.get("arguments", {})
+            
+            if not prompt_name:
+                return {"error": "prompt_name is required"}, 400
+            
+            if prompt_name not in self.mcp_server.prompts:
+                return {"error": f"Prompt '{prompt_name}' not found"}, 404
+            
+            prompt_data = self.mcp_server.prompts[prompt_name]
+            
+            # Render the prompt messages with argument substitution
+            rendered_messages = []
+            for msg_data in prompt_data.get("messages", []):
+                content = msg_data.get("content", "")
+                role = msg_data.get("role", "user")
+                
+                # Substitute arguments, handling default values
+                # Format: {arg_name} or {arg_name|default:value}
+                import re
+                
+                def replace_arg(match):
+                    full_match = match.group(0)
+                    arg_spec = match.group(1)
+                    
+                    # Parse arg_name and default value
+                    if "|default:" in arg_spec:
+                        arg_name, default_str = arg_spec.split("|default:", 1)
+                        arg_name = arg_name.strip()
+                        default_str = default_str.strip()
+                        
+                        # Try to parse default as JSON
+                        try:
+                            import json
+                            default_value = json.loads(default_str)
+                        except:
+                            default_value = default_str
+                    else:
+                        arg_name = arg_spec.strip()
+                        default_value = None
+                    
+                    # Get value from arguments or use default
+                    if arg_name in arguments and arguments[arg_name] is not None:
+                        value = arguments[arg_name]
+                        # Handle array values
+                        if isinstance(value, list):
+                            import json
+                            return json.dumps(value)
+                        return str(value)
+                    elif default_value is not None:
+                        if isinstance(default_value, list):
+                            import json
+                            return json.dumps(default_value)
+                        return str(default_value)
+                    else:
+                        # Leave placeholder if no value provided
+                        return full_match
+                
+                content = re.sub(r'\{([^}]+)\}', replace_arg, content)
+                
+                rendered_messages.append({
+                    "role": role,
+                    "content": content
+                })
+            
+            # Combine messages into a single text for the UI
+            rendered_text = "\n\n".join([
+                f"{msg['role'].upper()}: {msg['content']}" if msg['role'] != 'user' else msg['content']
+                for msg in rendered_messages
+            ])
+            
+            return {
+                "rendered": rendered_text,
+                "messages": rendered_messages
+            }
 
         @self.app.post("/chat", response_model=ChatResponse)
         async def chat(request: ChatRequest):
@@ -447,6 +544,12 @@ class SippyWebServer:
                 logger.error(f"WebSocket error: {e}")
                 metrics.errors_total.labels(error_type="websocket_error").inc()
                 self.websocket_manager.disconnect(websocket)
+
+        # Mount FastMCP SSE app
+        # FastMCP's sse_app() provides the SSE transport for MCP
+        # Mounted at /chat/mcp, so the SSE endpoint is /chat/mcp/sse
+        mcp_sse_app = self.mcp_server.get_mcp().sse_app()
+        self.app.mount("/chat/mcp", mcp_sse_app)
 
     def _format_page_context(self, page_context: Dict[str, Any]) -> str:
         """Format page context as JSON for the agent."""

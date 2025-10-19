@@ -2335,6 +2335,12 @@ func (s *Server) Serve() {
 			Capabilities: []string{ChatCapability},
 			HandlerFunc:  s.jsonGetChatConversation,
 		},
+		{
+			EndpointPath: "/api/chat/mcp",
+			Description:  "MCP server (SSE transport) proxy for sippy-chat service",
+			Capabilities: []string{ChatCapability},
+			HandlerFunc:  s.handleChatProxy,
+		},
 	}
 
 	for _, ep := range endpoints {

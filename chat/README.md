@@ -108,6 +108,40 @@ python main.py serve --port 8080 --thinking --verbose --reload
 The web server provides:
 - **REST API** at `http://localhost:8000` for chat interactions
 - **WebSocket streaming** at `ws://localhost:8000/chat/stream` for real-time responses
+- **MCP Server (SSE)** at `http://localhost:8000/chat/mcp/sse` for Model Context Protocol integration
 - **Interactive API docs** at `http://localhost:8000/docs`
 - **Health check** at `http://localhost:8000/health`
 - **Prometheus metrics** at `http://localhost:8000/metrics`
+
+### MCP (Model Context Protocol) Integration
+
+Sippy Chat exposes an MCP server that allows other AI systems to use Sippy's CI/CD analysis capabilities as tools:
+
+- **MCP SSE Endpoint**: `http://localhost:8000/chat/mcp/sse` - Server-Sent Events transport for MCP
+
+The MCP server provides:
+- **`sippy_chat` tool**: Interact with Sippy AI agent to analyze CI jobs, test failures, and release payloads
+- **Prompts**: Dynamically loaded from YAML files in the `prompts/` directory
+
+When deployed behind the Go server, the endpoint is also available at:
+- `http://server/api/chat/mcp/sse`
+
+#### Adding MCP Prompts
+
+MCP prompts are defined as YAML files in the `prompts/` directory. Each prompt can accept arguments and supports variable substitution. See `prompts/README.md` for the complete format specification.
+
+Example prompt (`prompts/my-prompt.yaml`):
+```yaml
+name: my-prompt
+description: Ask Sippy about a specific topic
+arguments:
+  - name: topic
+    description: The topic to query
+    required: true
+messages:
+  - role: user
+    content: |
+      Can you help me understand {topic}?
+```
+
+Prompts are automatically loaded at server startup and made available through the MCP protocol.

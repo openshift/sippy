@@ -57,6 +57,14 @@ func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.D
 		q = q.Table("jira_components").
 			Select("name").
 			Order("name")
+	case "releases":
+		q = q.Table("release_tags").
+			Select("DISTINCT(release) as name").
+			Order("name DESC")
+	case "release_streams":
+		q = q.Table("release_tags").
+			Select("DISTINCT(stream) as name").
+			Order("name")
 	default:
 		RespondWithJSON(404, w, map[string]string{"message": "Autocomplete field not found."})
 	}
