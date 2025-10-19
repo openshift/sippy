@@ -2,11 +2,7 @@ import { AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material'
 import { Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { makeStyles } from '@mui/styles'
-import {
-  useDrawer,
-  useSessionActions,
-  useWebSocketActions,
-} from './store/useChatStore'
+import { useDrawer, useSessionActions } from './store/useChatStore'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 
@@ -50,7 +46,6 @@ const useStyles = makeStyles((theme) => ({
 export default function AskSippyButton({ question, tooltip }) {
   const { openDrawer } = useDrawer()
   const { startNewSession } = useSessionActions()
-  const { sendMessage } = useWebSocketActions()
   const capabilities = useContext(CapabilitiesContext)
   const classes = useStyles()
 
@@ -59,11 +54,8 @@ export default function AskSippyButton({ question, tooltip }) {
   }
 
   const handleClick = () => {
-    startNewSession()
     openDrawer()
-    setTimeout(() => {
-      sendMessage(question)
-    }, 100)
+    startNewSession(question)
   }
 
   const button = (
