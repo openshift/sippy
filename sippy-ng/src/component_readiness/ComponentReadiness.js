@@ -306,7 +306,7 @@ export default function ComponentReadiness(props) {
     location.pathname === '/component_readiness'
   const columnNames = isMainRoute ? getColumns(data) : []
   const keepColumnsList =
-    isMainRoute && data?.rows?.length > 1
+    isMainRoute && data?.rows?.length > 0
       ? getKeeperColumns(data, columnNames, redOnlyChecked)
       : []
 
