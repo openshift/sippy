@@ -685,12 +685,12 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"-4.19-e2e-metal-ipi-serial-ovn-ipv6-techpreview-"}, "candidate"},      // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
 		{[]string{"-4.19-e2e-metal-ipi-serial-ovn-dualstack-techpreview-"}, "candidate"}, // new jobs in https://github.com/openshift/release/pull/64143 have failures that need to be addressed, don't want to regress 4.19
 
-		// Hypershift jobs that could not be stabilized in time for 4.20, we hope to restore in 4.21.
-		// Mark candidate and add a view for hypershift to see their jobs specifically including these so work can continue.
-		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-openstack-aws"}, "candidate"},
-		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-azure-aks-ovn-conformance"}, "candidate"},
-		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-kubevirt-metal-ovn"}, "candidate"},
-		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance-serial"}, "candidate"},
+		// Only a select few Hypershift jobs are ready for blocking signal, the rest will default to candidate below.
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-azure-aks-ovn-conformance"}, "standard"},
+		{[]string{"periodic-ci-openshift-hypershift-", "-e2e-aws-ovn-conformance"}, "standard"},
+
+		// All other Hypershift jobs will default to candidate.
+		{[]string{"periodic-ci-openshift-hypershift-"}, "candidate"},
 
 		// Storage team job preparing for RHEL 10 to detect regressions early, not yet stable, jsafrane would like to promote eventually:
 		{[]string{"periodic-ci-openshift-cluster-storage-operator", "upgrade-check-dev-symlinks"}, "candidate"},
