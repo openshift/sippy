@@ -26,6 +26,7 @@ from .api_models import (
     HealthResponse,
     PersonaInfo,
     PersonasResponse,
+    Visualization,
 )
 from . import metrics
 from .metrics_server import start_metrics_server, stop_metrics_server
@@ -192,41 +193,15 @@ class SippyWebServer:
                         request.message, request.chat_history
                     )
 
-                    if isinstance(result, dict) and "thinking_steps" in result:
-                        # Convert thinking steps to API format
-                        thinking_steps = []
-                        for i, step in enumerate(result["thinking_steps"], 1):
-                            thinking_steps.append(
-                                ThinkingStep(
-                                    step_number=i,
-                                    thought=step.get("thought", ""),
-                                    action=step.get("action", ""),
-                                    action_input=step.get("action_input", ""),
-                                    observation=step.get("observation", ""),
-                                )
-                            )
-
-                        response_text = result["output"]
-                        
-                        # Track response size
-                        response_size = len(response_text.encode('utf-8'))
-                        metrics.message_size_bytes.labels(direction="response").observe(response_size)
-                        
-                        return ChatResponse(
-                            response=response_text,
-                            thinking_steps=thinking_steps,
-                            tools_used=self._extract_tools_used(
-                                result["thinking_steps"]
-                            ),
-                        )
-                    else:
-                        # Track response size
-                        response_size = len(result.encode('utf-8'))
-                        metrics.message_size_bytes.labels(direction="response").observe(response_size)
-                        
-                        return ChatResponse(
-                            response=result, thinking_steps=None, tools_used=None
-                        )
+                    # Process the response using common method
+                    processed = self._process_agent_response(result)
+                    
+                    return ChatResponse(
+                        response=processed["response_text"],
+                        thinking_steps=processed["thinking_steps"],
+                        tools_used=processed["tools_used"],
+                        visualizations=processed["visualizations"],
+                    )
 
                 finally:
                     # Restore original settings
@@ -367,27 +342,19 @@ class SippyWebServer:
                                 ),
                             )
 
-                            # Send final response
-                            if isinstance(result, dict) and "output" in result:
-                                response_text = result["output"]
-                                tools_used = self._extract_tools_used(
-                                    result.get("thinking_steps", [])
-                                )
-                            else:
-                                response_text = result
-                                tools_used = []
-                            
-                            # Track response size
-                            response_size = len(response_text.encode('utf-8'))
-                            metrics.message_size_bytes.labels(direction="response").observe(response_size)
+                            # Process the response using common method
+                            processed = self._process_agent_response(result)
 
                             await self.websocket_manager.send_message(
                                 websocket,
                                 StreamMessage(
                                     type="final_response",
                                     data={
-                                        "response": response_text,
-                                        "tools_used": tools_used,
+                                        "response": processed["response_text"],
+                                        "tools_used": processed["tools_used"],
+                                        "visualizations": [
+                                            v.model_dump() for v in processed["visualizations"]
+                                        ] if processed["visualizations"] else [],
                                         "timestamp": datetime.now().isoformat(),
                                     },
                                 ),
@@ -482,6 +449,157 @@ class SippyWebServer:
             if action and action not in ["_Exception", "Invalid", "Error"]:
                 tools.add(action)
         return list(tools)
+
+    def _extract_visualizations_from_text(self, text: str) -> List[Visualization]:
+        """Extract visualization specifications from text content.
+
+        Looks for JSON blocks between VISUALIZATION_START and VISUALIZATION_END markers.
+        """
+        visualizations = []
+
+        if not text or not isinstance(text, str):
+            return visualizations
+
+        # Find all visualization blocks in the text
+        start_marker = "VISUALIZATION_START"
+        end_marker = "VISUALIZATION_END"
+
+        current_pos = 0
+        while True:
+            start_idx = text.find(start_marker, current_pos)
+            if start_idx == -1:
+                break
+
+            end_idx = text.find(end_marker, start_idx)
+            if end_idx == -1:
+                logger.warning("Found VISUALIZATION_START without matching VISUALIZATION_END")
+                break
+
+            try:
+                # Extract JSON between markers
+                viz_start = start_idx + len(start_marker)
+                viz_json = text[viz_start:end_idx].strip()
+
+                # Parse the JSON
+                viz_data = json.loads(viz_json)
+
+                # Get layout and add AI-generated annotation
+                layout = viz_data.get("layout", {})
+                
+                # Ensure top margin is sufficient for the title and subtitle
+                if "margin" not in layout:
+                    layout["margin"] = {}
+                if "t" not in layout["margin"] or layout["margin"]["t"] < 80:
+                    layout["margin"]["t"] = 80
+                
+                # Add AI-generated caption as an annotation below the title
+                if "annotations" not in layout:
+                    layout["annotations"] = []
+                
+                # Position the caption in the margin area, closer to the title
+                # y > 1.0 places it in the top margin area
+                layout["annotations"].append({
+                    "text": "<i>Generated with AI by Sippy Chat</i>",
+                    "xref": "paper",
+                    "yref": "paper",
+                    "x": 0.5,
+                    "y": 1.00,  # Just above the plot area in the margin
+                    "xanchor": "center",
+                    "yanchor": "bottom",
+                    "showarrow": False,
+                    "font": {"size": 10, "color": "#666666"}
+                })
+
+                # Create Visualization object
+                visualization = Visualization(
+                    data=viz_data.get("data", []),
+                    layout=layout,
+                    config=viz_data.get("config"),
+                )
+                visualizations.append(visualization)
+
+                logger.info(f"Extracted visualization from response text")
+            except (json.JSONDecodeError, ValueError, KeyError) as e:
+                logger.warning(f"Failed to parse visualization: {e}")
+
+            # Move past this visualization block
+            current_pos = end_idx + len(end_marker)
+
+        return visualizations
+
+    def _extract_visualizations(self, response_text: str) -> List[Visualization]:
+        """Extract visualizations from response text only (not from tool observations)."""
+        visualizations = []
+
+        # Extract from main response text only
+        if response_text:
+            visualizations.extend(self._extract_visualizations_from_text(response_text))
+
+        return visualizations
+
+    def _strip_visualization_markers(self, text: str) -> str:
+        """Remove VISUALIZATION_START...VISUALIZATION_END blocks from text."""
+        if not text or not isinstance(text, str):
+            return text
+        
+        # Remove all visualization blocks (non-greedy match)
+        cleaned = re.sub(
+            r'VISUALIZATION_START[\s\S]*?VISUALIZATION_END',
+            '',
+            text,
+            flags=re.MULTILINE
+        )
+        return cleaned.strip()
+
+    def _process_agent_response(self, result: Any) -> Dict[str, Any]:
+        """
+        Process agent response and extract all components.
+        
+        Args:
+            result: The result from agent.achat() - can be dict with thinking_steps or simple string
+            
+        Returns:
+            Dict containing: response_text, thinking_steps (API format), tools_used, visualizations
+        """
+        if isinstance(result, dict) and "thinking_steps" in result:
+            # Response with thinking steps
+            response_text = result["output"]
+            thinking_steps = result["thinking_steps"]
+            tools_used = self._extract_tools_used(thinking_steps)
+            
+            # Convert thinking steps to API format
+            api_thinking_steps = []
+            for i, step in enumerate(thinking_steps, 1):
+                api_thinking_steps.append(
+                    ThinkingStep(
+                        step_number=i,
+                        thought=step.get("thought", ""),
+                        action=step.get("action", ""),
+                        action_input=step.get("action_input", ""),
+                        observation=step.get("observation", ""),
+                    )
+                )
+            thinking_steps = api_thinking_steps
+        else:
+            # Simple response without thinking steps
+            response_text = result
+            thinking_steps = None
+            tools_used = []
+        
+        # Track response size metrics
+        response_size = len(response_text.encode('utf-8'))
+        metrics.message_size_bytes.labels(direction="response").observe(response_size)
+        
+        # Extract visualizations and strip markers from response
+        visualizations = self._extract_visualizations(response_text)
+        clean_response = self._strip_visualization_markers(response_text)
+        
+        return {
+            "response_text": clean_response,
+            "thinking_steps": thinking_steps,
+            "tools_used": tools_used,
+            "visualizations": visualizations or None,
+        }
 
     def run(self, host: str = "0.0.0.0", port: int = 8000, reload: bool = False):
         """Run the web server."""
