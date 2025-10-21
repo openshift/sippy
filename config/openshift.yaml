@@ -14645,4 +14645,3 @@ releases:
         jobs:
             periodic-ci-Azure-ARO-HCP-main-periodic-create-aro-hcp-in-stage: true
             periodic-ci-Azure-ARO-HCP-main-periodic-stage-e2e-parallel: true
-
