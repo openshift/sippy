@@ -103,9 +103,15 @@ export default function ChatTour({ mode = 'fullPage' }) {
       placement: 'top',
     },
     {
-      target: '[data-tour="sample-questions"]',
+      target: '[data-tour="suggestions"]',
       content:
-        'Not sure what to ask? Click any of these sample questions to get started, or type your own question.',
+        'Not sure what to ask? Click any of these suggestions to get started.',
+      placement: 'top',
+    },
+    {
+      target: '[data-tour="command-button"]',
+      content:
+        'Browse all available prompt commands. You can also type "/" in the input to search commands.',
       placement: 'top',
     },
   ]

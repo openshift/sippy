@@ -101,68 +101,36 @@ export default function Triage({ id }) {
     const contextData = {
       page: 'triage-details',
       url: window.location.href,
-      instructions: `You are viewing a triage record that links test regressions to Jira issues.
-
-**Choose the appropriate analysis based on what the user is asking:**
-
-**For questions about test failures, patterns, or technical analysis:**
-- Use the get_test_details_report tool with each test's test_details_api_url as the query_params parameter
-- Use get_prow_job_summary with the failed_job_run_ids to analyze specific job failures
-- Compare failure patterns across tests to identify common causes
-- Compare up to 10 failed job run IDs to analyze specific job failures, choosing a sampling from each test_details report
-- Look for consistency in failures (same root cause vs varied issues)
-- Determine if regressions are related or independent
-
-**For questions about fix status, timeline, or Jira issue:**
-- Use the get_jira_issue_analysis tool with the issue_key from the jira data
-- Review the recent comments to assess fix readiness and timeline
-- Look for indicators of fix completion, testing status, deployment readiness, or blockers
-- Pay attention to the most recent comments as they reflect current status
-- Check the issue status, assignee, and fix versions for additional context
-
-**For questions about potential matches or which additional tests to add:**
-- ALWAYS follow this process to determine match likelihood:
-  1. Use get_triage_potential_matches with triage_id and view to get candidate tests sorted by confidence
-  2. From the existing triaged tests (in regressed_tests), select 2-4 representative tests that provide a fair sampling of the set (consider different components, test types, or failure patterns if diverse; otherwise just pick the first few). Use get_test_details_report with their test_details_api_url to get failed_job_run_ids
-  3. For the top 2-4 potential matches, use get_test_details_report with regressed_test.links.test_details as the query_params to get failed_job_run_ids
-  4. Compare the failed_job_run_ids: calculate how many job runs each potential match shares with the sampled existing triaged tests
-  5. A potential match with high overlap (many common job runs) is very likely to have the same root cause
-- Tests failing in the same job runs are strong indicators of related failures
-- Prioritize recommendations by: (high API confidence) AND (high job run overlap with existing tests)
-- Present results showing which specific triaged tests each potential match shares job runs with, making sure to include the regression_id (regressed_test.regression.id) for each test
-
-**Do not perform all analyses unless the user specifically asks for each of them. Focus on what they're actually asking about.**
-
-**Do not summarize triage metadata** (resolution status, dates, etc.) as this information is already displayed on the page.`,
-      suggestedQuestions: [
-        'What are the common failure patterns across these regressed tests?',
-        'What is the current status of the fix in the Jira issue?',
-        'Are there any other regressions that should be added to this triage?',
+      suggestions: [
+        {
+          prompt: 'triage-failure-analysis',
+          label: 'Analyze failure patterns across regressed tests',
+          args: {
+            triage_id: triage.id,
+            view: view,
+          },
+        },
+        {
+          prompt: 'triage-fix-status',
+          label: 'Check Jira fix status and timeline',
+          args: {
+            issue_key: extractJiraIssueKey(triage.url),
+          },
+        },
+        {
+          prompt: 'triage-potential-matches',
+          label: 'Find potential test matches to add',
+          args: {
+            triage_id: triage.id,
+            view: view,
+          },
+        },
       ],
       data: {
         triage_id: triage.id,
         view: view,
-        description: triage.description,
-        type: triage.type,
-        resolved: triage.resolved?.Valid
-          ? {
-              time: triage.resolved.Time,
-              reason: triage.resolution_reason,
-            }
-          : null,
-        created_at: triage.created_at,
-        updated_at: triage.updated_at,
-        jira: {
-          issue_key: extractJiraIssueKey(triage.url),
-          status: triage.bug?.status,
-          target_versions: triage.bug?.target_versions,
-          affects_versions: triage.bug?.affects_versions,
-          release_blocker: triage.bug?.release_blocker,
-          last_change_time: triage.bug?.last_change_time,
-        },
+        jira_issue_key: extractJiraIssueKey(triage.url),
         regressed_tests: regressedTestsWithLinks,
-        regressed_tests_count: triage.regressed_tests?.length || 0,
-        regressions_count: triage.regressions?.length || 0,
         has_failed_fix: hasFailedFixRegression(triage, triage.regressed_tests),
       },
     }
@@ -220,7 +188,8 @@ export default function Triage({ id }) {
         <h2 style={{ margin: 0 }}>Triage Details</h2>
         <Box display="flex" alignItems="center" gap={1}>
           <AskSippyButton
-            question="What is the primary cause of these test failures?"
+            slashCommand="triage-failure-analysis"
+            commandArgs={{ triage_id: triage.id, view: view }}
             tooltip="Ask Sippy AI to analyze this triage record's test failures"
           />
           {localDBEnabled && <TriageAuditLogsModal triage={triage} />}

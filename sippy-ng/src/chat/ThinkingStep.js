@@ -19,6 +19,7 @@ import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
 import React, { useState } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 const useStyles = makeStyles((theme) => ({
   thinkingStep: {
@@ -242,7 +243,9 @@ export default function ThinkingStep({
         {isInProgress ? (
           'Thinking...'
         ) : (
-          <ReactMarkdown>{data.thought || 'Processing...'}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {data.thought || 'Processing...'}
+          </ReactMarkdown>
         )}
       </Typography>
 
@@ -269,7 +272,9 @@ export default function ThinkingStep({
             Thought Process
           </Typography>
           <div className={classes.thoughtMarkdown}>
-            <ReactMarkdown>{data.thought}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {data.thought}
+            </ReactMarkdown>
           </div>
         </div>
       )}

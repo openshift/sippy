@@ -1,0 +1,25 @@
+# List and summarize currently open Jira incidents
+name: jira-incidents
+description: List currently open incidents and summarize what's going on
+prompt: |
+  List all currently open Jira incidents and provide a summary of what's happening.
+  
+  Use the check_known_incidents tool to retrieve the list of active incidents.
+  
+  For each open incident, provide:
+  1. **Issue Key**: Link to the Jira issue
+  2. **Summary**: The incident title/summary
+  3. **Status**: Current status of the incident
+  4. **Opened**: When the incident was opened (format as human-readable date with "days/hours ago")
+  5. **Impact**: Brief description of what's affected based on the incident description
+  6. **Affected Tests/Jobs**: Key tests or jobs that are impacted (if available in the incident data)
+  
+  After listing all incidents, provide a brief overall summary highlighting:
+  - Total number of open incidents
+  - Any particularly critical or widespread issues
+  - Recent trends (newly opened vs. long-standing incidents)
+  
+  If there are no open incidents, provide a cheerful message with emojis indicating that everything is healthy.
+  
+  Use markdown formatting for readability and include direct links to Jira issues.
+

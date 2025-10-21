@@ -30,6 +30,7 @@ from .api_models import (
 )
 from . import metrics
 from .metrics_server import start_metrics_server, stop_metrics_server
+from .prompts import PromptManager, render_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,10 @@ class SippyWebServer:
             version="1.0.0",
         )
         self.websocket_manager = WebSocketManager()
+        
+        # Initialize prompt manager
+        self.prompt_manager = PromptManager()
+        
         self._setup_middleware()
         self._setup_routes()
         
@@ -160,6 +165,31 @@ class SippyWebServer:
             return PersonasResponse(
                 personas=personas, current_persona=self.config.persona
             )
+
+        @self.app.get("/chat/prompts")
+        async def get_prompts():
+            """Get list of available prompt templates."""
+            return {"prompts": self.prompt_manager.list_prompts()}
+
+        @self.app.post("/chat/prompts/render")
+        async def render_prompt_endpoint(request: dict):
+            """Render a prompt template with provided arguments."""
+            prompt_name = request.get("prompt_name")
+            arguments = request.get("arguments", {})
+            
+            if not prompt_name:
+                return {"error": "prompt_name is required"}, 400
+            
+            prompt_data = self.prompt_manager.get_prompt(prompt_name)
+            if not prompt_data:
+                return {"error": f"Prompt '{prompt_name}' not found"}, 404
+            
+            # Use the render_prompt function from prompts module
+            rendered_text = render_prompt(prompt_data, arguments)
+            
+            return {
+                "rendered": rendered_text
+            }
 
         @self.app.post("/chat", response_model=ChatResponse)
         async def chat(request: ChatRequest):

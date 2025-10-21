@@ -1,0 +1,56 @@
+# Comprehensive status report for OpenShift Container Platform payload streams
+name: payload-report
+description: Generate a comprehensive status report for OCP payload streams across multiple releases and stream types
+arguments:
+  - name: releases
+    description: Release versions to analyze
+    required: true
+    type: array
+    autocomplete: releases
+  - name: streams
+    description: Stream types to analyze
+    required: false
+    type: array
+    autocomplete: release_streams
+    default: ["nightly", "ci"]
+prompt: |
+  Draft a comprehensive status report for OpenShift Container Platform (OCP) payload streams. 
+  
+  **IMPORTANT RULES:**
+  * ALWAYS ignore payloads with phase "Ready" - they are not in a terminal state
+  * When referring to "most recent" payload, this means the most recent payload in a terminal state (Accepted or Rejected)
+  * Only consider payloads that are either Accepted or Rejected
+  
+  **Scope:**
+  * Versions: {{ releases | join(', ') }}
+  * Streams: {{ streams | join(', ') }}
+  
+  You MUST report on each version-stream combination as follows:
+  
+  1. **Header**: Format the release and stream name as a link to the release page using this URL pattern:
+     https://amd64.ocp.releases.ci.openshift.org/#{version}.0-0.{stream_type}
+  
+  2. **Stale Acceptance Warning**:
+     * Trigger: If the most recently accepted payload (ignore Ready payloads) is older than 24 hours
+     * Content: State the full name of the last accepted payload and the elapsed time since its acceptance (e.g., "3 days ago")
+  
+  3. **Rejected Payload Analysis**:
+     * Trigger: Only if the most recent payload in a terminal state (Accepted or Rejected) was rejected
+     * Content: 
+       - Indicate that the most recent payload was rejected
+       - Perform a deeper analysis to understand why the payload was rejected
+       - Report ONLY on blocking jobs that failed (DO NOT report on informing jobs)
+       - For EACH failed blocking job, use the get_prow_job_summary tool to analyze it
+       - For each failed blocking job:
+         * Provide the job name as a link to Prow
+         * List up to 3 tests that failed in that job
+         * If more than 3 tests failed in the job, instead indicate "Multiple tests failed" and do not list individual tests
+       - Focus on providing actionable information about what blocked the payload
+  
+  4. **All Good Message**:
+     * Trigger: When you have neither a stale acceptance warning nor a rejected payload warning to report
+     * Content: A cheerful indication with emojis that everything is working well
+  
+  **Summary:**
+  Finally, provide a brief summary in prose of all the releases analyzed. Keep this to no more than 3 sentences.
+

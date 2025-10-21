@@ -2,22 +2,19 @@ import './JobTable.css'
 import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import { BugReport, DirectionsRun, GridOn } from '@mui/icons-material'
 import { Button, Container, Tooltip, Typography } from '@mui/material'
+import { DataGrid } from '@mui/x-data-grid'
 import {
-  chooseVariantsToDisplay,
   escapeRegex,
-  getVariantStyle,
-  isComponentReadinessIncludedJobTier,
   pathForExactJobAnalysis,
   pathForExactJobRuns,
   relativeTime,
   safeEncodeURIComponent,
   SafeJSONParam,
 } from '../helpers'
-import { DataGrid } from '@mui/x-data-grid'
 import { generateClasses } from '../datagrid/utils'
 import { GridView } from '../datagrid/GridView'
 import { Link } from 'react-router-dom'
-import { makeStyles, useTheme } from '@mui/styles'
+import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import { withStyles } from '@mui/styles'
@@ -35,8 +32,6 @@ const bookmarks = [
 ]
 
 export const getColumns = (config, openBugzillaDialog) => {
-  const theme = useTheme()
-
   return {
     name: {
       field: 'name',
@@ -222,50 +217,20 @@ export const getColumns = (config, openBugzillaDialog) => {
       type: 'array',
       headerName: 'Variants',
       hide: true,
-      renderCell: (params) => {
-        const displayVariants = chooseVariantsToDisplay(params.value)
-
-        // Check if there are any excluded JobTier variants for the warning
-        const hasExcludedJobTier =
-          params.value &&
-          params.value.some(
-            (variant) =>
-              variant.startsWith('JobTier:') &&
-              !isComponentReadinessIncludedJobTier(variant)
-          )
-
-        const tooltipContent = params.value ? (
-          <div>
-            {params.value.map((variant, index) => (
-              <div key={index}>{variant}</div>
-            ))}
-            {hasExcludedJobTier && (
-              <>
-                <br />
-                <div>
-                  <b>WARNING:</b> Job results from jobs with this JobTier are
-                  not included in the main release blocking views for component
-                  readiness, and will not be monitored for regressions.
-                </div>
-              </>
-            )}
+      renderCell: (params) => (
+        <Tooltip
+          sx={{ whiteSpace: 'pre' }}
+          title={params.value ? params.value.join('\n') : ''}
+        >
+          <div className="variants-list">
+            {params.value
+              ? params.value
+                  .filter((item) => !item.endsWith(':default'))
+                  .join('\n')
+              : ''}
           </div>
-        ) : (
-          ''
-        )
-
-        return (
-          <Tooltip sx={{ whiteSpace: 'pre' }} title={tooltipContent}>
-            <div className="variants-list">
-              {displayVariants.map((variant, index) => (
-                <div key={index} style={getVariantStyle(variant, theme)}>
-                  {variant}
-                </div>
-              ))}
-            </div>
-          </Tooltip>
-        )
-      },
+        </Tooltip>
+      ),
     },
     current_runs: {
       field: 'current_runs',
@@ -332,11 +297,6 @@ export const getViews = (props) => {
           flex: 3.5,
         },
         {
-          field: 'variants',
-          flex: 1.75,
-          hide: false,
-        },
-        {
           field: 'current_pass_percentage',
           flex: 0.75,
           headerClassName: props.briefTable ? '' : 'wrapHeader',
@@ -351,19 +311,8 @@ export const getViews = (props) => {
           headerClassName: props.briefTable ? '' : 'wrapHeader',
         },
         {
-          field: 'open_bugs',
-          flex: 0.5,
-          hide: props.briefTable,
-        },
-        {
-          field: 'test_grid_url',
-          flex: 0.4,
-          hide: props.briefTable,
-        },
-        {
-          field: 'job_runs',
-          flex: 0.4,
-          hide: props.briefTable,
+          field: 'variants',
+          flex: 2,
         },
       ],
     },
