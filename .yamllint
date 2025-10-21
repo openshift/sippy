@@ -1,0 +1,15 @@
+---
+extends: relaxed
+
+rules:
+  line-length: disable
+
+ignore: |
+  node_modules/
+  vendor/
+  .git/
+  dist/
+  build/
+  # Generated file with YAML complex key syntax (? key\n: value)
+  # which uses two spaces after colons by default in gopkg.in/yaml.v3
+  pkg/variantregistry/snapshot.yaml
