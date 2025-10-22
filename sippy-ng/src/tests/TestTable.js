@@ -418,13 +418,14 @@ function TestTable(props) {
       field: 'suite_name',
       hide: true,
       headerName: 'Suite',
-      autocomplete: 'suite_name',
+      autocomplete: 'suites',
       type: 'string',
       renderCell: (params) => <div className="test-name">{params.value}</div>,
     },
     jira_component: {
       field: 'jira_component',
       headerName: 'Jira component',
+      autocomplete: 'jira_components',
     },
     variants: {
       field: 'variants',

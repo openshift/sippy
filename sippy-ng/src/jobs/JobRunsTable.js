@@ -214,7 +214,7 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'pull_request_org',
-      autocomplete: 'org',
+      autocomplete: 'orgs',
       headerName: 'Pull request org',
       hide: true,
     },
