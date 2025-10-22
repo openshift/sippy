@@ -21,6 +21,7 @@ import { DataGrid } from '@mui/x-data-grid'
 import { filterList } from '../datagrid/utils'
 import { getColumns, getViews } from './JobTable'
 import {
+  apiFetch,
   getReportStartDate,
   pathForJobRunsWithFilter,
   pathForJobsWithFilter,
@@ -89,11 +90,7 @@ export function JobAnalysis(props) {
       queryParams += `&period=${period}`
     }
 
-    Promise.all([
-      fetch(
-        `${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`
-      ),
-    ])
+    Promise.all([apiFetch(`/api/jobs/analysis?${queryParams}`)])
       .then(([analysis]) => {
         if (analysis.status !== 200) {
           throw new Error('server returned ' + analysis.status)
@@ -103,9 +100,7 @@ export function JobAnalysis(props) {
       })
       .then(([analysis]) => {
         setAnalysis(analysis)
-        setBugsURL(
-          `${process.env.REACT_APP_API_URL}/api/jobs/bugs?${queryParams}`
-        )
+        setBugsURL(`/api/jobs/bugs?${queryParams}`)
 
         // allTests maps each test name to a struct containing the test name again, and the total number of
         // failures in the past 7 days. This value is used to sort on and determine the most relevant tests

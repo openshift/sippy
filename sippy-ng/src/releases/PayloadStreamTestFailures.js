@@ -4,7 +4,7 @@ import { DataGrid } from '@mui/x-data-grid'
 import { generateClasses } from '../datagrid/utils'
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { apiFetch, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -165,8 +165,8 @@ function PayloadStreamTestFailures(props) {
     }
 
     Promise.all([
-      fetch(
-        `${process.env.REACT_APP_API_URL}/api/releases/test_failures?release=${release}&arch=${arch}&stream=${stream}` +
+      apiFetch(
+        `/api/releases/test_failures?release=${release}&arch=${arch}&stream=${stream}` +
           queryString
       ),
     ])

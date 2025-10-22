@@ -6,6 +6,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
+import { apiFetch } from '../helpers'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { ReleasesContext } from '../App'
@@ -85,9 +86,7 @@ export default function ReleaseOverview(props) {
   const releases = React.useContext(ReleasesContext)
 
   const fetchData = () => {
-    fetch(
-      process.env.REACT_APP_API_URL + '/api/health?release=' + props.release
-    )
+    apiFetch('/api/health?release=' + props.release)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)

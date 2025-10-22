@@ -12,6 +12,7 @@ import {
 } from '@mui/material'
 import { DirectionsRun } from '@mui/icons-material'
 import {
+  apiFetch,
   filterFor,
   not,
   pathForJobRunsWithTestFailure,
@@ -80,9 +81,7 @@ export function TestAnalysis(props) {
     const filter = safeEncodeURIComponent(JSON.stringify(filterModel))
 
     Promise.all([
-      fetch(
-        `${process.env.REACT_APP_API_URL}/api/tests?release=${props.release}&filter=${filter}`
-      ),
+      apiFetch(`/api/tests?release=${props.release}&filter=${filter}`),
     ])
       .then(([test]) => {
         if (test.status !== 200) {

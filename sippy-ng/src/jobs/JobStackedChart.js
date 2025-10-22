@@ -4,7 +4,7 @@ import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
 
 import './JobAnalysis.css'
-import { safeEncodeURIComponent } from '../helpers'
+import { apiFetch, safeEncodeURIComponent } from '../helpers'
 import { useNavigate } from 'react-router-dom'
 
 export const dayFilter = (days, startDate) => {
@@ -51,7 +51,7 @@ export function JobStackedChart(props) {
       queryParams += `&period=${props.period}`
     }
 
-    fetch(`${process.env.REACT_APP_API_URL}/api/jobs/analysis?${queryParams}`)
+    apiFetch(`/api/jobs/analysis?${queryParams}`)
       .then((analysis) => {
         if (analysis.status !== 200) {
           throw new Error('server returned ' + analysis.status)

@@ -1,6 +1,6 @@
 import FullCalendar from '@fullcalendar/react'
 
-import { filterFor, safeEncodeURIComponent } from '../helpers'
+import { apiFetch, filterFor, safeEncodeURIComponent } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '@mui/material/styles'
@@ -57,9 +57,8 @@ export default function PayloadMiniCalendar(props) {
       })
     )
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/releases/tags/events?release=' +
+    apiFetch(
+      '/api/releases/tags/events?release=' +
         props.release +
         '&filter=' +
         filter

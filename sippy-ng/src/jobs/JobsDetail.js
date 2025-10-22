@@ -1,7 +1,7 @@
 import { Backdrop, CircularProgress } from '@mui/material'
 import { makeStyles } from '@mui/styles'
 import { PropTypes } from 'prop-types'
-import { safeEncodeURIComponent } from '../helpers'
+import { apiFetch, safeEncodeURIComponent } from '../helpers'
 import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
 import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'
@@ -41,9 +41,8 @@ export default function JobsDetail(props) {
         urlQuery = '&job=' + safeEncodeURIComponent(filter)
       }
 
-      fetch(
-        process.env.REACT_APP_API_URL +
-          '/api/jobs/details?release=' +
+      apiFetch(
+        '/api/jobs/details?release=' +
           props.release +
           urlQuery
       )

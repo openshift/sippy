@@ -9,6 +9,7 @@ import {
 } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import {
+  apiFetch,
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
@@ -379,11 +380,7 @@ function ReleasePayloadTable(props) {
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/releases/tags?' +
-        queryString.substring(1)
-    )
+    apiFetch('/api/releases/tags?' + queryString.substring(1))
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)

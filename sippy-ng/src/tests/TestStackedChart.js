@@ -1,6 +1,6 @@
 import { Card, CircularProgress, Grid, Typography } from '@mui/material'
 import { Line } from 'react-chartjs-2'
-import { safeEncodeURIComponent } from '../helpers'
+import { apiFetch, safeEncodeURIComponent } from '../helpers'
 import { useTheme } from '@mui/material/styles'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
@@ -24,9 +24,7 @@ export function TestStackedChart(props) {
       )}`
     }
 
-    fetch(
-      `${process.env.REACT_APP_API_URL}/api/tests/analysis/overall?${queryParams}`
-    )
+    apiFetch(`/api/tests/analysis/overall?${queryParams}`)
       .then((analysis) => {
         if (analysis.status !== 200) {
           throw new Error('server returned ' + analysis.status)

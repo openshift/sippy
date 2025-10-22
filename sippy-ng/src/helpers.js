@@ -1,6 +1,24 @@
 // Compute relative times -- Intl.RelativeTimeFormat is new-ish,
 // and not supported in all browsers, and it's not in node yet.
 
+/**
+ * Fetch wrapper that automatically prepends REACT_APP_API_URL to relative URLs.
+ * Use this for all API calls instead of direct fetch.
+ *
+ * @param {string} url - URL to fetch (relative URLs starting with / will be prepended with REACT_APP_API_URL)
+ * @param {RequestInit} options - Standard fetch options
+ * @returns {Promise<Response>}
+ *
+ * @example apiFetch('/api/releases')
+ */
+export function apiFetch(url, options) {
+  const fullUrl = url.startsWith('/')
+    ? `${process.env.REACT_APP_API_URL}${url}`
+    : url
+
+  return fetch(fullUrl, options)
+}
+
 export const SafeJSONParam = {
   encode: (j) => {
     return safeEncodeURIComponent(JSON.stringify(j))

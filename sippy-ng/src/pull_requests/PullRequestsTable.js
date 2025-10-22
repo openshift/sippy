@@ -16,6 +16,7 @@ import {
 } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import {
+  apiFetch,
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
@@ -341,9 +342,8 @@ export default function PullRequestsTable(props) {
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/pull_requests?release=' +
+    apiFetch(
+      '/api/pull_requests?release=' +
         props.release +
         queryString
     )

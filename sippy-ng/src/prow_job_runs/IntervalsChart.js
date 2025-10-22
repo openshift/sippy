@@ -16,7 +16,7 @@ import {
   TextField,
   Tooltip,
 } from '@mui/material'
-import { escapeRegex } from '../helpers'
+import { apiFetch, escapeRegex } from '../helpers'
 import { makeStyles } from '@mui/styles'
 import { stringify } from 'query-string'
 import { useNavigate } from 'react-router-dom'
@@ -288,9 +288,8 @@ export default function IntervalsChart(props) {
         intervalFile
     )
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/jobs/runs/intervals?prow_job_run_id=' +
+    apiFetch(
+      '/api/jobs/runs/intervals?prow_job_run_id=' +
         props.jobRunID +
         (props.jobName ? '&job_name=' + props.jobName : '') +
         (props.repoInfo ? '&repo_info=' + props.repoInfo : '') +

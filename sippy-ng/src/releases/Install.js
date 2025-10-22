@@ -1,4 +1,5 @@
 import './Install.css'
+import { apiFetch } from '../helpers'
 import { Grid, Typography } from '@mui/material'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
@@ -19,12 +20,8 @@ export default function Install(props) {
 
   const fetchData = () => {
     Promise.all([
-      fetch(
-        process.env.REACT_APP_API_URL + '/api/install?release=' + props.release
-      ),
-      fetch(
-        process.env.REACT_APP_API_URL + '/api/health?release=' + props.release
-      ),
+      apiFetch('/api/install?release=' + props.release),
+      apiFetch('/api/health?release=' + props.release),
     ])
       .then(([install, health]) => {
         if (install.status !== 200) {

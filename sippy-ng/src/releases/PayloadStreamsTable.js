@@ -3,7 +3,7 @@ import { DataGrid } from '@mui/x-data-grid'
 import { Link } from 'react-router-dom'
 import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { apiFetch, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { Tooltip } from '@mui/material'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -182,11 +182,7 @@ function PayloadStreamsTable(props) {
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/releases/health?' +
-        queryString.substring(1)
-    )
+    apiFetch('/api/releases/health?' + queryString.substring(1))
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)

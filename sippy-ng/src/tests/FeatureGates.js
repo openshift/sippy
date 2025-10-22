@@ -3,6 +3,7 @@ import { DataGrid } from '@mui/x-data-grid'
 import { Link, useNavigate } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import {
+  apiFetch,
   pathForTestSubstringByVariant,
   safeEncodeURIComponent,
   SafeJSONParam,
@@ -283,9 +284,8 @@ export default function FeatureGates(props) {
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/feature_gates?release=' +
+    apiFetch(
+      '/api/feature_gates?release=' +
         props.release +
         queryString
     )

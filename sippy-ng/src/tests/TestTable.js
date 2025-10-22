@@ -10,6 +10,7 @@ import {
 } from '@mui/material'
 import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
 import {
+  apiFetch,
   chooseVariantsToDisplay,
   escapeRegex,
   filterFor,
@@ -846,7 +847,7 @@ function TestTable(props) {
       testAPI = '/api/tests/v2?release='
     }
 
-    fetch(process.env.REACT_APP_API_URL + testAPI + props.release + queryString)
+    apiFetch(testAPI + props.release + queryString)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)
