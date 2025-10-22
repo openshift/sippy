@@ -1,6 +1,6 @@
 import { Card, CircularProgress, Grid, Typography } from '@mui/material'
 import { Line } from 'react-chartjs-2'
-import { safeEncodeURIComponent } from '../helpers'
+import { apiFetch, safeEncodeURIComponent } from '../helpers'
 import { scale } from 'chroma-js'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
@@ -14,8 +14,8 @@ export default function TestPassRateCharts(props) {
     const filter = safeEncodeURIComponent(JSON.stringify(props.filterModel))
 
     Promise.all([
-      fetch(
-        `${process.env.REACT_APP_API_URL}/api/tests/analysis/${props.grouping}?release=${props.release}&test=${props.test}&filter=${filter}`
+      apiFetch(
+        `/api/tests/analysis/${props.grouping}?release=${props.release}&test=${props.test}&filter=${filter}`
       ),
     ])
       .then(([apiResponse]) => {

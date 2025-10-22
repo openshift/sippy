@@ -11,7 +11,6 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
-from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
 from .agent import SippyAgent
@@ -92,7 +91,6 @@ class SippyWebServer:
             version="1.0.0",
         )
         self.websocket_manager = WebSocketManager()
-        self._setup_middleware()
         self._setup_routes()
         
         # Initialize agent info metrics
@@ -102,16 +100,6 @@ class SippyWebServer:
             "endpoint": config.llm_endpoint,
             "persona": config.persona,
         })
-
-    def _setup_middleware(self):
-        """Setup CORS and other middleware."""
-        self.app.add_middleware(
-            CORSMiddleware,
-            allow_origins=["*"],  # Configure this for production
-            allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
-        )
 
     def _setup_routes(self):
         """Setup API routes."""

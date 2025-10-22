@@ -1,3 +1,5 @@
+import { apiFetch } from '../../helpers'
+
 /**
  * Persona slice - manages available chat personas
  */
@@ -7,13 +9,9 @@ export const createPersonaSlice = (set, get) => ({
   personasError: null,
 
   loadPersonas: () => {
-    const apiUrl =
-      process.env.REACT_APP_CHAT_API_URL || window.location.origin + '/api/chat'
-    const baseUrl = apiUrl.replace(/\/$/, '').replace(/\/stream$/, '')
-
     set({ personasLoading: true, personasError: null })
 
-    fetch(`${baseUrl}/personas`)
+    apiFetch('/api/chat/personas')
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed to fetch personas: ${response.statusText}`)

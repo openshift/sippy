@@ -1,4 +1,4 @@
-import { safeEncodeURIComponent } from '../helpers'
+import { apiFetch, safeEncodeURIComponent } from '../helpers'
 import Autocomplete from '@mui/lab/Autocomplete'
 import CircularProgress from '@mui/material/CircularProgress'
 import PropTypes from 'prop-types'
@@ -20,9 +20,8 @@ export default function GridToolbarAutocomplete(props) {
       queryParams.push('release=' + safeEncodeURIComponent(props.release))
     }
 
-    const response = await fetch(
-      process.env.REACT_APP_API_URL +
-        `/api/autocomplete/${props.field}?${queryParams.join('&')}`
+    const response = await apiFetch(
+      `/api/autocomplete/${props.field}?${queryParams.join('&')}`
     )
 
     const values = await response.json()

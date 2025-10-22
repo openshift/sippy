@@ -3,6 +3,7 @@ import { BOOKMARKS, JOB_THRESHOLDS } from '../constants'
 import { BugReport, DirectionsRun, GridOn } from '@mui/icons-material'
 import { Button, Container, Tooltip, Typography } from '@mui/material'
 import {
+  apiFetch,
   chooseVariantsToDisplay,
   escapeRegex,
   getVariantStyle,
@@ -562,9 +563,8 @@ function JobTable(props) {
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/jobs?release=' +
+    apiFetch(
+      '/api/jobs?release=' +
         props.release +
         queryString
     )

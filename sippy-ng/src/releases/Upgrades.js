@@ -1,4 +1,5 @@
 import './Upgrades.css'
+import { apiFetch } from '../helpers'
 import { Grid, Typography } from '@mui/material'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
@@ -19,9 +20,7 @@ export default function Upgrades(props) {
   const [data, setData] = React.useState({})
 
   const fetchData = () => {
-    fetch(
-      process.env.REACT_APP_API_URL + '/api/upgrade?release=' + props.release
-    )
+    apiFetch('/api/upgrade?release=' + props.release)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)

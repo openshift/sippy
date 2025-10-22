@@ -12,6 +12,7 @@ import { cyan, green, orange, red } from '@mui/material/colors'
 import { DarkMode, LightMode, ToggleOff, ToggleOn } from '@mui/icons-material'
 import { ErrorBoundary } from 'react-error-boundary'
 import {
+  apiFetch,
   findFirstNonGARelease,
   getReportStartDate,
   getUrlWithoutParams,
@@ -433,9 +434,9 @@ function App(props) {
 
   const fetchData = () => {
     Promise.all([
-      fetch(process.env.REACT_APP_API_URL + '/api/releases'),
-      fetch(process.env.REACT_APP_API_URL + '/api/capabilities'),
-      fetch(process.env.REACT_APP_API_URL + '/api/report_date'),
+      apiFetch('/api/releases'),
+      apiFetch('/api/capabilities'),
+      apiFetch('/api/report_date'),
     ])
       .then(([releases, capabilities, reportDate]) => {
         if (releases.status !== 200) {

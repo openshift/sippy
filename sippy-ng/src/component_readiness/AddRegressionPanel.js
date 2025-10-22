@@ -1,4 +1,4 @@
-import { getTriagesAPIUrl } from './CompReadyUtils'
+import { apiFetch } from '../helpers'
 import { makeStyles } from '@mui/styles'
 import { Tab, Tabs } from '@mui/material'
 import DialogContent from '@mui/material/DialogContent'
@@ -76,7 +76,7 @@ export default function AddRegressionPanel({
       ],
     }
 
-    fetch(getTriagesAPIUrl(existingTriageId), {
+    apiFetch(`/api/component_readiness/triages/${existingTriageId}`, {
       method: 'PUT',
       body: JSON.stringify(updatedTriage),
     }).then((response) => {

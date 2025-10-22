@@ -22,7 +22,7 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid, GridToolbar } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
-import { relativeTime } from '../helpers'
+import { apiFetch, relativeTime } from '../helpers'
 import CompSeverityIcon from './CompSeverityIcon'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
@@ -143,7 +143,7 @@ export default function TriagePotentialMatches({
   const findPotentialMatches = () => {
     setIsLoading(true)
     setIsModalOpen(true)
-    fetch(`${triage.links.potential_matches}?view=${selectedView}`)
+    apiFetch(`${triage.links.potential_matches}?view=${selectedView}`)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('API server returned ' + response.status)
@@ -189,7 +189,7 @@ export default function TriagePotentialMatches({
       ],
     }
 
-    fetch(triage.links.self, {
+    apiFetch(triage.links.self, {
       method: 'PUT',
       body: JSON.stringify(updatedTriage),
     })

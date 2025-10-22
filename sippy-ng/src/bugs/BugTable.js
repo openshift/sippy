@@ -11,8 +11,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { getTriagesAPIUrl } from '../component_readiness/CompReadyUtils'
-import { relativeTime, safeEncodeURIComponent } from '../helpers'
+import { apiFetch, relativeTime, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
@@ -26,12 +25,10 @@ export default function BugTable(props) {
   const fetchData = () => {
     let bugsURL = props.bugsURL
     if (!bugsURL || bugsURL.length === 0) {
-      bugsURL = `${
-        process.env.REACT_APP_API_URL
-      }/api/tests/bugs?test=${safeEncodeURIComponent(props.testName)}`
+      bugsURL = `/api/tests/bugs?test=${safeEncodeURIComponent(props.testName)}`
     }
 
-    Promise.all([fetch(bugsURL)])
+    Promise.all([apiFetch(bugsURL)])
       .then(([bugs]) => {
         if (bugs.status !== 200) {
           throw new Error('server returned when fetching bugs' + bugs.status)
@@ -47,7 +44,7 @@ export default function BugTable(props) {
           props.regressionId &&
           bugs.length > 0
         ) {
-          return fetch(getTriagesAPIUrl())
+          return apiFetch('/api/component_readiness/triages')
             .then((res) => {
               if (res.status !== 200) {
                 throw new Error(
@@ -96,7 +93,7 @@ export default function BugTable(props) {
 
   const addToTriage = (triage) => {
     triage.regressions.push({ id: props.regressionId })
-    fetch(getTriagesAPIUrl(triage.id), {
+    apiFetch(`/api/component_readiness/triages/${triage.id}`, {
       method: 'PUT',
       body: JSON.stringify(triage),
     }).then((res) => {

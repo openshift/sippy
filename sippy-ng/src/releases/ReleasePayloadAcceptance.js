@@ -6,6 +6,7 @@ import {
   Warning,
 } from '@mui/icons-material'
 import {
+  apiFetch,
   getReportStartDate,
   relativeTime,
   safeEncodeURIComponent,
@@ -42,10 +43,8 @@ function ReleasePayloadAcceptance(props) {
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
 
   const fetchData = () => {
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/releases/health?release=' +
-        safeEncodeURIComponent(props.release)
+    apiFetch(
+      '/api/releases/health?release=' + safeEncodeURIComponent(props.release)
     )
       .then((response) => {
         if (response.status !== 200) {

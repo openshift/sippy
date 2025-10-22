@@ -3,7 +3,7 @@ import { Box, Card, Grid, Tooltip, Typography } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
 import { generateClasses } from '../datagrid/utils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { apiFetch, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -144,10 +144,7 @@ function PayloadTestFailures(props) {
     }
 
     Promise.all([
-      fetch(
-        `${process.env.REACT_APP_API_URL}/api/payloads/test_failures?payload=${payload}` +
-          queryString
-      ),
+      apiFetch(`/api/payloads/test_failures?payload=${payload}` + queryString),
     ])
       .then(([analysis]) => {
         if (analysis.status !== 200) {

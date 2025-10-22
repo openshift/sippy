@@ -1,5 +1,5 @@
 import { Button, DialogActions, Snackbar, Tooltip } from '@mui/material'
-import { getTriagesAPIUrl } from './CompReadyUtils'
+import { apiFetch } from '../helpers'
 import { makeStyles } from '@mui/styles'
 import AddRegressionPanel from './AddRegressionPanel'
 import Alert from '@mui/material/Alert'
@@ -51,7 +51,7 @@ export default function UpsertTriageModal({
   const [triageModalOpen, setTriageModalOpen] = React.useState(false)
   const handleTriageModalOpen = () => {
     // Only get all existing entries when actually adding/editing a triage
-    fetch(getTriagesAPIUrl())
+    apiFetch('/api/component_readiness/triages')
       .then((response) => {
         if (response.status !== 200) {
           throw new Error(

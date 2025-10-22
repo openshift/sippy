@@ -1,3 +1,4 @@
+import { apiFetch } from '../helpers'
 import { MESSAGE_TYPES } from './chatUtils'
 import { useCallback } from 'react'
 import { useSessionActions, useSettings } from './store/useChatStore'
@@ -74,16 +75,13 @@ export function useSessionRating() {
 
       try {
         // Submit to API
-        const response = await fetch(
-          process.env.REACT_APP_API_URL + '/api/chat/ratings',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(payload),
-          }
-        )
+        const response = await apiFetch('/api/chat/ratings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        })
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)

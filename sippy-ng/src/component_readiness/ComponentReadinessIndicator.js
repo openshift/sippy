@@ -13,7 +13,7 @@ import {
 import { COMPONENT_READINESS_THRESHOLDS } from '../constants'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
-import { relativeTime } from '../helpers'
+import { apiFetch, relativeTime } from '../helpers'
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward'
 import Grid from '@mui/material/Grid'
 import HealingIcon from '@mui/icons-material/Healing'
@@ -60,12 +60,10 @@ export default function ComponentReadinessIndicator({ release }) {
   useEffect(() => {
     const viewName = `${release}-main`
     const componentReportUrl =
-      process.env.REACT_APP_API_URL +
-      '/api/component_readiness?view=' +
-      encodeURIComponent(viewName)
+      '/api/component_readiness?view=' + encodeURIComponent(viewName)
 
     // Fetch both the component report and triages
-    const componentReportPromise = fetch(componentReportUrl)
+    const componentReportPromise = apiFetch(componentReportUrl)
       .then((response) => {
         if (response.status !== 200) {
           return null
@@ -74,9 +72,7 @@ export default function ComponentReadinessIndicator({ release }) {
       })
       .catch(() => null)
 
-    const triagesPromise = fetch(
-      process.env.REACT_APP_API_URL + '/api/component_readiness/triages'
-    )
+    const triagesPromise = apiFetch('/api/component_readiness/triages')
       .then((response) => {
         if (response.status !== 200) {
           return []

@@ -12,7 +12,7 @@ import {
 } from './CompReadyUtils'
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { escapeRegex, safeEncodeURIComponent } from '../helpers'
+import { apiFetch, escapeRegex, safeEncodeURIComponent } from '../helpers'
 import { Link } from 'react-router-dom'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
 import CompCapRow from './CompCapRow'
@@ -81,7 +81,7 @@ export default function CompReadyEnvCapabilities(props) {
       apiCallStr += '&forceRefresh=true'
     }
 
-    fetch(apiCallStr, { signal: abortController.signal })
+    apiFetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
         if (data.code < 200 || data.code >= 300) {

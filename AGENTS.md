@@ -38,6 +38,25 @@ npx prettier --write .
 * Prefer functional components and React hooks over class components.
 * Keep UI elements consistent with Material-UI standards.
 
+### Making API Calls
+
+* **Always use `apiFetch()` from `helpers.js` instead of direct `fetch()` calls** when making API requests to Sippy's backend.
+* `apiFetch()` automatically prepends `REACT_APP_API_URL` to relative URLs, making the code cleaner and handling development/production environments correctly.
+
+```javascript
+// ✅ Good - uses apiFetch
+import { apiFetch } from '../helpers'
+
+apiFetch('/api/releases')
+  .then(response => response.json())
+  .then(data => console.log(data))
+
+// ❌ Bad - manual concatenation
+fetch(process.env.REACT_APP_API_URL + '/api/releases')
+  .then(response => response.json())
+  .then(data => console.log(data))
+```
+
 ## General Notes
 
 * Favor clarity and maintainability over cleverness.

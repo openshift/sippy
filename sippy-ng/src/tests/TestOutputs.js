@@ -10,7 +10,7 @@ import {
 } from '@mui/material'
 import { DirectionsBoat } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
-import { safeEncodeURIComponent } from '../helpers'
+import { apiFetch, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -42,9 +42,8 @@ export function TestOutputs(props) {
         '&filter=' + safeEncodeURIComponent(JSON.stringify(props.filterModel))
     }
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        `/api/tests/outputs?release=${
+    apiFetch(
+      `/api/tests/outputs?release=${
           props.release
         }&test=${safeEncodeURIComponent(props.test)}` +
         queryString

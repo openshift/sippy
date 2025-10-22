@@ -23,7 +23,7 @@ import { CapabilitiesContext, ReleasesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
-import { pathForExactTestAnalysisWithFilter } from '../helpers'
+import { apiFetch, pathForExactTestAnalysisWithFilter } from '../helpers'
 import { Tooltip } from '@mui/material'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import AskSippyButton from '../chat/AskSippyButton'
@@ -173,7 +173,7 @@ export default function TestDetailsReport(props) {
     if (!testId) return // wait until the vars are initialized from params
 
     // fetch the test_details data followed by any triage records that match the regressionId (if found)
-    fetch(testDetailsApiCall, { signal: abortController.signal })
+    apiFetch(testDetailsApiCall, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
         if (data.code < 200 || data.code >= 300) {

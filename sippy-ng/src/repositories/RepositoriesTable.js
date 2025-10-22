@@ -13,6 +13,7 @@ import { Launch } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import { MERGE_FAILURE_THERSHOLDS } from '../constants'
 import {
+  apiFetch,
   pathForRepository,
   safeEncodeURIComponent,
   SafeJSONParam,
@@ -202,9 +203,8 @@ function RepositoriesTable(props) {
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/repositories?release=' +
+    apiFetch(
+      '/api/repositories?release=' +
         props.release +
         queryString
     )

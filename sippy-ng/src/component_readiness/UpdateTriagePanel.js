@@ -1,8 +1,8 @@
 import { Button, FormHelperText, Tab, Tabs } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
-import { formColumnName, getTriagesAPIUrl } from './CompReadyUtils'
+import { formColumnName } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
-import { relativeTime } from '../helpers'
+import { apiFetch, relativeTime } from '../helpers'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import PropTypes from 'prop-types'
@@ -71,7 +71,7 @@ export default function UpdateTriagePanel({
       (regression) => !removedRegressions.includes(String(regression.id))
     )
 
-    fetch(getTriagesAPIUrl(triage.id), {
+    apiFetch(`/api/component_readiness/triages/${triage.id}`, {
       method: 'PUT',
       body: JSON.stringify({ ...triage, regressions: updatedRegressions }),
     }).then((response) => {

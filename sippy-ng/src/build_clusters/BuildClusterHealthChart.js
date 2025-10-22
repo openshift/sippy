@@ -1,3 +1,4 @@
+import { apiFetch } from '../helpers'
 import { Line } from 'react-chartjs-2'
 import Alert from '@mui/material/Alert'
 import chroma from 'chroma-js'
@@ -10,11 +11,7 @@ export default function BuildClusterHealthChart(props) {
   const [data, setData] = React.useState([])
 
   const fetchData = () => {
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/health/build_cluster/analysis?period=' +
-        props.period
-    )
+    apiFetch('/api/health/build_cluster/analysis?period=' + props.period)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)

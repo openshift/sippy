@@ -8,7 +8,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { filterFor, safeEncodeURIComponent } from '../helpers'
+import { apiFetch, filterFor, safeEncodeURIComponent } from '../helpers'
 import { Fragment } from 'react'
 import { Link, Route, Routes, useLocation } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
@@ -54,11 +54,7 @@ export default function ReleasePayloadDetails(props) {
       })
     )
 
-    Promise.all([
-      fetch(
-        `${process.env.REACT_APP_API_URL}/api/releases/tags?filter=${filter}`
-      ),
-    ])
+    Promise.all([apiFetch(`/api/releases/tags?filter=${filter}`)])
       .then(([tag]) => {
         if (tag.status !== 200) {
           throw new Error('server returned ' + tag.status)

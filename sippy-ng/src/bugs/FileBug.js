@@ -21,10 +21,7 @@ import {
 } from '@mui/material'
 import { AutoAwesome as AutoAwesomeIcon, Close } from '@mui/icons-material'
 import { CapabilitiesContext } from '../App'
-import {
-  getBugsAPIUrl,
-  getTriagesAPIUrl,
-} from '../component_readiness/CompReadyUtils'
+import { apiFetch } from '../helpers'
 import { makeStyles } from '@mui/styles'
 import BugButton from './BugButton'
 import OneShotChatModal from '../chat/OneShotChatModal'
@@ -197,7 +194,7 @@ See the [sippy test details|${document.location.href}] for additional context.
       affects_versions: formData.affectsVersions,
     }
 
-    fetch(getBugsAPIUrl(), {
+    apiFetch('/api/component_readiness/bugs', {
       method: 'POST',
       body: JSON.stringify(bugData),
     })
@@ -215,7 +212,7 @@ See the [sippy test details|${document.location.href}] for additional context.
             type: formData.triageType,
           }
 
-          return fetch(getTriagesAPIUrl(), {
+          return apiFetch('/api/component_readiness/triages', {
             method: 'POST',
             body: JSON.stringify(triageData),
           }).then((triageResponse) => {

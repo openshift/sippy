@@ -1,7 +1,7 @@
 import { ArrayParam, useQueryParam } from 'use-query-params'
 import { Backdrop, CircularProgress } from '@mui/material'
 import { makeStyles } from '@mui/styles'
-import { safeEncodeURIComponent } from '../helpers'
+import { apiFetch, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbarSearchBox from '../datagrid/GridToolbarSearchBox'
 import PropTypes from 'prop-types'
@@ -32,9 +32,8 @@ export default function TestsDetails(props) {
   }
 
   const fetchData = () => {
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/tests/details?release=' +
+    apiFetch(
+      '/api/tests/details?release=' +
         props.release +
         nameParams()
     )

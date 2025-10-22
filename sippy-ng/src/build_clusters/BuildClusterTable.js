@@ -5,7 +5,7 @@ import { generateClasses } from '../datagrid/utils'
 import { Link } from 'react-router-dom'
 import { makeStyles } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { apiFetch, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import { withStyles } from '@mui/styles'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
@@ -134,9 +134,7 @@ function BuildClusterTable(props) {
       queryString += '?period=' + safeEncodeURIComponent(period)
     }
 
-    fetch(
-      process.env.REACT_APP_API_URL + '/api/health/build_cluster' + queryString
-    )
+    apiFetch('/api/health/build_cluster' + queryString)
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)

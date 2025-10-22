@@ -1,7 +1,7 @@
 import FullCalendar from '@fullcalendar/react'
 
 import { Alert, Grid } from '@mui/material'
-import { filterFor } from '../helpers'
+import { apiFetch, filterFor } from '../helpers'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '@mui/material/styles'
 import dayGridPlugin from '@fullcalendar/daygrid'
@@ -44,10 +44,7 @@ export default function PayloadCalendar(props) {
 
   const eventSources = [
     {
-      url:
-        process.env.REACT_APP_API_URL +
-        '/api/releases/tags/events?release=' +
-        props.release,
+      url: '/api/releases/tags/events?release=' + props.release,
       method: 'GET',
       extraParams: {
         filter: JSON.stringify({
@@ -63,10 +60,7 @@ export default function PayloadCalendar(props) {
       success: acceptedSourceSuccess,
     },
     {
-      url:
-        process.env.REACT_APP_API_URL +
-        '/api/releases/tags/events?release=' +
-        props.release,
+      url: '/api/releases/tags/events?release=' + props.release,
       method: 'GET',
       extraParams: {
         filter: JSON.stringify({
@@ -82,7 +76,7 @@ export default function PayloadCalendar(props) {
       success: rejectedSourceSuccess,
     },
     {
-      url: process.env.REACT_APP_API_URL + '/api/incidents',
+      url: '/api/incidents',
       method: 'GET',
       color: theme.palette.common.black,
       textColor: theme.palette.error.contrastText,

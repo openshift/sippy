@@ -1,6 +1,6 @@
 import { CircularProgress } from '@mui/material'
 import { Line } from 'react-chartjs-2'
-import { safeEncodeURIComponent } from '../helpers'
+import { apiFetch, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
 import React, { useEffect } from 'react'
@@ -21,9 +21,8 @@ export function TestDurationChart(props) {
         '&filter=' + safeEncodeURIComponent(JSON.stringify(props.filterModel))
     }
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        `/api/tests/durations?release=${
+    apiFetch(
+      `/api/tests/durations?release=${
           props.release
         }&test=${safeEncodeURIComponent(props.test)}` +
         queryString

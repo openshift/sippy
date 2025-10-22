@@ -1,5 +1,6 @@
 import { Card, Container, Tooltip } from '@mui/material'
 import {
+  apiFetch,
   getReportStartDate,
   relativeDuration,
   relativeTime,
@@ -44,11 +45,7 @@ function PayloadStreamOverview(props) {
       queryString += '&release=' + safeEncodeURIComponent(props.release)
     }
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/releases/health?' +
-        queryString.substring(1)
-    )
+    apiFetch('/api/releases/health?' + queryString.substring(1))
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)

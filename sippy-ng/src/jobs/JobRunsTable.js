@@ -9,6 +9,7 @@ import {
 import { DataGrid } from '@mui/x-data-grid'
 import { DirectionsBoat, GitHub } from '@mui/icons-material'
 import {
+  apiFetch,
   getReportStartDate,
   pathForExactJob,
   relativeTime,
@@ -298,11 +299,7 @@ export default function JobRunsTable(props) {
     queryString += '&perPage=' + safeEncodeURIComponent(pageSize)
     queryString += '&page=' + safeEncodeURIComponent(page)
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/jobs/runs?' +
-        queryString.substring(1)
-    )
+    apiFetch('/api/jobs/runs?' + queryString.substring(1))
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)

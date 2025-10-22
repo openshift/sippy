@@ -1,5 +1,5 @@
+import { apiFetch, relativeTime } from '../../helpers'
 import { createMessage, MESSAGE_TYPES } from '../chatUtils'
-import { relativeTime } from '../../helpers'
 import { SESSION_TYPES } from './sessionSlice'
 
 /**
@@ -32,10 +32,9 @@ export const createShareSlice = (set, get) => ({
 
     set({ loadingShared: true })
 
-    fetch(
-      `${process.env.REACT_APP_API_URL}/api/chat/conversations/${conversationId}`,
-      { signal: abortController.signal }
-    )
+    apiFetch(`/api/chat/conversations/${conversationId}`, {
+      signal: abortController.signal,
+    })
       .then((response) => {
         if (!response.ok) {
           return response.json().then(
@@ -175,7 +174,7 @@ export const createShareSlice = (set, get) => ({
       payload.parent_id = activeSession.sharedId || activeSession.parentId
     }
 
-    fetch(process.env.REACT_APP_API_URL + '/api/chat/conversations', {
+    apiFetch('/api/chat/conversations', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

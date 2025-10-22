@@ -1,7 +1,7 @@
 import { DataGrid } from '@mui/x-data-grid'
 import { makeStyles, useTheme } from '@mui/styles'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
-import { safeEncodeURIComponent, SafeJSONParam } from '../helpers'
+import { apiFetch, safeEncodeURIComponent, SafeJSONParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -136,11 +136,7 @@ function ReleasePayloadPullRequests(props) {
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
 
-    fetch(
-      process.env.REACT_APP_API_URL +
-        '/api/releases/pull_requests?' +
-        queryString.substring(1)
-    )
+    apiFetch('/api/releases/pull_requests?' + queryString.substring(1))
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('server returned ' + response.status)

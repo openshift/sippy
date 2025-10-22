@@ -79,7 +79,7 @@ export const jiraUrlPrefix = 'https://issues.redhat.com/browse/'
 
 // Make one place to create the Component Readiness api call
 export function getAPIUrl(endpoint) {
-  return `${process.env.REACT_APP_API_URL}/api/${endpoint}`
+  return `/api/${endpoint}`
 }
 
 export function getCRMainAPIUrl() {
