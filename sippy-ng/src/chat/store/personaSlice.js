@@ -7,13 +7,9 @@ export const createPersonaSlice = (set, get) => ({
   personasError: null,
 
   loadPersonas: () => {
-    const apiUrl =
-      process.env.REACT_APP_CHAT_API_URL || window.location.origin + '/api/chat'
-    const baseUrl = apiUrl.replace(/\/$/, '').replace(/\/stream$/, '')
-
     set({ personasLoading: true, personasError: null })
 
-    fetch(`${baseUrl}/personas`)
+    fetch(process.env.REACT_APP_API_URL + '/api/chat/personas')
       .then((response) => {
         if (!response.ok) {
           throw new Error(`Failed to fetch personas: ${response.statusText}`)

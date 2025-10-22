@@ -57,20 +57,11 @@ function getRelativeTime(date) {
   return `${diffDays} days ago`
 }
 
-// Get WebSocket URL based on current environment
+// Get WebSocket URL for the chat proxy
 export function getChatWebSocketUrl() {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const baseUrl = process.env.REACT_APP_CHAT_API_URL || '/api/chat'
-
-  let url
-  if (baseUrl.startsWith('/')) {
-    url = new URL(baseUrl, window.location.origin)
-  } else {
-    url = new URL(baseUrl)
-    url.protocol = protocol
-  }
-
-  url.pathname = url.pathname.replace(/\/$/, '') + '/stream'
+  const apiUrl = process.env.REACT_APP_API_URL || window.location.origin
+  const url = new URL('/api/chat/stream', apiUrl)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
   return url.toString()
 }
 

@@ -12,14 +12,7 @@ import (
 
 // rewriteChatPath rewrites /api/chat paths to /chat for the target service
 func rewriteChatPath(path string) string {
-	// Only replace /api/chat when it's followed by end of string or a slash
-	if path == "/api/chat" {
-		return "/chat"
-	}
-	if strings.HasPrefix(path, "/api/chat/") {
-		return "/chat" + strings.TrimPrefix(path, "/api/chat")
-	}
-	return path
+	return strings.Replace(path, "/api/chat", "/chat", 1)
 }
 
 // ChatProxy handles proxying HTTP and WebSocket requests to the sippy-chat service
