@@ -10,6 +10,8 @@ ignore: |
   .git/
   dist/
   build/
-  # Generated file with YAML complex key syntax (? key\n: value)
-  # which uses two spaces after colons by default in gopkg.in/yaml.v3
+  # Exclude generated YAML files, which may use things like complex key
+  # syntax which yamllint doesn't understand, or have other oddities
+  # we don't have much control over from gopkg.in/yaml.v3
   pkg/variantregistry/snapshot.yaml
+  config/openshift.yaml
