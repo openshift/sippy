@@ -16,7 +16,7 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { formatDateToSeconds, relativeTime } from '../helpers'
+import { apiFetch, formatDateToSeconds, relativeTime } from '../helpers'
 import { History } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import PropTypes from 'prop-types'
@@ -66,7 +66,7 @@ export default function TriageAuditLogsModal({ triage }) {
     setError('')
 
     try {
-      const response = await fetch(triage.links.audit_logs)
+      const response = await apiFetch(triage.links.audit_logs)
       if (response.status !== 200) {
         throw new Error(`API server returned ${response.status}`)
       }

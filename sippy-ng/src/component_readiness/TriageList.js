@@ -1,5 +1,5 @@
 import { CapabilitiesContext } from '../App'
-import { getTriagesAPIUrl } from './CompReadyUtils'
+import { apiFetch } from '../helpers'
 import React, { Fragment } from 'react'
 import TriagedTestsPanel from './TriagedTestsPanel'
 
@@ -16,7 +16,7 @@ export default function TriageList() {
     let triageFetch
     // triage entries will only be available when there is a postgres connection
     if (localDBEnabled) {
-      triageFetch = fetch(getTriagesAPIUrl()).then((response) => {
+      triageFetch = apiFetch('/api/component_readiness/triages').then((response) => {
         if (response.status !== 200) {
           throw new Error('API server returned ' + response.status)
         }

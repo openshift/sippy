@@ -11,7 +11,6 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { getTriagesAPIUrl } from '../component_readiness/CompReadyUtils'
 import { apiFetch, relativeTime, safeEncodeURIComponent } from '../helpers'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
@@ -45,7 +44,7 @@ export default function BugTable(props) {
           props.regressionId &&
           bugs.length > 0
         ) {
-          return fetch(getTriagesAPIUrl())
+          return apiFetch('/api/component_readiness/triages')
             .then((res) => {
               if (res.status !== 200) {
                 throw new Error(
@@ -94,7 +93,7 @@ export default function BugTable(props) {
 
   const addToTriage = (triage) => {
     triage.regressions.push({ id: props.regressionId })
-    fetch(getTriagesAPIUrl(triage.id), {
+    apiFetch(`/api/component_readiness/triages/${triage.id}`, {
       method: 'PUT',
       body: JSON.stringify(triage),
     }).then((res) => {

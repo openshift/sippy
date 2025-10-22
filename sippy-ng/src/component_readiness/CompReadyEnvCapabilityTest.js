@@ -12,7 +12,7 @@ import {
 import { ComponentReadinessStyleContext } from './ComponentReadiness'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { Link } from 'react-router-dom'
-import { safeEncodeURIComponent } from '../helpers'
+import { apiFetch, safeEncodeURIComponent } from '../helpers'
 import { TableContainer, Tooltip, Typography } from '@mui/material'
 import CompCapTestRow from './CompCapTestRow'
 import ComponentReadinessToolBar from './ComponentReadinessToolBar'
@@ -133,7 +133,7 @@ export default function CompReadyEnvCapabilityTest(props) {
       apiCallStr += '&forceRefresh=true'
     }
 
-    fetch(apiCallStr, { signal: abortController.signal })
+    apiFetch(apiCallStr, { signal: abortController.signal })
       .then((response) => response.json())
       .then((data) => {
         if (data.code < 200 || data.code >= 300) {

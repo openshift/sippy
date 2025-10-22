@@ -5,10 +5,8 @@ import {
   Info as InfoIcon,
 } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
-import { formatDateToSeconds, relativeTime } from '../helpers'
+import { apiFetch, formatDateToSeconds, relativeTime } from '../helpers'
 import {
-  getRegressionAPIUrl,
-  getTriagesAPIUrl,
   jiraUrlPrefix,
 } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
@@ -60,8 +58,8 @@ export default function RegressionPotentialMatchesTab({
     setLoadingMatches(true)
     setMatchesError('')
 
-    const matchesApiCall = getRegressionAPIUrl(regressionId) + '/matches'
-    fetch(matchesApiCall)
+    const matchesApiCall = `/api/component_readiness/regressions/${regressionId}/matches`
+    apiFetch(matchesApiCall)
       .then((response) => response.json())
       .then((data) => {
         if (data && data.code && (data.code < 200 || data.code >= 300)) {
@@ -123,7 +121,7 @@ export default function RegressionPotentialMatchesTab({
       regressions: [...triage.regressions, { id: Number(regressionId) }],
     }
 
-    fetch(getTriagesAPIUrl(triage.id), {
+    apiFetch(`/api/component_readiness/triages/${triage.id}`, {
       method: 'PUT',
       body: JSON.stringify(updatedTriage),
     })

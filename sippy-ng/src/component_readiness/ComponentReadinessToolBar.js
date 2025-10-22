@@ -30,12 +30,12 @@ import { CompReadyVarsContext } from './CompReadyVars'
 import {
   formColumnName,
   generateTestDetailsReportLink,
-  getTriagesAPIUrl,
   mergeRegressionData,
   Search,
   SearchIconWrapper,
   StyledInputBase,
 } from './CompReadyUtils'
+import { apiFetch } from '../helpers'
 import { Link } from 'react-router-dom'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import IconButton from '@mui/material/IconButton'
@@ -74,7 +74,7 @@ export default function ComponentReadinessToolBar(props) {
     // triage entries will only be available when there is a postgres connection
     let triageFetch
     if (localDBEnabled) {
-      triageFetch = fetch(getTriagesAPIUrl(), {
+      triageFetch = apiFetch('/api/component_readiness/triages', {
         method: 'GET',
       }).then((response) => {
         if (response.status !== 200) {

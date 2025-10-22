@@ -13,7 +13,8 @@ import {
   TextField,
   Tooltip,
 } from '@mui/material'
-import { getTriagesAPIUrl, jiraUrlPrefix } from './CompReadyUtils'
+import { jiraUrlPrefix } from './CompReadyUtils'
+import { apiFetch } from '../helpers'
 import { makeStyles } from '@mui/styles'
 import Button from '@mui/material/Button'
 import ExistingTriageSelector from './ExistingTriageSelector'
@@ -159,7 +160,7 @@ export default function TriageFields({
         }
       }
 
-      fetch(triagesAPIUrl, {
+      apiFetch(triagesAPIUrl, {
         method: method,
         body: JSON.stringify(data),
       }).then((response) => {
@@ -188,7 +189,9 @@ export default function TriageFields({
           handleFormCompletion()
         } else {
           response.json().then((createdTriage) => {
-            fetch(`${getTriagesAPIUrl(createdTriage.id)}/matches?view=${view}`)
+            apiFetch(
+              `/api/component_readiness/triages/${createdTriage.id}/matches?view=${view}`
+            )
               .then((matchesResponse) => {
                 if (matchesResponse.status === 200) {
                   return matchesResponse.json()

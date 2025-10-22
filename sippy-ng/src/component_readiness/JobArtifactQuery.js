@@ -29,7 +29,7 @@ import {
   OpenInNew,
 } from '@mui/icons-material'
 import { getArtifactQueryAPIUrl } from './CompReadyUtils'
-import { relativeTime, safeEncodeURIComponent } from '../helpers'
+import { apiFetch, relativeTime, safeEncodeURIComponent } from '../helpers'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -175,7 +175,7 @@ export default function JobArtifactQuery(props) {
     }
     setLoading(true)
 
-    fetch(url, { signal: abortController.signal })
+    apiFetch(url, { signal: abortController.signal })
       .then((response) => {
         setLoading(false)
         if (response.status < 200 || response.status >= 300) {

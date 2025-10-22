@@ -2,9 +2,8 @@ import { Box, Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { formatDateToSeconds, relativeTime } from '../helpers'
+import { apiFetch, formatDateToSeconds, relativeTime } from '../helpers'
 import {
-  getTriagesAPIUrl,
   hasFailedFixRegression,
   jiraUrlPrefix,
 } from './CompReadyUtils'
@@ -49,7 +48,9 @@ export default function Triage({ id }) {
     let triageFetch
     // triage entries will only be available when there is a postgres connection
     if (localDBEnabled) {
-      triageFetch = fetch(`${getTriagesAPIUrl(id)}?expand=regressions`).then(
+      triageFetch = apiFetch(
+        `/api/component_readiness/triages/${id}?expand=regressions`
+      ).then(
         (response) => {
           if (response.status !== 200) {
             throw new Error('API server returned ' + response.status)
@@ -180,7 +181,7 @@ export default function Triage({ id }) {
       'Are you sure you want to delete this triage record?'
     )
     if (confirmed) {
-      fetch(triage.links.self, {
+      apiFetch(triage.links.self, {
         method: 'DELETE',
       })
         .then((response) => {

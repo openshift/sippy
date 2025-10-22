@@ -14,7 +14,7 @@ import {
   noDataTable,
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { escapeRegex } from '../helpers'
+import { apiFetch, escapeRegex } from '../helpers'
 import { grey } from '@mui/material/colors'
 import { Grid, TableContainer, Tooltip, Typography } from '@mui/material'
 import { makeStyles, useTheme } from '@mui/styles'
@@ -344,7 +344,7 @@ export default function ComponentReadiness(props) {
     if (fresh) {
       formattedApiCallStr += '&forceRefresh=true'
     }
-    fetch(formattedApiCallStr, { signal: abortController.signal })
+    apiFetch(formattedApiCallStr, { signal: abortController.signal })
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('API server returned ' + response.status)
