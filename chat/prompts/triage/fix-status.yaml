@@ -9,19 +9,19 @@ arguments:
     type: string
 prompt: |
   Analyze the fix status and timeline for Jira issue {{ issue_key }}.
-  
+
   ## Analysis Process
-  
+
   Use the get_jira_issue_analysis tool to retrieve comprehensive information about the issue.
-  
+
   ## Key Areas to Investigate
-  
+
   ### 1. Current Status
   - What is the current issue status?
   - Who is the assignee?
   - What are the target fix versions?
   - Is this marked as a release blocker?
-  
+
   ### 2. Recent Activity
   - Review the most recent comments (they reflect current status)
   - Look for indicators of:
@@ -29,27 +29,26 @@ prompt: |
     * Testing status
     * Deployment readiness
     * Any blockers or dependencies
-  
+
   ### 3. Timeline Assessment
   - When was the issue last updated?
   - Is there active progress or has it stalled?
   - Are there any estimated timelines mentioned?
-  
+
   ### 4. Fix Readiness
   Based on the available information, assess:
   - Is the fix complete?
   - Has it been tested?
   - Is it ready for deployment?
   - Are there any remaining blockers?
-  
+
   ## Output Format
-  
+
   Provide a clear summary including:
   - Current status and assignee
   - Key findings from recent comments
   - Assessment of fix readiness and timeline
   - Any blockers or concerns
   - Links to the Jira issue
-  
-  **Note:** Focus on actionable information that helps understand when the fix will be available.
 
+  **Note:** Focus on actionable information that helps understand when the fix will be available.

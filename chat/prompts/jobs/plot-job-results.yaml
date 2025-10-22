@@ -19,19 +19,19 @@ arguments:
     default: 7
 prompt: |
   Create a stacked bar chart visualization of job results for the following criteria:
-  
+
   **Filter Parameters:**
   * Variants: {{ variants | join(', ') }}
   {% if release %}* Release: {{ release }}{% endif %}
   * Time Period: Last {{ days }} days
-  
+
   ## Instructions:
-  
+
   1. **Data Collection:**
      - Query job records matching the specified variant(s){% if release %} and release version{% endif %}
      - Filter for jobs that completed within the last {{ days }} days
      - Group results by outcome (Success, Failure, Aborted, etc.)
-  
+
   2. **Chart Specifications:**
      - **Chart Type**: Stacked bar chart
      - **X-axis**: Time periods
@@ -41,7 +41,7 @@ prompt: |
        * Failure (red)
        * Other states as needed
      - **Legend**: Include a legend explaining the color coding for each outcome
-  
+
   3. **Summary Statistics:**
      After the chart, provide:
      - Total number of job runs analyzed

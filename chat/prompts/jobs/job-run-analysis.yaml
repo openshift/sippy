@@ -9,9 +9,9 @@ arguments:
 prompt: |
   Perform a comprehensive failure analysis for the Prow job:
   {{ job_url_or_id }}
-  
+
   Extract the numeric job ID from the URL if provided (look for a sequence of 16-19 digits), then analyze the failure systematically.
-  
+
   ## Job Overview
   Use get_prow_job_summary to retrieve the job details, then report:
   - Job name and type (e.g., presubmit, periodic, postsubmit)
@@ -20,7 +20,7 @@ prompt: |
   - Direct links to:
     * Prow job page (primary link for viewing results)
     * Build logs and artifacts
-  
+
   ## Aggregated Jobs Deep Dive (only if applicable)
   If the job is an aggregated job (combines results from multiple underlying job runs):
   - Identify that this is an aggregated job
@@ -34,7 +34,7 @@ prompt: |
     * Are the same tests failing across multiple runs?
     * Are failures isolated to specific underlying runs?
     * Do failures correlate with specific configurations or infrastructure?
-  
+
   ## Test Failure Analysis (only if applicable)
   If tests have failed, identify all failed tests from the job summary:
   - List each failed test with its status
@@ -46,7 +46,7 @@ prompt: |
     * Report the total count
     * Note if this indicates a systemic issue (>10 failures often suggests cluster/infrastructure problems)
     * Group similar failures together if patterns emerge
-  
+
   ## Failure Pattern Classification (only if applicable)
   If tests have failed, analyze the failure pattern:
   - **Single test failure**: Likely a specific test or feature issue
@@ -56,7 +56,7 @@ prompt: |
     * API server unavailability
     * Network connectivity issues
     * Storage subsystem failure
-  
+
   ## Known Incidents Correlation
   Always check for known incidents:
   - Use check_known_incidents to see if there are ongoing Jira incidents
@@ -65,7 +65,7 @@ prompt: |
     * Link to the incident
     * Note if this failure falls within the incident timeframe
     * Indicate whether the test failure is expected due to the incident
-  
+
   ## Log Analysis
   If the initial analysis doesn't reveal clear root causes, perform log analysis. This is especially useful if no tests failed or if tests failed for unclear reasons.
   - Use analyze_job_logs with:
@@ -75,7 +75,7 @@ prompt: |
     * Key error messages and stack traces
     * Timing of failures (early setup vs. test execution vs. teardown)
     * Infrastructure errors vs. application errors
-  
+
   ## Root Cause Hypothesis
   Based on all collected evidence, provide:
   - **Most likely cause**: Specific hypothesis with supporting evidence
@@ -85,13 +85,13 @@ prompt: |
     * Infrastructure problem (cluster provisioning, network, storage)
     * Configuration issue (wrong flags, missing resources)
   - **Confidence level**: High/Medium/Low based on evidence clarity
-  
+
   ## Context and Impact
   - If this is a presubmit job, it may be blocking a PR from merging
   - If this is a periodic/postsubmit job, it may indicate broader quality issues
   - Note if this appears to be an isolated failure or part of a pattern
   - Check if multiple similar jobs are failing (suggest checking related jobs if patterns emerge)
-  
+
   ## Guidelines for Analysis
   - Be specific with evidence: cite exact error messages, test names, and timestamps
   - Use markdown formatting for readability

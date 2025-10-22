@@ -14,43 +14,43 @@ arguments:
     autocomplete: tests
 prompt: |
   Analyze test: **{{ test_name }}** on release **{{ release }}**
-  
+
   ## 1. Overview
   - Display test name as a markdown link to the Sippy analysis page:
     * Format: `[Test Name]({base_url}/sippy-ng/tests/{release}/analysis?test={url_encoded_test_name})`
     * Use current page's base URL if available, else `https://sippy-auth.dptools.openshift.org`
     * URL encode the test name parameter
-  
+
   ## 2. 7-Day Performance
   Use `prow_test_report_7d_matview` materialized view with database tool:
   - Overall pass rate: sum(current_successes) / sum(current_runs) × 100
   - Total runs: sum(current_runs), failures: sum(current_failures), flakes: sum(current_flakes)
   - Trend: consistent passing/failing or intermittent
-  
+
   ## 3. Variant Analysis
   Use `prow_test_report_7d_matview` grouped by variants:
   - Calculate failure rate per variant combination
   - Report: variant combo, pass rate, failure count vs runs
   - Order by worst performing first
   - Note if failures are variant-specific or systemic
-  
+
   ## 4. Failure Modes
   Query `prow_job_run_test_outputs` table for recent failures:
   - Examine up to 10 failure outputs
   - **Consistent**: Same error repeating - include exact error message
   - **Diverse**: Multiple issues - categorize and count distinct failure types
-  
+
   ## 5. Job Run Links
   - Provide up to 5 Prow links where the test itself failed
   - Include job name, timestamp ("X days ago"), and variant
   - Spread across different variants if possible
-  
+
   ## 6. Previous Release Comparison
   - Use get_releases to check if a previous release exists
   - If available, offer to compare: "Would you like me to compare this test's performance with the previous release?"
-  
+
   ## 7. Assessment & Recommendations
   **Root Cause (confidence: High/Medium/Low):**
   - Product bug / Test issue / Infrastructure / Variant-specific
-  
+
   **Guidelines:** Use exact data, include links, use markdown tables for variant breakdowns, state explicitly if data unavailable
