@@ -1,0 +1,65 @@
+# Generate a Jira bug description for a Component Readiness test regression
+name: component-readiness-jira-description
+description: Generate a comprehensive Jira bug description for a test regression using Component Readiness data
+hide: true
+arguments:
+  - name: url
+    description: URL to the test details page in Sippy
+    required: true
+    type: string
+prompt: |
+  Draft a Jira bug description for a Component Readiness test regression. Use Jira markup syntax. Include well-structured headings and sections. Perform a brief analysis of the failure based on the available context.
+
+  **Test Information:**
+  - Test Details URL: {{ url }}
+
+  Use your tools to fetch the test details from the URL to get the test name and regression data.
+
+  **REQUIRED CONTENT - Include these sections in this order:**
+
+  1. **Test Name**: Format the test name (from the fetched data) as: {code:none}<test_name>{code}
+
+  2. **Brief Overview**: Provide a brief overview of the test failure and explanation from the regression data. Do not include the status code.
+
+  3. **Statistics Section**: Use get_test_details_report to retrieve the regression data, then format BOTH Sample and Base stats in this exact format:
+
+     {panel:title=Sample (being evaluated)|borderStyle=solid}
+     *Release:* <release>
+     *Time Period:* <start_time> to <end_time>
+     *Success Rate:* <rate>%
+     *Successes:* <count>
+     *Failures:* <count>
+     *Flakes:* <count>
+     {panel}
+
+     {panel:title=Base (historical)|borderStyle=solid}
+     *Release:* <release>
+     *Time Period:* <start_time> to <end_time>
+     *Success Rate:* <rate>%
+     *Successes:* <count>
+     *Failures:* <count>
+     *Flakes:* <count>
+     {panel}
+
+     **CRITICAL:** If the base statistics have no success rate, successes, failures or flakes (all zero values), highlight that this is a NEW test in this release, and must pass at a 95% success threshold, rather than being compared to historical data. In this case, do NOT include the Base panel.
+
+  4. **Sample Failure Outputs**: Use your tools to get outputs from up to 5 jobs that failed this test. Include relevant error messages or stack traces.
+
+  5. **Links to Relevant Jobs**: Provide links to the failed job runs using Jira link syntax: [job name|job url]
+
+  6. **Patterns and Insights**: Analyze the regression data and report any patterns you observe:
+     - Are failures consistent or intermittent?
+     - Are there common error messages?
+     - Is this a new test or an existing test that regressed?
+     - If base stats show flakes but sample stats show failures with no flakes, note that this may indicate a flake-to-failure conversion
+
+  **CRITICAL OUTPUT REQUIREMENTS:**
+  - Your response must contain ONLY the Jira markup description
+  - For links in Jira, you MUST use the Jira syntax format: [link text|link url] - do not use markdown!
+  - Do NOT include any "thought", "Plan:", "thinking", or reasoning sections in your output
+  - Do NOT include any preamble or explanation before the Jira markup
+  - Start your response IMMEDIATELY with the first Jira heading (h3.)
+  - Do NOT include phrases like "Here is the description:", "Final output:", etc.
+  - The entire response must be valid Jira markup that can be directly pasted into a Jira ticket
+  - ALWAYS include the explanation from the regression data (found in the analyses[0].explanations field)
+  - If base statistics are missing or empty, DO NOT include them; instead explain this is a new test being held to the 95% success rate standard
