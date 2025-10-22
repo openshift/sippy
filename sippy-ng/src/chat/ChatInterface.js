@@ -416,7 +416,7 @@ export default function ChatInterface({
           onSendMessage={handleSendMessageWithFork}
           onRetry={connectWebSocket}
           pageContext={pageContext}
-          suggestions={pageContext?.suggestions || null}
+          suggestedQuestions={pageContext?.suggestedQuestions || null}
         />
       </div>
 

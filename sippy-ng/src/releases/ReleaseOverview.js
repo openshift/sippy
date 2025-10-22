@@ -118,17 +118,7 @@ export default function ReleaseOverview(props) {
     setPageContextForChat({
       page: 'release-overview',
       url: window.location.href,
-      suggestions: [
-        'How is the overall health of the release?',
-        {
-          prompt: 'payload-report',
-          label: 'Payload Status Report',
-          args: {
-            releases: [props.release],
-            streams: ['nightly', 'ci'],
-          },
-        },
-      ],
+      suggestedQuestions: ['How is the overall health of the release?'],
       data: {
         release: props.release,
         indicators: {

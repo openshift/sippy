@@ -145,7 +145,7 @@ export default function ComponentReadinessToolBar(props) {
         Status values: negative numbers indicate regressions (more negative = more severe), positive numbers indicate stability.
         Unresolved regressions have status <= -200 (not yet hopefully fixed).`,
 
-      suggestions: [
+      suggestedQuestions: [
         'What regressions are new today?',
         "What regressions haven't been triaged?",
       ],
