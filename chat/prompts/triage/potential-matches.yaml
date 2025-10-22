@@ -1,0 +1,62 @@
+# Find additional tests that should be added to a triage
+name: triage-potential-matches
+description: Analyze potential test matches that could be added to this triage based on failure patterns
+hide: true
+arguments:
+  - name: triage_id
+    description: The triage record ID
+    required: true
+    type: string
+  - name: view
+    description: The component readiness view
+    required: true
+    type: string
+prompt: |
+  Identify additional tests that should be added to triage record {{ triage_id }} in view {{ view }}.
+
+  ## Analysis Process
+
+  **IMPORTANT:** Follow this exact process to determine match likelihood:
+
+  ### Step 1: Get Candidate Tests
+  - Use get_triage_potential_matches with triage_id={{ triage_id }} and view={{ view }}
+  - This returns candidate tests sorted by API confidence score
+
+  ### Step 2: Sample Existing Triaged Tests
+  - From the existing triaged tests (available in the page context's regressed_tests)
+  - Select 2-4 representative tests that provide a fair sampling of the set
+  - Consider different components, test types, or failure patterns if diverse
+  - Otherwise, just pick the first few tests
+  - Use get_test_details_report with their test_details_api_url to get failed_job_run_ids
+
+  ### Step 3: Get Potential Match Details
+  - For the top 2-4 potential matches from Step 1
+  - Use get_test_details_report with their test_details_api_url (from regressed_test.links.test_details)
+  - Retrieve their failed_job_run_ids
+
+  ### Step 4: Calculate Job Run Overlap
+  - Compare the failed_job_run_ids from Step 2 and Step 3
+  - Count how many job runs each potential match shares with the sampled existing triaged tests
+  - **Key insight:** Tests failing in the same job runs are strong indicators of related failures
+
+  ### Step 5: Prioritize Recommendations
+  - Prioritize potential matches by: (high API confidence) AND (high job run overlap)
+  - A potential match with many common job runs is very likely to have the same root cause
+
+  ## Output Format
+
+  For each recommended test, provide:
+  - Test name and component
+  - API confidence score
+  - Number of shared job runs with existing triaged tests
+  - **Specific details:** Which existing triaged tests (include their regression_id from regressed_test.regression.id) does this potential match share job runs with?
+  - Links to the test details
+
+  ## Recommendation Priority
+
+  Classify recommendations as:
+  - **High confidence**: High API score + significant job run overlap (>50%)
+  - **Medium confidence**: High API score OR moderate job run overlap
+  - **Low confidence**: Low overlap, investigate further before adding
+
+  **Note:** The goal is to identify tests failing due to the same root cause, so shared job runs are the strongest signal.

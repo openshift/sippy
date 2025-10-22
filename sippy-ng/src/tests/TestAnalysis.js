@@ -120,9 +120,16 @@ export function TestAnalysis(props) {
         You can use your database query tools to answer additional questions about this test.
         When querying the database, use the test name and apply the same filters shown in the context.
         The test statistics shown are for the current 7-day period compared to the previous 7-day period.`,
-      suggestedQuestions: [
+      suggestions: [
         'What are the most common failure modes for this test?',
-        'Which jobs does this test fail most frequently in?',
+        {
+          prompt: 'test-analysis',
+          label: 'Detailed Test Analysis',
+          args: {
+            release: props.release,
+            test_name: testName,
+          },
+        },
       ],
       data: {
         release: props.release,
