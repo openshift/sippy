@@ -1,11 +1,10 @@
 import { AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material'
-import { Button, Snackbar, Tooltip } from '@mui/material'
+import { Button, Tooltip } from '@mui/material'
 import { CapabilitiesContext } from '../App'
 import { makeStyles } from '@mui/styles'
-import { useDrawer, usePrompts, useSessionActions } from './store/useChatStore'
-import Alert from '@mui/material/Alert'
+import { useDrawer, useSessionActions } from './store/useChatStore'
 import PropTypes from 'prop-types'
-import React, { useContext, useState } from 'react'
+import React, { useContext } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   defaultStyledButton: {
@@ -34,68 +33,29 @@ const useStyles = makeStyles((theme) => ({
 
 /**
  * AskSippyButton - A reusable button that pre-sends a question to the chat widget in
- * a new session. Can be used with either a direct question or a slash command.
+ * a new session.
  *
- * Example usage with direct question:
+ * Example usage:
  * ```jsx
  * <AskSippyButton
  *   question="Why is this test failing?"
  *   tooltip="Ask Sippy about this test"
  * />
  * ```
- *
- * Example usage with slash command:
- * ```jsx
- * <AskSippyButton
- *   slashCommand="test-details-analysis"
- *   commandArgs={{ url: window.location.href }}
- *   tooltip="Analyze this test regression"
- * />
- * ```
  */
-export default function AskSippyButton({
-  question,
-  slashCommand,
-  commandArgs,
-  tooltip,
-}) {
+export default function AskSippyButton({ question, tooltip }) {
   const { openDrawer } = useDrawer()
   const { startNewSession } = useSessionActions()
-  const { renderPrompt } = usePrompts()
   const capabilities = useContext(CapabilitiesContext)
   const classes = useStyles()
-  const [isRendering, setIsRendering] = useState(false)
-  const [error, setError] = useState(null)
 
   if (!capabilities.includes('chat')) {
     return null
   }
 
-  const handleClick = async () => {
-    // If using a slash command, render the prompt first
-    if (slashCommand && commandArgs) {
-      setIsRendering(true)
-      setError(null)
-      try {
-        const rendered = await renderPrompt(slashCommand, commandArgs)
-        openDrawer()
-        startNewSession(rendered)
-      } catch (err) {
-        console.error('Failed to render prompt:', err)
-        setError(
-          `Failed to load prompt '${slashCommand}': ${err.message || err}`
-        )
-      } finally {
-        setIsRendering(false)
-      }
-    } else if (question) {
-      openDrawer()
-      startNewSession(question)
-    }
-  }
-
-  const handleCloseError = () => {
-    setError(null)
+  const handleClick = () => {
+    openDrawer()
+    startNewSession(question)
   }
 
   const button = (
@@ -105,36 +65,19 @@ export default function AskSippyButton({
       startIcon={<AutoAwesomeIcon />}
       onClick={handleClick}
       className={classes.defaultStyledButton}
-      disabled={isRendering}
     >
-      {isRendering ? 'Loading...' : 'Ask Sippy'}
+      Ask Sippy
     </Button>
   )
 
-  return (
-    <>
-      {tooltip ? <Tooltip title={tooltip}>{button}</Tooltip> : button}
-      <Snackbar
-        open={!!error}
-        autoHideDuration={6000}
-        onClose={handleCloseError}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-      >
-        <Alert
-          onClose={handleCloseError}
-          severity="error"
-          sx={{ width: '100%' }}
-        >
-          {error}
-        </Alert>
-      </Snackbar>
-    </>
-  )
+  if (tooltip) {
+    return <Tooltip title={tooltip}>{button}</Tooltip>
+  }
+
+  return button
 }
 
 AskSippyButton.propTypes = {
-  question: PropTypes.string,
-  slashCommand: PropTypes.string,
-  commandArgs: PropTypes.object,
+  question: PropTypes.string.isRequired,
   tooltip: PropTypes.string,
 }

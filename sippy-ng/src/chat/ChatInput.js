@@ -6,28 +6,23 @@ import {
   TextField,
   Tooltip,
 } from '@mui/material'
-import {
-  Code as CodeIcon,
-  Masks as MasksIcon,
-  PlayArrow as PlayArrowIcon,
-  Refresh as RefreshIcon,
-  Send as SendIcon,
-  Stop as StopIcon,
-} from '@mui/icons-material'
 import { CONNECTION_STATES } from './store/webSocketSlice'
 import { humanize, validateMessage } from './chatUtils'
 import { makeStyles } from '@mui/styles'
 import {
+  Masks as MasksIcon,
+  Refresh as RefreshIcon,
+  Send as SendIcon,
+  Stop as StopIcon,
+} from '@mui/icons-material'
+import {
   useConnectionState,
   usePersonas,
-  usePrompts,
   useSettings,
   useWebSocketActions,
 } from './store/useChatStore'
 import PropTypes from 'prop-types'
 import React, { useEffect, useRef, useState } from 'react'
-import SlashCommandModal from './SlashCommandModal'
-import SlashCommandSelector from './SlashCommandSelector'
 
 const useStyles = makeStyles((theme) => ({
   inputContainer: {
@@ -89,17 +84,13 @@ const useStyles = makeStyles((theme) => ({
       backgroundColor: theme.palette.action.hover,
     },
   },
-  commandMenuButton: {
-    padding: theme.spacing(1),
-  },
 }))
 
-// Default suggestions - can be either questions (strings) or commands (objects)
-const DEFAULT_SUGGESTIONS = [
-  { prompt: 'payload-report', label: 'Payload Status Report' },
-  { prompt: 'plot-job-results', label: 'Plot Job Results' },
-  { prompt: 'job-run-analysis', label: 'Analyze a Job Run' },
-  { prompt: 'jira-incidents', label: 'View Open Incidents' },
+const EXAMPLE_QUERIES = [
+  'What incidents are currently on-going?',
+  'What is the latest 4.20 payload?',
+  'When did 4.16 go GA?',
+  'Why did [prow job ID] fail?',
 ]
 
 export default function ChatInput({
@@ -107,33 +98,22 @@ export default function ChatInput({
   onRetry,
   placeholder = 'Ask about OpenShift releases, job failures, or payload status...',
   pageContext = null,
-  suggestions = null,
+  suggestedQuestions = null,
 }) {
   const classes = useStyles()
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const textFieldRef = useRef(null)
 
-  // Slash command state
-  const [showSlashCommands, setShowSlashCommands] = useState(false)
-  const [selectedPrompt, setSelectedPrompt] = useState(null)
-  const [modalOpen, setModalOpen] = useState(false)
-  const [commandMenuAnchor, setCommandMenuAnchor] = useState(null)
-  const slashNavigationRef = useRef(null)
-
   const { settings } = useSettings()
   const { personas } = usePersonas()
-  const { prompts, renderPrompt } = usePrompts()
   const { connectionState, isTyping } = useConnectionState()
   const { stopGeneration } = useWebSocketActions()
 
   const isConnected = connectionState === CONNECTION_STATES.CONNECTED
   const disabled = !isConnected
 
-  const displaySuggestions = suggestions || DEFAULT_SUGGESTIONS
-
-  const slashCommandFilter =
-    message && message.startsWith('/') ? message.slice(1) : ''
+  const displayQuestions = suggestedQuestions || EXAMPLE_QUERIES
 
   const getContextDisplay = () => {
     if (!pageContext?.page) return null
@@ -155,38 +135,6 @@ export default function ChatInput({
     if (error) {
       setError('')
     }
-
-    setShowSlashCommands(value.startsWith('/'))
-  }
-
-  const handlePromptSelect = (prompt) => {
-    setSelectedPrompt(prompt)
-    setModalOpen(true)
-    setShowSlashCommands(false)
-    setMessage('')
-  }
-
-  const handleModalSubmit = (renderedPrompt) => {
-    const success = onSendMessage(renderedPrompt)
-    if (success) {
-      setMessage('')
-      setError('')
-      setModalOpen(false)
-      setSelectedPrompt(null)
-    }
-  }
-
-  const handleModalClose = () => {
-    setModalOpen(false)
-    setSelectedPrompt(null)
-  }
-
-  const handleCommandMenuOpen = (event) => {
-    setCommandMenuAnchor(event.currentTarget)
-  }
-
-  const handleCommandMenuClose = () => {
-    setCommandMenuAnchor(null)
   }
 
   const handleSendMessage = () => {
@@ -210,45 +158,6 @@ export default function ChatInput({
   }
 
   const handleKeyPress = (event) => {
-    // Handle slash command navigation
-    if (showSlashCommands && slashNavigationRef.current) {
-      if (event.key === 'Tab') {
-        event.preventDefault()
-        if (event.shiftKey) {
-          slashNavigationRef.current.movePrevious()
-        } else {
-          slashNavigationRef.current.moveNext()
-        }
-        return
-      }
-
-      if (event.key === 'ArrowDown') {
-        event.preventDefault()
-        slashNavigationRef.current.moveNext()
-        return
-      }
-
-      if (event.key === 'ArrowUp') {
-        event.preventDefault()
-        slashNavigationRef.current.movePrevious()
-        return
-      }
-
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault()
-        slashNavigationRef.current.selectCurrent()
-        return
-      }
-
-      if (event.key === 'Escape') {
-        event.preventDefault()
-        setShowSlashCommands(false)
-        setMessage('')
-        return
-      }
-    }
-
-    // Normal message handling
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault()
       // Only send if not typing (same logic as button)
@@ -258,51 +167,9 @@ export default function ChatInput({
     }
   }
 
-  const handleSuggestionClick = async (suggestion) => {
-    // Handle plain text questions - send directly
-    if (typeof suggestion === 'string') {
-      onSendMessage(suggestion)
-      return
-    }
-
-    // Handle command objects
-    const command = suggestion
-
-    // Find the prompt definition
-    const prompt = prompts.find((p) => p.name === command.prompt)
-    if (!prompt) {
-      console.error(`Prompt '${command.prompt}' not found`)
-      setError(`Command '${command.prompt}' not found`)
-      return
-    }
-
-    // Check if prompt has any required arguments
-    const hasRequiredArgs =
-      prompt.arguments && prompt.arguments.some((arg) => arg.required)
-
-    // Check if all required arguments are pre-filled
-    const allRequiredArgsFilled =
-      !hasRequiredArgs ||
-      (command.args &&
-        prompt.arguments.every(
-          (arg) => !arg.required || command.args[arg.name] !== undefined
-        ))
-
-    // If no required arguments OR all required args are pre-filled, send directly
-    if (allRequiredArgsFilled) {
-      try {
-        const rendered = await renderPrompt(prompt.name, command.args || {})
-        onSendMessage(rendered)
-      } catch (err) {
-        console.error('Failed to render prompt:', err)
-        setError(`Failed to render prompt '${prompt.name}': ${err.message}`)
-      }
-      return
-    }
-
-    // Otherwise, show the modal for user input
-    setSelectedPrompt({ ...prompt, prefilledArgs: command.args })
-    setModalOpen(true)
+  const handleSuggestionClick = (suggestion) => {
+    setMessage(suggestion)
+    textFieldRef.current?.focus()
   }
 
   const getCharacterCountClass = () => {
@@ -385,49 +252,19 @@ export default function ChatInput({
         </span>
       </div>
 
-      {/* Suggestions (show when input is empty) */}
+      {/* Example suggestions (show when input is empty) */}
       {message.length === 0 && (
-        <div className={classes.suggestions} data-tour="suggestions">
-          {displaySuggestions.slice(0, 5).map((suggestion, index) => {
-            // Check if it's a command object or plain question
-            const isCommand = typeof suggestion === 'object'
-
-            if (isCommand) {
-              // Command chip with icon and tooltip
-              return (
-                <Tooltip
-                  key={index}
-                  title={`Run command: /${suggestion.prompt}`}
-                  arrow
-                >
-                  <span>
-                    <Chip
-                      icon={<PlayArrowIcon />}
-                      label={suggestion.label}
-                      size="small"
-                      variant="outlined"
-                      className={classes.suggestionChip}
-                      onClick={() => handleSuggestionClick(suggestion)}
-                      disabled={isTyping}
-                    />
-                  </span>
-                </Tooltip>
-              )
-            }
-
-            // Plain question chip
-            return (
-              <Chip
-                key={index}
-                label={suggestion}
-                size="small"
-                variant="outlined"
-                className={classes.suggestionChip}
-                onClick={() => handleSuggestionClick(suggestion)}
-                disabled={isTyping}
-              />
-            )
-          })}
+        <div className={classes.suggestions} data-tour="sample-questions">
+          {displayQuestions.slice(0, 5).map((suggestion, index) => (
+            <Chip
+              key={index}
+              label={suggestion}
+              size="small"
+              variant="outlined"
+              className={classes.suggestionChip}
+              onClick={() => handleSuggestionClick(suggestion)}
+            />
+          ))}
         </div>
       )}
 
@@ -440,7 +277,7 @@ export default function ChatInput({
           maxRows={4}
           value={message}
           onChange={handleMessageChange}
-          onKeyDown={handleKeyPress}
+          onKeyPress={handleKeyPress}
           placeholder={placeholder}
           disabled={disabled}
           error={!!error}
@@ -448,32 +285,6 @@ export default function ChatInput({
           variant="outlined"
           size="small"
         />
-
-        {/* Slash command autocomplete */}
-        <SlashCommandSelector
-          anchorEl={textFieldRef.current}
-          filterText={slashCommandFilter}
-          open={showSlashCommands}
-          onSelect={handlePromptSelect}
-          onNavigate={(navigation) => {
-            slashNavigationRef.current = navigation
-          }}
-          placement="top-start"
-        />
-
-        {/* Command menu button */}
-        <Tooltip title="Insert prompt command">
-          <span data-tour="command-button">
-            <IconButton
-              className={classes.commandMenuButton}
-              onClick={handleCommandMenuOpen}
-              disabled={disabled || isTyping}
-              color="primary"
-            >
-              <CodeIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
 
         <Tooltip
           title={
@@ -498,25 +309,6 @@ export default function ChatInput({
           </span>
         </Tooltip>
       </div>
-
-      {/* Command menu */}
-      <SlashCommandSelector
-        anchorEl={commandMenuAnchor}
-        filterText=""
-        open={Boolean(commandMenuAnchor)}
-        onSelect={handlePromptSelect}
-        onClose={handleCommandMenuClose}
-        placement="bottom-start"
-      />
-
-      {/* Slash command modal */}
-      <SlashCommandModal
-        open={modalOpen}
-        onClose={handleModalClose}
-        prompt={selectedPrompt}
-        onSubmit={handleModalSubmit}
-        disabled={isTyping}
-      />
     </Paper>
   )
 }
@@ -531,15 +323,5 @@ ChatInput.propTypes = {
     data: PropTypes.object,
     instructions: PropTypes.string,
   }),
-  suggestions: PropTypes.arrayOf(
-    PropTypes.oneOfType([
-      PropTypes.string, // Plain text question
-      PropTypes.shape({
-        // Command object
-        prompt: PropTypes.string.isRequired,
-        label: PropTypes.string.isRequired,
-        args: PropTypes.object,
-      }),
-    ])
-  ),
+  suggestedQuestions: PropTypes.arrayOf(PropTypes.string),
 }

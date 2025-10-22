@@ -14,7 +14,6 @@ import MessageChart from './MessageChart'
 import PropTypes from 'prop-types'
 import React from 'react'
 import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 
 // Custom link component for ReactMarkdown that opens external links in new tabs
 const ChatLink = ({ href, children, ...props }) => {
@@ -227,38 +226,6 @@ const useStyles = makeStyles((theme) => ({
         color: theme.palette.mode === 'dark' ? '#ba68c8' : '#7b1fa2', // Purple for visited links
       },
     },
-    '& table': {
-      borderCollapse: 'collapse',
-      width: '100%',
-      margin: '8px 0',
-      fontSize: '0.875rem',
-      overflow: 'auto',
-      display: 'block',
-      maxWidth: '100%',
-    },
-    '& thead': {
-      backgroundColor:
-        theme.palette.mode === 'dark'
-          ? 'rgba(255, 255, 255, 0.1)'
-          : 'rgba(0, 0, 0, 0.05)',
-    },
-    '& th': {
-      border: `1px solid ${theme.palette.divider}`,
-      padding: '8px 12px',
-      textAlign: 'left',
-      fontWeight: 600,
-    },
-    '& td': {
-      border: `1px solid ${theme.palette.divider}`,
-      padding: '8px 12px',
-      textAlign: 'left',
-    },
-    '& tr:nth-of-type(even)': {
-      backgroundColor:
-        theme.palette.mode === 'dark'
-          ? 'rgba(255, 255, 255, 0.02)'
-          : 'rgba(0, 0, 0, 0.02)',
-    },
   },
   systemMessage: {
     textAlign: 'center',
@@ -314,10 +281,7 @@ export default function ChatMessage({
         </Avatar>
         <Paper className={`${classes.messagePaper} user`} elevation={2}>
           <div className={`${classes.messageText} ${classes.markdownContent}`}>
-            <ReactMarkdown
-              components={{ a: ChatLink }}
-              remarkPlugins={[remarkGfm]}
-            >
+            <ReactMarkdown components={{ a: ChatLink }}>
               {message.content}
             </ReactMarkdown>
           </div>
@@ -345,10 +309,7 @@ export default function ChatMessage({
         </Avatar>
         <Paper className={`${classes.messagePaper} assistant`} elevation={2}>
           <div className={`${classes.messageText} ${classes.markdownContent}`}>
-            <ReactMarkdown
-              components={{ a: ChatLink }}
-              remarkPlugins={[remarkGfm]}
-            >
+            <ReactMarkdown components={{ a: ChatLink }}>
               {message.content}
             </ReactMarkdown>
           </div>
@@ -416,10 +377,7 @@ export default function ChatMessage({
         }
       >
         <div className={classes.markdownContent}>
-          <ReactMarkdown
-            components={{ a: ChatLink }}
-            remarkPlugins={[remarkGfm]}
-          >
+          <ReactMarkdown components={{ a: ChatLink }}>
             {message.content}
           </ReactMarkdown>
         </div>

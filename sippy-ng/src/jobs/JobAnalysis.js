@@ -171,12 +171,9 @@ export function JobAnalysis(props) {
       instructions: `The user is viewing job analysis for multiple jobs matching specific filters.
         You can use your database query tools to answer additional questions about the jobs being viewed.
         When querying the database, apply the same filters shown in the context, especially the variant filters.`,
-      suggestions: [
+      suggestedQuestions: [
         'What are the most common test failures across these jobs?',
-        {
-          prompt: 'job-run-analysis',
-          label: 'Analyze a Failed Job',
-        },
+        'Which jobs have the lowest pass rates?',
       ],
       data: {
         release: props.release,
