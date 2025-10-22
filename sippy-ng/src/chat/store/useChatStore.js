@@ -3,6 +3,7 @@ import { createDrawerSlice } from './drawerSlice'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import { createPageContextSlice } from './pageContextSlice'
 import { createPersonaSlice } from './personaSlice'
+import { createPromptsSlice } from './promptsSlice'
 import { createSessionSlice } from './sessionSlice'
 import { createSettingsSlice } from './settingsSlice'
 import { createShareSlice } from './shareSlice'
@@ -27,6 +28,7 @@ export const useChatStore = create(
       ...createPersonaSlice(set, get),
       ...createPageContextSlice(set, get),
       ...createDrawerSlice(set, get),
+      ...createPromptsSlice(set, get),
     }),
     {
       name: 'sippy-chat-storage',
@@ -153,5 +155,16 @@ export const useWebSocketActions = () =>
       disconnectWebSocket: state.disconnectWebSocket,
       sendMessage: state.sendMessage,
       stopGeneration: state.stopGeneration,
+    }))
+  )
+
+export const usePrompts = () =>
+  useChatStore(
+    useShallow((state) => ({
+      prompts: state.prompts,
+      promptsLoading: state.promptsLoading,
+      promptsError: state.promptsError,
+      fetchPrompts: state.fetchPrompts,
+      renderPrompt: state.renderPrompt,
     }))
   )

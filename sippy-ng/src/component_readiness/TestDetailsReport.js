@@ -55,25 +55,6 @@ const cancelFetch = () => {
   abortController.abort()
 }
 
-// Map status code to description based on the status codes used in getStatusAndIcon
-const getStatusDescription = (statusCode) => {
-  const statusMap = {
-    '-1000': 'Failed fix detected',
-    '-500': 'ExtremeRegression detected',
-    '-400': 'SignificantRegression detected',
-    '-300': 'ExtremeTriagedRegression detected',
-    '-200': 'SignificantTriagedRegression detected',
-    '-150': 'Fixed (hopefully) regression detected',
-    '-100': 'Missing Sample (sample data missing)',
-    0: 'NoSignificantDifference detected',
-    100: 'Missing Basis (basis data missing)',
-    200: 'Missing Basis And Sample (basis and sample data missing)',
-    300: 'SignificantImprovement detected (improved sample rate)',
-  }
-
-  return statusMap[statusCode.toString()] || `Unknown Status (${statusCode})`
-}
-
 function tabProps(index) {
   return {
     id: `test-report-tab-${index}`,
@@ -249,108 +230,17 @@ export default function TestDetailsReport(props) {
 
     hasSetContextRef.current = true
 
-    const firstAnalysis = data.analyses[0]
-
-    // Helper to format date range
-    const formatDateRange = (stats) => {
-      if (!stats || !stats.Start || !stats.End) return null
-      try {
-        const start = new Date(stats.Start)
-        const end = new Date(stats.End)
-        const duration = Math.floor(
-          (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
-        )
-        return {
-          start: start.toISOString().split('T')[0],
-          end: end.toISOString().split('T')[0],
-          duration_days: duration,
-        }
-      } catch {
-        return null
-      }
-    }
-
-    // Collect sample job failure IDs (limit to 10 for context management)
-    const failedJobRunIds = []
-    if (firstAnalysis.job_stats) {
-      for (const jobStat of firstAnalysis.job_stats) {
-        if (
-          jobStat.sample_job_run_stats &&
-          Array.isArray(jobStat.sample_job_run_stats)
-        ) {
-          for (const sampleJobRun of jobStat.sample_job_run_stats) {
-            if (
-              sampleJobRun.test_stats &&
-              sampleJobRun.test_stats.failure_count > 0 &&
-              sampleJobRun.job_run_id
-            ) {
-              failedJobRunIds.push(sampleJobRun.job_run_id)
-              if (failedJobRunIds.length >= 10) break
-            }
-          }
-          if (failedJobRunIds.length >= 10) break
-        }
-      }
-    }
-
-    const sampleDateRange = formatDateRange(firstAnalysis.sample_stats)
-    const baseDateRange = formatDateRange(firstAnalysis.base_stats)
-
-    const contextData = {
+    setPageContextForChat({
       page: 'component-readiness-test-details',
       url: window.location.href,
-      instructions: `You are viewing a Component Readiness test regression analysis.
-
-**How to analyze test regressions:**
-
-1. **Summarize the regression status:**
-   - Report when it was opened (regression.opened) - format as human-readable date (e.g., "January 15, 2024") and include how many days ago this was. 
-     Do not include the actual time.
-   - Report if it's closed (regression.closed) or still ongoing - if closed, format the date similarly and show days ago
-   - Explain the status code (e.g., -400 = SignificantRegression, -500 = ExtremeRegression >15% change)
-   - **Always include and explain the explanations from the data** - these provide critical context about why the test is flagged
-
-2. **Compare sample vs base statistics:**
-   - Calculate the pass rate change: (sample_stats.success_rate - base_stats.success_rate) * 100
-   - Note the time periods being compared (check date_range for each) - display date ranges in human-readable format with days ago context
-   - Identify if this is a recent degradation or long-term issue
-   - Note if the BaseRelease appears to be more than one minor version ahead of the sample release.
-     This would indicate we found a better pass rate in earlier releases, so we compared against
-     that release instead of the one prior to prevent a test gradually getting worse.
-   - Check if we see base_stats.flake_count > 0 and base_stats.failure_count close to 0,
-     but the sample_stats.failure_count > 0 and sample_stats.flake_count = 0.
-     This may indicate a test that had it's ability to flake removed. (a dangerous policy we're slowly working to remove)
-     Note the flake rate in the base_stats compared to the fail rate in the sample_stats for the user,
-     and see if they are comparable so we can know if the test is actually getting significantly worse.
-
-3. **Investigate the root cause:**
-   - Use the sample_failed_job_runs.sample_ids to dig into specific failures
-   - Call get_prow_job_summary **in parallel** for multiple job run IDs to understand failure patterns
-   - Look for common failure reasons across the job runs
-   - Check if failures are consistent or intermittent
-
-4. **Check for triages:**
-   - If triages_count > 0, the regression has been attributed to a known Jira issue
-   - Note whether the triage has a resolved timestamp
-   - If there are failures after the resolved timestamp, this indicates a failed fix
-
-5. **Determine if tests are failing for the same reasons:**
-   - Look for patterns in the set of tests that fail in each job run.
-     If the same tests are failing in each job, this indicates they may all be related to the same failure.
-     If a job suffers from mass failures (more than 10 failed tests), this may indicate a systemic
-     problem in the cluster and perhaps the test is not at fault.
-     If the test is the only failure in each run, this more likely indicates a problem with this
-     specific test or the feature it is testing.
-   - Analyze the test failure outputs from multiple failed job runs using get_prow_job_summary
-   - Compare error messages, stack traces, and failure patterns
-   - Report whether it's a consistent failure (same root cause) or multiple different issues
-   
-6. **Remind the user about the importance of regressions:**
-   - Regressions represent the line of quality we're willing to ship in the product or not.
-   - We treat regressions as release blockers for this reason.
-   - We will not ship a release with a regression unless the relevant team is willing to submit
-     an SBAR to the leadership team and BU for approval.`,
-      suggestedQuestions: [
+      suggestions: [
+        {
+          prompt: 'component-readiness-regression-analysis',
+          label: 'Analyze Test Regression',
+          args: {
+            url: window.location.href,
+          },
+        },
         'Why is this test regressed?',
         'Show me sample outputs from test failures',
         'What other tests are failing together?',
@@ -361,55 +251,8 @@ export default function TestDetailsReport(props) {
         component: component,
         capability: capability,
         environment: environment,
-        regression: firstAnalysis.regression
-          ? {
-              id: firstAnalysis.regression.id,
-              opened: firstAnalysis.regression.opened,
-              closed:
-                firstAnalysis.regression.closed &&
-                firstAnalysis.regression.closed.valid
-                  ? firstAnalysis.regression.closed.time
-                  : null,
-            }
-          : null,
-        status: {
-          code: firstAnalysis.status,
-          description: getStatusDescription(firstAnalysis.status),
-        },
-        explanations: firstAnalysis.explanations || [],
-        sample_stats: firstAnalysis.sample_stats
-          ? {
-              release: firstAnalysis.sample_stats.release,
-              success_count: firstAnalysis.sample_stats.success_count,
-              failure_count: firstAnalysis.sample_stats.failure_count,
-              flake_count: firstAnalysis.sample_stats.flake_count,
-              success_rate: firstAnalysis.sample_stats.success_rate,
-              date_range: sampleDateRange,
-            }
-          : null,
-        base_stats: firstAnalysis.base_stats
-          ? {
-              release: firstAnalysis.base_stats.release,
-              success_count: firstAnalysis.base_stats.success_count,
-              failure_count: firstAnalysis.base_stats.failure_count,
-              flake_count: firstAnalysis.base_stats.flake_count,
-              success_rate: firstAnalysis.base_stats.success_rate,
-              date_range: baseDateRange,
-            }
-          : null,
-        sample_failed_job_runs: {
-          count: failedJobRunIds.length,
-          sample_ids: failedJobRunIds,
-          note:
-            failedJobRunIds.length >= 10
-              ? 'Limited to 10 sample job run IDs'
-              : null,
-        },
-        triages_count: triageEntries.length,
       },
-    }
-
-    setPageContextForChat(contextData)
+    })
 
     // Cleanup: Clear context when component unmounts
     return () => {
@@ -536,6 +379,7 @@ View the [test details report|${document.location.href}] for additional context.
       capability,
       labels: ['component-regression'],
       context: contextWithStats,
+      url: window.location.href,
     }
 
     if (writeEndpointsEnabled) {
@@ -570,8 +414,9 @@ View the [test details report|${document.location.href}] for additional context.
         width="100%"
       >
         <AskSippyButton
-          question="Please summarize this test details report."
-          tooltip="Ask Sippy AI to summarize this test report"
+          slashCommand="component-readiness-regression-analysis"
+          commandArgs={{ url: window.location.href }}
+          tooltip="Ask Sippy AI to analyze this test regression"
         />
         <Tooltip title="Frequently Asked Questions">
           <Link

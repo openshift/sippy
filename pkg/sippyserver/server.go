@@ -2315,6 +2315,19 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.handleChatProxy,
 		},
 		{
+			EndpointPath: "/api/chat/prompts",
+			Description:  "Proxy for listing available prompt templates from sippy-chat service.",
+			Capabilities: []string{ChatCapability},
+			HandlerFunc:  s.handleChatProxy,
+		},
+		{
+			EndpointPath: "/api/chat/prompts/render",
+			Description:  "Proxy for rendering prompt templates from sippy-chat service.",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{ChatCapability},
+			HandlerFunc:  s.handleChatProxy,
+		},
+		{
 			EndpointPath: "/api/chat/ratings",
 			Description:  "Create a chat rating record",
 			Methods:      []string{http.MethodPost},

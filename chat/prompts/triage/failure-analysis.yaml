@@ -1,0 +1,56 @@
+# Analyze test failure patterns across triaged regressions
+name: triage-failure-analysis
+description: Analyze test failure patterns across a triage record's regressed tests to identify common causes
+hide: true
+arguments:
+  - name: triage_id
+    description: The triage record ID
+    required: true
+    type: string
+  - name: view
+    description: The component readiness view
+    required: true
+    type: string
+prompt: |
+  Analyze the test failure patterns for triage record {{ triage_id }} in view {{ view }}.
+
+  ## Analysis Process
+
+  ### 1. Retrieve Test Details
+  - Use get_test_details_report for each regressed test using their test_details_api_url
+  - Focus on understanding the failure patterns and timing
+
+  ### 2. Sample Failed Job Runs
+  - From the test details reports, collect failed_job_run_ids
+  - Sample up to 10 failed job runs across all regressed tests
+  - Choose a representative sampling from different tests when possible
+
+  ### 3. Analyze Job Run Failures
+  - Use get_prow_job_summary **in parallel** for the sampled job run IDs
+  - Look for common failure reasons across the job runs
+  - Examine which tests are failing together in each job run
+
+  ### 4. Pattern Analysis
+  - **Consistent failures**: If the same tests fail together in each run → likely related to the same root cause
+  - **Mass failures**: If a job has >10 failed tests → may indicate systemic cluster problems, tests might not be at fault
+  - **Isolated failures**: If tests only fail individually → more likely problems with specific tests or features
+  - **Error patterns**: Compare error messages, stack traces, and failure outputs across multiple runs
+
+  ### 5. Root Cause Assessment
+  Determine if failures are:
+  - Consistent (same root cause across all failures)
+  - Varied (multiple different issues)
+  - Infrastructure-related (cluster/CI problems)
+  - Test-related (test implementation issues)
+  - Product-related (actual bugs in the product)
+
+  ## Output Format
+
+  Provide your analysis with:
+  - Clear identification of failure patterns
+  - Specific numbers and data points (not vague statements)
+  - Links to relevant Prow job runs or Sippy pages
+  - Assessment of whether failures are related or independent
+  - Actionable insights for debugging or triage
+
+  **Note:** If you cannot find certain information, state so explicitly rather than speculating.
