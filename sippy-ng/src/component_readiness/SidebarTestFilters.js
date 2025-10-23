@@ -7,6 +7,7 @@ import {
   Chip,
   FormControl,
   TextField,
+  Tooltip,
 } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
@@ -76,15 +77,24 @@ export default function SidebarTestFilters(props) {
               options={testCapabilities || []}
               value={varsContext.testCapabilities || []}
               onChange={handleChange}
+              renderOption={(props, option) => (
+                <li
+                  {...props}
+                  style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
+                >
+                  {option}
+                </li>
+              )}
               renderTags={(value, getTagProps) =>
                 value.map((option, index) => (
-                  <Chip
-                    variant="outlined"
-                    label={option}
-                    className={classes.chip}
-                    {...getTagProps({ index })}
-                    key={option}
-                  />
+                  <Tooltip title={option} key={option} placement="top">
+                    <Chip
+                      variant="outlined"
+                      label={option}
+                      className={classes.chip}
+                      {...getTagProps({ index })}
+                    />
+                  </Tooltip>
                 ))
               }
               renderInput={(params) => (
