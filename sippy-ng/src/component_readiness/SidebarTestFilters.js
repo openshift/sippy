@@ -11,7 +11,7 @@ import {
 import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
-import { TestCapabilitiesContext } from '../App'
+import { TestCapabilitiesContext } from './ComponentReadiness'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import Typography from '@mui/material/Typography'
