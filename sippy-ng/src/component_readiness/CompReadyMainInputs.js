@@ -27,7 +27,7 @@ export const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export default function CompReadyMainInputs(props) {
+export default function CompReadyMainInputs({ controlsOpts }) {
   const theme = useTheme()
   const classes = useStyles(theme)
   // checkBoxHiddenIncludeVariants defines what variants are excluded when creating Include Variant CheckBox
@@ -65,7 +65,7 @@ export default function CompReadyMainInputs(props) {
         ))}
       <SidebarTestFilters
         headerName="Test Options"
-        filterByCapabilities={props.filterByCapabilities}
+        controlsOpts={controlsOpts}
       />
       <AdvancedOptions
         headerName="Advanced"
@@ -96,7 +96,7 @@ export default function CompReadyMainInputs(props) {
   const shouldDisplayViewPicker = () => {
     return (
       varsContext.views.length > 0 &&
-      !props.isTestDetails &&
+      !controlsOpts?.isTestDetails &&
       varsContext.environment === undefined &&
       varsContext.capability === undefined &&
       varsContext.component === undefined
@@ -147,7 +147,7 @@ export default function CompReadyMainInputs(props) {
 
       <ReportButton handler={varsContext.handleGenerateReport} />
 
-      {props.isTestDetails || (
+      {controlsOpts?.isTestDetails || (
         <>
           {compReadyEnvOptions}
           <ReportButton handler={varsContext.handleGenerateReport} />
@@ -183,6 +183,5 @@ ReportButton.propTypes = { handler: PropTypes.func }
 
 // component and environment may be null so they are not required
 CompReadyMainInputs.propTypes = {
-  filterByCapabilities: PropTypes.bool,
-  isTestDetails: PropTypes.bool,
+  controlsOpts: PropTypes.object,
 }

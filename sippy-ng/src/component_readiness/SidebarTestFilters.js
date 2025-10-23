@@ -17,7 +17,7 @@ import React, { Fragment, useContext } from 'react'
 import Typography from '@mui/material/Typography'
 
 export default function SidebarTestFilters(props) {
-  if (!props.filterByCapabilities) {
+  if (!props.controlsOpts?.filterByCapabilities) {
     // if we have no filters to show, omit the whole component; for now we only have capabilities as a filter
     return <Fragment />
   }
@@ -68,7 +68,7 @@ export default function SidebarTestFilters(props) {
             paddingRight: '8px',
           }}
         >
-          {props.filterByCapabilities && (
+          {props.controlsOpts?.filterByCapabilities && (
             <Autocomplete
               multiple
               disableClearable
@@ -108,6 +108,6 @@ export default function SidebarTestFilters(props) {
 }
 
 SidebarTestFilters.propTypes = {
-  filterByCapabilities: PropTypes.bool,
+  controlsOpts: PropTypes.object,
   headerName: PropTypes.string,
 }

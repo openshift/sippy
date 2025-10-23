@@ -405,7 +405,7 @@ View the [test details report|${document.location.href}] for additional context.
 
   return (
     <Fragment>
-      <Sidebar isTestDetails={true} />
+      <Sidebar controlsOpts={{ isTestDetails: true }} />
       <Box
         display="flex"
         justifyContent="right"

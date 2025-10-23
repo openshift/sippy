@@ -11,7 +11,7 @@ import MenuIcon from '@mui/icons-material/Menu'
 import PropTypes from 'prop-types'
 import React, { useContext } from 'react'
 
-export default function Sidebar({ filterByCapabilities, isTestDetails }) {
+export default function Sidebar({ controlsOpts }) {
   const classes = useContext(ComponentReadinessStyleContext)
   const theme = useTheme()
   const [drawerOpen, setDrawerOpen] = React.useState(true)
@@ -54,16 +54,15 @@ export default function Sidebar({ filterByCapabilities, isTestDetails }) {
             )}
           </IconButton>
         </div>
-        <CompReadyMainInputs
-          isTestDetails={isTestDetails}
-          filterByCapabilities={filterByCapabilities}
-        />
+        <CompReadyMainInputs controlsOpts={controlsOpts} />
       </Drawer>
     </div>
   )
 }
 
 Sidebar.propTypes = {
-  filterByCapabilities: PropTypes.bool, // only makes sense in CR when not already drilled down to a single capability
-  isTestDetails: PropTypes.bool,
+  // object passing booleans for conditional display of controls; currently includes:
+  //   filterByCapabilities: whether to show the option to filter tests by capabilities (only makes sense before drilling down to a capability)
+  //   isTestDetails: whether we are in the Test Details page, where most options are already determined
+  controlsOpts: PropTypes.object,
 }
