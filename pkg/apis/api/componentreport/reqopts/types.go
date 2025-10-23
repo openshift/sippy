@@ -58,7 +58,7 @@ type RelativeRelease struct {
 
 // TestFilters are query filters on attributes of the tests themselves, as opposed to the jobs they run in
 type TestFilters struct {
-	TestCapabilities []string `json:"test_capabilties,omitempty" yaml:"test_capabilties,omitempty"`
+	Capabilities []string `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
 	// we will likely have more later
 }
 

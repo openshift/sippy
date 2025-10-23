@@ -363,15 +363,15 @@ func BuildComponentReportQuery(
 	}
 
 	// filter by test properties
-	if len(reqOptions.TestCapabilities) > 0 {
+	if len(reqOptions.Capabilities) > 0 {
 		// include if there is any intersection between the arrays: capabilities filter and test capabilities
 		queryString += ` AND EXISTS(select 1
-		                            from UNNEST(@TestCapabilities) AS tcap
+		                            from UNNEST(@Capabilities) AS tcap
 		                            WHERE tcap in UNNEST(cm.capabilities)
                                    )`
 		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "TestCapabilities",
-			Value: reqOptions.TestCapabilities,
+			Name:  "Capabilities",
+			Value: reqOptions.Capabilities,
 		})
 	}
 

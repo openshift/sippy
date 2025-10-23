@@ -65,7 +65,7 @@ func ParseComponentReportRequest(
 		opts.SampleRelease.PayloadOptions = parsePayloadOptions(req)
 
 		// free-form, not "safe" - used in query filters
-		opts.TestFilters.TestCapabilities = req.URL.Query()["testCapabilities"]
+		opts.TestFilters.Capabilities = req.URL.Query()["testCapabilities"]
 
 		if opts.VariantOption, err = parseVariantOptions(req, allJobVariants, overrides); err != nil {
 			return
