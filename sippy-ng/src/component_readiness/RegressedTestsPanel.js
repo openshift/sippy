@@ -1,3 +1,4 @@
+import { applyFilterModel } from '../datagrid/filterUtils'
 import { CapabilitiesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid } from '@mui/x-data-grid'
@@ -51,72 +52,9 @@ export default function RegressedTestsPanel(props) {
     })
   }
 
-  // Client-side filtering function
-  const applyFilters = (rows, filterModel) => {
-    if (!filterModel || !filterModel.items || filterModel.items.length === 0) {
-      return rows
-    }
-
-    return rows.filter((row) => {
-      const results = filterModel.items.map((filter) => {
-        const fieldValue = row[filter.columnField]
-        let match = false
-
-        if (!fieldValue && fieldValue !== 0) {
-          return filter.not ? true : false
-        }
-
-        const value = String(fieldValue).toLowerCase()
-        const filterValue = String(filter.value).toLowerCase()
-
-        switch (filter.operatorValue) {
-          case 'contains':
-            match = value.includes(filterValue)
-            break
-          case 'equals':
-            match = value === filterValue
-            break
-          case 'startsWith':
-            match = value.startsWith(filterValue)
-            break
-          case 'endsWith':
-            match = value.endsWith(filterValue)
-            break
-          case 'isEmpty':
-            match = value === ''
-            break
-          case 'isNotEmpty':
-            match = value !== ''
-            break
-          case '>':
-            match = parseFloat(fieldValue) > parseFloat(filter.value)
-            break
-          case '>=':
-            match = parseFloat(fieldValue) >= parseFloat(filter.value)
-            break
-          case '<':
-            match = parseFloat(fieldValue) < parseFloat(filter.value)
-            break
-          case '<=':
-            match = parseFloat(fieldValue) <= parseFloat(filter.value)
-            break
-          default:
-            match = value.includes(filterValue)
-        }
-
-        return filter.not ? !match : match
-      })
-
-      // Apply AND/OR logic
-      const linkOperator = filterModel.linkOperator || 'and'
-      return linkOperator === 'and'
-        ? results.every((r) => r)
-        : results.some((r) => r)
-    })
-  }
-
+  // Apply client-side filtering using shared utility
   const filteredTests = React.useMemo(
-    () => applyFilters(regressedTests, filterModel),
+    () => applyFilterModel(regressedTests, filterModel),
     [regressedTests, filterModel]
   )
 

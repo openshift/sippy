@@ -1,3 +1,4 @@
+import { applyFilterModel } from '../datagrid/filterUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
@@ -46,70 +47,6 @@ export default function TriagedRegressionTestList(props) {
     })
   }
 
-  // Client-side filtering function
-  const applyFilters = (rows, filterModel) => {
-    if (!filterModel || !filterModel.items || filterModel.items.length === 0) {
-      return rows
-    }
-
-    return rows.filter((row) => {
-      const results = filterModel.items.map((filter) => {
-        const fieldValue = row[filter.columnField]
-        let match = false
-
-        if (!fieldValue && fieldValue !== 0) {
-          return filter.not ? true : false
-        }
-
-        const value = String(fieldValue).toLowerCase()
-        const filterValue = String(filter.value).toLowerCase()
-
-        switch (filter.operatorValue) {
-          case 'contains':
-            match = value.includes(filterValue)
-            break
-          case 'equals':
-            match = value === filterValue
-            break
-          case 'startsWith':
-            match = value.startsWith(filterValue)
-            break
-          case 'endsWith':
-            match = value.endsWith(filterValue)
-            break
-          case 'isEmpty':
-            match = value === ''
-            break
-          case 'isNotEmpty':
-            match = value !== ''
-            break
-          case '>':
-            match = parseFloat(fieldValue) > parseFloat(filter.value)
-            break
-          case '>=':
-            match = parseFloat(fieldValue) >= parseFloat(filter.value)
-            break
-          case '<':
-            match = parseFloat(fieldValue) < parseFloat(filter.value)
-            break
-          case '<=':
-            match = parseFloat(fieldValue) <= parseFloat(filter.value)
-            break
-          default:
-            match = value.includes(filterValue)
-        }
-
-        return filter.not ? !match : match
-      })
-
-      // Apply AND/OR logic
-      const linkOperator = filterModel.linkOperator || 'and'
-      return linkOperator === 'and'
-        ? results.every((r) => r)
-        : results.some((r) => r)
-    })
-  }
-
   const [triagedRegressions, setTriagedRegressions] = React.useState(
     props.regressions !== undefined ? props.regressions : []
   )
@@ -117,8 +54,9 @@ export default function TriagedRegressionTestList(props) {
     props.regressions !== undefined && props.regressions.length > 0
   )
 
+  // Apply client-side filtering using shared utility
   const filteredRegressions = React.useMemo(
-    () => applyFilters(triagedRegressions, filterModel),
+    () => applyFilterModel(triagedRegressions, filterModel),
     [triagedRegressions, filterModel]
   )
 
