@@ -37,7 +37,7 @@ export default function GridToolbarClientAutocomplete(props) {
 
   return (
     <Autocomplete
-      disableClearable
+      freeSolo
       id={`autocomplete-${props.id}`}
       style={{ width: 220 }}
       open={open}
@@ -47,10 +47,26 @@ export default function GridToolbarClientAutocomplete(props) {
       onClose={() => {
         setOpen(false)
       }}
-      onChange={(e, v) => v && props.onChange(v.name)}
-      value={props.value ? { name: props.value } : null}
-      isOptionEqualToValue={(option, value) => option.name === value.name}
-      getOptionLabel={(option) => option.name}
+      onChange={(e, v) => {
+        if (typeof v === 'string') {
+          props.onChange(v)
+        } else if (v && v.name) {
+          props.onChange(v.name)
+        }
+      }}
+      onInputChange={(e, value) => {
+        if (e && e.type === 'change') {
+          props.onChange(value)
+        }
+      }}
+      value={props.value || ''}
+      inputValue={props.value || ''}
+      isOptionEqualToValue={(option, value) =>
+        option.name === (typeof value === 'string' ? value : value.name)
+      }
+      getOptionLabel={(option) =>
+        typeof option === 'string' ? option : option.name
+      }
       options={options}
       renderInput={(params) => (
         <TextField
