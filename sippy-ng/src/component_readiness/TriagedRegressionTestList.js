@@ -269,6 +269,10 @@ export default function TriagedRegressionTestList(props) {
               clearSearch: () => requestSearch(''),
               doSearch: requestSearch,
               autocompleteData: triagedRegressions,
+              downloadDataFunc: () => {
+                return filteredRegressions
+              },
+              downloadFilePrefix: 'triaged_test_regressions',
             },
           }}
         />

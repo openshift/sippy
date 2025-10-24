@@ -347,6 +347,10 @@ export default function RegressedTestsPanel(props) {
             clearSearch: () => requestSearch(''),
             doSearch: requestSearch,
             autocompleteData: regressedTests,
+            downloadDataFunc: () => {
+              return filteredTests
+            },
+            downloadFilePrefix: 'regressed_tests',
           },
         }}
       />

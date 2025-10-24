@@ -60,8 +60,28 @@ export function evaluateFilter(row, filter, columns = null) {
 
   let match = false
 
-  // Handle null/undefined values
-  if (fieldValue === null || fieldValue === undefined) {
+  // Handle null/undefined/empty values for isEmpty/isNotEmpty operators
+  const isNullOrUndefined = fieldValue === null || fieldValue === undefined
+  const isEmpty = isNullOrUndefined || fieldValue === ''
+
+  // For isEmpty/isNotEmpty, treat null/undefined as empty
+  if (
+    filter.operatorValue === 'isEmpty' ||
+    filter.operatorValue === 'is empty'
+  ) {
+    match = isEmpty
+    return filter.not ? !match : match
+  }
+  if (
+    filter.operatorValue === 'isNotEmpty' ||
+    filter.operatorValue === 'is not empty'
+  ) {
+    match = !isEmpty
+    return filter.not ? !match : match
+  }
+
+  // For other operators, null/undefined means no match
+  if (isNullOrUndefined) {
     return filter.not ? true : false
   }
 
@@ -80,14 +100,6 @@ export function evaluateFilter(row, filter, columns = null) {
       break
     case 'endsWith':
       match = value.endsWith(filterValue)
-      break
-    case 'isEmpty':
-    case 'is empty':
-      match = value === ''
-      break
-    case 'isNotEmpty':
-    case 'is not empty':
-      match = value !== ''
       break
     case '>':
       match = parseFloat(fieldValue) > parseFloat(filter.value)

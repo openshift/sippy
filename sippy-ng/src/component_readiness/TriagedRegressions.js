@@ -20,8 +20,8 @@ const bookmarks = [
       {
         id: 1,
         columnField: 'resolution_date',
-        operatorValue: 'is not empty',
-        value: '',
+        operatorValue: 'equals',
+        value: 'Resolved',
       },
     ],
   },
@@ -31,8 +31,8 @@ const bookmarks = [
       {
         id: 1,
         columnField: 'resolution_date',
-        operatorValue: 'is empty',
-        value: '',
+        operatorValue: 'equals',
+        value: 'Unresolved',
       },
     ],
   },
@@ -178,21 +178,25 @@ export default function TriagedRegressions({
     {
       field: 'resolution_date',
       valueGetter: (value) => {
-        return value.row.resolved?.Valid ? value.row.resolved.Time : ''
+        return value.row.resolved?.Valid ? 'Resolved' : 'Unresolved'
       },
       headerName: 'Resolved',
       flex: 4,
       align: 'center',
+      autocomplete: 'resolution_date',
       renderCell: (param) => {
         const triage = triageEntries.find((t) => t.id === param.row.id)
         const hasFailedFix = hasFailedFixRegression(triage, allRegressedTests)
+        const resolvedDate = param.row.resolved?.Valid
+          ? param.row.resolved.Time
+          : null
 
-        return param.value ? (
+        return resolvedDate ? (
           <Tooltip
             title={`${relativeTime(
-              new Date(param.value),
+              new Date(resolvedDate),
               new Date()
-            )} (${formatDateToSeconds(param.value)})`}
+            )} (${formatDateToSeconds(resolvedDate)})`}
           >
             {hasFailedFix ? (
               <CompSeverityIcon status={-1000} />
@@ -383,6 +387,10 @@ export default function TriagedRegressions({
             clearSearch: () => requestSearch(''),
             doSearch: requestSearch,
             autocompleteData: triageEntries,
+            downloadDataFunc: () => {
+              return filteredTriageEntries
+            },
+            downloadFilePrefix: 'triaged_regressions',
           },
         }}
       />
