@@ -14,16 +14,17 @@
  * @param {Object} filterModel - The filter model with items and linkOperator
  * @param {Array} filterModel.items - Array of filter items
  * @param {string} filterModel.linkOperator - 'and' or 'or' to combine filters
+ * @param {Array} columns - Optional column definitions with valueGetters
  * @returns {Array} Filtered rows
  */
-export function applyFilterModel(rows, filterModel) {
+export function applyFilterModel(rows, filterModel, columns = null) {
   if (!filterModel || !filterModel.items || filterModel.items.length === 0) {
     return rows
   }
 
   return rows.filter((row) => {
     const results = filterModel.items.map((filter) =>
-      evaluateFilter(row, filter)
+      evaluateFilter(row, filter, columns)
     )
 
     // Apply AND/OR logic
@@ -43,10 +44,20 @@ export function applyFilterModel(rows, filterModel) {
  * @param {string} filter.operatorValue - The comparison operator
  * @param {any} filter.value - The value to compare against
  * @param {boolean} filter.not - Whether to negate the result
+ * @param {Array} columns - Optional column definitions with valueGetters
  * @returns {boolean} Whether the row matches the filter
  */
-export function evaluateFilter(row, filter) {
-  const fieldValue = row[filter.columnField]
+export function evaluateFilter(row, filter, columns = null) {
+  let fieldValue = row[filter.columnField]
+
+  // Use valueGetter if available in columns definition
+  if (columns) {
+    const column = columns.find((col) => col.field === filter.columnField)
+    if (column && column.valueGetter) {
+      fieldValue = column.valueGetter({ row, value: fieldValue })
+    }
+  }
+
   let match = false
 
   // Handle null/undefined values

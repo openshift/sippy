@@ -18,13 +18,28 @@ export default function GridToolbarClientAutocomplete(props) {
 
     const uniqueValues = new Set()
     props.data.forEach((row) => {
-      const value = row[props.field]
+      let value = row[props.field]
+
+      // If valueGetter is provided, use it to get the display value
+      if (props.valueGetter) {
+        value = props.valueGetter({ row, value })
+      }
+
       if (value !== null && value !== undefined && value !== '') {
-        // Handle arrays (like variants)
+        // Handle arrays (like variants in TriagedRegressionTestList)
         if (Array.isArray(value)) {
-          value.forEach((v) => uniqueValues.add(String(v)))
+          value.forEach((v) => {
+            const strValue = String(v)
+            if (strValue !== '[object Object]') {
+              uniqueValues.add(strValue)
+            }
+          })
         } else {
-          uniqueValues.add(String(value))
+          const strValue = String(value)
+          // Don't add objects that weren't converted properly
+          if (strValue !== '[object Object]') {
+            uniqueValues.add(strValue)
+          }
         }
       }
     })
@@ -33,7 +48,7 @@ export default function GridToolbarClientAutocomplete(props) {
     return Array.from(uniqueValues)
       .sort()
       .map((v) => ({ name: v }))
-  }, [props.data, props.field])
+  }, [props.data, props.field, props.valueGetter])
 
   return (
     <Autocomplete
@@ -89,4 +104,5 @@ GridToolbarClientAutocomplete.propTypes = {
   value: PropTypes.string,
   onChange: PropTypes.func,
   data: PropTypes.array.isRequired,
+  valueGetter: PropTypes.func,
 }

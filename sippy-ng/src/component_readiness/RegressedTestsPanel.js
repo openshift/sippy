@@ -54,12 +54,12 @@ export default function RegressedTestsPanel(props) {
 
   // Quick search functionality - searches test_name field
   const requestSearch = (searchValue) => {
-    const currentFilters = { ...filterModel }
-    currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'test_name'
+    // Filter out empty items and existing test_name filters
+    const currentFilters = filterModel.items.filter(
+      (f) => f.value !== '' && f.columnField !== 'test_name'
     )
     if (searchValue && searchValue !== '') {
-      currentFilters.items.push({
+      currentFilters.push({
         id: 99,
         columnField: 'test_name',
         operatorValue: 'contains',
@@ -67,16 +67,10 @@ export default function RegressedTestsPanel(props) {
       })
     }
     setFilterModel({
-      items: currentFilters.items,
-      linkOperator: currentFilters.linkOperator || 'and',
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
     })
   }
-
-  // Apply client-side filtering using shared utility
-  const filteredTests = React.useMemo(
-    () => applyFilterModel(regressedTests, filterModel),
-    [regressedTests, filterModel]
-  )
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -186,7 +180,6 @@ export default function RegressedTestsPanel(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 30,
-      filterable: false,
       valueGetter: (params) => {
         return formColumnName({ variants: params.row.variants })
       },
@@ -298,6 +291,12 @@ export default function RegressedTestsPanel(props) {
       flex: 6,
     },
   ]
+
+  // Apply client-side filtering using shared utility
+  const filteredTests = React.useMemo(
+    () => applyFilterModel(regressedTests, filterModel, columns),
+    [regressedTests, filterModel, columns]
+  )
 
   return (
     <Fragment>

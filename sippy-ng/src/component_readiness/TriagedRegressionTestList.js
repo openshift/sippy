@@ -49,12 +49,12 @@ export default function TriagedRegressionTestList(props) {
 
   // Quick search functionality - searches test_name field
   const requestSearch = (searchValue) => {
-    const currentFilters = { ...filterModel }
-    currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'test_name'
+    // Filter out empty items and existing test_name filters
+    const currentFilters = filterModel.items.filter(
+      (f) => f.value !== '' && f.columnField !== 'test_name'
     )
     if (searchValue && searchValue !== '') {
-      currentFilters.items.push({
+      currentFilters.push({
         id: 99,
         columnField: 'test_name',
         operatorValue: 'contains',
@@ -62,8 +62,8 @@ export default function TriagedRegressionTestList(props) {
       })
     }
     setFilterModel({
-      items: currentFilters.items,
-      linkOperator: currentFilters.linkOperator || 'and',
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
     })
   }
 
@@ -72,12 +72,6 @@ export default function TriagedRegressionTestList(props) {
   )
   const [showView, setShowView] = React.useState(
     props.regressions !== undefined && props.regressions.length > 0
-  )
-
-  // Apply client-side filtering using shared utility
-  const filteredRegressions = React.useMemo(
-    () => applyFilterModel(triagedRegressions, filterModel),
-    [triagedRegressions, filterModel]
   )
 
   const handleTriagedRegressionGroupSelectionChanged = (data) => {
@@ -125,10 +119,15 @@ export default function TriagedRegressionTestList(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 20,
-      filterable: false,
+      valueGetter: (params) => {
+        // Join array values into a searchable string
+        return params.row.variants && Array.isArray(params.row.variants)
+          ? params.row.variants.sort().join(' ')
+          : ''
+      },
       renderCell: (params) => (
         <div className="variants-list">
-          {params.value ? params.value.sort().join('\n') : ''}
+          {params.value ? params.value.split(' ').join('\n') : ''}
         </div>
       ),
     },
@@ -228,6 +227,12 @@ export default function TriagedRegressionTestList(props) {
         ]
       : []),
   ]
+
+  // Apply client-side filtering using shared utility
+  const filteredRegressions = React.useMemo(
+    () => applyFilterModel(triagedRegressions, filterModel, columns),
+    [triagedRegressions, filterModel, columns]
+  )
 
   return (
     <Fragment>

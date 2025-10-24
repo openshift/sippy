@@ -61,12 +61,12 @@ export default function TriagedRegressions({
 
   // Quick search functionality - searches description field
   const requestSearch = (searchValue) => {
-    const currentFilters = { ...filterModel }
-    currentFilters.items = currentFilters.items.filter(
-      (f) => f.columnField !== 'description'
+    // Filter out empty items and existing description filters
+    const currentFilters = filterModel.items.filter(
+      (f) => f.value !== '' && f.columnField !== 'description'
     )
     if (searchValue && searchValue !== '') {
-      currentFilters.items.push({
+      currentFilters.push({
         id: 99,
         columnField: 'description',
         operatorValue: 'contains',
@@ -74,16 +74,10 @@ export default function TriagedRegressions({
       })
     }
     setFilterModel({
-      items: currentFilters.items,
-      linkOperator: currentFilters.linkOperator || 'and',
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
     })
   }
-
-  // Apply client-side filtering using shared utility
-  const filteredTriageEntries = React.useMemo(
-    () => applyFilterModel(triageEntries, filterModel),
-    [triageEntries, filterModel]
-  )
 
   useEffect(() => {
     if (activeRow) {
@@ -163,7 +157,6 @@ export default function TriagedRegressions({
       },
       headerName: 'Description',
       flex: 20,
-      autocomplete: 'description',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
@@ -300,6 +293,12 @@ export default function TriagedRegressions({
       },
     },
   ]
+
+  // Apply client-side filtering using shared utility
+  const filteredTriageEntries = React.useMemo(
+    () => applyFilterModel(triageEntries, filterModel, columns),
+    [triageEntries, filterModel, columns]
+  )
 
   return (
     <Fragment>

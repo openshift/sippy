@@ -1,11 +1,10 @@
+import { Box, Button, Grid, Tab, Tabs, Typography } from '@mui/material'
 import {
-  ArrayParam,
   NumberParam,
   StringParam,
   useQueryParam,
   useQueryParams,
 } from 'use-query-params'
-import { Box, Button, Grid, Tab, Tabs, Typography } from '@mui/material'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -58,11 +57,6 @@ export default function RegressedTestsModal({
     NumberParam,
     { updateType: 'replaceIn' }
   )
-  const [componentFilter = [], setComponentFilter] = useQueryParam(
-    'component',
-    ArrayParam,
-    { updateType: 'replaceIn' }
-  )
   const [, setQuery] = useQueryParams(
     {
       regressedModalRow: StringParam,
@@ -90,14 +84,6 @@ export default function RegressedTestsModal({
     )
   }
 
-  // Filter tests by component if component filter is specified
-  const filterTestsByComponent = (tests) => {
-    if (!componentFilter || componentFilter.length === 0) {
-      return tests
-    }
-    return tests.filter((test) => componentFilter.includes(test.component))
-  }
-
   const triageEntriesExist = triageEntries.length > 0
 
   return (
@@ -120,14 +106,14 @@ export default function RegressedTestsModal({
           </Tabs>
           <RegressedTestsTabPanel activeIndex={activeTab} index={0}>
             <RegressedTestsPanel
-              regressedTests={filterTestsByComponent(unresolvedTests)}
+              regressedTests={unresolvedTests}
               setTriageActionTaken={setTriageActionTaken}
               filterVals={filterVals}
             />
           </RegressedTestsTabPanel>
           <RegressedTestsTabPanel activeIndex={activeTab} index={1}>
             <RegressedTestsPanel
-              regressedTests={filterTestsByComponent(regressedTests)}
+              regressedTests={regressedTests}
               setTriageActionTaken={setTriageActionTaken}
               filterVals={filterVals}
             />
@@ -136,14 +122,14 @@ export default function RegressedTestsModal({
             <RegressedTestsTabPanel activeIndex={activeTab} index={2}>
               <TriagedTestsPanel
                 triageEntries={triageEntries}
-                allRegressedTests={filterTestsByComponent(allRegressedTests)}
+                allRegressedTests={allRegressedTests}
                 filterVals={filterVals}
               />
             </RegressedTestsTabPanel>
           )}
           <RegressedTestsTabPanel activeIndex={activeTab} index={3}>
             <RegressedTestsPanel
-              regressedTests={filterTestsByComponent(allRegressedTests)}
+              regressedTests={allRegressedTests}
               setTriageActionTaken={setTriageActionTaken}
               filterVals={filterVals}
             />
