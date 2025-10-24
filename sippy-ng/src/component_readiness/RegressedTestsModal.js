@@ -77,15 +77,13 @@ export default function RegressedTestsModal({
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue)
-    // The active pages and rows in the DataGrid are most likely no longer relevant when switching tabs
+    // Reset pagination and selection when switching tabs, but keep filters
     setQuery(
       {
         regressedModalRow: undefined,
         regressedModalPage: undefined,
         regressedModalTestRow: undefined,
         regressedModalTestPage: undefined,
-        regressedModalFilters: undefined,
-        regressedModalTestFilters: undefined,
       },
       'replaceIn'
     )
