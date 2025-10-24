@@ -71,6 +71,7 @@ export default function RegressedTestsModal({
       regressedModalTestPage: NumberParam,
       regressedModalFilters: StringParam,
       regressedModalTestFilters: StringParam,
+      triageFilters: StringParam,
     },
     { updateType: 'replaceIn' }
   )

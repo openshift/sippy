@@ -52,6 +52,26 @@ export default function RegressedTestsPanel(props) {
     })
   }
 
+  // Quick search functionality - searches test_name field
+  const requestSearch = (searchValue) => {
+    const currentFilters = { ...filterModel }
+    currentFilters.items = currentFilters.items.filter(
+      (f) => f.columnField !== 'test_name'
+    )
+    if (searchValue && searchValue !== '') {
+      currentFilters.items.push({
+        id: 99,
+        columnField: 'test_name',
+        operatorValue: 'contains',
+        value: searchValue,
+      })
+    }
+    setFilterModel({
+      items: currentFilters.items,
+      linkOperator: currentFilters.linkOperator || 'and',
+    })
+  }
+
   // Apply client-side filtering using shared utility
   const filteredTests = React.useMemo(
     () => applyFilterModel(regressedTests, filterModel),
@@ -316,12 +336,11 @@ export default function RegressedTestsPanel(props) {
         componentsProps={{
           toolbar: {
             columns: columns,
-            showQuickFilter: true,
             addFilters: addFilters,
             filterModel: filterModel,
             setFilterModel: setFilterModel,
-            clearSearch: () => {},
-            doSearch: () => {},
+            clearSearch: () => requestSearch(''),
+            doSearch: requestSearch,
             autocompleteData: regressedTests,
           },
         }}

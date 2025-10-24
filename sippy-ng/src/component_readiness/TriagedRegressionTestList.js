@@ -47,6 +47,26 @@ export default function TriagedRegressionTestList(props) {
     })
   }
 
+  // Quick search functionality - searches test_name field
+  const requestSearch = (searchValue) => {
+    const currentFilters = { ...filterModel }
+    currentFilters.items = currentFilters.items.filter(
+      (f) => f.columnField !== 'test_name'
+    )
+    if (searchValue && searchValue !== '') {
+      currentFilters.items.push({
+        id: 99,
+        columnField: 'test_name',
+        operatorValue: 'contains',
+        value: searchValue,
+      })
+    }
+    setFilterModel({
+      items: currentFilters.items,
+      linkOperator: currentFilters.linkOperator || 'and',
+    })
+  }
+
   const [triagedRegressions, setTriagedRegressions] = React.useState(
     props.regressions !== undefined ? props.regressions : []
   )
@@ -237,8 +257,8 @@ export default function TriagedRegressionTestList(props) {
               addFilters: addFilters,
               filterModel: filterModel,
               setFilterModel: setFilterModel,
-              clearSearch: () => {},
-              doSearch: () => {},
+              clearSearch: () => requestSearch(''),
+              doSearch: requestSearch,
               autocompleteData: triagedRegressions,
             },
           }}

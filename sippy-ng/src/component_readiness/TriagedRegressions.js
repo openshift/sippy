@@ -1,12 +1,14 @@
+import { applyFilterModel } from '../datagrid/filterUtils'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
-import { DataGrid, GridToolbar } from '@mui/x-data-grid'
-import { formatDateToSeconds, relativeTime } from '../helpers'
+import { DataGrid } from '@mui/x-data-grid'
+import { formatDateToSeconds, relativeTime, SafeJSONParam } from '../helpers'
 import { hasFailedFixRegression, jiraUrlPrefix } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import CompSeverityIcon from './CompSeverityIcon'
+import GridToolbar from '../datagrid/GridToolbar'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
@@ -36,6 +38,51 @@ export default function TriagedRegressions({
     'regressedModalTestRow',
     NumberParam,
     { updateType: 'replaceIn' }
+  )
+  const [filterModel = { items: [] }, setFilterModel] = useQueryParam(
+    'triageFilters',
+    SafeJSONParam,
+    { updateType: 'replaceIn' }
+  )
+
+  const addFilters = (filter) => {
+    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+
+    filter.forEach((item) => {
+      if (item.value && item.value !== '') {
+        currentFilters.push(item)
+      }
+    })
+    setFilterModel({
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
+    })
+  }
+
+  // Quick search functionality - searches description field
+  const requestSearch = (searchValue) => {
+    const currentFilters = { ...filterModel }
+    currentFilters.items = currentFilters.items.filter(
+      (f) => f.columnField !== 'description'
+    )
+    if (searchValue && searchValue !== '') {
+      currentFilters.items.push({
+        id: 99,
+        columnField: 'description',
+        operatorValue: 'contains',
+        value: searchValue,
+      })
+    }
+    setFilterModel({
+      items: currentFilters.items,
+      linkOperator: currentFilters.linkOperator || 'and',
+    })
+  }
+
+  // Apply client-side filtering using shared utility
+  const filteredTriageEntries = React.useMemo(
+    () => applyFilterModel(triageEntries, filterModel),
+    [triageEntries, filterModel]
   )
 
   useEffect(() => {
@@ -115,6 +162,7 @@ export default function TriagedRegressions({
       },
       headerName: 'Description',
       flex: 20,
+      autocomplete: 'description',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
@@ -124,6 +172,7 @@ export default function TriagedRegressions({
       },
       headerName: 'Type',
       flex: 5,
+      autocomplete: 'type',
       renderCell: (param) => <div>{param.value}</div>,
     },
     {
@@ -252,7 +301,7 @@ export default function TriagedRegressions({
         selectionModel={activeRow}
         onSelectionModelChange={handleSetSelectionModel}
         components={{ Toolbar: GridToolbar }}
-        rows={triageEntries}
+        rows={filteredTriageEntries}
         columns={columns}
         getRowId={(row) => String(row.id)}
         pageSize={entriesPerPage}
@@ -266,6 +315,12 @@ export default function TriagedRegressions({
         componentsProps={{
           toolbar: {
             columns: columns,
+            addFilters: addFilters,
+            filterModel: filterModel,
+            setFilterModel: setFilterModel,
+            clearSearch: () => requestSearch(''),
+            doSearch: requestSearch,
+            autocompleteData: triageEntries,
           },
         }}
       />
