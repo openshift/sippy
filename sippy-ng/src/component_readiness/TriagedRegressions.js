@@ -13,6 +13,64 @@ import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 
+const bookmarks = [
+  {
+    name: 'Resolved',
+    model: [
+      {
+        id: 1,
+        columnField: 'resolution_date',
+        operatorValue: 'is not empty',
+        value: '',
+      },
+    ],
+  },
+  {
+    name: 'Not Resolved',
+    model: [
+      {
+        id: 1,
+        columnField: 'resolution_date',
+        operatorValue: 'is empty',
+        value: '',
+      },
+    ],
+  },
+  {
+    name: 'Release Blocker: Approved',
+    model: [
+      {
+        id: 1,
+        columnField: 'release_blocker',
+        operatorValue: 'equals',
+        value: 'approved',
+      },
+    ],
+  },
+  {
+    name: 'Release Blocker: Rejected',
+    model: [
+      {
+        id: 1,
+        columnField: 'release_blocker',
+        operatorValue: 'equals',
+        value: 'rejected',
+      },
+    ],
+  },
+  {
+    name: 'Release Blocker: Proposed',
+    model: [
+      {
+        id: 1,
+        columnField: 'release_blocker',
+        operatorValue: 'equals',
+        value: 'proposed',
+      },
+    ],
+  },
+]
+
 export default function TriagedRegressions({
   triageEntries,
   eventEmitter,
@@ -125,7 +183,6 @@ export default function TriagedRegressions({
       headerName: 'Resolved',
       flex: 4,
       align: 'center',
-      filterable: false,
       renderCell: (param) => {
         const triage = triageEntries.find((t) => t.id === param.row.id)
         const hasFailedFix = hasFailedFixRegression(triage, allRegressedTests)
@@ -318,6 +375,7 @@ export default function TriagedRegressions({
         checkboxSelection={false}
         componentsProps={{
           toolbar: {
+            bookmarks: bookmarks,
             columns: columns,
             addFilters: addFilters,
             filterModel: filterModel,
