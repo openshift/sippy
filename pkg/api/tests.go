@@ -498,3 +498,18 @@ func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.T
 	}
 	return result, errs
 }
+
+// GetTestCapabilitiesFromDB returns a list of distinct capabilities from the test_ownerships table
+func GetTestCapabilitiesFromDB(dbc *db.DB) ([]string, error) {
+	if dbc == nil || dbc.DB == nil {
+		return []string{}, nil
+	}
+
+	var capabilities []string
+	res := dbc.DB.Raw("SELECT DISTINCT unnest(capabilities) AS capability FROM test_ownerships ORDER BY capability").Scan(&capabilities)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+
+	return capabilities, nil
+}

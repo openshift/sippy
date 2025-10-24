@@ -7,12 +7,12 @@ import {
   DialogContentText,
   FormControlLabel,
 } from '@mui/material'
-import { CapabilitiesContext } from '../App'
+import { SippyCapabilitiesContext } from '../App'
 import { useCookies } from 'react-cookie'
 import React from 'react'
 
 export default function AIDisclaimerDialog() {
-  const capabilities = React.useContext(CapabilitiesContext)
+  const capabilities = React.useContext(SippyCapabilitiesContext)
   const [cookies, setCookie] = useCookies(['aiDisclaimerAccepted'])
   const [open, setOpen] = React.useState(false)
   const [dontRemindAI, setDontRemindAI] = React.useState(true)

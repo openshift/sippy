@@ -118,7 +118,7 @@ const DrawerHeader = styled('div')(({ theme }) => ({
 }))
 
 export const ReleasesContext = React.createContext({})
-export const CapabilitiesContext = React.createContext([])
+export const SippyCapabilitiesContext = React.createContext([])
 export const ReportEndContext = React.createContext('')
 const ColorModeContext = React.createContext({
   toggleColorMode: () => {},
@@ -427,7 +427,7 @@ function App(props) {
   const [drawerOpen, setDrawerOpen] = React.useState(true)
   const [isLoaded, setLoaded] = React.useState(false)
   const [releases, setReleases] = React.useState([])
-  const [capabilities, setCapabilities] = React.useState([])
+  const [sippyCapabilities, setSippyCapabilities] = React.useState([])
   const [reportDate, setReportDate] = React.useState([])
   const [fetchError, setFetchError] = React.useState('')
 
@@ -437,13 +437,13 @@ function App(props) {
       fetch(process.env.REACT_APP_API_URL + '/api/capabilities'),
       fetch(process.env.REACT_APP_API_URL + '/api/report_date'),
     ])
-      .then(([releases, capabilities, reportDate]) => {
+      .then(([releases, sippyCapabilities, reportDate]) => {
         if (releases.status !== 200) {
           throw new Error('server returned ' + releases.status)
         }
 
-        if (capabilities.status !== 200) {
-          throw new Error('server returned ' + capabilities.status)
+        if (sippyCapabilities.status !== 200) {
+          throw new Error('server returned ' + sippyCapabilities.status)
         }
 
         if (reportDate.status !== 200) {
@@ -452,11 +452,11 @@ function App(props) {
 
         return Promise.all([
           releases.json(),
-          capabilities.json(),
+          sippyCapabilities.json(),
           reportDate.json(),
         ])
       })
-      .then(([releases, capabilities, reportDate]) => {
+      .then(([releases, sippyCapabilities, reportDate]) => {
         // Remove the Z from the ga_dates so that when Date objects are created,
         // the date is not converted to a local time zone.
         for (const key in releases.ga_dates) {
@@ -465,7 +465,7 @@ function App(props) {
           }
         }
         setReleases(releases)
-        setCapabilities(capabilities)
+        setSippyCapabilities(sippyCapabilities)
         setReportDate(reportDate['pinnedDateTime'])
         setLastUpdated(new Date(releases.last_updated))
         setLoaded(true)
@@ -494,7 +494,7 @@ function App(props) {
   }
 
   const showWithCapability = (capability, el) => {
-    if (capabilities.includes(capability)) {
+    if (sippyCapabilities.includes(capability)) {
       return el
     }
 
@@ -529,7 +529,7 @@ function App(props) {
         <StyledEngineProvider injectFirst>
           <ReleasesContext.Provider value={releases}>
             <ReportEndContext.Provider value={reportDate}>
-              <CapabilitiesContext.Provider value={capabilities}>
+              <SippyCapabilitiesContext.Provider value={sippyCapabilities}>
                 <AccessibilityModeProvider>
                   <CssBaseline />
                   <QueryParamProvider
@@ -757,7 +757,7 @@ function App(props) {
                               element={<IntervalsChartWrapper />}
                             />
 
-                            {capabilities.includes('chat') && (
+                            {sippyCapabilities.includes('chat') && (
                               <>
                                 <Route
                                   path="/chat"
@@ -773,7 +773,7 @@ function App(props) {
                             <Route
                               path="/"
                               element={
-                                capabilities.includes('local_db') ? (
+                                sippyCapabilities.includes('local_db') ? (
                                   landingPage
                                 ) : (
                                   <Navigate
@@ -791,7 +791,7 @@ function App(props) {
                   </QueryParamProvider>
                 </AccessibilityModeProvider>
                 {showWithCapability('chat', <GlobalChatControls />)}
-              </CapabilitiesContext.Provider>
+              </SippyCapabilitiesContext.Provider>
             </ReportEndContext.Provider>
           </ReleasesContext.Provider>
         </StyledEngineProvider>

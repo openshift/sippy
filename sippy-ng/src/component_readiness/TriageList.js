@@ -1,5 +1,5 @@
-import { CapabilitiesContext } from '../App'
 import { getTriagesAPIUrl } from './CompReadyUtils'
+import { SippyCapabilitiesContext } from '../App'
 import React, { Fragment } from 'react'
 import TriagedTestsPanel from './TriagedTestsPanel'
 
@@ -8,7 +8,7 @@ export default function TriageList() {
   const [triages, setTriages] = React.useState([])
   const [message, setMessage] = React.useState('')
 
-  const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const localDBEnabled = capabilitiesContext.includes('local_db')
 
   React.useEffect(() => {

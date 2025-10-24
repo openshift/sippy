@@ -198,7 +198,7 @@ export default function CompReadyEnvCapabilities(props) {
 
   return (
     <Fragment>
-      <Sidebar theme={theme} />
+      <Sidebar theme={theme} controlsOpts={{ filterByCapabilities: true }} />
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
       <h2>
         <Link to="/component_readiness">/</Link>

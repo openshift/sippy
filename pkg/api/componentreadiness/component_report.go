@@ -183,6 +183,7 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 }
 
 func NewComponentReportGenerator(client *bqcachedclient.Client, reqOptions reqopts.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride, releaseConfigs []v1.Release, baseURL string) ComponentReportGenerator {
+	slices.Sort(reqOptions.Capabilities) // normalize ordering so cache keys match
 	generator := ComponentReportGenerator{
 		client:                     client,
 		ReqOptions:                 reqOptions,
@@ -217,6 +218,7 @@ type GeneratorCacheKey struct {
 	SampleRelease  reqopts.Release
 	VariantOption  reqopts.Variants
 	AdvancedOption reqopts.Advanced
+	TestFilters    reqopts.TestFilters
 	TestIDOptions  []reqopts.TestIdentification
 }
 
@@ -230,6 +232,7 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 		SampleRelease:  c.ReqOptions.SampleRelease,
 		VariantOption:  c.ReqOptions.VariantOption,
 		AdvancedOption: c.ReqOptions.AdvancedOption,
+		TestFilters:    c.ReqOptions.TestFilters,
 		TestIDOptions:  c.ReqOptions.TestIDOptions,
 	}
 
@@ -256,6 +259,9 @@ func (c *ComponentReportGenerator) GetCacheKey(ctx context.Context) GeneratorCac
 	for k, vals := range cacheKey.VariantOption.CompareVariants {
 		sort.Strings(vals)
 		cacheKey.VariantOption.CompareVariants[k] = vals
+	}
+	if len(cacheKey.TestFilters.Capabilities) > 0 { // should already be, but just in case
+		sort.Strings(cacheKey.TestFilters.Capabilities)
 	}
 
 	return cacheKey

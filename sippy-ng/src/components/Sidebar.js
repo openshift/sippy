@@ -13,7 +13,6 @@ import {
   SmartToy,
 } from '@mui/icons-material'
 import { BOOKMARKS } from '../constants'
-import { CapabilitiesContext } from '../App'
 import { LaunderedListItem } from './Laundry'
 import { Link, useLocation } from 'react-router-dom'
 import { ListItemButton, ListSubheader, useTheme } from '@mui/material'
@@ -26,6 +25,7 @@ import {
   withoutUnstable,
   withSort,
 } from '../helpers'
+import { SippyCapabilitiesContext } from '../App'
 import { styled } from '@mui/styles'
 import ApartmentIcon from '@mui/icons-material/Apartment'
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward'
@@ -107,7 +107,7 @@ export default function Sidebar(props) {
           </StyledListItemButton>
         </ListItem>
       </List>
-      <CapabilitiesContext.Consumer>
+      <SippyCapabilitiesContext.Consumer>
         {(value) => {
           if (value.includes('openshift_releases')) {
             return (
@@ -134,7 +134,7 @@ export default function Sidebar(props) {
                     </StyledListItemButton>
                   </ListItem>
 
-                  <CapabilitiesContext.Consumer>
+                  <SippyCapabilitiesContext.Consumer>
                     {(value) => {
                       if (value.includes('chat')) {
                         return (
@@ -154,7 +154,7 @@ export default function Sidebar(props) {
                         )
                       }
                     }}
-                  </CapabilitiesContext.Consumer>
+                  </SippyCapabilitiesContext.Consumer>
 
                   <ListItem
                     component="a"
@@ -179,7 +179,7 @@ export default function Sidebar(props) {
                     </ListItemIcon>
                     <ListItemText primary="CI Observability Dashboards" />
                   </ListItem>
-                  <CapabilitiesContext.Consumer>
+                  <SippyCapabilitiesContext.Consumer>
                     {(value) => {
                       if (value.includes('build_clusters')) {
                         return (
@@ -201,15 +201,15 @@ export default function Sidebar(props) {
                         )
                       }
                     }}
-                  </CapabilitiesContext.Consumer>
+                  </SippyCapabilitiesContext.Consumer>
                 </List>
               </Fragment>
             )
           }
         }}
-      </CapabilitiesContext.Consumer>
+      </SippyCapabilitiesContext.Consumer>
 
-      <CapabilitiesContext.Consumer>
+      <SippyCapabilitiesContext.Consumer>
         {(value) => {
           if (value.includes('local_db')) {
             return (
@@ -250,7 +250,7 @@ export default function Sidebar(props) {
                           </ListItem>
                           {props.releaseConfig.release_attrs?.[release]
                             ?.capabilities?.payloadTags && (
-                            <CapabilitiesContext.Consumer>
+                            <SippyCapabilitiesContext.Consumer>
                               {(value) => {
                                 if (value.includes('openshift_releases')) {
                                   return (
@@ -270,7 +270,7 @@ export default function Sidebar(props) {
                                   )
                                 }
                               }}
-                            </CapabilitiesContext.Consumer>
+                            </SippyCapabilitiesContext.Consumer>
                           )}
                           <ListItem
                             key={'release-jobs-' + index}
@@ -355,7 +355,7 @@ export default function Sidebar(props) {
 
                           {props.releaseConfig.release_attrs?.[release]
                             ?.capabilities?.featureGates && (
-                            <CapabilitiesContext.Consumer>
+                            <SippyCapabilitiesContext.Consumer>
                               {(value) => {
                                 if (value.includes('openshift_releases')) {
                                   return (
@@ -375,10 +375,10 @@ export default function Sidebar(props) {
                                   )
                                 }
                               }}
-                            </CapabilitiesContext.Consumer>
+                            </SippyCapabilitiesContext.Consumer>
                           )}
 
-                          <CapabilitiesContext.Consumer>
+                          <SippyCapabilitiesContext.Consumer>
                             {(value) => {
                               if (value.includes('openshift_releases')) {
                                 return (
@@ -398,9 +398,9 @@ export default function Sidebar(props) {
                                 )
                               }
                             }}
-                          </CapabilitiesContext.Consumer>
+                          </SippyCapabilitiesContext.Consumer>
 
-                          <CapabilitiesContext.Consumer>
+                          <SippyCapabilitiesContext.Consumer>
                             {(value) => {
                               if (value.includes('openshift_releases')) {
                                 return (
@@ -420,9 +420,9 @@ export default function Sidebar(props) {
                                 )
                               }
                             }}
-                          </CapabilitiesContext.Consumer>
+                          </SippyCapabilitiesContext.Consumer>
 
-                          <CapabilitiesContext.Consumer>
+                          <SippyCapabilitiesContext.Consumer>
                             {(value) => {
                               if (value.includes('openshift_releases')) {
                                 let newInstall = useNewInstallTests(release)
@@ -456,7 +456,7 @@ export default function Sidebar(props) {
                                 )
                               }
                             }}
-                          </CapabilitiesContext.Consumer>
+                          </SippyCapabilitiesContext.Consumer>
                         </List>
                       </Collapse>
                     </Fragment>
@@ -466,7 +466,7 @@ export default function Sidebar(props) {
             )
           }
         }}
-      </CapabilitiesContext.Consumer>
+      </SippyCapabilitiesContext.Consumer>
 
       <Divider />
       <List
