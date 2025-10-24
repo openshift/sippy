@@ -125,6 +125,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 20,
+      autocomplete: 'variants',
       renderCell: (params) => (
         <div className="variants-list">
           {params.value ? params.value.sort().join('\n') : ''}
@@ -135,6 +136,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'opened',
       headerName: 'Regressed Since',
       flex: 12,
+      filterable: false,
       valueGetter: (params) => {
         if (!params.row.opened) {
           // For a regression we haven't yet detected:
@@ -153,6 +155,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'last_failure',
       headerName: 'Last Failure',
       flex: 12,
+      filterable: false,
       valueGetter: (params) => {
         if (!params.row.last_failure.Valid) {
           return null
@@ -174,6 +177,7 @@ export default function TriagedRegressionTestList(props) {
           {
             field: 'status',
             headerName: 'Status',
+            filterable: false,
             renderHeader: () => (
               <Tooltip title="Status information is only available for regressions that have not rolled off the reporting window">
                 <span>Status</span>

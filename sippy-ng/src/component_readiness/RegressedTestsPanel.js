@@ -133,6 +133,7 @@ export default function RegressedTestsPanel(props) {
             field: 'triage',
             headerName: 'Triage',
             flex: 4,
+            filterable: false,
             valueGetter: (params) => {
               if (!params.row.regression?.opened) {
                 // For a regression we haven't yet detected:
@@ -185,6 +186,7 @@ export default function RegressedTestsPanel(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 30,
+      autocomplete: 'variants',
       valueGetter: (params) => {
         return formColumnName({ variants: params.row.variants })
       },
@@ -194,6 +196,7 @@ export default function RegressedTestsPanel(props) {
       field: 'regression',
       headerName: 'Regressed Since',
       flex: 12,
+      filterable: false,
       valueGetter: (params) => {
         if (!params.row.regression?.opened) {
           // For a regression we haven't yet detected:
@@ -223,6 +226,7 @@ export default function RegressedTestsPanel(props) {
       field: 'last_failure',
       headerName: 'Last Failure',
       flex: 12,
+      filterable: false,
       valueGetter: (params) => {
         if (!params.row.last_failure) {
           return null
@@ -243,6 +247,7 @@ export default function RegressedTestsPanel(props) {
       field: 'test_id',
       flex: 5,
       headerName: 'ID',
+      filterable: false,
       renderCell: (params) => {
         return (
           <IconButton
@@ -262,6 +267,7 @@ export default function RegressedTestsPanel(props) {
     {
       field: 'status',
       headerName: 'Status',
+      filterable: false,
       renderCell: (params) => (
         <div
           style={{

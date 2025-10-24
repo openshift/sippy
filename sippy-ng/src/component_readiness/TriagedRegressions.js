@@ -131,6 +131,7 @@ export default function TriagedRegressions({
       headerName: 'Resolved',
       flex: 4,
       align: 'center',
+      filterable: false,
       renderCell: (param) => {
         const triage = triageEntries.find((t) => t.id === param.row.id)
         const hasFailedFix = hasFailedFixRegression(triage, allRegressedTests)
@@ -190,6 +191,7 @@ export default function TriagedRegressions({
       },
       headerName: 'Jira',
       flex: 5,
+      filterable: false,
       renderCell: (param) => (
         <a target="_blank" href={param.value.url} rel="noreferrer">
           <div className="test-name">{param.value.text}</div>
@@ -203,6 +205,7 @@ export default function TriagedRegressions({
       },
       headerName: 'State',
       flex: 5,
+      autocomplete: 'bug_state',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
@@ -216,6 +219,7 @@ export default function TriagedRegressions({
       },
       headerName: 'Version',
       flex: 5,
+      autocomplete: 'bug_version',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
@@ -225,6 +229,7 @@ export default function TriagedRegressions({
       },
       headerName: 'Release Blocker',
       flex: 5,
+      autocomplete: 'release_blocker',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
@@ -234,6 +239,7 @@ export default function TriagedRegressions({
       },
       headerName: 'Jira updated',
       flex: 5,
+      filterable: false,
       renderCell: (param) => (
         <Tooltip title={param.value}>
           <div className="test-name">
@@ -245,6 +251,7 @@ export default function TriagedRegressions({
     {
       field: 'created_at',
       hide: true,
+      filterable: false,
       valueGetter: (value) => {
         return value.row.created_at
       },
@@ -261,6 +268,7 @@ export default function TriagedRegressions({
     {
       field: 'updated_at',
       hide: true,
+      filterable: false,
       valueGetter: (value) => {
         return value.row.updated_at
       },
@@ -281,6 +289,7 @@ export default function TriagedRegressions({
       },
       headerName: 'Details',
       flex: 2,
+      filterable: false,
       renderCell: (param) => {
         const triageUrl = '/component_readiness/triages/' + param.value
         return (
