@@ -203,6 +203,8 @@ export default function TriagedRegressionTestList(props) {
         <DataGrid
           sortModel={sortModel}
           onSortModelChange={setSortModel}
+          filterModel={filterModel}
+          onFilterModelChange={setFilterModel}
           components={{ Toolbar: GridToolbar }}
           rows={triagedRegressions}
           columns={columns}

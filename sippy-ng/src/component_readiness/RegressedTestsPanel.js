@@ -277,6 +277,8 @@ export default function RegressedTestsPanel(props) {
       <DataGrid
         sortModel={sortModel}
         onSortModelChange={setSortModel}
+        filterModel={filterModel}
+        onFilterModelChange={setFilterModel}
         components={{ Toolbar: GridToolbar }}
         rows={regressedTests}
         columns={columns}
