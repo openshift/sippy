@@ -394,6 +394,8 @@ export default function ComponentReadiness(props) {
       'regressedModalPage',
       'regressedModalTestRow',
       'regressedModalTestPage',
+      'regressedModalFilters',
+      'regressedModalTestFilters',
       'searchComponent',
       'searchColumn',
       'searchRow',
