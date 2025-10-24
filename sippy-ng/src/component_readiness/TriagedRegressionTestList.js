@@ -85,6 +85,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'test_name',
       headerName: 'Test Name',
       flex: 50,
+      autocomplete: 'test_name',
       valueGetter: (params) => {
         return params.row.test_name
       },
@@ -94,6 +95,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'release',
       headerName: 'Release',
       flex: 7,
+      autocomplete: 'release',
       valueGetter: (params) => {
         return params.row.release
       },
@@ -237,6 +239,7 @@ export default function TriagedRegressionTestList(props) {
               setFilterModel: setFilterModel,
               clearSearch: () => {},
               doSearch: () => {},
+              autocompleteData: triagedRegressions,
             },
           }}
         />

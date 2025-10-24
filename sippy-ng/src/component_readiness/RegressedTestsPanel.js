@@ -137,24 +137,28 @@ export default function RegressedTestsPanel(props) {
       field: 'component',
       headerName: 'Component',
       flex: 20,
+      autocomplete: 'component',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'capability',
       headerName: 'Capability',
       flex: 12,
+      autocomplete: 'capability',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'test_name',
       headerName: 'Test Name',
       flex: 40,
+      autocomplete: 'test_name',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'test_suite',
       headerName: 'Test Suite',
       flex: 15,
+      autocomplete: 'test_suite',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
@@ -318,6 +322,7 @@ export default function RegressedTestsPanel(props) {
             setFilterModel: setFilterModel,
             clearSearch: () => {},
             doSearch: () => {},
+            autocompleteData: regressedTests,
           },
         }}
       />
