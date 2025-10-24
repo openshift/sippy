@@ -52,14 +52,12 @@ export default function GridToolbarFilterItem(props) {
   let autocomplete = ''
   let release = ''
   let disabled = false
-  let valueGetter = null
   props.columns.forEach((col) => {
     if (col.field === props.filterModel.columnField) {
       columnType = col.type || 'string'
       autocomplete = col.autocomplete || ''
       release = col.release || ''
       disabled = col.disabled || false
-      valueGetter = col.valueGetter || null
     }
   })
 
@@ -134,7 +132,6 @@ export default function GridToolbarFilterItem(props) {
                 label="Value"
                 value={props.filterModel.value}
                 data={props.autocompleteData}
-                valueGetter={valueGetter}
                 onChange={(value) =>
                   props.setFilterModel({
                     columnField: props.filterModel.columnField,
