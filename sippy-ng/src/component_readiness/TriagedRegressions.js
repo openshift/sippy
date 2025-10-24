@@ -170,24 +170,20 @@ export default function TriagedRegressions({
       renderCell: (param) => <div>{param.value}</div>,
     },
     {
-      field: 'url',
+      field: 'jira_key',
       valueGetter: (value) => {
         const url = value.row.url
-        const val = {
-          url,
-          text: url,
+        if (url && url.startsWith(jiraUrlPrefix)) {
+          return url.slice(jiraUrlPrefix.length)
         }
-        if (url.startsWith(jiraUrlPrefix)) {
-          val.text = url.slice(jiraUrlPrefix.length)
-        }
-        return val
+        return url || ''
       },
       headerName: 'Jira',
       flex: 5,
-      filterable: false,
+      autocomplete: 'jira_key',
       renderCell: (param) => (
-        <a target="_blank" href={param.value.url} rel="noreferrer">
-          <div className="test-name">{param.value.text}</div>
+        <a target="_blank" href={param.row.url} rel="noreferrer">
+          <div className="test-name">{param.value}</div>
         </a>
       ),
     },
