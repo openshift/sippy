@@ -1,10 +1,11 @@
 import { CompReadyVarsContext } from './CompReadyVars'
-import { DataGrid, GridToolbar } from '@mui/x-data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, useQueryParam } from 'use-query-params'
-import { relativeTime } from '../helpers'
+import { relativeTime, SafeJSONParam } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
 import CompSeverityIcon from './CompSeverityIcon'
+import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 
@@ -21,10 +22,29 @@ export default function TriagedRegressionTestList(props) {
     NumberParam,
     { updateType: 'replaceIn' }
   )
+  const [filterModel = { items: [] }, setFilterModel] = useQueryParam(
+    'regressedModalTestFilters',
+    SafeJSONParam,
+    { updateType: 'replaceIn' }
+  )
 
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
+
+  const addFilters = (filter) => {
+    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+
+    filter.forEach((item) => {
+      if (item.value && item.value !== '') {
+        currentFilters.push(item)
+      }
+    })
+    setFilterModel({
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
+    })
+  }
 
   const [triagedRegressions, setTriagedRegressions] = React.useState(
     props.regressions !== undefined ? props.regressions : []
@@ -202,9 +222,15 @@ export default function TriagedRegressionTestList(props) {
           rowHeight={60}
           autoHeight={true}
           checkboxSelection={false}
+          filterMode="client"
           componentsProps={{
             toolbar: {
               columns: columns,
+              addFilters: addFilters,
+              filterModel: filterModel,
+              setFilterModel: setFilterModel,
+              clearSearch: () => {},
+              doSearch: () => {},
             },
           }}
         />

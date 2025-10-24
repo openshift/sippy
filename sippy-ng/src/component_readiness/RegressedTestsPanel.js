@@ -1,14 +1,15 @@
 import { CapabilitiesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { DataGrid, GridToolbar } from '@mui/x-data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
 import { formColumnName, generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
-import { relativeTime } from '../helpers'
+import { relativeTime, SafeJSONParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CompSeverityIcon from './CompSeverityIcon'
+import GridToolbar from '../datagrid/GridToolbar'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
@@ -25,11 +26,30 @@ export default function RegressedTestsPanel(props) {
     NumberParam,
     { updateType: 'replaceIn' }
   )
+  const [filterModel = { items: [] }, setFilterModel] = useQueryParam(
+    'regressedModalFilters',
+    SafeJSONParam,
+    { updateType: 'replaceIn' }
+  )
   const { expandEnvironment, views, view } = useContext(CompReadyVarsContext)
   const { filterVals, regressedTests, setTriageActionTaken } = props
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
+
+  const addFilters = (filter) => {
+    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+
+    filter.forEach((item) => {
+      if (item.value && item.value !== '') {
+        currentFilters.push(item)
+      }
+    })
+    setFilterModel({
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
+    })
+  }
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -282,10 +302,16 @@ export default function RegressedTestsPanel(props) {
         rowHeight={60}
         autoHeight={true}
         checkboxSelection={false}
+        filterMode="client"
         componentsProps={{
           toolbar: {
             columns: columns,
             showQuickFilter: true,
+            addFilters: addFilters,
+            filterModel: filterModel,
+            setFilterModel: setFilterModel,
+            clearSearch: () => {},
+            doSearch: () => {},
           },
         }}
       />

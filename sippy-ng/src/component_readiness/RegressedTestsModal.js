@@ -1,4 +1,3 @@
-import { Box, Button, Grid, Tab, Tabs, Typography } from '@mui/material'
 import {
   ArrayParam,
   NumberParam,
@@ -6,6 +5,7 @@ import {
   useQueryParam,
   useQueryParams,
 } from 'use-query-params'
+import { Box, Button, Grid, Tab, Tabs, Typography } from '@mui/material'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -69,6 +69,8 @@ export default function RegressedTestsModal({
       regressedModalPage: NumberParam,
       regressedModalTestRow: NumberParam,
       regressedModalTestPage: NumberParam,
+      regressedModalFilters: StringParam,
+      regressedModalTestFilters: StringParam,
     },
     { updateType: 'replaceIn' }
   )
@@ -82,6 +84,8 @@ export default function RegressedTestsModal({
         regressedModalPage: undefined,
         regressedModalTestRow: undefined,
         regressedModalTestPage: undefined,
+        regressedModalFilters: undefined,
+        regressedModalTestFilters: undefined,
       },
       'replaceIn'
     )
