@@ -1,14 +1,16 @@
+import { applyFilterModel } from '../datagrid/filterUtils'
 import { CapabilitiesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { DataGrid, GridToolbar } from '@mui/x-data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
 import { formColumnName, generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
-import { relativeTime } from '../helpers'
+import { relativeTime, SafeJSONParam } from '../helpers'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CompSeverityIcon from './CompSeverityIcon'
+import GridToolbar from '../datagrid/GridToolbar'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
@@ -25,11 +27,56 @@ export default function RegressedTestsPanel(props) {
     NumberParam,
     { updateType: 'replaceIn' }
   )
+  const [filterModel = { items: [] }, setFilterModel] = useQueryParam(
+    'regressedModalFilters',
+    SafeJSONParam,
+    { updateType: 'replaceIn' }
+  )
   const { expandEnvironment, views, view } = useContext(CompReadyVarsContext)
   const { filterVals, regressedTests, setTriageActionTaken } = props
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
+
+  const addFilters = (filter) => {
+    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+
+    filter.forEach((item) => {
+      if (item.value && item.value !== '') {
+        currentFilters.push(item)
+      }
+    })
+    setFilterModel({
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
+    })
+  }
+
+  // Quick search functionality - searches test_name field
+  const requestSearch = (searchValue) => {
+    const currentFilters = { ...filterModel }
+    currentFilters.items = currentFilters.items.filter(
+      (f) => f.columnField !== 'test_name'
+    )
+    if (searchValue && searchValue !== '') {
+      currentFilters.items.push({
+        id: 99,
+        columnField: 'test_name',
+        operatorValue: 'contains',
+        value: searchValue,
+      })
+    }
+    setFilterModel({
+      items: currentFilters.items,
+      linkOperator: currentFilters.linkOperator || 'and',
+    })
+  }
+
+  // Apply client-side filtering using shared utility
+  const filteredTests = React.useMemo(
+    () => applyFilterModel(regressedTests, filterModel),
+    [regressedTests, filterModel]
+  )
 
   // Helpers for copying the test ID to clipboard
   const [copyPopoverEl, setCopyPopoverEl] = React.useState(null)
@@ -86,6 +133,7 @@ export default function RegressedTestsPanel(props) {
             field: 'triage',
             headerName: 'Triage',
             flex: 4,
+            filterable: false,
             valueGetter: (params) => {
               if (!params.row.regression?.opened) {
                 // For a regression we haven't yet detected:
@@ -110,30 +158,35 @@ export default function RegressedTestsPanel(props) {
       field: 'component',
       headerName: 'Component',
       flex: 20,
+      autocomplete: 'component',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'capability',
       headerName: 'Capability',
       flex: 12,
+      autocomplete: 'capability',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'test_name',
       headerName: 'Test Name',
       flex: 40,
+      autocomplete: 'test_name',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'test_suite',
       headerName: 'Test Suite',
       flex: 15,
+      autocomplete: 'test_suite',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
     {
       field: 'variants',
       headerName: 'Variants',
       flex: 30,
+      filterable: false,
       valueGetter: (params) => {
         return formColumnName({ variants: params.row.variants })
       },
@@ -143,6 +196,7 @@ export default function RegressedTestsPanel(props) {
       field: 'regression',
       headerName: 'Regressed Since',
       flex: 12,
+      filterable: false,
       valueGetter: (params) => {
         if (!params.row.regression?.opened) {
           // For a regression we haven't yet detected:
@@ -172,6 +226,7 @@ export default function RegressedTestsPanel(props) {
       field: 'last_failure',
       headerName: 'Last Failure',
       flex: 12,
+      filterable: false,
       valueGetter: (params) => {
         if (!params.row.last_failure) {
           return null
@@ -192,6 +247,7 @@ export default function RegressedTestsPanel(props) {
       field: 'test_id',
       flex: 5,
       headerName: 'ID',
+      filterable: false,
       renderCell: (params) => {
         return (
           <IconButton
@@ -211,6 +267,7 @@ export default function RegressedTestsPanel(props) {
     {
       field: 'status',
       headerName: 'Status',
+      filterable: false,
       renderCell: (params) => (
         <div
           style={{
@@ -258,7 +315,7 @@ export default function RegressedTestsPanel(props) {
         sortModel={sortModel}
         onSortModelChange={setSortModel}
         components={{ Toolbar: GridToolbar }}
-        rows={regressedTests}
+        rows={filteredTests}
         columns={columns}
         getRowId={(row) =>
           row.test_id +
@@ -285,7 +342,12 @@ export default function RegressedTestsPanel(props) {
         componentsProps={{
           toolbar: {
             columns: columns,
-            showQuickFilter: true,
+            addFilters: addFilters,
+            filterModel: filterModel,
+            setFilterModel: setFilterModel,
+            clearSearch: () => requestSearch(''),
+            doSearch: requestSearch,
+            autocompleteData: regressedTests,
           },
         }}
       />

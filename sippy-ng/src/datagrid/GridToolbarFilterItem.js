@@ -14,6 +14,7 @@ import { Close } from '@mui/icons-material'
 import { DateTimePicker, LocalizationProvider } from '@mui/x-date-pickers'
 import { makeStyles } from '@mui/styles'
 import GridToolbarAutocomplete from './GridToolbarAutocomplete'
+import GridToolbarClientAutocomplete from './GridToolbarClientAutocomplete'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
@@ -120,24 +121,48 @@ export default function GridToolbarFilterItem(props) {
         )
       default:
         if (autocomplete !== '') {
-          return (
-            <GridToolbarAutocomplete
-              error={valueError}
-              disabled={disabled}
-              field={autocomplete}
-              id={`value-${props.id}`}
-              label="Value"
-              value={props.filterModel.value}
-              onChange={(value) =>
-                props.setFilterModel({
-                  columnField: props.filterModel.columnField,
-                  not: props.filterModel.not,
-                  operatorValue: props.filterModel.operatorValue,
-                  value: value,
-                })
-              }
-            />
-          )
+          // Use client-side autocomplete if data is available, otherwise use server-side
+          if (props.autocompleteData && props.autocompleteData.length > 0) {
+            return (
+              <GridToolbarClientAutocomplete
+                error={valueError}
+                disabled={disabled}
+                field={props.filterModel.columnField}
+                id={`value-${props.id}`}
+                label="Value"
+                value={props.filterModel.value}
+                data={props.autocompleteData}
+                onChange={(value) =>
+                  props.setFilterModel({
+                    columnField: props.filterModel.columnField,
+                    not: props.filterModel.not,
+                    operatorValue: props.filterModel.operatorValue,
+                    value: value,
+                  })
+                }
+              />
+            )
+          } else {
+            return (
+              <GridToolbarAutocomplete
+                error={valueError}
+                disabled={disabled}
+                field={autocomplete}
+                id={`value-${props.id}`}
+                label="Value"
+                value={props.filterModel.value}
+                release={release}
+                onChange={(value) =>
+                  props.setFilterModel({
+                    columnField: props.filterModel.columnField,
+                    not: props.filterModel.not,
+                    operatorValue: props.filterModel.operatorValue,
+                    value: value,
+                  })
+                }
+              />
+            )
+          }
         } else {
           return (
             <Fragment>
@@ -281,4 +306,5 @@ GridToolbarFilterItem.propTypes = {
       disabled: PropTypes.bool,
     }).isRequired
   ),
+  autocompleteData: PropTypes.array,
 }
