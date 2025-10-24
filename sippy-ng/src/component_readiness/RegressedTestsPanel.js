@@ -186,7 +186,6 @@ export default function RegressedTestsPanel(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 30,
-      autocomplete: 'variants',
       valueGetter: (params) => {
         return formColumnName({ variants: params.row.variants })
       },

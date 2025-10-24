@@ -125,10 +125,15 @@ export default function TriagedRegressionTestList(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 20,
-      autocomplete: 'variants',
+      valueGetter: (params) => {
+        // Join array values into a searchable string
+        return params.row.variants && Array.isArray(params.row.variants)
+          ? params.row.variants.sort().join(' ')
+          : ''
+      },
       renderCell: (params) => (
         <div className="variants-list">
-          {params.value ? params.value.sort().join('\n') : ''}
+          {params.value ? params.value.split(' ').join('\n') : ''}
         </div>
       ),
     },
