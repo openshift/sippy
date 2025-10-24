@@ -1,4 +1,3 @@
-import { Box, Button, Grid, Tab, Tabs, Typography } from '@mui/material'
 import {
   ArrayParam,
   NumberParam,
@@ -6,6 +5,7 @@ import {
   useQueryParam,
   useQueryParams,
 } from 'use-query-params'
+import { Box, Button, Grid, Tab, Tabs, Typography } from '@mui/material'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
@@ -69,13 +69,16 @@ export default function RegressedTestsModal({
       regressedModalPage: NumberParam,
       regressedModalTestRow: NumberParam,
       regressedModalTestPage: NumberParam,
+      regressedModalFilters: StringParam,
+      regressedModalTestFilters: StringParam,
+      triageFilters: StringParam,
     },
     { updateType: 'replaceIn' }
   )
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue)
-    // The active pages and rows in the DataGrid are most likely no longer relevant when switching tabs
+    // Reset pagination and selection when switching tabs, but keep filters
     setQuery(
       {
         regressedModalRow: undefined,

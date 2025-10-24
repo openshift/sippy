@@ -1,10 +1,12 @@
+import { applyFilterModel } from '../datagrid/filterUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
-import { DataGrid, GridToolbar } from '@mui/x-data-grid'
+import { DataGrid } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, useQueryParam } from 'use-query-params'
-import { relativeTime } from '../helpers'
+import { relativeTime, SafeJSONParam } from '../helpers'
 import { Tooltip, Typography } from '@mui/material'
 import CompSeverityIcon from './CompSeverityIcon'
+import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 
@@ -21,16 +23,61 @@ export default function TriagedRegressionTestList(props) {
     NumberParam,
     { updateType: 'replaceIn' }
   )
+  const [filterModel = { items: [] }, setFilterModel] = useQueryParam(
+    'regressedModalTestFilters',
+    SafeJSONParam,
+    { updateType: 'replaceIn' }
+  )
 
   const [sortModel, setSortModel] = React.useState([
     { field: 'component', sort: 'asc' },
   ])
+
+  const addFilters = (filter) => {
+    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+
+    filter.forEach((item) => {
+      if (item.value && item.value !== '') {
+        currentFilters.push(item)
+      }
+    })
+    setFilterModel({
+      items: currentFilters,
+      linkOperator: filterModel.linkOperator || 'and',
+    })
+  }
+
+  // Quick search functionality - searches test_name field
+  const requestSearch = (searchValue) => {
+    const currentFilters = { ...filterModel }
+    currentFilters.items = currentFilters.items.filter(
+      (f) => f.columnField !== 'test_name'
+    )
+    if (searchValue && searchValue !== '') {
+      currentFilters.items.push({
+        id: 99,
+        columnField: 'test_name',
+        operatorValue: 'contains',
+        value: searchValue,
+      })
+    }
+    setFilterModel({
+      items: currentFilters.items,
+      linkOperator: currentFilters.linkOperator || 'and',
+    })
+  }
 
   const [triagedRegressions, setTriagedRegressions] = React.useState(
     props.regressions !== undefined ? props.regressions : []
   )
   const [showView, setShowView] = React.useState(
     props.regressions !== undefined && props.regressions.length > 0
+  )
+
+  // Apply client-side filtering using shared utility
+  const filteredRegressions = React.useMemo(
+    () => applyFilterModel(triagedRegressions, filterModel),
+    [triagedRegressions, filterModel]
   )
 
   const handleTriagedRegressionGroupSelectionChanged = (data) => {
@@ -58,6 +105,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'test_name',
       headerName: 'Test Name',
       flex: 50,
+      autocomplete: 'test_name',
       valueGetter: (params) => {
         return params.row.test_name
       },
@@ -67,6 +115,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'release',
       headerName: 'Release',
       flex: 7,
+      autocomplete: 'release',
       valueGetter: (params) => {
         return params.row.release
       },
@@ -76,6 +125,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'variants',
       headerName: 'Variants',
       flex: 20,
+      filterable: false,
       renderCell: (params) => (
         <div className="variants-list">
           {params.value ? params.value.sort().join('\n') : ''}
@@ -86,6 +136,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'opened',
       headerName: 'Regressed Since',
       flex: 12,
+      filterable: false,
       valueGetter: (params) => {
         if (!params.row.opened) {
           // For a regression we haven't yet detected:
@@ -104,6 +155,7 @@ export default function TriagedRegressionTestList(props) {
       field: 'last_failure',
       headerName: 'Last Failure',
       flex: 12,
+      filterable: false,
       valueGetter: (params) => {
         if (!params.row.last_failure.Valid) {
           return null
@@ -125,6 +177,7 @@ export default function TriagedRegressionTestList(props) {
           {
             field: 'status',
             headerName: 'Status',
+            filterable: false,
             renderHeader: () => (
               <Tooltip title="Status information is only available for regressions that have not rolled off the reporting window">
                 <span>Status</span>
@@ -184,7 +237,7 @@ export default function TriagedRegressionTestList(props) {
           sortModel={sortModel}
           onSortModelChange={setSortModel}
           components={{ Toolbar: GridToolbar }}
-          rows={triagedRegressions}
+          rows={filteredRegressions}
           columns={columns}
           getRowHeight={() => 'auto'}
           getRowId={(row) => row.id}
@@ -205,6 +258,12 @@ export default function TriagedRegressionTestList(props) {
           componentsProps={{
             toolbar: {
               columns: columns,
+              addFilters: addFilters,
+              filterModel: filterModel,
+              setFilterModel: setFilterModel,
+              clearSearch: () => requestSearch(''),
+              doSearch: requestSearch,
+              autocompleteData: triagedRegressions,
             },
           }}
         />
