@@ -653,8 +653,6 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// not ready to make release blocking yet.
 		{[]string{"-vsphere-host-groups"}, "candidate"},
 
-		{[]string{"-gcp-custom-dns"}, "candidate"},
-
 		// Periodic MCO jobs used for component readiness; not ready to make
 		// release blocking yet.
 		{[]string{"-mco-disruptive"}, "candidate"},
