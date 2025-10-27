@@ -1,7 +1,7 @@
 import { AutoAwesome as AutoAwesomeIcon } from '@mui/icons-material'
 import { Button, Snackbar, Tooltip } from '@mui/material'
-import { CapabilitiesContext } from '../App'
 import { makeStyles } from '@mui/styles'
+import { SippyCapabilitiesContext } from '../App'
 import { useDrawer, usePrompts, useSessionActions } from './store/useChatStore'
 import Alert from '@mui/material/Alert'
 import PropTypes from 'prop-types'
@@ -62,7 +62,7 @@ export default function AskSippyButton({
   const { openDrawer } = useDrawer()
   const { startNewSession } = useSessionActions()
   const { renderPrompt } = usePrompts()
-  const capabilities = useContext(CapabilitiesContext)
+  const capabilities = useContext(SippyCapabilitiesContext)
   const classes = useStyles()
   const [isRendering, setIsRendering] = useState(false)
   const [error, setError] = useState(null)

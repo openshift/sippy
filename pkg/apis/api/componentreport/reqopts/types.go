@@ -17,7 +17,7 @@ type RequestOptions struct {
 	VariantOption  Variants
 	AdvancedOption Advanced
 	CacheOption    cache.RequestOptions
-	// TODO: phase out once multi TestIDOptions is fully implemented
+	TestFilters
 	TestIDOptions []TestIdentification
 }
 
@@ -54,6 +54,12 @@ type RelativeRelease struct {
 	// inline is a known option
 	RelativeStart string `json:"relative_start,omitempty" yaml:"relative_start,omitempty"`
 	RelativeEnd   string `json:"relative_end,omitempty" yaml:"relative_end,omitempty"`
+}
+
+// TestFilters are query filters on attributes of the tests themselves, as opposed to the jobs they run in
+type TestFilters struct {
+	Capabilities []string `json:"capabilities,omitempty" yaml:"capabilities,omitempty"`
+	// we will likely have more later
 }
 
 // TestIdentification handles options used in the test details report when we focus in

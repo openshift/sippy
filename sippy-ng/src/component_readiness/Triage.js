@@ -1,5 +1,4 @@
 import { Box, Button, Tooltip } from '@mui/material'
-import { CapabilitiesContext } from '../App'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
@@ -8,6 +7,7 @@ import {
   hasFailedFixRegression,
   jiraUrlPrefix,
 } from './CompReadyUtils'
+import { SippyCapabilitiesContext } from '../App'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import { useTheme } from '@mui/material/styles'
 import AskSippyButton from '../chat/AskSippyButton'
@@ -32,7 +32,7 @@ export default function Triage({ id }) {
   const [triage, setTriage] = React.useState({})
   const [message, setMessage] = React.useState('')
   const [isUpdated, setIsUpdated] = React.useState(false)
-  const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
   // The view is needed in order to formulate test_details links on the frontend, this is still necessary as they are not

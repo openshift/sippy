@@ -10,6 +10,7 @@ import IncludeVariantCheckBoxList from './IncludeVariantCheckboxList'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import ReleaseSelector from './ReleaseSelector'
+import SidebarTestFilters from './SidebarTestFilters'
 import Tooltip from '@mui/material/Tooltip'
 import ViewPicker from './ViewPicker'
 
@@ -26,7 +27,7 @@ export const useStyles = makeStyles((theme) => ({
   },
 }))
 
-export default function CompReadyMainInputs(props) {
+export default function CompReadyMainInputs({ controlsOpts }) {
   const theme = useTheme()
   const classes = useStyles(theme)
   // checkBoxHiddenIncludeVariants defines what variants are excluded when creating Include Variant CheckBox
@@ -62,6 +63,10 @@ export default function CompReadyMainInputs(props) {
             variantGroupName={variant}
           />
         ))}
+      <SidebarTestFilters
+        headerName="Test Options"
+        controlsOpts={controlsOpts}
+      />
       <AdvancedOptions
         headerName="Advanced"
         confidence={varsContext.confidence}
@@ -91,7 +96,7 @@ export default function CompReadyMainInputs(props) {
   const shouldDisplayViewPicker = () => {
     return (
       varsContext.views.length > 0 &&
-      !props.isTestDetails &&
+      !controlsOpts?.isTestDetails &&
       varsContext.environment === undefined &&
       varsContext.capability === undefined &&
       varsContext.component === undefined
@@ -140,30 +145,43 @@ export default function CompReadyMainInputs(props) {
         ></ReleaseSelector>
       </div>
 
-      <div className="cr-report-button">
-        <Button
-          size="large"
-          variant="contained"
-          color="primary"
-          onClick={(event) => varsContext.handleGenerateReport(event)}
-        >
-          <Tooltip
-            title={
-              'Click here to generate a custom report that compares the release you wish to evaluate\
-                                                                   against a historical (previous) release using all the specific parameters specified'
-            }
-          >
-            <Fragment>Generate Report</Fragment>
-          </Tooltip>
-        </Button>
-      </div>
+      <ReportButton handler={varsContext.handleGenerateReport} />
 
-      {props.isTestDetails ? '' : compReadyEnvOptions}
+      {controlsOpts?.isTestDetails || (
+        <>
+          {compReadyEnvOptions}
+          <ReportButton handler={varsContext.handleGenerateReport} />
+        </>
+      )}
     </Fragment>
   )
 }
 
+function ReportButton(props) {
+  return (
+    <div className="cr-report-button">
+      <Button
+        size="large"
+        variant="contained"
+        color="primary"
+        onClick={(event) => props.handler(event)}
+      >
+        <Tooltip
+          title={
+            'Click here to generate a custom report that compares the release you wish to evaluate\
+                                                                                     against a historical (previous) release using all the specific parameters specified'
+          }
+        >
+          <Fragment>Generate Report</Fragment>
+        </Tooltip>
+      </Button>
+    </div>
+  )
+}
+
+ReportButton.propTypes = { handler: PropTypes.func }
+
 // component and environment may be null so they are not required
 CompReadyMainInputs.propTypes = {
-  isTestDetails: PropTypes.bool,
+  controlsOpts: PropTypes.object,
 }
