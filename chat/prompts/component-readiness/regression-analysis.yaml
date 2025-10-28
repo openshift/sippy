@@ -26,19 +26,30 @@ prompt: |
   - Note if the BaseRelease appears to be more than one minor version ahead of the sample release
     (This indicates we found a better pass rate in earlier releases, so we compared against that release
     instead of the prior one to prevent a test from gradually getting worse)
+    If not, do not mention it.
   - Check for flake-to-failure conversions:
     * If base_stats.flake_count > 0 and base_stats.failure_count ≈ 0
     * But sample_stats.failure_count > 0 and sample_stats.flake_count = 0
     * This may indicate a test that had its ability to flake removed (a dangerous policy we're working to remove)
     * Compare the flake rate in base_stats to the fail rate in sample_stats to see if they're comparable
+    * If this is not a test that used to flake, do not mention it.
+    
+  ## 3. Failure pattern analysis
+  - Examine the sample_job_run_stats to look for patterns. failure_count = 1 implies the test failed in the job run. success_count = 1 implies the test passed in the job run. Job runs are sorted by job start time with most recent first.
+  - Examine if the test appeared to fail in a solid block of job runs, but then went back to success. This could imply the issue is already resolved.
+  - Examine if the test has failed in every run in the report for any particular job name, indicating the start point could be before our reporting window.  
+    - If so, suggest the user can expand the sample window using the date filters on the left.
+  - Examine if the test went from full passing to full success for a particular job name, indicating a potential starting point for the regression.
+    - Lookup the payload tag for the job run that could be the first failure, and check what changes were in the payload, see if any sound related.
+    - Provide the user a link to view the payload details: /sippy-ng/release/{sample_release}/tags/{payload_tag}
 
-  ## 3. Root Cause Investigation
+  ## 4. Root Cause Investigation
   - Use the failed_job_run_ids from the report to investigate specific failures
   - Call get_prow_job_summary **in parallel** for multiple job run IDs (up to 5) to understand failure patterns
   - Look for common failure reasons across the job runs
   - Determine if failures are consistent or intermittent
 
-  ## 4. Failure Pattern Analysis
+  ## 5. Failure Pattern Analysis
   - Examine which tests are failing together in each job run
   - If the same tests fail in each job → likely related to the same root cause
   - If a job has mass failures (>10 failed tests) → may indicate systemic cluster problems, test might not be at fault
@@ -47,12 +58,12 @@ prompt: |
   - Compare error messages, stack traces, and failure patterns
   - Report whether it's a consistent failure (same root cause) or multiple different issues
 
-  ## 5. Triage Status
+  ## 6. Triage Status
   - If triages_count > 0, the regression has been attributed to a known Jira issue
   - Check if the triage has a resolved timestamp
   - If there are failures after the resolved timestamp, this indicates a failed fix
 
-  ## 6. Recommendations
+  ## 7. Recommendations
   Based on the analysis, provide:
   - Is this a genuine product bug, infrastructure issue, or test issue?
   - Priority level (how urgently should this be addressed?)

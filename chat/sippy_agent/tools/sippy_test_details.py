@@ -23,7 +23,10 @@ class SippyTestDetailsTool(SippyBaseTool):
 This tool provides:
 - Regression status and history
 - Sample vs base statistics comparison
-- Failed job run IDs (use get_prow_job_summary to analyze specific runs)
+- Job stats for each job name that matched the variants in the report
+  - List of sample job runs and basis job runs, sorted by start time with most recent first
+  - Whether each job run was a success or failure (see failure_count or success_count > 0)
+  -  get_prow_job_summary can be used to dig deeper into specific job runs by job run ID
 - Triage information
 - Pass rate changes
 
