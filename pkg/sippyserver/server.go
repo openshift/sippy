@@ -16,6 +16,7 @@ import (
 	"sync"
 	"time"
 
+	bq "cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -1106,9 +1107,9 @@ func (s *Server) jsonJobRunReleaseTag(w http.ResponseWriter, req *http.Request) 
 	}
 
 	type ReleaseTagResult struct {
-		ProwjobJobName string `json:"prowjob_job_name" bigquery:"prowjob_job_name"`
-		ReleaseTag     string `json:"release_verify_tag" bigquery:"release_verify_tag"`
-		ProwjobBuildID string `json:"prowjob_build_id" bigquery:"prowjob_build_id"`
+		ProwjobJobName string        `json:"prowjob_job_name" bigquery:"prowjob_job_name"`
+		Payload        bq.NullString `json:"payload" bigquery:"release_verify_tag"`
+		ProwjobBuildID string        `json:"prowjob_build_id" bigquery:"prowjob_build_id"`
 	}
 
 	var results []ReleaseTagResult
@@ -1123,6 +1124,7 @@ func (s *Server) jsonJobRunReleaseTag(w http.ResponseWriter, req *http.Request) 
 			failureResponse(w, http.StatusInternalServerError, "error parsing job run payload from bigquery: "+err.Error())
 			return
 		}
+
 		results = append(results, row)
 	}
 
