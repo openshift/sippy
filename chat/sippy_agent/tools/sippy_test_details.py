@@ -26,7 +26,8 @@ This tool provides:
 - Job stats for each job name that matched the variants in the report
   - List of sample job runs and basis job runs, sorted by start time with most recent first
   - Whether each job run was a success or failure (see failure_count or success_count > 0)
-  -  get_prow_job_summary can be used to dig deeper into specific job runs by job run ID
+  - Simplified job run data with job_url, job_run_id, start_time, and status (passed/failed/flaked)
+  - get_prow_job_summary can be used to dig deeper into specific job runs by job run ID
 - Triage information
 - Pass rate changes
 
@@ -137,6 +138,28 @@ Input: query_params (the query parameters for the test details endpoint, e.g., t
                     if len(failed_job_run_ids) >= 10:
                         break
 
+        # Process job stats to create simplified job run data
+        job_stats = {}
+        if first_analysis.get('job_stats'):
+            for job_stat in first_analysis['job_stats']:
+                sample_job_name = job_stat.get('sample_job_name')
+                if sample_job_name and job_stat.get('sample_job_run_stats'):
+                    job_runs = []
+                    for job_run in job_stat['sample_job_run_stats']:
+                        # Determine status based on test stats counts
+                        test_stats = job_run.get('test_stats', {})
+                        status = self._determine_job_run_status(test_stats)
+                        
+                        job_run_data = {
+                            "job_url": job_run.get('job_url', ''),
+                            "job_run_id": job_run.get('job_run_id', ''),
+                            "start_time": job_run.get('start_time', ''),
+                            "status": status
+                        }
+                        job_runs.append(job_run_data)
+                    
+                    job_stats[sample_job_name] = job_runs
+
         # Process regression information
         regression_info = None
         if first_analysis.get('regression'):
@@ -159,6 +182,32 @@ Input: query_params (the query parameters for the test details endpoint, e.g., t
             "sample_stats": first_analysis.get('sample_stats'),
             "base_stats": first_analysis.get('base_stats'),
             "failed_job_run_ids": failed_job_run_ids,
+            "job_stats": job_stats,
             "triages_count": len(first_analysis.get('triages', [])),
             "generated_at": data.get('generated_at'),
         }
+
+    def _determine_job_run_status(self, test_stats: Dict[str, Any]) -> str:
+        """Determine the status of a job run based on test stats counts.
+        
+        Args:
+            test_stats: Dictionary containing success_count, failure_count, and flake_count
+            
+        Returns:
+            String indicating status: 'passed', 'failed', or 'flaked'
+        """
+        success_count = test_stats.get('success_count', 0)
+        failure_count = test_stats.get('failure_count', 0)
+        flake_count = test_stats.get('flake_count', 0)
+        
+        # Determine status based on which count is > 0
+        # Priority: failure > flake > success
+        if failure_count > 0:
+            return 'failed'
+        elif flake_count > 0:
+            return 'flaked'
+        elif success_count > 0:
+            return 'passed'
+        else:
+            # If all counts are 0, default to 'passed' (no test results)
+            return 'passed'

@@ -35,13 +35,13 @@ prompt: |
     * If this is not a test that used to flake, do not mention it.
     
   ## 3. Failure pattern analysis
-  - Examine the sample_job_run_stats to look for patterns. failure_count = 1 implies the test failed in the job run. success_count = 1 implies the test passed in the job run. Job runs are sorted by job start time with most recent first.
-  - Examine if the test appeared to fail in a solid block of job runs, but then went back to success. This could imply the issue is already resolved.
-  - Examine if the test has failed in every run in the report for any particular job name, indicating the start point could be before our reporting window.  
-    - If so, suggest the user can expand the sample window using the date filters on the left.
-  - Examine if the test went from full passing to full success for a particular job name, indicating a potential starting point for the regression.
-    - Lookup the payload tag for the job run that could be the first failure, and check what changes were in the payload, see if any sound related.
-    - Provide the user a link to view the payload details: /sippy-ng/release/{sample_release}/tags/{payload_tag}
+  - Examine the job_stats for each job name, looking for patterns in how it's passed and failed.
+    - If the test appeared to fail in a solid block of job runs, but then went back to passing, this could imply the issue is already resolved.
+    - If several of the oldest job runs failed, the regression may have started before our reporting window. 
+      - If so, suggest the user can expand the sample window using the date filters on the left.
+    - If the test went from full passing to full failing for a particular job name, this could indicate a potential starting point for the regression. Provide a link to the prowjob URL from the first failing job run.
+      - Identify the first failing job run ID and lookup the payload it used, then check what changes were in the payload, see if any appear related.
+      - Provide the user a link to view the payload details: /sippy-ng/release/{sample_release}/tags/{payload_tag}
 
   ## 4. Root Cause Investigation
   - Use the failed_job_run_ids from the report to investigate specific failures
