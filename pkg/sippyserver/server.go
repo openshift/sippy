@@ -882,7 +882,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Request) {
-	capabilities, err := api.GetTestCapabilitiesFromDB(s.db)
+	capabilities, err := api.GetTestCapabilitiesFromDB(s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying test capabilities")
 		failureResponse(w, http.StatusInternalServerError, "error querying test capabilities")
@@ -2054,7 +2054,7 @@ func (s *Server) Serve() {
 		{
 			EndpointPath: "/api/tests/capabilities",
 			Description:  "Returns list of available test capabilities",
-			Capabilities: []string{LocalDBCapability},
+			Capabilities: []string{ComponentReadinessCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestCapabilitiesFromDB,
 		},
