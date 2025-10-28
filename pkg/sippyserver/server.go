@@ -38,7 +38,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/mcp"
 
-	"github.com/openshift/sippy/pkg/ai"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/andygrunwald/go-jira"
@@ -85,7 +84,6 @@ func NewServer(
 	views *apitype.SippyViews,
 	config *v1.SippyConfig,
 	enableWriteEndpoints bool,
-	llmClient *ai.LLMClient,
 	chatAPIURL string,
 	jiraClient *jira.Client,
 ) *Server {
@@ -109,7 +107,6 @@ func NewServer(
 		views:                views,
 		config:               config,
 		enableWriteAPIs:      enableWriteEndpoints,
-		llmClient:            llmClient,
 		chatAPIURL:           chatAPIURL,
 		jiraClient:           jiraClient,
 	}
@@ -154,7 +151,6 @@ type Server struct {
 	views                *apitype.SippyViews
 	config               *v1.SippyConfig
 	enableWriteAPIs      bool
-	llmClient            *ai.LLMClient
 	chatAPIURL           string
 	jiraClient           *jira.Client
 }
@@ -287,10 +283,6 @@ func (s *Server) determineCapabilities() {
 	capabilities := make([]string, 0)
 	if s.mode == ModeOpenShift {
 		capabilities = append(capabilities, OpenshiftCapability)
-	}
-
-	if s.llmClient != nil {
-		capabilities = append(capabilities, AICapability)
 	}
 
 	if s.bigQueryClient != nil {
@@ -1023,27 +1015,6 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 	}
 }
 
-func (s *Server) jsonJobRunAISummary(w http.ResponseWriter, req *http.Request) {
-	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
-	if jobRunIDStr == "" {
-		return
-	}
-
-	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
-	if err != nil {
-		failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
-		return
-	}
-
-	summary, err := ai.AnalyzeJobRun(req.Context(), s.llmClient, s.db, s.gcsClient, jobRunID)
-	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
-		return
-	}
-
-	api.RespondWithJSON(http.StatusOK, w, summary)
-}
-
 func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
 	if jobRunIDStr == "" {
@@ -1056,7 +1027,7 @@ func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	summary, err := ai.GetJobRunSummary(req.Context(), s.db, s.gcsClient, jobRunID)
+	summary, err := api.GetJobRunSummary(req.Context(), s.db, s.gcsClient, jobRunID)
 	if err != nil {
 		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
 		return
@@ -1936,12 +1907,6 @@ func (s *Server) Serve() {
 				}
 				api.RespondWithJSON(http.StatusOK, w, availableEndpoints)
 			},
-		},
-		{
-			EndpointPath: "/api/ai/job_run",
-			Description:  "Returns an AI-generated summary of a job run",
-			Capabilities: []string{LocalDBCapability, AICapability},
-			HandlerFunc:  s.jsonJobRunAISummary,
 		},
 		{
 			EndpointPath: "/api/job/run/summary",
