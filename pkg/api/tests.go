@@ -499,17 +499,31 @@ func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.T
 	return result, errs
 }
 
-// GetTestCapabilitiesFromDB returns a list of distinct capabilities from the test_ownerships table
-func GetTestCapabilitiesFromDB(dbc *db.DB) ([]string, error) {
-	if dbc == nil || dbc.DB == nil {
+// GetTestCapabilitiesFromDB returns a sorted list of capabilities from the BQ component_mapping_latest table
+func GetTestCapabilitiesFromDB(bqClient *bq.Client) ([]string, error) {
+	if bqClient == nil || bqClient.BQ == nil {
 		return []string{}, nil
 	}
 
-	var capabilities []string
-	res := dbc.DB.Raw("SELECT DISTINCT unnest(capabilities) AS capability FROM test_ownerships ORDER BY capability").Scan(&capabilities)
-	if res.Error != nil {
-		return nil, res.Error
+	qFmt := "SELECT ARRAY_AGG(DISTINCT capability ORDER BY capability) AS capabilities FROM `%s.component_mapping_latest`, UNNEST(capabilities) AS capability"
+	q := bqClient.BQ.Query(fmt.Sprintf(qFmt, bqClient.Dataset))
+
+	log.Infof("Fetching test capabilities with:\n%s\n", q.Q)
+
+	it, err := q.Read(context.Background())
+	if err != nil {
+		log.WithError(err).Error("error querying test capabilities from bigquery")
+		return []string{}, err
 	}
 
-	return capabilities, nil
+	var row struct {
+		Capabilities []string `bigquery:"capabilities"`
+	}
+	err = it.Next(&row)
+	if err != nil {
+		log.WithError(err).Error("error retrieving test capabilities from bigquery")
+		return []string{}, errors.Wrap(err, "error retrieving test capabilities from bigquery")
+	}
+
+	return row.Capabilities, nil
 }
