@@ -19,6 +19,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"google.golang.org/api/iterator"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
@@ -1065,6 +1066,69 @@ func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, summary)
 }
 
+// jsonJobRunReleaseTag returns the payload release tag that was used for a given job run.
+func (s *Server) jsonJobRunReleaseTag(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "job run payload API is only available when google-service-account-credential-file is configured")
+		return
+	}
+
+	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
+	if jobRunIDStr == "" {
+		return
+	}
+
+	// Calculate date range: 6 months ago through today
+	now := time.Now()
+	sixMonthsAgo := now.AddDate(0, -6, 0)
+
+	queryStr := fmt.Sprintf(`SELECT prowjob_job_name, release_verify_tag, prowjob_build_id
+		FROM `+"`openshift-gce-devel.ci_analysis_us.jobs`"+` 
+		WHERE prowjob_start BETWEEN DATETIME('%s') AND DATETIME_ADD('%s', INTERVAL 1 DAY) 
+		AND prowjob_build_id = '%s'
+		LIMIT 10`,
+		sixMonthsAgo.Format("2006-01-02"),
+		now.Format("2006-01-02"),
+		jobRunIDStr)
+
+	q := s.bigQueryClient.BQ.Query(queryStr)
+	log.WithFields(log.Fields{
+		"jobRunID":  jobRunIDStr,
+		"dateRange": fmt.Sprintf("%s to %s", sixMonthsAgo.Format("2006-01-02"), now.Format("2006-01-02")),
+		"query":     queryStr,
+	}).Info("Executing BigQuery payload query")
+
+	it, err := bigquery.LoggedRead(req.Context(), q)
+	if err != nil {
+		log.WithError(err).Error("error querying job run payload from bigquery")
+		failureResponse(w, http.StatusInternalServerError, "error querying job run payload from bigquery: "+err.Error())
+		return
+	}
+
+	type ReleaseTagResult struct {
+		ProwjobJobName string `json:"prowjob_job_name" bigquery:"prowjob_job_name"`
+		ReleaseTag     string `json:"release_verify_tag" bigquery:"release_verify_tag"`
+		ProwjobBuildID string `json:"prowjob_build_id" bigquery:"prowjob_build_id"`
+	}
+
+	var results []ReleaseTagResult
+	for {
+		var row ReleaseTagResult
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing job run payload from bigquery")
+			failureResponse(w, http.StatusInternalServerError, "error parsing job run payload from bigquery: "+err.Error())
+			return
+		}
+		results = append(results, row)
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
+}
+
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := param.SafeRead(req, "release")
 
@@ -1948,6 +2012,12 @@ func (s *Server) Serve() {
 			Description:  "Returns raw job run summary data including test failures and cluster operators",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonJobRunSummary,
+		},
+		{
+			EndpointPath: "/api/job/run/payload",
+			Description:  "Returns the payload a job run was using",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonJobRunReleaseTag,
 		},
 		{
 			EndpointPath: "/api/autocomplete/{field}",
