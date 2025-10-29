@@ -40,8 +40,9 @@ prompt: |
     - If several of the oldest job runs failed, the regression may have started before our reporting window. 
       - If so, suggest the user can expand the sample window using the date filters on the left.
     - If the test went from full passing to full failing for a particular job name, this could indicate a potential starting point for the regression. Provide a link to the prowjob URL from the first failing job run.
-      - Identify the first failing job run ID and lookup the payload it used, then check what changes were in the payload, see if any appear related.
-      - Provide a link to the payload details: /sippy-ng/release/{sample_release}/tags/{payload_tag}
+      - Identify the first failing job run ID and lookup the payload it used.
+      - Provide a link to the payload details including the pull requests: `[Payload Details]({base_url}/sippy-ng/release/{sample_release}/tags/{payload_tag})`
+        * Use current page's base URL if available, else `https://sippy-auth.dptools.openshift.org`
 
   ## 4. Root Cause Investigation
   - Use the failed_job_run_ids from the report to investigate specific failures
