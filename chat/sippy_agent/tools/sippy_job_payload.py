@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class SippyProwJobPayloadTool(SippyBaseTool):
-    """Tool for getting prow job run payload information from Sippy API."""
+    """Tool for getting the payload a prow job used from the Sippy API. Useful for determining what changes were in a payload where a problem first appeared."""
 
     name: str = "get_prow_job_payload"
     description: str = "Get payload information for a Prow job run including the payload tag (may be null) and job name. Input: just the numeric job ID (e.g., 1934795512955801600)"
