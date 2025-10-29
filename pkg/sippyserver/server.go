@@ -1975,6 +1975,7 @@ func (s *Server) Serve() {
 			Description:  "Returns the payload a job run was using",
 			Capabilities: []string{ComponentReadinessCapability},
 			HandlerFunc:  s.jsonJobRunPayload,
+			CacheTime:    4 * time.Hour,
 		},
 		{
 			EndpointPath: "/api/autocomplete/{field}",

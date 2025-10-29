@@ -24,7 +24,6 @@ class SippyProwJobPayloadTool(SippyBaseTool):
 
     class ProwJobPayloadInput(SippyToolInput):
         prow_job_run_id: str = Field(description="Numeric prow job run ID only (e.g., 1934795512955801600)")
-        sippy_api_url: Optional[str] = Field(default=None, description="Sippy API base URL (optional, uses config if not provided)")
 
     args_schema: Type[SippyToolInput] = ProwJobPayloadInput
 
