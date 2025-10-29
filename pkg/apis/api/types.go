@@ -6,7 +6,9 @@ import (
 	"math/big"
 	"time"
 
+	bq "cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
+
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -832,6 +834,13 @@ type FailedPayload struct {
 	FailedJobs []string `json:"failed_jobs"`
 	// FailedJobRuns is a list of prow job URLs the test failed in for this payload.
 	FailedJobRuns []string `json:"failed_job_runs"`
+}
+
+// JobPayload represents the payload release tag information for a job run.
+type JobPayload struct {
+	ProwjobJobName string        `json:"prowjob_job_name" bigquery:"prowjob_job_name"`
+	Payload        bq.NullString `json:"payload" bigquery:"release_verify_tag"`
+	ProwjobBuildID string        `json:"prowjob_build_id" bigquery:"prowjob_build_id"`
 }
 
 // CalendarEvent is an API type representing a FullCalendar.io event type, for use

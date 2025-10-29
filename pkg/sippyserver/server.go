@@ -1036,6 +1036,27 @@ func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, summary)
 }
 
+// jsonJobRunPayload returns the payload release tag that was used for a given job run.
+func (s *Server) jsonJobRunPayload(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "job run payload API is only available when google-service-account-credential-file is configured")
+		return
+	}
+
+	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
+	if jobRunIDStr == "" {
+		return
+	}
+
+	results, err := api.PayloadForJobRun(req.Context(), s.bigQueryClient, jobRunIDStr)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
+}
+
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := param.SafeRead(req, "release")
 
@@ -1913,6 +1934,13 @@ func (s *Server) Serve() {
 			Description:  "Returns raw job run summary data including test failures and cluster operators",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonJobRunSummary,
+		},
+		{
+			EndpointPath: "/api/job/run/payload",
+			Description:  "Returns the payload a job run was using",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonJobRunPayload,
+			CacheTime:    4 * time.Hour,
 		},
 		{
 			EndpointPath: "/api/autocomplete/{field}",

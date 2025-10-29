@@ -15,6 +15,7 @@ from .api_models import ChatMessage
 from .graph import create_react_graph, extract_thinking_steps, get_final_response
 from .tools import (
     SippyProwJobSummaryTool,
+    SippyProwJobPayloadTool,
     SippyLogAnalyzerTool,
     SippyJiraIncidentTool,
     SippyJiraIssueTool,
@@ -111,6 +112,7 @@ class SippyAgent:
         """Create the list of tools available to the agent."""
         tools = [
             SippyProwJobSummaryTool(sippy_api_url=self.config.sippy_api_url),
+            SippyProwJobPayloadTool(sippy_api_url=self.config.sippy_api_url),
             SippyLogAnalyzerTool(sippy_api_url=self.config.sippy_api_url),
             SippyTestDetailsTool(sippy_api_url=self.config.sippy_api_url),
             SippyJiraIncidentTool(

@@ -24,6 +24,7 @@ class SippyPayloadDetailsTool(SippyBaseTool):
     release_controller_url: str = Field(
         default="https://amd64.ocp.releases.ci.openshift.org/api/v1", description="Release controller API base URL"
     )
+    # TODO: this should probably be switched to use the sippy API for payloads, which is permanent whereas release controller will prune
 
     # Sippy API URL for job analysis
     sippy_api_url: Optional[str] = Field(default=None, description="Sippy API base URL for job analysis")
