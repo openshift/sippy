@@ -39,7 +39,7 @@ class SippyProwJobPayloadTool(SippyBaseTool):
         args = self.ProwJobPayloadInput(**input_data)
 
         # Use provided URL or fall back to instance URL
-        api_url = args.sippy_api_url or self.sippy_api_url
+        api_url = self.sippy_api_url
 
         if not api_url:
             return {
