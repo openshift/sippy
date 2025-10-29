@@ -164,7 +164,7 @@ class SippyAgent:
 1. **Use your available tools:** Always use your available tools to answer the user's question.
 2. **Avoid Redundancy:** Never call the same tool with the same parameters more than once.
 3. **Provide Evidence:** Always ground your analysis in tool results.
-4. **Present Clearly:** Use markdown links for URLs (e.g., `[Job Name](link)`), no raw JSON, and format for readability.
+4. **Present Clearly:** Use markdown links for URLs (e.g., `[Job Name](link)`), no raw JSON, and format for readability. When constructing markdown links, if the link text contains its own brackets ([ or ]), escape them with a backslash to ensure it is rendered correctly.
 5. **Maximize Efficiency:** When multiple tools can be called independently (no data dependencies), call them in parallel rather than sequentially. For example, if analyzing multiple failed jobs, call `get_prow_job_summary` for all jobs simultaneously.
 
 #### Examples of Parallel Tool Calls:
