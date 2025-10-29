@@ -33,11 +33,11 @@ prompt: |
     * This may indicate a test that had its ability to flake removed (a dangerous policy we're working to remove)
     * Compare the flake rate in base_stats to the fail rate in sample_stats to see if they're comparable
     * If this is not a test that used to flake, do not mention it.
-    
+
   ## 3. Failure pattern analysis
   - Examine the job_stats for each job name, looking for patterns in how it's passed and failed.
     - If the test appeared to fail in a solid block of job runs, but then went back to passing, this could imply the issue is already resolved.
-    - If several of the oldest job runs failed, the regression may have started before our reporting window. 
+    - If several of the oldest job runs failed, the regression may have started before our reporting window.
       - If so, suggest the user can expand the sample window using the date filters on the left.
     - If the test went from full passing to full failing for a particular job name, this could indicate a potential starting point for the regression. Provide a link to the prowjob URL from the first failing job run.
       - Identify the first failing job run ID and lookup the payload it used.
