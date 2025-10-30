@@ -1895,6 +1895,13 @@ func (s *Server) Serve() {
 		http.Redirect(w, req, "/sippy-ng/", http.StatusMovedPermanently)
 	}).Methods(http.MethodGet)
 
+	// Serve robots.txt at the root - disallow all crawlers
+	router.HandleFunc("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("User-agent: *\nDisallow: /\n"))
+	}).Methods(http.MethodGet)
+
 	// Setup MCP Server
 	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
 
