@@ -1886,15 +1886,6 @@ func (s *Server) Serve() {
 
 	router.PathPrefix("/static/").Handler(http.FileServer(http.FS(s.static)))
 
-	// Re-direct "/" to sippy-ng
-	router.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/" {
-			http.NotFound(w, req)
-			return
-		}
-		http.Redirect(w, req, "/sippy-ng/", http.StatusMovedPermanently)
-	}).Methods(http.MethodGet)
-
 	// Setup MCP Server
 	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
 
@@ -2376,6 +2367,24 @@ func (s *Server) Serve() {
 			route.Methods(ep.Methods...)
 		}
 	}
+
+	// Catch-all fallback: serve static files for any unmatched routes, or redirect to sippy-ng
+	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Try to open the file from static filesystem (embedded FS keeps directory structure)
+		filePath := "static" + r.URL.Path
+		if _, err := s.static.Open(filePath); err != nil {
+			// File doesn't exist in static, redirect to sippy-ng
+			if r.URL.Path == "/" {
+				http.Redirect(w, r, "/sippy-ng/", http.StatusMovedPermanently)
+			} else {
+				http.NotFound(w, r)
+			}
+			return
+		}
+		// File exists, rewrite path to include /static prefix and serve
+		r.URL.Path = "/static" + r.URL.Path
+		http.FileServer(http.FS(s.static)).ServeHTTP(w, r)
+	})
 
 	var handler http.Handler = router
 	handler = logRequestHandler(handler)
