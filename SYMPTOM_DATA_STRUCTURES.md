@@ -4,7 +4,7 @@ Design document for TRT-2371: Job symptoms and observations feature
 
 ## Overview
 
-This document defines the data structures needed to implement job symptom detection and labeling. The design uses a boolean expression tree pattern (JSON AST) for compound symptom logic, avoiding the need to implement a custom expression language while remaining database-friendly and easy to work with in both Go and Python.
+This document defines the data structures needed to implement job symptom detection and labeling. The design uses Common Expression Language (CEL) for compound symptom logic, providing a standard expression language for combining simple symptoms with boolean operators. Simple symptoms use straightforward pattern matching against job artifacts.
 
 ## BigQuery Schema Changes (job_labels table)
 
@@ -102,14 +102,30 @@ type SymptomDefinition struct {
     gorm.Model
 
     // Immutable identifier for this symptom
+    // Must be valid identifier (word chars, not starting with digit)
     ID string `gorm:"primaryKey;type:varchar(100)" json:"id"`
 
     // Human-readable summary (can be changed)
     Summary string `gorm:"type:varchar(500);not null;uniqueIndex" json:"summary"`
 
-    // Detection rule (stored as JSON)
-    // See SymptomMatcher for structure
-    Rule datatypes.JSON `gorm:"type:jsonb;not null" json:"rule"`
+    // Type of matcher
+    // Simple types: "substring", "regex", "exact", "file"
+    // Compound type: "cel" (Common Expression Language)
+    MatcherType string `gorm:"type:varchar(50);not null" json:"matcher_type"`
+
+    // File pattern for simple matchers (glob pattern)
+    // Examples: "**/build-log.txt", "**/e2e-timelines/**/*.json"
+    // Null for CEL matcher type
+    FilePattern string `gorm:"type:varchar(500)" json:"file_pattern,omitempty"`
+
+    // Match string - interpretation depends on MatcherType:
+    // - "substring": substring to find in file
+    // - "regex": regular expression pattern
+    // - "exact": exact string match
+    // - "file": ignored (just checks file existence)
+    // - "cel": CEL expression referencing other symptom IDs
+    //   Example: "symptoms.DNS_Timeout && !symptoms.User_Error"
+    MatchString string `gorm:"type:text" json:"match_string,omitempty"`
 
     // Labels to apply when this symptom matches (typically one, but can be multiple)
     LabelIDs pq.StringArray `gorm:"type:text[];not null" json:"label_ids"`
@@ -132,57 +148,28 @@ type SymptomDefinition struct {
 func (SymptomDefinition) TableName() string {
     return "symptom_definitions"
 }
-```
 
-### 3. SymptomMatcher - Matching Rule Structure
-
-This is not a database model but the JSON structure stored in `SymptomDefinition.Rule`.
-
-```go
-// SymptomMatcher represents the matching logic for a symptom
-// This is serialized to JSON and stored in SymptomDefinition.Rule
-type SymptomMatcher struct {
-    // Type of matcher
-    Type MatcherType `json:"type"`
-
-    // For simple matchers (type: "file", "regex", "substring", "exact")
-    FilePattern string `json:"file_pattern,omitempty"` // Glob pattern, e.g., "**/*build-log.txt"
-    MatchString string `json:"match_string,omitempty"` // What to match in the file
-
-    // For compound matchers (type: "and", "or", "not")
-    Children []SymptomMatcher `json:"children,omitempty"`
-
-    // For reference matcher (type: "symptom")
-    SymptomID string `json:"symptom_id,omitempty"` // Reference another symptom's result
-}
-
-type MatcherType string
-
+// Matcher type constants
 const (
-    MatcherTypeSubstring MatcherType = "substring" // Simple substring match
-    MatcherTypeRegex     MatcherType = "regex"     // Regular expression match
-    MatcherTypeExact     MatcherType = "exact"     // Exact string match
-    MatcherTypeFile      MatcherType = "file"      // File exists (no content match)
-    MatcherTypeAnd       MatcherType = "and"       // Logical AND
-    MatcherTypeOr        MatcherType = "or"        // Logical OR
-    MatcherTypeNot       MatcherType = "not"       // Logical NOT
-    MatcherTypeSymptom   MatcherType = "symptom"   // Reference another symptom
+    MatcherTypeSubstring = "substring" // Simple substring match
+    MatcherTypeRegex     = "regex"     // Regular expression match
+    MatcherTypeExact     = "exact"     // Exact string match
+    MatcherTypeFile      = "file"      // File exists (no content match)
+    MatcherTypeCEL       = "cel"       // Common Expression Language for compound logic
 )
 ```
 
 ## Example Symptom Definitions
 
-### Simple Symptom: File Content Match
+### Simple Symptom: Substring Match
 
 ```json
 {
-  "id": "ClusterDNSFlake",
+  "id": "DNS_Timeout",
   "summary": "Cluster DNS resolution failures",
-  "rule": {
-    "type": "regex",
-    "file_pattern": "**/e2e-timelines/**/*.json",
-    "match_string": "dial tcp.*i/o timeout"
-  },
+  "matcher_type": "substring",
+  "file_pattern": "**/e2e-timelines/**/*.json",
+  "match_string": "dial tcp",
   "label_ids": ["ClusterDNSFlake"],
   "releases": ["4.17", "4.18"],
   "valid_from": "2025-01-01T00:00:00Z",
@@ -190,34 +177,15 @@ const (
 }
 ```
 
-### Compound Symptom: AND/OR/NOT Logic
-
-Find infrastructure failures (install timeout AND NOT user error):
+### Simple Symptom: Regex Match
 
 ```json
 {
-  "id": "InfraFailureInstallTimeout",
-  "summary": "Infrastructure install timeout (not user error)",
-  "rule": {
-    "type": "and",
-    "children": [
-      {
-        "type": "substring",
-        "file_pattern": "**/build-log.txt",
-        "match_string": "timeout waiting for cluster install"
-      },
-      {
-        "type": "not",
-        "children": [
-          {
-            "type": "substring",
-            "file_pattern": "**/build-log.txt",
-            "match_string": "insufficient quota"
-          }
-        ]
-      }
-    ]
-  },
+  "id": "Install_Timeout",
+  "summary": "Cluster install timeout",
+  "matcher_type": "regex",
+  "file_pattern": "**/build-log.txt",
+  "match_string": "timeout waiting for.*install",
   "label_ids": ["InfraFailure"],
   "releases": null,
   "valid_from": null,
@@ -225,25 +193,48 @@ Find infrastructure failures (install timeout AND NOT user error):
 }
 ```
 
-### Compound Symptom: Reference Other Symptoms
+### Simple Symptom: File Existence
 
 ```json
 {
-  "id": "CriticalInfraIssue",
+  "id": "User_Quota_Error",
+  "summary": "Insufficient quota error",
+  "matcher_type": "substring",
+  "file_pattern": "**/build-log.txt",
+  "match_string": "insufficient quota",
+  "label_ids": ["UserError"],
+  "releases": null
+}
+```
+
+### Compound Symptom: CEL Expression
+
+Find infrastructure failures (install timeout AND NOT user error):
+
+```json
+{
+  "id": "InfraFailure_Install",
+  "summary": "Infrastructure install timeout (not user error)",
+  "matcher_type": "cel",
+  "file_pattern": null,
+  "match_string": "symptoms.Install_Timeout && !symptoms.User_Quota_Error",
+  "label_ids": ["InfraFailure"],
+  "releases": null,
+  "valid_from": null,
+  "valid_until": null
+}
+```
+
+### Compound Symptom: Complex CEL Logic
+
+Critical infrastructure issue (network or storage):
+
+```json
+{
+  "id": "Critical_Infra",
   "summary": "Critical infrastructure issue (network or storage)",
-  "rule": {
-    "type": "or",
-    "children": [
-      {
-        "type": "symptom",
-        "symptom_id": "ClusterDNSFlake"
-      },
-      {
-        "type": "symptom",
-        "symptom_id": "StorageProvisionFailure"
-      }
-    ]
-  },
+  "matcher_type": "cel",
+  "match_string": "symptoms.DNS_Timeout || symptoms.Storage_Provision_Failure || (symptoms.API_Timeout && symptoms.Etcd_Unavailable)",
   "label_ids": ["InfraFailure", "RequiresInvestigation"],
   "releases": ["4.17", "4.18"]
 }
@@ -285,54 +276,124 @@ type JobRunAnnotation struct {
 
 ## Implementation Notes
 
-### Matcher Evaluation
+### CEL Integration
 
-The matcher evaluation should be recursive:
+Go implementation using github.com/google/cel-go:
 
 ```go
-func (m *SymptomMatcher) Evaluate(ctx context.Context, artifacts JobArtifacts) (bool, error) {
-    switch m.Type {
+import (
+    "github.com/google/cel-go/cel"
+    "github.com/google/cel-go/checker/decls"
+)
+
+// EvaluateSymptom evaluates a single symptom definition against job artifacts
+func (s *SymptomDefinition) Evaluate(ctx context.Context, artifacts JobArtifacts, symptomResults map[string]bool) (bool, error) {
+    switch s.MatcherType {
     case MatcherTypeSubstring:
-        return m.evaluateSubstring(ctx, artifacts)
+        return s.evaluateSubstring(ctx, artifacts)
     case MatcherTypeRegex:
-        return m.evaluateRegex(ctx, artifacts)
-    case MatcherTypeAnd:
-        return m.evaluateAnd(ctx, artifacts)
-    case MatcherTypeOr:
-        return m.evaluateOr(ctx, artifacts)
-    case MatcherTypeNot:
-        return m.evaluateNot(ctx, artifacts)
-    case MatcherTypeSymptom:
-        return m.evaluateSymptomReference(ctx, artifacts)
+        return s.evaluateRegex(ctx, artifacts)
+    case MatcherTypeExact:
+        return s.evaluateExact(ctx, artifacts)
+    case MatcherTypeFile:
+        return s.evaluateFileExists(ctx, artifacts)
+    case MatcherTypeCEL:
+        return s.evaluateCEL(ctx, symptomResults)
     default:
-        return false, fmt.Errorf("unknown matcher type: %s", m.Type)
+        return false, fmt.Errorf("unknown matcher type: %s", s.MatcherType)
     }
+}
+
+// evaluateCEL evaluates a CEL expression using results from other symptoms
+func (s *SymptomDefinition) evaluateCEL(ctx context.Context, symptomResults map[string]bool) (bool, error) {
+    // Create CEL environment with symptom results as variables
+    env, err := cel.NewEnv(
+        cel.Declarations(
+            decls.NewVar("symptoms", decls.NewMapType(decls.String, decls.Bool)),
+        ),
+    )
+    if err != nil {
+        return false, fmt.Errorf("failed to create CEL environment: %w", err)
+    }
+
+    // Parse the CEL expression
+    ast, issues := env.Compile(s.MatchString)
+    if issues != nil && issues.Err() != nil {
+        return false, fmt.Errorf("failed to compile CEL expression: %w", issues.Err())
+    }
+
+    // Create program
+    prg, err := env.Program(ast)
+    if err != nil {
+        return false, fmt.Errorf("failed to create CEL program: %w", err)
+    }
+
+    // Evaluate with symptom results
+    out, _, err := prg.Eval(map[string]interface{}{
+        "symptoms": symptomResults,
+    })
+    if err != nil {
+        return false, fmt.Errorf("failed to evaluate CEL expression: %w", err)
+    }
+
+    result, ok := out.Value().(bool)
+    if !ok {
+        return false, fmt.Errorf("CEL expression did not return boolean")
+    }
+
+    return result, nil
 }
 ```
 
 ### Python Compatibility
 
-Python code can easily work with these structures:
+Python code can use the `celpy` library:
 
 ```python
+import celpy
 import json
 
-# Load symptom definition
-symptom_def = json.loads(symptom_json)
+def evaluate_symptom(symptom_def, artifacts, symptom_results):
+    matcher_type = symptom_def['matcher_type']
 
-def evaluate_matcher(matcher, artifacts):
-    match_type = matcher['type']
+    if matcher_type == 'substring':
+        return evaluate_substring(symptom_def, artifacts)
+    elif matcher_type == 'regex':
+        return evaluate_regex(symptom_def, artifacts)
+    elif matcher_type == 'exact':
+        return evaluate_exact(symptom_def, artifacts)
+    elif matcher_type == 'file':
+        return evaluate_file_exists(symptom_def, artifacts)
+    elif matcher_type == 'cel':
+        return evaluate_cel(symptom_def, symptom_results)
+    else:
+        raise ValueError(f"Unknown matcher type: {matcher_type}")
 
-    if match_type == 'substring':
-        return evaluate_substring(matcher, artifacts)
-    elif match_type == 'and':
-        return all(evaluate_matcher(child, artifacts) for child in matcher['children'])
-    elif match_type == 'or':
-        return any(evaluate_matcher(child, artifacts) for child in matcher['children'])
-    elif match_type == 'not':
-        return not evaluate_matcher(matcher['children'][0], artifacts)
-    # ... etc
+def evaluate_cel(symptom_def, symptom_results):
+    # Create CEL environment
+    env = celpy.Environment()
+
+    # Compile the expression
+    ast = env.compile(symptom_def['match_string'])
+
+    # Create program
+    program = env.program(ast)
+
+    # Evaluate with symptom results
+    activation = {'symptoms': symptom_results}
+    result = program.evaluate(activation)
+
+    return bool(result)
 ```
+
+### Evaluation Order
+
+For symptoms with CEL expressions that reference other symptoms, evaluation must be done in dependency order:
+
+1. Build dependency graph from CEL expressions
+2. Perform topological sort
+3. Evaluate symptoms in order (simple matchers first, then CEL expressions)
+4. Detect circular dependencies and fail gracefully
 
 ### AI-Friendly Format
 
@@ -348,15 +409,27 @@ Example prompt: "Create a symptom for DNS timeout failures in e2e tests"
 AI Response:
 ```json
 {
-  "id": "E2EDNS_Timeout_2025_Q4",
+  "id": "E2E_DNS_Timeout_2025_Q4",
   "summary": "E2E DNS timeout failures",
-  "rule": {
-    "type": "regex",
-    "file_pattern": "**/e2e-*.log",
-    "match_string": "context deadline exceeded.*dns"
-  },
+  "matcher_type": "regex",
+  "file_pattern": "**/e2e-*.log",
+  "match_string": "context deadline exceeded.*dns",
   "label_ids": ["TestInfraIssue"],
   "releases": ["4.18"]
+}
+```
+
+Example prompt: "Create a symptom for install failures that are not quota errors"
+
+AI Response:
+```json
+{
+  "id": "Install_Failure_Not_Quota",
+  "summary": "Install failure (excluding quota errors)",
+  "matcher_type": "cel",
+  "match_string": "symptoms.Install_Timeout && !symptoms.User_Quota_Error",
+  "label_ids": ["InfraFailure"],
+  "releases": ["4.17", "4.18"]
 }
 ```
 
@@ -386,6 +459,7 @@ CREATE INDEX idx_label_prototypes_display_contexts ON label_prototypes USING GIN
 CREATE INDEX idx_label_prototypes_severity ON label_prototypes(severity);
 
 -- symptom_definitions
+CREATE INDEX idx_symptom_definitions_matcher_type ON symptom_definitions(matcher_type);
 CREATE INDEX idx_symptom_definitions_releases ON symptom_definitions USING GIN (releases);
 CREATE INDEX idx_symptom_definitions_label_ids ON symptom_definitions USING GIN (label_ids);
 CREATE INDEX idx_symptom_definitions_valid_from ON symptom_definitions(valid_from);
@@ -393,3 +467,14 @@ CREATE INDEX idx_symptom_definitions_valid_until ON symptom_definitions(valid_un
 CREATE INDEX idx_symptom_definitions_product ON symptom_definitions(product);
 CREATE INDEX idx_symptom_definitions_release_status ON symptom_definitions(release_status);
 ```
+
+## Dependencies
+
+### Go
+- `github.com/google/cel-go` - CEL expression evaluation
+- `gorm.io/gorm` - ORM (already in use)
+- `github.com/lib/pq` - PostgreSQL array support (already in use)
+
+### Python
+- `celpy` - CEL expression evaluation for Python
+- Standard library for simple matchers (regex, string operations)
