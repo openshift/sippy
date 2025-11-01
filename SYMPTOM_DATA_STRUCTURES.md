@@ -4,9 +4,9 @@ Design document for TRT-2371: Job symptoms and observations feature
 
 ## Overview
 
-This document defines the data structures needed to implement job symptom detection and labeling. The design uses Common Expression Language (CEL) for compound symptom logic, providing a standard expression language for combining simple symptoms with boolean operators. Simple symptoms use straightforward pattern matching against job artifacts.
+This document defines the data structures needed to implement job symptom detection and labeling. Simple symptoms use straightforward pattern matching against job artifacts. The design leaves room for implementing compound symptom logic (probably as a future expansion) using Common Expression Language (CEL) for logic combining labels with boolean operators.
 
-## BigQuery Schema Changes (job_labels table)
+## BigQuery Schema Changes (`job_labels` table)
 
 Expand the existing `job_labels` table with these additional fields:
 
@@ -14,27 +14,26 @@ Expand the existing `job_labels` table with these additional fields:
 -- New fields to add to job_labels table
 added_at TIMESTAMP         -- When this label was added/updated
 updated_at TIMESTAMP        -- Last update timestamp
-source_tool STRING          -- Tool that created it (e.g., 'annotate-job-runs', 'cloud-function', 'jaq-ui', 'symptom-detector')
+source_tool STRING          -- Tool that created it (e.g., 'annotate-job-runs', 'cloud-function', 'jaq-ui')
 symptom_id STRING           -- Immutable ID of the symptom that matched (e.g., 'InfraFailure', 'ClusterDNSFlake')
-display_contexts ARRAY<STRING>  -- Where to display (e.g., ['spyglass', 'metrics', 'component-readiness'])
-comment JSON                -- Free-form JSON for symptom-specific data (e.g., disruption metrics, timing data)
+display_contexts ARRAY<STRING>  -- Where to display (e.g., ['spyglass', 'metrics', 'test-details'])
 
 -- Existing field (repurposed):
--- label STRING remains for backward compatibility, will contain label_text from LabelPrototype
+-- label STRING remains for backward compatibility, will contain label_text from jobrunscan.Label
 ```
 
-### Example job_labels row
+### Example `job_labels` row
 
 ```json
 {
   "job_name": "periodic-ci-openshift-release-master-ci-4.18-upgrade-from-stable-4.17-e2e-gcp-upgrade",
   "job_run_name": "1234567890",
-  "label": "Infrastructure failure: omit job from CR",
+  "label": "ClusterDNSFlake",
   "added_at": "2025-10-30T12:34:56Z",
   "updated_at": "2025-10-30T12:34:56Z",
   "source_tool": "symptom-detector",
-  "symptom_id": "InfraFailure",
-  "display_contexts": ["spyglass", "component-readiness"],
+  "symptom_id": "ClusterDNSFlake",
+  "display_contexts": ["spyglass", "test-details"],
   "comment": {
     "matched_files": ["build-log.txt"],
     "match_count": 3,
@@ -45,12 +44,13 @@ comment JSON                -- Free-form JSON for symptom-specific data (e.g., d
 
 ## PostgreSQL Schema (Sippy Database)
 
-### 1. LabelPrototype - Label Definition
+### 1. Label - Label Definition
 
 Defines what a label means and how it should be displayed.
 
 ```go
-package models
+// In pkg/db/models/jobrunscan/
+package jobrunscan
 
 import (
     "time"
@@ -58,18 +58,18 @@ import (
     "gorm.io/gorm"
 )
 
-// LabelPrototype defines a label that can be applied to jobs
-type LabelPrototype struct {
+// Label defines a label that can be applied to jobs
+type Label struct {
     gorm.Model
 
     // Immutable identifier used in job_labels table and symptom expressions
     // Must be valid identifier (word chars, not starting with digit)
     // Examples: "InfraFailure", "ClusterDNSFlake", "APIServerTimeout"
-    ID string `gorm:"primaryKey;type:varchar(100)" json:"id"`
+    ID string `gorm:"primaryKey;type:varchar(80)" json:"id"`
 
     // Human-readable label text (can be changed)
     // Examples: "Infrastructure failure: omit job from CR", "Cluster DNS resolution failure(s)"
-    LabelText string `gorm:"type:varchar(500);not null;uniqueIndex" json:"label_text"`
+    LabelText string `gorm:"type:varchar(200);not null;uniqueIndex" json:"label_text"`
 
     // Markdown explanation of what this label indicates
     Description string `gorm:"type:text" json:"description"`
@@ -78,27 +78,24 @@ type LabelPrototype struct {
     // Values: "spyglass", "metrics", "component-readiness", "jaq", etc.
     DisplayContexts pq.StringArray `gorm:"type:text[]" json:"display_contexts"`
 
-    // Optional: Severity or priority
-    Severity string `gorm:"type:varchar(50)" json:"severity,omitempty"` // e.g., "critical", "warning", "info"
-
     // Metadata
     CreatedAt time.Time `json:"created_at"`
     UpdatedAt time.Time `json:"updated_at"`
     DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
-func (LabelPrototype) TableName() string {
-    return "label_prototypes"
+func (Label) TableName() string {
+    return "prow_job_run_labels"
 }
 ```
 
-### 2. SymptomDefinition - Symptom Detection Rules
+### 2. Symptom - Symptom Definition
 
 Defines how to detect symptoms in job artifacts.
 
 ```go
-// SymptomDefinition defines rules for detecting symptoms in job artifacts
-type SymptomDefinition struct {
+// Symptom defines rules for detecting symptoms in job artifacts
+type Symptom struct {
     gorm.Model
 
     // Immutable identifier for this symptom
@@ -106,11 +103,11 @@ type SymptomDefinition struct {
     ID string `gorm:"primaryKey;type:varchar(100)" json:"id"`
 
     // Human-readable summary (can be changed)
-    Summary string `gorm:"type:varchar(500);not null;uniqueIndex" json:"summary"`
+    Summary string `gorm:"type:varchar(200);not null;uniqueIndex" json:"summary"`
 
     // Type of matcher
-    // Simple types: "substring", "regex", "exact", "file"
-    // Compound type: "cel" (Common Expression Language)
+    // Simple types: "string", "regex", "jq", "xpath", "none"
+    // Compound type: "cel" (Common Expression Language against label names)
     MatcherType string `gorm:"type:varchar(50);not null" json:"matcher_type"`
 
     // File pattern for simple matchers (glob pattern)
@@ -119,21 +116,19 @@ type SymptomDefinition struct {
     FilePattern string `gorm:"type:varchar(500)" json:"file_pattern,omitempty"`
 
     // Match string - interpretation depends on MatcherType:
-    // - "substring": substring to find in file
+    // - "string": substring to find in file
     // - "regex": regular expression pattern
-    // - "exact": exact string match
-    // - "file": ignored (just checks file existence)
-    // - "cel": CEL expression referencing other symptom IDs
-    //   Example: "symptoms.DNS_Timeout && !symptoms.User_Error"
+    // - "none": ignored (just checks file existence)
+    // - "cel": CEL expression referencing applied labels (e.g. "DNSTimeout && !OperatorError")
     MatchString string `gorm:"type:text" json:"match_string,omitempty"`
 
-    // Labels to apply when this symptom matches (typically one, but can be multiple)
-    LabelIDs pq.StringArray `gorm:"type:text[];not null" json:"label_ids"`
+    // Labels to apply when this symptom matches (typically none or one, but can be multiple)
+    LabelIDs pq.StringArray `gorm:"type:text[]" json:"label_ids"`
 
     // Applicability filters
-    Releases pq.StringArray `gorm:"type:text[]" json:"releases,omitempty"` // e.g., ["4.17", "4.18"], null = all
-    ReleaseStatus string `gorm:"type:varchar(50)" json:"release_status,omitempty"` // e.g., "accepted", "rejected", "ga"
-    Product string `gorm:"type:varchar(50)" json:"product,omitempty"` // e.g., "ocp", "okd"
+    FilterReleases pq.StringArray `gorm:"type:text[]" json:"filter_releases,omitempty"` // e.g., ["4.17", "4.18"], null = all
+    FilterReleaseStatuses pq.StringArray  `gorm:"type:text[]" json:"filter_release_statuses,omitempty"` // e.g., ["Development", "Full Support"]
+    FilterProducts pq.StringArray `gorm:"type:text[]" json:"filter_products,omitempty"` // e.g., ["OCP", "OKD", "HCM"]
 
     // Time window for applicability (null = no time restriction)
     ValidFrom *time.Time `json:"valid_from,omitempty"`
@@ -145,16 +140,15 @@ type SymptomDefinition struct {
     DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
-func (SymptomDefinition) TableName() string {
-    return "symptom_definitions"
+func (Symptom) TableName() string {
+    return "prow_job_run_symptoms"
 }
 
 // Matcher type constants
 const (
-    MatcherTypeSubstring = "substring" // Simple substring match
+    MatcherTypeString    = "string"    // Simple substring match
     MatcherTypeRegex     = "regex"     // Regular expression match
-    MatcherTypeExact     = "exact"     // Exact string match
-    MatcherTypeFile      = "file"      // File exists (no content match)
+    MatcherTypeExact     = "none"      // File exists (no content match)
     MatcherTypeCEL       = "cel"       // Common Expression Language for compound logic
 )
 ```
@@ -167,11 +161,11 @@ const (
 {
   "id": "DNS_Timeout",
   "summary": "Cluster DNS resolution failures",
-  "matcher_type": "substring",
+  "matcher_type": "string",
   "file_pattern": "**/e2e-timelines/**/*.json",
   "match_string": "dial tcp",
   "label_ids": ["ClusterDNSFlake"],
-  "releases": ["4.17", "4.18"],
+  "filter_releases": ["4.17", "4.18"],
   "valid_from": "2025-01-01T00:00:00Z",
   "valid_until": null
 }
@@ -186,8 +180,8 @@ const (
   "matcher_type": "regex",
   "file_pattern": "**/build-log.txt",
   "match_string": "timeout waiting for.*install",
-  "label_ids": ["InfraFailure"],
-  "releases": null,
+  "label_ids": ["ClusterInstallTimeout"],
+  "filter_releases": null,
   "valid_from": null,
   "valid_until": null
 }
@@ -197,13 +191,13 @@ const (
 
 ```json
 {
-  "id": "User_Quota_Error",
-  "summary": "Insufficient quota error",
-  "matcher_type": "substring",
-  "file_pattern": "**/build-log.txt",
-  "match_string": "insufficient quota",
-  "label_ids": ["UserError"],
-  "releases": null
+  "id": "HasIntervals",
+  "summary": "Has interval file(s)",
+  "matcher_type": "none",
+  "file_pattern": "**/intervals*.json",
+  "match_string": "",
+  "label_ids": ["IntervalFile"],
+  "filter_releases": null
 }
 ```
 
@@ -214,12 +208,12 @@ Find infrastructure failures (install timeout AND NOT user error):
 ```json
 {
   "id": "InfraFailure_Install",
-  "summary": "Infrastructure install timeout (not user error)",
+  "summary": "Infrastructure install timeout (did not get to intervals)",
   "matcher_type": "cel",
   "file_pattern": null,
-  "match_string": "symptoms.Install_Timeout && !symptoms.User_Quota_Error",
+  "match_string": "ClusterInstallTimeout && !IntervalFile",
   "label_ids": ["InfraFailure"],
-  "releases": null,
+  "filter_releases": null,
   "valid_from": null,
   "valid_until": null
 }
@@ -234,15 +228,15 @@ Critical infrastructure issue (network or storage):
   "id": "Critical_Infra",
   "summary": "Critical infrastructure issue (network or storage)",
   "matcher_type": "cel",
-  "match_string": "symptoms.DNS_Timeout || symptoms.Storage_Provision_Failure || (symptoms.API_Timeout && symptoms.Etcd_Unavailable)",
+  "match_string": "DNS_Timeout || Storage_Provision_Failure || (API_Timeout && Etcd_Unavailable)",
   "label_ids": ["InfraFailure", "RequiresInvestigation"],
-  "releases": ["4.17", "4.18"]
+  "filter_releases": ["4.17", "4.18"]
 }
 ```
 
 ## BigQuery JobRunAnnotation Struct Changes
 
-Update the Go struct that maps to BigQuery's job_labels table:
+Update the Go struct that maps to BigQuery's `job_labels` table:
 
 ```go
 // In pkg/bigquery/types.go or similar
@@ -287,7 +281,7 @@ import (
 )
 
 // EvaluateSymptom evaluates a single symptom definition against job artifacts
-func (s *SymptomDefinition) Evaluate(ctx context.Context, artifacts JobArtifacts, symptomResults map[string]bool) (bool, error) {
+func (s *Symptom) Evaluate(ctx context.Context, artifacts JobArtifacts, symptomResults map[string]bool) (bool, error) {
     switch s.MatcherType {
     case MatcherTypeSubstring:
         return s.evaluateSubstring(ctx, artifacts)
@@ -305,7 +299,7 @@ func (s *SymptomDefinition) Evaluate(ctx context.Context, artifacts JobArtifacts
 }
 
 // evaluateCEL evaluates a CEL expression using results from other symptoms
-func (s *SymptomDefinition) evaluateCEL(ctx context.Context, symptomResults map[string]bool) (bool, error) {
+func (s *Symptom) evaluateCEL(ctx context.Context, symptomResults map[string]bool) (bool, error) {
     // Create CEL environment with symptom results as variables
     env, err := cel.NewEnv(
         cel.Declarations(
@@ -356,7 +350,7 @@ import json
 def evaluate_symptom(symptom_def, artifacts, symptom_results):
     matcher_type = symptom_def['matcher_type']
 
-    if matcher_type == 'substring':
+    if matcher_type == 'string':
         return evaluate_substring(symptom_def, artifacts)
     elif matcher_type == 'regex':
         return evaluate_regex(symptom_def, artifacts)
