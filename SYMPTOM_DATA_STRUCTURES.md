@@ -234,27 +234,32 @@ Critical infrastructure issue (network or storage):
 }
 ```
 
-## BigQuery JobRunAnnotation Struct Changes
+## BigQuery jobRunAnnotation Struct Changes
 
-Update the Go struct that maps to BigQuery's `job_labels` table:
+The existing `jobRunAnnotation` struct in `pkg/componentreadiness/jobrunannotator/jobrunannotator.go` should be updated to include the new fields:
 
 ```go
-// In pkg/bigquery/types.go or similar
+// In pkg/componentreadiness/jobrunannotator/jobrunannotator.go
 
-type JobRunAnnotation struct {
-    JobName     string    `bigquery:"job_name"`
-    JobRunName  string    `bigquery:"job_run_name"`
-    Label       string    `bigquery:"label"`
+type jobRunAnnotation struct {
+    ID        string              `bigquery:"prowjob_build_id"`
+    StartTime civil.DateTime      `bigquery:"prowjob_start"`
+    Label     string              `bigquery:"label"`
+    Comment   string              `bigquery:"comment"` // Existing field - keep as string (JSON serialized)
+    User      bigquery.NullString `bigquery:"user"`
 
-    // New fields
-    AddedAt     time.Time `bigquery:"added_at"`
-    UpdatedAt   time.Time `bigquery:"updated_at"`
-    SourceTool  string    `bigquery:"source_tool"`
-    SymptomID   string    `bigquery:"symptom_id"`
-    DisplayContexts []string `bigquery:"display_contexts"`
-    Comment     map[string]interface{} `bigquery:"comment"` // Free-form JSON
+    // New fields to add
+    AddedAt         time.Time `bigquery:"added_at"`
+    UpdatedAt       time.Time `bigquery:"updated_at"`
+    SourceTool      string    `bigquery:"source_tool"`
+    SymptomID       string    `bigquery:"symptom_id"`
+    DisplayContexts []string  `bigquery:"display_contexts"`
+
+    url       string // internal field (not persisted to BQ)
 }
 ```
+
+Note: The `Comment` field should remain a string but will contain JSON-serialized data. The existing code already uses `json.MarshalIndent` to serialize data into this field (see `generateComment()` method).
 
 ## Migration Considerations
 
@@ -270,47 +275,52 @@ type JobRunAnnotation struct {
 
 ## Implementation Notes
 
-### CEL Integration
+### Relationship to Existing Code
 
-Go implementation using github.com/google/cel-go:
+This design leverages existing infrastructure in the codebase:
+
+1. **Matcher Interface**: The `ContentMatcher` interface in `pkg/api/jobartifacts/query.go` already exists and is used for matching content in job artifacts. The symptom detection system will build on this pattern.
+
+2. **Existing Matchers**: The codebase already has `stringLineMatcher` and `regexLineMatcher` implementations in `pkg/api/jobartifacts/content_line_matcher.go`. These can be reused or adapted for symptom matching.
+
+3. **Job Artifact Query System**: The `JobArtifactQuery` struct and `QueryJobRunArtifacts` method provide the foundation for scanning job artifacts from GCS buckets.
+
+4. **Job Run Annotator**: The existing `JobRunAnnotator` in `pkg/componentreadiness/jobrunannotator/jobrunannotator.go` already writes to the BigQuery `job_labels` table. The symptom detection system will extend this.
+
+### New Matcher Types Needed
+
+While string and regex matchers exist, we'll need to add:
+
+1. **File existence matcher** (`MatcherTypeFile`) - checks if a file matching the pattern exists
+2. **CEL matcher** (`MatcherTypeCEL`) - evaluates boolean expressions against applied labels
+3. **JQ matcher** - for JSON content matching (future)
+4. **XPath matcher** - for XML content matching (future)
+
+### CEL Integration for Compound Symptoms
+
+The `cel` matcher type will be evaluated AFTER all simple symptoms have been processed and labels have been applied. Here's how it works:
 
 ```go
 import (
     "github.com/google/cel-go/cel"
-    "github.com/google/cel-go/checker/decls"
 )
 
-// EvaluateSymptom evaluates a single symptom definition against job artifacts
-func (s *Symptom) Evaluate(ctx context.Context, artifacts JobArtifacts, symptomResults map[string]bool) (bool, error) {
-    switch s.MatcherType {
-    case MatcherTypeSubstring:
-        return s.evaluateSubstring(ctx, artifacts)
-    case MatcherTypeRegex:
-        return s.evaluateRegex(ctx, artifacts)
-    case MatcherTypeExact:
-        return s.evaluateExact(ctx, artifacts)
-    case MatcherTypeFile:
-        return s.evaluateFileExists(ctx, artifacts)
-    case MatcherTypeCEL:
-        return s.evaluateCEL(ctx, symptomResults)
-    default:
-        return false, fmt.Errorf("unknown matcher type: %s", s.MatcherType)
-    }
-}
-
-// evaluateCEL evaluates a CEL expression using results from other symptoms
-func (s *Symptom) evaluateCEL(ctx context.Context, symptomResults map[string]bool) (bool, error) {
-    // Create CEL environment with symptom results as variables
+// evaluateCEL evaluates a CEL expression using labels that have been applied to the job run
+// This is called AFTER simple symptom matchers have been evaluated and labels applied
+func (s *Symptom) evaluateCEL(ctx context.Context, appliedLabels map[string]bool) (bool, error) {
+    // Create CEL environment with applied labels as boolean variables
+    // The labels are referenced directly by their ID in the expression
+    // Example: "ClusterDNSFlake && !UserError"
     env, err := cel.NewEnv(
-        cel.Declarations(
-            decls.NewVar("symptoms", decls.NewMapType(decls.String, decls.Bool)),
-        ),
+        cel.Variable("ClusterDNSFlake", cel.BoolType),
+        cel.Variable("UserError", cel.BoolType),
+        // ... all label IDs would be declared as variables
     )
     if err != nil {
         return false, fmt.Errorf("failed to create CEL environment: %w", err)
     }
 
-    // Parse the CEL expression
+    // Parse the CEL expression from MatchString
     ast, issues := env.Compile(s.MatchString)
     if issues != nil && issues.Err() != nil {
         return false, fmt.Errorf("failed to compile CEL expression: %w", issues.Err())
@@ -322,10 +332,9 @@ func (s *Symptom) evaluateCEL(ctx context.Context, symptomResults map[string]boo
         return false, fmt.Errorf("failed to create CEL program: %w", err)
     }
 
-    // Evaluate with symptom results
-    out, _, err := prg.Eval(map[string]interface{}{
-        "symptoms": symptomResults,
-    })
+    // Evaluate with applied labels as variables
+    // Labels not present are treated as false
+    out, _, err := prg.Eval(appliedLabels)
     if err != nil {
         return false, fmt.Errorf("failed to evaluate CEL expression: %w", err)
     }
@@ -339,32 +348,55 @@ func (s *Symptom) evaluateCEL(ctx context.Context, symptomResults map[string]boo
 }
 ```
 
+### Symptom Evaluation Workflow
+
+1. **Load symptom definitions** from PostgreSQL (filtered by release, time window, etc.)
+2. **Separate simple and CEL symptoms** into two groups
+3. **Evaluate simple symptoms** first (string, regex, file existence matchers) against job artifacts
+4. **Apply labels** from matching simple symptoms to job run
+5. **Evaluate CEL symptoms** using the set of applied labels
+6. **Apply additional labels** from matching CEL symptoms
+7. **Write all labels** to BigQuery `job_labels` table
+
 ### Python Compatibility
 
-Python code can use the `celpy` library:
+Python code can use the `celpy` library for CEL evaluation:
 
 ```python
 import celpy
-import json
+import re
 
-def evaluate_symptom(symptom_def, artifacts, symptom_results):
+def evaluate_symptom(symptom_def, artifacts, applied_labels):
+    """Evaluate a symptom definition against job artifacts.
+
+    Args:
+        symptom_def: Symptom definition dict
+        artifacts: Dict mapping file paths to content
+        applied_labels: Dict mapping label IDs to bool (already applied labels)
+
+    Returns:
+        bool: Whether the symptom matched
+    """
     matcher_type = symptom_def['matcher_type']
 
     if matcher_type == 'string':
         return evaluate_substring(symptom_def, artifacts)
     elif matcher_type == 'regex':
         return evaluate_regex(symptom_def, artifacts)
-    elif matcher_type == 'exact':
-        return evaluate_exact(symptom_def, artifacts)
-    elif matcher_type == 'file':
+    elif matcher_type == 'none':
         return evaluate_file_exists(symptom_def, artifacts)
     elif matcher_type == 'cel':
-        return evaluate_cel(symptom_def, symptom_results)
+        return evaluate_cel(symptom_def, applied_labels)
     else:
         raise ValueError(f"Unknown matcher type: {matcher_type}")
 
-def evaluate_cel(symptom_def, symptom_results):
-    # Create CEL environment
+def evaluate_cel(symptom_def, applied_labels):
+    """Evaluate CEL expression against applied labels.
+
+    The CEL expression in match_string references label IDs directly.
+    Example: "ClusterDNSFlake && !UserError"
+    """
+    # Create CEL environment with label IDs as boolean variables
     env = celpy.Environment()
 
     # Compile the expression
@@ -373,21 +405,11 @@ def evaluate_cel(symptom_def, symptom_results):
     # Create program
     program = env.program(ast)
 
-    # Evaluate with symptom results
-    activation = {'symptoms': symptom_results}
-    result = program.evaluate(activation)
+    # Evaluate with applied labels (labels not present default to false)
+    result = program.evaluate(applied_labels)
 
     return bool(result)
 ```
-
-### Evaluation Order
-
-For symptoms with CEL expressions that reference other symptoms, evaluation must be done in dependency order:
-
-1. Build dependency graph from CEL expressions
-2. Perform topological sort
-3. Evaluate symptoms in order (simple matchers first, then CEL expressions)
-4. Detect circular dependencies and fail gracefully
 
 ### AI-Friendly Format
 
@@ -465,10 +487,45 @@ CREATE INDEX idx_symptom_definitions_release_status ON symptom_definitions(relea
 ## Dependencies
 
 ### Go
-- `github.com/google/cel-go` - CEL expression evaluation
+- `github.com/google/cel-go` - CEL expression evaluation (already vendored in codebase)
 - `gorm.io/gorm` - ORM (already in use)
 - `github.com/lib/pq` - PostgreSQL array support (already in use)
+- `cloud.google.com/go/bigquery` - BigQuery client (already in use)
+- `cloud.google.com/go/storage` - GCS client for artifact access (already in use)
 
 ### Python
-- `celpy` - CEL expression evaluation for Python
+- `celpy` - CEL expression evaluation for Python (to be added)
 - Standard library for simple matchers (regex, string operations)
+
+## Summary of Changes to Existing Code
+
+### Files to Modify
+
+1. **`pkg/componentreadiness/jobrunannotator/jobrunannotator.go`**
+   - Add new fields to `jobRunAnnotation` struct
+   - Update `bulkInsertJobRunAnnotations` to handle new fields
+
+2. **BigQuery Schema**
+   - Add columns to `job_labels` table: `added_at`, `updated_at`, `source_tool`, `symptom_id`, `display_contexts`
+
+### New Files to Create
+
+1. **`pkg/db/models/jobrunscan/label.go`**
+   - Define `Label` struct for label prototypes
+
+2. **`pkg/db/models/jobrunscan/symptom.go`**
+   - Define `Symptom` struct for symptom definitions
+   - Define matcher type constants
+
+3. **Database migrations**
+   - Create `prow_job_run_labels` table
+   - Create `prow_job_run_symptoms` table
+   - Add indexes
+
+### Integration Points
+
+The symptom detection system will:
+- Use the existing `JobArtifactQuery` and `ContentMatcher` infrastructure from `pkg/api/jobartifacts/`
+- Extend the existing `JobRunAnnotator` to support symptom-based labeling
+- Write results to the same BigQuery `job_labels` table that's already in use
+- Store symptom and label definitions in new PostgreSQL tables
