@@ -4,7 +4,11 @@ Design document for TRT-2371: Job symptoms and observations feature
 
 ## Overview
 
-This document defines the data structures needed to implement job symptom detection and labeling. Simple symptoms use straightforward pattern matching against job artifacts. The design leaves room for implementing compound symptom logic (probably as a future expansion) using Common Expression Language (CEL) for logic combining labels with boolean operators.
+This document defines the data structures needed to implement job symptom
+detection and labeling. Simple symptoms use straightforward pattern matching
+against job artifacts. The design leaves room for implementing compound symptom
+logic (probably as a future expansion) using Common Expression Language (CEL)
+for logic combining labels with boolean operators.
 
 ## BigQuery Schema Changes (`job_labels` table)
 
@@ -64,7 +68,7 @@ type Label struct {
 
     // Immutable identifier used in job_labels table and symptom expressions
     // Must be valid identifier (word chars, not starting with digit)
-    // Examples: "InfraFailure", "ClusterDNSFlake", "APIServerTimeout"
+    // Examples: "InfraFailure", "ClusterDNSFlake", "APIServerTimeout60"
     ID string `gorm:"primaryKey;type:varchar(80)" json:"id"`
 
     // Human-readable label text (can be changed)
@@ -85,7 +89,7 @@ type Label struct {
 }
 
 func (Label) TableName() string {
-    return "prow_job_run_labels"
+    return "job_run_labels"
 }
 ```
 
@@ -141,14 +145,14 @@ type Symptom struct {
 }
 
 func (Symptom) TableName() string {
-    return "prow_job_run_symptoms"
+    return "job_run_symptoms"
 }
 
 // Matcher type constants
 const (
     MatcherTypeString    = "string"    // Simple substring match
     MatcherTypeRegex     = "regex"     // Regular expression match
-    MatcherTypeExact     = "none"      // File exists (no content match)
+    MatcherTypeFile      = "none"      // File exists (no content match)
     MatcherTypeCEL       = "cel"       // Common Expression Language for compound logic
 )
 ```
@@ -265,8 +269,8 @@ Note: The `Comment` field should remain a string but will contain JSON-serialize
 
 1. **BigQuery Schema Evolution**: Add new columns to existing job_labels table (backward compatible)
 2. **PostgreSQL Migrations**:
-   - Create `label_prototypes` table
-   - Create `symptom_definitions` table
+   - Create `job_run_labels` table
+   - Create `job_run_symptoms` table
    - Add indexes on frequently queried fields (releases, valid_from, valid_until)
 3. **Backward Compatibility**:
    - Existing job_labels entries will have null values for new fields
@@ -279,20 +283,27 @@ Note: The `Comment` field should remain a string but will contain JSON-serialize
 
 This design leverages existing infrastructure in the codebase:
 
-1. **Matcher Interface**: The `ContentMatcher` interface in `pkg/api/jobartifacts/query.go` already exists and is used for matching content in job artifacts. The symptom detection system will build on this pattern.
+1. **Matcher Interface**: The `ContentMatcher` interface in `pkg/api/jobartifacts/query.go` already
+   exists and is used for matching content in job artifacts. The symptom detection system will build
+   on this pattern.
 
-2. **Existing Matchers**: The codebase already has `stringLineMatcher` and `regexLineMatcher` implementations in `pkg/api/jobartifacts/content_line_matcher.go`. These can be reused or adapted for symptom matching.
+2. **Existing Matchers**: The codebase already has `stringLineMatcher` and `regexLineMatcher`
+   implementations in `pkg/api/jobartifacts/content_line_matcher.go`. These can be reused or adapted
+   for symptom matching.
 
-3. **Job Artifact Query System**: The `JobArtifactQuery` struct and `QueryJobRunArtifacts` method provide the foundation for scanning job artifacts from GCS buckets.
+3. **Job Artifact Query System**: The `JobArtifactQuery` struct and `QueryJobRunArtifacts` method
+   provide the foundation for scanning job artifacts from GCS buckets.
 
-4. **Job Run Annotator**: The existing `JobRunAnnotator` in `pkg/componentreadiness/jobrunannotator/jobrunannotator.go` already writes to the BigQuery `job_labels` table. The symptom detection system will extend this.
+4. **Job Run Annotator**: The existing `JobRunAnnotator` in
+   `pkg/componentreadiness/jobrunannotator/jobrunannotator.go` already writes to the BigQuery
+   `job_labels` table. The symptom detection system will extend this.
 
 ### New Matcher Types Needed
 
 While string and regex matchers exist, we'll need to add:
 
 1. **File existence matcher** (`MatcherTypeFile`) - checks if a file matching the pattern exists
-2. **CEL matcher** (`MatcherTypeCEL`) - evaluates boolean expressions against applied labels
+2. **CEL matcher** (`MatcherTypeCEL`) - evaluates boolean expressions against applied labels (future)
 3. **JQ matcher** - for JSON content matching (future)
 4. **XPath matcher** - for XML content matching (future)
 
@@ -349,6 +360,19 @@ func (s *Symptom) evaluateCEL(ctx context.Context, appliedLabels map[string]bool
 ```
 
 ### Symptom Evaluation Workflow
+
+Automated application of labels will occur as the job runs and after it finishes:
+
+1. In our cloud function that runs as job files are written to the bucket:
+   1. **Load simple symptom definitions** from PostgreSQL (filtered to the extent possible)
+   2. **Evaluate simple symptoms** against files they match
+   3. **Apply labels** from matching symptoms if not already applied
+2. In sippy fetchdata cronjob:
+   1. **Load CEL symptom definitions** from PostgreSQL (filtered to the extent possible)
+   2. For each completed job, **Load existing labels** from BQ and **Evaluate CEL symptoms** 
+   3. **Apply additional labels** from matching CEL symptoms
+
+Symptoms can also be applied retroactively by annotate-job-runs when they are created or changed.
 
 1. **Load symptom definitions** from PostgreSQL (filtered by release, time window, etc.)
 2. **Separate simple and CEL symptoms** into two groups
@@ -462,26 +486,23 @@ POST   /api/v1/labels                      # Create label prototype
 GET    /api/v1/labels                      # List all labels
 GET    /api/v1/labels/:id                  # Get label details
 PUT    /api/v1/labels/:id                  # Update label
-
-POST   /api/v1/jobs/:name/:run/evaluate    # Evaluate symptoms for a job run
-GET    /api/v1/jobs/:name/:run/symptoms    # Get detected symptoms for a job run
 ```
 
 ## Database Indexes
 
 ```sql
--- label_prototypes
-CREATE INDEX idx_label_prototypes_display_contexts ON label_prototypes USING GIN (display_contexts);
-CREATE INDEX idx_label_prototypes_severity ON label_prototypes(severity);
+-- job_run_labels
+CREATE INDEX idx_label_prototypes_display_contexts ON job_run_labels USING GIN (display_contexts);
+CREATE INDEX idx_label_prototypes_severity ON job_run_labels(severity);
 
--- symptom_definitions
-CREATE INDEX idx_symptom_definitions_matcher_type ON symptom_definitions(matcher_type);
-CREATE INDEX idx_symptom_definitions_releases ON symptom_definitions USING GIN (releases);
-CREATE INDEX idx_symptom_definitions_label_ids ON symptom_definitions USING GIN (label_ids);
-CREATE INDEX idx_symptom_definitions_valid_from ON symptom_definitions(valid_from);
-CREATE INDEX idx_symptom_definitions_valid_until ON symptom_definitions(valid_until);
-CREATE INDEX idx_symptom_definitions_product ON symptom_definitions(product);
-CREATE INDEX idx_symptom_definitions_release_status ON symptom_definitions(release_status);
+-- job_run_symptoms
+CREATE INDEX idx_symptom_definitions_matcher_type ON job_run_symptoms(matcher_type);
+CREATE INDEX idx_symptom_definitions_releases ON job_run_symptoms USING GIN (releases);
+CREATE INDEX idx_symptom_definitions_label_ids ON job_run_symptoms USING GIN (label_ids);
+CREATE INDEX idx_symptom_definitions_valid_from ON job_run_symptoms(valid_from);
+CREATE INDEX idx_symptom_definitions_valid_until ON job_run_symptoms(valid_until);
+CREATE INDEX idx_symptom_definitions_product ON job_run_symptoms(product);
+CREATE INDEX idx_symptom_definitions_release_status ON job_run_symptoms(release_status);
 ```
 
 ## Dependencies
