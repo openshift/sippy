@@ -3,12 +3,39 @@ Configuration management for Sippy Agent.
 """
 
 import os
-from typing import Optional
+import yaml
+from pathlib import Path
+from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+class ModelConfig(BaseModel):
+    """Configuration for a single model."""
+
+    id: str = Field(description="Unique identifier for the model")
+    name: str = Field(description="Display name for the model")
+    description: Optional[str] = Field(default=None, description="Description of the model")
+    model_name: str = Field(description="The actual model name to use with the provider")
+    endpoint: str = Field(default="", description="API endpoint URL (empty for Vertex AI)")
+    temperature: float = Field(default=0.0, description="Temperature setting for the model")
+    extended_thinking_budget: int = Field(default=0, description="Token budget for Claude's extended thinking")
+    default: bool = Field(default=False, description="Whether this is the default model")
+
+    def to_config(self, base_config: "Config") -> "Config":
+        """Convert ModelConfig to a Config object, inheriting base settings."""
+        config_dict = base_config.model_dump()
+        
+        # Override with model-specific settings
+        config_dict["model_name"] = self.model_name
+        config_dict["llm_endpoint"] = self.endpoint if self.endpoint else base_config.llm_endpoint
+        config_dict["temperature"] = self.temperature
+        config_dict["extended_thinking_budget"] = self.extended_thinking_budget
+        
+        return Config(**config_dict)
 
 
 class Config(BaseModel):
@@ -30,6 +57,16 @@ class Config(BaseModel):
     google_credentials_file: Optional[str] = Field(
         default_factory=lambda: os.getenv("GOOGLE_APPLICATION_CREDENTIALS"),
         description="Path to Google service account credentials JSON file (alternative to API key)",
+    )
+
+    google_project_id: Optional[str] = Field(
+        default_factory=lambda: os.getenv("GOOGLE_PROJECT_ID"),
+        description="Google Cloud project ID for Vertex AI (required when using Claude models via Vertex AI)",
+    )
+
+    google_location: str = Field(
+        default_factory=lambda: os.getenv("GOOGLE_LOCATION", "us-central1"),
+        description="Google Cloud location/region for Vertex AI (default: us-central1)",
     )
 
     model_name: str = Field(
@@ -75,6 +112,11 @@ class Config(BaseModel):
 
     show_thinking: bool = Field(default=False, description="Show the agent's thinking process (thoughts, actions, observations)")
 
+    extended_thinking_budget: int = Field(
+        default_factory=lambda: int(os.getenv("EXTENDED_THINKING_BUDGET", "10000")),
+        description="Token budget for Claude's extended thinking feature (default: 10000)"
+    )
+
     persona: str = Field(default_factory=lambda: os.getenv("PERSONA", "default"), description="AI persona to use (default, zorp, etc.)")
 
     def is_openai_endpoint(self) -> bool:
@@ -88,6 +130,10 @@ class Config(BaseModel):
     def is_gemini_model(self) -> bool:
         """Check if the model is a Gemini model."""
         return self.model_name.startswith("gemini")
+
+    def is_claude_model(self) -> bool:
+        """Check if the model is a Claude model (via Vertex AI)."""
+        return self.model_name.startswith("claude")
 
     def validate_required_settings(self) -> None:
         """Validate that required settings are present."""
@@ -104,9 +150,72 @@ class Config(BaseModel):
                 "Set GOOGLE_API_KEY environment variable or GOOGLE_APPLICATION_CREDENTIALS file path."
             )
 
+        # Require Google project ID for Claude models via Vertex AI
+        # Credentials can come from either explicit file or gcloud auth (ADC)
+        if self.is_claude_model():
+            if not self.google_project_id:
+                raise ValueError(
+                    "Google Cloud project ID is required when using Claude models via Vertex AI. "
+                    "Set GOOGLE_PROJECT_ID environment variable."
+                )
+
     @classmethod
     def from_env(cls) -> "Config":
         """Create configuration from environment variables."""
         config = cls()
         config.validate_required_settings()
         return config
+
+
+def load_models_config(config_path: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """
+    Load models configuration from YAML file.
+    
+    Args:
+        config_path: Path to models.yaml file. If None, looks for models.yaml in current directory.
+        
+    Returns:
+        Dictionary with 'models' list and 'default_model_id', or None if file doesn't exist.
+    """
+    if config_path is None:
+        # Look for models.yaml in the chat directory
+        config_path = Path(__file__).parent.parent / "models.yaml"
+    else:
+        config_path = Path(config_path)
+    
+    if not config_path.exists():
+        return None
+    
+    try:
+        with open(config_path, 'r') as f:
+            data = yaml.safe_load(f)
+        
+        if not data or 'models' not in data:
+            raise ValueError("models.yaml must contain a 'models' key with a list of models")
+        
+        models = []
+        default_model_id = None
+        
+        for model_data in data['models']:
+            model = ModelConfig(**model_data)
+            models.append(model)
+            
+            if model.default:
+                if default_model_id is not None:
+                    raise ValueError(f"Multiple default models found: {default_model_id} and {model.id}")
+                default_model_id = model.id
+        
+        if not models:
+            raise ValueError("models.yaml must contain at least one model")
+        
+        # If no default specified, use the first model
+        if default_model_id is None:
+            default_model_id = models[0].id
+        
+        return {
+            "models": models,
+            "default_model_id": default_model_id
+        }
+    
+    except Exception as e:
+        raise ValueError(f"Error loading models configuration: {e}")

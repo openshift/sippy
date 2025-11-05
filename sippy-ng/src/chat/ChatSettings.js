@@ -24,6 +24,7 @@ import {
   Delete as DeleteIcon,
   Info as InfoIcon,
   Masks as MasksIcon,
+  Memory as ModelIcon,
   Psychology as PsychologyIcon,
   Refresh as RefreshIcon,
   Settings as SettingsIcon,
@@ -36,6 +37,7 @@ import { humanize } from './chatUtils'
 import { makeStyles } from '@mui/styles'
 import {
   useConnectionState,
+  useModels,
   usePersonas,
   useSessionActions,
   useSessionState,
@@ -109,6 +111,8 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
   const { connectionState } = useConnectionState()
   const { personas, personasLoading, personasError, loadPersonas } =
     usePersonas()
+  const { models, defaultModel, modelsLoading, modelsError, loadModels } =
+    useModels()
   const { sessions, activeSessionId } = useSessionState()
   const { clearAllSessions, clearOldSessions } = useSessionActions()
 
@@ -127,6 +131,12 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
       loadPersonas()
     }
   }, [personas.length, personasLoading, loadPersonas])
+
+  useEffect(() => {
+    if (models.length === 0 && !modelsLoading) {
+      loadModels()
+    }
+  }, [models.length, modelsLoading, loadModels])
 
   // Load storage stats
   const loadStorageStats = useCallback(async () => {
@@ -164,8 +174,18 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
     })
   }
 
+  const handleModelChange = (event) => {
+    updateSettings({
+      modelId: event.target.value,
+    })
+  }
+
   const getSelectedPersona = () => {
     return personas.find((p) => p.name === settings.persona) || personas[0]
+  }
+
+  const getSelectedModel = () => {
+    return models.find((m) => m.id === settings.modelId) || models[0]
   }
 
   const getConnectionStatusText = () => {
@@ -308,6 +328,55 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
                     {getSelectedPersona().style_instructions}
                   </Typography>
                 )}
+              </Box>
+            )}
+          </>
+        )}
+      </div>
+
+      <Divider />
+
+      {/* Model Selection */}
+      <div className={classes.section}>
+        <Typography variant="subtitle2" className={classes.sectionTitle}>
+          AI Model
+        </Typography>
+
+        {modelsLoading ? (
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <CircularProgress size={20} />
+            <Typography variant="body2" color="textSecondary">
+              Loading models...
+            </Typography>
+          </Box>
+        ) : modelsError ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Could not load models. Using default.
+          </Alert>
+        ) : (
+          <>
+            <FormControl className={classes.personaSelect}>
+              <InputLabel id="model-select-label">Select Model</InputLabel>
+              <Select
+                labelId="model-select-label"
+                value={settings.modelId || defaultModel || ''}
+                onChange={handleModelChange}
+                label="Select Model"
+                startAdornment={<ModelIcon sx={{ mr: 1 }} />}
+              >
+                {models.map((model) => (
+                  <MenuItem key={model.id} value={model.id}>
+                    {model.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {getSelectedModel() && getSelectedModel().description && (
+              <Box className={classes.personaDescription}>
+                <Typography variant="body2" color="textPrimary">
+                  {getSelectedModel().description}
+                </Typography>
               </Box>
             )}
           </>

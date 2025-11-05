@@ -21,6 +21,7 @@ class ChatRequest(BaseModel):
     chat_history: Optional[List[ChatMessage]] = None
     show_thinking: Optional[bool] = None
     persona: Optional[str] = None
+    model_id: Optional[str] = None
 
 
 class ThinkingStep(BaseModel):
@@ -48,6 +49,7 @@ class ChatResponse(BaseModel):
     thinking_steps: Optional[List[ThinkingStep]] = None
     tools_used: Optional[List[str]] = None
     visualizations: Optional[List[Visualization]] = None
+    model_id: Optional[str] = None
     error: Optional[str] = None
 
 
@@ -82,6 +84,21 @@ class PersonasResponse(BaseModel):
 
     personas: List[PersonaInfo]
     current_persona: str
+
+
+class ModelInfo(BaseModel):
+    """Information about an available model."""
+
+    id: str
+    name: str
+    description: Optional[str] = None
+
+
+class ModelsResponse(BaseModel):
+    """Response listing available models."""
+
+    models: List[ModelInfo]
+    default_model: str
 
 
 class HealthResponse(BaseModel):

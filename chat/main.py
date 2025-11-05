@@ -36,7 +36,11 @@ def common_options(f):
         click.option("--max-iterations", default=None, type=int, help="Maximum number of agent iterations (default: 25)"),
         click.option("--timeout", default=None, type=int, help="Maximum execution time in seconds (default: 1800 = 30 minutes)"),
         click.option("--google-credentials", default=None, help="Path to Google service account credentials JSON file"),
+        click.option("--google-project", default=None, help="Google Cloud project ID (required for Claude models via Vertex AI)"),
+        click.option("--google-location", default=None, help="Google Cloud location/region for Vertex AI (default: us-central1)"),
+        click.option("--thinking-budget", default=None, type=int, help="Token budget for Claude's extended thinking (default: 10000)"),
         click.option("--mcp-config", default=None, help="Path to MCP servers config file"),
+        click.option("--models-config", default=None, help="Path to models.yaml config file"),
     ]
     for option in reversed(options):
         f = option(f)
@@ -63,6 +67,12 @@ def apply_config_overrides(config: Config, **kwargs) -> None:
         config.max_execution_time = kwargs["timeout"]
     if kwargs.get("google_credentials") is not None:
         config.google_credentials_file = kwargs["google_credentials"]
+    if kwargs.get("google_project") is not None:
+        config.google_project_id = kwargs["google_project"]
+    if kwargs.get("google_location") is not None:
+        config.google_location = kwargs["google_location"]
+    if kwargs.get("thinking_budget") is not None:
+        config.extended_thinking_budget = kwargs["thinking_budget"]
     if kwargs.get("mcp_config") is not None:
         config.mcp_config_file = kwargs["mcp_config"]
 
@@ -147,7 +157,7 @@ def serve(host: str, port: int, metrics_port: Optional[int], reload: bool, **kwa
         console.print(f"[dim]Persona: {config.persona}[/dim]")
         console.print()
 
-        server = SippyWebServer(config, metrics_port=metrics_port)
+        server = SippyWebServer(config, metrics_port=metrics_port, models_config_path=kwargs.get("models_config"))
         server.run(host=host, port=port, reload=reload)
 
     except ValueError as e:
