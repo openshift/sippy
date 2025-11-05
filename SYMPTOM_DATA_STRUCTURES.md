@@ -526,8 +526,11 @@ CREATE INDEX idx_symptom_definitions_release_status ON job_run_symptoms(release_
    - Add new fields to `jobRunAnnotation` struct
    - Update `bulkInsertJobRunAnnotations` to handle new fields
 
-2. **BigQuery Schema**
-   - Add columns to `job_labels` table: `added_at`, `updated_at`, `source_tool`, `symptom_id`, `display_contexts`
+2. **`pkg/db/models/prow.go`**
+   - Add `Labels` field to `ProwJobRun` struct to store applied label IDs as a string array
+
+3. **BigQuery Schema**
+   - Add columns to `job_labels` table: `created_at`, `updated_at`, `source_tool`, `symptom_id`, `display_contexts`
 
 ### New Files to Create
 
@@ -539,14 +542,38 @@ CREATE INDEX idx_symptom_definitions_release_status ON job_run_symptoms(release_
    - Define matcher type constants
 
 3. **Database migrations**
-   - Create `prow_job_run_labels` table
-   - Create `prow_job_run_symptoms` table
+   - Create `job_run_labels` table
+   - Create `job_run_symptoms` table
+   - Add `labels` column to `prow_job_runs` table
    - Add indexes
+
+### ProwJobRun Struct Changes
+
+Update the `ProwJobRun` struct in `pkg/db/models/prow.go` to include labels:
+
+```go
+type ProwJobRun struct {
+    gorm.Model
+
+    // ... existing fields ...
+
+    // Labels stores the IDs of labels applied to this job run
+    // This is populated from symptom detection or manual annotation
+    Labels pq.StringArray `gorm:"type:text[];index:idx_prow_job_runs_labels,type:gin" json:"labels"`
+
+    // ... rest of existing fields ...
+}
+```
+
+This uses a PostgreSQL text array with a GIN index for efficient querying. Label details can be looked up from the `job_run_labels` table when needed for display.
 
 ### Integration Points
 
 The symptom detection system will:
 - Use the existing `JobArtifactQuery` and `ContentMatcher` infrastructure from `pkg/api/jobartifacts/`
 - Extend the existing `JobRunAnnotator` to support symptom-based labeling
-- Write results to the same BigQuery `job_labels` table that's already in use
+- Write results to both:
+  - BigQuery `job_labels` table (for historical tracking and analysis)
+  - PostgreSQL `prow_job_runs.labels` field (for fast querying in Sippy)
 - Store symptom and label definitions in new PostgreSQL tables
+- Enable filtering jobs by labels in the Sippy UI and API
