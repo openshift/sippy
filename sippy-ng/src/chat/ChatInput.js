@@ -1,12 +1,5 @@
 import {
-  Chip,
-  CircularProgress,
-  IconButton,
-  Paper,
-  TextField,
-  Tooltip,
-} from '@mui/material'
-import {
+  AddCircleOutline as AddCircleOutlineIcon,
   Code as CodeIcon,
   Masks as MasksIcon,
   PlayArrow as PlayArrowIcon,
@@ -14,7 +7,16 @@ import {
   Send as SendIcon,
   Stop as StopIcon,
 } from '@mui/icons-material'
+import {
+  Chip,
+  CircularProgress,
+  IconButton,
+  Paper,
+  TextField,
+  Tooltip,
+} from '@mui/material'
 import { CONNECTION_STATES } from './store/webSocketSlice'
+import { extractYAMLFromText } from './promptSchema'
 import { humanize, validateMessage } from './chatUtils'
 import { makeStyles } from '@mui/styles'
 import {
@@ -24,6 +26,8 @@ import {
   useSettings,
   useWebSocketActions,
 } from './store/useChatStore'
+import CreatePromptDialog from './CreatePromptDialog'
+import PromptEditor from './PromptEditor'
 import PropTypes from 'prop-types'
 import React, { useEffect, useRef, useState } from 'react'
 import SlashCommandModal from './SlashCommandModal'
@@ -121,6 +125,11 @@ export default function ChatInput({
   const [commandMenuAnchor, setCommandMenuAnchor] = useState(null)
   const slashNavigationRef = useRef(null)
 
+  // Custom prompt creation state
+  const [createPromptDialogOpen, setCreatePromptDialogOpen] = useState(false)
+  const [promptEditorOpen, setPromptEditorOpen] = useState(false)
+  const [promptEditorInitialYAML, setPromptEditorInitialYAML] = useState(null)
+
   const { settings } = useSettings()
   const { personas } = usePersonas()
   const { prompts, renderPrompt } = usePrompts()
@@ -187,6 +196,34 @@ export default function ChatInput({
 
   const handleCommandMenuClose = () => {
     setCommandMenuAnchor(null)
+  }
+
+  const handleCreatePromptClick = () => {
+    setCreatePromptDialogOpen(true)
+  }
+
+  const handleYAMLGenerated = (aiResponse) => {
+    console.log('ChatInput: Received AI response, length:', aiResponse.length)
+
+    // Extract YAML from the AI response
+    const yamlBlocks = extractYAMLFromText(aiResponse)
+    const yamlContent = yamlBlocks.length > 0 ? yamlBlocks[0] : aiResponse
+
+    console.log('ChatInput: Extracted YAML length:', yamlContent.length)
+    console.log('ChatInput: First 500 chars:', yamlContent.substring(0, 500))
+    console.log(
+      'ChatInput: Last 500 chars:',
+      yamlContent.substring(Math.max(0, yamlContent.length - 500))
+    )
+
+    // Open the prompt editor with the generated YAML
+    setPromptEditorInitialYAML(yamlContent)
+    setPromptEditorOpen(true)
+  }
+
+  const handlePromptEditorClose = () => {
+    setPromptEditorOpen(false)
+    setPromptEditorInitialYAML(null)
   }
 
   const handleSendMessage = () => {
@@ -307,8 +344,8 @@ export default function ChatInput({
 
   const getCharacterCountClass = () => {
     const length = message.length
-    if (length > 9000) return 'error'
-    if (length > 8000) return 'warning'
+    if (length > 90000) return 'error'
+    if (length > 80000) return 'warning'
     return ''
   }
 
@@ -475,6 +512,20 @@ export default function ChatInput({
           </span>
         </Tooltip>
 
+        {/* Create custom prompt button */}
+        <Tooltip title="Create custom prompt with AI">
+          <span>
+            <IconButton
+              className={classes.commandMenuButton}
+              onClick={handleCreatePromptClick}
+              disabled={disabled || isTyping}
+              color="secondary"
+            >
+              <AddCircleOutlineIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
+
         <Tooltip
           title={
             canSend
@@ -516,6 +567,20 @@ export default function ChatInput({
         prompt={selectedPrompt}
         onSubmit={handleModalSubmit}
         disabled={isTyping}
+      />
+
+      {/* Create prompt dialog */}
+      <CreatePromptDialog
+        open={createPromptDialogOpen}
+        onClose={() => setCreatePromptDialogOpen(false)}
+        onYAMLGenerated={handleYAMLGenerated}
+      />
+
+      {/* Prompt editor */}
+      <PromptEditor
+        open={promptEditorOpen}
+        onClose={handlePromptEditorClose}
+        initialYAML={promptEditorInitialYAML}
       />
     </Paper>
   )
