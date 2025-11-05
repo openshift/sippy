@@ -52,6 +52,7 @@ export const createWebSocketSlice = (set, get) => {
       createMessage(MESSAGE_TYPES.ASSISTANT, data.response, {
         tools_used: data.tools_used,
         visualizations: data.visualizations || [],
+        model_id: data.model_id,
         timestamp: data.timestamp,
         pageContext: pageContext,
       })
@@ -68,7 +69,8 @@ export const createWebSocketSlice = (set, get) => {
         timestamp: data.timestamp,
       })
     )
-    set({ error: data.error })
+    // Note: Don't set global error state here - that's for connection errors only
+    // The error message is already added to the chat above
   }
 
   const handleWebSocketMessage = (message) => {
@@ -220,13 +222,7 @@ export const createWebSocketSlice = (set, get) => {
       }
 
       try {
-        addMessage(
-          createMessage(MESSAGE_TYPES.USER, content, {
-            pageContext: pageContext,
-          })
-        )
-
-        // Get messages from active session for chat history
+        // Get messages from active session for chat history BEFORE adding the current message
         const activeSession = getActiveSession()
         const messages = activeSession?.messages || []
 
@@ -235,10 +231,18 @@ export const createWebSocketSlice = (set, get) => {
           chat_history: formatChatHistoryForAPI(messages),
           show_thinking: true,
           persona: settings.persona || 'default',
+          model_id: settings.modelId || null,
           page_context: pageContext,
         }
 
         wsInstance.send(JSON.stringify(payload))
+
+        // Add the message to the session AFTER sending
+        addMessage(
+          createMessage(MESSAGE_TYPES.USER, content, {
+            pageContext: pageContext,
+          })
+        )
 
         setError(null)
         setIsTyping(true)

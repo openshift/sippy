@@ -8,9 +8,10 @@ from typing import List, Optional, Union, Dict, Any, Callable, Awaitable
 from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_google_vertexai.model_garden import ChatAnthropicVertex
 from langchain.tools import BaseTool
 
-from .config import Config
+from .config import Config, ModelConfig, load_models_config
 from .api_models import ChatMessage
 from .graph import create_react_graph, extract_thinking_steps, get_final_response
 from .tools import (
@@ -40,14 +41,78 @@ class SippyAgent:
         """Initialize the Sippy agent with configuration."""
         self.config = config
         self.llm = self._create_llm()
-        self.tools = asyncio.run(self._create_tools())
-        self.graph = self._create_agent_graph()
+        self.tools = None  # Will be initialized asynchronously
+        self.graph = None  # Will be initialized after tools are loaded
+        self._initialized = False
+    
+    async def _initialize(self):
+        """Asynchronously initialize tools and graph."""
+        if not self._initialized:
+            self.tools = await self._create_tools()
+            self.graph = self._create_agent_graph()
+            self._initialized = True
 
-    def _create_llm(self) -> Union[ChatOpenAI, ChatGoogleGenerativeAI]:
+    def _create_llm(self) -> Union[ChatOpenAI, ChatGoogleGenerativeAI, ChatAnthropicVertex]:
         """Create the language model instance."""
         if self.config.verbose:
             logger.info(f"Creating LLM with endpoint: {self.config.llm_endpoint}")
             logger.info(f"Using model: {self.config.model_name}")
+
+        # Use ChatAnthropicVertex for Claude models via Vertex AI
+        if self.config.is_claude_model():
+            if not self.config.google_project_id:
+                raise ValueError(
+                    "Google Cloud project ID is required for Claude models via Vertex AI"
+                )
+
+            # Set credentials file if provided, otherwise use Application Default Credentials (gcloud auth)
+            if self.config.google_credentials_file:
+                import os
+                os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.config.google_credentials_file
+                if self.config.verbose:
+                    logger.info(f"Using explicit credentials: {self.config.google_credentials_file}")
+            else:
+                if self.config.verbose:
+                    logger.info("Using Application Default Credentials (gcloud auth)")
+
+            # Enable extended thinking for Claude if show_thinking is enabled
+            # Note: Extended thinking requires temperature=1 and max_tokens > budget_tokens
+            enable_extended_thinking = self.config.show_thinking and self.config.extended_thinking_budget > 0
+            
+            llm_kwargs = {
+                "model_name": self.config.model_name,
+                "project": self.config.google_project_id,
+                "location": self.config.google_location,
+                "temperature": 1.0 if enable_extended_thinking else self.config.temperature,
+            }
+
+            if enable_extended_thinking:
+                # max_tokens must be greater than thinking budget
+                # Claude's max output is 64K tokens
+                max_tokens = 64000
+                
+                llm_kwargs["max_tokens"] = max_tokens
+                llm_kwargs["model_kwargs"] = {
+                    "thinking": {
+                        "type": "enabled",
+                        "budget_tokens": self.config.extended_thinking_budget
+                    }
+                }
+                if self.config.verbose:
+                    logger.info(f"Extended thinking enabled with budget: {self.config.extended_thinking_budget} tokens")
+                    logger.info(f"Max tokens set to {max_tokens}")
+                    logger.info("Temperature automatically set to 1.0 (required for extended thinking)")
+            elif self.config.show_thinking:
+                if self.config.verbose:
+                    logger.info("Extended thinking disabled (budget=0)")
+
+            if self.config.verbose:
+                logger.info(
+                    f"Using ChatAnthropicVertex for Claude model: {self.config.model_name} "
+                    f"(project: {self.config.google_project_id}, location: {self.config.google_location})"
+                )
+
+            return ChatAnthropicVertex(**llm_kwargs)
 
         # Use ChatGoogleGenerativeAI for Gemini models
         if self.config.is_gemini_model():
@@ -134,8 +199,8 @@ class SippyAgent:
             tools.append(SippyDatabaseQueryTool(database_dsn=self.config.sippy_ro_database_dsn))
             if self.config.verbose:
                 logger.info("Database query tool enabled (read-only access)")
-        elif self.config.verbose:
-            logger.info("Database query tool disabled (no SIPPY_READ_ONLY_DATABASE_DSN configured)")
+        else:
+            logger.warning("Database query tool disabled: SIPPY_READ_ONLY_DATABASE_DSN not configured")
 
         # Load MCP tools if a config file is provided
         if self.config.mcp_config_file:
@@ -388,6 +453,9 @@ Your final answer must be **comprehensive**:
             chat_history: Previous conversation context as a list of ChatMessage objects
             thinking_callback: Optional async callback for streaming thoughts (thought, action, input, observation)
         """
+        # Ensure agent is fully initialized
+        await self._initialize()
+        
         try:
             # Build message history
             history_messages: List[BaseMessage] = []
@@ -422,7 +490,8 @@ Your final answer must be **comprehensive**:
         all_messages = []
         thinking_steps = []
         current_tool_calls = {}  # Track tool calls by tool_call_id
-        thought_buffer = []  # Buffer for accumulating thoughts
+        thought_buffer = []  # Buffer for accumulating complete thoughts
+        current_thinking_chunk = []  # Buffer for accumulating Claude's token-by-token thinking
 
         # Stream events from the graph
         async for event in self.graph.astream_events(
@@ -439,25 +508,49 @@ Your final answer must be **comprehensive**:
                 if chunk and hasattr(chunk, "content"):
                     content = chunk.content
                     
-                    # Handle Gemini's structured content with thoughts
+                    # Handle structured content with thoughts (Gemini and Claude)
                     if isinstance(content, list):
                         for part in content:
                             if isinstance(part, dict):
-                                # Check for thinking content (Gemini uses 'type': 'thinking')
+                                # Check for thinking content
+                                # Gemini uses 'type': 'thinking' with 'thinking' key (sends complete blocks)
+                                # Claude uses 'type': 'thinking' with 'thinking' key for extended thinking (streams token-by-token)
                                 if part.get("type") == "thinking" and "thinking" in part:
                                     thought_text = part.get("thinking", "")
                                     if thought_text:
+                                        # Claude streams thinking token-by-token, accumulate it
+                                        current_thinking_chunk.append(thought_text)
+                                        
                                         if self.config.verbose:
-                                            logger.debug(f"Captured thought: {thought_text[:100]}...")
-                                        thought_buffer.append(thought_text)
-                                        # Stream the thought if callback provided
-                                        if thinking_callback and self.config.show_thinking:
-                                            await thinking_callback(
-                                                thought_text,
-                                                "thinking",
-                                                "",
-                                                "",
-                                            )
+                                            logger.debug(f"Captured thinking token: {thought_text[:50]}...")
+                    
+                    # Also check for thinking content blocks (alternative format)
+                    elif isinstance(content, str) and content:
+                        # Some models might send thinking as regular text chunks
+                        # We'll handle this in on_chat_model_end
+                        pass
+            
+            # When model completes a response, process accumulated thinking
+            elif kind == "on_chat_model_end":
+                # If we accumulated thinking chunks, combine them
+                if current_thinking_chunk:
+                    complete_thought = "".join(current_thinking_chunk)
+                    thought_buffer.append(complete_thought)
+                    
+                    if self.config.verbose:
+                        logger.debug(f"Complete thought accumulated ({len(complete_thought)} chars)")
+                    
+                    # Stream the complete thought if callback provided
+                    if thinking_callback and self.config.show_thinking:
+                        await thinking_callback(
+                            complete_thought,
+                            "thinking",
+                            "",
+                            "",
+                        )
+                    
+                    # Reset for next thinking block
+                    current_thinking_chunk = []
 
             # When agent makes a tool call
             if kind == "on_chat_model_end":
@@ -547,12 +640,14 @@ Your final answer must be **comprehensive**:
         if self.config.show_thinking:
             # Add accumulated thoughts at the beginning if any
             if thought_buffer:
-                thinking_steps.insert(0, {
-                    "thought": "\n\n".join(thought_buffer),
-                    "action": "thinking",
-                    "action_input": "",
-                    "observation": "",
-                })
+                # Create a separate thinking step for each thought block
+                for i, thought in enumerate(reversed(thought_buffer)):
+                    thinking_steps.insert(0, {
+                        "thought": thought,
+                        "action": "thinking",
+                        "action_input": "",
+                        "observation": "",
+                    })
             
             if thinking_steps:
                 return {
@@ -573,4 +668,112 @@ Your final answer must be **comprehensive**:
 
     def list_tools(self) -> List[str]:
         """Get a list of available tool names."""
+        if not self._initialized or self.tools is None:
+            return []
         return [tool.name for tool in self.tools]
+
+
+class AgentManager:
+    """Manages multiple SippyAgent instances for different models."""
+
+    def __init__(self, base_config: Config, models_config_path: Optional[str] = None):
+        """
+        Initialize the AgentManager.
+        
+        Args:
+            base_config: Base configuration with shared settings (API keys, endpoints, etc.)
+            models_config_path: Path to models.yaml file
+        """
+        self.base_config = base_config
+        self.agents: Dict[str, SippyAgent] = {}  # Cache of created agents
+        self.models: Dict[str, ModelConfig] = {}
+        self.default_model_id: str
+        
+        # Load models configuration
+        models_config = load_models_config(models_config_path)
+        
+        if models_config:
+            # Multi-model mode
+            for model in models_config["models"]:
+                self.models[model.id] = model
+            self.default_model_id = models_config["default_model_id"]
+            
+            if base_config.verbose:
+                logger.info(f"Loaded {len(self.models)} models from configuration")
+                logger.info(f"Default model: {self.default_model_id}")
+        else:
+            # Fallback to single-model mode using .env configuration
+            # Create a synthetic ModelConfig from the base config
+            synthetic_model = ModelConfig(
+                id="default",
+                name=base_config.model_name,
+                description=f"Model from environment configuration",
+                model_name=base_config.model_name,
+                endpoint=base_config.llm_endpoint,
+                temperature=base_config.temperature,
+                extended_thinking_budget=base_config.extended_thinking_budget,
+                default=True,
+            )
+            self.models["default"] = synthetic_model
+            self.default_model_id = "default"
+            
+            if base_config.verbose:
+                logger.info("No models.yaml found, using single model from environment configuration")
+    
+    def list_models(self) -> List[Dict[str, Any]]:
+        """Get list of available models with their metadata."""
+        return [
+            {
+                "id": model_id,
+                "name": model.name,
+                "description": model.description,
+            }
+            for model_id, model in self.models.items()
+        ]
+    
+    def get_default_model_id(self) -> str:
+        """Get the ID of the default model."""
+        return self.default_model_id
+    
+    async def get_agent(self, model_id: Optional[str] = None) -> SippyAgent:
+        """
+        Get or create an agent for the specified model.
+        
+        Args:
+            model_id: ID of the model to use. If None, uses default model.
+            
+        Returns:
+            SippyAgent instance for the specified model.
+            
+        Raises:
+            ValueError: If model_id is not found.
+        """
+        # Use default model if not specified
+        if model_id is None:
+            model_id = self.default_model_id
+        
+        # Check if model exists
+        if model_id not in self.models:
+            raise ValueError(f"Model '{model_id}' not found. Available models: {list(self.models.keys())}")
+        
+        # Return cached agent if it exists
+        if model_id in self.agents:
+            return self.agents[model_id]
+        
+        # Create new agent
+        model_config = self.models[model_id]
+        agent_config = model_config.to_config(self.base_config)
+        
+        if self.base_config.verbose:
+            logger.info(f"Creating agent for model: {model_id} ({model_config.name})")
+        
+        agent = SippyAgent(agent_config)
+        # Initialize the agent asynchronously
+        await agent._initialize()
+        self.agents[model_id] = agent
+        
+        return agent
+    
+    def get_model_info(self, model_id: str) -> Optional[ModelConfig]:
+        """Get model configuration by ID."""
+        return self.models.get(model_id)
