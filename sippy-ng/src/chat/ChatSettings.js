@@ -88,7 +88,7 @@ const useStyles = makeStyles((theme) => ({
   connectionInfo: {
     marginBottom: theme.spacing(2),
   },
-  personaSelect: {
+  fullWidthSelect: {
     width: '100%',
   },
   personaDescription: {
@@ -184,8 +184,21 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
     return personas.find((p) => p.name === settings.persona) || personas[0]
   }
 
+  const getResolvedModelId = () => {
+    // Resolve the effective model ID: use settings.modelId if valid,
+    // otherwise defaultModel if valid, otherwise first model
+    if (settings.modelId && models.find((m) => m.id === settings.modelId)) {
+      return settings.modelId
+    }
+    if (defaultModel && models.find((m) => m.id === defaultModel)) {
+      return defaultModel
+    }
+    return models.length > 0 ? models[0].id : ''
+  }
+
   const getSelectedModel = () => {
-    return models.find((m) => m.id === settings.modelId) || models[0]
+    const resolvedId = getResolvedModelId()
+    return resolvedId ? models.find((m) => m.id === resolvedId) : null
   }
 
   const getConnectionStatusText = () => {
@@ -282,6 +295,61 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
 
       <Divider />
 
+      {/* Model Selection */}
+      <div className={classes.section}>
+        <Typography variant="subtitle2" className={classes.sectionTitle}>
+          AI Model
+        </Typography>
+
+        {modelsLoading ? (
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <CircularProgress size={20} />
+            <Typography variant="body2" color="textSecondary">
+              Loading models...
+            </Typography>
+          </Box>
+        ) : modelsError ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Could not load models. Using default.
+          </Alert>
+        ) : (
+          <>
+            <FormControl className={classes.fullWidthSelect}>
+              <InputLabel id="model-select-label">Select Model</InputLabel>
+              <Select
+                labelId="model-select-label"
+                value={getResolvedModelId()}
+                onChange={handleModelChange}
+                label="Select Model"
+                startAdornment={<ModelIcon sx={{ mr: 1 }} />}
+              >
+                {models.map((model) => (
+                  <MenuItem key={model.id} value={model.id}>
+                    {model.name}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {(() => {
+              const selectedModel = getSelectedModel()
+              return (
+                selectedModel &&
+                selectedModel.description && (
+                  <Box className={classes.personaDescription}>
+                    <Typography variant="body2" color="textPrimary">
+                      {selectedModel.description}
+                    </Typography>
+                  </Box>
+                )
+              )
+            })()}
+          </>
+        )}
+      </div>
+
+      <Divider />
+
       {/* Persona Selection */}
       <div className={classes.section}>
         <Typography variant="subtitle2" className={classes.sectionTitle}>
@@ -301,7 +369,7 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
           </Alert>
         ) : (
           <>
-            <FormControl className={classes.personaSelect}>
+            <FormControl className={classes.fullWidthSelect}>
               <InputLabel id="persona-select-label">Select Persona</InputLabel>
               <Select
                 labelId="persona-select-label"
@@ -328,55 +396,6 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
                     {getSelectedPersona().style_instructions}
                   </Typography>
                 )}
-              </Box>
-            )}
-          </>
-        )}
-      </div>
-
-      <Divider />
-
-      {/* Model Selection */}
-      <div className={classes.section}>
-        <Typography variant="subtitle2" className={classes.sectionTitle}>
-          AI Model
-        </Typography>
-
-        {modelsLoading ? (
-          <Box display="flex" alignItems="center" gap={1} mb={2}>
-            <CircularProgress size={20} />
-            <Typography variant="body2" color="textSecondary">
-              Loading models...
-            </Typography>
-          </Box>
-        ) : modelsError ? (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Could not load models. Using default.
-          </Alert>
-        ) : (
-          <>
-            <FormControl className={classes.personaSelect}>
-              <InputLabel id="model-select-label">Select Model</InputLabel>
-              <Select
-                labelId="model-select-label"
-                value={settings.modelId || defaultModel || ''}
-                onChange={handleModelChange}
-                label="Select Model"
-                startAdornment={<ModelIcon sx={{ mr: 1 }} />}
-              >
-                {models.map((model) => (
-                  <MenuItem key={model.id} value={model.id}>
-                    {model.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {getSelectedModel() && getSelectedModel().description && (
-              <Box className={classes.personaDescription}>
-                <Typography variant="body2" color="textPrimary">
-                  {getSelectedModel().description}
-                </Typography>
               </Box>
             )}
           </>
