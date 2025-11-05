@@ -1,0 +1,77 @@
+language: en-US
+early_access: false
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: true
+  pre_merge_checks:
+    custom_checks:
+      - name: "Go Error Handling"
+        mode: warning
+        instructions: |
+          Ensure proper Go error handling patterns:
+          - Never ignore errors with `_` without justification
+          - Errors should be wrapped with context using fmt.Errorf with %w
+          - Avoid panic() except in init() or fatal conditions
+          - Check for nil before dereferencing pointers
+
+      - name: "SQL Injection Prevention"
+        mode: error
+        instructions: |
+          Prevent SQL injection vulnerabilities:
+          - NEVER concatenate user input into SQL queries
+          - Always use parameterized queries with $1, $2, etc.
+          - Flag any string concatenation in SQL query construction
+          - Use prepared statements for repeated queries
+
+      - name: "Excessive CSS in React Should Use Styles"
+        mode: warning
+        instructions: |
+          React components with extensive inline CSS should use the useStyles pattern:
+          - Flag inline style objects with more than 3-4 style properties
+          - Suggest extracting complex styles to useStyles() or styled components
+          - Inline styles are acceptable for simple, dynamic values
+          - Prefer useStyles for maintainability and reusability
+
+          ❌ Avoid:
+          - Large inline style objects in JSX
+          - Repeated style definitions across components
+
+          ✅ Prefer:
+          - useStyles() hook for complex styling
+          - CSS modules or styled components
+          - Inline styles only for dynamic values (e.g., width based on props)
+
+      - name: "Single Responsibility and Clear Naming"
+        mode: warning
+        instructions: |
+          Keep structs and methods focused on a single concept with clear, evocative names:
+          - Structs should represent one cohesive concept or entity
+          - Methods should do one thing well
+          - Names should clearly communicate purpose and responsibility
+          - Avoid generic names like "Manager", "Handler", "Util" without specific context
+          - Flag structs with too many unrelated fields or methods
+
+          ❌ Avoid:
+          - Structs that combine multiple unrelated responsibilities
+          - Method names that don't indicate what they do (e.g., "Process", "Handle", "Do")
+          - Overly broad structs accumulating miscellaneous functionality
+
+          ✅ Prefer:
+          - Descriptive names that evoke the specific concept (e.g., "TestResultAggregator" not "Manager")
+          - Methods with clear, action-oriented names (e.g., "CalculatePassRate" not "Calculate")
+          - Splitting large structs into focused, single-purpose types
+chat:
+  auto_reply: true
+
+tools:
+  shellcheck:
+    enabled: true
+  markdownlint:
+    enabled: true
