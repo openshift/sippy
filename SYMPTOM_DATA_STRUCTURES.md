@@ -16,14 +16,14 @@ Expand the existing `job_labels` table with these additional fields:
 
 ```sql
 -- New fields to add to job_labels table
-added_at TIMESTAMP         -- When this label was added/updated
+created_at TIMESTAMP        -- When this label was applied for this job
 updated_at TIMESTAMP        -- Last update timestamp
 source_tool STRING          -- Tool that created it (e.g., 'annotate-job-runs', 'cloud-function', 'jaq-ui')
 symptom_id STRING           -- Immutable ID of the symptom that matched (e.g., 'InfraFailure', 'ClusterDNSFlake')
 display_contexts ARRAY<STRING>  -- Where to display (e.g., ['spyglass', 'metrics', 'test-details'])
 
--- Existing field (repurposed):
--- label STRING remains for backward compatibility, will contain label_text from jobrunscan.Label
+-- Existing field:
+-- label STRING remains for backward compatibility, will contain ID from jobrunscan.Label
 ```
 
 ### Example `job_labels` row
@@ -33,7 +33,7 @@ display_contexts ARRAY<STRING>  -- Where to display (e.g., ['spyglass', 'metrics
   "job_name": "periodic-ci-openshift-release-master-ci-4.18-upgrade-from-stable-4.17-e2e-gcp-upgrade",
   "job_run_name": "1234567890",
   "label": "ClusterDNSFlake",
-  "added_at": "2025-10-30T12:34:56Z",
+  "created_at": "2025-10-30T12:34:56Z",
   "updated_at": "2025-10-30T12:34:56Z",
   "source_tool": "symptom-detector",
   "symptom_id": "ClusterDNSFlake",
@@ -73,10 +73,10 @@ type Label struct {
 
     // Human-readable label text (can be changed)
     // Examples: "Infrastructure failure: omit job from CR", "Cluster DNS resolution failure(s)"
-    LabelText string `gorm:"type:varchar(200);not null;uniqueIndex" json:"label_text"`
+    LabelTitle string `gorm:"type:varchar(200);not null;uniqueIndex" json:"label_title"`
 
     // Markdown explanation of what this label indicates
-    Description string `gorm:"type:text" json:"description"`
+    Explanation string `gorm:"type:text" json:"explanation"`
 
     // Where this label should be displayed
     // Values: "spyglass", "metrics", "component-readiness", "jaq", etc.
