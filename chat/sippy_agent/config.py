@@ -21,8 +21,8 @@ class ModelConfig(BaseModel):
     description: Optional[str] = Field(default=None, description="Description of the model")
     model_name: str = Field(description="The actual model name to use with the provider")
     endpoint: str = Field(default="", description="API endpoint URL (empty for Vertex AI)")
-    temperature: float = Field(default=0.0, description="Temperature setting for the model")
-    extended_thinking_budget: int = Field(default=0, description="Token budget for Claude's extended thinking")
+    temperature: Optional[float] = Field(default=None, description="Temperature setting for the model")
+    extended_thinking_budget: Optional[int] = Field(default=None, description="Token budget for Claude's extended thinking")
     default: bool = Field(default=False, description="Whether this is the default model")
 
     def to_config(self, base_config: "Config") -> "Config":
@@ -32,8 +32,12 @@ class ModelConfig(BaseModel):
         # Override with model-specific settings
         config_dict["model_name"] = self.model_name
         config_dict["llm_endpoint"] = self.endpoint if self.endpoint else base_config.llm_endpoint
-        config_dict["temperature"] = self.temperature
-        config_dict["extended_thinking_budget"] = self.extended_thinking_budget
+        
+        # Only override temperature and extended_thinking_budget if explicitly set
+        if self.temperature is not None:
+            config_dict["temperature"] = self.temperature
+        if self.extended_thinking_budget is not None:
+            config_dict["extended_thinking_budget"] = self.extended_thinking_budget
         
         return Config(**config_dict)
 
