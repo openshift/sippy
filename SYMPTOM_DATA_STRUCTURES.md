@@ -565,15 +565,31 @@ type ProwJobRun struct {
 }
 ```
 
-This uses a PostgreSQL text array with a GIN index for efficient querying. Label details can be looked up from the `job_run_labels` table when needed for display.
+This uses a PostgreSQL text array with a GIN index for efficient querying. Label details can be
+looked up from the `job_run_labels` table when needed for display.
 
 ### Integration Points
 
 The symptom detection system will:
 - Use the existing `JobArtifactQuery` and `ContentMatcher` infrastructure from `pkg/api/jobartifacts/`
-- Extend the existing `JobRunAnnotator` to support symptom-based labeling
-- Write results to both:
-  - BigQuery `job_labels` table (for historical tracking and analysis)
-  - PostgreSQL `prow_job_runs.labels` field (for fast querying in Sippy)
 - Store symptom and label definitions in new PostgreSQL tables
-- Enable filtering jobs by labels in the Sippy UI and API
+- Record applied labels in three places:
+  1. The bucket directory for the job artifacts, under the (new) artifacts/labels/ directory (one file per label)
+  2. The BigQuery `job_labels` tables
+  3. The postgres job run entries, i.e. `prow_job_runs.labels` 
+- Enable filtering job runs by labels in the Sippy UI and API
+
+Automated label application will occur as follows:
+- While the job produces artifacts, our intake cloud function will scan each file for symptoms and
+  write a file for each label found in the bucket under artifacts/labels/$LabelID.json
+- When the job dataloader runs after the job has completed, it will
+  1. look up the label files produced,
+  2. record unique label entries in the BQ `job_labels` table, and 
+  3. write a labels array in the PG `prow_job_runs.labels` column for the run
+
+When a symptom is (re)defined, `annotate-job-runs` can update symptoms for existing jobs:
+- Extend the existing `JobRunAnnotator` to support symptom-based labeling
+- Write results to the same three places as the automated intake
+- Need to require some kind of filtering (time window, variants?) as we probably do not want to
+  re-label every job ever loaded in sippy. And this won't affect jobs sippy doesn't load.
+  
