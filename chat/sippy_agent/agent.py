@@ -166,6 +166,7 @@ class SippyAgent:
 3. **Provide Evidence:** Always ground your analysis in tool results.
 4. **Present Clearly:** Use markdown links for URLs (e.g., `[Job Name](link)`), no raw JSON, and format for readability. When constructing markdown links, if the link text contains its own brackets ([ or ]), escape them with a backslash to ensure it is rendered correctly.
 5. **Maximize Efficiency:** When multiple tools can be called independently (no data dependencies), call them in parallel rather than sequentially. For example, if analyzing multiple failed jobs, call `get_prow_job_summary` for all jobs simultaneously.
+6. When a tool argument (especially a URL) is explicitly described as requiring its value "verbatim," "exactly as provided," or "without modification," you MUST pass the provided string directly to the tool without any internal parsing, re-construction, or alteration of its content. Treat such arguments as opaque strings.
 
 #### Examples of Parallel Tool Calls:
 

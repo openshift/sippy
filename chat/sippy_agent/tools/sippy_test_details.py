@@ -37,7 +37,7 @@ Input: url (the test details URL, passed verbatim without modification)"""
     sippy_api_url: Optional[str] = Field(default=None, description="Sippy API base URL")
 
     class TestDetailsInput(SippyToolInput):
-        url: str = Field(description="The test details URL. Pass the URL exactly as provided without any modifications.")
+        url: str = Field(description="The test details URL. It is CRITICAL that the URL for get_test_details_report is passed EXACTLY AS PROVIDED. DO NOT modify any parameters, escape characters, or the structure of the URL in any way.")
 
     args_schema: Type[SippyToolInput] = TestDetailsInput
 
