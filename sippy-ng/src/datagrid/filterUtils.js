@@ -1,3 +1,5 @@
+import { useMemo } from 'react'
+
 /**
  * Client-side filtering utilities for DataGrid components.
  *
@@ -6,6 +8,32 @@
  * - NOT modifier for negating filters
  * - Various filter operators (contains, equals, startsWith, endsWith, comparison operators)
  */
+
+/**
+ * Operators that don't require a value to be valid
+ */
+export const VALUELESS_OPERATORS = [
+  'isEmpty',
+  'isNotEmpty',
+  'is empty',
+  'is not empty',
+  'isNull',
+  'isNotNull',
+]
+
+/**
+ * Determines if a filter item should be kept when pruning filters
+ *
+ * @param {Object} item - The filter item
+ * @param {string} item.value - The filter value
+ * @param {string} item.operatorValue - The operator (primary property name)
+ * @param {string} item.operator - The operator (alternate property name)
+ * @returns {boolean} Whether the item should be kept
+ */
+export function shouldKeepFilterItem(item) {
+  const operator = item.operatorValue || item.operator
+  return item.value !== '' || VALUELESS_OPERATORS.includes(operator)
+}
 
 /**
  * Applies a filter model to an array of rows
@@ -136,9 +164,5 @@ export function evaluateFilter(row, filter, columns = null) {
  * const filteredRows = useFilteredData(rows, filterModel)
  */
 export function useFilteredData(data, filterModel) {
-  const React = require('react')
-  return React.useMemo(
-    () => applyFilterModel(data, filterModel),
-    [data, filterModel]
-  )
+  return useMemo(() => applyFilterModel(data, filterModel), [data, filterModel])
 }

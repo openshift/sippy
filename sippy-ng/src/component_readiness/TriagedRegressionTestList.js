@@ -1,4 +1,4 @@
-import { applyFilterModel } from '../datagrid/filterUtils'
+import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
@@ -34,10 +34,10 @@ export default function TriagedRegressionTestList(props) {
   ])
 
   const addFilters = (filter) => {
-    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+    const currentFilters = filterModel.items.filter(shouldKeepFilterItem)
 
     filter.forEach((item) => {
-      if (item.value && item.value !== '') {
+      if (shouldKeepFilterItem(item)) {
         currentFilters.push(item)
       }
     })
@@ -51,7 +51,7 @@ export default function TriagedRegressionTestList(props) {
   const requestSearch = (searchValue) => {
     // Filter out empty items and existing test_name filters
     const currentFilters = filterModel.items.filter(
-      (f) => f.value !== '' && f.columnField !== 'test_name'
+      (f) => shouldKeepFilterItem(f) && f.columnField !== 'test_name'
     )
     if (searchValue && searchValue !== '') {
       currentFilters.push({

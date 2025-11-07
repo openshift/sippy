@@ -1,4 +1,4 @@
-import { applyFilterModel } from '../datagrid/filterUtils'
+import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { formatDateToSeconds, relativeTime, SafeJSONParam } from '../helpers'
@@ -104,10 +104,10 @@ export default function TriagedRegressions({
   )
 
   const addFilters = (filter) => {
-    const currentFilters = filterModel.items.filter((item) => item.value !== '')
+    const currentFilters = filterModel.items.filter(shouldKeepFilterItem)
 
     filter.forEach((item) => {
-      if (item.value && item.value !== '') {
+      if (shouldKeepFilterItem(item)) {
         currentFilters.push(item)
       }
     })
@@ -121,7 +121,7 @@ export default function TriagedRegressions({
   const requestSearch = (searchValue) => {
     // Filter out empty items and existing description filters
     const currentFilters = filterModel.items.filter(
-      (f) => f.value !== '' && f.columnField !== 'description'
+      (f) => shouldKeepFilterItem(f) && f.columnField !== 'description'
     )
     if (searchValue && searchValue !== '') {
       currentFilters.push({
