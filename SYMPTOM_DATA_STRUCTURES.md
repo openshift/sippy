@@ -162,7 +162,7 @@ const (
 
 ```json
 {
-  "id": "DNS_Timeout",
+  "id": "DNSTimeout",
   "summary": "Cluster DNS resolution failures",
   "matcher_type": "string",
   "file_pattern": "**/e2e-timelines/**/*.json",
@@ -178,7 +178,7 @@ const (
 
 ```json
 {
-  "id": "Install_Timeout",
+  "id": "InstallTimeout",
   "summary": "Cluster install timeout",
   "matcher_type": "regex",
   "file_pattern": "**/build-log.txt",
@@ -210,7 +210,7 @@ Find infrastructure failures (install timeout AND NOT user error):
 
 ```json
 {
-  "id": "InfraFailure_Install",
+  "id": "InfraFailureInstall",
   "summary": "Infrastructure install timeout (did not get to intervals)",
   "matcher_type": "cel",
   "file_pattern": null,
@@ -231,7 +231,7 @@ Critical infrastructure issue (network or storage):
   "id": "Critical_Infra",
   "summary": "Critical infrastructure issue (network or storage)",
   "matcher_type": "cel",
-  "match_string": "DNS_Timeout || Storage_Provision_Failure || (API_Timeout && Etcd_Unavailable)",
+  "match_string": "DNSTimeout || StorageProvisionFailure || (APITimeout && EtcdUnavailable)",
   "label_ids": ["InfraFailure", "RequiresInvestigation"],
   "filter_releases": ["4.17", "4.18"]
 }
@@ -265,14 +265,14 @@ Note: The `Comment` field should remain a string but will contain JSON-serialize
 
 ## Migration Considerations
 
-1. **BigQuery Schema Evolution**: Add new columns to existing job_labels table (backward compatible)
+1. **BigQuery Schema Evolution**: Add new columns to existing `job_labels` table (backward compatible)
 2. **PostgreSQL Migrations**:
    - Create `job_run_labels` table
    - Create `job_run_symptoms` table
-   - Add indexes on frequently queried fields (releases, valid_from, valid_until)
+   - Add indexes on frequently queried fields (`filter_releases`, `valid_from`, `valid_until`)
 3. **Backward Compatibility**:
-   - Existing job_labels entries will have null values for new fields
-   - Tools should handle missing symptom_id gracefully
+   - Existing `job_labels` entries will have null values for new fields
+   - Tools should handle missing `symptom_id` gracefully
    - The `label` field remains for display purposes
 
 ## Implementation Notes
@@ -453,7 +453,7 @@ AI Response:
   "file_pattern": "**/e2e-*.log",
   "match_string": "context deadline exceeded.*dns",
   "label_ids": ["TestInfraIssue"],
-  "releases": ["4.18"]
+  "filter_releases": ["4.18"]
 }
 ```
 
@@ -465,9 +465,9 @@ AI Response:
   "id": "Install_Failure_Not_Quota",
   "summary": "Install failure (excluding quota errors)",
   "matcher_type": "cel",
-  "match_string": "symptoms.Install_Timeout && !symptoms.User_Quota_Error",
+  "match_string": "InstallTimeout && !UserQuotaError",
   "label_ids": ["InfraFailure"],
-  "releases": ["4.17", "4.18"]
+  "filter_releases": ["4.17", "4.18"]
 }
 ```
 
@@ -489,18 +489,13 @@ PUT    /api/v1/labels/:id                  # Update label
 ## Database Indexes
 
 ```sql
--- job_run_labels
-CREATE INDEX idx_label_prototypes_display_contexts ON job_run_labels USING GIN (hide_display_contexts);
-CREATE INDEX idx_label_prototypes_severity ON job_run_labels(severity);
-
 -- job_run_symptoms
-CREATE INDEX idx_symptom_definitions_matcher_type ON job_run_symptoms(matcher_type);
-CREATE INDEX idx_symptom_definitions_releases ON job_run_symptoms USING GIN (releases);
+CREATE INDEX idx_symptom_definitions_releases ON job_run_symptoms USING GIN (filter_releases);
 CREATE INDEX idx_symptom_definitions_label_ids ON job_run_symptoms USING GIN (label_ids);
 CREATE INDEX idx_symptom_definitions_valid_from ON job_run_symptoms(valid_from);
 CREATE INDEX idx_symptom_definitions_valid_until ON job_run_symptoms(valid_until);
-CREATE INDEX idx_symptom_definitions_product ON job_run_symptoms(product);
-CREATE INDEX idx_symptom_definitions_release_status ON job_run_symptoms(release_status);
+CREATE INDEX idx_symptom_definitions_product ON job_run_symptoms(filter_products);
+CREATE INDEX idx_symptom_definitions_release_status ON job_run_symptoms(filter_release_statuses);
 ```
 
 ## Dependencies
