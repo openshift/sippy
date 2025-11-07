@@ -650,9 +650,65 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: false
+  - name: 4.20-qe-auto-release
+    base_release:
+      release: "4.20"
+      relative_start: ga-30d
+      relative_end: ga
+    sample_release:
+      release: "4.20"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Procedure:
+          - automated-release
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Network:
+          - ovn
+        Owner:
+          - qe
+          - service-delivery
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: false
   - name: 4.20-qe-main
     base_release:
-      release: "4.19"
+      release: "4.20"
       relative_start: ga-30d
       relative_end: ga
     sample_release:
@@ -686,6 +742,59 @@ component_readiness:
         Owner:
           - qe
           - service-delivery
+        Platform:
+          - aws
+          - azure
+          - gcp
+          - rosa
+          - vsphere
+        Topology:
+          - ha
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: false
+  - name: 4.21-qe-main
+    base_release:
+      release: "4.20"
+      relative_start: ga-30d
+      relative_end: ga
+    sample_release:
+      release: "4.21"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Network: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        FeatureSet: {}
+        Installer: {}
+        Network: {}
+        Platform: {}
+        Suite: {}
+        Topology: {}
+        Upgrade: {}
+      include_variants:
+        Architecture:
+          - amd64
+        FeatureSet:
+          - default
+        Installer:
+          - ipi
+          - upi
+        Network:
+          - ovn
+        Owner:
+          - qe
         Platform:
           - aws
           - azure

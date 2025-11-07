@@ -20,12 +20,12 @@ import {
   Typography,
 } from '@mui/material'
 import { AutoAwesome as AutoAwesomeIcon, Close } from '@mui/icons-material'
-import { CapabilitiesContext } from '../App'
 import {
   getBugsAPIUrl,
   getTriagesAPIUrl,
 } from '../component_readiness/CompReadyUtils'
 import { makeStyles } from '@mui/styles'
+import { SippyCapabilitiesContext } from '../App'
 import { usePrompts } from '../chat/store/useChatStore'
 import BugButton from './BugButton'
 import OneShotChatModal from '../chat/OneShotChatModal'
@@ -84,7 +84,7 @@ export default function FileBug({
   const [aiGeneratedDescription, setAiGeneratedDescription] = useState('')
   const [aiPrompt, setAiPrompt] = useState('')
   const [promptRenderError, setPromptRenderError] = useState(null)
-  const capabilities = useContext(CapabilitiesContext)
+  const capabilities = useContext(SippyCapabilitiesContext)
   const chatEnabled = capabilities.includes('chat')
 
   const handleOpenModal = () => {

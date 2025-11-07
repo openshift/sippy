@@ -38,7 +38,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/mcp"
 
-	"github.com/openshift/sippy/pkg/ai"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/andygrunwald/go-jira"
@@ -85,7 +84,6 @@ func NewServer(
 	views *apitype.SippyViews,
 	config *v1.SippyConfig,
 	enableWriteEndpoints bool,
-	llmClient *ai.LLMClient,
 	chatAPIURL string,
 	jiraClient *jira.Client,
 ) *Server {
@@ -109,7 +107,6 @@ func NewServer(
 		views:                views,
 		config:               config,
 		enableWriteAPIs:      enableWriteEndpoints,
-		llmClient:            llmClient,
 		chatAPIURL:           chatAPIURL,
 		jiraClient:           jiraClient,
 	}
@@ -154,7 +151,6 @@ type Server struct {
 	views                *apitype.SippyViews
 	config               *v1.SippyConfig
 	enableWriteAPIs      bool
-	llmClient            *ai.LLMClient
 	chatAPIURL           string
 	jiraClient           *jira.Client
 }
@@ -287,10 +283,6 @@ func (s *Server) determineCapabilities() {
 	capabilities := make([]string, 0)
 	if s.mode == ModeOpenShift {
 		capabilities = append(capabilities, OpenshiftCapability)
-	}
-
-	if s.llmClient != nil {
-		capabilities = append(capabilities, AICapability)
 	}
 
 	if s.bigQueryClient != nil {
@@ -889,6 +881,17 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
+func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Request) {
+	capabilities, err := api.GetTestCapabilitiesFromDB(s.bigQueryClient)
+	if err != nil {
+		log.WithError(err).Error("error querying test capabilities")
+		failureResponse(w, http.StatusInternalServerError, "error querying test capabilities")
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, capabilities)
+}
+
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
@@ -1012,27 +1015,6 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 	}
 }
 
-func (s *Server) jsonJobRunAISummary(w http.ResponseWriter, req *http.Request) {
-	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
-	if jobRunIDStr == "" {
-		return
-	}
-
-	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
-	if err != nil {
-		failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
-		return
-	}
-
-	summary, err := ai.AnalyzeJobRun(req.Context(), s.llmClient, s.db, s.gcsClient, jobRunID)
-	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
-		return
-	}
-
-	api.RespondWithJSON(http.StatusOK, w, summary)
-}
-
 func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
 	if jobRunIDStr == "" {
@@ -1045,13 +1027,34 @@ func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	summary, err := ai.GetJobRunSummary(req.Context(), s.db, s.gcsClient, jobRunID)
+	summary, err := api.GetJobRunSummary(req.Context(), s.db, s.gcsClient, jobRunID)
 	if err != nil {
 		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
 		return
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, summary)
+}
+
+// jsonJobRunPayload returns the payload release tag that was used for a given job run.
+func (s *Server) jsonJobRunPayload(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "job run payload API is only available when google-service-account-credential-file is configured")
+		return
+	}
+
+	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
+	if jobRunIDStr == "" {
+		return
+	}
+
+	results, err := api.PayloadForJobRun(req.Context(), s.bigQueryClient, jobRunIDStr)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
@@ -1883,15 +1886,6 @@ func (s *Server) Serve() {
 
 	router.PathPrefix("/static/").Handler(http.FileServer(http.FS(s.static)))
 
-	// Re-direct "/" to sippy-ng
-	router.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/" {
-			http.NotFound(w, req)
-			return
-		}
-		http.Redirect(w, req, "/sippy-ng/", http.StatusMovedPermanently)
-	}).Methods(http.MethodGet)
-
 	// Setup MCP Server
 	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
 
@@ -1927,16 +1921,17 @@ func (s *Server) Serve() {
 			},
 		},
 		{
-			EndpointPath: "/api/ai/job_run",
-			Description:  "Returns an AI-generated summary of a job run",
-			Capabilities: []string{LocalDBCapability, AICapability},
-			HandlerFunc:  s.jsonJobRunAISummary,
-		},
-		{
 			EndpointPath: "/api/job/run/summary",
 			Description:  "Returns raw job run summary data including test failures and cluster operators",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonJobRunSummary,
+		},
+		{
+			EndpointPath: "/api/job/run/payload",
+			Description:  "Returns the payload a job run was using",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonJobRunPayload,
+			CacheTime:    4 * time.Hour,
 		},
 		{
 			EndpointPath: "/api/autocomplete/{field}",
@@ -2074,6 +2069,13 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestDurationsFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/capabilities",
+			Description:  "Returns list of available test capabilities",
+			Capabilities: []string{ComponentReadinessCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestCapabilitiesFromDB,
 		},
 		{
 			EndpointPath: "/api/install",
@@ -2365,6 +2367,24 @@ func (s *Server) Serve() {
 			route.Methods(ep.Methods...)
 		}
 	}
+
+	// Catch-all fallback: serve static files for any unmatched routes, or redirect to sippy-ng
+	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Try to open the file from static filesystem (embedded FS keeps directory structure)
+		filePath := "static" + r.URL.Path
+		if _, err := s.static.Open(filePath); err != nil {
+			// File doesn't exist in static, redirect to sippy-ng
+			if r.URL.Path == "/" {
+				http.Redirect(w, r, "/sippy-ng/", http.StatusMovedPermanently)
+			} else {
+				http.NotFound(w, r)
+			}
+			return
+		}
+		// File exists, rewrite path to include /static prefix and serve
+		r.URL.Path = "/static" + r.URL.Path
+		http.FileServer(http.FS(s.static)).ServeHTTP(w, r)
+	})
 
 	var handler http.Handler = router
 	handler = logRequestHandler(handler)

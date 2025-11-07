@@ -25,7 +25,6 @@ import {
   ViewColumn,
   Widgets,
 } from '@mui/icons-material'
-import { CapabilitiesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
 import {
   formColumnName,
@@ -37,6 +36,7 @@ import {
   StyledInputBase,
 } from './CompReadyUtils'
 import { Link } from 'react-router-dom'
+import { SippyCapabilitiesContext } from '../App'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import IconButton from '@mui/material/IconButton'
 import PropTypes from 'prop-types'
@@ -64,7 +64,7 @@ export default function ComponentReadinessToolBar(props) {
   const [unresolvedTests, setUnresolvedTests] = React.useState([])
   const [triageEntries, setTriageEntries] = React.useState([])
   const [isLoaded, setIsLoaded] = React.useState(false)
-  const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const localDBEnabled = capabilitiesContext.includes('local_db')
   const varsContext = useContext(CompReadyVarsContext)
   const { setPageContextForChat, unsetPageContextForChat } =

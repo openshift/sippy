@@ -19,21 +19,25 @@ class SippyTestDetailsTool(SippyBaseTool):
 
     name: str = "get_test_details_report"
     description: str = """Get a test details report from Sippy API including regression analysis and statistics.
-    
+
 This tool provides:
 - Regression status and history
 - Sample vs base statistics comparison
-- Failed job run IDs (use get_prow_job_summary to analyze specific runs)
+- Job stats for each job name that matched the variants in the report
+  - List of sample job runs and basis job runs, sorted by start time with most recent first
+  - Whether each job run was a success or failure (see failure_count or success_count > 0)
+  - Simplified job run data with job_url, job_run_id, start_time, and status (passed/failed/flaked)
+  - get_prow_job_summary can be used to dig deeper into specific job runs by job run ID
 - Triage information
 - Pass rate changes
 
-Input: query_params (the query parameters for the test details endpoint, e.g., testId=12345&component=...&baseRelease=...)"""
+Input: url (the test details URL, passed verbatim without modification)"""
 
     # Add sippy_api_url as a proper field
     sippy_api_url: Optional[str] = Field(default=None, description="Sippy API base URL")
 
     class TestDetailsInput(SippyToolInput):
-        query_params: str = Field(description="Query parameters for the test details endpoint. Can be either just the query params (e.g., testId=12345&component=foo) or a full URL (the query params will be extracted)")
+        url: str = Field(description="The test details URL. It is CRITICAL that the URL for get_test_details_report is passed EXACTLY AS PROVIDED. DO NOT modify any parameters, escape characters, or the structure of the URL in any way.")
 
     args_schema: Type[SippyToolInput] = TestDetailsInput
 
@@ -56,17 +60,20 @@ Input: query_params (the query parameters for the test details endpoint, e.g., t
                 "error": "No Sippy API URL configured. Please set SIPPY_API_URL environment variable."
             }
 
-        # Build the full URL from query params
-        query_params = args.query_params.strip()
-        
-        # If query_params is a full URL, extract just the query string
-        if query_params.startswith('http') or query_params.startswith('/'):
+        # Build the full URL from the provided URL/query params
+        url_input = args.url.strip()
+
+        # If url_input is a full URL, extract just the query string
+        if url_input.startswith('http') or url_input.startswith('/'):
             # Extract query params from URL
-            if '?' in query_params:
-                query_params = query_params.split('?', 1)[1]
+            if '?' in url_input:
+                query_params = url_input.split('?', 1)[1]
             else:
-                return {"error": f"No query parameters found in URL: {query_params}"}
-        
+                return {"error": f"No query parameters found in URL: {url_input}"}
+        else:
+            # It's just query params
+            query_params = url_input
+
         # Ensure query params don't start with ? or &
         if query_params.startswith('?') or query_params.startswith('&'):
             query_params = query_params[1:]
@@ -134,6 +141,28 @@ Input: query_params (the query parameters for the test details endpoint, e.g., t
                     if len(failed_job_run_ids) >= 10:
                         break
 
+        # Process job stats to create simplified job run data
+        job_stats = {}
+        if first_analysis.get('job_stats'):
+            for job_stat in first_analysis['job_stats']:
+                sample_job_name = job_stat.get('sample_job_name')
+                if sample_job_name and job_stat.get('sample_job_run_stats'):
+                    job_runs = []
+                    for job_run in job_stat['sample_job_run_stats']:
+                        # Determine status based on test stats counts
+                        test_stats = job_run.get('test_stats', {})
+                        status = self._determine_job_run_status(test_stats)
+                        
+                        job_run_data = {
+                            "job_url": job_run.get('job_url', ''),
+                            "job_run_id": job_run.get('job_run_id', ''),
+                            "start_time": job_run.get('start_time', ''),
+                            "status": status
+                        }
+                        job_runs.append(job_run_data)
+                    
+                    job_stats[sample_job_name] = job_runs
+
         # Process regression information
         regression_info = None
         if first_analysis.get('regression'):
@@ -156,6 +185,32 @@ Input: query_params (the query parameters for the test details endpoint, e.g., t
             "sample_stats": first_analysis.get('sample_stats'),
             "base_stats": first_analysis.get('base_stats'),
             "failed_job_run_ids": failed_job_run_ids,
+            "job_stats": job_stats,
             "triages_count": len(first_analysis.get('triages', [])),
             "generated_at": data.get('generated_at'),
         }
+
+    def _determine_job_run_status(self, test_stats: Dict[str, Any]) -> str:
+        """Determine the status of a job run based on test stats counts.
+        
+        Args:
+            test_stats: Dictionary containing success_count, failure_count, and flake_count
+            
+        Returns:
+            String indicating status: 'passed', 'failed', or 'flaked'
+        """
+        success_count = test_stats.get('success_count', 0)
+        failure_count = test_stats.get('failure_count', 0)
+        flake_count = test_stats.get('flake_count', 0)
+        
+        # Determine status based on which count is > 0
+        # Priority: failure > flake > success
+        if failure_count > 0:
+            return 'failed'
+        elif flake_count > 0:
+            return 'flaked'
+        elif success_count > 0:
+            return 'passed'
+        else:
+            # If all counts are 0, default to 'passed' (no test results)
+            return 'passed'

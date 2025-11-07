@@ -530,3 +530,49 @@ func BuildReleasesResponse(releases []sippyv1.Release, lastUpdated time.Time) ap
 
 	return response
 }
+
+// PayloadForJobRun returns the payload release tag that was used for a given job run.
+func PayloadForJobRun(ctx context.Context, bigQueryClient *bqcachedclient.Client, jobRunID string) ([]apitype.JobPayload, error) {
+	// Calculate date range: 6 months ago through today
+	now := time.Now()
+	sixMonthsAgo := now.AddDate(0, -6, 0)
+
+	queryStr := fmt.Sprintf(`SELECT prowjob_job_name, release_verify_tag, prowjob_build_id
+		FROM `+"`openshift-gce-devel.ci_analysis_us.jobs`"+` 
+		WHERE prowjob_start BETWEEN DATETIME('%s') AND DATETIME_ADD('%s', INTERVAL 1 DAY) 
+		AND prowjob_build_id = '%s'
+		LIMIT 10`,
+		sixMonthsAgo.Format("2006-01-02"),
+		now.Format("2006-01-02"),
+		jobRunID)
+
+	q := bigQueryClient.BQ.Query(queryStr)
+	log.WithFields(log.Fields{
+		"jobRunID":  jobRunID,
+		"dateRange": fmt.Sprintf("%s to %s", sixMonthsAgo.Format("2006-01-02"), now.Format("2006-01-02")),
+		"query":     queryStr,
+	}).Info("Executing BigQuery payload query")
+
+	it, err := bqcachedclient.LoggedRead(ctx, q)
+	if err != nil {
+		log.WithError(err).Error("error querying job run payload from bigquery")
+		return nil, fmt.Errorf("error querying job run payload from bigquery: %w", err)
+	}
+
+	var results []apitype.JobPayload
+	for {
+		var row apitype.JobPayload
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error parsing job run payload from bigquery")
+			return nil, fmt.Errorf("error parsing job run payload from bigquery: %w", err)
+		}
+
+		results = append(results, row)
+	}
+
+	return results, nil
+}

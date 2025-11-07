@@ -9,6 +9,7 @@ type View struct {
 	BaseRelease     reqopts.RelativeRelease    `json:"base_release" yaml:"base_release"`
 	SampleRelease   reqopts.RelativeRelease    `json:"sample_release" yaml:"sample_release"`
 	TestIDOption    reqopts.TestIdentification `json:"test_id_options" yaml:"test_id_options"`
+	TestFilters     reqopts.TestFilters        `json:"test_filters" yaml:"test_filters"`
 	VariantOptions  reqopts.Variants           `json:"variant_options" yaml:"variant_options"`
 	AdvancedOptions reqopts.Advanced           `json:"advanced_options" yaml:"advanced_options"`
 

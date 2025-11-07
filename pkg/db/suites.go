@@ -58,6 +58,15 @@ var testSuites = []string{
 	"OLM-Catalog-Validation",
 	"insights-operator-tests",
 	"CNV-lp-interop",
+	"ODF-lp-interop",
+	"OADP-lp-interop",
+	"ACS-lp-interop",
+	"MTA-lp-interop",
+	"Gitops-lp-interop",
+	"Quay-lp-interop",
+	"Serverless-lp-interop",
+	"ServiceMesh-lp-interop",
+	"OpenshitPipelines-lp-interop",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {

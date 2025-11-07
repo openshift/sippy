@@ -498,3 +498,32 @@ func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.T
 	}
 	return result, errs
 }
+
+// GetTestCapabilitiesFromDB returns a sorted list of capabilities from the BQ component_mapping_latest table
+func GetTestCapabilitiesFromDB(bqClient *bq.Client) ([]string, error) {
+	if bqClient == nil || bqClient.BQ == nil {
+		return []string{}, nil
+	}
+
+	qFmt := "SELECT ARRAY_AGG(DISTINCT capability ORDER BY capability) AS capabilities FROM `%s.component_mapping_latest`, UNNEST(capabilities) AS capability"
+	q := bqClient.BQ.Query(fmt.Sprintf(qFmt, bqClient.Dataset))
+
+	log.Infof("Fetching test capabilities with:\n%s\n", q.Q)
+
+	it, err := q.Read(context.Background())
+	if err != nil {
+		log.WithError(err).Error("error querying test capabilities from bigquery")
+		return []string{}, err
+	}
+
+	var row struct {
+		Capabilities []string `bigquery:"capabilities"`
+	}
+	err = it.Next(&row)
+	if err != nil {
+		log.WithError(err).Error("error retrieving test capabilities from bigquery")
+		return []string{}, errors.Wrap(err, "error retrieving test capabilities from bigquery")
+	}
+
+	return row.Capabilities, nil
+}

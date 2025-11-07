@@ -1,5 +1,4 @@
 import { applyFilterModel } from '../datagrid/filterUtils'
-import { CapabilitiesContext } from '../App'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid } from '@mui/x-data-grid'
 import { FileCopy } from '@mui/icons-material'
@@ -7,6 +6,7 @@ import { formColumnName, generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Popover, Snackbar, Tooltip } from '@mui/material'
 import { relativeTime, SafeJSONParam } from '../helpers'
+import { SippyCapabilitiesContext } from '../App'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
 import CompSeverityIcon from './CompSeverityIcon'
@@ -83,7 +83,7 @@ export default function RegressedTestsPanel(props) {
   }
 
   // Helpers to create triage entries
-  const capabilitiesContext = React.useContext(CapabilitiesContext)
+  const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
 
   const currentView = views.find((v) => v.name === view)

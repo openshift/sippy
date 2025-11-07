@@ -317,6 +317,15 @@ component_readiness:
       include_variants:
         LayeredProduct:
           - lp-interop-virt
+          - lp-interop-openshift-pipelines
+          - lp-interop-acs
+          - lp-interop-mta
+          - lp-interop-quay
+          - lp-interop-odf
+          - lp-interop-oadp
+          - lp-interop-gitops
+          - lp-interop-serverless
+          - lp-interop-servicemesh
         Network:
           - ovn
         Owner:

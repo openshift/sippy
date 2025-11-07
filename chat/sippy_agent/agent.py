@@ -15,6 +15,7 @@ from .api_models import ChatMessage
 from .graph import create_react_graph, extract_thinking_steps, get_final_response
 from .tools import (
     SippyProwJobSummaryTool,
+    SippyProwJobPayloadTool,
     SippyLogAnalyzerTool,
     SippyJiraIncidentTool,
     SippyJiraIssueTool,
@@ -111,6 +112,7 @@ class SippyAgent:
         """Create the list of tools available to the agent."""
         tools = [
             SippyProwJobSummaryTool(sippy_api_url=self.config.sippy_api_url),
+            SippyProwJobPayloadTool(sippy_api_url=self.config.sippy_api_url),
             SippyLogAnalyzerTool(sippy_api_url=self.config.sippy_api_url),
             SippyTestDetailsTool(sippy_api_url=self.config.sippy_api_url),
             SippyJiraIncidentTool(
@@ -162,8 +164,9 @@ class SippyAgent:
 1. **Use your available tools:** Always use your available tools to answer the user's question.
 2. **Avoid Redundancy:** Never call the same tool with the same parameters more than once.
 3. **Provide Evidence:** Always ground your analysis in tool results.
-4. **Present Clearly:** Use markdown links for URLs (e.g., `[Job Name](link)`), no raw JSON, and format for readability.
+4. **Present Clearly:** Use markdown links for URLs (e.g., `[Job Name](link)`), no raw JSON, and format for readability. When constructing markdown links, if the link text contains its own brackets ([ or ]), escape them with a backslash to ensure it is rendered correctly.
 5. **Maximize Efficiency:** When multiple tools can be called independently (no data dependencies), call them in parallel rather than sequentially. For example, if analyzing multiple failed jobs, call `get_prow_job_summary` for all jobs simultaneously.
+6. When a tool argument (especially a URL) is explicitly described as requiring its value "verbatim," "exactly as provided," or "without modification," you MUST pass the provided string directly to the tool without any internal parsing, re-construction, or alteration of its content. Treat such arguments as opaque strings.
 
 #### Examples of Parallel Tool Calls:
 

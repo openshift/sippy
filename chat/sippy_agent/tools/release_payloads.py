@@ -24,6 +24,7 @@ class SippyReleasePayloadTool(SippyBaseTool):
     release_controller_url: str = Field(
         default="https://amd64.ocp.releases.ci.openshift.org/api/v1", description="Release controller API base URL"
     )
+    # TODO: this should probably be switched to use the sippy API for payloads, which is permanent whereas release controller will prune
 
     class ReleasePayloadInput(SippyToolInput):
         release_version: str = Field(description="Release version (e.g., '4.20', '4.19')")
