@@ -20,7 +20,6 @@ created_at TIMESTAMP        -- When this label was applied for this job
 updated_at TIMESTAMP        -- Last update timestamp
 source_tool STRING          -- Tool that created it (e.g., 'annotate-job-runs', 'cloud-function', 'jaq-ui')
 symptom_id STRING           -- Immutable ID of the symptom that matched (e.g., 'InfraFailure', 'ClusterDNSFlake')
-display_contexts ARRAY<STRING>  -- Where to display (e.g., ['spyglass', 'metrics', 'test-details'])
 
 -- Existing field:
 -- label STRING remains for backward compatibility, will contain ID from jobrunscan.Label
@@ -37,7 +36,6 @@ display_contexts ARRAY<STRING>  -- Where to display (e.g., ['spyglass', 'metrics
   "updated_at": "2025-10-30T12:34:56Z",
   "source_tool": "symptom-detector",
   "symptom_id": "ClusterDNSFlake",
-  "display_contexts": ["spyglass", "test-details"],
   "comment": {
     "matched_files": ["build-log.txt"],
     "match_count": 3,
@@ -78,9 +76,10 @@ type Label struct {
     // Markdown explanation of what this label indicates
     Explanation string `gorm:"type:text" json:"explanation"`
 
-    // Where this label should be displayed
-    // Values: "spyglass", "metrics", "component-readiness", "jaq", etc.
-    DisplayContexts pq.StringArray `gorm:"type:text[]" json:"display_contexts"`
+    // Where this label should NOT be displayed
+    // (As a denylist, displays in a new context without needing updates)
+    // Values: "spyglass", "metrics", "jaq choices", etc.
+    HideDisplayContexts pq.StringArray `gorm:"type:text[]" json:"hide_display_contexts"`
 
     // Metadata
     CreatedAt time.Time `json:"created_at"`
@@ -257,7 +256,6 @@ type jobRunAnnotation struct {
     UpdatedAt       time.Time `bigquery:"updated_at"`
     SourceTool      string    `bigquery:"source_tool"`
     SymptomID       string    `bigquery:"symptom_id"`
-    DisplayContexts []string  `bigquery:"display_contexts"`
 
     url       string // internal field (not persisted to BQ)
 }
@@ -492,7 +490,7 @@ PUT    /api/v1/labels/:id                  # Update label
 
 ```sql
 -- job_run_labels
-CREATE INDEX idx_label_prototypes_display_contexts ON job_run_labels USING GIN (display_contexts);
+CREATE INDEX idx_label_prototypes_display_contexts ON job_run_labels USING GIN (hide_display_contexts);
 CREATE INDEX idx_label_prototypes_severity ON job_run_labels(severity);
 
 -- job_run_symptoms
@@ -530,7 +528,7 @@ CREATE INDEX idx_symptom_definitions_release_status ON job_run_symptoms(release_
    - Add `Labels` field to `ProwJobRun` struct to store applied label IDs as a string array
 
 3. **BigQuery Schema**
-   - Add columns to `job_labels` table: `created_at`, `updated_at`, `source_tool`, `symptom_id`, `display_contexts`
+   - Add columns to `job_labels` table: `created_at`, `updated_at`, `source_tool`, `symptom_id`
 
 ### New Files to Create
 
