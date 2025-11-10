@@ -16,7 +16,7 @@ reviews:
         mode: warning
         instructions: |
           Ensure proper Go error handling patterns:
-          - Never ignore errors with `_` without justification
+          - Never ignore returned errors as `_` without clear justification
           - Errors should be wrapped with context using fmt.Errorf with %w
           - Avoid panic() except in init() or fatal conditions
           - Check for nil before dereferencing pointers
@@ -25,10 +25,10 @@ reviews:
         mode: error
         instructions: |
           Prevent SQL injection vulnerabilities:
-          - NEVER concatenate user input into SQL queries
-          - Always use parameterized queries with $1, $2, etc.
-          - Flag any string concatenation in SQL query construction
-          - Use prepared statements for repeated queries
+          - NEVER concatenate or format SQL queries with values directly from user input
+          - Always use placeholders for parameters in queries, preferably named (@Name)
+          - Reuse prepared statements for repeated queries
+          - Avoid string concatenation in SQL query construction (valid use cases should be justified)
 
       - name: "Excessive CSS in React Should Use Styles"
         mode: warning
@@ -51,22 +51,25 @@ reviews:
       - name: "Single Responsibility and Clear Naming"
         mode: warning
         instructions: |
-          Keep structs and methods focused on a single concept with clear, evocative names:
-          - Structs should represent one cohesive concept or entity
-          - Methods should do one thing well
-          - Names should clearly communicate purpose and responsibility
-          - Avoid generic names like "Manager", "Handler", "Util" without specific context
-          - Flag structs with too many unrelated fields or methods
-
-          ❌ Avoid:
-          - Structs that combine multiple unrelated responsibilities
-          - Method names that don't indicate what they do (e.g., "Process", "Handle", "Do")
-          - Overly broad structs accumulating miscellaneous functionality
+          Keep packages, structs, and methods focused on a single clear conceptual "chunk":
+          - A package should represent one cohesive concept or purpose
+          - A struct should represent a single entity in the scope of its package
+          - A method should operate on a single level of abstraction, using other methods to handle more granular details
+          - Names should clearly and simply communicate a single concept relative to their context
 
           ✅ Prefer:
-          - Descriptive names that evoke the specific concept (e.g., "TestResultAggregator" not "Manager")
+          - Package names or aliases that provide context (e.g. "footypes" not "types" or "v1")
+          - Brief names made of descriptive words that evoke a specific concept (e.g., "TestResultAggregator" not "Manager")
           - Methods with clear, action-oriented names (e.g., "CalculatePassRate" not "Calculate")
-          - Splitting large structs into focused, single-purpose types
+
+          ❌ Avoid:
+          - Generic names like "Manager", "Handler", "Util" without specific context
+          - Method names that don't indicate what they do (e.g., "Process", "Handle", "Do")
+          - Repetetive naming; a package with more than a few similarly-named entities suggests refactoring into a sub-package
+          - Structs with too many top-level fields (more than about 7); refactor into focused sub-types
+          - Methods with more than a few parameters or results, often due to handling too many concepts that should be chunked into a type
+          - Overly-broad packages or structs accumulating miscellaneous functionality
+
 chat:
   auto_reply: true
 
