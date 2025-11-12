@@ -129,10 +129,10 @@ export default function TriagePotentialMatches({
   }, [triage.regressions])
 
   React.useEffect(() => {
-    if (autoOpenMatches === true) {
+    if (autoOpenMatches === true && selectedView !== '') {
       findPotentialMatches()
     }
-  }, [autoOpenMatches])
+  }, [autoOpenMatches, selectedView])
 
   React.useEffect(() => {
     if (selectedView !== '' && isModalOpen) {
