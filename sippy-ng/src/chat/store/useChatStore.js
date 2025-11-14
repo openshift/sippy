@@ -37,6 +37,7 @@ export const useChatStore = create(
         sessions: state.sessions,
         activeSessionId: state.activeSessionId,
         settings: state.settings,
+        localPrompts: state.localPrompts,
       }),
     }
   )
@@ -161,10 +162,17 @@ export const useWebSocketActions = () =>
 export const usePrompts = () =>
   useChatStore(
     useShallow((state) => ({
-      prompts: state.prompts,
+      prompts: state.getPrompts(),
+      localPrompts: state.localPrompts,
+      serverPrompts: state.serverPrompts,
       promptsLoading: state.promptsLoading,
       promptsError: state.promptsError,
       fetchPrompts: state.fetchPrompts,
       renderPrompt: state.renderPrompt,
+      saveLocalPrompt: state.saveLocalPrompt,
+      updateLocalPrompt: state.updateLocalPrompt,
+      deleteLocalPrompt: state.deleteLocalPrompt,
+      getLocalPrompt: state.getLocalPrompt,
+      exportLocalPromptsAsYAML: state.exportLocalPromptsAsYAML,
     }))
   )

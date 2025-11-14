@@ -5,6 +5,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -13,7 +14,10 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import { ExpandMore as ExpandMoreIcon } from '@mui/icons-material'
+import {
+  Computer as ComputerIcon,
+  ExpandMore as ExpandMoreIcon,
+} from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import { safeEncodeURIComponent } from '../helpers'
 import { usePrompts } from './store/useChatStore'
@@ -353,7 +357,20 @@ export default function SlashCommandModal({
       maxWidth="md"
       fullWidth
     >
-      <DialogTitle>/{prompt.name}</DialogTitle>
+      <DialogTitle>
+        <Box display="flex" alignItems="center" gap={1}>
+          <span>/{prompt.name}</span>
+          {prompt.source === 'local' && (
+            <Chip
+              icon={<ComputerIcon />}
+              label="Local"
+              size="small"
+              color="secondary"
+              variant="outlined"
+            />
+          )}
+        </Box>
+      </DialogTitle>
       <DialogContent>
         <Typography className={classes.description} variant="body2">
           {prompt.description}
@@ -404,6 +421,7 @@ SlashCommandModal.propTypes = {
   prompt: PropTypes.shape({
     name: PropTypes.string.isRequired,
     description: PropTypes.string,
+    source: PropTypes.string,
     arguments: PropTypes.arrayOf(
       PropTypes.shape({
         name: PropTypes.string.isRequired,
