@@ -12,6 +12,7 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 )
 
 type SchemaHashType string
@@ -159,6 +160,15 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 	}
 
 	if err := d.DB.AutoMigrate(&models.ChatConversation{}); err != nil {
+		return err
+	}
+
+	// Job run symptom and label tables
+	if err := d.DB.AutoMigrate(&jobrunscan.Label{}); err != nil {
+		return err
+	}
+
+	if err := d.DB.AutoMigrate(&jobrunscan.Symptom{}); err != nil {
 		return err
 	}
 

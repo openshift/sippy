@@ -62,6 +62,30 @@ type FilterItem struct {
 	Value    string   `json:"value"`
 }
 
+// ilikeFilter returns the SQL filter and parameters for ILIKE pattern matching,
+// handling both string fields (using ILIKE directly) and array fields (using unnest with EXISTS).
+func ilikeFilter(field string, pattern string, not bool, filterable Filterable, fieldName string) (string, interface{}) {
+	if filterable != nil && filterable.GetFieldType(fieldName) == apitype.ColumnTypeArray {
+		if not {
+			return fmt.Sprintf("NOT EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", field), pattern
+		}
+		return fmt.Sprintf("EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", field), pattern
+	}
+	if not {
+		return fmt.Sprintf("%s NOT ILIKE ?", field), pattern
+	}
+	return fmt.Sprintf("%s ILIKE ?", field), pattern
+}
+
+// applyIlikeFilter applies an ILIKE filter to a GORM DB, handling both string and array fields.
+func applyIlikeFilter(db *gorm.DB, field string, pattern string, not bool, filterable Filterable, fieldName string) *gorm.DB {
+	filterSQL, params := ilikeFilter(field, pattern, not, filterable, fieldName)
+	if not {
+		return db.Not(filterSQL, params)
+	}
+	return db.Where(filterSQL, params)
+}
+
 func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter string, orParams interface{}) { //nolint
 	field := fmt.Sprintf("%q", f.Field)
 	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
@@ -78,10 +102,7 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 			}
 			return fmt.Sprintf("? = ANY(%s)", field), f.Value
 		}
-		if f.Not {
-			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
-		}
-		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
+		return ilikeFilter(field, fmt.Sprintf("%%%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEquals, OperatorArithmeticEquals:
 
 		if f.Not {
@@ -114,15 +135,9 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 		}
 		return fmt.Sprintf("%s <> ?", field), f.Value
 	case OperatorStartsWith:
-		if f.Not {
-			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%s%%", f.Value)
-		}
-		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value)
+		return ilikeFilter(field, fmt.Sprintf("%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEndsWith:
-		if f.Not {
-			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%%%s", f.Value)
-		}
-		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value)
+		return ilikeFilter(field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
 		if f.Not {
 			return fmt.Sprintf("%s IS NOT NULL", field), nil
@@ -153,11 +168,7 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 				db = db.Where(fmt.Sprintf("? = ANY(%s)", field), f.Value)
 			}
 		} else {
-			if f.Not {
-				db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
-			} else {
-				db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
-			}
+			db = applyIlikeFilter(db, field, fmt.Sprintf("%%%s%%", f.Value), f.Not, filterable, f.Field)
 		}
 	case OperatorEquals, OperatorArithmeticEquals:
 		if f.Not {
@@ -196,17 +207,9 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 			db = db.Where(fmt.Sprintf("%s <> ?", field), f.Value)
 		}
 	case OperatorStartsWith:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value))
-		} else {
-			db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value))
-		}
+		db = applyIlikeFilter(db, field, fmt.Sprintf("%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEndsWith:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value))
-		} else {
-			db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value))
-		}
+		db = applyIlikeFilter(db, field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
 		if f.Not {
 			db = db.Not(fmt.Sprintf("%s IS NULL", field))

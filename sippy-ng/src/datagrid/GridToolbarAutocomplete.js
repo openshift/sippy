@@ -27,7 +27,14 @@ export default function GridToolbarAutocomplete(props) {
 
     const values = await response.json()
     let valueObj = []
-    values.forEach((v) => valueObj.push({ name: v }))
+    values.forEach((v) => {
+      // Handle both string arrays and object arrays
+      if (typeof v === 'string') {
+        valueObj.push({ name: v })
+      } else {
+        valueObj.push(v)
+      }
+    })
     setOptions(valueObj)
     setLoading(false)
   }
@@ -56,7 +63,9 @@ export default function GridToolbarAutocomplete(props) {
       onChange={(e, v) => v && props.onChange(v.name)}
       defaultValue={{ name: props.value }}
       isOptionEqualToValue={(option, value) => option.name === value.name}
-      getOptionLabel={(option) => option.name}
+      getOptionLabel={(option) =>
+        option.title ? `${option.title} (${option.name})` : option.name
+      }
       options={options}
       loading={loading}
       renderInput={(params) => (
