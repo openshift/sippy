@@ -47,6 +47,7 @@ export default function GridToolbar(props) {
           columns={props.columns}
           filterModel={props.filterModel}
           setFilterModel={props.setFilterModel}
+          autocompleteData={props.autocompleteData}
         />
 
         {props.bookmarks ? (
@@ -143,4 +144,5 @@ GridToolbar.propTypes = {
   value: PropTypes.string,
   downloadDataFunc: PropTypes.func,
   downloadFilePrefix: PropTypes.string,
+  autocompleteData: PropTypes.array,
 }
