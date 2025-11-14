@@ -14,6 +14,7 @@ import (
 type ComponentReport struct {
 	Rows        []ReportRow `json:"rows,omitempty"`
 	GeneratedAt *time.Time  `json:"generated_at"`
+	Warnings    []string    `json:"warnings,omitempty"`
 }
 
 type ReportRow struct {
