@@ -1,0 +1,41 @@
+# Models Configuration for Sippy Chat
+#
+# This file defines the available AI models that users can select from in the chat interface.
+# Users can switch between models mid-conversation via the Settings page.
+#
+# Configuration options per model:
+#   id: Unique identifier for the model (required)
+#   name: Display name shown in the UI (required)
+#   description: Brief description shown in the UI (optional)
+#   model_name: The actual model name to use with the provider (required)
+#   endpoint: API endpoint URL (required for OpenAI-compatible APIs, empty for Vertex AI)
+#   temperature: Temperature setting for the model (optional, default: 0.0)
+#   extended_thinking_budget: Token budget for Claude's extended thinking (optional, default: 0)
+#   default: Set to true to make this the default model (optional, only one should be true)
+
+models:
+  # Google Gemini
+  - id: "gemini-2.5-flash"
+    name: "Gemini 2.5 Flash"
+    description: "Google's Gemini 2.5 Flash - best cost/performance"
+    model_name: "gemini-2.5-flash"
+    default: true
+
+  - id: "gemini-2.5-pro"
+    name: "Gemini 2.5 Pro"
+    description: "Google's Gemini 2.5 Pro with large context window"
+    model_name: "gemini-2.5-pro"
+
+  # Claude via Google Vertex AI
+  - id: "claude-sonnet-4.5"
+    name: "Claude Sonnet 4.5"
+    description: "Capable model for complex CI analysis"
+    model_name: "claude-sonnet-4-5@20250929"
+
+  # Claude via Google Vertex AI
+  - id: "claude-sonnet-4.5-thinking"
+    name: "Claude Sonnet 4.5 (Thinking)"
+    description: "Capable model for complex CI analysis with extended thinking"
+    model_name: "claude-sonnet-4-5@20250929"
+    temperature: 1.0 # Required when setting thinking budget
+    extended_thinking_budget: 10000
