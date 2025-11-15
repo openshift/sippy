@@ -31,7 +31,8 @@ func cleanupAllRegressions(dbc *db.DB) {
 
 func Test_RegressionTracker(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
-	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
+	// Pass nil jiraClient as we don't want to comment on jiras in the e2e test
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 	newRegression := componentreport.ReportTestSummary{
 		TestComparison: testdetails.TestComparison{
 			BaseStats: &testdetails.ReleaseStats{

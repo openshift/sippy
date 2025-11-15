@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/andygrunwald/go-jira"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -45,11 +46,12 @@ type RegressionStore interface {
 }
 
 type PostgresRegressionStore struct {
-	dbc *db.DB
+	dbc        *db.DB
+	jiraClient *jira.Client
 }
 
-func NewPostgresRegressionStore(dbc *db.DB) RegressionStore {
-	return &PostgresRegressionStore{dbc: dbc}
+func NewPostgresRegressionStore(dbc *db.DB, jiraClient *jira.Client) RegressionStore {
+	return &PostgresRegressionStore{dbc: dbc, jiraClient: jiraClient}
 }
 
 func (prs *PostgresRegressionStore) ListCurrentRegressionsForRelease(release string) ([]*models.TestRegression, error) {
@@ -154,6 +156,7 @@ func (prs *PostgresRegressionStore) ResolveTriages() error {
 			continue
 		}
 
+		ReportTriageResolved(prs.jiraClient, triage)
 		log.Infof("Resolved triage %d with resolution time %v", triage.ID, triage.Resolved.Time)
 	}
 
