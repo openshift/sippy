@@ -1,6 +1,7 @@
 import './ComponentReadiness.css'
 import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import {
+  Alert,
   Box,
   Button,
   Grid,
@@ -11,6 +12,7 @@ import {
 } from '@mui/material'
 import {
   cancelledDataTable,
+  formatLongDate,
   getAPIUrl,
   getColumns,
   getStatusAndIcon,
@@ -18,6 +20,7 @@ import {
   makePageTitle,
   makeRFC3339Time,
   noDataTable,
+  sortQueryParams,
 } from './CompReadyUtils'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { FileCopy, Help } from '@mui/icons-material'
@@ -321,6 +324,111 @@ export default function TestDetailsReport(props) {
   const params = new URLSearchParams(url.search)
   const baseRelease = params.get('baseRelease')
 
+  // Helper function to round time down to nearest even 4 hours UTC (00:00, 04:00, 08:00, 12:00, 16:00, 20:00)
+  // This matches the Go backend's crTimeRoundingFactor of 4 hours
+  const roundToNearestEven4Hours = (date) => {
+    const ms = date.getTime()
+    const fourHoursInMs = 4 * 60 * 60 * 1000
+    // Truncate to nearest 4-hour boundary
+    return new Date(Math.floor(ms / fourHoursInMs) * fourHoursInMs)
+  }
+
+  // Calculate latest 1 week period with rounding
+  // Matches the backend logic: end time rounded to nearest 4 hours, start time is 7 days before at start of day
+  const getLatestSamplePeriod = () => {
+    const now = new Date()
+    const endTime = roundToNearestEven4Hours(now)
+
+    // Start time is 7 days before end time, rounded to start of day in UTC
+    const startTime = new Date(endTime)
+    startTime.setUTCDate(startTime.getUTCDate() - 7)
+    startTime.setUTCHours(0, 0, 0, 0)
+
+    // Format times in RFC3339 format (with T and Z) for URL parameters
+    const formatRFC3339 = (date) => {
+      return date.toISOString().replace(/\.\d{3}Z$/, 'Z')
+    }
+
+    return {
+      startTime: formatRFC3339(startTime),
+      endTime: formatRFC3339(endTime),
+    }
+  }
+
+  // Generate the latest report URL with updated sample times
+  // Takes the current URL's query parameters and updates sampleStartTime and sampleEndTime
+  const generateLatestReportUrl = (currentUrlSearch) => {
+    const latestPeriod = getLatestSamplePeriod()
+    const latestParams = new URLSearchParams(currentUrlSearch)
+    latestParams.set('sampleStartTime', latestPeriod.startTime)
+    latestParams.set('sampleEndTime', latestPeriod.endTime)
+
+    // Reconstruct the URL with updated params, preserving the path
+    // Extract the path after /sippy-ng/ to use with React Router Link (which adds /sippy-ng/ automatically)
+    const currentPathname = window.location.pathname
+    const sippyNgIndex = currentPathname.indexOf('/sippy-ng/')
+    let pathAfterSippyNg
+    if (sippyNgIndex !== -1) {
+      pathAfterSippyNg = currentPathname.substring(sippyNgIndex + 10) // +10 to skip '/sippy-ng/'
+    } else {
+      // If /sippy-ng/ is not found, use the pathname as-is (shouldn't happen normally)
+      pathAfterSippyNg = currentPathname.startsWith('/')
+        ? currentPathname.substring(1)
+        : currentPathname
+    }
+    const queryString = latestParams.toString().replace(/\+/g, '%20')
+    // Use path without /sippy-ng/ prefix - React Router Link will add it automatically
+    return sortQueryParams('/' + pathAfterSippyNg + '?' + queryString)
+  }
+
+  // Check if sample end is more than 48 hours old and generate latest report link
+  let outdatedWarning = null
+  if (data.analyses && data.analyses[0] && data.analyses[0].sample_stats) {
+    const sampleEndStr = data.analyses[0].sample_stats.End
+    if (sampleEndStr) {
+      // Parse the sample end time (format: "2024-09-05 23:59:59" or RFC3339)
+      let sampleEndDate
+      if (sampleEndStr.includes('T')) {
+        sampleEndDate = new Date(sampleEndStr)
+      } else {
+        sampleEndDate = new Date(sampleEndStr + 'Z')
+      }
+
+      const now = new Date()
+      const hoursDiff =
+        (now.getTime() - sampleEndDate.getTime()) / (1000 * 60 * 60)
+
+      if (hoursDiff > 48) {
+        // Generate latest report URL with updated sample times
+        const latestReportLink = generateLatestReportUrl(url.search)
+
+        // Format the end date for display
+        const endDateFormatted = formatLongDate(
+          sampleEndDate,
+          'yyyy-MM-dd HH:mm:ss'
+        )
+
+        outdatedWarning = (
+          <Alert severity="warning" sx={{ marginBottom: 2 }}>
+            <Typography>
+              This report data ended on {endDateFormatted} UTC. The data may be
+              outdated.
+            </Typography>
+            <Button
+              component={Link}
+              to={latestReportLink}
+              variant="contained"
+              color="primary"
+              sx={{ marginTop: 1 }}
+            >
+              View Latest Report
+            </Button>
+          </Alert>
+        )
+      }
+    }
+  }
+
   let isBaseOverride = false
   let baseReleaseTabLabel = baseRelease + ' Basis'
   let overrideReleaseTabLabel = ''
@@ -433,6 +541,7 @@ View the [test details report|${document.location.href}] for additional context.
         pageTitle={pageTitle}
         apiCallStr={testDetailsApiCall}
       />
+      {outdatedWarning}
       <h3>
         <Link to="/component_readiness">
           / {environment} &gt; {component}
