@@ -493,6 +493,9 @@ Your final answer must be **comprehensive**:
         current_tool_calls = {}  # Track tool calls by tool_call_id
         thought_buffer = []  # Buffer for accumulating complete thoughts
         current_thinking_chunk = []  # Buffer for accumulating Claude's token-by-token thinking
+        
+        # Determine if this is a Gemini model (sends complete thoughts) vs Claude (streams tokens)
+        is_gemini = self.config.is_gemini_model()
 
         # Stream events from the graph
         async for event in self.graph.astream_events(
@@ -514,16 +517,30 @@ Your final answer must be **comprehensive**:
                         for part in content:
                             if isinstance(part, dict):
                                 # Check for thinking content
-                                # Gemini uses 'type': 'thinking' with 'thinking' key (sends complete blocks)
-                                # Claude uses 'type': 'thinking' with 'thinking' key for extended thinking (streams token-by-token)
                                 if part.get("type") == "thinking" and "thinking" in part:
                                     thought_text = part.get("thinking", "")
                                     if thought_text:
-                                        # Claude streams thinking token-by-token, accumulate it
-                                        current_thinking_chunk.append(thought_text)
-                                        
-                                        if self.config.verbose:
-                                            logger.debug(f"Captured thinking token: {thought_text[:50]}...")
+                                        if is_gemini:
+                                            # Gemini sends complete thoughts each turn - stream immediately
+                                            if self.config.verbose:
+                                                logger.debug(f"Gemini complete thought: {thought_text[:50]}...")
+                                            
+                                            thought_buffer.append(thought_text)
+                                            
+                                            # Stream the complete thought immediately if callback provided
+                                            if thinking_callback and self.config.show_thinking:
+                                                await thinking_callback(
+                                                    thought_text,
+                                                    "thinking",
+                                                    "",
+                                                    "",
+                                                )
+                                        else:
+                                            # Claude streams thinking token-by-token, accumulate it
+                                            current_thinking_chunk.append(thought_text)
+                                            
+                                            if self.config.verbose:
+                                                logger.debug(f"Claude thinking token: {thought_text[:50]}...")
                     
                     # Also check for thinking content blocks (alternative format)
                     elif isinstance(content, str) and content:
@@ -531,15 +548,15 @@ Your final answer must be **comprehensive**:
                         # We'll handle this in on_chat_model_end
                         pass
             
-            # When model completes a response, process accumulated thinking
+            # When model completes a response, process accumulated thinking (Claude only)
             elif kind == "on_chat_model_end":
-                # If we accumulated thinking chunks, combine them
+                # If we accumulated thinking chunks (Claude), combine and stream them
                 if current_thinking_chunk:
                     complete_thought = "".join(current_thinking_chunk)
                     thought_buffer.append(complete_thought)
                     
                     if self.config.verbose:
-                        logger.debug(f"Complete thought accumulated ({len(complete_thought)} chars)")
+                        logger.debug(f"Complete Claude thought accumulated ({len(complete_thought)} chars)")
                     
                     # Stream the complete thought if callback provided
                     if thinking_callback and self.config.show_thinking:
