@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, List, Optional, TypedDict
 import yaml
-from jinja2 import Environment, BaseLoader, TemplateError, select_autoescape
+from jinja2 import Environment, BaseLoader, TemplateError
 from jinja2.sandbox import SandboxedEnvironment
 
 logger = logging.getLogger(__name__)
@@ -125,11 +125,12 @@ def render_prompt(prompt_data: Dict[str, Any], arguments: Dict[str, Any]) -> str
     # Render using Jinja2 with security measures:
     # - SandboxedEnvironment prevents arbitrary code execution in templates
     # - Restricts access to Python internals and dangerous operations
-    # - autoescape prevents XSS when rendering user-provided content
+    # - autoescape is disabled because prompts are for LLMs, not HTML rendering
+    #   (URLs and other content should not be HTML-escaped in markdown/text prompts)
     try:
         env = SandboxedEnvironment(
             loader=BaseLoader(),
-            autoescape=select_autoescape(default=True)
+            autoescape=False
         )
         template = env.from_string(content)
         rendered = template.render(**template_vars)

@@ -234,6 +234,7 @@ export default function GridToolbarFilterMenu(props) {
                   destroy={() => removeFilter(index)}
                   filterModel={models[index]}
                   setFilterModel={(v) => updateModel(index, v)}
+                  autocompleteData={props.autocompleteData}
                 />
                 <Divider />
               </div>
@@ -294,4 +295,5 @@ GridToolbarFilterMenu.propTypes = {
       type: PropTypes.string,
     })
   ),
+  autocompleteData: PropTypes.array,
 }

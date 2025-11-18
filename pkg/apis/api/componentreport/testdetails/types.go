@@ -24,6 +24,9 @@ type Report struct {
 	// be displayed by default, but each analysis offers details and explanations on its outcome
 	// and can be used in some capacity.
 	Analyses []Analysis `json:"analyses"`
+
+	// Links contains HATEOAS-style links for this report (not stored in database)
+	Links map[string]string `json:"links,omitempty"`
 }
 
 // Analysis is a collection of stats for the report which could potentially carry

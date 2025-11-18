@@ -402,7 +402,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 			// path/body are irrelevant at this point in time, we only parse query params in the func being tested
 			req, err := http.NewRequest("GET", "https://example.com/path?"+params.Encode(), nil)
 			require.NoError(t, err)
-			options, err := utils.ParseComponentReportRequest(views, releases, req, allJobVariants, time.Duration(0), []v2.VariantJunitTableOverride{})
+			options, _, err := utils.ParseComponentReportRequest(views, releases, req, allJobVariants, time.Duration(0), []v2.VariantJunitTableOverride{})
 
 			if tc.errMessage != "" {
 				require.Error(t, err)

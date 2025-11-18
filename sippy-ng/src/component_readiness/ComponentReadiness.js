@@ -46,6 +46,7 @@ import TableRow from '@mui/material/TableRow'
 import TestDetailsReport from './TestDetailsReport'
 import Triage from './Triage'
 import TriageList from './TriageList'
+import WarningsBanner from './WarningsBanner'
 
 const drawerWidth = 240
 
@@ -236,6 +237,7 @@ export default function ComponentReadiness(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
+  const [warnings, setWarnings] = React.useState([])
 
   const [triageActionTaken, setTriageActionTaken] = React.useState(false)
 
@@ -360,8 +362,11 @@ export default function ComponentReadiness(props) {
         ) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
+          setWarnings([])
         } else {
           setData(json)
+          // Extract warnings from the API response
+          setWarnings(json.warnings || [])
         }
       })
       .catch((error) => {
@@ -395,6 +400,9 @@ export default function ComponentReadiness(props) {
       'regressedModalPage',
       'regressedModalTestRow',
       'regressedModalTestPage',
+      'regressedModalFilters',
+      'regressedModalTestFilters',
+      'triageFilters',
       'searchComponent',
       'searchColumn',
       'searchRow',
@@ -464,6 +472,7 @@ export default function ComponentReadiness(props) {
             size="xl"
             className="cr-view"
           ></Grid>
+          {isMainRoute && <WarningsBanner warnings={warnings} />}
           {/* eslint-disable react/prop-types */}
           <Routes>
             <Route index element={<Navigate to="main" replace />} />

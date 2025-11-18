@@ -1,16 +1,19 @@
 import './ComponentReadiness.css'
 import { AccessibilityModeContext } from '../components/AccessibilityModeProvider'
 import {
+  Alert,
   Box,
   Button,
   Grid,
   Popover,
   Tab,
   Tabs,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import {
   cancelledDataTable,
+  convertApiUrlToUiUrl,
   getAPIUrl,
   getColumns,
   getStatusAndIcon,
@@ -24,7 +27,6 @@ import { FileCopy, Help } from '@mui/icons-material'
 import { Link } from 'react-router-dom'
 import { pathForExactTestAnalysisWithFilter } from '../helpers'
 import { ReleasesContext, SippyCapabilitiesContext } from '../App'
-import { Tooltip } from '@mui/material'
 import { usePageContextForChat } from '../chat/store/useChatStore'
 import AskSippyButton from '../chat/AskSippyButton'
 import BugButton from '../bugs/BugButton'
@@ -345,6 +347,17 @@ Failures: ${stats.failure_count}
 Flakes: ${stats.flake_count}`
   }
 
+  // Convert API URL from data.links.latest to UI URL if present
+  const getLatestReportUrl = () => {
+    if (!data.links || !data.links.latest) {
+      return null
+    }
+
+    return convertApiUrlToUiUrl(data.links.latest)
+  }
+
+  const latestReportUrl = getLatestReportUrl()
+
   const getBugFilingComponent = () => {
     const hasBaseStats = data.analyses[0].base_stats
     const contextWithStats = `
@@ -433,6 +446,14 @@ View the [test details report|${document.location.href}] for additional context.
         pageTitle={pageTitle}
         apiCallStr={testDetailsApiCall}
       />
+      {latestReportUrl && (
+        <Alert severity="warning" sx={{ marginTop: 2, marginBottom: 2 }}>
+          This report shows data from more than 48 hours ago.{' '}
+          <Link to={latestReportUrl} style={{ textDecoration: 'underline' }}>
+            View the latest report with data from the last 7 days
+          </Link>
+        </Alert>
+      )}
       <h3>
         <Link to="/component_readiness">
           / {environment} &gt; {component}
