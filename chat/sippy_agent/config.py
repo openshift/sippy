@@ -199,11 +199,18 @@ def load_models_config(config_path: Optional[str] = None) -> Optional[Dict[str, 
         
         models = []
         default_model_id = None
-        
+        seen_ids = set()
+
         for model_data in data['models']:
             model = ModelConfig(**model_data)
+
+            # Validate no duplicate model IDs
+            if model.id in seen_ids:
+                raise ValueError(f"Duplicate model ID found: {model.id}")
+            seen_ids.add(model.id)
+
             models.append(model)
-            
+
             if model.default:
                 if default_model_id is not None:
                     raise ValueError(f"Multiple default models found: {default_model_id} and {model.id}")

@@ -158,7 +158,7 @@ python main.py chat --model gemini-1.5-pro
 python main.py serve --model gemini-1.5-pro --google-credentials /path/to/credentials.json
 
 # Using Claude models via Google Vertex AI
-python main.py serve --model claude-3-5-sonnet@20240620
+python main.py serve --model claude-sonnet-4-5@20250929
 ```
 
 **Get help:**
