@@ -113,7 +113,7 @@ const jiraPrefix = "https://issues.redhat.com/browse/"
 // ReportTriageResolved comments on the associated jira that the regressions have been resolved, including a link
 // to the triage details
 func ReportTriageResolved(jiraClient *jira.Client, triage models.Triage) {
-	message := "All regressions associated with this bug have been resolved."
+	message := "All regressions associated with this triage record have been resolved."
 	reportOnJiraUsedForTriage(jiraClient, triage, message, nil)
 }
 
