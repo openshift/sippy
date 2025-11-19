@@ -217,9 +217,16 @@ class SippyAgent:
 
         return tools
 
-    def _create_agent_graph(self):
-        """Create the LangGraph agent with persona-modified prompt."""
+    def _create_agent_graph(self, persona: Optional[str] = None):
+        """Create the LangGraph agent with persona-modified prompt.
+
+        Args:
+            persona: Optional persona name to use. If None, uses self.config.persona.
+        """
         from .personas import get_persona
+
+        # Use provided persona or fall back to config
+        persona_name = persona if persona is not None else self.config.persona
 
         # Custom system prompt for Sippy CI analysis
         base_system_prompt = """You are Sippy, an expert assistant for CI Job and Test Failures.  You carefully consider the user's question and use your available tools and knowledge to answer the question.
@@ -424,10 +431,10 @@ Your final answer must be **comprehensive**:
 """
 
         # Apply persona modification (always prepend if present)
-        persona = get_persona(self.config.persona)
+        persona_obj = get_persona(persona_name)
 
-        if persona.system_prompt_modifier:
-            system_prompt = persona.system_prompt_modifier + base_system_prompt
+        if persona_obj.system_prompt_modifier:
+            system_prompt = persona_obj.system_prompt_modifier + base_system_prompt
         else:
             system_prompt = base_system_prompt
 
@@ -446,6 +453,8 @@ Your final answer must be **comprehensive**:
         thinking_callback: Optional[
             Callable[[str, str, str, str], Awaitable[None]]
         ] = None,
+        persona: Optional[str] = None,
+        show_thinking: Optional[bool] = None,
     ) -> Union[str, Dict[str, Any]]:
         """Process a chat message and return the agent's response.
 
@@ -453,10 +462,16 @@ Your final answer must be **comprehensive**:
             message: The user's message
             chat_history: Previous conversation context as a list of ChatMessage objects
             thinking_callback: Optional async callback for streaming thoughts (thought, action, input, observation)
+            persona: Optional persona override for this request. If None, uses self.config.persona
+            show_thinking: Optional show_thinking override for this request. If None, uses self.config.show_thinking
         """
         # Ensure agent is fully initialized
         await self._initialize()
-        
+
+        # Determine effective persona and show_thinking for this request
+        effective_persona = persona if persona is not None else self.config.persona
+        effective_show_thinking = show_thinking if show_thinking is not None else self.config.show_thinking
+
         try:
             # Build message history
             history_messages: List[BaseMessage] = []
@@ -470,14 +485,19 @@ Your final answer must be **comprehensive**:
             # Add the current user message
             history_messages.append(HumanMessage(content=message))
 
-            return await self._achat_streaming(history_messages, thinking_callback)
+            return await self._achat_streaming(
+                history_messages,
+                thinking_callback,
+                effective_persona,
+                effective_show_thinking
+            )
 
         except Exception as e:
             logger.error(f"Error processing message: {e}", exc_info=True)
             error_msg = (
                 f"I encountered an error while processing your request: {str(e)}"
             )
-            if self.config.show_thinking:
+            if effective_show_thinking:
                 return {"output": error_msg, "thinking_steps": []}
             else:
                 return error_msg
@@ -486,19 +506,35 @@ Your final answer must be **comprehensive**:
         self,
         history_messages: List[BaseMessage],
         thinking_callback: Optional[Callable[[str, str, str, str], Awaitable[None]]] = None,
+        persona: Optional[str] = None,
+        show_thinking: Optional[bool] = None,
     ) -> Union[str, Dict[str, Any]]:
-        """Process messages and optionally stream the agent's thinking process."""
+        """Process messages and optionally stream the agent's thinking process.
+
+        Args:
+            history_messages: Message history
+            thinking_callback: Optional callback for streaming thinking steps
+            persona: Optional persona override for this request
+            show_thinking: Optional show_thinking override for this request
+        """
         all_messages = []
         thinking_steps = []
         current_tool_calls = {}  # Track tool calls by tool_call_id
         thought_buffer = []  # Buffer for accumulating complete thoughts
         current_thinking_chunk = []  # Buffer for accumulating Claude's token-by-token thinking
-        
+
+        # Determine effective persona and show_thinking
+        effective_persona = persona if persona is not None else self.config.persona
+        effective_show_thinking = show_thinking if show_thinking is not None else self.config.show_thinking
+
+        # Create a graph with the specified persona (avoid mutating self.graph)
+        request_graph = self._create_agent_graph(effective_persona)
+
         # Determine if this is a Gemini model (sends complete thoughts) vs Claude (streams tokens)
         is_gemini = self.config.is_gemini_model()
 
         # Stream events from the graph
-        async for event in self.graph.astream_events(
+        async for event in request_graph.astream_events(
             {"messages": history_messages, "iterations": 0},
             version="v2",
         ):
@@ -526,9 +562,9 @@ Your final answer must be **comprehensive**:
                                                 logger.debug(f"Gemini complete thought: {thought_text[:50]}...")
                                             
                                             thought_buffer.append(thought_text)
-                                            
+
                                             # Stream the complete thought immediately if callback provided
-                                            if thinking_callback and self.config.show_thinking:
+                                            if thinking_callback and effective_show_thinking:
                                                 await thinking_callback(
                                                     thought_text,
                                                     "thinking",
@@ -557,9 +593,9 @@ Your final answer must be **comprehensive**:
                     
                     if self.config.verbose:
                         logger.debug(f"Complete Claude thought accumulated ({len(complete_thought)} chars)")
-                    
+
                     # Stream the complete thought if callback provided
-                    if thinking_callback and self.config.show_thinking:
+                    if thinking_callback and effective_show_thinking:
                         await thinking_callback(
                             complete_thought,
                             "thinking",
@@ -655,7 +691,7 @@ Your final answer must be **comprehensive**:
         # Extract final response
         final_response = get_final_response(all_messages)
 
-        if self.config.show_thinking:
+        if effective_show_thinking:
             # Add accumulated thoughts at the beginning if any
             if thought_buffer:
                 # Create a separate thinking step for each thought block
@@ -666,13 +702,13 @@ Your final answer must be **comprehensive**:
                         "action_input": "",
                         "observation": "",
                     })
-            
+
             if thinking_steps:
                 return {
                     "output": final_response,
                     "thinking_steps": thinking_steps,
                 }
-        
+
         return final_response
 
     def add_tool(self, tool: BaseTool) -> None:

@@ -210,58 +210,41 @@ class SippyWebServer:
             """Process a chat message and return the response."""
             # Track message received
             metrics.messages_received_total.labels(endpoint="http").inc()
-            
+
             # Track request message size
             request_size = len(request.message.encode('utf-8'))
             metrics.message_size_bytes.labels(direction="request").observe(request_size)
-            
+
             start_time = time.time()
             try:
                 # Get the appropriate agent for the requested model
                 agent = await self.agent_manager.get_agent(request.model_id)
                 # Determine which model is actually being used
                 model_id = request.model_id or self.agent_manager.get_default_model_id()
-                
-                # Override thinking setting if provided
-                original_thinking = agent.config.show_thinking
-                original_persona = agent.config.persona
 
-                if request.show_thinking is not None:
-                    agent.config.show_thinking = request.show_thinking
+                # Process the message with request-specific persona and show_thinking
+                # These are passed as parameters, not mutating the shared config
+                result = await agent.achat(
+                    request.message,
+                    request.chat_history,
+                    persona=request.persona,
+                    show_thinking=request.show_thinking,
+                )
 
-                if request.persona is not None:
-                    agent.config.persona = request.persona
-                    # Recreate the agent graph with new persona
-                    agent.graph = agent._create_agent_graph()
+                # Process the response using common method
+                processed = self._process_agent_response(result)
 
-                try:
-                    # Process the message
-                    result = await agent.achat(
-                        request.message, request.chat_history
-                    )
+                # Track response duration
+                duration = time.time() - start_time
+                metrics.response_duration_seconds.labels(endpoint="http").observe(duration)
 
-                    # Process the response using common method
-                    processed = self._process_agent_response(result)
-                    
-                    return ChatResponse(
-                        response=processed["response_text"],
-                        thinking_steps=processed["thinking_steps"],
-                        tools_used=processed["tools_used"],
-                        visualizations=processed["visualizations"],
-                        model_id=model_id,
-                    )
-
-                finally:
-                    # Restore original settings
-                    agent.config.show_thinking = original_thinking
-                    if request.persona is not None:
-                        agent.config.persona = original_persona
-                        # Recreate the agent graph with original persona
-                        agent.graph = agent._create_agent_graph()
-                    
-                    # Track response duration
-                    duration = time.time() - start_time
-                    metrics.response_duration_seconds.labels(endpoint="http").observe(duration)
+                return ChatResponse(
+                    response=processed["response_text"],
+                    thinking_steps=processed["thinking_steps"],
+                    tools_used=processed["tools_used"],
+                    visualizations=processed["visualizations"],
+                    model_id=model_id,
+                )
 
             except Exception as e:
                 logger.error(f"Error processing chat request: {e}")
@@ -326,17 +309,6 @@ class SippyWebServer:
                     # Determine which model is actually being used
                     actual_model_id = model_id or self.agent_manager.get_default_model_id()
 
-                    # Override settings
-                    original_thinking = agent.config.show_thinking
-                    original_persona = agent.config.persona
-
-                    agent.config.show_thinking = show_thinking
-
-                    if persona != original_persona:
-                        agent.config.persona = persona
-                        # Recreate the agent graph with new persona
-                        agent.graph = agent._create_agent_graph()
-
                     async def process_message():
                         """Process the message - can be cancelled if websocket disconnects."""
                         try:
@@ -400,12 +372,15 @@ class SippyWebServer:
                                 )
 
                             # Process message with streaming callback
+                            # Pass persona and show_thinking as parameters, not mutating config
                             result = await agent.achat(
                                 enhanced_message,
                                 chat_history,
                                 thinking_callback=(
                                     thinking_callback if show_thinking else None
                                 ),
+                                persona=persona,
+                                show_thinking=show_thinking,
                             )
 
                             # Process the response using common method
@@ -460,18 +435,10 @@ class SippyWebServer:
                     finally:
                         # Clear the task tracking
                         self.websocket_manager.clear_active_task(websocket)
-                        
+
                         # Track response duration
                         duration = time.time() - start_time
                         metrics.response_duration_seconds.labels(endpoint="websocket").observe(duration)
-                        
-                        # Restore original settings
-                        agent.config.show_thinking = original_thinking
-
-                        if persona != original_persona:
-                            agent.config.persona = original_persona
-                            # Recreate the agent graph with original persona
-                            agent.graph = agent._create_agent_graph()
 
             except WebSocketDisconnect:
                 self.websocket_manager.disconnect(websocket)
