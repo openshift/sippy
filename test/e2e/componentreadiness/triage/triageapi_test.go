@@ -46,7 +46,8 @@ func cleanupAllTriages(dbc *db.DB) {
 
 func Test_TriageAPI(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
-	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
+	// jiraClient is intentionally nil to prevent commenting on jiras
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
 	jiraBug := createBug(t, dbc.DB)
 	defer dbc.DB.Delete(jiraBug)
@@ -515,7 +516,8 @@ func Test_TriageAPI(t *testing.T) {
 
 func Test_RegressionAPI(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
-	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
+	// jiraClient is intentionally nil to prevent commenting on jiras
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
 	testRegression1 := createTestRegression(t, tracker, view, "faketestid1")
 	defer dbc.DB.Delete(testRegression1)
@@ -610,7 +612,8 @@ func Test_RegressionAPI(t *testing.T) {
 // Test_RegressionPotentialMatchingTriages tests the /api/component_readiness/regressions/{id}/matches endpoint
 func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
-	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
+	// jiraClient is intentionally nil to prevent commenting on jiras
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
 	jiraBug := createBug(t, dbc.DB)
 	defer dbc.DB.Delete(jiraBug)
@@ -780,7 +783,8 @@ func createBug(t *testing.T, dbc *gorm.DB) *models.Bug {
 func Test_TriageRawDB(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
 	dbWithContext := dbc.DB.WithContext(context.WithValue(context.TODO(), models.CurrentUserKey, "developer"))
-	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
+	// jiraClient is intentionally nil to prevent commenting on jiras
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
 	testRegression := createTestRegression(t, tracker, view, "faketestid")
 	defer dbc.DB.Delete(testRegression)
@@ -929,7 +933,8 @@ func assertTriageDataMatches(t *testing.T, expectedTriage, actualTriage models.T
 // Test_TriagePotentialMatchingRegressions tests the /api/component_readiness/triages/{id}/matches endpoint
 func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
-	tracker := componentreadiness.NewPostgresRegressionStore(dbc)
+	// jiraClient is intentionally nil to prevent commenting on jiras
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
 	// Create a common failure time for some regressions to match on
 	commonFailureTime := time.Now().Add(-24 * time.Hour)

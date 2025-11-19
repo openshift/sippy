@@ -104,18 +104,31 @@ func CreateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	}
 	log.WithField("triageID", triage.ID).Info("triage record created")
 	injectHATEOASLinks(&triage, sippyapi.GetBaseURL(req))
-	reportJiraUsedForTriage(jiraClient, triage, req)
+	ReportTriageAddedForJira(jiraClient, triage, req)
 	return triage, nil
 }
 
 const jiraPrefix = "https://issues.redhat.com/browse/"
 
-func reportJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, req *http.Request) {
+// ReportTriageResolved comments on the associated jira that the regressions have been resolved, including a link
+// to the triage details
+func ReportTriageResolved(jiraClient *jira.Client, triage models.Triage) {
+	message := "All regressions associated with this triage record have been resolved."
+	reportOnJiraUsedForTriage(jiraClient, triage, message, nil)
+}
+
+// ReportTriageAddedForJira comments on the associated jira with a link to the triage details
+func ReportTriageAddedForJira(jiraClient *jira.Client, triage models.Triage, req *http.Request) {
+	message := "This bug has been triaged to one or more component readiness regressions."
+	reportOnJiraUsedForTriage(jiraClient, triage, message, req)
+}
+
+func reportOnJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, baseComment string, req *http.Request) {
 	logger := log.WithField("triageID", triage.ID)
-	logger.Info("reporting jira used for triage")
+	logger.Info("reporting on jira")
 	// No jiraClient will be provided in e2e testing
 	if jiraClient == nil {
-		logger.Warn("no jira client provided, will not comment link to Triage entry")
+		logger.Warn("no jira client provided, will not comment on associated jira")
 		return
 	}
 
@@ -130,15 +143,17 @@ func reportJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, req 
 	}
 
 	baseURL := "https://sippy-auth.dptools.openshift.org"
-	// If we have an Origin header, we can get the proper triage URL from it.
-	// This is useful for local development, and future-proofing
-	if origin := req.Header.Get("Origin"); origin != "" {
-		if u, err := url.Parse(origin); err == nil {
-			baseURL = u.Scheme + "://" + u.Host
+	if req != nil {
+		// If we have an Origin header, we can get the proper triage URL from it.
+		// This is useful for local development, and future-proofing
+		if origin := req.Header.Get("Origin"); origin != "" {
+			if u, err := url.Parse(origin); err == nil {
+				baseURL = u.Scheme + "://" + u.Host
+			}
 		}
 	}
 
-	comment := fmt.Sprintf("This bug has been triaged to one or more component readiness regressions. More information can be found at: %s/sippy-ng/component_readiness/triages/%d", baseURL, triage.ID)
+	comment := fmt.Sprintf("%s More information can be found at: %s/sippy-ng/component_readiness/triages/%d", baseComment, baseURL, triage.ID)
 	_, response, err := jiraClient.Issue.AddComment(jiraCard, &jira.Comment{Body: comment})
 	if err != nil {
 		// We don't have the proper permissions to comment on red hat restricted cards
@@ -263,7 +278,7 @@ func UpdateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 
 	// If the Jira URL has been updated, report on the new Jira
 	if existingTriage.URL != triage.URL {
-		reportJiraUsedForTriage(jiraClient, triage, req)
+		ReportTriageAddedForJira(jiraClient, triage, req)
 	}
 	return triage, nil
 }
