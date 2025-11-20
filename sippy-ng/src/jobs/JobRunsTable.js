@@ -184,18 +184,21 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'variants',
+      type: 'array',
       autocomplete: 'variants',
       headerName: 'Variants',
       hide: true,
     },
     {
       field: 'failed_test_names',
+      type: 'array',
       autocomplete: 'tests',
       headerName: 'Failed tests',
       hide: true,
     },
     {
       field: 'flaked_test_names',
+      type: 'array',
       autocomplete: 'tests',
       headerName: 'Flaked tests',
       hide: true,
