@@ -30,12 +30,14 @@ const (
 type Operator string
 
 const (
-	OperatorContains   Operator = "contains"
-	OperatorEquals     Operator = "equals"
-	OperatorStartsWith Operator = "starts with"
-	OperatorEndsWith   Operator = "ends with"
-	OperatorIsEmpty    Operator = "is empty"
-	OperatorIsNotEmpty Operator = "is not empty"
+	OperatorContains           Operator = "contains"
+	OperatorEquals             Operator = "equals"
+	OperatorStartsWith         Operator = "starts with"
+	OperatorEndsWith           Operator = "ends with"
+	OperatorHasEntry           Operator = "has entry"
+	OperatorHasEntryContaining Operator = "has entry containing"
+	OperatorIsEmpty            Operator = "is empty"
+	OperatorIsNotEmpty         Operator = "is not empty"
 
 	OperatorArithmeticEquals              Operator = "="
 	OperatorArithmeticNotEquals           Operator = "!="
@@ -62,6 +64,41 @@ type FilterItem struct {
 	Value    string   `json:"value"`
 }
 
+// ilikeFilter returns the SQL filter and parameters for ILIKE pattern matching,
+// handling both string fields (using ILIKE directly) and array fields (using unnest with EXISTS).
+func ilikeFilter(field, pattern string, not bool, filterable Filterable, fieldName string) (string, interface{}) {
+	if filterable != nil && filterable.GetFieldType(fieldName) == apitype.ColumnTypeArray {
+		if not {
+			return fmt.Sprintf("NOT EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", field), pattern
+		}
+		return fmt.Sprintf("EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", field), pattern
+	}
+	if not {
+		return fmt.Sprintf("%s NOT ILIKE ?", field), pattern
+	}
+	return fmt.Sprintf("%s ILIKE ?", field), pattern
+}
+
+// applyIlikeFilter applies an ILIKE filter to a GORM DB handle, handling both string and array fields.
+func applyIlikeFilter(db *gorm.DB, field, pattern string, not bool, filterable Filterable, fieldName string) *gorm.DB {
+	filterSQL, params := ilikeFilter(field, pattern, not, filterable, fieldName)
+	return db.Where(filterSQL, params)
+}
+
+func (f FilterItem) isEmptyFilter(field string, filterable Filterable) string {
+	// should work for null/empty arrays in addition to null strings
+	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
+		if f.Not {
+			return fmt.Sprintf("coalesce(%s, '{}') != '{}'", field)
+		}
+		return fmt.Sprintf("coalesce(%s, '{}') = '{}'", field)
+	}
+	if f.Not {
+		return fmt.Sprintf("%s IS NOT NULL", field)
+	}
+	return fmt.Sprintf("%s IS NULL", field)
+}
+
 func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter string, orParams interface{}) { //nolint
 	field := fmt.Sprintf("%q", f.Field)
 	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
@@ -69,21 +106,14 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 	}
 
 	switch f.Operator {
-	case OperatorContains:
-		// "contains" is an overloaded operator: 1) see if an array field contains an item,
-		// 2) string contains a substring, so we need to know the field type.
-		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
-			if f.Not {
-				return fmt.Sprintf("? != ALL(%s)", field), f.Value
-			}
-			return fmt.Sprintf("? = ANY(%s)", field), f.Value
-		}
+	case OperatorHasEntry:
 		if f.Not {
-			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
+			return fmt.Sprintf("%s IS NULL OR ? != ALL(%s)", field, field), f.Value
 		}
-		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
+		return fmt.Sprintf("? = ANY(%s)", field), f.Value
+	case OperatorHasEntryContaining, OperatorContains:
+		return ilikeFilter(field, fmt.Sprintf("%%%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEquals, OperatorArithmeticEquals:
-
 		if f.Not {
 			return fmt.Sprintf("%s != ?", field), f.Value
 		}
@@ -114,20 +144,11 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 		}
 		return fmt.Sprintf("%s <> ?", field), f.Value
 	case OperatorStartsWith:
-		if f.Not {
-			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%s%%", f.Value)
-		}
-		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value)
+		return ilikeFilter(field, fmt.Sprintf("%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEndsWith:
-		if f.Not {
-			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%%%s", f.Value)
-		}
-		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value)
+		return ilikeFilter(field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
-		if f.Not {
-			return fmt.Sprintf("%s IS NOT NULL", field), nil
-		}
-		return fmt.Sprintf("%s IS NULL", field), nil
+		return f.isEmptyFilter(field, filterable), nil
 	case OperatorIsNotEmpty:
 		if f.Not {
 			return fmt.Sprintf("%s IS NULL", field), nil
@@ -145,20 +166,14 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 	}
 
 	switch f.Operator {
-	case OperatorContains:
-		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
-			if f.Not {
-				db = db.Not(fmt.Sprintf("? = ANY(%s)", field), f.Value)
-			} else {
-				db = db.Where(fmt.Sprintf("? = ANY(%s)", field), f.Value)
-			}
+	case OperatorHasEntry:
+		if f.Not {
+			db = db.Where(fmt.Sprintf("%s IS NULL OR ? != ALL(%s)", field, field), f.Value)
 		} else {
-			if f.Not {
-				db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
-			} else {
-				db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
-			}
+			db = db.Where(fmt.Sprintf("? = ANY(%s)", field), f.Value)
 		}
+	case OperatorHasEntryContaining, OperatorContains:
+		db = applyIlikeFilter(db, field, fmt.Sprintf("%%%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEquals, OperatorArithmeticEquals:
 		if f.Not {
 			db = db.Not(fmt.Sprintf("%s = ?", field), f.Value)
@@ -196,23 +211,11 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 			db = db.Where(fmt.Sprintf("%s <> ?", field), f.Value)
 		}
 	case OperatorStartsWith:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value))
-		} else {
-			db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value))
-		}
+		db = applyIlikeFilter(db, field, fmt.Sprintf("%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEndsWith:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value))
-		} else {
-			db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value))
-		}
+		db = applyIlikeFilter(db, field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s IS NULL", field))
-		} else {
-			db = db.Where(fmt.Sprintf("%s IS NULL", field))
-		}
+		db = db.Where(f.isEmptyFilter(field, filterable))
 	case OperatorIsNotEmpty:
 		if f.Not {
 			db = db.Where(fmt.Sprintf("%s IS NULL", field))
