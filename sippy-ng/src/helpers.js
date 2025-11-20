@@ -119,7 +119,7 @@ export function withSort(queryString, sortField, sort) {
 
 export function pathForVariantAnalysis(release, variant) {
   return `/jobs/${release}/analysis?${single(
-    filterFor('variants', 'contains', variant)
+    filterFor('variants', 'has entry', variant)
   )}`
 }
 
@@ -141,7 +141,7 @@ export function pathForExactTestAnalysis(release, test, excludedVariants) {
   let filters = [filterFor('name', 'equals', test)]
   if (Array.isArray(excludedVariants)) {
     excludedVariants.forEach((variant) => {
-      filters.push(not(filterFor('variants', 'contains', variant)))
+      filters.push(not(filterFor('variants', 'has entry', variant)))
     })
   }
 
@@ -174,14 +174,14 @@ export function pathForExactJobRuns(release, job) {
 
 export function pathForVariantsWithTestFailure(release, variant, test) {
   return `/jobs/${release}/runs?${multiple(
-    filterFor('failed_test_names', 'contains', test),
-    filterFor('variants', 'contains', variant)
+    filterFor('failed_test_names', 'has entry', test),
+    filterFor('variants', 'has entry', variant)
   )}`
 }
 
 export function pathForJobRunsWithTestFailure(release, test, filter) {
   let filters = []
-  filters.push(filterFor('failed_test_names', 'contains', test))
+  filters.push(filterFor('failed_test_names', 'has entry', test))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
@@ -195,7 +195,7 @@ export function pathForJobRunsWithTestFailure(release, test, filter) {
 
 export function pathForJobRunsWithTestFlake(release, test, filter) {
   let filters = []
-  filters.push(filterFor('flaked_test_names', 'contains', test))
+  filters.push(filterFor('flaked_test_names', 'has entry', test))
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
@@ -260,7 +260,7 @@ export function pathForJobsWithFilter(release, filter) {
 
 export function pathForJobVariant(release, variant) {
   return `/jobs/${release}?${single(
-    filterFor('variants', 'contains', variant)
+    filterFor('variants', 'has entry', variant)
   )}`
 }
 
@@ -282,7 +282,7 @@ export function filterFor(column, operator, value) {
 }
 
 export function withoutUnstable() {
-  return [not(filterFor('variants', 'contains', 'never-stable'))]
+  return [not(filterFor('variants', 'has entry', 'never-stable'))]
 }
 
 export function multiple(...filters) {

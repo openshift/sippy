@@ -34,13 +34,13 @@ export default function FeatureGates(props) {
         {
           columnField: 'enabled',
           not: true,
-          operatorValue: 'contains',
+          operatorValue: 'has entry containing',
           value: 'Default:Hypershift',
         },
         {
           columnField: 'enabled',
           not: true,
-          operatorValue: 'contains',
+          operatorValue: 'has entry containing',
           value: 'Default:SelfManagedHA',
         },
         {
@@ -66,13 +66,13 @@ export default function FeatureGates(props) {
       {
         columnField: 'enabled',
         not: true,
-        operatorValue: 'contains',
+        operatorValue: 'has entry',
         value: 'Default:Hypershift',
       },
       {
         columnField: 'enabled',
         not: true,
-        operatorValue: 'contains',
+        operatorValue: 'has entry',
         value: 'Default:SelfManagedHA',
       },
       {
@@ -107,7 +107,7 @@ export default function FeatureGates(props) {
       model: [
         {
           columnField: 'enabled',
-          operatorValue: 'contains',
+          operatorValue: 'has entry',
           value: 'Default:Hypershift',
         },
       ],
@@ -117,7 +117,7 @@ export default function FeatureGates(props) {
       model: [
         {
           columnField: 'enabled',
-          operatorValue: 'contains',
+          operatorValue: 'has entry',
           value: 'Default:SelfManagedHA',
         },
       ],
@@ -127,13 +127,13 @@ export default function FeatureGates(props) {
       model: [
         {
           columnField: 'enabled',
-          operatorValue: 'contains',
+          operatorValue: 'has entry',
           value: 'TechPreviewNoUpgrade:SelfManagedHA',
         },
         {
           columnField: 'enabled',
           not: true,
-          operatorValue: 'contains',
+          operatorValue: 'has entry',
           value: 'Default:SelfManagedHA',
         },
       ],
@@ -143,13 +143,13 @@ export default function FeatureGates(props) {
       model: [
         {
           columnField: 'enabled',
-          operatorValue: 'contains',
+          operatorValue: 'has entry',
           value: 'TechPreviewNoUpgrade:Hypershift',
         },
         {
           columnField: 'enabled',
           not: true,
-          operatorValue: 'contains',
+          operatorValue: 'has entry',
           value: 'Default:Hypershift',
         },
       ],
