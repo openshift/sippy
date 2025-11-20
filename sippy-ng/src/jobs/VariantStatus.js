@@ -34,7 +34,7 @@ export default function VariantStatus(props) {
                   items: [
                     {
                       columnField: 'variants',
-                      operatorValue: 'contains',
+                      operatorValue: 'has entry',
                       value: props.variant,
                     },
                   ],
@@ -61,7 +61,9 @@ export default function VariantStatus(props) {
                     pageSize={5}
                     release={props.release}
                     filterModel={{
-                      items: [filterFor('variants', 'contains', props.variant)],
+                      items: [
+                        filterFor('variants', 'has entry', props.variant),
+                      ],
                     }}
                   />
                 </TabPanel>
@@ -71,7 +73,9 @@ export default function VariantStatus(props) {
                     hideControls={true}
                     release={props.release}
                     filterModel={{
-                      items: [filterFor('variants', 'contains', props.variant)],
+                      items: [
+                        filterFor('variants', 'has entry', props.variant),
+                      ],
                     }}
                   />
                 </TabPanel>
