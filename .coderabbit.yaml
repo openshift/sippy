@@ -7,6 +7,11 @@ reviews:
   poem: false
   review_status: true
   collapse_walkthrough: false
+  tools:
+    shellcheck:
+      enabled: true
+    markdownlint:
+      enabled: true
   auto_review:
     enabled: true
     drafts: true
@@ -72,9 +77,3 @@ reviews:
 
 chat:
   auto_reply: true
-
-tools:
-  shellcheck:
-    enabled: true
-  markdownlint:
-    enabled: true

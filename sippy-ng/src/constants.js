@@ -117,13 +117,13 @@ export const BOOKMARKS = {
   NO_NEVER_STABLE: {
     columnField: 'variants',
     not: true,
-    operatorValue: 'contains',
+    operatorValue: 'has entry',
     value: 'never-stable',
   },
   NO_AGGREGATED: {
     columnField: 'variants',
     not: true,
-    operatorValue: 'contains',
+    operatorValue: 'has entry',
     value: 'aggregated',
   },
   NO_STEP_GRAPH: {
