@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -227,82 +228,101 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 	return db
 }
 
-func (f FilterItem) toBQStr(filterable Filterable) string { //nolint
+func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, params []bigquery.QueryParameter) { //nolint
 	field := strings.ReplaceAll(fmt.Sprintf("%q", f.Field), "\"", "")
 	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
 		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
+	}
+
+	// Helper to create a parameter
+	paramName := fmt.Sprintf("filterParam%d", paramIndex+1)
+	makeParam := func(value interface{}) []bigquery.QueryParameter {
+		return []bigquery.QueryParameter{
+			{
+				Name:  paramName,
+				Value: value,
+			},
+		}
+	}
+	// BQ does not automagically cast string parameters to numbers like postgres does
+	makeNumParam := func() []bigquery.QueryParameter {
+		num, err := strconv.ParseFloat(f.Value, 64)
+		if err != nil {
+			return makeParam("NOT A NUMBER: " + f.Value) // which will break appropriately
+		}
+		return makeParam(num)
 	}
 
 	switch f.Operator {
 	case OperatorContains:
 		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
 			if f.Not {
-				return fmt.Sprintf("NOT '%s' in UNNEST(%s)", f.Value, field)
+				return fmt.Sprintf("NOT @%s in UNNEST(%s)", paramName, field), makeParam(f.Value)
 			}
-			return fmt.Sprintf("'%s' in UNNEST(%s)", f.Value, field)
+			return fmt.Sprintf("@%s in UNNEST(%s)", paramName, field), makeParam(f.Value)
 		}
 		if f.Not {
-			return fmt.Sprintf("NOT LOWER(%s) LIKE '%%%s%%'", field, f.Value)
+			return fmt.Sprintf("NOT LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s%%", f.Value))
 		}
-		return fmt.Sprintf("LOWER(%s) LIKE '%%%s%%'", field, f.Value)
+		return fmt.Sprintf("LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s%%", f.Value))
 	case OperatorEquals:
 		if f.Not {
-			return fmt.Sprintf("%s != \"%s\"", field, f.Value)
+			return fmt.Sprintf("%s != @%s", field, paramName), makeParam(f.Value)
 		}
-		return fmt.Sprintf("%s = \"%s\"", field, f.Value)
+		return fmt.Sprintf("%s = @%s", field, paramName), makeParam(f.Value)
 	case OperatorArithmeticEquals:
 		if f.Not {
-			return fmt.Sprintf("%s != %s", field, f.Value)
+			return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
 		}
-		return fmt.Sprintf("%s = %s", field, f.Value)
+		return fmt.Sprintf("%s = @%s", field, paramName), makeNumParam()
 	case OperatorArithmeticGreaterThan:
 		if f.Not {
-			return fmt.Sprintf("%s <= %s", field, f.Value)
+			return fmt.Sprintf("%s <= @%s", field, paramName), makeNumParam()
 		}
-		return fmt.Sprintf("%s > %s", field, f.Value)
+		return fmt.Sprintf("%s > @%s", field, paramName), makeNumParam()
 	case OperatorArithmeticGreaterThanOrEquals:
 		if f.Not {
-			return fmt.Sprintf("%s < %s", field, f.Value)
+			return fmt.Sprintf("%s < @%s", field, paramName), makeNumParam()
 		}
-		return fmt.Sprintf("%s >= %s", field, f.Value)
+		return fmt.Sprintf("%s >= @%s", field, paramName), makeNumParam()
 	case OperatorArithmeticLessThan:
 		if f.Not {
-			return fmt.Sprintf("%s >= %s", field, f.Value)
+			return fmt.Sprintf("%s >= @%s", field, paramName), makeNumParam()
 		}
-		return fmt.Sprintf("%s < %s", field, f.Value)
+		return fmt.Sprintf("%s < @%s", field, paramName), makeNumParam()
 	case OperatorArithmeticLessThanOrEquals:
 		if f.Not {
-			return fmt.Sprintf("%s > %s", field, f.Value)
+			return fmt.Sprintf("%s > @%s", field, paramName), makeNumParam()
 		}
-		return fmt.Sprintf("%s <= %s", field, f.Value)
+		return fmt.Sprintf("%s <= @%s", field, paramName), makeNumParam()
 	case OperatorArithmeticNotEquals:
 		if f.Not {
-			return fmt.Sprintf("%s = %s", field, f.Value)
+			return fmt.Sprintf("%s = @%s", field, paramName), makeNumParam()
 		}
-		return fmt.Sprintf("%s != %s", field, f.Value)
+		return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
 	case OperatorStartsWith:
 		if f.Not {
-			return fmt.Sprintf("NOT LOWER(%s) LIKE '%s%%'", field, f.Value)
+			return fmt.Sprintf("NOT LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%s%%", f.Value))
 		}
-		return fmt.Sprintf("LOWER(%s) LIKE '%s%%'", field, f.Value)
+		return fmt.Sprintf("LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%s%%", f.Value))
 	case OperatorEndsWith:
 		if f.Not {
-			return fmt.Sprintf("NOT LOWER(%s) LIKE '%%%s'", field, f.Value)
+			return fmt.Sprintf("NOT LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s", f.Value))
 		}
-		return fmt.Sprintf("LOWER(%s) LIKE '%%%s'", field, f.Value)
+		return fmt.Sprintf("LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s", f.Value))
 	case OperatorIsEmpty:
 		if f.Not {
-			return fmt.Sprintf("%s IS NOT NULL", field)
+			return fmt.Sprintf("%s IS NOT NULL", field), nil
 		}
-		return fmt.Sprintf("%s IS NULL", field)
+		return fmt.Sprintf("%s IS NULL", field), nil
 	case OperatorIsNotEmpty:
 		if f.Not {
-			return fmt.Sprintf("%s IS NULL", field)
+			return fmt.Sprintf("%s IS NULL", field), nil
 		}
-		return fmt.Sprintf("%s IS NOT NULL", field)
+		return fmt.Sprintf("%s IS NOT NULL", field), nil
 	}
 
-	return ""
+	return "", nil
 }
 
 // Filterable interface is for anything that can be filtered, it needs to
@@ -460,20 +480,41 @@ func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	return db
 }
 
-func (filters Filter) ToBQStr(filterable Filterable) string {
+// BQFilterResult contains the WHERE clause SQL and the BigQuery parameters to use with it.
+// The Parameters slice contains bigquery.QueryParameter structs that can be directly
+// assigned to a BigQuery query.
+type BQFilterResult struct {
+	SQL        string
+	Parameters []bigquery.QueryParameter
+}
+
+// ToBQStr generates a parameterized BigQuery WHERE clause with safe parameter binding
+// to prevent SQL injection. Returns the SQL string and BigQuery parameters ready to use.
+func (filters Filter) ToBQStr(filterable Filterable, paramIndex *int) BQFilterResult {
 	items := []string{}
+	allParams := []bigquery.QueryParameter{}
+
 	for _, f := range filters.Items {
-		items = append(items, f.toBQStr(filterable))
+		sql, params := f.toBQStr(filterable, *paramIndex)
+		items = append(items, sql)
+		if params != nil {
+			allParams = append(allParams, params...)
+			*paramIndex += len(params)
+		}
 	}
+
 	operator := " AND "
 	if filters.LinkOperator == LinkOperatorOr {
 		operator = " OR "
 	}
 	queryStr := strings.Join(items, operator)
 	queryStr = "(" + queryStr + ")"
-	log.Debugf("final query string: %s", queryStr)
+	log.Debugf("final query string: %s with %d parameters", queryStr, len(allParams))
 
-	return queryStr
+	return BQFilterResult{
+		SQL:        queryStr,
+		Parameters: allParams,
+	}
 }
 
 // Filter applies the selected filters to a filterable item.
