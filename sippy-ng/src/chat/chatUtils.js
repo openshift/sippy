@@ -125,10 +125,10 @@ export function validateMessage(content) {
     return { valid: false, error: 'Message cannot be empty' }
   }
 
-  if (content.length > 10000) {
+  if (content.length > 100000) {
     return {
       valid: false,
-      error: 'Message is too long (max 10,000 characters)',
+      error: 'Message is too long (max 100,000 characters)',
     }
   }
 
