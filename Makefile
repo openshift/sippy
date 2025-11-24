@@ -51,7 +51,7 @@ npm:
 	npm --version
 	npm config set fetch-retry-mintimeout 20000
 	npm config set fetch-retry-maxtimeout 120000
-	cd sippy-ng; npm install --no-audit
+	cd sippy-ng; npm ci --no-audit --ignore-scripts
 
 clean:
 	rm -f sippy
