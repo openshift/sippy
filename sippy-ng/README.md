@@ -63,12 +63,9 @@ Helpers for each of these can be configured for on save actions or 'sort-imports
 
 ## Installing dependencies
 
-We reccomend disabling scripts globally for npm as this is a common
+We recommend disabling scripts globally for npm as this is a common
 attack vector, and not needed for any sippy dependencies:
 
-```bash
-npm config set ignore-scripts true
-```
 
 To install the deps in the node_modules directory:
 
