@@ -63,9 +63,15 @@ Helpers for each of these can be configured for on save actions or 'sort-imports
 
 ## Installing dependencies
 
+We recommend disabling scripts globally for npm as this is a common
+attack vector, and not needed for any sippy dependencies:
+
+
+To install the deps in the node_modules directory:
+
 ```bash
 cd sippy-ng
-npm install
+npm install --ignore-scripts
 ```
 
 ## Dependency vulnerabilities
