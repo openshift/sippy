@@ -38,7 +38,7 @@ npx prettier --write .
 * Prefer functional components and React hooks over class components.
 * Keep UI elements consistent with Material-UI standards.
 
-The frontend uses `npm`. If you must install or update any dependenies,
+The frontend uses `npm`. If you must install or update any dependencies,
 always use the `--ignore-scripts` flag.
 
 ## General Notes
