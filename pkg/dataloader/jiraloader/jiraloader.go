@@ -211,8 +211,8 @@ func (jl *JiraLoader) incidentLoader() {
 			continue
 		}
 		if res := jl.dbc.DB.Save(model); res.Error != nil {
-			log.WithError(err).Errorf("couldn't save jira incident to DB")
-			jl.errors = append(jl.errors, err)
+			log.WithError(res.Error).Errorf("couldn't save jira incident to DB")
+			jl.errors = append(jl.errors, res.Error)
 			return
 		}
 	}
@@ -232,8 +232,8 @@ func (jl *JiraLoader) incidentLoader() {
 			continue
 		}
 		if res := jl.dbc.DB.Save(model); res.Error != nil {
-			log.WithError(err).Errorf("couldn't save jira incident to DB")
-			jl.errors = append(jl.errors, err)
+			log.WithError(res.Error).Errorf("couldn't save jira incident to DB")
+			jl.errors = append(jl.errors, res.Error)
 			return
 		}
 	}
