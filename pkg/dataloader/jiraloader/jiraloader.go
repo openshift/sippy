@@ -222,7 +222,7 @@ func (jl *JiraLoader) incidentLoader() {
 		log.Infof("processing unseen, unresolved jira incidents (trt-incident label removed?)...")
 		issue, err := queryJiraAPI(unseen)
 		if err != nil {
-			log.WithError(err).Errorf("couldn't query details for %s", unseen)
+			log.WithError(err).Warnf("couldn't query details for %s. this is expected for cards that are restricted to 'Red Hat Only'", unseen)
 			continue
 		}
 
