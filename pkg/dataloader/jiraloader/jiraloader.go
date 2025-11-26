@@ -222,7 +222,7 @@ func (jl *JiraLoader) incidentLoader() {
 		log.Infof("processing unseen, unresolved jira incidents (trt-incident label removed?)...")
 		issue, err := queryJiraAPI(unseen)
 		if err != nil {
-			log.WithError(err).Errorf("couldn't query details for %+v", issue)
+			log.WithError(err).Errorf("couldn't query details for %s", unseen)
 			continue
 		}
 
