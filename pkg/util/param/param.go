@@ -26,6 +26,7 @@ var wordRegexp = regexp.MustCompile(`^\w+$`)
 var uintRegexp = regexp.MustCompile(`^\d+$`)
 var nameRegexp = regexp.MustCompile(`^[-.\w]+$`)
 var releaseRegexp = regexp.MustCompile(`^\d+\.\d+$`)
+var dateRegexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 var nonEmptyRegex = regexp.MustCompile(`^.+$`)
 var paramRegexp = map[string]*regexp.Regexp{
 	// sippy classic params
@@ -40,11 +41,16 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"job_name":        nameRegexp,
 	"test":            regexp.MustCompile(`^.+$`), // tests can be anything, so always parameterize in sql
 	"prow_job_run_id": uintRegexp,
+	"org":             nameRegexp,
+	"repo":            nameRegexp,
+	"pr_number":       uintRegexp,
 	"file":            nameRegexp,
 	"repo_info":       nameRegexp,
 	"pull_number":     uintRegexp,
 	"sort":            wordRegexp,
 	"sortField":       wordRegexp,
+	"start_date":      dateRegexp, // YYYY-MM-DD format
+	"end_date":        dateRegexp, // YYYY-MM-DD format
 	// component readiness params
 	"baseRelease":      releaseRegexp,
 	"sampleRelease":    releaseRegexp,

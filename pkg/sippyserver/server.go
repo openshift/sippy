@@ -1023,6 +1023,14 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 	}
 }
 
+func (s *Server) jsonPullRequestTestResults(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "pull request test results API is only available when google-service-account-credential-file is configured")
+		return
+	}
+	api.PrintPRTestResultsJSON(w, req, s.bigQueryClient)
+}
+
 func (s *Server) jsonJobRunAISummary(w http.ResponseWriter, req *http.Request) {
 	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
 	if jobRunIDStr == "" {
@@ -2016,6 +2024,12 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonPullRequestsReportFromDB,
+		},
+		{
+			EndpointPath: "/api/pull_requests/test_results",
+			Description:  "Fetches test results for a specific pull request from BigQuery (presubmits and /payload jobs)",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonPullRequestTestResults,
 		},
 		{
 			EndpointPath: "/api/repositories",
