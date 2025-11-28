@@ -77,43 +77,71 @@ func buildPRTestResultsQuery(bqc *bq.Client, org, repo string, prNumber int, sta
 	// Query joins jobs and specified junit table, filtering by org/repo/pr_number
 	// Uses partitioning on prowjob_start and modified_time for efficiency
 	// Note: junit_pr contains normal presubmit jobs, junit contains /payload jobs
+	//
+	// The query de-dupes test results because junit tables model the XML directly,
+	// which means retried tests appear as multiple rows. We prefer:
+	// 1. Flakes (flake_count > 0) - test that failed then passed on retry
+	// 2. Successes (success_val > 0) - test that passed
+	// 3. Failures (else) - test that failed
 	queryString := fmt.Sprintf(`
+		WITH deduped_testcases AS (
+			SELECT
+				junit.*,
+				ROW_NUMBER() OVER(PARTITION BY prowjob_build_id, file_path, test_name, testsuite ORDER BY
+					CASE
+						WHEN flake_count > 0 THEN 0
+						WHEN success_val > 0 THEN 1
+						ELSE 2
+					END) AS row_num,
+				CASE
+					WHEN flake_count > 0 THEN 0
+					ELSE success_val
+				END AS adjusted_success_val,
+				CASE
+					WHEN flake_count > 0 THEN 1
+					ELSE 0
+				END AS adjusted_flake_count
+			FROM
+				%s.%s AS junit
+			WHERE
+				junit.modified_time >= DATETIME(@StartDate)
+				AND junit.modified_time < DATETIME(@EndDate)
+				AND junit.skipped = false
+		)
 		SELECT
 			jobs.prowjob_build_id,
 			jobs.prowjob_job_name AS prowjob_name,
 			jobs.prowjob_url,
 			jobs.pr_sha,
 			jobs.prowjob_start,
-			junit.test_name,
-			junit.testsuite,
+			deduped.test_name,
+			deduped.testsuite,
 			CASE
-				WHEN junit.flake_count > 0 THEN TRUE
+				WHEN deduped.adjusted_flake_count > 0 THEN TRUE
 				ELSE FALSE
 			END AS flaked,
 			CASE
-				WHEN junit.flake_count > 0 THEN TRUE
-				WHEN junit.success_val > 0 THEN TRUE
+				WHEN deduped.adjusted_flake_count > 0 THEN TRUE
+				WHEN deduped.adjusted_success_val > 0 THEN TRUE
 				ELSE FALSE
 			END AS success
 		FROM
 			%s.jobs AS jobs
 		INNER JOIN
-			%s.%s AS junit
+			deduped_testcases AS deduped
 		ON
-			jobs.prowjob_build_id = junit.prowjob_build_id
+			jobs.prowjob_build_id = deduped.prowjob_build_id
+			AND deduped.row_num = 1
 		WHERE
 			jobs.org = @Org
 			AND jobs.repo = @Repo
 			AND jobs.pr_number = @PRNumber
 			AND jobs.prowjob_start >= DATETIME(@StartDate)
 			AND jobs.prowjob_start < DATETIME(@EndDate)
-			AND junit.modified_time >= DATETIME(@StartDate)
-			AND junit.modified_time < DATETIME(@EndDate)
-			AND junit.skipped = false
 		ORDER BY
 			jobs.prowjob_start DESC,
-			junit.test_name ASC
-	`, bqc.Dataset, bqc.Dataset, junitTable)
+			deduped.test_name ASC
+	`, bqc.Dataset, junitTable, bqc.Dataset)
 
 	query := bqc.BQ.Query(queryString)
 	query.Parameters = []bigquery.QueryParameter{
