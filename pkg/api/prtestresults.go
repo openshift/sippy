@@ -35,19 +35,21 @@ type PRTestResult struct {
 // - junit_pr: Contains results from normal presubmit jobs
 // - junit: Contains results from /payload jobs (manually invoked jobs)
 // Note: Only returns test failures (success = false), excluding flakes and passes
-func GetPRTestResults(ctx context.Context, bqc *bq.Client, org, repo string, prNumber int, startDate, endDate time.Time) ([]PRTestResult, error) {
+// includeSuccesses: Optional list of test name substrings to also include successes for
+func GetPRTestResults(ctx context.Context, bqc *bq.Client, org, repo string, prNumber int, startDate, endDate time.Time, includeSuccesses []string) ([]PRTestResult, error) {
 	log.WithFields(log.Fields{
-		"org":        org,
-		"repo":       repo,
-		"pr_number":  prNumber,
-		"start_date": startDate.Format("2006-01-02"),
-		"end_date":   endDate.Format("2006-01-02"),
+		"org":               org,
+		"repo":              repo,
+		"pr_number":         prNumber,
+		"start_date":        startDate.Format("2006-01-02"),
+		"end_date":          endDate.Format("2006-01-02"),
+		"include_successes": includeSuccesses,
 	}).Info("querying test results for pull request")
 
 	// Query junit_pr table (normal presubmit jobs)
 	log.Infof("querying junit_pr table for org=%s, repo=%s, pr_number=%d, start=%s, end=%s",
 		org, repo, prNumber, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
-	queryPR := buildPRTestResultsQuery(bqc, org, repo, prNumber, startDate, endDate, "junit_pr")
+	queryPR := buildPRTestResultsQuery(bqc, org, repo, prNumber, startDate, endDate, "junit_pr", includeSuccesses)
 	resultsPR, err := executePRTestResultsQuery(ctx, queryPR)
 	if err != nil {
 		log.WithError(err).Error("error querying junit_pr table")
@@ -58,7 +60,7 @@ func GetPRTestResults(ctx context.Context, bqc *bq.Client, org, repo string, prN
 	// Query junit table (/payload jobs)
 	log.Infof("querying junit table for org=%s, repo=%s, pr_number=%d, start=%s, end=%s",
 		org, repo, prNumber, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
-	queryPayload := buildPRTestResultsQuery(bqc, org, repo, prNumber, startDate, endDate, "junit")
+	queryPayload := buildPRTestResultsQuery(bqc, org, repo, prNumber, startDate, endDate, "junit", includeSuccesses)
 	resultsPayload, err := executePRTestResultsQuery(ctx, queryPayload)
 	if err != nil {
 		log.WithError(err).Error("error querying junit table")
@@ -74,7 +76,8 @@ func GetPRTestResults(ctx context.Context, bqc *bq.Client, org, repo string, prN
 
 // buildPRTestResultsQuery constructs the BigQuery query to fetch test results for a PR
 // junitTable should be either "junit_pr" (for normal presubmits) or "junit" (for /payload jobs)
-func buildPRTestResultsQuery(bqc *bq.Client, org, repo string, prNumber int, startDate, endDate time.Time, junitTable string) *bigquery.Query {
+// includeSuccesses: Optional list of test name substrings to also include successes for
+func buildPRTestResultsQuery(bqc *bq.Client, org, repo string, prNumber int, startDate, endDate time.Time, junitTable string, includeSuccesses []string) *bigquery.Query {
 	// Query joins jobs and specified junit table, filtering by org/repo/pr_number
 	// Uses partitioning on prowjob_start and modified_time for efficiency
 	// Note: junit_pr contains normal presubmit jobs, junit contains /payload jobs
@@ -84,6 +87,32 @@ func buildPRTestResultsQuery(bqc *bq.Client, org, repo string, prNumber int, sta
 	// 1. Flakes (flake_count > 0) - test that failed then passed on retry
 	// 2. Successes (success_val > 0) - test that passed
 	// 3. Failures (else) - test that failed
+
+	// Build the WHERE clause for including successes
+	// By default, only include failures (adjusted_flake_count = 0 AND adjusted_success_val = 0)
+	// If includeSuccesses is specified, also include successes for matching test names
+	whereClause := `
+			AND (
+				(deduped.adjusted_flake_count = 0 AND deduped.adjusted_success_val = 0)`
+
+	if len(includeSuccesses) > 0 {
+		whereClause += `
+				OR (
+					deduped.adjusted_success_val > 0
+					AND (`
+		for i := range includeSuccesses {
+			if i > 0 {
+				whereClause += " OR "
+			}
+			whereClause += fmt.Sprintf("deduped.test_name LIKE @IncludeSuccess%d", i)
+		}
+		whereClause += `
+					)
+				)`
+	}
+	whereClause += `
+			)`
+
 	queryString := fmt.Sprintf(`
 		WITH deduped_testcases AS (
 			SELECT
@@ -138,13 +167,11 @@ func buildPRTestResultsQuery(bqc *bq.Client, org, repo string, prNumber int, sta
 			AND jobs.repo = @Repo
 			AND jobs.pr_number = @PRNumber
 			AND jobs.prowjob_start >= DATETIME(@StartDate)
-			AND jobs.prowjob_start < DATETIME(@EndDate)
-			AND deduped.adjusted_flake_count = 0
-			AND deduped.adjusted_success_val = 0
+			AND jobs.prowjob_start < DATETIME(@EndDate)%s
 		ORDER BY
 			jobs.prowjob_start DESC,
 			deduped.test_name ASC
-	`, bqc.Dataset, junitTable, bqc.Dataset)
+	`, bqc.Dataset, junitTable, bqc.Dataset, whereClause)
 
 	query := bqc.BQ.Query(queryString)
 	query.Parameters = []bigquery.QueryParameter{
@@ -168,6 +195,14 @@ func buildPRTestResultsQuery(bqc *bq.Client, org, repo string, prNumber int, sta
 			Name:  "EndDate",
 			Value: endDate,
 		},
+	}
+
+	// Add parameters for includeSuccesses LIKE clauses
+	for i, testName := range includeSuccesses {
+		query.Parameters = append(query.Parameters, bigquery.QueryParameter{
+			Name:  fmt.Sprintf("IncludeSuccess%d", i),
+			Value: "%" + testName + "%", // Wrap in % for SQL LIKE partial matching
+		})
 	}
 
 	return query
@@ -338,8 +373,11 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, bqc *bq.Cl
 		return
 	}
 
+	// Parse optional include_successes parameter (multi-valued)
+	includeSuccesses := req.URL.Query()["include_successes"]
+
 	// Execute query
-	results, err := GetPRTestResults(req.Context(), bqc, org, repo, prNumber, startDate, endDate)
+	results, err := GetPRTestResults(req.Context(), bqc, org, repo, prNumber, startDate, endDate, includeSuccesses)
 	if err != nil {
 		log.WithError(err).Error("error fetching PR test results")
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{
