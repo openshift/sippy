@@ -373,6 +373,17 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, bqc *bq.Cl
 		return
 	}
 
+	// Limit date range to 30 days to prevent expensive queries
+	maxDuration := 30 * 24 * time.Hour
+	duration := endDate.Sub(startDate)
+	if duration > maxDuration {
+		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
+			"code":    http.StatusBadRequest,
+			"message": fmt.Sprintf("date range too large: %d days (maximum is 30 days)", int(duration.Hours()/24)),
+		})
+		return
+	}
+
 	// Parse optional include_successes parameter (multi-valued)
 	includeSuccesses := req.URL.Query()["include_successes"]
 
