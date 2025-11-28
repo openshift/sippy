@@ -30,10 +30,11 @@ type PRTestResult struct {
 	Flaked         bool      `json:"flaked"`
 }
 
-// GetPRTestResults fetches test results for a specific pull request from BigQuery
+// GetPRTestResults fetches test failures for a specific pull request from BigQuery
 // This queries both junit_pr and junit tables:
 // - junit_pr: Contains results from normal presubmit jobs
 // - junit: Contains results from /payload jobs (manually invoked jobs)
+// Note: Only returns test failures (success = false), excluding flakes and passes
 func GetPRTestResults(ctx context.Context, bqc *bq.Client, org, repo string, prNumber int, startDate, endDate time.Time) ([]PRTestResult, error) {
 	log.WithFields(log.Fields{
 		"org":        org,
@@ -138,6 +139,8 @@ func buildPRTestResultsQuery(bqc *bq.Client, org, repo string, prNumber int, sta
 			AND jobs.pr_number = @PRNumber
 			AND jobs.prowjob_start >= DATETIME(@StartDate)
 			AND jobs.prowjob_start < DATETIME(@EndDate)
+			AND deduped.adjusted_flake_count = 0
+			AND deduped.adjusted_success_val = 0
 		ORDER BY
 			jobs.prowjob_start DESC,
 			deduped.test_name ASC

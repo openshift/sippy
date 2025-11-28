@@ -2027,7 +2027,7 @@ func (s *Server) Serve() {
 		},
 		{
 			EndpointPath: "/api/pull_requests/test_results",
-			Description:  "Fetches test results for a specific pull request from BigQuery (presubmits and /payload jobs)",
+			Description:  "Fetches test failures for a specific pull request from BigQuery (presubmits and /payload jobs, failures only)",
 			Capabilities: []string{ComponentReadinessCapability},
 			HandlerFunc:  s.jsonPullRequestTestResults,
 		},
