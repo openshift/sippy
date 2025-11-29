@@ -38,7 +38,7 @@ const operatorValues = {
   number: ['=', '!=', '<', '<=', '>', '>=', 'is empty', 'is not empty'],
   date: ['=', '!=', '<', '<=', '>', '>=', 'is empty', 'is not empty'],
   string: ['contains', 'equals', 'starts with', 'ends with'],
-  array: ['contains'],
+  array: ['has entry', 'has entry containing', 'is empty'],
 }
 
 /**
