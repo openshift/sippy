@@ -65,19 +65,21 @@ type FilterItem struct {
 	Value    string   `json:"value"`
 }
 
+// helper for constructing opposing branches of SQL logic concisely
+func optNot(not bool) string {
+	if not {
+		return "NOT"
+	}
+	return ""
+}
+
 // ilikeFilter returns the SQL filter and parameters for ILIKE pattern matching,
 // handling both string fields (using ILIKE directly) and array fields (using unnest with EXISTS).
 func ilikeFilter(field, pattern string, not bool, filterable Filterable, fieldName string) (string, interface{}) {
 	if filterable != nil && filterable.GetFieldType(fieldName) == apitype.ColumnTypeArray {
-		if not {
-			return fmt.Sprintf("NOT EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", field), pattern
-		}
-		return fmt.Sprintf("EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", field), pattern
+		return fmt.Sprintf("%s EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", optNot(not), field), pattern
 	}
-	if not {
-		return fmt.Sprintf("%s NOT ILIKE ?", field), pattern
-	}
-	return fmt.Sprintf("%s ILIKE ?", field), pattern
+	return fmt.Sprintf("%s %s ILIKE ?", field, optNot(not)), pattern
 }
 
 // applyIlikeFilter applies an ILIKE filter to a GORM DB handle, handling both string and array fields.
@@ -152,10 +154,7 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 	case OperatorIsEmpty:
 		return f.isEmptyFilter(field, filterable, false), nil
 	case OperatorIsNotEmpty:
-		if f.Not {
-			return fmt.Sprintf("%s IS NULL", field), nil
-		}
-		return fmt.Sprintf("%s IS NOT NULL", field), nil
+		return fmt.Sprintf("%s IS %s NULL", field, optNot(!f.Not)), nil
 	}
 
 	return "UnknownFilterOperator()", nil // cause SQL to fail in obvious way
@@ -219,11 +218,7 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 	case OperatorIsEmpty:
 		db = db.Where(f.isEmptyFilter(field, filterable, false))
 	case OperatorIsNotEmpty:
-		if f.Not {
-			db = db.Where(fmt.Sprintf("%s IS NULL", field))
-		} else {
-			db = db.Not(fmt.Sprintf("%s IS NULL", field))
-		}
+		db = db.Where(fmt.Sprintf("%s IS %s NULL", field, optNot(!f.Not)))
 	}
 
 	return db
@@ -257,23 +252,14 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 	switch f.Operator {
 	case OperatorHasEntry:
 		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
-			if f.Not {
-				return fmt.Sprintf("NOT @%s in UNNEST(%s)", paramName, field), makeParam(f.Value)
-			}
-			return fmt.Sprintf("@%s in UNNEST(%s)", paramName, field), makeParam(f.Value)
+			return fmt.Sprintf("%s @%s in UNNEST(%s)", optNot(f.Not), paramName, field), makeParam(f.Value)
 		}
 	case OperatorContains, OperatorHasEntryContaining:
 		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
 			exists := fmt.Sprintf("EXISTS (SELECT 1 FROM UNNEST(%s) AS item WHERE item LIKE @%s)", field, paramName)
-			if f.Not {
-				return "NOT " + exists, makeParam(f.Value)
-			}
-			return exists, makeParam(f.Value)
+			return fmt.Sprintf("%s %s", optNot(f.Not), exists), makeParam(f.Value)
 		}
-		if f.Not {
-			return fmt.Sprintf("NOT LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s%%", f.Value))
-		}
-		return fmt.Sprintf("LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s%%", f.Value))
+		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(fmt.Sprintf("%%%s%%", f.Value))
 	case OperatorEquals:
 		if f.Not {
 			return fmt.Sprintf("%s != @%s", field, paramName), makeParam(f.Value)
@@ -310,22 +296,13 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 		}
 		return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
 	case OperatorStartsWith:
-		if f.Not {
-			return fmt.Sprintf("NOT LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%s%%", f.Value))
-		}
-		return fmt.Sprintf("LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%s%%", f.Value))
+		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(fmt.Sprintf("%s%%", f.Value))
 	case OperatorEndsWith:
-		if f.Not {
-			return fmt.Sprintf("NOT LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s", f.Value))
-		}
-		return fmt.Sprintf("LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s", f.Value))
+		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(fmt.Sprintf("%%%s", f.Value))
 	case OperatorIsEmpty:
 		return f.isEmptyFilter(field, filterable, true), nil
 	case OperatorIsNotEmpty:
-		if f.Not {
-			return fmt.Sprintf("%s IS NULL", field), nil
-		}
-		return fmt.Sprintf("%s IS NOT NULL", field), nil
+		return fmt.Sprintf("%s IS %s NULL", field, optNot(!f.Not)), nil
 	}
 
 	return "UnknownFilterOperator()", nil // cause SQL to fail in obvious way
