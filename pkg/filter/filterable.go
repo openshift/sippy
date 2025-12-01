@@ -86,18 +86,19 @@ func applyIlikeFilter(db *gorm.DB, field, pattern string, not bool, filterable F
 	return db.Where(filterSQL, params)
 }
 
-func (f FilterItem) isEmptyFilter(field string, filterable Filterable) string {
+func (f FilterItem) isEmptyFilter(field string, filterable Filterable, forBQ bool) string {
+	sql := fmt.Sprintf("%s IS NULL", field)
 	// should work for null/empty arrays in addition to null strings
 	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
-		if f.Not {
-			return fmt.Sprintf("coalesce(%s, '{}') != '{}'", field)
+		sql = fmt.Sprintf("(%s IS NULL or %s = '{}')", field, field)
+		if forBQ {
+			sql = fmt.Sprintf("(%s IS NULL or ARRAY_LENGTH(%s) = 0)", field, field)
 		}
-		return fmt.Sprintf("coalesce(%s, '{}') = '{}'", field)
 	}
 	if f.Not {
-		return fmt.Sprintf("%s IS NOT NULL", field)
+		return fmt.Sprintf("NOT(%s)", sql)
 	}
-	return fmt.Sprintf("%s IS NULL", field)
+	return sql
 }
 
 func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter string, orParams interface{}) { //nolint
@@ -149,7 +150,7 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 	case OperatorEndsWith:
 		return ilikeFilter(field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
-		return f.isEmptyFilter(field, filterable), nil
+		return f.isEmptyFilter(field, filterable, false), nil
 	case OperatorIsNotEmpty:
 		if f.Not {
 			return fmt.Sprintf("%s IS NULL", field), nil
@@ -157,7 +158,7 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 		return fmt.Sprintf("%s IS NOT NULL", field), nil
 	}
 
-	return "", nil
+	return "UnknownFilterOperator()", nil // cause SQL to fail in obvious way
 }
 
 func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
@@ -216,7 +217,7 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 	case OperatorEndsWith:
 		db = applyIlikeFilter(db, field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
-		db = db.Where(f.isEmptyFilter(field, filterable))
+		db = db.Where(f.isEmptyFilter(field, filterable, false))
 	case OperatorIsNotEmpty:
 		if f.Not {
 			db = db.Where(fmt.Sprintf("%s IS NULL", field))
@@ -254,12 +255,20 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 	}
 
 	switch f.Operator {
-	case OperatorContains:
+	case OperatorHasEntry:
 		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
 			if f.Not {
 				return fmt.Sprintf("NOT @%s in UNNEST(%s)", paramName, field), makeParam(f.Value)
 			}
 			return fmt.Sprintf("@%s in UNNEST(%s)", paramName, field), makeParam(f.Value)
+		}
+	case OperatorContains, OperatorHasEntryContaining:
+		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
+			exists := fmt.Sprintf("EXISTS (SELECT 1 FROM UNNEST(%s) AS item WHERE item LIKE @%s)", field, paramName)
+			if f.Not {
+				return "NOT " + exists, makeParam(f.Value)
+			}
+			return exists, makeParam(f.Value)
 		}
 		if f.Not {
 			return fmt.Sprintf("NOT LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s%%", f.Value))
@@ -311,10 +320,7 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 		}
 		return fmt.Sprintf("LOWER(%s) LIKE @%s", field, paramName), makeParam(fmt.Sprintf("%%%s", f.Value))
 	case OperatorIsEmpty:
-		if f.Not {
-			return fmt.Sprintf("%s IS NOT NULL", field), nil
-		}
-		return fmt.Sprintf("%s IS NULL", field), nil
+		return f.isEmptyFilter(field, filterable, true), nil
 	case OperatorIsNotEmpty:
 		if f.Not {
 			return fmt.Sprintf("%s IS NULL", field), nil
@@ -322,7 +328,7 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 		return fmt.Sprintf("%s IS NOT NULL", field), nil
 	}
 
-	return "", nil
+	return "UnknownFilterOperator()", nil // cause SQL to fail in obvious way
 }
 
 // Filterable interface is for anything that can be filtered, it needs to
