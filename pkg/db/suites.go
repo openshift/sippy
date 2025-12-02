@@ -67,6 +67,7 @@ var testSuites = []string{
 	"Serverless-lp-interop",
 	"ServiceMesh-lp-interop",
 	"OpenshitPipelines-lp-interop",
+	"Compliance-lp-interop",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {

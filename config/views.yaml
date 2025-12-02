@@ -1476,3 +1476,45 @@ component_readiness:
       enabled: true
     regression_tracking:
       enabled: true
+  - name: compliance-component-readiness
+    base_release:
+      release: "4.18"
+      relative_start: now-30d
+      relative_end: now
+    sample_release:
+      release: "4.19"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Architecture: {}
+        Platform: {}
+      db_group_by:
+        Architecture: {}
+        Platform: {}
+        Suite: {}
+      include_variants:
+        Architecture:
+          - amd64
+          - arm64
+        LayeredProduct:
+          - lp-interop-compliance
+        Owner:
+          - eng
+        Platform:
+          - aws
+    advanced_options:
+      minimum_failure: 2
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+      flake_as_failure: false
+      pass_rate_required_new_tests: 95
+      include_multi_release_analysis: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: true
+    prime_cache:
+      enabled: false
