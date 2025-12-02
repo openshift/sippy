@@ -243,42 +243,6 @@ export default function JobRunsTable(props) {
       type: 'string',
       hide: 'true',
     },
-    {
-      field: 'current_pass_percentage',
-      headerName: 'Current pass percentage',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'current_runs',
-      headerName: 'Current runs',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'previous_runs',
-      headerName: 'Previous runs',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'net_improvement',
-      headerName: 'Net improvement',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'bugs',
-      headerName: 'Bug count',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'associated_bugs',
-      headerName: 'Associated bug count',
-      type: 'number',
-      hide: true,
-    },
   ]
 
   const fetchData = () => {
