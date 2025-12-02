@@ -255,11 +255,12 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 			return fmt.Sprintf("%s @%s in UNNEST(%s)", optNot(f.Not), paramName, field), makeParam(f.Value)
 		}
 	case OperatorContains, OperatorHasEntryContaining:
+		param := makeParam("%" + strings.ToLower(f.Value) + "%")
 		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
-			exists := fmt.Sprintf("EXISTS (SELECT 1 FROM UNNEST(%s) AS item WHERE item LIKE @%s)", field, paramName)
-			return fmt.Sprintf("%s %s", optNot(f.Not), exists), makeParam(f.Value)
+			exists := fmt.Sprintf("EXISTS (SELECT 1 FROM UNNEST(%s) AS item WHERE LOWER(item) LIKE @%s)", field, paramName)
+			return fmt.Sprintf("%s %s", optNot(f.Not), exists), param
 		}
-		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(fmt.Sprintf("%%%s%%", f.Value))
+		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), param
 	case OperatorEquals:
 		if f.Not {
 			return fmt.Sprintf("%s != @%s", field, paramName), makeParam(f.Value)
@@ -296,9 +297,9 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 		}
 		return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
 	case OperatorStartsWith:
-		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(fmt.Sprintf("%s%%", f.Value))
+		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(strings.ToLower(f.Value) + "%")
 	case OperatorEndsWith:
-		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(fmt.Sprintf("%%%s", f.Value))
+		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam("%" + strings.ToLower(f.Value))
 	case OperatorIsEmpty:
 		return f.isEmptyFilter(field, filterable, true), nil
 	case OperatorIsNotEmpty:
