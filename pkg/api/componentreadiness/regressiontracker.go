@@ -156,7 +156,6 @@ func (prs *PostgresRegressionStore) ResolveTriages() error {
 			continue
 		}
 
-		ReportTriageResolved(prs.jiraClient, triage)
 		log.Infof("Resolved triage %d with resolution time %v", triage.ID, triage.Resolved.Time)
 	}
 
