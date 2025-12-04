@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -30,12 +31,14 @@ const (
 type Operator string
 
 const (
-	OperatorContains   Operator = "contains"
-	OperatorEquals     Operator = "equals"
-	OperatorStartsWith Operator = "starts with"
-	OperatorEndsWith   Operator = "ends with"
-	OperatorIsEmpty    Operator = "is empty"
-	OperatorIsNotEmpty Operator = "is not empty"
+	OperatorContains           Operator = "contains"
+	OperatorEquals             Operator = "equals"
+	OperatorStartsWith         Operator = "starts with"
+	OperatorEndsWith           Operator = "ends with"
+	OperatorHasEntry           Operator = "has entry"
+	OperatorHasEntryContaining Operator = "has entry containing"
+	OperatorIsEmpty            Operator = "is empty"
+	OperatorIsNotEmpty         Operator = "is not empty"
 
 	OperatorArithmeticEquals              Operator = "="
 	OperatorArithmeticNotEquals           Operator = "!="
@@ -62,6 +65,44 @@ type FilterItem struct {
 	Value    string   `json:"value"`
 }
 
+// helper for constructing opposing branches of SQL logic concisely
+func optNot(not bool) string {
+	if not {
+		return "NOT"
+	}
+	return ""
+}
+
+// ilikeFilter returns the SQL filter and parameters for ILIKE pattern matching,
+// handling both string fields (using ILIKE directly) and array fields (using unnest with EXISTS).
+func ilikeFilter(field, pattern string, not bool, filterable Filterable, fieldName string) (string, interface{}) {
+	if filterable != nil && filterable.GetFieldType(fieldName) == apitype.ColumnTypeArray {
+		return fmt.Sprintf("%s EXISTS (SELECT 1 FROM unnest(%s) AS elem WHERE elem ILIKE ?)", optNot(not), field), pattern
+	}
+	return fmt.Sprintf("%s %s ILIKE ?", field, optNot(not)), pattern
+}
+
+// applyIlikeFilter applies an ILIKE filter to a GORM DB handle, handling both string and array fields.
+func applyIlikeFilter(db *gorm.DB, field, pattern string, not bool, filterable Filterable, fieldName string) *gorm.DB {
+	filterSQL, params := ilikeFilter(field, pattern, not, filterable, fieldName)
+	return db.Where(filterSQL, params)
+}
+
+func (f FilterItem) isEmptyFilter(field string, filterable Filterable, forBQ bool) string {
+	sql := fmt.Sprintf("%s IS NULL", field)
+	// should work for null/empty arrays in addition to null strings
+	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
+		sql = fmt.Sprintf("(%s IS NULL or %s = '{}')", field, field)
+		if forBQ {
+			sql = fmt.Sprintf("(%s IS NULL or ARRAY_LENGTH(%s) = 0)", field, field)
+		}
+	}
+	if f.Not {
+		return fmt.Sprintf("NOT(%s)", sql)
+	}
+	return sql
+}
+
 func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter string, orParams interface{}) { //nolint
 	field := fmt.Sprintf("%q", f.Field)
 	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
@@ -69,21 +110,14 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 	}
 
 	switch f.Operator {
-	case OperatorContains:
-		// "contains" is an overloaded operator: 1) see if an array field contains an item,
-		// 2) string contains a substring, so we need to know the field type.
-		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
-			if f.Not {
-				return fmt.Sprintf("? != ALL(%s)", field), f.Value
-			}
-			return fmt.Sprintf("? = ANY(%s)", field), f.Value
-		}
+	case OperatorHasEntry:
 		if f.Not {
-			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
+			return fmt.Sprintf("%s IS NULL OR ? != ALL(%s)", field, field), f.Value
 		}
-		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value)
+		return fmt.Sprintf("? = ANY(%s)", field), f.Value
+	case OperatorHasEntryContaining, OperatorContains:
+		return ilikeFilter(field, fmt.Sprintf("%%%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEquals, OperatorArithmeticEquals:
-
 		if f.Not {
 			return fmt.Sprintf("%s != ?", field), f.Value
 		}
@@ -114,28 +148,16 @@ func (f FilterItem) orFilterToSQL(db *gorm.DB, filterable Filterable) (orFilter 
 		}
 		return fmt.Sprintf("%s <> ?", field), f.Value
 	case OperatorStartsWith:
-		if f.Not {
-			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%s%%", f.Value)
-		}
-		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value)
+		return ilikeFilter(field, fmt.Sprintf("%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEndsWith:
-		if f.Not {
-			return fmt.Sprintf("%s NOT ILIKE ?", field), fmt.Sprintf("%%%s", f.Value)
-		}
-		return fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value)
+		return ilikeFilter(field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
-		if f.Not {
-			return fmt.Sprintf("%s IS NOT NULL", field), nil
-		}
-		return fmt.Sprintf("%s IS NULL", field), nil
+		return f.isEmptyFilter(field, filterable, false), nil
 	case OperatorIsNotEmpty:
-		if f.Not {
-			return fmt.Sprintf("%s IS NULL", field), nil
-		}
-		return fmt.Sprintf("%s IS NOT NULL", field), nil
+		return fmt.Sprintf("%s IS %s NULL", field, optNot(!f.Not)), nil
 	}
 
-	return "", nil
+	return "UnknownFilterOperator()", nil // cause SQL to fail in obvious way
 }
 
 func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB { //nolint
@@ -145,20 +167,14 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 	}
 
 	switch f.Operator {
-	case OperatorContains:
-		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
-			if f.Not {
-				db = db.Not(fmt.Sprintf("? = ANY(%s)", field), f.Value)
-			} else {
-				db = db.Where(fmt.Sprintf("? = ANY(%s)", field), f.Value)
-			}
+	case OperatorHasEntry:
+		if f.Not {
+			db = db.Where(fmt.Sprintf("%s IS NULL OR ? != ALL(%s)", field, field), f.Value)
 		} else {
-			if f.Not {
-				db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
-			} else {
-				db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s%%", f.Value))
-			}
+			db = db.Where(fmt.Sprintf("? = ANY(%s)", field), f.Value)
 		}
+	case OperatorHasEntryContaining, OperatorContains:
+		db = applyIlikeFilter(db, field, fmt.Sprintf("%%%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEquals, OperatorArithmeticEquals:
 		if f.Not {
 			db = db.Not(fmt.Sprintf("%s = ?", field), f.Value)
@@ -196,110 +212,101 @@ func (f FilterItem) andFilterToSQL(db *gorm.DB, filterable Filterable) *gorm.DB 
 			db = db.Where(fmt.Sprintf("%s <> ?", field), f.Value)
 		}
 	case OperatorStartsWith:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value))
-		} else {
-			db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%s%%", f.Value))
-		}
+		db = applyIlikeFilter(db, field, fmt.Sprintf("%s%%", f.Value), f.Not, filterable, f.Field)
 	case OperatorEndsWith:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value))
-		} else {
-			db = db.Where(fmt.Sprintf("%s ILIKE ?", field), fmt.Sprintf("%%%s", f.Value))
-		}
+		db = applyIlikeFilter(db, field, fmt.Sprintf("%%%s", f.Value), f.Not, filterable, f.Field)
 	case OperatorIsEmpty:
-		if f.Not {
-			db = db.Not(fmt.Sprintf("%s IS NULL", field))
-		} else {
-			db = db.Where(fmt.Sprintf("%s IS NULL", field))
-		}
+		db = db.Where(f.isEmptyFilter(field, filterable, false))
 	case OperatorIsNotEmpty:
-		if f.Not {
-			db = db.Where(fmt.Sprintf("%s IS NULL", field))
-		} else {
-			db = db.Not(fmt.Sprintf("%s IS NULL", field))
-		}
+		db = db.Where(fmt.Sprintf("%s IS %s NULL", field, optNot(!f.Not)))
 	}
 
 	return db
 }
 
-func (f FilterItem) toBQStr(filterable Filterable) string { //nolint
+func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, params []bigquery.QueryParameter) { //nolint
 	field := strings.ReplaceAll(fmt.Sprintf("%q", f.Field), "\"", "")
 	if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeTimestamp {
 		field = fmt.Sprintf("extract(epoch from %s at time zone 'utc') * 1000", f.Field)
 	}
 
-	switch f.Operator {
-	case OperatorContains:
-		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
-			if f.Not {
-				return fmt.Sprintf("NOT '%s' in UNNEST(%s)", f.Value, field)
-			}
-			return fmt.Sprintf("'%s' in UNNEST(%s)", f.Value, field)
+	// Helper to create a parameter
+	paramName := fmt.Sprintf("filterParam%d", paramIndex+1)
+	makeParam := func(value interface{}) []bigquery.QueryParameter {
+		return []bigquery.QueryParameter{
+			{
+				Name:  paramName,
+				Value: value,
+			},
 		}
-		if f.Not {
-			return fmt.Sprintf("NOT LOWER(%s) LIKE '%%%s%%'", field, f.Value)
+	}
+	// BQ does not automagically cast string parameters to numbers like postgres does
+	makeNumParam := func() []bigquery.QueryParameter {
+		num, err := strconv.ParseFloat(f.Value, 64)
+		if err != nil {
+			return makeParam("NOT A NUMBER: " + f.Value) // which will break appropriately
 		}
-		return fmt.Sprintf("LOWER(%s) LIKE '%%%s%%'", field, f.Value)
-	case OperatorEquals:
-		if f.Not {
-			return fmt.Sprintf("%s != \"%s\"", field, f.Value)
-		}
-		return fmt.Sprintf("%s = \"%s\"", field, f.Value)
-	case OperatorArithmeticEquals:
-		if f.Not {
-			return fmt.Sprintf("%s != %s", field, f.Value)
-		}
-		return fmt.Sprintf("%s = %s", field, f.Value)
-	case OperatorArithmeticGreaterThan:
-		if f.Not {
-			return fmt.Sprintf("%s <= %s", field, f.Value)
-		}
-		return fmt.Sprintf("%s > %s", field, f.Value)
-	case OperatorArithmeticGreaterThanOrEquals:
-		if f.Not {
-			return fmt.Sprintf("%s < %s", field, f.Value)
-		}
-		return fmt.Sprintf("%s >= %s", field, f.Value)
-	case OperatorArithmeticLessThan:
-		if f.Not {
-			return fmt.Sprintf("%s >= %s", field, f.Value)
-		}
-		return fmt.Sprintf("%s < %s", field, f.Value)
-	case OperatorArithmeticLessThanOrEquals:
-		if f.Not {
-			return fmt.Sprintf("%s > %s", field, f.Value)
-		}
-		return fmt.Sprintf("%s <= %s", field, f.Value)
-	case OperatorArithmeticNotEquals:
-		if f.Not {
-			return fmt.Sprintf("%s = %s", field, f.Value)
-		}
-		return fmt.Sprintf("%s != %s", field, f.Value)
-	case OperatorStartsWith:
-		if f.Not {
-			return fmt.Sprintf("NOT LOWER(%s) LIKE '%s%%'", field, f.Value)
-		}
-		return fmt.Sprintf("LOWER(%s) LIKE '%s%%'", field, f.Value)
-	case OperatorEndsWith:
-		if f.Not {
-			return fmt.Sprintf("NOT LOWER(%s) LIKE '%%%s'", field, f.Value)
-		}
-		return fmt.Sprintf("LOWER(%s) LIKE '%%%s'", field, f.Value)
-	case OperatorIsEmpty:
-		if f.Not {
-			return fmt.Sprintf("%s IS NOT NULL", field)
-		}
-		return fmt.Sprintf("%s IS NULL", field)
-	case OperatorIsNotEmpty:
-		if f.Not {
-			return fmt.Sprintf("%s IS NULL", field)
-		}
-		return fmt.Sprintf("%s IS NOT NULL", field)
+		return makeParam(num)
 	}
 
-	return ""
+	switch f.Operator {
+	case OperatorHasEntry:
+		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
+			return fmt.Sprintf("%s @%s in UNNEST(%s)", optNot(f.Not), paramName, field), makeParam(f.Value)
+		}
+	case OperatorContains, OperatorHasEntryContaining:
+		param := makeParam("%" + strings.ToLower(f.Value) + "%")
+		if filterable != nil && filterable.GetFieldType(f.Field) == apitype.ColumnTypeArray {
+			exists := fmt.Sprintf("EXISTS (SELECT 1 FROM UNNEST(%s) AS item WHERE LOWER(item) LIKE @%s)", field, paramName)
+			return fmt.Sprintf("%s %s", optNot(f.Not), exists), param
+		}
+		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), param
+	case OperatorEquals:
+		if f.Not {
+			return fmt.Sprintf("%s != @%s", field, paramName), makeParam(f.Value)
+		}
+		return fmt.Sprintf("%s = @%s", field, paramName), makeParam(f.Value)
+	case OperatorArithmeticEquals:
+		if f.Not {
+			return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
+		}
+		return fmt.Sprintf("%s = @%s", field, paramName), makeNumParam()
+	case OperatorArithmeticGreaterThan:
+		if f.Not {
+			return fmt.Sprintf("%s <= @%s", field, paramName), makeNumParam()
+		}
+		return fmt.Sprintf("%s > @%s", field, paramName), makeNumParam()
+	case OperatorArithmeticGreaterThanOrEquals:
+		if f.Not {
+			return fmt.Sprintf("%s < @%s", field, paramName), makeNumParam()
+		}
+		return fmt.Sprintf("%s >= @%s", field, paramName), makeNumParam()
+	case OperatorArithmeticLessThan:
+		if f.Not {
+			return fmt.Sprintf("%s >= @%s", field, paramName), makeNumParam()
+		}
+		return fmt.Sprintf("%s < @%s", field, paramName), makeNumParam()
+	case OperatorArithmeticLessThanOrEquals:
+		if f.Not {
+			return fmt.Sprintf("%s > @%s", field, paramName), makeNumParam()
+		}
+		return fmt.Sprintf("%s <= @%s", field, paramName), makeNumParam()
+	case OperatorArithmeticNotEquals:
+		if f.Not {
+			return fmt.Sprintf("%s = @%s", field, paramName), makeNumParam()
+		}
+		return fmt.Sprintf("%s != @%s", field, paramName), makeNumParam()
+	case OperatorStartsWith:
+		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam(strings.ToLower(f.Value) + "%")
+	case OperatorEndsWith:
+		return fmt.Sprintf("%s LOWER(%s) LIKE @%s", optNot(f.Not), field, paramName), makeParam("%" + strings.ToLower(f.Value))
+	case OperatorIsEmpty:
+		return f.isEmptyFilter(field, filterable, true), nil
+	case OperatorIsNotEmpty:
+		return fmt.Sprintf("%s IS %s NULL", field, optNot(!f.Not)), nil
+	}
+
+	return "UnknownFilterOperator()", nil // cause SQL to fail in obvious way
 }
 
 // Filterable interface is for anything that can be filtered, it needs to
@@ -457,20 +464,41 @@ func (filters Filter) ToSQL(db *gorm.DB, filterable Filterable) *gorm.DB {
 	return db
 }
 
-func (filters Filter) ToBQStr(filterable Filterable) string {
+// BQFilterResult contains the WHERE clause SQL and the BigQuery parameters to use with it.
+// The Parameters slice contains bigquery.QueryParameter structs that can be directly
+// assigned to a BigQuery query.
+type BQFilterResult struct {
+	SQL        string
+	Parameters []bigquery.QueryParameter
+}
+
+// ToBQStr generates a parameterized BigQuery WHERE clause with safe parameter binding
+// to prevent SQL injection. Returns the SQL string and BigQuery parameters ready to use.
+func (filters Filter) ToBQStr(filterable Filterable, paramIndex *int) BQFilterResult {
 	items := []string{}
+	allParams := []bigquery.QueryParameter{}
+
 	for _, f := range filters.Items {
-		items = append(items, f.toBQStr(filterable))
+		sql, params := f.toBQStr(filterable, *paramIndex)
+		items = append(items, sql)
+		if params != nil {
+			allParams = append(allParams, params...)
+			*paramIndex += len(params)
+		}
 	}
+
 	operator := " AND "
 	if filters.LinkOperator == LinkOperatorOr {
 		operator = " OR "
 	}
 	queryStr := strings.Join(items, operator)
 	queryStr = "(" + queryStr + ")"
-	log.Debugf("final query string: %s", queryStr)
+	log.Debugf("final query string: %s with %d parameters", queryStr, len(allParams))
 
-	return queryStr
+	return BQFilterResult{
+		SQL:        queryStr,
+		Parameters: allParams,
+	}
 }
 
 // Filter applies the selected filters to a filterable item.

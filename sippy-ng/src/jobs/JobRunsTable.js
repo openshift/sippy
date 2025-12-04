@@ -184,18 +184,21 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'variants',
+      type: 'array',
       autocomplete: 'variants',
       headerName: 'Variants',
       hide: true,
     },
     {
       field: 'failed_test_names',
+      type: 'array',
       autocomplete: 'tests',
       headerName: 'Failed tests',
       hide: true,
     },
     {
       field: 'flaked_test_names',
+      type: 'array',
       autocomplete: 'tests',
       headerName: 'Flaked tests',
       hide: true,
@@ -239,42 +242,6 @@ export default function JobRunsTable(props) {
       headerName: 'Build cluster',
       type: 'string',
       hide: 'true',
-    },
-    {
-      field: 'current_pass_percentage',
-      headerName: 'Current pass percentage',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'current_runs',
-      headerName: 'Current runs',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'previous_runs',
-      headerName: 'Previous runs',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'net_improvement',
-      headerName: 'Net improvement',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'bugs',
-      headerName: 'Bug count',
-      type: 'number',
-      hide: true,
-    },
-    {
-      field: 'associated_bugs',
-      headerName: 'Associated bug count',
-      type: 'number',
-      hide: true,
     },
   ]
 
