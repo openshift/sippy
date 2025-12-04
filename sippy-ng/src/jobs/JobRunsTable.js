@@ -361,6 +361,9 @@ export default function JobRunsTable(props) {
     fetch(process.env.REACT_APP_API_URL + '/api/labels')
       .then((response) => {
         if (response.status !== 200) {
+          console.warn(
+            'Labels API returned unsuccessful status: ' + response.statusText
+          )
           return {}
         }
         return response.json()
