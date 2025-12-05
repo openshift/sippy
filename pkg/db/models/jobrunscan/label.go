@@ -26,10 +26,18 @@ type Label struct {
 	// Values: "spyglass", "metrics", "jaq choices", etc.
 	HideDisplayContexts pq.StringArray `gorm:"type:text[]" json:"hide_display_contexts"`
 
+	// User tracking
+	CreatedBy string `gorm:"type:varchar(255)" json:"created_by"`
+	UpdatedBy string `gorm:"type:varchar(255)" json:"updated_by"`
+
 	// Metadata
 	CreatedAt time.Time      `json:"created_at"`
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+
+	// Links contains REST links for clients to follow for this specific label.
+	// These are injected by the API and not stored in the DB.
+	Links map[string]string `json:"links" gorm:"-"`
 }
 
 const (
