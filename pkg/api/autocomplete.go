@@ -8,15 +8,44 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 )
 
+// LabelOption represents a label with ID and title for autocomplete
+type LabelOption struct {
+	Name  string `json:"name"`
+	Title string `json:"title"`
+}
+
 // PrintAutocompleteFromDB returns autocomplete results for a particular field,
 // such as test or job names. It optionally takes a release and search query filter.
 func PrintAutocompleteFromDB(w http.ResponseWriter, req *http.Request, dbc *db.DB) {
-	result := make([]string, 0)
 	vars := mux.Vars(req)
 	field := vars["field"]
 	search := req.URL.Query().Get("search")
 	release := req.URL.Query().Get("release")
 
+	// Special handling for labels which returns objects with id and title
+	if field == "labels" {
+		labelResult := make([]LabelOption, 0)
+		q := dbc.DB.Table("job_run_labels").
+			Select("id as name, label_title as title").
+			Order("name")
+
+		if search != "" {
+			q = q.Where("id ILIKE ? OR label_title ILIKE ?",
+				fmt.Sprintf("%%%s%%", search),
+				fmt.Sprintf("%%%s%%", search))
+		}
+
+		q = q.Limit(50).Scan(&labelResult)
+		if q.Error != nil {
+			RespondWithJSON(503, w, map[string]string{"message": q.Error.Error()})
+			return
+		}
+		RespondWithJSON(200, w, labelResult)
+		return
+	}
+
+	// Standard string autocomplete for other fields
+	result := make([]string, 0)
 	q := dbc.DB
 
 	switch field {

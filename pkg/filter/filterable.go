@@ -244,6 +244,8 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 	makeNumParam := func() []bigquery.QueryParameter {
 		num, err := strconv.ParseFloat(f.Value, 64)
 		if err != nil {
+			log.Errorf("Failed to parse numeric filter value %q for field %s: %v", f.Value, f.Field, err)
+
 			return makeParam("NOT A NUMBER: " + f.Value) // which will break appropriately
 		}
 		return makeParam(num)
@@ -306,6 +308,7 @@ func (f FilterItem) toBQStr(filterable Filterable, paramIndex int) (sql string, 
 		return fmt.Sprintf("%s IS %s NULL", field, optNot(!f.Not)), nil
 	}
 
+	log.Errorf("Unknown filter operator %q for field %s", f.Operator, f.Field)
 	return "UnknownFilterOperator()", nil // cause SQL to fail in obvious way
 }
 

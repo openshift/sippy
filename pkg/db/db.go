@@ -12,6 +12,7 @@ import (
 	gormlogger "gorm.io/gorm/logger"
 
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 )
 
 type SchemaHashType string
@@ -65,101 +66,41 @@ func New(dsn string, logLevel gormlogger.LogLevel) (*DB, error) {
 }
 
 func (d *DB) UpdateSchema(reportEnd *time.Time) error {
-
-	if err := d.DB.AutoMigrate(&models.ReleaseTag{}); err != nil {
-		return err
+	// List of all models to migrate
+	modelsToMigrate := []interface{}{
+		&models.ReleaseTag{},
+		&models.ReleasePullRequest{},
+		&models.ReleaseRepository{},
+		&models.ReleaseJobRun{},
+		&models.ProwJob{},
+		&models.ProwJobRun{},
+		&models.Test{},
+		&models.Suite{},
+		&models.ProwJobRunTest{},
+		&models.ProwJobRunTestOutput{},
+		&models.APISnapshot{},
+		&models.Bug{},
+		&models.ProwPullRequest{},
+		&models.SchemaHash{},
+		&models.PullRequestComment{},
+		&models.JiraIncident{},
+		&models.JiraComponent{},
+		&models.TestOwnership{},
+		&models.FeatureGate{},
+		&models.TestRegression{},
+		&models.Triage{},
+		&models.AuditLog{},
+		&models.ChatRating{},
+		&models.ChatConversation{},
+		&jobrunscan.Label{},
+		&jobrunscan.Symptom{},
 	}
 
-	if err := d.DB.AutoMigrate(&models.ReleasePullRequest{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.ReleaseRepository{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.ReleaseJobRun{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.ProwJob{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.ProwJobRun{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.Test{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.Suite{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.ProwJobRunTest{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.ProwJobRunTestOutput{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.APISnapshot{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.Bug{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.ProwPullRequest{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.SchemaHash{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.PullRequestComment{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.JiraIncident{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.JiraComponent{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.TestOwnership{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.FeatureGate{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.TestRegression{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.Triage{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.AuditLog{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.ChatRating{}); err != nil {
-		return err
-	}
-
-	if err := d.DB.AutoMigrate(&models.ChatConversation{}); err != nil {
-		return err
+	// Migrate each model
+	for _, model := range modelsToMigrate {
+		if err := d.DB.AutoMigrate(model); err != nil {
+			return err
+		}
 	}
 
 	if err := createAuditLogIndexes(d.DB); err != nil {
