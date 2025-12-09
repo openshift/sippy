@@ -50,7 +50,6 @@ import (
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/synthetictests"
@@ -977,21 +976,6 @@ func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) 
 	if release != "" {
 		api.PrintJobsReportFromDB(w, req, s.db, release, s.GetReportEnd())
 	}
-}
-
-func (s *Server) jsonLabelsFromDB(w http.ResponseWriter, req *http.Request) {
-	var labels []jobrunscan.Label
-	if err := s.db.DB.Find(&labels).Error; err != nil {
-		log.WithError(err).Error("error fetching labels")
-		failureResponse(w, http.StatusInternalServerError, "Error fetching labels: "+err.Error())
-		return
-	}
-
-	response := map[string]interface{}{
-		"labels": labels,
-	}
-
-	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
 func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.Request) {
@@ -2000,13 +1984,6 @@ func (s *Server) Serve() {
 			Description:  "Reports bugs related to jobs",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonJobBugsFromDB,
-		},
-		{
-			EndpointPath: "/api/labels",
-			Description:  "Returns all job run label definitions",
-			Capabilities: []string{LocalDBCapability},
-			CacheTime:    24 * time.Hour,
-			HandlerFunc:  s.jsonLabelsFromDB,
 		},
 		{
 			EndpointPath: "/api/jobs/artifacts",
