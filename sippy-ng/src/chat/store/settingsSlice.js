@@ -7,6 +7,7 @@ export const createSettingsSlice = (set, get) => ({
     showThinking: true,
     autoScroll: true,
     persona: 'default',
+    modelId: null, // Will be set to default from backend
     tourCompleted: false,
     clientId: null,
   },
