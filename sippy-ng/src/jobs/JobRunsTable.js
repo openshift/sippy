@@ -358,7 +358,7 @@ export default function JobRunsTable(props) {
 
   // Fetch label definitions
   useEffect(() => {
-    fetch(process.env.REACT_APP_API_URL + '/api/labels')
+    fetch(process.env.REACT_APP_API_URL + '/api/jobs/labels')
       .then((response) => {
         if (response.status !== 200) {
           console.warn(
@@ -368,10 +368,10 @@ export default function JobRunsTable(props) {
         }
         return response.json()
       })
-      .then((json) => {
+      .then((labels) => {
         const labelMap = {}
-        if (json && json.labels) {
-          json.labels.forEach((label) => {
+        if (labels && Array.isArray(labels)) {
+          labels.forEach((label) => {
             labelMap[label.id] = label
           })
         }
