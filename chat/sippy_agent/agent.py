@@ -59,6 +59,11 @@ class SippyAgent:
                     "Google API key or service account credentials file is required for Gemini models"
                 )
 
+            # Set environment variable for Vertex AI usage (required for langchain-google-genai 4.0+)
+            # Sippy only uses Vertex AI for Gemini.
+            import os
+            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
+
             llm_kwargs = {
                 "model": self.config.model_name,
                 "temperature": self.config.temperature,
@@ -74,8 +79,6 @@ class SippyAgent:
                     )
             elif self.config.google_credentials_file:
                 # Set the environment variable for Google credentials
-                import os
-
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
                     self.config.google_credentials_file
                 )
