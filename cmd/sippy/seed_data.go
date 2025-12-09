@@ -334,43 +334,43 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 }
 
 func createLabelsAndSymptoms(dbc *db.DB) error {
+	metadata := jobrunscan.Metadata{
+		CreatedBy: "seed-data",
+		UpdatedBy: "seed-data",
+	}
+
 	// Create sample labels
 	labels := []jobrunscan.Label{
 		{
 			ID:          "InfraFailure",
 			LabelTitle:  "Infrastructure failure: omit job from CR",
 			Explanation: "Job failed due to **infrastructure issues** not related to product code. See [TRT documentation](https://docs.ci.openshift.org/docs/architecture/ci-operator/) for more details.",
-			CreatedBy:   "seed-data",
-			UpdatedBy:   "seed-data",
+			Metadata:    metadata,
 		},
 		{
 			ID:          "ClusterDNSFlake",
 			LabelTitle:  "Cluster DNS resolution failure(s)",
 			Explanation: "Job experienced DNS resolution timeouts in the cluster:\n\n- Check for network issues\n- Review DNS server logs\n- Examine cluster network configuration",
-			CreatedBy:   "seed-data",
-			UpdatedBy:   "seed-data",
+			Metadata:    metadata,
 		},
 		{
 			ID:          "ClusterInstallTimeout",
 			LabelTitle:  "Cluster install timeout",
 			Explanation: "Cluster installation exceeded timeout threshold. This may indicate:\n\n1. Slow infrastructure provisioning\n2. Network connectivity problems\n3. Image pull failures",
-			CreatedBy:   "seed-data",
-			UpdatedBy:   "seed-data",
+			Metadata:    metadata,
 		},
 		{
 			ID:                  "IntervalFile",
 			LabelTitle:          "Has interval file(s)",
 			Explanation:         "Job produced interval monitoring files. Use the `intervals` tool to analyze timing data.",
 			HideDisplayContexts: []string{jobrunscan.MetricsContext, jobrunscan.JAQOptsContext},
-			CreatedBy:           "seed-data",
-			UpdatedBy:           "seed-data",
+			Metadata:            metadata,
 		},
 		{
 			ID:          "APIServerTimeout",
 			LabelTitle:  "API server timeout",
 			Explanation: "Requests to the API server timed out. Common causes:\n\n- High API server load\n- Network latency issues\n- Slow etcd responses",
-			CreatedBy:   "seed-data",
-			UpdatedBy:   "seed-data",
+			Metadata:    metadata,
 		},
 	}
 
@@ -395,8 +395,7 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 			FilePattern: "**/e2e-timelines/**/*.json",
 			MatchString: "dial tcp",
 			LabelIDs:    []string{"ClusterDNSFlake"},
-			CreatedBy:   "seed-data",
-			UpdatedBy:   "seed-data",
+			Metadata:    metadata,
 		},
 		{
 			ID:          "InstallTimeoutSymptom",
@@ -405,8 +404,7 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 			FilePattern: "**/build-log.txt",
 			MatchString: "timeout waiting for.*install",
 			LabelIDs:    []string{"ClusterInstallTimeout"},
-			CreatedBy:   "seed-data",
-			UpdatedBy:   "seed-data",
+			Metadata:    metadata,
 		},
 		{
 			ID:          "HasIntervalsSymptom",
@@ -415,8 +413,7 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 			FilePattern: "**/intervals*.json",
 			MatchString: "",
 			LabelIDs:    []string{"IntervalFile"},
-			CreatedBy:   "seed-data",
-			UpdatedBy:   "seed-data",
+			Metadata:    metadata,
 		},
 		{
 			ID:          "APITimeoutSymptom",
@@ -425,8 +422,7 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 			FilePattern: "**/build-log.txt",
 			MatchString: "context deadline exceeded",
 			LabelIDs:    []string{"APIServerTimeout"},
-			CreatedBy:   "seed-data",
-			UpdatedBy:   "seed-data",
+			Metadata:    metadata,
 		},
 	}
 
