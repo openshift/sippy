@@ -66,7 +66,7 @@ var testSuites = []string{
 	"Quay-lp-interop",
 	"Serverless-lp-interop",
 	"ServiceMesh-lp-interop",
-	"OpenshitPipelines-lp-interop",
+	"OpenshiftPipelines-lp-interop",
 	"COO-lp-interop",
 }
 
