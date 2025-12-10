@@ -311,7 +311,12 @@ export default function JobArtifactQuery(props) {
 
     React.useEffect(() => {
       fetch(process.env.REACT_APP_API_URL + '/api/jobs/symptoms')
-        .then((response) => response.json())
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+          }
+          return response.json()
+        })
         .then((data) => {
           setSymptoms(
             (data || []).sort((a, b) =>
