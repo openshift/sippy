@@ -21,6 +21,7 @@ import {
 import {
   VerticalAlignBottom as AutoScrollIcon,
   Close as CloseIcon,
+  Code as CodeIcon,
   Delete as DeleteIcon,
   Info as InfoIcon,
   Masks as MasksIcon,
@@ -37,10 +38,12 @@ import { makeStyles } from '@mui/styles'
 import {
   useConnectionState,
   usePersonas,
+  usePrompts,
   useSessionActions,
   useSessionState,
   useSettings,
 } from './store/useChatStore'
+import PromptManagerModal from './PromptManagerModal'
 import PropTypes from 'prop-types'
 import React, { useCallback, useEffect, useState } from 'react'
 
@@ -109,6 +112,7 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
   const { connectionState } = useConnectionState()
   const { personas, personasLoading, personasError, loadPersonas } =
     usePersonas()
+  const { localPrompts } = usePrompts()
   const { sessions, activeSessionId } = useSessionState()
   const { clearAllSessions, clearOldSessions } = useSessionActions()
 
@@ -121,6 +125,9 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
     sizeBytes: 0,
   })
   const [storageLoading, setStorageLoading] = useState(false)
+
+  // Prompt manager
+  const [promptManagerOpen, setPromptManagerOpen] = useState(false)
 
   useEffect(() => {
     if (personas.length === 0 && !personasLoading) {
@@ -475,6 +482,57 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
 
       <Divider />
 
+      {/* Custom Prompts */}
+      <div className={classes.section}>
+        <Typography variant="subtitle2" className={classes.sectionTitle}>
+          <Box display="flex" alignItems="center" gap={0.5}>
+            <CodeIcon fontSize="small" />
+            Custom Prompts
+            <Tooltip
+              title="Create and manage your own AI prompt templates stored locally"
+              placement="top"
+            >
+              <InfoIcon
+                fontSize="small"
+                sx={{ color: 'text.secondary', cursor: 'help' }}
+              />
+            </Tooltip>
+          </Box>
+        </Typography>
+
+        <Box
+          sx={{
+            mb: 2,
+            p: 1.5,
+            backgroundColor: (theme) =>
+              theme.palette.mode === 'dark'
+                ? 'rgba(255, 255, 255, 0.05)'
+                : 'rgba(0, 0, 0, 0.02)',
+            borderRadius: 1,
+            textAlign: 'center',
+          }}
+        >
+          <Typography variant="body2" color="textSecondary" gutterBottom>
+            {localPrompts.length === 0
+              ? 'No custom prompts yet'
+              : `${localPrompts.length} custom prompt${
+                  localPrompts.length !== 1 ? 's' : ''
+                }`}
+          </Typography>
+        </Box>
+
+        <Button
+          variant="outlined"
+          startIcon={<CodeIcon />}
+          onClick={() => setPromptManagerOpen(true)}
+          fullWidth
+        >
+          Manage Custom Prompts
+        </Button>
+      </div>
+
+      <Divider />
+
       {/* Tour Management */}
       <div className={classes.section}>
         <Typography variant="subtitle2" className={classes.sectionTitle}>
@@ -500,6 +558,12 @@ export default function ChatSettings({ onClearMessages, onReconnect }) {
           </Typography>
         )}
       </div>
+
+      {/* Prompt Manager Modal */}
+      <PromptManagerModal
+        open={promptManagerOpen}
+        onClose={() => setPromptManagerOpen(false)}
+      />
     </Drawer>
   )
 }
