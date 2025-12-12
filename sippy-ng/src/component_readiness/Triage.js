@@ -195,6 +195,11 @@ export default function Triage({ id }) {
           {localDBEnabled && <TriageAuditLogsModal triage={triage} />}
           {triageEnabled && (
             <Fragment>
+              <TriagePotentialMatches
+                triage={triage}
+                setMessage={setMessage}
+                setLinkingComplete={setIsUpdated}
+              />
               <UpsertTriageModal
                 triage={triage}
                 buttonText={'Update'}
@@ -345,13 +350,6 @@ export default function Triage({ id }) {
         regressions={triage.regressions}
         filterVals={`?view=${view}`}
       />
-      {triageEnabled && (
-        <TriagePotentialMatches
-          triage={triage}
-          setMessage={setMessage}
-          setLinkingComplete={setIsUpdated}
-        />
-      )}
     </Fragment>
   )
 }

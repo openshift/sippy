@@ -407,7 +407,12 @@ func GetRegressionPotentialMatchingTriages(regression models.TestRegression, tri
 			PotentialMatch: determinePotentialMatch(regression, &triage),
 		}
 		if match.PotentialMatch != nil {
-			match.ConfidenceLevel = match.PotentialMatch.calculateConfidenceLevel()
+			confidenceLevel := match.PotentialMatch.calculateConfidenceLevel()
+			// A triage that is resolved is much less likely to be a proper match, it should never have a confidence level higher than 5
+			if match.Triage.Resolved.Valid && confidenceLevel > 5 {
+				confidenceLevel = 5
+			}
+			match.ConfidenceLevel = confidenceLevel
 			match.Links = map[string]string{
 				"self":       fmt.Sprintf(potentialMatchingTriagesLink, baseURL, regression.ID),
 				"regression": fmt.Sprintf(regressionLink, baseURL, regression.ID),

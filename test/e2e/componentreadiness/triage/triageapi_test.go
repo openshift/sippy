@@ -738,6 +738,57 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		// Should find no matches since the test name and failure time are too different
 		assert.Len(t, potentialMatches, 0, "Should find no potential matching triages")
 	})
+
+	t.Run("resolved triage confidence level capped at 5", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create a regression with the exact same test name (edit distance 0, would normally give confidence 6)
+		exactMatchRegression := createTestRegressionWithDetails(t, tracker, view, "exact-match", "component-e", "capability-v", "TestTargetFunction", &differentFailureTime, crtest.ExtremeRegression)
+		defer dbc.DB.Delete(exactMatchRegression.Regression)
+
+		// Create a triage with the exact match regression
+		triageExactMatch := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: exactMatchRegression.Regression.ID},
+			},
+		}
+		var triageResponseExactMatch models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triageExactMatch, &triageResponseExactMatch)
+		require.NoError(t, err)
+
+		// Resolve the triage
+		resolvedTime := time.Now()
+		triageResponseExactMatch.Resolved = sql.NullTime{Time: resolvedTime, Valid: true}
+		var updateResponse models.Triage
+		err = util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponseExactMatch.ID), &triageResponseExactMatch, &updateResponse)
+		require.NoError(t, err)
+		assert.True(t, updateResponse.Resolved.Valid, "Triage should be marked as resolved")
+
+		// Query for potential matches for the target regression
+		var potentialMatches []componentreadiness.PotentialMatchingTriage
+		endpoint := fmt.Sprintf("/api/component_readiness/regressions/%d/matches", targetRegression.Regression.ID)
+		err = util.SippyGet(endpoint, &potentialMatches)
+		require.NoError(t, err)
+
+		// Verify we found the resolved triage
+		assert.Len(t, potentialMatches, 1, "Should find 1 potential matching triage")
+
+		// Build map for easier verification
+		triagesByID := make(map[uint]componentreadiness.PotentialMatchingTriage)
+		for _, match := range potentialMatches {
+			triagesByID[match.Triage.ID] = match
+		}
+
+		// Verify the resolved triage match
+		resolvedMatch, found := triagesByID[triageResponseExactMatch.ID]
+		assert.True(t, found, "Should find resolved triage with exact test name match")
+		assert.Len(t, resolvedMatch.SimilarlyNamedTests, 1, "Should have one similarly named test")
+		assert.Equal(t, 0, resolvedMatch.SimilarlyNamedTests[0].EditDistance, "Edit distance should be 0")
+		// Confidence should be capped at 5 even though edit distance 0 would normally give confidence 6
+		assert.Equal(t, 5, resolvedMatch.ConfidenceLevel, "Confidence should be capped at 5 for resolved triage")
+	})
 }
 
 func createAndValidateTriageRecord(t *testing.T, bugURL string, testRegression1 *models.TestRegression) models.Triage {
