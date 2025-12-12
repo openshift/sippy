@@ -98,6 +98,7 @@ export default function TriagePotentialMatches({
   const [filterSimilarNames, setFilterSimilarNames] = React.useState(true)
   const [filterSameLastFailures, setFilterSameLastFailures] =
     React.useState(true)
+  const [filterAlreadyTriaged, setFilterAlreadyTriaged] = React.useState(false)
   const { expandEnvironment } = useContext(CompReadyVarsContext)
 
   const [autoOpenMatches, setAutoOpenMatches] = useQueryParam(
@@ -152,10 +153,16 @@ export default function TriagePotentialMatches({
       })
       .then((matches) => {
         console.log('Potential matching regressions:', matches)
-        setPotentialMatches(matches || [])
+        if (matches && matches.length > 0) {
+          const sortedMatches = matches.sort(
+            (a, b) => b.confidence_level - a.confidence_level
+          )
+          setPotentialMatches(sortedMatches || [])
+        }
         setSelectedRegressions([])
         setFilterSimilarNames(true)
         setFilterSameLastFailures(true)
+        setFilterAlreadyTriaged(false)
         setIsModalOpen(true)
       })
       .catch((error) => {
@@ -208,11 +215,22 @@ export default function TriagePotentialMatches({
   }
 
   const filteredMatches = React.useMemo(() => {
-    if (filterSimilarNames && filterSameLastFailures) {
-      return potentialMatches
+    let matches = potentialMatches
+
+    // Filter out matches already triaged (unless filter is enabled)
+    if (!filterAlreadyTriaged) {
+      matches = matches.filter((match) => {
+        const triages = match.regressed_test?.regression?.triages || []
+        return triages.length === 0
+      })
     }
 
-    return potentialMatches.filter((match) => {
+    // Apply similarity filters
+    if (filterSimilarNames && filterSameLastFailures) {
+      return matches
+    }
+
+    return matches.filter((match) => {
       const hasSimilarNames =
         match.similarly_named_tests && match.similarly_named_tests.length > 0
       const hasSameLastFailures =
@@ -230,7 +248,12 @@ export default function TriagePotentialMatches({
 
       return false
     })
-  }, [potentialMatches, filterSimilarNames, filterSameLastFailures])
+  }, [
+    potentialMatches,
+    filterSimilarNames,
+    filterSameLastFailures,
+    filterAlreadyTriaged,
+  ])
 
   const columns = [
     {
@@ -394,7 +417,7 @@ export default function TriagePotentialMatches({
         onClick={findPotentialMatches}
         variant="contained"
         color="primary"
-        sx={{ marginTop: '10px' }}
+        sx={{ margin: '10px 0' }}
         disabled={isLoading}
       >
         {isLoading
@@ -482,6 +505,22 @@ export default function TriagePotentialMatches({
                       label={`Same Last Failures (${
                         potentialMatches.filter(
                           (m) => m.same_last_failures?.length > 0
+                        ).length
+                      })`}
+                    />
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={filterAlreadyTriaged}
+                          onChange={(e) =>
+                            setFilterAlreadyTriaged(e.target.checked)
+                          }
+                        />
+                      }
+                      label={`Already Triaged (${
+                        potentialMatches.filter(
+                          (m) =>
+                            m.regressed_test?.regression?.triages?.length > 0
                         ).length
                       })`}
                     />
