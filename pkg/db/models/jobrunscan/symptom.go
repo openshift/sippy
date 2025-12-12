@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	"gorm.io/gorm"
 )
 
 // Symptom defines rules for detecting symptoms in job artifacts
@@ -36,19 +35,20 @@ type Symptom struct {
 	// Labels to apply when this symptom matches (typically none or one, but can be multiple)
 	LabelIDs pq.StringArray `gorm:"type:text[]" json:"label_ids"`
 
-	// Applicability filters
-	FilterReleases        pq.StringArray `gorm:"type:text[]" json:"filter_releases,omitempty"`         // e.g., ["4.17", "4.18"], null = all
-	FilterReleaseStatuses pq.StringArray `gorm:"type:text[]" json:"filter_release_statuses,omitempty"` // e.g., ["Development", "Full Support"]
-	FilterProducts        pq.StringArray `gorm:"type:text[]" json:"filter_products,omitempty"`         // e.g., ["OCP", "OKD", "HCM"]
+	ApplicabilityFilters
+	Metadata
+}
 
+// ApplicabilityFilters specifies filters for when a symptom is applicable (e.g. only a subset of releases).
+type ApplicabilityFilters struct {
 	// Time window for applicability (null = no time restriction)
 	ValidFrom  *time.Time `json:"valid_from,omitempty"`
 	ValidUntil *time.Time `json:"valid_until,omitempty"`
 
-	// Metadata
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	// If a field is null, all values are considered applicable (no filter).
+	FilterReleases        pq.StringArray `gorm:"type:text[]" json:"filter_releases,omitempty"`         // e.g., ["4.17", "4.18"], null = all
+	FilterReleaseStatuses pq.StringArray `gorm:"type:text[]" json:"filter_release_statuses,omitempty"` // e.g., ["Development", "Full Support"]
+	FilterProducts        pq.StringArray `gorm:"type:text[]" json:"filter_products,omitempty"`         // e.g., ["OCP", "OKD", "HCM"]
 }
 
 func (Symptom) TableName() string {

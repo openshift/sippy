@@ -1,10 +1,7 @@
 package jobrunscan
 
 import (
-	"time"
-
 	"github.com/lib/pq"
-	"gorm.io/gorm"
 )
 
 // Label defines a label that can be applied to jobs
@@ -26,10 +23,7 @@ type Label struct {
 	// Values: "spyglass", "metrics", "jaq choices", etc.
 	HideDisplayContexts pq.StringArray `gorm:"type:text[]" json:"hide_display_contexts"`
 
-	// Metadata
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
-	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+	Metadata
 }
 
 const (

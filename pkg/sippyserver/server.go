@@ -50,7 +50,6 @@ import (
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/openshift/sippy/pkg/filter"
 	"github.com/openshift/sippy/pkg/synthetictests"
@@ -977,21 +976,6 @@ func (s *Server) jsonJobsReportFromDB(w http.ResponseWriter, req *http.Request) 
 	if release != "" {
 		api.PrintJobsReportFromDB(w, req, s.db, release, s.GetReportEnd())
 	}
-}
-
-func (s *Server) jsonLabelsFromDB(w http.ResponseWriter, req *http.Request) {
-	var labels []jobrunscan.Label
-	if err := s.db.DB.Find(&labels).Error; err != nil {
-		log.WithError(err).Error("error fetching labels")
-		failureResponse(w, http.StatusInternalServerError, "Error fetching labels: "+err.Error())
-		return
-	}
-
-	response := map[string]interface{}{
-		"labels": labels,
-	}
-
-	api.RespondWithJSON(http.StatusOK, w, response)
 }
 
 func (s *Server) jsonRepositoriesReportFromDB(w http.ResponseWriter, req *http.Request) {
@@ -2002,17 +1986,80 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonJobBugsFromDB,
 		},
 		{
-			EndpointPath: "/api/labels",
-			Description:  "Returns all job run label definitions",
-			Capabilities: []string{LocalDBCapability},
-			CacheTime:    24 * time.Hour,
-			HandlerFunc:  s.jsonLabelsFromDB,
-		},
-		{
 			EndpointPath: "/api/jobs/artifacts",
 			Description:  "Queries job artifacts and their contents",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.queryJobArtifacts,
+		},
+		{
+			EndpointPath: "/api/jobs/labels",
+			Description:  "List all job run label definitions",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonListLabels,
+		},
+		{
+			EndpointPath: "/api/jobs/labels",
+			Description:  "Create a new job run label definition",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCreateLabel,
+		},
+		{
+			EndpointPath: "/api/jobs/labels/{id}",
+			Description:  "Get a specific job run label definition",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonGetLabel,
+		},
+		{
+			EndpointPath: "/api/jobs/labels/{id}",
+			Description:  "Update a job run label definition",
+			Methods:      []string{http.MethodPut},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonUpdateLabel,
+		},
+		{
+			EndpointPath: "/api/jobs/labels/{id}",
+			Description:  "Delete a job run label definition",
+			Methods:      []string{http.MethodDelete},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonDeleteLabel,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms",
+			Description:  "List all job run symptom definitions",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonListSymptoms,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms",
+			Description:  "Create a new job run symptom definition",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCreateSymptom,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms/{id}",
+			Description:  "Get a specific job run symptom definition",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonGetSymptom,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms/{id}",
+			Description:  "Update a job run symptom definition",
+			Methods:      []string{http.MethodPut},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonUpdateSymptom,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms/{id}",
+			Description:  "Delete a job run symptom definition",
+			Methods:      []string{http.MethodDelete},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonDeleteSymptom,
 		},
 		{
 			EndpointPath: "/api/job_variants",
