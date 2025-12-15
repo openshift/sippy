@@ -455,6 +455,158 @@ component_readiness:
       enabled: false
     regression_tracking:
       enabled: false
+  - name: 4.21-s390x
+    base_release:
+      release: "4.20"
+      relative_start: ga-30d
+      relative_end: ga
+    sample_release:
+      release: "4.21"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Network: { }
+        Platform: { }
+        Topology: { }
+      db_group_by:
+        Architecture: { }
+        FeatureSet: { }
+        Installer: { }
+        Network: { }
+        Platform: { }
+        Suite: { }
+        Topology: { }
+        Upgrade: { }
+        LayeredProduct: { }
+      include_variants:
+        Architecture:
+          - s390x
+          - multi
+        FeatureSet:
+          - default
+          - techpreview
+        Installer:
+          - ipi
+          - upi
+          - hypershift
+        JobTier:
+          - blocking
+          - informing
+          - standard
+        LayeredProduct:
+          - none
+          - virt
+        Network:
+          - ovn
+        Owner:
+          - eng
+          - service-delivery
+        Platform:
+          - libvirt
+          - none
+        Topology:
+          - ha
+          - microshift
+          - external
+        CGroupMode:
+          - v2
+        ContainerRuntime:
+          - runc
+          - crun
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+      flake_as_failure: false
+      pass_rate_required_new_tests: 95
+      include_multi_release_analysis: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: false
+    prime_cache:
+      enabled: false
+    automate_jira:
+      enabled: false
+  - name: 4.21-ppc64le
+    base_release:
+      release: "4.20"
+      relative_start: ga-30d
+      relative_end: ga
+    sample_release:
+      release: "4.21"
+      relative_start: now-7d
+      relative_end: now
+    variant_options:
+      column_group_by:
+        Network: { }
+        Platform: { }
+        Topology: { }
+      db_group_by:
+        Architecture: { }
+        FeatureSet: { }
+        Installer: { }
+        Network: { }
+        Platform: { }
+        Suite: { }
+        Topology: { }
+        Upgrade: { }
+        LayeredProduct: { }
+      include_variants:
+        Architecture:
+          - ppc64le
+          - multi
+        FeatureSet:
+          - default
+          - techpreview
+        Installer:
+          - ipi
+          - upi
+          - hypershift
+        JobTier:
+          - blocking
+          - informing
+          - standard
+        LayeredProduct:
+          - none
+          - virt
+        Network:
+          - ovn
+        Owner:
+          - eng
+          - service-delivery
+        Platform:
+          - libvirt
+          - none
+        Topology:
+          - ha
+          - microshift
+          - external
+        CGroupMode:
+          - v2
+        ContainerRuntime:
+          - runc
+          - crun
+    advanced_options:
+      minimum_failure: 3
+      confidence: 95
+      pity_factor: 5
+      ignore_missing: false
+      ignore_disruption: true
+      flake_as_failure: false
+      pass_rate_required_new_tests: 95
+      include_multi_release_analysis: true
+    metrics:
+      enabled: true
+    regression_tracking:
+      enabled: false
+    prime_cache:
+      enabled: false
+    automate_jira:
+      enabled: false
   - name: 4.20-main
     base_release:
       release: "4.19"
