@@ -1740,7 +1740,7 @@ component_readiness:
       enabled: true
     prime_cache:
       enabled: false
-  - name: 4.21-lp-interop-compliance
+  - name: 4.21-lp-Interop-compliance
     base_release:
       release: "4.20"
       relative_start: now-30d
@@ -1765,6 +1765,7 @@ component_readiness:
           - lp-interop-compliance
         Owner:
           - eng
+          - qe
         Platform:
           - azure
           - gcp
@@ -1784,7 +1785,7 @@ component_readiness:
       enabled: true
     prime_cache:
       enabled: false
-  - name: 4.20-lp-interop-compliance
+  - name: 4.20-lp-Interop-compliance
     base_release:
       release: "4.19"
       relative_start: ga-30d
@@ -1809,6 +1810,7 @@ component_readiness:
           - lp-interop-compliance
         Owner:
           - eng
+          - qe
         Platform:
           - azure
           - gcp
@@ -1828,7 +1830,7 @@ component_readiness:
       enabled: true
     prime_cache:
       enabled: false
-  - name: 4.19-lp-interop-compliance
+  - name: 4.19-lp-Interop-compliance
     base_release:
       release: "4.18"
       relative_start: ga-30d
@@ -1853,6 +1855,7 @@ component_readiness:
           - lp-interop-compliance
         Owner:
           - eng
+          - qe
         Platform:
           - azure
           - gcp
@@ -1872,7 +1875,7 @@ component_readiness:
       enabled: true
     prime_cache:
       enabled: false
-  - name: 4.18-lp-interop-compliance
+  - name: 4.18-lp-Interop-compliance
     base_release:
       release: "4.17"
       relative_start: ga-30d
@@ -1897,6 +1900,7 @@ component_readiness:
           - lp-interop-compliance
         Owner:
           - eng
+          - qe
         Platform:
           - azure
           - gcp
@@ -1916,7 +1920,7 @@ component_readiness:
       enabled: true
     prime_cache:
       enabled: false
-  - name: 4.17-lp-interop-compliance
+  - name: 4.17-lp-Interop-compliance
     base_release:
       release: "4.16"
       relative_start: ga-30d
@@ -1941,6 +1945,7 @@ component_readiness:
           - lp-interop-compliance
         Owner:
           - eng
+          - qe
         Platform:
           - azure
           - gcp
@@ -1960,7 +1965,7 @@ component_readiness:
       enabled: true
     prime_cache:
       enabled: false
-  - name: 4.16-lp-interop-compliance
+  - name: 4.16-lp-Interop-compliance
     base_release:
       release: "4.15"
       relative_start: ga-30d
@@ -1985,6 +1990,7 @@ component_readiness:
           - lp-interop-compliance
         Owner:
           - eng
+          - qe
         Platform:
           - azure
           - gcp
