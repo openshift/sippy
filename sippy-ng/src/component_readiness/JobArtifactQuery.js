@@ -30,7 +30,7 @@ import {
 } from '@mui/icons-material'
 import { getArtifactQueryAPIUrl } from './CompReadyUtils'
 import { relativeTime, safeEncodeURIComponent } from '../helpers'
-import LaunderedLink from '../components/Laundry'
+import LaunderedLink, { openLaunderedLink } from '../components/Laundry'
 import PropTypes from 'prop-types'
 import React, { Fragment } from 'react'
 
@@ -611,13 +611,6 @@ export default function JobArtifactQuery(props) {
   }
 
   function JAQResultTable() {
-    // snyk is absolutely paranoid about urls coming from state vars. ease its concerns.
-    // it would be nice to make this a single "sanitizeURL" function but snyk still doesn't like that.
-    function validateURL(url) {
-      const parsed = new URL(url)
-      return ['https:', 'http:'].includes(parsed.protocol)
-    }
-
     return (
       <TableContainer>
         <Table size="small">
@@ -794,9 +787,12 @@ export default function JobArtifactQuery(props) {
       let visible = new Set(filteredRows.map((row) => row.job_run_id))
       let selected = selectedJobRunIds.intersection(visible)
       if (!selected.size) selected = visible
-      event.preventDefault() //
+      event.preventDefault()
       filteredRows.forEach((row) => {
-        if (selected.has(row.job_run_id)) window.open(row.url, '_blank')
+        if (selected.has(row.job_run_id)) {
+          // URL comes from trusted backend API, but launder it anyway to satisfy snyk
+          openLaunderedLink(row.url)
+        }
       })
     }
     return (
