@@ -42,10 +42,20 @@ You will guide the user through the following steps (skipping steps where argume
    - Format must be X.Y (e.g., 4.22, 4.23)
    - This is the new release for which views will be created
 
-3. **Generate New Views**: Create a Python script to process the views.yaml file:
-   - Read `config/views.yaml`
-   - Find all views where `sample_release.release` equals the source release
-   - For each matching view, create a new view with:
+3. **Preview Changes**: Run the script in preview mode:
+   - Execute: `python3 scripts/generate_release_views.py <source_release> <target_release>`
+   - This will show:
+     - Number of views that will be created
+     - List of view names that will be created
+   - Ask for confirmation before proceeding
+
+4. **Apply Changes**: If confirmed, run the script with --apply flag:
+   - Execute: `python3 scripts/generate_release_views.py <source_release> <target_release> --apply`
+   - The script will:
+     - Read `config/views.yaml`
+     - Find all views where `sample_release.release` equals the source release
+     - Create new views with updated releases and add them to the TOP of the views list
+     - Preserve YAML formatting (double quotes, `{ }` spacing, indentation)
      - **Name**: Replace source release with target release (e.g., `4.21-main` → `4.22-main`)
      - **Sample Release**: Update `sample_release.release` to target release
      - **Base Release**:
@@ -58,29 +68,20 @@ You will guide the user through the following steps (skipping steps where argume
        - Example: `relative_end: ga` becomes `relative_end: now`
        - Rationale: 'ga' refers to the GA date of the release, but source release is not GA when target starts development
 
-4. **Preview Changes**: Show the user:
-   - Number of views that will be created
-   - List of view names that will be created
-   - Ask for confirmation before proceeding
+5. **Verify Output**: Show a diff of the changes made to views.yaml
 
-5. **Write Updated Config**: Append the new views to `config/views.yaml`
-   - Preserve YAML formatting and structure
-   - Add a comment before the new views: `# Generated views for release <target-release>`
-
-6. **Verify Output**: Show a diff of the changes made to views.yaml
-
-7. **Run Validation Test**: Execute the production views configuration test to verify the changes:
+6. **Run Validation Test**: Execute the production views configuration test to verify the changes:
    - Run: `go test -v -run TestProductionViewsConfiguration ./pkg/flags/`
    - This validates the views.yaml structure and regression tracking constraints
    - If the test fails, the views.yaml has errors that must be fixed before committing
 
-8. **Check Current Branch**: Before offering to commit, verify the current branch:
+7. **Check Current Branch**: Before offering to commit, verify the current branch:
    - Run: `git branch --show-current`
    - If the current branch is `main` or `master`, skip the commit offer and warn the user:
      - "Changes have been made but not committed. You are on the main/master branch. Please create a feature branch before committing these changes."
    - If on any other branch, proceed to offer commit
 
-9. **Offer to Commit**: Ask the user if they want to commit the changes. If yes, commit with the message:
+8. **Offer to Commit**: Ask the user if they want to commit the changes. If yes, commit with the message:
    ```
    Add component readiness views for release <target-release>
 
@@ -117,84 +118,25 @@ When copying a view from source release to target release:
      - `relative_start: "ga-30d"` → `relative_start: "now-30d"`
      - `relative_end: "ga"` → `relative_end: "now"`
 
-### Python Script Template
+### Script Location and Usage
 
-```python
-#!/usr/bin/env python3
-import sys
-import yaml
-import re
+The script `scripts/generate_release_views.py` is a reusable Python script that handles all the view generation logic.
 
-def increment_release(release):
-    """Increment minor version (e.g., '4.20' -> '4.21')"""
-    parts = release.split('.')
-    if len(parts) != 2:
-        return release
-    major, minor = parts
-    return f"{major}.{int(minor) + 1}"
-
-def copy_and_update_view(view, source_release, target_release):
-    """Create a copy of the view with updated releases"""
-    import copy
-    new_view = copy.deepcopy(view)
-
-    # Update name
-    new_view['name'] = view['name'].replace(source_release, target_release)
-
-    # Update sample release
-    new_view['sample_release']['release'] = target_release
-
-    # Update base release
-    base_release = view['base_release']['release']
-    if base_release == source_release:
-        # Same-release comparison
-        new_view['base_release']['release'] = target_release
-    else:
-        # Cross-release comparison - increment base
-        new_base = increment_release(base_release)
-        new_view['base_release']['release'] = new_base
-
-        # If new base equals source release, replace 'ga' with 'now' in relative dates
-        if new_base == source_release:
-            if 'relative_start' in new_view['base_release']:
-                new_view['base_release']['relative_start'] = \
-                    new_view['base_release']['relative_start'].replace('ga', 'now')
-            if 'relative_end' in new_view['base_release']:
-                new_view['base_release']['relative_end'] = \
-                    new_view['base_release']['relative_end'].replace('ga', 'now')
-
-    return new_view
-
-def main():
-    source_release = sys.argv[1]
-    target_release = sys.argv[2]
-    config_file = 'config/views.yaml'
-
-    # Read YAML
-    with open(config_file, 'r') as f:
-        config = yaml.safe_load(f)
-
-    # Find and copy views
-    new_views = []
-    for view in config['component_readiness']:
-        if view['sample_release']['release'] == source_release:
-            new_view = copy_and_update_view(view, source_release, target_release)
-            new_views.append(new_view)
-
-    if not new_views:
-        print(f"No views found with sample_release={source_release}", file=sys.stderr)
-        sys.exit(1)
-
-    # Preview
-    print(f"Will create {len(new_views)} new views:")
-    for view in new_views:
-        print(f"  - {view['name']}")
-
-    return new_views
-
-if __name__ == '__main__':
-    main()
+**Preview mode (default):**
+```bash
+python3 scripts/generate_release_views.py <source_release> <target_release>
 ```
+
+**Apply mode:**
+```bash
+python3 scripts/generate_release_views.py <source_release> <target_release> --apply
+```
+
+The script uses `ruamel.yaml` to preserve YAML formatting including:
+- Double quotes for strings
+- `{ }` with space for empty dicts
+- Original indentation
+- Document separator `---`
 
 ## Important Notes
 

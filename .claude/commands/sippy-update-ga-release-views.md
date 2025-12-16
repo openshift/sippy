@@ -1,10 +1,10 @@
 ---
-name: sippy-update-ga-release [release]
+name: sippy-update-ga-release-views [release]
 description: Update base_release relative dates when a release goes GA
 allowedTools:
   - Bash
   - Read
-  - Write
+  - Edit
   - TodoWrite
   - AskUserQuestion
 ---
@@ -36,38 +36,36 @@ You will guide the user through the following steps (skipping steps where argume
    - Format must be X.Y (e.g., 4.21, 4.20)
    - This is the release that transitioned from development to GA
 
-2. **Find Affected Views**: Create a Python script to process the views.yaml file:
+2. **Find Affected Views**: Search config/views.yaml to identify affected views:
    - Read `config/views.yaml`
    - Find all views where `base_release.release` equals the GA release
-   - For each matching view, update the base_release section:
-     - Replace 'now' with 'ga' in `relative_start` (e.g., `now-30d` → `ga-30d`)
-     - Replace 'now' with 'ga' in `relative_end` (e.g., `now` → `ga`)
-   - **Rationale**: When a release goes GA, we want to reference the GA date as a stable point, not the current date
-
-3. **Preview Changes**: Show the user:
-   - Number of views that will be affected
-   - List of view names that will be updated
-   - Example of the changes (before/after for relative dates)
+   - Show the user:
+     - Number of views that will be affected
+     - List of view names that will be updated
+     - Example of the changes (before/after for relative dates)
    - Ask for confirmation before proceeding
 
-4. **Write Updated Config**: Update `config/views.yaml` with the changes
-   - Preserve YAML formatting and structure
+3. **Apply Updates**: For each affected view, update the base_release section:
+   - Replace 'now' with 'ga' in `relative_start` (e.g., `now-30d` → `ga-30d`)
+   - Replace 'now' with 'ga' in `relative_end` (e.g., `now` → `ga`)
+   - **IMPORTANT**: Preserve YAML formatting (double quotes, `{ }` spacing, indentation)
    - Only modify the base_release relative dates for matching views
+   - **Rationale**: When a release goes GA, we want to reference the GA date as a stable point, not the current date
 
-5. **Verify Output**: Show a diff of the changes made to views.yaml
+4. **Verify Output**: Show a diff of the changes made to views.yaml
 
-6. **Run Validation Test**: Execute the production views configuration test to verify the changes:
+5. **Run Validation Test**: Execute the production views configuration test to verify the changes:
    - Run: `go test -v -run TestProductionViewsConfiguration ./pkg/flags/`
    - This validates the views.yaml structure and regression tracking constraints
    - If the test fails, the views.yaml has errors that must be fixed before committing
 
-7. **Check Current Branch**: Before offering to commit, verify the current branch:
+6. **Check Current Branch**: Before offering to commit, verify the current branch:
    - Run: `git branch --show-current`
    - If the current branch is `main` or `master`, skip the commit offer and warn the user:
      - "Changes have been made but not committed. You are on the main/master branch. Please create a feature branch before committing these changes."
    - If on any other branch, proceed to offer commit
 
-8. **Offer to Commit**: Ask the user if they want to commit the changes. If yes, commit with the message:
+7. **Offer to Commit**: Ask the user if they want to commit the changes. If yes, commit with the message:
    ```
    Update base_release relative dates for GA release <release>
 
@@ -95,70 +93,19 @@ When a release goes GA, views that reference it in base_release should use 'ga' 
    - `relative_end: "now"` → `relative_end: "ga"`
 3. **Preserve Other Fields**: Don't modify any other fields in the view
 
-### Python Script Template
+### Implementation Approach
 
-```python
-#!/usr/bin/env python3
-import sys
-import yaml
+Use the Read and Edit tools to update views in place:
 
-def update_ga_release(view, ga_release):
-    """Update base_release relative dates from 'now' to 'ga' if release matches"""
-    if view['base_release']['release'] != ga_release:
-        return False  # No change needed
+1. Read `config/views.yaml`
+2. Find each view where `base_release.release` equals the GA release
+3. For each match, use the Edit tool to replace:
+   - `relative_start: now-30d` with `relative_start: ga-30d`
+   - `relative_start: now-1d` with `relative_start: ga-1d`
+   - `relative_end: now` with `relative_end: ga`
+4. This approach preserves all YAML formatting (quotes, spacing, indentation)
 
-    modified = False
-
-    # Update relative_start
-    if 'relative_start' in view['base_release']:
-        old_value = view['base_release']['relative_start']
-        new_value = old_value.replace('now', 'ga')
-        if old_value != new_value:
-            view['base_release']['relative_start'] = new_value
-            modified = True
-
-    # Update relative_end
-    if 'relative_end' in view['base_release']:
-        old_value = view['base_release']['relative_end']
-        new_value = old_value.replace('now', 'ga')
-        if old_value != new_value:
-            view['base_release']['relative_end'] = new_value
-            modified = True
-
-    return modified
-
-def main():
-    ga_release = sys.argv[1]
-    config_file = 'config/views.yaml'
-
-    # Read YAML
-    with open(config_file, 'r') as f:
-        config = yaml.safe_load(f)
-
-    # Update views
-    affected_views = []
-    for view in config['component_readiness']:
-        if update_ga_release(view, ga_release):
-            affected_views.append(view['name'])
-
-    if not affected_views:
-        print(f"No views found with base_release.release={ga_release}", file=sys.stderr)
-        sys.exit(1)
-
-    # Preview
-    print(f"Will update {len(affected_views)} views:")
-    for name in affected_views:
-        print(f"  - {name}")
-
-    # Write updated config
-    with open(config_file, 'w') as f:
-        yaml.dump(config, f, default_flow_style=False, sort_keys=False)
-
-    print(f"\nSuccessfully updated {len(affected_views)} views")
-
-if __name__ == '__main__':
-    main()
-```
+**IMPORTANT**: Use the Edit tool for each change to preserve exact formatting. Do not use Python yaml.dump() as it may alter formatting (quotes, empty dict spacing, etc.).
 
 ## Important Notes
 
@@ -173,7 +120,7 @@ if __name__ == '__main__':
 
 ### Example 1: Updating when 4.21 goes GA
 
-Command: `/sippy-update-ga-release 4.21`
+Command: `/sippy-update-ga-release-views 4.21`
 
 This will find all views with `base_release.release: "4.21"` and update:
 - `4.22-main` view:
@@ -185,7 +132,7 @@ This will find all views with `base_release.release: "4.21"` and update:
 
 ### Example 2: No arguments
 
-Command: `/sippy-update-ga-release`
+Command: `/sippy-update-ga-release-views`
 
 Will prompt: "Which release just went GA? (e.g., 4.21)"
 
@@ -197,8 +144,8 @@ This command is part of the release lifecycle workflow:
    - Views use `base_release: {release: "4.21", relative_start: "now-30d", relative_end: "now"}`
    - This references current data from 4.21 which is still in development
 
-2. **When 4.21 goes GA**: Run `/sippy-update-ga-release 4.21`
+2. **When 4.21 goes GA**: Run `/sippy-update-ga-release-views 4.21`
    - Changes to `base_release: {release: "4.21", relative_start: "ga-30d", relative_end: "ga"}`
    - Now references the stable GA date as the baseline
 
-3. **When 4.22 goes GA**: Eventually run `/sippy-update-ga-release 4.22` for 4.23 views
+3. **When 4.22 goes GA**: Eventually run `/sippy-update-ga-release-views 4.22` for 4.23 views
