@@ -18,7 +18,7 @@ func validateLabel(label jobrunscan.Label) error {
 	if label.LabelTitle == "" {
 		return fmt.Errorf("label_title is required for a label")
 	}
-	if !validIdentifierRegex.MatchString(label.ID) {
+	if !ValidIdentifierRegex.MatchString(label.ID) {
 		return fmt.Errorf("invalid id for a label: %s", label.ID)
 	}
 
