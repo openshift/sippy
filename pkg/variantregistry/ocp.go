@@ -659,6 +659,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// release blocking yet.
 		{[]string{"-mco-disruptive"}, "candidate"},
 
+		// Installation with AWS Custom DNS feature has been successful but seen some e2e test failures
+		{[]string{"-aws-custom-dns"}, "candidate"},
+
 		// Konflux jobs aren't ready yet
 		{[]string{"-konflux"}, "candidate"},
 		{[]string{"-console-operator-"}, "candidate"}, // https://issues.redhat.com/browse/OCPBUGS-54873
