@@ -25,6 +25,7 @@ var testSuites = []string{
 	"sippy",
 
 	// ARO
+	"rp-api-compat-all/parallel",
 	"integration/parallel",
 	"stage/parallel",
 	"prod/parallel",
