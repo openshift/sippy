@@ -30,7 +30,7 @@ type JobArtifactQuery struct {
 	JobRunIDs      []int64
 	PathGlob       string // A simple glob to match files in the artifact bucket for each queried run
 	ContentMatcher        // An interface to match in the content of the files
-	// TODO: regex, jq, xpath support for matching content
+	// TODO: jq, xpath support for matching content
 }
 
 func (q *JobArtifactQuery) queryJobArtifacts(ctx context.Context, jobRunID int64, mgr *Manager, logger *log.Entry) (JobRun, error) {
@@ -170,34 +170,20 @@ func relativeArtifactPath(bucketPath, jobRunID string) string {
 	return bucketPath[start+len(marker):]
 }
 
-func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, file *storage.ObjectAttrs) (artifact JobRunArtifact) {
+func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, attrs *storage.ObjectAttrs) (artifact JobRunArtifact) {
 	artifact.JobRunID = strconv.FormatInt(jobRunID, 10)
-	artifact.ArtifactPath = relativeArtifactPath(file.Name, artifact.JobRunID)
-	artifact.ArtifactContentType = file.ContentType
-	artifact.ArtifactURL = fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, file.Name)
+	artifact.ArtifactPath = relativeArtifactPath(attrs.Name, artifact.JobRunID)
+	artifact.ArtifactContentType = attrs.ContentType
+	artifact.ArtifactURL = fmt.Sprintf(artifactURLFmt, util.GcsBucketRoot, attrs.Name)
 	if q.ContentMatcher == nil { // no matching requested
 		return
 	}
 
-	gcsReader, err := q.GcsBucket.Object(file.Name).NewReader(context.Background())
+	reader, closer, err := OpenArtifactReader(context.Background(), q.GcsBucket.Object(attrs.Name), attrs.ContentType)
+	defer closer()
 	if err != nil {
 		artifact.Error = err.Error()
 		return
-	}
-	defer gcsReader.Close()
-
-	var reader *bufio.Reader
-	if file.ContentType == "application/gzip" {
-		// if it's gzipped, decompress it in the stream
-		gzipReader, err := gzip.NewReader(gcsReader)
-		if err != nil {
-			artifact.Error = err.Error()
-			return
-		}
-		defer gzipReader.Close()
-		reader = bufio.NewReader(gzipReader)
-	} else { // just read it as a normal text file
-		reader = bufio.NewReader(gcsReader)
 	}
 
 	matches, err := q.ContentMatcher.GetMatches(reader)
@@ -206,6 +192,45 @@ func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, file *storage.O
 	}
 	artifact.MatchedContent = matches // even if scanning hit an error, we may still want to see incomplete matches
 	return
+}
+
+// OpenArtifactReader opens a reader on an artifact, transparently handling compressed archives.
+// In addition to the reader, it returns a closer function which can and should be called in a defer -
+// regardless of whether there was an error.
+func OpenArtifactReader(ctx context.Context, file *storage.ObjectHandle, contentType string) (*bufio.Reader, func(), error) {
+	var gcsReader *storage.Reader
+	var gzipReader *gzip.Reader
+
+	var reader *bufio.Reader
+	closer := func() {
+		if gzipReader != nil {
+			_ = gzipReader.Close()
+		}
+		if gcsReader != nil {
+			_ = gcsReader.Close()
+		}
+	}
+	var err error
+
+	gcsReader, err = file.NewReader(ctx)
+	if err != nil {
+		gcsReader = nil // will not need closing
+		return nil, closer, err
+	}
+
+	if contentType == "application/gzip" {
+		// if it's gzipped, decompress it in the stream
+		gzipReader, err = gzip.NewReader(gcsReader)
+		if err != nil {
+			gzipReader = nil // will not need closing
+			return nil, closer, err
+		}
+		reader = bufio.NewReader(gzipReader)
+	} else { // otherwise read it as a normal text file
+		reader = bufio.NewReader(gcsReader)
+	}
+
+	return reader, closer, nil
 }
 
 // ContentMatcher is a generic interface for matching content in artifact files
