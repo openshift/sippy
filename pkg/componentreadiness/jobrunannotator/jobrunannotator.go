@@ -18,6 +18,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -171,15 +172,6 @@ type jobRun struct {
 	ID        string         `bigquery:"prowjob_build_id"`
 	StartTime civil.DateTime `bigquery:"prowjob_start"`
 	URL       string         `bigquery:"prowjob_url"`
-}
-
-type jobRunAnnotation struct {
-	ID        string              `bigquery:"prowjob_build_id"`
-	StartTime civil.DateTime      `bigquery:"prowjob_start"`
-	Label     string              `bigquery:"label"`
-	Comment   string              `bigquery:"comment"`
-	User      bigquery.NullString `bigquery:"user"`
-	url       string
 }
 
 func (j JobRunAnnotator) getJobRunsFromBigQuery(ctx context.Context) (map[int64]jobRun, error) { //lint:ignore
@@ -392,13 +384,13 @@ func (j JobRunAnnotator) filterJobRunByArtifact(ctx context.Context, jobRunIDs [
 }
 
 // bulkInsertVariants inserts all new job variants in batches.
-func (j JobRunAnnotator) bulkInsertJobRunAnnotations(ctx context.Context, inserts []jobRunAnnotation) error {
+func (j JobRunAnnotator) bulkInsertJobRunAnnotations(ctx context.Context, inserts []models.JobRunLabel) error {
 	var batchSize = 500
 
 	if !j.execute {
 		jobsStr := ""
 		for _, jobRun := range inserts {
-			jobsStr += fmt.Sprintf("StartTime: %v; URL: %s\n", jobRun.StartTime, jobRun.url)
+			jobsStr += fmt.Sprintf("StartTime: %v; URL: %s\n", jobRun.StartTime, jobRun.Url)
 		}
 		log.Infof("\n===========================================================\nDry run mode enabled\nBulk inserting\n%s\n\nTo write the label to DB, please use --execute argument\n", jobsStr)
 		return nil
@@ -430,7 +422,7 @@ func (j JobRunAnnotator) generateComment() string {
 	return comment
 }
 
-func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (map[int64]jobRunAnnotation, error) {
+func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (map[int64]models.JobRunLabel, error) {
 	now := time.Now()
 	queryStr := fmt.Sprintf(`
 		SELECT
@@ -443,7 +435,7 @@ func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (
 	q := j.bqClient.BQ.Query(queryStr)
 
 	errs := []error{}
-	result := make(map[int64]jobRunAnnotation)
+	result := make(map[int64]models.JobRunLabel)
 	log.Debugf("Fetching job run annotations with:\n%s\n", q.Q)
 
 	it, err := q.Read(ctx)
@@ -453,7 +445,7 @@ func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (
 	}
 
 	for {
-		row := jobRunAnnotation{}
+		row := models.JobRunLabel{}
 		err := it.Next(&row)
 		if errors.Is(err, iterator.Done) {
 			break
@@ -486,7 +478,7 @@ func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (
 }
 
 func (j JobRunAnnotator) annotateJobRuns(ctx context.Context, jobRunIDs []int64, jobRuns map[int64]jobRun) error {
-	jobRunAnnotations := make([]jobRunAnnotation, 0, len(jobRunIDs))
+	jobRunAnnotations := make([]models.JobRunLabel, 0, len(jobRunIDs))
 	existingAnnotations, err := j.getJobRunAnnotationsFromBigQuery(ctx)
 	if err != nil {
 		return err
@@ -498,13 +490,13 @@ func (j JobRunAnnotator) annotateJobRuns(ctx context.Context, jobRunIDs []int64,
 			if annotation, existing := existingAnnotations[jobRunID]; existing && annotation.Label == j.Label {
 				continue
 			}
-			jobRunAnnotations = append(jobRunAnnotations, jobRunAnnotation{
+			jobRunAnnotations = append(jobRunAnnotations, models.JobRunLabel{
 				ID:        jobRun.ID,
 				StartTime: jobRun.StartTime,
 				Label:     j.Label,
 				Comment:   j.generateComment(),
 				User:      bigquery.NullString{Valid: true, StringVal: j.user},
-				url:       jobRun.URL,
+				Url:       jobRun.URL,
 			})
 		}
 	}
