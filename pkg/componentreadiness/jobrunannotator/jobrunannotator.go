@@ -390,7 +390,7 @@ func (j JobRunAnnotator) bulkInsertJobRunAnnotations(ctx context.Context, insert
 	if !j.execute {
 		jobsStr := ""
 		for _, jobRun := range inserts {
-			jobsStr += fmt.Sprintf("StartTime: %v; URL: %s\n", jobRun.StartTime, jobRun.Url)
+			jobsStr += fmt.Sprintf("StartTime: %v; URL: %s\n", jobRun.StartTime, jobRun.URL)
 		}
 		log.Infof("\n===========================================================\nDry run mode enabled\nBulk inserting\n%s\n\nTo write the label to DB, please use --execute argument\n", jobsStr)
 		return nil
@@ -484,6 +484,7 @@ func (j JobRunAnnotator) annotateJobRuns(ctx context.Context, jobRunIDs []int64,
 		return err
 	}
 	log.Infof("Found %d existing job run annotations.", len(existingAnnotations))
+	now := civil.DateTimeOf(time.Now())
 	for _, jobRunID := range jobRunIDs {
 		if jobRun, ok := jobRuns[jobRunID]; ok {
 			// Skip if the same label already exists
@@ -491,12 +492,16 @@ func (j JobRunAnnotator) annotateJobRuns(ctx context.Context, jobRunIDs []int64,
 				continue
 			}
 			jobRunAnnotations = append(jobRunAnnotations, models.JobRunLabel{
-				ID:        jobRun.ID,
-				StartTime: jobRun.StartTime,
-				Label:     j.Label,
-				Comment:   j.generateComment(),
-				User:      bigquery.NullString{Valid: true, StringVal: j.user},
-				Url:       jobRun.URL,
+				ID:         jobRun.ID,
+				StartTime:  jobRun.StartTime,
+				Label:      j.Label,
+				Comment:    j.generateComment(),
+				User:       j.user,
+				CreatedAt:  now,
+				UpdatedAt:  now,
+				SourceTool: "sippy annotate-job-runs",
+				SymptomID:  "", // Empty for manual annotations; will be populated when symptom detection is implemented
+				URL:        jobRun.URL,
 			})
 		}
 	}
