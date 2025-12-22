@@ -41,6 +41,12 @@ type MatchedContent struct {
 	*ContentLineMatches `json:"line_matches,omitempty"`
 }
 
+// HasMatches returns true if there are any matches in the MatchedContent.
+// This could get more complicated with more matcher types, but for now we only have line matches.
+func (m MatchedContent) HasMatches() bool {
+	return m.ContentLineMatches != nil && len(m.ContentLineMatches.Matches) > 0
+}
+
 type ContentLineMatches struct {
 	// NOTE: limited per maxFileMatches, sets Truncated if file has more matches
 	Matches   []ContentLineMatch `json:"matches"`
