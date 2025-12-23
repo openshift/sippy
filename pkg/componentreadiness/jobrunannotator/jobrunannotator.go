@@ -413,13 +413,26 @@ func (j JobRunAnnotator) bulkInsertJobRunAnnotations(ctx context.Context, insert
 	return nil
 }
 
+// LabelComment is what gets serialized in the DB to provide context for applying the label.
+// each tool that produces job_labels can specify whatever context is relevant for it;
+// but each should do so in a json object with a unique key for its own schema.
+type LabelComment struct {
+	Comment string          `json:"comment"`
+	V1      JobRunAnnotator `json:"job_run_annotator_v1"`
+}
+
 func (j JobRunAnnotator) generateComment() string {
-	comment := j.comment
-	annotatorComment, err := json.MarshalIndent(j, "", "    ")
-	if err == nil {
-		comment += fmt.Sprintf("\nAnnotator\n%s", annotatorComment)
+	comment := LabelComment{
+		Comment: j.comment, // apparently separated out in order to stand out from the object
+		V1:      j,
 	}
-	return comment
+	str, err := json.MarshalIndent(comment, "", "    ")
+	if err != nil {
+		log.WithError(err).Error("error generating JobAnnotator comment")
+		// fallback comment that will not parse as json, but will be visible in the DB
+		return j.comment + "\nError generating JobAnnotator comment: " + err.Error()
+	}
+	return string(str)
 }
 
 func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (map[int64]models.JobRunLabel, error) {
