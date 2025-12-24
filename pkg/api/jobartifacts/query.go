@@ -170,7 +170,7 @@ func relativeArtifactPath(bucketPath, jobRunID string) string {
 	return bucketPath[start+len(marker):]
 }
 
-func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, attrs *storage.ObjectAttrs) (artifact JobRunArtifact) {
+func (q *JobArtifactQuery) getFileContentMatches(ctx context.Context, jobRunID int64, attrs *storage.ObjectAttrs) (artifact JobRunArtifact) {
 	artifact.JobRunID = strconv.FormatInt(jobRunID, 10)
 	artifact.ArtifactPath = relativeArtifactPath(attrs.Name, artifact.JobRunID)
 	artifact.ArtifactContentType = attrs.ContentType
@@ -179,7 +179,7 @@ func (q *JobArtifactQuery) getFileContentMatches(jobRunID int64, attrs *storage.
 		return
 	}
 
-	reader, closer, err := OpenArtifactReader(context.Background(), q.GcsBucket.Object(attrs.Name), attrs.ContentType)
+	reader, closer, err := OpenArtifactReader(ctx, q.GcsBucket.Object(attrs.Name), attrs.ContentType)
 	defer closer()
 	if err != nil {
 		artifact.Error = err.Error()
