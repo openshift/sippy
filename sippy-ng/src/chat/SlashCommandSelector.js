@@ -1,4 +1,5 @@
 import {
+  Chip,
   ClickAwayListener,
   List,
   ListItem,
@@ -6,6 +7,7 @@ import {
   Paper,
   Popper,
 } from '@mui/material'
+import { Computer as ComputerIcon } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
 import { usePrompts } from './store/useChatStore'
 import PropTypes from 'prop-types'
@@ -24,6 +26,15 @@ const useStyles = makeStyles((theme) => ({
     '&:hover': {
       backgroundColor: theme.palette.action.hover,
     },
+  },
+  listItemContent: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: theme.spacing(1),
+    width: '100%',
+  },
+  localChip: {
+    marginLeft: 'auto',
   },
 }))
 
@@ -116,10 +127,22 @@ export default function SlashCommandSelector({
             onClick={() => handlePromptClick(prompt)}
             selected={index === selectedIndex}
           >
-            <ListItemText
-              primary={`/${prompt.name}`}
-              secondary={prompt.description}
-            />
+            <div className={classes.listItemContent}>
+              <ListItemText
+                primary={`/${prompt.name}`}
+                secondary={prompt.description}
+              />
+              {prompt.source === 'local' && (
+                <Chip
+                  icon={<ComputerIcon />}
+                  label="Local"
+                  size="small"
+                  color="secondary"
+                  variant="outlined"
+                  className={classes.localChip}
+                />
+              )}
+            </div>
           </ListItem>
         ))}
       </List>

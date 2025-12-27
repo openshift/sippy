@@ -5,6 +5,7 @@ import {
   Typography,
 } from '@mui/material'
 import {
+  Code as CodeIcon,
   ExpandMore as ExpandMoreIcon,
   Help as HelpIcon,
   Fullscreen as MaximizeIcon,
@@ -17,13 +18,15 @@ import { makeStyles } from '@mui/styles'
 import {
   useConnectionState,
   usePageContextForChat,
+  usePrompts,
   useSessionState,
   useSettings,
   useShareActions,
   useShareState,
 } from './store/useChatStore'
+import PromptManagerModal from './PromptManagerModal'
 import PropTypes from 'prop-types'
-import React from 'react'
+import React, { useState } from 'react'
 import SessionManager from './SessionDropdown'
 
 const useStyles = makeStyles((theme) => ({
@@ -103,9 +106,12 @@ export default function ChatHeader({
   const { shareConversation } = useShareActions()
   const { setSettingsOpen } = useSettings()
   const { pageContext } = usePageContextForChat()
+  const { localPrompts } = usePrompts()
 
   const messages = activeSession?.messages || []
   const hasMessages = messages.length > 0
+
+  const [promptManagerOpen, setPromptManagerOpen] = useState(false)
 
   const handleHelp = () => {
     window.open(
@@ -155,6 +161,20 @@ export default function ChatHeader({
           </span>
         </Tooltip>
 
+        <Tooltip
+          title={`Manage Custom Prompts${
+            localPrompts.length > 0 ? ` (${localPrompts.length})` : ''
+          }`}
+        >
+          <IconButton
+            size="small"
+            onClick={() => setPromptManagerOpen(true)}
+            data-tour="prompt-manager-button"
+          >
+            <CodeIcon />
+          </IconButton>
+        </Tooltip>
+
         <Tooltip title="Help">
           <IconButton size="small" onClick={handleHelp} data-tour="help-button">
             <HelpIcon />
@@ -187,6 +207,11 @@ export default function ChatHeader({
           </>
         )}
       </div>
+
+      <PromptManagerModal
+        open={promptManagerOpen}
+        onClose={() => setPromptManagerOpen(false)}
+      />
     </div>
   )
 }
