@@ -1,9 +1,9 @@
-langgraph>=0.2.0
-langchain>=0.1.0
-langchain-openai>=0.1.0
-langchain-google-genai>=4.0.0
-langchain-community>=0.0.20
-langchain-core>=0.1.0
+langgraph>=1.0.5
+langchain>=1.2.0
+langchain-openai>=1.1.6
+langchain-google-genai>=4.1.2
+langchain-community>=0.4.1
+langchain-core>=1.2.5
 click>=8.0.0
 rich>=13.0.0
 python-dotenv>=1.0.0
@@ -14,7 +14,7 @@ fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 watchfiles
 websockets
-langchain-mcp-adapters
+langchain-mcp-adapters>=0.2.1
 mcp-client
 defusedxml>=0.7.0
 psycopg2-binary>=2.9.0
