@@ -14,7 +14,7 @@ import (
 
 // validateSymptom ensures the Symptom record coming into the API appears valid.
 func validateSymptom(dbc *gorm.DB, symptom jobrunscan.Symptom) error {
-	if !validIdentifierRegex.MatchString(symptom.ID) {
+	if !ValidIdentifierRegex.MatchString(symptom.ID) {
 		return fmt.Errorf("invalid id for a symptom: %s", symptom.ID)
 	}
 

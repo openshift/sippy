@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	validIdentifierRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+	ValidIdentifierRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 	wordCharRegex        = regexp.MustCompile(`[a-zA-Z0-9]+`) // no underscores or non-word
 	removeLeadingRegex   = regexp.MustCompile(`^\d+`)
 )
