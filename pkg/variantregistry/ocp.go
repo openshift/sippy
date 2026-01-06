@@ -645,6 +645,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// QE jobs allowlisted for Component Readiness
 		{[]string{"-automated-release"}, "standard"},
 
+		// OVN-Kubernetes BGP Virtualization jobs allowed for Component Readiness
+		{[]string{"-ovn-bgp-virt"}, "standard"},
+
 		// Excluded jobs
 		{[]string{"-okd"}, "excluded"},
 		{[]string{"-recovery"}, "excluded"},
