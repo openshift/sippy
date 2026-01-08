@@ -355,6 +355,7 @@ type JobRun struct {
 	PullRequestLink       string              `json:"pull_request_link"`
 	PullRequestSHA        string              `json:"pull_request_sha"`
 	PullRequestAuthor     string              `json:"pull_request_author"`
+	Labels                pq.StringArray      `json:"labels" gorm:"type:text[]"`
 }
 
 func (run JobRun) GetFieldType(param string) ColumnType {
@@ -372,6 +373,8 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 	case "failed_test_names":
 		return ColumnTypeArray
 	case "flaked_test_names":
+		return ColumnTypeArray
+	case "labels":
 		return ColumnTypeArray
 	case "variants":
 		return ColumnTypeArray
@@ -438,6 +441,8 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 		return run.FailedTestNames, nil
 	case "flaked_test_names":
 		return run.FlakedTestNames, nil
+	case "labels":
+		return run.Labels, nil
 	case "tags":
 		return run.Tags, nil
 	case "variants":

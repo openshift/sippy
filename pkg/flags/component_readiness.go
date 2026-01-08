@@ -7,7 +7,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 )
@@ -51,7 +50,7 @@ func (f *ComponentReadinessFlags) ParseViewsFile() (*api.SippyViews, error) {
 
 		err = f.validateViews(vf)
 		if err != nil {
-			log.WithError(err).Fatal("invalid view definition found")
+			return vf, errors.Wrap(err, "invalid view definition found")
 		}
 	}
 	return vf, nil

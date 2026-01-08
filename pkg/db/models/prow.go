@@ -57,6 +57,9 @@ type ProwJobRun struct {
 	Timestamp     time.Time `gorm:"index;index:idx_prow_job_runs_timestamp_date,expression:DATE(timestamp AT TIME ZONE 'UTC')"`
 	Duration      time.Duration
 	OverallResult v1.JobOverallResult `gorm:"index"`
+	// Labels stores the IDs of labels applied to this job run
+	// This is populated from symptom detection or manual annotation
+	Labels pq.StringArray `gorm:"type:text[];index:idx_prow_job_runs_labels,type:gin" json:"labels"`
 	// used to pass the TestCount in via the api, we have the actual tests in the db and can calculate it here so don't persist
 	TestCount   int         `gorm:"-"`
 	ClusterData ClusterData `gorm:"-"`

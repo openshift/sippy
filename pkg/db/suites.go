@@ -25,6 +25,7 @@ var testSuites = []string{
 	"sippy",
 
 	// ARO
+	"rp-api-compat-all/parallel",
 	"integration/parallel",
 	"stage/parallel",
 	"prod/parallel",
@@ -66,7 +67,8 @@ var testSuites = []string{
 	"Quay-lp-interop",
 	"Serverless-lp-interop",
 	"ServiceMesh-lp-interop",
-	"OpenshitPipelines-lp-interop",
+	"OpenshiftPipelines-lp-interop",
+	"COO-lp-interop",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {

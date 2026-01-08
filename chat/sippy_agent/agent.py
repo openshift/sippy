@@ -124,6 +124,11 @@ class SippyAgent:
                     "Google API key or service account credentials file is required for Gemini models"
                 )
 
+            # Set environment variable for Vertex AI usage (required for langchain-google-genai 4.0+)
+            # Sippy only uses Vertex AI for Gemini.
+            import os
+            os.environ["GOOGLE_GENAI_USE_VERTEXAI"] = "true"
+
             llm_kwargs = {
                 "model": self.config.model_name,
                 "temperature": self.config.temperature,
@@ -139,8 +144,6 @@ class SippyAgent:
                     )
             elif self.config.google_credentials_file:
                 # Set the environment variable for Google credentials
-                import os
-
                 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = (
                     self.config.google_credentials_file
                 )
@@ -236,7 +239,7 @@ class SippyAgent:
 1. **Use your available tools:** Always use your available tools to answer the user's question.
 2. **Avoid Redundancy:** Never call the same tool with the same parameters more than once.
 3. **Provide Evidence:** Always ground your analysis in tool results.
-4. **Present Clearly:** Use markdown links for URLs (e.g., `[Job Name](link)`), no raw JSON, and format for readability. When constructing markdown links, if the link text contains its own brackets ([ or ]), escape them with a backslash to ensure it is rendered correctly.
+4. **Present Clearly:** Avoid raw JSON, YAML, etc unless required, and always place it in a verbatim markdown block. Use markdown links for URLs (e.g., `[Job Name](link)`). When constructing markdown links, if the link text contains its own brackets ([ or ]), escape them with a backslash to ensure it is rendered correctly. Markdown links must always be on one line, and not have any linebreaks in them. Please ensure all markdown table headers and separator lines are on a single line without any extra newlines, and always double-check the markdown syntax for proper rendering.
 5. **Maximize Efficiency:** When multiple tools can be called independently (no data dependencies), call them in parallel rather than sequentially. For example, if analyzing multiple failed jobs, call `get_prow_job_summary` for all jobs simultaneously.
 6. When a tool argument (especially a URL) is explicitly described as requiring its value "verbatim," "exactly as provided," or "without modification," you MUST pass the provided string directly to the tool without any internal parsing, re-construction, or alteration of its content. Treat such arguments as opaque strings.
 

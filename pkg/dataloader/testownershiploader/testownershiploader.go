@@ -58,7 +58,7 @@ func (tol *TestOwnershipLoader) Load() {
 		// Find the test in Sippy DB:
 		var test models.Test
 		res := tol.dbc.DB.Table("tests").First(&test, "name = ?", m.Name)
-		if res.Error == gorm.ErrRecordNotFound {
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			log.WithFields(log.Fields{
 				"testname": m.Name,
 			}).Debugf("sippy doesn't know about this test")
@@ -80,7 +80,7 @@ func (tol *TestOwnershipLoader) Load() {
 		} else {
 			var suite models.Suite
 			res = tol.dbc.DB.Model(&models.Suite{}).First(&suite, "name = ?", m.Suite)
-			if res.Error != nil && res.Error != gorm.ErrRecordNotFound {
+			if res.Error != nil && !errors.Is(res.Error, gorm.ErrRecordNotFound) {
 				tol.errors = append(tol.errors, errors.Wrap(res.Error, "couldn't find suite "+m.Suite))
 				continue
 			}
@@ -100,7 +100,7 @@ func (tol *TestOwnershipLoader) Load() {
 			if res.Error != nil {
 				msg := fmt.Sprintf("error with jira component %q", m.JIRAComponent)
 				tol.errors = append(tol.errors, errors.WithMessage(res.Error, msg))
-				log.WithError(err).Warning(msg)
+				log.WithError(res.Error).Warning(msg)
 				continue
 			}
 			id := jiraComponent.ID
@@ -130,7 +130,7 @@ func (tol *TestOwnershipLoader) Load() {
 		}).Save(tom)
 		if res.Error != nil {
 			tol.errors = append(tol.errors, res.Error)
-			log.WithError(err).Warningf("error saving test ownership record for %q", m.Name)
+			log.WithError(res.Error).Warningf("error saving test ownership record for %q", m.Name)
 			return
 		}
 		ids = append(ids, tom.ID)

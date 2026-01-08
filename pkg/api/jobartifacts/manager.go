@@ -266,7 +266,7 @@ func (m *Manager) artifactWorker(managerCtx context.Context) {
 		artLog.Debug("Received request from artifactChan")
 		response := artifactResponse{
 			artifactPath: request.artifactAttrs.Name,
-			artifact:     request.query.getFileContentMatches(request.jobRunID, request.artifactAttrs),
+			artifact:     request.query.getFileContentMatches(request.ctx, request.jobRunID, request.artifactAttrs),
 		}
 
 		expired = sendViaChannel(request.ctx, request.artifactsChan, response)

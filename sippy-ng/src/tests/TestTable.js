@@ -740,7 +740,7 @@ function TestTable(props) {
         if (params.row.variants && params.row.variants.length > 0) {
           params.row.variants.forEach((f) => {
             if (!jobRunsFilter.items.find((i) => i.value === f)) {
-              jobRunsFilter.items.push(filterFor('variants', 'contains', f))
+              jobRunsFilter.items.push(filterFor('variants', 'has entry', f))
             }
           })
         }

@@ -46,12 +46,23 @@ export function shouldKeepFilterItem(item) {
  * @returns {Array} Filtered rows
  */
 export function applyFilterModel(rows, filterModel, columns = null) {
-  if (!filterModel || !filterModel.items || filterModel.items.length === 0) {
+  // Early return if no filterModel or no items array
+  if (!filterModel || !filterModel.items) {
+    return rows
+  }
+
+  // Filter out empty items - if all items are empty, treat as no filter
+  const validFilters = filterModel.items.filter((item) =>
+    shouldKeepFilterItem(item)
+  )
+
+  // If no valid filters after filtering out empty ones, return all rows
+  if (validFilters.length === 0) {
     return rows
   }
 
   return rows.filter((row) => {
-    const results = filterModel.items.map((filter) =>
+    const results = validFilters.map((filter) =>
       evaluateFilter(row, filter, columns)
     )
 

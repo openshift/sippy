@@ -645,6 +645,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// QE jobs allowlisted for Component Readiness
 		{[]string{"-automated-release"}, "standard"},
 
+		// OVN-Kubernetes BGP Virtualization jobs allowed for Component Readiness
+		{[]string{"-ovn-bgp-virt"}, "standard"},
+
 		// Excluded jobs
 		{[]string{"-okd"}, "excluded"},
 		{[]string{"-recovery"}, "excluded"},
@@ -1104,6 +1107,7 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-lp-interop-cr-oadp", "lp-interop-oadp"},
 		{"-lp-interop-cr-servicemesh", "lp-interop-servicemesh"},
 		{"-lp-interop-cr-operator-e2e", "lp-interop-serverless"},
+		{"-coo-", "lp-interop-coo"},
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},

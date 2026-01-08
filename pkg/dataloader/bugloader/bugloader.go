@@ -232,7 +232,7 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 		res := bl.dbc.DB.Where("url = ?", t.URL).First(&bug)
 		if res.Error != nil {
 			// Someone could have put in a bad url, we won't let that error out our reconcile job.
-			logger.WithError(res.Error).Warnf("error looking up bug which should exist by this point: %s", t.URL)
+			logger.WithError(res.Error).Warnf("error looking up bug which should exist by this point: %s. this is expected for cards that are restricted to 'Red Hat Only'", t.URL)
 			continue
 		}
 
