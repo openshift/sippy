@@ -653,6 +653,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"-recovery"}, "excluded"},
 		{[]string{"alibaba"}, "excluded"},
 		{[]string{"-osde2e-"}, "excluded"},
+		{[]string{"insights-operator", "e2e-metal"}, "excluded"},
 
 		// Experimental new jobs using nested vsphere lvl 2 environment,
 		// not ready to make release blocking yet.
