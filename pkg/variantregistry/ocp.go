@@ -659,9 +659,22 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// not ready to make release blocking yet.
 		{[]string{"-vsphere-host-groups"}, "candidate"},
 
-		// Periodic MCO jobs used for component readiness; not ready to make
-		// release blocking yet.
-		{[]string{"-mco-disruptive"}, "candidate"},
+		// Periodic MCO metal jobs and vsphere jobs are not ready for component readiness yet, marking them as candidate
+		{[]string{"metal-ipi-ovn-dualstack-mco-disruptive"}, "candidate"},
+		{[]string{"metal-ipi-ovn-ipv4-mco-disruptive"}, "candidate"},
+		{[]string{"metal-ipi-ovn-ipv6-mco-disruptive"}, "candidate"},
+		{[]string{"vsphere-mco-disruptive"}, "candidate"},
+
+		// Set MCO OCL jobs to candidate
+		{[]string{"e2e-aws-ovn-ocl"}, "candidate"},
+		{[]string{"e2e-aws-ovn-upgrade-ocl"}, "candidate"},
+
+		// All remaining 4.19/4.20 MCO disruptive jobs are not ready for component readiness yet, marking them as candidate
+		{[]string{"machine-config-operator-release-4.19"}, "candidate"},
+		{[]string{"machine-config-operator-release-4.20"}, "candidate"},
+
+		// Set remaining periodic MCO jobs to standard for component readiness
+		{[]string{"-mco-disruptive"}, "standard"},
 
 		// Konflux jobs aren't ready yet
 		{[]string{"-konflux"}, "candidate"},
