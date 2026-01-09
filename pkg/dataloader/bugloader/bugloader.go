@@ -240,7 +240,7 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 		// If the triage is not resolved, and it only contains regressions from a single release,
 		// then we should resolve it if the bug is at least in the "ON_QA" status
 		if !resolved && slices.Contains(statusesForResolution, bug.Status) {
-			releases := sets.NewString()
+			releases := sets.New[string]()
 			for _, regression := range t.Regressions {
 				releases.Insert(regression.Release)
 			}
@@ -256,7 +256,7 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 					t.Description, t.ID, bug.Summary, bug.ID, bug.Status)
 			} else {
 				logger.Infof("not resolving triage %q (%d) because it contains regressions from multiple releases: %v",
-					t.Description, t.ID, releases.List())
+					t.Description, t.ID, releases.UnsortedList())
 			}
 		}
 
