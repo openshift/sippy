@@ -238,7 +238,7 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 
 		updated := false
 		// If the triage is not resolved, and it only contains regressions from a single release,
-		// then we should resolve it if the bug is at least in the "Modified" status
+		// then we should resolve it if the bug is at least in the "ON_QA" status
 		if !resolved && slices.Contains(statusesForResolution, bug.Status) {
 			releases := sets.NewString()
 			for _, regression := range t.Regressions {
