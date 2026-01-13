@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -19,6 +20,7 @@ import (
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgtype"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -887,6 +889,11 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 
 	pulls := pl.findOrAddPullRequests(pj.Spec.Refs, path)
 
+	labels, err := GatherLabelsFromBQ(ctx, pl.bigQueryClient, pj.Status.BuildID, pj.Status.StartTime)
+	if err != nil {
+		return err
+	}
+
 	var duration time.Duration
 	if pj.Status.CompletionTime != nil {
 		duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
@@ -907,6 +914,7 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 		PullRequests:  pulls,
 		TestFailures:  failures,
 		Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
+		Labels:        labels,
 	}).Error
 	if err != nil {
 		return err
@@ -1027,6 +1035,55 @@ func (pl *ProwLoader) findOrAddPullRequests(refs *prow.Refs, pjPath string) []mo
 	}
 
 	return pulls
+}
+
+const LabelsDatasetEnv = "JOB_LABELS_DATASET"
+const LabelsTableName = "job_labels"
+
+// GatherLabelsFromBQ queries BigQuery for labels associated with this job run.
+// Labels are stored in the job_labels table and indexed by prowjob_build_id.
+func GatherLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, buildID string, startTime time.Time) (pq.StringArray, error) {
+	if bqClient == nil {
+		return nil, nil
+	}
+	logger := log.WithField("buildID", buildID)
+
+	dataset := os.Getenv(LabelsDatasetEnv)
+	if dataset == "" {
+		dataset = bqClient.Dataset
+	}
+	table := fmt.Sprintf("`%s.%s`", dataset, LabelsTableName)
+	q := bqClient.BQ.Query(`
+		SELECT ARRAY_AGG(DISTINCT label ORDER BY label ASC) AS labels
+		FROM ` + table + `
+		WHERE prowjob_build_id = @BuildID
+		  AND DATE(prowjob_start) = DATE(@StartTime)
+	`)
+	q.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "BuildID",
+			Value: buildID,
+		},
+		{
+			Name:  "StartTime",
+			Value: startTime,
+		},
+	}
+
+	var result struct {
+		Labels []string `bigquery:"labels"`
+	}
+	it, err := q.Read(ctx)
+	if err != nil {
+		logger.WithError(err).Warning("error querying labels from bigquery")
+		return nil, err
+	}
+	if err = it.Next(&result); err != nil && err != iterator.Done {
+		logger.WithError(err).Warning("error parsing labels from bigquery")
+		return nil, err
+	}
+
+	return result.Labels, nil
 }
 
 func (pl *ProwLoader) findOrAddTest(name string) (uint, error) {
