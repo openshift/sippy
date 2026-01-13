@@ -543,3 +543,36 @@ func GetTestCapabilitiesFromDB(bqClient *bq.Client) ([]string, error) {
 
 	return row.Capabilities, nil
 }
+
+// GetTestLifecyclesFromDB returns a sorted list of lifecycles from the BQ junit table
+func GetTestLifecyclesFromDB(bqClient *bq.Client) ([]string, error) {
+	if bqClient == nil || bqClient.BQ == nil {
+		return []string{}, nil
+	}
+
+	// Query recent data (last 7 days) to satisfy partition filter requirement on modified_time
+	qFmt := `SELECT ARRAY_AGG(DISTINCT lifecycle ORDER BY lifecycle) AS lifecycles
+		FROM %s.junit
+		WHERE modified_time >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 7 DAY)
+		AND lifecycle IS NOT NULL AND lifecycle != ''`
+	q := bqClient.BQ.Query(fmt.Sprintf(qFmt, bqClient.Dataset))
+
+	log.Infof("Fetching test lifecycles with:\n%s\n", q.Q)
+
+	it, err := q.Read(context.Background())
+	if err != nil {
+		log.WithError(err).Error("error querying test lifecycles from bigquery")
+		return []string{}, err
+	}
+
+	var row struct {
+		Lifecycles []string `bigquery:"lifecycles"`
+	}
+	err = it.Next(&row)
+	if err != nil {
+		log.WithError(err).Error("error retrieving test lifecycles from bigquery")
+		return []string{}, errors.Wrap(err, "error retrieving test lifecycles from bigquery")
+	}
+
+	return row.Lifecycles, nil
+}

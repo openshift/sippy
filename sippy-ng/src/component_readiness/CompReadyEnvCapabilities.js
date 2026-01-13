@@ -203,7 +203,10 @@ export default function CompReadyEnvCapabilities(props) {
 
   return (
     <Fragment>
-      <Sidebar theme={theme} controlsOpts={{ filterByCapabilities: true }} />
+      <Sidebar
+        theme={theme}
+        controlsOpts={{ filterByCapabilities: true, filterByLifecycles: true }}
+      />
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
       <WarningsBanner warnings={warnings} />
       <h2>

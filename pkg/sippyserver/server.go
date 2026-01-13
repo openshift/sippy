@@ -895,6 +895,17 @@ func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Req
 	api.RespondWithJSON(http.StatusOK, w, capabilities)
 }
 
+func (s *Server) jsonTestLifecyclesFromDB(w http.ResponseWriter, req *http.Request) {
+	lifecycles, err := api.GetTestLifecyclesFromDB(s.bigQueryClient)
+	if err != nil {
+		log.WithError(err).Error("error querying test lifecycles")
+		failureResponse(w, http.StatusInternalServerError, "error querying test lifecycles")
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, lifecycles)
+}
+
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
@@ -2149,6 +2160,13 @@ func (s *Server) Serve() {
 			Capabilities: []string{ComponentReadinessCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestCapabilitiesFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/lifecycles",
+			Description:  "Returns list of available test lifecycles",
+			Capabilities: []string{ComponentReadinessCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestLifecyclesFromDB,
 		},
 		{
 			EndpointPath: "/api/install",
