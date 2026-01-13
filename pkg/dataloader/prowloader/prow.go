@@ -592,17 +592,15 @@ func (pl *ProwLoader) syncPRStatus() error {
 			// if we see that any sha has merged for this pr then we should clear out any risk analysis pending comment records
 			// if we don't get them here we will catch them before writing the risk analysis comment
 			// but, we should clean up here if possible
-			if recentMergedAt != nil {
-				pendingComments, err := pl.ghCommenter.QueryPRPendingComments(pr.Org, pr.Repo, pr.Number, models.CommentTypeRiskAnalysis)
+			pendingComments, err := pl.ghCommenter.QueryPRPendingComments(pr.Org, pr.Repo, pr.Number, models.CommentTypeRiskAnalysis)
 
-				if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
-					logger.WithError(err).Error("Unable to fetch pending comments ")
-				}
+			if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+				logger.WithError(err).Error("Unable to fetch pending comments ")
+			}
 
-				for _, pc := range pendingComments {
-					pcp := pc
-					pl.ghCommenter.ClearPendingRecord(pcp.Org, pcp.Repo, pcp.PullNumber, pcp.SHA, models.CommentTypeRiskAnalysis, &pcp)
-				}
+			for _, pc := range pendingComments {
+				pcp := pc
+				pl.ghCommenter.ClearPendingRecord(pcp.Org, pcp.Repo, pcp.PullNumber, pcp.SHA, models.CommentTypeRiskAnalysis, &pcp)
 			}
 		}
 	}
@@ -666,25 +664,6 @@ func GetClusterDataBytes(ctx context.Context, bkt *storage.BucketHandle, path st
 	}
 
 	return bytes, nil
-}
-
-func GetClusterData(ctx context.Context, bkt *storage.BucketHandle, path string, matches []string) models.ClusterData {
-	cd := models.ClusterData{}
-	bytes, err := GetClusterDataBytes(ctx, bkt, path, matches)
-	if err != nil {
-		log.WithError(err).Error("failed to get prow job variant data, returning empty cluster data and proceeding")
-		return cd
-	} else if bytes == nil {
-		log.Warnf("empty job variant data file, returning empty cluster data and proceeding")
-		return cd
-	}
-	err = json.Unmarshal(bytes, &cd)
-	if err != nil {
-		log.WithError(err).Error("failed to unmarshal cluster-data bytes, returning empty cluster data")
-		return cd
-	}
-
-	return cd
 }
 
 func ParseVariantDataFile(bytes []byte) (map[string]string, error) {
@@ -839,6 +818,29 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 	// Lock the whole prow job block to avoid trying to create the pj multiple times concurrently\
 	// (resulting in a DB error)
 	pl.prowJobCacheLock.Lock()
+	dbProwJob, err := pl.createOrUpdateProwJob(ctx, pj, release, pjLog)
+	pl.prowJobCacheLock.Unlock()
+	if err != nil {
+		return err
+	}
+
+	pl.prowJobRunCacheLock.RLock()
+	_, ok := pl.prowJobRunCache[uint(id)]
+	pl.prowJobRunCacheLock.RUnlock()
+	if ok {
+		pjLog.Infof("processing complete; job run was already processed")
+		return nil
+	}
+
+	pjLog.Info("processing GCS bucket")
+	if err := pl.processGCSBucketJobRun(ctx, pj, id, path, junitMatches, dbProwJob); err != nil {
+		return err
+	}
+	pjLog.Infof("processing complete")
+	return nil
+}
+
+func (pl *ProwLoader) createOrUpdateProwJob(ctx context.Context, pj *prow.ProwJob, release string, pjLog *log.Entry) (*models.ProwJob, error) {
 	dbProwJob, foundProwJob := pl.prowJobCache[pj.Spec.Job]
 	if !foundProwJob {
 		pjLog.Info("creating new ProwJob")
@@ -851,7 +853,7 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 		}
 		err := pl.dbc.DB.WithContext(ctx).Clauses(clause.OnConflict{UpdateAll: true}).Create(dbProwJob).Error
 		if err != nil {
-			return errors.Wrapf(err, "error loading prow job into db: %s", pj.Spec.Job)
+			return nil, errors.Wrapf(err, "error loading prow job into db: %s", pj.Spec.Job)
 		}
 		pl.prowJobCache[pj.Spec.Job] = dbProwJob
 	} else {
@@ -870,63 +872,54 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 		}
 		if saveDB {
 			if res := pl.dbc.DB.WithContext(ctx).Save(&dbProwJob); res.Error != nil {
-				return res.Error
+				return nil, res.Error
 			}
 		}
 	}
-	pl.prowJobCacheLock.Unlock()
+	return dbProwJob, nil
+}
 
-	pl.prowJobRunCacheLock.RLock()
-	_, ok := pl.prowJobRunCache[uint(id)]
-	pl.prowJobRunCacheLock.RUnlock()
-	if ok {
-		pjLog.Infof("job run was already processed")
-	} else {
-		pjLog.Info("processing GCS bucket")
-
-		tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), path, junitMatches)
-		if err != nil {
-			return err
-		}
-
-		pulls := pl.findOrAddPullRequests(pj.Spec.Refs, path)
-
-		var duration time.Duration
-		if pj.Status.CompletionTime != nil {
-			duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
-		}
-
-		err = pl.dbc.DB.WithContext(ctx).Create(&models.ProwJobRun{
-			Model: gorm.Model{
-				ID: uint(id),
-			},
-			Cluster:       pj.Spec.Cluster,
-			Duration:      duration,
-			ProwJob:       *dbProwJob,
-			ProwJobID:     dbProwJob.ID,
-			URL:           pj.Status.URL,
-			GCSBucket:     pj.Spec.DecorationConfig.GCSConfiguration.Bucket,
-			Timestamp:     pj.Status.StartTime,
-			OverallResult: overallResult,
-			PullRequests:  pulls,
-			TestFailures:  failures,
-			Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
-		}).Error
-		if err != nil {
-			return err
-		}
-		// Looks like sometimes, we might be getting duplicate entries from bigquery:
-		pl.prowJobRunCacheLock.Lock()
-		pl.prowJobRunCache[uint(id)] = true
-		pl.prowJobRunCacheLock.Unlock()
-
-		err = pl.dbc.DB.WithContext(ctx).Debug().CreateInBatches(tests, 1000).Error
-		if err != nil {
-			return err
-		}
+func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJob, id uint64, path string, junitMatches []string, dbProwJob *models.ProwJob) error {
+	tests, failures, overallResult, err := pl.prowJobRunTestsFromGCS(ctx, pj, uint(id), path, junitMatches)
+	if err != nil {
+		return err
 	}
 
-	pjLog.Infof("processing complete")
+	pulls := pl.findOrAddPullRequests(pj.Spec.Refs, path)
+
+	var duration time.Duration
+	if pj.Status.CompletionTime != nil {
+		duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
+	}
+
+	err = pl.dbc.DB.WithContext(ctx).Create(&models.ProwJobRun{
+		Model: gorm.Model{
+			ID: uint(id),
+		},
+		Cluster:       pj.Spec.Cluster,
+		Duration:      duration,
+		ProwJob:       *dbProwJob,
+		ProwJobID:     dbProwJob.ID,
+		URL:           pj.Status.URL,
+		GCSBucket:     pj.Spec.DecorationConfig.GCSConfiguration.Bucket,
+		Timestamp:     pj.Status.StartTime,
+		OverallResult: overallResult,
+		PullRequests:  pulls,
+		TestFailures:  failures,
+		Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
+	}).Error
+	if err != nil {
+		return err
+	}
+	// Looks like sometimes, we might be getting duplicate entries from bigquery:
+	pl.prowJobRunCacheLock.Lock()
+	pl.prowJobRunCache[uint(id)] = true
+	pl.prowJobRunCacheLock.Unlock()
+
+	err = pl.dbc.DB.WithContext(ctx).Debug().CreateInBatches(tests, 1000).Error
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
