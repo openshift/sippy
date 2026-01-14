@@ -73,6 +73,7 @@ func ParseComponentReportRequest(
 
 		// free-form, not "safe" - used in query filters
 		opts.TestFilters.Capabilities = req.URL.Query()["testCapabilities"]
+		opts.TestFilters.Lifecycles = req.URL.Query()["testLifecycles"]
 
 		var variantWarnings []string
 		if opts.VariantOption, variantWarnings, err = parseVariantOptions(req, allJobVariants, overrides); err != nil {
@@ -159,7 +160,7 @@ func getRequestedView(req *http.Request, views []crview.View) (*crview.View, err
 		"includeVariant", "compareVariant", "variantCrossCompare", // variants
 		"confidence", "pity", "minFail", "passRateNewTests", "passRateAllTests",
 		"ignoreMissing", "ignoreDisruption", // advanced opts
-		"testCapabilities", // test filters
+		"testCapabilities", "testLifecycles", // test filters
 	}
 	found := []string{}
 	for _, p := range incompatible {

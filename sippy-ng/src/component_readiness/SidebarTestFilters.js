@@ -12,18 +12,25 @@ import {
 import { CompReadyVarsContext } from './CompReadyVars'
 import { ExpandMore } from '@mui/icons-material'
 import { makeStyles } from '@mui/styles'
-import { TestCapabilitiesContext } from './ComponentReadiness'
+import {
+  TestCapabilitiesContext,
+  TestLifecyclesContext,
+} from './ComponentReadiness'
 import PropTypes from 'prop-types'
 import React, { Fragment, useContext } from 'react'
 import Typography from '@mui/material/Typography'
 
 export default function SidebarTestFilters(props) {
-  if (!props.controlsOpts?.filterByCapabilities) {
-    // if we have no filters to show, omit the whole component; for now we only have capabilities as a filter
+  if (
+    !props.controlsOpts?.filterByCapabilities &&
+    !props.controlsOpts?.filterByLifecycles
+  ) {
+    // if we have no filters to show, omit the whole component
     return <Fragment />
   }
   const varsContext = useContext(CompReadyVarsContext)
   const testCapabilities = useContext(TestCapabilitiesContext)
+  const testLifecycles = useContext(TestLifecyclesContext)
   const useStyles = makeStyles((theme) => ({
     formControl: {
       margin: theme.spacing(1),
@@ -43,8 +50,12 @@ export default function SidebarTestFilters(props) {
 
   const classes = useStyles()
 
-  const handleChange = (event, newValue) => {
+  const handleCapabilitiesChange = (event, newValue) => {
     varsContext.setTestCapabilities(newValue || [])
+  }
+
+  const handleLifecyclesChange = (event, newValue) => {
+    varsContext.setTestLifecycles(newValue || [])
   }
 
   return (
@@ -76,7 +87,7 @@ export default function SidebarTestFilters(props) {
               className={classes.autocomplete}
               options={testCapabilities || []}
               value={varsContext.testCapabilities || []}
-              onChange={handleChange}
+              onChange={handleCapabilitiesChange}
               renderOption={(props, option) => (
                 <li
                   {...props}
@@ -106,6 +117,53 @@ export default function SidebarTestFilters(props) {
                   InputProps={{
                     ...params.InputProps,
                     endAdornment: null, // Remove the dropdown triangle that takes up precious space with no real benefit
+                  }}
+                />
+              )}
+            />
+          )}
+          {props.controlsOpts?.filterByLifecycles && (
+            <Autocomplete
+              multiple
+              disableClearable
+              className={classes.autocomplete}
+              options={Array.isArray(testLifecycles) ? testLifecycles : []}
+              value={
+                Array.isArray(varsContext.testLifecycles)
+                  ? varsContext.testLifecycles
+                  : []
+              }
+              onChange={handleLifecyclesChange}
+              style={{ marginTop: '16px' }}
+              renderOption={(props, option) => (
+                <li
+                  {...props}
+                  style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}
+                >
+                  {option}
+                </li>
+              )}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Tooltip title={option} key={option} placement="top">
+                    <Chip
+                      variant="outlined"
+                      label={option}
+                      className={classes.chip}
+                      {...getTagProps({ index })}
+                    />
+                  </Tooltip>
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  variant="outlined"
+                  label="Lifecycles"
+                  placeholder="Select lifecycle"
+                  InputProps={{
+                    ...params.InputProps,
+                    endAdornment: null,
                   }}
                 />
               )}

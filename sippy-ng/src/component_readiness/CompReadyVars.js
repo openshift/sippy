@@ -107,6 +107,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     environment: StringParam,
     capability: StringParam,
     testCapabilities: ArrayParam, // Multiple capabilities selected for filtering
+    testLifecycles: ArrayParam, // Multiple lifecycles selected for filtering
     testId: StringParam,
     testName: StringParam,
     testBasisRelease: StringParam,
@@ -224,6 +225,7 @@ export const CompReadyVarsProvider = ({ children }) => {
   const [environment, setEnvironment] = React.useState(undefined)
   const [capability, setCapability] = React.useState(undefined)
   const [testCapabilities, setTestCapabilities] = React.useState([])
+  const [testLifecycles, setTestLifecycles] = React.useState([])
   const [testId, setTestId] = React.useState(undefined)
   const [testName, setTestName] = React.useState(undefined)
   const [testBasisRelease, setTestBasisRelease] = React.useState(undefined)
@@ -322,6 +324,7 @@ export const CompReadyVarsProvider = ({ children }) => {
     setEnvironment(params.environment)
     setCapability(params.capability)
     setTestCapabilities(params.testCapabilities || [])
+    setTestLifecycles(params.testLifecycles || [])
     setTestId(params.testId)
     setTestName(params.testName)
     setTestBasisRelease(params.testBasisRelease)
@@ -362,6 +365,7 @@ export const CompReadyVarsProvider = ({ children }) => {
       environment,
       capability,
       testCapabilities,
+      testLifecycles,
       testId,
       testName,
       testBasisRelease,
@@ -611,6 +615,8 @@ export const CompReadyVarsProvider = ({ children }) => {
         environment,
         testCapabilities,
         setTestCapabilities,
+        testLifecycles,
+        setTestLifecycles,
         testId,
         testName,
         testBasisRelease,
