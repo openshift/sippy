@@ -1037,27 +1037,6 @@ func (s *Server) jsonPullRequestTestResults(w http.ResponseWriter, req *http.Req
 	api.PrintPRTestResultsJSON(w, req, s.bigQueryClient)
 }
 
-func (s *Server) jsonJobRunAISummary(w http.ResponseWriter, req *http.Request) {
-	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
-	if jobRunIDStr == "" {
-		return
-	}
-
-	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
-	if err != nil {
-		failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
-		return
-	}
-
-	summary, err := ai.AnalyzeJobRun(req.Context(), s.llmClient, s.db, s.gcsClient, jobRunID)
-	if err != nil {
-		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
-		return
-	}
-
-	api.RespondWithJSON(http.StatusOK, w, summary)
-}
-
 func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
 	if jobRunIDStr == "" {
