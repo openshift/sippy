@@ -10,6 +10,10 @@ ignore: |
   .git/
   dist/
   build/
-  # Generated file with YAML complex key syntax (? key\n: value)
-  # which uses two spaces after colons by default in gopkg.in/yaml.v3
+  # Generated YAML files by Go, which yamllint may sometimes be unhappy
+  # about:
+  #   - YAML complex key syntax (? key\n: value)
+  #   - other random spacing issues
   pkg/variantregistry/snapshot.yaml
+  pkg/variantregistry/snapshot.yaml
+  config/openshift.yaml

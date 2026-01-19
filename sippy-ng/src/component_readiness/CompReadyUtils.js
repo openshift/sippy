@@ -441,6 +441,9 @@ export function getUpdatedUrlParts(vars) {
   vars.testCapabilities.forEach((item) => {
     queryParams.append('testCapabilities', item)
   })
+  vars.testLifecycles.forEach((item) => {
+    queryParams.append('testLifecycles', item)
+  })
 
   // Stringify and put the begin param character.
   queryParams.sort() // ensure they always stay in sorted order to prevent url history changes
@@ -802,6 +805,29 @@ export function compareUrlQueryParams(newURL, oldURL) {
   return differences
 }
 
+// Convert API URL to UI URL
+// API URL format: http://localhost:8080/api/component_readiness/test_details?...
+// UI URL format:  http://localhost:3000/sippy-ng/component_readiness/test_details?...
+export function convertApiUrlToUiUrl(apiUrl) {
+  console.log('convertApiUrlToUiUrl input:', apiUrl)
+  let result
+  // Handle the most specific case first
+  if (apiUrl.includes('/api/component_readiness/')) {
+    result = apiUrl.replace(
+      '/api/component_readiness/',
+      '/sippy-ng/component_readiness/'
+    )
+  } else if (apiUrl.startsWith('/api/')) {
+    // Handle general /api/ prefix (for relative URLs)
+    result = apiUrl.replace('/api/', '/sippy-ng/')
+  } else {
+    // Fallback: return as-is
+    result = apiUrl
+  }
+  console.log('convertApiUrlToUiUrl output:', result)
+  return result
+}
+
 // Construct a URL with all existing filters utilizing the necessary info from the regressed test.
 // We pass these arguments to the component that generates the test details report.
 export function generateTestDetailsReportLink(
@@ -845,14 +871,9 @@ export function generateTestDetailsReportLink(
     // This hack allows us to keep the param generation logic in one place. (server side)
     const testDetailsUrl = regressedTest.links.test_details
     console.log('testDetailsUrl', testDetailsUrl)
-    const apiIndex = testDetailsUrl.indexOf('/api/')
-    if (apiIndex !== -1) {
-      const pathAfterApi = testDetailsUrl.substring(apiIndex + 5) // +5 to skip '/api/'
-      const modifiedUrl = '/sippy-ng/' + pathAfterApi
-      console.log('modifiedUrl', modifiedUrl)
-      return modifiedUrl
-    }
-    return testDetailsUrl
+    const modifiedUrl = convertApiUrlToUiUrl(testDetailsUrl)
+    console.log('modifiedUrl', modifiedUrl)
+    return modifiedUrl
   }
   console.log(
     'WARNING: report had no test details url, using old generated url: ' +

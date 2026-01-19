@@ -27,6 +27,7 @@ func ParseComponentReportRequest(
 	overrides []configv1.VariantJunitTableOverride,
 ) (
 	opts reqopts.RequestOptions,
+	warnings []string,
 	err error,
 ) {
 	// Check if the user specified a view, in which case only some query params can be used.
@@ -48,6 +49,12 @@ func ParseComponentReportRequest(
 		if err != nil {
 			return
 		}
+
+		// Validate variants from the view's include_variants
+		if opts.VariantOption.IncludeVariants != nil {
+			viewWarnings := api.ValidateVariants(allJobVariants, opts.VariantOption.IncludeVariants, " from view")
+			warnings = append(warnings, viewWarnings...)
+		}
 	} else {
 		opts.BaseRelease.Name = param.SafeRead(req, "baseRelease")
 		if opts.BaseRelease.Name == "" {
@@ -66,10 +73,13 @@ func ParseComponentReportRequest(
 
 		// free-form, not "safe" - used in query filters
 		opts.TestFilters.Capabilities = req.URL.Query()["testCapabilities"]
+		opts.TestFilters.Lifecycles = req.URL.Query()["testLifecycles"]
 
-		if opts.VariantOption, err = parseVariantOptions(req, allJobVariants, overrides); err != nil {
+		var variantWarnings []string
+		if opts.VariantOption, variantWarnings, err = parseVariantOptions(req, allJobVariants, overrides); err != nil {
 			return
 		}
+		warnings = append(warnings, variantWarnings...)
 		if opts.AdvancedOption, err = parseAdvancedOptions(req); err != nil {
 			return
 		}
@@ -150,7 +160,7 @@ func getRequestedView(req *http.Request, views []crview.View) (*crview.View, err
 		"includeVariant", "compareVariant", "variantCrossCompare", // variants
 		"confidence", "pity", "minFail", "passRateNewTests", "passRateAllTests",
 		"ignoreMissing", "ignoreDisruption", // advanced opts
-		"testCapabilities", // test filters
+		"testCapabilities", "testLifecycles", // test filters
 	}
 	found := []string{}
 	for _, p := range incompatible {
@@ -214,7 +224,8 @@ func parsePayloadOptions(req *http.Request) *reqopts.Payload {
 	}
 }
 
-func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts reqopts.Variants, err error) {
+func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants, overrides []configv1.VariantJunitTableOverride) (opts reqopts.Variants, warnings []string, err error) {
+	warnings = []string{}
 	columnGroupBy := req.URL.Query().Get("columnGroupBy")
 	opts.ColumnGroupBy, err = api.VariantsStringToSet(allJobVariants, columnGroupBy)
 	if err != nil {
@@ -227,10 +238,12 @@ func parseVariantOptions(req *http.Request, allJobVariants crtest.JobVariants, o
 	}
 
 	includeVariants := req.URL.Query()["includeVariant"]
-	opts.IncludeVariants, err = api.VariantListToMap(allJobVariants, includeVariants)
+	var includeWarnings []string
+	opts.IncludeVariants, includeWarnings, err = api.VariantListToMapWithWarnings(allJobVariants, includeVariants)
 	if err != nil {
 		return
 	}
+	warnings = append(warnings, includeWarnings...)
 
 	// check if any included variants have a junit table override:
 	var overriddenVariant string

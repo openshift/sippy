@@ -30,6 +30,7 @@ import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
+import WarningsBanner from './WarningsBanner'
 
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
@@ -50,6 +51,7 @@ export default function CompReadyEnvCapability(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
+  const [warnings, setWarnings] = React.useState([])
 
   const [triageActionTaken, setTriageActionTaken] = React.useState(false)
 
@@ -95,9 +97,11 @@ export default function CompReadyEnvCapability(props) {
         if (Object.keys(json).length === 0 || json.rows.length === 0) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
+          setWarnings([])
           console.log('got empty page2', json)
         } else {
           setData(json)
+          setWarnings(json.warnings || [])
         }
       })
       .catch((error) => {
@@ -200,6 +204,7 @@ export default function CompReadyEnvCapability(props) {
     <Fragment>
       <Sidebar theme={theme} />
       <CompReadyPageTitle pageTitle={pageTitle} apiCallStr={apiCallStr} />
+      <WarningsBanner warnings={warnings} />
       <h2>
         <Link to="/component_readiness">/</Link> {component} &gt; {capability}
       </h2>

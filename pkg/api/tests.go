@@ -355,11 +355,22 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 
 	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
 	candidateQueryStr := ""
-	whereStr := fmt.Sprintf(`
-		WHERE release='%s' AND (current_runs > 0 or previous_runs > 0)`, release)
-	if rawFilter != nil && len(rawFilter.Items) > 0 {
-		whereStr += " AND " + rawFilter.ToBQStr(apitype.Test{})
+	whereStr := `
+		WHERE release=@release AND (current_runs > 0 or previous_runs > 0)`
+
+	// Collect all query parameters
+	queryParams := []bigquery.QueryParameter{
+		{Name: "release", Value: release},
 	}
+	paramIndex := 0
+
+	if rawFilter != nil && len(rawFilter.Items) > 0 {
+		filterResult := rawFilter.ToBQStr(apitype.Test{}, &paramIndex)
+		whereStr += " AND " + filterResult.SQL
+		// Add filter parameters directly from the filter result
+		queryParams = append(queryParams, filterResult.Parameters...)
+	}
+
 	if collapse {
 		candidateQueryStr = fmt.Sprintf(`WITH group_stats AS (
 		SELECT
@@ -384,7 +395,10 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 	`, query.QueryTestSummer, bqc.Dataset, table, whereStr, query.QueryTestSummarizer)
 	} else {
 		if processedFilter != nil && len(processedFilter.Items) > 0 {
-			whereStr += " AND " + processedFilter.ToBQStr(apitype.Test{})
+			filterResult := processedFilter.ToBQStr(apitype.Test{}, &paramIndex)
+			whereStr += " AND " + filterResult.SQL
+			// Add processed filter parameters directly from the filter result
+			queryParams = append(queryParams, filterResult.Parameters...)
 		}
 		candidateQueryStr = fmt.Sprintf(`WITH test_stats AS (
 		SELECT
@@ -397,7 +411,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 			 COALESCE(avg(current_flakes * 100.0 / NULLIF(current_runs, 0)), 0)                          AS flake_average,
 			 COALESCE(stddev(current_flakes * 100.0 / NULLIF(current_runs, 0)), 0)                       AS flake_standard_deviation
 		FROM %s.%s junit
-		WHERE release='%s'
+		WHERE release=@release
 		GROUP BY test_id, testsuite),
 	unfiltered_candidate_query AS (
 		SELECT
@@ -415,7 +429,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 			passing_average,
 			passing_standard_deviation,
 			(current_flake_percentage - flake_average) as delta_from_flake_average,
-			flake_average, 
+			flake_average,
 			flake_standard_deviation,
 			%s
 		FROM %s.%s junit
@@ -426,7 +440,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 		FROM
 			unfiltered_candidate_query
 		%s
-	)`, bqc.Dataset, table, release, query.QueryTestSummarizer, bqc.Dataset, table, whereStr)
+	)`, bqc.Dataset, table, query.QueryTestSummarizer, bqc.Dataset, table, whereStr)
 	}
 
 	queryStr := fmt.Sprintf(`%s
@@ -434,6 +448,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 		FROM candidate_query`, candidateQueryStr)
 
 	q := bqc.BQ.Query(queryStr)
+	q.Parameters = queryParams
 	testReports, errs := FetchTestResultsFromBQ(context.Background(), q)
 	if len(errs) > 0 {
 		return []apitype.TestBQ{}, nil, errs[0]
@@ -451,6 +466,7 @@ func BuildTestsResultsFromBigQuery(bqc *bq.Client, release, period string, colla
 	SELECT %s
 	FROM group_stats`, candidateQueryStr, query.QueryTestSummer, query.QueryTestSummarizer)
 		q := bqc.BQ.Query(queryStr)
+		q.Parameters = queryParams // Reuse the same parameters for the overall query
 
 		overallReports, errs := FetchTestResultsFromBQ(context.Background(), q)
 		if len(errs) > 0 {
@@ -499,17 +515,64 @@ func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.T
 	return result, errs
 }
 
-// GetTestCapabilitiesFromDB returns a list of distinct capabilities from the test_ownerships table
-func GetTestCapabilitiesFromDB(dbc *db.DB) ([]string, error) {
-	if dbc == nil || dbc.DB == nil {
+// GetTestCapabilitiesFromDB returns a sorted list of capabilities from the BQ component_mapping_latest table
+func GetTestCapabilitiesFromDB(bqClient *bq.Client) ([]string, error) {
+	if bqClient == nil || bqClient.BQ == nil {
 		return []string{}, nil
 	}
 
-	var capabilities []string
-	res := dbc.DB.Raw("SELECT DISTINCT unnest(capabilities) AS capability FROM test_ownerships ORDER BY capability").Scan(&capabilities)
-	if res.Error != nil {
-		return nil, res.Error
+	qFmt := "SELECT ARRAY_AGG(DISTINCT capability ORDER BY capability) AS capabilities FROM `%s.component_mapping_latest`, UNNEST(capabilities) AS capability"
+	q := bqClient.BQ.Query(fmt.Sprintf(qFmt, bqClient.Dataset))
+
+	log.Infof("Fetching test capabilities with:\n%s\n", q.Q)
+
+	it, err := q.Read(context.Background())
+	if err != nil {
+		log.WithError(err).Error("error querying test capabilities from bigquery")
+		return []string{}, err
 	}
 
-	return capabilities, nil
+	var row struct {
+		Capabilities []string `bigquery:"capabilities"`
+	}
+	err = it.Next(&row)
+	if err != nil {
+		log.WithError(err).Error("error retrieving test capabilities from bigquery")
+		return []string{}, errors.Wrap(err, "error retrieving test capabilities from bigquery")
+	}
+
+	return row.Capabilities, nil
+}
+
+// GetTestLifecyclesFromDB returns a sorted list of lifecycles from the BQ junit table
+func GetTestLifecyclesFromDB(bqClient *bq.Client) ([]string, error) {
+	if bqClient == nil || bqClient.BQ == nil {
+		return []string{}, nil
+	}
+
+	// Query recent data (last 7 days) to satisfy partition filter requirement on modified_time
+	qFmt := `SELECT ARRAY_AGG(DISTINCT lifecycle ORDER BY lifecycle) AS lifecycles
+		FROM %s.junit
+		WHERE modified_time >= DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 7 DAY)
+		AND lifecycle IS NOT NULL AND lifecycle != ''`
+	q := bqClient.BQ.Query(fmt.Sprintf(qFmt, bqClient.Dataset))
+
+	log.Infof("Fetching test lifecycles with:\n%s\n", q.Q)
+
+	it, err := q.Read(context.Background())
+	if err != nil {
+		log.WithError(err).Error("error querying test lifecycles from bigquery")
+		return []string{}, err
+	}
+
+	var row struct {
+		Lifecycles []string `bigquery:"lifecycles"`
+	}
+	err = it.Next(&row)
+	if err != nil {
+		log.WithError(err).Error("error retrieving test lifecycles from bigquery")
+		return []string{}, errors.Wrap(err, "error retrieving test lifecycles from bigquery")
+	}
+
+	return row.Lifecycles, nil
 }

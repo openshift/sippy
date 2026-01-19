@@ -211,8 +211,8 @@ func (jl *JiraLoader) incidentLoader() {
 			continue
 		}
 		if res := jl.dbc.DB.Save(model); res.Error != nil {
-			log.WithError(err).Errorf("couldn't save jira incident to DB")
-			jl.errors = append(jl.errors, err)
+			log.WithError(res.Error).Errorf("couldn't save jira incident to DB")
+			jl.errors = append(jl.errors, res.Error)
 			return
 		}
 	}
@@ -222,7 +222,7 @@ func (jl *JiraLoader) incidentLoader() {
 		log.Infof("processing unseen, unresolved jira incidents (trt-incident label removed?)...")
 		issue, err := queryJiraAPI(unseen)
 		if err != nil {
-			log.WithError(err).Errorf("couldn't query details for %+v", issue)
+			log.WithError(err).Warnf("couldn't query details for %s. this is expected for cards that are restricted to 'Red Hat Only'", unseen)
 			continue
 		}
 
@@ -232,8 +232,8 @@ func (jl *JiraLoader) incidentLoader() {
 			continue
 		}
 		if res := jl.dbc.DB.Save(model); res.Error != nil {
-			log.WithError(err).Errorf("couldn't save jira incident to DB")
-			jl.errors = append(jl.errors, err)
+			log.WithError(res.Error).Errorf("couldn't save jira incident to DB")
+			jl.errors = append(jl.errors, res.Error)
 			return
 		}
 	}

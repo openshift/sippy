@@ -93,10 +93,24 @@ export default function GridToolbarFilterMenu(props) {
     })
 
     if (errored === 0) {
-      props.setFilterModel({
-        items: [...newModels],
-        linkOperator: linkOperator,
-      })
+      const currentFilters = props.filterModel.items || []
+
+      // Only update filter model when there's a meaningful change:
+      // - If we have new filters, update with them
+      // - If we're clearing existing filters (had filters, now have none), clear the URL param
+      // - If both old and new are empty, don't update (prevents polluting URL)
+      if (newModels.length > 0) {
+        // User has filters (new or modified)
+        props.setFilterModel({
+          items: [...newModels],
+          linkOperator: linkOperator,
+        })
+      } else if (currentFilters.length > 0) {
+        // User is clearing all existing filters
+        props.setFilterModel(undefined)
+      }
+      // else: both empty, no change needed
+
       setModels(newModels)
       setAnchorEl(null)
     }
@@ -234,6 +248,7 @@ export default function GridToolbarFilterMenu(props) {
                   destroy={() => removeFilter(index)}
                   filterModel={models[index]}
                   setFilterModel={(v) => updateModel(index, v)}
+                  autocompleteData={props.autocompleteData}
                 />
                 <Divider />
               </div>
@@ -294,4 +309,5 @@ GridToolbarFilterMenu.propTypes = {
       type: PropTypes.string,
     })
   ),
+  autocompleteData: PropTypes.array,
 }

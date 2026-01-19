@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createDrawerSlice } from './drawerSlice'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { createModelsSlice } from './modelsSlice'
 import { createPageContextSlice } from './pageContextSlice'
 import { createPersonaSlice } from './personaSlice'
 import { createPromptsSlice } from './promptsSlice'
@@ -26,6 +27,7 @@ export const useChatStore = create(
       ...createWebSocketSlice(set, get),
       ...createSettingsSlice(set, get),
       ...createPersonaSlice(set, get),
+      ...createModelsSlice(set, get),
       ...createPageContextSlice(set, get),
       ...createDrawerSlice(set, get),
       ...createPromptsSlice(set, get),
@@ -126,6 +128,17 @@ export const usePersonas = () =>
       personasLoading: state.personasLoading,
       personasError: state.personasError,
       loadPersonas: state.loadPersonas,
+    }))
+  )
+
+export const useModels = () =>
+  useChatStore(
+    useShallow((state) => ({
+      models: state.models,
+      defaultModel: state.defaultModel,
+      modelsLoading: state.modelsLoading,
+      modelsError: state.modelsError,
+      loadModels: state.loadModels,
     }))
   )
 

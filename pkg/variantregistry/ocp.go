@@ -86,6 +86,7 @@ WITH RecentSuccessfulJobs AS (
           OR prowjob_job_name LIKE 'release-%%'
           OR prowjob_job_name LIKE 'aggregator-%%'
           OR prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
+          OR prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
           OR prowjob_job_name LIKE 'pull-ci-openshift-%%')
   GROUP BY prowjob_job_name
 )
@@ -106,6 +107,7 @@ WHERE j.prowjob_start > DATETIME_SUB(CURRENT_DATETIME(), INTERVAL 180 DAY) AND
         OR j.prowjob_job_name LIKE 'periodic-ci-Azure-ARO-HCP-%%'
         OR j.prowjob_job_name LIKE 'release-%%'
         OR j.prowjob_job_name LIKE 'periodic-ci-%%-lp-interop-%%'
+        OR j.prowjob_job_name LIKE 'periodic-ci-%%-quay-cr-%%'
         OR j.prowjob_job_name LIKE 'aggregator-%%')
       OR j.prowjob_job_name LIKE 'pull-ci-openshift-%%')
 GROUP BY j.prowjob_job_name, r.prowjob_url, r.successful_start
@@ -643,19 +645,36 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// QE jobs allowlisted for Component Readiness
 		{[]string{"-automated-release"}, "standard"},
 
+		// OVN-Kubernetes BGP Virtualization jobs allowed for Component Readiness
+		{[]string{"-ovn-bgp-virt"}, "standard"},
+
 		// Excluded jobs
 		{[]string{"-okd"}, "excluded"},
 		{[]string{"-recovery"}, "excluded"},
 		{[]string{"alibaba"}, "excluded"},
 		{[]string{"-osde2e-"}, "excluded"},
+		{[]string{"insights-operator", "e2e-metal"}, "excluded"},
 
 		// Experimental new jobs using nested vsphere lvl 2 environment,
 		// not ready to make release blocking yet.
 		{[]string{"-vsphere-host-groups"}, "candidate"},
 
-		// Periodic MCO jobs used for component readiness; not ready to make
-		// release blocking yet.
-		{[]string{"-mco-disruptive"}, "candidate"},
+		// Periodic MCO metal jobs and vsphere jobs are not ready for component readiness yet, marking them as candidate
+		{[]string{"metal-ipi-ovn-dualstack-mco-disruptive"}, "candidate"},
+		{[]string{"metal-ipi-ovn-ipv4-mco-disruptive"}, "candidate"},
+		{[]string{"metal-ipi-ovn-ipv6-mco-disruptive"}, "candidate"},
+		{[]string{"vsphere-mco-disruptive"}, "candidate"},
+
+		// Set MCO OCL jobs to candidate
+		{[]string{"e2e-aws-ovn-ocl"}, "candidate"},
+		{[]string{"e2e-aws-ovn-upgrade-ocl"}, "candidate"},
+
+		// All remaining 4.19/4.20 MCO disruptive jobs are not ready for component readiness yet, marking them as candidate
+		{[]string{"machine-config-operator-release-4.19"}, "candidate"},
+		{[]string{"machine-config-operator-release-4.20"}, "candidate"},
+
+		// Set remaining periodic MCO jobs to standard for component readiness
+		{[]string{"-mco-disruptive"}, "standard"},
 
 		// Konflux jobs aren't ready yet
 		{[]string{"-konflux"}, "candidate"},
@@ -1093,6 +1112,16 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		product   string
 	}{
 		{"-lp-interop-cr-cnv", "lp-interop-virt"},
+		{"-quay-cr", "lp-interop-quay"},
+		{"-lp-interop-cr-openshift-pipelines", "lp-interop-openshift-pipelines"},
+		{"-lp-interop-cr-acs", "lp-interop-acs"},
+		{"-lp-interop-cr-odf", "lp-interop-odf"},
+		{"-lp-interop-cr-redhat-openshift-gitops", "lp-interop-gitops"},
+		{"-lp-interop-cr-mta", "lp-interop-mta"},
+		{"-lp-interop-cr-oadp", "lp-interop-oadp"},
+		{"-lp-interop-cr-servicemesh", "lp-interop-servicemesh"},
+		{"-lp-interop-cr-operator-e2e", "lp-interop-serverless"},
+		{"-coo-", "lp-interop-coo"},
 		{"-virt", "virt"},
 		{"-cnv", "virt"},
 		{"-kubevirt", "virt"},

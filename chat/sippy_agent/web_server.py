@@ -14,7 +14,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Response
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
-from .agent import SippyAgent
+from .agent import SippyAgent, AgentManager
 from .config import Config
 from .api_models import (
     ChatRequest,
@@ -26,6 +26,8 @@ from .api_models import (
     HealthResponse,
     PersonaInfo,
     PersonasResponse,
+    ModelInfo,
+    ModelsResponse,
     Visualization,
 )
 from . import metrics
@@ -83,10 +85,10 @@ class WebSocketManager:
 class SippyWebServer:
     """FastAPI web server for Sippy Agent."""
 
-    def __init__(self, config: Config, metrics_port: Optional[int] = None):
+    def __init__(self, config: Config, metrics_port: Optional[int] = None, models_config_path: Optional[str] = None):
         self.config = config
         self.metrics_port = metrics_port
-        self.agent = SippyAgent(config)
+        self.agent_manager = AgentManager(config, models_config_path)
         self.app = FastAPI(
             title="Sippy AI Agent API",
             description="REST API for Sippy CI/CD Analysis Agent",
@@ -134,13 +136,25 @@ class SippyWebServer:
                 media_type=CONTENT_TYPE_LATEST
             )
 
+        @self.app.get("/chat/models", response_model=ModelsResponse)
+        async def get_models():
+            """Get list of available models."""
+            models_list = self.agent_manager.list_models()
+            return ModelsResponse(
+                models=[ModelInfo(**model) for model in models_list],
+                default_model=self.agent_manager.get_default_model_id(),
+            )
+
         @self.app.get("/status", response_model=AgentStatus)
         async def get_agent_status():
             """Get agent status and configuration."""
             from .personas import list_persona_names
 
+            # Get default agent for status info
+            default_agent = await self.agent_manager.get_agent()
+            
             return AgentStatus(
-                available_tools=self.agent.list_tools(),
+                available_tools=default_agent.list_tools(),
                 model_name=self.config.model_name,
                 endpoint=self.config.llm_endpoint,
                 thinking_enabled=self.config.show_thinking,
@@ -196,56 +210,41 @@ class SippyWebServer:
             """Process a chat message and return the response."""
             # Track message received
             metrics.messages_received_total.labels(endpoint="http").inc()
-            
+
             # Track request message size
             request_size = len(request.message.encode('utf-8'))
             metrics.message_size_bytes.labels(direction="request").observe(request_size)
-            
+
             start_time = time.time()
             try:
-                # Override thinking setting if provided
-                original_thinking = self.config.show_thinking
-                original_persona = self.config.persona
+                # Get the appropriate agent for the requested model
+                agent = await self.agent_manager.get_agent(request.model_id)
+                # Determine which model is actually being used
+                model_id = request.model_id or self.agent_manager.get_default_model_id()
 
-                if request.show_thinking is not None:
-                    self.config.show_thinking = request.show_thinking
-                    self.agent.config.show_thinking = request.show_thinking
+                # Process the message with request-specific persona and show_thinking
+                # These are passed as parameters, not mutating the shared config
+                result = await agent.achat(
+                    request.message,
+                    request.chat_history,
+                    persona=request.persona,
+                    show_thinking=request.show_thinking,
+                )
 
-                if request.persona is not None:
-                    self.config.persona = request.persona
-                    self.agent.config.persona = request.persona
-                    # Recreate the agent graph with new persona
-                    self.agent.graph = self.agent._create_agent_graph()
+                # Process the response using common method
+                processed = self._process_agent_response(result)
 
-                try:
-                    # Process the message
-                    result = await self.agent.achat(
-                        request.message, request.chat_history
-                    )
+                # Track response duration
+                duration = time.time() - start_time
+                metrics.response_duration_seconds.labels(endpoint="http").observe(duration)
 
-                    # Process the response using common method
-                    processed = self._process_agent_response(result)
-                    
-                    return ChatResponse(
-                        response=processed["response_text"],
-                        thinking_steps=processed["thinking_steps"],
-                        tools_used=processed["tools_used"],
-                        visualizations=processed["visualizations"],
-                    )
-
-                finally:
-                    # Restore original settings
-                    self.config.show_thinking = original_thinking
-                    self.agent.config.show_thinking = original_thinking
-                    if request.persona is not None:
-                        self.config.persona = original_persona
-                        self.agent.config.persona = original_persona
-                        # Recreate the agent graph with original persona
-                        self.agent.graph = self.agent._create_agent_graph()
-                    
-                    # Track response duration
-                    duration = time.time() - start_time
-                    metrics.response_duration_seconds.labels(endpoint="http").observe(duration)
+                return ChatResponse(
+                    response=processed["response_text"],
+                    thinking_steps=processed["thinking_steps"],
+                    tools_used=processed["tools_used"],
+                    visualizations=processed["visualizations"],
+                    model_id=model_id,
+                )
 
             except Exception as e:
                 logger.error(f"Error processing chat request: {e}")
@@ -281,25 +280,34 @@ class SippyWebServer:
                         "show_thinking", self.config.show_thinking
                     )
                     persona = request_data.get("persona", self.config.persona)
+                    model_id = request_data.get("model_id")
                     page_context = request_data.get("page_context")
 
                     logger.info(f"Received page context: {page_context}")
                     
                     # Start timing the response
                     start_time = time.time()
-
-                    # Override settings
-                    original_thinking = self.config.show_thinking
-                    original_persona = self.config.persona
-
-                    self.config.show_thinking = show_thinking
-                    self.agent.config.show_thinking = show_thinking
-
-                    if persona != original_persona:
-                        self.config.persona = persona
-                        self.agent.config.persona = persona
-                        # Recreate the agent graph with new persona
-                        self.agent.graph = self.agent._create_agent_graph()
+                    
+                    # Get the appropriate agent for the requested model
+                    try:
+                        agent = await self.agent_manager.get_agent(model_id)
+                    except Exception as e:
+                        logger.error(f"Error getting agent for model '{model_id}': {e}")
+                        metrics.errors_total.labels(error_type="agent_initialization_error").inc()
+                        await self.websocket_manager.send_message(
+                            websocket,
+                            StreamMessage(
+                                type="error",
+                                data={
+                                    "error": str(e),
+                                    "timestamp": datetime.now().isoformat(),
+                                },
+                            ),
+                        )
+                        continue
+                    
+                    # Determine which model is actually being used
+                    actual_model_id = model_id or self.agent_manager.get_default_model_id()
 
                     async def process_message():
                         """Process the message - can be cancelled if websocket disconnects."""
@@ -364,12 +372,15 @@ class SippyWebServer:
                                 )
 
                             # Process message with streaming callback
-                            result = await self.agent.achat(
+                            # Pass persona and show_thinking as parameters, not mutating config
+                            result = await agent.achat(
                                 enhanced_message,
                                 chat_history,
                                 thinking_callback=(
                                     thinking_callback if show_thinking else None
                                 ),
+                                persona=persona,
+                                show_thinking=show_thinking,
                             )
 
                             # Process the response using common method
@@ -385,6 +396,7 @@ class SippyWebServer:
                                         "visualizations": [
                                             v.model_dump() for v in processed["visualizations"]
                                         ] if processed["visualizations"] else [],
+                                        "model_id": actual_model_id,
                                         "timestamp": datetime.now().isoformat(),
                                     },
                                 ),
@@ -423,20 +435,10 @@ class SippyWebServer:
                     finally:
                         # Clear the task tracking
                         self.websocket_manager.clear_active_task(websocket)
-                        
+
                         # Track response duration
                         duration = time.time() - start_time
                         metrics.response_duration_seconds.labels(endpoint="websocket").observe(duration)
-                        
-                        # Restore original settings
-                        self.config.show_thinking = original_thinking
-                        self.agent.config.show_thinking = original_thinking
-
-                        if persona != original_persona:
-                            self.config.persona = original_persona
-                            self.agent.config.persona = original_persona
-                            # Recreate the agent graph with original persona
-                            self.agent.graph = self.agent._create_agent_graph()
 
             except WebSocketDisconnect:
                 self.websocket_manager.disconnect(websocket)

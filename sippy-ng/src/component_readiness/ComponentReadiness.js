@@ -46,6 +46,7 @@ import TableRow from '@mui/material/TableRow'
 import TestDetailsReport from './TestDetailsReport'
 import Triage from './Triage'
 import TriageList from './TriageList'
+import WarningsBanner from './WarningsBanner'
 
 const drawerWidth = 240
 
@@ -182,6 +183,7 @@ function TriageWrapper() {
 
 export const ComponentReadinessStyleContext = React.createContext({})
 export const TestCapabilitiesContext = React.createContext([])
+export const TestLifecyclesContext = React.createContext([])
 
 // Big query requests take a while so give the user the option to
 // abort in case they inadvertently requested a huge dataset.
@@ -236,6 +238,7 @@ export default function ComponentReadiness(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setIsLoaded] = React.useState(false)
   const [data, setData] = React.useState({})
+  const [warnings, setWarnings] = React.useState([])
 
   const [triageActionTaken, setTriageActionTaken] = React.useState(false)
 
@@ -360,8 +363,11 @@ export default function ComponentReadiness(props) {
         ) {
           // The api call returned 200 OK but the data was empty
           setData(noDataTable)
+          setWarnings([])
         } else {
           setData(json)
+          // Extract warnings from the API response
+          setWarnings(json.warnings || [])
         }
       })
       .catch((error) => {
@@ -395,6 +401,9 @@ export default function ComponentReadiness(props) {
       'regressedModalPage',
       'regressedModalTestRow',
       'regressedModalTestPage',
+      'regressedModalFilters',
+      'regressedModalTestFilters',
+      'triageFilters',
       'searchComponent',
       'searchColumn',
       'searchRow',
@@ -426,8 +435,29 @@ export default function ComponentReadiness(props) {
       })
   }
 
+  const [testLifecycles, setTestLifecycles] = React.useState([])
+  function fetchLifecycles() {
+    fetch(process.env.REACT_APP_API_URL + '/api/tests/lifecycles')
+      .then((response) => {
+        if (response.status !== 200) {
+          throw new Error('server returned ' + response.status)
+        }
+        return response.json()
+      })
+      .then((lifecycles) => {
+        // Ensure we always set an array
+        setTestLifecycles(Array.isArray(lifecycles) ? lifecycles : [])
+      })
+      .catch((error) => {
+        // Don't fail the whole page for lifecycle fetch errors, just log it
+        console.error('could not retrieve lifecycles:', error)
+        setTestLifecycles([])
+      })
+  }
+
   useEffect(() => {
     fetchCapabilities()
+    fetchLifecycles()
     setIsLoaded(false)
     if (
       location.pathname.endsWith('/component_readiness/main') ||
@@ -457,264 +487,278 @@ export default function ComponentReadiness(props) {
   return (
     <ComponentReadinessStyleContext.Provider value={classes}>
       <TestCapabilitiesContext.Provider value={testCapabilities}>
-        <Fragment>
-          <Grid
-            container
-            justifyContent="center"
-            size="xl"
-            className="cr-view"
-          ></Grid>
-          {/* eslint-disable react/prop-types */}
-          <Routes>
-            <Route index element={<Navigate to="main" replace />} />
-            <Route
-              path="help"
-              element={<ComponentReadinessHelp key="cr-help" />}
-            />
-            <Route
-              path="test_details"
-              element={
-                <TestDetailsReport
-                  key="testreport"
-                  filterVals={getUpdatedUrlParts(varsContext)}
-                  component={varsContext.component}
-                  capability={varsContext.capability}
-                  environment={varsContext.environment}
-                  testId={testId}
-                  testName={testName}
-                  testBasisRelease={testBasisRelease}
-                />
-              }
-            />
-            <Route
-              path="test"
-              element={
-                <CompReadyEnvCapabilityTest
-                  key="capabilitytest"
-                  filterVals={getUpdatedUrlParts(varsContext)}
-                  component={varsContext.component}
-                  capability={varsContext.capability}
-                  testId={testId}
-                />
-              }
-            />
-            <Route
-              path="env_test"
-              element={
-                <CompReadyEnvCapabilityTest
-                  key="capabilitytest"
-                  filterVals={getUpdatedUrlParts(varsContext)}
-                  component={varsContext.component}
-                  capability={varsContext.capability}
-                  testId={testId}
-                  environment={varsContext.environment}
-                  theme={theme}
-                />
-              }
-            />
-            <Route
-              path="capability"
-              element={
-                <CompReadyEnvCapability
-                  key="capabilities"
-                  filterVals={getUpdatedUrlParts(varsContext)}
-                  component={varsContext.component}
-                  capability={varsContext.capability}
-                  theme={theme}
-                />
-              }
-            />
-            <Route
-              path="env_capability"
-              element={
-                <CompReadyEnvCapability
-                  key="capabilities"
-                  filterVals={getUpdatedUrlParts(varsContext)}
-                  component={varsContext.component}
-                  capability={varsContext.capability}
-                  environment={varsContext.environment}
-                  theme={theme}
-                />
-              }
-            />
-            <Route
-              path="capabilities"
-              element={
-                <CompReadyEnvCapabilities
-                  filterVals={getUpdatedUrlParts(varsContext)}
-                  component={varsContext.component}
-                  theme={theme}
-                />
-              }
-            />
-            <Route
-              path="env_capabilities"
-              element={
-                <CompReadyEnvCapabilities
-                  filterVals={getUpdatedUrlParts(varsContext)}
-                  component={varsContext.component}
-                  environment={varsContext.environment}
-                  theme={theme}
-                />
-              }
-            />
-            <Route path="/triages/:triageId" element={<TriageWrapper />} />
-            <Route path="/triages" element={<TriageList />} />
-            <Route
-              path="main"
-              element={
-                <div className="cr-view">
-                  <Sidebar controlsOpts={{ filterByCapabilities: true }} />
-                  <CompReadyPageTitle
-                    pageTitle={pageTitle}
-                    apiCallStr={showValuesForReport()}
+        <TestLifecyclesContext.Provider value={testLifecycles}>
+          <Fragment>
+            <Grid
+              container
+              justifyContent="center"
+              size="xl"
+              className="cr-view"
+            ></Grid>
+            {isMainRoute && <WarningsBanner warnings={warnings} />}
+            {/* eslint-disable react/prop-types */}
+            <Routes>
+              <Route index element={<Navigate to="main" replace />} />
+              <Route
+                path="help"
+                element={<ComponentReadinessHelp key="cr-help" />}
+              />
+              <Route
+                path="test_details"
+                element={
+                  <TestDetailsReport
+                    key="testreport"
+                    filterVals={getUpdatedUrlParts(varsContext)}
+                    component={varsContext.component}
+                    capability={varsContext.capability}
+                    environment={varsContext.environment}
+                    testId={testId}
+                    testName={testName}
+                    testBasisRelease={testBasisRelease}
                   />
-                  {data === initialPageTable ? (
-                    <Typography variant="h6" style={{ textAlign: 'left' }}>
-                      To get started, make your filter selections on the left,
-                      left, then click Generate Report
-                    </Typography>
-                  ) : (
-                    <div>
-                      <ComponentReadinessToolBar
-                        searchRowRegex={searchRowRegex}
-                        handleSearchRowRegexChange={handleSearchRowRegexChange}
-                        searchColumnRegex={searchColumnRegex}
-                        handleSearchColumnRegexChange={
-                          handleSearchColumnRegexChange
-                        }
-                        redOnlyChecked={redOnlyChecked}
-                        handleRedOnlyCheckboxChange={
-                          handleRedOnlyCheckboxChange
-                        }
-                        clearSearches={clearSearches}
-                        data={data}
-                        filterVals={getUpdatedUrlParts(varsContext)}
-                        setTriageActionTaken={setTriageActionTaken}
-                        forceRefresh={forceRefresh}
-                      />
-                      <TableContainer
-                        component="div"
-                        className="cr-table-wrapper"
-                      >
-                        <Table className="cr-comp-read-table">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell className={classes.crColResultFull}>
-                                <Typography className={classes.crCellName}>
-                                  Name
-                                </Typography>
-                              </TableCell>
-                              {columnNames
-                                .filter(
-                                  (column, idx) =>
-                                    column.match(
-                                      new RegExp(
-                                        escapeRegex(searchColumnRegex),
-                                        'i'
-                                      )
-                                    ) && keepColumnsList[idx]
-                                )
-                                .map((column, idx) => {
-                                  if (column !== 'Name') {
-                                    return (
-                                      <TableCell
-                                        className={classes.crColResult}
-                                        key={'column' + '-' + idx}
-                                      >
-                                        <Tooltip
-                                          title={
-                                            'Single row report for ' + column
-                                          }
-                                        >
-                                          <Typography
-                                            className={classes.crCellName}
-                                          >
-                                            {' '}
-                                            {column}
-                                          </Typography>
-                                        </Tooltip>
-                                      </TableCell>
-                                    )
-                                  }
-                                })}
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {data.rows
-                              ? Object.keys(data.rows)
-                                  .filter((componentIndex) =>
-                                    data.rows[componentIndex].component.match(
-                                      new RegExp(
-                                        escapeRegex(searchRowRegex),
-                                        'i'
-                                      )
-                                    )
+                }
+              />
+              <Route
+                path="test"
+                element={
+                  <CompReadyEnvCapabilityTest
+                    key="capabilitytest"
+                    filterVals={getUpdatedUrlParts(varsContext)}
+                    component={varsContext.component}
+                    capability={varsContext.capability}
+                    testId={testId}
+                  />
+                }
+              />
+              <Route
+                path="env_test"
+                element={
+                  <CompReadyEnvCapabilityTest
+                    key="capabilitytest"
+                    filterVals={getUpdatedUrlParts(varsContext)}
+                    component={varsContext.component}
+                    capability={varsContext.capability}
+                    testId={testId}
+                    environment={varsContext.environment}
+                    theme={theme}
+                  />
+                }
+              />
+              <Route
+                path="capability"
+                element={
+                  <CompReadyEnvCapability
+                    key="capabilities"
+                    filterVals={getUpdatedUrlParts(varsContext)}
+                    component={varsContext.component}
+                    capability={varsContext.capability}
+                    theme={theme}
+                  />
+                }
+              />
+              <Route
+                path="env_capability"
+                element={
+                  <CompReadyEnvCapability
+                    key="capabilities"
+                    filterVals={getUpdatedUrlParts(varsContext)}
+                    component={varsContext.component}
+                    capability={varsContext.capability}
+                    environment={varsContext.environment}
+                    theme={theme}
+                  />
+                }
+              />
+              <Route
+                path="capabilities"
+                element={
+                  <CompReadyEnvCapabilities
+                    filterVals={getUpdatedUrlParts(varsContext)}
+                    component={varsContext.component}
+                    theme={theme}
+                  />
+                }
+              />
+              <Route
+                path="env_capabilities"
+                element={
+                  <CompReadyEnvCapabilities
+                    filterVals={getUpdatedUrlParts(varsContext)}
+                    component={varsContext.component}
+                    environment={varsContext.environment}
+                    theme={theme}
+                  />
+                }
+              />
+              <Route path="/triages/:triageId" element={<TriageWrapper />} />
+              <Route path="/triages" element={<TriageList />} />
+              <Route
+                path="main"
+                element={
+                  <div className="cr-view">
+                    <Sidebar
+                      controlsOpts={{
+                        filterByCapabilities: true,
+                        filterByLifecycles: true,
+                      }}
+                    />
+                    <CompReadyPageTitle
+                      pageTitle={pageTitle}
+                      apiCallStr={showValuesForReport()}
+                    />
+                    {data === initialPageTable ? (
+                      <Typography variant="h6" style={{ textAlign: 'left' }}>
+                        To get started, make your filter selections on the left,
+                        left, then click Generate Report
+                      </Typography>
+                    ) : (
+                      <div>
+                        <ComponentReadinessToolBar
+                          searchRowRegex={searchRowRegex}
+                          handleSearchRowRegexChange={
+                            handleSearchRowRegexChange
+                          }
+                          searchColumnRegex={searchColumnRegex}
+                          handleSearchColumnRegexChange={
+                            handleSearchColumnRegexChange
+                          }
+                          redOnlyChecked={redOnlyChecked}
+                          handleRedOnlyCheckboxChange={
+                            handleRedOnlyCheckboxChange
+                          }
+                          clearSearches={clearSearches}
+                          data={data}
+                          filterVals={getUpdatedUrlParts(varsContext)}
+                          setTriageActionTaken={setTriageActionTaken}
+                          forceRefresh={forceRefresh}
+                        />
+                        <TableContainer
+                          component="div"
+                          className="cr-table-wrapper"
+                        >
+                          <Table className="cr-comp-read-table">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell className={classes.crColResultFull}>
+                                  <Typography className={classes.crCellName}>
+                                    Name
+                                  </Typography>
+                                </TableCell>
+                                {columnNames
+                                  .filter(
+                                    (column, idx) =>
+                                      column.match(
+                                        new RegExp(
+                                          escapeRegex(searchColumnRegex),
+                                          'i'
+                                        )
+                                      ) && keepColumnsList[idx]
                                   )
-                                  .filter((componentIndex) =>
-                                    redOnlyChecked
-                                      ? data.rows[componentIndex].columns.some(
-                                          // Filter for rows where any of their columns have status <= -2 and accepted by the regex.
-                                          (column) =>
-                                            column.status <= -2 &&
+                                  .map((column, idx) => {
+                                    if (column !== 'Name') {
+                                      return (
+                                        <TableCell
+                                          className={classes.crColResult}
+                                          key={'column' + '-' + idx}
+                                        >
+                                          <Tooltip
+                                            title={
+                                              'Single row report for ' + column
+                                            }
+                                          >
+                                            <Typography
+                                              className={classes.crCellName}
+                                            >
+                                              {' '}
+                                              {column}
+                                            </Typography>
+                                          </Tooltip>
+                                        </TableCell>
+                                      )
+                                    }
+                                  })}
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {data.rows
+                                ? Object.keys(data.rows)
+                                    .filter((componentIndex) =>
+                                      data.rows[componentIndex].component.match(
+                                        new RegExp(
+                                          escapeRegex(searchRowRegex),
+                                          'i'
+                                        )
+                                      )
+                                    )
+                                    .filter((componentIndex) =>
+                                      redOnlyChecked
+                                        ? data.rows[
+                                            componentIndex
+                                          ].columns.some(
+                                            // Filter for rows where any of their columns have status <= -2 and accepted by the regex.
+                                            (column) =>
+                                              column.status <= -2 &&
+                                              formColumnName(column).match(
+                                                new RegExp(
+                                                  escapeRegex(
+                                                    searchColumnRegex
+                                                  ),
+                                                  'i'
+                                                )
+                                              )
+                                          )
+                                        : true
+                                    )
+                                    .map((componentIndex) => (
+                                      <CompReadyRow
+                                        key={componentIndex}
+                                        componentName={
+                                          data.rows[componentIndex].component
+                                        }
+                                        results={data.rows[
+                                          componentIndex
+                                        ].columns.filter(
+                                          (column, idx) =>
                                             formColumnName(column).match(
                                               new RegExp(
                                                 escapeRegex(searchColumnRegex),
                                                 'i'
                                               )
-                                            )
-                                        )
-                                      : true
-                                  )
-                                  .map((componentIndex) => (
-                                    <CompReadyRow
-                                      key={componentIndex}
-                                      componentName={
-                                        data.rows[componentIndex].component
-                                      }
-                                      results={data.rows[
-                                        componentIndex
-                                      ].columns.filter(
-                                        (column, idx) =>
-                                          formColumnName(column).match(
-                                            new RegExp(
-                                              escapeRegex(searchColumnRegex),
-                                              'i'
-                                            )
-                                          ) &&
-                                          keepColumnsList &&
-                                          keepColumnsList[idx]
-                                      )}
-                                      columnNames={columnNames.filter(
-                                        (column, idx) =>
-                                          column.match(
-                                            new RegExp(
-                                              escapeRegex(searchColumnRegex),
-                                              'i'
-                                            )
-                                          ) &&
-                                          keepColumnsList &&
-                                          keepColumnsList[idx]
-                                      )}
-                                      grayFactor={redOnlyChecked ? 100 : 0}
-                                      filterVals={getUpdatedUrlParts(
-                                        varsContext
-                                      )}
-                                    />
-                                  ))
-                              : null}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                      <GeneratedAt time={data.generated_at} />
-                      <CopyPageURL apiCallStr={showValuesForReport()} />
-                    </div>
-                  )}
-                </div>
-              }
-            />
-          </Routes>
-        </Fragment>
+                                            ) &&
+                                            keepColumnsList &&
+                                            keepColumnsList[idx]
+                                        )}
+                                        columnNames={columnNames.filter(
+                                          (column, idx) =>
+                                            column.match(
+                                              new RegExp(
+                                                escapeRegex(searchColumnRegex),
+                                                'i'
+                                              )
+                                            ) &&
+                                            keepColumnsList &&
+                                            keepColumnsList[idx]
+                                        )}
+                                        grayFactor={redOnlyChecked ? 100 : 0}
+                                        filterVals={getUpdatedUrlParts(
+                                          varsContext
+                                        )}
+                                      />
+                                    ))
+                                : null}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                        <GeneratedAt time={data.generated_at} />
+                        <CopyPageURL apiCallStr={showValuesForReport()} />
+                      </div>
+                    )}
+                  </div>
+                }
+              />
+            </Routes>
+          </Fragment>
+        </TestLifecyclesContext.Provider>
       </TestCapabilitiesContext.Provider>
     </ComponentReadinessStyleContext.Provider>
   )

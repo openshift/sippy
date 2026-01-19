@@ -268,6 +268,65 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 		}
 	}
 
+	// Add a "latest" link if the requested sample data is more than 48 hours old
+	if time.Since(c.ReqOptions.SampleRelease.End) > 48*time.Hour {
+		if report.Links == nil {
+			report.Links = make(map[string]string)
+		}
+
+		// Calculate default sample date range: 7 days ago to now, rounded to nearest 4 hours EST
+		roundingFactor := c.ReqOptions.CacheOption.CRTimeRoundingFactor
+		if roundingFactor == 0 {
+			roundingFactor = 4 * time.Hour // default from flags/component_readiness.go
+		}
+
+		// Create updated sample release options with the newer date range
+		// End time: now, rounded down to nearest rounding factor
+		now := time.Now().UTC()
+		newSampleEnd := now.Truncate(roundingFactor)
+
+		// Start time: 7 days before the end time, rounded to start of day
+		newSampleStart := newSampleEnd.Add(-7 * 24 * time.Hour)
+		newSampleStart = time.Date(newSampleStart.Year(), newSampleStart.Month(), newSampleStart.Day(), 0, 0, 0, 0, time.UTC)
+
+		// Create a copy of the sample release with updated dates
+		newSampleRelease := reqopts.Release{
+			Name:               c.ReqOptions.SampleRelease.Name,
+			PullRequestOptions: c.ReqOptions.SampleRelease.PullRequestOptions,
+			PayloadOptions:     c.ReqOptions.SampleRelease.PayloadOptions,
+			Start:              newSampleStart,
+			End:                newSampleEnd,
+		}
+
+		// Convert variants map to string slice for GenerateTestDetailsURL
+		variants := utils.VariantsMapToStringSlice(testIDOption.RequestedVariants)
+
+		// Determine base release override if one was used
+		baseReleaseOverride := ""
+		if baseOverrideReport != nil && baseOverrideReport.Analyses[0].BaseStats != nil {
+			baseReleaseOverride = baseOverrideReport.Analyses[0].BaseStats.Release
+		}
+
+		// Generate test details URL with the newer sample date range
+		latestURL, err := utils.GenerateTestDetailsURL(
+			testIDOption.TestID,
+			c.baseURL,
+			c.ReqOptions.BaseRelease,
+			newSampleRelease,
+			c.ReqOptions.AdvancedOption,
+			c.ReqOptions.VariantOption,
+			testIDOption.Component,
+			testIDOption.Capability,
+			variants,
+			baseReleaseOverride,
+		)
+		if err != nil {
+			logrus.WithError(err).Warnf("failed to generate latest test details URL for test %s", testIDOption.TestID)
+		} else {
+			report.Links["latest"] = latestURL
+		}
+	}
+
 	return report, nil
 }
 

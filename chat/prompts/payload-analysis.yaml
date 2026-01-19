@@ -1,0 +1,161 @@
+# Deep analysis of a rejected or failing OpenShift payload to determine root cause
+name: payload-analysis
+description: Analyze a rejected or failing payload.
+arguments:
+  - name: payload_identifier
+    description: Payload to analyze - accepts URL (e.g., https://amd64.ocp.releases.ci.openshift.org/releasestream/4.21.0-0.nightly/release/4.21.0-0.nightly-2025-10-24-045839), image reference (e.g., registry.ci.openshift.org/ocp/release:4.21.0-0.nightly-2025-10-24-045839), or release name (e.g., 4.21.0-0.nightly-2025-10-24-045839)
+    required: true
+    type: string
+prompt: |
+  Perform a comprehensive analysis of the payload:
+  {{ payload_identifier }}
+
+  Extract the release name from the provided identifier (e.g., "4.21.0-0.nightly-2025-10-24-045839") and conduct a systematic investigation.
+
+  ## CRITICAL WORKFLOW INSTRUCTIONS
+
+  - Make tool calls in parallel when possible (e.g., analyze multiple jobs at once)
+  - Provide output after completing the core analysis
+  - You must analyze failed blocking jobs
+  - If you have the key information (payload status, failed jobs, basic failure analysis), provide your response
+  - Avoid over-analyzing - once you have the essential data, compile and deliver your findings
+
+  ## 1. Payload Overview
+  - Extract release version, stream type (nightly/ci), and timestamp from the payload name
+  - Link to the release page: https://amd64.ocp.releases.ci.openshift.org/releasestream/{version}.0-0.{stream}/release/{full_release_name}
+  - Use appropriate tools to retrieve:
+    * Current payload status (Rejected, Ready, or Accepted)
+    * When the payload was created
+    * Overall test results summary
+
+  **Status Interpretation:**
+  - **Rejected**: Payload has failed and been rejected - proceed with analysis
+  - **Ready with blocking job failures**: Payload is still being tested, but blocking jobs have already failed
+    * If ANY blocking job has failed, the payload WILL be rejected once remaining jobs complete
+    * You can and should proceed with analysis - don't wait for the payload to reach terminal state
+    * Note in your analysis: "⚠️ Payload is currently in Ready state, but will be Rejected once remaining jobs complete due to blocking job failures"
+  - **Ready with no blocking failures**: Payload is still being tested and may still be accepted
+    * If no blocking jobs have failed yet, note this and cease analysis
+    * Explain: "Cannot analyze yet - no blocking jobs have failed. Wait for more results."
+  - **Accepted**: Payload was accepted - this is not a rejection to analyze
+    * Note this and cease analysis
+
+  ## 2. Blocking Jobs Analysis
+  **CRITICAL**: Analyze ONLY blocking jobs (not informing jobs). Use get_prow_job_summary for ALL failed blocking jobs IN PARALLEL.
+
+  **Job Not Found:**
+  - If a job returns "not found" error, it may not have been ingested by Sippy yet
+  - Recent jobs can take time to appear in the database
+  - Note this in your analysis and continue with other available jobs
+  - Recommend checking back later or verifying the payload status on the release page
+
+  **For EACH failed blocking job:**
+
+  1. Get the job run summary (call tools in parallel for all jobs at once)
+  2. Identify if aggregated (multiple runs) or single run
+  3. List the top 3-5 failed tests with their error messages
+  4. Categorize: Setup failure / Mass failures / Component-specific / Individual tests
+
+  **Present each job concisely:**
+
+  ### [Job Name](prow_link)
+  - **Type**: Aggregated (X/Y runs failed) OR Single Run
+  - **Top Failed Tests**:
+    1. `test.name.here` - Error: "timeout waiting for pods"
+    2. `another.test.name` - Error: "assertion failed"
+  - **Pattern**: Consistent / Intermittent / Infrastructure
+  - **Category**: Setup/Mass/Component/Individual
+
+  ## 3. Known Incidents Check
+  - Use check_known_incidents to see if there are ongoing Jira incidents
+  - Note if any failures might be explained by known infrastructure issues
+
+  ## 4. Changelog Review (If Needed)
+  **Only retrieve changelog if failures appear payload-related (not infrastructure/known issues).**
+
+  - Get the payload changelog
+  - Identify 2-3 most likely commits/PRs that could have caused the failures
+  - Match based on: component alignment, timing, error patterns
+  - Keep this brief - focus on the most suspicious changes
+
+  ## 5. Build Log Analysis (Optional)
+  **Only analyze logs if test failures don't provide clear information.**
+
+  Skip this section unless needed. If required:
+  - Use analyze_job_logs for 1-2 key failed jobs
+  - Look for: build failures, image issues, cluster setup errors
+
+  ## 6. Root Cause Summary
+
+  **NOW COMPILE YOUR FINDINGS. Provide this summary based on the data you've collected:**
+
+  **Primary Suspected Causes:**
+  For each distinct failure pattern:
+  - Description and affected jobs
+  - Suspected commit/PR (if identifiable)
+  - Confidence: High (>90%), Medium (60-89%), Low (<60%)
+  - Key evidence
+
+  **Overall Assessment:**
+  - Is this payload-related or infrastructure/flake?
+  - Confidence level and reasoning
+
+   ## 9. Next Steps
+  You must ALWAYS provide next steps the user. If confidence is low (<90%), briefly suggest 1-2 additional investigation steps.
+
+  For any suspected code change related cause with **High confidence (≥90%)**:
+  - Clearly state: "🚨 REVERT RECOMMENDED"
+  - Specify the exact commit/PR to revert
+  - Provide link to the commit/PR
+  - Explain the evidence supporting the revert recommendation
+  - Estimate impact of revert (what functionality will be lost)
+
+  ### Executing the Revert
+
+  Inform the user how to perform the revert.
+
+  **Step 1: File an Incident Jira**
+  - Create a TRT incident ticket (TRT-XXXX format)
+  - Document the failure analysis and evidence
+
+  **Step 2: Use Revertomatic to Create the Revert PR**
+
+  Provide the exact revertomatic command to execute the revert:
+
+  ```bash
+  ./revertomatic \
+      -p <PR_URL_TO_REVERT> \
+      -j TRT-XXXX \
+      -v "Run the following payload jobs to verify: <list-payload-jobs>" \
+      -c "<Summary of issue> -> This PR caused failures on <payload_url>"
+  ```
+
+  Example:
+  ```bash
+  ./revertomatic \
+      -p https://github.com/openshift/kubernetes/pull/1703 \
+      -j TRT-1234 \
+      -v "Run payload jobs: /payload-job aggregated-aws-ovn-upgrade-4.21-micro, /payload-aggregate aggregated-gcp-ovn-rt-upgrade-4.21-minor 10" \
+      -c "Networking tests failing in upgrade scenarios -> This PR caused failures on https://amd64.ocp.releases.ci.openshift.org/releasestream/4.21.0-0.nightly/release/4.21.0-0.nightly-2025-10-24-045839"
+  ```
+
+  Fill in the placeholders:
+  - `<PR_URL_TO_REVERT>`: The GitHub PR URL that needs to be reverted
+  - `TRT-XXXX`: The incident Jira ticket number you filed
+  - `<list-payload-jobs>`: The payload verification commands from section 8 below
+  - `<Summary of issue>`: Brief description of what broke
+  - `<payload_url>`: Link to the rejected payload
+
+  If you recommend a revert, you must provide the following commands to add to an unrevert to verify the fix:
+
+  - `/payload-job <job-name>` for single runs or 100% failed aggregated jobs
+  - `/payload-aggregate <aggregated-job-name> 10` for partially failed aggregated jobs
+
+  ## Guidelines
+  - **Work incrementally**: Get data → Analyze → Provide findings → Stop
+  - **Parallel tool calls**: Analyze all failed jobs simultaneously
+  - **Be concise**: Focus on actionable insights, not exhaustive details
+  - Use markdown links for resources
+  - You MUST reccomend a revert for every code change with high confidence (≥90%)
+  - Distinguish payload-related failures from infrastructure issues
+  - If you have the core analysis complete, provide your response immediately

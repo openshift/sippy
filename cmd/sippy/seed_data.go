@@ -10,8 +10,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/sippyserver"
 )
@@ -106,11 +108,23 @@ rolled off the 1 week window.
 			}
 			log.Infof("Processed %d Test models", len(f.TestNames))
 
+			// Create labels and symptoms
+			if err := createLabelsAndSymptoms(dbc); err != nil {
+				return errors.WithMessage(err, "failed to create labels and symptoms")
+			}
+			log.Info("Created sample labels and symptoms")
+
 			// Create ProwJobRuns for each ProwJob
 			if err := createProwJobRuns(dbc, f.RunsPerJob); err != nil {
 				return errors.WithMessage(err, "failed to create ProwJobRuns")
 			}
 			log.Info("Created ProwJobRuns and test results for all ProwJobs")
+
+			// Apply labels to job runs
+			if err := applyLabelsToJobRuns(dbc); err != nil {
+				return errors.WithMessage(err, "failed to apply labels to job runs")
+			}
+			log.Info("Applied labels to ~25% of job runs")
 
 			totalProwJobs := len(f.Releases) * f.JobsPerRelease
 			totalRuns := totalProwJobs * f.RunsPerJob
@@ -281,15 +295,32 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 				}
 			}
 
+			// Set overall result based on test failures and random factors
+			var overallResult v1.JobOverallResult
 			if testFailures > 0 {
 				prowJobRun.Failed = true
 				prowJobRun.Succeeded = false
 				prowJobRun.TestFailures = testFailures
+
+				// Randomly assign different failure types
+				// nolint: gosec
+				failureType := rand.Float64()
+				if failureType < 0.7 {
+					overallResult = v1.JobTestFailure // 70% test failures
+				} else if failureType < 0.85 {
+					overallResult = v1.JobUpgradeFailure // 15% upgrade failures
+				} else if failureType < 0.92 {
+					overallResult = v1.JobInstallFailure // 7% install failures
+				} else {
+					overallResult = v1.JobInfrastructureFailure // 8% infrastructure failures
+				}
 			} else {
 				prowJobRun.Failed = false
 				prowJobRun.Succeeded = true
 				prowJobRun.TestFailures = 0
+				overallResult = v1.JobSucceeded
 			}
+			prowJobRun.OverallResult = overallResult
 
 			if err := dbc.DB.Save(&prowJobRun).Error; err != nil {
 				return fmt.Errorf("failed to update ProwJobRun for ProwJob %s: %v", prowJob.Name, err)
@@ -298,6 +329,173 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 
 		log.Infof("Completed creating %d ProwJobRuns for ProwJob: %s", runsPerJob, prowJob.Name)
 	}
+
+	return nil
+}
+
+func createLabelsAndSymptoms(dbc *db.DB) error {
+	metadata := jobrunscan.Metadata{
+		CreatedBy: "seed-data",
+		UpdatedBy: "seed-data",
+	}
+
+	// Create sample labels
+	labels := []jobrunscan.Label{
+		{
+			ID:          "InfraFailure",
+			LabelTitle:  "Infrastructure failure: omit job from CR",
+			Explanation: "Job failed due to **infrastructure issues** not related to product code. See [TRT documentation](https://docs.ci.openshift.org/docs/architecture/ci-operator/) for more details.",
+			Metadata:    metadata,
+		},
+		{
+			ID:          "ClusterDNSFlake",
+			LabelTitle:  "Cluster DNS resolution failure(s)",
+			Explanation: "Job experienced DNS resolution timeouts in the cluster:\n\n- Check for network issues\n- Review DNS server logs\n- Examine cluster network configuration",
+			Metadata:    metadata,
+		},
+		{
+			ID:          "ClusterInstallTimeout",
+			LabelTitle:  "Cluster install timeout",
+			Explanation: "Cluster installation exceeded timeout threshold. This may indicate:\n\n1. Slow infrastructure provisioning\n2. Network connectivity problems\n3. Image pull failures",
+			Metadata:    metadata,
+		},
+		{
+			ID:                  "IntervalFile",
+			LabelTitle:          "Has interval file(s)",
+			Explanation:         "Job produced interval monitoring files. Use the `intervals` tool to analyze timing data.",
+			HideDisplayContexts: []string{jobrunscan.MetricsContext, jobrunscan.JAQOptsContext},
+			Metadata:            metadata,
+		},
+		{
+			ID:          "APIServerTimeout",
+			LabelTitle:  "API server timeout",
+			Explanation: "Requests to the API server timed out. Common causes:\n\n- High API server load\n- Network latency issues\n- Slow etcd responses",
+			Metadata:    metadata,
+		},
+	}
+
+	for _, label := range labels {
+		var existing jobrunscan.Label
+		if err := dbc.DB.Where("id = ?", label.ID).FirstOrCreate(&existing, label).Error; err != nil {
+			return fmt.Errorf("failed to create or find label %s: %v", label.ID, err)
+		}
+		if existing.CreatedAt.IsZero() || existing.CreatedAt.Equal(existing.UpdatedAt) {
+			log.Debugf("Created new Label: %s", label.ID)
+		} else {
+			log.Debugf("Label already exists: %s", label.ID)
+		}
+	}
+
+	// Create sample symptoms
+	symptoms := []jobrunscan.Symptom{
+		{
+			ID:          "DNSTimeoutSymptom",
+			Summary:     "Cluster DNS resolution failures detected",
+			MatcherType: jobrunscan.MatcherTypeString,
+			FilePattern: "**/e2e-timelines/**/*.json",
+			MatchString: "dial tcp",
+			LabelIDs:    []string{"ClusterDNSFlake"},
+			Metadata:    metadata,
+		},
+		{
+			ID:          "InstallTimeoutSymptom",
+			Summary:     "Cluster install timeout detected",
+			MatcherType: jobrunscan.MatcherTypeRegex,
+			FilePattern: "**/build-log.txt",
+			MatchString: "timeout waiting for.*install",
+			LabelIDs:    []string{"ClusterInstallTimeout"},
+			Metadata:    metadata,
+		},
+		{
+			ID:          "HasIntervalsSymptom",
+			Summary:     "Has interval file(s)",
+			MatcherType: jobrunscan.MatcherTypeFile,
+			FilePattern: "**/intervals*.json",
+			MatchString: "",
+			LabelIDs:    []string{"IntervalFile"},
+			Metadata:    metadata,
+		},
+		{
+			ID:          "APITimeoutSymptom",
+			Summary:     "API server timeouts detected",
+			MatcherType: jobrunscan.MatcherTypeString,
+			FilePattern: "**/build-log.txt",
+			MatchString: "context deadline exceeded",
+			LabelIDs:    []string{"APIServerTimeout"},
+			Metadata:    metadata,
+		},
+	}
+
+	for _, symptom := range symptoms {
+		var existing jobrunscan.Symptom
+		if err := dbc.DB.Where("id = ?", symptom.ID).FirstOrCreate(&existing, symptom).Error; err != nil {
+			return fmt.Errorf("failed to create or find symptom %s: %v", symptom.ID, err)
+		}
+		if existing.CreatedAt.IsZero() || existing.CreatedAt.Equal(existing.UpdatedAt) {
+			log.Debugf("Created new Symptom: %s", symptom.ID)
+		} else {
+			log.Debugf("Symptom already exists: %s", symptom.ID)
+		}
+	}
+
+	return nil
+}
+
+func applyLabelsToJobRuns(dbc *db.DB) error {
+	// Fetch all job runs
+	var jobRuns []models.ProwJobRun
+	if err := dbc.DB.Find(&jobRuns).Error; err != nil {
+		return fmt.Errorf("failed to fetch job runs: %v", err)
+	}
+
+	// Fetch all labels
+	var labels []jobrunscan.Label
+	if err := dbc.DB.Find(&labels).Error; err != nil {
+		return fmt.Errorf("failed to fetch labels: %v", err)
+	}
+
+	if len(labels) == 0 {
+		log.Warn("No labels found, skipping label application")
+		return nil
+	}
+
+	labelIDs := make([]string, len(labels))
+	for i, label := range labels {
+		labelIDs[i] = label.ID
+	}
+
+	// Apply labels to approximately 25% of job runs
+	labeledCount := 0
+	for i := range jobRuns {
+		// nolint: gosec // we do not care that the randomness is weak
+		if rand.Float64() > 0.25 {
+			continue
+		}
+		// Randomly select 1-3 labels
+		// nolint: gosec
+		numLabels := rand.Intn(3) + 1
+		selectedLabels := make([]string, 0, numLabels)
+
+		// Randomly pick unique labels
+		usedIndices := make(map[int]bool)
+		for len(selectedLabels) < numLabels && len(selectedLabels) < len(labelIDs) {
+			// nolint: gosec
+			idx := rand.Intn(len(labelIDs))
+			if !usedIndices[idx] {
+				selectedLabels = append(selectedLabels, labelIDs[idx])
+				usedIndices[idx] = true
+			}
+		}
+
+		jobRuns[i].Labels = selectedLabels
+		if err := dbc.DB.Save(&jobRuns[i]).Error; err != nil {
+			return fmt.Errorf("failed to update job run %d with labels: %v", jobRuns[i].ID, err)
+		}
+		labeledCount++
+	}
+
+	log.Infof("Applied labels to %d of %d job runs (%.1f%%)",
+		labeledCount, len(jobRuns), float64(labeledCount)/float64(len(jobRuns))*100)
 
 	return nil
 }

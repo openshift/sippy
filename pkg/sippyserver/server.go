@@ -38,7 +38,6 @@ import (
 
 	"github.com/openshift/sippy/pkg/mcp"
 
-	"github.com/openshift/sippy/pkg/ai"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 
 	"github.com/andygrunwald/go-jira"
@@ -85,7 +84,6 @@ func NewServer(
 	views *apitype.SippyViews,
 	config *v1.SippyConfig,
 	enableWriteEndpoints bool,
-	llmClient *ai.LLMClient,
 	chatAPIURL string,
 	jiraClient *jira.Client,
 ) *Server {
@@ -109,7 +107,6 @@ func NewServer(
 		views:                views,
 		config:               config,
 		enableWriteAPIs:      enableWriteEndpoints,
-		llmClient:            llmClient,
 		chatAPIURL:           chatAPIURL,
 		jiraClient:           jiraClient,
 	}
@@ -154,7 +151,6 @@ type Server struct {
 	views                *apitype.SippyViews
 	config               *v1.SippyConfig
 	enableWriteAPIs      bool
-	llmClient            *ai.LLMClient
 	chatAPIURL           string
 	jiraClient           *jira.Client
 }
@@ -287,10 +283,6 @@ func (s *Server) determineCapabilities() {
 	capabilities := make([]string, 0)
 	if s.mode == ModeOpenShift {
 		capabilities = append(capabilities, OpenshiftCapability)
-	}
-
-	if s.llmClient != nil {
-		capabilities = append(capabilities, AICapability)
 	}
 
 	if s.bigQueryClient != nil {
@@ -726,7 +718,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		return componentreport.ComponentReport{}, err
 	}
 
-	options, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
+	options, warnings, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	if err != nil {
 		return componentreport.ComponentReport{}, err
@@ -745,6 +737,9 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 	if len(errs) > 0 {
 		return componentreport.ComponentReport{}, fmt.Errorf("error querying component from big query: %v", errs)
 	}
+
+	// Add any warnings from parsing to the report
+	outputs.Warnings = warnings
 
 	return outputs, nil
 }
@@ -777,7 +772,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 		return
 	}
 
-	reqOptions, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
+	reqOptions, _, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
@@ -890,7 +885,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Request) {
-	capabilities, err := api.GetTestCapabilitiesFromDB(s.db)
+	capabilities, err := api.GetTestCapabilitiesFromDB(s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying test capabilities")
 		failureResponse(w, http.StatusInternalServerError, "error querying test capabilities")
@@ -898,6 +893,17 @@ func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Req
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, capabilities)
+}
+
+func (s *Server) jsonTestLifecyclesFromDB(w http.ResponseWriter, req *http.Request) {
+	lifecycles, err := api.GetTestLifecyclesFromDB(s.bigQueryClient)
+	if err != nil {
+		log.WithError(err).Error("error querying test lifecycles")
+		failureResponse(w, http.StatusInternalServerError, "error querying test lifecycles")
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, lifecycles)
 }
 
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
@@ -1064,13 +1070,34 @@ func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	summary, err := ai.GetJobRunSummary(req.Context(), s.db, s.gcsClient, jobRunID)
+	summary, err := api.GetJobRunSummary(req.Context(), s.db, s.gcsClient, jobRunID)
 	if err != nil {
 		api.RespondWithJSON(http.StatusInternalServerError, w, err.Error())
 		return
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, summary)
+}
+
+// jsonJobRunPayload returns the payload release tag that was used for a given job run.
+func (s *Server) jsonJobRunPayload(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "job run payload API is only available when google-service-account-credential-file is configured")
+		return
+	}
+
+	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
+	if jobRunIDStr == "" {
+		return
+	}
+
+	results, err := api.PayloadForJobRun(req.Context(), s.bigQueryClient, jobRunIDStr)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, results)
 }
 
 func (s *Server) jsonJobRunsReportFromDB(w http.ResponseWriter, req *http.Request) {
@@ -1902,15 +1929,6 @@ func (s *Server) Serve() {
 
 	router.PathPrefix("/static/").Handler(http.FileServer(http.FS(s.static)))
 
-	// Re-direct "/" to sippy-ng
-	router.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		if req.URL.Path != "/" {
-			http.NotFound(w, req)
-			return
-		}
-		http.Redirect(w, req, "/sippy-ng/", http.StatusMovedPermanently)
-	}).Methods(http.MethodGet)
-
 	// Setup MCP Server
 	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
 
@@ -1946,16 +1964,17 @@ func (s *Server) Serve() {
 			},
 		},
 		{
-			EndpointPath: "/api/ai/job_run",
-			Description:  "Returns an AI-generated summary of a job run",
-			Capabilities: []string{LocalDBCapability, AICapability},
-			HandlerFunc:  s.jsonJobRunAISummary,
-		},
-		{
 			EndpointPath: "/api/job/run/summary",
 			Description:  "Returns raw job run summary data including test failures and cluster operators",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonJobRunSummary,
+		},
+		{
+			EndpointPath: "/api/job/run/payload",
+			Description:  "Returns the payload a job run was using",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonJobRunPayload,
+			CacheTime:    4 * time.Hour,
 		},
 		{
 			EndpointPath: "/api/autocomplete/{field}",
@@ -2011,6 +2030,76 @@ func (s *Server) Serve() {
 			Description:  "Queries job artifacts and their contents",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.queryJobArtifacts,
+		},
+		{
+			EndpointPath: "/api/jobs/labels",
+			Description:  "List all job run label definitions",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonListLabels,
+		},
+		{
+			EndpointPath: "/api/jobs/labels",
+			Description:  "Create a new job run label definition",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCreateLabel,
+		},
+		{
+			EndpointPath: "/api/jobs/labels/{id}",
+			Description:  "Get a specific job run label definition",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonGetLabel,
+		},
+		{
+			EndpointPath: "/api/jobs/labels/{id}",
+			Description:  "Update a job run label definition",
+			Methods:      []string{http.MethodPut},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonUpdateLabel,
+		},
+		{
+			EndpointPath: "/api/jobs/labels/{id}",
+			Description:  "Delete a job run label definition",
+			Methods:      []string{http.MethodDelete},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonDeleteLabel,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms",
+			Description:  "List all job run symptom definitions",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonListSymptoms,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms",
+			Description:  "Create a new job run symptom definition",
+			Methods:      []string{http.MethodPost},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonCreateSymptom,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms/{id}",
+			Description:  "Get a specific job run symptom definition",
+			Methods:      []string{http.MethodGet},
+			Capabilities: []string{LocalDBCapability},
+			HandlerFunc:  s.jsonGetSymptom,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms/{id}",
+			Description:  "Update a job run symptom definition",
+			Methods:      []string{http.MethodPut},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonUpdateSymptom,
+		},
+		{
+			EndpointPath: "/api/jobs/symptoms/{id}",
+			Description:  "Delete a job run symptom definition",
+			Methods:      []string{http.MethodDelete},
+			Capabilities: []string{LocalDBCapability, WriteEndpointsCapability},
+			HandlerFunc:  s.jsonDeleteSymptom,
 		},
 		{
 			EndpointPath: "/api/job_variants",
@@ -2103,9 +2192,16 @@ func (s *Server) Serve() {
 		{
 			EndpointPath: "/api/tests/capabilities",
 			Description:  "Returns list of available test capabilities",
-			Capabilities: []string{LocalDBCapability},
+			Capabilities: []string{ComponentReadinessCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestCapabilitiesFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/lifecycles",
+			Description:  "Returns list of available test lifecycles",
+			Capabilities: []string{ComponentReadinessCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestLifecyclesFromDB,
 		},
 		{
 			EndpointPath: "/api/install",
@@ -2347,6 +2443,12 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.handleChatProxy,
 		},
 		{
+			EndpointPath: "/api/chat/models",
+			Description:  "Proxy for listing available models from sippy-chat service.",
+			Capabilities: []string{ChatCapability},
+			HandlerFunc:  s.handleChatProxy,
+		},
+		{
 			EndpointPath: "/api/chat/prompts",
 			Description:  "Proxy for listing available prompt templates from sippy-chat service.",
 			Capabilities: []string{ChatCapability},
@@ -2397,6 +2499,24 @@ func (s *Server) Serve() {
 			route.Methods(ep.Methods...)
 		}
 	}
+
+	// Catch-all fallback: serve static files for any unmatched routes, or redirect to sippy-ng
+	router.PathPrefix("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Try to open the file from static filesystem (embedded FS keeps directory structure)
+		filePath := "static" + r.URL.Path
+		if _, err := s.static.Open(filePath); err != nil {
+			// File doesn't exist in static, redirect to sippy-ng
+			if r.URL.Path == "/" {
+				http.Redirect(w, r, "/sippy-ng/", http.StatusMovedPermanently)
+			} else {
+				http.NotFound(w, r)
+			}
+			return
+		}
+		// File exists, rewrite path to include /static prefix and serve
+		r.URL.Path = "/static" + r.URL.Path
+		http.FileServer(http.FS(s.static)).ServeHTTP(w, r)
+	})
 
 	var handler http.Handler = router
 	handler = logRequestHandler(handler)

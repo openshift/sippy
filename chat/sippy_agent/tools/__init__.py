@@ -12,6 +12,7 @@ from .mcp_tool_loader import load_tools_from_mcp
 from .payload_details import SippyPayloadDetailsTool
 from .release_payloads import SippyReleasePayloadTool
 from .sippy_job_summary import SippyProwJobSummaryTool
+from .sippy_job_payload import SippyProwJobPayloadTool
 from .sippy_log_analyzer import SippyLogAnalyzerTool
 from .sippy_test_details import SippyTestDetailsTool
 from .jira_issue import SippyJiraIssueTool
@@ -29,6 +30,7 @@ __all__ = [
     "SippyPayloadDetailsTool",
     "SippyReleasePayloadTool",
     "SippyProwJobSummaryTool",
+    "SippyProwJobPayloadTool",
     "SippyLogAnalyzerTool",
     "SippyTestDetailsTool",
     "SippyJiraIssueTool",

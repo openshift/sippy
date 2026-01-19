@@ -9,6 +9,10 @@
 # Returns warning message from release controller
 # Path: sippy-ng/src/releases/ReleaseOverview.js, line 110
 #Info: Unsanitized input from a React useState value flows into __html, where it is used to dynamically construct the HTML page on client side. This may result in a DOM Based Cross-Site Scripting attack (DOMXSS).
+
+# Path: sippy-ng/src/component_readiness/JobArtifactQuery.js, line 789
+# Info: Unsanitized input from a React useState value flows into window.open, where it is used as input for request redirection. This may result in an Open Redirect vulnerability.
+
 exclude:
   global:
     - vendor/**
@@ -17,4 +21,5 @@ exclude:
     - pkg/cache/compressed/cache.go
     - sippy-ng/src/prow_job_runs/IntervalsChart.js
     - sippy-ng/src/releases/ReleaseOverview.js
+    - sippy-ng/src/components/Laundry.js
     - scripts/add-intentional-regression.py

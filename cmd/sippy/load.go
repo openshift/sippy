@@ -58,6 +58,7 @@ type LoadFlags struct {
 	ModeFlags               *flags.ModeFlags
 	CacheFlags              *flags.CacheFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
+	JiraFlags               *flags.JiraFlags
 	JobVariantsInputFile    string
 	LogLevel                string
 }
@@ -72,6 +73,7 @@ func NewLoadFlags() *LoadFlags {
 		ModeFlags:               flags.NewModeFlags(),
 		CacheFlags:              flags.NewCacheFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
+		JiraFlags:               flags.NewJiraFlags(),
 	}
 }
 
@@ -84,6 +86,7 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	f.ModeFlags.BindFlags(fs)
 	f.CacheFlags.BindFlags(fs)
 	f.ComponentReadinessFlags.BindFlags(fs)
+	f.JiraFlags.BindFlags(fs)
 
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Migrate the DB before loading")
 	fs.StringArrayVar(&f.Loaders, "loader", []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates"}, "Which data sources to use for data loading")
@@ -290,9 +293,14 @@ func NewLoadCommand() *cobra.Command {
 						log.WithError(err).Fatal("error querying releases")
 					}
 
+					jiraClient, err := f.JiraFlags.GetJiraClient()
+					if err != nil {
+						return errors.Wrap(err, "CRITICAL error getting jira client which prevents regression tracking")
+					}
+
 					regressionTracker := componentreadiness.NewRegressionTracker(
 						bqc, dbc, cacheOpts, releases,
-						componentreadiness.NewPostgresRegressionStore(dbc),
+						componentreadiness.NewPostgresRegressionStore(dbc, jiraClient),
 						views.ComponentReadiness,
 						config.ComponentReadinessConfig.VariantJunitTableOverrides,
 						false)

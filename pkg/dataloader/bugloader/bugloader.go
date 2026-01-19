@@ -213,7 +213,7 @@ var statusesForResolution = []string{
 
 // updateTriages reconciles triage records with their associated bugs by:
 // 1. Linking triages to bug records and handling URL changes
-// 2. Auto-resolving triages when bugs reach "ON_QA" or higher status
+// 2. Auto-resolving triages when bugs reach "ON_QA" or higher status, only if the triage doesn't contain regressions from multiple releases
 func (bl *BugLoader) updateTriages(triages []models.Triage) {
 	logger := log.WithField("func", "bugloader.updateTriages")
 	logger.Infof("ensuring triages have correct refs to their bugs, and are resolved where appropriate")
@@ -232,22 +232,32 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 		res := bl.dbc.DB.Where("url = ?", t.URL).First(&bug)
 		if res.Error != nil {
 			// Someone could have put in a bad url, we won't let that error out our reconcile job.
-			logger.WithError(res.Error).Warnf("error looking up bug which should exist by this point: %s", t.URL)
+			logger.WithError(res.Error).Warnf("error looking up bug which should exist by this point: %s. this is expected for cards that are restricted to 'Red Hat Only'", t.URL)
 			continue
 		}
 
 		updated := false
-		// If the triage is not resolved, we should resolve it if the bug is at least in the "Modified" status
+		// If the triage is not resolved, and it only contains regressions from a single release,
+		// then we should resolve it if the bug is at least in the "ON_QA" status
 		if !resolved && slices.Contains(statusesForResolution, bug.Status) {
-			updated = true
-			now := time.Now()
-			t.Resolved = sql.NullTime{
-				Time:  now,
-				Valid: true,
+			releases := sets.New[string]()
+			for _, regression := range t.Regressions {
+				releases.Insert(regression.Release)
 			}
-			t.ResolutionReason = models.JiraProgression
-			logger.Infof("resolving triage %q (%d) due to bug %q (%d) reaching status %q",
-				t.Description, t.ID, bug.Summary, bug.ID, bug.Status)
+			if releases.Len() == 1 {
+				updated = true
+				now := time.Now()
+				t.Resolved = sql.NullTime{
+					Time:  now,
+					Valid: true,
+				}
+				t.ResolutionReason = models.JiraProgression
+				logger.Infof("resolving triage %q (%d) due to bug %q (%d) reaching status %q",
+					t.Description, t.ID, bug.Summary, bug.ID, bug.Status)
+			} else {
+				logger.Infof("not resolving triage %q (%d) because it contains regressions from multiple releases: %v",
+					t.Description, t.ID, releases.UnsortedList())
+			}
 		}
 
 		if !bugLinked {

@@ -6,7 +6,9 @@ import (
 	"math/big"
 	"time"
 
+	bq "cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
+
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -353,6 +355,7 @@ type JobRun struct {
 	PullRequestLink       string              `json:"pull_request_link"`
 	PullRequestSHA        string              `json:"pull_request_sha"`
 	PullRequestAuthor     string              `json:"pull_request_author"`
+	Labels                pq.StringArray      `json:"labels" gorm:"type:text[]"`
 }
 
 func (run JobRun) GetFieldType(param string) ColumnType {
@@ -370,6 +373,8 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 	case "failed_test_names":
 		return ColumnTypeArray
 	case "flaked_test_names":
+		return ColumnTypeArray
+	case "labels":
 		return ColumnTypeArray
 	case "variants":
 		return ColumnTypeArray
@@ -436,6 +441,8 @@ func (run JobRun) GetArrayValue(param string) ([]string, error) {
 		return run.FailedTestNames, nil
 	case "flaked_test_names":
 		return run.FlakedTestNames, nil
+	case "labels":
+		return run.Labels, nil
 	case "tags":
 		return run.Tags, nil
 	case "variants":
@@ -832,6 +839,13 @@ type FailedPayload struct {
 	FailedJobs []string `json:"failed_jobs"`
 	// FailedJobRuns is a list of prow job URLs the test failed in for this payload.
 	FailedJobRuns []string `json:"failed_job_runs"`
+}
+
+// JobPayload represents the payload release tag information for a job run.
+type JobPayload struct {
+	ProwjobJobName string        `json:"prowjob_job_name" bigquery:"prowjob_job_name"`
+	Payload        bq.NullString `json:"payload" bigquery:"release_verify_tag"`
+	ProwjobBuildID string        `json:"prowjob_build_id" bigquery:"prowjob_build_id"`
 }
 
 // CalendarEvent is an API type representing a FullCalendar.io event type, for use

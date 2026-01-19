@@ -374,6 +374,15 @@ func BuildComponentReportQuery(
 			Value: reqOptions.Capabilities,
 		})
 	}
+	if isSample && len(reqOptions.Lifecycles) > 0 {
+		// filter by lifecycle : only applied to sample, not basis
+		// treat NULL or empty lifecycle as "blocking"
+		queryString += ` AND COALESCE(NULLIF(lifecycle, ''), 'blocking') IN UNNEST(@Lifecycles)`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "Lifecycles",
+			Value: reqOptions.Lifecycles,
+		})
+	}
 
 	// In this context, a component report, multiple test ID options should not be specified. Thus
 	// here we assume just one for the filtering purposes here. This code triggers as you drill down

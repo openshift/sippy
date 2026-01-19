@@ -1,0 +1,79 @@
+language: en-US
+early_access: false
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  tools:
+    shellcheck:
+      enabled: true
+    markdownlint:
+      enabled: true
+  auto_review:
+    enabled: true
+    drafts: true
+  pre_merge_checks:
+    custom_checks:
+      - name: "Go Error Handling"
+        mode: warning
+        instructions: |
+          Ensure proper Go error handling patterns:
+          - Never ignore returned errors as `_` without clear justification
+          - Errors should be wrapped with context using fmt.Errorf with %w
+          - Avoid panic() except in init() or fatal conditions
+          - Check for nil before dereferencing pointers
+
+      - name: "SQL Injection Prevention"
+        mode: error
+        instructions: |
+          Prevent SQL injection vulnerabilities:
+          - NEVER concatenate or format SQL queries with values directly from user input
+          - Always use placeholders for parameters in queries, preferably named (@Name)
+          - Reuse prepared statements for repeated queries
+          - Avoid string concatenation in SQL query construction (valid use cases should be justified)
+
+      - name: "Excessive CSS in React Should Use Styles"
+        mode: warning
+        instructions: |
+          React components with extensive inline CSS should use the useStyles pattern:
+          - Flag inline style objects with more than 3-4 style properties
+          - Suggest extracting complex styles to useStyles() or styled components
+          - Inline styles are acceptable for simple, dynamic values
+          - Prefer useStyles for maintainability and reusability
+
+          ❌ Avoid:
+          - Large inline style objects in JSX
+          - Repeated style definitions across components
+
+          ✅ Prefer:
+          - useStyles() hook for complex styling
+          - CSS modules or styled components
+          - Inline styles only for dynamic values (e.g., width based on props)
+
+      - name: "Single Responsibility and Clear Naming"
+        mode: warning
+        instructions: |
+          Keep packages, structs, and methods focused on a single clear conceptual "chunk":
+          - A package should represent one cohesive concept or purpose
+          - A struct should represent a single entity in the scope of its package
+          - A method should operate on a single level of abstraction, using other methods to handle more granular details
+          - Names should clearly and simply communicate a single concept relative to their context
+
+          ✅ Prefer:
+          - Package names or aliases that provide context (e.g. "footypes" not "types" or "v1")
+          - Brief names made of descriptive words that evoke a specific concept (e.g., "TestResultAggregator" not "Manager")
+          - Methods with clear, action-oriented names (e.g., "CalculatePassRate" not "Calculate")
+
+          ❌ Avoid:
+          - Generic names like "Manager", "Handler", "Util" without specific context
+          - Method names that don't indicate what they do (e.g., "Process", "Handle", "Do")
+          - Repetetive naming; a package with more than a few similarly-named entities suggests refactoring into a sub-package
+          - Structs with too many top-level fields (more than about 7); refactor into focused sub-types
+          - Methods with more than a few parameters or results, often due to handling too many concepts that should be chunked into a type
+          - Overly-broad packages or structs accumulating miscellaneous functionality
+
+chat:
+  auto_reply: true
