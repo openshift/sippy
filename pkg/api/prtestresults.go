@@ -28,6 +28,7 @@ type PRTestResult struct {
 	TestSuite      string    `json:"test_suite"`
 	Success        bool      `json:"success"`
 	Flaked         bool      `json:"flaked"`
+	FailureContent string    `json:"failure_content"`
 }
 
 // GetPRTestResults fetches test failures for a specific pull request from BigQuery
@@ -154,7 +155,8 @@ func buildPRTestResultsQuery(bqc *bq.Client, org, repo string, prNumber int, sta
 				WHEN deduped.adjusted_flake_count > 0 THEN TRUE
 				WHEN deduped.adjusted_success_val > 0 THEN TRUE
 				ELSE FALSE
-			END AS success
+			END AS success,
+			deduped.failure_content
 		FROM
 			%s.jobs AS jobs
 		INNER JOIN
@@ -280,6 +282,10 @@ func deserializePRTestResult(row []bigquery.Value, schema bigquery.Schema) (PRTe
 			result.Flaked = row[i].(bool)
 		case "success":
 			result.Success = row[i].(bool)
+		case "failure_content":
+			if row[i] != nil {
+				result.FailureContent = row[i].(string)
+			}
 		}
 	}
 
