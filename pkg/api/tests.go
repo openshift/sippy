@@ -128,8 +128,9 @@ LIMIT 1000`
 		url := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/test-platform-results/logs/%s", row.ProwJobBuildID)
 
 		outputs = append(outputs, apitype.TestOutput{
-			URL:    url,
-			Output: row.FailureContent,
+			URL:      url,
+			Output:   row.FailureContent,
+			TestName: row.TestName,
 		})
 	}
 
