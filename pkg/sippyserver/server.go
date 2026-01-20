@@ -2226,7 +2226,7 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/tests/durations",
 			Description:  "Durations of tests",
 			Capabilities: []string{LocalDBCapability},
-			CacheTime:    1 * time.Hour,
+			CacheTime:    1 * time.Second,
 			HandlerFunc:  s.jsonTestDurationsFromDB,
 		},
 		{

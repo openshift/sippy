@@ -57,12 +57,20 @@ func GetTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filt
 }
 
 func GetTestOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, testID string, prowJobRunIDs []string, startDate, endDate time.Time) ([]apitype.TestOutput, error) {
-	queryStr := `SELECT prowjob_build_id, test_name, success, test_id, branch, prowjob_name, failure_content
-FROM ` + "`openshift-gce-devel.ci_analysis_us.junit`" + `
-WHERE test_id = @testID
-  AND success = false
-  AND prowjob_build_id IN UNNEST(@prowJobRunIDs)
-  AND modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)
+	// Use component_mapping to resolve test_id to test_name/testsuite, which handles test renames.
+	// The test_id in junit may be stale (from before a rename), but component_mapping.id is canonical.
+	// We join on name/suite to find all junit rows for this test, regardless of when they were created.
+	queryStr := `WITH test_mapping AS (
+  SELECT name, suite
+  FROM ` + "`openshift-gce-devel.ci_analysis_us.component_mapping_latest`" + `
+  WHERE id = @testID
+)
+SELECT junit.prowjob_build_id, junit.test_name, junit.success, junit.test_id, junit.branch, junit.prowjob_name, junit.failure_content
+FROM ` + "`openshift-gce-devel.ci_analysis_us.junit`" + ` AS junit
+INNER JOIN test_mapping ON junit.test_name = test_mapping.name AND junit.testsuite = test_mapping.suite
+WHERE junit.success = false
+  AND junit.prowjob_build_id IN UNNEST(@prowJobRunIDs)
+  AND junit.modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)
 LIMIT 1000`
 
 	query := bigQueryClient.BQ.Query(queryStr)
