@@ -297,11 +297,8 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, bqc *bq.Cl
 	// Parse and validate query parameters
 	org := param.SafeRead(req, "org")
 	if org == "" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
-			"code":    http.StatusBadRequest,
-			"message": "required parameter 'org' is missing",
-		})
-		return
+		// Default to openshift.
+		org = "openshift"
 	}
 
 	repo := param.SafeRead(req, "repo")
