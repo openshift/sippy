@@ -56,6 +56,78 @@ func GetTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filt
 	return query.TestOutputs(dbc, release, test, includedVariants, excludedVariants, quantity)
 }
 
+func GetTestOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, testID string, prowJobRunIDs []string, startDate, endDate time.Time) ([]apitype.TestOutput, error) {
+	queryStr := `SELECT prowjob_build_id, test_name, success, test_id, branch, prowjob_name, failure_content
+FROM ` + "`openshift-gce-devel.ci_analysis_us.junit`" + `
+WHERE test_id = @testID
+  AND success = false
+  AND prowjob_build_id IN UNNEST(@prowJobRunIDs)
+  AND modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)
+LIMIT 1000`
+
+	query := bigQueryClient.BQ.Query(queryStr)
+	query.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "testID",
+			Value: testID,
+		},
+		{
+			Name:  "prowJobRunIDs",
+			Value: prowJobRunIDs,
+		},
+		{
+			Name:  "startDate",
+			Value: startDate,
+		},
+		{
+			Name:  "endDate",
+			Value: endDate,
+		},
+	}
+
+	// Log the query with parameters substituted for easy copy-paste
+	bq.LogQueryWithParamsReplaced(log.WithField("type", "TestOutputs"), query)
+
+	it, err := bq.LoggedRead(ctx, query)
+	if err != nil {
+		log.WithError(err).Error("error querying test outputs from bigquery")
+		return nil, fmt.Errorf("error querying test outputs from bigquery: %w", err)
+	}
+
+	type testOutputRow struct {
+		ProwJobBuildID string `bigquery:"prowjob_build_id"`
+		TestName       string `bigquery:"test_name"`
+		Success        bool   `bigquery:"success"`
+		TestID         string `bigquery:"test_id"`
+		Branch         string `bigquery:"branch"`
+		ProwJobName    string `bigquery:"prowjob_name"`
+		FailureContent string `bigquery:"failure_content"`
+	}
+
+	var outputs []apitype.TestOutput
+	for {
+		var row testOutputRow
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error reading test output row from bigquery")
+			continue
+		}
+
+		// Construct the URL to the test output
+		url := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/test-platform-results/logs/%s", row.ProwJobBuildID)
+
+		outputs = append(outputs, apitype.TestOutput{
+			URL:    url,
+			Output: row.FailureContent,
+		})
+	}
+
+	return outputs, nil
+}
+
 func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[string]float64, error) {
 	var includedVariants, excludedVariants []string
 	if filters != nil {

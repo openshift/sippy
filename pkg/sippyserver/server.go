@@ -47,7 +47,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	"github.com/openshift/sippy/pkg/bigquery"
+	sippybq "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -77,7 +77,7 @@ func NewServer(
 	dbClient *db.DB,
 	gcsClient *storage.Client,
 	gcsBucket string,
-	bigQueryClient *bigquery.Client,
+	bigQueryClient *sippybq.Client,
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
@@ -141,7 +141,7 @@ type Server struct {
 	static               fs.FS
 	httpServer           *http.Server
 	db                   *db.DB
-	bigQueryClient       *bigquery.Client
+	bigQueryClient       *sippybq.Client
 	pinnedDateTime       *time.Time
 	gcsClient            *storage.Client
 	gcsBucket            string
@@ -634,6 +634,60 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 		failureResponse(w, http.StatusInternalServerError, "error querying test outputs from db")
 		return
 	}
+	api.RespondWithJSON(http.StatusOK, w, outputs)
+}
+
+func (s *Server) jsonTestOutputsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "test outputs v2 API is only available when google-service-account-credential-file is configured")
+		return
+	}
+
+	testID := param.SafeRead(req, "test_id")
+	if testID == "" {
+		failureResponse(w, http.StatusBadRequest, "test_id parameter is required")
+		return
+	}
+
+	prowJobRunIDs := param.SafeRead(req, "prow_job_run_ids")
+	if prowJobRunIDs == "" {
+		failureResponse(w, http.StatusBadRequest, "prow_job_run_ids parameter is required")
+		return
+	}
+
+	// Parse the comma-separated prow job run IDs
+	prowJobRunIDList := strings.Split(prowJobRunIDs, ",")
+
+	// Parse date parameters with defaults
+	var startDate, endDate time.Time
+	startDateParam := getDateParam("start_date", req)
+	endDateParam := getDateParam("end_date", req)
+
+	if endDateParam != nil {
+		// Set to end of day (11:59:59pm)
+		endDate = time.Date(endDateParam.Year(), endDateParam.Month(), endDateParam.Day(), 23, 59, 59, 0, time.UTC)
+	} else {
+		// Default to end of today
+		now := time.Now().UTC()
+		endDate = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
+	}
+
+	if startDateParam != nil {
+		// Start of the specified day
+		startDate = time.Date(startDateParam.Year(), startDateParam.Month(), startDateParam.Day(), 0, 0, 0, 0, time.UTC)
+	} else {
+		// Default to 7 days before end date at start of day
+		startDate = endDate.AddDate(0, 0, -7)
+		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
+	}
+
+	outputs, err := api.GetTestOutputsFromBigQuery(req.Context(), s.bigQueryClient, testID, prowJobRunIDList, startDate, endDate)
+	if err != nil {
+		log.WithError(err).Error("error querying test outputs from bigquery")
+		failureResponse(w, http.StatusInternalServerError, "error querying test outputs from bigquery")
+		return
+	}
+
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
@@ -2160,6 +2214,13 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestOutputsFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/v2/outputs",
+			Description:  "Outputs of tests from BigQuery",
+			Capabilities: []string{ComponentReadinessCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonTestOutputsFromBigQuery,
 		},
 		{
 			EndpointPath: "/api/tests/durations",
