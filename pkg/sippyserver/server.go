@@ -681,6 +681,14 @@ func (s *Server) jsonTestOutputsFromBigQuery(w http.ResponseWriter, req *http.Re
 		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
 	}
 
+	// Validate date range does not exceed 30 days (expensive query)
+	dateRange := endDate.Sub(startDate)
+	maxRange := 30 * 24 * time.Hour
+	if dateRange > maxRange {
+		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("date range exceeds maximum of 30 days (requested: %.0f days)", dateRange.Hours()/24))
+		return
+	}
+
 	outputs, err := api.GetTestOutputsFromBigQuery(req.Context(), s.bigQueryClient, testID, prowJobRunIDList, startDate, endDate)
 	if err != nil {
 		log.WithError(err).Error("error querying test outputs from bigquery")
@@ -2226,7 +2234,7 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/tests/durations",
 			Description:  "Durations of tests",
 			Capabilities: []string{LocalDBCapability},
-			CacheTime:    1 * time.Second,
+			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestDurationsFromDB,
 		},
 		{
