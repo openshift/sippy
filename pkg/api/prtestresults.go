@@ -252,9 +252,13 @@ func deserializePRTestResult(row []bigquery.Value, schema bigquery.Schema) (PRTe
 	for i, field := range schema {
 		switch field.Name {
 		case "prowjob_build_id":
-			result.ProwJobBuildID = row[i].(string)
+			if row[i] != nil {
+				result.ProwJobBuildID = row[i].(string)
+			}
 		case "prowjob_name":
-			result.ProwJobName = row[i].(string)
+			if row[i] != nil {
+				result.ProwJobName = row[i].(string)
+			}
 		case "prowjob_url":
 			if row[i] != nil {
 				result.ProwJobURL = row[i].(string)
@@ -275,13 +279,21 @@ func deserializePRTestResult(row []bigquery.Value, schema bigquery.Schema) (PRTe
 				result.ProwJobStart = parsedTime
 			}
 		case "test_name":
-			result.TestName = row[i].(string)
+			if row[i] != nil {
+				result.TestName = row[i].(string)
+			}
 		case "testsuite":
-			result.TestSuite = row[i].(string)
+			if row[i] != nil {
+				result.TestSuite = row[i].(string)
+			}
 		case "flaked":
-			result.Flaked = row[i].(bool)
+			if row[i] != nil {
+				result.Flaked = row[i].(bool)
+			}
 		case "success":
-			result.Success = row[i].(bool)
+			if row[i] != nil {
+				result.Success = row[i].(bool)
+			}
 		case "failure_content":
 			if row[i] != nil {
 				result.FailureContent = row[i].(string)
