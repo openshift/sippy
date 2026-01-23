@@ -376,9 +376,6 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, bqc *bq.Cl
 		return
 	}
 
-	// Add one day to end_date to make it inclusive
-	endDate = endDate.AddDate(0, 0, 1)
-
 	// Validate date range
 	if endDate.Before(startDate) {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{
@@ -387,6 +384,9 @@ func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, bqc *bq.Cl
 		})
 		return
 	}
+
+	// Add one day to end_date to make it inclusive
+	endDate = endDate.AddDate(0, 0, 1)
 
 	// Limit date range to 30 days to prevent expensive queries
 	maxDuration := 30 * 24 * time.Hour
