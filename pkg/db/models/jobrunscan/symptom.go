@@ -8,6 +8,13 @@ import (
 
 // Symptom defines rules for detecting symptoms in job artifacts
 type Symptom struct {
+	SymptomContent
+	ApplicabilityFilters
+	Metadata
+}
+
+// SymptomContent provides the core definition of a symptom
+type SymptomContent struct {
 	// Immutable identifier for this symptom
 	// Must be valid identifier (word chars, not starting with digit)
 	ID string `gorm:"primaryKey;type:varchar(100)" json:"id"`
@@ -34,9 +41,6 @@ type Symptom struct {
 
 	// Labels to apply when this symptom matches (typically none or one, but can be multiple)
 	LabelIDs pq.StringArray `gorm:"type:text[]" json:"label_ids"`
-
-	ApplicabilityFilters
-	Metadata
 }
 
 // ApplicabilityFilters specifies filters for when a symptom is applicable (e.g. only a subset of releases).
