@@ -73,8 +73,8 @@ WHERE junit.success = false
   AND junit.modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)
 LIMIT 1000`
 
-	query := bigQueryClient.BQ.Query(queryStr)
-	query.Parameters = []bigquery.QueryParameter{
+	q := bigQueryClient.BQ.Query(queryStr)
+	q.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "testID",
 			Value: testID,
@@ -94,9 +94,9 @@ LIMIT 1000`
 	}
 
 	// Log the query with parameters substituted for easy copy-paste
-	bq.LogQueryWithParamsReplaced(log.WithField("type", "TestOutputs"), query)
+	bq.LogQueryWithParamsReplaced(log.WithField("type", "TestOutputs"), q)
 
-	it, err := bq.LoggedRead(ctx, query)
+	it, err := bq.LoggedRead(ctx, q)
 	if err != nil {
 		log.WithError(err).Error("error querying test outputs from bigquery")
 		return nil, fmt.Errorf("error querying test outputs from bigquery: %w", err)
