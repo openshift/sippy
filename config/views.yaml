@@ -374,7 +374,7 @@ component_readiness:
     relative_end: now
   sample_release:
     release: "4.22"
-    relative_start: now-7d
+    relative_start: now-30d
     relative_end: now
   variant_options:
     column_group_by:
@@ -981,7 +981,7 @@ component_readiness:
     relative_end: now
   sample_release:
     release: "4.21"
-    relative_start: now-7d
+    relative_start: now-30d
     relative_end: now
   variant_options:
     column_group_by:
