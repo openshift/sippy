@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -928,33 +929,31 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 	jLog.WithField("jobName", jobName).Warn("unable to determine platform from job name")
 }
 
+var majorMinorRegexp = regexp.MustCompile(`\d+\.\d+`)
+
+// extractRelease returns highest and lowest major.minor version strings found in the job name, assumed to represent
+// the installed (lowest) and updated-to (highest) releases in an update job.
 func extractReleases(jobName string) (release, fromRelease string) {
-	re := regexp.MustCompile(`\d+\.\d+`)
-	matches := re.FindAllString(jobName, -1)
+	matches := majorMinorRegexp.FindAllString(jobName, -1)
 
-	if len(matches) > 0 {
-		minRelease := matches[0]
-		maxRelease := matches[0]
+	var mm = make([]*version.Version, 0, len(matches))
 
-		for _, match := range matches {
-			matchNum, _ := strconv.ParseFloat(match, 64)
-			minNum, _ := strconv.ParseFloat(minRelease, 64)
-			maxNum, _ := strconv.ParseFloat(maxRelease, 64)
-
-			if matchNum < minNum {
-				minRelease = match
-			}
-
-			if matchNum > maxNum {
-				maxRelease = match
-			}
+	for _, match := range matches {
+		// two items and successful conversion are pretty much guaranteed on regex matches but there are corner cases
+		if v, err := version.NewVersion(match); err == nil {
+			mm = append(mm, v)
 		}
-
-		release = maxRelease
-		fromRelease = minRelease
 	}
 
-	return release, fromRelease
+	sort.Slice(mm, func(i, j int) bool {
+		return mm[i].LessThan(mm[j])
+	})
+
+	if count := len(mm); count > 0 {
+		return mm[count-1].Original(), mm[0].Original()
+	}
+
+	return "", ""
 }
 
 func setArchitecture(_ logrus.FieldLogger, variants map[string]string, jobName string) {

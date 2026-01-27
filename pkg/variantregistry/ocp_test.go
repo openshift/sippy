@@ -21,6 +21,37 @@ func TestVariantSyncer(t *testing.T) {
 		expected     map[string]string
 	}{
 		{
+			job: "periodic-ci-openshift-release-master-ci-5.10-upgrade-from-stable-5.9-e2e-aws-upgrade",
+			expected: map[string]string{
+				VariantRelease:          "5.10",
+				VariantReleaseMajor:     "5",
+				VariantReleaseMinor:     "10",
+				VariantFromRelease:      "5.9",
+				VariantFromReleaseMajor: "5",
+				VariantFromReleaseMinor: "9",
+				VariantArch:             "amd64",
+				VariantInstaller:        "ipi",
+				VariantPlatform:         "aws",
+				VariantProcedure:        "none",
+				VariantJobTier:          "candidate",
+				VariantNetwork:          "ovn",
+				VariantNetworkStack:     "ipv4",
+				VariantOwner:            "eng",
+				VariantSuite:            "unknown",
+				VariantTopology:         "ha",
+				VariantUpgrade:          "minor",
+				VariantAggregation:      VariantNoValue,
+				VariantFeatureSet:       "default",
+				VariantNetworkAccess:    VariantDefaultValue,
+				VariantScheduler:        VariantDefaultValue,
+				VariantSecurityMode:     VariantDefaultValue,
+				VariantContainerRuntime: "crun",
+				VariantCGroupMode:       "v2",
+				VariantLayeredProduct:   VariantNoValue,
+				VariantOS:               "rhcos9",
+			},
+		},
+		{
 			job: "periodic-ci-openshift-release-master-nightly-4.17-e2e-vsphere-ovn-multi-network-multi-a-a-techpreview",
 			variantsFile: map[string]string{
 				"Architecture": "amd64", // should be overruled by the job parsing.
