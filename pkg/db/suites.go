@@ -68,7 +68,7 @@ var testSuites = []string{
 	"Serverless-lp-interop",
 	"ServiceMesh-lp-interop",
 	"OpenshiftPipelines-lp-interop",
-	"COO-lp-interop",
+	"tracing-uiplugin",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {
