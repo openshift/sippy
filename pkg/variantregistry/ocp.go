@@ -17,6 +17,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
@@ -319,8 +320,7 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 }
 
 var (
-	upgradeMajorRegex       = regexp.MustCompile(`(?i)-\d+\.\d+-.*-.*-\d+\.\d+-major`)
-	upgradeMinorRegex       = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
+	upgradeMajorMinorRegex  = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-(minor|major))`)
 	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
 	upgradeRegex            = regexp.MustCompile(`(?i)-upgrade`)
 
@@ -573,7 +573,7 @@ func setNetworkStack(_ logrus.FieldLogger, variants map[string]string, jobName s
 	variants[VariantNetworkStack] = "ipv4"
 }
 
-func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[string]string, jobName string) {
 	// Presubmits on main branch are set as "Presubmits"
 	if presubmitRegex.MatchString(jobName) {
 		variants[VariantRelease] = "Presubmits"
@@ -588,19 +588,17 @@ func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]
 		}
 	}
 
-	// for jobs with version number(s) in the name, extract lowest and highest to inform upgrade designation
-	release, fromRelease := extractReleases(jobName)
-	if release != "" {
-		releaseMajorMinor := strings.Split(release, ".")
-		variants[VariantRelease] = release
-		variants[VariantReleaseMajor] = releaseMajorMinor[0]
-		variants[VariantReleaseMinor] = releaseMajorMinor[1]
-	}
-	if fromRelease != "" {
-		fromReleaseMajorMinor := strings.Split(fromRelease, ".")
-		variants[VariantFromRelease] = fromRelease
-		variants[VariantFromReleaseMajor] = fromReleaseMajorMinor[0]
-		variants[VariantFromReleaseMinor] = fromReleaseMajorMinor[1]
+	releasesInJobName := extractReleases(jobName)
+	if count := len(releasesInJobName); count > 0 {
+		release := releasesInJobName[count-1]
+		variants[VariantRelease] = release.Original()
+		variants[VariantReleaseMajor] = strconv.Itoa(release.Segments()[0])
+		variants[VariantReleaseMinor] = strconv.Itoa(release.Segments()[1])
+
+		fromRelease := releasesInJobName[0]
+		variants[VariantFromRelease] = fromRelease.Original()
+		variants[VariantFromReleaseMajor] = strconv.Itoa(fromRelease.Segments()[0])
+		variants[VariantFromReleaseMinor] = strconv.Itoa(fromRelease.Segments()[1])
 	}
 
 	// for jobs that look like upgrades, determine upgrade variant
@@ -608,12 +606,8 @@ func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]
 		switch {
 		case upgradeOutOfChangeRegex.MatchString(jobName):
 			variants[VariantUpgrade] = "micro-downgrade"
-		case isMultiUpgrade(release, fromRelease):
-			variants[VariantUpgrade] = "multi"
-		case upgradeMajorRegex.MatchString(jobName):
-			variants[VariantUpgrade] = "major"
-		case upgradeMinorRegex.MatchString(jobName):
-			variants[VariantUpgrade] = "minor"
+		case upgradeMajorMinorRegex.MatchString(jobName):
+			variants[VariantUpgrade] = upgradeVariant(logger, releasesInJobName, jobName)
 		default:
 			variants[VariantUpgrade] = "micro"
 		}
@@ -866,29 +860,47 @@ func setInstaller(_ logrus.FieldLogger, variants map[string]string, jobName stri
 	variants[VariantInstaller] = "ipi" // Assume ipi by default
 }
 
-// isMultiUpgrade checks if this is a multi-minor upgrade by examining the delta between the release minor
-// and from release minor versions.
-func isMultiUpgrade(release, fromRelease string) bool {
-	if release == "" || fromRelease == "" {
-		return false
+// upgradeVariant returns a variant inferred from the slice of releases involved in a job and its name
+//   - releases need to be sorted and unique
+func upgradeVariant(logger logrus.FieldLogger, releases []version.Version, jobName string) string {
+	count := len(releases)
+	if count > 2 {
+		return "multi"
 	}
 
-	releaseMajorMinor := strings.Split(release, ".")
-	fromReleaseMajorMinor := strings.Split(fromRelease, ".")
+	if count == 2 {
+		fromRelease, toRelease := releases[0], releases[count-1]
+		fromSegments, toSegments := fromRelease.Segments(), toRelease.Segments()
+		fromMajor, fromMinor := fromSegments[0], fromSegments[1]
+		toMajor, toMinor := toSegments[0], toSegments[1]
 
-	releaseMinor, err := strconv.Atoi(releaseMajorMinor[1])
-	if err != nil {
-		return false
+		switch {
+		case fromMajor < toMajor:
+			return "major"
+		case fromMajor == toMajor && (toMinor-fromMinor) == 1:
+			return "minor"
+		case fromMajor == toMajor && (toMinor-fromMinor) > 1:
+			return "multi"
+		default:
+			// should never happen; versions in releases are unique (=> not equal) and sorted (=> from < to)
+			// if this is not true we may misclassify as minor
+			logger.WithFields(
+				logrus.Fields{"fromRelease": fromRelease, "toRelease": toRelease},
+			).Warn("BUG: fromRelease is not lower than toRelease")
+		}
 	}
-	fromReleaseMinor, err := strconv.Atoi(fromReleaseMajorMinor[1])
-	if err != nil {
-		return false
+
+	// if we only have one version then we either take a hint from the job name
+	// or it is a micro
+
+	if strings.Contains(jobName, "-minor") {
+		return "minor"
 	}
-	// If release minor minus from release minor is greater than 1, this is a multi-release upgrade job:
-	if releaseMinor-fromReleaseMinor > 1 {
-		return true
+	if strings.Contains(jobName, "-major") {
+		return "major"
 	}
-	return false
+
+	return "micro"
 }
 
 func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName string) {
@@ -934,29 +946,30 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 
 var majorMinorRegexp = regexp.MustCompile(`\d+\.\d+`)
 
-// extractRelease returns highest and lowest major.minor version strings found in the job name, assumed to represent
-// the installed (lowest) and updated-to (highest) releases in an update job.
-func extractReleases(jobName string) (release, fromRelease string) {
-	matches := majorMinorRegexp.FindAllString(jobName, -1)
+// extractRelease returns a slice of unique major.minor version strings found in the job name sorted
+// from lowest to highest, assumed to represent the installed (lowest) and final (highest) releases
+// in update jobs
+func extractReleases(jobName string) []version.Version {
+	matches := sets.New(majorMinorRegexp.FindAllString(jobName, -1)...)
 
-	var mm = make([]*version.Version, 0, len(matches))
+	var mm = make([]version.Version, 0, len(matches))
 
-	for _, match := range matches {
+	for match := range matches {
 		// two items and successful conversion are pretty much guaranteed on regex matches but there are corner cases
-		if v, err := version.NewVersion(match); err == nil {
-			mm = append(mm, v)
+		if v, err := version.NewVersion(match); err == nil && v != nil {
+			mm = append(mm, *v)
 		}
 	}
 
-	sort.Slice(mm, func(i, j int) bool {
-		return mm[i].LessThan(mm[j])
-	})
-
-	if count := len(mm); count > 0 {
-		return mm[count-1].Original(), mm[0].Original()
+	if len(mm) == 0 {
+		return nil
 	}
 
-	return "", ""
+	sort.Slice(mm, func(i, j int) bool {
+		return mm[i].LessThan(&mm[j])
+	})
+
+	return mm
 }
 
 func setArchitecture(_ logrus.FieldLogger, variants map[string]string, jobName string) {
