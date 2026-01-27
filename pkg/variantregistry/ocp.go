@@ -319,6 +319,7 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 }
 
 var (
+	upgradeMajorRegex       = regexp.MustCompile(`(?i)-\d+\.\d+-.*-.*-\d+\.\d+-major`)
 	upgradeMinorRegex       = regexp.MustCompile(`(?i)(-\d+\.\d+-.*-.*-\d+\.\d+)|(-\d+\.\d+-minor)`)
 	upgradeOutOfChangeRegex = regexp.MustCompile(`(?i)-upgrade-out-of-change`)
 	upgradeRegex            = regexp.MustCompile(`(?i)-upgrade`)
@@ -609,6 +610,8 @@ func (v *OCPVariantLoader) setRelease(_ logrus.FieldLogger, variants map[string]
 			variants[VariantUpgrade] = "micro-downgrade"
 		case isMultiUpgrade(release, fromRelease):
 			variants[VariantUpgrade] = "multi"
+		case upgradeMajorRegex.MatchString(jobName):
+			variants[VariantUpgrade] = "major"
 		case upgradeMinorRegex.MatchString(jobName):
 			variants[VariantUpgrade] = "minor"
 		default:
