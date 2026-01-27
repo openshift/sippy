@@ -135,9 +135,8 @@ func NewBaseQueryGenerator(
 
 func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client, b.ReqOptions, b.allVariants, b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client, b.ReqOptions, b.allVariants, b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false, b.ReqOptions.AdvancedOption.ExclusiveTestNames...)
 
-	before := time.Now()
 	errs := []error{}
 	baseString := commonQuery + ` AND jv_Release.variant_value = @BaseRelease`
 	baseQuery := b.client.Query(ctx, bqlabel.CRJunitBase, baseString+groupByQuery)
@@ -158,13 +157,11 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTest
 		},
 	}...)
 
-	baseStatus, baseErrs := FetchTestStatusResults(ctx, baseQuery)
+	baseStatus, baseErrs := FetchTestStatusResults(ctx, baseQuery, b.ReqOptions.AdvancedOption.ExclusiveTestNames)
 
 	if len(baseErrs) != 0 {
 		errs = append(errs, baseErrs...)
 	}
-
-	log.Infof("Base QueryTestStatus completed in %s with %d base results from db", time.Since(before), len(baseStatus))
 
 	return bq.ReportTestStatus{BaseStatus: baseStatus}, errs
 }
@@ -207,9 +204,8 @@ func NewSampleQueryGenerator(
 }
 
 func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, s.JunitTable, true)
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, s.JunitTable, true, s.ReqOptions.AdvancedOption.ExclusiveTestNames...)
 
-	before := time.Now()
 	errs := []error{}
 	sampleString := commonQuery
 	// Only set sample release when PR and payload options are not set
@@ -267,18 +263,17 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 		}...)
 	}
 
-	sampleStatus, sampleErrs := FetchTestStatusResults(ctx, sampleQuery)
+	sampleStatus, sampleErrs := FetchTestStatusResults(ctx, sampleQuery, s.ReqOptions.AdvancedOption.ExclusiveTestNames)
 
 	if len(sampleErrs) != 0 {
 		errs = append(errs, sampleErrs...)
 	}
 
-	log.Infof("Sample QueryTestStatus completed in %s with %d sample results db", time.Since(before), len(sampleStatus))
-
 	return bq.ReportTestStatus{SampleStatus: sampleStatus}, errs
 }
 
 // BuildComponentReportQuery returns the common query for the higher level summary component summary.
+// If exclusiveTestNames is provided, any job containing tests from this set will have all other tests excluded.
 func BuildComponentReportQuery(
 	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
@@ -286,6 +281,7 @@ func BuildComponentReportQuery(
 	includeVariants map[string][]string,
 	junitTable string,
 	isSample bool,
+	exclusiveTestNames ...string,
 ) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
@@ -313,12 +309,35 @@ func BuildComponentReportQuery(
 	// TODO: last_failure here explicitly uses success_val not adjusted_success_val, this ensures we
 	// show the last time the test failed, not flaked. if you enable the flakes as failures feature (which is
 	// non default today), the last failure time will be wrong which can impact things like failed fix detection.
-	queryString := fmt.Sprintf(`WITH latest_component_mapping AS (
-						SELECT *
-						FROM %s.component_mapping cm
-						WHERE created_at = (
-								SELECT MAX(created_at)
-								FROM %s.component_mapping))
+	// Build the WITH clause - add jobs_with_failed_exclusive_tests CTE if exclusiveTestNames is provided
+	withClause := ""
+	if len(exclusiveTestNames) > 0 {
+		withClause = fmt.Sprintf(`WITH jobs_with_failed_exclusive_tests AS (
+							SELECT DISTINCT prowjob_build_id
+							FROM %s.%s AS junit
+							WHERE modified_time >= DATETIME(@From)
+							AND modified_time < DATETIME(@To)
+							AND test_name IN UNNEST(@ExclusiveTestNames)
+							AND success_val = 0
+						),
+						latest_component_mapping AS (
+							SELECT *
+							FROM %s.component_mapping cm
+							WHERE created_at = (
+									SELECT MAX(created_at)
+									FROM %s.component_mapping))`,
+			client.Dataset, junitTable, client.Dataset, client.Dataset)
+	} else {
+		withClause = fmt.Sprintf(`WITH latest_component_mapping AS (
+							SELECT *
+							FROM %s.component_mapping cm
+							WHERE created_at = (
+									SELECT MAX(created_at)
+									FROM %s.component_mapping))`,
+			client.Dataset, client.Dataset)
+	}
+
+	queryString := fmt.Sprintf(`%s
 					SELECT
 						ANY_VALUE(test_name HAVING MAX prowjob_start) AS test_name,
 						ANY_VALUE(testsuite HAVING MAX prowjob_start) AS test_suite,
@@ -333,13 +352,26 @@ func BuildComponentReportQuery(
 					FROM (%s)
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `,
-		client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore))
+		withClause, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore))
 
 	queryString += joinVariants
 
 	queryString += `WHERE cm.staff_approved_obsolete = false AND
 						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')`
 	commonParams := []bigquery.QueryParameter{}
+
+	// Add filtering logic for exclusive tests
+	if len(exclusiveTestNames) > 0 {
+		queryString += `
+						AND (
+							test_name IN UNNEST(@ExclusiveTestNames)
+							OR prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_failed_exclusive_tests)
+						)`
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "ExclusiveTestNames",
+			Value: exclusiveTestNames,
+		})
+	}
 	if reqOptions.AdvancedOption.IgnoreDisruption {
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
 	}
@@ -592,7 +624,7 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	return
 }
 
-func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]bq.TestStatus, []error) {
+func FetchTestStatusResults(ctx context.Context, query *bigquery.Query, exclusiveTestNames []string) (map[string]bq.TestStatus, []error) {
 	errs := []error{}
 	status := map[string]bq.TestStatus{}
 

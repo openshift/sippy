@@ -175,6 +175,7 @@ func NewServeCommand() *cobra.Command {
 				f.APIFlags.EnableWriteEndpoints,
 				f.APIFlags.ChatAPIURL,
 				jiraClient,
+				f.ComponentReadinessFlags.GetMassFailureTestNames(),
 			)
 
 			if f.APIFlags.MetricsAddr != "" {

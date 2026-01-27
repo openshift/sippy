@@ -25,6 +25,7 @@ func ParseComponentReportRequest(
 	allJobVariants crtest.JobVariants,
 	crTimeRoundingFactor time.Duration,
 	overrides []configv1.VariantJunitTableOverride,
+	exclusiveTestNames []string,
 ) (
 	opts reqopts.RequestOptions,
 	warnings []string,
@@ -140,6 +141,9 @@ func ParseComponentReportRequest(
 		return
 	}
 	opts.CacheOption.CRTimeRoundingFactor = crTimeRoundingFactor
+
+	// Set exclusive test names from the command-line flag
+	opts.AdvancedOption.ExclusiveTestNames = exclusiveTestNames
 
 	return
 }
