@@ -66,6 +66,10 @@ component_readiness:
       ContainerRuntime:
       - runc
       - crun
+      Upgrade:
+      - micro
+      - minor
+      - none
   advanced_options:
     minimum_failure: 3
     confidence: 95
