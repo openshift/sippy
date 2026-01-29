@@ -363,4 +363,79 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		assert.Regexp(t, `includeVariant=Architecture.*includeVariant=Network.*includeVariant=Platform`, url)
 	})
 
+	t.Run("variant cross-compare parameters are included", func(t *testing.T) {
+		// Create a view with variant cross-compare settings
+		viewWithCrossCompare := crview.View{
+			Name: "test-view-with-cross-compare",
+			BaseRelease: reqopts.RelativeRelease{
+				Release: reqopts.Release{
+					Name: "4.19",
+				},
+				RelativeStart: "ga-30d",
+				RelativeEnd:   "ga",
+			},
+			SampleRelease: reqopts.RelativeRelease{
+				Release: reqopts.Release{
+					Name: "4.20",
+				},
+				RelativeStart: "ga-7d",
+				RelativeEnd:   "ga",
+			},
+			VariantOptions: reqopts.Variants{
+				IncludeVariants: map[string][]string{
+					"Architecture": {"amd64"},
+					"Platform":     {"aws"},
+					"Topology":     {"ha"},
+				},
+				VariantCrossCompare: []string{"Architecture", "Topology"},
+				CompareVariants: map[string][]string{
+					"Architecture": {"s390x", "ppc64le"},
+					"Topology":     {"single"},
+				},
+			},
+			AdvancedOptions: reqopts.Advanced{
+				MinimumFailure: 3,
+				Confidence:     95,
+				PityFactor:     5,
+			},
+		}
+
+		baseReleaseOpts, err := GetViewReleaseOptions(releases, "basis", viewWithCrossCompare.BaseRelease, 0)
+		require.NoError(t, err)
+		sampleReleaseOpts, err := GetViewReleaseOptions(releases, "sample", viewWithCrossCompare.SampleRelease, 0)
+		require.NoError(t, err)
+
+		url, err := GenerateTestDetailsURL(
+			"test-id-123",
+			"https://example.com",
+			baseReleaseOpts,
+			sampleReleaseOpts,
+			viewWithCrossCompare.AdvancedOptions,
+			viewWithCrossCompare.VariantOptions,
+			"",
+			"",
+			[]string{"Platform:aws"},
+			"",
+		)
+		require.NoError(t, err)
+
+		// Verify includeVariant parameters are present
+		assert.Contains(t, url, "includeVariant=Architecture%3Aamd64")
+		assert.Contains(t, url, "includeVariant=Platform%3Aaws")
+		assert.Contains(t, url, "includeVariant=Topology%3Aha")
+
+		// Verify variantCrossCompare parameters are present and sorted
+		assert.Contains(t, url, "variantCrossCompare=Architecture")
+		assert.Contains(t, url, "variantCrossCompare=Topology")
+
+		// Verify compareVariant parameters are present and sorted
+		assert.Contains(t, url, "compareVariant=Architecture%3Appc64le")
+		assert.Contains(t, url, "compareVariant=Architecture%3As390x")
+		assert.Contains(t, url, "compareVariant=Topology%3Asingle")
+
+		// Verify the order is correct (Architecture before Topology)
+		assert.Regexp(t, `variantCrossCompare=Architecture.*variantCrossCompare=Topology`, url)
+		assert.Regexp(t, `compareVariant=Architecture.*compareVariant=Topology`, url)
+	})
+
 }

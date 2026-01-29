@@ -197,6 +197,40 @@ func GenerateTestDetailsURL(
 		}
 	}
 
+	// Add compare variants (for cross-compare feature)
+	if len(variantOptions.CompareVariants) > 0 {
+		// Sort variant keys to ensure consistent parameter ordering
+		compareVariantKeys := make([]string, 0, len(variantOptions.CompareVariants))
+		for variantKey := range variantOptions.CompareVariants {
+			compareVariantKeys = append(compareVariantKeys, variantKey)
+		}
+		sort.Strings(compareVariantKeys)
+
+		for _, variantKey := range compareVariantKeys {
+			variantValues := variantOptions.CompareVariants[variantKey]
+			// Sort variant values to ensure consistent parameter ordering
+			sortedValues := make([]string, len(variantValues))
+			copy(sortedValues, variantValues)
+			sort.Strings(sortedValues)
+
+			for _, variantValue := range sortedValues {
+				params.Add("compareVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
+			}
+		}
+	}
+
+	// Add variant cross compare
+	if len(variantOptions.VariantCrossCompare) > 0 {
+		// Sort to ensure consistent parameter ordering
+		sortedCrossCompare := make([]string, len(variantOptions.VariantCrossCompare))
+		copy(sortedCrossCompare, variantOptions.VariantCrossCompare)
+		sort.Strings(sortedCrossCompare)
+
+		for _, variantKey := range sortedCrossCompare {
+			params.Add("variantCrossCompare", variantKey)
+		}
+	}
+
 	// Add the specific variants as individual parameters
 	// Sort the keys to ensure consistent environment parameter ordering
 	variantKeys := make([]string, 0, len(variantMap))
