@@ -23,7 +23,6 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/mark3labs/mcp-go v0.39.1
 	github.com/montanaflynn/stats v0.6.6
-	github.com/openai/openai-go v0.1.0-beta.2
 	github.com/openshift-eng/ci-test-mapping v0.0.0-20231030141615-24a18ed8fe3a
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.20.3
@@ -43,6 +42,7 @@ require (
 	gorm.io/driver/postgres v1.2.1
 	gorm.io/gorm v1.22.2
 	k8s.io/apimachinery v0.30.1
+	maragu.dev/gomponents v1.2.0
 	sigs.k8s.io/prow v0.0.0-20241203114859-f9126b38a431
 )
 
@@ -173,10 +173,10 @@ require (
 	github.com/tektoncd/pipeline v0.61.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
-	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
+	github.com/yuin/goldmark v1.7.16 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.53.0 // indirect
