@@ -277,6 +277,7 @@ component_readiness:
       Topology:
       - ha
       - microshift
+      - single
       CGroupMode:
       - v2
       ContainerRuntime:
