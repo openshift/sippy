@@ -153,6 +153,52 @@ type Server struct {
 	enableWriteAPIs      bool
 	chatAPIURL           string
 	jiraClient           *jira.Client
+	rateLimiters         map[string]*rateLimiter
+}
+
+type rateLimiter struct {
+	mu           sync.Mutex
+	requestTimes []time.Time
+	maxRequests  int
+	period       time.Duration
+}
+
+func (rl *rateLimiter) allow() bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+
+	// Remove expired request times
+	cutoff := now.Add(-rl.period)
+	var validTimes []time.Time
+	for _, t := range rl.requestTimes {
+		if t.After(cutoff) {
+			validTimes = append(validTimes, t)
+		}
+	}
+	rl.requestTimes = validTimes
+
+	log.Debugf("Rate limiter: now=%s, cutoff=%s, valid_requests=%d/%d, oldest=%v",
+		now.Format("15:04:05"), cutoff.Format("15:04:05"), len(rl.requestTimes), rl.maxRequests,
+		func() string {
+			if len(rl.requestTimes) > 0 {
+				return rl.requestTimes[0].Format("15:04:05")
+			}
+			return "none"
+		}())
+
+	// Check if we're at the limit
+	if len(rl.requestTimes) >= rl.maxRequests {
+		// Reject without recording - only successful requests count toward the limit
+		log.Debugf("Rate limit REJECTED: %d requests in window (max %d)", len(rl.requestTimes), rl.maxRequests)
+		return false
+	}
+
+	// Record this request as successful - it counts toward the rate limit
+	rl.requestTimes = append(rl.requestTimes, now)
+	log.Debugf("Rate limit ALLOWED: recorded request at %s", now.Format("15:04:05"))
+	return true
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -1941,6 +1987,31 @@ func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.R
 	}
 }
 
+func (s *Server) rateLimit(endpointPath string, maxRequests int, period time.Duration, handler func(w http.ResponseWriter, r *http.Request)) func(http.ResponseWriter, *http.Request) {
+	// Initialize rate limiter map if needed
+	if s.rateLimiters == nil {
+		s.rateLimiters = make(map[string]*rateLimiter)
+	}
+
+	// Create or get rate limiter for this endpoint
+	if s.rateLimiters[endpointPath] == nil {
+		s.rateLimiters[endpointPath] = &rateLimiter{
+			maxRequests: maxRequests,
+			period:      period,
+		}
+	}
+
+	rl := s.rateLimiters[endpointPath]
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !rl.allow() {
+			failureResponse(w, http.StatusTooManyRequests, fmt.Sprintf("Rate limit exceeded. Maximum %d requests per %s. Please try again later.", maxRequests, period))
+			return
+		}
+		handler(w, r)
+	}
+}
+
 func (s *Server) Serve() {
 	s.determineCapabilities()
 
@@ -1974,12 +2045,14 @@ func (s *Server) Serve() {
 	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
 
 	type apiEndpoints struct {
-		EndpointPath string                                       `json:"path"`
-		Description  string                                       `json:"description"`
-		Capabilities []string                                     `json:"required_capabilities"`
-		CacheTime    time.Duration                                `json:"cache_time"`
-		Methods      []string                                     `json:"methods,omitempty"`
-		HandlerFunc  func(w http.ResponseWriter, r *http.Request) `json:"-"`
+		EndpointPath      string                                       `json:"path"`
+		Description       string                                       `json:"description"`
+		Capabilities      []string                                     `json:"required_capabilities"`
+		CacheTime         time.Duration                                `json:"cache_time"`
+		Methods           []string                                     `json:"methods,omitempty"`
+		HandlerFunc       func(w http.ResponseWriter, r *http.Request) `json:"-"`
+		RateLimitRequests int                                          `json:"-"` // Maximum number of requests
+		RateLimitPeriod   time.Duration                                `json:"-"` // Time period for rate limit
 	}
 
 	var endpoints []apiEndpoints
@@ -2224,11 +2297,13 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonTestOutputsFromDB,
 		},
 		{
-			EndpointPath: "/api/tests/v2/outputs",
-			Description:  "Outputs of tests from BigQuery",
-			Capabilities: []string{ComponentReadinessCapability},
-			CacheTime:    1 * time.Hour,
-			HandlerFunc:  s.jsonTestOutputsFromBigQuery,
+			EndpointPath:      "/api/tests/v2/outputs",
+			Description:       "Outputs of tests from BigQuery",
+			Capabilities:      []string{ComponentReadinessCapability},
+			CacheTime:         1 * time.Hour,
+			HandlerFunc:       s.jsonTestOutputsFromBigQuery,
+			RateLimitRequests: 25,
+			RateLimitPeriod:   1 * time.Hour,
 		},
 		{
 			EndpointPath: "/api/tests/durations",
@@ -2534,9 +2609,17 @@ func (s *Server) Serve() {
 
 	for _, ep := range endpoints {
 		fn := ep.HandlerFunc
+		// Apply rate limiting first (innermost middleware)
+		// This ensures cached responses bypass rate limiting
+		if ep.RateLimitRequests > 0 && ep.RateLimitPeriod > 0 {
+			fn = s.rateLimit(ep.EndpointPath, ep.RateLimitRequests, ep.RateLimitPeriod, fn)
+		}
+		// Apply caching second - wraps rate-limited handler
+		// Cache hits return early without calling the rate-limited handler
 		if ep.CacheTime > 0 {
 			fn = s.cached(ep.CacheTime, fn)
 		}
+		// Apply capability checks last (outermost middleware)
 		if len(ep.Capabilities) > 0 {
 			fn = s.requireCapabilities(ep.Capabilities, fn)
 		}
@@ -2683,15 +2766,22 @@ func recordResponse(c cache.Cache, duration time.Duration, w http.ResponseWriter
 	content := recorder.Body.Bytes()
 	apiResponse.Response = content
 
-	log.Debugf("caching new page: %s for %s\n", r.RequestURI, duration)
-	apiResponseBytes, err := json.Marshal(apiResponse)
-	if err != nil {
-		log.WithError(err).Warningf("couldn't marshal api response")
+	// Only cache successful responses (2xx status codes)
+	// Don't cache rate limit rejections or other errors
+	if recorder.Code >= 200 && recorder.Code < 300 {
+		log.Debugf("caching new page: %s for %s\n", r.RequestURI, duration)
+		apiResponseBytes, err := json.Marshal(apiResponse)
+		if err != nil {
+			log.WithError(err).Warningf("couldn't marshal api response")
+		}
+
+		if err := c.Set(context.TODO(), r.RequestURI, apiResponseBytes, duration); err != nil {
+			log.WithError(err).Warningf("could not cache page")
+		}
+	} else {
+		log.Debugf("not caching error response (status %d) for %s\n", recorder.Code, r.RequestURI)
 	}
 
-	if err := c.Set(context.TODO(), r.RequestURI, apiResponseBytes, duration); err != nil {
-		log.WithError(err).Warningf("could not cache page")
-	}
 	if _, err := w.Write(content); err != nil {
 		log.WithError(err).Debugf("error writing http response")
 	}
