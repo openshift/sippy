@@ -595,7 +595,7 @@ func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[str
 	errs := []error{}
 	status := map[string]bq.TestStatus{}
 
-	logQueryWithParamsReplaced(log.WithField("type", "ComponentReport"), query)
+	bqcachedclient.LogQueryWithParamsReplaced(log.WithField("type", "ComponentReport"), query)
 	it, err := query.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying test status from bigquery")
@@ -882,53 +882,11 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 	return bq.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }
 
-// logQueryWithParamsReplaced is intended to give developers a query they can copy out of logs and work with directly,
-// which has all the parameters replaced. This query is NOT the one we run live, we let bigquery do it's param replacement
-// itself.
-// Without this, logrus logs the query in one line with everything escaped, and parameters have to be manually replaced by the user.
-// This will only log if we're logging at Debug level.
-func logQueryWithParamsReplaced(logger log.FieldLogger, query *bigquery.Query) {
-	if log.GetLevel() == log.DebugLevel {
-		// Attempt to log a usable version of the query with params swapped in.
-		strQuery := query.Q
-		for _, p := range query.Parameters {
-			paramName := "@" + p.Name
-			paramValue := p.Value
-
-			switch v := paramValue.(type) {
-			case time.Time:
-				// Format time.Time to "YYYY-MM-DD HH:MM:SS"
-				// Note: BigQuery's DATETIME type does not store timezone info.
-				// This format aligns with what BigQuery expects for DATETIME literals.
-				// Without it, you'll copy the query and attempt to run it and be told you're not filtering on
-				// modified time.
-				formattedTime := v.Format("2006-01-02 15:04:05")
-				strQuery = strings.ReplaceAll(strQuery, paramName, fmt.Sprintf(`DATETIME("%s")`, formattedTime))
-			case []string:
-				// Convert a slice of strings to a formatted array string
-				quotedArr := make([]string, len(v))
-				for i, val := range v {
-					quotedArr[i] = fmt.Sprintf("%q", val)
-				}
-				joinedStrings := strings.Join(quotedArr, ",")
-				strArr := fmt.Sprintf("[%s]", joinedStrings)
-				strQuery = strings.ReplaceAll(strQuery, paramName, strArr)
-			default:
-				// Default handling for all other types
-				strQuery = strings.ReplaceAll(strQuery, paramName, fmt.Sprintf(`"%v"`, v))
-
-			}
-		}
-		logger.Debugf("fetching bigquery data with query:")
-		fmt.Println(strQuery)
-	}
-}
-
 func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query) (map[string][]bq.TestJobRunRows, []error) {
 	errs := []error{}
 	status := map[string][]bq.TestJobRunRows{}
 
-	logQueryWithParamsReplaced(logger.WithField("type", "TestDetails"), query)
+	bqcachedclient.LogQueryWithParamsReplaced(logger.WithField("type", "TestDetails"), query)
 
 	it, err := query.Read(ctx)
 	if err != nil {

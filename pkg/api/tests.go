@@ -56,6 +56,87 @@ func GetTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filt
 	return query.TestOutputs(dbc, release, test, includedVariants, excludedVariants, quantity)
 }
 
+func GetTestOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, storageBucket, testID string, prowJobRunIDs []string, startDate, endDate time.Time) ([]apitype.TestOutput, error) {
+	// Use component_mapping to resolve test_id to test_name/testsuite, which handles test renames.
+	// The test_id in junit may be stale (from before a rename), but component_mapping.id is canonical.
+	// We join on name/suite to find all junit rows for this test, regardless of when they were created.
+	queryStr := `WITH test_mapping AS (
+  SELECT name, suite
+  FROM ` + "`openshift-gce-devel.ci_analysis_us.component_mapping_latest`" + `
+  WHERE id = @testID
+)
+SELECT junit.prowjob_build_id, junit.test_name, junit.success, junit.test_id, junit.branch, junit.prowjob_name, junit.failure_content
+FROM ` + "`openshift-gce-devel.ci_analysis_us.junit`" + ` AS junit
+INNER JOIN test_mapping ON junit.test_name = test_mapping.name AND junit.testsuite = test_mapping.suite
+WHERE junit.success = false
+  AND junit.prowjob_build_id IN UNNEST(@prowJobRunIDs)
+  AND junit.modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)
+LIMIT 1000`
+
+	q := bigQueryClient.BQ.Query(queryStr)
+	q.Parameters = []bigquery.QueryParameter{
+		{
+			Name:  "testID",
+			Value: testID,
+		},
+		{
+			Name:  "prowJobRunIDs",
+			Value: prowJobRunIDs,
+		},
+		{
+			Name:  "startDate",
+			Value: startDate,
+		},
+		{
+			Name:  "endDate",
+			Value: endDate,
+		},
+	}
+
+	// Log the query with parameters substituted for easy copy-paste
+	bq.LogQueryWithParamsReplaced(log.WithField("type", "TestOutputs"), q)
+
+	it, err := bq.LoggedRead(ctx, q)
+	if err != nil {
+		log.WithError(err).Error("error querying test outputs from bigquery")
+		return nil, fmt.Errorf("error querying test outputs from bigquery: %w", err)
+	}
+
+	type testOutputRow struct {
+		ProwJobBuildID string `bigquery:"prowjob_build_id"`
+		TestName       string `bigquery:"test_name"`
+		Success        bool   `bigquery:"success"`
+		TestID         string `bigquery:"test_id"`
+		Branch         string `bigquery:"branch"`
+		ProwJobName    string `bigquery:"prowjob_name"`
+		FailureContent string `bigquery:"failure_content"`
+	}
+
+	var outputs []apitype.TestOutput
+	for {
+		var row testOutputRow
+		err := it.Next(&row)
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.WithError(err).Error("error reading test output row from bigquery")
+			continue
+		}
+
+		// Construct the URL to the test output
+		url := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/%s/logs/%s/%s", storageBucket, row.ProwJobName, row.ProwJobBuildID)
+
+		outputs = append(outputs, apitype.TestOutput{
+			URL:      url,
+			Output:   row.FailureContent,
+			TestName: row.TestName,
+		})
+	}
+
+	return outputs, nil
+}
+
 func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Filter) (map[string]float64, error) {
 	var includedVariants, excludedVariants []string
 	if filters != nil {
