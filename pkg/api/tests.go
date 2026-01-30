@@ -56,7 +56,7 @@ func GetTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filt
 	return query.TestOutputs(dbc, release, test, includedVariants, excludedVariants, quantity)
 }
 
-func GetTestOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, testID string, prowJobRunIDs []string, startDate, endDate time.Time) ([]apitype.TestOutput, error) {
+func GetTestOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, storageBucket, testID string, prowJobRunIDs []string, startDate, endDate time.Time) ([]apitype.TestOutput, error) {
 	// Use component_mapping to resolve test_id to test_name/testsuite, which handles test renames.
 	// The test_id in junit may be stale (from before a rename), but component_mapping.id is canonical.
 	// We join on name/suite to find all junit rows for this test, regardless of when they were created.
@@ -125,7 +125,7 @@ LIMIT 1000`
 		}
 
 		// Construct the URL to the test output
-		url := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/test-platform-results/logs/%s", row.ProwJobBuildID)
+		url := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/%s/logs/%s/%s", storageBucket, row.ProwJobName, row.ProwJobBuildID)
 
 		outputs = append(outputs, apitype.TestOutput{
 			URL:      url,

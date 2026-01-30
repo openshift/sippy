@@ -689,7 +689,7 @@ func (s *Server) jsonTestOutputsFromBigQuery(w http.ResponseWriter, req *http.Re
 		return
 	}
 
-	outputs, err := api.GetTestOutputsFromBigQuery(req.Context(), s.bigQueryClient, testID, prowJobRunIDList, startDate, endDate)
+	outputs, err := api.GetTestOutputsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket, testID, prowJobRunIDList, startDate, endDate)
 	if err != nil {
 		log.WithError(err).Error("error querying test outputs from bigquery")
 		failureResponse(w, http.StatusInternalServerError, "error querying test outputs from bigquery")
