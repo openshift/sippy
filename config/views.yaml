@@ -412,6 +412,7 @@ component_readiness:
       - ovn
       Owner:
       - mpiit
+      - qe
   advanced_options:
     minimum_failure: 2
     confidence: 95
@@ -1019,6 +1020,7 @@ component_readiness:
       - ovn
       Owner:
       - mpiit
+      - qe
   advanced_options:
     minimum_failure: 2
     confidence: 95
