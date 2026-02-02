@@ -400,6 +400,7 @@ component_readiness:
       LayeredProduct:
       - lp-interop-virt
       - lp-interop-openshift-pipelines
+      - lp-interop-acs-latest
       - lp-interop-acs
       - lp-interop-mta
       - lp-interop-quay
@@ -1007,6 +1008,7 @@ component_readiness:
       LayeredProduct:
       - lp-interop-virt
       - lp-interop-openshift-pipelines
+      - lp-interop-acs-latest
       - lp-interop-acs
       - lp-interop-mta
       - lp-interop-quay

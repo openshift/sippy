@@ -1129,6 +1129,7 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 		{"-lp-interop-cr-cnv", "lp-interop-virt"},
 		{"-quay-cr", "lp-interop-quay"},
 		{"-lp-interop-cr-openshift-pipelines", "lp-interop-openshift-pipelines"},
+		{"-lp-interop-cr-acs-latest", "lp-interop-acs-latest"},
 		{"-lp-interop-cr-acs", "lp-interop-acs"},
 		{"-lp-interop-cr-odf", "lp-interop-odf"},
 		{"-lp-interop-cr-redhat-openshift-gitops", "lp-interop-gitops"},
