@@ -26,25 +26,33 @@ var wordRegexp = regexp.MustCompile(`^\w+$`)
 var uintRegexp = regexp.MustCompile(`^\d+$`)
 var nameRegexp = regexp.MustCompile(`^[-.\w]+$`)
 var releaseRegexp = regexp.MustCompile(`^\d+\.\d+$`)
+var dateRegexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 var nonEmptyRegex = regexp.MustCompile(`^.+$`)
 var paramRegexp = map[string]*regexp.Regexp{
 	// sippy classic params
-	"release":         regexp.MustCompile(`^[\w.-]+$`), // usually 4.x or Presubmit, but allow any "word"
-	"period":          wordRegexp,
-	"stream":          wordRegexp,
-	"arch":            wordRegexp,
-	"payload":         nameRegexp,
-	"fromPayload":     nameRegexp,
-	"toPayload":       nameRegexp,
-	"job":             nameRegexp,
-	"job_name":        nameRegexp,
-	"test":            regexp.MustCompile(`^.+$`), // tests can be anything, so always parameterize in sql
-	"prow_job_run_id": uintRegexp,
-	"file":            nameRegexp,
-	"repo_info":       nameRegexp,
-	"pull_number":     uintRegexp,
-	"sort":            wordRegexp,
-	"sortField":       wordRegexp,
+	"release":          regexp.MustCompile(`^[\w.-]+$`), // usually 4.x or Presubmit, but allow any "word"
+	"period":           wordRegexp,
+	"stream":           wordRegexp,
+	"arch":             wordRegexp,
+	"payload":          nameRegexp,
+	"fromPayload":      nameRegexp,
+	"toPayload":        nameRegexp,
+	"job":              nameRegexp,
+	"job_name":         nameRegexp,
+	"test":             regexp.MustCompile(`^.+$`),       // tests can be anything, so always parameterize in sql
+	"test_id":          regexp.MustCompile(`^[\w:.-]+$`), // test IDs like "openshift-tests-upgrade:af8a62c596e5c2b5448a5d308f4989a6"
+	"prow_job_run_id":  uintRegexp,
+	"prow_job_run_ids": regexp.MustCompile(`^\d+(,\d+)*$`), // comma-separated integers
+	"org":              nameRegexp,
+	"repo":             nameRegexp,
+	"pr_number":        uintRegexp,
+	"file":             nameRegexp,
+	"repo_info":        nameRegexp,
+	"pull_number":      uintRegexp,
+	"sort":             wordRegexp,
+	"sortField":        wordRegexp,
+	"start_date":       dateRegexp, // YYYY-MM-DD format
+	"end_date":         dateRegexp, // YYYY-MM-DD format
 	// component readiness params
 	"baseRelease":      releaseRegexp,
 	"sampleRelease":    releaseRegexp,

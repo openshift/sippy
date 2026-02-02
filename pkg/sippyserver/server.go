@@ -47,7 +47,7 @@ import (
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	"github.com/openshift/sippy/pkg/bigquery"
+	sippybq "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -77,7 +77,7 @@ func NewServer(
 	dbClient *db.DB,
 	gcsClient *storage.Client,
 	gcsBucket string,
-	bigQueryClient *bigquery.Client,
+	bigQueryClient *sippybq.Client,
 	pinnedDateTime *time.Time,
 	cacheClient cache.Cache,
 	crTimeRoundingFactor time.Duration,
@@ -141,7 +141,7 @@ type Server struct {
 	static               fs.FS
 	httpServer           *http.Server
 	db                   *db.DB
-	bigQueryClient       *bigquery.Client
+	bigQueryClient       *sippybq.Client
 	pinnedDateTime       *time.Time
 	gcsClient            *storage.Client
 	gcsBucket            string
@@ -153,6 +153,52 @@ type Server struct {
 	enableWriteAPIs      bool
 	chatAPIURL           string
 	jiraClient           *jira.Client
+	rateLimiters         map[string]*rateLimiter
+}
+
+type rateLimiter struct {
+	mu           sync.Mutex
+	requestTimes []time.Time
+	maxRequests  int
+	period       time.Duration
+}
+
+func (rl *rateLimiter) allow() bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+
+	// Remove expired request times
+	cutoff := now.Add(-rl.period)
+	var validTimes []time.Time
+	for _, t := range rl.requestTimes {
+		if t.After(cutoff) {
+			validTimes = append(validTimes, t)
+		}
+	}
+	rl.requestTimes = validTimes
+
+	log.Debugf("Rate limiter: now=%s, cutoff=%s, valid_requests=%d/%d, oldest=%v",
+		now.Format("15:04:05"), cutoff.Format("15:04:05"), len(rl.requestTimes), rl.maxRequests,
+		func() string {
+			if len(rl.requestTimes) > 0 {
+				return rl.requestTimes[0].Format("15:04:05")
+			}
+			return "none"
+		}())
+
+	// Check if we're at the limit
+	if len(rl.requestTimes) >= rl.maxRequests {
+		// Reject without recording - only successful requests count toward the limit
+		log.Debugf("Rate limit REJECTED: %d requests in window (max %d)", len(rl.requestTimes), rl.maxRequests)
+		return false
+	}
+
+	// Record this request as successful - it counts toward the rate limit
+	rl.requestTimes = append(rl.requestTimes, now)
+	log.Debugf("Rate limit ALLOWED: recorded request at %s", now.Format("15:04:05"))
+	return true
 }
 
 func (s *Server) GetReportEnd() time.Time {
@@ -637,6 +683,68 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
+func (s *Server) jsonTestOutputsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "test outputs v2 API is only available when google-service-account-credential-file is configured")
+		return
+	}
+
+	testID := param.SafeRead(req, "test_id")
+	if testID == "" {
+		failureResponse(w, http.StatusBadRequest, "test_id parameter is required")
+		return
+	}
+
+	prowJobRunIDs := param.SafeRead(req, "prow_job_run_ids")
+	if prowJobRunIDs == "" {
+		failureResponse(w, http.StatusBadRequest, "prow_job_run_ids parameter is required")
+		return
+	}
+
+	// Parse the comma-separated prow job run IDs
+	prowJobRunIDList := strings.Split(prowJobRunIDs, ",")
+
+	// Parse date parameters with defaults
+	var startDate, endDate time.Time
+	startDateParam := getDateParam("start_date", req)
+	endDateParam := getDateParam("end_date", req)
+
+	if endDateParam != nil {
+		// Set to end of day (11:59:59pm)
+		endDate = time.Date(endDateParam.Year(), endDateParam.Month(), endDateParam.Day(), 23, 59, 59, 0, time.UTC)
+	} else {
+		// Default to end of today
+		now := time.Now().UTC()
+		endDate = time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
+	}
+
+	if startDateParam != nil {
+		// Start of the specified day
+		startDate = time.Date(startDateParam.Year(), startDateParam.Month(), startDateParam.Day(), 0, 0, 0, 0, time.UTC)
+	} else {
+		// Default to 7 days before end date at start of day
+		startDate = endDate.AddDate(0, 0, -7)
+		startDate = time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, time.UTC)
+	}
+
+	// Validate date range does not exceed 30 days (expensive query)
+	dateRange := endDate.Sub(startDate)
+	maxRange := 30 * 24 * time.Hour
+	if dateRange > maxRange {
+		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("date range exceeds maximum of 30 days (requested: %.0f days)", dateRange.Hours()/24))
+		return
+	}
+
+	outputs, err := api.GetTestOutputsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket, testID, prowJobRunIDList, startDate, endDate)
+	if err != nil {
+		log.WithError(err).Error("error querying test outputs from bigquery")
+		failureResponse(w, http.StatusInternalServerError, "error querying test outputs from bigquery")
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, outputs)
+}
+
 func (s *Server) jsonComponentTestVariantsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
 		failureResponse(w, http.StatusBadRequest, "component report API is only available when google-service-account-credential-file is configured")
@@ -1027,6 +1135,14 @@ func (s *Server) jsonPullRequestsReportFromDB(w http.ResponseWriter, req *http.R
 
 		api.RespondWithJSON(http.StatusOK, w, results)
 	}
+}
+
+func (s *Server) jsonPullRequestTestResults(w http.ResponseWriter, req *http.Request) {
+	if s.bigQueryClient == nil {
+		failureResponse(w, http.StatusBadRequest, "pull request test results API is only available when google-service-account-credential-file is configured")
+		return
+	}
+	api.PrintPRTestResultsJSON(w, req, s.bigQueryClient)
 }
 
 func (s *Server) jsonJobRunSummary(w http.ResponseWriter, req *http.Request) {
@@ -1871,6 +1987,31 @@ func (s *Server) requireCapabilities(capabilities []string, implFn func(w http.R
 	}
 }
 
+func (s *Server) rateLimit(endpointPath string, maxRequests int, period time.Duration, handler func(w http.ResponseWriter, r *http.Request)) func(http.ResponseWriter, *http.Request) {
+	// Initialize rate limiter map if needed
+	if s.rateLimiters == nil {
+		s.rateLimiters = make(map[string]*rateLimiter)
+	}
+
+	// Create or get rate limiter for this endpoint
+	if s.rateLimiters[endpointPath] == nil {
+		s.rateLimiters[endpointPath] = &rateLimiter{
+			maxRequests: maxRequests,
+			period:      period,
+		}
+	}
+
+	rl := s.rateLimiters[endpointPath]
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !rl.allow() {
+			failureResponse(w, http.StatusTooManyRequests, fmt.Sprintf("Rate limit exceeded. Maximum %d requests per %s. Please try again later.", maxRequests, period))
+			return
+		}
+		handler(w, r)
+	}
+}
+
 func (s *Server) Serve() {
 	s.determineCapabilities()
 
@@ -1904,12 +2045,14 @@ func (s *Server) Serve() {
 	mcpServer := mcp.NewMCPServer(context.Background(), s.httpServer, s.db, s.bigQueryClient, s.cache)
 
 	type apiEndpoints struct {
-		EndpointPath string                                       `json:"path"`
-		Description  string                                       `json:"description"`
-		Capabilities []string                                     `json:"required_capabilities"`
-		CacheTime    time.Duration                                `json:"cache_time"`
-		Methods      []string                                     `json:"methods,omitempty"`
-		HandlerFunc  func(w http.ResponseWriter, r *http.Request) `json:"-"`
+		EndpointPath      string                                       `json:"path"`
+		Description       string                                       `json:"description"`
+		Capabilities      []string                                     `json:"required_capabilities"`
+		CacheTime         time.Duration                                `json:"cache_time"`
+		Methods           []string                                     `json:"methods,omitempty"`
+		HandlerFunc       func(w http.ResponseWriter, r *http.Request) `json:"-"`
+		RateLimitRequests int                                          `json:"-"` // Maximum number of requests
+		RateLimitPeriod   time.Duration                                `json:"-"` // Time period for rate limit
 	}
 
 	var endpoints []apiEndpoints
@@ -2086,6 +2229,12 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonPullRequestsReportFromDB,
 		},
 		{
+			EndpointPath: "/api/pull_requests/test_results",
+			Description:  "Fetches test failures for a specific pull request from BigQuery (presubmits and /payload jobs). Optional: include_successes param to also return successes for matching test names",
+			Capabilities: []string{ComponentReadinessCapability},
+			HandlerFunc:  s.jsonPullRequestTestResults,
+		},
+		{
 			EndpointPath: "/api/repositories",
 			Description:  "Reports on repositories",
 			Capabilities: []string{LocalDBCapability},
@@ -2146,6 +2295,15 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestOutputsFromDB,
+		},
+		{
+			EndpointPath:      "/api/tests/v2/outputs",
+			Description:       "Outputs of tests from BigQuery",
+			Capabilities:      []string{ComponentReadinessCapability},
+			CacheTime:         1 * time.Hour,
+			HandlerFunc:       s.jsonTestOutputsFromBigQuery,
+			RateLimitRequests: 25,
+			RateLimitPeriod:   1 * time.Hour,
 		},
 		{
 			EndpointPath: "/api/tests/durations",
@@ -2451,9 +2609,17 @@ func (s *Server) Serve() {
 
 	for _, ep := range endpoints {
 		fn := ep.HandlerFunc
+		// Apply rate limiting first (innermost middleware)
+		// This ensures cached responses bypass rate limiting
+		if ep.RateLimitRequests > 0 && ep.RateLimitPeriod > 0 {
+			fn = s.rateLimit(ep.EndpointPath, ep.RateLimitRequests, ep.RateLimitPeriod, fn)
+		}
+		// Apply caching second - wraps rate-limited handler
+		// Cache hits return early without calling the rate-limited handler
 		if ep.CacheTime > 0 {
 			fn = s.cached(ep.CacheTime, fn)
 		}
+		// Apply capability checks last (outermost middleware)
 		if len(ep.Capabilities) > 0 {
 			fn = s.requireCapabilities(ep.Capabilities, fn)
 		}
@@ -2600,15 +2766,22 @@ func recordResponse(c cache.Cache, duration time.Duration, w http.ResponseWriter
 	content := recorder.Body.Bytes()
 	apiResponse.Response = content
 
-	log.Debugf("caching new page: %s for %s\n", r.RequestURI, duration)
-	apiResponseBytes, err := json.Marshal(apiResponse)
-	if err != nil {
-		log.WithError(err).Warningf("couldn't marshal api response")
+	// Only cache successful responses (2xx status codes)
+	// Don't cache rate limit rejections or other errors
+	if recorder.Code >= 200 && recorder.Code < 300 {
+		log.Debugf("caching new page: %s for %s\n", r.RequestURI, duration)
+		apiResponseBytes, err := json.Marshal(apiResponse)
+		if err != nil {
+			log.WithError(err).Warningf("couldn't marshal api response")
+		}
+
+		if err := c.Set(context.TODO(), r.RequestURI, apiResponseBytes, duration); err != nil {
+			log.WithError(err).Warningf("could not cache page")
+		}
+	} else {
+		log.Debugf("not caching error response (status %d) for %s\n", recorder.Code, r.RequestURI)
 	}
 
-	if err := c.Set(context.TODO(), r.RequestURI, apiResponseBytes, duration); err != nil {
-		log.WithError(err).Warningf("could not cache page")
-	}
 	if _, err := w.Write(content); err != nil {
 		log.WithError(err).Debugf("error writing http response")
 	}

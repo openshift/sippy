@@ -2,6 +2,9 @@ package bigquery
 
 import (
 	"context"
+	"fmt"
+	"strings"
+	"time"
 
 	"cloud.google.com/go/bigquery"
 	"github.com/pkg/errors"
@@ -41,4 +44,46 @@ func New(ctx context.Context, credentialFile, project, dataset string, c cache.C
 func LoggedRead(ctx context.Context, q *bigquery.Query) (*bigquery.RowIterator, error) {
 	log.Debugf("Querying BQ with Parameters: %v\n%v", q.Parameters, q.QueryConfig.Q)
 	return q.Read(ctx)
+}
+
+// LogQueryWithParamsReplaced is intended to give developers a query they can copy out of logs and work with directly,
+// which has all the parameters replaced. This query is NOT the one we run live, we let bigquery do its param replacement
+// itself.
+// Without this, logrus logs the query in one line with everything escaped, and parameters have to be manually replaced by the user.
+// This will only log if we're logging at Debug level.
+func LogQueryWithParamsReplaced(logger log.FieldLogger, query *bigquery.Query) {
+	if log.GetLevel() == log.DebugLevel {
+		// Attempt to log a usable version of the query with params swapped in.
+		strQuery := query.Q
+		for _, p := range query.Parameters {
+			paramName := "@" + p.Name
+			paramValue := p.Value
+
+			switch v := paramValue.(type) {
+			case time.Time:
+				// Format time.Time to "YYYY-MM-DD HH:MM:SS"
+				// Note: BigQuery's DATETIME type does not store timezone info.
+				// This format aligns with what BigQuery expects for DATETIME literals.
+				// Without it, you'll copy the query and attempt to run it and be told you're not filtering on
+				// modified time.
+				formattedTime := v.Format("2006-01-02 15:04:05")
+				strQuery = strings.ReplaceAll(strQuery, paramName, fmt.Sprintf(`DATETIME("%s")`, formattedTime))
+			case []string:
+				// Convert a slice of strings to a formatted array string
+				quotedArr := make([]string, len(v))
+				for i, val := range v {
+					quotedArr[i] = fmt.Sprintf("%q", val)
+				}
+				joinedStrings := strings.Join(quotedArr, ",")
+				strArr := fmt.Sprintf("[%s]", joinedStrings)
+				strQuery = strings.ReplaceAll(strQuery, paramName, strArr)
+			default:
+				// Default handling for all other types
+				strQuery = strings.ReplaceAll(strQuery, paramName, fmt.Sprintf(`"%v"`, v))
+
+			}
+		}
+		logger.Debugf("fetching bigquery data with query:")
+		fmt.Println(strQuery)
+	}
 }

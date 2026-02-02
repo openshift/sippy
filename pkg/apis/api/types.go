@@ -877,8 +877,9 @@ type JobAnalysisResult struct {
 }
 
 type TestOutput struct {
-	URL    string `json:"url"`
-	Output string `json:"output"`
+	URL      string `json:"url"`
+	Output   string `json:"output"`
+	TestName string `json:"test_name,omitempty"`
 }
 
 type ReleaseDates struct {
