@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
@@ -138,10 +138,13 @@ func NewAutomateJiraCommand() *cobra.Command {
 				log.WithError(err).Fatal("couldn't get cache client")
 			}
 
-			bigQueryClient, err := bqcachedclient.New(ctx,
+			opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "automate-jira")
+			bigQueryClient, err := bqcachedclient.New(
+				ctx, opCtx, cacheClient,
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.BigQueryFlags.BigQueryProject,
-				f.BigQueryFlags.BigQueryDataset, cacheClient, f.BigQueryFlags.ReleasesTable)
+				f.BigQueryFlags.BigQueryDataset,
+				f.BigQueryFlags.ReleasesTable)
 			if err != nil {
 				log.WithError(err).Fatal("CRITICAL error getting BigQuery client which prevents regression tracking")
 			}

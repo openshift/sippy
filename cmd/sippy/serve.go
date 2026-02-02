@@ -4,9 +4,12 @@ import (
 	"context"
 	"io/fs"
 	"net/http"
+	"os"
+	"slices"
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -96,8 +99,16 @@ func NewServeCommand() *cobra.Command {
 			var bigQueryClient *bigquery.Client
 			var gcsClient *storage.Client
 			if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
-				bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(),
-					cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+				opCtx := bqlabel.OperationalContext{
+					App:         bqlabel.AppSippy,
+					Command:     "serve",
+					Environment: bqlabel.EnvCli,
+				}
+				env := bqlabel.EnvValue(os.Getenv("SIPPY_WEB_ENV"))
+				if slices.Contains([]bqlabel.EnvValue{bqlabel.EnvWeb, bqlabel.EnvWebAuth, bqlabel.EnvWebQE}, env) {
+					opCtx.Environment = env
+				}
+				bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
 				if err != nil {
 					return errors.WithMessage(err, "couldn't get bigquery client")
 				}

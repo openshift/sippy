@@ -12,6 +12,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/componentreadiness/jobrunannotator"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/flags/configflags"
@@ -136,16 +137,25 @@ Example run: sippy annotate-job-runs  --google-service-account-credential-file=f
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
 			defer cancel()
+			ctx = context.WithValue(ctx, bqcachedclient.RequestContextKey, bqlabel.RequestContext{User: f.User})
+
+			opCtx := bqlabel.OperationalContext{
+				App:         bqlabel.AppSippy,
+				Command:     "annotate-job-runs",
+				Environment: bqlabel.EnvCli,
+			}
 
 			cacheClient, err := f.CacheFlags.GetCacheClient()
 			if err != nil {
 				log.WithError(err).Fatal("couldn't get cache client")
 			}
 
-			bigQueryClient, err := bqcachedclient.New(ctx,
+			bigQueryClient, err := bqcachedclient.New(
+				ctx, opCtx, cacheClient,
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
 				f.BigQueryFlags.BigQueryProject,
-				f.BigQueryFlags.BigQueryDataset, cacheClient, f.BigQueryFlags.ReleasesTable)
+				f.BigQueryFlags.BigQueryDataset,
+				f.BigQueryFlags.ReleasesTable)
 			if err != nil {
 				log.WithError(err).Fatal("error getting BigQuery client")
 			}

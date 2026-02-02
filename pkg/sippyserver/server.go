@@ -20,10 +20,12 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -2798,6 +2800,13 @@ func (s *Server) Serve() {
 
 func logRequestHandler(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		// add request context for any BQ queries that may be made
+		bqCtx := bqlabel.RequestContext{
+			User:    getUserForRequest(r),
+			URIPath: r.URL.Path,
+		}
+		r = r.Clone(context.WithValue(r.Context(), sippybq.RequestContextKey, bqCtx))
+
 		start := time.Now()
 		h.ServeHTTP(w, r)
 		log.WithFields(log.Fields{
