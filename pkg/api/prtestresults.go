@@ -9,6 +9,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -51,6 +52,7 @@ func GetPRTestResults(ctx context.Context, bqc *bq.Client, org, repo string, prN
 	log.Infof("querying junit_pr table for org=%s, repo=%s, pr_number=%d, start=%s, end=%s",
 		org, repo, prNumber, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 	queryPR := buildPRTestResultsQuery(bqc, org, repo, prNumber, startDate, endDate, "junit_pr", includeSuccesses)
+	bqc.ApplyQueryLabels(ctx, bqlabel.PRTestResults, queryPR)
 	resultsPR, err := executePRTestResultsQuery(ctx, queryPR)
 	if err != nil {
 		log.WithError(err).Error("error querying junit_pr table")
@@ -62,6 +64,7 @@ func GetPRTestResults(ctx context.Context, bqc *bq.Client, org, repo string, prN
 	log.Infof("querying junit table for org=%s, repo=%s, pr_number=%d, start=%s, end=%s",
 		org, repo, prNumber, startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 	queryPayload := buildPRTestResultsQuery(bqc, org, repo, prNumber, startDate, endDate, "junit", includeSuccesses)
+	bqc.ApplyQueryLabels(ctx, bqlabel.PRTestResults, queryPayload)
 	resultsPayload, err := executePRTestResultsQuery(ctx, queryPayload)
 	if err != nil {
 		log.WithError(err).Error("error querying junit table")

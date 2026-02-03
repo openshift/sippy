@@ -17,6 +17,7 @@ import (
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -450,7 +451,7 @@ func GetReleasesFromBigQuery(ctx context.Context, client *bqcachedclient.Client)
 
 	queryString := fmt.Sprintf("SELECT * FROM `%s` ORDER BY DevelStartDate DESC", client.ReleasesTable)
 
-	q := client.BQ.Query(queryString)
+	q := client.Query(ctx, bqlabel.ReleaseAllReleases, queryString)
 	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying releases data from bigquery")
@@ -546,7 +547,7 @@ func PayloadForJobRun(ctx context.Context, bigQueryClient *bqcachedclient.Client
 		now.Format("2006-01-02"),
 		jobRunID)
 
-	q := bigQueryClient.BQ.Query(queryStr)
+	q := bigQueryClient.Query(ctx, bqlabel.JobRunPayload, queryStr)
 	log.WithFields(log.Fields{
 		"jobRunID":  jobRunID,
 		"dateRange": fmt.Sprintf("%s to %s", sixMonthsAgo.Format("2006-01-02"), now.Format("2006-01-02")),

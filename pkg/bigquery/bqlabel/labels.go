@@ -65,6 +65,8 @@ const (
 	CRJunitBase                         QueryValue = "component-readiness-junit-base"
 	CRJunitSample                       QueryValue = "component-readiness-junit-sample"
 	CRJunitFallback                     QueryValue = "component-readiness-junit-fallback"
+	TDJunitBase                         QueryValue = "test-details-junit-base"
+	TDJunitSample                       QueryValue = "test-details-junit-sample"
 	CRTriagedIssues                     QueryValue = "component-readiness-triaged-issues"
 	CRTriagedModifiedTime               QueryValue = "component-readiness-triaged-modified-time"
 	CRCurrentRegressions                QueryValue = "component-readiness-current-regressions"
@@ -79,6 +81,14 @@ const (
 	VariantRegistryUpdateVariant        QueryValue = "variant-registry-update-variant"
 	VariantRegistryLoadCurrentVariants  QueryValue = "variant-registry-load-current-variants"
 	VariantRegistryLoadExpectedVariants QueryValue = "variant-registry-load-expected-variants"
+	TestOutputs                         QueryValue = "test-outputs"
+	TestResults                         QueryValue = "test-results"
+	TestResultsOverall                  QueryValue = "test-results-overall"
+	TestCapabilities                    QueryValue = "test-capabilities"
+	TestLifecycles                      QueryValue = "test-lifecycles"
+	JobRunPayload                       QueryValue = "job-run-payload"
+	PRTestResults                       QueryValue = "pr-test-results"
+	CacheLookup                         QueryValue = "cache-lookup"
 )
 
 // sanitizeLabelValue sanitizes a label value to meet BigQuery requirements:

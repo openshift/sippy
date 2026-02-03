@@ -1091,7 +1091,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Request) {
-	capabilities, err := api.GetTestCapabilitiesFromDB(s.bigQueryClient)
+	capabilities, err := api.GetTestCapabilitiesFromDB(req.Context(), s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying test capabilities")
 		failureResponse(w, http.StatusInternalServerError, "error querying test capabilities")
@@ -1102,7 +1102,7 @@ func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Req
 }
 
 func (s *Server) jsonTestLifecyclesFromDB(w http.ResponseWriter, req *http.Request) {
-	lifecycles, err := api.GetTestLifecyclesFromDB(s.bigQueryClient)
+	lifecycles, err := api.GetTestLifecyclesFromDB(req.Context(), s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying test lifecycles")
 		failureResponse(w, http.StatusInternalServerError, "error querying test lifecycles")
