@@ -132,6 +132,12 @@ export default function TestDetailsReport(props) {
     setCopyPopoverEl(event.currentTarget)
     setTimeout(() => setCopyPopoverEl(null), 2000)
   }
+  const copyRegressionID = (event) => {
+    event.preventDefault()
+    navigator.clipboard.writeText(String(regressionId))
+    setCopyPopoverEl(event.currentTarget)
+    setTimeout(() => setCopyPopoverEl(null), 2000)
+  }
 
   const [hasBeenTriaged, setHasBeenTriaged] = React.useState(false)
 
@@ -539,6 +545,23 @@ View the [test details report|${document.location.href}] for additional context.
               </IconButton>
             </TableCell>
           </TableRow>
+          {regressionId && (
+            <TableRow>
+              <TableCell>Regression ID:</TableCell>
+              <TableCell>
+                {regressionId}
+                <IconButton
+                  aria-label="Copy regression ID"
+                  color="inherit"
+                  onClick={copyRegressionID}
+                >
+                  <Tooltip title="Copy regression ID">
+                    <FileCopy />
+                  </Tooltip>
+                </IconButton>
+              </TableCell>
+            </TableRow>
+          )}
           <TableRow>
             <TableCell>Environment:</TableCell>
             <TableCell>{environment}</TableCell>

@@ -211,3 +211,34 @@ func GetPayloadAcceptanceStatistics(db *gorm.DB, release, architecture, stream s
 
 	return results, q.Error
 }
+
+// GetReleaseTag returns a release tag by its release_tag string.
+func GetReleaseTag(db *gorm.DB, releaseTag string) (*models.ReleaseTag, error) {
+	var result models.ReleaseTag
+	if err := db.Where("release_tag = ?", releaseTag).First(&result).Error; err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
+
+// GetPreviousPayload returns the payload that immediately precedes the given payload
+// in the same release, stream, and architecture by sorting on release_tag.
+func GetPreviousPayload(db *gorm.DB, toPayload string) (*models.ReleaseTag, error) {
+	// First, look up the toPayload to get its release, stream, and architecture
+	var target models.ReleaseTag
+	if err := db.Where("release_tag = ?", toPayload).First(&target).Error; err != nil {
+		return nil, err
+	}
+
+	// Find the previous payload in the same stream by sorting on release_tag
+	var result models.ReleaseTag
+	if err := db.Where("release = ?", target.Release).
+		Where("stream = ?", target.Stream).
+		Where("architecture = ?", target.Architecture).
+		Where("release_tag < ?", toPayload).
+		Order("release_tag DESC").
+		First(&result).Error; err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
