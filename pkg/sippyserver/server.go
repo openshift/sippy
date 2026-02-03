@@ -551,6 +551,18 @@ func (s *Server) jsonReleaseHealthReport(w http.ResponseWriter, req *http.Reques
 func (s *Server) jsonPayloadDiff(w http.ResponseWriter, req *http.Request) {
 	fromPayload := param.SafeRead(req, "fromPayload")
 	toPayload := param.SafeRead(req, "toPayload")
+
+	// If fromPayload is not specified, look up the previous payload in the same stream
+	if fromPayload == "" && toPayload != "" {
+		prevPayload, err := query.GetPreviousPayload(s.db.DB, toPayload)
+		if err != nil {
+			log.WithError(err).Error("error looking up previous payload")
+			failureResponse(w, http.StatusBadRequest, "could not find previous payload for: "+toPayload)
+			return
+		}
+		fromPayload = prevPayload.ReleaseTag
+	}
+
 	results, err := api.GetPayloadDiffPullRequests(s.db, fromPayload, toPayload)
 
 	if err != nil {
