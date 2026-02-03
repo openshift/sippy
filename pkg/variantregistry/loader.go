@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -23,6 +24,7 @@ const invalidCharacters = ",:"
 // job to variants, and then use this generic reconcile logic to get it into bigquery.
 type JobVariantsLoader struct {
 	bqClient         *bigquery.Client
+	bqOpContext      bqlabel.OperationalContext
 	bigQueryProject  string
 	bigQueryDataSet  string
 	bigQueryTable    string
@@ -32,14 +34,14 @@ type JobVariantsLoader struct {
 
 func NewJobVariantsLoader(
 	bigQueryClient *bigquery.Client,
-	bigQueryProject string,
-	bigQueryDataSet string,
-	bigQueryTable string,
+	opCtx bqlabel.OperationalContext,
+	bigQueryProject, bigQueryDataSet, bigQueryTable string,
 	expectedVariants map[string]map[string]string,
 ) *JobVariantsLoader {
 
 	return &JobVariantsLoader{
 		bqClient:         bigQueryClient,
+		bqOpContext:      opCtx,
 		bigQueryProject:  bigQueryProject,
 		bigQueryDataSet:  bigQueryDataSet,
 		bigQueryTable:    bigQueryTable,
@@ -186,10 +188,20 @@ func compareVariants(expectedVariants, currentVariants map[string]map[string]str
 	return insertVariants, updateVariants, deleteVariants, deleteJobs
 }
 
+// applyQueryLabels applies query labels manually since this loader does not use the client that would do it for us.
+func (s *JobVariantsLoader) applyQueryLabels(queryLabel bqlabel.QueryValue, q *bigquery.Query) {
+	bqlabel.Context{
+		OperationalContext: s.bqOpContext,
+		RequestContext:     bqlabel.RequestContext{Query: queryLabel},
+	}.ApplyLabels(q)
+}
+
 func (s *JobVariantsLoader) loadCurrentJobVariants() (map[string]map[string]string, error) {
-	query := s.bqClient.Query(`SELECT * FROM ` +
+	sql := `SELECT * FROM ` +
 		fmt.Sprintf("%s.%s.%s", s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable) +
-		` ORDER BY job_name, variant_name`)
+		` ORDER BY job_name, variant_name`
+	query := s.bqClient.Query(sql)
+	s.applyQueryLabels(bqlabel.VariantRegistryLoadCurrentVariants, query)
 	it, err := query.Read(context.TODO())
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying current job variants")
@@ -248,6 +260,7 @@ func (s *JobVariantsLoader) updateVariant(logger log.FieldLogger, jv jobVariant)
 	queryStr := fmt.Sprintf("UPDATE `%s.%s.%s` SET variant_value = '%s' WHERE job_name = '%s' and variant_name = '%s'",
 		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, jv.VariantValue, jv.JobName, jv.VariantName)
 	insertQuery := s.bqClient.Query(queryStr)
+	s.applyQueryLabels(bqlabel.VariantRegistryUpdateVariant, insertQuery)
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
 		return errors.Wrapf(err, "error updating variants: %s", queryStr)
@@ -261,6 +274,7 @@ func (s *JobVariantsLoader) deleteVariant(logger log.FieldLogger, jv jobVariant)
 	queryStr := fmt.Sprintf("DELETE FROM `%s.%s.%s` WHERE job_name = '%s' and variant_name = '%s' and variant_value = '%s'",
 		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, jv.JobName, jv.VariantName, jv.VariantValue)
 	insertQuery := s.bqClient.Query(queryStr)
+	s.applyQueryLabels(bqlabel.VariantRegistryDeleteVariant, insertQuery)
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
 		return errors.Wrapf(err, "error deleting variant: %s", queryStr)
@@ -297,6 +311,7 @@ func (s *JobVariantsLoader) deleteJobsBatch(batch []string) error {
 		s.bigQueryProject, s.bigQueryDataSet, s.bigQueryTable, strings.Join(batch, "','"))
 
 	insertQuery := s.bqClient.Query(queryStr)
+	s.applyQueryLabels(bqlabel.VariantRegistryDeleteJobBatch, insertQuery)
 	_, err := insertQuery.Read(context.TODO())
 	if err != nil {
 		return errors.Wrapf(err, "error deleting batch of jobs: %s", queryStr)

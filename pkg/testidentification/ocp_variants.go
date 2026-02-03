@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -86,7 +87,7 @@ func NewOpenshiftVariantManager(ctx context.Context, bqc *bqcachedclient.Client)
 	// Read variants mapping from bigquery
 	variantsQuery := strings.ReplaceAll(jobVariantsQuery, "$$DATASET$$", bqc.Dataset)
 	log.Debugf("variant query is %+v", variantsQuery)
-	it, err := bqc.BQ.Query(variantsQuery).Read(ctx)
+	it, err := bqc.Query(ctx, bqlabel.JobVariants, variantsQuery).Read(ctx)
 	if err != nil {
 		return nil, err
 	}

@@ -14,6 +14,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
 	"github.com/hashicorp/go-version"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -28,6 +29,7 @@ import (
 // OCPVariantLoader generates a mapping of job names to their variant map for all known jobs.
 type OCPVariantLoader struct {
 	BigQueryClient  *bigquery.Client
+	bqOpContext     bqlabel.OperationalContext
 	config          *v1.SippyConfig
 	bigQueryProject string
 	bigQueryDataSet string
@@ -37,14 +39,15 @@ type OCPVariantLoader struct {
 
 func NewOCPVariantLoader(
 	bigQueryClient *bigquery.Client,
-	bigQueryProject string,
-	bigQueryDataSet string,
-	bigQueryTable string,
+	opCtx bqlabel.OperationalContext,
+	bigQueryProject, bigQueryDataSet, bigQueryTable string,
 	gcsClient *storage.Client,
-	config *v1.SippyConfig) *OCPVariantLoader {
+	config *v1.SippyConfig,
+) *OCPVariantLoader {
 
 	return &OCPVariantLoader{
 		BigQueryClient:  bigQueryClient,
+		bqOpContext:     opCtx,
 		gcsClient:       gcsClient,
 		config:          config,
 		bigQueryProject: bigQueryProject,
@@ -58,6 +61,14 @@ type prowJobLastRun struct {
 	JobRunID  string              `bigquery:"prowjob_build_id"`
 	GCSBucket bigquery.NullString `bigquery:"gcs_bucket"`
 	URL       bigquery.NullString `bigquery:"prowjob_url"`
+}
+
+// applyQueryLabels applies query labels manually since this loader does not use the client that would do it for us.
+func (v *OCPVariantLoader) applyQueryLabels(queryLabel bqlabel.QueryValue, q *bigquery.Query) {
+	bqlabel.Context{
+		OperationalContext: v.bqOpContext,
+		RequestContext:     bqlabel.RequestContext{Query: queryLabel},
+	}.ApplyLabels(q)
 }
 
 // LoadExpectedJobVariants queries all known jobs from the gce-devel "jobs" table (actually contains job runs).
@@ -120,7 +131,8 @@ ORDER BY j.prowjob_job_name;
 	log.Infof("running query for recent jobs: \n%s", queryStr)
 
 	query := v.BigQueryClient.Query(queryStr)
-	it, err := query.Read(context.TODO())
+	v.applyQueryLabels(bqlabel.VariantRegistryLoadExpectedVariants, query)
+	it, err := query.Read(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "error querying primary list of all jobs")
 	}

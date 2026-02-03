@@ -21,6 +21,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/jackc/pgtype"
 	"github.com/lib/pq"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -389,7 +390,7 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 		}
 		dLog.Warnf("partition created for releases %v", pl.releases)
 
-		q := pl.bigQueryClient.BQ.Query(fmt.Sprintf(`WITH
+		q := pl.bigQueryClient.Query(ctx, bqlabel.ProwLoaderTestAnalysis, fmt.Sprintf(`WITH
   deduped_testcases AS (
   SELECT
     junit.*,
@@ -1069,9 +1070,9 @@ func GatherLabelsFromBQ(ctx context.Context, bqClient *bqcachedclient.Client, bu
 		dataset = bqClient.Dataset
 	}
 	table := fmt.Sprintf("`%s.%s`", dataset, LabelsTableName)
-	q := bqClient.BQ.Query(`
+	q := bqClient.Query(ctx, bqlabel.ProwLoaderJobLabels, `
 		SELECT ARRAY_AGG(DISTINCT label ORDER BY label ASC) AS labels
-		FROM ` + table + `
+		FROM `+table+`
 		WHERE prowjob_build_id = @BuildID
 		  AND DATE(prowjob_start) = DATE(@StartTime)
 	`)

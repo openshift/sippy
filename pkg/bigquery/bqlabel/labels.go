@@ -34,6 +34,11 @@ type EnvValue string
 type QueryValue string
 
 const (
+	// keys must conform to BigQuery label naming requirements:
+	// https://docs.cloud.google.com/bigquery/docs/labels-intro#requirements
+	// must be lowercase letters, digits, underscores, or dashes; start with a letter; and be 1-63 characters long.
+	// adding an invalid key will result in a query failure, so don't do that.
+
 	KeyApp      = "client-application"
 	KeyCmd      = "client-command"
 	KeyEnv      = "client-env"
@@ -58,7 +63,7 @@ const (
 	EnvCron          EnvValue = "cron"
 	EnvCloudFunction EnvValue = "cloud-function"
 
-	// valid values for Query
+	// valid values for Query (add as needed for new queries)
 
 	CRJobVariants                       QueryValue = "component-readiness-job-variants"
 	CRJunitColumnCount                  QueryValue = "component-readiness-junit-column-count"
@@ -67,26 +72,30 @@ const (
 	CRJunitFallback                     QueryValue = "component-readiness-junit-fallback"
 	TDJunitBase                         QueryValue = "test-details-junit-base"
 	TDJunitSample                       QueryValue = "test-details-junit-sample"
-	CRTriagedIssues                     QueryValue = "component-readiness-triaged-issues"
-	CRTriagedModifiedTime               QueryValue = "component-readiness-triaged-modified-time"
-	CRCurrentRegressions                QueryValue = "component-readiness-current-regressions"
-	CRUpdateRegressionClosed            QueryValue = "component-readiness-update-regression-closed"
 	DisruptionDelta                     QueryValue = "disruption-delta"
 	ReleaseAllReleases                  QueryValue = "release-all-releases"
 	BugLoaderJobBugMappings             QueryValue = "bug-loader-job-bug-mappings"
 	BugLoaderTestBugMappings            QueryValue = "bug-loader-test-bug-mappings"
+	BugLoaderTriageBugMappings          QueryValue = "bug-loader-triage-bug-mappings"
 	ProwLoaderProwJobs                  QueryValue = "prow-loader-prow-jobs"
+	ProwLoaderTestAnalysis              QueryValue = "prow-loader-test-analysis"
+	ProwLoaderJobLabels                 QueryValue = "prow-loader-job-labels"
 	VariantRegistryDeleteJobBatch       QueryValue = "variant-registry-delete-job-batch"
 	VariantRegistryDeleteVariant        QueryValue = "variant-registry-delete-variant"
 	VariantRegistryUpdateVariant        QueryValue = "variant-registry-update-variant"
 	VariantRegistryLoadCurrentVariants  QueryValue = "variant-registry-load-current-variants"
 	VariantRegistryLoadExpectedVariants QueryValue = "variant-registry-load-expected-variants"
+	VariantJiraMap                      QueryValue = "variant-jira-mapping"
 	TestOutputs                         QueryValue = "test-outputs"
 	TestResults                         QueryValue = "test-results"
 	TestResultsOverall                  QueryValue = "test-results-overall"
 	TestCapabilities                    QueryValue = "test-capabilities"
 	TestLifecycles                      QueryValue = "test-lifecycles"
 	JobRunPayload                       QueryValue = "job-run-payload"
+	JobRunLabels                        QueryValue = "job-run-labels"
+	JobRunHighRisk                      QueryValue = "job-run-high-risk"
+	JobRuns                             QueryValue = "job-runs"
+	JobVariants                         QueryValue = "job-variants"
 	PRTestResults                       QueryValue = "pr-test-results"
 	CacheLookup                         QueryValue = "cache-lookup"
 )

@@ -1,11 +1,11 @@
 package prowloader
 
 import (
-	"context"
 	"strconv"
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -35,7 +35,8 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 	// NOTE: casting a couple datetime columns to timestamps, it does appear they go in as UTC, and thus come out
 	// as the default UTC correctly.
 	// Annotations and labels can be queried here if we need them.
-	query := pl.bigQueryClient.BQ.Query(`SELECT
+	query := pl.bigQueryClient.Query(pl.ctx, bqlabel.ProwLoaderProwJobs, `
+        SELECT
 			prowjob_job_name,
 			prowjob_state,
 			prowjob_build_id,
@@ -49,8 +50,8 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			repo,
 			gcs_bucket,
 			TIMESTAMP(prowjob_start) AS prowjob_start_ts,
-			TIMESTAMP(prowjob_completion) AS prowjob_completion_ts ` +
-		"FROM `ci_analysis_us.jobs` " +
+			TIMESTAMP(prowjob_completion) AS prowjob_completion_ts `+
+		"FROM `ci_analysis_us.jobs` "+
 		`WHERE TIMESTAMP(prowjob_completion) > @queryFrom
 	       AND prowjob_url IS NOT NULL
 	       ORDER BY prowjob_start_ts`)
@@ -60,7 +61,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			Value: lastProwJobRun,
 		},
 	}
-	it, err := query.Read(context.TODO())
+	it, err := query.Read(pl.ctx)
 	if err != nil {
 		errs = append(errs, err)
 		log.WithError(err).Error("error querying jobs from bigquery")

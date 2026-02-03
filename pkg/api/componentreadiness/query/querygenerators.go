@@ -14,6 +14,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -139,7 +140,7 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTest
 	before := time.Now()
 	errs := []error{}
 	baseString := commonQuery + ` AND jv_Release.variant_value = @BaseRelease`
-	baseQuery := b.client.BQ.Query(baseString + groupByQuery)
+	baseQuery := b.client.Query(ctx, bqlabel.CRJunitBase, baseString+groupByQuery)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, queryParameters...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{
@@ -221,7 +222,7 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 	if s.ReqOptions.SampleRelease.PayloadOptions != nil {
 		sampleString += `  AND release_verify_tag IN UNNEST(@Tags)`
 	}
-	sampleQuery := s.client.BQ.Query(sampleString + groupByQuery)
+	sampleQuery := s.client.Query(ctx, bqlabel.CRJunitSample, sampleString+groupByQuery)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, queryParameters...)
 	sampleQuery.Parameters = append(sampleQuery.Parameters, []bigquery.QueryParameter{
 		{

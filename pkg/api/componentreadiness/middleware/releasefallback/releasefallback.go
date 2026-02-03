@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/util/sets"
 	log "github.com/sirupsen/logrus"
 
@@ -545,7 +546,7 @@ func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context)
 	log.Infof("Starting Fallback (%s) QueryTestStatus", f.BaseRelease)
 	errs := []error{}
 	baseString := commonQuery + ` AND jv_Release.variant_value = @BaseRelease`
-	baseQuery := f.client.BQ.Query(baseString + groupByQuery)
+	baseQuery := f.client.Query(ctx, bqlabel.CRJunitFallback, baseString+groupByQuery)
 
 	baseQuery.Parameters = append(baseQuery.Parameters, queryParameters...)
 	baseQuery.Parameters = append(baseQuery.Parameters, []bigquery.QueryParameter{

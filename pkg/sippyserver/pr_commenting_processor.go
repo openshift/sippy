@@ -176,7 +176,7 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 			preparedComments:    preparedComments,
 			newTestsWorker:      wp.newTestsWorker,
 		}
-		go analysisWorker.Run()
+		go analysisWorker.Run(ctx)
 	}
 
 	// check context to verify we are still active
@@ -420,14 +420,14 @@ func (cw *CommentWorker) writeComment(ghCommenter *commenter.GitHubCommenter, pr
 	return ghCommenter.AddComment(preparedComment.org, preparedComment.repo, preparedComment.number, ghcomment)
 }
 
-func (aw *AnalysisWorker) Run() {
+func (aw *AnalysisWorker) Run(ctx context.Context) {
 
 	// wait for the next item to be available and process it
 	// exit when closed
 	for i := range aw.prCommentProspects {
 
 		if i.CommentType == int(models.CommentTypeRiskAnalysis) {
-			aw.determinePrComment(i)
+			aw.determinePrComment(ctx, i)
 		} else {
 			log.Warningf("Unsupported comment type: %d for %s/%s/%d/%s", i.CommentType, i.Org, i.Repo, i.PullNumber, i.SHA)
 		}
@@ -436,7 +436,7 @@ func (aw *AnalysisWorker) Run() {
 }
 
 // determinePrComment evaluates the potential for a PR comment and produces that comment if appropriate
-func (aw *AnalysisWorker) determinePrComment(prCommentProspect models.PullRequestComment) {
+func (aw *AnalysisWorker) determinePrComment(ctx context.Context, prCommentProspect models.PullRequestComment) {
 
 	logger := log.WithField("func", "determinePrComment").
 		WithField("org", prCommentProspect.Org).
@@ -472,7 +472,7 @@ func (aw *AnalysisWorker) determinePrComment(prCommentProspect models.PullReques
 		completedJobs[idx].prShaSum = prCommentProspect.SHA // so we can check whether runs are against the expected PR commit
 	}
 
-	riskAnalyses := aw.buildPRJobRiskAnalysis(logger, completedJobs)
+	riskAnalyses := aw.buildPRJobRiskAnalysis(ctx, logger, completedJobs)
 	newTestRisks := aw.newTestsWorker.analyzeRisks(logger, completedJobs)
 	preparedComment := PreparedComment{
 		comment:     buildCommentText(riskAnalyses, newTestRisks, prCommentProspect.SHA),
@@ -699,7 +699,7 @@ func (aw *AnalysisWorker) getPrJobsIfFinished(logger *log.Entry, prRoot string) 
 
 // buildPRJobRiskAnalysis walks the runs for a PR job to sort out which to analyze;
 // if the map is empty, it indicates that either all tests passed or any analysis for failures was unknown.
-func (aw *AnalysisWorker) buildPRJobRiskAnalysis(logger *log.Entry, jobs []prJobInfo) []RiskAnalysisSummary {
+func (aw *AnalysisWorker) buildPRJobRiskAnalysis(ctx context.Context, logger *log.Entry, jobs []prJobInfo) []RiskAnalysisSummary {
 	logger = logger.WithField("func", "buildPRJobRiskAnalysis")
 	riskAnalysisSummaries := make([]RiskAnalysisSummary, 0)
 	for _, jobInfo := range jobs {
@@ -720,11 +720,7 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(logger *log.Entry, jobs []prJob
 			continue
 		}
 
-		_, priorRiskAnalysis := aw.getRiskSummary(
-			previous.Status.BuildID,
-			fmt.Sprintf("%s%s/", jobInfo.bucketPrefix, previous.Status.BuildID),
-			nil,
-		)
+		_, priorRiskAnalysis := aw.getRiskSummary(ctx, previous.Status.BuildID, fmt.Sprintf("%s%s/", jobInfo.bucketPrefix, previous.Status.BuildID), nil)
 
 		// if the priorRiskAnalysis is nil then skip since we require consecutive test failures;
 		// this can happen if the job hasn't been imported yet and its risk analysis artifact failed to be created in gcs.
@@ -733,11 +729,7 @@ func (aw *AnalysisWorker) buildPRJobRiskAnalysis(logger *log.Entry, jobs []prJob
 			continue
 		}
 
-		riskSummary, _ := aw.getRiskSummary(
-			latest.Status.BuildID,
-			fmt.Sprintf("%s%s/", jobInfo.bucketPrefix, latest.Status.BuildID),
-			priorRiskAnalysis,
-		)
+		riskSummary, _ := aw.getRiskSummary(ctx, latest.Status.BuildID, fmt.Sprintf("%s%s/", jobInfo.bucketPrefix, latest.Status.BuildID), priorRiskAnalysis)
 
 		// report any risk worth mentioning for this job
 		if riskSummary.OverallRisk.Level != api.FailureRiskLevelNone && riskSummary.OverallRisk.Level != api.FailureRiskLevelUnknown {
@@ -809,7 +801,7 @@ func (aw *AnalysisWorker) buildProwJobRuns(logger *log.Entry, prJobRoot string) 
 	return jobRuns
 }
 
-func (aw *AnalysisWorker) getRiskSummary(jobRunID, jobRunIDPath string, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) (api.RiskSummary, *api.ProwJobRunRiskAnalysis) {
+func (aw *AnalysisWorker) getRiskSummary(ctx context.Context, jobRunID, jobRunIDPath string, priorRiskAnalysis *api.ProwJobRunRiskAnalysis) (api.RiskSummary, *api.ProwJobRunRiskAnalysis) {
 	logger := log.WithField("jobRunID", jobRunID).WithField("func", "getRiskSummary")
 	logger.Infof("Summarize risks for job run at %s", jobRunIDPath)
 
@@ -820,7 +812,7 @@ func (aw *AnalysisWorker) getRiskSummary(jobRunID, jobRunIDPath string, priorRis
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.WithError(err).Errorf("Error fetching job run for: %s", jobRunIDPath)
 		}
-	} else if ra, err := jobQueries.JobRunRiskAnalysis(aw.dbc, aw.bigQueryClient, jobRun, logger, true); err != nil {
+	} else if ra, err := jobQueries.JobRunRiskAnalysis(ctx, aw.dbc, aw.bigQueryClient, jobRun, logger, true); err != nil {
 		logger.WithError(err).Errorf("Error querying risk analysis for: %s", jobRunIDPath)
 	} else {
 		// query succeeded so use the riskAnalysis we got

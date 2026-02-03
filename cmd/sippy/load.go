@@ -398,7 +398,8 @@ func (f *LoadFlags) jobVariantsLoader(ctx context.Context) (dataloader.DataLoade
 	}
 
 	log.Infof("Loaded expected job variant data from: %s", inputFile)
-	syncer := variantregistry.NewJobVariantsLoader(bigQueryClient, f.BigQueryFlags.BigQueryProject,
+	opCtx, _ := bqcachedclient.OpCtxForCronEnv(ctx, "load")
+	syncer := variantregistry.NewJobVariantsLoader(bigQueryClient, opCtx, f.BigQueryFlags.BigQueryProject,
 		f.BigQueryFlags.BigQueryDataset, "job_variants", expectedVariants)
 	return syncer, nil
 

@@ -642,7 +642,7 @@ func GetTestCapabilitiesFromDB(ctx context.Context, bqClient *bq.Client) ([]stri
 
 	log.Infof("Fetching test capabilities with:\n%s\n", q.Q)
 
-	it, err := q.Read(context.Background())
+	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying test capabilities from bigquery")
 		return []string{}, err
@@ -675,7 +675,7 @@ func GetTestLifecyclesFromDB(ctx context.Context, bqClient *bq.Client) ([]string
 
 	log.Infof("Fetching test lifecycles with:\n%s\n", q.Q)
 
-	it, err := q.Read(context.Background())
+	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying test lifecycles from bigquery")
 		return []string{}, err
