@@ -150,7 +150,7 @@ export default function RegressedTestsModal({
 
 RegressedTestsModal.propTypes = {
   regressedTests: PropTypes.array,
-  allRegressedTests: PropTypes.array,
+  allRegressedTests: PropTypes.object,
   unresolvedTests: PropTypes.array,
   triageEntries: PropTypes.array,
   setTriageActionTaken: PropTypes.func,

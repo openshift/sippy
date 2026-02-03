@@ -433,7 +433,11 @@ export default function ComponentReadinessToolBar(props) {
       </Popover>
       <RegressedTestsModal
         regressedTests={regressedTests}
-        allRegressedTests={allRegressedTests}
+        allRegressedTests={
+          varsContext?.view && allRegressedTests?.length
+            ? { [varsContext.view]: allRegressedTests }
+            : {}
+        }
         unresolvedTests={unresolvedTests}
         triageEntries={triageEntries}
         setTriageActionTaken={setTriageActionTaken}

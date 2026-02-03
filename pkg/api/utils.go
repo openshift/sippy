@@ -298,14 +298,8 @@ func VariantListToMapWithWarnings(allJobVariants crtest.JobVariants, variants []
 }
 
 // GetBaseURL returns the base URL (protocol + host) from the request.
-// When present, the Origin header is used so HATEOAS links point at the originating host (e.g. the UI in local dev).
 // Otherwise it uses the request host and handles TLS and X-Forwarded-Proto for the protocol.
 func GetBaseURL(req *http.Request) string {
-	if origin := req.Header.Get("Origin"); origin != "" {
-		if u, err := url.Parse(origin); err == nil && u.Scheme != "" && u.Host != "" {
-			return u.Scheme + "://" + u.Host
-		}
-	}
 	protocol := "http"
 	if req.TLS != nil {
 		protocol = "https"
@@ -314,4 +308,16 @@ func GetBaseURL(req *http.Request) string {
 		protocol = proto
 	}
 	return protocol + "://" + req.Host
+}
+
+// GetBaseFrontendURL returns the base URL for the frontend using the Origin header.
+// If not present, it defaults to GetBaseURL.
+func GetBaseFrontendURL(req *http.Request) string {
+	if origin := req.Header.Get("Origin"); origin != "" {
+		if u, err := url.Parse(origin); err == nil && u.Scheme != "" && u.Host != "" {
+			return u.Scheme + "://" + u.Host
+		}
+	}
+
+	return GetBaseURL(req)
 }

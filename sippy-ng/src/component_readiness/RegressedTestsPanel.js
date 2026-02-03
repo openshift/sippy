@@ -86,11 +86,6 @@ export default function RegressedTestsPanel(props) {
   const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
 
-  const currentView = views.find((v) => v.name === view)
-  const regressionTrackingEnabled =
-    currentView?.regression_tracking?.enabled || false
-  const triageButtonEnabled = triageEnabled && regressionTrackingEnabled
-
   const [triaging, setTriaging] = React.useState(false)
   const [regressionIds, setRegressionIds] = React.useState([])
 
@@ -363,25 +358,14 @@ export default function RegressedTestsPanel(props) {
         />
       )}
       {triageEnabled ? (
-        <Tooltip
-          title={
-            !regressionTrackingEnabled
-              ? 'Triage is not available because regression tracking is not enabled for this view'
-              : ''
-          }
+        <Button
+          variant="contained"
+          color="secondary"
+          sx={'margin: 10px'}
+          onClick={() => setTriaging(!triaging)}
         >
-          <span>
-            <Button
-              variant="contained"
-              color="secondary"
-              sx={'margin: 10px'}
-              onClick={() => setTriaging(!triaging)}
-              disabled={!triageButtonEnabled}
-            >
-              {triaging ? 'Cancel' : 'Triage'}
-            </Button>
-          </span>
-        </Tooltip>
+          {triaging ? 'Cancel' : 'Triage'}
+        </Button>
       ) : null}
 
       <Popover

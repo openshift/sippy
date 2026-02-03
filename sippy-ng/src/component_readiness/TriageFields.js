@@ -62,7 +62,7 @@ export default function TriageFields({
   handleAddToExistingTriage,
 }) {
   const classes = useStyles()
-  const { view } = useContext(CompReadyVarsContext)
+  const { view, sampleRelease } = useContext(CompReadyVarsContext)
 
   const [matchingTriages, setMatchingTriages] = React.useState([])
   const [triageValidationErrors, setTriageValidationErrors] = React.useState([])
@@ -188,7 +188,11 @@ export default function TriageFields({
           handleFormCompletion()
         } else {
           response.json().then((createdTriage) => {
-            fetch(`${getTriagesAPIUrl(createdTriage.id)}/matches?view=${view}`)
+            fetch(
+              `${getTriagesAPIUrl(createdTriage.id)}/matches?release=${
+                sampleRelease || ''
+              }`
+            )
               .then((matchesResponse) => {
                 if (matchesResponse.status === 200) {
                   return matchesResponse.json()

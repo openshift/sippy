@@ -72,8 +72,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			},
 			openRegression: models.TestRegression{
 				ID:       0,
-				View:     "",
-				Release:  "",
+				Release:  sampleRelease,
 				TestID:   testKey.TestID,
 				TestName: testKey.TestName,
 				Variants: variantsStrSlice,
@@ -118,8 +117,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			},
 			openRegression: models.TestRegression{
 				ID:       0,
-				View:     "",
-				Release:  "",
+				Release:  sampleRelease,
 				TestID:   testKey.TestID,
 				TestName: testKey.TestName,
 				Variants: variantsStrSlice,
@@ -170,8 +168,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			},
 			openRegression: models.TestRegression{
 				ID:       0,
-				View:     "",
-				Release:  "",
+				Release:  sampleRelease,
 				TestID:   testKey.TestID,
 				TestName: testKey.TestName,
 				Variants: variantsStrSlice,
@@ -222,8 +219,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			},
 			openRegression: models.TestRegression{
 				ID:       0,
-				View:     "",
-				Release:  "",
+				Release:  sampleRelease,
 				TestID:   testKey.TestID,
 				TestName: testKey.TestName,
 				Variants: variantsStrSlice,
@@ -260,8 +256,7 @@ func TestRegressionTracker_PostAnalysis(t *testing.T) {
 			},
 			openRegression: models.TestRegression{
 				ID:       0,
-				View:     "",
-				Release:  "",
+				Release:  sampleRelease,
 				TestID:   testKey.TestID,
 				TestName: testKey.TestName,
 				Variants: variantsStrSlice,
@@ -380,7 +375,6 @@ func TestRegressionTracker_PreAnalysis_Adjustments(t *testing.T) {
 			if tt.hasOpenRegression {
 				openRegression := &models.TestRegression{
 					ID:       1,
-					View:     "test-view",
 					Release:  sampleRelease,
 					TestID:   testKey.TestID,
 					TestName: testKey.TestName,
@@ -448,7 +442,6 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 			openRegressions: []*models.TestRegression{
 				{
 					ID:       1,
-					View:     "test-view",
 					Release:  sampleRelease,
 					TestID:   "foobartest1",
 					TestName: "foobar test 1",
@@ -479,7 +472,6 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 			openRegressions: []*models.TestRegression{
 				{
 					ID:       1,
-					View:     "test-view",
 					Release:  sampleRelease,
 					TestID:   "foobartest1",
 					TestName: "foobar test 1",
@@ -509,7 +501,6 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 			openRegressions: []*models.TestRegression{
 				{
 					ID:       1,
-					View:     "test-view",
 					Release:  sampleRelease,
 					TestID:   "foobartest1",
 					TestName: "foobar test 1",
@@ -521,7 +512,7 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 			expectRegressionSet: false,
 		},
 		{
-			name: "view mismatch - regression should not be set",
+			name: "release mismatch - regression should not be set",
 			testKey: crtest.Identification{
 				RowIdentification: crtest.RowIdentification{
 					Component:  "foo",
@@ -539,7 +530,6 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 			openRegressions: []*models.TestRegression{
 				{
 					ID:       1,
-					View:     "test-view",
 					Release:  sampleRelease,
 					TestID:   "differenttest1", // Different test ID
 					TestName: "different test",
@@ -549,8 +539,7 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 				},
 				{
 					ID:       2,
-					View:     "different-view", // Different view
-					Release:  sampleRelease,
+					Release:  "4.17", // Different release; FindOpenRegression matches by sampleRelease
 					TestID:   "foobartest1",
 					TestName: "foobar test 1",
 					Variants: []string{"foo:bar"},

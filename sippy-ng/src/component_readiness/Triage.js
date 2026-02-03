@@ -76,10 +76,15 @@ export default function Triage({ id }) {
   React.useEffect(() => {
     if (!isLoaded || !triage.id) return
 
-    // Generate test details links for regressed tests
+    // Generate test details links for regressed tests (regressed_tests is a map of view name to array)
     const regressedTestsWithLinks = []
-    if (triage.regressed_tests && triage.regressed_tests.length > 0) {
-      triage.regressed_tests.forEach((regressedTest) => {
+    const regressedTestsList = triage.regressed_tests
+      ? Array.isArray(triage.regressed_tests)
+        ? triage.regressed_tests
+        : Object.values(triage.regressed_tests).flat()
+      : []
+    if (regressedTestsList.length > 0) {
+      regressedTestsList.forEach((regressedTest) => {
         regressedTestsWithLinks.push({
           test_name: regressedTest.test_name,
           component: regressedTest.component,
