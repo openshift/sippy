@@ -2,8 +2,11 @@ package bqlabel
 
 import (
 	"os"
+	"strings"
+	"unicode"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/sirupsen/logrus"
 )
 
 type Context struct {
@@ -78,6 +81,35 @@ const (
 	VariantRegistryLoadExpectedVariants QueryValue = "variant-registry-load-expected-variants"
 )
 
+// sanitizeLabelValue sanitizes a label value to meet BigQuery requirements:
+// - Lowercase all characters
+// - Replace invalid characters with underscores
+// - Truncate to 63 characters maximum
+// Valid characters are: lowercase letters, digits, underscores, and dashes
+func sanitizeLabelValue(value string) string {
+	if value == "" {
+		return ""
+	}
+
+	// Lowercase the entire string
+	value = strings.ToLower(value)
+
+	// Replace invalid characters with underscores
+	runes := []rune(value)
+	for idx, r := range runes {
+		if !(unicode.IsLower(r) || unicode.IsDigit(r) || r == '_' || r == '-') {
+			runes[idx] = '_'
+		}
+	}
+
+	// Truncate to 63 characters
+	if len(runes) > 63 {
+		runes = runes[:63]
+	}
+
+	return string(runes)
+}
+
 func (x Context) ApplyLabels(query *bigquery.Query) {
 	labels := map[string]string{
 		KeyApp:      string(x.App),
@@ -100,5 +132,13 @@ func (x Context) ApplyLabels(query *bigquery.Query) {
 	if x.URIPath != "" {
 		labels[KeyURI] = x.URIPath
 	}
-	query.Labels = labels
+
+	// Sanitize all label values to meet BigQuery requirements
+	sanitizedLabels := make(map[string]string, len(labels))
+	for key, value := range labels {
+		sanitizedLabels[key] = sanitizeLabelValue(value)
+	}
+
+	logrus.Debugf("Sanitized labels for query: %+v", sanitizedLabels)
+	query.Labels = sanitizedLabels
 }
