@@ -130,6 +130,16 @@ var allMatViewsRefreshMetric = promauto.NewHistogram(prometheus.HistogramOpts{
 	Buckets: []float64{5000, 10000, 30000, 60000, 300000, 600000, 1200000, 1800000, 2400000, 3000000, 3600000},
 })
 
+var matViewUniqueNumberOfTests = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "sippy_matviews_unique_number_of_tests",
+	Help: "Total number of tests based on lookback days",
+}, []string{"lookback_days"})
+
+var matViewUniqueNumberOfJobRuns = promauto.NewGaugeVec(prometheus.GaugeOpts{
+	Name: "sippy_matviews_unique_number_of_job_runs",
+	Help: "Total number of job runs based on lookback days",
+}, []string{"lookback_days"})
+
 type Server struct {
 	mode                 Mode
 	listenAddr           string
@@ -171,6 +181,8 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 		promPusher = push.New(pushgateway, "sippy-matviews")
 		promPusher.Collector(matViewRefreshMetric)
 		promPusher.Collector(allMatViewsRefreshMetric)
+		promPusher.Collector(matViewUniqueNumberOfTests)
+		promPusher.Collector(matViewUniqueNumberOfJobRuns)
 	}
 
 	log.Info("refreshing materialized views")
@@ -180,10 +192,32 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 		log.Info("skipping materialized view refresh as server has no db connection provided")
 		return
 	}
+
+	wg := sync.WaitGroup{}
+	// get our test count metrics before we begin the refresh as the matview queries dramatically impact CPU
+	// 14 == 7 day lookback with comparison to previous 7 days
+	// 9 == 2 day lookback with comparison to 7 previous days
+	lookbacks := []int{14, 9}
+	for _, lookback := range lookbacks {
+		wg.Add(1)
+		go func(lookback int) {
+			jobRunsCount, testIDsCount, err := api.GetJobRunTestsCountByLookback(dbc, lookback)
+			if err != nil {
+				log.Errorf("Error getting prow job run test lookback counts: %v", err)
+			} else {
+				log.Infof("prow job run test ids lookback (%d) count: %d", lookback, testIDsCount)
+				matViewUniqueNumberOfTests.WithLabelValues(fmt.Sprintf("%d", lookback)).Set(float64(testIDsCount))
+				log.Infof("prow job run ids lookback (%d) count: %d", lookback, jobRunsCount)
+				matViewUniqueNumberOfJobRuns.WithLabelValues(fmt.Sprintf("%d", lookback)).Set(float64(jobRunsCount))
+			}
+			wg.Done()
+		}(lookback)
+	}
+	wg.Wait()
 	// create a channel for work "tasks"
 	ch := make(chan string)
 
-	wg := sync.WaitGroup{}
+	wg = sync.WaitGroup{}
 
 	// allow concurrent workers for refreshing matviews in parallel
 	for t := 0; t < 2; t++ {
@@ -191,8 +225,22 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 		go refreshMatview(dbc, refreshMatviewOnlyIfEmpty, ch, &wg)
 	}
 
+	// separate prow_test_report_7d_matview and prow_test_report_2d_matview to try to cut down on
+	// CPU overload
+	var twoDayMatView *db.PostgresView
 	for _, pmv := range db.PostgresMatViews {
-		ch <- pmv.Name
+		if pmv.Name == "prow_test_report_2d_matview" {
+			twoDayMatViewTmp := pmv
+			twoDayMatView = &twoDayMatViewTmp
+		} else {
+			ch <- pmv.Name
+		}
+	}
+
+	// add the 2 day mat view so it runs last, it is possible we might need to wait for the 14 to complete and run this standalone
+	// but we don't want to do that if we don't have to
+	if twoDayMatView != nil {
+		ch <- twoDayMatView.Name
 	}
 
 	close(ch)
@@ -257,10 +305,8 @@ func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, ch chan string, 
 
 func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmpty bool) {
 	log.Infof("Refreshing data")
-
 	refreshMaterializedViews(dbc, refreshMatviewsOnlyIfEmpty)
-
-	log.Infof("Refresh complete")
+	log.Info("Refresh complete")
 }
 
 func (s *Server) hasCapabilities(capabilities []string) bool {
