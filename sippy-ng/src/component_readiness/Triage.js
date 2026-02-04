@@ -76,32 +76,27 @@ export default function Triage({ id }) {
   React.useEffect(() => {
     if (!isLoaded || !triage.id) return
 
-    // Generate test details links for regressed tests (regressed_tests is a map of view name to array)
-    const regressedTestsWithLinks = []
-    const regressedTestsList = triage.regressed_tests
-      ? Array.isArray(triage.regressed_tests)
-        ? triage.regressed_tests
-        : Object.values(triage.regressed_tests).flat()
-      : []
-    if (regressedTestsList.length > 0) {
-      regressedTestsList.forEach((regressedTest) => {
-        regressedTestsWithLinks.push({
-          test_name: regressedTest.test_name,
-          component: regressedTest.component,
-          capability: regressedTest.capability,
-          environment: regressedTest.environment,
-          test_id: regressedTest.test_id,
-          status: regressedTest.status,
-          explanations: regressedTest.explanations || [],
-          test_details_api_url: regressedTest.links?.test_details || null,
-          regression_id: regressedTest.regression?.id,
-          regression_opened: regressedTest.regression?.opened,
-          regression_closed: regressedTest.regression?.closed?.valid
-            ? regressedTest.regression.closed.time
-            : null,
-        })
-      })
-    }
+    const regressedTestsForContext = (
+      triage.regressed_tests
+        ? Object.values(triage.regressed_tests).filter(Boolean).flat()
+        : []
+    ).map((rt) => {
+      return {
+        test_name: rt.test_name,
+        component: rt.component,
+        capability: rt.capability,
+        environment: rt.environment,
+        test_id: rt.test_id,
+        status: rt.status,
+        explanations: rt.explanations || [],
+        test_details_api_url: rt.links?.test_details ?? null,
+        regression_id: rt.regression?.id,
+        regression_opened: rt.regression?.opened,
+        regression_closed: rt.regression?.closed?.valid
+          ? rt.regression.closed.time
+          : null,
+      }
+    })
 
     const contextData = {
       page: 'triage-details',
@@ -135,7 +130,7 @@ export default function Triage({ id }) {
         triage_id: triage.id,
         view: view,
         jira_issue_key: extractJiraIssueKey(triage.url),
-        regressed_tests: regressedTestsWithLinks,
+        regressed_tests: regressedTestsForContext,
         has_failed_fix: hasFailedFixRegression(triage, triage.regressed_tests),
       },
     }

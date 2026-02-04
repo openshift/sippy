@@ -165,7 +165,9 @@ export default function TriagePotentialMatches({
     setIsLoading(true)
     setIsModalOpen(true)
     fetch(
-      `${triage.links.potential_matches}?baseRelease=${encodeURIComponent(selectedBaseRelease)}&sampleRelease=${encodeURIComponent(selectedSampleRelease)}`
+      `${triage.links.potential_matches}?baseRelease=${encodeURIComponent(
+        selectedBaseRelease
+      )}&sampleRelease=${encodeURIComponent(selectedSampleRelease)}`
     )
       .then((response) => {
         if (response.status !== 200) {
