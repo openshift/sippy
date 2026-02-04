@@ -15,6 +15,9 @@ import (
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/dataloader/crcacheloader"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -62,6 +65,11 @@ type LoadFlags struct {
 	JobVariantsInputFile    string
 	LogLevel                string
 }
+
+var loadMetricGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "sippy_data_load_refresh_minutes",
+	Help: "Minutes to load and refresh db",
+})
 
 func NewLoadFlags() *LoadFlags {
 	return &LoadFlags{
@@ -308,6 +316,13 @@ func NewLoadCommand() *cobra.Command {
 				}
 			}
 
+			// want a single total load and refresh time
+			var promPusher *push.Pusher
+			if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
+				promPusher = push.New(pushgateway, "sippy-prow-job-loader")
+				promPusher.Collector(loadMetricGauge)
+			}
+
 			// Run loaders with the metrics wrapper
 			l := loaderwithmetrics.New(loaders)
 			l.Load()
@@ -321,6 +336,19 @@ func NewLoadCommand() *cobra.Command {
 			pinnedTime := f.DBFlags.GetPinnedTime()
 			if refreshMatviews {
 				sippyserver.RefreshData(dbc, pinnedTime, false)
+			}
+
+			elapsed = time.Since(start)
+			log.WithField("elapsed", elapsed).Info("load and refresh complete")
+			loadMetricGauge.Set(float64(elapsed.Minutes()))
+
+			if promPusher != nil {
+				log.Info("pushing metrics to prometheus gateway")
+				if err := promPusher.Add(); err != nil {
+					log.WithError(err).Error("could not push to prometheus pushgateway")
+				} else {
+					log.Info("successfully pushed metrics to prometheus gateway")
+				}
 			}
 
 			if len(allErrs) > 0 {

@@ -341,6 +341,40 @@ func PrintCanaryTestsFromDB(release string, w http.ResponseWriter, dbc *db.DB) {
 	}
 }
 
+func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, error) {
+	if lookbackDays < 1 {
+		return -1, -1, errors.New("Lookback Days must be greater than zero")
+	}
+	// Calculate the truncated time
+	now := time.Now().UTC()
+	truncatedTime := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC).AddDate(0, 0, -lookbackDays)
+
+	type counts = struct {
+		JobRunsCount int64 `json:"job_runs_count"`
+		TestIDsCount int64 `json:"test_ids_count"`
+	}
+
+	queryCounts := counts{}
+	timeStart := time.Now()
+
+	log.Infof("Starting tests count query for lookback: %d", lookbackDays)
+
+	err := dbc.DB.Table("prow_job_run_tests").
+		Select("count(distinct prow_job_run_id) as job_runs_count, count(distinct test_id) as test_ids_count").
+		Where("created_at > ?", truncatedTime).
+		Scan(&queryCounts).
+		Error
+
+	timeFinish := time.Now()
+	log.Infof("Finished tests count query for lookback: %d, duration: %s", lookbackDays, timeFinish.Sub(timeStart).String())
+
+	if err != nil {
+		return -1, -1, err
+	}
+
+	return queryCounts.JobRunsCount, queryCounts.TestIDsCount, nil
+}
+
 func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOverall bool, fil *filter.Filter) (testsAPIResult, *apitype.Test, error) { //lint:ignore
 	now := time.Now()
 
