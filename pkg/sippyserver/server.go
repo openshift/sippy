@@ -1616,7 +1616,7 @@ func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, r
 
 	triage, err := componentreadiness.GetTriage(s.db, triageID, req)
 	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting releases: %v", err))
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting triages: %v", err))
 		return
 	}
 	if triage == nil {
@@ -1626,6 +1626,11 @@ func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, r
 	sampleRelease := req.URL.Query().Get("sampleRelease")
 	if sampleRelease == "" {
 		failureResponse(w, http.StatusBadRequest, "no sampleRelease provided")
+		return
+	}
+	baseRelease := req.URL.Query().Get("baseRelease")
+	if baseRelease == "" {
+		failureResponse(w, http.StatusBadRequest, "no baseRelease provided")
 		return
 	}
 	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
@@ -1691,11 +1696,17 @@ func (s *Server) jsonGetRegressions(w http.ResponseWriter, req *http.Request) {
 	}
 	views := s.views.ComponentReadiness
 	if view != "" {
+		foundView := false
 		for _, v := range s.views.ComponentReadiness {
 			if v.Name == view {
 				views = []crview.View{v}
+				foundView = true
 				break
 			}
+		}
+		if !foundView {
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("View '%s' not found in views", view))
+			return
 		}
 	}
 

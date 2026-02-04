@@ -200,7 +200,6 @@ func FindOpenRegression(sampleRelease,
 			continue
 		}
 		// If we made it this far, this appears to be a match:
-		//return tr
 		matches = append(matches, tr)
 	}
 	if len(matches) > 0 {

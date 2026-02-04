@@ -105,7 +105,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 
 	//TODO: do we need to add any additional commands for the migration?
 	if d.DB.Migrator().HasColumn(&models.TestRegression{}, "view") {
-		log.Info("dropping Triage.View column")
 		if err := d.DB.Migrator().DropColumn(&models.TestRegression{}, "view"); err != nil {
 			return err
 		}

@@ -218,66 +218,65 @@ func (rt *RegressionTracker) Errors() []error {
 func (rt *RegressionTracker) SyncRegressionsForRelease(ctx context.Context, release string) error {
 	rLog := rt.logger.WithField("release", release)
 	rLog.Infof("syncing regressions for release %s", release)
-	var reports []crtype.ComponentReport
+	var errs []error
 	activeRegressions := make(sets.Set[uint])
 	for _, view := range rt.views {
-		if view.RegressionTracking.Enabled && view.SampleRelease.Name == release {
-			vLog := rLog.WithField("view", view.Name)
+		if !view.RegressionTracking.Enabled || view.SampleRelease.Name != release {
+			continue
+		}
+		vLog := rLog.WithField("view", view.Name)
 
-			baseRelease, err := utils.GetViewReleaseOptions(
-				rt.releases, "basis", view.BaseRelease, rt.cacheOpts.CRTimeRoundingFactor)
-			if err != nil {
-				vLog.WithError(err).Error("error getting base release for view")
-				rt.errors = append(rt.errors, err)
+		baseRelease, err := utils.GetViewReleaseOptions(
+			rt.releases, "basis", view.BaseRelease, rt.cacheOpts.CRTimeRoundingFactor)
+		if err != nil {
+			vLog.WithError(err).Error("error getting base release for view")
+			errs = append(errs, err)
+		}
+
+		sampleRelease, err := utils.GetViewReleaseOptions(
+			rt.releases, "sample", view.SampleRelease, rt.cacheOpts.CRTimeRoundingFactor)
+		if err != nil {
+			vLog.WithError(err).Error("error getting sample release for view")
+			errs = append(errs, err)
+		}
+
+		variantOption := view.VariantOptions
+		advancedOption := view.AdvancedOptions
+
+		// Get component readiness report
+		reportOpts := reqopts.RequestOptions{
+			BaseRelease:    baseRelease,
+			SampleRelease:  sampleRelease,
+			VariantOption:  variantOption,
+			AdvancedOption: advancedOption,
+			CacheOption:    rt.cacheOpts,
+		}
+
+		report, reportErrs := GetComponentReportFromBigQuery(
+			ctx, rt.bigqueryClient, rt.dbc, reportOpts, rt.variantJunitTableOverrides, "")
+		if len(reportErrs) > 0 {
+			var strErrors []string
+			for _, err := range reportErrs {
+				strErrors = append(strErrors, err.Error())
 			}
+			err = fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
+			vLog.WithError(err).Error("error generating component report")
+			errs = append(errs, err)
+		}
 
-			sampleRelease, err := utils.GetViewReleaseOptions(
-				rt.releases, "sample", view.SampleRelease, rt.cacheOpts.CRTimeRoundingFactor)
-			if err != nil {
-				vLog.WithError(err).Error("error getting sample release for view")
-				rt.errors = append(rt.errors, err)
-			}
-
-			variantOption := view.VariantOptions
-			advancedOption := view.AdvancedOptions
-
-			// Get component readiness report
-			reportOpts := reqopts.RequestOptions{
-				BaseRelease:    baseRelease,
-				SampleRelease:  sampleRelease,
-				VariantOption:  variantOption,
-				AdvancedOption: advancedOption,
-				CacheOption:    rt.cacheOpts,
-			}
-
-			report, errs := GetComponentReportFromBigQuery(
-				ctx, rt.bigqueryClient, rt.dbc, reportOpts, rt.variantJunitTableOverrides, "")
-			if len(errs) > 0 {
-				var strErrors []string
-				for _, err := range errs {
-					strErrors = append(strErrors, err.Error())
-				}
-				err := fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
-				vLog.WithError(err).Error("error generating component report")
-				rt.errors = append(rt.errors, err)
-			}
-
-			reports = append(reports, report)
-
-			regressionsFromReport, err := rt.SyncRegressionsForReport(view, rLog, &report)
-			if err != nil {
-				rLog.WithError(err).Error("error refreshing regressions for view")
-				rt.errors = append(rt.errors, err)
-				continue
-			}
-			for _, reg := range regressionsFromReport {
-				activeRegressions.Insert(reg.ID)
-			}
+		regressionsFromReport, err := rt.SyncRegressionsForReport(view, rLog, &report)
+		if err != nil {
+			rLog.WithError(err).Error("error refreshing regressions for view")
+			errs = append(errs, err)
+			continue
+		}
+		for _, reg := range regressionsFromReport {
+			activeRegressions.Insert(reg.ID)
 		}
 	}
 
 	// Only close regressions if we haven't encountered any errors
-	if len(rt.errors) == 0 {
+	if len(errs) == 0 {
 		closedRegs := 0
 		now := time.Now()
 		regressions, err := rt.backend.ListCurrentRegressionsForRelease(release)
@@ -295,7 +294,7 @@ func (rt *RegressionTracker) SyncRegressionsForRelease(ctx context.Context, rele
 					err := rt.backend.UpdateRegression(regression)
 					if err != nil {
 						rLog.WithError(err).Errorf("error closing regression: %v", regression)
-						return errors.Wrap(err, "error closing regression")
+						errs = append(errs, errors.Wrap(err, "error closing regression"))
 					}
 				}
 			}
@@ -305,9 +304,11 @@ func (rt *RegressionTracker) SyncRegressionsForRelease(ctx context.Context, rele
 		rLog.Infof("resolving triages that have had all of their regressions closed")
 		if err := rt.backend.ResolveTriages(); err != nil {
 			rLog.WithError(err).Error("error resolving triages")
-			return errors.Wrapf(err, "error resolving triages for release: %s", release)
+			errs = append(errs, errors.Wrapf(err, "error resolving triages for release: %s", release))
 		}
 	}
+
+	rt.errors = append(rt.errors, errs...)
 
 	return nil
 }

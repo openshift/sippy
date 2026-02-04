@@ -180,8 +180,8 @@ export default function TriagedRegressionTestList(props) {
       },
     },
     ...(showStatus
-      ? viewNames.map((viewName) => {
-          const field = `status_${viewName.replace(/[^a-zA-Z0-9_-]/g, '_')}`
+      ? viewNames.map((viewName, index) => {
+          const field = `status_${index}`
           return {
             field,
             headerName: viewName,

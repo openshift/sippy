@@ -110,45 +110,36 @@ export default function TriagePotentialMatches({
     BooleanParam
   )
 
-  // Extract unique base vs sample releases from triage regressions; default to most frequent pair
+  // Extract unique base vs sample releases from triage regressions; default to first regression's base/sample
   React.useEffect(() => {
-    if (triage.regressions && triage.regressions.length > 0) {
-      const baseSet = new Set()
-      const sampleSet = new Set()
-      const pairCounts = {}
-      triage.regressions.forEach((regression) => {
-        const base = regression.base_release || regression.baseRelease
-        const sample = regression.release
-        if (base) baseSet.add(base)
-        if (sample) sampleSet.add(sample)
-        if (base && sample) {
-          const key = `${base}:${sample}`
-          pairCounts[key] = (pairCounts[key] || 0) + 1
-        }
-      })
+    if (!triage.regressions || triage.regressions.length === 0) return
 
-      const sortedBase = [...baseSet].sort()
-      const sortedSample = [...sampleSet].sort()
-      setAvailableBaseReleases(sortedBase)
-      setAvailableSampleReleases(sortedSample)
+    const baseSet = new Set()
+    const sampleSet = new Set()
+    triage.regressions.forEach((regression) => {
+      const base = regression.base_release || regression.baseRelease
+      const sample = regression.release
+      if (base) baseSet.add(base)
+      if (sample) sampleSet.add(sample)
+    })
 
-      if (sortedBase.length === 1) {
-        setSelectedBaseRelease(sortedBase[0])
-      }
-      if (sortedSample.length === 1) {
-        setSelectedSampleRelease(sortedSample[0])
-      }
+    // Use insertion order from regressions (no sort)
+    const availableBase = [...baseSet]
+    const availableSample = [...sampleSet]
+    setAvailableBaseReleases(availableBase)
+    setAvailableSampleReleases(availableSample)
 
-      const mostFrequentPair = Object.entries(pairCounts).sort(
-        ([, a], [, b]) => b - a
-      )[0]
-      if (mostFrequentPair && !selectedBaseRelease && !selectedSampleRelease) {
-        const [base, sample] = mostFrequentPair[0].split(':')
-        setSelectedBaseRelease(base)
-        setSelectedSampleRelease(sample)
-      }
+    const needDefault =
+      (!selectedBaseRelease && !selectedSampleRelease) ||
+      !availableBase.includes(selectedBaseRelease) ||
+      !availableSample.includes(selectedSampleRelease)
+
+    if (needDefault) {
+      if (availableBase.length > 0) setSelectedBaseRelease(availableBase[0])
+      if (availableSample.length > 0)
+        setSelectedSampleRelease(availableSample[0])
     }
-  }, [triage.regressions])
+  }, [triage.regressions, selectedBaseRelease, selectedSampleRelease])
 
   React.useEffect(() => {
     if (
@@ -168,13 +159,13 @@ export default function TriagePotentialMatches({
     ) {
       findPotentialMatches()
     }
-  }, [selectedBaseRelease, selectedSampleRelease])
+  }, [selectedBaseRelease, selectedSampleRelease, isModalOpen])
 
   const findPotentialMatches = () => {
     setIsLoading(true)
     setIsModalOpen(true)
     fetch(
-      `${triage.links.potential_matches}?baseRelease=${selectedBaseRelease}&sampleRelease=${selectedSampleRelease}`
+      `${triage.links.potential_matches}?baseRelease=${encodeURIComponent(selectedBaseRelease)}&sampleRelease=${encodeURIComponent(selectedSampleRelease)}`
     )
       .then((response) => {
         if (response.status !== 200) {
