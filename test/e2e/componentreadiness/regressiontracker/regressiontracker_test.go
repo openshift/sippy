@@ -69,6 +69,7 @@ func Test_RegressionTracker(t *testing.T) {
 		tr, err := tracker.OpenRegression(view, newRegression)
 		require.NoError(t, err)
 		assert.Equal(t, "4.19", tr.Release)
+		assert.Equal(t, "4.18", tr.BaseRelease, "BaseRelease should be set from BaseStats.Release")
 		assert.ElementsMatch(t, pq.StringArray([]string{"a:b", "c:d"}), tr.Variants)
 		assert.True(t, tr.ID > 0)
 	})
@@ -136,6 +137,18 @@ func Test_RegressionTracker(t *testing.T) {
 			assert.True(t, rel.ID == open419.ID || rel.ID == recentlyClosed419.ID,
 				"unexpected regression was returned: %+v", *rel)
 		}
+	})
+
+	t.Run("list returns regressions with BaseRelease set", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		tr, err := rawCreateRegressionWithBase(dbc, "4.19", "4.18", "baseTestID", "base test",
+			[]string{"a:b"}, time.Now().Add(-1*24*time.Hour), time.Time{})
+		require.NoError(t, err)
+		relRegressions, err := tracker.ListCurrentRegressionsForRelease("4.19")
+		require.NoError(t, err)
+		require.Len(t, relRegressions, 1)
+		assert.Equal(t, tr.ID, relRegressions[0].ID)
+		assert.Equal(t, "4.18", relRegressions[0].BaseRelease, "ListCurrentRegressionsForRelease should return BaseRelease")
 	})
 
 	t.Run("closing a regression should resolve associated triages that have no other active regressions", func(t *testing.T) {
@@ -261,12 +274,23 @@ func rawCreateRegression(
 	testName string,
 	variants []string,
 	opened, closed time.Time) (*models.TestRegression, error) {
+	return rawCreateRegressionWithBase(dbc, release, "", testID, testName, variants, opened, closed)
+}
+
+func rawCreateRegressionWithBase(
+	dbc *db.DB,
+	release, baseRelease string,
+	testID string,
+	testName string,
+	variants []string,
+	opened, closed time.Time) (*models.TestRegression, error) {
 	newRegression := &models.TestRegression{
-		Release:  release,
-		TestID:   testID,
-		TestName: testName,
-		Opened:   opened,
-		Variants: variants,
+		Release:     release,
+		BaseRelease: baseRelease,
+		TestID:      testID,
+		TestName:    testName,
+		Opened:      opened,
+		Variants:    variants,
 	}
 	if closed.IsZero() {
 		newRegression.Closed = sql.NullTime{

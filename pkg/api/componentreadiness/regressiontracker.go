@@ -264,6 +264,7 @@ func (rt *RegressionTracker) SyncRegressionsForRelease(ctx context.Context, rele
 			err = fmt.Errorf("component report generation encountered errors: %s", strings.Join(strErrors, "; "))
 			vLog.WithError(err).Error("error generating component report")
 			errs = append(errs, err)
+			continue
 		}
 
 		regressionsFromReport, err := rt.SyncRegressionsForReport(view, rLog, &report)
@@ -334,7 +335,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(view crview.View, rLog *lo
 	matchedOpenRegressions := []*models.TestRegression{} // all the matches we found, used to determine what had no match
 	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
 	for _, regTest := range allRegressedTests {
-		if openReg := regressiontracker.FindOpenRegression(view.SampleRelease.Name, view.BaseRelease.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
+		if openReg := regressiontracker.FindOpenRegression(regTest.TestID, regTest.Variants, regressions); openReg != nil {
 
 			// Update any tracking params on the regression if we see better values:
 			var modifiedRegression bool

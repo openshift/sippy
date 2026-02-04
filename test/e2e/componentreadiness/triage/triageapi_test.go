@@ -1211,6 +1211,28 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		assert.False(t, foundRegressionIDs[testRegressions[6].Regression.ID], "Linked regression should not appear in potential matches")
 	})
 
+	t.Run("empty potential matches when release pair does not match any view", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		triage := models.Triage{
+			URL:  "https://issues.redhat.com/OCPBUGS-9999",
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: testRegressions[0].Regression.ID},
+			},
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.NoError(t, err)
+
+		var potentialMatches []componentreadiness.PotentialMatchingRegression
+		endpoint := fmt.Sprintf("/api/component_readiness/triages/%d/matches?baseRelease=no-such-base&sampleRelease=no-such-sample", triageResponse.ID)
+		err = util.SippyGet(endpoint, &potentialMatches)
+		require.NoError(t, err)
+		assert.Empty(t, potentialMatches, "Non-matching release pair should return no potential matches")
+	})
+
 	t.Run("error when triage not found", func(t *testing.T) {
 		var potentialMatches []interface{}
 

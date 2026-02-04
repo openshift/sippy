@@ -1702,6 +1702,7 @@ func (s *Server) jsonGetRegressions(w http.ResponseWriter, req *http.Request) {
 		for _, v := range s.views.ComponentReadiness {
 			if v.Name == view {
 				views = []crview.View{v}
+				release = v.SampleRelease.Name
 				foundView = true
 				break
 			}
