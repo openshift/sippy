@@ -1528,7 +1528,9 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 				regressedTests = append(regressedTests, regressedTest)
 			}
 		}
-		et.RegressedTests[view] = regressedTests
+		if len(regressedTests) > 0 {
+			et.RegressedTests[view] = regressedTests
+		}
 	}
 
 	api.RespondWithJSON(http.StatusOK, w, et)

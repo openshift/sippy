@@ -181,7 +181,7 @@ func FindOpenRegression(sampleRelease,
 
 	var matches []*models.TestRegression
 	for _, tr := range regressions {
-		if sampleRelease != tr.Release && baseRelease != tr.Release {
+		if sampleRelease != tr.Release && baseRelease != tr.BaseRelease {
 			continue
 		}
 

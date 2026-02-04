@@ -231,6 +231,7 @@ func (rt *RegressionTracker) SyncRegressionsForRelease(ctx context.Context, rele
 		if err != nil {
 			vLog.WithError(err).Error("error getting base release for view")
 			errs = append(errs, err)
+			continue
 		}
 
 		sampleRelease, err := utils.GetViewReleaseOptions(
@@ -238,6 +239,7 @@ func (rt *RegressionTracker) SyncRegressionsForRelease(ctx context.Context, rele
 		if err != nil {
 			vLog.WithError(err).Error("error getting sample release for view")
 			errs = append(errs, err)
+			continue
 		}
 
 		variantOption := view.VariantOptions
