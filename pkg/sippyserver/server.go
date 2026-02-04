@@ -44,6 +44,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	"github.com/openshift/sippy/pkg/api/jobrunevents"
 	"github.com/openshift/sippy/pkg/api/jobrunintervals"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -1424,6 +1425,55 @@ func (s *Server) jsonJobRunIntervals(w http.ResponseWriter, req *http.Request) {
 	api.RespondWithJSON(http.StatusOK, w, result)
 }
 
+// jsonJobRunEvents fetches Kubernetes events from events.json in the job run's GCS artifacts.
+// The file is located at artifacts/*e2e*/gather-extra/artifacts/events.json
+func (s *Server) jsonJobRunEvents(w http.ResponseWriter, req *http.Request) {
+	logger := log.WithField("func", "jsonJobRunEvents")
+
+	if s.gcsClient == nil {
+		failureResponse(w, http.StatusBadRequest, "server not configured for GCS, unable to use this API")
+		return
+	}
+
+	jobRunIDStr := s.getParamOrFail(w, req, "prow_job_run_id")
+	if jobRunIDStr == "" {
+		return
+	}
+
+	jobRunID, err := strconv.ParseInt(jobRunIDStr, 10, 64)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "unable to parse prow_job_run_id: "+err.Error())
+		return
+	}
+	logger = logger.WithField("jobRunID", jobRunID)
+
+	jobName := param.SafeRead(req, "job_name")
+	repoInfo := param.SafeRead(req, "repo_info")
+	pullNumber := param.SafeRead(req, "pull_number")
+
+	var gcsPath string
+	if len(jobName) > 0 {
+		if len(repoInfo) > 0 {
+			if repoInfo == "openshift_origin" {
+				gcsPath = fmt.Sprintf("pr-logs/pull/%s/%s/%s", pullNumber, jobName, jobRunIDStr)
+			} else {
+				gcsPath = fmt.Sprintf("pr-logs/pull/%s/%s/%s/%s", repoInfo, pullNumber, jobName, jobRunIDStr)
+			}
+		} else {
+			gcsPath = fmt.Sprintf("logs/%s/%s", jobName, jobRunIDStr)
+		}
+	}
+
+	result, err := jobrunevents.JobRunEvents(s.gcsClient, s.db, jobRunID, s.gcsBucket, gcsPath,
+		logger.WithField("func", "JobRunEvents"))
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func isValidProwJobRun(jobRun *models.ProwJobRun) (bool, string) {
 	if (jobRun == nil || jobRun == &models.ProwJobRun{} || &jobRun.ProwJob == &models.ProwJob{} || jobRun.ProwJob.Name == "") {
 
@@ -2178,6 +2228,13 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    4 * time.Hour,
 			HandlerFunc:  s.jsonJobRunIntervals,
+		},
+		{
+			EndpointPath: "/api/jobs/runs/events",
+			Description:  "Returns Kubernetes events from job run artifacts (events.json)",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    4 * time.Hour,
+			HandlerFunc:  s.jsonJobRunEvents,
 		},
 		{
 			EndpointPath: "/api/jobs/analysis",
