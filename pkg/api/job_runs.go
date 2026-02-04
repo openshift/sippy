@@ -608,16 +608,49 @@ func isHighRiskInOtherPRs(ctx context.Context, bqc *bigquery.Client, failedTest 
 	if !found {
 		return false
 	}
-	queryStr := `SELECT COUNT(*) FROM ` +
-		fmt.Sprintf("%s.%s.%s", "openshift-ci-data-analysis", "ci_data_autodl", "risk_analysis_test_results") +
-		fmt.Sprintf(" INNER JOIN %s.%s.%s jobs", "openshift-gce-devel", "ci_analysis_us", "jobs") +
-		` ON JobRunName=jobs.prowjob_build_id` +
-		fmt.Sprintf(" WHERE PartitionTime BETWEEN TIMESTAMP('%s') AND TIMESTAMP('%s') AND", endTime.Add(-12*time.Hour).Format(time.RFC3339), endTime.Add(3*time.Hour).Format(time.RFC3339)) +
-		`  RiskLevel>=100 AND` +
-		fmt.Sprintf("  TestName='%s' AND", failedTest.Test.Name) +
-		fmt.Sprintf("  (org!='%s' OR repo!='%s' OR pr_number!='%d') AND", pr.Org, pr.Repo, pr.Number) +
-		fmt.Sprintf("  prowjob_job_name LIKE '%%%s'", jobSuffix)
+
+	queryStr := `
+		SELECT COUNT(*)
+		FROM ` + "`openshift-ci-data-analysis.ci_data_autodl.risk_analysis_test_results`" + `
+		INNER JOIN ` + "`openshift-gce-devel.ci_analysis_us.jobs`" + ` jobs
+		  ON JobRunName=jobs.prowjob_build_id
+		WHERE PartitionTime BETWEEN TIMESTAMP(@StartTime) AND TIMESTAMP(@EndTime)
+		  AND RiskLevel >= 100
+		  AND TestName = @TestName
+		  AND (org != @Org OR repo != @Repo OR pr_number != @PRNumber)
+		  AND prowjob_job_name LIKE @JobPattern`
+
 	q := bqc.Query(ctx, bqlabel.JobRunHighRisk, queryStr)
+	q.Parameters = []bqlib.QueryParameter{
+		{
+			Name:  "StartTime",
+			Value: endTime.Add(-12 * time.Hour).Format(time.RFC3339),
+		},
+		{
+			Name:  "EndTime",
+			Value: endTime.Add(3 * time.Hour).Format(time.RFC3339),
+		},
+		{
+			Name:  "TestName",
+			Value: failedTest.Test.Name,
+		},
+		{
+			Name:  "Org",
+			Value: pr.Org,
+		},
+		{
+			Name:  "Repo",
+			Value: pr.Repo,
+		},
+		{
+			Name:  "PRNumber",
+			Value: pr.Number,
+		},
+		{
+			Name:  "JobPattern",
+			Value: "%" + jobSuffix,
+		},
+	}
 
 	it, err := q.Read(ctx)
 	if err != nil {
