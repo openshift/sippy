@@ -11,7 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"regexp"
-	"sort"
+	sorting "sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -229,7 +229,7 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 	// Sort materialized views so prow_test_report_2d_matview runs last to avoid CPU overload
 	sortedMatViews := make([]db.PostgresView, len(db.PostgresMatViews))
 	copy(sortedMatViews, db.PostgresMatViews)
-	sort.SliceStable(sortedMatViews, func(i, j int) bool {
+	sorting.SliceStable(sortedMatViews, func(i, j int) bool {
 		// Move prow_test_report_2d_matview to the end
 		if sortedMatViews[i].Name == "prow_test_report_2d_matview" {
 			return false
