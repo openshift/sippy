@@ -3,8 +3,8 @@ component_readiness:
 - name: 4.22-main
   base_release:
     release: "4.21"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "4.22"
     relative_start: now-7d
@@ -88,8 +88,8 @@ component_readiness:
 - name: 4.22-hypershift-candidates
   base_release:
     release: "4.21"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "4.22"
     relative_start: now-7d
@@ -375,8 +375,8 @@ component_readiness:
 - name: 4.22-LP-Interop
   base_release:
     release: "4.21"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "4.22"
     relative_start: now-30d
@@ -432,8 +432,8 @@ component_readiness:
 - name: 4.22-lp-Interop-coo
   base_release:
     release: "4.21"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "4.22"
     relative_start: now-7d
@@ -476,8 +476,8 @@ component_readiness:
 - name: 4.22-rarely-run-jobs
   base_release:
     release: "4.21"
-    relative_start: now-1d
-    relative_end: now
+    relative_start: ga-1d
+    relative_end: ga
   sample_release:
     release: "4.22"
       # need to look much further back for rarely run jobs
@@ -542,8 +542,8 @@ component_readiness:
 - name: 4.22-s390x
   base_release:
     release: "4.21"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "4.22"
     relative_start: now-7d
@@ -618,8 +618,8 @@ component_readiness:
 - name: 4.22-ppc64le
   base_release:
     release: "4.21"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "4.22"
     relative_start: now-7d
@@ -771,7 +771,7 @@ component_readiness:
   prime_cache:
     enabled: true
   automate_jira:
-    enabled: true
+    enabled: false
 - name: 4.21-hypershift-candidates
   base_release:
     release: "4.20"
