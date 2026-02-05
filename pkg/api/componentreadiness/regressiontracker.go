@@ -324,7 +324,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(view crview.View, rLog *lo
 	rLog.Infof("loaded %d regressions from db for release %s", len(regressions), view.SampleRelease.Name)
 
 	// All regressed tests, both triaged and not:
-	allRegressedTests := []crtype.ReportTestSummary{}
+	var allRegressedTests []crtype.ReportTestSummary
 	for _, row := range report.Rows {
 		for _, col := range row.Columns {
 			allRegressedTests = append(allRegressedTests, col.RegressedTests...)
@@ -332,7 +332,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(view crview.View, rLog *lo
 	}
 
 	var openedRegs, reopenedRegs, ongoingRegs, statsUpdatedRegs int
-	matchedOpenRegressions := []*models.TestRegression{} // all the matches we found, used to determine what had no match
+	var activeRegressions []*models.TestRegression // all the matches we found, and new regressions opened, used to determine what had no match
 	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
 	for _, regTest := range allRegressedTests {
 		if openReg := regressiontracker.FindOpenRegression(view.SampleRelease.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
@@ -403,7 +403,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(view crview.View, rLog *lo
 					"test": regTest.TestName,
 				}).Debugf("reusing already opened regression: %v", openReg)
 			}
-			matchedOpenRegressions = append(matchedOpenRegressions, openReg)
+			activeRegressions = append(activeRegressions, openReg)
 		} else {
 			openedRegs++
 			rLog.Infof("opening new regression: %v", regTest)
@@ -414,6 +414,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(view crview.View, rLog *lo
 					rLog.WithError(err).Errorf("error opening new regression for: %v", regTest)
 					return nil, errors.Wrapf(err, "error opening new regression: %v", regTest)
 				}
+				activeRegressions = append(activeRegressions, newReg)
 				rLog.Infof("new regression opened with id: %d", newReg.ID)
 			}
 		}
@@ -422,5 +423,5 @@ func (rt *RegressionTracker) SyncRegressionsForReport(view crview.View, rLog *lo
 	rLog.Infof("regression tracking sync completed: opened=%d, reopened=%d, ongoing=%d, statsUpdated=%d",
 		openedRegs, reopenedRegs, ongoingRegs, statsUpdatedRegs)
 
-	return matchedOpenRegressions, nil
+	return activeRegressions, nil
 }
