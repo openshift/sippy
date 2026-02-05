@@ -237,6 +237,14 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 		if sortedMatViews[j].Name == "prow_test_report_2d_matview" {
 			return true
 		}
+
+		// Move prow_test_report_7d_matview to the beginning
+		if sortedMatViews[i].Name == "prow_test_report_7d_matview" {
+			return true
+		}
+		if sortedMatViews[j].Name == "prow_test_report_7d_matview" {
+			return false
+		}
 		return false
 	})
 
