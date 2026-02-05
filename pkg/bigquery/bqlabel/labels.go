@@ -27,6 +27,7 @@ type OperationalContext struct {
 type RequestContext struct {
 	Query   QueryValue // consistent name for query being run, e.g. "component-readiness-job-variants"
 	User    string     // username that made the request if known, otherwise the operator
+	IP      string     // IP address of the requestor (for web requests)
 	URIPath string     // path of the request (for web requests, e.g. "/api/v1/release")
 }
 type AppValue string
@@ -46,6 +47,7 @@ const (
 	KeyOperator = "client-operator"
 	KeyQuery    = "query-details"
 	KeyUser     = "request-user"
+	KeyIP       = "request-ip"
 	KeyURI      = "request-uri"
 
 	// valid values for App
@@ -147,6 +149,9 @@ func (x Context) ApplyLabels(query *bigquery.Query) {
 	}
 	if x.Host == "" {
 		labels[KeyHost] = os.Getenv("HOSTNAME")
+	}
+	if x.IP != "" {
+		labels[KeyIP] = x.IP
 	}
 	if x.URIPath != "" {
 		labels[KeyURI] = x.URIPath

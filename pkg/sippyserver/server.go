@@ -2803,6 +2803,7 @@ func logRequestHandler(h http.Handler) http.Handler {
 		// add request context for any BQ queries that may be made
 		bqCtx := bqlabel.RequestContext{
 			User:    getUserForRequest(r),
+			IP:      getRequestorIP(r),
 			URIPath: r.URL.Path,
 		}
 		r = r.Clone(context.WithValue(r.Context(), sippybq.RequestContextKey, bqCtx))
@@ -2813,7 +2814,7 @@ func logRequestHandler(h http.Handler) http.Handler {
 			"uri":       r.URL.String(),
 			"method":    r.Method,
 			"elapsed":   time.Since(start),
-			"requestor": getRequestorIP(r),
+			"requestor": bqCtx.IP,
 		}).Info("responded to request")
 	}
 	return http.HandlerFunc(fn)
