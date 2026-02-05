@@ -38,19 +38,28 @@ You will guide the user through the following steps (skipping steps where argume
 
 2. **Find Affected Views**: Search config/views.yaml to identify affected views:
    - Read `config/views.yaml`
-   - Find all views where `base_release.release` equals the GA release
+   - Find all views where `base_release.release` equals the GA release (for date updates)
+   - Find all views where `sample_release.release` equals the GA release AND have `automate_jira.enabled: true` (for JIRA automation disabling)
    - Show the user:
-     - Number of views that will be affected
+     - Number of views that will be affected by each type of change
      - List of view names that will be updated
-     - Example of the changes (before/after for relative dates)
+     - Example of the changes (before/after for relative dates and automate_jira)
    - Ask for confirmation before proceeding
 
-3. **Apply Updates**: For each affected view, update the base_release section:
+3. **Apply Updates**: For each affected view, perform two types of updates:
+
+   **A. Update base_release dates** (for views comparing newer releases to the GA release):
+   - Find views where `base_release.release` equals the GA release
    - Replace 'now' with 'ga' in `relative_start` (e.g., `now-30d` → `ga-30d`)
    - Replace 'now' with 'ga' in `relative_end` (e.g., `now` → `ga`)
-   - **IMPORTANT**: Preserve YAML formatting (double quotes, `{ }` spacing, indentation)
-   - Only modify the base_release relative dates for matching views
    - **Rationale**: When a release goes GA, we want to reference the GA date as a stable point, not the current date
+
+   **B. Disable automate_jira** (for views of the GA release itself):
+   - Find views where `sample_release.release` equals the GA release
+   - If `automate_jira.enabled` is set to `true`, change it to `false`
+   - **Rationale**: When a release goes GA, automated JIRA ticket creation should stop for that release, as the focus shifts to newer releases
+
+   - **IMPORTANT**: Preserve YAML formatting (double quotes, `{ }` spacing, indentation)
 
 4. **Verify Output**: Show a diff of the changes made to views.yaml
 
@@ -67,13 +76,19 @@ You will guide the user through the following steps (skipping steps where argume
 
 7. **Offer to Commit**: Ask the user if they want to commit the changes. If yes, commit with the message:
    ```
-   Update base_release relative dates for GA release <release>
+   Update views for GA release <release>
 
    Changed 'now' to 'ga' in base_release relative dates for views
    referencing release <release>, which just went GA.
 
-   Affected views: <count>
-   <list of affected view names, one per line>
+   Also disabled automate_jira for views of release <release>, as
+   automated JIRA ticket creation should focus on newer releases.
+
+   Base release date updates: <count> views
+   <list of view names, one per line>
+
+   Automate JIRA disabled: <count> views
+   <list of view names, one per line>
 
    🤖 Generated with [Claude Code](https://claude.com/claude-code)
 
@@ -84,14 +99,23 @@ You will guide the user through the following steps (skipping steps where argume
 
 ### Update Logic
 
-When a release goes GA, views that reference it in base_release should use 'ga' instead of 'now':
+When a release goes GA, two types of updates should be applied:
+
+**Type A: Update base_release dates (for views comparing newer releases to the GA release)**
 
 1. **Find Views**: Identify all views where `base_release.release` equals the GA release
 2. **Update Relative Dates**:
    - `relative_start: "now-30d"` → `relative_start: "ga-30d"`
    - `relative_start: "now-1d"` → `relative_start: "ga-1d"`
    - `relative_end: "now"` → `relative_end: "ga"`
-3. **Preserve Other Fields**: Don't modify any other fields in the view
+
+**Type B: Disable automate_jira (for views of the GA release itself)**
+
+1. **Find Views**: Identify all views where `sample_release.release` equals the GA release AND `automate_jira.enabled: true`
+2. **Update automate_jira**:
+   - `automate_jira:\n    enabled: true` → `automate_jira:\n    enabled: false`
+
+**General Rule**: Preserve all other fields in the view
 
 ### Implementation Approach
 
@@ -109,11 +133,13 @@ Use the Read and Edit tools to update views in place:
 
 ## Important Notes
 
-- This command only affects views where `base_release.release` equals the GA release
+- This command affects two types of views:
+  - Views where `base_release.release` equals the GA release (date updates)
+  - Views where `sample_release.release` equals the GA release with automate_jira enabled (JIRA automation disabling)
 - Sample release dates are not modified (they typically already use 'now')
 - The script preserves all other view settings
 - Always verify the diff to ensure only expected changes were made
-- YAML formatting should be preserved using proper YAML libraries
+- YAML formatting should be preserved using the Edit tool for precise replacements
 - This is typically run once when a release goes GA (e.g., at release day)
 
 ## Examples
@@ -122,13 +148,20 @@ Use the Read and Edit tools to update views in place:
 
 Command: `/sippy-update-ga-release-views 4.21`
 
-This will find all views with `base_release.release: "4.21"` and update:
+This will make two types of updates:
+
+**A. Base release date updates** (views with `base_release.release: "4.21"`):
 - `4.22-main` view:
   - Before: `base_release: {release: "4.21", relative_start: "now-30d", relative_end: "now"}`
   - After: `base_release: {release: "4.21", relative_start: "ga-30d", relative_end: "ga"}`
 - `4.22-hypershift-candidates` view:
   - Before: `base_release: {release: "4.21", relative_start: "now-30d", relative_end: "now"}`
   - After: `base_release: {release: "4.21", relative_start: "ga-30d", relative_end: "ga"}`
+
+**B. Automate JIRA disabling** (views with `sample_release.release: "4.21"` and `automate_jira.enabled: true`):
+- `4.21-main` view:
+  - Before: `automate_jira:\n    enabled: true`
+  - After: `automate_jira:\n    enabled: false`
 
 ### Example 2: No arguments
 
