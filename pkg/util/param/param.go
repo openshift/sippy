@@ -28,6 +28,7 @@ var nameRegexp = regexp.MustCompile(`^[-.\w]+$`)
 var releaseRegexp = regexp.MustCompile(`^\d+\.\d+$`)
 var dateRegexp = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 var nonEmptyRegex = regexp.MustCompile(`^.+$`)
+var boolRegexp = regexp.MustCompile(`^(true|false)$`)
 var paramRegexp = map[string]*regexp.Regexp{
 	// sippy classic params
 	"release":          regexp.MustCompile(`^[\w.-]+$`), // usually 4.x or Presubmit, but allow any "word"
@@ -53,6 +54,7 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"sortField":        wordRegexp,
 	"start_date":       dateRegexp, // YYYY-MM-DD format
 	"end_date":         dateRegexp, // YYYY-MM-DD format
+	"include_success":  boolRegexp, // true or false
 	// component readiness params
 	"baseRelease":      releaseRegexp,
 	"sampleRelease":    releaseRegexp,
@@ -117,4 +119,23 @@ func ReadUint(req *http.Request, name string, limit int) (int, error) {
 		return 0, err
 	}
 	return intValue, nil
+}
+
+// ReadBool returns the boolean value of a query parameter.
+// Accepts "true" or "false" (case-sensitive).
+// If the param is not present or empty, it returns the provided default value and nil.
+// If the value is invalid, it returns false and an error.
+func ReadBool(req *http.Request, name string, defaultValue bool) (bool, error) {
+	value := req.URL.Query().Get(name)
+	if value == "" {
+		return defaultValue, nil
+	}
+
+	if !boolRegexp.MatchString(value) {
+		err := fmt.Errorf("invalid value for %q param: %q (expected true or false)", name, value)
+		log.Warn(err)
+		return false, err
+	}
+
+	return value == "true", nil
 }

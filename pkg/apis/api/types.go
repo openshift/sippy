@@ -877,9 +877,13 @@ type JobAnalysisResult struct {
 }
 
 type TestOutput struct {
-	URL      string `json:"url"`
-	Output   string `json:"output"`
-	TestName string `json:"test_name,omitempty"`
+	ProwJobURL  string     `json:"url"`
+	GCSBucket   string     `json:"gcs_bucket,omitempty"`
+	Output      string     `json:"output"`
+	TestName    string     `json:"test_name,omitempty"`
+	Success     bool       `json:"success"`
+	ProwJobName string     `json:"prowjob_name,omitempty"`
+	StartTime   *time.Time `json:"start_time,omitempty"`
 }
 
 type ReleaseDates struct {
