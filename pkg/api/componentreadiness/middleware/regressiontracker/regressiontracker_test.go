@@ -617,7 +617,7 @@ func TestFindOpenRegression(t *testing.T) {
 		wantBaseRelease string
 	}{
 		{
-			name: "match when testID and variants match",
+			name: "match when sample release, testID and variants match",
 			regressions: []*models.TestRegression{
 				{
 					ID:          1,
@@ -630,6 +630,19 @@ func TestFindOpenRegression(t *testing.T) {
 			wantMatch:       true,
 			wantRelease:     sampleRelease,
 			wantBaseRelease: baseRelease,
+		},
+		{
+			name: "no match when sample release differs",
+			regressions: []*models.TestRegression{
+				{
+					ID:          1,
+					Release:     "4.20",
+					BaseRelease: "4.19",
+					TestID:      testID,
+					Variants:    []string{"arch:amd64"},
+				},
+			},
+			wantMatch: false,
 		},
 		{
 			name: "no match when testID differs",
@@ -683,7 +696,7 @@ func TestFindOpenRegression(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := FindOpenRegression(testID, variants, tt.regressions)
+			got := FindOpenRegression(sampleRelease, testID, variants, tt.regressions)
 			if !tt.wantMatch {
 				assert.Nil(t, got, "expected no match")
 				return

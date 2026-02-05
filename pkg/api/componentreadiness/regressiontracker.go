@@ -335,7 +335,7 @@ func (rt *RegressionTracker) SyncRegressionsForReport(view crview.View, rLog *lo
 	matchedOpenRegressions := []*models.TestRegression{} // all the matches we found, used to determine what had no match
 	rLog.Infof("syncing %d open regressions", len(allRegressedTests))
 	for _, regTest := range allRegressedTests {
-		if openReg := regressiontracker.FindOpenRegression(regTest.TestID, regTest.Variants, regressions); openReg != nil {
+		if openReg := regressiontracker.FindOpenRegression(view.SampleRelease.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
 
 			// Update any tracking params on the regression if we see better values:
 			var modifiedRegression bool
