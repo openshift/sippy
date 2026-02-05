@@ -148,8 +148,6 @@ component_readiness:
     flake_as_failure: false
     pass_rate_required_new_tests: 95
     include_multi_release_analysis: true
-  regression_tracking:
-    enabled: true #TODO: lets see what happens
 - name: 4.22-x86-vs-multi-arm
   base_release:
     release: "4.22"
@@ -225,8 +223,6 @@ component_readiness:
     flake_as_failure: false
   metrics:
     enabled: false
-  regression_tracking:
-    enabled: true #TODO: lets see what happens
 - name: 4.22-techpreview-rhcos9-vs-rhcos10
   base_release:
     release: "4.22"
