@@ -22,6 +22,9 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/lib/pq"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/push"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 	"gorm.io/gorm"
@@ -72,6 +75,7 @@ type ProwLoader struct {
 	ghCommenter             *commenter.GitHubCommenter
 	jobsImportedCount       atomic.Int32
 	gcsClient               *storage.Client
+	promPusher              *push.Pusher
 }
 
 func New(
@@ -84,7 +88,8 @@ func New(
 	syntheticTestManager synthetictests.SyntheticTestManager,
 	releases []string,
 	config *v1config.SippyConfig,
-	ghCommenter *commenter.GitHubCommenter) *ProwLoader {
+	ghCommenter *commenter.GitHubCommenter,
+	promPusher *push.Pusher) *ProwLoader {
 
 	return &ProwLoader{
 		ctx:                  ctx,
@@ -102,10 +107,16 @@ func New(
 		releases:             releases,
 		config:               config,
 		ghCommenter:          ghCommenter,
+		promPusher:           promPusher,
 	}
 }
 
 var clusterDataDateTimeName = regexp.MustCompile(`cluster-data_(?P<DATE>.*)-(?P<TIME>.*).json`)
+
+var prowLoaderMetricGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "sippy_prow_jobs_loaded",
+	Help: "The number of jobs loaded",
+})
 
 type DateTimeName struct {
 	Name string
@@ -228,6 +239,11 @@ func (pl *ProwLoader) Load() {
 		log.Warningf("encountered %d errors while importing job runs", len(pl.errors))
 	}
 	log.Infof("finished importing new job runs in %+v", time.Since(start))
+
+	if pl.promPusher != nil {
+		prowLoaderMetricGauge.Set(float64(total))
+		pl.promPusher.Collector(prowLoaderMetricGauge)
+	}
 }
 
 func prowJobsProducer(ctx context.Context, queue chan *prow.ProwJob, jobs []prow.ProwJob) {

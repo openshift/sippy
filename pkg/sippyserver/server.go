@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"regexp"
+	sorting "sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -271,22 +272,30 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 		go refreshMatview(dbc, refreshMatviewOnlyIfEmpty, ch, &wg)
 	}
 
-	// separate prow_test_report_7d_matview and prow_test_report_2d_matview to try to cut down on
-	// CPU overload
-	var twoDayMatView *db.PostgresView
-	for _, pmv := range db.PostgresMatViews {
-		if pmv.Name == "prow_test_report_2d_matview" {
-			twoDayMatViewTmp := pmv
-			twoDayMatView = &twoDayMatViewTmp
-		} else {
-			ch <- pmv.Name
+	// Sort materialized views so prow_test_report_2d_matview runs last to avoid CPU overload
+	sortedMatViews := make([]db.PostgresView, len(db.PostgresMatViews))
+	copy(sortedMatViews, db.PostgresMatViews)
+	sorting.SliceStable(sortedMatViews, func(i, j int) bool {
+		// Move prow_test_report_2d_matview to the end
+		if sortedMatViews[i].Name == "prow_test_report_2d_matview" {
+			return false
 		}
-	}
+		if sortedMatViews[j].Name == "prow_test_report_2d_matview" {
+			return true
+		}
 
-	// add the 2 day mat view so it runs last, it is possible we might need to wait for the 14 to complete and run this standalone
-	// but we don't want to do that if we don't have to
-	if twoDayMatView != nil {
-		ch <- twoDayMatView.Name
+		// Move prow_test_report_7d_matview to the beginning
+		if sortedMatViews[i].Name == "prow_test_report_7d_matview" {
+			return true
+		}
+		if sortedMatViews[j].Name == "prow_test_report_7d_matview" {
+			return false
+		}
+		return false
+	})
+
+	for _, pmv := range sortedMatViews {
+		ch <- pmv.Name
 	}
 
 	close(ch)

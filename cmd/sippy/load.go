@@ -66,6 +66,7 @@ type LoadFlags struct {
 	LogLevel                string
 }
 
+// want a single total load and refresh time
 var loadMetricGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "sippy_data_load_refresh_minutes",
 	Help: "Minutes to load and refresh db",
@@ -165,6 +166,11 @@ func NewLoadCommand() *cobra.Command {
 			}
 
 			var refreshMatviews bool
+			var promPusher *push.Pusher
+			if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
+				promPusher = push.New(pushgateway, "sippy-prow-job-loader")
+				promPusher.Collector(loadMetricGauge)
+			}
 
 			for _, l := range f.Loaders {
 				if l == "component-readiness-cache" {
@@ -206,7 +212,7 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return dbErr
 					}
-					prowLoader, err := f.prowLoader(ctx, dbc, config, releaseConfigs)
+					prowLoader, err := f.prowLoader(ctx, dbc, config, releaseConfigs, promPusher)
 					if err != nil {
 						return err
 					}
@@ -316,13 +322,6 @@ func NewLoadCommand() *cobra.Command {
 				}
 			}
 
-			// want a single total load and refresh time
-			var promPusher *push.Pusher
-			if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
-				promPusher = push.New(pushgateway, "sippy-prow-job-loader")
-				promPusher.Collector(loadMetricGauge)
-			}
-
 			// Run loaders with the metrics wrapper
 			l := loaderwithmetrics.New(loaders)
 			l.Load()
@@ -340,9 +339,9 @@ func NewLoadCommand() *cobra.Command {
 
 			elapsed = time.Since(start)
 			log.WithField("elapsed", elapsed).Info("load and refresh complete")
-			loadMetricGauge.Set(float64(elapsed.Minutes()))
 
 			if promPusher != nil {
+				loadMetricGauge.Set(float64(elapsed.Minutes()))
 				log.Info("pushing metrics to prometheus gateway")
 				if err := promPusher.Add(); err != nil {
 					log.WithError(err).Error("could not push to prometheus pushgateway")
@@ -404,7 +403,7 @@ func (f *LoadFlags) jobVariantsLoader(ctx context.Context) (dataloader.DataLoade
 
 }
 
-func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.SippyConfig, releaseConfigs []sippyv1.Release) (dataloader.DataLoader, error) {
+func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.SippyConfig, releaseConfigs []sippyv1.Release, promPusher *push.Pusher) (dataloader.DataLoader, error) {
 	gcsClient, err := gcs.NewGCSClient(ctx,
 		f.GoogleCloudFlags.ServiceAccountCredentialFile,
 		f.GoogleCloudFlags.OAuthClientCredentialFile,
@@ -451,5 +450,6 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		f.ModeFlags.GetSyntheticTestManager(),
 		releases,
 		sippyConfig,
-		ghCommenter), nil
+		ghCommenter,
+		promPusher), nil
 }
