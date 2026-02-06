@@ -300,7 +300,9 @@ component_readiness:
   metrics:
     enabled: false
   regression_tracking:
-    enabled: false
+    enabled: true
+  prime_cache:
+    enabled: true
 - name: 4.22-ha-vs-single
   base_release:
     release: "4.22"
