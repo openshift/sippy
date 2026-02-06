@@ -2508,8 +2508,8 @@ component_readiness:
 - name: 4.22-lp-Interop-compliance
   base_release:
     release: "4.21"
-    relative_start: now-30d
-    relative_end: now
+    relative_start: ga-30d
+    relative_end: ga
   sample_release:
     release: "4.22"
     relative_start: now-7d
