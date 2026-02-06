@@ -89,8 +89,12 @@ export default function TriagePotentialMatches({
 }) {
   const classes = useStyles()
   const [isModalOpen, setIsModalOpen] = React.useState(false)
-  const [selectedView, setSelectedView] = React.useState('')
-  const [availableViews, setAvailableViews] = React.useState([])
+  const [selectedBaseRelease, setSelectedBaseRelease] = React.useState('')
+  const [selectedSampleRelease, setSelectedSampleRelease] = React.useState('')
+  const [availableBaseReleases, setAvailableBaseReleases] = React.useState([])
+  const [availableSampleReleases, setAvailableSampleReleases] = React.useState(
+    []
+  )
   const [potentialMatches, setPotentialMatches] = React.useState([])
   const [isLoading, setIsLoading] = React.useState(false)
   const [selectedRegressions, setSelectedRegressions] = React.useState([])
@@ -99,52 +103,72 @@ export default function TriagePotentialMatches({
   const [filterSameLastFailures, setFilterSameLastFailures] =
     React.useState(true)
   const [filterAlreadyTriaged, setFilterAlreadyTriaged] = React.useState(false)
-  const { expandEnvironment } = useContext(CompReadyVarsContext)
+  const { expandEnvironment, view } = useContext(CompReadyVarsContext)
 
   const [autoOpenMatches, setAutoOpenMatches] = useQueryParam(
     'openMatches',
     BooleanParam
   )
 
-  // Extract and sort views from triage regressions by frequency
+  // Extract unique base vs sample releases from triage regressions; default to first regression's base/sample
   React.useEffect(() => {
-    if (triage.regressions && triage.regressions.length > 0) {
-      const viewCounts = {}
-      triage.regressions.forEach((regression) => {
-        if (regression.view) {
-          viewCounts[regression.view] = (viewCounts[regression.view] || 0) + 1
-        }
-      })
+    if (!triage.regressions || triage.regressions.length === 0) return
 
-      const sortedViews = Object.entries(viewCounts)
-        .sort(([, a], [, b]) => b - a) // Sort by frequency descending
-        .map(([view]) => view)
+    const baseSet = new Set()
+    const sampleSet = new Set()
+    triage.regressions.forEach((regression) => {
+      const base = regression.base_release || regression.baseRelease
+      const sample = regression.release
+      if (base) baseSet.add(base)
+      if (sample) sampleSet.add(sample)
+    })
 
-      setAvailableViews(sortedViews)
+    // Use insertion order from regressions (no sort)
+    const availableBase = [...baseSet]
+    const availableSample = [...sampleSet]
+    setAvailableBaseReleases(availableBase)
+    setAvailableSampleReleases(availableSample)
 
-      // Set default to the most frequent view
-      if (sortedViews.length > 0 && !selectedView) {
-        setSelectedView(sortedViews[0])
-      }
+    const needDefault =
+      (!selectedBaseRelease && !selectedSampleRelease) ||
+      !availableBase.includes(selectedBaseRelease) ||
+      !availableSample.includes(selectedSampleRelease)
+
+    if (needDefault) {
+      if (availableBase.length > 0) setSelectedBaseRelease(availableBase[0])
+      if (availableSample.length > 0)
+        setSelectedSampleRelease(availableSample[0])
     }
-  }, [triage.regressions])
+  }, [triage.regressions, selectedBaseRelease, selectedSampleRelease])
 
   React.useEffect(() => {
-    if (autoOpenMatches === true && selectedView !== '') {
+    if (
+      autoOpenMatches === true &&
+      selectedBaseRelease !== '' &&
+      selectedSampleRelease !== ''
+    ) {
       findPotentialMatches()
     }
-  }, [autoOpenMatches, selectedView])
+  }, [autoOpenMatches, selectedBaseRelease, selectedSampleRelease])
 
   React.useEffect(() => {
-    if (selectedView !== '' && isModalOpen) {
+    if (
+      selectedBaseRelease !== '' &&
+      selectedSampleRelease !== '' &&
+      isModalOpen
+    ) {
       findPotentialMatches()
     }
-  }, [selectedView])
+  }, [selectedBaseRelease, selectedSampleRelease, isModalOpen])
 
   const findPotentialMatches = () => {
     setIsLoading(true)
     setIsModalOpen(true)
-    fetch(`${triage.links.potential_matches}?view=${selectedView}`)
+    fetch(
+      `${triage.links.potential_matches}?baseRelease=${encodeURIComponent(
+        selectedBaseRelease
+      )}&sampleRelease=${encodeURIComponent(selectedSampleRelease)}`
+    )
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('API server returned ' + response.status)
@@ -344,7 +368,7 @@ export default function TriagePotentialMatches({
       flex: 4,
       valueGetter: (params) => {
         const regressedTest = params.row.regressed_test
-        const viewToUse = selectedView || view
+        const viewToUse = view
         const filterVals = `?view=${viewToUse}`
         //TODO(sgoeddel): we should be able to get this link off of the regression,
         // and stop needing to get the regressedTest off the report at all
@@ -454,18 +478,37 @@ export default function TriagePotentialMatches({
           ) : (
             <>
               <div className={classes.filterContainer}>
-                <div>
+                <div className={classes.filterSection}>
                   <FormControl size="small" className={classes.viewDropdown}>
-                    <InputLabel>View</InputLabel>
+                    <InputLabel>Base Release</InputLabel>
                     <Select
-                      value={selectedView}
-                      label="View"
-                      onChange={(event) => setSelectedView(event.target.value)}
-                      disabled={availableViews.length <= 1}
+                      value={selectedBaseRelease}
+                      label="Base Release"
+                      onChange={(event) =>
+                        setSelectedBaseRelease(event.target.value)
+                      }
+                      disabled={availableBaseReleases.length <= 1}
                     >
-                      {availableViews.map((viewOption) => (
-                        <MenuItem key={viewOption} value={viewOption}>
-                          {viewOption}
+                      {availableBaseReleases.map((releaseOption) => (
+                        <MenuItem key={releaseOption} value={releaseOption}>
+                          {releaseOption}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small" className={classes.viewDropdown}>
+                    <InputLabel>Sample Release</InputLabel>
+                    <Select
+                      value={selectedSampleRelease}
+                      label="Sample Release"
+                      onChange={(event) =>
+                        setSelectedSampleRelease(event.target.value)
+                      }
+                      disabled={availableSampleReleases.length <= 1}
+                    >
+                      {availableSampleReleases.map((releaseOption) => (
+                        <MenuItem key={releaseOption} value={releaseOption}>
+                          {releaseOption}
                         </MenuItem>
                       ))}
                     </Select>

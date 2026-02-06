@@ -47,7 +47,7 @@
   overflow: hidden;
   text-align: left;
   text-overflow: ellipsis;
-  direction: rtl;  /* see below */
+  direction: rtl; /* see below */
 }
 
 /* this hocus-pocus makes the ellipsis work at the beginning instead of the end */

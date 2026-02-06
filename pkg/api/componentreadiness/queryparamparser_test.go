@@ -99,7 +99,7 @@ func TestParseComponentReportRequest(t *testing.T) {
 		view417cross,
 	}
 
-	now := time.Now().UTC()
+	now := time.Now()
 	nowRoundUp := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
 
 	adjustDur := time.Duration(7) * 24 * time.Hour

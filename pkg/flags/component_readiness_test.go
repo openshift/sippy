@@ -23,24 +23,6 @@ func TestProductionViewsConfiguration(t *testing.T) {
 
 	t.Logf("Successfully loaded %d views from config/views.yaml", len(views.ComponentReadiness))
 
-	// Verify regression tracking constraint: only 1 view per release can have it enabled
-	// This is enforced by validateViews() in component_readiness.go
-	regressionTracking := make(map[string][]string)
-	for _, view := range views.ComponentReadiness {
-		if view.RegressionTracking.Enabled {
-			release := view.SampleRelease.Name
-			regressionTracking[release] = append(regressionTracking[release], view.Name)
-		}
-	}
-
-	for release, viewsWithRegTracking := range regressionTracking {
-		assert.Equal(t, 1, len(viewsWithRegTracking),
-			"Release %s has %d views with regression tracking enabled, but only 1 is allowed: %v",
-			release, len(viewsWithRegTracking), viewsWithRegTracking)
-	}
-
-	t.Logf("Verified regression tracking constraint: %d releases have exactly 1 view with regression tracking",
-		len(regressionTracking))
 }
 
 // TestViewsValidationLogic tests the validation rules independently
@@ -55,12 +37,6 @@ func TestViewsValidationLogic(t *testing.T) {
 			name:        "production config should be valid",
 			viewsFile:   "../../config/views.yaml",
 			shouldError: false,
-		},
-		{
-			name:        "should reject multiple regression tracking views per release",
-			viewsFile:   "testdata/invalid_multiple_regression_tracking.yaml",
-			shouldError: true,
-			errorMsg:    "only one view in release 4.21 can have regression tracking enabled",
 		},
 	}
 

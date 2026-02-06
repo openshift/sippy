@@ -206,7 +206,6 @@ func ValidTriageType(triageType TriageType) bool {
 // regressions opening and closing.
 type TestRegression struct {
 	ID      uint   `json:"id" gorm:"primaryKey,column:id"`
-	View    string `json:"view" gorm:"not null"`
 	Release string `json:"release" gorm:"not null;index:idx_test_regression_release"`
 	// BaseRelease is the release this test was marked regressed against. It may not match the view's base release
 	// if the view uses release fallback and this test was flagged regressed against a prior release with better pass rate.

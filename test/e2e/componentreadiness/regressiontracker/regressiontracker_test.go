@@ -69,7 +69,7 @@ func Test_RegressionTracker(t *testing.T) {
 		tr, err := tracker.OpenRegression(view, newRegression)
 		require.NoError(t, err)
 		assert.Equal(t, "4.19", tr.Release)
-		assert.Equal(t, "4.19-main", tr.View)
+		assert.Equal(t, "4.18", tr.BaseRelease, "BaseRelease should be set from BaseStats.Release")
 		assert.ElementsMatch(t, pq.StringArray([]string{"a:b", "c:d"}), tr.Variants)
 		assert.True(t, tr.ID > 0)
 	})
@@ -107,22 +107,22 @@ func Test_RegressionTracker(t *testing.T) {
 	t.Run("list current regressions for release", func(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
 		var err error
-		open419, err := rawCreateRegression(dbc, "4.19-main", "4.19",
+		open419, err := rawCreateRegression(dbc, "4.19",
 			"test1ID", "test 1",
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Time{})
 		require.NoError(t, err)
-		recentlyClosed419, err := rawCreateRegression(dbc, "4.19-main", "4.19",
+		recentlyClosed419, err := rawCreateRegression(dbc, "4.19",
 			"test2ID", "test 2",
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Now().Add(-2*24*time.Hour))
 		require.NoError(t, err)
-		_, err = rawCreateRegression(dbc, "4.19-main", "4.19",
+		_, err = rawCreateRegression(dbc, "4.19",
 			"test3ID", "test 3",
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Now().Add(-70*24*time.Hour))
 		require.NoError(t, err)
-		_, err = rawCreateRegression(dbc, "4.18-main", "4.18",
+		_, err = rawCreateRegression(dbc, "4.18",
 			"test1ID", "test 1",
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Time{})
@@ -137,6 +137,18 @@ func Test_RegressionTracker(t *testing.T) {
 			assert.True(t, rel.ID == open419.ID || rel.ID == recentlyClosed419.ID,
 				"unexpected regression was returned: %+v", *rel)
 		}
+	})
+
+	t.Run("list returns regressions with BaseRelease set", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		tr, err := rawCreateRegressionWithBase(dbc, "4.19", "4.18", "baseTestID", "base test",
+			[]string{"a:b"}, time.Now().Add(-1*24*time.Hour), time.Time{})
+		require.NoError(t, err)
+		relRegressions, err := tracker.ListCurrentRegressionsForRelease("4.19")
+		require.NoError(t, err)
+		require.Len(t, relRegressions, 1)
+		assert.Equal(t, tr.ID, relRegressions[0].ID)
+		assert.Equal(t, "4.18", relRegressions[0].BaseRelease, "ListCurrentRegressionsForRelease should return BaseRelease")
 	})
 
 	t.Run("closing a regression should resolve associated triages that have no other active regressions", func(t *testing.T) {
@@ -257,19 +269,28 @@ func Test_RegressionTracker(t *testing.T) {
 
 func rawCreateRegression(
 	dbc *db.DB,
-	view string,
 	release string,
 	testID string,
 	testName string,
 	variants []string,
 	opened, closed time.Time) (*models.TestRegression, error) {
+	return rawCreateRegressionWithBase(dbc, release, "", testID, testName, variants, opened, closed)
+}
+
+func rawCreateRegressionWithBase(
+	dbc *db.DB,
+	release, baseRelease string,
+	testID string,
+	testName string,
+	variants []string,
+	opened, closed time.Time) (*models.TestRegression, error) {
 	newRegression := &models.TestRegression{
-		View:     view,
-		Release:  release,
-		TestID:   testID,
-		TestName: testName,
-		Opened:   opened,
-		Variants: variants,
+		Release:     release,
+		BaseRelease: baseRelease,
+		TestID:      testID,
+		TestName:    testName,
+		Opened:      opened,
+		Variants:    variants,
 	}
 	if closed.IsZero() {
 		newRegression.Closed = sql.NullTime{

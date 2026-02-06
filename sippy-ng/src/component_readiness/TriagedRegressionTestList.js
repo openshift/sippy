@@ -91,8 +91,16 @@ export default function TriagedRegressionTestList(props) {
     )
   }
 
-  const showStatus =
-    props.allRegressedTests && props.allRegressedTests.length > 0
+  const regressedTestsByView = props.allRegressedTests || {}
+  // Sort view names to ensure the main view is first
+  const viewNames = [...Object.keys(regressedTestsByView)].sort((a, b) => {
+    const aMain = a.endsWith('-main')
+    const bMain = b.endsWith('-main')
+    if (aMain && !bMain) return -1
+    if (!aMain && bMain) return 1
+    return a.localeCompare(b)
+  })
+  const showStatus = viewNames.length > 0
 
   const columns = [
     {
@@ -172,59 +180,55 @@ export default function TriagedRegressionTestList(props) {
       },
     },
     ...(showStatus
-      ? [
-          {
-            field: 'status',
-            headerName: 'Status',
+      ? viewNames.map((viewName, index) => {
+          const field = `status_${index}`
+          return {
+            field,
+            headerName: viewName,
             filterable: false,
             renderHeader: () => (
-              <Tooltip title="Status information is only available for regressions that have not rolled off the reporting window">
-                <span>Status</span>
+              <Tooltip title="Status for this view (base vs sample). Only available when the regression has not rolled off the reporting window.">
+                <span>{viewName}</span>
               </Tooltip>
             ),
             valueGetter: (params) => {
-              const value = {
-                status: '',
-                explanations: '',
-                url: '',
-              }
-              const regressionId = params.row.id
-              const matchingRegression = props.allRegressedTests.find(
-                (rt) => rt?.regression?.id === regressionId
-              )
-              if (matchingRegression) {
-                value.status = matchingRegression.status
-                value.explanations = matchingRegression.explanations
-                value.url = generateTestDetailsReportLink(
-                  matchingRegression,
+              const tests = regressedTestsByView[viewName] || []
+              const rt = tests.find((t) => t?.regression?.id === params.row.id)
+              if (!rt) return null
+              return {
+                status: rt.status,
+                explanations: rt.explanations,
+                url: generateTestDetailsReportLink(
+                  rt,
                   props.filterVals,
                   expandEnvironment
-                )
+                ),
               }
-              return value
             },
-            renderCell: (params) => (
-              <div
-                style={{
-                  textAlign: 'center',
-                }}
-                className="status"
-              >
-                <a
-                  href={params.value.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+            renderCell: (params) => {
+              if (params.value == null) return null
+              const item = params.value
+              return (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                  className="status"
                 >
-                  <CompSeverityIcon
-                    status={params.value.status}
-                    explanations={params.value.explanations}
-                  />
-                </a>
-              </div>
-            ),
+                  <a href={item.url} target="_blank" rel="noopener noreferrer">
+                    <CompSeverityIcon
+                      status={item.status}
+                      explanations={item.explanations}
+                    />
+                  </a>
+                </div>
+              )
+            },
             flex: 6,
-          },
-        ]
+          }
+        })
       : []),
   ]
 
@@ -284,7 +288,7 @@ export default function TriagedRegressionTestList(props) {
 TriagedRegressionTestList.propTypes = {
   eventEmitter: PropTypes.object,
   regressions: PropTypes.array,
-  allRegressedTests: PropTypes.array,
+  allRegressedTests: PropTypes.object,
   filterVals: PropTypes.string,
   showOnLoad: PropTypes.bool,
 }

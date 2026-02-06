@@ -26,7 +26,6 @@ func TestMarshalJSONForAudit(t *testing.T) {
 				Regressions: []TestRegression{
 					{
 						ID:          42,
-						View:        "4.19-main",
 						Release:     "4.19",
 						TestID:      "some-test-id",
 						TestName:    "TestSomethingCritical",
@@ -38,7 +37,6 @@ func TestMarshalJSONForAudit(t *testing.T) {
 					},
 					{
 						ID:          100,
-						View:        "4.19-main",
 						Release:     "4.19",
 						TestID:      "some-test-other-id",
 						TestName:    "TestSomethingCritical",

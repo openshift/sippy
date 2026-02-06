@@ -86,8 +86,7 @@ func (r *RegressionTracker) ensureRegressionsLoaded() error {
 
 func (r *RegressionTracker) PreAnalysis(testKey crtest.Identification, testStats *testdetails.TestComparison) error {
 	if len(r.openRegressions) > 0 {
-		view := r.openRegressions[0].View // grab view from first regression, they were queried only for sample release
-		or := FindOpenRegression(view, testKey.TestID, testKey.Variants, r.openRegressions)
+		or := FindOpenRegression(r.reqOptions.SampleRelease.Name, testKey.TestID, testKey.Variants, r.openRegressions)
 		if or != nil {
 			testStats.Regression = or
 
@@ -120,8 +119,7 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 		return err
 	}
 	if len(r.openRegressions) > 0 {
-		view := r.openRegressions[0].View // grab view from first regression, they were queried only for sample release
-		or := FindOpenRegression(view, testKey.TestID, testKey.Variants, r.openRegressions)
+		or := FindOpenRegression(r.reqOptions.SampleRelease.Name, testKey.TestID, testKey.Variants, r.openRegressions)
 		r.log.Debugf("checking regressions for %+v", testKey)
 		if or == nil {
 			return nil
@@ -175,16 +173,17 @@ func (r *RegressionTracker) PostAnalysis(testKey crtest.Identification, testStat
 }
 
 // FindOpenRegression scans the list of open regressions for any that match the given test summary.
-func FindOpenRegression(view string,
-	testID string,
+// The regressions list is expected to be pre-filtered by sample release (e.g. from ListOpenRegressions);
+// the sampleRelease check is redundant but kept for safety.
+func FindOpenRegression(sampleRelease, testID string,
 	variants map[string]string,
 	regressions []*models.TestRegression) *models.TestRegression {
 
+	var matches []*models.TestRegression
 	for _, tr := range regressions {
-		if tr.View != view {
+		if sampleRelease != tr.Release {
 			continue
 		}
-
 		// We compare test ID not name, as names can change.
 		if tr.TestID != testID {
 			continue
@@ -200,7 +199,10 @@ func FindOpenRegression(view string,
 			continue
 		}
 		// If we made it this far, this appears to be a match:
-		return tr
+		matches = append(matches, tr)
+	}
+	if len(matches) > 0 {
+		return matches[0]
 	}
 	return nil
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/sippy/pkg/db/query"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
@@ -144,10 +145,8 @@ func reportOnJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, ba
 
 	baseURL := "https://sippy-auth.dptools.openshift.org"
 	if req != nil {
-		// If we have an Origin header, we can get the proper triage URL from it.
-		// This is useful for local development, and future-proofing
 		if origin := req.Header.Get("Origin"); origin != "" {
-			if u, err := url.Parse(origin); err == nil {
+			if u, err := url.Parse(origin); err == nil && u.Scheme != "" && u.Host != "" {
 				baseURL = u.Scheme + "://" + u.Host
 			}
 		}
@@ -292,20 +291,19 @@ func DeleteTriage(dbc *gorm.DB, id int) error {
 	return nil
 }
 
-// ListRegressions lists all regressions for the provided view OR release
-func ListRegressions(dbc *db.DB, view, release string, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, req *http.Request) ([]models.TestRegression, error) {
-	// TODO(sgoeddel): We should convert this into a response object that also contains the status.
-	// Now that we have the test_details link, the status would allow us to stop returning the component_report regressed_tests in many (all) of these endpoints.
+// ListRegressions lists all regressions for the provided view OR release.
+// When view is set, it is resolved to that view's sample release and filtering is by release.
+func ListRegressions(dbc *db.DB, release string, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, req *http.Request) ([]models.TestRegression, error) {
 	var regressions []models.TestRegression
 	var err error
-	regressions, err = query.ListRegressions(dbc, view, release)
+	regressions, err = query.ListRegressions(dbc, release)
 	if err != nil {
 		return nil, err
 	}
 
 	// Add HATEOAS links to each regression
 	for i := range regressions {
-		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, sippyapi.GetBaseURL(req))
+		InjectRegressionHATEOASLinks(&regressions[i], views, releases, crTimeRoundingFactor, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
 	}
 
 	return regressions, err
@@ -321,7 +319,7 @@ func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Releas
 		}
 		log.WithError(res.Error).Errorf("error looking up existing regression record: %d", id)
 	} else {
-		InjectRegressionHATEOASLinks(regression, views, releases, crTimeRoundingFactor, sippyapi.GetBaseURL(req))
+		InjectRegressionHATEOASLinks(regression, views, releases, crTimeRoundingFactor, sippyapi.GetBaseURL(req), sippyapi.GetBaseFrontendURL(req))
 	}
 	return regression, res.Error
 }
@@ -329,7 +327,7 @@ func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Releas
 // GetTriagePotentialMatches returns a list of PotentialMatchingRegression including all possible matching regressions for a given
 // triage, and componentReport. It calculates this based on similarly named tests being regressed, and regressions that
 // have the same last failure time. It includes a confidence level for each match that states how likely the match is to be relevant.
-func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.TestRegression, componentReport componentreport.ComponentReport, req *http.Request) ([]PotentialMatchingRegression, error) {
+func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.TestRegression, regressedTests []componentreport.ReportTestSummary, req *http.Request) ([]PotentialMatchingRegression, error) {
 	var potentialMatches []PotentialMatchingRegression
 	baseURL := sippyapi.GetBaseURL(req)
 	for _, reg := range allRegressions {
@@ -337,10 +335,15 @@ func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.Te
 			// Don't bother listing closed regressions as potential matches
 			continue
 		}
-		regressedTest := GetMatchingRegressedTestForRegression(reg, componentReport)
+		var regressedTest *componentreport.ReportTestSummary
+		for i := range regressedTests {
+			if regressedTests[i].Regression != nil && regressedTests[i].Regression.ID == reg.ID {
+				regressedTest = &regressedTests[i]
+				break
+			}
+		}
 		if regressedTest == nil {
-			// This would only happen if the regression data in postgres is stale, and this regression has rolled off
-			log.Warnf("no regression found for test %s, excluding", reg.TestID)
+			log.Warnf("no regressed test found for regression %d (test %s), excluding", reg.ID, reg.TestID)
 			continue
 		}
 		match := PotentialMatchingRegression{
@@ -735,44 +738,31 @@ func injectHATEOASLinks(triage *models.Triage, baseURL string) {
 }
 
 // InjectRegressionHATEOASLinks adds restful links clients can follow for this regression record.
-func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) {
-	if regression.Links == nil {
-		regression.Links = make(map[string]string)
+func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseAPIURL, baseFrontendURL string) {
+	regression.Links = map[string]string{
+		"self": fmt.Sprintf(regressionLink, baseAPIURL, regression.ID),
 	}
 
-	// Add self link with fully qualified URL using the correct protocol
-	regression.Links["self"] = fmt.Sprintf(regressionLink, baseURL, regression.ID)
-
-	// Generate test details URL - extract the required data from the regression and view
-	testDetailsURL, err := generateTestDetailsURLFromRegression(regression, views, releases, crTimeRoundingFactor, baseURL)
-	if err != nil {
-		// This will result in a undefined link, if this is noticed we can search for this message in the logs and discover why
-		log.WithError(err).Errorf("failed to generate test details URL for regression %d", regression.ID)
+	// The test_details link will be that of the main view for the given release pair
+	view, ok := GetMainViewForRelease(regression.BaseRelease, regression.Release, views)
+	if !ok {
+		log.Errorf("no main view found for base: %s, and sample: %s", regression.BaseRelease, regression.Release)
 		return
 	}
 
+	testDetailsURL, err := generateTestDetailsURLFromRegression(regression, view, releases, crTimeRoundingFactor, baseFrontendURL)
+	if err != nil {
+		log.WithError(err).Errorf("failed to generate test details URL for regression %d and view: %s", regression.ID, view.Name)
+		return
+	}
 	regression.Links["test_details"] = testDetailsURL
 }
 
 // generateTestDetailsURLFromRegression extracts the required data from a regression and view
 // and calls the GenerateTestDetailsURL function.
-func generateTestDetailsURLFromRegression(regression *models.TestRegression, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) (string, error) {
+func generateTestDetailsURLFromRegression(regression *models.TestRegression, view crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, baseURL string) (string, error) {
 	if regression == nil {
 		return "", fmt.Errorf("regression cannot be nil")
-	}
-
-	// Find the view for this regression
-	var view crview.View
-	var found bool
-	for i := range views {
-		if views[i].Name == regression.View {
-			view = views[i]
-			found = true
-			break
-		}
-	}
-	if !found {
-		return "", fmt.Errorf("view %s not found", regression.View)
 	}
 
 	// Get base and sample release options from the view
@@ -798,4 +788,41 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 		regression.Variants,
 		regression.BaseRelease,
 	)
+}
+
+// GetViewsForTriage returns all views with regression tracking enabled that have the same base and sample releases
+// as any regression associated with the given triage.
+func GetViewsForTriage(triage *models.Triage, views []crview.View) []string {
+	matchingViews := make(sets.Set[string])
+	for _, regression := range triage.Regressions {
+		for _, view := range ViewsMatchingReleases(regression.BaseRelease, regression.Release, views) {
+			matchingViews.Insert(view.Name)
+		}
+	}
+
+	return matchingViews.UnsortedList()
+}
+
+// GetMainViewForRelease returns the main view for the given base and sample release.
+// ok is false if none match.
+func GetMainViewForRelease(baseRelease, sampleRelease string, views []crview.View) (view crview.View, ok bool) {
+	matching := ViewsMatchingReleases(baseRelease, sampleRelease, views)
+	for _, v := range matching {
+		if strings.HasSuffix(v.Name, "-main") {
+			return v, true
+		}
+	}
+	return crview.View{}, false
+}
+
+// ViewsMatchingReleases returns all views with regression tracking enabled whose base and sample release names match the given params.
+// Order is preserved from the input views slice (same as config file order), so the first returned view is the main view for the release.
+func ViewsMatchingReleases(baseRelease, sampleRelease string, views []crview.View) []crview.View {
+	var matchingViews []crview.View
+	for _, view := range views {
+		if view.RegressionTracking.Enabled && view.BaseRelease.Name == baseRelease && view.SampleRelease.Name == sampleRelease {
+			matchingViews = append(matchingViews, view)
+		}
+	}
+	return matchingViews
 }

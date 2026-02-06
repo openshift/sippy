@@ -20,13 +20,10 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
-
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
-	"github.com/openshift/sippy/pkg/util/sets"
-
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -877,6 +874,37 @@ func (s *Server) jsonComponentReadinessViews(w http.ResponseWriter, req *http.Re
 	api.RespondWithJSON(http.StatusOK, w, viewsCopy)
 }
 
+func (s *Server) getRegressedTestsForRegressions(req *http.Request, regressions []models.TestRegression) ([]componentreport.ReportTestSummary, error) {
+	baseRelease := req.URL.Query().Get("baseRelease")
+	sampleRelease := req.URL.Query().Get("sampleRelease")
+	if baseRelease == "" || sampleRelease == "" {
+		return nil, fmt.Errorf("baseRelease and sampleRelease are required")
+	}
+	matchingViews := componentreadiness.ViewsMatchingReleases(baseRelease, sampleRelease, s.views.ComponentReadiness)
+	var result []componentreport.ReportTestSummary
+	for _, view := range matchingViews {
+		reqWithView := req.Clone(req.Context())
+		urlCopy := *req.URL
+		reqWithView.URL = &urlCopy
+		q := reqWithView.URL.Query()
+		q.Del("baseRelease")
+		q.Del("sampleRelease")
+		q.Set("view", view.Name)
+		reqWithView.URL.RawQuery = q.Encode()
+		report, err := s.getComponentReportFromRequest(reqWithView)
+		if err != nil {
+			return nil, fmt.Errorf("error getting component report for view %s: %v", view.Name, err)
+		}
+		for _, regression := range regressions {
+			regressedTest := componentreadiness.GetMatchingRegressedTestForRegression(regression, report)
+			if regressedTest != nil {
+				result = append(result, *regressedTest)
+			}
+		}
+	}
+	return result, nil
+}
+
 // getComponentReportFromRequest creates a component report based on the HTTP request parameters
 func (s *Server) getComponentReportFromRequest(req *http.Request) (componentreport.ComponentReport, error) {
 	if s.bigQueryClient == nil {
@@ -899,7 +927,8 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		return componentreport.ComponentReport{}, err
 	}
 
-	baseURL := api.GetBaseURL(req)
+	// This baseURL is used to generate links to test_details reports, which are frontend links
+	baseURL := api.GetBaseFrontendURL(req)
 
 	outputs, errs := componentreadiness.GetComponentReportFromBigQuery(
 		req.Context(),
@@ -1497,7 +1526,8 @@ func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
 // Currently, this is only the associated ReportTestSummaries which are useful for linking to the test_details report.
 type ExpandedTriage struct {
 	*models.Triage
-	RegressedTests []*componentreport.ReportTestSummary `json:"regressed_tests"`
+	// RegressedTests is a mapping of the view to the regressed_tests found there
+	RegressedTests map[string][]*componentreport.ReportTestSummary `json:"regressed_tests"`
 }
 
 func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
@@ -1531,15 +1561,12 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 	}
 
 	et := ExpandedTriage{
-		Triage: triage,
+		Triage:         triage,
+		RegressedTests: make(map[string][]*componentreport.ReportTestSummary),
 	}
 
-	associatedViews := sets.NewString()
-	for _, regression := range triage.Regressions {
-		associatedViews.Insert(regression.View)
-	}
-
-	for _, view := range associatedViews.List() {
+	views := componentreadiness.GetViewsForTriage(triage, s.views.ComponentReadiness)
+	for _, view := range views {
 		// Set the view in the request so that we can obtain the component report to get the regressed test(s) for display
 		q := req.URL.Query()
 		q.Set("view", view)
@@ -1549,11 +1576,15 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 			failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("unable to get component report: %v", err))
 			return
 		}
+		var regressedTests []*componentreport.ReportTestSummary
 		for _, regression := range triage.Regressions {
 			regressedTest := componentreadiness.GetMatchingRegressedTestForRegression(regression, componentReport)
 			if regressedTest != nil {
-				et.RegressedTests = append(et.RegressedTests, regressedTest)
+				regressedTests = append(regressedTests, regressedTest)
 			}
+		}
+		if len(regressedTests) > 0 {
+			et.RegressedTests[view] = regressedTests
 		}
 	}
 
@@ -1642,36 +1673,40 @@ func (s *Server) jsonTriagePotentialMatchingRegressions(w http.ResponseWriter, r
 
 	triage, err := componentreadiness.GetTriage(s.db, triageID, req)
 	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, err.Error())
+		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting triages: %v", err))
 		return
 	}
 	if triage == nil {
 		failureResponse(w, http.StatusNotFound, "triage not found")
 		return
 	}
-	view := req.URL.Query().Get("view")
-	if view == "" {
-		failureResponse(w, http.StatusBadRequest, "no view provided")
+	sampleRelease := req.URL.Query().Get("sampleRelease")
+	if sampleRelease == "" {
+		failureResponse(w, http.StatusBadRequest, "no sampleRelease provided")
 		return
 	}
-	// TODO(sgoeddel): I don't think we need the component report anymore, the regressions should contain the test_details link, but do they contain the status?
-	componentReport, err := s.getComponentReportFromRequest(req)
-	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, err.Error())
+	baseRelease := req.URL.Query().Get("baseRelease")
+	if baseRelease == "" {
+		failureResponse(w, http.StatusBadRequest, "no baseRelease provided")
 		return
 	}
 	allReleases, err := api.GetReleases(req.Context(), s.bigQueryClient, false)
 	if err != nil {
-		failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting releases: %v", err))
+		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	regressions, err := componentreadiness.ListRegressions(s.db, view, "", s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
+	regressions, err := componentreadiness.ListRegressions(s.db, sampleRelease, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	regressedTests, err := s.getRegressedTestsForRegressions(req, regressions)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	potentialMatches, err := componentreadiness.GetTriagePotentialMatches(triage, regressions, componentReport, req)
+	potentialMatches, err := componentreadiness.GetTriagePotentialMatches(triage, regressions, regressedTests, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return
@@ -1716,8 +1751,24 @@ func (s *Server) jsonGetRegressions(w http.ResponseWriter, req *http.Request) {
 		failureResponse(w, http.StatusBadRequest, "Cannot specify both 'view' and 'release' parameters. Please use only one.")
 		return
 	}
+	views := s.views.ComponentReadiness
+	if view != "" {
+		foundView := false
+		for _, v := range s.views.ComponentReadiness {
+			if v.Name == view {
+				views = []crview.View{v}
+				release = v.SampleRelease.Name
+				foundView = true
+				break
+			}
+		}
+		if !foundView {
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("View '%s' not found in views", view))
+			return
+		}
+	}
 
-	regressions, err := componentreadiness.ListRegressions(s.db, view, release, s.views.ComponentReadiness, allReleases, s.crTimeRoundingFactor, req)
+	regressions, err := componentreadiness.ListRegressions(s.db, release, views, allReleases, s.crTimeRoundingFactor, req)
 	if err != nil {
 		failureResponse(w, http.StatusInternalServerError, err.Error())
 		return

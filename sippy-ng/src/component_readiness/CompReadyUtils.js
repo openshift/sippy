@@ -883,18 +883,19 @@ export function generateTestDetailsReportLink(
   return generatedUrl
 }
 
-// Helper function to check if triage has any regressions with status -1000 (failed fix)
-// Always performs filtering against the provided regressed tests list
+// Helper function to check if triage has any regressions with status -1000 (failed fix).
+// allRegressedTests is a map of view name to array of regressed tests.
 export function hasFailedFixRegression(triage, allRegressedTests) {
-  if (!allRegressedTests || !allRegressedTests.length || !triage.regressions) {
+  const tests = allRegressedTests ? Object.values(allRegressedTests).flat() : []
+  if (!tests.length || !triage.regressions) {
     return false
   }
 
   // Get regression IDs from this triage
   const triageRegressionIds = triage.regressions.map((r) => r.id)
 
-  // Filter allRegressedTests to find those matching this triage's regressions
-  const relevantRegressedTests = allRegressedTests.filter(
+  // Filter tests to find those matching this triage's regressions
+  const relevantRegressedTests = tests.filter(
     (rt) => rt?.regression?.id && triageRegressionIds.includes(rt.regression.id)
   )
 
