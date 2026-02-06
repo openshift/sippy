@@ -797,6 +797,7 @@ component_readiness:
           - ovn
         Owner:
           - qe
+          - service-delivery
         Platform:
           - aws
           - azure
@@ -850,6 +851,7 @@ component_readiness:
           - ovn
         Owner:
           - qe
+          - service-delivery
         Platform:
           - aws
           - azure
@@ -903,6 +905,7 @@ component_readiness:
           - ovn
         Owner:
           - qe
+          - service-delivery
         Platform:
           - aws
           - azure
