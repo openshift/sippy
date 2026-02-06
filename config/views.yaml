@@ -45,6 +45,8 @@ component_readiness:
       - virt
       Network:
       - ovn
+      OS:
+      - rhcos9
       Owner:
       - eng
       - service-delivery
