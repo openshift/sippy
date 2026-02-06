@@ -12,6 +12,7 @@ import (
 	uuid2 "github.com/google/uuid"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	sippybq "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/cache/compressed"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -167,7 +168,7 @@ func (c Cache) Get(ctx context.Context, key string, duration time.Duration) ([]b
 func (c Cache) findCacheEntry(ctx context.Context, key string) (CacheRecord, error) {
 	// get the most recent modified time for this key along with uuid and checksum
 	// limit the columns so we don't query too much data
-	query := c.client.BQ.Query(fmt.Sprintf(
+	query := c.client.Query(ctx, bqlabel.CacheLookup, fmt.Sprintf(
 		"SELECT modified_time, expiration, uuid FROM `%s.%s` "+
 			`WHERE %s > TIMESTAMP(@expByNowTime)
 		  AND expiration > TIMESTAMP(@expTime)
@@ -204,7 +205,7 @@ func (c Cache) findCacheEntry(ctx context.Context, key string) (CacheRecord, err
 func (c Cache) getFullCacheRecords(ctx context.Context, key string, metadataRecord CacheRecord) ([]byte, error) {
 	// metadataRecord gave us the modified time; now get the data
 	// we have to add a +/- 5 second grace as exact match doesn't work
-	query := c.client.BQ.Query(fmt.Sprintf(
+	query := c.client.Query(ctx, bqlabel.CacheLookup, fmt.Sprintf(
 		"SELECT * FROM `%s.%s` "+
 			`WHERE %s BETWEEN TIMESTAMP(@tsLower) AND TIMESTAMP(@tsUpper)
 		       AND key = @keyParam

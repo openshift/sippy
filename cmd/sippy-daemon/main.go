@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -94,9 +95,13 @@ func NewSippyDaemonCommand() *cobra.Command {
 					return errors.WithMessage(err, "couldn't get cache client")
 				}
 
+				opCtx := bqlabel.OperationalContext{
+					App:         bqlabel.AppSippy,
+					Command:     "sippy-daemon",
+					Environment: bqlabel.EnvDaemon,
+				}
 				var bigQueryClient *bigquery.Client
-				bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(),
-					cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+				bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
 				if err != nil {
 					return errors.WithMessage(err, "couldn't get bigquery client")
 				}

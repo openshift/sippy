@@ -14,6 +14,7 @@ import (
 
 	bqlib "cloud.google.com/go/bigquery"
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"google.golang.org/api/iterator"
 
 	"github.com/hashicorp/go-version"
@@ -254,7 +255,7 @@ func joinSegments(segments []string, start int, separator string) string {
 
 // JobRunRiskAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
 // risk level for each failed test, and the job run overall.
-func JobRunRiskAnalysis(dbc *db.DB, bqc *bigquery.Client, jobRun *models.ProwJobRun, logger *log.Entry, compareOtherPRs bool) (apitype.ProwJobRunRiskAnalysis, error) {
+func JobRunRiskAnalysis(ctx context.Context, dbc *db.DB, bqc *bigquery.Client, jobRun *models.ProwJobRun, logger *log.Entry, compareOtherPRs bool) (apitype.ProwJobRunRiskAnalysis, error) {
 	logger = logger.WithField("func", "JobRunRiskAnalysis")
 	// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
 	// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
@@ -263,7 +264,7 @@ func JobRunRiskAnalysis(dbc *db.DB, bqc *bigquery.Client, jobRun *models.ProwJob
 	neverStableJob := false
 	if compareRelease == "Presubmits" {
 		// Get latest release from the DB:
-		ar, err := GetReleases(context.Background(), bqc, false)
+		ar, err := GetReleases(ctx, bqc, false)
 		if err != nil {
 			return apitype.ProwJobRunRiskAnalysis{}, err
 		}
@@ -360,7 +361,7 @@ func JobRunRiskAnalysis(dbc *db.DB, bqc *bigquery.Client, jobRun *models.ProwJob
 		}
 	}
 
-	return runJobRunAnalysis(bqc, jobRun, compareRelease, historicalCount, neverStableJob, jobNames, logger, jobNamesTestResultFunc(dbc), variantsTestResultFunc(dbc), compareOtherPRs)
+	return runJobRunAnalysis(ctx, bqc, jobRun, compareRelease, historicalCount, neverStableJob, jobNames, logger, jobNamesTestResultFunc(dbc), variantsTestResultFunc(dbc), compareOtherPRs)
 }
 
 // testResultsByJobNameFunc is used for injecting db responses in unit tests.
@@ -443,8 +444,7 @@ func variantsTestResultFunc(dbc *db.DB) testResultsByVariantsFunc {
 	}
 }
 
-func runJobRunAnalysis(bqc *bigquery.Client, jobRun *models.ProwJobRun, compareRelease string, historicalRunTestCount int, neverStableJob bool, jobNames []string, logger *log.Entry,
-	testResultsJobNameFunc testResultsByJobNameFunc, testResultsVariantsFunc testResultsByVariantsFunc, compareOtherPRs bool) (apitype.ProwJobRunRiskAnalysis, error) {
+func runJobRunAnalysis(ctx context.Context, bqc *bigquery.Client, jobRun *models.ProwJobRun, compareRelease string, historicalRunTestCount int, neverStableJob bool, jobNames []string, logger *log.Entry, testResultsJobNameFunc testResultsByJobNameFunc, testResultsVariantsFunc testResultsByVariantsFunc, compareOtherPRs bool) (apitype.ProwJobRunRiskAnalysis, error) {
 
 	logger = logger.WithField("func", "runJobRunAnalysis").WithField("job", jobRun.ProwJob.Name)
 	logger.Infof("analyzing prow job run with %d failed test(s)", len(jobRun.Tests))
@@ -501,7 +501,7 @@ func runJobRunAnalysis(bqc *bigquery.Client, jobRun *models.ProwJobRun, compareR
 		}
 
 		loggerFields := logger.WithField("test", ft.Test.Name)
-		analysis, err := runTestRunAnalysis(bqc, ft, jobRun, compareRelease, loggerFields, testResultsJobNameFunc, jobNames, testResultsVariantsFunc, neverStableJob, compareOtherPRs)
+		analysis, err := runTestRunAnalysis(ctx, bqc, ft, jobRun, compareRelease, loggerFields, testResultsJobNameFunc, jobNames, testResultsVariantsFunc, neverStableJob, compareOtherPRs)
 		if err != nil {
 			continue // ignore runs where analysis failed
 		}
@@ -520,7 +520,7 @@ func runJobRunAnalysis(bqc *bigquery.Client, jobRun *models.ProwJobRun, compareR
 
 // For a failed test, query its pass rates by NURPs, find a matching variant combo, and
 // see how often we've passed in the last week.
-func runTestRunAnalysis(bqc *bigquery.Client, failedTest models.ProwJobRunTest, jobRun *models.ProwJobRun, compareRelease string, logger *log.Entry, testResultsJobNameFunc testResultsByJobNameFunc, jobNames []string, testResultsVariantsFunc testResultsByVariantsFunc, neverStableJob, compareOtherPRs bool) (apitype.TestRiskAnalysis, error) {
+func runTestRunAnalysis(ctx context.Context, bqc *bigquery.Client, failedTest models.ProwJobRunTest, jobRun *models.ProwJobRun, compareRelease string, logger *log.Entry, testResultsJobNameFunc testResultsByJobNameFunc, jobNames []string, testResultsVariantsFunc testResultsByVariantsFunc, neverStableJob, compareOtherPRs bool) (apitype.TestRiskAnalysis, error) {
 	logger.Debug("failed test")
 
 	var testResultsJobNames, testResultsVariants *apitype.Test
@@ -571,7 +571,7 @@ func runTestRunAnalysis(bqc *bigquery.Client, failedTest models.ProwJobRunTest, 
 	if (testResultsVariants != nil && testResultsVariants.CurrentRuns > 0) || (testResultsJobNames != nil && testResultsJobNames.CurrentRuns > 0) {
 		// select the 'best' test result
 		risk := selectRiskAnalysisResult(testResultsJobNames, testResultsVariants, jobNames, compareRelease)
-		if compareOtherPRs && risk.Level.Level >= apitype.FailureRiskLevelHigh.Level && len(jobRun.PullRequests) > 0 && isHighRiskInOtherPRs(bqc, failedTest, jobRun) {
+		if compareOtherPRs && risk.Level.Level >= apitype.FailureRiskLevelHigh.Level && isHighRiskInOtherPRs(ctx, bqc, failedTest, jobRun) {
 			// If the same test/job has high risk in other PRs, we override the risk level
 			analysis.Risk = apitype.TestFailureRisk{
 				Level: apitype.FailureRiskLevelMedium,
@@ -594,7 +594,10 @@ func runTestRunAnalysis(bqc *bigquery.Client, failedTest models.ProwJobRunTest, 
 	return analysis, nil
 }
 
-func isHighRiskInOtherPRs(bqc *bigquery.Client, failedTest models.ProwJobRunTest, jobRun *models.ProwJobRun) bool {
+func isHighRiskInOtherPRs(ctx context.Context, bqc *bigquery.Client, failedTest models.ProwJobRunTest, jobRun *models.ProwJobRun) bool {
+	if len(jobRun.PullRequests) == 0 {
+		return false
+	}
 	pr := jobRun.PullRequests[0]
 	endTime := jobRun.Timestamp.Add(jobRun.Duration)
 	if jobRun.Timestamp.IsZero() {
@@ -605,18 +608,51 @@ func isHighRiskInOtherPRs(bqc *bigquery.Client, failedTest models.ProwJobRunTest
 	if !found {
 		return false
 	}
-	queryStr := `SELECT COUNT(*) FROM ` +
-		fmt.Sprintf("%s.%s.%s", "openshift-ci-data-analysis", "ci_data_autodl", "risk_analysis_test_results") +
-		fmt.Sprintf(" INNER JOIN %s.%s.%s jobs", "openshift-gce-devel", "ci_analysis_us", "jobs") +
-		` ON JobRunName=jobs.prowjob_build_id` +
-		fmt.Sprintf(" WHERE PartitionTime BETWEEN TIMESTAMP('%s') AND TIMESTAMP('%s') AND", endTime.Add(-12*time.Hour).Format(time.RFC3339), endTime.Add(3*time.Hour).Format(time.RFC3339)) +
-		`  RiskLevel>=100 AND` +
-		fmt.Sprintf("  TestName='%s' AND", failedTest.Test.Name) +
-		fmt.Sprintf("  (org!='%s' OR repo!='%s' OR pr_number!='%d') AND", pr.Org, pr.Repo, pr.Number) +
-		fmt.Sprintf("  prowjob_job_name LIKE '%%%s'", jobSuffix)
-	q := bqc.BQ.Query(queryStr)
 
-	it, err := q.Read(context.TODO())
+	queryStr := `
+		SELECT COUNT(*)
+		FROM ` + "`openshift-ci-data-analysis.ci_data_autodl.risk_analysis_test_results`" + `
+		INNER JOIN ` + "`openshift-gce-devel.ci_analysis_us.jobs`" + ` jobs
+		  ON JobRunName=jobs.prowjob_build_id
+		WHERE PartitionTime BETWEEN TIMESTAMP(@StartTime) AND TIMESTAMP(@EndTime)
+		  AND RiskLevel >= 100
+		  AND TestName = @TestName
+		  AND (org != @Org OR repo != @Repo OR pr_number != @PRNumber)
+		  AND prowjob_job_name LIKE @JobPattern`
+
+	q := bqc.Query(ctx, bqlabel.JobRunHighRisk, queryStr)
+	q.Parameters = []bqlib.QueryParameter{
+		{
+			Name:  "StartTime",
+			Value: endTime.Add(-12 * time.Hour).Format(time.RFC3339),
+		},
+		{
+			Name:  "EndTime",
+			Value: endTime.Add(3 * time.Hour).Format(time.RFC3339),
+		},
+		{
+			Name:  "TestName",
+			Value: failedTest.Test.Name,
+		},
+		{
+			Name:  "Org",
+			Value: pr.Org,
+		},
+		{
+			Name:  "Repo",
+			Value: pr.Repo,
+		},
+		{
+			Name:  "PRNumber",
+			Value: pr.Number,
+		},
+		{
+			Name:  "JobPattern",
+			Value: "%" + jobSuffix,
+		},
+	}
+
+	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("Failed querying high risk items from bigquery")
 		return false

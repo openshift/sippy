@@ -17,6 +17,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/util"
@@ -275,7 +276,7 @@ func (j JobRunAnnotator) getJobRunsFromBigQuery(ctx context.Context) (map[int64]
 	%s
 	`, j.bqClient.Dataset, jobRunWhereStr, selectVariants, joinVariantsStr, filterVariantsStr, dedupedJunitTable, junitWhereStr, minimumFailureStr)
 
-	q := j.bqClient.BQ.Query(queryStr)
+	q := j.bqClient.Query(ctx, bqlabel.JobRuns, queryStr)
 	jobRuns, errs := fetchJobRunsFromBQ(ctx, q)
 	if len(errs) > 0 {
 		return jobRuns, errs[0]
@@ -445,7 +446,7 @@ func (j JobRunAnnotator) getJobRunAnnotationsFromBigQuery(ctx context.Context) (
 		`,
 		j.bqClient.Dataset, jobAnnotationTable, j.StartTime.UTC().Format(time.RFC3339), j.StartTime.Add(j.Duration).UTC().Format(time.RFC3339))
 
-	q := j.bqClient.BQ.Query(queryStr)
+	q := j.bqClient.Query(ctx, bqlabel.JobRunLabels, queryStr)
 
 	errs := []error{}
 	result := make(map[int64]models.JobRunLabel)

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -252,7 +253,7 @@ func TestRunJobAnalysis(t *testing.T) {
 				}
 			}
 
-			result, err := runJobRunAnalysis(nil, fakeProwJobRun, "4.12", 5, false, tc.jobNames, log.WithField("jobRunID", "test"), testResultsJobNamesLookupFunc, testResultsVariantsLookupFunc, false)
+			result, err := runJobRunAnalysis(context.TODO(), nil, fakeProwJobRun, "4.12", 5, false, tc.jobNames, log.WithField("jobRunID", "test"), testResultsJobNamesLookupFunc, testResultsVariantsLookupFunc, false)
 			require.NoError(t, err)
 			assert.Equal(t, len(tc.expectedTestRisks), len(result.Tests))
 			for testName, expectedRisk := range tc.expectedTestRisks {

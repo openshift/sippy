@@ -144,11 +144,12 @@ func NewLoadCommand() *cobra.Command {
 			cacheClient, cacheErr := f.CacheFlags.GetCacheClient()
 			releaseConfigs := []sippyv1.Release{}
 
-			// initializing a different bigquery client to the normal one
-			bqc, bigqueryErr := bqcachedclient.New(ctx,
+			// initializing a bigquery client different from the normal one
+			opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "load")
+			bqc, bigqueryErr := bqcachedclient.New(
+				ctx, opCtx, cacheClient,
 				f.GoogleCloudFlags.ServiceAccountCredentialFile,
-				f.BigQueryFlags.BigQueryProject,
-				f.BigQueryFlags.BigQueryDataset, cacheClient, f.BigQueryFlags.ReleasesTable)
+				f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, f.BigQueryFlags.ReleasesTable)
 			if bigqueryErr == nil {
 				if f.CacheFlags.EnablePersistentCaching {
 					bqc = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bqc)
@@ -397,7 +398,8 @@ func (f *LoadFlags) jobVariantsLoader(ctx context.Context) (dataloader.DataLoade
 	}
 
 	log.Infof("Loaded expected job variant data from: %s", inputFile)
-	syncer := variantregistry.NewJobVariantsLoader(bigQueryClient, f.BigQueryFlags.BigQueryProject,
+	opCtx, _ := bqcachedclient.OpCtxForCronEnv(ctx, "load")
+	syncer := variantregistry.NewJobVariantsLoader(bigQueryClient, opCtx, f.BigQueryFlags.BigQueryProject,
 		f.BigQueryFlags.BigQueryDataset, "job_variants", expectedVariants)
 	return syncer, nil
 
@@ -413,7 +415,10 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		return nil, err
 	}
 
-	bigQueryClient, err := bqcachedclient.New(ctx, f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, nil, f.BigQueryFlags.ReleasesTable)
+	opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "load")
+	bigQueryClient, err := bqcachedclient.New(
+		ctx, opCtx, nil,
+		f.GoogleCloudFlags.ServiceAccountCredentialFile, f.BigQueryFlags.BigQueryProject, f.BigQueryFlags.BigQueryDataset, f.BigQueryFlags.ReleasesTable)
 	if err != nil {
 		log.WithError(err).Error("CRITICAL error getting BigQuery client which prevents importing prow jobs")
 		return nil, err

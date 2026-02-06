@@ -24,6 +24,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -309,7 +310,7 @@ func (c *ComponentReportGenerator) GenerateJobVariants(ctx context.Context) (crt
 						variant_value!=""
 					GROUP BY
 						variant_name`, c.client.Dataset)
-	q := c.client.BQ.Query(queryString)
+	q := c.client.Query(ctx, bqlabel.CRJobVariants, queryString)
 	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Errorf("error querying variants from bigquery for %s", queryString)
@@ -1152,7 +1153,8 @@ func (c *ComponentReportGenerator) getUniqueJUnitColumnValuesLast60Days(ctx cont
 					ORDER BY
 						name`, field, c.client.Dataset, unnest)
 
-	q := c.client.BQ.Query(queryString)
+	q := c.client.Query(ctx, bqlabel.CRJunitColumnCount, queryString)
+
 	return getSingleColumnResultToSlice(ctx, q)
 }
 

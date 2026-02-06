@@ -12,6 +12,7 @@ import (
 
 	bqgo "cloud.google.com/go/bigquery"
 	"github.com/lib/pq"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db/query"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
@@ -301,7 +302,7 @@ func (bl *BugLoader) getTestBugMappings(ctx context.Context, testCache map[strin
         WHERE j.name != "upgrade"`,
 		TicketDataQuery, ComponentMappingProject, ComponentMappingDataset, ComponentMappingTable)
 	log.Debug(querySQL)
-	q := bl.bqc.BQ.Query(querySQL)
+	q := bl.bqc.Query(ctx, bqlabel.BugLoaderTestBugMappings, querySQL)
 
 	it, err := q.Read(ctx)
 	if err != nil {
@@ -404,7 +405,7 @@ func (bl *BugLoader) getJobBugMappings(ctx context.Context, jobCache map[string]
         OR STRPOS(t.comment, j.name) > 0
     `
 	log.Debug(querySQL)
-	q := bl.bqc.BQ.Query(querySQL)
+	q := bl.bqc.Query(ctx, bqlabel.BugLoaderJobBugMappings, querySQL)
 
 	it, err := q.Read(ctx)
 	if err != nil {
@@ -473,7 +474,7 @@ func (bl *BugLoader) getTriageBugMappings(ctx context.Context, triages []models.
 		`%s WHERE t.issue.key IN UNNEST(@keys)`,
 		sharedQuery)
 	log.Debug(querySQL)
-	q := bl.bqc.BQ.Query(querySQL)
+	q := bl.bqc.Query(ctx, bqlabel.BugLoaderTriageBugMappings, querySQL)
 	q.Parameters = append(q.Parameters, bqgo.QueryParameter{Name: "keys", Value: jiraKeys})
 
 	it, err := q.Read(ctx)

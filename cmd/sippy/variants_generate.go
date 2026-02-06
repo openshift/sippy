@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -89,14 +90,15 @@ func NewVariantsGenerateCommand() *cobra.Command {
 			switch f.Mode {
 			case "ocp":
 
+				opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "variants generate")
 				jvs := variantregistry.NewOCPVariantLoader(
-					bigQueryClient,
+					bigQueryClient, opCtx,
 					f.BigQueryFlags.BigQueryProject,
 					f.BigQueryFlags.BigQueryDataset,
 					f.BigqueryJobsTable,
 					gcsClient,
 					config)
-				expectedVariants, err := jvs.LoadExpectedJobVariants(context.TODO())
+				expectedVariants, err := jvs.LoadExpectedJobVariants(ctx)
 				if err != nil {
 					return err
 				}

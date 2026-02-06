@@ -20,10 +20,12 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -1089,7 +1091,7 @@ func (s *Server) jsonReleasesReportFromDB(w http.ResponseWriter, req *http.Reque
 }
 
 func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Request) {
-	capabilities, err := api.GetTestCapabilitiesFromDB(s.bigQueryClient)
+	capabilities, err := api.GetTestCapabilitiesFromDB(req.Context(), s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying test capabilities")
 		failureResponse(w, http.StatusInternalServerError, "error querying test capabilities")
@@ -1100,7 +1102,7 @@ func (s *Server) jsonTestCapabilitiesFromDB(w http.ResponseWriter, req *http.Req
 }
 
 func (s *Server) jsonTestLifecyclesFromDB(w http.ResponseWriter, req *http.Request) {
-	lifecycles, err := api.GetTestLifecyclesFromDB(s.bigQueryClient)
+	lifecycles, err := api.GetTestLifecyclesFromDB(req.Context(), s.bigQueryClient)
 	if err != nil {
 		log.WithError(err).Error("error querying test lifecycles")
 		failureResponse(w, http.StatusInternalServerError, "error querying test lifecycles")
@@ -1394,7 +1396,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	}
 
 	logger.Infof("job run = %+v", *jobRun)
-	result, err := api.JobRunRiskAnalysis(s.db, s.bigQueryClient, jobRun, logger, false)
+	result, err := api.JobRunRiskAnalysis(req.Context(), s.db, s.bigQueryClient, jobRun, logger, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -2798,13 +2800,21 @@ func (s *Server) Serve() {
 
 func logRequestHandler(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
+		// add request context for any BQ queries that may be made
+		bqCtx := bqlabel.RequestContext{
+			User:    getUserForRequest(r),
+			IP:      getRequestorIP(r),
+			URIPath: r.URL.Path,
+		}
+		r = r.Clone(context.WithValue(r.Context(), sippybq.RequestContextKey, bqCtx))
+
 		start := time.Now()
 		h.ServeHTTP(w, r)
 		log.WithFields(log.Fields{
 			"uri":       r.URL.String(),
 			"method":    r.Method,
 			"elapsed":   time.Since(start),
-			"requestor": getRequestorIP(r),
+			"requestor": bqCtx.IP,
 		}).Info("responded to request")
 	}
 	return http.HandlerFunc(fn)

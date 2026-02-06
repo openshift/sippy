@@ -15,6 +15,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
 	"google.golang.org/api/iterator"
@@ -616,7 +617,7 @@ func GetVariantJiraMap(ctx context.Context, bqClient *bqclient.Client) (map[Vari
 	result := map[Variant]JiraComponent{}
 
 	queryString := "SELECT * FROM openshift-gce-devel.ci_analysis_us.variant_mapping_latest"
-	q := bqClient.BQ.Query(queryString)
+	q := bqClient.Query(ctx, bqlabel.VariantJiraMap, queryString)
 	it, err := q.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying variant mapping data from bigquery")

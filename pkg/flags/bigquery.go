@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/spf13/pflag"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -29,10 +30,14 @@ func (f *BigQueryFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.ReleasesTable, "bigquery-releases-table", f.ReleasesTable, "BigQuery table containing release information")
 }
 
-func (f *BigQueryFlags) GetBigQueryClient(ctx context.Context, cacheClient cache.Cache, googleServiceAccountCredentialFile string) (*bqcachedclient.Client, error) {
+func (f *BigQueryFlags) GetBigQueryClient(ctx context.Context, opCtx bqlabel.OperationalContext, cacheClient cache.Cache, googleServiceAccountCredentialFile string) (*bqcachedclient.Client, error) {
 	if googleServiceAccountCredentialFile == "" {
 		return nil, fmt.Errorf("service account required")
 	}
 
-	return bqcachedclient.New(ctx, googleServiceAccountCredentialFile, f.BigQueryProject, f.BigQueryDataset, cacheClient, f.ReleasesTable)
+	return bqcachedclient.New(
+		ctx, opCtx, cacheClient,
+		googleServiceAccountCredentialFile,
+		f.BigQueryProject, f.BigQueryDataset, f.ReleasesTable,
+	)
 }

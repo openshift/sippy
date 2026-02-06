@@ -5,27 +5,27 @@ import (
 	"fmt"
 	"time"
 
-	"cloud.google.com/go/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery"
 )
 
-func GetDisruptionVsPrevGAReportFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (apitype.DisruptionReport, []error) {
+func GetDisruptionVsPrevGAReportFromBigQuery(ctx context.Context, client *bigquery.Client) (apitype.DisruptionReport, []error) {
 	generator := disruptionReportGenerator{
-		client:   client.BQ,
+		client:   client,
 		ViewName: "BackendDisruptionPercentilesDeltaCurrentVsPrevGAV2",
 	}
 
 	return GetDataFromCacheOrGenerate[apitype.DisruptionReport](ctx, client.Cache, cache.RequestOptions{}, GetPrefixedCacheKey("", generator), generator.GenerateReport, apitype.DisruptionReport{})
 }
 
-func GetDisruptionVsTwoWeeksAgoReportFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (apitype.DisruptionReport, []error) {
+func GetDisruptionVsTwoWeeksAgoReportFromBigQuery(ctx context.Context, client *bigquery.Client) (apitype.DisruptionReport, []error) {
 	generator := disruptionReportGenerator{
-		client:   client.BQ,
+		client:   client,
 		ViewName: "BackendDisruptionPercentilesDeltaCurrentVs14DaysAgoV2",
 	}
 
@@ -55,7 +55,7 @@ func (c *disruptionReportGenerator) getDisruptionDeltasFromBigQuery(ctx context.
 						FROM openshift-ci-data-analysis.ci_data.%s
 						WHERE LookbackDays = 3`, c.ViewName)
 
-	query := c.client.Query(queryString)
+	query := c.client.Query(ctx, bqlabel.DisruptionDelta, queryString)
 	it, err := query.Read(ctx)
 	if err != nil {
 		log.WithError(err).Error("error querying disruption data from bigquery")

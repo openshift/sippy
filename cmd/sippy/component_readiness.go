@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	log "github.com/sirupsen/logrus"
@@ -138,8 +139,15 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 	var bigQueryClient *bigquery.Client
 	var gcsClient *storage.Client
 	if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
-		bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(),
-			cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
+		opCtx := bqlabel.OperationalContext{
+			App:         bqlabel.AppSippy,
+			Command:     "component-readiness",
+			Environment: bqlabel.EnvCli,
+		}
+		if os.Getenv("SIPPY_WEB_ENV") == string(bqlabel.EnvWebQE) {
+			opCtx.Environment = bqlabel.EnvWebQE
+		}
+		bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
 		if err != nil {
 			return errors.WithMessage(err, "couldn't get bigquery client")
 		}

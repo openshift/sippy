@@ -1,6 +1,7 @@
 package sippyserver
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -115,7 +116,7 @@ func TestAnalysisWorker(t *testing.T) {
 	}
 
 	prPendingComment := models.PullRequestComment{Org: "openshift", Repo: "origin", PullNumber: 29512, SHA: "8849ed78d4c51e2add729a68a2cbf8551c6d60c9", ProwJobRoot: "pr-logs/pull/29512/"} // PR constructed for testing new-test analysis
-	analysisWorker.determinePrComment(prPendingComment)
+	analysisWorker.determinePrComment(context.TODO(), prPendingComment)
 
 	pc := <-preparedComments
 	logrus.Infof("Pending comment: %+v", pc)
@@ -157,7 +158,7 @@ func TestRunCommentAnalysis(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			logrus.SetLevel(tc.logLevel)
-			analysisWorker.determinePrComment(tc.prCommentProspect)
+			analysisWorker.determinePrComment(context.TODO(), tc.prCommentProspect)
 
 			select {
 			case pc := <-preparedComments:
