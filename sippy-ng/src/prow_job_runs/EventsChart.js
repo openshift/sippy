@@ -21,6 +21,7 @@ import {
 } from '@mui/material'
 import { makeStyles } from '@mui/styles'
 import { Link as RouterLink, useParams } from 'react-router-dom'
+import { StringParam, useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
@@ -98,14 +99,23 @@ export default function EventsChart(props) {
   const [sortColumn, setSortColumn] = useState('firstTimestamp')
   const [sortDirection, setSortDirection] = useState('desc')
 
-  const [timeFrom, setTimeFrom] = useState('')
-  const [timeTo, setTimeTo] = useState('')
-  const [filterKind, setFilterKind] = useState('')
-  const [filterNamespace, setFilterNamespace] = useState('')
-  const [filterName, setFilterName] = useState('')
-  const [filterType, setFilterType] = useState('')
-  const [filterReason, setFilterReason] = useState('')
-  const [filterMessage, setFilterMessage] = useState('')
+  const [timeFrom = '', setTimeFrom] = useQueryParam('timeFrom', StringParam)
+  const [timeTo = '', setTimeTo] = useQueryParam('timeTo', StringParam)
+  const [filterKind = '', setFilterKind] = useQueryParam('kind', StringParam)
+  const [filterNamespace = '', setFilterNamespace] = useQueryParam(
+    'namespace',
+    StringParam
+  )
+  const [filterName = '', setFilterName] = useQueryParam('name', StringParam)
+  const [filterType = '', setFilterType] = useQueryParam('type', StringParam)
+  const [filterReason = '', setFilterReason] = useQueryParam(
+    'reason',
+    StringParam
+  )
+  const [filterMessage = '', setFilterMessage] = useQueryParam(
+    'message',
+    StringParam
+  )
 
   const fetchData = useCallback(() => {
     setFetchError('')
@@ -136,7 +146,7 @@ export default function EventsChart(props) {
           setAllEvents(json.items || [])
 
           const events = json.items || []
-          if (events.length > 0) {
+          if (events.length > 0 && !timeFrom && !timeTo) {
             const timestamps = events
               .map((e) => new Date(e.firstTimestamp))
               .filter((d) => !isNaN(d))
