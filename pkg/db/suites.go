@@ -70,6 +70,8 @@ var testSuites = []string{
 	"ServiceMesh-lp-interop",
 	"OpenshiftPipelines-lp-interop",
 	"tracing-uiplugin",
+	"COO-lp-interop",
+	"Compliance-lp-interop",
 }
 
 func populateTestSuitesInDB(db *gorm.DB) error {
