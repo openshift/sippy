@@ -644,7 +644,7 @@ func isHighRiskInOtherPRs(ctx context.Context, bqc *bigquery.Client, failedTest 
 		},
 		{
 			Name:  "PRNumber",
-			Value: pr.Number,
+			Value: fmt.Sprintf("%d", pr.Number),
 		},
 		{
 			Name:  "JobPattern",
