@@ -877,8 +877,13 @@ type JobAnalysisResult struct {
 }
 
 type TestOutput struct {
+	ProwJobURL string `json:"url"`
+	Output     string `json:"output"`
+	TestName   string `json:"test_name,omitempty"`
+}
+
+type TestOutputBigQuery struct {
 	ProwJobURL  string     `json:"url"`
-	GCSBucket   string     `json:"gcs_bucket,omitempty"`
 	Output      string     `json:"output"`
 	TestName    string     `json:"test_name,omitempty"`
 	Success     bool       `json:"success"`

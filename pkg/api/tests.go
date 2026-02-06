@@ -56,7 +56,7 @@ func GetTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filt
 	return query.TestOutputs(dbc, release, test, includedVariants, excludedVariants, quantity)
 }
 
-func GetTestRunsAndOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, testID string, prowJobRunIDs, prowJobNames []string, includeSuccess bool, startDate, endDate time.Time) ([]apitype.TestOutput, error) {
+func GetTestRunsAndOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, testID string, prowJobRunIDs, prowJobNames []string, includeSuccess bool, startDate, endDate time.Time) ([]apitype.TestOutputBigQuery, error) {
 	// Use component_mapping to resolve test_id to test_name/testsuite, which handles test renames.
 	// The test_id in junit may be stale (from before a rename), but component_mapping.id is canonical.
 	// We join on name/suite to find all junit rows for this test, regardless of when they were created.
@@ -146,7 +146,7 @@ LIMIT 500`
 		ProwJobStart   bigquery.NullDateTime `bigquery:"prowjob_start"`
 	}
 
-	var outputs []apitype.TestOutput
+	var outputs []apitype.TestOutputBigQuery
 	for {
 		var row testOutputRow
 		err := it.Next(&row)
@@ -158,7 +158,7 @@ LIMIT 500`
 			continue
 		}
 
-		output := apitype.TestOutput{
+		output := apitype.TestOutputBigQuery{
 			Output:      row.FailureContent,
 			TestName:    row.TestName,
 			Success:     row.Success,
