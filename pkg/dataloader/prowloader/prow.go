@@ -75,6 +75,7 @@ type ProwLoader struct {
 	config                  *v1config.SippyConfig
 	ghCommenter             *commenter.GitHubCommenter
 	jobsImportedCount       atomic.Int32
+	jobsProcessedCount      atomic.Int32
 	gcsClient               *storage.Client
 	promPusher              *push.Pusher
 }
@@ -114,9 +115,14 @@ func New(
 
 var clusterDataDateTimeName = regexp.MustCompile(`cluster-data_(?P<DATE>.*)-(?P<TIME>.*).json`)
 
-var prowLoaderMetricGauge = promauto.NewGauge(prometheus.GaugeOpts{
+var prowLoaderQueriedMetricGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "sippy_prow_jobs_loaded",
-	Help: "The number of jobs loaded",
+	Help: "The number of jobs loaded (queried)",
+})
+
+var prowLoaderProcessedMetricGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "sippy_prow_jobs_processed",
+	Help: "The number of jobs processed (new)",
 })
 
 type DateTimeName struct {
@@ -242,8 +248,10 @@ func (pl *ProwLoader) Load() {
 	log.Infof("finished importing new job runs in %+v", time.Since(start))
 
 	if pl.promPusher != nil {
-		prowLoaderMetricGauge.Set(float64(total))
-		pl.promPusher.Collector(prowLoaderMetricGauge)
+		prowLoaderQueriedMetricGauge.Set(float64(pl.jobsImportedCount.Load()))
+		pl.promPusher.Collector(prowLoaderQueriedMetricGauge)
+		prowLoaderProcessedMetricGauge.Set(float64(pl.jobsProcessedCount.Load()))
+		pl.promPusher.Collector(prowLoaderProcessedMetricGauge)
 	}
 }
 
@@ -855,6 +863,8 @@ func (pl *ProwLoader) prowJobToJobRun(ctx context.Context, pj *prow.ProwJob, rel
 	if err := pl.processGCSBucketJobRun(ctx, pj, id, path, junitMatches, dbProwJob); err != nil {
 		return err
 	}
+
+	pl.jobsProcessedCount.Add(1)
 	pjLog.Infof("processing complete")
 	return nil
 }
