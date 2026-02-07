@@ -57,32 +57,50 @@ func GetTestOutputsFromDB(dbc *db.DB, release, test string, filters *filter.Filt
 	return query.TestOutputs(dbc, release, test, includedVariants, excludedVariants, quantity)
 }
 
-func GetTestOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, storageBucket, testID string, prowJobRunIDs []string, startDate, endDate time.Time) ([]apitype.TestOutput, error) {
+func GetTestRunsAndOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.Client, testID string, prowJobRunIDs, prowJobNames []string, includeSuccess bool, startDate, endDate time.Time) ([]apitype.TestOutputBigQuery, error) {
 	// Use component_mapping to resolve test_id to test_name/testsuite, which handles test renames.
 	// The test_id in junit may be stale (from before a rename), but component_mapping.id is canonical.
 	// We join on name/suite to find all junit rows for this test, regardless of when they were created.
+	// We also join jobs to get prowjob_url, and prowjob_start.
 	queryStr := `WITH test_mapping AS (
   SELECT name, suite
   FROM ` + "`openshift-gce-devel.ci_analysis_us.component_mapping_latest`" + `
   WHERE id = @testID
 )
-SELECT junit.prowjob_build_id, junit.test_name, junit.success, junit.test_id, junit.branch, junit.prowjob_name, junit.failure_content
+SELECT junit.prowjob_build_id, junit.test_name, junit.success, junit.test_id, junit.branch, junit.prowjob_name, junit.failure_content,
+       jobs.prowjob_url, jobs.prowjob_start
 FROM ` + "`openshift-gce-devel.ci_analysis_us.junit`" + ` AS junit
 INNER JOIN test_mapping ON junit.test_name = test_mapping.name AND junit.testsuite = test_mapping.suite
-WHERE junit.success = false
-  AND junit.prowjob_build_id IN UNNEST(@prowJobRunIDs)
-  AND junit.modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)
-LIMIT 1000`
+INNER JOIN ` + "`openshift-gce-devel.ci_analysis_us.jobs`" + ` AS jobs ON junit.prowjob_build_id = jobs.prowjob_build_id
+WHERE junit.modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)`
+
+	// Add success filter unless includeSuccess is true
+	if !includeSuccess {
+		queryStr += `
+  AND junit.success = false`
+	}
+
+	// Add prow job run IDs filter if specified
+	if len(prowJobRunIDs) > 0 {
+		queryStr += `
+  AND junit.prowjob_build_id IN UNNEST(@prowJobRunIDs)`
+	}
+
+	// Add prow job names filter if specified
+	if len(prowJobNames) > 0 {
+		queryStr += `
+  AND junit.prowjob_name IN UNNEST(@prowJobNames)`
+	}
+
+	queryStr += `
+ORDER BY jobs.prowjob_start DESC
+LIMIT 500`
 
 	q := bigQueryClient.Query(ctx, bqlabel.TestOutputs, queryStr)
 	q.Parameters = []bigquery.QueryParameter{
 		{
 			Name:  "testID",
 			Value: testID,
-		},
-		{
-			Name:  "prowJobRunIDs",
-			Value: prowJobRunIDs,
 		},
 		{
 			Name:  "startDate",
@@ -92,6 +110,20 @@ LIMIT 1000`
 			Name:  "endDate",
 			Value: endDate,
 		},
+	}
+
+	if len(prowJobRunIDs) > 0 {
+		q.Parameters = append(q.Parameters, bigquery.QueryParameter{
+			Name:  "prowJobRunIDs",
+			Value: prowJobRunIDs,
+		})
+	}
+
+	if len(prowJobNames) > 0 {
+		q.Parameters = append(q.Parameters, bigquery.QueryParameter{
+			Name:  "prowJobNames",
+			Value: prowJobNames,
+		})
 	}
 
 	// Log the query with parameters substituted for easy copy-paste
@@ -104,16 +136,18 @@ LIMIT 1000`
 	}
 
 	type testOutputRow struct {
-		ProwJobBuildID string `bigquery:"prowjob_build_id"`
-		TestName       string `bigquery:"test_name"`
-		Success        bool   `bigquery:"success"`
-		TestID         string `bigquery:"test_id"`
-		Branch         string `bigquery:"branch"`
-		ProwJobName    string `bigquery:"prowjob_name"`
-		FailureContent string `bigquery:"failure_content"`
+		ProwJobBuildID string                `bigquery:"prowjob_build_id"`
+		TestName       string                `bigquery:"test_name"`
+		Success        bool                  `bigquery:"success"`
+		TestID         string                `bigquery:"test_id"`
+		Branch         string                `bigquery:"branch"`
+		ProwJobName    string                `bigquery:"prowjob_name"`
+		FailureContent string                `bigquery:"failure_content"`
+		ProwJobURL     bigquery.NullString   `bigquery:"prowjob_url"`
+		ProwJobStart   bigquery.NullDateTime `bigquery:"prowjob_start"`
 	}
 
-	var outputs []apitype.TestOutput
+	var outputs []apitype.TestOutputBigQuery
 	for {
 		var row testOutputRow
 		err := it.Next(&row)
@@ -125,14 +159,20 @@ LIMIT 1000`
 			continue
 		}
 
-		// Construct the URL to the test output
-		url := fmt.Sprintf("https://prow.ci.openshift.org/view/gs/%s/logs/%s/%s", storageBucket, row.ProwJobName, row.ProwJobBuildID)
-
-		outputs = append(outputs, apitype.TestOutput{
-			URL:      url,
-			Output:   row.FailureContent,
-			TestName: row.TestName,
-		})
+		output := apitype.TestOutputBigQuery{
+			Output:      row.FailureContent,
+			TestName:    row.TestName,
+			Success:     row.Success,
+			ProwJobName: row.ProwJobName,
+		}
+		if row.ProwJobURL.Valid {
+			output.ProwJobURL = row.ProwJobURL.StringVal
+		}
+		if row.ProwJobStart.Valid {
+			t := row.ProwJobStart.DateTime.In(time.UTC)
+			output.StartTime = &t
+		}
+		outputs = append(outputs, output)
 	}
 
 	return outputs, nil
