@@ -100,13 +100,16 @@ func NewServeCommand() *cobra.Command {
 			var gcsClient *storage.Client
 			if f.GoogleCloudFlags.ServiceAccountCredentialFile != "" {
 				opCtx := bqlabel.OperationalContext{
-					App:         bqlabel.AppSippy,
-					Command:     "serve",
+					App:     bqlabel.AppSippy,
+					Command: "serve",
+					// outside prod, defaults to CLI as env and USER env var as operator
 					Environment: bqlabel.EnvCli,
+					Operator:    os.Getenv("USER"),
 				}
-				env := bqlabel.EnvValue(os.Getenv("SIPPY_WEB_ENV"))
+				env := bqlabel.EnvValue(os.Getenv("SIPPY_WEB_ENV")) // set in prod
 				if slices.Contains([]bqlabel.EnvValue{bqlabel.EnvWeb, bqlabel.EnvWebAuth, bqlabel.EnvWebQE}, env) {
 					opCtx.Environment = env
+					opCtx.Operator = string(env)
 				}
 				bigQueryClient, err = f.BigQueryFlags.GetBigQueryClient(context.Background(), opCtx, cacheClient, f.GoogleCloudFlags.ServiceAccountCredentialFile)
 				if err != nil {
