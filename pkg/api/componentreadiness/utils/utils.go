@@ -49,7 +49,7 @@ func NormalizeProwJobName(prowName string) string {
 	prowName = regexp.MustCompile(`-f\d+`).ReplaceAllString(prowName, "-fXX")
 
 	// openshift/release migrated from master to main, normalize it
-	prowName = regexp.MustCompile(`openshift-release-master`).ReplaceAllString(prowName, "openshift-release-main")
+	prowName = regexp.MustCompile(`-master-`).ReplaceAllString(prowName, "-main-")
 
 	return prowName
 }
