@@ -143,9 +143,28 @@ func (x Context) ApplyLabels(query *bigquery.Query) {
 	}
 	if x.Operator == "" {
 		labels[KeyOperator] = os.Getenv("USER")
+		// by default USER envvar is empty in prod containers.
+		// it can be explicitly set in prod to serve as the default service operator here.
+		// or in a developer's environment it is usually set to their user by default.
 	}
 	if x.User == "" {
-		labels[KeyUser] = os.Getenv("USER")
+		/*	[lmeyer 2026-02-09]
+			The point of labeling "user" is to later answer the question "who requested all this data?"
+			* In the case where automation is running (marked by env vars set only in production pods),
+			  no external user initiated the request, so the automation itself is considered the requestor
+			  and recorded in the RequestContext.
+			* Where a developer is running the code at the command line or in a debugger, we can assume
+			  they are also responsible for the requests, so the USER env var is recorded as requestor.
+			* Where a web request is made, sippy-auth knows authenticated requestors and records them
+			  in the RequestContext.
+			* For web requests without auth, several options could make sense:
+			  * omit the user label entirely (disclaim knowledge of the requestor)
+			  * set an empty user label (include request in label filters but aggregate as "no requestor")
+			  * count operator as the user (when aggregating by user, at least distinguish the conduit)
+			  For now, while the last option seems least semantically correct, it also seems most likely
+			  to be helpful in providing context to determine what led to data usage.
+		*/
+		labels[KeyUser] = labels[KeyOperator]
 	}
 	if x.Host == "" {
 		labels[KeyHost] = os.Getenv("HOSTNAME")
