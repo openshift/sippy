@@ -134,7 +134,7 @@ func OpCtxForCronEnv(ctx context.Context, cmd string) (bqlabel.OperationalContex
 	}
 	if cronUser := os.Getenv("SIPPY_CRON_ENV"); cronUser != "" {
 		opCtx.Environment = bqlabel.EnvCron
-		opCtx.Operator = cronUser
+		opCtx.Operator = cronUser // left empty outside prod, defaulting to USER env var
 		ctx = context.WithValue(ctx, RequestContextKey, bqlabel.RequestContext{User: cronUser})
 	}
 	return opCtx, ctx
