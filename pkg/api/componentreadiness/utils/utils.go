@@ -48,6 +48,9 @@ func NormalizeProwJobName(prowName string) string {
 	// Some jobs encode frequency in their name, which can change
 	prowName = regexp.MustCompile(`-f\d+`).ReplaceAllString(prowName, "-fXX")
 
+	// openshift/release migrated from master to main, normalize it
+	prowName = regexp.MustCompile(`-master-`).ReplaceAllString(prowName, "-main-")
+
 	return prowName
 }
 

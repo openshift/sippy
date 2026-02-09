@@ -1658,18 +1658,23 @@ func Test_componentReportGenerator_normalizeProwJobName(t *testing.T) {
 	}{
 		{
 			name:    "release is removed",
-			jobName: "periodic-ci-openshift-release-master-ci-4.16-e2e-azure-ovn-upgrade",
-			want:    "periodic-ci-openshift-release-master-ci-X.X-e2e-azure-ovn-upgrade",
+			jobName: "periodic-ci-openshift-release-main-ci-4.16-e2e-azure-ovn-upgrade",
+			want:    "periodic-ci-openshift-release-main-ci-X.X-e2e-azure-ovn-upgrade",
 		},
 		{
 			name:    "not-quite-release is NOT removed",
-			jobName: "periodic-ci-openshift-release-master-ci-4.20-with-openssl3.2",
-			want:    "periodic-ci-openshift-release-master-ci-X.X-with-openssl3.2",
+			jobName: "periodic-ci-openshift-release-main-ci-4.20-with-openssl3.2",
+			want:    "periodic-ci-openshift-release-main-ci-X.X-with-openssl3.2",
 		},
 		{
 			name:    "frequency is removed",
-			jobName: "periodic-ci-openshift-release-master-ci-test-job-f27",
-			want:    "periodic-ci-openshift-release-master-ci-test-job-fXX",
+			jobName: "periodic-ci-openshift-release-main-ci-test-job-f27",
+			want:    "periodic-ci-openshift-release-main-ci-test-job-fXX",
+		},
+		{
+			name:    "master is converted to main",
+			jobName: "periodic-ci-openshift-release-master-ci-test-job",
+			want:    "periodic-ci-openshift-release-main-ci-test-job",
 		},
 	}
 	for _, tt := range tests {
