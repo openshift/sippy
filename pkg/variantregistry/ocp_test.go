@@ -1790,3 +1790,44 @@ func TestVariantsSnapshot(t *testing.T) {
 		t.Logf("\n****** Run `make update-variants` to update the snapshot and accept these changes.")
 	}
 }
+
+func TestNormalizeJobNameForVariants(t *testing.T) {
+	tests := []struct {
+		name     string
+		jobName  string
+		expected string
+	}{
+		{
+			name:     "openshift-release master to main",
+			jobName:  "periodic-ci-openshift-release-master-nightly-4.16-e2e-aws-ovn",
+			expected: "periodic-ci-openshift-release-main-nightly-4.16-e2e-aws-ovn",
+		},
+		{
+			name:     "openshift-release ci master to main",
+			jobName:  "periodic-ci-openshift-release-master-ci-4.16-e2e-azure-ovn-upgrade",
+			expected: "periodic-ci-openshift-release-main-ci-4.16-e2e-azure-ovn-upgrade",
+		},
+		{
+			name:     "non-openshift-release master unchanged",
+			jobName:  "periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-aws-ovn",
+			expected: "periodic-ci-openshift-multiarch-master-nightly-4.17-ocp-e2e-aws-ovn",
+		},
+		{
+			name:     "already main stays main",
+			jobName:  "periodic-ci-openshift-release-main-nightly-4.16-e2e-aws-ovn",
+			expected: "periodic-ci-openshift-release-main-nightly-4.16-e2e-aws-ovn",
+		},
+		{
+			name:     "other repos with master unchanged",
+			jobName:  "periodic-ci-openshift-hive-master-e2e-aws",
+			expected: "periodic-ci-openshift-hive-master-e2e-aws",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := normalizeJobNameForVariants(tt.jobName)
+			assert.Equal(t, tt.expected, result, "normalization failed for %s", tt.jobName)
+		})
+	}
+}

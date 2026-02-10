@@ -234,11 +234,15 @@ ORDER BY j.prowjob_job_name;
 						jLog.WithField("gcs_bucket", jlr.GCSBucket).WithField("url", jlr.URL.StringVal).Error("job had no gcs bucket or prow job url, proceeding without")
 					}
 
-					variants := v.CalculateVariantsForJob(jLog, jlr.JobName, clusterData)
+					normalizedJobName := normalizeJobNameForVariants(jlr.JobName)
+					variants := v.CalculateVariantsForJob(jLog, normalizedJobName, clusterData)
 					variantsByJobMu.Lock()
-					variantsByJob[jlr.JobName] = variants
+					variantsByJob[normalizedJobName] = variants
 					variantsByJobMu.Unlock()
 					count.Add(1)
+					if normalizedJobName != jlr.JobName {
+						jLog.WithField("original_name", jlr.JobName).WithField("normalized_name", normalizedJobName).Info("normalized job name")
+					}
 					jLog.WithField("variants", variants).WithField("count", count.Load()).Info("calculated variants")
 				}
 			}
@@ -250,6 +254,16 @@ ORDER BY j.prowjob_job_name;
 	log.WithField("count", count.Load()).Infof("processed primary job list in %s", dur)
 
 	return variantsByJob, nil
+}
+
+// normalizeJobNameForVariants normalizes job names to handle transitions like master -> main.
+// This ensures that jobs renamed from master to main are treated as the same job in the variant registry.
+// Currently only applies to openshift/release jobs.
+func normalizeJobNameForVariants(jobName string) string {
+	if strings.Contains(jobName, "openshift-release") {
+		return strings.ReplaceAll(jobName, "-master-", "-main-")
+	}
+	return jobName
 }
 
 // fileVariantsToIgnore are values in the cluster-data.json that vary by run, and are not consistent for the job itself.
