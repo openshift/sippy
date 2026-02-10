@@ -889,6 +889,7 @@ type TestOutputBigQuery struct {
 	Success     bool       `json:"success"`
 	ProwJobName string     `json:"prowjob_name,omitempty"`
 	StartTime   *time.Time `json:"start_time,omitempty"`
+	FailedTests int        `json:"failed_tests"`
 }
 
 type ReleaseDates struct {
