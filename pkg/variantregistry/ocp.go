@@ -161,12 +161,13 @@ ORDER BY j.prowjob_job_name;
 	}
 
 	var (
-		wg              sync.WaitGroup
-		parallelism     = 20
-		jobCh           = make(chan *prowJobLastRun)
-		count           atomic.Int64
-		variantsByJobMu sync.Mutex
-		variantsByJob   = make(map[string]map[string]string)
+		wg                  sync.WaitGroup
+		parallelism         = 20
+		jobCh               = make(chan *prowJobLastRun)
+		count               atomic.Int64
+		variantsByJobMu     sync.Mutex
+		variantsByJob       = make(map[string]map[string]string)
+		variantsByJobSource = make(map[string]string) // tracks which original job name was used
 	)
 
 	// Producer
@@ -236,9 +237,33 @@ ORDER BY j.prowjob_job_name;
 
 					normalizedJobName := normalizeJobNameForVariants(jlr.JobName)
 					variants := v.CalculateVariantsForJob(jLog, normalizedJobName, clusterData)
+
+					// Handle collision resolution when multiple job names normalize to the same key.
+					// This is temporary transition logic for the openshift-release master->main rename.
+					// TODO(sgoeddel): Remove this collision handling logic after confirming no master jobs exist
+					// in query results (master jobs fully aged out).
 					variantsByJobMu.Lock()
-					variantsByJob[normalizedJobName] = variants
+					existingSource := variantsByJobSource[normalizedJobName]
+					shouldUpdate := false
+
+					if existingSource == "" {
+						// No existing entry, always insert
+						shouldUpdate = true
+					} else if strings.Contains(existingSource, "-master-") && strings.Contains(jlr.JobName, "-main-") {
+						// Prefer main over master for deterministic collision resolution
+						shouldUpdate = true
+						jLog.WithField("existing_source", existingSource).WithField("new_source", jlr.JobName).Info("replacing master variant with main variant")
+					} else {
+						// Keep existing entry (either main already exists, or both are master/main, first wins)
+						jLog.WithField("existing_source", existingSource).WithField("new_source", jlr.JobName).Debug("keeping existing variant, skipping duplicate")
+					}
+
+					if shouldUpdate {
+						variantsByJob[normalizedJobName] = variants
+						variantsByJobSource[normalizedJobName] = jlr.JobName
+					}
 					variantsByJobMu.Unlock()
+
 					count.Add(1)
 					if normalizedJobName != jlr.JobName {
 						jLog.WithField("original_name", jlr.JobName).WithField("normalized_name", normalizedJobName).Info("normalized job name")
@@ -260,8 +285,9 @@ ORDER BY j.prowjob_job_name;
 // This ensures that jobs renamed from master to main are treated as the same job in the variant registry.
 // Currently only applies to openshift/release jobs.
 func normalizeJobNameForVariants(jobName string) string {
-	if strings.Contains(jobName, "openshift-release") {
-		return strings.ReplaceAll(jobName, "-master-", "-main-")
+	// Only normalize openshift-release jobs, using Replace (not ReplaceAll) to change only the first occurrence
+	if strings.Contains(jobName, "openshift-release-master") {
+		return strings.Replace(jobName, "-master-", "-main-", 1)
 	}
 	return jobName
 }
