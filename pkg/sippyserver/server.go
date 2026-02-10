@@ -749,9 +749,9 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
-func (s *Server) jsonTestOutputsFromBigQuery(w http.ResponseWriter, req *http.Request) {
+func (s *Server) jsonTestRunsAndOutputsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
-		failureResponse(w, http.StatusBadRequest, "test outputs v2 API is only available when google-service-account-credential-file is configured")
+		failureResponse(w, http.StatusBadRequest, "test runs API is only available when google-service-account-credential-file is configured")
 		return
 	}
 
@@ -761,14 +761,21 @@ func (s *Server) jsonTestOutputsFromBigQuery(w http.ResponseWriter, req *http.Re
 		return
 	}
 
-	prowJobRunIDs := param.SafeRead(req, "prow_job_run_ids")
-	if prowJobRunIDs == "" {
-		failureResponse(w, http.StatusBadRequest, "prow_job_run_ids parameter is required")
-		return
+	// Parse optional comma-separated prow job run IDs
+	var prowJobRunIDList []string
+	if prowJobRunIDs := param.SafeRead(req, "prow_job_run_ids"); prowJobRunIDs != "" {
+		prowJobRunIDList = strings.Split(prowJobRunIDs, ",")
 	}
 
-	// Parse the comma-separated prow job run IDs
-	prowJobRunIDList := strings.Split(prowJobRunIDs, ",")
+	// Parse optional multi-valued prowjob_name parameter
+	prowJobNames := req.URL.Query()["prowjob_name"]
+
+	// Parse include_success parameter (defaults to false)
+	includeSuccess, err := param.ReadBool(req, "include_success", false)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	// Parse date parameters with defaults
 	var startDate, endDate time.Time
@@ -801,10 +808,10 @@ func (s *Server) jsonTestOutputsFromBigQuery(w http.ResponseWriter, req *http.Re
 		return
 	}
 
-	outputs, err := api.GetTestOutputsFromBigQuery(req.Context(), s.bigQueryClient, s.gcsBucket, testID, prowJobRunIDList, startDate, endDate)
+	outputs, err := api.GetTestRunsAndOutputsFromBigQuery(req.Context(), s.bigQueryClient, testID, prowJobRunIDList, prowJobNames, includeSuccess, startDate, endDate)
 	if err != nil {
-		log.WithError(err).Error("error querying test outputs from bigquery")
-		failureResponse(w, http.StatusInternalServerError, "error querying test outputs from bigquery")
+		log.WithError(err).Error("error querying test runs from bigquery")
+		failureResponse(w, http.StatusInternalServerError, "error querying test runs from bigquery")
 		return
 	}
 
@@ -2417,11 +2424,11 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonTestOutputsFromDB,
 		},
 		{
-			EndpointPath:      "/api/tests/v2/outputs",
-			Description:       "Outputs of tests from BigQuery",
+			EndpointPath:      "/api/tests/v2/runs",
+			Description:       "Test runs from BigQuery with optional filtering by prow job run IDs and job names",
 			Capabilities:      []string{ComponentReadinessCapability},
 			CacheTime:         1 * time.Hour,
-			HandlerFunc:       s.jsonTestOutputsFromBigQuery,
+			HandlerFunc:       s.jsonTestRunsAndOutputsFromBigQuery,
 			RateLimitRequests: 25,
 			RateLimitPeriod:   1 * time.Hour,
 		},
