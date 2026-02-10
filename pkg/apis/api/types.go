@@ -612,6 +612,7 @@ func (test Test) GetArrayValue(param string) ([]string, error) {
 // of this struct is suitable for use in a data table.
 type TestBQ struct {
 	ID        int            `json:"id,omitempty" bigquery:"id"`
+	TestID    string         `json:"test_id" bigquery:"test_id"`
 	Name      string         `json:"name" bigquery:"name"`
 	SuiteName string         `json:"suite_name" bigquery:"suite_name"`
 	Variant   string         `json:"variant,omitempty" bigquery:"variant"`

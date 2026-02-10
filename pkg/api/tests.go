@@ -558,25 +558,28 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 	if collapse {
 		candidateQueryStr = fmt.Sprintf(`WITH group_stats AS (
 		SELECT
-			name,
-			jira_component,
-			jira_component_id,
-			release,
+			cm.id as test_id,
+			junit.name,
+			junit.jira_component,
+			junit.jira_component_id,
+			junit.release,
 			%s
 		FROM %s.%s junit
+		INNER JOIN %s.component_mapping_latest cm ON junit.name = cm.name AND junit.testsuite = cm.suite
 		%s
-		GROUP BY name, jira_component, jira_component_id, release
+		GROUP BY cm.id, junit.name, junit.jira_component, junit.jira_component_id, junit.release
 	),
 	candidate_query AS (
 		SELECT
 			ROW_NUMBER() OVER() as id,
+			test_id,
 			name,
 			jira_component,
 			jira_component_id,
 			%s
 		FROM group_stats
 	)
-	`, query.QueryTestSummer, bqc.Dataset, table, whereStr, query.QueryTestSummarizer)
+	`, query.QueryTestSummer, bqc.Dataset, table, bqc.Dataset, whereStr, query.QueryTestSummarizer)
 	} else {
 		if processedFilter != nil && len(processedFilter.Items) > 0 {
 			filterResult := processedFilter.ToBQStr(apitype.Test{}, &paramIndex)
@@ -600,12 +603,13 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 	unfiltered_candidate_query AS (
 		SELECT
 			ROW_NUMBER() OVER() as id,
-			name,
-			jira_component,
-			jira_component_id,
-			testsuite as suite_name,
-			variants,
-			release,
+			cm.id as test_id,
+			junit.name,
+			junit.jira_component,
+			junit.jira_component_id,
+			junit.testsuite as suite_name,
+			junit.variants,
+			junit.release,
 			(current_working_percentage - working_average) as delta_from_working_average,
 			working_average,
 			working_standard_deviation,
@@ -617,14 +621,15 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 			flake_standard_deviation,
 			%s
 		FROM %s.%s junit
-		JOIN test_stats as stats ON stats.test_id = junit.test_id AND stats.stats_suite_name IS NOT DISTINCT FROM junit.testsuite),
+		JOIN test_stats as stats ON stats.test_id = junit.test_id AND stats.stats_suite_name IS NOT DISTINCT FROM junit.testsuite
+		INNER JOIN %s.component_mapping_latest cm ON junit.name = cm.name AND junit.testsuite = cm.suite),
 	candidate_query AS (
 		SELECT
 			*
 		FROM
 			unfiltered_candidate_query
 		%s
-	)`, bqc.Dataset, table, query.QueryTestSummarizer, bqc.Dataset, table, whereStr)
+	)`, bqc.Dataset, table, query.QueryTestSummarizer, bqc.Dataset, table, bqc.Dataset, whereStr)
 	}
 
 	queryStr := fmt.Sprintf(`%s
