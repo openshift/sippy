@@ -558,16 +558,16 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 	if collapse {
 		candidateQueryStr = fmt.Sprintf(`WITH group_stats AS (
 		SELECT
-			cm.id as test_id,
-			junit.name,
-			junit.jira_component,
-			junit.jira_component_id,
-			junit.release,
+			cm.cm_id as test_id,
+			name,
+			jira_component,
+			jira_component_id,
+			release,
 			%s
 		FROM %s.%s junit
-		INNER JOIN %s.component_mapping_latest cm ON junit.name = cm.name AND junit.testsuite = cm.suite
+		INNER JOIN (SELECT id AS cm_id, name AS cm_name, suite AS cm_suite FROM %s.component_mapping_latest) cm ON junit.name = cm.cm_name AND junit.testsuite = cm.cm_suite
 		%s
-		GROUP BY cm.id, junit.name, junit.jira_component, junit.jira_component_id, junit.release
+		GROUP BY cm.cm_id, name, jira_component, jira_component_id, release
 	),
 	candidate_query AS (
 		SELECT
@@ -603,13 +603,13 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 	unfiltered_candidate_query AS (
 		SELECT
 			ROW_NUMBER() OVER() as id,
-			cm.id as test_id,
-			junit.name,
-			junit.jira_component,
-			junit.jira_component_id,
-			junit.testsuite as suite_name,
-			junit.variants,
-			junit.release,
+			cm.cm_id as test_id,
+			name,
+			jira_component,
+			jira_component_id,
+			testsuite as suite_name,
+			variants,
+			release,
 			(current_working_percentage - working_average) as delta_from_working_average,
 			working_average,
 			working_standard_deviation,
@@ -622,7 +622,7 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 			%s
 		FROM %s.%s junit
 		JOIN test_stats as stats ON stats.test_id = junit.test_id AND stats.stats_suite_name IS NOT DISTINCT FROM junit.testsuite
-		INNER JOIN %s.component_mapping_latest cm ON junit.name = cm.name AND junit.testsuite = cm.suite),
+		INNER JOIN (SELECT id AS cm_id, name AS cm_name, suite AS cm_suite FROM %s.component_mapping_latest) cm ON junit.name = cm.cm_name AND junit.testsuite = cm.cm_suite),
 	candidate_query AS (
 		SELECT
 			*
