@@ -39,7 +39,7 @@ func (okd *OKDProject) GetName() string {
 }
 
 func (okd *OKDProject) GetStreams() []string {
-	return []string{"okd-scos"}
+	return []string{"okd-scos", "okd-scos-nightly"}
 }
 
 func (okd *OKDProject) GetRcDomain(architecture string) (domain string) {
