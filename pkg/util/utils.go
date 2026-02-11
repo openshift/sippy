@@ -29,6 +29,15 @@ func StrSliceContains(strSlice []string, elem string) bool {
 	return false
 }
 
+func StrSliceContainsEither(strSlice []string, elem1, elem2 string) bool {
+	for _, s := range strSlice {
+		if s == elem1 || s == elem2 {
+			return true
+		}
+	}
+	return false
+}
+
 // PeriodToDates takes a period name such as twoDay or default, and
 // converts to start, boundary, and end times.
 func PeriodToDates(period string, reportEnd time.Time) (start, boundary, end time.Time) {
