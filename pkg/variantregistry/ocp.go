@@ -751,16 +751,20 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 	// Determine job tier from release configuration
 	release := variants[VariantRelease]
+
+	// after the master -> main branch renaming in release we don't have the master job names in our config any longer
+	// use the 'main' name to determine JobTier
+	mainJobName := strings.Replace(jobName, "-master-", "-main-", -1)
+
 	switch {
-	case util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName):
+	case util.StrSliceContains(v.config.Releases[release].BlockingJobs, jobName), util.StrSliceContains(v.config.Releases[release].BlockingJobs, mainJobName):
 		variants[VariantJobTier] = "blocking"
-	case util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName):
+	case util.StrSliceContains(v.config.Releases[release].InformingJobs, jobName), util.StrSliceContains(v.config.Releases[release].InformingJobs, mainJobName):
 		variants[VariantJobTier] = "informing"
-	case release == "Presubmits", v.config.Releases[release].Jobs[jobName]:
+	case release == "Presubmits", v.config.Releases[release].Jobs[jobName], release == "Presubmits", v.config.Releases[release].Jobs[mainJobName]:
 		variants[VariantJobTier] = "standard"
 	default:
 		variants[VariantJobTier] = "candidate"
-
 	}
 }
 
