@@ -131,7 +131,7 @@ export default function RegressedTestsModal({
           )}
           <RegressedTestsTabPanel activeIndex={activeTab} index={3}>
             <RegressedTestsPanel
-              regressedTests={allRegressedTests[view] || []}
+              regressedTests={allRegressedTests?.[view] || []}
               setTriageActionTaken={setTriageActionTaken}
               filterVals={filterVals}
             />
