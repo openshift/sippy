@@ -178,10 +178,39 @@ sequenceDiagram
 ### Configuration
 **File:** `pkg/flags/bigquery.go:27-31`
 
-**Settings:**
+**Primary BigQuery Project:**
 - **Project:** `openshift-gce-devel` (configurable via `--bigquery-project`)
-- **Dataset:** `ci_analysis_us` (configurable via `--bigquery-dataset`)
-- **Releases Table:** `openshift-ci-data-analysis.ci_data.Releases` (configurable via `--bigquery-releases-table`)
+- **Datasets:**
+  - `ci_analysis_us` (default, OCP Engineering CI data)
+  - `ci_analysis_qe` (QE CI data, used by QE Component Readiness)
+
+**Releases Table (Different Project):**
+- **Table:** `openshift-ci-data-analysis.ci_data.Releases`
+- **Project:** `openshift-ci-data-analysis` (different from main project)
+- **Dataset:** `ci_data` (contains release metadata)
+
+**BigQuery Architecture:**
+
+Component Readiness queries data from **two different BigQuery projects**:
+
+1. **`openshift-gce-devel`** (Sippy's main project)
+   - `ci_analysis_us` dataset - OCP Engineering CI test results (junit, jobs, job_variants, component_mapping, job_labels)
+   - `ci_analysis_qe` dataset - QE CI test results (same schema)
+   - Used by: Component Readiness API, cache-primer, variant-registry-sync, fetchdata
+
+2. **`openshift-ci-data-analysis`** (job-run-aggregator's project)
+   - `ci_data` dataset - Raw CI job data ingested from GCS (jobs, junit, disruptions, alerts, Releases)
+   - Used by: job-table-updater, disruption-uploader, alert-uploader
+   - Sippy only queries the `Releases` table from this project
+
+**Data Flow Between Projects:**
+```
+GCS Artifacts → job-run-aggregator → openshift-ci-data-analysis.ci_data
+                                     ↓
+                          fetchdata copies to → openshift-gce-devel.ci_analysis_us
+                                                 ↓
+                                        Component Readiness queries
+```
 
 ---
 
@@ -677,6 +706,20 @@ The component readiness system relies on several automated data loading jobs tha
 4. **Cache Warming** → Redis (via cache-primer)
 5. **Regression Tracking** → PostgreSQL (via regression-tracker)
 
+**BigQuery Projects & Datasets Used:**
+
+| Job | BigQuery Project | Dataset(s) | Tables |
+|-----|------------------|------------|--------|
+| job-table-updater | `openshift-ci-data-analysis` | `ci_data` | jobs, junit |
+| disruption-uploader | `openshift-ci-data-analysis` | `ci_data` | disruptions |
+| alert-uploader | `openshift-ci-data-analysis` | `ci_data` | alerts |
+| ci-test-mapping | `openshift-gce-devel` | `ci_analysis_us` | component_mapping |
+| variant-registry-sync | `openshift-gce-devel` | `ci_analysis_us`, `ci_analysis_qe` | job_variants |
+| fetchdata | `openshift-gce-devel` | `ci_analysis_us` | (writes to PostgreSQL) |
+| cache-primer | `openshift-gce-devel` | `ci_analysis_us` | junit, jobs, job_variants, component_mapping |
+| Component Readiness API | `openshift-gce-devel` | `ci_analysis_us` or `ci_analysis_qe` | junit, jobs, job_variants, component_mapping, job_labels |
+| Release metadata | `openshift-ci-data-analysis` | `ci_data` | Releases |
+
 ---
 
 ### Job 1: `fetchdata`
@@ -777,8 +820,8 @@ sippy load --loader job-variants --bigquery-dataset ci_analysis_qe \
 ```
 
 **Data Sources:**
-- **From:** BigQuery `jobs` table, variant configuration in `config/openshift.yaml`
-- **To:** BigQuery `job_variants` table
+- **From:** BigQuery `openshift-gce-devel.ci_analysis_us.jobs` and `openshift-gce-devel.ci_analysis_qe.jobs` tables, variant configuration in `config/openshift.yaml`
+- **To:** BigQuery `openshift-gce-devel.ci_analysis_us.job_variants` and `openshift-gce-devel.ci_analysis_qe.job_variants` tables
 
 **Purpose:**
 - Analyzes job names to extract variant information (Platform, Architecture, Network, etc.)
@@ -920,7 +963,7 @@ job-run-aggregator prime-job-table \
 
 **Data Sources:**
 - **From:** GCS (Prow job artifacts in gs://origin-ci-test, gs://test-platform-results)
-- **To:** BigQuery `ci_data.jobs` table
+- **To:** BigQuery `openshift-ci-data-analysis.ci_data.jobs` table (note: different project than Sippy queries)
 
 **Purpose:**
 - Primary data ingestion job for CI job metadata
@@ -954,7 +997,7 @@ job-run-aggregator upload-disruptions \
 
 **Data Sources:**
 - **From:** GCS (Prow job artifacts - disruption JSON files)
-- **To:** BigQuery `ci_data.disruptions` table
+- **To:** BigQuery `openshift-ci-data-analysis.ci_data.disruptions` table
 
 **Purpose:**
 - Uploads API server disruption data from e2e tests
@@ -988,7 +1031,7 @@ job-run-aggregator upload-alerts \
 
 **Data Sources:**
 - **From:** GCS (Prow job artifacts - alert JSON files)
-- **To:** BigQuery `ci_data.alerts` table
+- **To:** BigQuery `openshift-ci-data-analysis.ci_data.alerts` table
 
 **Purpose:**
 - Uploads Prometheus alerts fired during test runs
