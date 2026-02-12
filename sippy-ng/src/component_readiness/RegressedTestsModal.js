@@ -1,4 +1,5 @@
 import { Box, Button, Grid, Tab, Tabs, Typography } from '@mui/material'
+import { CompReadyVarsContext } from './CompReadyVars'
 import {
   NumberParam,
   StringParam,
@@ -7,7 +8,7 @@ import {
 } from 'use-query-params'
 import Dialog from '@mui/material/Dialog'
 import PropTypes from 'prop-types'
-import React, { Fragment } from 'react'
+import React, { Fragment, useContext } from 'react'
 import RegressedTestsPanel from './RegressedTestsPanel'
 import TriagedTestsPanel from './TriagedTestsPanel'
 
@@ -52,6 +53,7 @@ export default function RegressedTestsModal({
   isOpen,
   close,
 }) {
+  const { view } = useContext(CompReadyVarsContext)
   const [activeTab = 0, setActiveTab] = useQueryParam(
     'regressedModalTab',
     NumberParam,
@@ -129,7 +131,7 @@ export default function RegressedTestsModal({
           )}
           <RegressedTestsTabPanel activeIndex={activeTab} index={3}>
             <RegressedTestsPanel
-              regressedTests={allRegressedTests}
+              regressedTests={allRegressedTests?.[view] || []}
               setTriageActionTaken={setTriageActionTaken}
               filterVals={filterVals}
             />
