@@ -72,9 +72,9 @@ func GetTestRunsAndOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.C
 		filterStr += `
   AND junit.prowjob_build_id IN UNNEST(@prowJobRunIDs)`
 	}
-	if len(prowJobNames) > 0 {
-		filterStr += `
-  AND junit.prowjob_name IN UNNEST(@prowJobNames)`
+	for i := range prowJobNames {
+		filterStr += fmt.Sprintf(`
+  AND LOWER(junit.prowjob_name) LIKE CONCAT('%%', LOWER(@prowJobName%d), '%%')`, i)
 	}
 
 	queryStr := `WITH test_mapping AS (
@@ -145,10 +145,10 @@ LIMIT 500`
 		})
 	}
 
-	if len(prowJobNames) > 0 {
+	for i, name := range prowJobNames {
 		q.Parameters = append(q.Parameters, bigquery.QueryParameter{
-			Name:  "prowJobNames",
-			Value: prowJobNames,
+			Name:  fmt.Sprintf("prowJobName%d", i),
+			Value: name,
 		})
 	}
 
