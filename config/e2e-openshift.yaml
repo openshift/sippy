@@ -1,8 +1,8 @@
 prow:
   url: https://prow.ci.openshift.org/prowjobs.js
 releases:
-  "4.14":
+  "4.20":
     jobs:
-      periodic-ci-openshift-release-master-nightly-4.14-e2e-aws-sdn-serial: true
-      periodic-ci-openshift-release-master-ci-4.14-e2e-azure-ovn-upgrade: true
-      periodic-ci-openshift-release-master-nightly-4.14-e2e-gcp-sdn: true
+      periodic-ci-openshift-release-master-nightly-4.20-e2e-aws-ovn-serial-2of2: true
+      periodic-ci-openshift-release-main-ci-4.20-e2e-azure-ovn-upgrade: true
+      periodic-ci-openshift-release-master-nightly-4.20-e2e-gcp-ovn-csi: true

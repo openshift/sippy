@@ -243,7 +243,7 @@ spec:
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy load --init-database --log-level=debug --release 4.14 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --redis-url=redis://redis.sippy-e2e.svc.cluster.local:6379 --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
+          - /bin/sippy load --init-database --log-level=debug --release 4.20 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --redis-url=redis://redis.sippy-e2e.svc.cluster.local:6379 --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
         env:
         - name: GCS_SA_JSON_PATH
           value: /tmp/secrets/gcs-cred
