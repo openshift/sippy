@@ -84,19 +84,22 @@ type Test struct {
 // ProwJobRunTest defines a join table linking tests to the job runs they execute in, along with the status for
 // that execution.
 // Do not update until after partitions have been enabled
+// Remove gorm.model on Partitioned tables so we can manage the primary key and index
 type ProwJobRunTest struct {
-	gorm.Model
-	ProwJobRunID uint `gorm:"index"`
+	ID        uint      `gorm:"primaryKey;autoIncrement"`
+	CreatedAt time.Time `gorm:"primaryKey;index"`
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt
+
+	ProwJobRunID uint `gorm:"index;index:idx_pjrt_run_test_status,priority:1"`
 	ProwJobRun   ProwJobRun
 	TestID       uint `gorm:"index;index:idx_prow_job_run_tests_test_id_status"`
 	Test         Test
 	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
-	SuiteID   *uint `gorm:"index"`
-	Suite     Suite
-	Status    int `gorm:"index;index:idx_prow_job_run_tests_test_id_status"`
-	Duration  float64
-	CreatedAt time.Time `gorm:"index"`
-	DeletedAt gorm.DeletedAt
+	SuiteID  *uint `gorm:"index"`
+	Suite    Suite
+	Status   int `gorm:"index;index:idx_prow_job_run_tests_test_id_status;index:idx_pjrt_run_test_status,priority:3"`
+	Duration float64
 
 	// ProwJobRunTestOutput collect the output of a failed test run. This is stored as a separate object in the DB, so
 	// we can keep the test result for a longer period of time than we keep the full failure output.
@@ -104,8 +107,13 @@ type ProwJobRunTest struct {
 }
 
 // Do not update until after partitions have been enabled
+// Remove gorm.model on Partitioned tables so we can manage the primary key and index
 type ProwJobRunTestOutput struct {
-	gorm.Model
+	ID        uint      `gorm:"primaryKey;autoIncrement"`
+	CreatedAt time.Time `gorm:"primaryKey"`
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt
+
 	ProwJobRunTestID uint `gorm:"index"`
 	// Output stores the output of a ProwJobRunTest.
 	Output string

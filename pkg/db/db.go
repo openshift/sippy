@@ -109,9 +109,26 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		}
 	}
 
-	// TODO(fbabcock): Add support for migrating partitioned table
-	// &models.ProwJobRunTest{},
-	// &models.ProwJobRunTestOutput{},
+	// handle partitioned model management outside of gorm
+	partitionedModelsToMigrate := []struct {
+		model     interface{}
+		tableName string
+	}{
+		{
+			model:     &models.ProwJobRunTest{},
+			tableName: "prow_job_run_tests",
+		},
+		{
+			model:     &models.ProwJobRunTestOutput{},
+			tableName: "prow_job_run_tests_outputs",
+		},
+	}
+
+	for _, partitionedModel := range partitionedModelsToMigrate {
+		if _, err := d.UpdatePartitionedTable(partitionedModel.model, partitionedModel.tableName, false, false); err != nil {
+			return err
+		}
+	}
 
 	if err := createAuditLogIndexes(d.DB); err != nil {
 		return err
@@ -125,6 +142,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	// TODO(fbabcock): migrate this to UpdatePartitionedTable
 	if err := syncPartitionedTables(d.DB); err != nil {
 		return err
 	}
