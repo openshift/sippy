@@ -59,7 +59,7 @@ go build -mod vendor ./cmd/sippy
 ./sippy seed-data  \
   --init-database \
   --database-dsn="$SIPPY_E2E_DSN" \
-  --release="4.14"
+  --release="4.20"
 
 # Spawn sippy server off into a separate process:
 export SIPPY_API_PORT="18080"
