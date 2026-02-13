@@ -767,7 +767,7 @@ func (s *Server) jsonTestRunsAndOutputsFromBigQuery(w http.ResponseWriter, req *
 		prowJobRunIDList = strings.Split(prowJobRunIDs, ",")
 	}
 
-	// Parse optional multi-valued prowjob_name parameter
+	// Parse optional multi-valued prowjob_name parameter. Substring matching.
 	prowJobNames := req.URL.Query()["prowjob_name"]
 
 	// Parse include_success parameter (defaults to false)

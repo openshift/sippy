@@ -62,37 +62,63 @@ func GetTestRunsAndOutputsFromBigQuery(ctx context.Context, bigQueryClient *bq.C
 	// The test_id in junit may be stale (from before a rename), but component_mapping.id is canonical.
 	// We join on name/suite to find all junit rows for this test, regardless of when they were created.
 	// We also join jobs to get prowjob_url, and prowjob_start.
+	// Build optional filter clauses used by both the matching_runs CTE and main query.
+	filterStr := ""
+	if !includeSuccess {
+		filterStr += `
+  AND junit.success = false`
+	}
+	if len(prowJobRunIDs) > 0 {
+		filterStr += `
+  AND junit.prowjob_build_id IN UNNEST(@prowJobRunIDs)`
+	}
+	for i := range prowJobNames {
+		filterStr += fmt.Sprintf(`
+  AND LOWER(junit.prowjob_name) LIKE CONCAT('%%', LOWER(@prowJobName%d), '%%')`, i)
+	}
+
 	queryStr := `WITH test_mapping AS (
   SELECT name, suite
   FROM ` + "`openshift-gce-devel.ci_analysis_us.component_mapping_latest`" + `
   WHERE id = @testID
+),
+matching_runs AS (
+  SELECT DISTINCT junit.prowjob_build_id
+  FROM ` + "`openshift-gce-devel.ci_analysis_us.junit`" + ` AS junit
+  INNER JOIN test_mapping ON junit.test_name = test_mapping.name AND junit.testsuite = test_mapping.suite
+  INNER JOIN ` + "`openshift-gce-devel.ci_analysis_us.jobs`" + ` AS jobs ON junit.prowjob_build_id = jobs.prowjob_build_id
+  WHERE junit.modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)
+    AND jobs.prowjob_job_name NOT LIKE '%aggregat%'` + filterStr + `
+),
+failed_test_counts AS (
+  SELECT prowjob_build_id,
+    COUNTIF(adjusted_success_val = 0 AND adjusted_flake_count = 0) AS failed_tests
+  FROM (
+    SELECT d.prowjob_build_id,
+      ROW_NUMBER() OVER(PARTITION BY d.prowjob_build_id, d.file_path, d.test_name, d.testsuite ORDER BY
+        CASE
+          WHEN d.flake_count > 0 THEN 0
+          WHEN d.success_val > 0 THEN 1
+          ELSE 2
+        END) AS row_num,
+      CASE WHEN d.flake_count > 0 THEN 0 ELSE d.success_val END AS adjusted_success_val,
+      CASE WHEN d.flake_count > 0 THEN 1 ELSE 0 END AS adjusted_flake_count
+    FROM ` + "`openshift-gce-devel.ci_analysis_us.junit`" + ` d
+    INNER JOIN matching_runs mr ON d.prowjob_build_id = mr.prowjob_build_id
+    WHERE d.modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)
+      AND d.skipped = false
+  ) deduped
+  WHERE deduped.row_num = 1
+  GROUP BY prowjob_build_id
 )
 SELECT junit.prowjob_build_id, junit.test_name, junit.success, junit.test_id, junit.branch, junit.prowjob_name, junit.failure_content,
-       jobs.prowjob_url, jobs.prowjob_start
+       jobs.prowjob_url, jobs.prowjob_start, COALESCE(ftc.failed_tests, 0) AS failed_tests
 FROM ` + "`openshift-gce-devel.ci_analysis_us.junit`" + ` AS junit
 INNER JOIN test_mapping ON junit.test_name = test_mapping.name AND junit.testsuite = test_mapping.suite
 INNER JOIN ` + "`openshift-gce-devel.ci_analysis_us.jobs`" + ` AS jobs ON junit.prowjob_build_id = jobs.prowjob_build_id
-WHERE junit.modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)`
-
-	// Add success filter unless includeSuccess is true
-	if !includeSuccess {
-		queryStr += `
-  AND junit.success = false`
-	}
-
-	// Add prow job run IDs filter if specified
-	if len(prowJobRunIDs) > 0 {
-		queryStr += `
-  AND junit.prowjob_build_id IN UNNEST(@prowJobRunIDs)`
-	}
-
-	// Add prow job names filter if specified
-	if len(prowJobNames) > 0 {
-		queryStr += `
-  AND junit.prowjob_name IN UNNEST(@prowJobNames)`
-	}
-
-	queryStr += `
+LEFT JOIN failed_test_counts ftc ON junit.prowjob_build_id = ftc.prowjob_build_id
+WHERE junit.modified_time BETWEEN DATETIME(@startDate) AND DATETIME(@endDate)
+  AND jobs.prowjob_job_name NOT LIKE '%aggregat%'` + filterStr + `
 ORDER BY jobs.prowjob_start DESC
 LIMIT 500`
 
@@ -119,10 +145,10 @@ LIMIT 500`
 		})
 	}
 
-	if len(prowJobNames) > 0 {
+	for i, name := range prowJobNames {
 		q.Parameters = append(q.Parameters, bigquery.QueryParameter{
-			Name:  "prowJobNames",
-			Value: prowJobNames,
+			Name:  fmt.Sprintf("prowJobName%d", i),
+			Value: name,
 		})
 	}
 
@@ -145,6 +171,7 @@ LIMIT 500`
 		FailureContent string                `bigquery:"failure_content"`
 		ProwJobURL     bigquery.NullString   `bigquery:"prowjob_url"`
 		ProwJobStart   bigquery.NullDateTime `bigquery:"prowjob_start"`
+		FailedTests    bigquery.NullInt64    `bigquery:"failed_tests"`
 	}
 
 	var outputs []apitype.TestOutputBigQuery
@@ -164,6 +191,7 @@ LIMIT 500`
 			TestName:    row.TestName,
 			Success:     row.Success,
 			ProwJobName: row.ProwJobName,
+			FailedTests: int(row.FailedTests.Int64),
 		}
 		if row.ProwJobURL.Valid {
 			output.ProwJobURL = row.ProwJobURL.StringVal
@@ -530,25 +558,28 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 	if collapse {
 		candidateQueryStr = fmt.Sprintf(`WITH group_stats AS (
 		SELECT
+			cm.cm_id as test_id,
 			name,
 			jira_component,
 			jira_component_id,
 			release,
 			%s
 		FROM %s.%s junit
+		INNER JOIN (SELECT id AS cm_id, name AS cm_name, suite AS cm_suite FROM %s.component_mapping_latest) cm ON junit.name = cm.cm_name AND junit.testsuite = cm.cm_suite
 		%s
-		GROUP BY name, jira_component, jira_component_id, release
+		GROUP BY cm.cm_id, name, jira_component, jira_component_id, release
 	),
 	candidate_query AS (
 		SELECT
 			ROW_NUMBER() OVER() as id,
+			test_id,
 			name,
 			jira_component,
 			jira_component_id,
 			%s
 		FROM group_stats
 	)
-	`, query.QueryTestSummer, bqc.Dataset, table, whereStr, query.QueryTestSummarizer)
+	`, query.QueryTestSummer, bqc.Dataset, table, bqc.Dataset, whereStr, query.QueryTestSummarizer)
 	} else {
 		if processedFilter != nil && len(processedFilter.Items) > 0 {
 			filterResult := processedFilter.ToBQStr(apitype.Test{}, &paramIndex)
@@ -572,6 +603,7 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 	unfiltered_candidate_query AS (
 		SELECT
 			ROW_NUMBER() OVER() as id,
+			cm.cm_id as test_id,
 			name,
 			jira_component,
 			jira_component_id,
@@ -589,14 +621,15 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 			flake_standard_deviation,
 			%s
 		FROM %s.%s junit
-		JOIN test_stats as stats ON stats.test_id = junit.test_id AND stats.stats_suite_name IS NOT DISTINCT FROM junit.testsuite),
+		JOIN test_stats as stats ON stats.test_id = junit.test_id AND stats.stats_suite_name IS NOT DISTINCT FROM junit.testsuite
+		INNER JOIN (SELECT id AS cm_id, name AS cm_name, suite AS cm_suite FROM %s.component_mapping_latest) cm ON junit.name = cm.cm_name AND junit.testsuite = cm.cm_suite),
 	candidate_query AS (
 		SELECT
 			*
 		FROM
 			unfiltered_candidate_query
 		%s
-	)`, bqc.Dataset, table, query.QueryTestSummarizer, bqc.Dataset, table, whereStr)
+	)`, bqc.Dataset, table, query.QueryTestSummarizer, bqc.Dataset, table, bqc.Dataset, whereStr)
 	}
 
 	queryStr := fmt.Sprintf(`%s
