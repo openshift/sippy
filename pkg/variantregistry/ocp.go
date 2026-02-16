@@ -44,7 +44,6 @@ func NewOCPVariantLoader(
 	gcsClient *storage.Client,
 	config *v1.SippyConfig,
 ) *OCPVariantLoader {
-
 	return &OCPVariantLoader{
 		BigQueryClient:  bigQueryClient,
 		bqOpContext:     opCtx,
@@ -663,7 +662,6 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"-recovery"}, "excluded"},
 		{[]string{"alibaba"}, "excluded"},
 		{[]string{"-osde2e-"}, "excluded"},
-		{[]string{"insights-operator", "e2e-metal"}, "excluded"},
 
 		// Experimental new jobs using nested vsphere lvl 2 environment,
 		// not ready to make release blocking yet.
@@ -968,7 +966,7 @@ var majorMinorRegexp = regexp.MustCompile(`\d+\.\d+`)
 func extractReleases(jobName string) []version.Version {
 	matches := sets.New(majorMinorRegexp.FindAllString(jobName, -1)...)
 
-	var mm = make([]version.Version, 0, len(matches))
+	mm := make([]version.Version, 0, len(matches))
 
 	for match := range matches {
 		// two items and successful conversion are pretty much guaranteed on regex matches but there are corner cases
