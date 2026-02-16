@@ -149,6 +149,20 @@ func GenerateTestDetailsURL(
 	params.Add("sampleStartTime", sampleReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
 	params.Add("sampleEndTime", sampleReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
 
+	// Add PR options if present
+	if sampleReleaseOpts.PullRequestOptions != nil {
+		params.Add("samplePROrg", sampleReleaseOpts.PullRequestOptions.Org)
+		params.Add("samplePRRepo", sampleReleaseOpts.PullRequestOptions.Repo)
+		params.Add("samplePRNumber", sampleReleaseOpts.PullRequestOptions.PRNumber)
+	}
+
+	// Add Payload options if present
+	if sampleReleaseOpts.PayloadOptions != nil {
+		for _, tag := range sampleReleaseOpts.PayloadOptions.Tags {
+			params.Add("samplePayloadTag", tag)
+		}
+	}
+
 	// Check if release fallback was used and add the override
 	if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
 		params.Add("testBasisRelease", baseReleaseOverride)
