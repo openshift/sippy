@@ -74,6 +74,7 @@ func (l *LinkInjector) PostAnalysis(testKey crtest.Identification, testStats *te
 		l.reqOptions.SampleRelease,
 		l.reqOptions.AdvancedOption,
 		l.reqOptions.VariantOption,
+		l.reqOptions.TestFilters,
 		testKey.Component,
 		testKey.Capability,
 		variants,

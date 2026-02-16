@@ -73,6 +73,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
 			testView.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			[]string{"Platform:aws"},
@@ -90,6 +91,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
 			testView.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			[]string{},
@@ -107,6 +109,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
 			testView.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			[]string{"Architecture:amd64", "InvalidVariant", "Platform:aws"},
@@ -128,6 +131,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
 			testView.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			// Use variants in non-alphabetical order to test sorting
@@ -148,6 +152,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
 			testView.VariantOptions,
+			reqopts.TestFilters{},
 			"component-example",
 			"capability-example",
 			[]string{"Architecture:amd64", "Platform:aws"},
@@ -180,6 +185,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
 			testView.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			[]string{"Architecture:amd64", "Platform:aws"},
@@ -245,6 +251,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			sampleReleaseOpts,
 			realWorldView.AdvancedOptions,
 			realWorldView.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			[]string{
@@ -341,6 +348,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			sampleReleaseOpts,
 			viewWithVariants.AdvancedOptions,
 			viewWithVariants.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			[]string{},
@@ -412,6 +420,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			sampleReleaseOpts,
 			viewWithCrossCompare.AdvancedOptions,
 			viewWithCrossCompare.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			[]string{"Platform:aws"},
@@ -458,6 +467,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			sampleReleaseWithPR,
 			testView.AdvancedOptions,
 			testView.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			[]string{"Platform:aws"},
@@ -490,6 +500,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 			sampleReleaseWithPayload,
 			testView.AdvancedOptions,
 			testView.VariantOptions,
+			reqopts.TestFilters{},
 			"",
 			"",
 			[]string{"Platform:aws"},
@@ -501,6 +512,36 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		// Verify Payload parameters are included
 		assert.Contains(t, url, "samplePayloadTag=tag1")
 		assert.Contains(t, url, "samplePayloadTag=tag2")
+	})
+
+	t.Run("URL generation with test filters", func(t *testing.T) {
+		// Create test filters
+		testFilters := reqopts.TestFilters{
+			Capabilities: []string{"Networking", "Storage"},
+			Lifecycles:   []string{"blocking", "informing"},
+		}
+
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"https://sippy.example.com",
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			testFilters,
+			"",
+			"",
+			[]string{"Platform:aws"},
+			"",
+		)
+		require.NoError(t, err)
+		assert.NotEmpty(t, url)
+
+		// Verify test filter parameters are included
+		assert.Contains(t, url, "testCapabilities=Networking")
+		assert.Contains(t, url, "testCapabilities=Storage")
+		assert.Contains(t, url, "testLifecycles=blocking")
+		assert.Contains(t, url, "testLifecycles=informing")
 	})
 
 }

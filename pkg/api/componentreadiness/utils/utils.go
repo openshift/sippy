@@ -102,6 +102,7 @@ func GenerateTestDetailsURL(
 	sampleReleaseOpts reqopts.Release,
 	advancedOptions reqopts.Advanced,
 	variantOptions reqopts.Variants,
+	testFilters reqopts.TestFilters,
 	component string,
 	capability string,
 	variants []string,
@@ -184,6 +185,14 @@ func GenerateTestDetailsURL(
 	}
 	if capability != "" {
 		params.Add("capability", capability)
+	}
+
+	// Add test filter parameters
+	for _, cap := range testFilters.Capabilities {
+		params.Add("testCapabilities", cap)
+	}
+	for _, lifecycle := range testFilters.Lifecycles {
+		params.Add("testLifecycles", lifecycle)
 	}
 
 	// Add variant options
