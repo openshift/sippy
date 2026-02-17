@@ -315,6 +315,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 			newSampleRelease,
 			c.ReqOptions.AdvancedOption,
 			c.ReqOptions.VariantOption,
+			c.ReqOptions.TestFilters,
 			testIDOption.Component,
 			testIDOption.Capability,
 			variants,

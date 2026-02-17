@@ -783,6 +783,7 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 		sampleReleaseOpts,
 		view.AdvancedOptions,
 		view.VariantOptions,
+		view.TestFilters,
 		regression.Component,
 		regression.Capability,
 		regression.Variants,

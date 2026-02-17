@@ -102,6 +102,7 @@ func GenerateTestDetailsURL(
 	sampleReleaseOpts reqopts.Release,
 	advancedOptions reqopts.Advanced,
 	variantOptions reqopts.Variants,
+	testFilters reqopts.TestFilters,
 	component string,
 	capability string,
 	variants []string,
@@ -149,6 +150,20 @@ func GenerateTestDetailsURL(
 	params.Add("sampleStartTime", sampleReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
 	params.Add("sampleEndTime", sampleReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
 
+	// Add PR options if present
+	if sampleReleaseOpts.PullRequestOptions != nil {
+		params.Add("samplePROrg", sampleReleaseOpts.PullRequestOptions.Org)
+		params.Add("samplePRRepo", sampleReleaseOpts.PullRequestOptions.Repo)
+		params.Add("samplePRNumber", sampleReleaseOpts.PullRequestOptions.PRNumber)
+	}
+
+	// Add Payload options if present
+	if sampleReleaseOpts.PayloadOptions != nil {
+		for _, tag := range sampleReleaseOpts.PayloadOptions.Tags {
+			params.Add("samplePayloadTag", tag)
+		}
+	}
+
 	// Check if release fallback was used and add the override
 	if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
 		params.Add("testBasisRelease", baseReleaseOverride)
@@ -170,6 +185,14 @@ func GenerateTestDetailsURL(
 	}
 	if capability != "" {
 		params.Add("capability", capability)
+	}
+
+	// Add test filter parameters
+	for _, cap := range testFilters.Capabilities {
+		params.Add("testCapabilities", cap)
+	}
+	for _, lifecycle := range testFilters.Lifecycles {
+		params.Add("testLifecycles", lifecycle)
 	}
 
 	// Add variant options
