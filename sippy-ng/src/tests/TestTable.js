@@ -985,7 +985,8 @@ function TestTable(props) {
       setSearching(true)
       fetchData()
     } else {
-      // Mark as loaded so we don't show loading spinner
+      // Mark as loaded so we don't show loading spinner, and clear any stale data
+      setRows([])
       setLoaded(true)
       setSearching(false)
     }
