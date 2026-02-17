@@ -8,7 +8,7 @@ import {
   Grid,
   Tooltip,
 } from '@mui/material'
-import { BOOKMARKS, TEST_THRESHOLDS } from '../constants'
+import { BOOKMARKS, DEFAULT_TEST_FILTERS, TEST_THRESHOLDS } from '../constants'
 import {
   escapeRegex,
   filterFor,
@@ -155,6 +155,31 @@ function TestTable(props) {
 
   const [cookies, setCookie] = useCookies(['testTableDBSource'])
   const testTableDBSource = cookies['testTableDBSource']
+
+  // For "Tests By Variant" (collapse=false), check if any non-default filters are applied
+  const hasNonDefaultFilters = () => {
+    if (!filterModel || !filterModel.items) {
+      return false
+    }
+
+    const filtersEqual = (f1, f2) => {
+      return (
+        f1.columnField === f2.columnField &&
+        f1.operatorValue === f2.operatorValue &&
+        f1.value === f2.value &&
+        f1.not === f2.not
+      )
+    }
+
+    // Check if there are any filters that aren't in the default list
+    return filterModel.items.some((currentFilter) => {
+      return !DEFAULT_TEST_FILTERS.some((defaultFilter) =>
+        filtersEqual(currentFilter, defaultFilter)
+      )
+    })
+  }
+
+  const requiresNonDefaultFilter = !props.collapse && !hasNonDefaultFilters()
 
   const views = {
     Working: {
@@ -954,8 +979,18 @@ function TestTable(props) {
       setRows([])
       setLoaded(false)
     }
-    setSearching(true)
-    fetchData()
+
+    // Only fetch data if we don't require a non-default filter, or if one is applied
+    if (!requiresNonDefaultFilter) {
+      setSearching(true)
+      fetchData()
+    } else {
+      // Mark as loaded so we don't show loading spinner, and clear any stale data
+      setRows([])
+      setLoaded(true)
+      setSearching(false)
+    }
+
     prevLocation.current = location
   }, [
     period,
@@ -1029,6 +1064,12 @@ function TestTable(props) {
   return (
     /* eslint-disable react/prop-types */
     <Fragment>
+      {requiresNonDefaultFilter && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Please apply at least one additional, non-default, filter to load test
+          results. The unfiltered dataset is too large to display.
+        </Alert>
+      )}
       <StyledDataGrid
         loading={isSearching}
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
