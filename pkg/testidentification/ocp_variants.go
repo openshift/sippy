@@ -37,6 +37,7 @@ var importantVariants = []string{
 	"Installer",
 	"JobTier",
 	"Procedure",
+	"OS",
 }
 
 const (
