@@ -12,7 +12,7 @@ import {
   NotificationsActive,
   SmartToy,
 } from '@mui/icons-material'
-import { BOOKMARKS } from '../constants'
+import { BOOKMARKS, DEFAULT_TEST_FILTERS } from '../constants'
 import { LaunderedListItem } from './Laundry'
 import { Link, useLocation } from 'react-router-dom'
 import { ListItemButton, ListSubheader, useTheme } from '@mui/material'
@@ -329,15 +329,7 @@ export default function Sidebar(props) {
                             component={Link}
                             to={withSort(
                               pathForTestsWithFilter(release, {
-                                items: [
-                                  BOOKMARKS.RUN_7,
-                                  BOOKMARKS.NO_NEVER_STABLE,
-                                  BOOKMARKS.NO_AGGREGATED,
-                                  BOOKMARKS.WITHOUT_OVERALL_JOB_RESULT,
-                                  BOOKMARKS.NO_STEP_GRAPH,
-                                  BOOKMARKS.NO_OPENSHIFT_TESTS_SHOULD_WORK,
-                                  BOOKMARKS.NO_100_FLAKE,
-                                ],
+                                items: DEFAULT_TEST_FILTERS,
                                 linkOperator: 'and',
                               }),
                               'net_improvement', // sort by tests that have recently regressed the most
