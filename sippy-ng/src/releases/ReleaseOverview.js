@@ -15,6 +15,7 @@ import Grid from '@mui/material/Grid'
 import InfoIcon from '@mui/icons-material/Info'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
+import RecentTestFailures from './RecentTestFailures'
 import ReleaseKeyDates from './ReleaseKeyDates'
 import ReleasePayloadAcceptance from './ReleasePayloadAcceptance'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
@@ -261,6 +262,10 @@ export default function ReleaseOverview(props) {
               indicators={data.indicators}
               releases={releases}
             />
+
+            <Grid item xs={12}>
+              <RecentTestFailures release={props.release} />
+            </Grid>
 
             {releases?.release_attrs?.[props.release]?.capabilities
               ?.payloadTags && (

@@ -73,6 +73,9 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"maxFileMatches":     uintRegexp,
 	"beforeContext":      uintRegexp,
 	"afterContext":       uintRegexp,
+	// recent test failures params
+	"previousPeriod": wordRegexp,
+	"includeOutputs": boolRegexp,
 }
 
 // SafeRead returns the value of a query parameter only if it matches the given regexp.
