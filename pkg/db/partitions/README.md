@@ -80,18 +80,28 @@ fmt.Printf("Range: %s to %s\n",
 Identifies partitions older than the retention period.
 
 ```go
-partitions, err := partitions.GetPartitionsForRemoval(dbc, 180)
+// Get all partitions (attached + detached) older than 180 days
+partitions, err := partitions.GetPartitionsForRemoval(dbc, "test_analysis_by_job_by_dates", 180, false)
 if err != nil {
     log.WithError(err).Error("failed to get partitions for removal")
 }
 
 fmt.Printf("Found %d partitions older than 180 days\n", len(partitions))
+
+// Get only attached partitions older than 180 days
+attachedPartitions, err := partitions.GetPartitionsForRemoval(dbc, "test_analysis_by_job_by_dates", 180, true)
 ```
 
 **Parameters**:
+- `tableName` - Name of the partitioned parent table
 - `retentionDays` - Retention period in days
+- `attachedOnly` - If true, only returns attached partitions; if false, returns all partitions
 
-**Returns**: `[]PartitionInfo` for partitions older than retention period (can be deleted or detached)
+**Returns**: `[]PartitionInfo` for partitions older than retention period
+
+**Use When**:
+- `attachedOnly = true`: Before detaching partitions (can only detach what's attached)
+- `attachedOnly = false`: Before dropping partitions (can drop both attached and detached)
 
 ---
 
@@ -99,17 +109,23 @@ fmt.Printf("Found %d partitions older than 180 days\n", len(partitions))
 Provides a summary of what would be affected by a retention policy.
 
 ```go
-summary, err := partitions.GetRetentionSummary(dbc, 180)
+// Get summary for all partitions (attached + detached)
+summary, err := partitions.GetRetentionSummary(dbc, "test_analysis_by_job_by_dates", 180, false)
 if err != nil {
     log.WithError(err).Error("failed to get summary")
 }
 
 fmt.Printf("Would delete %d partitions, reclaiming %s\n",
     summary.PartitionsToRemove, summary.StoragePretty)
+
+// Get summary for attached partitions only
+attachedSummary, err := partitions.GetRetentionSummary(dbc, "test_analysis_by_job_by_dates", 180, true)
 ```
 
 **Parameters**:
+- `tableName` - Name of the partitioned parent table
 - `retentionDays` - Retention period in days
+- `attachedOnly` - If true, only considers attached partitions; if false, considers all partitions
 
 **Returns**: `*RetentionSummary` containing:
 - `RetentionDays` - Policy retention period
@@ -117,6 +133,10 @@ fmt.Printf("Would delete %d partitions, reclaiming %s\n",
 - `PartitionsToRemove` - Count of partitions to remove
 - `StorageToReclaim` / `StoragePretty` - Storage to be freed
 - `OldestPartition` / `NewestPartition` - Range of affected partitions
+
+**Use When**:
+- `attachedOnly = true`: Before detaching partitions or when validating against active data only
+- `attachedOnly = false`: Before dropping partitions or when showing complete impact
 
 ---
 
@@ -190,6 +210,286 @@ if err != nil {
 ### Write Operations (Require Write Access)
 
 ⚠️ **Warning**: All write operations require database write access. Read-only users will get permission errors.
+
+#### CreatePartitionedTable
+Creates a new partitioned table from a GORM model struct with a specified partitioning strategy.
+
+```go
+// Define your model (or use an existing one)
+type MyModel struct {
+    ID        uint      `gorm:"primaryKey"`
+    CreatedAt time.Time `gorm:"index"`
+    Name      string
+    Data      string
+}
+
+// RANGE partitioning (most common - for dates, timestamps)
+config := partitions.NewRangePartitionConfig("created_at")
+
+// Dry run - see the SQL that would be executed
+sql, err := partitions.CreatePartitionedTable(dbc, &MyModel{}, "my_partitioned_table", config, true)
+if err != nil {
+    log.WithError(err).Error("dry run failed")
+}
+// Prints the CREATE TABLE statement with PARTITION BY RANGE clause
+
+// Actual creation
+sql, err = partitions.CreatePartitionedTable(dbc, &MyModel{}, "my_partitioned_table", config, false)
+```
+
+**Parameters**:
+- `model` - GORM model struct (must be a pointer, e.g., `&models.MyModel{}`)
+- `tableName` - Name for the partitioned table
+- `config` - Partition configuration (strategy, columns, etc.)
+- `dryRun` - If true, prints SQL without executing
+
+**Partition Strategies**:
+
+1. **RANGE Partitioning** (for dates, timestamps, sequential values):
+```go
+config := partitions.NewRangePartitionConfig("created_at")
+// Generates: PARTITION BY RANGE (created_at)
+```
+
+2. **LIST Partitioning** (for discrete categories):
+```go
+config := partitions.NewListPartitionConfig("region")
+// Generates: PARTITION BY LIST (region)
+```
+
+3. **HASH Partitioning** (for load distribution):
+```go
+config := partitions.NewHashPartitionConfig(4, "user_id")
+// Generates: PARTITION BY HASH (user_id)
+// Modulus = 4 means 4 hash partitions will be needed
+```
+
+**How It Works**:
+1. Validates partition configuration
+2. Checks if table already exists (returns without error if it does)
+3. Parses the GORM model to extract schema information
+4. **Converts GORM/Go types to PostgreSQL types** (see Data Type Mapping below)
+5. Generates `CREATE TABLE` statement with columns and data types
+6. **Adds PRIMARY KEY constraint** (automatically includes partition columns if not already in primary key)
+7. Adds `PARTITION BY [RANGE|LIST|HASH] (columns)` clause
+8. Creates indexes (skips unique indexes without all partition keys)
+9. In dry-run mode, prints SQL; otherwise executes it
+
+**Data Type Mapping**:
+The function automatically converts Go/GORM types to PostgreSQL types:
+- `uint`, `uint32`, `uint64`, `int` → `bigint`
+- `uint8`, `int8`, `int16` → `smallint`
+- `uint16`, `int32` → `integer`
+- `int64` → `bigint`
+- `float`, `float64` → `double precision`
+- `float32` → `real`
+- `string` → `text`
+- `bool` → `boolean`
+- `time.Time` → `timestamp with time zone`
+- `[]byte` → `bytea`
+
+This ensures your GORM models with Go types like `uint` work correctly with PostgreSQL.
+
+**Important Notes**:
+- **Primary keys**: Automatically generated with `PRIMARY KEY (columns)` constraint
+  - If your model's primary key doesn't include partition columns, they are automatically added
+  - For example, if you have `ID` as primary key and partition by `created_at`, the constraint will be `PRIMARY KEY (id, created_at)`
+  - This is a PostgreSQL requirement for partitioned tables
+- **Primary key NOT NULL**: Automatically adds NOT NULL to primary key columns
+- **Auto-increment fields**: Fields marked with `gorm:"autoIncrement"` are implemented using `GENERATED BY DEFAULT AS IDENTITY`
+  - IDENTITY columns are automatically NOT NULL (PostgreSQL requirement)
+  - Supports `autoIncrementIncrement` for custom increment values (e.g., `gorm:"autoIncrement;autoIncrementIncrement:10"` generates `IDENTITY (INCREMENT BY 10)`)
+  - Example: `ID uint \`gorm:"primaryKey;autoIncrement"\`` generates `id bigint GENERATED BY DEFAULT AS IDENTITY`
+- **Column deduplication**: Automatically deduplicates columns to prevent the same column from appearing multiple times
+  - GORM can include duplicate fields in `stmt.Schema.Fields` (e.g., from embedded structs like `gorm.Model`)
+  - First occurrence of each column is used, subsequent duplicates are skipped with debug logging
+- **Unique indexes**: Must include ALL partition columns (PostgreSQL requirement)
+- **After creation**: Create actual partitions based on strategy
+- Table creation is a one-time operation (cannot easily modify schema after)
+- **Data types**: Automatically converted from Go types to PostgreSQL types
+
+**Example Models**:
+
+```go
+// Basic model with auto-increment primary key
+type MyModel struct {
+    ID        uint      `gorm:"primaryKey;autoIncrement"`
+    Name      string    `gorm:"not null"`
+    CreatedAt time.Time `gorm:"index"`
+}
+// Generated SQL:
+// id bigint GENERATED BY DEFAULT AS IDENTITY
+// PRIMARY KEY (id, created_at)  -- includes partition column
+
+// Model with custom increment value
+type CustomIncrement struct {
+    ID        uint      `gorm:"primaryKey;autoIncrement;autoIncrementIncrement:10"`
+    Data      string
+    CreatedAt time.Time
+}
+// Generated SQL:
+// id bigint GENERATED BY DEFAULT AS IDENTITY (INCREMENT BY 10)
+```
+
+**Complete Workflows**:
+
+**RANGE Partitioning (Date-based)**:
+```go
+// 1. Create the partitioned table structure
+config := partitions.NewRangePartitionConfig("created_at")
+_, err := partitions.CreatePartitionedTable(dbc, &models.MyModel{}, "my_table", config, false)
+
+// 2. Create partitions for date range
+startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+endDate := time.Now()
+created, err := partitions.CreateMissingPartitions(dbc, "my_table", startDate, endDate, false)
+```
+
+**HASH Partitioning (Load Distribution)**:
+```go
+// 1. Create the partitioned table structure
+config := partitions.NewHashPartitionConfig(4, "user_id")
+_, err := partitions.CreatePartitionedTable(dbc, &models.MyModel{}, "my_table", config, false)
+
+// 2. Create hash partitions manually
+for i := 0; i < 4; i++ {
+    partName := fmt.Sprintf("my_table_%d", i)
+    sql := fmt.Sprintf("CREATE TABLE %s PARTITION OF my_table FOR VALUES WITH (MODULUS 4, REMAINDER %d)", partName, i)
+    dbc.DB.Exec(sql)
+}
+```
+
+**LIST Partitioning (Category-based)**:
+```go
+// 1. Create the partitioned table structure
+config := partitions.NewListPartitionConfig("region")
+_, err := partitions.CreatePartitionedTable(dbc, &models.MyModel{}, "my_table", config, false)
+
+// 2. Create list partitions manually
+regions := []string{"us-east", "us-west", "eu-central"}
+for _, region := range regions {
+    partName := fmt.Sprintf("my_table_%s", region)
+    sql := fmt.Sprintf("CREATE TABLE %s PARTITION OF my_table FOR VALUES IN ('%s')", partName, region)
+    dbc.DB.Exec(sql)
+}
+```
+
+---
+
+
+#### UpdatePartitionedTable
+Updates an existing partitioned table schema to match a GORM model.
+
+```go
+// Define your updated model
+type MyModel struct {
+    ID        uint      `gorm:"primaryKey"`
+    CreatedAt time.Time `gorm:"index"`
+    Name      string
+    Data      string
+    NewField  string    `gorm:"index"` // New field added
+    // OldField removed
+}
+
+// Dry run - see what changes would be made
+sql, err := partitions.UpdatePartitionedTable(dbc, &MyModel{}, "my_partitioned_table", true)
+if err != nil {
+    log.WithError(err).Error("dry run failed")
+}
+// Prints all ALTER TABLE statements that would be executed
+
+// Actual update
+sql, err = partitions.UpdatePartitionedTable(dbc, &MyModel{}, "my_partitioned_table", false)
+```
+
+**Parameters**:
+- `model` - GORM model struct with desired schema (must be a pointer, e.g., `&models.MyModel{}`)
+- `tableName` - Name of the existing partitioned table
+- `dryRun` - If true, prints SQL without executing
+
+**How It Works**:
+1. Checks if the table exists
+2. Parses the GORM model to get desired schema
+3. Queries database for current schema (columns, indexes, partition keys)
+4. Compares schemas and generates ALTER statements for:
+   - **New columns**: `ALTER TABLE ADD COLUMN`
+   - **Modified columns**: `ALTER COLUMN TYPE`, `SET/DROP NOT NULL`, `SET/DROP DEFAULT`
+   - **Removed columns**: `ALTER TABLE DROP COLUMN`
+   - **New indexes**: `CREATE INDEX`
+   - **Modified indexes**: `DROP INDEX` + `CREATE INDEX`
+   - **Removed indexes**: `DROP INDEX`
+5. In dry-run mode, prints SQL; otherwise executes it
+
+**Important Notes**:
+- **Cannot change partition keys**: Partition columns cannot be modified after creation
+- **Unique indexes**: Must include ALL partition columns (PostgreSQL requirement)
+- **Primary key indexes**: Skipped (named `_pkey` by convention)
+- **Primary key NOT NULL**: Automatically adds NOT NULL to primary key columns (PostgreSQL requirement)
+- **Data types**: Automatically converted from Go types to PostgreSQL types (same as CreatePartitionedTable)
+- **Type changes**: Use caution with data type changes that could cause data loss
+- **Column removal**: Destructive operation - ensure data is not needed
+- Always run dry-run first to preview changes
+
+**Schema Changes Detected**:
+
+1. **Column Changes**:
+   - New columns added with appropriate data type, NOT NULL, and DEFAULT
+   - Primary key columns automatically get NOT NULL constraint
+   - Type changes detected through normalized comparison (uses converted PostgreSQL types)
+   - NULL constraint changes
+   - DEFAULT value changes
+   - Removed columns
+
+2. **Index Changes**:
+   - New indexes created
+   - Modified indexes (column list changes) dropped and recreated
+   - Removed indexes dropped
+   - Validates unique indexes include partition keys
+
+**Use When**:
+- Your GORM model schema has evolved
+- Adding new fields to track additional data
+- Modifying column types or constraints
+- Adding or removing indexes
+- Schema migrations in production
+
+**Safety Features**:
+- Dry-run mode to preview all changes
+- Validates unique indexes include partition keys
+- Skips primary key indexes (prevents accidental modification)
+- Comprehensive logging for each change
+- Returns all SQL executed for audit trail
+
+**Example Workflow**:
+```go
+// 1. Update your GORM model
+type TestResults struct {
+    ID          uint      `gorm:"primaryKey"`
+    CreatedAt   time.Time `gorm:"index"`
+    TestName    string    `gorm:"index"`
+    NewMetric   float64   // Added field
+    // RemovedField deleted
+}
+
+// 2. Dry run to see changes
+sql, err := partitions.UpdatePartitionedTable(dbc, &TestResults{}, "test_results", true)
+fmt.Println("Would execute:", sql)
+
+// 3. Review changes, then apply
+sql, err = partitions.UpdatePartitionedTable(dbc, &TestResults{}, "test_results", false)
+if err != nil {
+    log.Fatal(err)
+}
+```
+
+**Limitations**:
+- Cannot modify partition strategy (RANGE to LIST, etc.)
+- Cannot change partition columns
+- Cannot split or merge partitions
+- Type conversions must be PostgreSQL-compatible
+- For major schema changes, consider creating a new table and migrating data
+
+---
 
 #### DropPartition
 Drops a single partition.
@@ -364,6 +664,51 @@ err := partitions.ReattachPartition(dbc, "test_analysis_by_job_by_dates_2024_10_
 - Historical analysis requires old data
 
 **Note**: Automatically calculates the date range from the partition name
+
+---
+
+#### CreateMissingPartitions
+Creates missing partitions for a date range.
+
+```go
+startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+endDate := time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC)
+
+// Dry run - see what would be created
+created, err := partitions.CreateMissingPartitions(dbc, "test_analysis_by_job_by_dates", startDate, endDate, true)
+fmt.Printf("Would create %d partitions\n", created)
+
+// Actual creation
+created, err = partitions.CreateMissingPartitions(dbc, "test_analysis_by_job_by_dates", startDate, endDate, false)
+fmt.Printf("Created %d partitions\n", created)
+```
+
+**Parameters**:
+- `tableName` - Name of the partitioned parent table
+- `startDate` - Start of date range (inclusive)
+- `endDate` - End of date range (inclusive)
+- `dryRun` - If true, only simulates the operation
+
+**How It Works**:
+1. Lists all existing partitions (attached + detached)
+2. Generates list of dates in range that don't have partitions
+3. For each missing partition:
+   - Creates table with same structure as parent (CREATE TABLE ... LIKE)
+   - Attaches partition with appropriate date range (FOR VALUES FROM ... TO ...)
+4. Skips partitions that already exist
+5. Returns count of partitions created
+
+**Use When**:
+- Setting up a new partitioned table with historical dates
+- Backfilling missing partitions after data gaps
+- Preparing partitions in advance for future dates
+- Recovering from partition management issues
+
+**Safety Features**:
+- Checks for existing partitions before creating
+- Dry-run mode to preview what will be created
+- Automatically cleans up if attachment fails
+- Comprehensive logging for each partition
 
 ---
 
@@ -678,7 +1023,365 @@ func restoreArchivedPartition(dbc *db.DB, partitionName string) error {
 }
 ```
 
-### Example 4: Complete Workflow
+---
+
+### Example 8: Create Missing Partitions for Date Range
+
+```go
+func ensurePartitionsExist(dbc *db.DB, tableName string, startDate, endDate time.Time) error {
+    // Check what partitions would be created
+    created, err := partitions.CreateMissingPartitions(dbc, tableName, startDate, endDate, true)
+    if err != nil {
+        return fmt.Errorf("dry run failed: %w", err)
+    }
+
+    if created == 0 {
+        log.Info("all partitions already exist")
+        return nil
+    }
+
+    log.WithFields(log.Fields{
+        "table":       tableName,
+        "start_date":  startDate.Format("2006-01-02"),
+        "end_date":    endDate.Format("2006-01-02"),
+        "to_create":   created,
+    }).Info("creating missing partitions")
+
+    // Create the missing partitions
+    created, err = partitions.CreateMissingPartitions(dbc, tableName, startDate, endDate, false)
+    if err != nil {
+        return fmt.Errorf("partition creation failed: %w", err)
+    }
+
+    log.WithField("created", created).Info("partitions created successfully")
+    return nil
+}
+
+// Example: Prepare partitions for next month
+func prepareNextMonthPartitions(dbc *db.DB) error {
+    now := time.Now()
+    startOfNextMonth := time.Date(now.Year(), now.Month()+1, 1, 0, 0, 0, 0, time.UTC)
+    endOfNextMonth := startOfNextMonth.AddDate(0, 1, -1)
+
+    return ensurePartitionsExist(dbc, "test_analysis_by_job_by_dates", startOfNextMonth, endOfNextMonth)
+}
+
+// Example: Backfill missing partitions for last 90 days
+func backfillRecentPartitions(dbc *db.DB) error {
+    endDate := time.Now()
+    startDate := endDate.AddDate(0, 0, -90)
+
+    return ensurePartitionsExist(dbc, "test_analysis_by_job_by_dates", startDate, endDate)
+}
+```
+
+---
+
+### Example 9: Create a New Partitioned Table from GORM Model
+
+```go
+package main
+
+import (
+    "time"
+    "github.com/openshift/sippy/pkg/db"
+    "github.com/openshift/sippy/pkg/db/partitions"
+)
+
+// Define your model
+type TestResults struct {
+    ID          uint      `gorm:"primaryKey"`
+    TestName    string    `gorm:"index"`
+    JobName     string    `gorm:"index"`
+    Result      string
+    CreatedAt   time.Time `gorm:"index"` // This will be the partition column
+    TestOutput  string
+    Duration    int
+}
+
+func setupPartitionedTestResults(dbc *db.DB) error {
+    tableName := "test_results_partitioned"
+
+    // Configure RANGE partitioning by created_at
+    config := partitions.NewRangePartitionConfig("created_at")
+
+    // Step 1: Create the partitioned table (dry-run first)
+    sql, err := partitions.CreatePartitionedTable(
+        dbc,
+        &TestResults{},
+        tableName,
+        config,
+        true, // dry-run
+    )
+    if err != nil {
+        return fmt.Errorf("dry run failed: %w", err)
+    }
+
+    log.Info("Would execute SQL:")
+    log.Info(sql)
+
+    // The generated SQL will look like:
+    // CREATE TABLE IF NOT EXISTS test_results_partitioned (
+    //     id bigint NOT NULL,
+    //     test_name text,
+    //     job_name text,
+    //     result text,
+    //     created_at timestamp with time zone NOT NULL,
+    //     test_output text,
+    //     duration bigint,
+    //     PRIMARY KEY (id, created_at)
+    // ) PARTITION BY RANGE (created_at)
+    //
+    // Note: created_at is automatically added to the primary key
+    // because it's the partition column (PostgreSQL requirement)
+
+    // Step 2: Create the table for real
+    _, err = partitions.CreatePartitionedTable(
+        dbc,
+        &TestResults{},
+        tableName,
+        config,
+        false, // execute
+    )
+    if err != nil {
+        return fmt.Errorf("table creation failed: %w", err)
+    }
+
+    log.WithField("table", tableName).Info("partitioned table created")
+
+    // Step 3: Create partitions for the last 90 days
+    endDate := time.Now()
+    startDate := endDate.AddDate(0, 0, -90)
+
+    created, err := partitions.CreateMissingPartitions(
+        dbc,
+        tableName,
+        startDate,
+        endDate,
+        false,
+    )
+    if err != nil {
+        return fmt.Errorf("partition creation failed: %w", err)
+    }
+
+    log.WithFields(log.Fields{
+        "table":      tableName,
+        "partitions": created,
+    }).Info("created partitions")
+
+    return nil
+}
+
+// You can now use the table normally with GORM
+func insertTestResult(dbc *db.DB) error {
+    result := TestResults{
+        TestName:   "test-api-health",
+        JobName:    "periodic-ci-test",
+        Result:     "passed",
+        CreatedAt:  time.Now(),
+        TestOutput: "All checks passed",
+        Duration:   125,
+    }
+
+    // GORM will automatically route to the correct partition based on created_at
+    return dbc.DB.Create(&result).Error
+}
+```
+
+**Key Points**:
+- Model must have the partition column (e.g., `created_at`)
+- PRIMARY KEY constraint is automatically generated
+- Partition columns are automatically added to the primary key (PostgreSQL requirement)
+- In the example above, `PRIMARY KEY (id, created_at)` is generated even though only `id` is marked as primaryKey
+- Unique indexes must include the partition column
+- Data is automatically routed to correct partition by PostgreSQL
+
+---
+
+### Example 10: Update Partitioned Table Schema
+
+```go
+package main
+
+import (
+    "time"
+    "github.com/openshift/sippy/pkg/db"
+    "github.com/openshift/sippy/pkg/db/partitions"
+)
+
+// Original model (what was created initially)
+type TestResultsV1 struct {
+    ID          uint      `gorm:"primaryKey"`
+    TestName    string    `gorm:"index"`
+    JobName     string    `gorm:"index"`
+    Result      string
+    CreatedAt   time.Time `gorm:"index"`
+    TestOutput  string
+    Duration    int
+}
+
+// Updated model with schema changes
+type TestResultsV2 struct {
+    ID          uint      `gorm:"primaryKey"`
+    TestName    string    `gorm:"index"`
+    JobName     string    `gorm:"index"`
+    Result      string
+    CreatedAt   time.Time `gorm:"index"`
+    TestOutput  string
+    Duration    int
+    // New fields
+    TestSuite   string    `gorm:"index"` // Added: track test suite
+    ErrorCount  int                      // Added: count of errors
+    // Removed: RemovedField no longer needed
+}
+
+func updateTestResultsSchema(dbc *db.DB) error {
+    tableName := "test_results_partitioned"
+
+    log.Info("Updating table schema to match new model...")
+
+    // Step 1: Dry run to see what would change
+    sql, err := partitions.UpdatePartitionedTable(
+        dbc,
+        &TestResultsV2{},
+        tableName,
+        true, // dry-run
+    )
+    if err != nil {
+        return fmt.Errorf("dry run failed: %w", err)
+    }
+
+    log.Info("Schema changes that would be applied:")
+    log.Info(sql)
+
+    // Step 2: Review the changes and confirm
+    fmt.Println("\nReview the changes above.")
+    fmt.Print("Apply these changes? (yes/no): ")
+    var response string
+    fmt.Scanln(&response)
+
+    if response != "yes" {
+        log.Info("Schema update cancelled")
+        return nil
+    }
+
+    // Step 3: Apply the changes
+    sql, err = partitions.UpdatePartitionedTable(
+        dbc,
+        &TestResultsV2{},
+        tableName,
+        false, // execute
+    )
+    if err != nil {
+        return fmt.Errorf("schema update failed: %w", err)
+    }
+
+    log.WithFields(log.Fields{
+        "table":   tableName,
+        "changes": sql,
+    }).Info("schema updated successfully")
+
+    return nil
+}
+
+// Automated schema migration (for CI/CD)
+func automatedSchemaMigration(dbc *db.DB) error {
+    tableName := "test_results_partitioned"
+
+    // Check what changes would be made
+    sql, err := partitions.UpdatePartitionedTable(
+        dbc,
+        &TestResultsV2{},
+        tableName,
+        true,
+    )
+    if err != nil {
+        return fmt.Errorf("schema check failed: %w", err)
+    }
+
+    if sql == "" {
+        log.Info("Schema is up to date, no changes needed")
+        return nil
+    }
+
+    // Log the planned changes
+    log.WithField("sql", sql).Info("applying schema changes")
+
+    // Apply changes
+    sql, err = partitions.UpdatePartitionedTable(
+        dbc,
+        &TestResultsV2{},
+        tableName,
+        false,
+    )
+    if err != nil {
+        return fmt.Errorf("schema migration failed: %w", err)
+    }
+
+    log.Info("schema migration completed successfully")
+    return nil
+}
+
+// Example: Gradual schema evolution
+func evolveSchema(dbc *db.DB) error {
+    tableName := "test_results_partitioned"
+
+    // Phase 1: Add nullable columns first (safe)
+    type PhaseOne struct {
+        ID          uint      `gorm:"primaryKey"`
+        CreatedAt   time.Time `gorm:"index"`
+        TestName    string
+        TestSuite   string    // New, nullable
+    }
+
+    log.Info("Phase 1: Adding nullable columns")
+    _, err := partitions.UpdatePartitionedTable(dbc, &PhaseOne{}, tableName, false)
+    if err != nil {
+        return err
+    }
+
+    // Phase 2: Populate new columns with data
+    log.Info("Phase 2: Populating new columns")
+    // (Application code populates test_suite from test_name)
+
+    // Phase 3: Add indexes after data is populated
+    type PhaseTwo struct {
+        ID          uint      `gorm:"primaryKey"`
+        CreatedAt   time.Time `gorm:"index"`
+        TestName    string
+        TestSuite   string    `gorm:"index"` // Now indexed
+    }
+
+    log.Info("Phase 3: Adding indexes")
+    _, err = partitions.UpdatePartitionedTable(dbc, &PhaseTwo{}, tableName, false)
+    if err != nil {
+        return err
+    }
+
+    log.Info("Schema evolution completed")
+    return nil
+}
+```
+
+**Key Scenarios**:
+
+1. **Adding Columns**: New fields in the model are added to the table
+2. **Removing Columns**: Fields removed from model are dropped (use caution)
+3. **Changing Types**: Data type changes are detected and applied
+4. **Adding Indexes**: New `gorm:"index"` tags create indexes
+5. **Modifying Constraints**: NOT NULL and DEFAULT changes
+
+**Best Practices**:
+- Always run dry-run first to preview changes
+- Review generated SQL before applying
+- Test schema changes in a development environment first
+- For production, consider gradual evolution (add nullable, populate, add constraints)
+- Back up data before major type conversions
+- Monitor query performance after index changes
+
+---
+
+### Example 11: Complete Workflow
 
 See [examples.go](./examples.go) for a complete workflow demonstration including:
 - Current state analysis

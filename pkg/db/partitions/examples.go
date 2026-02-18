@@ -2,6 +2,7 @@ package partitions
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -148,8 +149,8 @@ func ExampleCheckRetentionPolicy(dbc *db.DB, tableName string, retentionDays int
 		return
 	}
 
-	// Get summary of what would be affected
-	summary, err := GetRetentionSummary(dbc, tableName, retentionDays)
+	// Get summary of what would be affected (all partitions)
+	summary, err := GetRetentionSummary(dbc, tableName, retentionDays, false)
 	if err != nil {
 		log.WithError(err).Error("failed to get retention summary")
 		return
@@ -164,8 +165,8 @@ func ExampleCheckRetentionPolicy(dbc *db.DB, tableName string, retentionDays int
 		fmt.Printf("  Newest: %s\n", summary.NewestPartition)
 	}
 
-	// Get detailed list of partitions that would be removed
-	partitions, err := GetPartitionsForRemoval(dbc, tableName, retentionDays)
+	// Get detailed list of partitions that would be removed (both attached and detached)
+	partitions, err := GetPartitionsForRemoval(dbc, tableName, retentionDays, false)
 	if err != nil {
 		log.WithError(err).Error("failed to get partitions for removal")
 		return
@@ -245,8 +246,8 @@ func ExampleDryRunCleanup(dbc *db.DB, tableName string, retentionDays int) {
 		return
 	}
 
-	// Get summary
-	summary, err := GetRetentionSummary(dbc, tableName, retentionDays)
+	// Get summary (all partitions, matching DropOldPartitions behavior)
+	summary, err := GetRetentionSummary(dbc, tableName, retentionDays, false)
 	if err != nil {
 		log.WithError(err).Error("failed to get summary")
 		return
@@ -440,8 +441,8 @@ func ExampleDropOldDetachedPartitions(dbc *db.DB, tableName string, retentionDay
 func ExampleDetachWorkflow(dbc *db.DB, tableName string, retentionDays int) {
 	fmt.Printf("\n=== Detach Workflow for %s (%d days) ===\n", tableName, retentionDays)
 
-	// 1. Check what would be detached
-	summary, err := GetRetentionSummary(dbc, tableName, retentionDays)
+	// 1. Check what would be detached (only attached partitions)
+	summary, err := GetRetentionSummary(dbc, tableName, retentionDays, true)
 	if err != nil {
 		log.WithError(err).Error("failed to get summary")
 		return
@@ -512,6 +513,157 @@ func ExampleReattachPartition(dbc *db.DB, partitionName string) {
 	// fmt.Println("3. Partition reattached successfully")
 }
 
+// ExampleCreateMissingPartitions demonstrates creating missing partitions for a date range
+//
+// Usage:
+//
+//	ExampleCreateMissingPartitions(dbc, "test_analysis_by_job_by_dates", "2024-01-01", "2024-01-31")
+func ExampleCreateMissingPartitions(dbc *db.DB, tableName, startDateStr, endDateStr string) {
+	fmt.Printf("\n=== Create Missing Partitions for %s ===\n", tableName)
+
+	// Parse dates
+	startDate, err := time.Parse("2006-01-02", startDateStr)
+	if err != nil {
+		log.WithError(err).Error("failed to parse start date")
+		return
+	}
+
+	endDate, err := time.Parse("2006-01-02", endDateStr)
+	if err != nil {
+		log.WithError(err).Error("failed to parse end date")
+		return
+	}
+
+	fmt.Printf("Date range: %s to %s\n", startDateStr, endDateStr)
+
+	// Calculate expected number of partitions
+	days := int(endDate.Sub(startDate).Hours()/24) + 1
+	fmt.Printf("Expected partitions: %d (one per day)\n", days)
+
+	// Check current partitions
+	existing, err := ListTablePartitions(dbc, tableName)
+	if err != nil {
+		log.WithError(err).Error("failed to list existing partitions")
+		return
+	}
+	fmt.Printf("Existing partitions: %d\n", len(existing))
+
+	// Dry run to see what would be created
+	fmt.Println("\nDry run...")
+	created, err := CreateMissingPartitions(dbc, tableName, startDate, endDate, true)
+	if err != nil {
+		log.WithError(err).Error("dry run failed")
+		return
+	}
+
+	if created == 0 {
+		fmt.Println("All partitions already exist - no action needed")
+		return
+	}
+
+	fmt.Printf("Would create %d missing partitions\n", created)
+
+	// Actual creation (commented out for safety)
+	// fmt.Println("\nCreating partitions...")
+	// created, err = CreateMissingPartitions(dbc, tableName, startDate, endDate, false)
+	// if err != nil {
+	//     log.WithError(err).Error("creation failed")
+	//     return
+	// }
+	// fmt.Printf("Successfully created %d partitions\n", created)
+}
+
+// ExampleCreatePartitionedTable demonstrates creating a new partitioned table from a GORM model
+//
+// Usage:
+//
+//	config := partitions.NewRangePartitionConfig("created_at")
+//	ExampleCreatePartitionedTable(dbc, &models.MyModel{}, "my_partitioned_table", config)
+func ExampleCreatePartitionedTable(dbc *db.DB, model interface{}, tableName string, config PartitionConfig) {
+	fmt.Printf("\n=== Create Partitioned Table: %s ===\n", tableName)
+	fmt.Printf("Strategy: %s\n", config.Strategy)
+	fmt.Printf("Partition by: %s\n", strings.Join(config.Columns, ", "))
+
+	// Dry run to see the SQL that would be executed
+	fmt.Println("\nDry run - SQL that would be executed:")
+	sql, err := CreatePartitionedTable(dbc, model, tableName, config, true)
+	if err != nil {
+		log.WithError(err).Error("dry run failed")
+		return
+	}
+
+	if sql == "" {
+		fmt.Println("Table already exists - no action needed")
+		return
+	}
+
+	// Actual creation (commented out for safety)
+	// fmt.Println("\nCreating partitioned table...")
+	// _, err = CreatePartitionedTable(dbc, model, tableName, config, false)
+	// if err != nil {
+	//     log.WithError(err).Error("table creation failed")
+	//     return
+	// }
+	// fmt.Printf("Successfully created partitioned table: %s\n", tableName)
+	//
+	// // For RANGE partitions, create partitions for your date range
+	// if config.Strategy == db.PartitionStrategyRange {
+	//     startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	//     endDate := time.Now()
+	//     created, err := CreateMissingPartitions(dbc, tableName, startDate, endDate, false)
+	//     if err != nil {
+	//         log.WithError(err).Error("partition creation failed")
+	//         return
+	//     }
+	//     fmt.Printf("Created %d partitions\n", created)
+	// }
+	//
+	// // For HASH partitions, create the required number of partitions
+	// if config.Strategy == db.PartitionStrategyHash {
+	//     for i := 0; i < config.Modulus; i++ {
+	//         partName := fmt.Sprintf("%s_%d", tableName, i)
+	//         sql := fmt.Sprintf("CREATE TABLE %s PARTITION OF %s FOR VALUES WITH (MODULUS %d, REMAINDER %d)",
+	//             partName, tableName, config.Modulus, i)
+	//         if err := dbc.DB.Exec(sql).Error; err != nil {
+	//             log.WithError(err).Errorf("failed to create partition %s", partName)
+	//         }
+	//     }
+	// }
+}
+
+// ExampleUpdatePartitionedTable demonstrates updating an existing partitioned table schema
+//
+// Usage:
+//
+//	ExampleUpdatePartitionedTable(dbc, &models.MyModel{}, "my_partitioned_table")
+func ExampleUpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string) {
+	fmt.Printf("\n=== Update Partitioned Table Schema: %s ===\n", tableName)
+
+	// Dry run to see what changes would be made
+	fmt.Println("\nDry run - checking for schema changes:")
+	sql, err := UpdatePartitionedTable(dbc, model, tableName, true)
+	if err != nil {
+		log.WithError(err).Error("dry run failed")
+		return
+	}
+
+	if sql == "" {
+		fmt.Println("Schema is up to date - no changes needed")
+		return
+	}
+
+	fmt.Printf("\nChanges detected:\n%s\n", sql)
+
+	// Actual update (commented out for safety)
+	// fmt.Println("\nApplying schema changes...")
+	// _, err = UpdatePartitionedTable(dbc, model, tableName, false)
+	// if err != nil {
+	//     log.WithError(err).Error("schema update failed")
+	//     return
+	// }
+	// fmt.Printf("Successfully updated table schema: %s\n", tableName)
+}
+
 // ExampleWorkflowForAnyTable demonstrates managing partitions for any table
 //
 // Usage:
@@ -551,8 +703,8 @@ func ExampleWorkflowForAnyTable(dbc *db.DB) {
 			stats.OldestDate.Format("2006-01-02"),
 			stats.NewestDate.Format("2006-01-02"))
 
-		// Check 180-day retention policy
-		summary, err := GetRetentionSummary(dbc, table.TableName, 180)
+		// Check 180-day retention policy (all partitions)
+		summary, err := GetRetentionSummary(dbc, table.TableName, 180, false)
 		if err != nil {
 			log.WithError(err).WithField("table", table.TableName).Error("failed to get summary")
 			continue
