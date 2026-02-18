@@ -19,7 +19,6 @@ component_readiness:
       FeatureSet: { }
       Installer: { }
       Network: { }
-      OS: { }
       Platform: { }
       Suite: { }
       Topology: { }
@@ -46,8 +45,6 @@ component_readiness:
       - virt
       Network:
       - ovn
-      OS:
-      - rhcos9
       Owner:
       - eng
       - service-delivery
