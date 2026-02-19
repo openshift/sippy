@@ -47,6 +47,7 @@ const (
 	// So, this sorts the data, partitioning by the 3-tuple of file_path/test_name/testsuite -
 	// preferring flakes, then successes, then failures, and we get the first row of each
 	// partition.
+	// partition.
 	dedupedJunitTable = `
 		WITH deduped_testcases AS (
 			SELECT  
@@ -272,8 +273,24 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 	return bq.ReportTestStatus{SampleStatus: sampleStatus}, errs
 }
 
+// buildPriorityCaseStatement generates a SQL CASE statement that assigns priority based on test position in the list.
+// Lower index = higher priority. This is used to ensure when multiple exclusive tests appear in the same job,
+// only the highest priority one is counted.
+func buildPriorityCaseStatement(exclusiveTestNames []string) string {
+	var caseStatements []string
+	for i, testName := range exclusiveTestNames {
+		// Escape single quotes in test name for SQL
+		escapedTestName := strings.ReplaceAll(testName, "'", "''")
+		caseStatements = append(caseStatements, fmt.Sprintf("WHEN test_name = '%s' THEN %d", escapedTestName, i))
+	}
+	// Add a default case to handle any unexpected tests (should not happen due to IN UNNEST filter)
+	caseStatements = append(caseStatements, fmt.Sprintf("ELSE %d", len(exclusiveTestNames)))
+	return strings.Join(caseStatements, "\n\t\t\t\t\t\t\t")
+}
+
 // BuildComponentReportQuery returns the common query for the higher level summary component summary.
-// If exclusiveTestNames is provided, any job containing tests from this set will have all other tests excluded.
+// If exclusiveTestNames is provided, jobs containing tests from this set will have all other tests excluded,
+// and only the highest priority (earliest in the list) exclusive test will be included.
 func BuildComponentReportQuery(
 	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
@@ -290,7 +307,7 @@ func BuildComponentReportQuery(
 	joinVariants := ""
 	groupByVariants := ""
 	for _, v := range sortedKeys(allJobVariants.Variants) {
-		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
+		joinVariants += fmt.Sprintf("LEFT JOIN %s.job_variants jv_%s ON junit_data.variant_registry_job_name = jv_%s.job_name AND jv_%s.variant_name = '%s'\n",
 			client.Dataset, v, v, v, v)
 	}
 	for _, v := range reqOptions.VariantOption.DBGroupBy.List() {
@@ -312,13 +329,32 @@ func BuildComponentReportQuery(
 	// Build the WITH clause - add jobs_with_failed_exclusive_tests CTE if exclusiveTestNames is provided
 	withClause := ""
 	if len(exclusiveTestNames) > 0 {
-		withClause = fmt.Sprintf(`WITH jobs_with_failed_exclusive_tests AS (
-							SELECT DISTINCT prowjob_build_id
+		// Create a CTE that identifies the highest priority (lowest index) exclusive test in each job
+		// This ensures when multiple exclusive tests appear in the same job, only the highest priority one is used
+		withClause = fmt.Sprintf(`WITH exclusive_test_priorities AS (
+							SELECT
+								prowjob_build_id,
+								test_name,
+								-- Find the index/priority of each test (lower index = higher priority)
+								CASE
+								%s
+								END AS test_priority
 							FROM %s.%s AS junit
 							WHERE modified_time >= DATETIME(@From)
 							AND modified_time < DATETIME(@To)
 							AND test_name IN UNNEST(@ExclusiveTestNames)
 							AND success_val = 0
+						),
+						jobs_with_highest_priority_test AS (
+							SELECT
+								prowjob_build_id,
+								test_name
+							FROM exclusive_test_priorities
+							WHERE test_priority = (
+								SELECT MIN(test_priority)
+								FROM exclusive_test_priorities ep2
+								WHERE ep2.prowjob_build_id = exclusive_test_priorities.prowjob_build_id
+							)
 						),
 						latest_component_mapping AS (
 							SELECT *
@@ -326,7 +362,7 @@ func BuildComponentReportQuery(
 							WHERE created_at = (
 									SELECT MAX(created_at)
 									FROM %s.component_mapping))`,
-			client.Dataset, junitTable, client.Dataset, client.Dataset)
+			buildPriorityCaseStatement(exclusiveTestNames), client.Dataset, junitTable, client.Dataset, client.Dataset)
 	} else {
 		withClause = fmt.Sprintf(`WITH latest_component_mapping AS (
 							SELECT *
@@ -339,33 +375,40 @@ func BuildComponentReportQuery(
 
 	queryString := fmt.Sprintf(`%s
 					SELECT
-						ANY_VALUE(test_name HAVING MAX prowjob_start) AS test_name,
-						ANY_VALUE(testsuite HAVING MAX prowjob_start) AS test_suite,
+						ANY_VALUE(junit_data.test_name HAVING MAX junit_data.prowjob_start) AS test_name,
+						ANY_VALUE(junit_data.testsuite HAVING MAX junit_data.prowjob_start) AS test_suite,
 						cm.id as test_id,
 						%s
 						COUNT(cm.id) AS total_count,
-						SUM(adjusted_success_val) AS success_count,
-						SUM(adjusted_flake_count) AS flake_count,
-						MAX(CASE WHEN success_val = 0 THEN prowjob_start ELSE NULL END) AS last_failure,
+						SUM(junit_data.adjusted_success_val) AS success_count,
+						SUM(junit_data.adjusted_flake_count) AS flake_count,
+						MAX(CASE WHEN junit_data.success_val = 0 THEN junit_data.prowjob_start ELSE NULL END) AS last_failure,
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities,
-					FROM (%s)
-					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
+					FROM (%s) AS junit_data
+					INNER JOIN latest_component_mapping cm ON junit_data.testsuite = cm.suite AND junit_data.test_name = cm.name
 `,
 		withClause, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore))
 
 	queryString += joinVariants
 
 	queryString += `WHERE cm.staff_approved_obsolete = false AND
-						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')`
+						(junit_data.variant_registry_job_name LIKE 'periodic-%%' OR junit_data.variant_registry_job_name LIKE 'release-%%' OR junit_data.variant_registry_job_name LIKE 'aggregator-%%')`
 	commonParams := []bigquery.QueryParameter{}
 
-	// Add filtering logic for exclusive tests
+	// Add filtering logic for exclusive tests with priority
+	// Only include the highest priority test from each job, and exclude all other tests from those jobs
 	if len(exclusiveTestNames) > 0 {
 		queryString += `
 						AND (
-							test_name IN UNNEST(@ExclusiveTestNames)
-							OR prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_failed_exclusive_tests)
+							-- Include tests from jobs that don't have any failed exclusive tests
+							junit_data.prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)
+							-- Or include only the highest priority exclusive test from jobs that have them
+							OR EXISTS (
+								SELECT 1 FROM jobs_with_highest_priority_test j
+								WHERE j.prowjob_build_id = junit_data.prowjob_build_id
+								AND j.test_name = junit_data.test_name
+							)
 						)`
 		commonParams = append(commonParams, bigquery.QueryParameter{
 			Name:  "ExclusiveTestNames",
@@ -659,6 +702,7 @@ func FetchTestStatusResults(ctx context.Context, query *bigquery.Query, exclusiv
 
 		status[testIDStr] = testStatus
 	}
+
 	return status, errs
 }
 

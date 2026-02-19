@@ -68,7 +68,7 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 			expectedCTE:        true,
 			expectedFilter:     true,
 			expectedParam:      true,
-			expectedCTEContent: "jobs_with_failed_exclusive_tests",
+			expectedCTEContent: "jobs_with_highest_priority_test",
 		},
 		{
 			name: "Single exclusive test - filtering applied",
@@ -78,7 +78,7 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 			expectedCTE:        true,
 			expectedFilter:     true,
 			expectedParam:      true,
-			expectedCTEContent: "jobs_with_failed_exclusive_tests",
+			expectedCTEContent: "jobs_with_highest_priority_test",
 		},
 	}
 
@@ -99,23 +99,31 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 
 			// Check if CTE is present when expected
 			if tt.expectedCTE {
-				assert.Contains(t, commonQuery, "jobs_with_failed_exclusive_tests",
-					"Query should contain jobs_with_failed_exclusive_tests CTE")
+				assert.Contains(t, commonQuery, "jobs_with_highest_priority_test",
+					"Query should contain jobs_with_highest_priority_test CTE")
+				assert.Contains(t, commonQuery, "exclusive_test_priorities",
+					"Query should contain exclusive_test_priorities CTE for priority calculation")
 				assert.Contains(t, commonQuery, "AND success_val = 0",
 					"CTE should only identify jobs where exclusive tests FAILED (success_val = 0)")
 				assert.Contains(t, commonQuery, "test_name IN UNNEST(@ExclusiveTestNames)",
 					"CTE should filter by exclusive test names")
+				assert.Contains(t, commonQuery, "test_priority",
+					"CTE should calculate test priority based on list order")
 			} else {
-				assert.NotContains(t, commonQuery, "jobs_with_failed_exclusive_tests",
-					"Query should not contain jobs_with_failed_exclusive_tests CTE when no exclusive tests")
+				assert.NotContains(t, commonQuery, "jobs_with_highest_priority_test",
+					"Query should not contain jobs_with_highest_priority_test CTE when no exclusive tests")
+				assert.NotContains(t, commonQuery, "exclusive_test_priorities",
+					"Query should not contain exclusive_test_priorities CTE when no exclusive tests")
 			}
 
 			// Check if filtering WHERE clause is present when expected
 			if tt.expectedFilter {
-				assert.Contains(t, commonQuery, "test_name IN UNNEST(@ExclusiveTestNames)",
-					"Query should include exclusive test names filter")
-				assert.Contains(t, commonQuery, "prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_failed_exclusive_tests)",
-					"Query should exclude tests from jobs with failed exclusive tests")
+				assert.Contains(t, commonQuery, "junit_data.prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)",
+					"Query should include tests from jobs without failed exclusive tests")
+				assert.Contains(t, commonQuery, "EXISTS",
+					"Query should use EXISTS to match highest priority test from jobs with exclusive tests")
+				assert.Contains(t, commonQuery, "j.prowjob_build_id = junit_data.prowjob_build_id",
+					"Query should match both prowjob_build_id and test_name in EXISTS clause")
 			}
 
 			// Check if query parameter is present when expected
@@ -147,11 +155,13 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 				assert.Contains(t, cteSection, tt.expectedCTEContent,
 					"Query should contain expected CTE")
 
-				// Verify the CTE only selects prowjob_build_id for jobs where exclusive tests failed
-				// Use a more lenient check that ignores whitespace variations
+				// Verify the CTE selects prowjob_build_id and test_name for priority-based filtering
+				// The new structure identifies the highest priority test per job
 				normalizedCTE := strings.ReplaceAll(strings.ReplaceAll(cteSection, "\t", " "), "\n", " ")
-				assert.Contains(t, normalizedCTE, "DISTINCT prowjob_build_id",
-					"CTE should select distinct prowjob_build_id")
+				assert.Contains(t, normalizedCTE, "prowjob_build_id",
+					"CTE should select prowjob_build_id")
+				assert.Contains(t, normalizedCTE, "test_name",
+					"CTE should select test_name to identify the highest priority test")
 			}
 		})
 	}
@@ -192,9 +202,11 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 	)
 
 	// The query should:
-	// 1. Create a CTE that identifies jobs where exclusive tests FAILED
-	assert.Contains(t, commonQuery, "WITH jobs_with_failed_exclusive_tests AS",
-		"Should create CTE for failed exclusive tests")
+	// 1. Create CTEs that identify the highest priority test in each job
+	assert.Contains(t, commonQuery, "WITH exclusive_test_priorities AS",
+		"Should create CTE for calculating test priorities")
+	assert.Contains(t, commonQuery, "jobs_with_highest_priority_test AS",
+		"Should create CTE for identifying highest priority test per job")
 
 	// 2. The CTE should check success_val = 0 (failure)
 	cteEnd := strings.Index(commonQuery, "latest_component_mapping")
@@ -204,20 +216,26 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 	assert.Contains(t, cteSection, "success_val = 0",
 		"CTE should only match FAILED exclusive tests (success_val = 0), not all instances")
 
-	// 3. Include the exclusive test itself OR tests from jobs without failed exclusive tests
-	assert.Contains(t, commonQuery, "test_name IN UNNEST(@ExclusiveTestNames)",
-		"Should always include the exclusive tests themselves")
-	assert.Contains(t, commonQuery, "prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_failed_exclusive_tests)",
-		"Should exclude other tests from jobs where exclusive tests failed")
+	// 3. Priority-based filtering: only include highest priority test from jobs with exclusive test failures
+	assert.Contains(t, commonQuery, "test_priority",
+		"Should calculate test priority based on list order")
+	assert.Contains(t, commonQuery, "junit_data.prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)",
+		"Should include tests from jobs without failed exclusive tests")
+	assert.Contains(t, commonQuery, "EXISTS",
+		"Should use EXISTS to match the highest priority test from jobs with exclusive test failures")
+	assert.Contains(t, commonQuery, "j.prowjob_build_id = junit_data.prowjob_build_id",
+		"Should match prowjob_build_id in EXISTS clause")
+	assert.Contains(t, commonQuery, "j.test_name = junit_data.test_name",
+		"Should match test_name in EXISTS clause")
 
-	// 4. Verify the logic is an OR condition (include exclusive tests OR tests from clean jobs)
+	// 4. Verify the logic correctly filters based on priority
 	// Normalize whitespace for easier parsing
 	normalizedQuery := strings.ReplaceAll(strings.ReplaceAll(commonQuery, "\t", " "), "\n", " ")
 	normalizedQuery = strings.Join(strings.Fields(normalizedQuery), " ") // Collapse all whitespace
 
-	// The query should contain the OR logic between the two conditions
-	assert.Contains(t, normalizedQuery, "test_name IN UNNEST(@ExclusiveTestNames) OR prowjob_build_id NOT IN",
-		"Should have OR condition between exclusive test filter and job filter")
+	// The query should contain the priority-based filtering logic using EXISTS
+	assert.Contains(t, normalizedQuery, "jobs_with_highest_priority_test j",
+		"Should use jobs_with_highest_priority_test in EXISTS subquery")
 }
 
 func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
@@ -272,11 +290,15 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 	assert.Contains(t, queryWith, "latest_component_mapping",
 		"Query with exclusive tests should have component mapping CTE")
 
-	// Only the query with exclusive tests should have the filtering CTE
-	assert.NotContains(t, queryWithout, "jobs_with_failed_exclusive_tests",
+	// Only the query with exclusive tests should have the filtering CTEs
+	assert.NotContains(t, queryWithout, "jobs_with_highest_priority_test",
 		"Query without exclusive tests should not have filtering CTE")
-	assert.Contains(t, queryWith, "jobs_with_failed_exclusive_tests",
+	assert.NotContains(t, queryWithout, "exclusive_test_priorities",
+		"Query without exclusive tests should not have priority calculation CTE")
+	assert.Contains(t, queryWith, "jobs_with_highest_priority_test",
 		"Query with exclusive tests should have filtering CTE")
+	assert.Contains(t, queryWith, "exclusive_test_priorities",
+		"Query with exclusive tests should have priority calculation CTE")
 
 	// Check parameters
 	assert.Len(t, paramsWithout, 0, "Query without exclusive tests should have no extra parameters")

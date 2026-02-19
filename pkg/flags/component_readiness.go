@@ -65,8 +65,8 @@ func (f *ComponentReadinessFlags) GetMassFailureTestNames() []string {
 		return nil
 	}
 	return []string{
-		"[sig-cluster-lifecycle] Cluster completes upgrade",
 		"install should succeed: overall",
+		"[sig-cluster-lifecycle] Cluster completes upgrade",
 		"[Jira:\"Test Framework\"] there should not be mass test failures",
 	}
 }
