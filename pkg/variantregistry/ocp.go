@@ -828,6 +828,8 @@ func setTopology(_ logrus.FieldLogger, variants map[string]string, jobName strin
 		{"-single-node", "single"},                // Alternative format
 		{"-two-node-arbiter", "two-node-arbiter"}, // Two-node
 		{"-two-node-fencing", "two-node-fencing"}, // Two-node
+		{"-tna-", "two-node-arbiter"},             // Two-node alternative format
+		{"-tnf-", "two-node-fencing"},             // Two-node alternative format
 		{"-hypershift", "external"},
 		{"-hcp", "external"},
 		{"_hcp", "external"},
