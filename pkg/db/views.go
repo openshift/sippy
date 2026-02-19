@@ -16,7 +16,7 @@ var PostgresMatViews = []PostgresView{
 	{
 		Name:         "prow_test_report_7d_matview",
 		Definition:   testReportMatView,
-		IndexColumns: []string{"id", "name", "release", "variants", "suite_name"},
+		IndexColumns: []string{"release", "name", "id", "variants", "suite_name"},
 		ReplaceStrings: map[string]string{
 			"|||START|||":    "|||TIMENOW||| - INTERVAL '14 DAY'",
 			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '7 DAY'",
@@ -26,7 +26,7 @@ var PostgresMatViews = []PostgresView{
 	{
 		Name:         "prow_test_report_2d_matview",
 		Definition:   testReportMatView,
-		IndexColumns: []string{"id", "name", "release", "variants", "suite_name"},
+		IndexColumns: []string{"release", "name", "id", "variants", "suite_name"},
 		ReplaceStrings: map[string]string{
 			"|||START|||":    "|||TIMENOW||| - INTERVAL '9 DAY'",
 			"|||BOUNDARY|||": "|||TIMENOW||| - INTERVAL '2 DAY'",

@@ -17,7 +17,7 @@ type ProwJob struct {
 
 	Kind        ProwKind
 	Name        string         `gorm:"unique"`
-	Release     string         `gorm:"varchar(10)"`
+	Release     string         `gorm:"varchar(10);index"`
 	Variants    pq.StringArray `gorm:"type:text[];index:idx_prow_jobs_variants,type:gin"`
 	TestGridURL string
 	// Bugs maps to all the bugs we scanned and found this prowjob name mentioned in the description or any comment.
@@ -78,12 +78,12 @@ type ProwJobRunTest struct {
 	gorm.Model
 	ProwJobRunID uint `gorm:"index"`
 	ProwJobRun   ProwJobRun
-	TestID       uint `gorm:"index"`
+	TestID       uint `gorm:"index;index:idx_prow_job_run_tests_test_id_status"`
 	Test         Test
 	// SuiteID may be nil if no suite name could be parsed from the testgrid test name.
 	SuiteID   *uint `gorm:"index"`
 	Suite     Suite
-	Status    int `gorm:"index"`
+	Status    int `gorm:"index;index:idx_prow_job_run_tests_test_id_status"`
 	Duration  float64
 	CreatedAt time.Time `gorm:"index"`
 	DeletedAt gorm.DeletedAt
