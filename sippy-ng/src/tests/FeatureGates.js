@@ -274,6 +274,9 @@ export default function FeatureGates(props) {
   }
 
   const fetchData = () => {
+    setLoaded(false)
+    setRows([])
+
     let queryString = ''
     if (filterModel && filterModel.items.length > 0) {
       queryString +=
@@ -316,10 +319,6 @@ export default function FeatureGates(props) {
   }
 
   useEffect(() => {
-    setLoaded(false)
-  }, [filterModel])
-
-  useEffect(() => {
     fetchData()
     document.title = `Sippy > ${props.release} > Feature Gates`
   }, [filterModel, sort, sortField])
@@ -340,53 +339,50 @@ export default function FeatureGates(props) {
             {fetchError}
           </Typography>
         )}
-        {isLoaded ? (
-          <DataGrid
-            components={{ Toolbar: GridToolbar }}
-            rows={rows}
-            columns={columns}
-            getRowHeight={() => 'auto'}
-            autoHeight={true}
-            rowsPerPageOptions={[10, 25, 50]}
-            sortModel={[
-              {
-                field: sortField,
-                sort: sort,
+        <DataGrid
+          loading={!isLoaded}
+          components={{ Toolbar: GridToolbar }}
+          rows={rows}
+          columns={columns}
+          getRowHeight={() => 'auto'}
+          autoHeight={true}
+          rowsPerPageOptions={[10, 25, 50]}
+          sortModel={[
+            {
+              field: sortField,
+              sort: sort,
+            },
+          ]}
+          pageSize={pageSize}
+          onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+          sortingOrder={['desc', 'asc']}
+          filterMode="server"
+          sortingMode="server"
+          onSortModelChange={(m) => updateSortModel(m)}
+          sx={{
+            '& .MuiDataGrid-row:hover': {
+              cursor: 'pointer',
+            },
+          }}
+          disableSelectionOnClick
+          filterModel={filterModel}
+          onRowClick={onRowClick}
+          componentsProps={{
+            toolbar: {
+              bookmarks: bookmarks,
+              columns: columns,
+              clearSearch: () => requestSearch(''),
+              doSearch: requestSearch,
+              addFilters: (m) => addFilters(m),
+              filterModel: filterModel,
+              setFilterModel: setFilterModel,
+              downloadDataFunc: () => {
+                return rows
               },
-            ]}
-            pageSize={pageSize}
-            onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
-            sortingOrder={['desc', 'asc']}
-            filterMode="server"
-            sortingMode="server"
-            onSortModelChange={(m) => updateSortModel(m)}
-            sx={{
-              '& .MuiDataGrid-row:hover': {
-                cursor: 'pointer', // Change cursor on hover
-              },
-            }}
-            disableSelectionOnClick
-            filterModel={filterModel}
-            onRowClick={onRowClick}
-            componentsProps={{
-              toolbar: {
-                bookmarks: bookmarks,
-                columns: columns,
-                clearSearch: () => requestSearch(''),
-                doSearch: requestSearch,
-                addFilters: (m) => addFilters(m),
-                filterModel: filterModel,
-                setFilterModel: setFilterModel,
-                downloadDataFunc: () => {
-                  return rows
-                },
-                downloadFilePrefix: 'feature-gates',
-              },
-            }}
-          />
-        ) : (
-          <Typography align="center">Loading...</Typography>
-        )}
+              downloadFilePrefix: 'feature-gates',
+            },
+          }}
+        />
       </Container>
     </Fragment>
   )

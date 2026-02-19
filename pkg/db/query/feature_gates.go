@@ -8,24 +8,26 @@ import (
 )
 
 func GetFeatureGatesFromDB(dbc *gorm.DB, release string, filterOpts *filter.FilterOptions) ([]api.FeatureGate, error) {
-	// Get tests by feature gate
+	// Get tests by feature gate.
 	// Install related FG is special and is covered by install should succeed case.
+	// Pre-filter with LIKE to avoid running expensive regex on every row.
 	subQuery := dbc.Table("prow_test_report_7d_matview").
 		Select(`name, release, regexp_matches(name, '\[(FeatureGate|OCPFeatureGate):([^\]]+)\]|install should succeed') AS match`).
-		Where("release = ?", release)
+		Where("release = ?", release).
+		Where("name LIKE '%FeatureGate:%' OR name LIKE '%install should succeed%'")
 
-	// Figure out the first release we ever saw a FG
-	firstSeenQuery := dbc.Table("feature_gates").
-		Select(`
+	// Figure out the first release we ever saw a FG.
+	// Use DISTINCT ON to return exactly one row per feature gate (the earliest release).
+	firstSeenQuery := dbc.Raw(`
+		SELECT DISTINCT ON (feature_gate)
 			feature_gate,
-			MIN(release) OVER (
-				PARTITION BY feature_gate 
-				ORDER BY string_to_array(release, '.')::int[] ASC
-			) AS first_seen_in,
-			CAST((string_to_array(MIN(release) OVER (PARTITION BY feature_gate), '.'))[1] AS INT) AS first_seen_in_major,
-			CAST((string_to_array(MIN(release) OVER (PARTITION BY feature_gate), '.'))[2] AS INT) AS first_seen_in_minor
-		`).
-		Where("status = 'enabled'")
+			release AS first_seen_in,
+			CAST((string_to_array(release, '.'))[1] AS INT) AS first_seen_in_major,
+			CAST((string_to_array(release, '.'))[2] AS INT) AS first_seen_in_minor
+		FROM feature_gates
+		WHERE status = 'enabled'
+		ORDER BY feature_gate, string_to_array(release, '.')::int[] ASC
+	`)
 
 	query := dbc.Table("feature_gates AS fg").
 		Select(`
