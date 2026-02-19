@@ -178,7 +178,29 @@ export default function RegressedTestsPanel(props) {
       valueGetter: (params) => {
         return formColumnName({ variants: params.row.variants })
       },
-      renderCell: (param) => <div className="test-name">{param.value}</div>,
+      renderCell: (params) => {
+        const variants = params.row.variants
+        const tooltipLines = Object.keys(variants)
+          .sort()
+          .map((key) => `${key}:${variants[key]}`)
+          .join('\n')
+        const briefDisplay = Object.keys(variants)
+          .sort()
+          .map((key) => variants[key])
+          // for brevity, there's little point showing bare default/none/unknown strings and the UI gets much
+          // cleaner without them. full key/values are always available in the hover tooltip.
+          .filter((val) => !['default', 'none', 'unknown'].includes(val))
+          .join(' ')
+        return (
+          <Tooltip
+            title={
+              <span style={{ whiteSpace: 'pre-line' }}>{tooltipLines}</span>
+            }
+          >
+            <div className="test-name">{briefDisplay}</div>
+          </Tooltip>
+        )
+      },
     },
     {
       field: 'regression',
