@@ -749,6 +749,67 @@ func (s *Server) jsonTestOutputsFromDB(w http.ResponseWriter, req *http.Request)
 	api.RespondWithJSON(http.StatusOK, w, outputs)
 }
 
+func (s *Server) jsonGetRecentTestFailures(w http.ResponseWriter, req *http.Request) {
+	release := s.getParamOrFail(w, req, "release")
+	if release == "" {
+		return
+	}
+
+	periodStr := s.getParamOrFail(w, req, "period")
+	if periodStr == "" {
+		return
+	}
+	period, err := time.ParseDuration(periodStr)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid period duration: %s", err.Error()))
+		return
+	}
+	if period <= 0 {
+		failureResponse(w, http.StatusBadRequest, "period must be a positive duration")
+		return
+	}
+
+	var previousPeriod *time.Duration
+	if pp := param.SafeRead(req, "previousPeriod"); pp != "" {
+		d, err := time.ParseDuration(pp)
+		if err != nil {
+			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid previousPeriod duration: %s", err.Error()))
+			return
+		}
+		if d <= 0 {
+			failureResponse(w, http.StatusBadRequest, "previousPeriod must be a positive duration")
+			return
+		}
+		previousPeriod = &d
+	}
+
+	includeOutputs, err := param.ReadBool(req, "includeOutputs", false)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, fmt.Sprintf("invalid includeOutputs value: %s", err.Error()))
+		return
+	}
+
+	filterOpts, err := filter.FilterOptionsFromRequest(req, "failure_count", apitype.SortDescending)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "could not parse filter options: "+err.Error())
+		return
+	}
+
+	pagination, err := getPaginationParams(req)
+	if err != nil {
+		failureResponse(w, http.StatusBadRequest, "could not parse pagination options: "+err.Error())
+		return
+	}
+
+	result, err := api.GetRecentTestFailures(s.db, release, period, previousPeriod, includeOutputs, filterOpts, pagination, s.GetReportEnd())
+	if err != nil {
+		failureResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	api.RespondWithJSON(http.StatusOK, w, result)
+}
+
 func (s *Server) jsonTestRunsAndOutputsFromBigQuery(w http.ResponseWriter, req *http.Request) {
 	if s.bigQueryClient == nil {
 		failureResponse(w, http.StatusBadRequest, "test runs API is only available when google-service-account-credential-file is configured")
@@ -2422,6 +2483,13 @@ func (s *Server) Serve() {
 			Capabilities: []string{LocalDBCapability},
 			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestOutputsFromDB,
+		},
+		{
+			EndpointPath: "/api/tests/recent_failures",
+			Description:  "Lists tests that recently started failing with configurable time windows",
+			Capabilities: []string{LocalDBCapability},
+			CacheTime:    1 * time.Hour,
+			HandlerFunc:  s.jsonGetRecentTestFailures,
 		},
 		{
 			EndpointPath:      "/api/tests/v2/runs",
