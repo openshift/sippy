@@ -2740,6 +2740,7 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/feature_gates",
 			Description:  "Reports feature gates and their test counts for a particular release",
 			Capabilities: []string{LocalDBCapability},
+			CacheTime:    4 * time.Hour,
 			HandlerFunc:  s.jsonFeatureGates,
 		},
 		{
