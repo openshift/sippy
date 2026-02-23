@@ -11,6 +11,7 @@ import {
   Button,
   Checkbox,
   CircularProgress,
+  Link,
   MenuItem,
   Select,
   TextField,
@@ -18,8 +19,8 @@ import {
 } from '@mui/material'
 import { escapeRegex } from '../helpers'
 import { makeStyles } from '@mui/styles'
+import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
 import { stringify } from 'query-string'
-import { useNavigate } from 'react-router-dom'
 import Alert from '@mui/material/Alert'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import FormGroup from '@mui/material/FormGroup'
@@ -214,6 +215,7 @@ const intervalColorizers = {
 export default function IntervalsChart(props) {
   const navigate = useNavigate()
   const classes = useStyles()
+  const { jobrunid, jobname, repoinfo, pullnumber } = useParams()
 
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
@@ -570,6 +572,18 @@ export default function IntervalsChart(props) {
 
   return (
     <Fragment>
+      <Box sx={{ mb: 2 }}>
+        <Link
+          component={RouterLink}
+          to={
+            ['/job_runs', jobrunid, jobname, repoinfo, pullnumber]
+              .filter(Boolean)
+              .join('/') + '/events'
+          }
+        >
+          View Cluster Events
+        </Link>
+      </Box>
       <p>
         Loaded {eventIntervals.length} intervals from{' '}
         <LaunderedLink address={jobRunUrl}>GCS job run</LaunderedLink>, filtered
