@@ -175,13 +175,15 @@ func processFeatureGateFile(path, release, filename string) ([]models.FeatureGat
 	return convertAPIToDB(fg, release, topology, featureSet, path), nil
 }
 
-// parseFeatureGateFilename extracts topology and feature set from the filename
+// parseFeatureGateFilename extracts topology and feature set from the filename.
+// Handles both old format (featureGate-{topology}-{featureSet}.yaml) and
+// new versioned format (featureGate-{majorStart}-{majorEnd}-{topology}-{featureSet}.yaml).
 func parseFeatureGateFilename(filename string) (string, string, bool) {
 	parts := strings.Split(strings.TrimSuffix(filename, ".yaml"), "-")
 	if len(parts) < 3 {
 		return "", "", false
 	}
-	return parts[1], parts[2], true
+	return parts[len(parts)-2], parts[len(parts)-1], true
 }
 
 // convertAPIToDB converts the parsed feature gate data into db models
