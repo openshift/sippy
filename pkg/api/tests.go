@@ -470,13 +470,27 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	if collapse {
 		rawQuery = rawQuery.Select(`suite_name,name,jira_component,jira_component_id,` + query.QueryTestSummer).Group("suite_name,name,jira_component,jira_component_id")
 	} else {
-		// Pass the raw filter into the subqueries so they can use indexes
-		// instead of scanning the entire matview for the release.
-		var subqueryFilters []func(*gorm.DB) *gorm.DB
+		// Split the raw filter so name filters push into both stats and
+		// passRates subqueries (for index use), while variant filters only
+		// push into passRates to preserve cross-variant stats semantics.
+		var subqueryFilters []query.SubqueryFilter
 		if rawFilter != nil {
-			subqueryFilters = append(subqueryFilters, func(db *gorm.DB) *gorm.DB {
-				return rawFilter.ToSQL(db, apitype.Test{})
-			})
+			variantFilter, nameFilter := rawFilter.Split([]string{"variants"})
+			if len(nameFilter.Items) > 0 {
+				subqueryFilters = append(subqueryFilters, query.SubqueryFilter{
+					Apply: func(db *gorm.DB) *gorm.DB {
+						return nameFilter.ToSQL(db, apitype.Test{})
+					},
+				})
+			}
+			if len(variantFilter.Items) > 0 {
+				subqueryFilters = append(subqueryFilters, query.SubqueryFilter{
+					Apply: func(db *gorm.DB) *gorm.DB {
+						return variantFilter.ToSQL(db, apitype.Test{})
+					},
+					VariantOnly: true,
+				})
+			}
 		}
 		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, release, table, subqueryFilters...)
 		variantSelect = "suite_name, variants," +
