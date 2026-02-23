@@ -244,7 +244,7 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 // flake_average shows the average flake percentage among all variants.
 // flake_standard_deviation shows the standard deviation of the flake percentage among variants. The number reflects how much flake percentage differs among variants.
 // delta_from_flake_average shows how much each variant differs from the flake_average. This can be used to identify outliers.
-func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB {
+func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string, subqueryFilters ...func(*gorm.DB) *gorm.DB) *gorm.DB {
 	// 1. Create a virtual stats table. There is a single row for each test.
 	stats := dbc.DB.Table(table).
 		Select(`
@@ -263,6 +263,13 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string) *gorm.DB
 	passRates := dbc.DB.Table(table).
 		Select(`id as test_id, suite_name as pass_rate_suite_name, variants as pass_rate_variants, `+QueryTestPercentages).
 		Where(`release = ?`, release)
+
+	// Apply any provided filters to the subqueries so they can leverage indexes
+	// instead of scanning the entire matview for the release.
+	for _, f := range subqueryFilters {
+		stats = f(stats)
+		passRates = f(passRates)
+	}
 
 	// 3. Join the tables to produce test report. Each row represent one variant of a test and contains all stats, both unique to the specific variant and average across all variants.
 	return dbc.DB.

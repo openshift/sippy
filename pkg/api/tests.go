@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -466,7 +467,13 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	if spec.Collapse {
 		rawQuery = rawQuery.Select(`suite_name,name,jira_component,jira_component_id,` + query.QueryTestSummer).Group("suite_name,name,jira_component,jira_component_id")
 	} else {
-		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, spec.Release, matview)
+		var subqueryFilters []func(*gorm.DB) *gorm.DB
+		if rawFilter != nil {
+			subqueryFilters = append(subqueryFilters, func(db *gorm.DB) *gorm.DB {
+				return rawFilter.ToSQL(db, apitype.Test{})
+			})
+		}
+		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, spec.Release, matview, subqueryFilters...)
 		variantSelect = "suite_name, variants," +
 			"delta_from_working_average, working_average, working_standard_deviation, " +
 			"delta_from_passing_average, passing_average, passing_standard_deviation, " +
