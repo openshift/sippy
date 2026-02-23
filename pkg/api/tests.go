@@ -467,11 +467,24 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	if spec.Collapse {
 		rawQuery = rawQuery.Select(`suite_name,name,jira_component,jira_component_id,` + query.QueryTestSummer).Group("suite_name,name,jira_component,jira_component_id")
 	} else {
-		var subqueryFilters []func(*gorm.DB) *gorm.DB
+		var subqueryFilters []query.SubqueryFilter
 		if rawFilter != nil {
-			subqueryFilters = append(subqueryFilters, func(db *gorm.DB) *gorm.DB {
-				return rawFilter.ToSQL(db, apitype.Test{})
-			})
+			variantFilter, nameFilter := rawFilter.Split([]string{"variants"})
+			if len(nameFilter.Items) > 0 {
+				subqueryFilters = append(subqueryFilters, query.SubqueryFilter{
+					Apply: func(db *gorm.DB) *gorm.DB {
+						return nameFilter.ToSQL(db, apitype.Test{})
+					},
+				})
+			}
+			if len(variantFilter.Items) > 0 {
+				subqueryFilters = append(subqueryFilters, query.SubqueryFilter{
+					Apply: func(db *gorm.DB) *gorm.DB {
+						return variantFilter.ToSQL(db, apitype.Test{})
+					},
+					VariantOnly: true,
+				})
+			}
 		}
 		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, spec.Release, matview, subqueryFilters...)
 		variantSelect = "suite_name, variants," +
