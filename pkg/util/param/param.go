@@ -40,8 +40,8 @@ var paramRegexp = map[string]*regexp.Regexp{
 	"toPayload":        nameRegexp,
 	"job":              nameRegexp,
 	"job_name":         nameRegexp,
-	"test":             regexp.MustCompile(`^.+$`),       // tests can be anything, so always parameterize in sql
-	"test_id":          regexp.MustCompile(`^[\w:.-]+$`), // test IDs like "openshift-tests-upgrade:af8a62c596e5c2b5448a5d308f4989a6"
+	"test":             regexp.MustCompile(`^.+$`),        // tests can be anything, so always parameterize in sql
+	"test_id":          regexp.MustCompile(`^[\w:. -]+$`), // test IDs like "openshift-tests-upgrade:af8a62c596e5c2b5448a5d308f4989a6" or "cluster install:0cb1bb27e418491b1ffdacab58c5c8c0"
 	"prow_job_run_id":  uintRegexp,
 	"prow_job_run_ids": regexp.MustCompile(`^\d+(,\d+)*$`), // comma-separated integers
 	"org":              nameRegexp,
