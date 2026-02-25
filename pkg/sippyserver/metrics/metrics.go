@@ -96,11 +96,11 @@ var (
 	disruptionVsPrevGAMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: disruptionVsPrevGAMetricName,
 		Help: "Delta of percentiles now vs the 30 days prior to previous release GA date",
-	}, []string{"delta", "release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "feature_set", "releaseStatus"})
+	}, []string{"delta", "release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "feature_set", "os", "releaseStatus"})
 	disruptionVsPrevGARelevanceMetric = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "sippy_disruption_vs_prev_ga_relevance",
 		Help: "Rating of how relevant we feel our data is for regression detection.",
-	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "feature_set", "releaseStatus"})
+	}, []string{"release", "compare_release", "platform", "backend", "upgrade_type", "master_nodes_updated", "network", "topology", "architecture", "feature_set", "os", "releaseStatus"})
 )
 
 func getReleaseStatus(releases []v1.Release, release string) string {
@@ -363,19 +363,19 @@ func refreshDisruptionMetrics(client *bqclient.Client, releases []v1.Release) er
 		releaseStatus := getReleaseStatus(releases, row.Release)
 		disruptionVsPrevGAMetric.WithLabelValues("P50",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, releaseStatus).Set(float64(row.P50))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, row.OS, releaseStatus).Set(float64(row.P50))
 		disruptionVsPrevGAMetric.WithLabelValues("P75",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, releaseStatus).Set(float64(row.P75))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, row.OS, releaseStatus).Set(float64(row.P75))
 		disruptionVsPrevGAMetric.WithLabelValues("P95",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, releaseStatus).Set(float64(row.P95))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, row.OS, releaseStatus).Set(float64(row.P95))
 		disruptionVsPrevGAMetric.WithLabelValues("PercentageAboveZero",
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, releaseStatus).Set(float64(row.PercentageAboveZeroDelta))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, row.OS, releaseStatus).Set(float64(row.PercentageAboveZeroDelta))
 		disruptionVsPrevGARelevanceMetric.WithLabelValues(
 			row.Release, row.CompareRelease, row.Platform, row.BackendName, row.UpgradeType,
-			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, releaseStatus).Set(float64(row.Relevance))
+			row.MasterNodesUpdated, row.Network, row.Topology, row.Architecture, row.FeatureSet, row.OS, releaseStatus).Set(float64(row.Relevance))
 	}
 
 	return nil
