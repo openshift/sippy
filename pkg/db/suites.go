@@ -63,6 +63,7 @@ var testSuites = []string{
 	"OADP-lp-interop",
 	"ACS-lp-interop",
 	"ACSLatest-lp-interop",
+	"Fusion-access-lp-interop",
 	"MTA-lp-interop",
 	"Gitops-lp-interop",
 	"Quay-lp-interop",
