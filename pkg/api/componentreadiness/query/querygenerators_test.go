@@ -39,29 +39,29 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 
 	tests := []struct {
 		name               string
-		exclusiveTestNames []string
+		keyTestNames       []string
 		expectedCTE        bool
 		expectedFilter     bool
 		expectedParam      bool
 		expectedCTEContent string
 	}{
 		{
-			name:               "No exclusive tests - no filtering",
-			exclusiveTestNames: nil,
-			expectedCTE:        false,
-			expectedFilter:     false,
-			expectedParam:      false,
+			name:           "No key tests - no filtering",
+			keyTestNames:   nil,
+			expectedCTE:    false,
+			expectedFilter: false,
+			expectedParam:  false,
 		},
 		{
-			name:               "Empty exclusive tests - no filtering",
-			exclusiveTestNames: []string{},
-			expectedCTE:        false,
-			expectedFilter:     false,
-			expectedParam:      false,
+			name:           "Empty key tests - no filtering",
+			keyTestNames:   []string{},
+			expectedCTE:    false,
+			expectedFilter: false,
+			expectedParam:  false,
 		},
 		{
-			name: "With exclusive tests - filtering applied",
-			exclusiveTestNames: []string{
+			name: "With key tests - filtering applied",
+			keyTestNames: []string{
 				"[sig-cluster-lifecycle] Cluster completes upgrade",
 				"install should succeed: overall",
 			},
@@ -71,8 +71,8 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 			expectedCTEContent: "jobs_with_highest_priority_test",
 		},
 		{
-			name: "Single exclusive test - filtering applied",
-			exclusiveTestNames: []string{
+			name: "Single key test - filtering applied",
+			keyTestNames: []string{
 				"install should succeed: overall",
 			},
 			expectedCTE:        true,
@@ -85,7 +85,7 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			reqOptions := baseReqOptions
-			reqOptions.AdvancedOption.ExclusiveTestNames = tt.exclusiveTestNames
+			reqOptions.AdvancedOption.KeyTestNames = tt.keyTestNames
 
 			commonQuery, _, queryParams := BuildComponentReportQuery(
 				mockClient,
@@ -94,34 +94,34 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 				includeVariants,
 				DefaultJunitTable,
 				false,
-				tt.exclusiveTestNames...,
+				tt.keyTestNames...,
 			)
 
 			// Check if CTE is present when expected
 			if tt.expectedCTE {
 				assert.Contains(t, commonQuery, "jobs_with_highest_priority_test",
 					"Query should contain jobs_with_highest_priority_test CTE")
-				assert.Contains(t, commonQuery, "exclusive_test_priorities",
+				assert.Contains(t, commonQuery, "key_test_priorities",
 					"Query should contain exclusive_test_priorities CTE for priority calculation")
 				assert.Contains(t, commonQuery, "AND success_val = 0",
-					"CTE should only identify jobs where exclusive tests FAILED (success_val = 0)")
-				assert.Contains(t, commonQuery, "test_name IN UNNEST(@ExclusiveTestNames)",
-					"CTE should filter by exclusive test names")
+					"CTE should only identify jobs where key tests FAILED (success_val = 0)")
+				assert.Contains(t, commonQuery, "test_name IN UNNEST(@KeyTestNames)",
+					"CTE should filter by key test names")
 				assert.Contains(t, commonQuery, "test_priority",
 					"CTE should calculate test priority based on list order")
 			} else {
 				assert.NotContains(t, commonQuery, "jobs_with_highest_priority_test",
-					"Query should not contain jobs_with_highest_priority_test CTE when no exclusive tests")
-				assert.NotContains(t, commonQuery, "exclusive_test_priorities",
-					"Query should not contain exclusive_test_priorities CTE when no exclusive tests")
+					"Query should not contain jobs_with_highest_priority_test CTE when no key tests")
+				assert.NotContains(t, commonQuery, "key_test_priorities",
+					"Query should not contain exclusive_test_priorities CTE when no key tests")
 			}
 
 			// Check if filtering WHERE clause is present when expected
 			if tt.expectedFilter {
 				assert.Contains(t, commonQuery, "junit_data.prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)",
-					"Query should include tests from jobs without failed exclusive tests")
+					"Query should include tests from jobs without failed key tests")
 				assert.Contains(t, commonQuery, "EXISTS",
-					"Query should use EXISTS to match highest priority test from jobs with exclusive tests")
+					"Query should use EXISTS to match highest priority test from jobs with key tests")
 				assert.Contains(t, commonQuery, "j.prowjob_build_id = junit_data.prowjob_build_id",
 					"Query should match both prowjob_build_id and test_name in EXISTS clause")
 			}
@@ -130,18 +130,18 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 			if tt.expectedParam {
 				foundParam := false
 				for _, param := range queryParams {
-					if param.Name == "ExclusiveTestNames" {
+					if param.Name == "KeyTestNames" {
 						foundParam = true
-						assert.Equal(t, tt.exclusiveTestNames, param.Value,
-							"ExclusiveTestNames parameter should match input")
+						assert.Equal(t, tt.keyTestNames, param.Value,
+							"KeyTestNames parameter should match input")
 						break
 					}
 				}
-				assert.True(t, foundParam, "ExclusiveTestNames parameter should be present in query parameters")
+				assert.True(t, foundParam, "KeyTestNames parameter should be present in query parameters")
 			} else {
 				for _, param := range queryParams {
-					assert.NotEqual(t, "ExclusiveTestNames", param.Name,
-						"ExclusiveTestNames parameter should not be present when no exclusive tests")
+					assert.NotEqual(t, "KeyTestNames", param.Name,
+						"KeyTestNames parameter should not be present when no key tests")
 				}
 			}
 
@@ -169,7 +169,7 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 
 func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 	// This test verifies the specific logic: we only exclude OTHER tests from jobs
-	// where exclusive tests FAILED (not just present)
+	// where key tests FAILED (not just present)
 	mockClient := &bqcachedclient.Client{
 		Dataset: "test_dataset",
 	}
@@ -187,7 +187,7 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 			IncludeVariants: map[string][]string{},
 		},
 		AdvancedOption: reqopts.Advanced{
-			ExclusiveTestNames: []string{"install should succeed: overall"},
+			KeyTestNames: []string{"install should succeed: overall"},
 		},
 	}
 
@@ -203,7 +203,7 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 
 	// The query should:
 	// 1. Create CTEs that identify the highest priority test in each job
-	assert.Contains(t, commonQuery, "WITH exclusive_test_priorities AS",
+	assert.Contains(t, commonQuery, "WITH key_test_priorities AS",
 		"Should create CTE for calculating test priorities")
 	assert.Contains(t, commonQuery, "jobs_with_highest_priority_test AS",
 		"Should create CTE for identifying highest priority test per job")
@@ -214,15 +214,15 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 
 	cteSection := commonQuery[:cteEnd]
 	assert.Contains(t, cteSection, "success_val = 0",
-		"CTE should only match FAILED exclusive tests (success_val = 0), not all instances")
+		"CTE should only match FAILED key tests (success_val = 0), not all instances")
 
-	// 3. Priority-based filtering: only include highest priority test from jobs with exclusive test failures
+	// 3. Priority-based filtering: only include highest priority test from jobs with key test failures
 	assert.Contains(t, commonQuery, "test_priority",
 		"Should calculate test priority based on list order")
 	assert.Contains(t, commonQuery, "junit_data.prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)",
-		"Should include tests from jobs without failed exclusive tests")
+		"Should include tests from jobs without failed key tests")
 	assert.Contains(t, commonQuery, "EXISTS",
-		"Should use EXISTS to match the highest priority test from jobs with exclusive test failures")
+		"Should use EXISTS to match the highest priority test from jobs with key test failures")
 	assert.Contains(t, commonQuery, "j.prowjob_build_id = junit_data.prowjob_build_id",
 		"Should match prowjob_build_id in EXISTS clause")
 	assert.Contains(t, commonQuery, "j.test_name = junit_data.test_name",
@@ -239,7 +239,7 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 }
 
 func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
-	// This test compares queries with and without exclusive tests to ensure
+	// This test compares queries with and without key tests to ensure
 	// the base query structure is the same, only the filtering differs
 	mockClient := &bqcachedclient.Client{
 		Dataset: "test_dataset",
@@ -260,7 +260,7 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 		AdvancedOption: reqopts.Advanced{},
 	}
 
-	// Query without exclusive tests
+	// Query without key tests
 	queryWithout, _, paramsWithout := BuildComponentReportQuery(
 		mockClient,
 		baseReqOptions,
@@ -270,9 +270,9 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 		false,
 	)
 
-	// Query with exclusive tests
+	// Query with key tests
 	reqOptionsWithExclusive := baseReqOptions
-	reqOptionsWithExclusive.AdvancedOption.ExclusiveTestNames = []string{"install should succeed: overall"}
+	reqOptionsWithExclusive.AdvancedOption.KeyTestNames = []string{"install should succeed: overall"}
 
 	queryWith, _, paramsWith := BuildComponentReportQuery(
 		mockClient,
@@ -286,25 +286,25 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 
 	// Both should have the component_mapping CTE
 	assert.Contains(t, queryWithout, "latest_component_mapping",
-		"Query without exclusive tests should have component mapping CTE")
+		"Query without key tests should have component mapping CTE")
 	assert.Contains(t, queryWith, "latest_component_mapping",
-		"Query with exclusive tests should have component mapping CTE")
+		"Query with key tests should have component mapping CTE")
 
-	// Only the query with exclusive tests should have the filtering CTEs
+	// Only the query with key tests should have the filtering CTEs
 	assert.NotContains(t, queryWithout, "jobs_with_highest_priority_test",
-		"Query without exclusive tests should not have filtering CTE")
-	assert.NotContains(t, queryWithout, "exclusive_test_priorities",
-		"Query without exclusive tests should not have priority calculation CTE")
+		"Query without key tests should not have filtering CTE")
+	assert.NotContains(t, queryWithout, "key_test_priorities",
+		"Query without key tests should not have priority calculation CTE")
 	assert.Contains(t, queryWith, "jobs_with_highest_priority_test",
-		"Query with exclusive tests should have filtering CTE")
-	assert.Contains(t, queryWith, "exclusive_test_priorities",
-		"Query with exclusive tests should have priority calculation CTE")
+		"Query with key tests should have filtering CTE")
+	assert.Contains(t, queryWith, "key_test_priorities",
+		"Query with key tests should have priority calculation CTE")
 
 	// Check parameters
-	assert.Len(t, paramsWithout, 0, "Query without exclusive tests should have no extra parameters")
-	assert.Len(t, paramsWith, 1, "Query with exclusive tests should have 1 parameter")
+	assert.Len(t, paramsWithout, 0, "Query without key tests should have no extra parameters")
+	assert.Len(t, paramsWith, 1, "Query with key tests should have 1 parameter")
 	if len(paramsWith) > 0 {
-		assert.Equal(t, "ExclusiveTestNames", paramsWith[0].Name,
-			"Parameter should be named ExclusiveTestNames")
+		assert.Equal(t, "KeyTestNames", paramsWith[0].Name,
+			"Parameter should be named KeyTestNames")
 	}
 }

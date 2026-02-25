@@ -21,7 +21,6 @@ type ComponentReadinessFlags struct {
 	ComponentReadinessViewsFile string
 	CRTimeRoundingFactor        time.Duration
 	CORSAllowedOrigin           string
-	ExcludeMassFailures         bool
 }
 
 func NewComponentReadinessFlags() *ComponentReadinessFlags {
@@ -33,7 +32,6 @@ func (f *ComponentReadinessFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.ComponentReadinessViewsFile, "views", "", "Optional yaml file for predefined Component Readiness views")
 	fs.DurationVar(&f.CRTimeRoundingFactor, "component-readiness-time-rounding-factor", defaultCRTimeRoundingFactor, factorUsage)
 	fs.StringVar(&f.CORSAllowedOrigin, "cors-allowed-origin", "*", "Optional allowed origin for CORS")
-	fs.BoolVar(&f.ExcludeMassFailures, "exclude-mass-failures", false, "Exclude other tests from jobs containing tests known to cause mass failures")
 }
 
 func (f *ComponentReadinessFlags) ParseViewsFile() (*api.SippyViews, error) {
@@ -56,19 +54,6 @@ func (f *ComponentReadinessFlags) ParseViewsFile() (*api.SippyViews, error) {
 		}
 	}
 	return vf, nil
-}
-
-// GetMassFailureTestNames returns the hard-coded list of test names that are known to cause mass failures.
-// When these tests appear in a job, all other tests in that job should be excluded from analysis.
-func (f *ComponentReadinessFlags) GetMassFailureTestNames() []string {
-	if !f.ExcludeMassFailures {
-		return nil
-	}
-	return []string{
-		"install should succeed: overall",
-		"[sig-cluster-lifecycle] Cluster completes upgrade",
-		"[Jira:\"Test Framework\"] there should not be mass test failures",
-	}
 }
 
 func (f *ComponentReadinessFlags) validateViews(views *api.SippyViews) error {
