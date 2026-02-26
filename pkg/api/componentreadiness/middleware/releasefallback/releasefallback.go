@@ -358,6 +358,8 @@ type fallbackTestQueryReleasesGeneratorCacheKey struct {
 	VariantDBGroupBy sets.String
 	// CRTimeRoundingFactor is used by GetReleaseDatesFromBigQuery
 	CRTimeRoundingFactor time.Duration
+	// KeyTestNames affects the BuildComponentReportQuery results via filtering logic
+	KeyTestNames []string
 }
 
 // getCacheKey creates a cache key using the generator properties that we want included for uniqueness in what
@@ -370,6 +372,7 @@ func (f *fallbackTestQueryReleasesGenerator) getCacheKey() fallbackTestQueryRele
 		BaseEnd:              f.BaseEnd,
 		VariantDBGroupBy:     f.ReqOptions.VariantOption.DBGroupBy,
 		CRTimeRoundingFactor: f.ReqOptions.CacheOption.CRTimeRoundingFactor,
+		KeyTestNames:         f.ReqOptions.AdvancedOption.KeyTestNames,
 	}
 }
 
@@ -516,8 +519,9 @@ type fallbackTestQueryGeneratorCacheKey struct {
 	BaseRelease string
 	BaseStart   time.Time
 	BaseEnd     time.Time
-	// IgnoreDisruption is the only field within AdvancedOption that is used here
+	// IgnoreDisruption and KeyTestNames are fields within AdvancedOption that affect the query
 	IgnoreDisruption bool
+	KeyTestNames     []string
 	IncludeVariants  map[string][]string
 	VariantDBGroupBy sets.String
 	// if we ever needed fallback on cross-compare views we should include fields for that,
@@ -533,6 +537,7 @@ func (f *fallbackTestQueryGenerator) getCacheKey() fallbackTestQueryGeneratorCac
 		BaseStart:        f.BaseStart,
 		BaseEnd:          f.BaseEnd,
 		IgnoreDisruption: f.ReqOptions.AdvancedOption.IgnoreDisruption,
+		KeyTestNames:     f.ReqOptions.AdvancedOption.KeyTestNames,
 		IncludeVariants:  f.ReqOptions.VariantOption.IncludeVariants,
 		VariantDBGroupBy: f.ReqOptions.VariantOption.DBGroupBy,
 	}
@@ -564,7 +569,7 @@ func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context)
 		},
 	}...)
 
-	baseStatus, baseErrs := query.FetchTestStatusResults(ctx, baseQuery, f.ReqOptions.AdvancedOption.KeyTestNames)
+	baseStatus, baseErrs := query.FetchTestStatusResults(ctx, baseQuery)
 
 	if len(baseErrs) != 0 {
 		errs = append(errs, baseErrs...)

@@ -47,7 +47,6 @@ const (
 	// So, this sorts the data, partitioning by the 3-tuple of file_path/test_name/testsuite -
 	// preferring flakes, then successes, then failures, and we get the first row of each
 	// partition.
-	// partition.
 	dedupedJunitTable = `
 		WITH deduped_testcases AS (
 			SELECT  
@@ -158,7 +157,7 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTest
 		},
 	}...)
 
-	baseStatus, baseErrs := FetchTestStatusResults(ctx, baseQuery, b.ReqOptions.AdvancedOption.KeyTestNames)
+	baseStatus, baseErrs := FetchTestStatusResults(ctx, baseQuery)
 
 	if len(baseErrs) != 0 {
 		errs = append(errs, baseErrs...)
@@ -264,7 +263,7 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 		}...)
 	}
 
-	sampleStatus, sampleErrs := FetchTestStatusResults(ctx, sampleQuery, s.ReqOptions.AdvancedOption.KeyTestNames)
+	sampleStatus, sampleErrs := FetchTestStatusResults(ctx, sampleQuery)
 
 	if len(sampleErrs) != 0 {
 		errs = append(errs, sampleErrs...)
@@ -668,7 +667,7 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	return
 }
 
-func FetchTestStatusResults(ctx context.Context, query *bigquery.Query, keyTestNames []string) (map[string]bq.TestStatus, []error) {
+func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]bq.TestStatus, []error) {
 	errs := []error{}
 	status := map[string]bq.TestStatus{}
 

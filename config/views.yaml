@@ -177,7 +177,7 @@ component_readiness:
   prime_cache:
     enabled: true
   automate_jira:
-    enabled: true
+    enabled: false
 - name: 4.22-hypershift-candidates
   base_release:
     release: "4.21"
