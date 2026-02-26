@@ -228,7 +228,7 @@ component_readiness:
 - name: 4.22-techpreview-rhcos9-vs-rhcos10
   base_release:
     release: "4.22"
-    relative_start: now-30d
+    relative_start: now-7d
     relative_end: now
   sample_release:
     release: "4.22"
