@@ -402,6 +402,7 @@ component_readiness:
       - lp-interop-openshift-pipelines
       - lp-interop-acs-latest
       - lp-interop-acs
+      - lp-interop-fusion-access
       - lp-interop-mta
       - lp-interop-quay
       - lp-interop-odf
@@ -1011,6 +1012,7 @@ component_readiness:
       - lp-interop-openshift-pipelines
       - lp-interop-acs-latest
       - lp-interop-acs
+      - lp-interop-fusion-access
       - lp-interop-mta
       - lp-interop-quay
       - lp-interop-odf
