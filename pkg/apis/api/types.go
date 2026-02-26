@@ -1010,6 +1010,7 @@ type DisruptionReportRow struct {
 	Architecture             string  `json:"architecture"`
 	Relevance                int     `json:"relevance"`
 	FeatureSet               string  `json:"feature_set"`
+	OS                       string  `json:"os"`
 }
 
 type SippyViews struct {
