@@ -30,8 +30,8 @@ type SeedDataFlags struct {
 func NewSeedDataFlags() *SeedDataFlags {
 	return &SeedDataFlags{
 		DBFlags:        flags.NewPostgresDatabaseFlags(),
-		Releases:       []string{"4.20", "4.19"}, // Default releases
-		JobsPerRelease: 3,                        // Default jobs per release
+		Releases:       []string{"5.0", "4.22", "4.21"}, // Default releases
+		JobsPerRelease: 3,                               // Default jobs per release
 		TestNames: []string{
 			"install should succeed: infrastructure",
 			"install should succeed: overall",
