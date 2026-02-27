@@ -458,6 +458,9 @@ export default function JobArtifactQuery(props) {
             )}
             value={fileMatch}
             onChange={handleFileMatchChange}
+            onBlur={(event) =>
+              handleFileMatchChange(event, event?.target?.value)
+            }
           />
           <FormHelperText>
             Enter a file name pattern relative to the top of the artifact path
@@ -489,6 +492,7 @@ export default function JobArtifactQuery(props) {
         const copy = { ...contentMatch[type] }
         // newValue is a string for AutoComplete, target.value is set for Select
         copy[name] = typeof newValue === 'string' ? newValue : e.target.value
+        if (contentMatch[type][name] === newValue) return // prevent duplicate state updates from onChange and onBlur of AutoComplete
         const matchCopy = { ...contentMatch }
         matchCopy[type] = copy
         setContentMatch(matchCopy)
@@ -526,6 +530,7 @@ export default function JobArtifactQuery(props) {
               )}
               value={contentMatch.string.match}
               onChange={contentMatchChangeHandlerFor('string', 'match')}
+              onBlur={contentMatchChangeHandlerFor('string', 'match')}
             />
           ) : contentMatch.type === 'regex' ? (
             <Autocomplete
@@ -542,6 +547,7 @@ export default function JobArtifactQuery(props) {
               )}
               value={contentMatch.regex.match}
               onChange={contentMatchChangeHandlerFor('regex', 'match')}
+              onBlur={contentMatchChangeHandlerFor('regex', 'match')}
             />
           ) : (
             ''
