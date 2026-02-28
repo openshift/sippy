@@ -14,6 +14,7 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
+	"gorm.io/gorm"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
 	bq "github.com/openshift/sippy/pkg/bigquery"
@@ -469,7 +470,29 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	if collapse {
 		rawQuery = rawQuery.Select(`suite_name,name,jira_component,jira_component_id,` + query.QueryTestSummer).Group("suite_name,name,jira_component,jira_component_id")
 	} else {
-		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, release, table)
+		// Split the raw filter so name filters push into both stats and
+		// passRates subqueries (for index use), while variant filters only
+		// push into passRates to preserve cross-variant stats semantics.
+		var subqueryFilters []query.SubqueryFilter
+		if rawFilter != nil {
+			variantFilter, nameFilter := rawFilter.Split([]string{"variants"})
+			if len(nameFilter.Items) > 0 {
+				subqueryFilters = append(subqueryFilters, query.SubqueryFilter{
+					Apply: func(db *gorm.DB) *gorm.DB {
+						return nameFilter.ToSQL(db, apitype.Test{})
+					},
+				})
+			}
+			if len(variantFilter.Items) > 0 {
+				subqueryFilters = append(subqueryFilters, query.SubqueryFilter{
+					Apply: func(db *gorm.DB) *gorm.DB {
+						return variantFilter.ToSQL(db, apitype.Test{})
+					},
+					VariantOnly: true,
+				})
+			}
+		}
+		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, release, table, subqueryFilters...)
 		variantSelect = "suite_name, variants," +
 			"delta_from_working_average, working_average, working_standard_deviation, " +
 			"delta_from_passing_average, passing_average, passing_standard_deviation, " +
