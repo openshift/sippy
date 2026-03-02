@@ -94,7 +94,6 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 				includeVariants,
 				DefaultJunitTable,
 				false,
-				tt.keyTestNames...,
 			)
 
 			// Check if CTE is present when expected
@@ -198,7 +197,6 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 		map[string][]string{},
 		DefaultJunitTable,
 		false,
-		"install should succeed: overall",
 	)
 
 	// The query should:
@@ -281,7 +279,6 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 		map[string][]string{},
 		DefaultJunitTable,
 		false,
-		"install should succeed: overall",
 	)
 
 	// Both should have the component_mapping CTE
@@ -302,9 +299,18 @@ func TestBuildComponentReportQuery_WithAndWithoutExclusiveTests(t *testing.T) {
 
 	// Check parameters
 	assert.Len(t, paramsWithout, 0, "Query without key tests should have no extra parameters")
-	assert.Len(t, paramsWith, 1, "Query with key tests should have 1 parameter")
-	if len(paramsWith) > 0 {
-		assert.Equal(t, "KeyTestNames", paramsWith[0].Name,
-			"Parameter should be named KeyTestNames")
+	// With key tests, we expect: 1 param for each test name in CASE statement + 1 for the KeyTestNames array
+	assert.Len(t, paramsWith, 2, "Query with key tests should have 2 parameters")
+	if len(paramsWith) >= 2 {
+		// First parameter should be TestName0 for the CASE statement
+		assert.Equal(t, "TestName0", paramsWith[0].Name,
+			"First parameter should be TestName0 for CASE statement")
+		assert.Equal(t, "install should succeed: overall", paramsWith[0].Value,
+			"First parameter value should match test name")
+		// Second parameter should be KeyTestNames array
+		assert.Equal(t, "KeyTestNames", paramsWith[1].Name,
+			"Second parameter should be named KeyTestNames")
+		assert.Equal(t, []string{"install should succeed: overall"}, paramsWith[1].Value,
+			"KeyTestNames parameter should contain the test names array")
 	}
 }

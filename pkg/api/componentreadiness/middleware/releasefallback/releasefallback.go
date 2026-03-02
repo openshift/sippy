@@ -546,7 +546,7 @@ func (f *fallbackTestQueryGenerator) getCacheKey() fallbackTestQueryGeneratorCac
 func (f *fallbackTestQueryGenerator) getTestFallbackRelease(ctx context.Context) (bq.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := query.BuildComponentReportQuery(
 		f.client, f.ReqOptions, f.allVariants, f.ReqOptions.VariantOption.IncludeVariants,
-		query.DefaultJunitTable, false, f.ReqOptions.AdvancedOption.KeyTestNames...)
+		query.DefaultJunitTable, false)
 	before := time.Now()
 	log.Infof("Starting Fallback (%s) QueryTestStatus", f.BaseRelease)
 	errs := []error{}

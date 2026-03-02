@@ -135,7 +135,7 @@ func NewBaseQueryGenerator(
 
 func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
 
-	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client, b.ReqOptions, b.allVariants, b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false, b.ReqOptions.AdvancedOption.KeyTestNames...)
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client, b.ReqOptions, b.allVariants, b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
 
 	errs := []error{}
 	baseString := commonQuery + ` AND jv_Release.variant_value = @BaseRelease`
@@ -204,7 +204,7 @@ func NewSampleQueryGenerator(
 }
 
 func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
-	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, s.JunitTable, true, s.ReqOptions.AdvancedOption.KeyTestNames...)
+	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, s.JunitTable, true)
 
 	errs := []error{}
 	sampleString := commonQuery
@@ -275,22 +275,83 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 // buildPriorityCaseStatement generates a SQL CASE statement that assigns priority based on test position in the list.
 // Lower index = higher priority. This is used to ensure when multiple key tests appear in the same job,
 // only the highest priority one is counted.
-func buildPriorityCaseStatement(keyTestNames []string) string {
+func buildPriorityCaseStatement(keyTestNames []string) (string, []bigquery.QueryParameter) {
 	var caseStatements []string
+	var params []bigquery.QueryParameter
 	for i, testName := range keyTestNames {
-		// Escape single quotes in test name for SQL
-		escapedTestName := strings.ReplaceAll(testName, "'", "''")
-		caseStatements = append(caseStatements, fmt.Sprintf("WHEN test_name = '%s' THEN %d", escapedTestName, i))
+		paramName := fmt.Sprintf("TestName%d", i)
+		caseStatements = append(caseStatements, fmt.Sprintf("WHEN test_name = @%s THEN %d", paramName, i))
+		params = append(params, bigquery.QueryParameter{Name: paramName, Value: testName})
 	}
 	// Add a default case to handle any unexpected tests (should not happen due to IN UNNEST filter)
 	caseStatements = append(caseStatements, fmt.Sprintf("ELSE %d", len(keyTestNames)))
-	return strings.Join(caseStatements, "\n\t\t\t\t\t\t\t")
+	return strings.Join(caseStatements, "\n\t\t\t\t\t\t\t"), params
+}
+
+// buildCRQueryCTEs builds the WITH clause (Common Table Expressions) for the component readiness query.
+// If keyTestNames is provided, it creates CTEs to identify jobs with failed key tests and excludes
+// other test failures from those jobs. Only the highest priority (earliest in the list) key test
+// will be included for each affected job.
+func buildCRQueryCTEs(dataset, junitTable string, keyTestNames []string) (string, []bigquery.QueryParameter) {
+	var commonParams []bigquery.QueryParameter
+
+	// Always create the component mapping CTE
+	componentMappingCTE := fmt.Sprintf(`latest_component_mapping AS (
+							SELECT *
+							FROM %s.component_mapping cm
+							WHERE created_at = (
+									SELECT MAX(created_at)
+									FROM %s.component_mapping))`,
+		dataset, dataset)
+
+	if len(keyTestNames) > 0 {
+		// Create a Common Table Expression (CTE) that identifies the highest priority (lowest index) key test in each job
+		// This ensures when multiple key tests appear in the same job, only the highest priority one is used
+		caseStatement, caseParams := buildPriorityCaseStatement(keyTestNames)
+		keyTestCTEs := fmt.Sprintf(`key_test_priorities AS (
+							SELECT
+								prowjob_build_id,
+								test_name,
+								-- Find the index/priority of each test (lower index = higher priority)
+								CASE
+								%s
+								END AS test_priority
+							FROM %s.%s AS junit
+							WHERE modified_time >= DATETIME(@From)
+							AND modified_time < DATETIME(@To)
+							AND test_name IN UNNEST(@KeyTestNames)
+							AND success_val = 0
+							AND flake_count = 0
+						),
+						jobs_with_highest_priority_test AS (
+							SELECT
+								prowjob_build_id,
+								test_name
+							FROM key_test_priorities
+							WHERE test_priority = (
+								SELECT MIN(test_priority)
+								FROM key_test_priorities ep2
+								WHERE ep2.prowjob_build_id = key_test_priorities.prowjob_build_id
+							)
+						),`,
+			caseStatement, dataset, junitTable)
+
+		commonParams = append(commonParams, caseParams...)
+		commonParams = append(commonParams, bigquery.QueryParameter{
+			Name:  "KeyTestNames",
+			Value: keyTestNames,
+		})
+
+		return fmt.Sprintf("WITH %s\n%s", keyTestCTEs, componentMappingCTE), commonParams
+	}
+
+	return fmt.Sprintf("WITH %s", componentMappingCTE), commonParams
 }
 
 // BuildComponentReportQuery returns the common query for the higher level summary component summary.
-// If keyTestNames is provided, when any of these tests fail in a job, all other test failures
-// in that job are excluded from regression analysis. Only the highest priority (earliest in the list)
-// key test will be included for each affected job.
+// If key test names are configured in the view's advanced options, when any of these tests fail in a job,
+// all other test failures in that job are excluded from regression analysis. Only the highest priority
+// (earliest in the list) key test will be included for each affected job.
 func BuildComponentReportQuery(
 	client *bqcachedclient.Client,
 	reqOptions reqopts.RequestOptions,
@@ -298,7 +359,6 @@ func BuildComponentReportQuery(
 	includeVariants map[string][]string,
 	junitTable string,
 	isSample bool,
-	keyTestNames ...string,
 ) (string, string, []bigquery.QueryParameter) {
 	// Parts of the query, including the columns returned, are dynamic, based on the list of variants we're told to work with.
 	// Variants will be returned as columns with names like: variant_[VariantName]
@@ -326,52 +386,7 @@ func BuildComponentReportQuery(
 	// TODO: last_failure here explicitly uses success_val not adjusted_success_val, this ensures we
 	// show the last time the test failed, not flaked. if you enable the flakes as failures feature (which is
 	// non default today), the last failure time will be wrong which can impact things like failed fix detection.
-	// Build the WITH clause - add jobs_with_failed_key_tests CTE if keyTestNames is provided
-	withClause := ""
-	if len(keyTestNames) > 0 {
-		// Create a CTE that identifies the highest priority (lowest index) key test in each job
-		// This ensures when multiple key tests appear in the same job, only the highest priority one is used
-		withClause = fmt.Sprintf(`WITH key_test_priorities AS (
-							SELECT
-								prowjob_build_id,
-								test_name,
-								-- Find the index/priority of each test (lower index = higher priority)
-								CASE
-								%s
-								END AS test_priority
-							FROM %s.%s AS junit
-							WHERE modified_time >= DATETIME(@From)
-							AND modified_time < DATETIME(@To)
-							AND test_name IN UNNEST(@KeyTestNames)
-							AND success_val = 0
-						),
-						jobs_with_highest_priority_test AS (
-							SELECT
-								prowjob_build_id,
-								test_name
-							FROM key_test_priorities
-							WHERE test_priority = (
-								SELECT MIN(test_priority)
-								FROM key_test_priorities ep2
-								WHERE ep2.prowjob_build_id = key_test_priorities.prowjob_build_id
-							)
-						),
-						latest_component_mapping AS (
-							SELECT *
-							FROM %s.component_mapping cm
-							WHERE created_at = (
-									SELECT MAX(created_at)
-									FROM %s.component_mapping))`,
-			buildPriorityCaseStatement(keyTestNames), client.Dataset, junitTable, client.Dataset, client.Dataset)
-	} else {
-		withClause = fmt.Sprintf(`WITH latest_component_mapping AS (
-							SELECT *
-							FROM %s.component_mapping cm
-							WHERE created_at = (
-									SELECT MAX(created_at)
-									FROM %s.component_mapping))`,
-			client.Dataset, client.Dataset)
-	}
+	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, reqOptions.AdvancedOption.KeyTestNames)
 
 	queryString := fmt.Sprintf(`%s
 					SELECT
@@ -394,11 +409,10 @@ func BuildComponentReportQuery(
 
 	queryString += `WHERE cm.staff_approved_obsolete = false AND
 						(junit_data.variant_registry_job_name LIKE 'periodic-%%' OR junit_data.variant_registry_job_name LIKE 'release-%%' OR junit_data.variant_registry_job_name LIKE 'aggregator-%%')`
-	commonParams := []bigquery.QueryParameter{}
 
 	// Add filtering logic for key tests with priority
 	// Only include the highest priority test from each job, and exclude all other tests from those jobs
-	if len(keyTestNames) > 0 {
+	if len(reqOptions.AdvancedOption.KeyTestNames) > 0 {
 		queryString += `
 						AND (
 							-- Include tests from jobs that don't have any failed key tests
@@ -410,10 +424,6 @@ func BuildComponentReportQuery(
 								AND j.test_name = junit_data.test_name
 							)
 						)`
-		commonParams = append(commonParams, bigquery.QueryParameter{
-			Name:  "KeyTestNames",
-			Value: keyTestNames,
-		})
 	}
 	if reqOptions.AdvancedOption.IgnoreDisruption {
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
