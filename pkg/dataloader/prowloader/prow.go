@@ -11,7 +11,6 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -22,6 +21,7 @@ import (
 	"github.com/jackc/pgtype"
 	"github.com/lib/pq"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
+	"github.com/openshift/sippy/pkg/db/partitions"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -235,9 +235,21 @@ func (pl *ProwLoader) Load() {
 		pl.errors = append(pl.errors, err)
 	}
 
+	// detach and drop older partitions
+	err := pl.agePartitionsForDailyTestAnalysisByJob()
+	if err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error aging daily test analysis by job table"))
+	}
+
+	// create any partitions needed for new data to be imported
+	err = pl.preparePartitionsForDailyTestAnalysisByJob()
+	if err != nil {
+		pl.errors = append(pl.errors, errors.Wrap(err, "error preparing partitions for daily test analysis by job table"))
+	}
+
 	// load the test analysis by job data into tables partitioned by day, letting bigquery do the
 	// heavy lifting for us.
-	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
+	err = pl.loadDailyTestAnalysisByJob(pl.ctx)
 	if err != nil {
 		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
 	}
@@ -346,6 +358,54 @@ func NextDay(dateStr string) (string, error) {
 	return nextDay.Format("2006-01-02"), nil
 }
 
+func (pl *ProwLoader) agePartitionsForDailyTestAnalysisByJob() error {
+	tableName := "test_analysis_by_job_by_dates"
+	detached, err := partitions.DetachOldPartitions(pl.dbc, tableName, 90, false)
+	if err != nil {
+		log.WithError(err).Errorf("error detaching partitions for %s", tableName)
+	} else {
+		log.Infof("detached %d partitions from %s", detached, tableName)
+	}
+	dropped, err := partitions.DropOldDetachedPartitions(pl.dbc, tableName, 100, false)
+	if err != nil {
+		log.WithError(err).Errorf("error detaching partitions for %s", tableName)
+		return err
+	}
+	log.Infof("dropped %d detached partitions from %s", dropped, tableName)
+
+	return nil
+}
+
+func (pl *ProwLoader) preparePartitionsForDailyTestAnalysisByJob() error {
+	tableName := "test_analysis_by_job_by_dates"
+
+	log.Infof("preparing partitions for %s", tableName)
+	stats, err := partitions.GetAttachedPartitionStats(pl.dbc, tableName)
+
+	if err != nil {
+		log.WithError(err).Errorf("error detaching partitions for %s", tableName)
+		return err
+	}
+	fmt.Printf("  Total: %d partitions (%s)\n", stats.TotalPartitions, stats.TotalSizePretty)
+	// when we initialize a new table the query goes back 14 days, go back one more
+	mostRecentDate := time.Now().Add(-15 * 24 * time.Hour)
+	if stats.TotalPartitions > 0 {
+		fmt.Printf("  Range: %s to %s\n",
+			stats.OldestDate.Format("2006-01-02"),
+			stats.NewestDate.Format("2006-01-02"))
+		mostRecentDate = stats.NewestDate
+	}
+
+	created, err := partitions.CreateMissingPartitions(pl.dbc, tableName, mostRecentDate, time.Now().Add(48*time.Hour), false)
+	if err != nil {
+		log.WithError(err).Errorf("error creating partitions for %s", tableName)
+		return err
+	}
+
+	log.Infof("created %d partitions for %s", created, tableName)
+	return nil
+}
+
 // loadDailyTestAnalysisByJob loads test analysis data into partitioned tables in postgres, one per
 // day. The data is calculated by querying bigquery to do the heavy lifting for us. Each day is committed
 // transactionally so the process is safe to interrupt and resume later. The process takes about 20 minutes
@@ -382,21 +442,24 @@ func (pl *ProwLoader) loadDailyTestAnalysisByJob(ctx context.Context) error {
 		dLog := log.WithField("date", dateToImport)
 
 		dLog.Infof("Loading test analysis by job daily summaries")
-		nextDay, err := NextDay(dateToImport)
-		if err != nil {
-			return errors.Wrapf(err, "error parsing next day from %s", dateToImport)
-		}
+
+		// partition creation now managed by preparePartitionsForDailyTestAnalysisByJob
+
+		//nextDay, err := NextDay(dateToImport)
+		//if err != nil {
+		//	return errors.Wrapf(err, "error parsing next day from %s", dateToImport)
+		//}
 
 		// create a partition for this date
-		partitionSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS test_analysis_by_job_by_dates_%s PARTITION OF test_analysis_by_job_by_dates
-    		FOR VALUES FROM ('%s') TO ('%s');`, strings.ReplaceAll(dateToImport, "-", "_"), dateToImport, nextDay)
-		dLog.Info(partitionSQL)
-
-		if res := pl.dbc.DB.Exec(partitionSQL); res.Error != nil {
-			log.WithError(res.Error).Error("error creating partition")
-			return res.Error
-		}
-		dLog.Warnf("partition created for releases %v", pl.releases)
+		//partitionSQL := fmt.Sprintf(`CREATE TABLE IF NOT EXISTS test_analysis_by_job_by_dates_%s PARTITION OF test_analysis_by_job_by_dates
+		//	FOR VALUES FROM ('%s') TO ('%s');`, strings.ReplaceAll(dateToImport, "-", "_"), dateToImport, nextDay)
+		//dLog.Info(partitionSQL)
+		//
+		//if res := pl.dbc.DB.Exec(partitionSQL); res.Error != nil {
+		//	log.WithError(res.Error).Error("error creating partition")
+		//	return res.Error
+		//}
+		//dLog.Warnf("partition created for releases %v", pl.releases)
 
 		q := pl.bigQueryClient.Query(ctx, bqlabel.ProwLoaderTestAnalysis, fmt.Sprintf(`WITH
   deduped_testcases AS (
@@ -1241,6 +1304,7 @@ func (pl *ProwLoader) extractTestCases(suite *junit.TestSuite, suiteID *uint, te
 				continue
 			}
 
+			// interesting that we rely on created_at here which is when we imported the test, not when the test ran
 			testCases[testCacheKey] = &models.ProwJobRunTest{
 				TestID:               testID,
 				SuiteID:              suiteID,
