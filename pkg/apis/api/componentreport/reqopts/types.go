@@ -107,4 +107,9 @@ type Advanced struct {
 	IgnoreDisruption            bool `json:"ignore_disruption" yaml:"ignore_disruption"`
 	FlakeAsFailure              bool `json:"flake_as_failure" yaml:"flake_as_failure"`
 	IncludeMultiReleaseAnalysis bool `json:"include_multi_release_analysis" yaml:"include_multi_release_analysis"`
+	// KeyTestNames contains test names that, when they fail in a job, cause all other test failures
+	// in that job to be excluded from regression analysis. This is used to filter out mass failures
+	// caused by fundamental infrastructure issues (e.g., install failures, upgrade failures).
+	// When multiple key tests fail in the same job, only the highest priority (earliest in list) test is included.
+	KeyTestNames []string `json:"key_test_names,omitempty" yaml:"key_test_names,omitempty"`
 }

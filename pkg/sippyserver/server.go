@@ -993,6 +993,7 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 
 	options, warnings, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
+
 	if err != nil {
 		return componentreport.ComponentReport{}, err
 	}
@@ -1048,6 +1049,7 @@ func (s *Server) jsonComponentReportTestDetailsFromBigQuery(w http.ResponseWrite
 
 	reqOptions, _, err := utils.ParseComponentReportRequest(s.views.ComponentReadiness, allReleases, req, allJobVariants, s.crTimeRoundingFactor,
 		s.config.ComponentReadinessConfig.VariantJunitTableOverrides)
+
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
