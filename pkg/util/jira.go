@@ -42,7 +42,8 @@ func IsJiraCloud() bool {
 
 	isJiraCloud, err := strconv.ParseBool(jiraCloudEnv)
 	if err != nil {
-		log.WithError(err).Errorf("Error parsing %s", JiraCloudEnvar)
+		log.WithError(err).Warnf("error parsing %s", JiraCloudEnvar)
+		return false
 	}
 
 	return isJiraCloud

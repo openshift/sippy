@@ -157,8 +157,11 @@ func NewAutomateJiraCommand() *cobra.Command {
 			}
 
 			jiraClient, err := f.JiraFlags.GetJiraClient()
-			if err != nil || jiraClient == nil {
+			if err != nil {
 				return errors.WithMessage(err, "couldn't get jira client")
+			}
+			if jiraClient == nil {
+				return fmt.Errorf("couldn't get jira client: jira auth is not configured")
 			}
 
 			config, err := f.ConfigFlags.GetConfig()
