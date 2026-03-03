@@ -21,6 +21,7 @@ const (
 )
 
 const (
+	// Custom Field Ids will need to be updated after the migraiton to atlassian cloud
 	CustomFieldReleaseBlockerName          = "customfield_12319743"
 	CustomFieldReleaseBlockerValueApproved = "Approved"
 )

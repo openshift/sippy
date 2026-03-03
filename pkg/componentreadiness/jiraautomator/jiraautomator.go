@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
+	"github.com/openshift/sippy/pkg/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/trivago/tgo/tcontainer"
 	"google.golang.org/api/iterator"
@@ -224,6 +225,7 @@ func (j JiraAutomator) updateExistingJiraIssue(view crview.View, existing *jira.
 
 	if j.dryRun {
 		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+		fmt.Fprintf(os.Stdout, "\nRunning in DRY RUN mode!\n")
 		fmt.Fprintf(os.Stdout, "\nUpdating issue %s with comment\n%s", existing.ID, comment)
 		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
 	} else {
@@ -337,29 +339,13 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crview.View, compon
 		description += "\n * Please do not remove 'Release Blocker' label. The bot will automatically add it back if any regressed tests continue showing for the component.\n"
 
 		summary := fmt.Sprintf("Component Readiness: %s test regressed", component.Component)
-		issue := jira.Issue{
-			Fields: &jira.IssueFields{
-				Description: description,
-				Type: jira.IssueType{
-					Name: "Bug",
-				},
-				Project: jira.Project{
-					Key: component.Project,
-				},
-				Components: []*jira.Component{
-					{
-						Name: component.Component,
-					},
-				},
-				Summary: summary,
-				AffectsVersions: []*jira.AffectsVersion{
-					{
-						Name: view.SampleRelease.Name,
-					},
-				},
-				Labels: []string{jiratype.LabelJiraAutomator},
-			},
+
+		fileBugRequest := util.FileBugRequest{Description: description, Summary: summary, Components: []string{component.Component}, AffectsVersions: []string{view.SampleRelease.Name}, Labels: []string{jiratype.LabelJiraAutomator}, Project: component.Project}
+		issue, err := util.PopulateJiraIssue(j.jiraClient.JiraClient(), fileBugRequest, "")
+		if err != nil {
+			return err
 		}
+
 		if !j.dryRun {
 			created, err := j.jiraClient.CreateIssue(&issue)
 			if err != nil {
@@ -373,6 +359,9 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crview.View, compon
 			return err
 		}
 		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+		if j.dryRun {
+			fmt.Fprintf(os.Stdout, "\nRunning in DRY RUN mode!\n")
+		}
 		fmt.Fprintf(os.Stdout, "Creating the following jira issue\n%s", issueStr)
 		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
 	}
@@ -472,6 +461,7 @@ func (j JiraAutomator) updateJiraIssueForRegressions(issue jira.Issue, view crvi
 }
 
 func (j JiraAutomator) updateReleaseBlocker(issue *jira.Issue, release string) error {
+	// CustomFieldReleaseBlockerName will need to be updated when migrating to atlassian cloud
 	if j.isPreRelease(release) {
 		unknowns := tcontainer.NewMarshalMap()
 		unknowns[jiratype.CustomFieldReleaseBlockerName] = map[string]string{"value": jiratype.CustomFieldReleaseBlockerValueApproved}
@@ -486,6 +476,9 @@ func (j JiraAutomator) updateReleaseBlocker(issue *jira.Issue, release string) e
 			return err
 		}
 		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
+		if j.dryRun {
+			fmt.Fprintf(os.Stdout, "\nRunning in DRY RUN mode!\n")
+		}
 		fmt.Fprintf(os.Stdout, "Updating Release Blocker for %s", issue.ID)
 		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
 	}
