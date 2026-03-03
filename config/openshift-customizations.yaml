@@ -32,3 +32,72 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-brazilsouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-centralindia-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
+  compliance-operator:
+    jobs:
+      # Upstream ComplianceAsCode jobs
+      periodic-ci-ComplianceAsCode-content-master-4.12-e2e-aws-openshift-node-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.12-e2e-aws-openshift-node-compliance-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.12-e2e-aws-openshift-platform-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.12-e2e-aws-openshift-platform-compliance-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.14-e2e-aws-openshift-node-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.14-e2e-aws-openshift-platform-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.16-e2e-aws-openshift-node-compliance-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.16-e2e-aws-openshift-platform-compliance-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.17-e2e-aws-openshift-node-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.17-e2e-aws-openshift-platform-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.18-e2e-aws-openshift-node-compliance-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.18-e2e-aws-openshift-platform-compliance-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.19-e2e-aws-openshift-node-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.19-e2e-aws-openshift-platform-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.20-e2e-aws-openshift-node-compliance-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.20-e2e-aws-openshift-platform-compliance-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.21-e2e-aws-openshift-node-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.21-e2e-aws-openshift-node-compliance-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.21-e2e-aws-openshift-platform-compliance-arm-weekly: true
+      periodic-ci-ComplianceAsCode-content-master-4.21-e2e-aws-openshift-platform-compliance-weekly: true
+      # Downstream compliance operator jobs
+      periodic-ci-openshift-openshift-tests-private-release-4.12-amd64-nightly-aws-ipi-proxy-fips-f60-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.12-amd64-nightly-aws-ipi-proxy-fips-f60-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.13-amd64-nightly-azure-ipi-fullyprivate-proxy-f60-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.13-amd64-nightly-azure-ipi-fullyprivate-proxy-f60-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.14-amd64-nightly-gcp-ipi-proxy-etcd-encryption-f60-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.14-arm64-nightly-azure-ipi-private-f60-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.14-arm64-nightly-azure-ipi-private-f60-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.15-amd64-nightly-vsphere-ipi-ovn-dualstack-privmaryv6-f60-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.15-arm64-nightly-baremetal-upi-ovn-ipv4-f60-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.15-arm64-nightly-baremetal-upi-ovn-ipv4-f60-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.16-amd64-nightly-azure-stack-ipi-proxy-fips-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.16-amd64-nightly-azure-stack-ipi-proxy-fips-f28-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.16-arm64-nightly-gcp-ipi-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.16-arm64-nightly-gcp-ipi-f28-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.16-multi-nightly-gcp-ipi-ovn-ipsec-amd-mixarch-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.17-amd64-nightly-aws-ipi-proxy-sts-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.17-amd64-nightly-aws-ipi-proxy-sts-f28-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.17-arm64-nightly-aws-ipi-disc-priv-sts-ep-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.17-arm64-nightly-aws-ipi-disc-priv-sts-ep-f28-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.18-amd64-nightly-gcp-ipi-ovn-winc-f14-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.18-amd64-nightly-gcp-ipi-ovn-winc-f14-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.18-arm64-nightly-azure-ipi-f14-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.18-arm64-nightly-azure-ipi-f14-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.18-multi-nightly-aws-ipi-ovn-ipsec-arm-mixarch-f14-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.19-amd64-nightly-aws-ipi-ovn-hypershift-fips-guest-f999-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.19-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.19-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.19-arm64-nightly-gcp-ipi-proxy-private-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.19-arm64-nightly-gcp-ipi-proxy-private-f28-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.20-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.20-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.20-arm64-nightly-gcp-ipi-proxy-private-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.20-arm64-nightly-gcp-ipi-proxy-private-f28-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.21-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.21-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.21-arm64-nightly-gcp-ipi-proxy-private-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.21-arm64-nightly-gcp-ipi-proxy-private-f28-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.22-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.22-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-4.22-arm64-nightly-gcp-ipi-proxy-private-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.22-arm64-nightly-gcp-ipi-proxy-private-f28-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-5.0-amd64-nightly-baremetalds-ipi-ovn-lvms-f14-compliance-destructive: true
+      periodic-ci-openshift-openshift-tests-private-release-5.0-arm64-nightly-gcp-ipi-proxy-private-f28-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-5.0-arm64-nightly-gcp-ipi-proxy-private-f28-compliance-destructive: true
