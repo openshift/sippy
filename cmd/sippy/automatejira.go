@@ -157,7 +157,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 			}
 
 			jiraClient, err := f.JiraFlags.GetJiraClient()
-			if err != nil {
+			if err != nil || jiraClient == nil {
 				return errors.WithMessage(err, "couldn't get jira client")
 			}
 

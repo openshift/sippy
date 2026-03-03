@@ -1962,7 +1962,7 @@ func (s *Server) jsonFileJiraBug(w http.ResponseWriter, req *http.Request) {
 		}
 
 		issue, err := util.PopulateJiraIssue(s.jiraClient, bugRequest, user)
-		if err != nil {
+		if err != nil && s.jiraClient != nil {
 			failureResponse(w, http.StatusInternalServerError, err.Error())
 			return
 		}
@@ -1985,7 +1985,7 @@ func (s *Server) jsonFileJiraBug(w http.ResponseWriter, req *http.Request) {
 			dryRun = true
 		}
 
-		log.Infof("created jira issue %s for user %s", createdIssue.Key, user)
+		log.Infof("created jira issue %s for user %s (dryrun:%v)", createdIssue.Key, user, dryRun)
 
 		jiraURL := fmt.Sprintf("https://issues.redhat.com/browse/%s", createdIssue.Key)
 		response := util.FileBugResponse{

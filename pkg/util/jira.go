@@ -36,9 +36,13 @@ func IsJiraCloud() bool {
 	// Temporary check to see if the flag is set indicating we are running in the atlassian cloud environment
 	// after migration we can remove the check
 	jiraCloudEnv := os.Getenv(JiraCloudEnvar)
+	if jiraCloudEnv == "" {
+		return false
+	}
+
 	isJiraCloud, err := strconv.ParseBool(jiraCloudEnv)
 	if err != nil {
-		log.WithError(err).Error("Error parsing %s", JiraCloudEnvar)
+		log.WithError(err).Errorf("Error parsing %s", JiraCloudEnvar)
 	}
 
 	return isJiraCloud
@@ -95,7 +99,7 @@ func PopulateJiraIssue(jiraClient *jira.Client, bugRequest FileBugRequest, user 
 		issue.Fields.Labels = bugRequest.Labels
 	}
 
-	if isJiraCloud {
+	if isJiraCloud && jiraClient != nil {
 		var reporter *jira.User
 		var err error
 		if len(user) > 0 {
