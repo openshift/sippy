@@ -64,6 +64,7 @@ releases:
       periodic-ci-openshift-openshift-tests-private-release-4.14-arm64-nightly-azure-ipi-private-f60-compliance: true
       periodic-ci-openshift-openshift-tests-private-release-4.14-arm64-nightly-azure-ipi-private-f60-compliance-destructive: true
       periodic-ci-openshift-openshift-tests-private-release-4.15-amd64-nightly-vsphere-ipi-ovn-dualstack-privmaryv6-f60-compliance: true
+      periodic-ci-openshift-openshift-tests-private-release-4.15-amd64-nightly-vsphere-ipi-ovn-dualstack-privmaryv6-f60-co-destructive: true
       periodic-ci-openshift-openshift-tests-private-release-4.15-arm64-nightly-baremetal-upi-ovn-ipv4-f60-compliance: true
       periodic-ci-openshift-openshift-tests-private-release-4.15-arm64-nightly-baremetal-upi-ovn-ipv4-f60-compliance-destructive: true
       periodic-ci-openshift-openshift-tests-private-release-4.16-amd64-nightly-azure-stack-ipi-proxy-fips-f28-compliance: true
