@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -118,4 +119,21 @@ func PopulateJiraIssue(jiraClient *jira.Client, bugRequest FileBugRequest, user 
 		issue.Fields.Reporter = reporter
 	}
 	return issue, nil
+}
+
+// GetUnknownField is lifted from "sigs.k8s.io/prow/pkg/jira" to remove the dependency
+func GetUnknownField(field string, issue *jira.Issue, fn func() interface{}) error {
+	obj := fn()
+	unknownField, ok := issue.Fields.Unknowns[field]
+	if !ok {
+		return nil
+	}
+	bytes, err := json.Marshal(unknownField)
+	if err != nil {
+		return fmt.Errorf("failed to process the custom field %s. Error : %v", field, err)
+	}
+	if err := json.Unmarshal(bytes, obj); err != nil {
+		return fmt.Errorf("failed to unmarshall the json to struct for %s. Error: %v", field, err)
+	}
+	return err
 }

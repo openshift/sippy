@@ -11,26 +11,24 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
+	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
-	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
-	"github.com/openshift/sippy/pkg/util"
-	log "github.com/sirupsen/logrus"
-	"github.com/trivago/tgo/tcontainer"
-	"google.golang.org/api/iterator"
-	jirautil "sigs.k8s.io/prow/pkg/jira"
-
-	"github.com/openshift/sippy/pkg/api/componentreadiness"
-	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
+	log "github.com/sirupsen/logrus"
+	"github.com/trivago/tgo/tcontainer"
+	"google.golang.org/api/iterator"
 )
 
 const (
@@ -52,7 +50,7 @@ type JiraComponent struct {
 }
 
 type JiraAutomator struct {
-	jiraClient   jirautil.Client
+	jiraClient   *jira.Client
 	bqClient     *bqclient.Client
 	dbc          *db.DB
 	cacheOptions cache.RequestOptions
@@ -71,7 +69,7 @@ type JiraAutomator struct {
 }
 
 func NewJiraAutomator(
-	jiraClient jirautil.Client,
+	jiraClient *jira.Client,
 	bqClient *bqclient.Client,
 	dbc *db.DB,
 	cacheOptions cache.RequestOptions,
@@ -179,7 +177,7 @@ func (j JiraAutomator) getExistingIssuesForComponent(view crview.View, component
 	}
 	jqlQuery := fmt.Sprintf("project=%s&&component='%s'&&creator='%s'&&affectedVersion=%s&&labels in (%s) ORDER BY createdDate",
 		component.Project, component.Component, j.jiraAccount, view.SampleRelease.Name, jiratype.LabelJiraAutomator)
-	issues, _, err := j.jiraClient.SearchWithContext(context.Background(), jqlQuery, &searchOptions)
+	issues, _, err := j.jiraClient.Issue.SearchWithContext(context.Background(), jqlQuery, &searchOptions)
 	return issues, err
 }
 
@@ -203,7 +201,7 @@ func isReleaseBlockerApproved(existing *jira.Issue) bool {
 		Value    string `json:"value"`
 	}
 	var obj *releaseBlockerField
-	err := jirautil.GetUnknownField(jiratype.CustomFieldReleaseBlockerName, existing, func() interface{} {
+	err := util.GetUnknownField(jiratype.CustomFieldReleaseBlockerName, existing, func() interface{} {
 		obj = &releaseBlockerField{}
 		return obj
 	})
@@ -229,7 +227,7 @@ func (j JiraAutomator) updateExistingJiraIssue(view crview.View, existing *jira.
 		fmt.Fprintf(os.Stdout, "\nUpdating issue %s with comment\n%s", existing.ID, comment)
 		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
 	} else {
-		_, err = j.jiraClient.AddComment(existing.ID, &jira.Comment{Body: comment})
+		_, _, err = j.jiraClient.Issue.AddComment(existing.ID, &jira.Comment{Body: comment})
 		if err != nil {
 			return err
 		}
@@ -341,13 +339,13 @@ func (j JiraAutomator) createNewJiraIssueForRegressions(view crview.View, compon
 		summary := fmt.Sprintf("Component Readiness: %s test regressed", component.Component)
 
 		fileBugRequest := util.FileBugRequest{Description: description, Summary: summary, Components: []string{component.Component}, AffectsVersions: []string{view.SampleRelease.Name}, Labels: []string{jiratype.LabelJiraAutomator}, Project: component.Project}
-		issue, err := util.PopulateJiraIssue(j.jiraClient.JiraClient(), fileBugRequest, "")
+		issue, err := util.PopulateJiraIssue(j.jiraClient, fileBugRequest, "")
 		if err != nil {
 			return err
 		}
 
 		if !j.dryRun {
-			created, err := j.jiraClient.CreateIssue(&issue)
+			created, _, err := j.jiraClient.Issue.Create(&issue)
 			if err != nil {
 				return err
 			}
@@ -472,7 +470,7 @@ func (j JiraAutomator) updateReleaseBlocker(issue *jira.Issue, release string) e
 			},
 		}
 		if !j.dryRun {
-			_, err := j.jiraClient.UpdateIssue(&issue)
+			_, _, err := j.jiraClient.Issue.Update(&issue)
 			return err
 		}
 		fmt.Fprintf(os.Stdout, "\n====================================================================\n")
