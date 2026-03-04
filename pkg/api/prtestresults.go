@@ -309,6 +309,19 @@ func deserializePRTestResult(row []bigquery.Value, schema bigquery.Schema) (PRTe
 
 // PrintPRTestResultsJSON is the HTTP handler for /api/pull_requests/test_results
 func PrintPRTestResultsJSON(w http.ResponseWriter, req *http.Request, bqc *bq.Client) {
+
+	// Looks as though this is being crawled via ai and consuming our quota.
+	// This endpoint is not intended for public consumption currently
+	// We may consider adding rate limiting but the short term is to disable
+	disabled := true
+	if disabled {
+		RespondWithJSON(http.StatusForbidden, w, map[string]interface{}{
+			"code":    http.StatusForbidden,
+			"message": "Access to this api is currently restricted",
+		})
+		return
+	}
+
 	// Parse and validate query parameters
 	org := param.SafeRead(req, "org")
 	if org == "" {
