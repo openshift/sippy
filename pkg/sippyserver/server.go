@@ -1919,24 +1919,6 @@ func (s *Server) jsonRegressionPotentialMatchingTriages(w http.ResponseWriter, r
 	api.RespondWithJSON(http.StatusOK, w, matches)
 }
 
-// FileBugRequest represents the JSON request structure for filing Jira bugs
-type FileBugRequest struct {
-	Summary         string   `json:"summary"`
-	Description     string   `json:"description"`
-	AffectsVersions []string `json:"affects_versions"`
-	Components      []string `json:"components"`
-	ComponentID     string   `json:"component_id"`
-	Labels          []string `json:"labels"`
-}
-
-// FileBugResponse represents the JSON response structure for filing Jira bugs
-type FileBugResponse struct {
-	Success bool   `json:"success"`
-	DryRun  bool   `json:"dry_run"`
-	JiraKey string `json:"jira_key"`
-	JiraURL string `json:"jira_url"`
-}
-
 // jsonFileJiraBug allows for a Jira "OCPBUGS" card to be created for the given FileBugRequest
 // If successful, the response is a jsonified FileBugResponse
 func (s *Server) jsonFileJiraBug(w http.ResponseWriter, req *http.Request) {
@@ -1953,7 +1935,7 @@ func (s *Server) jsonFileJiraBug(w http.ResponseWriter, req *http.Request) {
 		}
 		log.Infof("jira bug creation requested by user: %s", user)
 
-		var bugRequest FileBugRequest
+		var bugRequest util.FileBugRequest
 		if err := json.NewDecoder(req.Body).Decode(&bugRequest); err != nil {
 			log.WithError(err).Error("error parsing jira bug request")
 			failureResponse(w, http.StatusBadRequest, fmt.Sprintf("Invalid JSON: %s", err.Error()))
@@ -1979,39 +1961,10 @@ func (s *Server) jsonFileJiraBug(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		// Due to the way the OCPBUGS project is configured, we cannot set the "Reporter", so we add it to the description for some tracking
-		description := fmt.Sprintf("%s\n\nFiled by: [~%s@redhat.com]", bugRequest.Description, user)
-
-		issue := jira.Issue{
-			Fields: &jira.IssueFields{
-				Description: description,
-				Type: jira.IssueType{
-					Name: "Bug",
-				},
-				Project: jira.Project{
-					Key: "OCPBUGS",
-				},
-				Summary: bugRequest.Summary,
-			},
-		}
-
-		affectsVersions := make([]*jira.AffectsVersion, len(bugRequest.AffectsVersions))
-		for i, version := range bugRequest.AffectsVersions {
-			affectsVersions[i] = &jira.AffectsVersion{
-				Name: version,
-			}
-		}
-		issue.Fields.AffectsVersions = affectsVersions
-
-		components := make([]*jira.Component, 0)
-		for _, comp := range bugRequest.Components {
-			components = append(components, &jira.Component{Name: comp})
-		}
-		components = append(components, &jira.Component{ID: bugRequest.ComponentID})
-		issue.Fields.Components = components
-
-		if len(bugRequest.Labels) > 0 {
-			issue.Fields.Labels = bugRequest.Labels
+		issue, err := util.PopulateJiraIssue(s.jiraClient, bugRequest, user)
+		if err != nil && s.jiraClient != nil {
+			failureResponse(w, http.StatusInternalServerError, err.Error())
+			return
 		}
 
 		var createdIssue *jira.Issue
@@ -2032,10 +1985,10 @@ func (s *Server) jsonFileJiraBug(w http.ResponseWriter, req *http.Request) {
 			dryRun = true
 		}
 
-		log.Infof("created jira issue %s for user %s", createdIssue.Key, user)
+		log.Infof("created jira issue %s for user %s (dryrun:%v)", createdIssue.Key, user, dryRun)
 
 		jiraURL := fmt.Sprintf("https://issues.redhat.com/browse/%s", createdIssue.Key)
-		response := FileBugResponse{
+		response := util.FileBugResponse{
 			Success: true,
 			DryRun:  dryRun,
 			JiraKey: createdIssue.Key,

@@ -12,7 +12,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	prowflagutil "sigs.k8s.io/prow/pkg/flagutil"
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
@@ -33,7 +32,7 @@ type AutomateJiraFlags struct {
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
 	ConfigFlags             *configflags.ConfigFlags
 	PostgresFlags           *flags.PostgresFlags
-	JiraOptions             prowflagutil.JiraOptions
+	JiraFlags               flags.JiraFlags
 	SippyURL                string
 	IncludeComponentsStr    string
 	// IncludeComponents is a set of string in the format of jiraProject:jiraComponent
@@ -63,7 +62,7 @@ func (f *AutomateJiraFlags) BindFlags(fs *pflag.FlagSet) {
 	f.CacheFlags.BindFlags(fs)
 	f.ComponentReadinessFlags.BindFlags(fs)
 	f.ConfigFlags.BindFlags(fs)
-	f.JiraOptions.AddFlags(flag.CommandLine)
+	f.JiraFlags.BindFlags(fs)
 	fs.AddGoFlagSet(flag.CommandLine)
 	fs.StringVar(&f.SippyURL, "sippy-url", f.SippyURL, "The Sippy URL prefix to be used to generate sharable Sippy links")
 	fs.StringVar(&f.IncludeComponentsStr, "include-components", f.IncludeComponentsStr, "The list of comma separated jira components to file issues against. Each component consists of project and component separated by colon. If this is not defined, all components will be candidates.")
@@ -116,10 +115,7 @@ func (f *AutomateJiraFlags) Validate(allVariants crtest.JobVariants) error {
 		}
 		f.ColumnThresholds[jiraautomator.Variant{Name: vt[0], Value: vt[1]}] = t
 	}
-	if err := f.GoogleCloudFlags.Validate(); err != nil {
-		return err
-	}
-	return f.JiraOptions.Validate(true)
+	return f.GoogleCloudFlags.Validate()
 }
 
 func NewAutomateJiraCommand() *cobra.Command {
@@ -160,9 +156,12 @@ func NewAutomateJiraCommand() *cobra.Command {
 				log.WithError(err).Fatal("error querying releases")
 			}
 
-			jiraClient, err := f.JiraOptions.Client()
+			jiraClient, err := f.JiraFlags.GetJiraClient()
 			if err != nil {
 				return errors.WithMessage(err, "couldn't get jira client")
+			}
+			if jiraClient == nil {
+				return fmt.Errorf("couldn't get jira client: jira auth is not configured")
 			}
 
 			config, err := f.ConfigFlags.GetConfig()

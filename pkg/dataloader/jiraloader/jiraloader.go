@@ -16,6 +16,7 @@ import (
 	v1jira "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -37,12 +38,45 @@ func (jl *JiraLoader) Name() string {
 	return "jira"
 }
 
+// getAuthorizationHeader looks for environment variable settings
+// and returns the authorization string based on the setting present
+// if any.  UAT environment requires authentication
+// may be temporary when that becomes production
+// this will retrieve the authorization value if present
+
+func (jl *JiraLoader) getAuthorizationHeader() string {
+	// For a fresh sync to a developer DB, no jira token is needed since the issues API is still open. However, if
+	// we need to find cards where the trt-incident label was removed this API is not protected and returns 401
+	// if tried unauthed.  So really this only affects long-lived instances of Sippy.
+	//
+	// WARNING: DO NOT give public-facing Sippy a personal developer token, use a service account that is not marked
+	// as a Red Hat employee.
+
+	// bearer token supports service accounts
+	bearerToken := os.Getenv("JIRA_TOKEN")
+	if len(bearerToken) > 0 {
+		return fmt.Sprintf("Bearer %s", bearerToken)
+	}
+
+	// basic token supports personal access tokens
+	basicToken := os.Getenv("JIRA_TOKEN_BASIC")
+	if len(basicToken) > 0 {
+		return fmt.Sprintf("Basic %s", basicToken)
+	}
+
+	// may not be required so return empty string
+	log.Warningf("not all jira api queries are available without a token; some requests may fail")
+	return ""
+}
+
 func (jl *JiraLoader) Load() {
+	authorizationHeader := jl.getAuthorizationHeader()
+
 	// Load components into DB
-	jl.componentLoader()
+	jl.componentLoader(authorizationHeader)
 
 	// Load incidents
-	jl.incidentLoader()
+	jl.incidentLoader(authorizationHeader)
 }
 
 func (jl *JiraLoader) Errors() []error {
@@ -116,10 +150,10 @@ func issueContainsLabel(issue *v1jira.Issue, label string) bool {
 	return false
 }
 
-func (jl *JiraLoader) componentLoader() {
+func (jl *JiraLoader) componentLoader(authorization string) {
 	start := time.Now()
 	log.Infof("loading jira ocpbugs component information...")
-	body, err := jiraRequest("https://issues.redhat.com/rest/api/2/project/12332330/components")
+	body, err := jiraRequest("https://issues.redhat.com/rest/api/2/project/OCPBUGS/components", authorization)
 	if err != nil {
 		jl.errors = append(jl.errors, err)
 		return
@@ -173,7 +207,7 @@ func (jl *JiraLoader) componentLoader() {
 	}).Infof("component load complete in %+v", time.Since(start))
 }
 
-func (jl *JiraLoader) incidentLoader() {
+func (jl *JiraLoader) incidentLoader(authorization string) {
 	start := time.Now()
 	log.Infof("populating unresolved jira incident cache...")
 	var dbIssues []string
@@ -187,7 +221,12 @@ func (jl *JiraLoader) incidentLoader() {
 	start = time.Now()
 	log.Infof("fetching incidents from jira...")
 
-	body, err := jiraRequest("https://issues.redhat.com/rest/api/2/search?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog")
+	apiURL := "https://issues.redhat.com/rest/api/2/search?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog"
+	isJiraCloud := util.IsJiraCloud()
+	if isJiraCloud {
+		apiURL = "https://issues.redhat.com/rest/api/3/search/jql?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog"
+	}
+	body, err := jiraRequest(apiURL, authorization)
 	if err != nil {
 		jl.errors = append(jl.errors, err)
 		return
@@ -220,7 +259,7 @@ func (jl *JiraLoader) incidentLoader() {
 	log.Infof("we have %d unseen and unresolved jira incidents", unseenUnresolvedIssues.Len())
 	for _, unseen := range unseenUnresolvedIssues.List() {
 		log.Infof("processing unseen, unresolved jira incidents (trt-incident label removed?)...")
-		issue, err := queryJiraAPI(unseen)
+		issue, err := queryJiraAPI(unseen, authorization)
 		if err != nil {
 			log.WithError(err).Warnf("couldn't query details for %s. this is expected for cards that are restricted to 'Red Hat Only'", unseen)
 			continue
@@ -242,13 +281,18 @@ func (jl *JiraLoader) incidentLoader() {
 }
 
 // queryJiraAPI returns a singular jira issue
-func queryJiraAPI(issueID string) (*v1jira.Issue, error) {
+func queryJiraAPI(issueID, authorization string) (*v1jira.Issue, error) {
 	urlFmtStr := "https://issues.redhat.com/rest/api/2/issue/%s?expand=changelog"
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", fmt.Sprintf(urlFmtStr, issueID), nil)
 	if err != nil {
 		return nil, err
 	}
+
+	if authorization != "" {
+		req.Header.Add("Authorization", authorization)
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -298,24 +342,15 @@ func issueToDB(issue *v1jira.Issue) (*models.JiraIncident, error) {
 	}, nil
 }
 
-func jiraRequest(apiURL string) ([]byte, error) {
+func jiraRequest(apiURL, authorization string) ([]byte, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	// For a fresh sync to a developer DB, no jira token is needed since the issues API is still open. However, if
-	// we need to find cards where the trt-incident label was removed this API is not protected and returns 401
-	// if tried unauthed.  So really this only affects long-lived instances of Sippy.
-	//
-	// WARNING: DO NOT give public-facing Sippy a personal developer token, use a service account that is not marked
-	// as a Red Hat employee.
-	token := os.Getenv("JIRA_TOKEN")
-	if token == "" {
-		log.Warningf("not all jira api queries are available without a token; some requests may fail")
-	} else {
-		req.Header.Add("Authorization", "Bearer "+token)
+	if authorization != "" {
+		req.Header.Add("Authorization", authorization)
 	}
 
 	req.Header.Add("Accept", "application/json")

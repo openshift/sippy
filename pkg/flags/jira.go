@@ -1,6 +1,7 @@
 package flags
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
@@ -29,19 +30,20 @@ func (f *JiraFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&f.JiraURL, "jira-url", f.JiraURL, "Jira URL")
 }
 
-type bearerAuthTransport struct {
+type authTransport struct {
 	Token     string
 	Transport http.RoundTripper
+	Type      string
 }
 
-func (bat *bearerAuthTransport) RoundTrip(req *http.Request) (*http.Response, error) {
-	req.Header.Add("Authorization", "Bearer "+bat.Token)
-	return bat.transport().RoundTrip(req)
+func (at *authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req.Header.Add("Authorization", fmt.Sprintf("%s %s", at.Type, at.Token))
+	return at.transport().RoundTrip(req)
 }
 
-func (bat *bearerAuthTransport) transport() http.RoundTripper {
-	if bat.Transport != nil {
-		return bat.Transport
+func (at *authTransport) transport() http.RoundTripper {
+	if at.Transport != nil {
+		return at.Transport
 	}
 	return http.DefaultTransport
 }
@@ -49,6 +51,7 @@ func (bat *bearerAuthTransport) transport() http.RoundTripper {
 // GetJiraClient initializes and returns a Jira client if token is available
 func (f *JiraFlags) GetJiraClient() (*jira.Client, error) {
 	var jiraToken string
+	authorizationType := "Bearer"
 
 	// First try token file
 	if f.JiraTokenFile != "" {
@@ -65,12 +68,19 @@ func (f *JiraFlags) GetJiraClient() (*jira.Client, error) {
 		jiraToken = os.Getenv("JIRA_TOKEN")
 	}
 
+	// Fallback to basic
+	// Basic token is only supported via ENV VAR currently
+	if jiraToken == "" {
+		jiraToken = os.Getenv("JIRA_TOKEN_BASIC")
+		authorizationType = "Basic"
+	}
+
 	if jiraToken == "" {
 		log.Warn("JIRA_TOKEN not set and no token file provided, Jira client will be nil, and utilizing it will result in dry-run functionality")
 		return nil, nil
 	}
 
-	httpClient := &http.Client{Transport: &bearerAuthTransport{Token: jiraToken}}
+	httpClient := &http.Client{Transport: &authTransport{Token: jiraToken, Type: authorizationType}}
 
 	jiraClient, err := jira.NewClient(httpClient, f.JiraURL)
 	if err != nil {
