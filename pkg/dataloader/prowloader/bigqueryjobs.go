@@ -44,13 +44,13 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			prowjob_type,
 			prowjob_cluster,
 			prowjob_url,
+			prowjob_annotations,
 			pr_sha,
 			pr_author,
 			pr_number,
 			org,
 			repo,
 			gcs_bucket,
-			annotations,
 			TIMESTAMP(prowjob_start) AS prowjob_start_ts,
 			TIMESTAMP(prowjob_completion) AS prowjob_completion_ts `+
 		"FROM `ci_analysis_us.jobs` "+
@@ -108,10 +108,16 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 		// Filter out annotations with excluded prefixes
 		filteredAnnotations := make(map[string]string)
 		for _, a := range bqjr.Annotations {
-			if strings.HasPrefix(a.Key, "prow.k8s.io") || strings.HasPrefix(a.Key, "ci.openshift.io") {
+			parts := strings.SplitN(a, "=", 2)
+			if len(parts) != 2 {
 				continue
 			}
-			filteredAnnotations[a.Key] = a.Value
+			key := parts[0]
+			value := parts[1]
+			if strings.HasPrefix(key, "prow.k8s.io") || strings.HasPrefix(key, "ci.openshift.io") {
+				continue
+			}
+			filteredAnnotations[key] = value
 		}
 
 		prowJobs[bqjr.BuildID] = prow.ProwJob{
@@ -147,12 +153,6 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 	return prowJobsList, errs
 }
 
-// bigqueryAnnotation maps the repeated STRUCT(key, value) column from BigQuery.
-type bigqueryAnnotation struct {
-	Key   string `bigquery:"key"`
-	Value string `bigquery:"value"`
-}
-
 // bigqueryProwJobRun is a transient struct for processing results from the bigquery jobs table.
 // Ultimately just used to convert to a prow.ProwJob.
 type bigqueryProwJobRun struct {
@@ -170,5 +170,5 @@ type bigqueryProwJobRun struct {
 	PROrg          bigquery.NullString    `bigquery:"org"`
 	PRRepo         bigquery.NullString    `bigquery:"repo"`
 	GCSBucket      bigquery.NullString    `bigquery:"gcs_bucket"`
-	Annotations    []bigqueryAnnotation   `bigquery:"annotations"`
+	Annotations    []string               `bigquery:"prowjob_annotations"`
 }
