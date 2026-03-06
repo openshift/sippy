@@ -17427,4 +17427,8 @@ releases:
             periodic-ci-openshift-osde2e-main-osd-aws-upgrade-latest-default-z-minus-1-to-latest-default-z: true
             periodic-ci-openshift-osde2e-main-rosa-stage-e2e-byo-vpc-proxy-install: true
             periodic-ci-openshift-osde2e-main-rosa-stage-e2e-byo-vpc-proxy-postinstall: true
+    rp-integration:
+        jobs:
+            periodic-ci-openshift-online-rosa-regional-platform-main-nightly: true
+            periodic-ci-openshift-online-rosa-regional-platform-main-nightly-resources-janitor: true
 

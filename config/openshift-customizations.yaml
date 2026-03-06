@@ -66,6 +66,10 @@ releases:
     jobs: {}
   rosa-production:
     jobs: {}
+  rp-integration:
+    jobs:
+      periodic-ci-openshift-online-rosa-regional-platform-main-nightly: true
+      periodic-ci-openshift-online-rosa-regional-platform-main-nightly-resources-janitor: true
   automation:
     jobs:
       periodic-ci-openshift-hypershift-main-periodic-jira-agent: true
