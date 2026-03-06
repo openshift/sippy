@@ -15744,4 +15744,7 @@ releases:
     aro-stage:
         jobs:
             periodic-ci-Azure-ARO-HCP-main-periodic-stage-e2e-parallel: true
-
+    rp-integration:
+        jobs:
+            pull-ci-openshift-online-rosa-regional-platform-main-on-demand-e2e: true
+            pull-ci-openshift-online-rosa-regional-platform-main-terraform-validate: true
