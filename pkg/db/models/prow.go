@@ -46,8 +46,9 @@ type ProwJobRun struct {
 	GCSBucket    string
 	URL          string
 	TestFailures int
-	Tests        []ProwJobRunTest  `gorm:"constraint:OnDelete:CASCADE;"`
-	PullRequests []ProwPullRequest `gorm:"many2many:prow_job_run_prow_pull_requests;constraint:OnDelete:CASCADE;"`
+	Tests        []ProwJobRunTest       `gorm:"constraint:OnDelete:CASCADE;"`
+	PullRequests []ProwPullRequest      `gorm:"many2many:prow_job_run_prow_pull_requests;constraint:OnDelete:CASCADE;"`
+	Annotations  []ProwJobRunAnnotation `gorm:"constraint:OnDelete:CASCADE;"`
 	Failed       bool
 	// InfrastructureFailure is true if the job run failed, for reasons which appear to be related to test/CI infra.
 	InfrastructureFailure bool
@@ -63,6 +64,14 @@ type ProwJobRun struct {
 	// used to pass the TestCount in via the api, we have the actual tests in the db and can calculate it here so don't persist
 	TestCount   int         `gorm:"-"`
 	ClusterData ClusterData `gorm:"-"`
+}
+
+// ProwJobRunAnnotation stores a single key-value annotation for a ProwJobRun.
+type ProwJobRunAnnotation struct {
+	gorm.Model
+	ProwJobRunID uint   `gorm:"index;uniqueIndex:idx_prow_job_run_annotations_key"`
+	Key          string `gorm:"uniqueIndex:idx_prow_job_run_annotations_key"`
+	Value        string
 }
 
 type Test struct {

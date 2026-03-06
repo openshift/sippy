@@ -2,6 +2,7 @@ package prowloader
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -49,6 +50,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			org,
 			repo,
 			gcs_bucket,
+			annotations,
 			TIMESTAMP(prowjob_start) AS prowjob_start_ts,
 			TIMESTAMP(prowjob_completion) AS prowjob_completion_ts `+
 		"FROM `ci_analysis_us.jobs` "+
@@ -103,6 +105,15 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			// Do not return an error as that will cause the job to fail.
 			continue
 		}
+		// Filter out annotations with excluded prefixes
+		filteredAnnotations := make(map[string]string)
+		for _, a := range bqjr.Annotations {
+			if strings.HasPrefix(a.Key, "prow.k8s.io") || strings.HasPrefix(a.Key, "ci.openshift.io") {
+				continue
+			}
+			filteredAnnotations[a.Key] = a.Value
+		}
+
 		prowJobs[bqjr.BuildID] = prow.ProwJob{
 			Spec: prow.ProwJobSpec{
 				Type:    bqjr.Type,
@@ -122,6 +133,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 				URL:            bqjr.URL,
 				BuildID:        bqjr.BuildID,
 			},
+			Annotations: filteredAnnotations,
 		}
 		count++
 	}
@@ -133,6 +145,12 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 
 	log.Infof("found %d jobs (%d dupes) in bigquery since last import (roughly)", len(prowJobs), count-len(prowJobs))
 	return prowJobsList, errs
+}
+
+// bigqueryAnnotation maps the repeated STRUCT(key, value) column from BigQuery.
+type bigqueryAnnotation struct {
+	Key   string `bigquery:"key"`
+	Value string `bigquery:"value"`
 }
 
 // bigqueryProwJobRun is a transient struct for processing results from the bigquery jobs table.
@@ -152,4 +170,5 @@ type bigqueryProwJobRun struct {
 	PROrg          bigquery.NullString    `bigquery:"org"`
 	PRRepo         bigquery.NullString    `bigquery:"repo"`
 	GCSBucket      bigquery.NullString    `bigquery:"gcs_bucket"`
+	Annotations    []bigqueryAnnotation   `bigquery:"annotations"`
 }

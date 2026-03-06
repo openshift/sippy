@@ -92,6 +92,7 @@ type ProwJobStatus struct {
 }
 
 type ProwJob struct {
-	Spec   ProwJobSpec   `json:"spec,omitempty"`
-	Status ProwJobStatus `json:"status,omitempty"`
+	Spec        ProwJobSpec       `json:"spec,omitempty"`
+	Status      ProwJobStatus     `json:"status,omitempty"`
+	Annotations map[string]string `json:"annotations,omitempty"`
 }
