@@ -32,3 +32,7 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-brazilsouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-centralindia-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
+  rp-integration:
+    jobs:
+      periodic-ci-openshift-online-rosa-regional-platform-main-nightly: true
+      periodic-ci-openshift-online-rosa-regional-platform-main-nightly-resources-janitor: true
