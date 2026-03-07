@@ -106,12 +106,41 @@ func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release 
 	}
 
 	res := q.Scan(&jobsResult)
+	if res.Error != nil {
+		return nil, res.Error
+	}
+
+	// Fetch annotations separately to avoid bloating the materialized view.
+	if len(jobsResult) > 0 {
+		ids := make([]int, len(jobsResult))
+		for i, jr := range jobsResult {
+			ids[i] = jr.ID
+		}
+		var annotations []models.ProwJobRunAnnotation
+		if err := dbc.DB.Where("prow_job_run_id IN ?", ids).Find(&annotations).Error; err != nil {
+			return nil, err
+		}
+		annotationsByRun := make(map[string]apitype.AnnotationMap)
+		for _, a := range annotations {
+			annotationID := strconv.FormatUint(uint64(a.ProwJobRunID), 10)
+			if annotationsByRun[annotationID] == nil {
+				annotationsByRun[annotationID] = make(apitype.AnnotationMap)
+			}
+			annotationsByRun[annotationID][a.Key] = a.Value
+		}
+		for i := range jobsResult {
+			if am, ok := annotationsByRun[strconv.Itoa(jobsResult[i].ID)]; ok {
+				jobsResult[i].Annotations = am
+			}
+		}
+	}
+
 	return &apitype.PaginationResult{
 		Rows:      jobsResult,
 		TotalRows: rowCount,
 		PageSize:  pagination.PerPage,
 		Page:      pagination.Page,
-	}, res.Error
+	}, nil
 }
 
 // FetchJobRun returns a single job run loaded from postgres and populated with the ProwJob and test results.

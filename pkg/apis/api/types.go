@@ -356,7 +356,11 @@ type JobRun struct {
 	PullRequestSHA        string              `json:"pull_request_sha"`
 	PullRequestAuthor     string              `json:"pull_request_author"`
 	Labels                pq.StringArray      `json:"labels" gorm:"type:text[]"`
+	Annotations           AnnotationMap       `json:"annotations,omitempty"`
 }
+
+// AnnotationMap is a map[string]string for job run annotations.
+type AnnotationMap map[string]string
 
 func (run JobRun) GetFieldType(param string) ColumnType {
 	switch param {

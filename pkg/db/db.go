@@ -74,6 +74,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ReleaseJobRun{},
 		&models.ProwJob{},
 		&models.ProwJobRun{},
+		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},
 		&models.ProwJobRunTest{},

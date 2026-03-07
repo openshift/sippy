@@ -2,6 +2,7 @@ package prowloader
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -43,6 +44,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			prowjob_type,
 			prowjob_cluster,
 			prowjob_url,
+			prowjob_annotations,
 			pr_sha,
 			pr_author,
 			pr_number,
@@ -103,6 +105,21 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 			// Do not return an error as that will cause the job to fail.
 			continue
 		}
+		// Filter out annotations with excluded prefixes
+		filteredAnnotations := make(map[string]string)
+		for _, a := range bqjr.Annotations {
+			parts := strings.SplitN(a, "=", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			key := parts[0]
+			value := parts[1]
+			if strings.HasPrefix(key, "prow.k8s.io") || strings.HasPrefix(key, "ci.openshift.io") {
+				continue
+			}
+			filteredAnnotations[key] = value
+		}
+
 		prowJobs[bqjr.BuildID] = prow.ProwJob{
 			Spec: prow.ProwJobSpec{
 				Type:    bqjr.Type,
@@ -122,6 +139,7 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 				URL:            bqjr.URL,
 				BuildID:        bqjr.BuildID,
 			},
+			Annotations: filteredAnnotations,
 		}
 		count++
 	}
@@ -152,4 +170,5 @@ type bigqueryProwJobRun struct {
 	PROrg          bigquery.NullString    `bigquery:"org"`
 	PRRepo         bigquery.NullString    `bigquery:"repo"`
 	GCSBucket      bigquery.NullString    `bigquery:"gcs_bucket"`
+	Annotations    []string               `bigquery:"prowjob_annotations"`
 }
