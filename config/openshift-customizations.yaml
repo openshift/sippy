@@ -32,3 +32,37 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-brazilsouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-centralindia-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
+  rosa-stage:
+    jobs:
+      # ROSA Classic/STS nightly (stage)
+      periodic-ci-openshift-osde2e-main-nightly-4.16-rosa-classic-sts: true
+      periodic-ci-openshift-osde2e-main-nightly-4.17-rosa-classic-sts: true
+      periodic-ci-openshift-osde2e-main-nightly-4.18-rosa-classic-sts: true
+      periodic-ci-openshift-osde2e-main-nightly-4.19-rosa-classic-sts: true
+      periodic-ci-openshift-osde2e-main-nightly-4.20-rosa-classic-sts: true
+      periodic-ci-openshift-osde2e-main-nightly-4.21-rosa-classic-sts: true
+      periodic-ci-openshift-osde2e-main-nightly-4.22-rosa-classic-sts: true
+      # ROSA HCP nightly (stage)
+      periodic-ci-openshift-osde2e-main-nightly-4.21-rosa-hcp: true
+      # ROSA proxy tests (stage)
+      periodic-ci-openshift-osde2e-main-rosa-stage-e2e-byo-vpc-proxy-install: true
+      periodic-ci-openshift-osde2e-main-rosa-stage-e2e-byo-vpc-proxy-postinstall: true
+      # OSD-AWS nightly (stage, relevant to ROSA)
+      periodic-ci-openshift-osde2e-main-nightly-4.16-osd-aws: true
+      periodic-ci-openshift-osde2e-main-nightly-4.17-osd-aws: true
+      periodic-ci-openshift-osde2e-main-nightly-4.18-osd-aws: true
+      periodic-ci-openshift-osde2e-main-nightly-4.19-osd-aws: true
+      periodic-ci-openshift-osde2e-main-nightly-4.20-osd-aws: true
+      periodic-ci-openshift-osde2e-main-nightly-4.21-osd-aws: true
+      periodic-ci-openshift-osde2e-main-nightly-4.22-osd-aws: true
+      # OSD-AWS upgrades (stage)
+      periodic-ci-openshift-osde2e-main-osd-aws-upgrade-latest-default-z-minus-1-to-latest-default-z: true
+      periodic-ci-openshift-osde2e-main-osd-aws-upgrade-latest-default-y-minus-1-to-latest-default-y: true
+      periodic-ci-openshift-osde2e-main-osd-aws-upgrade-latest-default-y-to-latest-y-plus-1: true
+      periodic-ci-openshift-osde2e-main-osd-aws-upgrade-latest-default-y-plus-1-to-latest-y: true
+      # OSD-AWS informing (stage)
+      periodic-ci-openshift-osde2e-main-aws-stage-informing-default: true
+  rosa-integration:
+    jobs: {}
+  rosa-production:
+    jobs: {}
