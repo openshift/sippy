@@ -17430,4 +17430,5 @@ releases:
     rrp-integration:
         jobs:
             periodic-ci-openshift-online-rosa-regional-platform-main-nightly-ephemeral: true
+            periodic-ci-openshift-online-rosa-regional-platform-main-nightly-integration: true
 
