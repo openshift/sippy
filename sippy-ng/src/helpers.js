@@ -193,6 +193,20 @@ export function pathForJobRunsWithTestFailure(release, test, filter) {
   return `/jobs/${release}/runs?${multiple(...filters)}`
 }
 
+export function pathForJobRunsWithTest(release, test, filter) {
+  let filters = []
+  filters.push(filterFor('ran_test_names', 'has entry', test))
+  if (filter && filter.items) {
+    filter.items.forEach((item) => {
+      if (item.columnField === 'variants') {
+        filters.push(item)
+      }
+    })
+  }
+
+  return `/jobs/${release}/runs?${multiple(...filters)}`
+}
+
 export function pathForJobRunsWithTestFlake(release, test, filter) {
   let filters = []
   filters.push(filterFor('flaked_test_names', 'has entry', test))

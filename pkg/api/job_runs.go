@@ -80,7 +80,33 @@ type apiRunResults []apitype.JobRun
 func JobsRunsReportFromDB(dbc *db.DB, filterOpts *filter.FilterOptions, release string, pagination *apitype.Pagination, reportEnd time.Time) (*apitype.PaginationResult, error) {
 	jobsResult := make([]apitype.JobRun, 0)
 	table := "prow_job_runs_report_matview"
-	q, err := filter.FilterableDBResult(dbc.DB.Table(table), filterOpts, apitype.JobRun{})
+
+	dbQuery := dbc.DB.Table(table)
+
+	// Split out ran_test_names filters — these are handled via a subquery
+	// against prow_job_run_tests rather than a column on the matview.
+	if filterOpts.Filter != nil {
+		ranTestFilter, remainingFilter := filterOpts.Filter.Split([]string{"ran_test_names"})
+		filterOpts.Filter = remainingFilter
+		for _, item := range ranTestFilter.Items {
+			baseSubquery := "EXISTS (SELECT 1 FROM prow_job_run_tests JOIN tests ON tests.id = prow_job_run_tests.test_id WHERE prow_job_run_tests.prow_job_run_id = prow_job_runs_report_matview.id AND tests.name %s ?)"
+			var pattern string
+			switch item.Operator {
+			case filter.OperatorHasEntry, filter.OperatorEquals:
+				baseSubquery = fmt.Sprintf(baseSubquery, "=")
+				pattern = item.Value
+			default:
+				baseSubquery = fmt.Sprintf(baseSubquery, "ILIKE")
+				pattern = fmt.Sprintf("%%%s%%", item.Value)
+			}
+			if item.Not {
+				baseSubquery = "NOT " + baseSubquery
+			}
+			dbQuery = dbQuery.Where(baseSubquery, pattern)
+		}
+	}
+
+	q, err := filter.FilterableDBResult(dbQuery, filterOpts, apitype.JobRun{})
 	if err != nil {
 		return nil, err
 	}
