@@ -921,6 +921,14 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 		return err
 	}
 
+	var annotations []models.ProwJobRunAnnotation
+	for k, v := range pj.Annotations {
+		annotations = append(annotations, models.ProwJobRunAnnotation{
+			Key:   k,
+			Value: v,
+		})
+	}
+
 	var duration time.Duration
 	if pj.Status.CompletionTime != nil {
 		duration = pj.Status.CompletionTime.Sub(pj.Status.StartTime)
@@ -942,6 +950,7 @@ func (pl *ProwLoader) processGCSBucketJobRun(ctx context.Context, pj *prow.ProwJ
 		TestFailures:  failures,
 		Succeeded:     overallResult == sippyprocessingv1.JobSucceeded,
 		Labels:        labels,
+		Annotations:   annotations,
 	}).Error
 	if err != nil {
 		return err
