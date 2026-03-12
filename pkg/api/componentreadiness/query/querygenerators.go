@@ -59,6 +59,7 @@ const (
 					END) AS row_num,
 %s
 				jobs.prowjob_start as prowjob_start,
+				jobs.prowjob_url as prowjob_url,
 				jobs.org,
 				jobs.repo,
 				jobs.pr_number,
@@ -559,16 +560,15 @@ func buildTestDetailsQuery(
 						ANY_VALUE(cm.jira_component) AS jira_component,
 						ANY_VALUE(cm.jira_component_id) AS jira_component_id,
 						COUNT(*) AS total_count,
-						ANY_VALUE(jobs.prowjob_url) AS prowjob_url,
-						ANY_VALUE(jobs.prowjob_build_id) AS prowjob_run_id,
-						ANY_VALUE(jobs.prowjob_start) AS prowjob_start,
+						ANY_VALUE(junit.prowjob_url) AS prowjob_url,
+						ANY_VALUE(junit.prowjob_build_id) AS prowjob_run_id,
+						ANY_VALUE(junit.prowjob_start) AS prowjob_start,
 						ANY_VALUE(cm.capabilities) as capabilities,
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
 					FROM (%s) junit
-					INNER JOIN %s.jobs jobs ON junit.prowjob_build_id = jobs.prowjob_build_id
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore), client.Dataset)
+`, client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore))
 
 	queryString += joinVariants
 
