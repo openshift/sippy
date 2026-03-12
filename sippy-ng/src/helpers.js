@@ -308,22 +308,18 @@ export function not(filter) {
   return filter
 }
 
+// Utility for parsing release versions that include a version like "X.Y"
+// We don't want to be too picky here as the release name could have extra bits like "X.Y-okd"
+// and it's good enough just to know the major and minor version numbers.
+export function parseVersion(versionStr) {
+  const match = String(versionStr).match(/(\d+)\.(\d+)/)
+  if (!match) return {}
+  return { major: Number(match[1]), minor: Number(match[2]) }
+}
+
 export function useNewInstallTests(release) {
-  let digits = release.split('.', 2)
-  if (digits.length < 2) {
-    return false
-  }
-  const major = parseInt(digits[0])
-  const minor = parseInt(digits[1])
-  if (isNaN(major) || isNaN(minor)) {
-    return false
-  }
-  if (major < 4) {
-    return false
-  } else if (major == 4 && minor < 11) {
-    return false
-  }
-  return true
+  const { major, minor } = parseVersion(release)
+  return major > 4 || (major === 4 && minor >= 11)
 }
 
 export function getReportStartDate(reportDate) {

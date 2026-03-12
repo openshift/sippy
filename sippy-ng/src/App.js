@@ -275,8 +275,13 @@ const FeatureGateRedirectWrapper = () => {
 
 const FeatureGatesWrapper = () => {
   const { release } = useParams()
+  const releases = React.useContext(ReleasesContext)
   return RedirectLatestReleaseWrapper(
-    <FeatureGates key={'jobs-' + release} release={release} />
+    <FeatureGates
+      key={'jobs-' + release}
+      release={release}
+      releases={releases}
+    />
   )
 }
 
