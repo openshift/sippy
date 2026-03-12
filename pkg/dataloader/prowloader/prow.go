@@ -414,16 +414,16 @@ func (pl *ProwLoader) preparePartitions(config PartitionManagementConfig) error 
 	fmt.Printf("  Total: %d partitions (%s)\n", stats.TotalPartitions, stats.TotalSizePretty)
 
 	// When initializing a new table, look back the configured number of days
-	mostRecentDate := time.Now().Add(-time.Duration(config.InitialLookbackDays) * 24 * time.Hour)
+	oldestDate := time.Now().Add(-time.Duration(config.InitialLookbackDays) * 24 * time.Hour)
 	if stats.TotalPartitions > 0 {
 		fmt.Printf("  Range: %s to %s\n",
 			stats.OldestDate.Format("2006-01-02"),
 			stats.NewestDate.Format("2006-01-02"))
-		mostRecentDate = stats.NewestDate
+		oldestDate = stats.OldestDate
 	}
 
 	futureDate := time.Now().Add(config.FuturePartitionWindow)
-	created, err := partitions.CreateMissingPartitions(pl.dbc, config.TableName, mostRecentDate, futureDate, false)
+	created, err := partitions.CreateMissingPartitions(pl.dbc, config.TableName, oldestDate, futureDate, false)
 	if err != nil {
 		log.WithError(err).Errorf("error creating partitions for %s", config.TableName)
 		return err

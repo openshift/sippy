@@ -654,7 +654,7 @@ func DropOldPartitions(dbc *db.DB, tableName string, retentionDays int, dryRun b
 	}
 
 	// Get all partitions for removal (both attached and detached)
-	partitions, err := GetPartitionsForRemoval(dbc, tableName, retentionDays, false)
+	partitions, err := GetPartitionsForRemoval(dbc, tableName, retentionDays, true)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get partitions for removal: %w", err)
 	}
@@ -1709,22 +1709,43 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 		return fullSQL, nil
 	}
 
-	// Execute ALTER statements
-	successCount := 0
-	for _, stmt := range alterStatements {
-		result := dbc.DB.Exec(stmt)
-		if result.Error != nil {
-			log.WithError(result.Error).WithField("statement", stmt).Error("failed to execute ALTER statement")
-			continue
-		}
-		successCount++
+	// Execute ALTER statements in a transaction for atomicity
+	tx := dbc.DB.Begin()
+	if tx.Error != nil {
+		return "", fmt.Errorf("failed to begin transaction: %w", tx.Error)
 	}
+
+	// Ensure transaction is properly handled
+	committed := false
+	defer func() {
+		if !committed {
+			tx.Rollback()
+		}
+	}()
+
+	for i, stmt := range alterStatements {
+		result := tx.Exec(stmt)
+		if result.Error != nil {
+			log.WithError(result.Error).WithFields(log.Fields{
+				"table":     tableName,
+				"statement": stmt,
+				"index":     i + 1,
+				"total":     len(alterStatements),
+			}).Error("failed to execute ALTER statement")
+			return "", fmt.Errorf("failed to execute ALTER statement %d of %d: %w", i+1, len(alterStatements), result.Error)
+		}
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	committed = true
 
 	elapsed := time.Since(start)
 	log.WithFields(log.Fields{
 		"table":      tableName,
 		"statements": len(alterStatements),
-		"successful": successCount,
 		"elapsed":    elapsed,
 	}).Info("updated partitioned table schema")
 

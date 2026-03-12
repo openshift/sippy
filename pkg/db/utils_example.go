@@ -817,7 +817,7 @@ func ExampleCheckSequencesBeforeRename(dbc *DB, oldTableName, newTableName strin
 	}
 
 	// Now perform the rename
-	renames := map[string]string{oldTableName: newTableName}
+	renames := []TableRename{{From: oldTableName, To: newTableName}}
 	count, err := dbc.RenameTables(renames, true, false, false, false, false)
 	if err != nil {
 		log.WithError(err).Error("rename failed")
@@ -869,10 +869,10 @@ func ExampleCheckAndCreatePartitions(dbc *DB, tableName string, startDate, endDa
 func ExampleRenameTables(dbc *DB) {
 	log.Info("renaming multiple tables atomically")
 
-	// Define table renames
-	renames := map[string]string{
-		"orders_old": "orders_backup",
-		"orders_new": "orders",
+	// Define table renames (order matters for dependencies)
+	renames := []TableRename{
+		{From: "orders_old", To: "orders_backup"},
+		{From: "orders_new", To: "orders"},
 	}
 
 	// Dry run first to verify
@@ -920,11 +920,11 @@ func ExampleSwapPartitionedTable(dbc *DB, oldTable, newPartitionedTable string) 
 	log.Info("row counts match - proceeding with table swap")
 
 	// Step 2: Perform atomic rename to swap tables
-	// orders -> orders_old
-	// orders_partitioned -> orders
-	renames := map[string]string{
-		oldTable:            oldTable + "_old",
-		newPartitionedTable: oldTable,
+	// Order matters: rename orders -> orders_old first to free up the "orders" name
+	// Then rename orders_partitioned -> orders
+	renames := []TableRename{
+		{From: oldTable, To: oldTable + "_old"},
+		{From: newPartitionedTable, To: oldTable},
 	}
 
 	// Rename sequences and partitions too so they match the new table names
@@ -973,10 +973,14 @@ func ExampleThreeWayTableSwap(dbc *DB) {
 	// orders_new -> orders
 	// orders_backup -> orders_archive
 
-	renames := map[string]string{
-		"orders":        "orders_backup",
-		"orders_new":    "orders",
-		"orders_backup": "orders_archive",
+	// Order matters for three-way swap - must free up names in the right order:
+	// 1. orders_backup -> orders_archive (frees up "orders_backup")
+	// 2. orders -> orders_backup (frees up "orders")
+	// 3. orders_new -> orders (swaps in new production table)
+	renames := []TableRename{
+		{From: "orders_backup", To: "orders_archive"},
+		{From: "orders", To: "orders_backup"},
+		{From: "orders_new", To: "orders"},
 	}
 
 	// Dry run first (also check sequence renames)
@@ -1016,12 +1020,12 @@ func ExampleRollbackTableSwap(dbc *DB) {
 	// orders_partitioned -> orders
 	//
 	// To rollback:
-	// orders -> orders_partitioned (restore original name)
-	// orders_old -> orders (restore to production)
+	// 1. orders -> orders_partitioned (frees up "orders")
+	// 2. orders_old -> orders (restore to production)
 
-	rollbackRenames := map[string]string{
-		"orders":     "orders_partitioned",
-		"orders_old": "orders",
+	rollbackRenames := []TableRename{
+		{From: "orders", To: "orders_partitioned"},
+		{From: "orders_old", To: "orders"},
 	}
 
 	// Rename sequences and partitions back too

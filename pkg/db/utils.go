@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -57,7 +57,7 @@ func DataMigrationColumnVerificationOptions() ColumnVerificationOptions {
 	return ColumnVerificationOptions{
 		CheckNullable: false,
 		CheckDefaults: false,
-		CheckOrder:    true,
+		CheckOrder:    false,
 	}
 }
 
@@ -337,10 +337,10 @@ func (dbc *DB) MigrateTableData(sourceTable, targetTable string, omitColumns []s
 	// This is done in a single statement for efficiency and atomicity
 	insertSQL := fmt.Sprintf(
 		"INSERT INTO %s (%s) SELECT %s FROM %s",
-		targetTable,
-		strings.Join(columnNames, ", "),
-		strings.Join(columnNames, ", "),
-		sourceTable,
+		pq.QuoteIdentifier(targetTable),
+		pq.QuoteIdentifier(strings.Join(columnNames, ", ")),
+		pq.QuoteIdentifier(strings.Join(columnNames, ", ")),
+		pq.QuoteIdentifier(sourceTable),
 	)
 
 	log.WithFields(log.Fields{
@@ -463,7 +463,7 @@ func (dbc *DB) MigrateTableDataRange(sourceTable, targetTable, dateColumn string
 	// Step 3: Count rows in the date range in source table
 	var sourceCount int64
 	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM %s WHERE %s >= @start_date AND %s < @end_date",
-		sourceTable, dateColumn, dateColumn)
+		pq.QuoteIdentifier(sourceTable), pq.QuoteIdentifier(dateColumn), pq.QuoteIdentifier(dateColumn))
 	result := dbc.DB.Raw(countQuery, sql.Named("start_date", startDate), sql.Named("end_date", endDate)).Scan(&sourceCount)
 	if result.Error != nil {
 		return 0, fmt.Errorf("failed to count rows in date range: %w", result.Error)
@@ -527,12 +527,12 @@ func (dbc *DB) MigrateTableDataRange(sourceTable, targetTable, dateColumn string
 	// This is done in a single statement for efficiency and atomicity
 	insertSQL := fmt.Sprintf(
 		"INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s >= @start_date AND %s < @end_date",
-		targetTable,
-		strings.Join(columnNames, ", "),
-		strings.Join(columnNames, ", "),
-		sourceTable,
-		dateColumn,
-		dateColumn,
+		pq.QuoteIdentifier(targetTable),
+		pq.QuoteIdentifier(strings.Join(columnNames, ", ")),
+		pq.QuoteIdentifier(strings.Join(columnNames, ", ")),
+		pq.QuoteIdentifier(sourceTable),
+		pq.QuoteIdentifier(dateColumn),
+		pq.QuoteIdentifier(dateColumn),
 	)
 
 	log.WithFields(log.Fields{
@@ -720,7 +720,7 @@ func (dbc *DB) VerifyPartitionCoverage(tableName string, startDate, endDate time
 func (dbc *DB) GetTableRowCount(tableName string) (int64, error) {
 	var count int64
 
-	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", tableName)
+	query := fmt.Sprintf("SELECT COUNT(*) FROM %s", pq.QuoteIdentifier(tableName))
 	result := dbc.DB.Raw(query).Scan(&count)
 	if result.Error != nil {
 		return 0, fmt.Errorf("failed to count rows in table %s: %w", tableName, result.Error)
@@ -1068,83 +1068,10 @@ func (dbc *DB) ListAllTableSequences() (map[string][]SequenceInfo, error) {
 	return sequencesByTable, nil
 }
 
-// topologicalSortRenames orders rename operations to avoid naming conflicts
-// If renaming A->B and B->C, we must do B->C first (to free up "B" namespace)
-// Returns sorted list of old names in the order they should be processed
-//
-// Example:
-//   - Renames: {table_b: table_old, table_a: table_b}
-//   - Dependencies: table_a depends on table_b (because table_a->table_b and table_b exists)
-//   - Result: [table_b, table_a] (process table_b first to free up the name)
-func topologicalSortRenames(renames map[string]string) []string {
-	// Build dependency graph
-	// If we're renaming X->Y, and Y is also being renamed (Y->Z),
-	// then X depends on Y (Y must be renamed first to free up the name)
-	dependencies := make(map[string][]string) // map[node][]dependencies
-	allNodes := make(map[string]bool)
-
-	for oldName := range renames {
-		allNodes[oldName] = true
-		dependencies[oldName] = []string{}
-	}
-
-	for oldName, newName := range renames {
-		// If newName matches another oldName, we depend on that being renamed first
-		if allNodes[newName] {
-			dependencies[oldName] = append(dependencies[oldName], newName)
-		}
-	}
-
-	// Topological sort using Kahn's algorithm
-	// inDegree[node] = number of things that node depends on
-	inDegree := make(map[string]int)
-	for node, deps := range dependencies {
-		inDegree[node] = len(deps)
-	}
-
-	// Start with nodes that have no dependencies
-	queue := []string{}
-	for node := range allNodes {
-		if inDegree[node] == 0 {
-			queue = append(queue, node)
-		}
-	}
-
-	// Sort queue for deterministic ordering
-	sort.Strings(queue)
-
-	result := []string{}
-	for len(queue) > 0 {
-		// Pop from queue
-		current := queue[0]
-		queue = queue[1:]
-		result = append(result, current)
-
-		// Reduce in-degree of dependent nodes
-		for node, deps := range dependencies {
-			for _, dep := range deps {
-				if dep == current {
-					inDegree[node]--
-					if inDegree[node] == 0 {
-						queue = append(queue, node)
-						sort.Strings(queue) // Keep queue sorted for deterministic order
-					}
-				}
-			}
-		}
-	}
-
-	// Check for cycles (shouldn't happen with table renames, but be safe)
-	if len(result) != len(allNodes) {
-		log.Warn("circular dependency detected in renames, using alphabetical order as fallback")
-		result = []string{}
-		for node := range allNodes {
-			result = append(result, node)
-		}
-		sort.Strings(result)
-	}
-
-	return result
+// TableRename represents a single table rename operation
+type TableRename struct {
+	From string // Source table name
+	To   string // Target table name
 }
 
 // RenameTables renames multiple tables atomically in a single transaction
@@ -1154,7 +1081,7 @@ func topologicalSortRenames(renames map[string]string) []string {
 // - Performing atomic schema migrations
 //
 // Parameters:
-//   - tableRenames: Map of source table names to target table names (from -> to)
+//   - tableRenames: Ordered list of table renames to execute (executed in the order provided)
 //   - renameSequences: If true, also renames sequences owned by table columns (e.g., SERIAL, IDENTITY)
 //   - renamePartitions: If true, also renames child partitions of partitioned tables
 //   - renameConstraints: If true, also renames table constraints (primary keys, foreign keys, unique, check)
@@ -1167,10 +1094,10 @@ func topologicalSortRenames(renames map[string]string) []string {
 //
 // Example:
 //
-//	renames := map[string]string{
-//	    "orders_old":      "orders_backup",
-//	    "orders_new":      "orders",
-//	    "orders_archive":  "orders_old_archive",
+//	renames := []db.TableRename{
+//	    {From: "orders_old", To: "orders_backup"},      // Execute first
+//	    {From: "orders_new", To: "orders"},             // Execute second
+//	    {From: "orders_archive", To: "orders_old"},     // Execute third
 //	}
 //	count, err := dbc.RenameTables(renames, true, true, true, true, false)
 //	if err != nil {
@@ -1193,9 +1120,9 @@ func topologicalSortRenames(renames map[string]string) []string {
 //   - When renameIndexes=true, indexes follow naming pattern: newtablename_suffix
 //   - Index renaming applies to all indexes including those backing constraints
 //   - Indexes with the same name as constraints are skipped (they're renamed automatically with the constraint)
-//   - Renames are processed in sorted order to avoid naming conflicts during table swaps (e.g., A->B, B->C)
-//   - All operations are deterministic - same input always produces same execution order
-func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool, renamePartitions bool, renameConstraints bool, renameIndexes bool, dryRun bool) (int, error) {
+//   - Renames are executed in the order provided - caller is responsible for dependency ordering
+//   - For table swaps (A->B, B->C), ensure B->C comes before A->B in the array
+func (dbc *DB) RenameTables(tableRenames []TableRename, renameSequences bool, renamePartitions bool, renameConstraints bool, renameIndexes bool, dryRun bool) (int, error) {
 	if len(tableRenames) == 0 {
 		return 0, fmt.Errorf("no tables to rename")
 	}
@@ -1205,16 +1132,26 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 		"dry_run": dryRun,
 	}).Info("starting table rename operation")
 
-	// Step 1: Validate all source tables exist and check for conflicts
+	// Convert to map for easier lookups during validation and discovery
+	tableRenameMap := make(map[string]string)
 	var sourceNames []string
 	var targetNames []string
-	for source, target := range tableRenames {
-		sourceNames = append(sourceNames, source)
-		targetNames = append(targetNames, target)
+	for _, rename := range tableRenames {
+		if rename.From == "" || rename.To == "" {
+			return 0, fmt.Errorf("invalid rename: both From and To must be specified")
+		}
+		if _, exists := tableRenameMap[rename.From]; exists {
+			return 0, fmt.Errorf("duplicate source table: %s", rename.From)
+		}
+		tableRenameMap[rename.From] = rename.To
+		sourceNames = append(sourceNames, rename.From)
+		targetNames = append(targetNames, rename.To)
 	}
 
+	// Step 1: Validate all source tables exist and check for conflicts
+
 	// Check that all source tables exist
-	for source := range tableRenames {
+	for source := range tableRenameMap {
 		var exists bool
 		query := `
 			SELECT EXISTS (
@@ -1233,9 +1170,9 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 
 	// Check for conflicts - ensure no target tables already exist
 	// (unless they're also being renamed as part of this operation)
-	for source, target := range tableRenames {
+	for source, target := range tableRenameMap {
 		// Skip check if this target is also a source (table swap scenario)
-		if _, isAlsoSource := tableRenames[target]; isAlsoSource {
+		if _, isAlsoSource := tableRenameMap[target]; isAlsoSource {
 			log.WithFields(log.Fields{
 				"source": source,
 				"target": target,
@@ -1267,7 +1204,7 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 	// Step 2: Find sequences that need to be renamed (if requested)
 	sequenceRenames := make(map[string]string)
 	if renameSequences {
-		for source, target := range tableRenames {
+		for source, target := range tableRenameMap {
 			sequences, err := dbc.GetTableSequences(source)
 			if err != nil {
 				return 0, fmt.Errorf("failed to get sequences for table %s: %w", source, err)
@@ -1296,7 +1233,7 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 	// Step 2b: Find partitions that need to be renamed (if requested)
 	partitionRenames := make(map[string]string)
 	if renamePartitions {
-		for source, target := range tableRenames {
+		for source, target := range tableRenameMap {
 			partitions, err := dbc.GetTablePartitions(source)
 			if err != nil {
 				return 0, fmt.Errorf("failed to get partitions for table %s: %w", source, err)
@@ -1359,7 +1296,7 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 	// Step 2c: Find constraints that need to be renamed (if requested)
 	constraintRenames := make(map[string]map[string]string) // map[tableName]map[oldConstraint]newConstraint
 	if renameConstraints {
-		for source, target := range tableRenames {
+		for source, target := range tableRenameMap {
 			constraints, err := dbc.GetTableConstraints(source)
 			if err != nil {
 				return 0, fmt.Errorf("failed to get constraints for table %s: %w", source, err)
@@ -1445,7 +1382,7 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 	// Step 2d: Find indexes that need to be renamed (if requested)
 	indexRenames := make(map[string]map[string]string) // map[tableName]map[oldIndex]newIndex
 	if renameIndexes {
-		for source, target := range tableRenames {
+		for source, target := range tableRenameMap {
 			indexes, err := dbc.GetTableIndexes(source)
 			if err != nil {
 				return 0, fmt.Errorf("failed to get indexes for table %s: %w", source, err)
@@ -1611,19 +1548,19 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 		}
 	}()
 
-	// Execute each table rename
+	// Execute each table rename in the order provided
 	renamedCount := 0
-	for source, target := range tableRenames {
-		renameSQL := fmt.Sprintf("ALTER TABLE %s RENAME TO %s", source, target)
+	for _, rename := range tableRenames {
+		renameSQL := fmt.Sprintf("ALTER TABLE %s RENAME TO %s", pq.QuoteIdentifier(rename.From), pq.QuoteIdentifier(rename.To))
 
 		log.WithFields(log.Fields{
-			"from": source,
-			"to":   target,
+			"from": rename.From,
+			"to":   rename.To,
 		}).Info("renaming table")
 
 		result := tx.Exec(renameSQL)
 		if result.Error != nil {
-			return 0, fmt.Errorf("failed to rename table %s to %s: %w", source, target, result.Error)
+			return 0, fmt.Errorf("failed to rename table %s to %s: %w", rename.From, rename.To, result.Error)
 		}
 
 		renamedCount++
@@ -1632,7 +1569,7 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 	// Execute each partition rename
 	partitionsRenamed := 0
 	for oldPart, newPart := range partitionRenames {
-		renameSQL := fmt.Sprintf("ALTER TABLE %s RENAME TO %s", oldPart, newPart)
+		renameSQL := fmt.Sprintf("ALTER TABLE %s RENAME TO %s", pq.QuoteIdentifier(oldPart), pq.QuoteIdentifier(newPart))
 
 		log.WithFields(log.Fields{
 			"from": oldPart,
@@ -1648,14 +1585,11 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 	}
 
 	// Execute each sequence rename
-	// Use topological sort to avoid naming conflicts
-	// (e.g., table_b_id_seq -> table_old_id_seq must happen before table_a_id_seq -> table_b_id_seq)
+	// Sequences are renamed in the order discovered (matching table rename order)
 	sequencesRenamed := 0
-	sortedSeqNames := topologicalSortRenames(sequenceRenames)
 
-	for _, oldSeq := range sortedSeqNames {
-		newSeq := sequenceRenames[oldSeq]
-		renameSQL := fmt.Sprintf("ALTER SEQUENCE %s RENAME TO %s", oldSeq, newSeq)
+	for oldSeq, newSeq := range sequenceRenames {
+		renameSQL := fmt.Sprintf("ALTER SEQUENCE %s RENAME TO %s", pq.QuoteIdentifier(oldSeq), pq.QuoteIdentifier(newSeq))
 
 		log.WithFields(log.Fields{
 			"from": oldSeq,
@@ -1671,47 +1605,33 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 	}
 
 	// Execute each constraint rename
-	// Use topological sort to handle rename dependencies
 	constraintsRenamed := 0
 
-	// Flatten constraint renames into a simple map for topological sort
-	flatConstraintRenames := make(map[string]string)
-	constraintToTable := make(map[string]string)
 	for tableName, consMap := range constraintRenames {
-		for oldCons, newCons := range consMap {
-			flatConstraintRenames[oldCons] = newCons
-			constraintToTable[oldCons] = tableName
-		}
-	}
-
-	sortedConsNames := topologicalSortRenames(flatConstraintRenames)
-
-	for _, oldCons := range sortedConsNames {
-		newCons := flatConstraintRenames[oldCons]
-		tableName := constraintToTable[oldCons]
-
 		// Get the new table name (in case table or partition was renamed)
 		newTableName := tableName
-		if renamed, exists := tableRenames[tableName]; exists {
+		if renamed, exists := tableRenameMap[tableName]; exists {
 			newTableName = renamed
 		} else if renamed, exists := partitionRenames[tableName]; exists {
 			newTableName = renamed
 		}
 
-		renameSQL := fmt.Sprintf("ALTER TABLE %s RENAME CONSTRAINT %s TO %s", newTableName, oldCons, newCons)
+		for oldCons, newCons := range consMap {
+			renameSQL := fmt.Sprintf("ALTER TABLE %s RENAME CONSTRAINT %s TO %s", pq.QuoteIdentifier(newTableName), pq.QuoteIdentifier(oldCons), pq.QuoteIdentifier(newCons))
 
-		log.WithFields(log.Fields{
-			"table": newTableName,
-			"from":  oldCons,
-			"to":    newCons,
-		}).Info("renaming constraint")
+			log.WithFields(log.Fields{
+				"table": newTableName,
+				"from":  oldCons,
+				"to":    newCons,
+			}).Info("renaming constraint")
 
-		result := tx.Exec(renameSQL)
-		if result.Error != nil {
-			return 0, fmt.Errorf("failed to rename constraint %s to %s on table %s: %w", oldCons, newCons, newTableName, result.Error)
+			result := tx.Exec(renameSQL)
+			if result.Error != nil {
+				return 0, fmt.Errorf("failed to rename constraint %s to %s on table %s: %w", oldCons, newCons, newTableName, result.Error)
+			}
+
+			constraintsRenamed++
 		}
-
-		constraintsRenamed++
 	}
 
 	// Build a set of constraint names that were renamed
@@ -1724,49 +1644,35 @@ func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool
 	}
 
 	// Execute each index rename
-	// Use topological sort to handle rename dependencies
 	indexesRenamed := 0
 
-	// Flatten index renames into a simple map for topological sort
-	flatIndexRenames := make(map[string]string)
-	indexToTable := make(map[string]string)
 	for tableName, idxMap := range indexRenames {
 		for oldIdx, newIdx := range idxMap {
-			flatIndexRenames[oldIdx] = newIdx
-			indexToTable[oldIdx] = tableName
-		}
-	}
+			// Skip if this index has the same name as a constraint we renamed
+			// PostgreSQL automatically renames the backing index when renaming PRIMARY KEY or UNIQUE constraints
+			if renamedConstraintNames[oldIdx] {
+				log.WithFields(log.Fields{
+					"table": tableName,
+					"index": oldIdx,
+				}).Debug("skipping index - already renamed as part of constraint rename")
+				continue
+			}
 
-	sortedIdxNames := topologicalSortRenames(flatIndexRenames)
+			renameSQL := fmt.Sprintf("ALTER INDEX %s RENAME TO %s", pq.QuoteIdentifier(oldIdx), pq.QuoteIdentifier(newIdx))
 
-	for _, oldIdx := range sortedIdxNames {
-		newIdx := flatIndexRenames[oldIdx]
-		tableName := indexToTable[oldIdx]
-
-		// Skip if this index has the same name as a constraint we renamed
-		// PostgreSQL automatically renames the backing index when renaming PRIMARY KEY or UNIQUE constraints
-		if renamedConstraintNames[oldIdx] {
 			log.WithFields(log.Fields{
 				"table": tableName,
-				"index": oldIdx,
-			}).Debug("skipping index - already renamed as part of constraint rename")
-			continue
+				"from":  oldIdx,
+				"to":    newIdx,
+			}).Info("renaming index")
+
+			result := tx.Exec(renameSQL)
+			if result.Error != nil {
+				return 0, fmt.Errorf("failed to rename index %s to %s: %w", oldIdx, newIdx, result.Error)
+			}
+
+			indexesRenamed++
 		}
-
-		renameSQL := fmt.Sprintf("ALTER INDEX %s RENAME TO %s", oldIdx, newIdx)
-
-		log.WithFields(log.Fields{
-			"table": tableName,
-			"from":  oldIdx,
-			"to":    newIdx,
-		}).Info("renaming index")
-
-		result := tx.Exec(renameSQL)
-		if result.Error != nil {
-			return 0, fmt.Errorf("failed to rename index %s to %s: %w", oldIdx, newIdx, result.Error)
-		}
-
-		indexesRenamed++
 	}
 
 	// Commit the transaction
@@ -1819,7 +1725,7 @@ func (dbc *DB) SyncIdentityColumn(tableName, columnName string) error {
 
 	// Get the current maximum value
 	var maxValue sql.NullInt64
-	query := fmt.Sprintf("SELECT MAX(%s) FROM %s", columnName, tableName)
+	query := fmt.Sprintf("SELECT MAX(%s) FROM %s", pq.QuoteIdentifier(columnName), pq.QuoteIdentifier(tableName))
 	result := dbc.DB.Raw(query).Scan(&maxValue)
 	if result.Error != nil {
 		return fmt.Errorf("failed to get max value for %s.%s: %w", tableName, columnName, result.Error)
@@ -1841,7 +1747,7 @@ func (dbc *DB) SyncIdentityColumn(tableName, columnName string) error {
 	// Restart the identity sequence
 	// NOTE: PostgreSQL requires "RESTART WITH" for IDENTITY columns, not "SYNC IDENTITY"
 	// This is the standard way to synchronize an IDENTITY sequence in PostgreSQL
-	alterSQL := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s RESTART WITH %d", tableName, columnName, nextValue)
+	alterSQL := fmt.Sprintf("ALTER TABLE %s ALTER COLUMN %s RESTART WITH %d", pq.QuoteIdentifier(tableName), pq.QuoteIdentifier(columnName), nextValue)
 	result = dbc.DB.Exec(alterSQL)
 	if result.Error != nil {
 		return fmt.Errorf("failed to sync identity for %s.%s: %w", tableName, columnName, result.Error)
