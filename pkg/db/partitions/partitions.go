@@ -8,6 +8,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
+	"gorm.io/gorm/schema"
 
 	"github.com/openshift/sippy/pkg/db"
 )
@@ -1285,20 +1286,26 @@ func CreatePartitionedTable(dbc *db.DB, model interface{}, tableName string, con
 				}
 			}
 			if !hasAllPartitionKeys {
+				// Generate table-specific name for logging
+				indexName := makeTableSpecificIndexName(tableName, idx.Fields)
 				log.WithFields(log.Fields{
 					"table":          tableName,
-					"index":          idx.Name,
+					"index":          indexName,
+					"model_index":    idx.Name,
 					"partition_keys": config.Columns,
 				}).Warn("skipping unique index without all partition keys (not allowed on partitioned tables)")
 				continue
 			}
 		}
 
+		// Generate table-specific index name to avoid conflicts when creating multiple tables from same model
+		indexName := makeTableSpecificIndexName(tableName, idx.Fields)
+
 		indexSQL.WriteString("\n")
 		if idx.Class == "UNIQUE" {
-			indexSQL.WriteString(fmt.Sprintf("CREATE UNIQUE INDEX IF NOT EXISTS %s ON %s (", idx.Name, tableName))
+			indexSQL.WriteString(fmt.Sprintf("CREATE UNIQUE INDEX IF NOT EXISTS %s ON %s (", indexName, tableName))
 		} else {
-			indexSQL.WriteString(fmt.Sprintf("CREATE INDEX IF NOT EXISTS %s ON %s (", idx.Name, tableName))
+			indexSQL.WriteString(fmt.Sprintf("CREATE INDEX IF NOT EXISTS %s ON %s (", indexName, tableName))
 		}
 
 		var fieldNames []string
@@ -1395,6 +1402,30 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 	partitionColumns, err := getPartitionColumns(dbc, tableName)
 	if err != nil {
 		return "", fmt.Errorf("failed to get partition columns: %w", err)
+	}
+
+	// Get primary key columns to prevent dropping NOT NULL from them
+	primaryKeyColumns, err := getPrimaryKeyColumns(dbc, tableName)
+	if err != nil {
+		return "", fmt.Errorf("failed to get primary key columns: %w", err)
+	}
+
+	log.WithFields(log.Fields{
+		"table":               tableName,
+		"partition_columns":   partitionColumns,
+		"primary_key_columns": primaryKeyColumns,
+	}).Info("table structure for update validation")
+
+	// Build a set of partition columns for quick lookup
+	partitionColMap := make(map[string]bool)
+	for _, col := range partitionColumns {
+		partitionColMap[col] = true
+	}
+
+	// Build a set of primary key columns for quick lookup
+	primaryKeyColMap := make(map[string]bool)
+	for _, col := range primaryKeyColumns {
+		primaryKeyColMap[col] = true
 	}
 
 	// Build maps for comparison
@@ -1494,16 +1525,37 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 			}
 
 			// Check NOT NULL constraint
-			// Primary keys are always NOT NULL in PostgreSQL
+			// Primary keys, partition keys, and columns in primary key are always NOT NULL in PostgreSQL
 			currentNotNull := currentCol.IsNullable == "NO"
-			desiredNotNull := field.PrimaryKey || field.NotNull
+
+			// Check if column is part of primary key or partition key
+			isPartOfPrimaryKey := primaryKeyColMap[field.DBName]
+			isPartOfPartitionKey := partitionColMap[field.DBName]
+
+			// Desired NOT NULL state: explicit primary key, explicit not null, or part of actual primary key
+			desiredNotNull := field.PrimaryKey || field.NotNull || isPartOfPrimaryKey
+
 			if desiredNotNull != currentNotNull {
 				if desiredNotNull {
 					modifications = append(modifications,
 						fmt.Sprintf("ALTER COLUMN %s SET NOT NULL", field.DBName))
 				} else {
-					modifications = append(modifications,
-						fmt.Sprintf("ALTER COLUMN %s DROP NOT NULL", field.DBName))
+					// Cannot drop NOT NULL from primary key or partition key columns
+					if isPartOfPrimaryKey {
+						log.WithFields(log.Fields{
+							"table":  tableName,
+							"column": field.DBName,
+						}).Warn("cannot drop NOT NULL from primary key column - skipping")
+					} else if isPartOfPartitionKey {
+						log.WithFields(log.Fields{
+							"table":  tableName,
+							"column": field.DBName,
+						}).Warn("cannot drop NOT NULL from partition key column - skipping")
+					} else {
+						// Safe to drop NOT NULL
+						modifications = append(modifications,
+							fmt.Sprintf("ALTER COLUMN %s DROP NOT NULL", field.DBName))
+					}
 				}
 			}
 
@@ -1540,11 +1592,7 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 	}
 
 	// Check indexes
-	partitionColMap := make(map[string]bool)
-	for _, col := range partitionColumns {
-		partitionColMap[col] = true
-	}
-
+	// (partitionColMap already created earlier)
 	for _, idx := range stmt.Schema.ParseIndexes() {
 		// Skip unique indexes that don't include all partition keys
 		if idx.Class == "UNIQUE" {
@@ -1563,16 +1611,22 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 				}
 			}
 			if !hasAllPartitionKeys {
+				// Generate table-specific name for logging
+				indexName := makeTableSpecificIndexName(tableName, idx.Fields)
 				log.WithFields(log.Fields{
 					"table":          tableName,
-					"index":          idx.Name,
+					"index":          indexName,
+					"model_index":    idx.Name,
 					"partition_keys": partitionColumns,
 				}).Warn("skipping unique index without all partition keys")
 				continue
 			}
 		}
 
-		currentIdx, exists := currentIdxMap[idx.Name]
+		// Generate table-specific index name to avoid conflicts when creating multiple tables from same model
+		indexName := makeTableSpecificIndexName(tableName, idx.Fields)
+
+		currentIdx, exists := currentIdxMap[indexName]
 		if !exists {
 			// New index - create it
 			var fieldNames []string
@@ -1583,11 +1637,11 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 			if idx.Class == "UNIQUE" {
 				alterStatements = append(alterStatements,
 					fmt.Sprintf("CREATE UNIQUE INDEX IF NOT EXISTS %s ON %s (%s)",
-						idx.Name, tableName, strings.Join(fieldNames, ", ")))
+						indexName, tableName, strings.Join(fieldNames, ", ")))
 			} else {
 				alterStatements = append(alterStatements,
 					fmt.Sprintf("CREATE INDEX IF NOT EXISTS %s ON %s (%s)",
-						idx.Name, tableName, strings.Join(fieldNames, ", ")))
+						indexName, tableName, strings.Join(fieldNames, ", ")))
 			}
 		} else {
 			// Index exists - check if it needs to be recreated
@@ -1611,21 +1665,21 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 			if !colsMatch || !uniqueMatch {
 				// Drop and recreate index
 				alterStatements = append(alterStatements,
-					fmt.Sprintf("DROP INDEX IF EXISTS %s", idx.Name))
+					fmt.Sprintf("DROP INDEX IF EXISTS %s", indexName))
 
 				if idx.Class == "UNIQUE" {
 					alterStatements = append(alterStatements,
 						fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (%s)",
-							idx.Name, tableName, strings.Join(desiredCols, ", ")))
+							indexName, tableName, strings.Join(desiredCols, ", ")))
 				} else {
 					alterStatements = append(alterStatements,
 						fmt.Sprintf("CREATE INDEX %s ON %s (%s)",
-							idx.Name, tableName, strings.Join(desiredCols, ", ")))
+							indexName, tableName, strings.Join(desiredCols, ", ")))
 				}
 			}
 		}
 
-		delete(currentIdxMap, idx.Name)
+		delete(currentIdxMap, indexName)
 	}
 
 	// Drop indexes that are no longer in the model
@@ -1697,11 +1751,11 @@ func getCurrentIndexes(dbc *db.DB, tableName string) ([]indexInfo, error) {
 		JOIN pg_index ix ON ix.indexrelid = c.oid
 		JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = ANY(ix.indkey)
 		WHERE i.schemaname = 'public'
-			AND i.tablename = $1
+			AND i.tablename = @table_name
 		ORDER BY i.indexname, a.attnum
 	`
 
-	result := dbc.DB.Raw(query, tableName).Scan(&rows)
+	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&rows)
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -1737,12 +1791,62 @@ func getPartitionColumns(dbc *db.DB, tableName string) ([]string, error) {
 		FROM pg_class c
 		JOIN pg_partitioned_table pt ON pt.partrelid = c.oid
 		JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(pt.partattrs)
-		WHERE c.relname = $1
+		WHERE c.relname = @table_name
 			AND c.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
 		ORDER BY array_position(pt.partattrs, a.attnum)
 	`
 
-	result := dbc.DB.Raw(query, tableName).Scan(&columns)
+	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&columns)
+	if result.Error != nil {
+		return nil, result.Error
+	}
+
+	return columns, nil
+}
+
+// makeTableSpecificIndexName creates a table-specific index name from index fields
+// This prevents index name collisions when creating multiple tables from the same model
+//
+// GORM often generates index names like "idx_{original_table_name}_{column_names}"
+// (e.g., "idx_prow_job_run_tests_suite_id"). When creating a different table like
+// "prow_job_run_tests_copy_1", we need to avoid the redundant name like
+// "prow_job_run_tests_copy_1_idx_prow_job_run_tests_suite_id".
+//
+// Instead, we extract the column names from the index fields and generate:
+// "{table_name}_idx_{column_names}"
+//
+// Examples:
+//   - Index fields: [suite_id] -> "prow_job_run_tests_copy_1_idx_suite_id"
+//   - Index fields: [created_at] -> "orders_copy_1_idx_created_at"
+//   - Index fields: [user_id, org_id] -> "users_backup_idx_user_id_org_id"
+func makeTableSpecificIndexName(tableName string, indexFields []schema.IndexOption) string {
+	// Extract column names from index fields
+	var columnNames []string
+	for _, field := range indexFields {
+		columnNames = append(columnNames, field.DBName)
+	}
+
+	// Generate table-specific index name: {table}_idx_{columns}
+	columnSuffix := strings.Join(columnNames, "_")
+	return fmt.Sprintf("%s_idx_%s", tableName, columnSuffix)
+}
+
+// getPrimaryKeyColumns retrieves the columns that are part of the primary key for a table
+func getPrimaryKeyColumns(dbc *db.DB, tableName string) ([]string, error) {
+	var columns []string
+
+	query := `
+		SELECT a.attname
+		FROM pg_index i
+		JOIN pg_class c ON c.oid = i.indrelid
+		JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum = ANY(i.indkey)
+		WHERE c.relname = @table_name
+			AND c.relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = 'public')
+			AND i.indisprimary = true
+		ORDER BY array_position(i.indkey, a.attnum)
+	`
+
+	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&columns)
 	if result.Error != nil {
 		return nil, result.Error
 	}

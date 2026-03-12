@@ -167,10 +167,63 @@ func (pl *ProwLoader) Errors() []error {
 	return pl.errors
 }
 
+// PartitionManagementConfig defines partition lifecycle settings for a table
+type PartitionManagementConfig struct {
+	TableName             string        // Name of the partitioned table
+	FuturePartitionWindow time.Duration // How far in the future to create partitions
+	DetachAfter           int           // Detach partitions older than this many days
+	DropDetachedAfter     int           // Drop detached partitions older than this many days
+	InitialLookbackDays   int           // Days to look back when initializing a new table
+}
+
+var partitionConfigs = []PartitionManagementConfig{
+	{
+		TableName:             "test_analysis_by_job_by_dates",
+		FuturePartitionWindow: 48 * time.Hour,
+		DetachAfter:           90,
+		DropDetachedAfter:     100,
+		InitialLookbackDays:   15,
+	},
+	{
+		TableName:             "prow_job_run_tests",
+		FuturePartitionWindow: 48 * time.Hour,
+		DetachAfter:           90,
+		DropDetachedAfter:     100,
+		InitialLookbackDays:   15,
+	},
+}
+
+func (pl *ProwLoader) updatePartitions(config PartitionManagementConfig) error {
+	err := pl.agePartitions(config)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("error aging %s", config.TableName))
+	}
+
+	err = pl.preparePartitions(config)
+	if err != nil {
+		return errors.Wrap(err, fmt.Sprintf("error preparing %s", config.TableName))
+	}
+
+	return nil
+}
+
 func (pl *ProwLoader) Load() {
 	start := time.Now()
 
 	log.Infof("started loading prow jobs to DB...")
+
+	for _, config := range partitionConfigs {
+		err := pl.updatePartitions(config)
+		if err != nil {
+			pl.errors = append(pl.errors, err)
+
+			// if we have errors with partition management we can't be sure that we have created
+			// the necessary partitions to proceed with loading
+			// we could possibly differentiate between removing old and creating new but for now
+			// any failures here block any loading
+			return
+		}
+	}
 
 	// Update unmerged PR statuses in case any have merged
 	if err := pl.syncPRStatus(); err != nil {
@@ -235,21 +288,9 @@ func (pl *ProwLoader) Load() {
 		pl.errors = append(pl.errors, err)
 	}
 
-	// detach and drop older partitions
-	err := pl.agePartitionsForDailyTestAnalysisByJob()
-	if err != nil {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error aging daily test analysis by job table"))
-	}
-
-	// create any partitions needed for new data to be imported
-	err = pl.preparePartitionsForDailyTestAnalysisByJob()
-	if err != nil {
-		pl.errors = append(pl.errors, errors.Wrap(err, "error preparing partitions for daily test analysis by job table"))
-	}
-
 	// load the test analysis by job data into tables partitioned by day, letting bigquery do the
 	// heavy lifting for us.
-	err = pl.loadDailyTestAnalysisByJob(pl.ctx)
+	err := pl.loadDailyTestAnalysisByJob(pl.ctx)
 	if err != nil {
 		pl.errors = append(pl.errors, errors.Wrap(err, "error updating daily test analysis by job"))
 	}
@@ -358,37 +399,37 @@ func NextDay(dateStr string) (string, error) {
 	return nextDay.Format("2006-01-02"), nil
 }
 
-func (pl *ProwLoader) agePartitionsForDailyTestAnalysisByJob() error {
-	tableName := "test_analysis_by_job_by_dates"
-	detached, err := partitions.DetachOldPartitions(pl.dbc, tableName, 90, false)
+// agePartitions detaches and drops old partitions based on configuration
+func (pl *ProwLoader) agePartitions(config PartitionManagementConfig) error {
+	detached, err := partitions.DetachOldPartitions(pl.dbc, config.TableName, config.DetachAfter, false)
 	if err != nil {
-		log.WithError(err).Errorf("error detaching partitions for %s", tableName)
+		log.WithError(err).Errorf("error detaching partitions for %s", config.TableName)
 	} else {
-		log.Infof("detached %d partitions from %s", detached, tableName)
+		log.Infof("detached %d partitions from %s", detached, config.TableName)
 	}
-	dropped, err := partitions.DropOldDetachedPartitions(pl.dbc, tableName, 100, false)
+	dropped, err := partitions.DropOldDetachedPartitions(pl.dbc, config.TableName, config.DropDetachedAfter, false)
 	if err != nil {
-		log.WithError(err).Errorf("error detaching partitions for %s", tableName)
+		log.WithError(err).Errorf("error dropping detached partitions for %s", config.TableName)
 		return err
 	}
-	log.Infof("dropped %d detached partitions from %s", dropped, tableName)
+	log.Infof("dropped %d detached partitions from %s", dropped, config.TableName)
 
 	return nil
 }
 
-func (pl *ProwLoader) preparePartitionsForDailyTestAnalysisByJob() error {
-	tableName := "test_analysis_by_job_by_dates"
-
-	log.Infof("preparing partitions for %s", tableName)
-	stats, err := partitions.GetAttachedPartitionStats(pl.dbc, tableName)
+// preparePartitions creates missing partitions for future data based on configuration
+func (pl *ProwLoader) preparePartitions(config PartitionManagementConfig) error {
+	log.Infof("preparing partitions for %s", config.TableName)
+	stats, err := partitions.GetAttachedPartitionStats(pl.dbc, config.TableName)
 
 	if err != nil {
-		log.WithError(err).Errorf("error detaching partitions for %s", tableName)
+		log.WithError(err).Errorf("error getting partition stats for %s", config.TableName)
 		return err
 	}
 	fmt.Printf("  Total: %d partitions (%s)\n", stats.TotalPartitions, stats.TotalSizePretty)
-	// when we initialize a new table the query goes back 14 days, go back one more
-	mostRecentDate := time.Now().Add(-15 * 24 * time.Hour)
+
+	// When initializing a new table, look back the configured number of days
+	mostRecentDate := time.Now().Add(-time.Duration(config.InitialLookbackDays) * 24 * time.Hour)
 	if stats.TotalPartitions > 0 {
 		fmt.Printf("  Range: %s to %s\n",
 			stats.OldestDate.Format("2006-01-02"),
@@ -396,13 +437,14 @@ func (pl *ProwLoader) preparePartitionsForDailyTestAnalysisByJob() error {
 		mostRecentDate = stats.NewestDate
 	}
 
-	created, err := partitions.CreateMissingPartitions(pl.dbc, tableName, mostRecentDate, time.Now().Add(48*time.Hour), false)
+	futureDate := time.Now().Add(config.FuturePartitionWindow)
+	created, err := partitions.CreateMissingPartitions(pl.dbc, config.TableName, mostRecentDate, futureDate, false)
 	if err != nil {
-		log.WithError(err).Errorf("error creating partitions for %s", tableName)
+		log.WithError(err).Errorf("error creating partitions for %s", config.TableName)
 		return err
 	}
 
-	log.Infof("created %d partitions for %s", created, tableName)
+	log.Infof("created %d partitions for %s", created, config.TableName)
 	return nil
 }
 

@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -140,7 +141,9 @@ func ExampleVerifyMultipleTables(dbc *DB, referenceTable string, tablesToCheck [
 //
 // Usage:
 //
-//	rowsMigrated, err := dbc.MigrateTableData("old_table", "new_table", false)
+//	rowsMigrated, err := dbc.MigrateTableData("old_table", "new_table", nil, false)
+//	// Or omit id column to use target's auto-increment:
+//	rowsMigrated, err := dbc.MigrateTableData("old_table", "new_table", []string{"id"}, false)
 func ExampleMigrateTableData(dbc *DB, sourceTable, targetTable string) {
 	log.WithFields(log.Fields{
 		"source": sourceTable,
@@ -149,7 +152,7 @@ func ExampleMigrateTableData(dbc *DB, sourceTable, targetTable string) {
 
 	// Step 1: Dry run first to verify and preview
 	log.Info("performing dry run")
-	_, err := dbc.MigrateTableData(sourceTable, targetTable, true)
+	_, err := dbc.MigrateTableData(sourceTable, targetTable, nil, true)
 	if err != nil {
 		log.WithError(err).Error("dry run failed - cannot proceed with migration")
 		return
@@ -158,7 +161,7 @@ func ExampleMigrateTableData(dbc *DB, sourceTable, targetTable string) {
 	log.Info("dry run successful - proceeding with actual migration")
 
 	// Step 2: Perform actual migration
-	rowsMigrated, err := dbc.MigrateTableData(sourceTable, targetTable, false)
+	rowsMigrated, err := dbc.MigrateTableData(sourceTable, targetTable, nil, false)
 	if err != nil {
 		log.WithError(err).Error("migration failed")
 		return
@@ -185,7 +188,7 @@ func ExampleMigratePartitionData(dbc *DB, detachedPartition, archiveTable string
 	// This would use functions from pkg/db/partitions if available
 
 	// Migrate the data
-	rowsMigrated, err := dbc.MigrateTableData(detachedPartition, archiveTable, false)
+	rowsMigrated, err := dbc.MigrateTableData(detachedPartition, archiveTable, nil, false)
 	if err != nil {
 		log.WithError(err).Error("partition migration failed")
 		return
@@ -210,7 +213,7 @@ func ExampleMigrateWithBackup(dbc *DB, sourceTable, targetTable, backupTable str
 
 	// Step 1: Create backup of target table
 	log.WithField("backup", backupTable).Info("creating backup of target table")
-	_, err := dbc.MigrateTableData(targetTable, backupTable, false)
+	_, err := dbc.MigrateTableData(targetTable, backupTable, nil, false)
 	if err != nil {
 		log.WithError(err).Error("backup creation failed - aborting migration")
 		return
@@ -220,7 +223,7 @@ func ExampleMigrateWithBackup(dbc *DB, sourceTable, targetTable, backupTable str
 
 	// Step 2: Perform migration
 	log.Info("performing migration")
-	rowsMigrated, err := dbc.MigrateTableData(sourceTable, targetTable, false)
+	rowsMigrated, err := dbc.MigrateTableData(sourceTable, targetTable, nil, false)
 	if err != nil {
 		log.WithError(err).Error("migration failed - restore from backup if needed")
 		log.WithField("backup", backupTable).Info("backup table is available for restoration")
@@ -253,7 +256,7 @@ func ExampleBatchMigratePartitions(dbc *DB, partitions []string, targetTable str
 	for _, partition := range partitions {
 		log.WithField("partition", partition).Info("migrating partition")
 
-		rows, err := dbc.MigrateTableData(partition, targetTable, false)
+		rows, err := dbc.MigrateTableData(partition, targetTable, nil, false)
 		if err != nil {
 			log.WithError(err).WithField("partition", partition).Error("partition migration failed")
 			failures = append(failures, partition)
@@ -324,7 +327,7 @@ func ExampleMigrateAndVerify(dbc *DB, sourceTable, targetTable string) {
 
 	// Step 3: Dry run
 	log.Info("step 3: performing dry run")
-	_, err = dbc.MigrateTableData(sourceTable, targetTable, true)
+	_, err = dbc.MigrateTableData(sourceTable, targetTable, nil, true)
 	if err != nil {
 		log.WithError(err).Error("dry run failed")
 		return
@@ -333,7 +336,7 @@ func ExampleMigrateAndVerify(dbc *DB, sourceTable, targetTable string) {
 
 	// Step 4: Actual migration
 	log.Info("step 4: performing actual migration")
-	rowsMigrated, err := dbc.MigrateTableData(sourceTable, targetTable, false)
+	rowsMigrated, err := dbc.MigrateTableData(sourceTable, targetTable, nil, false)
 	if err != nil {
 		log.WithError(err).Error("migration failed")
 		return
@@ -404,7 +407,7 @@ func ExampleMigrateToPartitionedTable(dbc *DB, sourceTable, partitionedTable str
 
 	// Step 1: Migrate the data
 	log.Info("Step 1: Migrating data")
-	rows, err := dbc.MigrateTableData(sourceTable, partitionedTable, false)
+	rows, err := dbc.MigrateTableData(sourceTable, partitionedTable, nil, false)
 	if err != nil {
 		log.WithError(err).Error("data migration failed")
 		return
@@ -469,7 +472,7 @@ func ExampleMigrateTableDataRange(dbc *DB, sourceTable, targetTable, dateColumn 
 
 	// Step 1: Dry run first to verify and preview
 	log.Info("performing dry run")
-	_, err := dbc.MigrateTableDataRange(sourceTable, targetTable, dateColumn, startDate, endDate, true)
+	_, err := dbc.MigrateTableDataRange(sourceTable, targetTable, dateColumn, startDate, endDate, nil, true)
 	if err != nil {
 		log.WithError(err).Error("dry run failed - cannot proceed with migration")
 		return
@@ -478,7 +481,7 @@ func ExampleMigrateTableDataRange(dbc *DB, sourceTable, targetTable, dateColumn 
 	log.Info("dry run successful - proceeding with actual migration")
 
 	// Step 2: Perform actual migration
-	rowsMigrated, err := dbc.MigrateTableDataRange(sourceTable, targetTable, dateColumn, startDate, endDate, false)
+	rowsMigrated, err := dbc.MigrateTableDataRange(sourceTable, targetTable, dateColumn, startDate, endDate, nil, false)
 	if err != nil {
 		log.WithError(err).Error("migration failed")
 		return
@@ -523,7 +526,7 @@ func ExampleIncrementalMigrationByMonth(dbc *DB, sourceTable, targetTable, dateC
 			"end_date":   endDate.Format("2006-01-02"),
 		}).Info("migrating month")
 
-		rows, err := dbc.MigrateTableDataRange(sourceTable, targetTable, dateColumn, startDate, endDate, false)
+		rows, err := dbc.MigrateTableDataRange(sourceTable, targetTable, dateColumn, startDate, endDate, nil, false)
 		if err != nil {
 			log.WithError(err).WithField("month", time.Month(month).String()).Error("month migration failed")
 			failedMonths = append(failedMonths, time.Month(month).String())
@@ -577,7 +580,7 @@ func ExampleMigrateToPartitionByDateRange(dbc *DB, sourceTable, partitionedTable
 		"end_date":   endDate.Format("2006-01-02"),
 	}).Info("migrating date range to partition")
 
-	rows, err := dbc.MigrateTableDataRange(sourceTable, partitionedTable, dateColumn, startDate, endDate, false)
+	rows, err := dbc.MigrateTableDataRange(sourceTable, partitionedTable, dateColumn, startDate, endDate, nil, false)
 	if err != nil {
 		log.WithError(err).Error("migration failed")
 		return
@@ -657,6 +660,173 @@ func ExampleVerifyPartitionCoverage(dbc *DB, tableName string, startDate, endDat
 	log.Info("safe to proceed with data migration")
 }
 
+// ExampleSequenceMetadata demonstrates examining how sequences are linked to columns
+//
+// # This shows the internal PostgreSQL mechanisms for SERIAL vs IDENTITY columns
+//
+// Usage:
+//
+//	ExampleSequenceMetadata(dbc, "orders")
+func ExampleSequenceMetadata(dbc *DB, tableName string) {
+	log.WithField("table", tableName).Info("examining sequence metadata")
+
+	metadata, err := dbc.GetSequenceMetadata(tableName)
+	if err != nil {
+		log.WithError(err).Error("failed to get sequence metadata")
+		return
+	}
+
+	if len(metadata) == 0 {
+		log.Info("no sequences found for this table")
+		return
+	}
+
+	log.WithField("count", len(metadata)).Info("found sequences")
+
+	for _, m := range metadata {
+		linkageType := "SERIAL"
+		if m.IsIdentityColumn {
+			linkageType = "IDENTITY"
+		}
+
+		log.WithFields(log.Fields{
+			"column":       m.ColumnName,
+			"sequence":     m.SequenceName,
+			"linkage_type": linkageType,
+			"dep_type":     m.DependencyType,
+			"owner":        m.SequenceOwner,
+		}).Info("sequence linkage details")
+
+		// Explain the linkage mechanism
+		if m.IsIdentityColumn {
+			log.WithField("column", m.ColumnName).Debug(
+				"IDENTITY: Linked via pg_depend (OID-based) + pg_attribute.attidentity. " +
+					"Renaming sequence is safe - PostgreSQL uses OID internally, not name.")
+		} else {
+			log.WithField("column", m.ColumnName).Debug(
+				"SERIAL: Linked via pg_depend + column DEFAULT nextval('seq_name'). " +
+					"Column default uses sequence NAME, but pg_depend uses OID.")
+		}
+	}
+}
+
+// ExampleListTableSequences demonstrates listing sequences for a specific table
+//
+// This is useful for:
+// - Understanding which columns use auto-increment
+// - Checking sequence names before table renames
+// - Debugging sequence-related issues
+// - Auditing table structure
+//
+// Usage:
+//
+//	ExampleListTableSequences(dbc, "orders")
+func ExampleListTableSequences(dbc *DB, tableName string) {
+	log.WithField("table", tableName).Info("listing sequences for table")
+
+	sequences, err := dbc.GetTableSequences(tableName)
+	if err != nil {
+		log.WithError(err).Error("failed to get sequences")
+		return
+	}
+
+	if len(sequences) == 0 {
+		log.Info("no sequences found for this table")
+		return
+	}
+
+	log.WithField("count", len(sequences)).Info("found sequences")
+	for _, seq := range sequences {
+		log.WithFields(log.Fields{
+			"sequence": seq.SequenceName,
+			"column":   seq.ColumnName,
+		}).Info("sequence detail")
+	}
+}
+
+// ExampleListAllTableSequences demonstrates listing sequences for all tables
+//
+// This is useful for:
+// - Database auditing and inventory
+// - Understanding auto-increment usage across tables
+// - Finding sequences that may need syncing
+// - Preparing for bulk table operations
+//
+// Usage:
+//
+//	ExampleListAllTableSequences(dbc)
+func ExampleListAllTableSequences(dbc *DB) {
+	log.Info("listing all table sequences in database")
+
+	allSequences, err := dbc.ListAllTableSequences()
+	if err != nil {
+		log.WithError(err).Error("failed to list all sequences")
+		return
+	}
+
+	log.WithField("tables_with_sequences", len(allSequences)).Info("found tables with sequences")
+
+	for tableName, sequences := range allSequences {
+		log.WithFields(log.Fields{
+			"table":          tableName,
+			"sequence_count": len(sequences),
+		}).Info("table sequences")
+
+		for _, seq := range sequences {
+			log.WithFields(log.Fields{
+				"table":    tableName,
+				"sequence": seq.SequenceName,
+				"column":   seq.ColumnName,
+			}).Debug("sequence detail")
+		}
+	}
+}
+
+// ExampleCheckSequencesBeforeRename demonstrates checking sequences before renaming tables
+//
+// This workflow helps you understand what will be renamed when using renameSequences=true
+//
+// Usage:
+//
+//	ExampleCheckSequencesBeforeRename(dbc, "orders_old", "orders")
+func ExampleCheckSequencesBeforeRename(dbc *DB, oldTableName, newTableName string) {
+	log.Info("checking sequences before table rename")
+
+	// Get sequences for the old table
+	sequences, err := dbc.GetTableSequences(oldTableName)
+	if err != nil {
+		log.WithError(err).Error("failed to get sequences")
+		return
+	}
+
+	if len(sequences) == 0 {
+		log.Info("no sequences to rename")
+		return
+	}
+
+	log.WithField("count", len(sequences)).Info("sequences will be renamed")
+
+	// Show what the new sequence names will be
+	for _, seq := range sequences {
+		newSeqName := fmt.Sprintf("%s_%s_seq", newTableName, seq.ColumnName)
+		log.WithFields(log.Fields{
+			"old_sequence": seq.SequenceName,
+			"new_sequence": newSeqName,
+			"column":       seq.ColumnName,
+		}).Info("planned rename")
+	}
+
+	// Now perform the rename
+	renames := map[string]string{oldTableName: newTableName}
+	count, err := dbc.RenameTables(renames, true, false, false, false, false)
+	if err != nil {
+		log.WithError(err).Error("rename failed")
+		return
+	}
+
+	log.WithField("renamed", count).Info("table and sequences renamed")
+}
+
 // ExampleCheckAndCreatePartitions demonstrates checking for missing partitions and creating them
 //
 // This workflow combines partition verification with automatic creation of missing partitions.
@@ -684,4 +854,182 @@ func ExampleCheckAndCreatePartitions(dbc *DB, tableName string, startDate, endDa
 	}
 
 	log.Info("all partitions exist - ready for operations")
+}
+
+// ExampleRenameTables demonstrates renaming multiple tables atomically
+//
+// This is useful for:
+// - Swapping a new partitioned table with an old non-partitioned table
+// - Renaming related tables together to maintain consistency
+// - Performing atomic schema migrations
+//
+// Usage:
+//
+//	ExampleRenameTables(dbc)
+func ExampleRenameTables(dbc *DB) {
+	log.Info("renaming multiple tables atomically")
+
+	// Define table renames
+	renames := map[string]string{
+		"orders_old": "orders_backup",
+		"orders_new": "orders",
+	}
+
+	// Dry run first to verify
+	_, err := dbc.RenameTables(renames, true, true, true, true, true)
+	if err != nil {
+		log.WithError(err).Error("dry run failed")
+		return
+	}
+
+	// Execute the renames (rename sequences and partitions too)
+	count, err := dbc.RenameTables(renames, true, true, true, true, false)
+	if err != nil {
+		log.WithError(err).Error("rename failed")
+		return
+	}
+
+	log.WithField("renamed", count).Info("tables renamed successfully")
+}
+
+// ExampleSwapPartitionedTable demonstrates swapping a partitioned table with a non-partitioned table
+//
+// This is a common workflow when migrating from non-partitioned to partitioned tables:
+// 1. Create new partitioned table
+// 2. Migrate data to partitioned table
+// 3. Swap the tables atomically so the partitioned table becomes the active one
+//
+// Usage:
+//
+//	ExampleSwapPartitionedTable(dbc, "orders", "orders_partitioned")
+func ExampleSwapPartitionedTable(dbc *DB, oldTable, newPartitionedTable string) {
+	log.Info("swapping non-partitioned table with partitioned table")
+
+	// Step 1: Verify data was migrated successfully
+	oldCount, _ := dbc.GetTableRowCount(oldTable)
+	newCount, _ := dbc.GetTableRowCount(newPartitionedTable)
+
+	if oldCount != newCount {
+		log.WithFields(log.Fields{
+			"old_count": oldCount,
+			"new_count": newCount,
+		}).Error("row count mismatch - cannot swap tables")
+		return
+	}
+
+	log.Info("row counts match - proceeding with table swap")
+
+	// Step 2: Perform atomic rename to swap tables
+	// orders -> orders_old
+	// orders_partitioned -> orders
+	renames := map[string]string{
+		oldTable:            oldTable + "_old",
+		newPartitionedTable: oldTable,
+	}
+
+	// Rename sequences and partitions too so they match the new table names
+	count, err := dbc.RenameTables(renames, true, true, true, true, false)
+	if err != nil {
+		log.WithError(err).Error("table swap failed")
+		return
+	}
+
+	log.WithFields(log.Fields{
+		"renamed":     count,
+		"old_table":   oldTable + "_old",
+		"new_table":   oldTable,
+		"partitioned": true,
+	}).Info("tables swapped successfully - partitioned table is now active")
+
+	// Next steps:
+	// 1. Test the new partitioned table thoroughly
+	// 2. After verification period, drop the old table
+}
+
+// ExampleThreeWayTableSwap demonstrates a three-way table swap
+//
+// This pattern is useful when you want to:
+// - Keep a backup of the current production table
+// - Swap in a new table
+// - Archive the old backup
+//
+// Usage:
+//
+//	ExampleThreeWayTableSwap(dbc)
+func ExampleThreeWayTableSwap(dbc *DB) {
+	log.Info("performing three-way table swap")
+
+	// Scenario:
+	// orders (current production)
+	// orders_new (migrated data, ready to go live)
+	// orders_backup (previous backup to archive)
+
+	// Step 1: First rename the old backup to archive
+	// Step 2: Rename current production to backup
+	// Step 3: Rename new table to production
+	//
+	// All in one atomic transaction:
+	// orders -> orders_backup
+	// orders_new -> orders
+	// orders_backup -> orders_archive
+
+	renames := map[string]string{
+		"orders":        "orders_backup",
+		"orders_new":    "orders",
+		"orders_backup": "orders_archive",
+	}
+
+	// Dry run first (also check sequence renames)
+	_, err := dbc.RenameTables(renames, true, true, true, true, true)
+	if err != nil {
+		log.WithError(err).Error("dry run validation failed")
+		return
+	}
+
+	// Execute the swap (rename sequences and partitions too)
+	count, err := dbc.RenameTables(renames, true, true, true, true, false)
+	if err != nil {
+		log.WithError(err).Error("table swap failed - no changes made")
+		return
+	}
+
+	log.WithFields(log.Fields{
+		"renamed":    count,
+		"production": "orders (was orders_new)",
+		"backup":     "orders_backup (was orders)",
+		"archive":    "orders_archive (was orders_backup)",
+	}).Info("three-way swap completed successfully")
+}
+
+// ExampleRollbackTableSwap demonstrates rolling back a table swap
+//
+// # If you swapped tables but need to revert, you can use RenameTables again
+//
+// Usage:
+//
+//	ExampleRollbackTableSwap(dbc)
+func ExampleRollbackTableSwap(dbc *DB) {
+	log.Info("rolling back table swap")
+
+	// Assume we previously did:
+	// orders -> orders_old
+	// orders_partitioned -> orders
+	//
+	// To rollback:
+	// orders -> orders_partitioned (restore original name)
+	// orders_old -> orders (restore to production)
+
+	rollbackRenames := map[string]string{
+		"orders":     "orders_partitioned",
+		"orders_old": "orders",
+	}
+
+	// Rename sequences and partitions back too
+	count, err := dbc.RenameTables(rollbackRenames, true, true, true, true, false)
+	if err != nil {
+		log.WithError(err).Error("rollback failed")
+		return
+	}
+
+	log.WithField("renamed", count).Info("rollback completed - original table restored")
 }

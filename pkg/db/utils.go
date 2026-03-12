@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -254,12 +255,13 @@ func normalizeDataType(dataType string) string {
 // Parameters:
 // - sourceTable: The table to copy data from
 // - targetTable: The table to copy data to
+// - omitColumns: List of column names to omit from migration (e.g., ["id"] to use target's auto-increment)
 // - dryRun: If true, only verifies schemas and reports what would be migrated without actually copying data
 //
 // Returns:
 // - rowsMigrated: The number of rows successfully migrated (0 if dryRun is true)
 // - error: Any error encountered during migration
-func (dbc *DB) MigrateTableData(sourceTable, targetTable string, dryRun bool) (int64, error) {
+func (dbc *DB) MigrateTableData(sourceTable, targetTable string, omitColumns []string, dryRun bool) (int64, error) {
 	log.WithFields(log.Fields{
 		"source":  sourceTable,
 		"target":  targetTable,
@@ -313,9 +315,22 @@ func (dbc *DB) MigrateTableData(sourceTable, targetTable string, dryRun bool) (i
 		return 0, fmt.Errorf("failed to get column list: %w", err)
 	}
 
+	// Create a map of columns to omit for quick lookup
+	omitMap := make(map[string]bool)
+	for _, col := range omitColumns {
+		omitMap[col] = true
+	}
+
+	// Build column list, excluding omitted columns
 	var columnNames []string
 	for _, col := range columns {
-		columnNames = append(columnNames, col.ColumnName)
+		if !omitMap[col.ColumnName] {
+			columnNames = append(columnNames, col.ColumnName)
+		}
+	}
+
+	if len(columnNames) == 0 {
+		return 0, fmt.Errorf("no columns to migrate after omitting %v", omitColumns)
 	}
 
 	// Step 5: Perform the migration using INSERT INTO ... SELECT
@@ -385,6 +400,7 @@ func (dbc *DB) MigrateTableData(sourceTable, targetTable string, dryRun bool) (i
 // - dateColumn: The column name to filter by date range (e.g., "created_at")
 // - startDate: Start of date range (inclusive)
 // - endDate: End of date range (exclusive)
+// - omitColumns: List of column names to omit from migration (e.g., ["id"] to use target's auto-increment)
 // - dryRun: If true, only verifies schemas and reports what would be migrated without actually copying data
 //
 // Returns:
@@ -395,8 +411,8 @@ func (dbc *DB) MigrateTableData(sourceTable, targetTable string, dryRun bool) (i
 //
 //	startDate := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 //	endDate := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
-//	rows, err := dbc.MigrateTableDataRange("old_table", "new_table", "created_at", startDate, endDate, false)
-func (dbc *DB) MigrateTableDataRange(sourceTable, targetTable, dateColumn string, startDate, endDate time.Time, dryRun bool) (int64, error) {
+//	rows, err := dbc.MigrateTableDataRange("old_table", "new_table", "created_at", startDate, endDate, nil, false)
+func (dbc *DB) MigrateTableDataRange(sourceTable, targetTable, dateColumn string, startDate, endDate time.Time, omitColumns []string, dryRun bool) (int64, error) {
 	log.WithFields(log.Fields{
 		"source":      sourceTable,
 		"target":      targetTable,
@@ -489,9 +505,22 @@ func (dbc *DB) MigrateTableDataRange(sourceTable, targetTable, dateColumn string
 		return 0, fmt.Errorf("failed to get column list: %w", err)
 	}
 
+	// Create a map of columns to omit for quick lookup
+	omitMap := make(map[string]bool)
+	for _, col := range omitColumns {
+		omitMap[col] = true
+	}
+
+	// Build column list, excluding omitted columns
 	var columnNames []string
 	for _, col := range columns {
-		columnNames = append(columnNames, col.ColumnName)
+		if !omitMap[col.ColumnName] {
+			columnNames = append(columnNames, col.ColumnName)
+		}
+	}
+
+	if len(columnNames) == 0 {
+		return 0, fmt.Errorf("no columns to migrate after omitting %v", omitColumns)
 	}
 
 	// Step 6: Perform the migration using INSERT INTO ... SELECT ... WHERE
@@ -698,6 +727,1063 @@ func (dbc *DB) GetTableRowCount(tableName string) (int64, error) {
 	}
 
 	return count, nil
+}
+
+// SequenceInfo represents information about a sequence associated with a table column
+type SequenceInfo struct {
+	SequenceName string
+	TableName    string
+	ColumnName   string
+}
+
+// PartitionTableInfo represents information about a table partition
+type PartitionTableInfo struct {
+	PartitionName string
+	ParentTable   string
+}
+
+// ConstraintInfo represents information about a table constraint
+type ConstraintInfo struct {
+	ConstraintName string
+	TableName      string
+	ConstraintType string // 'p'=primary key, 'f'=foreign key, 'u'=unique, 'c'=check, 'x'=exclusion
+	Definition     string // Full constraint definition
+}
+
+// GetTableConstraints returns all constraints for a table
+// This includes primary keys, foreign keys, unique constraints, check constraints, and exclusion constraints
+//
+// Constraint types:
+//   - 'p' = Primary key
+//   - 'f' = Foreign key
+//   - 'u' = Unique
+//   - 'c' = Check
+//   - 'x' = Exclusion
+//
+// Example:
+//
+//	constraints, err := dbc.GetTableConstraints("orders")
+//	if err != nil {
+//	    log.WithError(err).Error("failed to get constraints")
+//	}
+//	for _, c := range constraints {
+//	    log.WithFields(log.Fields{
+//	        "constraint": c.ConstraintName,
+//	        "type":       c.ConstraintType,
+//	    }).Info("found constraint")
+//	}
+func (dbc *DB) GetTableConstraints(tableName string) ([]ConstraintInfo, error) {
+	var constraints []ConstraintInfo
+
+	query := `
+		SELECT
+			con.conname AS constraint_name,
+			t.relname AS table_name,
+			con.contype AS constraint_type,
+			pg_get_constraintdef(con.oid) AS definition
+		FROM pg_constraint con
+		JOIN pg_class t ON con.conrelid = t.oid
+		JOIN pg_namespace n ON n.oid = t.relnamespace
+		WHERE t.relname = @table_name
+			AND n.nspname = 'public'
+		ORDER BY con.contype, con.conname
+	`
+
+	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&constraints)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to get constraints for table %s: %w", tableName, result.Error)
+	}
+
+	return constraints, nil
+}
+
+// IndexInfo represents metadata about a table index
+type IndexInfo struct {
+	IndexName  string
+	TableName  string
+	Definition string // Index definition (CREATE INDEX statement)
+	IsPrimary  bool   // true if this is a primary key index
+	IsUnique   bool   // true if this is a unique index
+}
+
+// GetTableIndexes returns all indexes for a table
+// This includes indexes created explicitly and indexes backing constraints (primary keys, unique constraints)
+//
+// Note: Indexes backing constraints may have the same name as the constraint,
+// but they are separate objects. Renaming a constraint does NOT rename the index.
+//
+// Example:
+//
+//	indexes, err := dbc.GetTableIndexes("orders")
+//	if err != nil {
+//	    log.WithError(err).Error("failed to get indexes")
+//	}
+//	for _, idx := range indexes {
+//	    log.WithFields(log.Fields{
+//	        "index":      idx.IndexName,
+//	        "is_primary": idx.IsPrimary,
+//	        "is_unique":  idx.IsUnique,
+//	    }).Info("found index")
+//	}
+func (dbc *DB) GetTableIndexes(tableName string) ([]IndexInfo, error) {
+	var indexes []IndexInfo
+
+	query := `
+		SELECT
+			i.indexname AS index_name,
+			i.tablename AS table_name,
+			i.indexdef AS definition,
+			ix.indisprimary AS is_primary,
+			ix.indisunique AS is_unique
+		FROM pg_indexes i
+		JOIN pg_class c ON c.relname = i.indexname
+		JOIN pg_index ix ON ix.indexrelid = c.oid
+		JOIN pg_namespace n ON n.oid = c.relnamespace
+		WHERE i.tablename = @table_name
+			AND i.schemaname = 'public'
+			AND n.nspname = 'public'
+		ORDER BY i.indexname
+	`
+
+	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&indexes)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to get indexes for table %s: %w", tableName, result.Error)
+	}
+
+	return indexes, nil
+}
+
+// GetTablePartitions returns all partitions of a partitioned table
+// Uses PostgreSQL's partition inheritance system to find child partitions
+func (dbc *DB) GetTablePartitions(tableName string) ([]PartitionTableInfo, error) {
+	var partitions []PartitionTableInfo
+
+	query := `
+		SELECT
+			child.relname AS partition_name,
+			parent.relname AS parent_table
+		FROM pg_inherits
+		JOIN pg_class parent ON pg_inherits.inhparent = parent.oid
+		JOIN pg_class child ON pg_inherits.inhrelid = child.oid
+		JOIN pg_namespace nmsp_parent ON nmsp_parent.oid = parent.relnamespace
+		JOIN pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
+		WHERE parent.relname = @table_name
+			AND nmsp_parent.nspname = 'public'
+			AND nmsp_child.nspname = 'public'
+		ORDER BY child.relname
+	`
+
+	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&partitions)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to get partitions for table %s: %w", tableName, result.Error)
+	}
+
+	return partitions, nil
+}
+
+// SequenceMetadata represents detailed metadata about how a sequence is linked to a column
+type SequenceMetadata struct {
+	SequenceName     string
+	TableName        string
+	ColumnName       string
+	DependencyType   string // 'a' = auto (SERIAL), 'i' = internal (IDENTITY)
+	IsIdentityColumn bool   // true if column uses GENERATED AS IDENTITY
+	SequenceOwner    string // Table.Column that owns this sequence
+}
+
+// GetSequenceMetadata returns detailed metadata about how a sequence is linked to a column
+// This shows the internal PostgreSQL mechanisms that link IDENTITY/SERIAL columns to sequences:
+//
+// For IDENTITY columns, PostgreSQL uses:
+//  1. pg_depend: Creates an internal dependency (deptype='i') linking sequence to column
+//  2. pg_attribute.attidentity: Marks column as identity ('d' or 'a')
+//  3. pg_sequence: Stores sequence ownership information
+//
+// For SERIAL columns, PostgreSQL uses:
+//  1. pg_depend: Creates an auto dependency (deptype='a') linking sequence to column
+//  2. Column default: Uses nextval('sequence_name')
+//
+// When you rename a sequence using ALTER SEQUENCE...RENAME:
+//   - PostgreSQL automatically updates pg_depend (OID-based, not name-based)
+//   - For SERIAL: You must also update the column default expression (name-based!)
+//   - For IDENTITY: No additional updates needed (uses OID internally)
+//
+// This is why our RenameTables function just renames sequences - PostgreSQL handles the rest
+// for IDENTITY columns, but SERIAL columns may have stale defaults if renamed outside ALTER TABLE.
+//
+// Example:
+//
+//	metadata, err := dbc.GetSequenceMetadata("orders")
+//	for _, m := range metadata {
+//	    log.WithFields(log.Fields{
+//	        "sequence":     m.SequenceName,
+//	        "column":       m.ColumnName,
+//	        "dep_type":     m.DependencyType,
+//	        "is_identity":  m.IsIdentityColumn,
+//	    }).Info("sequence linkage")
+//	}
+func (dbc *DB) GetSequenceMetadata(tableName string) ([]SequenceMetadata, error) {
+	var metadata []SequenceMetadata
+
+	query := `
+		SELECT
+			s.relname AS sequence_name,
+			t.relname AS table_name,
+			a.attname AS column_name,
+			d.deptype AS dependency_type,
+			CASE WHEN a.attidentity IN ('a', 'd') THEN true ELSE false END AS is_identity_column,
+			t.relname || '.' || a.attname AS sequence_owner
+		FROM pg_class s
+		JOIN pg_depend d ON d.objid = s.oid
+		JOIN pg_class t ON d.refobjid = t.oid
+		JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = d.refobjsubid
+		JOIN pg_namespace n ON n.oid = s.relnamespace
+		WHERE s.relkind = 'S'
+			AND t.relname = @table_name
+			AND n.nspname = 'public'
+			AND d.deptype IN ('a', 'i')
+		ORDER BY a.attnum
+	`
+
+	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&metadata)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to get sequence metadata for table %s: %w", tableName, result.Error)
+	}
+
+	return metadata, nil
+}
+
+// GetTableSequences returns all sequences owned by columns in the specified table
+// This includes sequences from:
+//   - SERIAL/BIGSERIAL columns (dependency type 'a' - auto)
+//   - IDENTITY columns (dependency type 'i' - internal, e.g., GENERATED BY DEFAULT AS IDENTITY)
+//
+// Example:
+//
+//	sequences, err := dbc.GetTableSequences("orders")
+//	if err != nil {
+//	    log.WithError(err).Error("failed to get sequences")
+//	}
+//	for _, seq := range sequences {
+//	    log.WithFields(log.Fields{
+//	        "sequence": seq.SequenceName,
+//	        "table":    seq.TableName,
+//	        "column":   seq.ColumnName,
+//	    }).Info("found sequence")
+//	}
+func (dbc *DB) GetTableSequences(tableName string) ([]SequenceInfo, error) {
+	var sequences []SequenceInfo
+
+	query := `
+		SELECT
+			s.relname AS sequence_name,
+			t.relname AS table_name,
+			a.attname AS column_name
+		FROM pg_class s
+		JOIN pg_depend d ON d.objid = s.oid
+		JOIN pg_class t ON d.refobjid = t.oid
+		JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = d.refobjsubid
+		JOIN pg_namespace n ON n.oid = s.relnamespace
+		WHERE s.relkind = 'S'
+			AND t.relname = @table_name
+			AND n.nspname = 'public'
+			AND d.deptype IN ('a', 'i')
+		ORDER BY a.attnum
+	`
+
+	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&sequences)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to get sequences for table %s: %w", tableName, result.Error)
+	}
+
+	return sequences, nil
+}
+
+// ListAllTableSequences returns all sequences owned by table columns in the public schema
+// This includes sequences from:
+//   - SERIAL/BIGSERIAL columns (dependency type 'a' - auto)
+//   - IDENTITY columns (dependency type 'i' - internal, e.g., GENERATED BY DEFAULT AS IDENTITY)
+//
+// This is useful for:
+// - Auditing sequence ownership across the entire database
+// - Understanding which tables use auto-increment columns
+// - Finding sequences that may need to be renamed or synced
+// - Database documentation and inventory
+//
+// # Returns a map where keys are table names and values are lists of sequences
+//
+// Example:
+//
+//	allSequences, err := dbc.ListAllTableSequences()
+//	if err != nil {
+//	    log.WithError(err).Error("failed to list sequences")
+//	}
+//	for tableName, sequences := range allSequences {
+//	    log.WithFields(log.Fields{
+//	        "table": tableName,
+//	        "count": len(sequences),
+//	    }).Info("table sequences")
+//	    for _, seq := range sequences {
+//	        log.WithFields(log.Fields{
+//	            "sequence": seq.SequenceName,
+//	            "column":   seq.ColumnName,
+//	        }).Debug("sequence detail")
+//	    }
+//	}
+func (dbc *DB) ListAllTableSequences() (map[string][]SequenceInfo, error) {
+	var allSequences []SequenceInfo
+
+	query := `
+		SELECT
+			s.relname AS sequence_name,
+			t.relname AS table_name,
+			a.attname AS column_name
+		FROM pg_class s
+		JOIN pg_depend d ON d.objid = s.oid
+		JOIN pg_class t ON d.refobjid = t.oid
+		JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = d.refobjsubid
+		JOIN pg_namespace n ON n.oid = s.relnamespace
+		WHERE s.relkind = 'S'
+			AND n.nspname = 'public'
+			AND d.deptype IN ('a', 'i')
+		ORDER BY t.relname, a.attnum
+	`
+
+	result := dbc.DB.Raw(query).Scan(&allSequences)
+	if result.Error != nil {
+		return nil, fmt.Errorf("failed to list all table sequences: %w", result.Error)
+	}
+
+	// Group sequences by table name
+	sequencesByTable := make(map[string][]SequenceInfo)
+	for _, seq := range allSequences {
+		sequencesByTable[seq.TableName] = append(sequencesByTable[seq.TableName], seq)
+	}
+
+	log.WithFields(log.Fields{
+		"tables":    len(sequencesByTable),
+		"sequences": len(allSequences),
+	}).Info("listed all table sequences")
+
+	return sequencesByTable, nil
+}
+
+// topologicalSortRenames orders rename operations to avoid naming conflicts
+// If renaming A->B and B->C, we must do B->C first (to free up "B" namespace)
+// Returns sorted list of old names in the order they should be processed
+//
+// Example:
+//   - Renames: {table_b: table_old, table_a: table_b}
+//   - Dependencies: table_a depends on table_b (because table_a->table_b and table_b exists)
+//   - Result: [table_b, table_a] (process table_b first to free up the name)
+func topologicalSortRenames(renames map[string]string) []string {
+	// Build dependency graph
+	// If we're renaming X->Y, and Y is also being renamed (Y->Z),
+	// then X depends on Y (Y must be renamed first to free up the name)
+	dependencies := make(map[string][]string) // map[node][]dependencies
+	allNodes := make(map[string]bool)
+
+	for oldName := range renames {
+		allNodes[oldName] = true
+		dependencies[oldName] = []string{}
+	}
+
+	for oldName, newName := range renames {
+		// If newName matches another oldName, we depend on that being renamed first
+		if allNodes[newName] {
+			dependencies[oldName] = append(dependencies[oldName], newName)
+		}
+	}
+
+	// Topological sort using Kahn's algorithm
+	// inDegree[node] = number of things that node depends on
+	inDegree := make(map[string]int)
+	for node, deps := range dependencies {
+		inDegree[node] = len(deps)
+	}
+
+	// Start with nodes that have no dependencies
+	queue := []string{}
+	for node := range allNodes {
+		if inDegree[node] == 0 {
+			queue = append(queue, node)
+		}
+	}
+
+	// Sort queue for deterministic ordering
+	sort.Strings(queue)
+
+	result := []string{}
+	for len(queue) > 0 {
+		// Pop from queue
+		current := queue[0]
+		queue = queue[1:]
+		result = append(result, current)
+
+		// Reduce in-degree of dependent nodes
+		for node, deps := range dependencies {
+			for _, dep := range deps {
+				if dep == current {
+					inDegree[node]--
+					if inDegree[node] == 0 {
+						queue = append(queue, node)
+						sort.Strings(queue) // Keep queue sorted for deterministic order
+					}
+				}
+			}
+		}
+	}
+
+	// Check for cycles (shouldn't happen with table renames, but be safe)
+	if len(result) != len(allNodes) {
+		log.Warn("circular dependency detected in renames, using alphabetical order as fallback")
+		result = []string{}
+		for node := range allNodes {
+			result = append(result, node)
+		}
+		sort.Strings(result)
+	}
+
+	return result
+}
+
+// RenameTables renames multiple tables atomically in a single transaction
+// This function is useful for:
+// - Swapping partitioned tables with non-partitioned tables
+// - Renaming related tables together to maintain consistency
+// - Performing atomic schema migrations
+//
+// Parameters:
+//   - tableRenames: Map of source table names to target table names (from -> to)
+//   - renameSequences: If true, also renames sequences owned by table columns (e.g., SERIAL, IDENTITY)
+//   - renamePartitions: If true, also renames child partitions of partitioned tables
+//   - renameConstraints: If true, also renames table constraints (primary keys, foreign keys, unique, check)
+//   - renameIndexes: If true, also renames table indexes (including those backing constraints)
+//   - dryRun: If true, only validates the operation without executing it
+//
+// Returns:
+//   - renamedCount: Number of tables successfully renamed (0 if dryRun is true)
+//   - error: Any error encountered during the operation
+//
+// Example:
+//
+//	renames := map[string]string{
+//	    "orders_old":      "orders_backup",
+//	    "orders_new":      "orders",
+//	    "orders_archive":  "orders_old_archive",
+//	}
+//	count, err := dbc.RenameTables(renames, true, true, true, true, false)
+//	if err != nil {
+//	    log.WithError(err).Error("table rename failed")
+//	}
+//
+// Important Notes:
+//   - All renames are executed in a single transaction - either all succeed or all fail
+//   - The function validates that all source tables exist before attempting renames
+//   - The function checks for conflicts (target table already exists)
+//   - Views, indexes, and foreign keys are automatically updated by PostgreSQL
+//   - Renaming is extremely fast - PostgreSQL only updates metadata, not data
+//   - When renameSequences=true, sequences follow naming pattern: newtablename_columnname_seq
+//   - Sequences owned by SERIAL, BIGSERIAL, and IDENTITY columns will be renamed
+//   - When renamePartitions=true, child partitions follow naming pattern: newtablename_suffix
+//   - Partition renaming extracts suffix from old name and applies to new table name
+//   - When renamePartitions=true AND renameSequences/Constraints/Indexes=true, partition sequences/constraints/indexes are also renamed
+//   - When renameConstraints=true, constraints follow naming pattern: newtablename_suffix
+//   - Constraint renaming applies to primary keys, foreign keys, unique, check, and exclusion constraints
+//   - When renameIndexes=true, indexes follow naming pattern: newtablename_suffix
+//   - Index renaming applies to all indexes including those backing constraints
+//   - Indexes with the same name as constraints are skipped (they're renamed automatically with the constraint)
+//   - Renames are processed in sorted order to avoid naming conflicts during table swaps (e.g., A->B, B->C)
+//   - All operations are deterministic - same input always produces same execution order
+func (dbc *DB) RenameTables(tableRenames map[string]string, renameSequences bool, renamePartitions bool, renameConstraints bool, renameIndexes bool, dryRun bool) (int, error) {
+	if len(tableRenames) == 0 {
+		return 0, fmt.Errorf("no tables to rename")
+	}
+
+	log.WithFields(log.Fields{
+		"count":   len(tableRenames),
+		"dry_run": dryRun,
+	}).Info("starting table rename operation")
+
+	// Step 1: Validate all source tables exist and check for conflicts
+	var sourceNames []string
+	var targetNames []string
+	for source, target := range tableRenames {
+		sourceNames = append(sourceNames, source)
+		targetNames = append(targetNames, target)
+	}
+
+	// Check that all source tables exist
+	for source := range tableRenames {
+		var exists bool
+		query := `
+			SELECT EXISTS (
+				SELECT 1 FROM pg_tables
+				WHERE schemaname = 'public' AND tablename = @table_name
+			)
+		`
+		result := dbc.DB.Raw(query, sql.Named("table_name", source)).Scan(&exists)
+		if result.Error != nil {
+			return 0, fmt.Errorf("failed to check if table %s exists: %w", source, result.Error)
+		}
+		if !exists {
+			return 0, fmt.Errorf("source table %s does not exist", source)
+		}
+	}
+
+	// Check for conflicts - ensure no target tables already exist
+	// (unless they're also being renamed as part of this operation)
+	for source, target := range tableRenames {
+		// Skip check if this target is also a source (table swap scenario)
+		if _, isAlsoSource := tableRenames[target]; isAlsoSource {
+			log.WithFields(log.Fields{
+				"source": source,
+				"target": target,
+			}).Debug("target is also a source - table swap detected")
+			continue
+		}
+
+		var exists bool
+		query := `
+			SELECT EXISTS (
+				SELECT 1 FROM pg_tables
+				WHERE schemaname = 'public' AND tablename = @table_name
+			)
+		`
+		result := dbc.DB.Raw(query, sql.Named("table_name", target)).Scan(&exists)
+		if result.Error != nil {
+			return 0, fmt.Errorf("failed to check if target table %s exists: %w", target, result.Error)
+		}
+		if exists {
+			return 0, fmt.Errorf("target table %s already exists (conflict with rename from %s)", target, source)
+		}
+	}
+
+	log.WithFields(log.Fields{
+		"sources": sourceNames,
+		"targets": targetNames,
+	}).Info("validation passed - all source tables exist and no conflicts detected")
+
+	// Step 2: Find sequences that need to be renamed (if requested)
+	sequenceRenames := make(map[string]string)
+	if renameSequences {
+		for source, target := range tableRenames {
+			sequences, err := dbc.GetTableSequences(source)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get sequences for table %s: %w", source, err)
+			}
+
+			for _, seq := range sequences {
+				// Generate new sequence name following PostgreSQL convention
+				// old: oldtable_columnname_seq -> new: newtable_columnname_seq
+				newSeqName := fmt.Sprintf("%s_%s_seq", target, seq.ColumnName)
+				sequenceRenames[seq.SequenceName] = newSeqName
+
+				log.WithFields(log.Fields{
+					"table":        source,
+					"column":       seq.ColumnName,
+					"old_sequence": seq.SequenceName,
+					"new_sequence": newSeqName,
+				}).Debug("will rename sequence")
+			}
+		}
+
+		if len(sequenceRenames) > 0 {
+			log.WithField("count", len(sequenceRenames)).Info("found sequences to rename")
+		}
+	}
+
+	// Step 2b: Find partitions that need to be renamed (if requested)
+	partitionRenames := make(map[string]string)
+	if renamePartitions {
+		for source, target := range tableRenames {
+			partitions, err := dbc.GetTablePartitions(source)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get partitions for table %s: %w", source, err)
+			}
+
+			for _, part := range partitions {
+				// Extract suffix from old partition name
+				// old: oldtable_2024_01_01 -> suffix: _2024_01_01
+				// new: newtable_2024_01_01
+				suffix := strings.TrimPrefix(part.PartitionName, source)
+				if suffix == part.PartitionName {
+					// Partition name doesn't start with parent table name - skip
+					log.WithFields(log.Fields{
+						"partition": part.PartitionName,
+						"parent":    source,
+					}).Warn("partition name doesn't start with parent table name - skipping")
+					continue
+				}
+
+				newPartName := target + suffix
+				partitionRenames[part.PartitionName] = newPartName
+
+				log.WithFields(log.Fields{
+					"parent":        source,
+					"old_partition": part.PartitionName,
+					"new_partition": newPartName,
+					"suffix":        suffix,
+				}).Debug("will rename partition")
+			}
+		}
+
+		if len(partitionRenames) > 0 {
+			log.WithField("count", len(partitionRenames)).Info("found partitions to rename")
+
+			// Also find sequences/constraints/indexes for partition tables
+			// This allows renaming them when the partition is renamed
+			if renameSequences {
+				for oldPartName, newPartName := range partitionRenames {
+					partSeqs, err := dbc.GetTableSequences(oldPartName)
+					if err != nil {
+						return 0, fmt.Errorf("failed to get sequences for partition %s: %w", oldPartName, err)
+					}
+
+					for _, seq := range partSeqs {
+						newSeqName := fmt.Sprintf("%s_%s_seq", newPartName, seq.ColumnName)
+						sequenceRenames[seq.SequenceName] = newSeqName
+
+						log.WithFields(log.Fields{
+							"partition":    oldPartName,
+							"column":       seq.ColumnName,
+							"old_sequence": seq.SequenceName,
+							"new_sequence": newSeqName,
+						}).Debug("will rename partition sequence")
+					}
+				}
+			}
+		}
+	}
+
+	// Step 2c: Find constraints that need to be renamed (if requested)
+	constraintRenames := make(map[string]map[string]string) // map[tableName]map[oldConstraint]newConstraint
+	if renameConstraints {
+		for source, target := range tableRenames {
+			constraints, err := dbc.GetTableConstraints(source)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get constraints for table %s: %w", source, err)
+			}
+
+			for _, cons := range constraints {
+				// Extract suffix from old constraint name if it starts with the table name
+				// old: oldtable_pkey -> suffix: _pkey
+				// new: newtable_pkey
+				suffix := strings.TrimPrefix(cons.ConstraintName, source)
+				if suffix == cons.ConstraintName {
+					// Constraint name doesn't start with table name - skip
+					log.WithFields(log.Fields{
+						"constraint": cons.ConstraintName,
+						"table":      source,
+					}).Debug("constraint name doesn't start with table name - skipping")
+					continue
+				}
+
+				newConsName := target + suffix
+
+				// Initialize map for this table if needed
+				if constraintRenames[source] == nil {
+					constraintRenames[source] = make(map[string]string)
+				}
+				constraintRenames[source][cons.ConstraintName] = newConsName
+
+				log.WithFields(log.Fields{
+					"table":          source,
+					"old_constraint": cons.ConstraintName,
+					"new_constraint": newConsName,
+					"type":           cons.ConstraintType,
+					"suffix":         suffix,
+				}).Debug("will rename constraint")
+			}
+		}
+
+		totalConstraints := 0
+		for _, consMap := range constraintRenames {
+			totalConstraints += len(consMap)
+		}
+		if totalConstraints > 0 {
+			log.WithField("count", totalConstraints).Info("found constraints to rename")
+		}
+
+		// Also find constraints for partition tables
+		if renamePartitions && len(partitionRenames) > 0 {
+			for oldPartName, newPartName := range partitionRenames {
+				partCons, err := dbc.GetTableConstraints(oldPartName)
+				if err != nil {
+					return 0, fmt.Errorf("failed to get constraints for partition %s: %w", oldPartName, err)
+				}
+
+				for _, cons := range partCons {
+					suffix := strings.TrimPrefix(cons.ConstraintName, oldPartName)
+					if suffix == cons.ConstraintName {
+						log.WithFields(log.Fields{
+							"constraint": cons.ConstraintName,
+							"partition":  oldPartName,
+						}).Debug("constraint name doesn't start with partition name - skipping")
+						continue
+					}
+
+					newConsName := newPartName + suffix
+
+					if constraintRenames[oldPartName] == nil {
+						constraintRenames[oldPartName] = make(map[string]string)
+					}
+					constraintRenames[oldPartName][cons.ConstraintName] = newConsName
+
+					log.WithFields(log.Fields{
+						"partition":      oldPartName,
+						"old_constraint": cons.ConstraintName,
+						"new_constraint": newConsName,
+						"type":           cons.ConstraintType,
+						"suffix":         suffix,
+					}).Debug("will rename partition constraint")
+				}
+			}
+		}
+	}
+
+	// Step 2d: Find indexes that need to be renamed (if requested)
+	indexRenames := make(map[string]map[string]string) // map[tableName]map[oldIndex]newIndex
+	if renameIndexes {
+		for source, target := range tableRenames {
+			indexes, err := dbc.GetTableIndexes(source)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get indexes for table %s: %w", source, err)
+			}
+
+			for _, idx := range indexes {
+				// Extract suffix from old index name if it starts with the table name
+				// old: oldtable_pkey -> suffix: _pkey
+				// new: newtable_pkey
+				suffix := strings.TrimPrefix(idx.IndexName, source)
+				if suffix == idx.IndexName {
+					// Index name doesn't start with table name - skip
+					log.WithFields(log.Fields{
+						"index": idx.IndexName,
+						"table": source,
+					}).Debug("index name doesn't start with table name - skipping")
+					continue
+				}
+
+				newIdxName := target + suffix
+
+				// Initialize map for this table if needed
+				if indexRenames[source] == nil {
+					indexRenames[source] = make(map[string]string)
+				}
+				indexRenames[source][idx.IndexName] = newIdxName
+
+				log.WithFields(log.Fields{
+					"table":      source,
+					"old_index":  idx.IndexName,
+					"new_index":  newIdxName,
+					"is_unique":  idx.IsUnique,
+					"is_primary": idx.IsPrimary,
+					"suffix":     suffix,
+				}).Debug("will rename index")
+			}
+		}
+
+		totalIndexes := 0
+		for _, idxMap := range indexRenames {
+			totalIndexes += len(idxMap)
+		}
+		if totalIndexes > 0 {
+			log.WithField("count", totalIndexes).Info("found indexes to rename")
+		}
+
+		// Also find indexes for partition tables
+		if renamePartitions && len(partitionRenames) > 0 {
+			for oldPartName, newPartName := range partitionRenames {
+				partIdxs, err := dbc.GetTableIndexes(oldPartName)
+				if err != nil {
+					return 0, fmt.Errorf("failed to get indexes for partition %s: %w", oldPartName, err)
+				}
+
+				for _, idx := range partIdxs {
+					suffix := strings.TrimPrefix(idx.IndexName, oldPartName)
+					if suffix == idx.IndexName {
+						log.WithFields(log.Fields{
+							"index":     idx.IndexName,
+							"partition": oldPartName,
+						}).Debug("index name doesn't start with partition name - skipping")
+						continue
+					}
+
+					newIdxName := newPartName + suffix
+
+					if indexRenames[oldPartName] == nil {
+						indexRenames[oldPartName] = make(map[string]string)
+					}
+					indexRenames[oldPartName][idx.IndexName] = newIdxName
+
+					log.WithFields(log.Fields{
+						"partition":  oldPartName,
+						"old_index":  idx.IndexName,
+						"new_index":  newIdxName,
+						"is_unique":  idx.IsUnique,
+						"is_primary": idx.IsPrimary,
+						"suffix":     suffix,
+					}).Debug("will rename partition index")
+				}
+			}
+		}
+	}
+
+	// Step 3: Dry run - report what would be renamed
+	if dryRun {
+		log.Info("[DRY RUN] would rename the following tables:")
+		for source, target := range tableRenames {
+			log.WithFields(log.Fields{
+				"from": source,
+				"to":   target,
+			}).Info("[DRY RUN] table rename")
+		}
+
+		if len(partitionRenames) > 0 {
+			log.Info("[DRY RUN] would rename the following partitions:")
+			for oldPart, newPart := range partitionRenames {
+				log.WithFields(log.Fields{
+					"from": oldPart,
+					"to":   newPart,
+				}).Info("[DRY RUN] partition rename")
+			}
+		}
+
+		if len(sequenceRenames) > 0 {
+			log.Info("[DRY RUN] would rename the following sequences:")
+			for oldSeq, newSeq := range sequenceRenames {
+				log.WithFields(log.Fields{
+					"from": oldSeq,
+					"to":   newSeq,
+				}).Info("[DRY RUN] sequence rename")
+			}
+		}
+
+		totalConstraints := 0
+		for _, consMap := range constraintRenames {
+			totalConstraints += len(consMap)
+		}
+		if totalConstraints > 0 {
+			log.Info("[DRY RUN] would rename the following constraints:")
+			for tableName, consMap := range constraintRenames {
+				for oldCons, newCons := range consMap {
+					log.WithFields(log.Fields{
+						"table": tableName,
+						"from":  oldCons,
+						"to":    newCons,
+					}).Info("[DRY RUN] constraint rename")
+				}
+			}
+		}
+
+		totalIndexes := 0
+		for _, idxMap := range indexRenames {
+			totalIndexes += len(idxMap)
+		}
+		if totalIndexes > 0 {
+			log.Info("[DRY RUN] would rename the following indexes:")
+			for tableName, idxMap := range indexRenames {
+				for oldIdx, newIdx := range idxMap {
+					log.WithFields(log.Fields{
+						"table": tableName,
+						"from":  oldIdx,
+						"to":    newIdx,
+					}).Info("[DRY RUN] index rename")
+				}
+			}
+		}
+
+		return 0, nil
+	}
+
+	// Step 4: Execute all renames in a single transaction
+	tx := dbc.DB.Begin()
+	if tx.Error != nil {
+		return 0, fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+
+	// Use defer to handle rollback on error
+	committed := false
+	defer func() {
+		if !committed {
+			tx.Rollback()
+		}
+	}()
+
+	// Execute each table rename
+	renamedCount := 0
+	for source, target := range tableRenames {
+		renameSQL := fmt.Sprintf("ALTER TABLE %s RENAME TO %s", source, target)
+
+		log.WithFields(log.Fields{
+			"from": source,
+			"to":   target,
+		}).Info("renaming table")
+
+		result := tx.Exec(renameSQL)
+		if result.Error != nil {
+			return 0, fmt.Errorf("failed to rename table %s to %s: %w", source, target, result.Error)
+		}
+
+		renamedCount++
+	}
+
+	// Execute each partition rename
+	partitionsRenamed := 0
+	for oldPart, newPart := range partitionRenames {
+		renameSQL := fmt.Sprintf("ALTER TABLE %s RENAME TO %s", oldPart, newPart)
+
+		log.WithFields(log.Fields{
+			"from": oldPart,
+			"to":   newPart,
+		}).Info("renaming partition")
+
+		result := tx.Exec(renameSQL)
+		if result.Error != nil {
+			return 0, fmt.Errorf("failed to rename partition %s to %s: %w", oldPart, newPart, result.Error)
+		}
+
+		partitionsRenamed++
+	}
+
+	// Execute each sequence rename
+	// Use topological sort to avoid naming conflicts
+	// (e.g., table_b_id_seq -> table_old_id_seq must happen before table_a_id_seq -> table_b_id_seq)
+	sequencesRenamed := 0
+	sortedSeqNames := topologicalSortRenames(sequenceRenames)
+
+	for _, oldSeq := range sortedSeqNames {
+		newSeq := sequenceRenames[oldSeq]
+		renameSQL := fmt.Sprintf("ALTER SEQUENCE %s RENAME TO %s", oldSeq, newSeq)
+
+		log.WithFields(log.Fields{
+			"from": oldSeq,
+			"to":   newSeq,
+		}).Info("renaming sequence")
+
+		result := tx.Exec(renameSQL)
+		if result.Error != nil {
+			return 0, fmt.Errorf("failed to rename sequence %s to %s: %w", oldSeq, newSeq, result.Error)
+		}
+
+		sequencesRenamed++
+	}
+
+	// Execute each constraint rename
+	// Use topological sort to handle rename dependencies
+	constraintsRenamed := 0
+
+	// Flatten constraint renames into a simple map for topological sort
+	flatConstraintRenames := make(map[string]string)
+	constraintToTable := make(map[string]string)
+	for tableName, consMap := range constraintRenames {
+		for oldCons, newCons := range consMap {
+			flatConstraintRenames[oldCons] = newCons
+			constraintToTable[oldCons] = tableName
+		}
+	}
+
+	sortedConsNames := topologicalSortRenames(flatConstraintRenames)
+
+	for _, oldCons := range sortedConsNames {
+		newCons := flatConstraintRenames[oldCons]
+		tableName := constraintToTable[oldCons]
+
+		// Get the new table name (in case table or partition was renamed)
+		newTableName := tableName
+		if renamed, exists := tableRenames[tableName]; exists {
+			newTableName = renamed
+		} else if renamed, exists := partitionRenames[tableName]; exists {
+			newTableName = renamed
+		}
+
+		renameSQL := fmt.Sprintf("ALTER TABLE %s RENAME CONSTRAINT %s TO %s", newTableName, oldCons, newCons)
+
+		log.WithFields(log.Fields{
+			"table": newTableName,
+			"from":  oldCons,
+			"to":    newCons,
+		}).Info("renaming constraint")
+
+		result := tx.Exec(renameSQL)
+		if result.Error != nil {
+			return 0, fmt.Errorf("failed to rename constraint %s to %s on table %s: %w", oldCons, newCons, newTableName, result.Error)
+		}
+
+		constraintsRenamed++
+	}
+
+	// Build a set of constraint names that were renamed
+	// (to skip indexes with the same name, as they're renamed automatically with the constraint)
+	renamedConstraintNames := make(map[string]bool)
+	for _, consMap := range constraintRenames {
+		for oldCons := range consMap {
+			renamedConstraintNames[oldCons] = true
+		}
+	}
+
+	// Execute each index rename
+	// Use topological sort to handle rename dependencies
+	indexesRenamed := 0
+
+	// Flatten index renames into a simple map for topological sort
+	flatIndexRenames := make(map[string]string)
+	indexToTable := make(map[string]string)
+	for tableName, idxMap := range indexRenames {
+		for oldIdx, newIdx := range idxMap {
+			flatIndexRenames[oldIdx] = newIdx
+			indexToTable[oldIdx] = tableName
+		}
+	}
+
+	sortedIdxNames := topologicalSortRenames(flatIndexRenames)
+
+	for _, oldIdx := range sortedIdxNames {
+		newIdx := flatIndexRenames[oldIdx]
+		tableName := indexToTable[oldIdx]
+
+		// Skip if this index has the same name as a constraint we renamed
+		// PostgreSQL automatically renames the backing index when renaming PRIMARY KEY or UNIQUE constraints
+		if renamedConstraintNames[oldIdx] {
+			log.WithFields(log.Fields{
+				"table": tableName,
+				"index": oldIdx,
+			}).Debug("skipping index - already renamed as part of constraint rename")
+			continue
+		}
+
+		renameSQL := fmt.Sprintf("ALTER INDEX %s RENAME TO %s", oldIdx, newIdx)
+
+		log.WithFields(log.Fields{
+			"table": tableName,
+			"from":  oldIdx,
+			"to":    newIdx,
+		}).Info("renaming index")
+
+		result := tx.Exec(renameSQL)
+		if result.Error != nil {
+			return 0, fmt.Errorf("failed to rename index %s to %s: %w", oldIdx, newIdx, result.Error)
+		}
+
+		indexesRenamed++
+	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return 0, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	committed = true
+
+	log.WithFields(log.Fields{
+		"renamed_tables":      renamedCount,
+		"renamed_partitions":  partitionsRenamed,
+		"renamed_sequences":   sequencesRenamed,
+		"renamed_constraints": constraintsRenamed,
+		"renamed_indexes":     indexesRenamed,
+	}).Info("rename operation completed successfully")
+
+	return renamedCount, nil
 }
 
 // SyncIdentityColumn synchronizes the IDENTITY sequence for a column to match the current maximum value

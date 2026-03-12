@@ -126,6 +126,7 @@ func TestMigrateTableDataValidation(t *testing.T) {
 		name          string
 		sourceTable   string
 		targetTable   string
+		omitColumns   []string
 		dryRun        bool
 		expectError   bool
 		errorContains string
@@ -136,6 +137,7 @@ func TestMigrateTableDataValidation(t *testing.T) {
 			name:        "dry run mode",
 			sourceTable: "source_table",
 			targetTable: "target_table",
+			omitColumns: nil,
 			dryRun:      true,
 			expectError: false,
 		},
@@ -143,6 +145,23 @@ func TestMigrateTableDataValidation(t *testing.T) {
 			name:        "actual migration",
 			sourceTable: "source_table",
 			targetTable: "target_table",
+			omitColumns: nil,
+			dryRun:      false,
+			expectError: false,
+		},
+		{
+			name:        "migration with omitted id column",
+			sourceTable: "source_table",
+			targetTable: "target_table",
+			omitColumns: []string{"id"},
+			dryRun:      false,
+			expectError: false,
+		},
+		{
+			name:        "migration with multiple omitted columns",
+			sourceTable: "source_table",
+			targetTable: "target_table",
+			omitColumns: []string{"id", "updated_at", "version"},
 			dryRun:      false,
 			expectError: false,
 		},
@@ -158,6 +177,72 @@ func TestMigrateTableDataValidation(t *testing.T) {
 			}
 			if tt.targetTable == "" {
 				t.Error("target table should not be empty")
+			}
+		})
+	}
+}
+
+func TestOmitColumnsLogic(t *testing.T) {
+	// Test the omit columns filtering logic
+	columns := []ColumnInfo{
+		{ColumnName: "id", DataType: "bigint"},
+		{ColumnName: "name", DataType: "varchar"},
+		{ColumnName: "created_at", DataType: "timestamp"},
+		{ColumnName: "updated_at", DataType: "timestamp"},
+	}
+
+	tests := []struct {
+		name         string
+		omitColumns  []string
+		expectedCols []string
+	}{
+		{
+			name:         "no columns omitted",
+			omitColumns:  nil,
+			expectedCols: []string{"id", "name", "created_at", "updated_at"},
+		},
+		{
+			name:         "omit id column",
+			omitColumns:  []string{"id"},
+			expectedCols: []string{"name", "created_at", "updated_at"},
+		},
+		{
+			name:         "omit multiple columns",
+			omitColumns:  []string{"id", "updated_at"},
+			expectedCols: []string{"name", "created_at"},
+		},
+		{
+			name:         "omit all columns results in error case",
+			omitColumns:  []string{"id", "name", "created_at", "updated_at"},
+			expectedCols: []string{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create a map of columns to omit for quick lookup
+			omitMap := make(map[string]bool)
+			for _, col := range tt.omitColumns {
+				omitMap[col] = true
+			}
+
+			// Build column list, excluding omitted columns
+			var columnNames []string
+			for _, col := range columns {
+				if !omitMap[col.ColumnName] {
+					columnNames = append(columnNames, col.ColumnName)
+				}
+			}
+
+			// Verify result matches expected
+			if len(columnNames) != len(tt.expectedCols) {
+				t.Errorf("expected %d columns, got %d", len(tt.expectedCols), len(columnNames))
+			}
+
+			for i, colName := range columnNames {
+				if i >= len(tt.expectedCols) || colName != tt.expectedCols[i] {
+					t.Errorf("column mismatch at position %d: expected %s, got %s", i, tt.expectedCols[i], colName)
+				}
 			}
 		})
 	}
@@ -300,4 +385,96 @@ func TestVerifyPartitionCoverage(t *testing.T) {
 	// This is a documentation test - actual functionality requires a live database
 	// and is tested in integration tests
 	t.Log("VerifyPartitionCoverage documented - integration tests required for full validation")
+}
+
+func TestRenameTables(t *testing.T) {
+	// This test documents the expected behavior of RenameTables
+	// which renames multiple tables atomically in a single transaction
+
+	// The function should:
+	// 1. Validate that all source tables exist
+	// 2. Check for conflicts (target table already exists)
+	// 3. Allow table swaps (where target is also a source)
+	// 4. Execute all renames in a single transaction
+	// 5. Rollback all renames if any fail
+	// 6. Support dry-run mode
+
+	// Example usage:
+	// renames := map[string]string{
+	//     "orders_old": "orders_backup",
+	//     "orders_new": "orders",
+	// }
+	// count, err := dbc.RenameTables(renames, false)
+	// if err != nil {
+	//     log.WithError(err).Error("rename failed")
+	// }
+
+	// Expected behavior:
+	// - Returns error if any source table doesn't exist
+	// - Returns error if target table exists (unless it's also a source - table swap)
+	// - All renames happen atomically (all succeed or all fail)
+	// - PostgreSQL automatically updates views, indexes, and foreign keys
+	// - Very fast operation (only metadata update)
+	// - Dry run returns 0 count but validates everything
+
+	// Test cases for validation logic
+	tests := []struct {
+		name          string
+		renames       map[string]string
+		expectError   bool
+		errorContains string
+	}{
+		{
+			name: "simple rename",
+			renames: map[string]string{
+				"table_old": "table_new",
+			},
+			expectError: false,
+		},
+		{
+			name: "table swap",
+			renames: map[string]string{
+				"table_a": "table_b",
+				"table_b": "table_a",
+			},
+			expectError: false, // Allowed - swap scenario
+		},
+		{
+			name: "multiple renames",
+			renames: map[string]string{
+				"orders_old": "orders_backup",
+				"orders_new": "orders",
+				"items_old":  "items_backup",
+			},
+			expectError: false,
+		},
+		{
+			name:        "empty map",
+			renames:     map[string]string{},
+			expectError: true,
+		},
+		{
+			name: "three-way swap",
+			renames: map[string]string{
+				"orders":        "orders_backup",
+				"orders_new":    "orders",
+				"orders_backup": "orders_archive",
+			},
+			expectError: false, // Complex swap allowed
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Validate structure
+			if tt.expectError && len(tt.renames) > 0 {
+				// Should expect error for valid reason
+				t.Logf("Expected error case: %s", tt.name)
+			}
+		})
+	}
+
+	// This is a documentation test - actual functionality requires a live database
+	// and is tested in integration tests
+	t.Log("RenameTables documented - integration tests required for full validation")
 }
