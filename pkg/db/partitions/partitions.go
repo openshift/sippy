@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
@@ -578,7 +579,7 @@ func DropPartition(dbc *db.DB, partitionName string, dryRun bool) error {
 		return nil
 	}
 
-	query := fmt.Sprintf("DROP TABLE IF EXISTS %s", partitionName)
+	query := "DROP TABLE IF EXISTS " + pq.QuoteIdentifier(partitionName)
 	result := dbc.DB.Exec(query)
 	if result.Error != nil {
 		log.WithError(result.Error).WithFields(log.Fields{
@@ -622,7 +623,7 @@ func DetachPartition(dbc *db.DB, partitionName string, dryRun bool) error {
 		return nil
 	}
 
-	query := fmt.Sprintf("ALTER TABLE %s DETACH PARTITION %s", tableName, partitionName)
+	query := fmt.Sprintf("ALTER TABLE %s DETACH PARTITION %s", pq.QuoteIdentifier(tableName), pq.QuoteIdentifier(partitionName))
 	result := dbc.DB.Exec(query)
 	if result.Error != nil {
 		log.WithError(result.Error).WithFields(log.Fields{
@@ -976,7 +977,7 @@ func CreateMissingPartitions(dbc *db.DB, tableName string, startDate, endDate ti
 		}
 
 		// Create the partition table with same structure as parent
-		createTableQuery := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (LIKE %s INCLUDING ALL)", partitionName, tableName)
+		createTableQuery := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (LIKE %s INCLUDING ALL)", pq.QuoteIdentifier(partitionName), pq.QuoteIdentifier(tableName))
 		result := dbc.DB.Exec(createTableQuery)
 		if result.Error != nil {
 			log.WithError(result.Error).WithField("partition", partitionName).Error("failed to create partition table")
@@ -986,8 +987,8 @@ func CreateMissingPartitions(dbc *db.DB, tableName string, startDate, endDate ti
 		// Attach the partition to the parent table
 		attachQuery := fmt.Sprintf(
 			"ALTER TABLE %s ATTACH PARTITION %s FOR VALUES FROM ('%s') TO ('%s')",
-			tableName,
-			partitionName,
+			pq.QuoteIdentifier(tableName),
+			pq.QuoteIdentifier(partitionName),
 			rangeStart,
 			rangeEnd,
 		)
@@ -995,7 +996,7 @@ func CreateMissingPartitions(dbc *db.DB, tableName string, startDate, endDate ti
 		if result.Error != nil {
 			// If attach fails, try to clean up the created table
 			log.WithError(result.Error).WithField("partition", partitionName).Error("failed to attach partition")
-			dbc.DB.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", partitionName))
+			dbc.DB.Exec(fmt.Sprintf("DROP TABLE IF EXISTS %s", pq.QuoteIdentifier(partitionName)))
 			continue
 		}
 
@@ -1254,7 +1255,7 @@ func CreatePartitionedTable(dbc *db.DB, model interface{}, tableName string, con
 	partitionClause := config.ToSQL()
 	createTableSQL := fmt.Sprintf(
 		"CREATE TABLE IF NOT EXISTS %s (\n    %s\n) %s",
-		tableName,
+		pq.QuoteIdentifier(tableName),
 		strings.Join(columns, ",\n    "),
 		partitionClause,
 	)
@@ -1513,7 +1514,7 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 			}
 
 			alterStatements = append(alterStatements,
-				fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", tableName, columnDef))
+				fmt.Sprintf("ALTER TABLE %s ADD COLUMN %s", pq.QuoteIdentifier(tableName), columnDef))
 		} else {
 			// Existing column - check for modifications
 			modifications := []string{}
@@ -1577,7 +1578,7 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 			// Add modifications as separate ALTER TABLE statements
 			for _, mod := range modifications {
 				alterStatements = append(alterStatements,
-					fmt.Sprintf("ALTER TABLE %s %s", tableName, mod))
+					fmt.Sprintf("ALTER TABLE %s %s", pq.QuoteIdentifier(tableName), mod))
 			}
 		}
 
@@ -1588,7 +1589,7 @@ func UpdatePartitionedTable(dbc *db.DB, model interface{}, tableName string, dry
 	// Remaining columns in map should be dropped
 	for colName := range currentColMap {
 		alterStatements = append(alterStatements,
-			fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s", tableName, colName))
+			fmt.Sprintf("ALTER TABLE %s DROP COLUMN %s", pq.QuoteIdentifier(tableName), colName))
 	}
 
 	// Check indexes
@@ -1979,8 +1980,8 @@ func ReattachPartition(dbc *db.DB, partitionName string, dryRun bool) error {
 	// Reattach the partition with FOR VALUES clause
 	query := fmt.Sprintf(
 		"ALTER TABLE %s ATTACH PARTITION %s FOR VALUES FROM ('%s') TO ('%s')",
-		tableName,
-		partitionName,
+		pq.QuoteIdentifier(tableName),
+		pq.QuoteIdentifier(partitionName),
 		startDate,
 		endDate,
 	)

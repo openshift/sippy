@@ -1441,7 +1441,7 @@ func main() {
 ### Input Validation
 - Partition names are validated against expected format
 - SQL injection protection through parameterized queries
-- Minimum retention period enforcement (30 days)
+- Minimum retention period enforcement (90 days)
 
 ### Threshold Checks
 - Maximum 75% of partitions can be deleted
