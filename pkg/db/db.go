@@ -77,8 +77,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},
-		&models.ProwJobRunTest{},
-		&models.ProwJobRunTestOutput{},
 		&models.APISnapshot{},
 		&models.Bug{},
 		&models.ProwPullRequest{},
@@ -110,6 +108,10 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 			return err
 		}
 	}
+
+	// TODO(fbabcock): Add support for migrating partitioned table
+	// &models.ProwJobRunTest{},
+	// &models.ProwJobRunTestOutput{},
 
 	if err := createAuditLogIndexes(d.DB); err != nil {
 		return err
