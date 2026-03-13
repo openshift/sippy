@@ -1105,8 +1105,8 @@ func (c *ComponentReportGenerator) buildPassRateTestStats(testStats *testdetails
 	// if an adjustment is applied, still use the configured success rate to define extreme regression.
 	severeRegressionSuccessRate := effectiveSuccessReq - (100 - requiredSuccessRate)
 
-	// Require 7 runs in the sample (typically 1 week) for us to consider a pass rate requirement for a new test:
-	sufficientRuns := testStats.SampleStats.Total() >= 7
+	// Require 6 runs in the sample (typically 1 week for daily jobs) for us to consider a pass rate requirement for a new test:
+	sufficientRuns := testStats.SampleStats.Total() >= 6
 
 	opts := c.ReqOptions.AdvancedOption
 	successRate := testStats.SampleStats.PassRate(opts.FlakeAsFailure)

@@ -1805,7 +1805,7 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 		},
 		{
 			name:                        "pass rate mode insufficient runs to trigger",
-			sampleTotal:                 6,
+			sampleTotal:                 5,
 			sampleSuccess:               0,
 			sampleFlake:                 0,
 			requiredPassRateForAllTests: 95,
@@ -1813,8 +1813,8 @@ func Test_componentReportGenerator_assessComponentStatus(t *testing.T) {
 		},
 		{
 			name:                        "pass rate mode barely sufficient runs to trigger",
-			sampleTotal:                 7,
-			sampleSuccess:               6,
+			sampleTotal:                 6,
+			sampleSuccess:               5,
 			sampleFlake:                 0,
 			requiredPassRateForAllTests: 95,
 			expectedStatus:              crtest.ExtremeRegression,
