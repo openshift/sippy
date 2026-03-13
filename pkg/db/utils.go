@@ -42,15 +42,6 @@ type ColumnVerificationOptions struct {
 	CheckOrder bool
 }
 
-// DefaultColumnVerificationOptions returns options with all checks enabled
-func DefaultColumnVerificationOptions() ColumnVerificationOptions {
-	return ColumnVerificationOptions{
-		CheckNullable: true,
-		CheckDefaults: true,
-		CheckOrder:    true,
-	}
-}
-
 // DataMigrationColumnVerificationOptions returns options suitable for data migrations
 // (only checks column names and types, not constraints or defaults)
 func DataMigrationColumnVerificationOptions() ColumnVerificationOptions {
@@ -558,7 +549,7 @@ func (dbc *DB) MigrateTableDataRange(sourceTable, targetTable, dateColumn string
 	// This is done in a single statement for efficiency and atomicity
 	columnList := quoteIdentifierList(columnNames)
 	insertSQL := fmt.Sprintf(
-		"INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s >= `@start_date` AND %s < `@end_date`",
+		"INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s >= @start_date AND %s < @end_date",
 		pq.QuoteIdentifier(targetTable),
 		columnList,
 		columnList,

@@ -392,20 +392,21 @@ type MyModel struct {
 }
 
 // Dry run - see what changes would be made
-sql, err := partitions.UpdatePartitionedTable(dbc, &MyModel{}, "my_partitioned_table", true)
+sql, err := partitions.UpdatePartitionedTable(dbc, &MyModel{}, "my_partitioned_table", true, false)
 if err != nil {
     log.WithError(err).Error("dry run failed")
 }
 // Prints all ALTER TABLE statements that would be executed
 
 // Actual update
-sql, err = partitions.UpdatePartitionedTable(dbc, &MyModel{}, "my_partitioned_table", false)
+sql, err = partitions.UpdatePartitionedTable(dbc, &MyModel{}, "my_partitioned_table", false, false)
 ```
 
 **Parameters**:
 - `model` - GORM model struct with desired schema (must be a pointer, e.g., `&models.MyModel{}`)
 - `tableName` - Name of the existing partitioned table
 - `dryRun` - If true, prints SQL without executing
+- `dropColumns` - If true, columns present in the database but absent from the model will be dropped
 
 **How It Works**:
 1. Checks if the table exists
@@ -472,11 +473,11 @@ type TestResults struct {
 }
 
 // 2. Dry run to see changes
-sql, err := partitions.UpdatePartitionedTable(dbc, &TestResults{}, "test_results", true)
+sql, err := partitions.UpdatePartitionedTable(dbc, &TestResults{}, "test_results", true, false)
 fmt.Println("Would execute:", sql)
 
 // 3. Review changes, then apply
-sql, err = partitions.UpdatePartitionedTable(dbc, &TestResults{}, "test_results", false)
+sql, err = partitions.UpdatePartitionedTable(dbc, &TestResults{}, "test_results", false, false)
 if err != nil {
     log.Fatal(err)
 }
@@ -647,16 +648,21 @@ if isAttached {
 
 ---
 
-#### ReattachPartition
-Reattaches a previously detached partition back to the parent table.
+#### AttachPartition
+Attaches a partition to the parent table with the appropriate date range.
 
 ```go
 // Dry run
-err := partitions.ReattachPartition(dbc, "test_analysis_by_job_by_dates_2024_10_29", true)
+err := partitions.AttachPartition(dbc, "test_analysis_by_job_by_dates", "test_analysis_by_job_by_dates_2024_10_29", true)
 
-// Actual reattach
-err := partitions.ReattachPartition(dbc, "test_analysis_by_job_by_dates_2024_10_29", false)
+// Actual attach
+err := partitions.AttachPartition(dbc, "test_analysis_by_job_by_dates", "test_analysis_by_job_by_dates_2024_10_29", false)
 ```
+
+**Parameters**:
+- `tableName` - Name of the parent partitioned table
+- `partitionName` - Name of the partition to attach (must follow `tableName_YYYY_MM_DD` convention)
+- `dryRun` - If true, only logs what would be done
 
 **Use When**:
 - You need to restore archived data
@@ -691,24 +697,26 @@ fmt.Printf("Created %d partitions\n", created)
 
 **How It Works**:
 1. Lists all existing partitions (attached + detached)
-2. Generates list of dates in range that don't have partitions
-3. For each missing partition:
+2. For existing partitions, verifies they are attached and reattaches any detached ones
+3. Generates list of dates in range that don't have partitions
+4. All creates and attaches run in a single transaction — if any operation fails, all changes are rolled back
+5. For each missing partition:
    - Creates table with same structure as parent (CREATE TABLE ... LIKE)
-   - Attaches partition with appropriate date range (FOR VALUES FROM ... TO ...)
-4. Skips partitions that already exist
-5. Returns count of partitions created
+   - Attaches partition using `AttachPartition` with appropriate date range
+6. Returns count of partitions created
 
 **Use When**:
 - Setting up a new partitioned table with historical dates
 - Backfilling missing partitions after data gaps
 - Preparing partitions in advance for future dates
-- Recovering from partition management issues
+- Recovering from partition management issues (including reattaching detached partitions)
 
 **Safety Features**:
 - Checks for existing partitions before creating
-- Dry-run mode to preview what will be created
-- Automatically cleans up if attachment fails
-- Comprehensive logging for each partition
+- Reattaches detached partitions found within the date range
+- All operations are transactional — atomic success or full rollback
+- Dry-run mode to preview what will be created and reattached
+- Errors are returned, not silently logged
 
 ---
 
@@ -999,7 +1007,7 @@ func manageDetachedPartitions(dbc *db.DB) error {
 ### Example 7: Reattach Archived Data
 
 ```go
-func restoreArchivedPartition(dbc *db.DB, partitionName string) error {
+func restoreArchivedPartition(dbc *db.DB, tableName, partitionName string) error {
     // Check current status
     isAttached, err := partitions.IsPartitionAttached(dbc, partitionName)
     if err != nil {
@@ -1013,7 +1021,7 @@ func restoreArchivedPartition(dbc *db.DB, partitionName string) error {
     log.WithField("partition", partitionName).Info("reattaching partition")
 
     // Reattach the partition
-    err = partitions.ReattachPartition(dbc, partitionName, false)
+    err = partitions.AttachPartition(dbc, tableName, partitionName, false)
     if err != nil {
         return fmt.Errorf("reattach failed: %w", err)
     }
@@ -1245,7 +1253,8 @@ func updateTestResultsSchema(dbc *db.DB) error {
         dbc,
         &TestResultsV2{},
         tableName,
-        true, // dry-run
+        true,  // dry-run
+        false, // don't drop columns
     )
     if err != nil {
         return fmt.Errorf("dry run failed: %w", err)
@@ -1271,6 +1280,7 @@ func updateTestResultsSchema(dbc *db.DB) error {
         &TestResultsV2{},
         tableName,
         false, // execute
+        false, // don't drop columns
     )
     if err != nil {
         return fmt.Errorf("schema update failed: %w", err)
@@ -1293,7 +1303,8 @@ func automatedSchemaMigration(dbc *db.DB) error {
         dbc,
         &TestResultsV2{},
         tableName,
-        true,
+        true,  // dry-run
+        false, // don't drop columns
     )
     if err != nil {
         return fmt.Errorf("schema check failed: %w", err)
@@ -1312,7 +1323,8 @@ func automatedSchemaMigration(dbc *db.DB) error {
         dbc,
         &TestResultsV2{},
         tableName,
-        false,
+        false, // execute
+        false, // don't drop columns
     )
     if err != nil {
         return fmt.Errorf("schema migration failed: %w", err)
@@ -1335,7 +1347,7 @@ func evolveSchema(dbc *db.DB) error {
     }
 
     log.Info("Phase 1: Adding nullable columns")
-    _, err := partitions.UpdatePartitionedTable(dbc, &PhaseOne{}, tableName, false)
+    _, err := partitions.UpdatePartitionedTable(dbc, &PhaseOne{}, tableName, false, false)
     if err != nil {
         return err
     }
@@ -1353,7 +1365,7 @@ func evolveSchema(dbc *db.DB) error {
     }
 
     log.Info("Phase 3: Adding indexes")
-    _, err = partitions.UpdatePartitionedTable(dbc, &PhaseTwo{}, tableName, false)
+    _, err = partitions.UpdatePartitionedTable(dbc, &PhaseTwo{}, tableName, false, false)
     if err != nil {
         return err
     }
@@ -1623,7 +1635,7 @@ gunzip -c partition_2024_10_29.pgdump.gz | pg_restore -d $SIPPY_DSN
 
 2. **Reattach partition**:
 ```go
-err := partitions.ReattachPartition(dbc, "test_analysis_by_job_by_dates_2024_10_29", false)
+err := partitions.AttachPartition(dbc, "test_analysis_by_job_by_dates", "test_analysis_by_job_by_dates_2024_10_29", false)
 ```
 
 ### Advantages of Detach vs. DROP

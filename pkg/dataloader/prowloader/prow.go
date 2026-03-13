@@ -389,9 +389,9 @@ func (pl *ProwLoader) agePartitions(config PartitionManagementConfig) error {
 	detached, err := partitions.DetachOldPartitions(pl.dbc, config.TableName, config.DetachAfter, false)
 	if err != nil {
 		log.WithError(err).Errorf("error detaching partitions for %s", config.TableName)
-	} else {
-		log.Infof("detached %d partitions from %s", detached, config.TableName)
+		return err
 	}
+	log.Infof("detached %d partitions from %s", detached, config.TableName)
 	dropped, err := partitions.DropOldDetachedPartitions(pl.dbc, config.TableName, config.DropDetachedAfter, false)
 	if err != nil {
 		log.WithError(err).Errorf("error dropping detached partitions for %s", config.TableName)

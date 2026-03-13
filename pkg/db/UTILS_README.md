@@ -477,7 +477,7 @@ To keep partition names consistent with the parent table, use `renamePartitions=
 - If any rename fails, all are rolled back
 
 **How Partition Renaming Works:**
-```
+```text
 Old table: orders
 Old partitions: orders_2024_01_01, orders_2024_01_02
 
@@ -560,7 +560,7 @@ To keep constraint names consistent with table names, use `renameConstraints=tru
 - If any rename fails, all are rolled back
 
 **How Constraint Renaming Works:**
-```
+```text
 Old table: orders
 Old constraints: orders_pkey, orders_email_key, orders_customer_id_fkey
 
@@ -579,7 +579,7 @@ New naming: newtable + suffix
 - Exclusion constraints (`x`) - e.g., `tablename_excl`
 
 **Important Note about Indexes:**
-Renaming a constraint does NOT rename the backing index. Indexes are separate objects in PostgreSQL and must be renamed separately if needed. The `RenameTables` function currently only renames constraints, not indexes.
+Renaming a constraint does NOT rename the backing index. Indexes are separate objects in PostgreSQL and must be renamed separately. Use `renameIndexes=true` in `RenameTables` to rename indexes alongside constraints.
 
 **When to use `renameConstraints=true`:**
 - ✅ When swapping tables in production (keeps naming consistent)
@@ -613,7 +613,7 @@ To keep index names consistent with table names, use `renameIndexes=true`:
 - If any rename fails, all are rolled back
 
 **How Index Renaming Works:**
-```
+```text
 Old table: orders
 Old indexes: orders_pkey, orders_email_key, orders_customer_id_idx
 
@@ -1130,7 +1130,7 @@ for _, part := range partitions {
 // If partitions follow naming convention, rename them too
 if len(partitions) > 0 {
     renames := []db.TableRename{{From: "orders_old", To: "orders"}}
-    dbc.RenameTables(renames, true, true, true, false, false) // renamePartitions=true
+    dbc.RenameTables(renames, true, true, true, true, false) // renamePartitions=true, renameConstraints=true, renameIndexes=true
 }
 ```
 
@@ -1660,13 +1660,13 @@ renames := []db.TableRename{
 }
 
 // Dry run first
-_, err := dbc.RenameTables(renames, true, true, true, false, true)
+_, err := dbc.RenameTables(renames, true, true, true, true, true)
 if err != nil {
     log.Fatal(err)
 }
 
-// Execute swap (rename sequences and partitions too)
-count, err := dbc.RenameTables(renames, true, true, true, false, false)
+// Execute swap (rename sequences, partitions, constraints, and indexes too)
+count, err := dbc.RenameTables(renames, true, true, true, true, false)
 if err != nil {
     log.Fatal(err)
 }
@@ -1683,7 +1683,7 @@ log.WithFields(log.Fields{
 //     {From: "orders", To: "orders_partitioned"},
 //     {From: "orders_old", To: "orders"},
 // }
-// dbc.RenameTables(rollback, true, true, true, false, false)
+// dbc.RenameTables(rollback, true, true, true, true, false)
 ```
 
 ---
@@ -1922,16 +1922,16 @@ renames := []db.TableRename{
     {From: "orders_new", To: "orders"},
 }
 
-_, err := dbc.RenameTables(renames, true, true, true, false, true)
+_, err := dbc.RenameTables(renames, true, true, true, true, true)
 if err != nil {
     log.WithError(err).Error("validation failed")
     return
 }
 
-count, err := dbc.RenameTables(renames, true, true, true, false, false)
+count, err := dbc.RenameTables(renames, true, true, true, true, false)
 
 // BAD: Direct rename without validation
-count, err := dbc.RenameTables(renames, true, true, true, false, false)
+count, err := dbc.RenameTables(renames, true, true, true, true, false)
 ```
 
 ### Verify Before Swapping Tables
