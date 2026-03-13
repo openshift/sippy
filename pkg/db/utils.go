@@ -191,21 +191,33 @@ func (dbc *DB) VerifyTablesHaveSameColumns(table1, table2 string, opts ColumnVer
 	return nil
 }
 
-// GetTableColumns retrieves column information for a table from information_schema
+// GetTableColumns retrieves column information for a table from pg_catalog
+// Uses format_type() to preserve precise type definitions including:
+// - Length modifiers: varchar(64) vs varchar(255)
+// - Precision/scale: numeric(8,2) vs numeric(20,10)
+// - Enum type names: user_role instead of USER-DEFINED
+// - Array types: integer[] vs integer
 func (dbc *DB) GetTableColumns(tableName string) ([]ColumnInfo, error) {
 	var columns []ColumnInfo
 
+	// Use pg_catalog to get precise type information including modifiers
+	// format_type() preserves varchar(64) vs varchar(255), numeric(8,2) vs numeric(20,10), etc.
 	query := `
 		SELECT
-			column_name,
-			data_type,
-			is_nullable,
-			column_default,
-			ordinal_position
-		FROM information_schema.columns
-		WHERE table_schema = 'public'
-			AND table_name = @table_name
-		ORDER BY ordinal_position
+			a.attname AS column_name,
+			format_type(a.atttypid, a.atttypmod) AS data_type,
+			CASE WHEN a.attnotnull THEN 'NO' ELSE 'YES' END AS is_nullable,
+			pg_get_expr(d.adbin, d.adrelid) AS column_default,
+			a.attnum AS ordinal_position
+		FROM pg_catalog.pg_attribute a
+		JOIN pg_catalog.pg_class c ON a.attrelid = c.oid
+		JOIN pg_catalog.pg_namespace n ON c.relnamespace = n.oid
+		LEFT JOIN pg_catalog.pg_attrdef d ON a.attrelid = d.adrelid AND a.attnum = d.adnum
+		WHERE c.relname = @table_name
+			AND n.nspname = 'public'
+			AND a.attnum > 0
+			AND NOT a.attisdropped
+		ORDER BY a.attnum
 	`
 
 	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&columns)
@@ -221,11 +233,17 @@ func (dbc *DB) GetTableColumns(tableName string) ([]ColumnInfo, error) {
 }
 
 // normalizeDataType normalizes PostgreSQL data type names for comparison
+// Preserves type modifiers (length, precision, scale) while normalizing base type names
+// Examples:
+//   - "character varying(64)" -> "varchar(64)"
+//   - "integer" -> "int"
+//   - "timestamp without time zone" -> "timestamp"
 func normalizeDataType(dataType string) string {
 	dataType = strings.ToLower(strings.TrimSpace(dataType))
 
-	// Map common type variations to standard forms
-	typeMap := map[string]string{
+	// Map common type variations to standard forms (preserving any modifiers)
+	// Check for types with modifiers first (e.g., "character varying(64)")
+	replacements := map[string]string{
 		"character varying":           "varchar",
 		"integer":                     "int",
 		"int4":                        "int",
@@ -238,11 +256,23 @@ func normalizeDataType(dataType string) string {
 		"boolean":                     "bool",
 	}
 
-	if normalized, exists := typeMap[dataType]; exists {
-		return normalized
+	// Try to replace the base type name while preserving modifiers
+	for old, newType := range replacements {
+		if suffix, found := strings.CutPrefix(dataType, old); found {
+			// Replace the prefix and keep everything after (modifiers, array brackets, etc.)
+			return newType + suffix
+		}
 	}
 
 	return dataType
+}
+
+func quoteIdentifierList(names []string) string {
+	quoted := make([]string, 0, len(names))
+	for _, n := range names {
+		quoted = append(quoted, pq.QuoteIdentifier(n))
+	}
+	return strings.Join(quoted, ", ")
 }
 
 // MigrateTableData migrates all data from sourceTable to targetTable after verifying schemas match
@@ -335,11 +365,12 @@ func (dbc *DB) MigrateTableData(sourceTable, targetTable string, omitColumns []s
 
 	// Step 5: Perform the migration using INSERT INTO ... SELECT
 	// This is done in a single statement for efficiency and atomicity
+	columnList := quoteIdentifierList(columnNames)
 	insertSQL := fmt.Sprintf(
 		"INSERT INTO %s (%s) SELECT %s FROM %s",
 		pq.QuoteIdentifier(targetTable),
-		pq.QuoteIdentifier(strings.Join(columnNames, ", ")),
-		pq.QuoteIdentifier(strings.Join(columnNames, ", ")),
+		columnList,
+		columnList,
 		pq.QuoteIdentifier(sourceTable),
 	)
 
@@ -525,15 +556,15 @@ func (dbc *DB) MigrateTableDataRange(sourceTable, targetTable, dateColumn string
 
 	// Step 6: Perform the migration using INSERT INTO ... SELECT ... WHERE
 	// This is done in a single statement for efficiency and atomicity
+	columnList := quoteIdentifierList(columnNames)
 	insertSQL := fmt.Sprintf(
-		"INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s >= @start_date AND %s < @end_date",
+		"INSERT INTO %s (%s) SELECT %s FROM %s WHERE %s >= `@start_date` AND %s < `@end_date`",
 		pq.QuoteIdentifier(targetTable),
-		pq.QuoteIdentifier(strings.Join(columnNames, ", ")),
-		pq.QuoteIdentifier(strings.Join(columnNames, ", ")),
+		columnList,
+		columnList,
 		pq.QuoteIdentifier(sourceTable),
 		pq.QuoteIdentifier(dateColumn),
-		pq.QuoteIdentifier(dateColumn),
-	)
+		pq.QuoteIdentifier(dateColumn))
 
 	log.WithFields(log.Fields{
 		"source":     sourceTable,
@@ -635,23 +666,30 @@ type partitionDateInfo struct {
 func (dbc *DB) getPartitionsInDateRange(tableName string, startDate, endDate time.Time) ([]partitionDateInfo, error) {
 	var partitions []partitionDateInfo
 
-	// Prepare patterns in Go code since named parameters can't be concatenated in SQL
-	likePattern := tableName + "_%"
-	regexPattern := tableName + "_\\d{4}_\\d{2}_\\d{2}$"
-
+	// Query only attached partitions using pg_inherits
+	// Detached partitions won't appear in pg_inherits
 	query := `
+		WITH attached_partitions AS (
+			SELECT c.relname AS tablename
+			FROM pg_inherits i
+			JOIN pg_class c ON i.inhrelid = c.oid
+			JOIN pg_class p ON i.inhparent = p.oid
+			WHERE p.relname = @table_name
+		)
 		SELECT
 			tablename AS partition_name,
 			TO_DATE(SUBSTRING(tablename FROM '_(\d{4}_\d{2}_\d{2})$'), 'YYYY_MM_DD') AS partition_date
 		FROM pg_tables
 		WHERE schemaname = 'public'
-			AND tablename LIKE @like_pattern
+			AND tablename IN (SELECT tablename FROM attached_partitions)
 			AND tablename ~ @regex_pattern
 		ORDER BY partition_date
 	`
 
+	regexPattern := tableName + "_\\d{4}_\\d{2}_\\d{2}$"
+
 	result := dbc.DB.Raw(query,
-		sql.Named("like_pattern", likePattern),
+		sql.Named("table_name", tableName),
 		sql.Named("regex_pattern", regexPattern),
 	).Scan(&partitions)
 	if result.Error != nil {
@@ -1470,10 +1508,10 @@ func (dbc *DB) RenameTables(tableRenames []TableRename, renameSequences bool, re
 	// Step 3: Dry run - report what would be renamed
 	if dryRun {
 		log.Info("[DRY RUN] would rename the following tables:")
-		for source, target := range tableRenames {
+		for _, rename := range tableRenames {
 			log.WithFields(log.Fields{
-				"from": source,
-				"to":   target,
+				"from": rename.From,
+				"to":   rename.To,
 			}).Info("[DRY RUN] table rename")
 		}
 

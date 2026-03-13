@@ -290,9 +290,10 @@ log.WithField("count", count).Info("table row count")
 Renames multiple tables atomically in a single transaction.
 
 ```go
-renames := map[string]string{
-    "orders_old": "orders_backup",
-    "orders_new": "orders",
+// Order matters - renames are executed in the order provided
+renames := []db.TableRename{
+    {From: "orders_old", To: "orders_backup"},
+    {From: "orders_new", To: "orders"},
 }
 
 // Dry run first (renameSequences=true, renamePartitions=true, renameConstraints=true, renameIndexes=true)
@@ -312,11 +313,11 @@ log.WithField("renamed", count).Info("tables, partitions, sequences, constraints
 **How It Works**:
 1. Validates that all source tables exist
 2. Checks for conflicts (target table already exists, unless it's also being renamed)
-3. Executes all `ALTER TABLE ... RENAME TO ...` statements in a single transaction
-4. Either all renames succeed or all are rolled back
+3. Executes all `ALTER TABLE ... RENAME TO ...` statements in the order provided
+4. Either all renames succeed or all are rolled back in a single transaction
 
 **Parameters**:
-- `tableRenames`: Map of source table names to target names (from -> to)
+- `tableRenames`: Ordered slice of TableRename structs specifying renames to execute
 - `renameSequences`: If true, also renames sequences owned by table columns (SERIAL, BIGSERIAL, IDENTITY)
 - `renamePartitions`: If true, also renames child partitions of partitioned tables
 - `renameConstraints`: If true, also renames table constraints (primary keys, foreign keys, unique, check)
@@ -326,6 +327,8 @@ log.WithField("renamed", count).Info("tables, partitions, sequences, constraints
 **Returns**:
 - `renamedCount`: Number of tables successfully renamed (0 if dry run)
 - `error`: Any error encountered
+
+**Note**: Caller is responsible for ordering renames correctly to avoid naming conflicts. For table swaps (A→B, B→C), ensure B→C comes before A→B in the array.
 
 **Features**:
 - **Atomic operation**: All renames happen in one transaction
@@ -503,8 +506,8 @@ When `renamePartitions=true`, the function will **also** rename sequences, const
 
 Example:
 ```go
-renames := map[string]string{
-    "orders": "orders_v2",
+renames := []db.TableRename{
+    {From: "orders", To: "orders_v2"},
 }
 
 // Rename table, partitions, and all their sequences/constraints/indexes
@@ -652,34 +655,36 @@ Index renaming is extremely fast - it only updates metadata in PostgreSQL system
 When swapping tables (e.g., `A -> B, C -> A`), the order of operations matters to avoid naming conflicts:
 
 ```go
-renames := map[string]string{
-    "table_base": "table_old",  // Free up "table_base" namespace
-    "table_new":  "table_base", // Now safe to use "table_base"
+// Order matters - rename table_base first to free up the name
+renames := []db.TableRename{
+    {From: "table_base", To: "table_old"},  // Free up "table_base" namespace
+    {From: "table_new", To: "table_base"},  // Now safe to use "table_base"
 }
 ```
 
-Without proper ordering, index/constraint renames could fail:
+Without proper ordering, renames could fail:
 ```sql
--- Wrong order (if processed randomly):
-ALTER INDEX table_new_pkey RENAME TO table_base_pkey;  -- ERROR! table_base_pkey already exists
+-- Wrong order (if table_new renamed first):
+ALTER TABLE table_new RENAME TO table_base;  -- ERROR! table_base already exists
 
--- Correct order (sorted):
-ALTER INDEX table_base_pkey RENAME TO table_old_pkey;  -- Frees up "table_base_pkey"
-ALTER INDEX table_new_pkey RENAME TO table_base_pkey;  -- Now safe
+-- Correct order (as specified in array):
+ALTER TABLE table_base RENAME TO table_old;  -- Frees up "table_base"
+ALTER TABLE table_new RENAME TO table_base;  -- Now safe
 ```
 
-**How we handle it:**
-- Tables are renamed first (in transaction)
-- Sequences/constraints/indexes are renamed in **sorted order** (alphabetically by name)
-- Sorting ensures `table_base` is processed before `table_new`, avoiding conflicts
-- All operations are deterministic - same input always produces same execution order
+**How it works:**
+- Tables are renamed in the order specified in the array
+- Each rename happens within a single transaction
+- Caller is responsible for specifying correct order to avoid conflicts
+- All operations are deterministic - renames execute in array order
 
 **Example - Table Swap**:
 ```go
 // Swap old table with new partitioned table atomically
-renames := map[string]string{
-    "orders":            "orders_old",      // Save current table
-    "orders_partitioned": "orders",         // New table becomes production
+// Order matters: rename orders first to free up the name
+renames := []db.TableRename{
+    {From: "orders", To: "orders_old"},              // Save current table
+    {From: "orders_partitioned", To: "orders"},      // New table becomes production
 }
 
 // Rename sequences, partitions, constraints, and indexes too
@@ -693,10 +698,11 @@ if err != nil {
 **Example - Three-Way Swap**:
 ```go
 // Rotate three tables: production -> backup, new -> production, backup -> archive
-renames := map[string]string{
-    "orders":        "orders_backup",   // Production becomes backup
-    "orders_new":    "orders",          // New becomes production
-    "orders_backup": "orders_archive",  // Old backup becomes archive
+// Order matters - must free up names in the right order:
+renames := []db.TableRename{
+    {From: "orders_backup", To: "orders_archive"},  // Free up "orders_backup"
+    {From: "orders", To: "orders_backup"},          // Free up "orders"
+    {From: "orders_new", To: "orders"},             // New becomes production
 }
 
 // Rename sequences, partitions, constraints, and indexes too
@@ -966,12 +972,12 @@ if len(sequences) > 0 {
     log.WithField("count", len(sequences)).Info("found sequences - will rename with table")
 
     // Use renameSequences=true to keep them consistent
-    renames := map[string]string{"orders_old": "orders"}
-    dbc.RenameTables(renames, true, false, false)
+    renames := []db.TableRename{{From: "orders_old", To: "orders"}}
+    dbc.RenameTables(renames, true, false, false, false, false)
 } else {
     // No sequences to worry about
-    renames := map[string]string{"orders_old": "orders"}
-    dbc.RenameTables(renames, false, false, false)
+    renames := []db.TableRename{{From: "orders_old", To: "orders"}}
+    dbc.RenameTables(renames, false, false, false, false, false)
 }
 ```
 
@@ -1123,8 +1129,8 @@ for _, part := range partitions {
 
 // If partitions follow naming convention, rename them too
 if len(partitions) > 0 {
-    renames := map[string]string{"orders_old": "orders"}
-    dbc.RenameTables(renames, true, true, true, false) // renamePartitions=true
+    renames := []db.TableRename{{From: "orders_old", To: "orders"}}
+    dbc.RenameTables(renames, true, true, true, false, false) // renamePartitions=true
 }
 ```
 
@@ -1192,7 +1198,7 @@ for _, cons := range constraints {
 
 // If constraints follow naming convention, rename them too
 if len(constraints) > 0 {
-    renames := map[string]string{"orders_old": "orders"}
+    renames := []db.TableRename{{From: "orders_old", To: "orders"}}
     dbc.RenameTables(renames, true, true, true, true, false) // renameConstraints=true, renameIndexes=true
 }
 ```
@@ -1260,7 +1266,7 @@ for _, idx := range indexes {
 
 // If indexes follow naming convention, rename them too
 if len(indexes) > 0 {
-    renames := map[string]string{"orders_old": "orders"}
+    renames := []db.TableRename{{From: "orders_old", To: "orders"}}
     dbc.RenameTables(renames, true, true, true, true, false) // renameIndexes=true
 }
 ```
@@ -1647,19 +1653,20 @@ if oldCount != newCount {
 }
 
 // Step 2: Perform atomic table swap
-renames := map[string]string{
-    "orders":            "orders_old",       // Save current table
-    "orders_partitioned": "orders",          // New table becomes production
+// Order matters: rename orders first to free up the name
+renames := []db.TableRename{
+    {From: "orders", To: "orders_old"},              // Save current table
+    {From: "orders_partitioned", To: "orders"},      // New table becomes production
 }
 
 // Dry run first
-_, err := dbc.RenameTables(renames, true, true, true)
+_, err := dbc.RenameTables(renames, true, true, true, false, true)
 if err != nil {
     log.Fatal(err)
 }
 
 // Execute swap (rename sequences and partitions too)
-count, err := dbc.RenameTables(renames, true, true, false)
+count, err := dbc.RenameTables(renames, true, true, true, false, false)
 if err != nil {
     log.Fatal(err)
 }
@@ -1672,11 +1679,11 @@ log.WithFields(log.Fields{
 }).Info("tables swapped - partitioned table is now active")
 
 // If something goes wrong, you can easily rollback:
-// rollback := map[string]string{
-//     "orders":     "orders_partitioned",
-//     "orders_old": "orders",
+// rollback := []db.TableRename{
+//     {From: "orders", To: "orders_partitioned"},
+//     {From: "orders_old", To: "orders"},
 // }
-// dbc.RenameTables(rollback, true, true, false)
+// dbc.RenameTables(rollback, true, true, true, false, false)
 ```
 
 ---
@@ -1685,15 +1692,15 @@ log.WithFields(log.Fields{
 
 ```go
 // Rotate tables: archive old backup, current becomes backup, new becomes current
-
-renames := map[string]string{
-    "orders":        "orders_backup",   // Current production -> backup
-    "orders_new":    "orders",          // New table -> production
-    "orders_backup": "orders_archive",  // Old backup -> archive
+// Order matters - must free up names in the right order:
+renames := []db.TableRename{
+    {From: "orders_backup", To: "orders_archive"},  // Free up "orders_backup"
+    {From: "orders", To: "orders_backup"},          // Free up "orders"
+    {From: "orders_new", To: "orders"},             // New becomes production
 }
 
 // All three renames happen atomically in one transaction (rename sequences and partitions too)
-count, err := dbc.RenameTables(renames, true, true, false)
+count, err := dbc.RenameTables(renames, true, true, false, false, false)
 if err != nil {
     log.WithError(err).Error("rotation failed - no changes made")
     return
@@ -1821,13 +1828,13 @@ if oldCount != newCount {
     log.Fatal("row count mismatch!")
 }
 
-// Step 5: Atomically swap tables
-renames := map[string]string{
-    "orders":            "orders_old",
-    "orders_partitioned": "orders",
+// Step 5: Atomically swap tables (order matters)
+renames := []db.TableRename{
+    {From: "orders", To: "orders_old"},
+    {From: "orders_partitioned", To: "orders"},
 }
 
-count, err := dbc.RenameTables(renames, true, true, false)
+count, err := dbc.RenameTables(renames, true, true, false, false, false)
 if err != nil {
     log.Fatal(err)
 }
@@ -1910,21 +1917,21 @@ tx.Commit()
 
 ```go
 // GOOD: Always dry run before renaming
-renames := map[string]string{
-    "orders_old": "orders_backup",
-    "orders_new": "orders",
+renames := []db.TableRename{
+    {From: "orders_old", To: "orders_backup"},
+    {From: "orders_new", To: "orders"},
 }
 
-_, err := dbc.RenameTables(renames, true, true, true)
+_, err := dbc.RenameTables(renames, true, true, true, false, true)
 if err != nil {
     log.WithError(err).Error("validation failed")
     return
 }
 
-count, err := dbc.RenameTables(renames, true, true, false)
+count, err := dbc.RenameTables(renames, true, true, true, false, false)
 
 // BAD: Direct rename without validation
-count, err := dbc.RenameTables(renames, true, true, false)
+count, err := dbc.RenameTables(renames, true, true, true, false, false)
 ```
 
 ### Verify Before Swapping Tables
@@ -1940,39 +1947,39 @@ if oldCount != newCount {
 }
 
 // Now safe to swap
-dbc.RenameTables(map[string]string{
-    "orders":            "orders_old",
-    "orders_partitioned": "orders",
-}, true, true, false)
+dbc.RenameTables([]db.TableRename{
+    {From: "orders", To: "orders_old"},
+    {From: "orders_partitioned", To: "orders"},
+}, true, true, false, false, false)
 
 // BAD: Swap without verifying data
-dbc.RenameTables(renames, true, true, false)
+dbc.RenameTables(renames, true, true, false, false, false)
 ```
 
 ### Keep Rollback Plans Ready
 
 ```go
 // GOOD: Define rollback before making changes
-renames := map[string]string{
-    "orders":     "orders_old",
-    "orders_new": "orders",
+renames := []db.TableRename{
+    {From: "orders", To: "orders_old"},
+    {From: "orders_new", To: "orders"},
 }
 
-// Define rollback upfront
-rollback := map[string]string{
-    "orders":     "orders_new",
-    "orders_old": "orders",
+// Define rollback upfront (reverse order)
+rollback := []db.TableRename{
+    {From: "orders", To: "orders_new"},
+    {From: "orders_old", To: "orders"},
 }
 
 // Execute rename
-_, err := dbc.RenameTables(renames, true, true, false)
+_, err := dbc.RenameTables(renames, true, true, false, false, false)
 if err != nil {
     log.Error("rename failed - no rollback needed")
     return
 }
 
 // If issues found after rename, easy to rollback
-// dbc.RenameTables(rollback, true, true, false)
+// dbc.RenameTables(rollback, true, true, false, false, false)
 ```
 
 ---
@@ -2074,4 +2081,3 @@ For very large tables (millions of rows):
 
 - [Partition Management APIs](./partitions/README.md) - For partition-specific operations
 - [Database Schema](../../.claude/db-schema-analysis.md) - For schema documentation
-- Examples in `utils_example.go` - For detailed usage patterns

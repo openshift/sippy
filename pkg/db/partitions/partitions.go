@@ -1327,19 +1327,39 @@ func CreatePartitionedTable(dbc *db.DB, model interface{}, tableName string, con
 		return fullSQL, nil
 	}
 
+	// Execute table creation and index creation in a transaction
+	tx := dbc.DB.Begin()
+	if tx.Error != nil {
+		return "", fmt.Errorf("failed to begin transaction: %w", tx.Error)
+	}
+
+	// Ensure transaction is properly handled
+	committed := false
+	defer func() {
+		if !committed {
+			tx.Rollback()
+		}
+	}()
+
 	// Execute the CREATE TABLE statement
-	result := dbc.DB.Exec(createTableSQL)
+	result := tx.Exec(createTableSQL)
 	if result.Error != nil {
 		return "", fmt.Errorf("failed to create partitioned table: %w", result.Error)
 	}
 
 	// Execute index creation statements
 	if indexSQL.Len() > 0 {
-		result = dbc.DB.Exec(indexSQL.String())
+		result = tx.Exec(indexSQL.String())
 		if result.Error != nil {
-			log.WithError(result.Error).Warn("some indexes may have failed to create")
+			return "", fmt.Errorf("failed to create indexes: %w", result.Error)
 		}
 	}
+
+	// Commit the transaction
+	if err := tx.Commit().Error; err != nil {
+		return "", fmt.Errorf("failed to commit transaction: %w", err)
+	}
+	committed = true
 
 	elapsed := time.Since(start)
 	log.WithFields(log.Fields{
@@ -1771,10 +1791,11 @@ func getCurrentIndexes(dbc *db.DB, tableName string) ([]indexInfo, error) {
 		FROM pg_indexes i
 		JOIN pg_class c ON c.relname = i.indexname
 		JOIN pg_index ix ON ix.indexrelid = c.oid
-		JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = ANY(ix.indkey)
+		JOIN unnest(ix.indkey) WITH ORDINALITY AS u(attnum, ord) ON true
+		JOIN pg_attribute a ON a.attrelid = ix.indrelid AND a.attnum = u.attnum
 		WHERE i.schemaname = 'public'
 			AND i.tablename = @table_name
-		ORDER BY i.indexname, a.attnum
+		ORDER BY i.indexname, u.ord
 	`
 
 	result := dbc.DB.Raw(query, sql.Named("table_name", tableName)).Scan(&rows)
@@ -1877,15 +1898,23 @@ func getPrimaryKeyColumns(dbc *db.DB, tableName string) ([]string, error) {
 }
 
 // normalizeDataType normalizes data type strings for comparison
+// Preserves type modifiers (length, precision, scale) while normalizing base type names
+// Examples:
+//   - "character varying(64)" -> "varchar(64)"
+//   - "integer" -> "int"
+//   - "numeric(8,2)" -> "numeric(8,2)" (preserved)
 func normalizeDataType(dataType string) string {
-	// Convert to lowercase and remove common variations
-	normalized := strings.ToLower(strings.TrimSpace(dataType))
+	dataType = strings.ToLower(strings.TrimSpace(dataType))
 
-	// Handle common type mappings
+	// Map common type variations to standard forms (preserving any modifiers)
+	// Check for types with modifiers first (e.g., "character varying(64)")
 	replacements := map[string]string{
 		"character varying":           "varchar",
 		"integer":                     "int",
-		"bigint":                      "int8",
+		"int4":                        "int",
+		"int8":                        "bigint",
+		"bigserial":                   "bigint",
+		"serial":                      "int",
 		"smallint":                    "int2",
 		"boolean":                     "bool",
 		"timestamp without time zone": "timestamp",
@@ -1897,13 +1926,15 @@ func normalizeDataType(dataType string) string {
 		"time with time zone":         "timetz",
 	}
 
+	// Try to replace the base type name while preserving modifiers
 	for old, new := range replacements {
-		if strings.Contains(normalized, old) {
-			normalized = strings.ReplaceAll(normalized, old, new)
+		if suffix, found := strings.CutPrefix(dataType, old); found {
+			// Replace the prefix and keep everything after (modifiers, array brackets, etc.)
+			return new + suffix
 		}
 	}
 
-	return normalized
+	return dataType
 }
 
 // GetDetachedPartitionStats returns statistics about detached partitions for a given table
