@@ -40,6 +40,8 @@ type ColumnVerificationOptions struct {
 	CheckDefaults bool
 	// CheckOrder verifies that columns are in the same ordinal position
 	CheckOrder bool
+	// OmitColumns lists column names to exclude from verification
+	OmitColumns []string
 }
 
 // DataMigrationColumnVerificationOptions returns options suitable for data migrations
@@ -72,6 +74,16 @@ func (dbc *DB) VerifyTablesHaveSameColumns(table1, table2 string, opts ColumnVer
 	cols2, err := dbc.GetTableColumns(table2)
 	if err != nil {
 		return fmt.Errorf("failed to get columns for table %s: %w", table2, err)
+	}
+
+	// Filter out omitted columns
+	if len(opts.OmitColumns) > 0 {
+		omit := make(map[string]bool, len(opts.OmitColumns))
+		for _, col := range opts.OmitColumns {
+			omit[col] = true
+		}
+		cols1 = filterColumns(cols1, omit)
+		cols2 = filterColumns(cols2, omit)
 	}
 
 	// Check if column counts match
@@ -180,6 +192,16 @@ func (dbc *DB) VerifyTablesHaveSameColumns(table1, table2 string, opts ColumnVer
 	}).Info("tables have identical columns")
 
 	return nil
+}
+
+func filterColumns(cols []ColumnInfo, omit map[string]bool) []ColumnInfo {
+	filtered := make([]ColumnInfo, 0, len(cols))
+	for _, col := range cols {
+		if !omit[col.ColumnName] {
+			filtered = append(filtered, col)
+		}
+	}
+	return filtered
 }
 
 // GetTableColumns retrieves column information for a table from pg_catalog
@@ -687,10 +709,16 @@ func (dbc *DB) getPartitionsInDateRange(tableName string, startDate, endDate tim
 		return nil, fmt.Errorf("failed to query partitions: %w", result.Error)
 	}
 
+	// Normalize bounds to calendar days so that timestamps within a day
+	// don't exclude the partition for that day (PartitionDate is midnight).
+	startDay := startDate.Truncate(24 * time.Hour)
+	endDay := endDate.Truncate(24 * time.Hour)
+
 	// Filter to only partitions in the date range
 	var filtered []partitionDateInfo
 	for _, p := range partitions {
-		if (p.PartitionDate.Equal(startDate) || p.PartitionDate.After(startDate)) && p.PartitionDate.Before(endDate) {
+		if (p.PartitionDate.Equal(startDay) || p.PartitionDate.After(startDay)) &&
+			(p.PartitionDate.Equal(endDay) || p.PartitionDate.Before(endDay)) {
 			filtered = append(filtered, p)
 		}
 	}
@@ -716,10 +744,14 @@ func (dbc *DB) VerifyPartitionCoverage(tableName string, startDate, endDate time
 		existingDates[dateStr] = true
 	}
 
+	// Normalize to calendar days so timestamps within a day are handled correctly
+	startDay := startDate.Truncate(24 * time.Hour)
+	endDay := endDate.Truncate(24 * time.Hour)
+
 	// Check that we have a partition for each day in the range
 	var missingDates []string
-	currentDate := startDate
-	for currentDate.Before(endDate) {
+	currentDate := startDay
+	for !currentDate.After(endDay) {
 		dateStr := currentDate.Format("2006-01-02")
 		if !existingDates[dateStr] {
 			missingDates = append(missingDates, dateStr)

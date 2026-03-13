@@ -416,10 +416,19 @@ func (pl *ProwLoader) preparePartitions(config PartitionManagementConfig) error 
 	// When initializing a new table, look back the configured number of days
 	oldestDate := time.Now().Add(-time.Duration(config.InitialLookbackDays) * 24 * time.Hour)
 	if stats.TotalPartitions > 0 {
+
+		var startRange, endRange string
+		if stats.OldestDate.Valid {
+			startRange = stats.OldestDate.Time.Format("2006-01-02")
+			oldestDate = stats.OldestDate.Time
+		}
+		if stats.NewestDate.Valid {
+			endRange = stats.OldestDate.Time.Format("2006-01-02")
+		}
 		fmt.Printf("  Range: %s to %s\n",
-			stats.OldestDate.Format("2006-01-02"),
-			stats.NewestDate.Format("2006-01-02"))
-		oldestDate = stats.OldestDate
+			startRange,
+			endRange)
+
 	}
 
 	futureDate := time.Now().Add(config.FuturePartitionWindow)

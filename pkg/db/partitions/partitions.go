@@ -46,8 +46,8 @@ type PartitionStats struct {
 	TotalPartitions int
 	TotalSizeBytes  int64
 	TotalSizePretty string
-	OldestDate      time.Time
-	NewestDate      time.Time
+	OldestDate      sql.NullTime
+	NewestDate      sql.NullTime
 	AvgSizeBytes    int64
 	AvgSizePretty   string
 }
@@ -599,17 +599,32 @@ func DropOldDetachedPartitions(dbc *db.DB, tableName string, retentionDays int, 
 		return 0, nil
 	}
 
-	// Drop each old detached partition
+	if dryRun {
+		for _, partition := range toRemove {
+			if err := DropPartition(dbc, partition.TableName, true); err != nil {
+				return 0, fmt.Errorf("failed to dry-run drop partition %s: %w", partition.TableName, err)
+			}
+		}
+		return len(toRemove), nil
+	}
+
+	// Drop all old detached partitions in a transaction
 	droppedCount := 0
 	var totalSize int64
 
-	for _, partition := range toRemove {
-		if err := DropPartition(dbc, partition.TableName, dryRun); err != nil {
-			log.WithError(err).WithField("partition", partition.TableName).Error("failed to drop detached partition")
-			continue
+	err = dbc.DB.Transaction(func(tx *gorm.DB) error {
+		txDBC := &db.DB{DB: tx}
+		for _, partition := range toRemove {
+			if err := DropPartition(txDBC, partition.TableName, false); err != nil {
+				return fmt.Errorf("failed to drop partition %s: %w", partition.TableName, err)
+			}
+			droppedCount++
+			totalSize += partition.SizeBytes
 		}
-		droppedCount++
-		totalSize += partition.SizeBytes
+		return nil
+	})
+	if err != nil {
+		return 0, err
 	}
 
 	elapsed := time.Since(start)
@@ -618,7 +633,6 @@ func DropOldDetachedPartitions(dbc *db.DB, tableName string, retentionDays int, 
 		"retention_days":    retentionDays,
 		"total_dropped":     droppedCount,
 		"storage_reclaimed": fmt.Sprintf("%d bytes", totalSize),
-		"dry_run":           dryRun,
 		"elapsed":           elapsed,
 	}).Info("completed dropping old detached partitions")
 
@@ -1792,31 +1806,31 @@ func getPrimaryKeyColumns(dbc *db.DB, tableName string) ([]string, error) {
 func normalizeDataType(dataType string) string {
 	dataType = strings.ToLower(strings.TrimSpace(dataType))
 
-	// Map common type variations to standard forms (preserving any modifiers)
-	// Check for types with modifiers first (e.g., "character varying(64)")
-	replacements := map[string]string{
-		"character varying":           "varchar",
-		"integer":                     "int",
-		"int4":                        "int",
-		"int8":                        "bigint",
-		"bigserial":                   "bigint",
-		"serial":                      "int",
-		"smallint":                    "int2",
-		"boolean":                     "bool",
-		"timestamp without time zone": "timestamp",
-		"timestamp with time zone":    "timestamptz",
-		"double precision":            "float8",
-		"real":                        "float4",
-		"character":                   "char",
-		"time without time zone":      "time",
-		"time with time zone":         "timetz",
+	// Map common type variations to standard forms (preserving any modifiers).
+	// Uses a slice for deterministic matching order — longer prefixes must come
+	// before shorter ones (e.g., "character varying" before "character").
+	replacements := []struct{ old, new string }{
+		{"character varying", "varchar"},
+		{"timestamp without time zone", "timestamp"},
+		{"timestamp with time zone", "timestamptz"},
+		{"time without time zone", "time"},
+		{"time with time zone", "timetz"},
+		{"double precision", "float8"},
+		{"character", "char"},
+		{"integer", "int"},
+		{"int4", "int"},
+		{"int8", "bigint"},
+		{"bigserial", "bigint"},
+		{"serial", "int"},
+		{"smallint", "int2"},
+		{"boolean", "bool"},
+		{"real", "float4"},
 	}
 
 	// Try to replace the base type name while preserving modifiers
-	for old, new := range replacements {
-		if suffix, found := strings.CutPrefix(dataType, old); found {
-			// Replace the prefix and keep everything after (modifiers, array brackets, etc.)
-			return new + suffix
+	for _, r := range replacements {
+		if suffix, found := strings.CutPrefix(dataType, r.old); found {
+			return r.new + suffix
 		}
 	}
 
@@ -2007,16 +2021,32 @@ func DetachOldPartitions(dbc *db.DB, tableName string, retentionDays int, dryRun
 		return 0, nil
 	}
 
+	if dryRun {
+		for _, partition := range partitions {
+			if err := DetachPartition(dbc, partition.TableName, true); err != nil {
+				return 0, fmt.Errorf("failed to dry-run detach partition %s: %w", partition.TableName, err)
+			}
+		}
+		return len(partitions), nil
+	}
+
+	// Detach all old partitions in a transaction
 	detachedCount := 0
 	var totalSize int64
 
-	for _, partition := range partitions {
-		if err := DetachPartition(dbc, partition.TableName, dryRun); err != nil {
-			log.WithError(err).WithField("partition", partition.TableName).Error("failed to detach partition")
-			continue
+	err = dbc.DB.Transaction(func(tx *gorm.DB) error {
+		txDBC := &db.DB{DB: tx}
+		for _, partition := range partitions {
+			if err := DetachPartition(txDBC, partition.TableName, false); err != nil {
+				return fmt.Errorf("failed to detach partition %s: %w", partition.TableName, err)
+			}
+			detachedCount++
+			totalSize += partition.SizeBytes
 		}
-		detachedCount++
-		totalSize += partition.SizeBytes
+		return nil
+	})
+	if err != nil {
+		return 0, err
 	}
 
 	elapsed := time.Since(start)
@@ -2025,7 +2055,6 @@ func DetachOldPartitions(dbc *db.DB, tableName string, retentionDays int, dryRun
 		"retention_days":   retentionDays,
 		"total_detached":   detachedCount,
 		"storage_affected": fmt.Sprintf("%d bytes", totalSize),
-		"dry_run":          dryRun,
 		"elapsed":          elapsed,
 	}).Info("completed detaching old partitions")
 
