@@ -83,6 +83,7 @@ type Test struct {
 
 // ProwJobRunTest defines a join table linking tests to the job runs they execute in, along with the status for
 // that execution.
+// Do not update until after partitions have been enabled
 type ProwJobRunTest struct {
 	gorm.Model
 	ProwJobRunID uint `gorm:"index"`
@@ -102,6 +103,7 @@ type ProwJobRunTest struct {
 	ProwJobRunTestOutput *ProwJobRunTestOutput `gorm:"constraint:OnDelete:CASCADE;"`
 }
 
+// Do not update until after partitions have been enabled
 type ProwJobRunTestOutput struct {
 	gorm.Model
 	ProwJobRunTestID uint `gorm:"index"`
