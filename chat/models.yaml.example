@@ -14,12 +14,35 @@
 #   default: Set to true to make this the default model (optional, only one should be true)
 
 models:
+  # Claude via Google Vertex AI
+  - id: "claude-sonnet-4.6"
+    name: "Claude Sonnet 4.6"
+    description: "Latest Claude Sonnet - fast and capable"
+    model_name: "claude-sonnet-4-6@default"
+    default: true
+
+  - id: "claude-opus-4.6"
+    name: "Claude Opus 4.6"
+    description: "Most capable Claude model for complex analysis"
+    model_name: "claude-opus-4-6@default"
+
+  - id: "claude-sonnet-4.5"
+    name: "Claude Sonnet 4.5"
+    description: "Capable model for complex CI analysis"
+    model_name: "claude-sonnet-4-5@default"
+
+  - id: "claude-sonnet-4.5-thinking"
+    name: "Claude Sonnet 4.5 (Thinking)"
+    description: "Capable model for complex CI analysis with extended thinking"
+    model_name: "claude-sonnet-4-5@default"
+    temperature: 1.0 # Required when setting thinking budget
+    extended_thinking_budget: 10000
+
   # Google Gemini
   - id: "gemini-2.5-flash"
     name: "Gemini 2.5 Flash"
     description: "Google's Gemini 2.5 Flash - best cost/performance"
     model_name: "gemini-2.5-flash"
-    default: true
 
   - id: "gemini-2.5-pro"
     name: "Gemini 2.5 Pro"
@@ -28,19 +51,10 @@ models:
 
   - id: "gemini-3-pro-preview"
     name: "Gemini 3.0 Pro Preview"
-    description: "Preview of Google's Next Pro Model"
+    description: "Preview of Google's Gemini 3.0 Pro model"
     model_name: "gemini-3-pro-preview"
 
-  # Claude via Google Vertex AI
-  - id: "claude-sonnet-4.5"
-    name: "Claude Sonnet 4.5"
-    description: "Capable model for complex CI analysis"
-    model_name: "claude-sonnet-4-5@20250929"
-
-  # Claude via Google Vertex AI
-  - id: "claude-sonnet-4.5-thinking"
-    name: "Claude Sonnet 4.5 (Thinking)"
-    description: "Capable model for complex CI analysis with extended thinking"
-    model_name: "claude-sonnet-4-5@20250929"
-    temperature: 1.0 # Required when setting thinking budget
-    extended_thinking_budget: 10000
+  - id: "gemini-3.1-pro-preview"
+    name: "Gemini 3.1 Pro Preview"
+    description: "Preview of Google's Gemini 3.1 Pro model"
+    model_name: "gemini-3.1-pro-preview"
