@@ -32,3 +32,9 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-brazilsouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-centralindia-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
+  automation:
+    jobs:
+      periodic-ci-openshift-hypershift-main-periodic-jira-agent: true
+      periodic-ci-openshift-hypershift-main-periodic-review-agent: true
+      periodic-ci-openshift-release-main-claude-payload-agent: true
+      periodic-prow-auto-sippy-config-generator: true
