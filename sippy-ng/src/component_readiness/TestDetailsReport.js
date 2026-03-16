@@ -212,7 +212,7 @@ export default function TestDetailsReport(props) {
     let tmpRelease = {}
     releases.releases
       .filter((aVersion) => {
-        return !releases.release_attrs[aVersion].capabilities.componentReadiness
+        return releases.release_attrs[aVersion].capabilities.componentReadiness
       })
       .forEach((r) => {
         tmpRelease[r] = releases.ga_dates[r]
