@@ -22,6 +22,7 @@ type IntentionalRegression struct {
 	RegressedSuccesses        int
 	RegressedFailures         int
 	RegressedFlakes           int
+	PreviousRelease           string
 	JiraBug                   string
 	ReasonToAllowInsteadOfFix string
 }
@@ -95,6 +96,9 @@ func addIntentionalRegression(release release, in IntentionalRegression) error {
 	}
 	if len(in.TestName) == 0 {
 		return fmt.Errorf("testName must be specified")
+	}
+	if len(in.PreviousRelease) == 0 {
+		return fmt.Errorf("PreviousRelease must be specified")
 	}
 	// there must be failures now for there to be a regression
 	if in.RegressedFailures <= 0 {

@@ -25,6 +25,7 @@ import (
 //    "Upgrade": "micro"
 //   }
 //  },
+//  "PreviousRelease": "4.17",
 //  "PreviousSuccesses": 166,
 //  "PreviousFailures": 0,
 //  "PreviousFlakes": 0,
@@ -50,6 +51,7 @@ import (
 //    "Upgrade": "micro"
 //   }
 //  },
+//  "PreviousRelease": "4.17",
 //  "PreviousSuccesses": 166,
 //  "PreviousFailures": 0,
 //  "PreviousFlakes": 0,

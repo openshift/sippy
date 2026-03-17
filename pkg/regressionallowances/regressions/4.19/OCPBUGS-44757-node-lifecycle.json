@@ -17,6 +17,7 @@
         "Upgrade": "minor"
       }
     },
+    "PreviousRelease": "4.18",
     "PreviousSuccesses": 613,
     "PreviousFailures": 0,
     "PreviousFlakes": 0,
@@ -42,6 +43,7 @@
         "Upgrade": "minor"
       }
     },
+    "PreviousRelease": "4.18",
     "PreviousSuccesses": 613,
     "PreviousFailures": 0,
     "PreviousFlakes": 0,

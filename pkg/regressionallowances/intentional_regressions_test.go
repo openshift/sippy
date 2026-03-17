@@ -3,9 +3,6 @@ package regressionallowances
 import (
 	_ "embed"
 	"encoding/json"
-	"fmt"
-	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,38 +13,19 @@ import (
 var overrideBytes []byte
 
 func Test_ApprovalRequiredForRegressionInConsecutiveReleases(t *testing.T) {
-	// Find the most recent release in the list
-	// We're assuming OpenShift 4.x for all releases
-	var maxReleaseMinor int
-	for r := range intentionalRegressions {
-		releaseMajorMinor := strings.Split(string(r), ".")
-		releaseMinor, err := strconv.Atoi(releaseMajorMinor[1])
-		require.NoError(t, err)
 
-		if releaseMinor > maxReleaseMinor {
-			maxReleaseMinor = releaseMinor
+	// Look up the test IDs that were allowed regressions in each release
+	allowedTestIDs := map[release]map[string]bool{}
+	for rel, regressions := range intentionalRegressions {
+		allowedTestIDs[rel] = map[string]bool{}
+		for key := range regressions {
+			regKey, err := parseRegressionKey(key)
+			require.NoError(t, err, "unable to parse regression key: %s", key)
+			if err == nil {
+				allowedTestIDs[rel][regKey.TestID] = true
+			}
 		}
 	}
-
-	latestRelease := release(fmt.Sprintf("4.%d", maxReleaseMinor))
-	prevRelease := release(fmt.Sprintf("4.%d", maxReleaseMinor-1))
-
-	// Do we have *any* regressions for the prior release? If not, pass.
-	if _, ok := intentionalRegressions[prevRelease]; !ok {
-		t.Logf("Previous release %s has no regressions", prevRelease)
-		return
-	}
-
-	// We now do just a very rudimentary check on test ID, without considering variants, if
-	// the same test is regressed in two releases consecutively, extra approval is required.
-	// Find all the test IDs in latest release:
-	prevTestIDs := map[string]bool{}
-	for rKey := range intentionalRegressions[prevRelease] {
-		regKey, err := parseRegressionKey(rKey)
-		require.NoError(t, err, "unable to parse regression key: %s", rKey)
-		prevTestIDs[regKey.TestID] = true
-	}
-	t.Logf("%s regression allowance test IDs: %v", prevRelease, prevTestIDs)
 
 	// Parse the overrides file:
 	overrides := map[string]map[string]bool{}
@@ -55,22 +33,28 @@ func Test_ApprovalRequiredForRegressionInConsecutiveReleases(t *testing.T) {
 	require.NoError(t, err, "unable to parse the overrides.json file")
 	t.Logf("override allowance test IDs: %v", overrides)
 
-	// Now check if any are also in the latest release without an override and if so, fail the test
-	for rKey := range intentionalRegressions[latestRelease] {
-		regKey, err := parseRegressionKey(rKey)
-		require.NoError(t, err, "unable to parse regression key: %s", rKey)
+	for thisRelease, regressions := range intentionalRegressions {
+		for thisKey, ir := range regressions {
+			prevRelease := release(ir.PreviousRelease)
 
-		var hasOverride bool
-		if ros, ok := overrides[string(latestRelease)]; ok {
-			hasOverride = ros[regKey.TestID]
+			// We now do just a very rudimentary check on test ID, without considering variants; if
+			// the same test is regressed in two releases consecutively, extra approval is required.
+			regKey, err := parseRegressionKey(thisKey)
+			require.NoError(t, err, "unable to parse regression key: %s", thisKey)
+			if prevAllowed, ok := allowedTestIDs[prevRelease]; !ok {
+				t.Logf("no allowances in previous release %s, no need to check further", prevRelease)
+				continue
+			} else if !prevAllowed[regKey.TestID] {
+				t.Logf("no allowance for test %s in previous release %s, no need to check further", regKey.TestID, prevRelease)
+				continue
+			}
+
+			// this release's testID was in the previous; does it have an override?
+			releaseOverrides, ok := overrides[string(thisRelease)]
+			assert.True(t, ok && releaseOverrides[regKey.TestID],
+				"test ID %s found in both %s and %s without an override",
+				regKey.TestID, thisRelease, prevRelease)
 		}
-
-		if !hasOverride {
-			assert.False(t, prevTestIDs[regKey.TestID],
-				"test ID %s found in both %s and %s",
-				regKey.TestID, latestRelease, prevRelease)
-		}
-
 	}
 
 	if t.Failed() {
