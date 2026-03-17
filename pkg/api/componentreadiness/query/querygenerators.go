@@ -510,6 +510,9 @@ func BuildComponentReportQuery(
 
 // buildTestDetailsQuery returns the report for a specific test + variant combo, including job run data.
 // This is for the bottom level most specific pages in component readiness.
+// If key test names are configured in the view's advanced options, when any of these tests fail in a job,
+// all other test failures in that job are excluded from regression analysis. Only the highest priority
+// (earliest in the list) key test will be included for each affected job.
 // TODO: I think we're querying more than we need here, there are a lot of long columns returned in this query that are
 // never used, test name, component, file path, url, etc.
 func buildTestDetailsQuery(
@@ -542,14 +545,10 @@ func buildTestDetailsQuery(
 		groupByVariants += fmt.Sprintf("jv_%s.variant_value,\n", v)
 	}
 
-	queryString := fmt.Sprintf(`
-					WITH latest_component_mapping AS (
-						SELECT *
-							FROM
-								%s.component_mapping cm
-							WHERE
-								created_at = (SELECT MAX(created_at) FROM %s.component_mapping)
-					)
+	// Build WITH clause with key test filtering if configured
+	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, c.AdvancedOption.KeyTestNames)
+
+	queryString := fmt.Sprintf(`%s
 					SELECT
 						cm.id AS test_id,
 						ANY_VALUE(test_name) AS test_name,
@@ -568,7 +567,7 @@ func buildTestDetailsQuery(
 						SUM(adjusted_flake_count) AS flake_count,
 					FROM (%s) junit
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, client.Dataset, client.Dataset, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore))
+`, withClause, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore))
 
 	queryString += joinVariants
 
@@ -585,7 +584,6 @@ func buildTestDetailsQuery(
 						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
 						AND
 `
-	commonParams := []bigquery.QueryParameter{}
 
 	queryString += "("
 	for i, testIDOption := range testIDOpts {
@@ -593,6 +591,22 @@ func buildTestDetailsQuery(
 
 	}
 	queryString += ")"
+
+	// Add filtering logic for key tests with priority
+	// Only include the highest priority test from each job, and exclude all other tests from those jobs
+	if len(c.AdvancedOption.KeyTestNames) > 0 {
+		queryString += `
+					AND (
+						-- Include tests from jobs that don't have any failed key tests
+						junit.prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)
+						-- Or include only the highest priority key test from jobs that have them
+						OR EXISTS (
+							SELECT 1 FROM jobs_with_highest_priority_test j
+							WHERE j.prowjob_build_id = junit.prowjob_build_id
+							AND j.test_name = junit.test_name
+						)
+					)`
+	}
 
 	if isSample {
 		queryString += filterByCrossCompareVariants(c.VariantOption.VariantCrossCompare, c.VariantOption.CompareVariants, &commonParams)

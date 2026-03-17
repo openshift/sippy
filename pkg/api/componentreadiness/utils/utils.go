@@ -179,6 +179,10 @@ func GenerateTestDetailsURL(
 	params.Add("ignoreMissing", strconv.FormatBool(advancedOptions.IgnoreMissing))
 	params.Add("flakeAsFailure", strconv.FormatBool(advancedOptions.FlakeAsFailure))
 	params.Add("includeMultiReleaseAnalysis", strconv.FormatBool(advancedOptions.IncludeMultiReleaseAnalysis))
+	// Add key test names if present
+	for _, keyTestName := range advancedOptions.KeyTestNames {
+		params.Add("keyTestName", keyTestName)
+	}
 
 	if component != "" {
 		params.Add("component", component)
