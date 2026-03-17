@@ -45,6 +45,7 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CollapsibleChatDrawer from './chat/CollapsibleChatDrawer'
 import ComponentReadiness from './component_readiness/ComponentReadiness'
 import Drawer from '@mui/material/Drawer'
+import EventsChart from './prow_job_runs/EventsChart'
 import FeatureGates from './tests/FeatureGates'
 import IconButton from '@mui/material/IconButton'
 import Install from './releases/Install'
@@ -274,8 +275,13 @@ const FeatureGateRedirectWrapper = () => {
 
 const FeatureGatesWrapper = () => {
   const { release } = useParams()
+  const releases = React.useContext(ReleasesContext)
   return RedirectLatestReleaseWrapper(
-    <FeatureGates key={'jobs-' + release} release={release} />
+    <FeatureGates
+      key={'jobs-' + release}
+      release={release}
+      releases={releases}
+    />
   )
 }
 
@@ -352,6 +358,19 @@ const IntervalsChartWrapper = () => {
 
   return (
     <IntervalsChart
+      jobRunID={jobrunid}
+      jobName={jobname}
+      repoInfo={repoinfo}
+      pullNumber={pullnumber}
+    />
+  )
+}
+
+const EventsChartWrapper = () => {
+  const { jobrunid, jobname, repoinfo, pullnumber } = useParams()
+
+  return (
+    <EventsChart
       jobRunID={jobrunid}
       jobName={jobname}
       repoInfo={repoinfo}
@@ -755,6 +774,10 @@ function App(props) {
                             <Route
                               path="/job_runs/:jobrunid/:jobname?/:repoinfo?/:pullnumber?/intervals"
                               element={<IntervalsChartWrapper />}
+                            />
+                            <Route
+                              path="/job_runs/:jobrunid/:jobname?/:repoinfo?/:pullnumber?/events"
+                              element={<EventsChartWrapper />}
                             />
 
                             {sippyCapabilities.includes('chat') && (

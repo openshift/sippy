@@ -70,6 +70,9 @@ component_readiness:
       - micro
       - minor
       - none
+  test_filters:
+    lifecycles:
+      - blocking
   advanced_options:
     minimum_failure: 3
     confidence: 95
@@ -157,6 +160,9 @@ component_readiness:
       - micro
       - minor
       - none
+  test_filters:
+    lifecycles:
+      - blocking
   advanced_options:
     minimum_failure: 3
     confidence: 95

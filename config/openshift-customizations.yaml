@@ -66,3 +66,9 @@ releases:
     jobs: {}
   rosa-production:
     jobs: {}
+  automation:
+    jobs:
+      periodic-ci-openshift-hypershift-main-periodic-jira-agent: true
+      periodic-ci-openshift-hypershift-main-periodic-review-agent: true
+      periodic-ci-openshift-release-main-claude-payload-agent: true
+      periodic-prow-auto-sippy-config-generator: true
