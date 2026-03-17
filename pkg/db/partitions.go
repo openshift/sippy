@@ -1274,12 +1274,14 @@ type indexInfo struct {
 	Columns   []string
 }
 
-// UpdatePartitionedTable updates an existing partitioned table schema based on a GORM model
-// Detects differences between the model and current database schema and generates ALTER statements
+// UpdatePartitionedTable updates an existing partitioned table schema based on a GORM model.
+// If the table does not exist, it is created using CreatePartitionedTable with the provided config.
+// Detects differences between the model and current database schema and generates ALTER statements.
 //
 // Parameters:
 //   - model: GORM model struct (must be a pointer, e.g., &models.MyModel{})
-//   - tableName: Name of the existing partitioned table
+//   - tableName: Name of the partitioned table (created if it does not exist)
+//   - config: Partition configuration (used only when creating a new table)
 //   - dryRun: If true, prints SQL without executing
 //   - dropColumns: If true, columns present in the database but absent from the model will be dropped
 //
@@ -1287,15 +1289,17 @@ type indexInfo struct {
 //
 // Example:
 //
-//	sql, err := partitions.UpdatePartitionedTable(dbc, &MyModel{}, "my_table", true, false)
+//	config := db.NewRangePartitionConfig("created_at")
+//	sql, err := dbc.UpdatePartitionedTable(&MyModel{}, "my_table", config, true, false)
 //
 // Note: Cannot modify partition keys or add unique constraints without partition keys
-func (dbc *DB) UpdatePartitionedTable(model interface{}, tableName string, dryRun bool, dropColumns bool) (string, error) {
+func (dbc *DB) UpdatePartitionedTable(model interface{}, tableName string, config PartitionConfig, dryRun bool, dropColumns bool) (string, error) {
 	start := time.Now()
 
-	// Check if table exists
+	// If table doesn't exist, create it
 	if !dbc.DB.Migrator().HasTable(tableName) {
-		return "", fmt.Errorf("table %s does not exist", tableName)
+		log.WithField("table", tableName).Info("table does not exist, creating partitioned table")
+		return dbc.CreatePartitionedTable(model, tableName, config, dryRun)
 	}
 
 	// Parse the GORM model to get desired schema
