@@ -1552,6 +1552,8 @@ type indexRenameEntry struct {
 //   - Indexes with the same name as constraints are skipped (they're renamed automatically with the constraint)
 //   - Renames are executed in the order provided - caller is responsible for dependency ordering
 //   - For table swaps (A->B, B->C), ensure B->C comes before A->B in the array
+//
+//nolint:gocyclo
 func (dbc *DB) RenameTables(tableRenames []TableRename, renameSequences bool, renamePartitions bool, renameConstraints bool, renameIndexes bool, dryRun bool) (int, error) {
 	if len(tableRenames) == 0 {
 		return 0, fmt.Errorf("no tables to rename")
