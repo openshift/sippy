@@ -120,12 +120,12 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		},
 		{
 			model:     &models.ProwJobRunTestOutput{},
-			tableName: "prow_job_run_tests_outputs",
+			tableName: "prow_job_run_test_outputs",
 		},
 	}
 
 	for _, partitionedModel := range partitionedModelsToMigrate {
-		if _, err := d.UpdatePartitionedTable(partitionedModel.model, partitionedModel.tableName, false, false); err != nil {
+		if _, err := d.UpdatePartitionedTable(partitionedModel.model, partitionedModel.tableName, NewRangePartitionConfig("created_at"), false, false); err != nil {
 			return err
 		}
 	}

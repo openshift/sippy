@@ -165,9 +165,10 @@ func (dbc *DB) UpdatePartitionedTableMigration(sourceTable, dateColumn string, m
 	}
 	l.WithField("partitions_created", created).Info("partition verification complete")
 
-	// Step 3: Migrate data from newest migrated through migrateUpTo
+	// Step 3: Migrate data from the day after the newest migrated date through migrateUpTo
 	l.Info("step 3: migrating new data")
-	rows, err := dbc.MigrateTableDataRange(sourceTable, targetTable, dateColumn, maxDate, migrateUpTo, nil, dryRun)
+	migrateFrom := maxDate.UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
+	rows, err := dbc.MigrateTableDataRange(sourceTable, targetTable, dateColumn, migrateFrom, migrateUpTo, nil, dryRun)
 	if err != nil {
 		return fmt.Errorf("failed to migrate data: %w", err)
 	}
@@ -253,9 +254,10 @@ func (dbc *DB) FinalizePartitionedTableMigration(sourceTable, dateColumn string,
 	}
 	l.WithField("partitions_created", created).Info("partitions created")
 
-	// Step 3: Migrate remaining data
+	// Step 3: Migrate remaining data from the day after the newest migrated date
 	l.Info("step 3: migrating remaining data")
-	rows, err := dbc.MigrateTableDataRange(sourceTable, partitionedTable, dateColumn, migrateFrom, migrateUpTo, nil, dryRun)
+	migrateFromNext := migrateFrom.UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
+	rows, err := dbc.MigrateTableDataRange(sourceTable, partitionedTable, dateColumn, migrateFromNext, migrateUpTo, nil, dryRun)
 	if err != nil {
 		return fmt.Errorf("failed to migrate remaining data: %w", err)
 	}
