@@ -221,7 +221,7 @@ export default function RegressionPotentialMatchesTab({
         if (url && url.startsWith(jiraUrlPrefix)) {
           val.text = url.slice(jiraUrlPrefix.length)
         } else if (url && url.startsWith(jiraUrlPrefixDeprecated)) {
-            val.text = url.slice(jiraUrlPrefixDeprecated.length)
+          val.text = url.slice(jiraUrlPrefixDeprecated.length)
         }
         return val
       },

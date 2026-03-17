@@ -2,7 +2,11 @@ import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { DataGrid } from '@mui/x-data-grid'
 import { formatDateToSeconds, relativeTime, SafeJSONParam } from '../helpers'
-import { hasFailedFixRegression, jiraUrlPrefix, jiraUrlPrefixDeprecated } from './CompReadyUtils'
+import {
+  hasFailedFixRegression,
+  jiraUrlPrefix,
+  jiraUrlPrefixDeprecated,
+} from './CompReadyUtils'
 import { Link } from 'react-router-dom'
 import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { Tooltip, Typography } from '@mui/material'
@@ -237,7 +241,7 @@ export default function TriagedRegressions({
         if (url && url.startsWith(jiraUrlPrefix)) {
           return url.slice(jiraUrlPrefix.length)
         } else if (url && url.startsWith(jiraUrlPrefixDeprecated)) {
-            return url.slice(jiraUrlPrefixDeprecated.length)
+          return url.slice(jiraUrlPrefixDeprecated.length)
         }
         return url || ''
       },

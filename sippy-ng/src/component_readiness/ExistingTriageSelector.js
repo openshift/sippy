@@ -1,5 +1,5 @@
 import { Button } from '@mui/material'
-import { jiraUrlPrefix,jiraUrlPrefixDeprecated } from './CompReadyUtils'
+import { jiraUrlPrefix, jiraUrlPrefixDeprecated } from './CompReadyUtils'
 import Autocomplete from '@mui/lab/Autocomplete'
 import PropTypes from 'prop-types'
 import React from 'react'
@@ -20,9 +20,9 @@ export default function ExistingTriageSelector({
     if (url.startsWith(jiraUrlPrefix)) {
       url = url.slice(jiraUrlPrefix.length)
     } else {
-        if (url.startsWith(jiraUrlPrefixDeprecated)) {
-            url = url.slice(jiraUrlPrefixDeprecated.length)
-        }
+      if (url.startsWith(jiraUrlPrefixDeprecated)) {
+        url = url.slice(jiraUrlPrefixDeprecated.length)
+      }
     }
     return url + ' - ' + triage.description
   }

@@ -109,7 +109,7 @@ func CreateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	return triage, nil
 }
 
-var jiraPrefixes []string = []string{"https://issues.redhat.com/browse/", "https://redhat.atlassian.net/browse/"}
+var jiraPrefixes = []string{"https://issues.redhat.com/browse/", "https://redhat.atlassian.net/browse/"}
 
 // ReportTriageResolved comments on the associated jira that the regressions have been resolved, including a link
 // to the triage details
@@ -124,9 +124,9 @@ func ReportTriageAddedForJira(jiraClient *jira.Client, triage models.Triage, req
 	reportOnJiraUsedForTriage(jiraClient, triage, message, req)
 }
 
-func validateJiraPrefix(url string) string {
+func validateJiraPrefix(validationURL string) string {
 	for _, prefix := range jiraPrefixes {
-		if strings.HasPrefix(url, prefix) {
+		if strings.HasPrefix(validationURL, prefix) {
 			return prefix
 		}
 	}

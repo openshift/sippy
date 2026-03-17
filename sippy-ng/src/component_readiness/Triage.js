@@ -167,7 +167,11 @@ export default function Triage({ id }) {
 
   const extractJiraIssueKey = (url) => {
     if (!url) return null
-    return url.startsWith(jiraUrlPrefix) ? url.slice(jiraUrlPrefix.length) : url.startsWith(jiraUrlPrefixDeprecated)? url.slice(jiraUrlPrefixDeprecated.length): url
+    return url.startsWith(jiraUrlPrefix)
+      ? url.slice(jiraUrlPrefix.length)
+      : url.startsWith(jiraUrlPrefixDeprecated)
+      ? url.slice(jiraUrlPrefixDeprecated.length)
+      : url
   }
 
   if (message !== '') {
