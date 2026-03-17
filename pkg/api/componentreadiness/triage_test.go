@@ -395,33 +395,33 @@ func TestCompareTriageObjects(t *testing.T) {
 	}
 }
 
-func TestValidJira(t *testing.T) {
+func TestValidateJiraPrefix(t *testing.T) {
 	testCases := []struct {
-		name           string
-		url            string
-		expectedPrefix string
+		name               string
+		url                string
+		expectedValidation bool
 	}{
 		{
-			name:           "issues.redhat.com",
-			url:            "https://issues.redhat.com/browse/OCPBUGS-1234",
-			expectedPrefix: "https://issues.redhat.com/browse/",
+			name:               "issues.redhat.com",
+			url:                "https://issues.redhat.com/browse/OCPBUGS-1234",
+			expectedValidation: true,
 		},
 		{
-			name:           "redhat.atlassian.net",
-			url:            "https://redhat.atlassian.net/browse/OCPBUGS-1234",
-			expectedPrefix: "https://redhat.atlassian.net/browse/",
+			name:               "redhat.atlassian.net",
+			url:                "https://redhat.atlassian.net/browse/OCPBUGS-1234",
+			expectedValidation: true,
 		},
 		{
-			name:           "invalid",
-			url:            "https://invalid.redhat.com/browse/OCPBUGS-1234",
-			expectedPrefix: "",
+			name:               "invalid",
+			url:                "https://invalid.redhat.com/browse/OCPBUGS-1234",
+			expectedValidation: false,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := validateJiraPrefix(tc.url)
-			assert.Equal(t, tc.expectedPrefix, result, "Expected prefix should match actual prefix")
+			assert.Equal(t, tc.expectedValidation, result, "Expected validation should match actual validation")
 		})
 	}
 }
