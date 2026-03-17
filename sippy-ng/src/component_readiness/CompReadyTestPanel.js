@@ -165,14 +165,6 @@ export default function CompReadyTestPanel(props) {
     const fromDate = new Date(from)
     const toDate = new Date(to)
 
-    // Go through the versions map from latest release to earliest; ensure that
-    // the ordering is by version (e.g., 4.6 is considered earlier than 4.10).
-    const sortedVersions = Object.keys(versions).sort((a, b) => {
-      const itemA = parseInt(a.toString().replace(/\./g, ''))
-      const itemB = parseInt(b.toString().replace(/\./g, ''))
-      return itemB - itemA
-    })
-
     if (!versions[version]) {
       // Handle the case where GA date is undefined (implies under development and not GA)
       const weeksBefore = Math.floor(
@@ -196,13 +188,13 @@ export default function CompReadyTestPanel(props) {
       }
     }
 
+    // Go through the versions map from latest release to earliest to find most comparable GA date
+    const sortedVersions = Object.keys(versions).sort((a, b) => {
+      return String(versions[b]).localeCompare(versions[a])
+    })
     for (const version of sortedVersions) {
-      if (!versions[version]) {
-        // We already dealt with a version with no GA date above.
-        continue
-      }
-      const gaDateStr = versions[version]
-      const gaDate = new Date(gaDateStr)
+      if (!versions[version]) continue // irrelevant if not GA yet
+      const gaDate = new Date(versions[version])
 
       // Widen the window by 20 weeks prior to GA (because releases seems to be that long) and give
       // a buffer of 1 week after GA.
