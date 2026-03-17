@@ -657,6 +657,11 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// OVN-Kubernetes BGP Virtualization jobs allowed for Component Readiness
 		{[]string{"-ovn-bgp-virt"}, "standard"},
 
+		// Add two-node-fencing for component readiness
+		{[]string{"-two-node-fencing-recovery"}, "standard"},
+		{[]string{"-two-node-fencing-dualstack-recovery"}, "standard"},
+		{[]string{"-two-node-fencing-ipv6-recovery"}, "standard"},
+
 		// Excluded jobs
 		{[]string{"-okd"}, "excluded"},
 		{[]string{"-recovery"}, "excluded"},
