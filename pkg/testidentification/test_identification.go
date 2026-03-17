@@ -36,6 +36,14 @@ const (
 	NewInfrastructureTestName = `install should succeed: infrastructure`
 	NewInstallTestName        = `install should succeed: overall`
 
+	// AROHCPCustomerTestPrefix indicates tests from ARO-HCP that signal customer workload execution.
+	// If any test with this prefix runs, infrastructure provisioning was successful.
+	AROHCPCustomerTestPrefix = `Customer should`
+
+	// AROHCPPipelineStepTestPrefix indicates ARO-HCP pipeline step tests.
+	// If any test with this prefix fails, it indicates an infrastructure failure.
+	AROHCPPipelineStepTestPrefix = `Run pipeline step`
+
 	Success = "Success"
 	Failure = "Failure"
 	Unknown = "Unknown"
@@ -226,4 +234,16 @@ func IsIgnoredTest(testName string) bool {
 // the test name changed from "Overall" to "[jobName|testGridTabName].Overall", and for now we need to support both.
 func IsOverallTest(testName string) bool {
 	return testName == "Overall" || strings.HasSuffix(testName, ".Overall")
+}
+
+// IsAROHCPCustomerTest returns true if the test name indicates an ARO-HCP customer workload test.
+// These tests running (pass or fail) indicates infrastructure was successfully provisioned.
+func IsAROHCPCustomerTest(testName string) bool {
+	return strings.HasPrefix(testName, AROHCPCustomerTestPrefix)
+}
+
+// IsAROHCPPipelineStepTest returns true if the test name indicates an ARO-HCP pipeline step test.
+// These tests failing indicates an infrastructure failure.
+func IsAROHCPPipelineStepTest(testName string) bool {
+	return strings.HasPrefix(testName, AROHCPPipelineStepTestPrefix)
 }

@@ -104,6 +104,14 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 
 	// set the infra status
 	switch {
+	case jrr.AROHCPPipelineStepFailed:
+		// ARO-HCP: if a pipeline step failed, infrastructure failed
+		syntheticTests[testidentification.InfrastructureTestName].fail = 1
+
+	case jrr.AROHCPCustomerTestRan:
+		// ARO-HCP: if a customer test ran (pass or fail), infrastructure was successful
+		syntheticTests[testidentification.InfrastructureTestName].pass = 1
+
 	case installFailed && !hasFinalOperatorResults:
 		// we only count failures as infra if we have no operator results.  If we got any operator working, then CI infra was working.
 		syntheticTests[testidentification.InfrastructureTestName].fail = 1
@@ -212,7 +220,16 @@ func jobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.J
 		return sippyprocessingv1.JobRunning
 	}
 
+	// ARO-HCP: pipeline step failure indicates infrastructure failure
+	if result.AROHCPPipelineStepFailed {
+		return sippyprocessingv1.JobInfrastructureFailure
+	}
+
 	if result.InstallStatus == failure {
+		// ARO-HCP: if customer test ran, infra worked despite install failure
+		if result.AROHCPCustomerTestRan {
+			return sippyprocessingv1.JobInstallFailure
+		}
 		if len(result.FinalOperatorStates) == 0 {
 			return sippyprocessingv1.JobInfrastructureFailure
 		}

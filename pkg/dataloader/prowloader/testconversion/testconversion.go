@@ -50,6 +50,8 @@ func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.Pr
 				if jrr.OpenShiftTestsStatus == "" {
 					jrr.OpenShiftTestsStatus = testidentification.Success
 				}
+			case testidentification.IsAROHCPCustomerTest(name):
+				jrr.AROHCPCustomerTestRan = true
 			}
 		case v1.TestStatusFailure:
 			// only add the failing test and name if it has predictive value.  We excluded all the non-predictive ones above except for these
@@ -79,6 +81,11 @@ func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.Pr
 				jrr.UpgradeForMachineConfigPoolsStatus = testidentification.Failure
 			case testidentification.IsOpenShiftTest(name):
 				jrr.OpenShiftTestsStatus = testidentification.Failure
+			case testidentification.IsAROHCPCustomerTest(name):
+				// Customer test ran (even if it failed), so infra was successful
+				jrr.AROHCPCustomerTestRan = true
+			case testidentification.IsAROHCPPipelineStepTest(name):
+				jrr.AROHCPPipelineStepFailed = true
 			}
 		}
 	}

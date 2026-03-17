@@ -188,6 +188,14 @@ type RawJobRunResult struct {
 	// OpenShiftTestsStatus can be "", "Success", "Failure"
 	OpenShiftTestsStatus string
 
+	// AROHCPCustomerTestRan is true if any ARO-HCP "Customer should" test ran.
+	// This indicates infrastructure was successfully provisioned.
+	AROHCPCustomerTestRan bool
+
+	// AROHCPPipelineStepFailed is true if any ARO-HCP "Run pipeline step" test failed.
+	// This indicates an infrastructure failure.
+	AROHCPPipelineStepFailed bool
+
 	// Overall result
 	OverallResult JobOverallResult
 
