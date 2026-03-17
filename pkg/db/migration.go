@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -53,7 +54,7 @@ func (dbc *DB) MigrateToPartitionedTable(model interface{}, sourceTable, dateCol
 	// Step 2: Determine date range and create partitions
 	l.Info("step 2: determining date range for partitions")
 	var minDate time.Time
-	query := fmt.Sprintf("SELECT MIN(%s) FROM %s", dateColumn, sourceTable)
+	query := fmt.Sprintf("SELECT MIN(%s) FROM %s", pq.QuoteIdentifier(dateColumn), pq.QuoteIdentifier(sourceTable))
 	result := dbc.DB.Raw(query).Scan(&minDate)
 	if result.Error != nil {
 		return fmt.Errorf("failed to get min %s from %s: %w", dateColumn, sourceTable, result.Error)
@@ -131,7 +132,7 @@ func (dbc *DB) UpdatePartitionedTableMigration(sourceTable, dateColumn string, m
 	// Step 1: Find the newest date already migrated
 	l.Info("step 1: finding newest migrated date")
 	var maxDate time.Time
-	query := fmt.Sprintf("SELECT COALESCE(MAX(%s), '0001-01-01'::timestamp) FROM %s", dateColumn, targetTable)
+	query := fmt.Sprintf("SELECT COALESCE(MAX(%s), '0001-01-01'::timestamp) FROM %s", pq.QuoteIdentifier(dateColumn), pq.QuoteIdentifier(targetTable))
 	result := dbc.DB.Raw(query).Scan(&maxDate)
 	if result.Error != nil {
 		return fmt.Errorf("failed to get max %s from %s: %w", dateColumn, targetTable, result.Error)
@@ -167,7 +168,7 @@ func (dbc *DB) UpdatePartitionedTableMigration(sourceTable, dateColumn string, m
 
 	// Step 3: Migrate data from the day after the newest migrated date through migrateUpTo
 	l.Info("step 3: migrating new data")
-	migrateFrom := maxDate.UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
+	migrateFrom := maxDate.Add(time.Microsecond)
 	rows, err := dbc.MigrateTableDataRange(sourceTable, targetTable, dateColumn, migrateFrom, migrateUpTo, nil, dryRun)
 	if err != nil {
 		return fmt.Errorf("failed to migrate data: %w", err)
@@ -227,7 +228,7 @@ func (dbc *DB) FinalizePartitionedTableMigration(sourceTable, dateColumn string,
 	// Step 1: Find the newest date already migrated
 	l.Info("step 1: checking for new data to migrate")
 	var maxDate time.Time
-	query := fmt.Sprintf("SELECT COALESCE(MAX(%s), '0001-01-01'::timestamp) FROM %s", dateColumn, partitionedTable)
+	query := fmt.Sprintf("SELECT COALESCE(MAX(%s), '0001-01-01'::timestamp) FROM %s", pq.QuoteIdentifier(dateColumn), pq.QuoteIdentifier(partitionedTable))
 	result := dbc.DB.Raw(query).Scan(&maxDate)
 	if result.Error != nil {
 		return fmt.Errorf("failed to get max %s from %s: %w", dateColumn, partitionedTable, result.Error)
@@ -256,7 +257,7 @@ func (dbc *DB) FinalizePartitionedTableMigration(sourceTable, dateColumn string,
 
 	// Step 3: Migrate remaining data from the day after the newest migrated date
 	l.Info("step 3: migrating remaining data")
-	migrateFromNext := migrateFrom.UTC().Truncate(24*time.Hour).AddDate(0, 0, 1)
+	migrateFromNext := migrateFrom.Add(time.Microsecond)
 	rows, err := dbc.MigrateTableDataRange(sourceTable, partitionedTable, dateColumn, migrateFromNext, migrateUpTo, nil, dryRun)
 	if err != nil {
 		return fmt.Errorf("failed to migrate remaining data: %w", err)

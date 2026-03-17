@@ -1015,6 +1015,8 @@ func gormTypeToPostgresType(dataType string) string {
 //
 //	config := partitions.NewRangePartitionConfig("created_at")
 //	sql, err := partitions.CreatePartitionedTable(dbc, &MyModel{}, "my_table", config, true)
+//
+//nolint:gocyclo
 func (dbc *DB) CreatePartitionedTable(model interface{}, tableName string, config PartitionConfig, dryRun bool) (string, error) {
 	start := time.Now()
 
@@ -1293,6 +1295,8 @@ type indexInfo struct {
 //	sql, err := dbc.UpdatePartitionedTable(&MyModel{}, "my_table", config, true, false)
 //
 // Note: Cannot modify partition keys or add unique constraints without partition keys
+//
+//nolint:gocyclo
 func (dbc *DB) UpdatePartitionedTable(model interface{}, tableName string, config PartitionConfig, dryRun bool, dropColumns bool) (string, error) {
 	start := time.Now()
 
@@ -1895,7 +1899,7 @@ func (dbc *DB) GetDetachedPartitionStats(tableName string) (*PartitionStats, err
 
 // AttachPartition attaches a partition to the parent table with the appropriate date range
 // The partition name must follow the convention tableName_YYYY_MM_DD
-func (dbc *DB) AttachPartition(tableName string, partitionName string, dryRun bool) error {
+func (dbc *DB) AttachPartition(tableName, partitionName string, dryRun bool) error {
 	start := time.Now()
 
 	// Validate partition name format for safety
