@@ -109,7 +109,7 @@ func CreateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	return triage, nil
 }
 
-const jiraPrefix = "https://issues.redhat.com/browse/"
+var jiraPrefixes []string = []string{"https://issues.redhat.com/browse/", "https://redhat.atlassian.net/browse/"}
 
 // ReportTriageResolved comments on the associated jira that the regressions have been resolved, including a link
 // to the triage details
@@ -124,6 +124,15 @@ func ReportTriageAddedForJira(jiraClient *jira.Client, triage models.Triage, req
 	reportOnJiraUsedForTriage(jiraClient, triage, message, req)
 }
 
+func validateJiraPrefix(url string) string {
+	for _, prefix := range jiraPrefixes {
+		if strings.HasPrefix(url, prefix) {
+			return prefix
+		}
+	}
+	return ""
+}
+
 func reportOnJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, baseComment string, req *http.Request) {
 	logger := log.WithField("triageID", triage.ID)
 	logger.Info("reporting on jira")
@@ -133,11 +142,12 @@ func reportOnJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, ba
 		return
 	}
 
-	if !strings.HasPrefix(triage.URL, jiraPrefix) {
+	prefix := validateJiraPrefix(triage.URL)
+	if prefix == "" {
 		logger.Warnf("URL (%s) is not a Jira card, cannot comment", triage.URL)
 		return
 	}
-	jiraCard := strings.TrimPrefix(triage.URL, jiraPrefix)
+	jiraCard := strings.TrimPrefix(triage.URL, prefix)
 	if !strings.HasPrefix(jiraCard, "OCPBUGS") {
 		logger.Warnf("URL (%s) is not an OCPBUGS card, cannot comment", triage.URL)
 		return

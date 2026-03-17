@@ -75,7 +75,8 @@ export const cancelledDataTable = {
     },
   ],
 }
-export const jiraUrlPrefix = 'https://issues.redhat.com/browse/'
+export const jiraUrlPrefixDeprecated = 'https://issues.redhat.com/browse/'
+export const jiraUrlPrefix = 'https://redhat.atlassian.net/browse/'
 
 // Make one place to create the Component Readiness api call
 export function getAPIUrl(endpoint) {

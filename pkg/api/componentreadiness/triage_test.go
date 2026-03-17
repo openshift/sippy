@@ -394,3 +394,34 @@ func TestCompareTriageObjects(t *testing.T) {
 		})
 	}
 }
+
+func TestValidJira(t *testing.T) {
+	testCases := []struct {
+		name           string
+		url            string
+		expectedPrefix string
+	}{
+		{
+			name:           "issues.redhat.com",
+			url:            "https://issues.redhat.com/browse/OCPBUGS-1234",
+			expectedPrefix: "https://issues.redhat.com/browse/",
+		},
+		{
+			name:           "redhat.atlassian.net",
+			url:            "https://redhat.atlassian.net/browse/OCPBUGS-1234",
+			expectedPrefix: "https://redhat.atlassian.net/browse/",
+		},
+		{
+			name:           "invalid",
+			url:            "https://invalid.redhat.com/browse/OCPBUGS-1234",
+			expectedPrefix: "",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			result := validateJiraPrefix(tc.url)
+			assert.Equal(t, tc.expectedPrefix, result, "Expected prefix should match actual prefix")
+		})
+	}
+}
