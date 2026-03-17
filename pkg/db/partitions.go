@@ -1297,7 +1297,7 @@ type indexInfo struct {
 // Note: Cannot modify partition keys or add unique constraints without partition keys
 //
 //nolint:gocyclo
-func (dbc *DB) UpdatePartitionedTable(model interface{}, tableName string, config PartitionConfig, dryRun bool, dropColumns bool) (string, error) {
+func (dbc *DB) UpdatePartitionedTable(model interface{}, tableName string, config PartitionConfig, dryRun, dropColumns bool) (string, error) {
 	start := time.Now()
 
 	// If table doesn't exist, create it
