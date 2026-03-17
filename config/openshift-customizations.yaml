@@ -72,3 +72,6 @@ releases:
       periodic-ci-openshift-hypershift-main-periodic-review-agent: true
       periodic-ci-openshift-release-main-claude-payload-agent: true
       periodic-prow-auto-sippy-config-generator: true
+  ocp-hypershift:
+    regexp:
+      - "^periodic-ci-openshift-hypershift-.*-periodics-hcm-.*"
