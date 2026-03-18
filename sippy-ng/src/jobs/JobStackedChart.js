@@ -107,11 +107,11 @@ export function JobStackedChart(props) {
     },
     N: {
       color: '#fdae61',
-      name: 'Setup failure (infra)',
+      name: 'External infrastructure failure',
     },
     I: {
       color: '#fee08b',
-      name: 'Setup failure (installer)',
+      name: 'Install failure',
     },
     U: {
       color: '#ff6961',
@@ -123,7 +123,7 @@ export function JobStackedChart(props) {
     },
     n: {
       color: '#633',
-      name: 'Internal Infrastructure failure',
+      name: 'Internal infrastructure failure',
     },
     f: {
       color: '#f46d43',

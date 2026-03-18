@@ -95,7 +95,7 @@ func TestJobRunStatusClassification(t *testing.T) {
 			jrr: v1.RawJobRunResult{
 				Failed: true,
 			},
-			expectedResult: v1.JobFailureBeforeSetup,
+			expectedResult: v1.JobInternalInfrastructureFailure,
 		},
 		{
 			name: "install succeeded but no test results → n",
@@ -106,7 +106,7 @@ func TestJobRunStatusClassification(t *testing.T) {
 					{Name: "openshift-apiserver", State: "Success"},
 				},
 			},
-			expectedResult: v1.JobFailureBeforeSetup,
+			expectedResult: v1.JobInternalInfrastructureFailure,
 		},
 		{
 			name: "install failed + no operators → N",
@@ -114,7 +114,7 @@ func TestJobRunStatusClassification(t *testing.T) {
 				Failed:        true,
 				InstallStatus: "Failure",
 			},
-			expectedResult: v1.JobInfrastructureFailure,
+			expectedResult: v1.JobExternalInfrastructureFailure,
 		},
 		{
 			name: "install failed + has operators → I",
@@ -133,7 +133,7 @@ func TestJobRunStatusClassification(t *testing.T) {
 				Failed:  true,
 				Errored: true,
 			},
-			expectedResult: v1.JobFailureBeforeSetup,
+			expectedResult: v1.JobInternalInfrastructureFailure,
 		},
 	}
 

@@ -67,19 +67,19 @@ export default function JobDetailTable(props) {
           <span className="results results-demo">
             <span className="result result-I">I</span>
           </span>{' '}
-          setup failure (installer)
+          install failure
         </span>
         <span className="legend-item">
           <span className="results results-demo">
             <span className="result result-N">N</span>
           </span>{' '}
-          setup failure (infra)
+          external infrastructure failure
         </span>
         <span className="legend-item">
           <span className="results results-demo">
             <span className="result result-n">n</span>
           </span>{' '}
-          failure before setup (infra)
+          internal infrastructure failure
         </span>
         <span className="legend-item">
           <span className="results results-demo">

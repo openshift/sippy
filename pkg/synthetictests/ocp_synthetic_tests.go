@@ -205,7 +205,7 @@ func jobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.J
 		return sippyprocessingv1.JobAborted
 	}
 	if result.Errored {
-		return sippyprocessingv1.JobFailureBeforeSetup
+		return sippyprocessingv1.JobInternalInfrastructureFailure
 	}
 	if !result.Failed {
 		return sippyprocessingv1.JobRunning
@@ -213,7 +213,7 @@ func jobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.J
 
 	if result.InstallStatus == failure {
 		if len(result.FinalOperatorStates) == 0 {
-			return sippyprocessingv1.JobInfrastructureFailure
+			return sippyprocessingv1.JobExternalInfrastructureFailure
 		}
 		return sippyprocessingv1.JobInstallFailure
 	}
@@ -223,5 +223,5 @@ func jobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.J
 	if result.TestsStatus == failure {
 		return sippyprocessingv1.JobTestFailure
 	}
-	return sippyprocessingv1.JobFailureBeforeSetup
+	return sippyprocessingv1.JobInternalInfrastructureFailure
 }
