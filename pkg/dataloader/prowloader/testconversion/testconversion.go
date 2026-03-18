@@ -24,8 +24,8 @@ func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests map[string]*models
 
 func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.ProwJobRunTest) {
 	for name, test := range tests {
-		// Skip infra-only suites for classification — their failures don't
-		// represent real test signal. The tests are already persisted to DB.
+		// Skip non-suite tests (e.g. prowjob-junit, step graph) — their
+		// failures don't represent real test signal.
 		if testidentification.IsNonSuiteTest(name) {
 			continue
 		}
