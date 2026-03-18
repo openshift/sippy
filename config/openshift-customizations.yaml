@@ -32,7 +32,6 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-brazilsouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-centralindia-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
-<<<<<<< HEAD
   rosa-stage:
     jobs:
       # ROSA Classic/STS nightly (stage)
