@@ -204,8 +204,8 @@ func buildFakeRawJobRunResult(
 			UpgradeForOperatorsStatus:          "",
 			UpgradeForMachineConfigPoolsStatus: "",
 		*/
-		TestsStatus: getStatusStr(testsSuccess),
-		OverallResult:        overallJobResult,
+		TestsStatus:   getStatusStr(testsSuccess),
+		OverallResult: overallJobResult,
 		//Timestamp:            0,
 	}
 }
