@@ -147,4 +147,4 @@ ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 ${KUBECTL_CMD} -n sippy-e2e delete secret regcred
 
 # only 1 in parallel, some tests will clash if run at the same time
-go test ./test/e2e/... -v -p 1
+gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1
