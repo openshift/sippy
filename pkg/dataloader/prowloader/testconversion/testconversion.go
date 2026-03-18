@@ -24,6 +24,12 @@ func ConvertProwJobRunToSyntheticTests(pj prow.ProwJob, tests map[string]*models
 
 func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.ProwJobRunTest) {
 	for name, test := range tests {
+		// Skip non-suite tests (e.g. prowjob-junit, step graph) — their
+		// failures don't represent real test signal.
+		if testidentification.IsNonSuiteTest(name) {
+			continue
+		}
+
 		switch v1.TestStatus(test.Status) {
 		case v1.TestStatusSuccess, v1.TestStatusFlake: // success, flake(failed one or more times but ultimately succeeded)
 			switch {
@@ -45,10 +51,10 @@ func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.Pr
 				jrr.UpgradeForOperatorsStatus = testidentification.Success
 			case testidentification.IsMachineConfigPoolsUpgradedTest(name):
 				jrr.UpgradeForMachineConfigPoolsStatus = testidentification.Success
-			case testidentification.IsOpenShiftTest(name):
-				// If there is a failed test, the aggregated value should stay "Failure"
-				if jrr.OpenShiftTestsStatus == "" {
-					jrr.OpenShiftTestsStatus = testidentification.Success
+			default:
+				// Any other non-special test contributes to overall test status
+				if jrr.TestsStatus == "" {
+					jrr.TestsStatus = testidentification.Success
 				}
 			}
 		case v1.TestStatusFailure:
@@ -58,8 +64,6 @@ func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.Pr
 				jrr.FailedTestNames = append(jrr.FailedTestNames, name)
 				jrr.TestFailures++
 			}
-
-			// TODO: should we also add failures to jrr.TestResults so everything is in one place? Kill off FailedTestNames
 
 			switch {
 			case testidentification.IsOverallTest(name):
@@ -77,8 +81,8 @@ func testsToRawJobRunResult(jrr *v1.RawJobRunResult, tests map[string]*models.Pr
 				jrr.UpgradeForOperatorsStatus = testidentification.Failure
 			case testidentification.IsMachineConfigPoolsUpgradedTest(name):
 				jrr.UpgradeForMachineConfigPoolsStatus = testidentification.Failure
-			case testidentification.IsOpenShiftTest(name):
-				jrr.OpenShiftTestsStatus = testidentification.Failure
+			default:
+				jrr.TestsStatus = testidentification.Failure
 			}
 		}
 	}

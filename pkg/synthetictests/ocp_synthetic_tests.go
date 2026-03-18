@@ -36,7 +36,6 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 	if jrr.UpgradeStarted {
 		syntheticTests[testidentification.UpgradeTestName] = &syntheticTestResult{name: testidentification.UpgradeTestName}
 	}
-
 	hasFinalOperatorResults := len(jrr.FinalOperatorStates) > 0
 	allOperatorsSuccessfulAtEndOfRun := true
 	for _, operator := range jrr.FinalOperatorStates {
@@ -148,9 +147,9 @@ func (openshiftSyntheticManager) CreateSyntheticTests(jrr *sippyprocessingv1.Raw
 	}
 
 	switch {
-	case jrr.Failed && jrr.OpenShiftTestsStatus == testidentification.Failure:
+	case jrr.Failed && jrr.TestsStatus == testidentification.Failure:
 		syntheticTests[testidentification.OpenShiftTestsName].fail = 1
-	case jrr.OpenShiftTestsStatus == testidentification.Success:
+	case jrr.TestsStatus == testidentification.Success:
 		syntheticTests[testidentification.OpenShiftTestsName].pass = 1
 	}
 
@@ -206,7 +205,7 @@ func jobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.J
 		return sippyprocessingv1.JobAborted
 	}
 	if result.Errored {
-		return sippyprocessingv1.JobFailureBeforeSetup
+		return sippyprocessingv1.JobInternalInfrastructureFailure
 	}
 	if !result.Failed {
 		return sippyprocessingv1.JobRunning
@@ -214,18 +213,15 @@ func jobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessingv1.J
 
 	if result.InstallStatus == failure {
 		if len(result.FinalOperatorStates) == 0 {
-			return sippyprocessingv1.JobInfrastructureFailure
+			return sippyprocessingv1.JobExternalInfrastructureFailure
 		}
 		return sippyprocessingv1.JobInstallFailure
 	}
 	if result.UpgradeStarted && (result.UpgradeForOperatorsStatus == failure || result.UpgradeForMachineConfigPoolsStatus == failure) {
 		return sippyprocessingv1.JobUpgradeFailure
 	}
-	if result.OpenShiftTestsStatus == failure {
+	if result.TestsStatus == failure {
 		return sippyprocessingv1.JobTestFailure
 	}
-	if result.InstallStatus == "" {
-		return sippyprocessingv1.JobFailureBeforeSetup
-	}
-	return sippyprocessingv1.JobUnknown
+	return sippyprocessingv1.JobInternalInfrastructureFailure
 }

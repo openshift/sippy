@@ -312,7 +312,7 @@ func createProwJobRuns(dbc *db.DB, runsPerJob int) error {
 				} else if failureType < 0.92 {
 					overallResult = v1.JobInstallFailure // 7% install failures
 				} else {
-					overallResult = v1.JobInfrastructureFailure // 8% infrastructure failures
+					overallResult = v1.JobExternalInfrastructureFailure // 8% infrastructure failures
 				}
 			} else {
 				prowJobRun.Failed = false

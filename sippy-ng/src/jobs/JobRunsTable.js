@@ -67,9 +67,9 @@ export default function JobRunsTable(props) {
     f: 'failure (other tests)',
     A: 'Aborted',
     U: 'upgrade failure',
-    I: 'setup failure (installer)',
-    N: 'setup failure (infrastructure)',
-    n: 'failure before setup (infra)',
+    I: 'install failure',
+    N: 'external infrastructure failure',
+    n: 'internal infrastructure failure',
     R: 'running',
   }
 
@@ -451,7 +451,7 @@ export default function JobRunsTable(props) {
         <span className="results results-demo">
           <span className="result result-f">f</span>
         </span>{' '}
-        failure (other tests)
+        unknown failure (legacy)
       </span>
       <span className="legend-item">
         <span className="results results-demo">
@@ -463,19 +463,19 @@ export default function JobRunsTable(props) {
         <span className="results results-demo">
           <span className="result result-I">I</span>
         </span>{' '}
-        setup failure (installer)
+        install failure
       </span>
       <span className="legend-item">
         <span className="results results-demo">
           <span className="result result-N">N</span>
         </span>{' '}
-        setup failure (infra)
+        external infrastructure failure
       </span>
       <span className="legend-item">
         <span className="results results-demo">
           <span className="result result-n">n</span>
         </span>{' '}
-        failure before setup (infra)
+        internal infrastructure failure
       </span>
       <span className="legend-item">
         <span className="results results-demo">

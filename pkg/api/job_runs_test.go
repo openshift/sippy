@@ -295,7 +295,7 @@ func buildFakeProwJobRun() *models.ProwJobRun {
 		Failed:                true,
 		InfrastructureFailure: false,
 		Succeeded:             false,
-		OverallResult:         "f",
+		OverallResult:         "F",
 	}
 	return fakeProwJobRun
 }

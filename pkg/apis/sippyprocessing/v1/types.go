@@ -69,39 +69,38 @@ type TestResult struct {
 type JobOverallResult string
 
 const (
-	JobSucceeded             JobOverallResult = "S"
-	JobRunning               JobOverallResult = "R"
-	JobInfrastructureFailure JobOverallResult = "N"
-	JobInstallFailure        JobOverallResult = "I"
-	JobUpgradeFailure        JobOverallResult = "U"
-	JobTestFailure           JobOverallResult = "F"
-	JobFailureBeforeSetup    JobOverallResult = "n"
-	JobAborted               JobOverallResult = "A"
-	JobUnknown               JobOverallResult = "f"
+	JobSucceeded                     JobOverallResult = "S"
+	JobRunning                       JobOverallResult = "R"
+	JobTestFailure                   JobOverallResult = "F"
+	JobInstallFailure                JobOverallResult = "I"
+	JobUpgradeFailure                JobOverallResult = "U"
+	JobExternalInfrastructureFailure JobOverallResult = "N"
+	JobInternalInfrastructureFailure JobOverallResult = "n"
+	JobAborted                       JobOverallResult = "A"
+	JobUnknown                       JobOverallResult = "f" // legacy, no longer produced
 )
 
 func (r *JobOverallResult) String() string {
 	switch *r {
-	case "S":
+	case JobSucceeded:
 		return "Succeeded"
-	case "R":
+	case JobRunning:
 		return "Running"
-	case "N":
-		return "Infrastructure failure"
-	case "I":
-		return "Install failure"
-	case "U":
-		return "Upgrade failure"
-	case "F":
+	case JobTestFailure:
 		return "Test failures"
-	case "n":
-		return "CI Infrastructure failure"
-	case "A":
+	case JobInstallFailure:
+		return "Install failure"
+	case JobUpgradeFailure:
+		return "Upgrade failure"
+	case JobExternalInfrastructureFailure:
+		return "External infrastructure failure"
+	case JobInternalInfrastructureFailure:
+		return "Internal infrastructure failure"
+	case JobAborted:
 		return "Aborted"
 	default:
 		return "Unknown"
 	}
-
 }
 
 // JobRunResult represents a single invocation of a prow job and it's status, as well as any failed tests.
@@ -185,8 +184,8 @@ type RawJobRunResult struct {
 	// Success, Failure, or ""
 	UpgradeForMachineConfigPoolsStatus string
 
-	// OpenShiftTestsStatus can be "", "Success", "Failure"
-	OpenShiftTestsStatus string
+	// TestsStatus can be "", "Success", "Failure"
+	TestsStatus string
 
 	// Overall result
 	OverallResult JobOverallResult
