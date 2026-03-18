@@ -64,6 +64,8 @@ type LoadFlags struct {
 	JiraFlags               *flags.JiraFlags
 	JobVariantsInputFile    string
 	LogLevel                string
+	ProwLoadSince           string
+	SkipMatviewRefresh      bool
 }
 
 // want a single total load and refresh time
@@ -103,6 +105,8 @@ func (f *LoadFlags) BindFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVar(&f.Architectures, "arch", f.Architectures, "Which architectures to load (one per arg instance)")
 	fs.StringVar(&f.JobVariantsInputFile, "job-variants-input-file", "expected-job-variants.json", "JSON input file for the job-variants loader")
 	fs.StringVar(&f.LogLevel, "log-level", "info", "Log level")
+	fs.StringVar(&f.ProwLoadSince, "prow-load-since", "", "Override how far back to load prow jobs (e.g. 2024-01-15T00:00:00Z or 72h for 72 hours ago)")
+	fs.BoolVar(&f.SkipMatviewRefresh, "skip-matview-refresh", false, "Skip refreshing materialized views after loading")
 }
 
 // nolint:gocyclo
@@ -334,7 +338,7 @@ func NewLoadCommand() *cobra.Command {
 			log.WithField("elapsed", elapsed).Info("database load complete")
 
 			pinnedTime := f.DBFlags.GetPinnedTime()
-			if refreshMatviews {
+			if refreshMatviews && !f.SkipMatviewRefresh {
 				sippyserver.RefreshData(dbc, pinnedTime, false)
 			}
 
@@ -445,6 +449,15 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		}
 	}
 
+	var loadSince *time.Time
+	if f.ProwLoadSince != "" {
+		t, err := parseProwLoadSince(f.ProwLoadSince)
+		if err != nil {
+			return nil, fmt.Errorf("invalid --prow-load-since value %q: %w", f.ProwLoadSince, err)
+		}
+		loadSince = &t
+	}
+
 	return prowloader.New(
 		ctx,
 		dbc,
@@ -456,5 +469,19 @@ func (f *LoadFlags) prowLoader(ctx context.Context, dbc *db.DB, sippyConfig *v1.
 		releases,
 		sippyConfig,
 		ghCommenter,
-		promPusher), nil
+		promPusher,
+		loadSince), nil
+}
+
+// parseProwLoadSince parses a time value that is either an absolute RFC3339 timestamp
+// or a Go duration string (e.g. "72h") interpreted as a duration ago from now.
+func parseProwLoadSince(val string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, val); err == nil {
+		return t, nil
+	}
+	d, err := time.ParseDuration(val)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("must be an RFC3339 timestamp (e.g. 2024-01-15T00:00:00Z) or a duration (e.g. 72h)")
+	}
+	return time.Now().Add(-d), nil
 }

@@ -78,6 +78,7 @@ type ProwLoader struct {
 	jobsProcessedCount      atomic.Int32
 	gcsClient               *storage.Client
 	promPusher              *push.Pusher
+	loadSince               *time.Time
 }
 
 func New(
@@ -91,7 +92,8 @@ func New(
 	releases []string,
 	config *v1config.SippyConfig,
 	ghCommenter *commenter.GitHubCommenter,
-	promPusher *push.Pusher) *ProwLoader {
+	promPusher *push.Pusher,
+	loadSince *time.Time) *ProwLoader {
 
 	return &ProwLoader{
 		ctx:                  ctx,
@@ -110,6 +112,7 @@ func New(
 		config:               config,
 		ghCommenter:          ghCommenter,
 		promPusher:           promPusher,
+		loadSince:            loadSince,
 	}
 }
 

@@ -19,17 +19,22 @@ func (pl *ProwLoader) fetchProwJobsFromOpenShiftBigQuery() ([]prow.ProwJob, []er
 
 	// Figure out our last imported job timestamp:
 	var lastProwJobRun time.Time
-	row := pl.dbc.DB.Table("prow_job_runs").Select("max(timestamp)").Row()
-	err := row.Scan(&lastProwJobRun)
-	if err != nil || lastProwJobRun.IsZero() {
-		log.WithError(err).Warn("no last prow job run found (new database?), importing last two weeks")
-		lastProwJobRun = time.Now().Add(-14 * 24 * time.Hour)
+	if pl.loadSince != nil {
+		lastProwJobRun = *pl.loadSince
+		log.Infof("Using manually specified load-since time: %s", lastProwJobRun.UTC().Format(time.RFC3339))
 	} else {
-		// adjust the last job run time, we're querying all jobs that have completed since our last recorded
-		// job START time, but we need to subtract our max job runtime in-case a job ended early and was our last
-		// imported start time, while others that started before it hadn't completed yet.
-		// 12 hours should safely cover our max timeout.
-		lastProwJobRun = lastProwJobRun.Add(-12 * time.Hour)
+		row := pl.dbc.DB.Table("prow_job_runs").Select("max(timestamp)").Row()
+		err := row.Scan(&lastProwJobRun)
+		if err != nil || lastProwJobRun.IsZero() {
+			log.WithError(err).Warn("no last prow job run found (new database?), importing last two weeks")
+			lastProwJobRun = time.Now().Add(-14 * 24 * time.Hour)
+		} else {
+			// adjust the last job run time, we're querying all jobs that have completed since our last recorded
+			// job START time, but we need to subtract our max job runtime in-case a job ended early and was our last
+			// imported start time, while others that started before it hadn't completed yet.
+			// 12 hours should safely cover our max timeout.
+			lastProwJobRun = lastProwJobRun.Add(-12 * time.Hour)
+		}
 	}
 	log.Infof("Loading prow jobs from bigquery completed since: %s", lastProwJobRun.UTC().Format(time.RFC3339))
 
