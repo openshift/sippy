@@ -1,5 +1,6 @@
 import {
   Backdrop,
+  Box,
   Button,
   CircularProgress,
   Container,
@@ -7,6 +8,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Grid,
+  IconButton,
   List,
   ListItem,
   ListItemText,
@@ -14,7 +17,7 @@ import {
   Typography,
 } from '@mui/material'
 import { DataGrid } from '@mui/x-data-grid'
-import { DirectionsBoat, GitHub } from '@mui/icons-material'
+import { DirectionsBoat, GitHub, Search } from '@mui/icons-material'
 import {
   getReportStartDate,
   pathForExactJob,
@@ -27,6 +30,7 @@ import { NumberParam, StringParam, useQueryParam } from 'use-query-params'
 import { ReportEndContext } from '../App'
 import Alert from '@mui/material/Alert'
 import GridToolbar from '../datagrid/GridToolbar'
+import JobArtifactQuery from '../component_readiness/JobArtifactQuery'
 import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
@@ -42,6 +46,9 @@ export default function JobRunsTable(props) {
   const [selectedLabels, setSelectedLabels] = React.useState([])
   const [selectedJobRun, setSelectedJobRun] = React.useState(null)
   const [allLabels, setAllLabels] = React.useState({})
+  const [selectionModel, setSelectionModel] = React.useState([])
+  const [jaqOpen, setJaqOpen] = React.useState(false)
+  const [jaqJobRunIds, setJaqJobRunIds] = React.useState(null)
 
   const [filterModel = props.filterModel, setFilterModel] = useQueryParam(
     'filters',
@@ -74,6 +81,41 @@ export default function JobRunsTable(props) {
   }
 
   const startDate = getReportStartDate(React.useContext(ReportEndContext))
+
+  function extractProwRunId(url) {
+    if (!url) return null
+    const parts = url.replace(/\/+$/, '').split('/')
+    return parts[parts.length - 1]
+  }
+
+  function buildJaqProps(rows) {
+    const jobRunIds = new Set()
+    const lookup = new Map()
+    for (const row of rows) {
+      // Extract the run ID from the prow URL to avoid JS number precision loss
+      const runId = extractProwRunId(row.url)
+      if (!runId) continue
+      jobRunIds.add(runId)
+      lookup.set(runId, {
+        job_run_id: runId,
+        job_name: row.job,
+        start_time: row.timestamp,
+        test_status: row.overall_result,
+        url: row.url,
+      })
+    }
+    return { jobRunIds, lookup }
+  }
+
+  function openJaqForRows(rows) {
+    const { jobRunIds, lookup } = buildJaqProps(rows)
+    setJaqJobRunIds({ ids: jobRunIds, lookup })
+    setJaqOpen(true)
+  }
+
+  function handleToggleJAQOpen() {
+    setJaqOpen(!jaqOpen)
+  }
 
   const columns = [
     {
@@ -230,6 +272,25 @@ export default function JobRunsTable(props) {
               startIcon={<GitHub />}
               href={params.value}
             />
+          </Tooltip>
+        )
+      },
+    },
+    {
+      field: 'artifact_search',
+      headerName: ' ',
+      flex: 0.4,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => {
+        return (
+          <Tooltip title="Search job artifacts">
+            <IconButton
+              size="small"
+              onClick={() => openJaqForRows([params.row])}
+            >
+              <Search />
+            </IconButton>
           </Tooltip>
         )
       },
@@ -502,6 +563,9 @@ export default function JobRunsTable(props) {
       onPageChange={(newPage) => changePage(newPage)}
       columns={columns}
       autoHeight={true}
+      checkboxSelection
+      onSelectionModelChange={(newSelection) => setSelectionModel(newSelection)}
+      selectionModel={selectionModel}
       // Filtering:
       filterMode="server"
       sortingOrder={['desc', 'asc']}
@@ -578,6 +642,46 @@ export default function JobRunsTable(props) {
     </Dialog>
   )
 
+  const jaqDialog = (
+    <Dialog
+      fullWidth={true}
+      maxWidth={false}
+      open={jaqOpen}
+      onClose={handleToggleJAQOpen}
+    >
+      <Grid className="jaq-dialog" tabIndex="0">
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            mb: 2,
+          }}
+        >
+          <Typography variant="h4" component="h1">
+            Job Artifact Search
+          </Typography>
+          <Button
+            size="large"
+            variant="contained"
+            onClick={handleToggleJAQOpen}
+          >
+            Close
+          </Button>
+        </Box>
+        <Box sx={{ flex: 1 }}>
+          {jaqOpen && jaqJobRunIds && (
+            <JobArtifactQuery
+              searchJobRunIds={jaqJobRunIds.ids}
+              jobRunsLookup={jaqJobRunIds.lookup}
+              handleToggleJAQOpen={handleToggleJAQOpen}
+            />
+          )}
+        </Box>
+      </Grid>
+    </Dialog>
+  )
+
   /* eslint-disable react/prop-types */
   return (
     <Fragment>
@@ -587,8 +691,26 @@ export default function JobRunsTable(props) {
       {legend}
       <Container size="xl" style={{ marginTop: 20 }}>
         {table}
+        {selectionModel.length > 0 && (
+          <Box sx={{ mt: 2 }}>
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<Search />}
+              onClick={() => {
+                const selectedRows = apiResult.rows.filter((row) =>
+                  selectionModel.includes(row.id)
+                )
+                openJaqForRows(selectedRows)
+              }}
+            >
+              Search Artifacts
+            </Button>
+          </Box>
+        )}
       </Container>
       {labelsDialog}
+      {jaqDialog}
     </Fragment>
   )
 }
