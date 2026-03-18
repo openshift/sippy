@@ -17,6 +17,7 @@
         "Installer": "ipi"
       }
     },
+    "PreviousRelease": "4.17",
     "PreviousSuccesses": 95,
     "PreviousFailures": 5,
     "PreviousFlakes": 0,
@@ -42,6 +43,7 @@
         "Installer": "ipi"
       }
     },
+    "PreviousRelease": "4.17",
     "PreviousSuccesses": 95,
     "PreviousFailures": 5,
     "PreviousFlakes": 0,

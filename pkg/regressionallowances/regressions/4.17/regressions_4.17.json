@@ -17,6 +17,7 @@
         "Installer": "upi"
       }
     },
+    "PreviousRelease": "4.16",
     "PreviousSuccesses": 66,
     "PreviousFailures": 0,
     "PreviousFlakes": 1,
@@ -42,6 +43,7 @@
         "Installer": "upi"
       }
     },
+    "PreviousRelease": "4.16",
     "PreviousSuccesses": 72,
     "PreviousFailures": 0,
     "PreviousFlakes": 1,
@@ -67,6 +69,7 @@
         "Installer": "ipi"
       }
     },
+    "PreviousRelease": "4.16",
     "PreviousSuccesses": 74,
     "PreviousFailures": 0,
     "PreviousFlakes": 0,
@@ -92,6 +95,7 @@
         "Installer": "ipi"
       }
     },
+    "PreviousRelease": "4.16",
     "PreviousSuccesses": 735,
     "PreviousFailures": 3,
     "PreviousFlakes": 0,

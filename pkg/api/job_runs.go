@@ -343,23 +343,25 @@ func JobRunRiskAnalysis(ctx context.Context, dbc *db.DB, bqc *bigquery.Client, j
 
 	if totalJobRuns < 20 {
 		// go back to the prior release and get more jobIds to compare against
-		if currentVersion, err := version.NewVersion(compareRelease); err != nil {
-			logger.WithError(err).Errorf("Failed to parse release '%s' for prow job %d", compareRelease, jobRun.ProwJob.ID)
+		releases, err := GetReleases(ctx, bqc, false)
+		if err != nil {
+			logger.WithError(err).Error("Failed to get releases for prior release lookup")
 		} else {
-			majminor := currentVersion.Segments()
-			// 4.14 is returned as 4,14,0
-			if len(majminor) == 3 && majminor[1] > 0 {
-				majminor[1]--
-				priorRelease := fmt.Sprintf("%d.%d", majminor[0], majminor[1])
+			var priorRelease string
+			for _, r := range releases {
+				if r.Release == compareRelease && r.PreviousRelease != "" {
+					priorRelease = r.PreviousRelease
+					break
+				}
+			}
+			if priorRelease != "" {
 				priorJobNames, _, err := findReleaseMatchJobNames(dbc, jobRun, priorRelease, logger)
-
 				if err != nil {
 					// since this is for the prior release we won't return the never-stable error in this case
 					if err.Error() != "never-stable" {
 						logger.WithError(err).Errorf("Failed to find matching jobIds for: %s", jobRun.ProwJob.Name)
 					}
 				}
-
 				jobNames = append(jobNames, priorJobNames...)
 			}
 		}
