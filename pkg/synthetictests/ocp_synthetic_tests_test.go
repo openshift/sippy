@@ -76,6 +76,77 @@ func TestSyntheticSippyTestGeneration(t *testing.T) {
 	}
 }
 
+func TestJobRunStatusClassification(t *testing.T) {
+	testCases := []struct {
+		name           string
+		jrr            v1.RawJobRunResult
+		expectedResult v1.JobOverallResult
+	}{
+		{
+			name: "tests failed → F",
+			jrr: v1.RawJobRunResult{
+				Failed:      true,
+				TestsStatus: "Failure",
+			},
+			expectedResult: v1.JobTestFailure,
+		},
+		{
+			name: "no test results → n",
+			jrr: v1.RawJobRunResult{
+				Failed: true,
+			},
+			expectedResult: v1.JobFailureBeforeSetup,
+		},
+		{
+			name: "install succeeded but no test results → n",
+			jrr: v1.RawJobRunResult{
+				Failed:        true,
+				InstallStatus: "Success",
+				FinalOperatorStates: []v1.OperatorState{
+					{Name: "openshift-apiserver", State: "Success"},
+				},
+			},
+			expectedResult: v1.JobFailureBeforeSetup,
+		},
+		{
+			name: "install failed + no operators → N",
+			jrr: v1.RawJobRunResult{
+				Failed:        true,
+				InstallStatus: "Failure",
+			},
+			expectedResult: v1.JobInfrastructureFailure,
+		},
+		{
+			name: "install failed + has operators → I",
+			jrr: v1.RawJobRunResult{
+				Failed:        true,
+				InstallStatus: "Failure",
+				FinalOperatorStates: []v1.OperatorState{
+					{Name: "openshift-apiserver", State: "Failure"},
+				},
+			},
+			expectedResult: v1.JobInstallFailure,
+		},
+		{
+			name: "errored job → n",
+			jrr: v1.RawJobRunResult{
+				Failed:  true,
+				Errored: true,
+			},
+			expectedResult: v1.JobFailureBeforeSetup,
+		},
+	}
+
+	testMgr := NewOpenshiftSyntheticTestManager()
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			jrr := tc.jrr
+			testMgr.CreateSyntheticTests(&jrr)
+			assert.Equal(t, tc.expectedResult, jrr.OverallResult)
+		})
+	}
+}
+
 func assertJobRunTestResult(t *testing.T, rjr v1.RawJobResult, expectedTestResults []v1.RawJobRunTestResult) {
 	for _, etr := range expectedTestResults {
 		var found bool
@@ -133,7 +204,7 @@ func buildFakeRawJobRunResult(
 			UpgradeForOperatorsStatus:          "",
 			UpgradeForMachineConfigPoolsStatus: "",
 		*/
-		OpenShiftTestsStatus: getStatusStr(testsSuccess),
+		TestsStatus: getStatusStr(testsSuccess),
 		OverallResult:        overallJobResult,
 		//Timestamp:            0,
 	}

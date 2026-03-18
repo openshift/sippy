@@ -123,11 +123,11 @@ export function JobStackedChart(props) {
     },
     n: {
       color: '#633',
-      name: 'Failure before setup',
+      name: 'Internal Infrastructure failure',
     },
     f: {
       color: '#f46d43',
-      name: 'Failure (other)',
+      name: 'Unknown failure (legacy)',
     },
   }
 

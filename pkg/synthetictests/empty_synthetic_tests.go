@@ -33,8 +33,8 @@ func emptyJobRunStatus(result *sippyprocessingv1.RawJobRunResult) sippyprocessin
 	}
 
 	if result.Failed {
-		return sippyprocessingv1.JobTestFailure
+		return sippyprocessingv1.JobFailureBeforeSetup
 	}
 
-	return sippyprocessingv1.JobUnknown
+	return sippyprocessingv1.JobFailureBeforeSetup
 }

@@ -451,7 +451,7 @@ export default function JobRunsTable(props) {
         <span className="results results-demo">
           <span className="result result-f">f</span>
         </span>{' '}
-        failure (other tests)
+        unknown failure (legacy)
       </span>
       <span className="legend-item">
         <span className="results results-demo">

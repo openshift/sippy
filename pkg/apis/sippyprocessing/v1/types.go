@@ -77,7 +77,7 @@ const (
 	JobTestFailure           JobOverallResult = "F"
 	JobFailureBeforeSetup    JobOverallResult = "n"
 	JobAborted               JobOverallResult = "A"
-	JobUnknown               JobOverallResult = "f"
+	JobUnknown               JobOverallResult = "f" // legacy, no longer produced
 )
 
 func (r *JobOverallResult) String() string {
@@ -87,7 +87,7 @@ func (r *JobOverallResult) String() string {
 	case "R":
 		return "Running"
 	case "N":
-		return "Infrastructure failure"
+		return "Install/Cloud Infrastructure failure"
 	case "I":
 		return "Install failure"
 	case "U":
@@ -95,7 +95,7 @@ func (r *JobOverallResult) String() string {
 	case "F":
 		return "Test failures"
 	case "n":
-		return "CI Infrastructure failure"
+		return "Internal Infrastructure failure"
 	case "A":
 		return "Aborted"
 	default:
@@ -185,8 +185,8 @@ type RawJobRunResult struct {
 	// Success, Failure, or ""
 	UpgradeForMachineConfigPoolsStatus string
 
-	// OpenShiftTestsStatus can be "", "Success", "Failure"
-	OpenShiftTestsStatus string
+	// TestsStatus can be "", "Success", "Failure"
+	TestsStatus string
 
 	// Overall result
 	OverallResult JobOverallResult
