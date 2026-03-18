@@ -115,6 +115,7 @@ export default function TriageFields({
     if (triageEntryData.type === 'type') {
       validationErrors.push('invalid type, please make a selection')
     }
+    // validation will require the new atlassian jira URL going forward
     if (!triageEntryData.url.startsWith(jiraUrlPrefix)) {
       validationErrors.push('invalid url, should begin with ' + jiraUrlPrefix)
     }

@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -109,7 +110,7 @@ func CreateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 	return triage, nil
 }
 
-const jiraPrefix = "https://issues.redhat.com/browse/"
+var jiraPrefixes = []string{"https://issues.redhat.com/browse/", "https://redhat.atlassian.net/browse/"}
 
 // ReportTriageResolved comments on the associated jira that the regressions have been resolved, including a link
 // to the triage details
@@ -124,6 +125,15 @@ func ReportTriageAddedForJira(jiraClient *jira.Client, triage models.Triage, req
 	reportOnJiraUsedForTriage(jiraClient, triage, message, req)
 }
 
+func validateJiraPrefix(validationURL string) bool {
+	for _, prefix := range jiraPrefixes {
+		if strings.HasPrefix(validationURL, prefix) {
+			return true
+		}
+	}
+	return false
+}
+
 func reportOnJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, baseComment string, req *http.Request) {
 	logger := log.WithField("triageID", triage.ID)
 	logger.Info("reporting on jira")
@@ -132,17 +142,20 @@ func reportOnJiraUsedForTriage(jiraClient *jira.Client, triage models.Triage, ba
 		logger.Warn("no jira client provided, will not comment on associated jira")
 		return
 	}
-
-	if !strings.HasPrefix(triage.URL, jiraPrefix) {
+	if !validateJiraPrefix(triage.URL) {
 		logger.Warnf("URL (%s) is not a Jira card, cannot comment", triage.URL)
 		return
 	}
-	jiraCard := strings.TrimPrefix(triage.URL, jiraPrefix)
+	parsedURL, err := url.Parse(triage.URL)
+	if err != nil {
+		logger.WithError(err).Warnf("URL (%s) is not parseable, cannot comment", triage.URL)
+		return
+	}
+	jiraCard := path.Base(strings.TrimSuffix(parsedURL.Path, "/"))
 	if !strings.HasPrefix(jiraCard, "OCPBUGS") {
 		logger.Warnf("URL (%s) is not an OCPBUGS card, cannot comment", triage.URL)
 		return
 	}
-
 	baseURL := "https://sippy-auth.dptools.openshift.org"
 	if req != nil {
 		if origin := req.Header.Get("Origin"); origin != "" {

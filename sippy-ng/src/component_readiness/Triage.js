@@ -6,6 +6,7 @@ import {
   getTriagesAPIUrl,
   hasFailedFixRegression,
   jiraUrlPrefix,
+  jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
 import { SippyCapabilitiesContext } from '../App'
 import { usePageContextForChat } from '../chat/store/useChatStore'
@@ -166,7 +167,12 @@ export default function Triage({ id }) {
 
   const extractJiraIssueKey = (url) => {
     if (!url) return null
-    return url.startsWith(jiraUrlPrefix) ? url.slice(jiraUrlPrefix.length) : url
+    if (url.startsWith(jiraUrlPrefix)) {
+      url = url.slice(jiraUrlPrefix.length)
+    } else if (url.startsWith(jiraUrlPrefixDeprecated)) {
+      url = url.slice(jiraUrlPrefixDeprecated.length)
+    }
+    return url
   }
 
   if (message !== '') {

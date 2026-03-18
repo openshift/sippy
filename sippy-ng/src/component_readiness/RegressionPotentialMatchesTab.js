@@ -10,6 +10,7 @@ import {
   getRegressionAPIUrl,
   getTriagesAPIUrl,
   jiraUrlPrefix,
+  jiraUrlPrefixDeprecated,
 } from './CompReadyUtils'
 import { makeStyles } from '@mui/styles'
 import { useTheme } from '@mui/material/styles'
@@ -219,6 +220,8 @@ export default function RegressionPotentialMatchesTab({
         }
         if (url && url.startsWith(jiraUrlPrefix)) {
           val.text = url.slice(jiraUrlPrefix.length)
+        } else if (url && url.startsWith(jiraUrlPrefixDeprecated)) {
+          val.text = url.slice(jiraUrlPrefixDeprecated.length)
         }
         return val
       },
