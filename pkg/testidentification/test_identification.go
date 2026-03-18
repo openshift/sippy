@@ -234,6 +234,7 @@ var nonSuiteTestPatterns = []string{
 	"prowjob-junit.",
 	"step graph.",
 	"Run pipeline step",
+	"Run multi-stage test",
 }
 
 // IsNonSuiteTest returns true if the map key (format: "suiteName.testName") belongs to
