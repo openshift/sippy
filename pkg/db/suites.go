@@ -33,6 +33,7 @@ var testSuites = []string{
 
 	// ROSA
 	"OSD e2e suite",
+	"ROSA Regional Platform API E2E Suite",
 
 	// Performance
 	"olmv1-GCP nightly compare",
