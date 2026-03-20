@@ -2,6 +2,7 @@
 Tool for querying Jira for known open incidents in the TRT project.
 """
 
+import base64
 import json
 import logging
 from typing import Any, Dict, Optional, Type
@@ -20,14 +21,21 @@ class SippyJiraIncidentTool(SippyBaseTool):
     description: str = "Get a JSON object with a list of all known open TRT incidents from Jira."
 
     # Add Jira configuration as proper fields
-    jira_url: str = Field(default="https://issues.redhat.com", description="Jira instance URL")
-    jira_username: Optional[str] = Field(default=None, description="Jira username")
-    jira_token: Optional[str] = Field(default=None, description="Jira API token")
+    jira_url: str = Field(default="https://redhat.atlassian.net", description="Jira instance URL")
+    jira_basic_auth_token: Optional[str] = Field(default=None, description="Jira basic auth token (user:api_token)")
 
     class JiraIncidentInput(SippyToolInput):
         jira_url: Optional[str] = Field(default=None, description="Jira URL (optional, uses config if not provided)")
 
     args_schema: Type[SippyToolInput] = JiraIncidentInput
+
+    def _get_auth_headers(self) -> Dict[str, str]:
+        """Build authentication headers for Jira API requests."""
+        headers = {"Accept": "application/json", "Content-Type": "application/json"}
+        if self.jira_basic_auth_token:
+            encoded = base64.b64encode(self.jira_basic_auth_token.encode()).decode()
+            headers["Authorization"] = f"Basic {encoded}"
+        return headers
 
     def _run(self, jira_url: Optional[str] = None) -> Dict[str, Any]:
         """Query Jira for known open incidents."""
@@ -37,8 +45,8 @@ class SippyJiraIncidentTool(SippyBaseTool):
         if not api_url:
             return {"error": "No Jira URL configured. Please set JIRA_URL environment variable or provide jira_url parameter."}
 
-        # Construct the Jira REST API endpoint
-        endpoint = f"{api_url.rstrip('/')}/rest/api/2/search"
+        # Use the v3 POST-based search endpoint
+        endpoint = f"{api_url.rstrip('/')}/rest/api/3/search/jql"
 
         # Build JQL query for TRT project incidents
         jql_parts = ['project = "TRT"', 'labels = "trt-incident"', "status not in (Closed, Done, Resolved)"]
@@ -46,24 +54,21 @@ class SippyJiraIncidentTool(SippyBaseTool):
         jql = " AND ".join(jql_parts)
 
         try:
-            # Prepare request parameters
-            params = {
+            # Prepare request body
+            body = {
                 "jql": jql,
-                "fields": "key,summary,status,priority,created,updated,description,labels",
-                "maxResults": 20,  # Limit results
+                "fields": ["key", "summary", "status", "priority", "created", "updated", "description", "labels"],
+                "maxResults": 20,
             }
 
-            # Prepare authentication if available
-            auth = None
-            if self.jira_username and self.jira_token:
-                auth = (self.jira_username, self.jira_token)
+            headers = self._get_auth_headers()
 
             logger.info("Querying Jira for all open TRT incidents")
             logger.info(f"JQL: {jql}")
 
             # Make the API request
             with httpx.Client(timeout=30.0) as client:
-                response = client.get(endpoint, params=params, auth=auth, headers={"Accept": "application/json"})
+                response = client.post(endpoint, json=body, headers=headers)
                 response.raise_for_status()
 
                 data = response.json()
@@ -81,7 +86,7 @@ class SippyJiraIncidentTool(SippyBaseTool):
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error querying Jira: {e}")
             if e.response.status_code == 401:
-                return {"error": "Jira authentication failed. Check JIRA_USERNAME and JIRA_TOKEN environment variables."}
+                return {"error": "Jira authentication failed. Check JIRA_BASIC_AUTH_TOKEN environment variable."}
             elif e.response.status_code == 403:
                 return {"error": "Access denied to Jira. You may need authentication or permissions to view TRT project."}
             else:
