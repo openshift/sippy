@@ -92,6 +92,18 @@ func VariantsMapToStringSlice(variants map[string]string) []string {
 	return vs
 }
 
+// parseVariantsToMap converts a slice of "key:value" strings to a map
+func parseVariantsToMap(variants []string) map[string]string {
+	variantMap := make(map[string]string)
+	for _, variant := range variants {
+		parts := strings.SplitN(variant, ":", 2)
+		if len(parts) == 2 {
+			variantMap[parts[0]] = parts[1]
+		}
+	}
+	return variantMap
+}
+
 // addVariantParams adds variant parameters to url.Values and returns the environment string.
 // This helper consolidates the duplicate variant parameter logic used in both view-based
 // and legacy URL generation.
@@ -117,6 +129,142 @@ func addVariantParams(params url.Values, variantMap map[string]string) {
 
 	// Add environment parameter (space-separated variant pairs)
 	params.Add("environment", strings.Join(environment, " "))
+}
+
+// buildViewBasedURL generates a minimal URL with just view + test-specific overrides
+func buildViewBasedURL(
+	params url.Values,
+	viewName string,
+	testID string,
+	component string,
+	capability string,
+	variantMap map[string]string,
+	baseReleaseOpts reqopts.Release,
+	baseReleaseOverride string,
+) {
+	params.Add("view", viewName)
+	params.Add("testId", testID)
+
+	if component != "" {
+		params.Add("component", component)
+	}
+	if capability != "" {
+		params.Add("capability", capability)
+	}
+
+	// Add variant parameters and environment string
+	addVariantParams(params, variantMap)
+
+	// Check if release fallback was used and add the override
+	if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
+		params.Add("testBasisRelease", baseReleaseOverride)
+	}
+}
+
+// addReleaseParams adds release-related parameters (dates, PR, payload options)
+func addReleaseParams(
+	params url.Values,
+	baseReleaseOpts reqopts.Release,
+	sampleReleaseOpts reqopts.Release,
+	baseReleaseOverride string,
+) {
+	params.Add("baseRelease", baseReleaseOpts.Name)
+	params.Add("sampleRelease", sampleReleaseOpts.Name)
+	params.Add("baseStartTime", baseReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
+	params.Add("baseEndTime", baseReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
+	params.Add("sampleStartTime", sampleReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
+	params.Add("sampleEndTime", sampleReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
+
+	// Add PR options if present
+	if sampleReleaseOpts.PullRequestOptions != nil {
+		params.Add("samplePROrg", sampleReleaseOpts.PullRequestOptions.Org)
+		params.Add("samplePRRepo", sampleReleaseOpts.PullRequestOptions.Repo)
+		params.Add("samplePRNumber", sampleReleaseOpts.PullRequestOptions.PRNumber)
+	}
+
+	// Add Payload options if present
+	if sampleReleaseOpts.PayloadOptions != nil {
+		for _, tag := range sampleReleaseOpts.PayloadOptions.Tags {
+			params.Add("samplePayloadTag", tag)
+		}
+	}
+
+	// Check if release fallback was used and add the override
+	if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
+		params.Add("testBasisRelease", baseReleaseOverride)
+	}
+}
+
+// addAdvancedOptionsParams adds advanced options to URL parameters
+func addAdvancedOptionsParams(params url.Values, advancedOptions reqopts.Advanced) {
+	params.Add("confidence", strconv.Itoa(advancedOptions.Confidence))
+	params.Add("minFail", strconv.Itoa(advancedOptions.MinimumFailure))
+	params.Add("pity", strconv.Itoa(advancedOptions.PityFactor))
+	params.Add("passRateNewTests", strconv.Itoa(advancedOptions.PassRateRequiredNewTests))
+	params.Add("passRateAllTests", strconv.Itoa(advancedOptions.PassRateRequiredAllTests))
+	params.Add("ignoreDisruption", strconv.FormatBool(advancedOptions.IgnoreDisruption))
+	params.Add("ignoreMissing", strconv.FormatBool(advancedOptions.IgnoreMissing))
+	params.Add("flakeAsFailure", strconv.FormatBool(advancedOptions.FlakeAsFailure))
+	params.Add("includeMultiReleaseAnalysis", strconv.FormatBool(advancedOptions.IncludeMultiReleaseAnalysis))
+}
+
+// addVariantOptionsParams adds variant options to URL parameters
+func addVariantOptionsParams(params url.Values, variantOptions reqopts.Variants) {
+	if variantOptions.ColumnGroupBy != nil {
+		params.Add("columnGroupBy", strings.Join(variantOptions.ColumnGroupBy.List(), ","))
+	}
+	if variantOptions.DBGroupBy != nil {
+		params.Add("dbGroupBy", strings.Join(variantOptions.DBGroupBy.List(), ","))
+	}
+
+	// Add include variants
+	includeVariantKeys := make([]string, 0, len(variantOptions.IncludeVariants))
+	for variantKey := range variantOptions.IncludeVariants {
+		includeVariantKeys = append(includeVariantKeys, variantKey)
+	}
+	sort.Strings(includeVariantKeys)
+
+	for _, variantKey := range includeVariantKeys {
+		variantValues := variantOptions.IncludeVariants[variantKey]
+		sortedValues := make([]string, len(variantValues))
+		copy(sortedValues, variantValues)
+		sort.Strings(sortedValues)
+
+		for _, variantValue := range sortedValues {
+			params.Add("includeVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
+		}
+	}
+
+	// Add compare variants
+	if len(variantOptions.CompareVariants) > 0 {
+		compareVariantKeys := make([]string, 0, len(variantOptions.CompareVariants))
+		for variantKey := range variantOptions.CompareVariants {
+			compareVariantKeys = append(compareVariantKeys, variantKey)
+		}
+		sort.Strings(compareVariantKeys)
+
+		for _, variantKey := range compareVariantKeys {
+			variantValues := variantOptions.CompareVariants[variantKey]
+			sortedValues := make([]string, len(variantValues))
+			copy(sortedValues, variantValues)
+			sort.Strings(sortedValues)
+
+			for _, variantValue := range sortedValues {
+				params.Add("compareVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
+			}
+		}
+	}
+
+	// Add variant cross compare
+	if len(variantOptions.VariantCrossCompare) > 0 {
+		sortedCrossCompare := make([]string, len(variantOptions.VariantCrossCompare))
+		copy(sortedCrossCompare, variantOptions.VariantCrossCompare)
+		sort.Strings(sortedCrossCompare)
+
+		for _, variantKey := range sortedCrossCompare {
+			params.Add("variantCrossCompare", variantKey)
+		}
+	}
 }
 
 // GenerateTestDetailsURL creates a HATEOAS-style URL for the test_details API endpoint.
@@ -148,14 +296,8 @@ func GenerateTestDetailsURL(
 		return "", fmt.Errorf("testID cannot be empty")
 	}
 
-	// Parse variants from the variants slice (which is a []string of "key:value" pairs)
-	variantMap := make(map[string]string)
-	for _, variant := range variants {
-		parts := strings.SplitN(variant, ":", 2)
-		if len(parts) == 2 {
-			variantMap[parts[0]] = parts[1]
-		}
-	}
+	// Parse variants from the variants slice
+	variantMap := parseVariantsToMap(variants)
 
 	// Build the URL with query parameters
 	var fullURL string
@@ -177,25 +319,7 @@ func GenerateTestDetailsURL(
 
 	// If a view is provided, generate a minimal URL with just the view + test-specific overrides
 	if viewName != "" {
-		params.Add("view", viewName)
-		params.Add("testId", testID)
-
-		// Add test-specific parameters (component, capability, specific variants)
-		if component != "" {
-			params.Add("component", component)
-		}
-		if capability != "" {
-			params.Add("capability", capability)
-		}
-
-		// Add variant parameters and environment string
-		addVariantParams(params, variantMap)
-
-		// Check if release fallback was used and add the override
-		if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
-			params.Add("testBasisRelease", baseReleaseOverride)
-		}
-
+		buildViewBasedURL(params, viewName, testID, component, capability, variantMap, baseReleaseOpts, baseReleaseOverride)
 		u.RawQuery = params.Encode()
 		return u.String(), nil
 	}
@@ -203,43 +327,11 @@ func GenerateTestDetailsURL(
 	// Otherwise, generate full URL with all parameters (for backward compatibility)
 	params.Add("testId", testID)
 
-	// Add release and time parameters
-	params.Add("baseRelease", baseReleaseOpts.Name)
-	params.Add("sampleRelease", sampleReleaseOpts.Name)
-	params.Add("baseStartTime", baseReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
-	params.Add("baseEndTime", baseReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
-	params.Add("sampleStartTime", sampleReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
-	params.Add("sampleEndTime", sampleReleaseOpts.End.Format("2006-01-02T15:04:05Z"))
-
-	// Add PR options if present
-	if sampleReleaseOpts.PullRequestOptions != nil {
-		params.Add("samplePROrg", sampleReleaseOpts.PullRequestOptions.Org)
-		params.Add("samplePRRepo", sampleReleaseOpts.PullRequestOptions.Repo)
-		params.Add("samplePRNumber", sampleReleaseOpts.PullRequestOptions.PRNumber)
-	}
-
-	// Add Payload options if present
-	if sampleReleaseOpts.PayloadOptions != nil {
-		for _, tag := range sampleReleaseOpts.PayloadOptions.Tags {
-			params.Add("samplePayloadTag", tag)
-		}
-	}
-
-	// Check if release fallback was used and add the override
-	if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
-		params.Add("testBasisRelease", baseReleaseOverride)
-	}
+	// Add release parameters
+	addReleaseParams(params, baseReleaseOpts, sampleReleaseOpts, baseReleaseOverride)
 
 	// Add advanced options
-	params.Add("confidence", strconv.Itoa(advancedOptions.Confidence))
-	params.Add("minFail", strconv.Itoa(advancedOptions.MinimumFailure))
-	params.Add("pity", strconv.Itoa(advancedOptions.PityFactor))
-	params.Add("passRateNewTests", strconv.Itoa(advancedOptions.PassRateRequiredNewTests))
-	params.Add("passRateAllTests", strconv.Itoa(advancedOptions.PassRateRequiredAllTests))
-	params.Add("ignoreDisruption", strconv.FormatBool(advancedOptions.IgnoreDisruption))
-	params.Add("ignoreMissing", strconv.FormatBool(advancedOptions.IgnoreMissing))
-	params.Add("flakeAsFailure", strconv.FormatBool(advancedOptions.FlakeAsFailure))
-	params.Add("includeMultiReleaseAnalysis", strconv.FormatBool(advancedOptions.IncludeMultiReleaseAnalysis))
+	addAdvancedOptionsParams(params, advancedOptions)
 
 	if component != "" {
 		params.Add("component", component)
@@ -257,66 +349,7 @@ func GenerateTestDetailsURL(
 	}
 
 	// Add variant options
-	if variantOptions.ColumnGroupBy != nil {
-		params.Add("columnGroupBy", strings.Join(variantOptions.ColumnGroupBy.List(), ","))
-	}
-	if variantOptions.DBGroupBy != nil {
-		params.Add("dbGroupBy", strings.Join(variantOptions.DBGroupBy.List(), ","))
-	}
-
-	// Add include variants
-	// Sort variant keys to ensure consistent parameter ordering
-	includeVariantKeys := make([]string, 0, len(variantOptions.IncludeVariants))
-	for variantKey := range variantOptions.IncludeVariants {
-		includeVariantKeys = append(includeVariantKeys, variantKey)
-	}
-	sort.Strings(includeVariantKeys)
-
-	for _, variantKey := range includeVariantKeys {
-		variantValues := variantOptions.IncludeVariants[variantKey]
-		// Sort variant values to ensure consistent parameter ordering
-		sortedValues := make([]string, len(variantValues))
-		copy(sortedValues, variantValues)
-		sort.Strings(sortedValues)
-
-		for _, variantValue := range sortedValues {
-			params.Add("includeVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
-		}
-	}
-
-	// Add compare variants (for cross-compare feature)
-	if len(variantOptions.CompareVariants) > 0 {
-		// Sort variant keys to ensure consistent parameter ordering
-		compareVariantKeys := make([]string, 0, len(variantOptions.CompareVariants))
-		for variantKey := range variantOptions.CompareVariants {
-			compareVariantKeys = append(compareVariantKeys, variantKey)
-		}
-		sort.Strings(compareVariantKeys)
-
-		for _, variantKey := range compareVariantKeys {
-			variantValues := variantOptions.CompareVariants[variantKey]
-			// Sort variant values to ensure consistent parameter ordering
-			sortedValues := make([]string, len(variantValues))
-			copy(sortedValues, variantValues)
-			sort.Strings(sortedValues)
-
-			for _, variantValue := range sortedValues {
-				params.Add("compareVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
-			}
-		}
-	}
-
-	// Add variant cross compare
-	if len(variantOptions.VariantCrossCompare) > 0 {
-		// Sort to ensure consistent parameter ordering
-		sortedCrossCompare := make([]string, len(variantOptions.VariantCrossCompare))
-		copy(sortedCrossCompare, variantOptions.VariantCrossCompare)
-		sort.Strings(sortedCrossCompare)
-
-		for _, variantKey := range sortedCrossCompare {
-			params.Add("variantCrossCompare", variantKey)
-		}
-	}
+	addVariantOptionsParams(params, variantOptions)
 
 	// Add variant parameters and environment string
 	addVariantParams(params, variantMap)
