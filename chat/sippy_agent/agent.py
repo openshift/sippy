@@ -185,10 +185,12 @@ class SippyAgent:
             SippyTestDetailsTool(sippy_api_url=self.config.sippy_api_url),
             SippyJiraIncidentTool(
                 jira_url=self.config.jira_url,
-                jira_username=self.config.jira_username,
-                jira_token=self.config.jira_token,
+                jira_basic_auth_token=self.config.jira_basic_auth_token,
             ),
-            SippyJiraIssueTool(jira_url=self.config.jira_url),
+            SippyJiraIssueTool(
+                jira_url=self.config.jira_url,
+                jira_basic_auth_token=self.config.jira_basic_auth_token,
+            ),
             TriagePotentialMatchesTool(sippy_api_url=self.config.sippy_api_url),
             SippyReleasePayloadTool(),
             SippyPayloadDetailsTool(),
