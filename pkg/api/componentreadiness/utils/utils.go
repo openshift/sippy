@@ -277,6 +277,7 @@ func addVariantOptionsParams(params url.Values, variantOptions reqopts.Variants)
 //   - testBasisRelease (if baseReleaseOverride is provided)
 //
 // When viewName is empty, generates a full URL with all parameters for backward compatibility.
+// Note: keyTestNames are NOT included in URLs - they come from the view definition on the server.
 func GenerateTestDetailsURL(
 	testID string,
 	baseURL string,

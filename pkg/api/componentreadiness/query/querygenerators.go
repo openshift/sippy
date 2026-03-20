@@ -226,6 +226,28 @@ func buildPriorityCaseStatement(keyTestNames []string) (string, []bigquery.Query
 	return strings.Join(caseStatements, "\n\t\t\t\t\t\t\t"), params
 }
 
+// buildKeyTestFilterClause returns the WHERE clause for filtering by key tests with priority.
+// It excludes other failing tests from jobs with failed key tests, but keeps passing/flaky tests.
+// The tableAlias parameter specifies the alias for the deduped_testcases table (e.g., "junit_data" or "junit").
+func buildKeyTestFilterClause(tableAlias string) string {
+	return fmt.Sprintf(`
+					AND (
+						-- Include tests from jobs that don't have any failed key tests
+						%s.prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)
+						-- Or include the highest priority key test from jobs that have failed key tests
+						OR EXISTS (
+							SELECT 1 FROM jobs_with_highest_priority_test j
+							WHERE j.prowjob_build_id = %s.prowjob_build_id
+							AND j.test_name = %s.test_name
+						)
+						-- Or include non-failing tests (successful or flaky) from jobs with failed key tests
+						OR (
+							%s.prowjob_build_id IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)
+							AND (%s.adjusted_success_val > 0 OR %s.adjusted_flake_count > 0)
+						)
+					)`, tableAlias, tableAlias, tableAlias, tableAlias, tableAlias, tableAlias)
+}
+
 // buildCRQueryCTEs builds the WITH clause (Common Table Expressions) for the component readiness query.
 //
 // The deduped_testcases CTE handles multiple issues in our dataset:
@@ -239,15 +261,13 @@ func buildPriorityCaseStatement(keyTestNames []string) (string, []bigquery.Query
 //   - Then successes (success_val > 0)
 //   - Then failures
 //
-// We take only the first row (row_num = 1) from each partition.
-//
 // If keyTestNames is provided, additional CTEs are created to identify jobs with failed key tests
 // based on the DEDUPED data. This ensures key test filtering uses the same deduplicated results.
 func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore string, keyTestNames []string) (string, []bigquery.QueryParameter) {
 	var commonParams []bigquery.QueryParameter
 
-	// Create the deduped_testcases CTE first - this is the source of truth for all subsequent CTEs
-	dedupedCTE := fmt.Sprintf(`deduped_testcases AS (
+	// Create the deduped_testcases CTE - this is the source of truth for all subsequent CTEs
+	dedupedCTE := fmt.Sprintf(`deduped_testcases_with_rownum AS (
 			SELECT
 				junit.*,
 				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY
@@ -287,6 +307,9 @@ func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotation
 			AND modified_time < DATETIME(@To)
 			AND skipped = false
 			AND job_labels.label IS NULL
+		),
+		deduped_testcases AS (
+			SELECT * FROM deduped_testcases_with_rownum WHERE row_num = 1
 		)`,
 		jobNameQueryPortion, dataset, junitTable, dataset, dataset, jobRunAnnotationToIgnore)
 
@@ -314,8 +337,7 @@ func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotation
 				%s
 				END AS test_priority
 			FROM deduped_testcases
-			WHERE row_num = 1
-			AND test_name IN UNNEST(@KeyTestNames)
+			WHERE test_name IN UNNEST(@KeyTestNames)
 			AND adjusted_success_val = 0
 			AND adjusted_flake_count = 0
 		),
@@ -403,29 +425,11 @@ func BuildComponentReportQuery(
 
 	queryString += joinVariants
 
-	queryString += `WHERE junit_data.row_num = 1
-						AND cm.staff_approved_obsolete = false
+	queryString += `WHERE cm.staff_approved_obsolete = false
 						AND (junit_data.variant_registry_job_name LIKE 'periodic-%%' OR junit_data.variant_registry_job_name LIKE 'release-%%' OR junit_data.variant_registry_job_name LIKE 'aggregator-%%')`
 
-	// Add filtering logic for key tests with priority
-	// Exclude other failing tests from jobs with failed key tests, but keep passing/flaky tests
 	if len(reqOptions.AdvancedOption.KeyTestNames) > 0 {
-		queryString += `
-						AND (
-							-- Include tests from jobs that don't have any failed key tests
-							junit_data.prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)
-							-- Or include the highest priority key test from jobs that have failed key tests
-							OR EXISTS (
-								SELECT 1 FROM jobs_with_highest_priority_test j
-								WHERE j.prowjob_build_id = junit_data.prowjob_build_id
-								AND j.test_name = junit_data.test_name
-							)
-							-- Or include non-failing tests (successful or flaky) from jobs with failed key tests
-							OR (
-								junit_data.prowjob_build_id IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)
-								AND (junit_data.adjusted_success_val > 0 OR junit_data.adjusted_flake_count > 0)
-							)
-						)`
+		queryString += buildKeyTestFilterClause("junit_data")
 	}
 	if reqOptions.AdvancedOption.IgnoreDisruption {
 		queryString += ` AND NOT 'Disruption' in UNNEST(capabilities)`
@@ -582,8 +586,7 @@ func buildTestDetailsQuery(
 						modified_time `, groupByVariants)
 	queryString += `
 					WHERE
-						junit.row_num = 1
-						AND (variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
+						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
 						AND
 `
 
@@ -594,25 +597,8 @@ func buildTestDetailsQuery(
 	}
 	queryString += ")"
 
-	// Add filtering logic for key tests with priority
-	// Exclude other failing tests from jobs with failed key tests, but keep passing/flaky tests
 	if len(c.AdvancedOption.KeyTestNames) > 0 {
-		queryString += `
-					AND (
-						-- Include tests from jobs that don't have any failed key tests
-						junit.prowjob_build_id NOT IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)
-						-- Or include the highest priority key test from jobs that have failed key tests
-						OR EXISTS (
-							SELECT 1 FROM jobs_with_highest_priority_test j
-							WHERE j.prowjob_build_id = junit.prowjob_build_id
-							AND j.test_name = junit.test_name
-						)
-						-- Or include non-failing tests (successful or flaky) from jobs with failed key tests
-						OR (
-							junit.prowjob_build_id IN (SELECT prowjob_build_id FROM jobs_with_highest_priority_test)
-							AND (junit.adjusted_success_val > 0 OR junit.adjusted_flake_count > 0)
-						)
-					)`
+		queryString += buildKeyTestFilterClause("junit")
 	}
 
 	if isSample {

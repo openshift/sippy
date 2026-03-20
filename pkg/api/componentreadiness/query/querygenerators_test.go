@@ -203,8 +203,10 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 
 	// The query should:
 	// 1. Create CTEs that identify the highest priority test in each job
-	assert.Contains(t, commonQuery, "WITH deduped_testcases AS",
-		"Should create deduped_testcases CTE first")
+	assert.Contains(t, commonQuery, "WITH deduped_testcases_with_rownum AS",
+		"Should create deduped_testcases_with_rownum CTE first")
+	assert.Contains(t, commonQuery, "deduped_testcases AS",
+		"Should create deduped_testcases CTE that filters to row_num = 1")
 	assert.Contains(t, commonQuery, "key_test_priorities AS",
 		"Should create CTE for calculating test priorities")
 	assert.Contains(t, commonQuery, "jobs_with_highest_priority_test AS",
