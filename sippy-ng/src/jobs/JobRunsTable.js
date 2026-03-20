@@ -317,6 +317,13 @@ export default function JobRunsTable(props) {
       hide: true,
     },
     {
+      field: 'ran_test_names',
+      type: 'array',
+      autocomplete: 'tests',
+      headerName: 'Tests ran',
+      hide: true,
+    },
+    {
       field: 'pull_request_author',
       autocomplete: 'authors',
       headerName: 'Pull request author',

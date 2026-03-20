@@ -14,7 +14,7 @@ import { DirectionsRun } from '@mui/icons-material'
 import {
   filterFor,
   not,
-  pathForJobRunsWithTestFailure,
+  pathForJobRunsWithTest,
   safeEncodeURIComponent,
   SafeJSONParam,
   SafeStringParam,
@@ -287,7 +287,7 @@ export function TestAnalysis(props) {
                   startIcon={<DirectionsRun />}
                   component={Link}
                   to={withSort(
-                    pathForJobRunsWithTestFailure(props.release, testName, {
+                    pathForJobRunsWithTest(props.release, testName, {
                       items: [
                         ...filterModel.items.filter(
                           (f) => f.columnField === 'variants'

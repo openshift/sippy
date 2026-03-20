@@ -378,6 +378,8 @@ func (run JobRun) GetFieldType(param string) ColumnType {
 		return ColumnTypeArray
 	case "flaked_test_names":
 		return ColumnTypeArray
+	case "ran_test_names":
+		return ColumnTypeArray
 	case "labels":
 		return ColumnTypeArray
 	case "variants":
