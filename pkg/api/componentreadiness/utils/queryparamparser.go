@@ -38,6 +38,7 @@ func ParseComponentReportRequest(
 
 	if view != nil {
 		// set params from view
+		opts.ViewName = view.Name
 		opts.VariantOption = view.VariantOptions
 		opts.AdvancedOption = view.AdvancedOptions
 		opts.TestFilters = view.TestFilters

@@ -92,12 +92,47 @@ func VariantsMapToStringSlice(variants map[string]string) []string {
 	return vs
 }
 
-// GenerateTestDetailsURL creates a HATEOAS-style URL for the test_details API endpoint
-// based on explicit parameters. This function is focused on URL generation rather than
-// data processing, with the caller responsible for extracting the required data.
+// addVariantParams adds variant parameters to url.Values and returns the environment string.
+// This helper consolidates the duplicate variant parameter logic used in both view-based
+// and legacy URL generation.
+func addVariantParams(params url.Values, variantMap map[string]string) {
+	if len(variantMap) == 0 {
+		return
+	}
+
+	// Sort the keys to ensure consistent parameter ordering
+	variantKeys := make([]string, 0, len(variantMap))
+	for key := range variantMap {
+		variantKeys = append(variantKeys, key)
+	}
+	sort.Strings(variantKeys)
+
+	// Add individual variant parameters and build environment string
+	environment := make([]string, 0, len(variantMap))
+	for _, key := range variantKeys {
+		value := variantMap[key]
+		params.Add(key, value)
+		environment = append(environment, fmt.Sprintf("%s:%s", key, value))
+	}
+
+	// Add environment parameter (space-separated variant pairs)
+	params.Add("environment", strings.Join(environment, " "))
+}
+
+// GenerateTestDetailsURL creates a HATEOAS-style URL for the test_details API endpoint.
+//
+// When viewName is provided, generates a minimal URL with just the view parameter plus test-specific overrides:
+//   - view=<name>
+//   - testId=<id>
+//   - component, capability (if provided)
+//   - specific variants from the variants parameter
+//   - testBasisRelease (if baseReleaseOverride is provided)
+//
+// When viewName is empty, generates a full URL with all parameters for backward compatibility.
 func GenerateTestDetailsURL(
 	testID string,
 	baseURL string,
+	viewName string,
 	baseReleaseOpts reqopts.Release,
 	sampleReleaseOpts reqopts.Release,
 	advancedOptions reqopts.Advanced,
@@ -140,6 +175,32 @@ func GenerateTestDetailsURL(
 
 	params := url.Values{}
 
+	// If a view is provided, generate a minimal URL with just the view + test-specific overrides
+	if viewName != "" {
+		params.Add("view", viewName)
+		params.Add("testId", testID)
+
+		// Add test-specific parameters (component, capability, specific variants)
+		if component != "" {
+			params.Add("component", component)
+		}
+		if capability != "" {
+			params.Add("capability", capability)
+		}
+
+		// Add variant parameters and environment string
+		addVariantParams(params, variantMap)
+
+		// Check if release fallback was used and add the override
+		if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
+			params.Add("testBasisRelease", baseReleaseOverride)
+		}
+
+		u.RawQuery = params.Encode()
+		return u.String(), nil
+	}
+
+	// Otherwise, generate full URL with all parameters (for backward compatibility)
 	params.Add("testId", testID)
 
 	// Add release and time parameters
@@ -179,10 +240,6 @@ func GenerateTestDetailsURL(
 	params.Add("ignoreMissing", strconv.FormatBool(advancedOptions.IgnoreMissing))
 	params.Add("flakeAsFailure", strconv.FormatBool(advancedOptions.FlakeAsFailure))
 	params.Add("includeMultiReleaseAnalysis", strconv.FormatBool(advancedOptions.IncludeMultiReleaseAnalysis))
-	// Add key test names if present
-	for _, keyTestName := range advancedOptions.KeyTestNames {
-		params.Add("keyTestName", keyTestName)
-	}
 
 	if component != "" {
 		params.Add("component", component)
@@ -261,25 +318,8 @@ func GenerateTestDetailsURL(
 		}
 	}
 
-	// Add the specific variants as individual parameters
-	// Sort the keys to ensure consistent environment parameter ordering
-	variantKeys := make([]string, 0, len(variantMap))
-	for key := range variantMap {
-		variantKeys = append(variantKeys, key)
-	}
-	sort.Strings(variantKeys)
-
-	environment := make([]string, 0, len(variantMap))
-	for _, key := range variantKeys {
-		value := variantMap[key]
-		params.Add(key, value)
-		environment = append(environment, fmt.Sprintf("%s:%s", key, value))
-	}
-
-	// Add environment parameter (space-separated variant pairs)
-	if len(environment) > 0 {
-		params.Add("environment", strings.Join(environment, " "))
-	}
+	// Add variant parameters and environment string
+	addVariantParams(params, variantMap)
 
 	u.RawQuery = params.Encode()
 	return u.String(), nil

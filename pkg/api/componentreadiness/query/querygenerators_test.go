@@ -102,12 +102,14 @@ func TestBuildComponentReportQuery_ExclusiveTestFiltering(t *testing.T) {
 					"Query should contain jobs_with_highest_priority_test CTE")
 				assert.Contains(t, commonQuery, "key_test_priorities",
 					"Query should contain exclusive_test_priorities CTE for priority calculation")
-				assert.Contains(t, commonQuery, "AND success_val = 0",
-					"CTE should only identify jobs where key tests FAILED (success_val = 0)")
+				assert.Contains(t, commonQuery, "AND adjusted_success_val = 0",
+					"CTE should only identify jobs where key tests FAILED (adjusted_success_val = 0 from deduped data)")
 				assert.Contains(t, commonQuery, "test_name IN UNNEST(@KeyTestNames)",
 					"CTE should filter by key test names")
 				assert.Contains(t, commonQuery, "test_priority",
 					"CTE should calculate test priority based on list order")
+				assert.Contains(t, commonQuery, "FROM deduped_testcases",
+					"CTE should query from deduped_testcases, not raw junit table")
 			} else {
 				assert.NotContains(t, commonQuery, "jobs_with_highest_priority_test",
 					"Query should not contain jobs_with_highest_priority_test CTE when no key tests")
@@ -201,18 +203,22 @@ func TestBuildComponentReportQuery_ExclusiveTestLogic(t *testing.T) {
 
 	// The query should:
 	// 1. Create CTEs that identify the highest priority test in each job
-	assert.Contains(t, commonQuery, "WITH key_test_priorities AS",
+	assert.Contains(t, commonQuery, "WITH deduped_testcases AS",
+		"Should create deduped_testcases CTE first")
+	assert.Contains(t, commonQuery, "key_test_priorities AS",
 		"Should create CTE for calculating test priorities")
 	assert.Contains(t, commonQuery, "jobs_with_highest_priority_test AS",
 		"Should create CTE for identifying highest priority test per job")
 
-	// 2. The CTE should check success_val = 0 (failure)
+	// 2. The CTE should check adjusted_success_val = 0 (failure) from deduped data
 	cteEnd := strings.Index(commonQuery, "latest_component_mapping")
 	require.Greater(t, cteEnd, 0, "Should contain latest_component_mapping CTE")
 
 	cteSection := commonQuery[:cteEnd]
-	assert.Contains(t, cteSection, "success_val = 0",
-		"CTE should only match FAILED key tests (success_val = 0), not all instances")
+	assert.Contains(t, cteSection, "adjusted_success_val = 0",
+		"CTE should only match FAILED key tests (adjusted_success_val = 0 from deduped data), not all instances")
+	assert.Contains(t, cteSection, "FROM deduped_testcases",
+		"CTE should query from deduped_testcases, not raw junit table")
 
 	// 3. Priority-based filtering: only include highest priority test from jobs with key test failures
 	assert.Contains(t, commonQuery, "test_priority",

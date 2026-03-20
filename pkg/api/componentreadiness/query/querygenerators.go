@@ -290,52 +290,97 @@ func buildPriorityCaseStatement(keyTestNames []string) (string, []bigquery.Query
 }
 
 // buildCRQueryCTEs builds the WITH clause (Common Table Expressions) for the component readiness query.
-// If keyTestNames is provided, it creates CTEs to identify jobs with failed key tests and excludes
-// other test failures from those jobs. Only the highest priority (earliest in the list) key test
-// will be included for each affected job.
-func buildCRQueryCTEs(dataset, junitTable string, keyTestNames []string) (string, []bigquery.QueryParameter) {
+// This creates the deduped_testcases CTE first, then if keyTestNames is provided, creates CTEs to identify
+// jobs with failed key tests based on the DEDUPED data. This ensures key test filtering uses the same
+// deduplicated results as the main query.
+func buildCRQueryCTEs(dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore string, keyTestNames []string) (string, []bigquery.QueryParameter) {
 	var commonParams []bigquery.QueryParameter
 
+	// Create the deduped_testcases CTE first - this is the source of truth for all subsequent CTEs
+	dedupedCTE := fmt.Sprintf(`deduped_testcases AS (
+			SELECT
+				junit.*,
+				ROW_NUMBER() OVER(PARTITION BY file_path, test_name, testsuite ORDER BY
+					CASE
+						WHEN flake_count > 0 THEN 0
+						WHEN success_val > 0 THEN 1
+						ELSE 2
+					END) AS row_num,
+%s
+				jobs.prowjob_start as prowjob_start,
+				jobs.prowjob_url as prowjob_url,
+				jobs.org,
+				jobs.repo,
+				jobs.pr_number,
+				jobs.pr_sha,
+				jobs.release_verify_tag,
+				CASE
+					WHEN flake_count > 0 THEN 0
+					ELSE success_val
+				END AS adjusted_success_val,
+				CASE
+					WHEN flake_count > 0 THEN 1
+					ELSE 0
+				END AS adjusted_flake_count
+			FROM
+				%s.%s AS junit
+			INNER JOIN %s.jobs  jobs ON
+				junit.prowjob_build_id = jobs.prowjob_build_id
+				AND jobs.prowjob_start >= DATETIME(@From)
+				AND jobs.prowjob_start < DATETIME(@To)
+			LEFT JOIN %s.job_labels job_labels ON
+				junit.prowjob_build_id = job_labels.prowjob_build_id
+				AND job_labels.prowjob_start >= DATETIME(@From)
+				AND job_labels.prowjob_start < DATETIME(@To)
+				AND job_labels.label = '%s'
+			WHERE modified_time >= DATETIME(@From)
+			AND modified_time < DATETIME(@To)
+			AND skipped = false
+			AND job_labels.label IS NULL
+		)`,
+		jobNameQueryPortion, dataset, junitTable, dataset, dataset, jobRunAnnotationToIgnore)
+
 	// Always create the component mapping CTE
-	componentMappingCTE := fmt.Sprintf(`latest_component_mapping AS (
-							SELECT *
-							FROM %s.component_mapping cm
-							WHERE created_at = (
-									SELECT MAX(created_at)
-									FROM %s.component_mapping))`,
+	componentMappingCTE := fmt.Sprintf(`,
+		latest_component_mapping AS (
+			SELECT *
+			FROM %s.component_mapping cm
+			WHERE created_at = (
+				SELECT MAX(created_at)
+				FROM %s.component_mapping))`,
 		dataset, dataset)
 
 	if len(keyTestNames) > 0 {
-		// Create a Common Table Expression (CTE) that identifies the highest priority (lowest index) key test in each job
-		// This ensures when multiple key tests appear in the same job, only the highest priority one is used
+		// Create CTEs that query from the DEDUPED data, not the raw junit table
+		// This ensures key test filtering uses the same deduplicated results as the main query
 		caseStatement, caseParams := buildPriorityCaseStatement(keyTestNames)
-		keyTestCTEs := fmt.Sprintf(`key_test_priorities AS (
-							SELECT
-								prowjob_build_id,
-								test_name,
-								-- Find the index/priority of each test (lower index = higher priority)
-								CASE
-								%s
-								END AS test_priority
-							FROM %s.%s AS junit
-							WHERE modified_time >= DATETIME(@From)
-							AND modified_time < DATETIME(@To)
-							AND test_name IN UNNEST(@KeyTestNames)
-							AND success_val = 0
-							AND flake_count = 0
-						),
-						jobs_with_highest_priority_test AS (
-							SELECT
-								prowjob_build_id,
-								test_name
-							FROM key_test_priorities
-							WHERE test_priority = (
-								SELECT MIN(test_priority)
-								FROM key_test_priorities ep2
-								WHERE ep2.prowjob_build_id = key_test_priorities.prowjob_build_id
-							)
-						),`,
-			caseStatement, dataset, junitTable)
+		keyTestCTEs := fmt.Sprintf(`,
+		key_test_priorities AS (
+			SELECT
+				prowjob_build_id,
+				test_name,
+				-- Find the index/priority of each test (lower index = higher priority)
+				CASE
+				%s
+				END AS test_priority
+			FROM deduped_testcases
+			WHERE row_num = 1
+			AND test_name IN UNNEST(@KeyTestNames)
+			AND adjusted_success_val = 0
+			AND adjusted_flake_count = 0
+		),
+		jobs_with_highest_priority_test AS (
+			SELECT
+				prowjob_build_id,
+				test_name
+			FROM key_test_priorities
+			WHERE test_priority = (
+				SELECT MIN(test_priority)
+				FROM key_test_priorities ep2
+				WHERE ep2.prowjob_build_id = key_test_priorities.prowjob_build_id
+			)
+		)`,
+			caseStatement)
 
 		commonParams = append(commonParams, caseParams...)
 		commonParams = append(commonParams, bigquery.QueryParameter{
@@ -343,10 +388,10 @@ func buildCRQueryCTEs(dataset, junitTable string, keyTestNames []string) (string
 			Value: keyTestNames,
 		})
 
-		return fmt.Sprintf("WITH %s\n%s", keyTestCTEs, componentMappingCTE), commonParams
+		return fmt.Sprintf("WITH %s%s%s", dedupedCTE, keyTestCTEs, componentMappingCTE), commonParams
 	}
 
-	return fmt.Sprintf("WITH %s", componentMappingCTE), commonParams
+	return fmt.Sprintf("WITH %s%s", dedupedCTE, componentMappingCTE), commonParams
 }
 
 // BuildComponentReportQuery returns the common query for the higher level summary component summary.
@@ -387,7 +432,7 @@ func BuildComponentReportQuery(
 	// TODO: last_failure here explicitly uses success_val not adjusted_success_val, this ensures we
 	// show the last time the test failed, not flaked. if you enable the flakes as failures feature (which is
 	// non default today), the last failure time will be wrong which can impact things like failed fix detection.
-	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, reqOptions.AdvancedOption.KeyTestNames)
+	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, reqOptions.AdvancedOption.KeyTestNames)
 
 	queryString := fmt.Sprintf(`%s
 					SELECT
@@ -401,15 +446,16 @@ func BuildComponentReportQuery(
 						MAX(CASE WHEN junit_data.success_val = 0 THEN junit_data.prowjob_start ELSE NULL END) AS last_failure,
 						ANY_VALUE(cm.component) AS component,
 						ANY_VALUE(cm.capabilities) AS capabilities,
-					FROM (%s) AS junit_data
+					FROM deduped_testcases AS junit_data
 					INNER JOIN latest_component_mapping cm ON junit_data.testsuite = cm.suite AND junit_data.test_name = cm.name
 `,
-		withClause, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore))
+		withClause, selectVariants)
 
 	queryString += joinVariants
 
-	queryString += `WHERE cm.staff_approved_obsolete = false AND
-						(junit_data.variant_registry_job_name LIKE 'periodic-%%' OR junit_data.variant_registry_job_name LIKE 'release-%%' OR junit_data.variant_registry_job_name LIKE 'aggregator-%%')`
+	queryString += `WHERE junit_data.row_num = 1
+						AND cm.staff_approved_obsolete = false
+						AND (junit_data.variant_registry_job_name LIKE 'periodic-%%' OR junit_data.variant_registry_job_name LIKE 'release-%%' OR junit_data.variant_registry_job_name LIKE 'aggregator-%%')`
 
 	// Add filtering logic for key tests with priority
 	// Only include the highest priority test from each job, and exclude all other tests from those jobs
@@ -546,7 +592,7 @@ func buildTestDetailsQuery(
 	}
 
 	// Build WITH clause with key test filtering if configured
-	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, c.AdvancedOption.KeyTestNames)
+	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, c.AdvancedOption.KeyTestNames)
 
 	queryString := fmt.Sprintf(`%s
 					SELECT
@@ -565,9 +611,9 @@ func buildTestDetailsQuery(
 						ANY_VALUE(cm.capabilities) as capabilities,
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
-					FROM (%s) junit
+					FROM deduped_testcases junit
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
-`, withClause, selectVariants, fmt.Sprintf(dedupedJunitTable, jobNameQueryPortion, client.Dataset, junitTable, client.Dataset, client.Dataset, jobRunAnnotationToIgnore))
+`, withClause, selectVariants)
 
 	queryString += joinVariants
 
@@ -581,7 +627,8 @@ func buildTestDetailsQuery(
 						modified_time `, groupByVariants)
 	queryString += `
 					WHERE
-						(variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
+						junit.row_num = 1
+						AND (variant_registry_job_name LIKE 'periodic-%%' OR variant_registry_job_name LIKE 'release-%%' OR variant_registry_job_name LIKE 'aggregator-%%')
 						AND
 `
 

@@ -779,6 +779,7 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 	return utils.GenerateTestDetailsURL(
 		regression.TestID,
 		baseURL,
+		view.Name, // Pass the view name
 		baseReleaseOpts,
 		sampleReleaseOpts,
 		view.AdvancedOptions,

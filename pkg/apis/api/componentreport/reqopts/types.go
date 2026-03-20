@@ -19,6 +19,10 @@ type RequestOptions struct {
 	CacheOption    cache.RequestOptions
 	TestFilters
 	TestIDOptions []TestIdentification
+	// ViewName is the name of the view used for this request, if any.
+	// When generating test details URLs, if a view is present, we include just the view parameter
+	// plus test-specific overrides, rather than expanding all view parameters into the URL.
+	ViewName string `json:"view_name,omitempty" yaml:"view_name,omitempty"`
 }
 
 // PullRequest specifies a specific pull request to use as the
