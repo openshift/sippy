@@ -92,28 +92,8 @@ func VariantsMapToStringSlice(variants map[string]string) []string {
 	return vs
 }
 
-// GenerateTestDetailsURL creates a HATEOAS-style URL for the test_details API endpoint
-// based on explicit parameters. This function is focused on URL generation rather than
-// data processing, with the caller responsible for extracting the required data.
-func GenerateTestDetailsURL(
-	testID string,
-	baseURL string,
-	baseReleaseOpts reqopts.Release,
-	sampleReleaseOpts reqopts.Release,
-	advancedOptions reqopts.Advanced,
-	variantOptions reqopts.Variants,
-	testFilters reqopts.TestFilters,
-	component string,
-	capability string,
-	variants []string,
-	baseReleaseOverride string,
-) (string, error) {
-
-	if testID == "" {
-		return "", fmt.Errorf("testID cannot be empty")
-	}
-
-	// Parse variants from the variants slice (which is a []string of "key:value" pairs)
+// parseVariantsToMap converts a slice of "key:value" strings to a map
+func parseVariantsToMap(variants []string) map[string]string {
 	variantMap := make(map[string]string)
 	for _, variant := range variants {
 		parts := strings.SplitN(variant, ":", 2)
@@ -121,28 +101,73 @@ func GenerateTestDetailsURL(
 			variantMap[parts[0]] = parts[1]
 		}
 	}
+	return variantMap
+}
 
-	// Build the URL with query parameters
-	var fullURL string
-	if baseURL == "" {
-		// For backward compatibility, return relative URL if no baseURL provided
-		logrus.Warn("GenerateTestDetailsURL was given an empty baseURL")
-		fullURL = "/api/component_readiness/test_details"
-	} else {
-		// Create fully qualified URL
-		fullURL = fmt.Sprintf("%s/api/component_readiness/test_details", baseURL)
+// addVariantParams adds variant parameters to url.Values and returns the environment string.
+// This helper consolidates the duplicate variant parameter logic used in both view-based
+// and legacy URL generation.
+func addVariantParams(params url.Values, variantMap map[string]string) {
+	if len(variantMap) == 0 {
+		return
 	}
 
-	u, err := url.Parse(fullURL)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse URL: %w", err)
+	// Sort the keys to ensure consistent parameter ordering
+	variantKeys := make([]string, 0, len(variantMap))
+	for key := range variantMap {
+		variantKeys = append(variantKeys, key)
+	}
+	sort.Strings(variantKeys)
+
+	// Add individual variant parameters and build environment string
+	environment := make([]string, 0, len(variantMap))
+	for _, key := range variantKeys {
+		value := variantMap[key]
+		params.Add(key, value)
+		environment = append(environment, fmt.Sprintf("%s:%s", key, value))
 	}
 
-	params := url.Values{}
+	// Add environment parameter (space-separated variant pairs)
+	params.Add("environment", strings.Join(environment, " "))
+}
 
+// buildViewBasedURL generates a minimal URL with just view + test-specific overrides
+func buildViewBasedURL(
+	params url.Values,
+	viewName string,
+	testID string,
+	component string,
+	capability string,
+	variantMap map[string]string,
+	baseReleaseOpts reqopts.Release,
+	baseReleaseOverride string,
+) {
+	params.Add("view", viewName)
 	params.Add("testId", testID)
 
-	// Add release and time parameters
+	if component != "" {
+		params.Add("component", component)
+	}
+	if capability != "" {
+		params.Add("capability", capability)
+	}
+
+	// Add variant parameters and environment string
+	addVariantParams(params, variantMap)
+
+	// Check if release fallback was used and add the override
+	if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
+		params.Add("testBasisRelease", baseReleaseOverride)
+	}
+}
+
+// addReleaseParams adds release-related parameters (dates, PR, payload options)
+func addReleaseParams(
+	params url.Values,
+	baseReleaseOpts reqopts.Release,
+	sampleReleaseOpts reqopts.Release,
+	baseReleaseOverride string,
+) {
 	params.Add("baseRelease", baseReleaseOpts.Name)
 	params.Add("sampleRelease", sampleReleaseOpts.Name)
 	params.Add("baseStartTime", baseReleaseOpts.Start.Format("2006-01-02T15:04:05Z"))
@@ -168,8 +193,10 @@ func GenerateTestDetailsURL(
 	if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
 		params.Add("testBasisRelease", baseReleaseOverride)
 	}
+}
 
-	// Add advanced options
+// addAdvancedOptionsParams adds advanced options to URL parameters
+func addAdvancedOptionsParams(params url.Values, advancedOptions reqopts.Advanced) {
 	params.Add("confidence", strconv.Itoa(advancedOptions.Confidence))
 	params.Add("minFail", strconv.Itoa(advancedOptions.MinimumFailure))
 	params.Add("pity", strconv.Itoa(advancedOptions.PityFactor))
@@ -179,6 +206,133 @@ func GenerateTestDetailsURL(
 	params.Add("ignoreMissing", strconv.FormatBool(advancedOptions.IgnoreMissing))
 	params.Add("flakeAsFailure", strconv.FormatBool(advancedOptions.FlakeAsFailure))
 	params.Add("includeMultiReleaseAnalysis", strconv.FormatBool(advancedOptions.IncludeMultiReleaseAnalysis))
+}
+
+// addVariantOptionsParams adds variant options to URL parameters
+func addVariantOptionsParams(params url.Values, variantOptions reqopts.Variants) {
+	if variantOptions.ColumnGroupBy != nil {
+		params.Add("columnGroupBy", strings.Join(variantOptions.ColumnGroupBy.List(), ","))
+	}
+	if variantOptions.DBGroupBy != nil {
+		params.Add("dbGroupBy", strings.Join(variantOptions.DBGroupBy.List(), ","))
+	}
+
+	// Add include variants
+	includeVariantKeys := make([]string, 0, len(variantOptions.IncludeVariants))
+	for variantKey := range variantOptions.IncludeVariants {
+		includeVariantKeys = append(includeVariantKeys, variantKey)
+	}
+	sort.Strings(includeVariantKeys)
+
+	for _, variantKey := range includeVariantKeys {
+		variantValues := variantOptions.IncludeVariants[variantKey]
+		sortedValues := make([]string, len(variantValues))
+		copy(sortedValues, variantValues)
+		sort.Strings(sortedValues)
+
+		for _, variantValue := range sortedValues {
+			params.Add("includeVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
+		}
+	}
+
+	// Add compare variants
+	if len(variantOptions.CompareVariants) > 0 {
+		compareVariantKeys := make([]string, 0, len(variantOptions.CompareVariants))
+		for variantKey := range variantOptions.CompareVariants {
+			compareVariantKeys = append(compareVariantKeys, variantKey)
+		}
+		sort.Strings(compareVariantKeys)
+
+		for _, variantKey := range compareVariantKeys {
+			variantValues := variantOptions.CompareVariants[variantKey]
+			sortedValues := make([]string, len(variantValues))
+			copy(sortedValues, variantValues)
+			sort.Strings(sortedValues)
+
+			for _, variantValue := range sortedValues {
+				params.Add("compareVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
+			}
+		}
+	}
+
+	// Add variant cross compare
+	if len(variantOptions.VariantCrossCompare) > 0 {
+		sortedCrossCompare := make([]string, len(variantOptions.VariantCrossCompare))
+		copy(sortedCrossCompare, variantOptions.VariantCrossCompare)
+		sort.Strings(sortedCrossCompare)
+
+		for _, variantKey := range sortedCrossCompare {
+			params.Add("variantCrossCompare", variantKey)
+		}
+	}
+}
+
+// GenerateTestDetailsURL creates a HATEOAS-style URL for the test_details API endpoint.
+//
+// When viewName is provided, generates a minimal URL with just the view parameter plus test-specific overrides:
+//   - view=<name>
+//   - testId=<id>
+//   - component, capability (if provided)
+//   - specific variants from the variants parameter
+//   - testBasisRelease (if baseReleaseOverride is provided)
+//
+// When viewName is empty, generates a full URL with all parameters for backward compatibility.
+// Note: keyTestNames are NOT included in URLs - they come from the view definition on the server.
+func GenerateTestDetailsURL(
+	testID string,
+	baseURL string,
+	viewName string,
+	baseReleaseOpts reqopts.Release,
+	sampleReleaseOpts reqopts.Release,
+	advancedOptions reqopts.Advanced,
+	variantOptions reqopts.Variants,
+	testFilters reqopts.TestFilters,
+	component string,
+	capability string,
+	variants []string,
+	baseReleaseOverride string,
+) (string, error) {
+
+	if testID == "" {
+		return "", fmt.Errorf("testID cannot be empty")
+	}
+
+	// Parse variants from the variants slice
+	variantMap := parseVariantsToMap(variants)
+
+	// Build the URL with query parameters
+	var fullURL string
+	if baseURL == "" {
+		// For backward compatibility, return relative URL if no baseURL provided
+		logrus.Warn("GenerateTestDetailsURL was given an empty baseURL")
+		fullURL = "/api/component_readiness/test_details"
+	} else {
+		// Create fully qualified URL
+		fullURL = fmt.Sprintf("%s/api/component_readiness/test_details", baseURL)
+	}
+
+	u, err := url.Parse(fullURL)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	params := url.Values{}
+
+	// If a view is provided, generate a minimal URL with just the view + test-specific overrides
+	if viewName != "" {
+		buildViewBasedURL(params, viewName, testID, component, capability, variantMap, baseReleaseOpts, baseReleaseOverride)
+		u.RawQuery = params.Encode()
+		return u.String(), nil
+	}
+
+	// Otherwise, generate full URL with all parameters (for backward compatibility)
+	params.Add("testId", testID)
+
+	// Add release parameters
+	addReleaseParams(params, baseReleaseOpts, sampleReleaseOpts, baseReleaseOverride)
+
+	// Add advanced options
+	addAdvancedOptionsParams(params, advancedOptions)
 
 	if component != "" {
 		params.Add("component", component)
@@ -196,86 +350,10 @@ func GenerateTestDetailsURL(
 	}
 
 	// Add variant options
-	if variantOptions.ColumnGroupBy != nil {
-		params.Add("columnGroupBy", strings.Join(variantOptions.ColumnGroupBy.List(), ","))
-	}
-	if variantOptions.DBGroupBy != nil {
-		params.Add("dbGroupBy", strings.Join(variantOptions.DBGroupBy.List(), ","))
-	}
+	addVariantOptionsParams(params, variantOptions)
 
-	// Add include variants
-	// Sort variant keys to ensure consistent parameter ordering
-	includeVariantKeys := make([]string, 0, len(variantOptions.IncludeVariants))
-	for variantKey := range variantOptions.IncludeVariants {
-		includeVariantKeys = append(includeVariantKeys, variantKey)
-	}
-	sort.Strings(includeVariantKeys)
-
-	for _, variantKey := range includeVariantKeys {
-		variantValues := variantOptions.IncludeVariants[variantKey]
-		// Sort variant values to ensure consistent parameter ordering
-		sortedValues := make([]string, len(variantValues))
-		copy(sortedValues, variantValues)
-		sort.Strings(sortedValues)
-
-		for _, variantValue := range sortedValues {
-			params.Add("includeVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
-		}
-	}
-
-	// Add compare variants (for cross-compare feature)
-	if len(variantOptions.CompareVariants) > 0 {
-		// Sort variant keys to ensure consistent parameter ordering
-		compareVariantKeys := make([]string, 0, len(variantOptions.CompareVariants))
-		for variantKey := range variantOptions.CompareVariants {
-			compareVariantKeys = append(compareVariantKeys, variantKey)
-		}
-		sort.Strings(compareVariantKeys)
-
-		for _, variantKey := range compareVariantKeys {
-			variantValues := variantOptions.CompareVariants[variantKey]
-			// Sort variant values to ensure consistent parameter ordering
-			sortedValues := make([]string, len(variantValues))
-			copy(sortedValues, variantValues)
-			sort.Strings(sortedValues)
-
-			for _, variantValue := range sortedValues {
-				params.Add("compareVariant", fmt.Sprintf("%s:%s", variantKey, variantValue))
-			}
-		}
-	}
-
-	// Add variant cross compare
-	if len(variantOptions.VariantCrossCompare) > 0 {
-		// Sort to ensure consistent parameter ordering
-		sortedCrossCompare := make([]string, len(variantOptions.VariantCrossCompare))
-		copy(sortedCrossCompare, variantOptions.VariantCrossCompare)
-		sort.Strings(sortedCrossCompare)
-
-		for _, variantKey := range sortedCrossCompare {
-			params.Add("variantCrossCompare", variantKey)
-		}
-	}
-
-	// Add the specific variants as individual parameters
-	// Sort the keys to ensure consistent environment parameter ordering
-	variantKeys := make([]string, 0, len(variantMap))
-	for key := range variantMap {
-		variantKeys = append(variantKeys, key)
-	}
-	sort.Strings(variantKeys)
-
-	environment := make([]string, 0, len(variantMap))
-	for _, key := range variantKeys {
-		value := variantMap[key]
-		params.Add(key, value)
-		environment = append(environment, fmt.Sprintf("%s:%s", key, value))
-	}
-
-	// Add environment parameter (space-separated variant pairs)
-	if len(environment) > 0 {
-		params.Add("environment", strings.Join(environment, " "))
-	}
+	// Add variant parameters and environment string
+	addVariantParams(params, variantMap)
 
 	u.RawQuery = params.Encode()
 	return u.String(), nil

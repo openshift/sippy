@@ -69,6 +69,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"test-id",
 			"",
+			"", // viewName
 			getBaseReleaseOpts(),
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
@@ -87,6 +88,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		_, err := GenerateTestDetailsURL(
 			"",
 			"https://example.com",
+			"", // viewName
 			getBaseReleaseOpts(),
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
@@ -105,6 +107,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"test-id",
 			"",
+			"", // viewName
 			getBaseReleaseOpts(),
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
@@ -127,6 +130,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"test-id",
 			"",
+			"", // viewName
 			getBaseReleaseOpts(),
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
@@ -148,6 +152,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"openshift-tests:abc123",
 			"https://sippy.example.com",
+			"", // viewName
 			getBaseReleaseOpts(),
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
@@ -181,6 +186,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"openshift-tests:abc123",
 			"https://sippy.example.com",
+			"", // viewName
 			getBaseReleaseOpts(),
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
@@ -247,6 +253,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"openshift-tests:9f3fb60052539c29ab66564689f616ce",
 			"https://sippy-auth.dptools.openshift.org",
+			"", // viewName
 			baseReleaseOpts,
 			sampleReleaseOpts,
 			realWorldView.AdvancedOptions,
@@ -344,6 +351,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"test-id",
 			"https://example.com",
+			"", // viewName
 			baseReleaseOpts,
 			sampleReleaseOpts,
 			viewWithVariants.AdvancedOptions,
@@ -416,6 +424,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"test-id-123",
 			"https://example.com",
+			"", // viewName
 			baseReleaseOpts,
 			sampleReleaseOpts,
 			viewWithCrossCompare.AdvancedOptions,
@@ -463,6 +472,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"test-id",
 			"https://sippy.example.com",
+			"", // viewName
 			getBaseReleaseOpts(),
 			sampleReleaseWithPR,
 			testView.AdvancedOptions,
@@ -496,6 +506,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"test-id",
 			"https://sippy.example.com",
+			"", // viewName
 			getBaseReleaseOpts(),
 			sampleReleaseWithPayload,
 			testView.AdvancedOptions,
@@ -524,6 +535,7 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		url, err := GenerateTestDetailsURL(
 			"test-id",
 			"https://sippy.example.com",
+			"", // viewName
 			getBaseReleaseOpts(),
 			getSampleReleaseOpts(),
 			testView.AdvancedOptions,
