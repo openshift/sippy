@@ -529,12 +529,12 @@ component_readiness:
     enabled: false
 - name: 4.22-lp-Interop-coo
   base_release:
-    release: "4.21"
-    relative_start: ga-30d
-    relative_end: ga
+    release: "4.22"
+    relative_start: now-60d
+    relative_end: now-30d
   sample_release:
     release: "4.22"
-    relative_start: now-7d
+    relative_start: now-30d
     relative_end: now
   variant_options:
     column_group_by:
@@ -552,6 +552,7 @@ component_readiness:
       - lp-interop-coo
       Owner:
       - eng
+      - qe
       Platform:
       - azure
       - gcp
@@ -564,7 +565,7 @@ component_readiness:
     ignore_disruption: true
     flake_as_failure: false
     pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -1139,12 +1140,12 @@ component_readiness:
     enabled: false
 - name: 4.21-lp-Interop-coo
   base_release:
-    release: "4.20"
-    relative_start: now-30d
-    relative_end: now
+    release: "4.21"
+    relative_start: now-60d
+    relative_end: now-30d
   sample_release:
     release: "4.21"
-    relative_start: now-7d
+    relative_start: now-30d
     relative_end: now
   variant_options:
     column_group_by:
@@ -1162,6 +1163,7 @@ component_readiness:
       - lp-interop-coo
       Owner:
       - eng
+      - qe
       Platform:
       - azure
       - gcp
@@ -1174,7 +1176,7 @@ component_readiness:
     ignore_disruption: true
     flake_as_failure: false
     pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -1730,12 +1732,12 @@ component_readiness:
     enabled: false
 - name: 4.20-lp-Interop-coo
   base_release:
-    release: "4.19"
-    relative_start: ga-30d
-    relative_end: ga
+    release: "4.20"
+    relative_start: now-60d
+    relative_end: now-30d
   sample_release:
     release: "4.20"
-    relative_start: now-7d
+    relative_start: now-30d
     relative_end: now
   variant_options:
     column_group_by:
@@ -1753,6 +1755,7 @@ component_readiness:
       - lp-interop-coo
       Owner:
       - eng
+      - qe
       Platform:
       - azure
       - gcp
@@ -1765,7 +1768,7 @@ component_readiness:
     ignore_disruption: true
     flake_as_failure: false
     pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -2430,12 +2433,12 @@ component_readiness:
     enabled: true
 - name: 4.19-lp-Interop-coo
   base_release:
-    release: "4.18"
-    relative_start: ga-30d
-    relative_end: ga
+    release: "4.19"
+    relative_start: now-60d
+    relative_end: now-30d
   sample_release:
     release: "4.19"
-    relative_start: now-7d
+    relative_start: now-30d
     relative_end: now
   variant_options:
     column_group_by:
@@ -2453,6 +2456,7 @@ component_readiness:
       - lp-interop-coo
       Owner:
       - eng
+      - qe
       Platform:
       - azure
       - gcp
@@ -2465,7 +2469,7 @@ component_readiness:
     ignore_disruption: true
     flake_as_failure: false
     pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -2474,12 +2478,12 @@ component_readiness:
     enabled: false
 - name: 4.18-lp-Interop-coo
   base_release:
-    release: "4.17"
-    relative_start: ga-30d
-    relative_end: ga
+    release: "4.18"
+    relative_start: now-60d
+    relative_end: now-30d
   sample_release:
     release: "4.18"
-    relative_start: now-7d
+    relative_start: now-30d
     relative_end: now
   variant_options:
     column_group_by:
@@ -2497,6 +2501,7 @@ component_readiness:
       - lp-interop-coo
       Owner:
       - eng
+      - qe
       Platform:
       - azure
       - gcp
@@ -2509,7 +2514,7 @@ component_readiness:
     ignore_disruption: true
     flake_as_failure: false
     pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -2518,12 +2523,12 @@ component_readiness:
     enabled: false
 - name: 4.17-lp-Interop-coo
   base_release:
-    release: "4.16"
-    relative_start: ga-30d
-    relative_end: ga
+    release: "4.17"
+    relative_start: now-60d
+    relative_end: now-30d
   sample_release:
     release: "4.17"
-    relative_start: now-7d
+    relative_start: now-30d
     relative_end: now
   variant_options:
     column_group_by:
@@ -2541,6 +2546,7 @@ component_readiness:
       - lp-interop-coo
       Owner:
       - eng
+      - qe
       Platform:
       - azure
       - gcp
@@ -2553,7 +2559,7 @@ component_readiness:
     ignore_disruption: true
     flake_as_failure: false
     pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -2562,12 +2568,12 @@ component_readiness:
     enabled: false
 - name: 4.16-lp-Interop-coo
   base_release:
-    release: "4.15"
-    relative_start: ga-30d
-    relative_end: ga
+    release: "4.16"
+    relative_start: now-60d
+    relative_end: now-30d
   sample_release:
     release: "4.16"
-    relative_start: now-7d
+    relative_start: now-30d
     relative_end: now
   variant_options:
     column_group_by:
@@ -2585,6 +2591,7 @@ component_readiness:
       - lp-interop-coo
       Owner:
       - eng
+      - qe
       Platform:
       - azure
       - gcp
@@ -2597,7 +2604,7 @@ component_readiness:
     ignore_disruption: true
     flake_as_failure: false
     pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
