@@ -70,6 +70,7 @@ func (l *LinkInjector) PostAnalysis(testKey crtest.Identification, testStats *te
 	testDetailsURL, err := utils.GenerateTestDetailsURL(
 		testKey.TestID,
 		l.baseURL,
+		l.reqOptions.ViewName, // Pass the view name if present
 		l.reqOptions.BaseRelease,
 		l.reqOptions.SampleRelease,
 		l.reqOptions.AdvancedOption,

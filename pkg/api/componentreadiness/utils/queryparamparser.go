@@ -38,6 +38,7 @@ func ParseComponentReportRequest(
 
 	if view != nil {
 		// set params from view
+		opts.ViewName = view.Name
 		opts.VariantOption = view.VariantOptions
 		opts.AdvancedOption = view.AdvancedOptions
 		opts.TestFilters = view.TestFilters
@@ -366,6 +367,10 @@ func parseAdvancedOptions(req *http.Request) (advancedOption reqopts.Advanced, e
 	if err != nil {
 		return advancedOption, err
 	}
+
+	// Parse key test names - these are tests that when they fail in a job,
+	// all other test failures in that job are excluded from regression analysis
+	advancedOption.KeyTestNames = req.URL.Query()["keyTestName"]
 
 	return
 }

@@ -308,9 +308,12 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 		}
 
 		// Generate test details URL with the newer sample date range
+		// For the "latest" link, we should not use the view (as the view's date range may be stale)
+		// Instead, we generate a full URL with updated sample dates
 		latestURL, err := utils.GenerateTestDetailsURL(
 			testIDOption.TestID,
 			c.baseURL,
+			"", // Don't use view for "latest" link - we want fresh dates, not view's dates
 			c.ReqOptions.BaseRelease,
 			newSampleRelease,
 			c.ReqOptions.AdvancedOption,
