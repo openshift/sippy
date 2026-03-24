@@ -18,7 +18,7 @@ type JiraFlags struct {
 
 func NewJiraFlags() *JiraFlags {
 	return &JiraFlags{
-		JiraURL: "https://issues.redhat.com/",
+		JiraURL: "https://redhat.atlassian.net/",
 	}
 }
 

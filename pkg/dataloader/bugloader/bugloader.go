@@ -531,7 +531,7 @@ func bigQueryBugToModel(bqBug bigQueryBug) *models.Bug {
 		Components:      pq.StringArray(bqBug.Components),
 		Labels:          pq.StringArray(bqBug.Labels),
 		ReleaseBlocker:  bqBug.ReleaseBlocker,
-		URL:             fmt.Sprintf("https://issues.redhat.com/browse/%s", bqBug.Key),
+		URL:             fmt.Sprintf("https://redhat.atlassian.net/browse/%s", bqBug.Key),
 	}
 }
 

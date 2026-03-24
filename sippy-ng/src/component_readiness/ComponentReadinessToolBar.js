@@ -361,7 +361,7 @@ export default function ComponentReadinessToolBar(props) {
                 size="large"
                 aria-label="Show open bugs"
                 color="inherit"
-                href="https://issues.redhat.com/issues/?filter=12432468"
+                href="https://redhat.atlassian.net/issues/?filter=102907"
               >
                 <Tooltip title="Show open bugs">
                   <BugReport />

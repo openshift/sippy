@@ -2037,7 +2037,7 @@ func (s *Server) jsonFileJiraBug(w http.ResponseWriter, req *http.Request) {
 
 		log.Infof("created jira issue %s for user %s (dryrun:%v)", createdIssue.Key, user, dryRun)
 
-		jiraURL := fmt.Sprintf("https://issues.redhat.com/browse/%s", createdIssue.Key)
+		jiraURL := fmt.Sprintf("https://redhat.atlassian.net/browse/%s", createdIssue.Key)
 		response := util.FileBugResponse{
 			Success: true,
 			DryRun:  dryRun,

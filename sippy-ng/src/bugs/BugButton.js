@@ -26,7 +26,7 @@ See the [sippy test details|${document.location.href}] for additional context.
 
   const handleClick = () => {
     let message = props.context || text
-    let url = `https://issues.redhat.com/secure/CreateIssueDetails!init.jspa?pid=12332330&priority=10200&issuetype=1&description=${safeEncodeURIComponent(
+    let url = `https://redhat.atlassian.net/secure/CreateIssueDetails!init.jspa?pid=10325&issuetype=10016&description=${safeEncodeURIComponent(
       message
     )}`
 

@@ -92,7 +92,7 @@ export default function PayloadCalendar(props) {
   const eventClick = (info) => {
     if (info.event?.extendedProps?.phase === 'incident') {
       window.open(
-        'https://issues.redhat.com/browse/' + info.event.extendedProps.jira,
+        'https://redhat.atlassian.net/browse/' + info.event.extendedProps.jira,
         '_blank'
       )
     } else {
