@@ -12,7 +12,7 @@ import {
   NotificationsActive,
   SmartToy,
 } from '@mui/icons-material'
-import { BOOKMARKS, DEFAULT_TEST_FILTERS } from '../constants'
+import { DEFAULT_TEST_FILTERS } from '../constants'
 import { LaunderedListItem } from './Laundry'
 import { Link, useLocation } from 'react-router-dom'
 import { ListItemButton, ListSubheader, useTheme } from '@mui/material'
@@ -277,7 +277,7 @@ export default function Sidebar(props) {
                             component={Link}
                             to={withSort(
                               pathForJobsWithFilter(release, {
-                                items: [BOOKMARKS.RUN_7, ...withoutUnstable()],
+                                items: [...withoutUnstable()],
                               }),
                               'net_improvement',
                               'asc'
