@@ -1906,7 +1906,7 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 			expectedTier: "blocking",
 		},
 		{
-			name: "informing job with excluded platform becomes excluded",
+			name: "informing job with excluded platform becomes candidate",
 			variants: map[string]string{
 				VariantRelease:  "4.22",
 				VariantJobTier:  "informing",
@@ -1915,10 +1915,10 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 				VariantNetwork:  "ovn",
 				VariantOwner:    "eng",
 			},
-			expectedTier: "excluded",
+			expectedTier: "candidate",
 		},
 		{
-			name: "standard job with excluded arch becomes excluded",
+			name: "standard job with excluded arch becomes candidate",
 			variants: map[string]string{
 				VariantRelease:  "4.22",
 				VariantJobTier:  "standard",
@@ -1927,7 +1927,7 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 				VariantNetwork:  "ovn",
 				VariantOwner:    "eng",
 			},
-			expectedTier: "excluded",
+			expectedTier: "candidate",
 		},
 		{
 			name: "candidate job is not adjusted even with excluded variant",
@@ -1986,7 +1986,7 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 			expectedTier: "blocking",
 		},
 		{
-			name: "standard job with excluded network becomes excluded",
+			name: "standard job with excluded network becomes candidate",
 			variants: map[string]string{
 				VariantRelease:  "4.22",
 				VariantJobTier:  "standard",
@@ -1995,10 +1995,10 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 				VariantNetwork:  "sdn",
 				VariantOwner:    "eng",
 			},
-			expectedTier: "excluded",
+			expectedTier: "candidate",
 		},
 		{
-			name: "standard job with excluded owner becomes excluded",
+			name: "standard job with excluded owner becomes candidate",
 			variants: map[string]string{
 				VariantRelease:  "4.22",
 				VariantJobTier:  "standard",
@@ -2007,7 +2007,7 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 				VariantNetwork:  "ovn",
 				VariantOwner:    "qe",
 			},
-			expectedTier: "excluded",
+			expectedTier: "candidate",
 		},
 	}
 

@@ -336,9 +336,9 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 	return variants
 }
 
-// adjustJobTierForViews checks if a job with an included tier (blocking/standard/informing) has
-// variant values that are filtered out by the release-main view. If so, it downgrades the tier
-// to "excluded" since the job would not appear in component readiness anyway.
+// adjustJobTierBasedOnView checks if a job with a component readiness tier (blocking/standard/informing)
+// has variant values that are filtered out by the release-main view. If so, it downgrades the tier
+// to candidate since the job would not appear in component readiness anyway.
 func (v *OCPVariantLoader) adjustJobTierBasedOnView(jLog logrus.FieldLogger, jobName string, variants map[string]string) {
 	release := variants[VariantRelease]
 	if release == "" {
@@ -392,9 +392,9 @@ func (v *OCPVariantLoader) adjustJobTierBasedOnView(jLog logrus.FieldLogger, job
 			}
 		}
 		if !found {
-			jLog.Warnf("job %s has %s tier but variant %s=%s is not included in view %s (allowed: %v), adjusting to excluded",
+			jLog.Warnf("job %s has %s tier but variant %s=%s is not included in view %s (allowed: %v), adjusting to candidate",
 				jobName, tier, variantName, jobValue, viewName, allowedValues)
-			variants[VariantJobTier] = "excluded"
+			variants[VariantJobTier] = "candidate"
 			return
 		}
 	}
@@ -703,13 +703,16 @@ func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[st
 
 // setJobTier sets the jobTier for a job, with values like this:
 //
-//		blocking: blocking job on payloads
-//		informing: informing job on payloads
-//		standard: should be visible in default views (component readiness, sippy)
+//		blocking: blocking job on payloads, covered by component readiness
+//		informing: informing job on payloads, covered by component readiness
+//		standard: should be visible in default views (component readiness, sippy), covered by component readiness
 //	 	rare: highly reliable jobs that run at a reduced frequency
-//		candidate: a candidate for being shown in default views, used to gauge the stability and promotability of the job
+//		candidate: not covered by component readiness, but may be promoted in the future
 //		hidden: data should still be synced, but not shown by default
 //		excluded: data should not be synced, and excluded from all views
+//
+// Note: blocking/informing/standard tiers may be downgraded to candidate by
+// adjustJobTierBasedOnView if the job's variants don't match the release-main view.
 func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	jobNameLower := strings.ToLower(jobName)
 
