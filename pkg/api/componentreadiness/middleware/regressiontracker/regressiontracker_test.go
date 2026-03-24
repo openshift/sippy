@@ -708,3 +708,131 @@ func TestFindOpenRegression(t *testing.T) {
 		})
 	}
 }
+
+// TestFindOpenRegression_SubsetMatching tests the subset variant matching behavior
+// required by TRT-2559 to support db_column_groupby modifications
+func TestFindOpenRegression_SubsetMatching(t *testing.T) {
+	sampleRelease := "4.22"
+	baseRelease := "4.21"
+	testID := "test-id-1"
+
+	tests := []struct {
+		name             string
+		inputVariants    map[string]string
+		regressionID     uint
+		regressionVars   []string
+		wantMatch        bool
+		wantRegressionID uint
+	}{
+		{
+			name: "match when input has additional variants - db_column_groupby expanded",
+			inputVariants: map[string]string{
+				"Architecture": "amd64",
+				"Platform":     "gcp",
+				"Network":      "ovn", // New variant added to db_column_groupby
+			},
+			regressionID: 1,
+			regressionVars: []string{
+				"Architecture:amd64",
+				"Platform:gcp",
+				// Regression doesn't have Network variant
+			},
+			wantMatch:        true,
+			wantRegressionID: 1,
+		},
+		{
+			name: "no match when regression has variant not in input",
+			inputVariants: map[string]string{
+				"Architecture": "amd64",
+				"Platform":     "gcp",
+				// Input doesn't have Network
+			},
+			regressionID: 2,
+			regressionVars: []string{
+				"Architecture:amd64",
+				"Platform:gcp",
+				"Network:ovn", // Regression has this but input doesn't
+			},
+			wantMatch: false,
+		},
+		{
+			name: "match when input has multiple additional variants",
+			inputVariants: map[string]string{
+				"Architecture": "amd64",
+				"Platform":     "aws",
+				"Network":      "ovn",
+				"Topology":     "ha",
+				"Upgrade":      "none",
+			},
+			regressionID: 3,
+			regressionVars: []string{
+				"Architecture:amd64",
+				"Platform:aws",
+				// Regression only has these two, input has three more
+			},
+			wantMatch:        true,
+			wantRegressionID: 3,
+		},
+		{
+			name: "no match when one regression variant value differs",
+			inputVariants: map[string]string{
+				"Architecture": "amd64",
+				"Platform":     "azure", // Different value
+				"Network":      "ovn",
+			},
+			regressionID: 4,
+			regressionVars: []string{
+				"Architecture:amd64",
+				"Platform:gcp", // Regression has gcp, input has azure
+			},
+			wantMatch: false,
+		},
+		{
+			name: "match when regression has no variants and input has many",
+			inputVariants: map[string]string{
+				"Architecture": "amd64",
+				"Platform":     "gcp",
+				"Network":      "ovn",
+			},
+			regressionID:     5,
+			regressionVars:   []string{}, // No variants in regression
+			wantMatch:        true,
+			wantRegressionID: 5,
+		},
+		{
+			name:             "match when both have no variants",
+			inputVariants:    map[string]string{},
+			regressionID:     6,
+			regressionVars:   []string{},
+			wantMatch:        true,
+			wantRegressionID: 6,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			regressions := []*models.TestRegression{
+				{
+					ID:          tt.regressionID,
+					Release:     sampleRelease,
+					BaseRelease: baseRelease,
+					TestID:      testID,
+					Variants:    tt.regressionVars,
+				},
+			}
+
+			got := FindOpenRegression(sampleRelease, testID, tt.inputVariants, regressions)
+
+			if !tt.wantMatch {
+				assert.Nil(t, got, "expected no match but got regression ID %v", got)
+				return
+			}
+
+			require.NotNil(t, got, "expected a match but got nil")
+			assert.Equal(t, tt.wantRegressionID, got.ID, "regression ID should match")
+			assert.Equal(t, sampleRelease, got.Release)
+			assert.Equal(t, baseRelease, got.BaseRelease)
+			assert.Equal(t, testID, got.TestID)
+		})
+	}
+}

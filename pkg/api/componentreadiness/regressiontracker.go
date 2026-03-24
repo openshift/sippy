@@ -337,6 +337,31 @@ func (rt *RegressionTracker) SyncRegressionsForReport(view crview.View, rLog *lo
 	for _, regTest := range allRegressedTests {
 		if openReg := regressiontracker.FindOpenRegression(view.SampleRelease.Name, regTest.TestID, regTest.Variants, regressions); openReg != nil {
 
+			// Check if we need to add new variants to the regression found via subset matching.
+			// This allows regressions to be split by new variant dimensions when db_column_groupby is modified.
+			existingVariantMap := make(map[string]bool)
+			for _, v := range openReg.Variants {
+				existingVariantMap[v] = true
+			}
+
+			var newVariants []string
+			for key, value := range regTest.Variants {
+				variantStr := fmt.Sprintf("%s:%s", key, value)
+				if !existingVariantMap[variantStr] {
+					newVariants = append(newVariants, variantStr)
+					openReg.Variants = append(openReg.Variants, variantStr)
+				}
+			}
+
+			if len(newVariants) > 0 {
+				rLog.Infof("updating regression %d to include new variants: %v", openReg.ID, newVariants)
+				if !rt.dryRun {
+					if err := rt.backend.UpdateRegression(openReg); err != nil {
+						return nil, fmt.Errorf("failed to update regression %d with new variants: %w", openReg.ID, err)
+					}
+				}
+			}
+
 			// Update any tracking params on the regression if we see better values:
 			var modifiedRegression bool
 			if regTest.SampleStats.FailureCount > openReg.MaxFailures {
@@ -375,10 +400,12 @@ func (rt *RegressionTracker) SyncRegressionsForReport(view crview.View, rLog *lo
 
 			if modifiedRegression {
 				statsUpdatedRegs++
-				err := rt.backend.UpdateRegression(openReg)
-				if err != nil {
-					rLog.WithError(err).Errorf("error updating regression: %v", openReg)
-					return nil, errors.Wrapf(err, "error updating regression: %v", openReg)
+				if !rt.dryRun {
+					err := rt.backend.UpdateRegression(openReg)
+					if err != nil {
+						rLog.WithError(err).Errorf("error updating regression: %v", openReg)
+						return nil, errors.Wrapf(err, "error updating regression: %v", openReg)
+					}
 				}
 			}
 
