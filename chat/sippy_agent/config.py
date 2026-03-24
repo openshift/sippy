@@ -82,14 +82,11 @@ class Config(BaseModel):
     sippy_api_url: Optional[str] = Field(default_factory=lambda: os.getenv("SIPPY_API_URL"), description="Base URL for the Sippy API")
 
     # Jira Configuration
-    jira_url: str = Field(default_factory=lambda: os.getenv("JIRA_URL", "https://issues.redhat.com"), description="Jira instance URL")
+    jira_url: str = Field(default_factory=lambda: os.getenv("JIRA_URL", "https://redhat.atlassian.net"), description="Jira instance URL")
 
-    jira_username: Optional[str] = Field(
-        default_factory=lambda: os.getenv("JIRA_USERNAME"), description="Jira username for authentication (optional for public queries)"
-    )
-
-    jira_token: Optional[str] = Field(
-        default_factory=lambda: os.getenv("JIRA_TOKEN"), description="Jira API token for authentication (optional for public queries)"
+    jira_basic_auth_token: Optional[str] = Field(
+        default_factory=lambda: os.getenv("JIRA_BASIC_AUTH_TOKEN"),
+        description="Jira basic auth token in the format 'user@example.com:api_token' for Atlassian Cloud authentication",
     )
 
     # MCP Configuration
