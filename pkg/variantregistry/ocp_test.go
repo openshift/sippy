@@ -2,13 +2,16 @@ package variantregistry
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 
+	"github.com/openshift/sippy/pkg/apis/api"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
@@ -1797,9 +1800,16 @@ func TestVariantsSnapshot(t *testing.T) {
 	cfg, err := cfgFlags.GetConfig()
 	assert.NoError(t, err)
 
+	viewsData, err := os.ReadFile("../../config/views.yaml")
+	assert.NoError(t, err)
+	var views api.SippyViews
+	err = yaml.Unmarshal(viewsData, &views)
+	assert.NoError(t, err)
+
 	log := logrus.WithField("test", "TestVariantsSnapshot")
 
-	snapshot := NewVariantSnapshot(cfg, log)
+	snapshot := NewVariantSnapshot(cfg, views.ComponentReadiness, log)
+
 	newVariants := snapshot.Identify()
 	oldVariants, err := snapshot.Load("snapshot.yaml")
 	assert.NoError(t, err)
