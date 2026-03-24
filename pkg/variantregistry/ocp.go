@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/util"
@@ -31,6 +32,7 @@ type OCPVariantLoader struct {
 	BigQueryClient  *bigquery.Client
 	bqOpContext     bqlabel.OperationalContext
 	config          *v1.SippyConfig
+	views           []crview.View
 	bigQueryProject string
 	bigQueryDataSet string
 	bigQueryTable   string
@@ -43,12 +45,14 @@ func NewOCPVariantLoader(
 	bigQueryProject, bigQueryDataSet, bigQueryTable string,
 	gcsClient *storage.Client,
 	config *v1.SippyConfig,
+	views []crview.View,
 ) *OCPVariantLoader {
 	return &OCPVariantLoader{
 		BigQueryClient:  bigQueryClient,
 		bqOpContext:     opCtx,
 		gcsClient:       gcsClient,
 		config:          config,
+		views:           views,
 		bigQueryProject: bigQueryProject,
 		bigQueryDataSet: bigQueryDataSet,
 		bigQueryTable:   bigQueryTable,
@@ -327,7 +331,73 @@ func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobN
 		}
 	}
 
+	v.adjustJobTierBasedOnView(jLog, jobName, variants)
+
 	return variants
+}
+
+// adjustJobTierForViews checks if a job with an included tier (blocking/standard/informing) has
+// variant values that are filtered out by the release-main view. If so, it downgrades the tier
+// to "excluded" since the job would not appear in component readiness anyway.
+func (v *OCPVariantLoader) adjustJobTierBasedOnView(jLog logrus.FieldLogger, jobName string, variants map[string]string) {
+	release := variants[VariantRelease]
+	if release == "" {
+		return
+	}
+
+	viewName := release + "-main"
+	var view *crview.View
+	for i := range v.views {
+		if v.views[i].Name == viewName {
+			view = &v.views[i]
+			break
+		}
+	}
+	if view == nil {
+		return
+	}
+
+	// Check if the job's tier is one that is included in the view. If the view
+	// doesn't specify JobTier at all, all tiers are included and we skip adjustment.
+	// If the tier is already not included (e.g. candidate, hidden), no point adjusting.
+	tier := variants[VariantJobTier]
+	allowedTiers := view.VariantOptions.IncludeVariants[VariantJobTier]
+	if len(allowedTiers) == 0 {
+		return
+	}
+	tierIncluded := false
+	for _, at := range allowedTiers {
+		if at == tier {
+			tierIncluded = true
+			break
+		}
+	}
+	if !tierIncluded {
+		return
+	}
+
+	for variantName, allowedValues := range view.VariantOptions.IncludeVariants {
+		if len(allowedValues) == 0 {
+			continue
+		}
+		jobValue, ok := variants[variantName]
+		if !ok {
+			continue
+		}
+		found := false
+		for _, av := range allowedValues {
+			if av == jobValue {
+				found = true
+				break
+			}
+		}
+		if !found {
+			jLog.Warnf("job %s has %s tier but variant %s=%s is not included in view %s (allowed: %v), adjusting to excluded",
+				jobName, tier, variantName, jobValue, viewName, allowedValues)
+			variants[VariantJobTier] = "excluded"
+			return
+		}
+	}
 }
 
 var (
