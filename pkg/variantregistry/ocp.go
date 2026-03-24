@@ -20,8 +20,8 @@ import (
 	"google.golang.org/api/iterator"
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
 	"github.com/openshift/sippy/pkg/util"

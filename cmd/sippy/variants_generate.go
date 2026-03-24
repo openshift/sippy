@@ -22,20 +22,20 @@ import (
 )
 
 type VariantsGenerateFlags struct {
-	BigQueryFlags          *flags.BigQueryFlags
-	GoogleCloudFlags       *flags.GoogleCloudFlags
-	ConfigFlags            *configflags.ConfigFlags
+	BigQueryFlags           *flags.BigQueryFlags
+	GoogleCloudFlags        *flags.GoogleCloudFlags
+	ConfigFlags             *configflags.ConfigFlags
 	ComponentReadinessFlags *flags.ComponentReadinessFlags
-	OutputFile             string
-	Mode                   string
-	BigqueryJobsTable      string
+	OutputFile              string
+	Mode                    string
+	BigqueryJobsTable       string
 }
 
 func NewVariantsGenerateFlags() *VariantsGenerateFlags {
 	return &VariantsGenerateFlags{
-		BigQueryFlags:          flags.NewBigQueryFlags(),
-		GoogleCloudFlags:       flags.NewGoogleCloudFlags(),
-		ConfigFlags:            configflags.NewConfigFlags(),
+		BigQueryFlags:           flags.NewBigQueryFlags(),
+		GoogleCloudFlags:        flags.NewGoogleCloudFlags(),
+		ConfigFlags:             configflags.NewConfigFlags(),
 		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
 	}
 }
