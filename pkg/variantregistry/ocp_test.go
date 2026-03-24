@@ -1942,7 +1942,7 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 			expectedTier: "candidate",
 		},
 		{
-			name: "hidden job is not adjusted",
+			name: "hidden job is not adjusted even with non-matching variants",
 			variants: map[string]string{
 				VariantRelease:  "4.22",
 				VariantJobTier:  "hidden",
@@ -1952,6 +1952,30 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 				VariantOwner:    "chaos",
 			},
 			expectedTier: "hidden",
+		},
+		{
+			name: "excluded job is not adjusted even with non-matching variants",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "excluded",
+				VariantArch:     "s390x",
+				VariantPlatform: "rosa",
+				VariantNetwork:  "sdn",
+				VariantOwner:    "chaos",
+			},
+			expectedTier: "excluded",
+		},
+		{
+			name: "rare job is not adjusted even with non-matching variants",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "rare",
+				VariantArch:     "s390x",
+				VariantPlatform: "rosa",
+				VariantNetwork:  "sdn",
+				VariantOwner:    "chaos",
+			},
+			expectedTier: "rare",
 		},
 		{
 			name: "job with no release is not adjusted",
@@ -1969,6 +1993,23 @@ func TestAdjustJobTierBasedOnView(t *testing.T) {
 				VariantJobTier:  "blocking",
 				VariantArch:     "s390x",
 				VariantPlatform: "rosa",
+			},
+			expectedTier: "blocking",
+		},
+		{
+			// If the view requires Platform to be in [aws, azure, gcp, metal, vsphere]
+			// but the job doesn't have a Platform variant at all (e.g. couldn't be
+			// determined from the job name), we should NOT downgrade. Absence of a
+			// variant is not evidence of a mismatch — only a positive non-matching
+			// value should trigger a downgrade.
+			name: "job missing a view-filtered variant is not downgraded",
+			variants: map[string]string{
+				VariantRelease: "4.22",
+				VariantJobTier: "blocking",
+				VariantArch:    "amd64",
+				// No Platform set — view requires Platform in [aws, azure, gcp, metal, vsphere]
+				VariantNetwork: "ovn",
+				VariantOwner:   "eng",
 			},
 			expectedTier: "blocking",
 		},
