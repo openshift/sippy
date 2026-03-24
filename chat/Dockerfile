@@ -67,7 +67,7 @@ ENV PYTHONPATH=/opt/app-root/src \
 ENV LLM_ENDPOINT=http://localhost:11434/v1 \
     MODEL_NAME=granite3.3:8b \
     SIPPY_API_URL=https://sippy.dptools.openshift.org \
-    JIRA_URL=https://issues.redhat.com
+    JIRA_URL=https://redhat.atlassian.net
 
 # Expose the web server port
 EXPOSE 8000

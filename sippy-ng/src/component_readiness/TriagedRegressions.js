@@ -268,7 +268,7 @@ export default function TriagedRegressions({
       field: 'bug_version',
       valueGetter: (value) => {
         return value.row.bug?.target_versions?.filter(Boolean).length
-          ? value.row.bug.target_versions.join(', ')
+          ? value.row.bug.target_versions.filter(Boolean).join(', ')
           : value.row.bug?.affects_versions || ''
       },
       headerName: 'Version',
