@@ -255,6 +255,7 @@ func (l *ComponentReadinessCacheLoader) buildGenerator(
 		AdvancedOption: advancedOption,
 		CacheOption:    cacheOpts,
 		TestIDOptions:  testIDOpts,
+		TestFilters:    view.TestFilters,
 	}
 
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,
