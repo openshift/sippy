@@ -16,7 +16,6 @@ import (
 	v1jira "github.com/openshift/sippy/pkg/apis/jira/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -153,7 +152,7 @@ func issueContainsLabel(issue *v1jira.Issue, label string) bool {
 func (jl *JiraLoader) componentLoader(authorization string) {
 	start := time.Now()
 	log.Infof("loading jira ocpbugs component information...")
-	body, err := jiraRequest("https://issues.redhat.com/rest/api/2/project/OCPBUGS/components", authorization)
+	body, err := jiraRequest("https://redhat.atlassian.net/rest/api/2/project/OCPBUGS/components", authorization)
 	if err != nil {
 		jl.errors = append(jl.errors, err)
 		return
@@ -221,11 +220,7 @@ func (jl *JiraLoader) incidentLoader(authorization string) {
 	start = time.Now()
 	log.Infof("fetching incidents from jira...")
 
-	apiURL := "https://issues.redhat.com/rest/api/2/search?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog"
-	isJiraCloud := util.IsJiraCloud()
-	if isJiraCloud {
-		apiURL = "https://issues.redhat.com/rest/api/3/search/jql?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog"
-	}
+	apiURL := "https://redhat.atlassian.net/rest/api/3/search/jql?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog"
 	body, err := jiraRequest(apiURL, authorization)
 	if err != nil {
 		jl.errors = append(jl.errors, err)
@@ -282,7 +277,7 @@ func (jl *JiraLoader) incidentLoader(authorization string) {
 
 // queryJiraAPI returns a singular jira issue
 func queryJiraAPI(issueID, authorization string) (*v1jira.Issue, error) {
-	urlFmtStr := "https://issues.redhat.com/rest/api/2/issue/%s?expand=changelog"
+	urlFmtStr := "https://redhat.atlassian.net/rest/api/2/issue/%s?expand=changelog"
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", fmt.Sprintf(urlFmtStr, issueID), nil)
 	if err != nil {

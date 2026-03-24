@@ -199,6 +199,16 @@ func TestChangelog_PreviousReleaseTag(t *testing.T) {
 	}
 }
 
+const changelogWithAtlassianJira = `
+<h2>Changes from <a target="_blank" href="/releasetag/4.18.0-0.nightly-2024-01-15-010101">4.18.0-0.nightly-2024-01-15-010101</a></h2>
+
+<h3><a target="_blank" href="https://github.com/openshift/cluster-kube-apiserver-operator/tree/abc123">cluster-kube-apiserver-operator</a></h3>
+
+<ul>
+<li><a target="_blank" href="https://redhat.atlassian.net/browse/OCPBUGS-12345">OCPBUGS-12345</a>: Fix apiserver disruption <a target="_blank" href="https://github.com/openshift/cluster-kube-apiserver-operator/pull/1234">#1234</a></li>
+<li><a target="_blank" href="https://github.com/openshift/cluster-kube-apiserver-operator/compare/def456...abc123">Full changelog</a></li>
+</ul>`
+
 func TestChangelog_PullRequests(t *testing.T) {
 	tests := []struct {
 		name string
@@ -215,6 +225,19 @@ func TestChangelog_PullRequests(t *testing.T) {
 					Description:   "Rebase openshift/kuryr-kubernetes from",
 					BugURL:        "",
 					URL:           "https://github.com/openshift/kuryr-kubernetes/pull/583",
+				},
+			},
+		},
+		{
+			name: "Extracts redhat.atlassian.net BugURL",
+			root: soup.HTMLParse(changelogWithAtlassianJira),
+			want: []models.ReleasePullRequest{
+				{
+					PullRequestID: "1234",
+					Name:          "cluster-kube-apiserver-operator",
+					Description:   "Fix apiserver disruption",
+					BugURL:        "https://redhat.atlassian.net/browse/OCPBUGS-12345",
+					URL:           "https://github.com/openshift/cluster-kube-apiserver-operator/pull/1234",
 				},
 			},
 		},

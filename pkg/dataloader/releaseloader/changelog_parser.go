@@ -153,7 +153,7 @@ func (c *Changelog) PullRequests() []models.ReleasePullRequest {
 					row.URL = url
 					row.PullRequestID = strings.ReplaceAll(text, "#", "")
 				}
-				if strings.Contains(url, "bugzilla.redhat.com") || strings.Contains(url, "issues.redhat.com") {
+				if strings.Contains(url, "bugzilla.redhat.com") || strings.Contains(url, "issues.redhat.com") || strings.Contains(url, "redhat.atlassian.net") {
 					row.BugURL = url
 				}
 			}

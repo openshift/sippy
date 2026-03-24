@@ -3,15 +3,9 @@ package util
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"strconv"
-
-	log "github.com/sirupsen/logrus"
 
 	"github.com/andygrunwald/go-jira"
 )
-
-var JiraCloudEnvar = "JIRA_CLOUD_ENVIRONMENT"
 
 // FileBugRequest represents the JSON request structure for filing Jira bugs
 type FileBugRequest struct {
@@ -32,32 +26,8 @@ type FileBugResponse struct {
 	JiraURL string `json:"jira_url"`
 }
 
-func IsJiraCloud() bool {
-	// Temporary check to see if the flag is set indicating we are running in the atlassian cloud environment
-	// after migration we can remove the check
-	jiraCloudEnv := os.Getenv(JiraCloudEnvar)
-	if jiraCloudEnv == "" {
-		return false
-	}
-
-	isJiraCloud, err := strconv.ParseBool(jiraCloudEnv)
-	if err != nil {
-		log.WithError(err).Warnf("error parsing %s", JiraCloudEnvar)
-		return false
-	}
-
-	return isJiraCloud
-}
-
 func PopulateJiraIssue(jiraClient *jira.Client, bugRequest FileBugRequest, user string) (jira.Issue, error) {
-	isJiraCloud := IsJiraCloud()
 	description := bugRequest.Description
-
-	// Due to the way the OCPBUGS project is configured, we cannot set the "Reporter", so we add it to the description for some tracking
-	// This changes in Atlassian Cloud environment and Reporter becomes required
-	if !isJiraCloud && len(user) > 0 {
-		description = fmt.Sprintf("%s\n\nFiled by: [~%s@redhat.com]", bugRequest.Description, user)
-	}
 
 	project := bugRequest.Project
 	if project == "" {
@@ -100,7 +70,7 @@ func PopulateJiraIssue(jiraClient *jira.Client, bugRequest FileBugRequest, user 
 		issue.Fields.Labels = bugRequest.Labels
 	}
 
-	if isJiraCloud && jiraClient != nil {
+	if jiraClient != nil {
 		var reporter *jira.User
 		var err error
 		if len(user) > 0 {

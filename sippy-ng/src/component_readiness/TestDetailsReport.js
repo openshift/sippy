@@ -506,7 +506,7 @@ View the [test details report|${document.location.href}] for additional context.
             <Button
               variant="contained"
               color="secondary"
-              href="https://issues.redhat.com/issues/?filter=12432468"
+              href="https://redhat.atlassian.net/issues/?filter=102907"
             >
               View other open regressions
             </Button>

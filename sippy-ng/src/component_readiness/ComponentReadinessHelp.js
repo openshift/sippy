@@ -36,7 +36,7 @@ const faqs = [
   },
   {
     question: 'How do I report a bug or feature request?',
-    answer: `Feature requests or bugs can be reported through <a href="https://issues.redhat.com/secure/CreateIssueDetails!init.jspa?priority=10200&pid=12323832&issuetype=17&description=Describe%20your%20feature%20request%20or%20bug%3A%0A%0A%0A%20%20%20%20%0A%20%20%20%20Relevant%20Sippy%20URL%3A%0A%0A%20%20%20%20http%3A%2F%2Flocalhost%3A3000%2Fsippy-ng%2Fcomponent_readiness%2Fhelp%0A%0A"><u>Jira</u></a>.`,
+    answer: `Feature requests or bugs can be reported through <a href="https://redhat.atlassian.net/secure/CreateIssueDetails!init.jspa?pid=11604&issuetype=10009&description=Describe%20your%20feature%20request%20or%20bug%3A%0A%0A%0A%20%20%20%20%0A%20%20%20%20Relevant%20Sippy%20URL%3A%0A%0A%20%20%20%20http%3A%2F%2Flocalhost%3A3000%2Fsippy-ng%2Fcomponent_readiness%2Fhelp%0A%0A"><u>Jira</u></a>.`,
   },
   {
     question: 'How much data history does Component Readiness keep?',

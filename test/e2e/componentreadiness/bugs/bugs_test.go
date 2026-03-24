@@ -27,7 +27,7 @@ func Test_FileBugAPI(t *testing.T) {
 		assert.True(t, bugResponse.Success)
 		assert.True(t, bugResponse.DryRun, "should be dry run when no jira client is configured")
 		assert.Equal(t, "OCPBUGS-1234", bugResponse.JiraKey)
-		assert.Equal(t, "https://issues.redhat.com/browse/OCPBUGS-1234", bugResponse.JiraURL)
+		assert.Equal(t, "https://redhat.atlassian.net/browse/OCPBUGS-1234", bugResponse.JiraURL)
 	})
 
 	t.Run("successful bug creation with component ID", func(t *testing.T) {

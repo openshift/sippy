@@ -20,7 +20,7 @@ class SippyJiraIncidentTool(SippyBaseTool):
     description: str = "Get a JSON object with a list of all known open TRT incidents from Jira."
 
     # Add Jira configuration as proper fields
-    jira_url: str = Field(default="https://issues.redhat.com", description="Jira instance URL")
+    jira_url: str = Field(default="https://redhat.atlassian.net", description="Jira instance URL")
     jira_username: Optional[str] = Field(default=None, description="Jira username")
     jira_token: Optional[str] = Field(default=None, description="Jira API token")
 

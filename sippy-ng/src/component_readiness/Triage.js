@@ -322,7 +322,9 @@ export default function Triage({ id }) {
           <TableRow>
             <TableCell>Jira Version</TableCell>
             <TableCell>
-              {triage.bug?.target_versions || triage.bug?.affects_versions}
+              {triage.bug?.target_versions?.filter(Boolean).length
+                ? triage.bug.target_versions.filter(Boolean).join(', ')
+                : triage.bug?.affects_versions}
             </TableCell>
           </TableRow>
           <TableRow>

@@ -90,7 +90,7 @@ export default function Sidebar(props) {
     
     Relevant Sippy URL:\n
     ${window.location.href}\n\n`
-    return `https://issues.redhat.com/secure/CreateIssueDetails!init.jspa?priority=10200&pid=12323832&issuetype=17&description=${safeEncodeURIComponent(
+    return `https://redhat.atlassian.net/secure/CreateIssueDetails!init.jspa?pid=11604&issuetype=10009&description=${safeEncodeURIComponent(
       description
     )}`
   }
