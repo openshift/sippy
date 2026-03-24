@@ -536,8 +536,8 @@ function TestTable(props) {
       renderCell: (params) => {
         const displayVariants = chooseVariantsToDisplay(params.value)
 
-        // Check if there are any excluded JobTier variants for the warning
-        const hasExcludedJobTier =
+        // Check if the job has a tier not covered by component readiness
+        const hasNonCRJobTier =
           params.value &&
           params.value.some(
             (variant) =>
@@ -550,7 +550,7 @@ function TestTable(props) {
             {params.value.map((variant, index) => (
               <div key={index}>{variant}</div>
             ))}
-            {hasExcludedJobTier && (
+            {hasNonCRJobTier && (
               <>
                 <br />
                 <div>

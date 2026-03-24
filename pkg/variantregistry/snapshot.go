@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 )
 
@@ -15,26 +16,28 @@ type JobVariants map[string]map[string]string
 
 type VariantSnapshot struct {
 	config *v1.SippyConfig
+	views  []crview.View
 	log    logrus.FieldLogger
 }
 
-func NewVariantSnapshot(config *v1.SippyConfig, log logrus.FieldLogger) *VariantSnapshot {
+func NewVariantSnapshot(config *v1.SippyConfig, views []crview.View, log logrus.FieldLogger) *VariantSnapshot {
 	return &VariantSnapshot{
 		config: config,
+		views:  views,
 		log:    log,
 	}
 }
 
 func (s *VariantSnapshot) Identify() JobVariants {
 	newVariants := map[string]map[string]string{}
-	variantSyncer := OCPVariantLoader{config: s.config}
+	variantSyncer := OCPVariantLoader{config: s.config, views: s.views}
 	for _, releaseCfg := range s.config.Releases {
 		for job := range releaseCfg.Jobs {
 			if isIgnoredJob(job) {
 				continue
 			}
 
-			newVariants[job] = variantSyncer.IdentifyVariants(s.log, job)
+			newVariants[job] = variantSyncer.CalculateVariantsForJob(s.log, job, nil)
 		}
 	}
 

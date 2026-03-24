@@ -66,4 +66,4 @@ images:
 	$(DOCKER) build .
 
 update-variants: sippy
-	./sippy variants snapshot --config ./config/openshift.yaml
+	./sippy variants snapshot --config ./config/openshift.yaml --views ./config/views.yaml

@@ -2,15 +2,21 @@ package variantregistry
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 
+	"github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/flags/configflags"
+	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 func TestVariantSyncer(t *testing.T) {
@@ -1794,9 +1800,16 @@ func TestVariantsSnapshot(t *testing.T) {
 	cfg, err := cfgFlags.GetConfig()
 	assert.NoError(t, err)
 
+	viewsData, err := os.ReadFile("../../config/views.yaml")
+	assert.NoError(t, err)
+	var views api.SippyViews
+	err = yaml.Unmarshal(viewsData, &views)
+	assert.NoError(t, err)
+
 	log := logrus.WithField("test", "TestVariantsSnapshot")
 
-	snapshot := NewVariantSnapshot(cfg, log)
+	snapshot := NewVariantSnapshot(cfg, views.ComponentReadiness, log)
+
 	newVariants := snapshot.Identify()
 	oldVariants, err := snapshot.Load("snapshot.yaml")
 	assert.NoError(t, err)
@@ -1850,5 +1863,210 @@ func TestVariantsSnapshot(t *testing.T) {
 			t.Logf("%s\n   - %s", change, strings.Join(jobs, "\n   - "))
 		}
 		t.Logf("\n****** Run `make update-variants` to update the snapshot and accept these changes.")
+	}
+}
+
+func testView(name string, includeVariants map[string][]string) crview.View {
+	return crview.View{
+		Name: name,
+		VariantOptions: reqopts.Variants{
+			ColumnGroupBy:   sets.String{},
+			DBGroupBy:       sets.String{},
+			IncludeVariants: includeVariants,
+		},
+	}
+}
+
+func TestAdjustJobTierBasedOnView(t *testing.T) {
+	views := []crview.View{
+		testView("4.22-main", map[string][]string{
+			"Architecture": {"amd64", "arm64", "multi"},
+			"Platform":     {"aws", "azure", "gcp", "metal", "vsphere"},
+			"Network":      {"ovn"},
+			"JobTier":      {"blocking", "informing", "standard"},
+			"Owner":        {"eng"},
+		}),
+	}
+
+	tests := []struct {
+		name         string
+		variants     map[string]string
+		expectedTier string
+	}{
+		{
+			name: "blocking job matching all view variants stays blocking",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "blocking",
+				VariantArch:     "amd64",
+				VariantPlatform: "aws",
+				VariantNetwork:  "ovn",
+				VariantOwner:    "eng",
+			},
+			expectedTier: "blocking",
+		},
+		{
+			name: "informing job with excluded platform becomes candidate",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "informing",
+				VariantArch:     "amd64",
+				VariantPlatform: "rosa",
+				VariantNetwork:  "ovn",
+				VariantOwner:    "eng",
+			},
+			expectedTier: "candidate",
+		},
+		{
+			name: "standard job with excluded arch becomes candidate",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "standard",
+				VariantArch:     "s390x",
+				VariantPlatform: "aws",
+				VariantNetwork:  "ovn",
+				VariantOwner:    "eng",
+			},
+			expectedTier: "candidate",
+		},
+		{
+			name: "candidate job is not adjusted even with excluded variant",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "candidate",
+				VariantArch:     "s390x",
+				VariantPlatform: "rosa",
+				VariantNetwork:  "sdn",
+				VariantOwner:    "chaos",
+			},
+			expectedTier: "candidate",
+		},
+		{
+			name: "hidden job is not adjusted even with non-matching variants",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "hidden",
+				VariantArch:     "s390x",
+				VariantPlatform: "rosa",
+				VariantNetwork:  "sdn",
+				VariantOwner:    "chaos",
+			},
+			expectedTier: "hidden",
+		},
+		{
+			name: "excluded job is not adjusted even with non-matching variants",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "excluded",
+				VariantArch:     "s390x",
+				VariantPlatform: "rosa",
+				VariantNetwork:  "sdn",
+				VariantOwner:    "chaos",
+			},
+			expectedTier: "excluded",
+		},
+		{
+			name: "rare job is not adjusted even with non-matching variants",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "rare",
+				VariantArch:     "s390x",
+				VariantPlatform: "rosa",
+				VariantNetwork:  "sdn",
+				VariantOwner:    "chaos",
+			},
+			expectedTier: "rare",
+		},
+		{
+			name: "job with no release is not adjusted",
+			variants: map[string]string{
+				VariantJobTier:  "blocking",
+				VariantArch:     "s390x",
+				VariantPlatform: "rosa",
+			},
+			expectedTier: "blocking",
+		},
+		{
+			name: "job with release that has no view is not adjusted",
+			variants: map[string]string{
+				VariantRelease:  "4.15",
+				VariantJobTier:  "blocking",
+				VariantArch:     "s390x",
+				VariantPlatform: "rosa",
+			},
+			expectedTier: "blocking",
+		},
+		{
+			// If the view requires Platform to be in [aws, azure, gcp, metal, vsphere]
+			// but the job doesn't have a Platform variant at all (e.g. couldn't be
+			// determined from the job name), we should NOT downgrade. Absence of a
+			// variant is not evidence of a mismatch — only a positive non-matching
+			// value should trigger a downgrade.
+			name: "job missing a view-filtered variant is not downgraded",
+			variants: map[string]string{
+				VariantRelease: "4.22",
+				VariantJobTier: "blocking",
+				VariantArch:    "amd64",
+				// No Platform set — view requires Platform in [aws, azure, gcp, metal, vsphere]
+				VariantNetwork: "ovn",
+				VariantOwner:   "eng",
+			},
+			expectedTier: "blocking",
+		},
+		{
+			name: "job with variant not specified in view is not filtered",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "blocking",
+				VariantArch:     "amd64",
+				VariantPlatform: "aws",
+				VariantNetwork:  "ovn",
+				VariantOwner:    "eng",
+				VariantSuite:    "serial", // Suite not in view's include_variants
+			},
+			expectedTier: "blocking",
+		},
+		{
+			name: "standard job with excluded network becomes candidate",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "standard",
+				VariantArch:     "amd64",
+				VariantPlatform: "aws",
+				VariantNetwork:  "sdn",
+				VariantOwner:    "eng",
+			},
+			expectedTier: "candidate",
+		},
+		{
+			name: "standard job with excluded owner becomes candidate",
+			variants: map[string]string{
+				VariantRelease:  "4.22",
+				VariantJobTier:  "standard",
+				VariantArch:     "amd64",
+				VariantPlatform: "aws",
+				VariantNetwork:  "ovn",
+				VariantOwner:    "qe",
+			},
+			expectedTier: "candidate",
+		},
+	}
+
+	loader := &OCPVariantLoader{
+		config: &v1.SippyConfig{},
+		views:  views,
+	}
+	jLog := logrus.WithField("test", "TestAdjustJobTierBasedOnView")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Copy variants to avoid mutation across tests
+			variants := make(map[string]string)
+			for k, v := range tt.variants {
+				variants[k] = v
+			}
+			loader.adjustJobTierBasedOnView(jLog, "test-job", variants)
+			assert.Equal(t, tt.expectedTier, variants[VariantJobTier])
+		})
 	}
 }

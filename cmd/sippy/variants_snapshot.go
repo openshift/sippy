@@ -7,24 +7,28 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
+	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/flags/configflags"
 	"github.com/openshift/sippy/pkg/variantregistry"
 )
 
 type VariantSnapshotFlags struct {
-	Path        string
-	ConfigFlags *configflags.ConfigFlags
+	Path                    string
+	ConfigFlags             *configflags.ConfigFlags
+	ComponentReadinessFlags *flags.ComponentReadinessFlags
 }
 
 func NewVariantSnapshotFlags() *VariantSnapshotFlags {
 	return &VariantSnapshotFlags{
-		ConfigFlags: configflags.NewConfigFlags(),
-		Path:        "pkg/variantregistry/snapshot.yaml",
+		ConfigFlags:             configflags.NewConfigFlags(),
+		ComponentReadinessFlags: flags.NewComponentReadinessFlags(),
+		Path:                    "pkg/variantregistry/snapshot.yaml",
 	}
 }
 
 func (f *VariantSnapshotFlags) BindFlags(fs *pflag.FlagSet) {
 	f.ConfigFlags.BindFlags(fs)
+	f.ComponentReadinessFlags.BindFlags(fs)
 	fs.StringVar(&f.Path, "out", f.Path, "Path to write results to")
 }
 
@@ -44,8 +48,13 @@ func NewVariantSnapshotCommand() *cobra.Command {
 				return err
 			}
 
+			views, err := f.ComponentReadinessFlags.ParseViewsFile()
+			if err != nil {
+				return err
+			}
+
 			lgr := log.New()
-			snapshot := variantregistry.NewVariantSnapshot(cfg, lgr)
+			snapshot := variantregistry.NewVariantSnapshot(cfg, views.ComponentReadiness, lgr)
 			if err := snapshot.Save(f.Path); err != nil {
 				lgr.WithError(err).Fatal("error updating snapshot")
 			}
