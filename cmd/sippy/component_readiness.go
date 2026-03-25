@@ -215,7 +215,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			dbc,
 			bigQueryClient,
 			time.Time{},
-			cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
+			cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
 			views.ComponentReadiness,
 			config.ComponentReadinessConfig.VariantJunitTableOverrides)
 		if err != nil {
@@ -235,7 +235,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 						dbc,
 						bigQueryClient,
 						time.Time{},
-						cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor},
+						cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
 						views.ComponentReadiness,
 						config.ComponentReadinessConfig.VariantJunitTableOverrides)
 					if err != nil {

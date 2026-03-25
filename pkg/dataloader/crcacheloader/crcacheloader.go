@@ -66,8 +66,6 @@ func (l *ComponentReadinessCacheLoader) Name() string {
 func (l *ComponentReadinessCacheLoader) Load() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Hour*1)
 	defer cancel()
-	// Force a refresh, we want to ensure we update the cache no matter what
-	//
 	// This command should be called in a kube cronjob matching the time rounding factor.
 	// Today we push our Sample end time out to the next even 4 hour interval UTC, i.e. 4am, 8am, 12pm, 4pm, etc.
 	// We then use the delta to that time when caching as the duration for that key.
@@ -75,7 +73,9 @@ func (l *ComponentReadinessCacheLoader) Load() {
 	// requests between say 4:00:00am and 4:00:45am, should always hit the cache.
 	cacheOpts := cache.RequestOptions{
 		CRTimeRoundingFactor: l.crTimeRoundingFactor,
-		ForceRefresh:         true,
+		RefreshRecent:        true,                         // always refresh recent data with the standard expiry
+		StableAge:            cache.StandardStableAgeCR,    // but data a week old is unlikely to change
+		StableExpiry:         cache.StandardStableExpiryCR, // so cache it for longer
 	}
 
 	for _, view := range l.views.ComponentReadiness {
@@ -189,7 +189,7 @@ func (l *ComponentReadinessCacheLoader) primeCacheForView(ctx context.Context, v
 			newTIDOpts.BaseOverrideRelease = report.Analyses[0].BaseStats.Release
 		}
 		genCacheKey.TestIDOptions = []reqopts.TestIdentification{newTIDOpts}
-		tempKey := api.GetPrefixedCacheKey("TestDetailsReport~", genCacheKey)
+		tempKey := api.NewCacheSpec(genCacheKey, "TestDetailsReport~", nil)
 		cacheKey, err := tempKey.GetCacheKey()
 		if err != nil {
 			strErrors = append(strErrors, fmt.Sprintf("error: '%s' getting cache key for: %+v", err.Error(), tempKey))
@@ -212,7 +212,7 @@ func (l *ComponentReadinessCacheLoader) generateReport(ctx context.Context, gene
 	report, errs := api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		l.bqClient.Cache, generator.ReqOptions.CacheOption,
-		api.GetPrefixedCacheKey(componentreadiness.ComponentReportCacheKeyPrefix, generator.GetCacheKey(ctx)),
+		api.NewCacheSpec(generator.GetCacheKey(ctx), componentreadiness.ComponentReportCacheKeyPrefix, nil),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 	if len(errs) > 0 {

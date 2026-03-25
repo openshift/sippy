@@ -172,6 +172,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
+				StableAge:    cache.StandardStableAgeCR,
+				StableExpiry: cache.StandardStableExpiryCR,
 			},
 		},
 		{
@@ -226,6 +228,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
+				StableAge:    cache.StandardStableAgeCR,
+				StableExpiry: cache.StandardStableExpiryCR,
 			},
 		},
 		{
@@ -265,6 +269,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
+				StableAge:    cache.StandardStableAgeCR,
+				StableExpiry: cache.StandardStableExpiryCR,
 			},
 		},
 		{
@@ -377,6 +383,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
+				StableAge:    cache.StandardStableAgeCR,
+				StableExpiry: cache.StandardStableExpiryCR,
 			},
 		},
 		{
@@ -421,6 +429,8 @@ func TestParseComponentReportRequest(t *testing.T) {
 			},
 			cacheOption: cache.RequestOptions{
 				ForceRefresh: false,
+				StableAge:    cache.StandardStableAgeCR,
+				StableExpiry: cache.StandardStableExpiryCR,
 			},
 		},
 	}

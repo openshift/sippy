@@ -25,42 +25,60 @@ var (
 	defaultCacheDuration = 8 * time.Hour
 )
 
-type CacheData struct {
+// CacheSpec specifies caching parameters for an individual query
+type CacheSpec struct {
+	// function to turn the specified key struct into cacheable bytes
 	cacheKey func() ([]byte, error)
+	// if specified, the end of the date range that the query covers
+	queryEndDate *time.Time
 }
 
-func (c *CacheData) GetCacheKey() ([]byte, error) {
+// NewCacheSpec specifies caching parameters to be used in caching an individual query.
+// The cacheKey can be any struct with public fields that identifies the query parameters for caching.
+// The prefix should be set to distinguish multiple queries that use the same cache keys.
+// The queryEndDate can be set to enable distinguishing whether the query data is considered stable for longer caching.
+func NewCacheSpec(cacheKey interface{}, prefix string, queryEndDate *time.Time) CacheSpec {
+	if isStructWithNoPublicFields(cacheKey) {
+		panic(fmt.Sprintf("you cannot use struct %s with no exported fields as a cache key", reflect.TypeOf(cacheKey)))
+	}
+
+	return CacheSpec{
+		queryEndDate: queryEndDate,
+		cacheKey: func() ([]byte, error) {
+			b, err := json.Marshal(cacheKey)
+			if err != nil {
+				return nil, err
+			}
+			if len(prefix) > 0 {
+				return append([]byte(prefix), b...), nil
+			}
+			return b, nil
+		}}
+}
+
+func (c *CacheSpec) GetCacheKey() ([]byte, error) {
 	if c.cacheKey == nil {
 		panic("cache key is nil")
 	}
 	return c.cacheKey()
 }
 
-func GetPrefixedCacheKey(prefix string, cacheKey interface{}) CacheData {
-	if isStructWithNoPublicFields(cacheKey) {
-		panic(fmt.Sprintf("you cannot use struct %s with no exported fields as a cache key", reflect.TypeOf(cacheKey)))
+// HasStableData determines whether this individual query's end date is old enough (per general cacheOpts) to be considered stable and unchanging.
+func (c *CacheSpec) HasStableData(cacheOpts cache.RequestOptions) bool {
+	if c.queryEndDate == nil || cacheOpts.StableAge == 0 {
+		return false
 	}
-
-	return CacheData{cacheKey: func() ([]byte, error) {
-		b, err := json.Marshal(cacheKey)
-		if err != nil {
-			return nil, err
-		}
-		if len(prefix) > 0 {
-			return append([]byte(prefix), b...), nil
-		}
-		return b, nil
-	}}
+	return c.queryEndDate.Add(cacheOpts.StableAge).Before(time.Now())
 }
 
 // GetDataFromCacheOrGenerate attempts to find a cached record otherwise generates new data.
 func GetDataFromCacheOrGenerate[T any](
-	ctx context.Context, c cache.Cache, cacheOptions cache.RequestOptions, cacheData CacheData,
+	ctx context.Context, c cache.Cache, cacheOptions cache.RequestOptions, cacheSpec CacheSpec,
 	generateFn func(context.Context) (T, []error),
 	defaultVal T,
 ) (T, []error) {
 	if c != nil {
-		cacheKey, err := cacheData.GetCacheKey()
+		cacheKey, err := cacheSpec.GetCacheKey()
 		if err != nil {
 			return defaultVal, []error{err}
 		}
@@ -71,9 +89,15 @@ func GetDataFromCacheOrGenerate[T any](
 		}
 
 		cacheDuration := CalculateRoundedCacheDuration(cacheOptions)
+		if cacheOptions.StableExpiry != 0 && cacheSpec.HasStableData(cacheOptions) {
+			// if we're querying against older data, it probably won't change. so make the cache last longer
+			// so that we don't spend a ton of BQ quota querying the same data repeatedly.
+			cacheDuration = cacheOptions.StableExpiry
+		}
 		log.Debugf("cache duration set to %s or approx %s for key %s", cacheDuration, time.Now().Add(cacheDuration).Format(time.RFC3339), cacheKey)
 
-		if !cacheOptions.ForceRefresh {
+		refreshRecent := cacheOptions.RefreshRecent && !cacheSpec.HasStableData(cacheOptions)
+		if !cacheOptions.ForceRefresh && !refreshRecent {
 			if res, err := c.Get(ctx, string(cacheKey), cacheDuration); err == nil {
 				log.WithFields(log.Fields{
 					"key":  string(cacheKey),
@@ -92,7 +116,7 @@ func GetDataFromCacheOrGenerate[T any](
 			}).Infof("cache miss")
 		}
 
-		// Cache has missed or we're explicitly forcing a refresh:
+		// Cache has missed or we're deliberately refreshing the data:
 		result, errs := generateFn(ctx)
 		if len(errs) == 0 && !cacheOptions.SkipCacheWrites {
 			CacheSet(ctx, c, result, cacheKey, cacheDuration)
@@ -166,7 +190,7 @@ func GetReleases(ctx context.Context, bqc *bqclient.Client, forceRefresh bool) (
 		ctx,
 		bqc.Cache,
 		cache.RequestOptions{ForceRefresh: forceRefresh},
-		GetPrefixedCacheKey("Releases~", v1.Release{}), // no cache options needed here, global list
+		NewCacheSpec(v1.Release{}, "Releases~", nil), // no cache options needed here, global list
 		releaseGen.ListReleases,
 		[]v1.Release{})
 	if len(errs) > 0 {

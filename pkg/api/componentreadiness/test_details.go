@@ -38,7 +38,7 @@ func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, re
 		ctx,
 		generator.client.Cache,
 		generator.ReqOptions.CacheOption,
-		api.GetPrefixedCacheKey("TestDetailsReport~", generator.GetCacheKey(ctx)),
+		api.NewCacheSpec(generator.GetCacheKey(ctx), "TestDetailsReport~", nil),
 		generator.GenerateTestDetailsReport,
 		testdetails.Report{})
 	if len(errs) > 0 {
@@ -352,10 +352,9 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 		c.ReqOptions.TestIDOptions,
 	)
 
-	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](
-		ctx,
+	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](ctx,
 		c.client.Cache, c.ReqOptions.CacheOption,
-		api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator),
+		api.NewCacheSpec(generator, "BaseJobRunTestStatus~", &baseEnd),
 		generator.QueryTestStatus,
 		bq.TestJobRunStatuses{})
 
@@ -377,10 +376,9 @@ func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 		c.client, c.ReqOptions,
 		allJobVariants, includeVariants, start, end, junitTable)
 
-	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](
-		ctx,
+	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](ctx,
 		c.client.Cache, c.ReqOptions.CacheOption,
-		api.GetPrefixedCacheKey("SampleJobRunTestStatus~", generator),
+		api.NewCacheSpec(generator, "SampleJobRunTestStatus~", &end),
 		generator.QueryTestStatus,
 		bq.TestJobRunStatuses{})
 

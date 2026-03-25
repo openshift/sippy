@@ -92,7 +92,7 @@ func GetComponentTestVariantsFromBigQuery(ctx context.Context, client *bqcachedc
 	}
 
 	return api.GetDataFromCacheOrGenerate[CacheVariants](ctx, client.Cache, cache.RequestOptions{},
-		api.GetPrefixedCacheKey("TestVariants~", generator), generator.GenerateCacheVariants, CacheVariants{})
+		api.NewCacheSpec(generator, "TestVariants~", nil), generator.GenerateCacheVariants, CacheVariants{})
 }
 
 func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Client) (crtest.JobVariants,
@@ -102,7 +102,7 @@ func GetJobVariantsFromBigQuery(ctx context.Context, client *bqcachedclient.Clie
 	}
 
 	return api.GetDataFromCacheOrGenerate[crtest.JobVariants](ctx, client.Cache, cache.RequestOptions{},
-		api.GetPrefixedCacheKey("TestAllVariants~", generator), generator.GenerateJobVariants, crtest.JobVariants{})
+		api.NewCacheSpec(generator, "TestAllVariants~", nil), generator.GenerateJobVariants, crtest.JobVariants{})
 }
 
 func GetComponentReportFromBigQuery(
@@ -136,7 +136,7 @@ func GetComponentReportFromBigQuery(
 	report, errs = api.GetDataFromCacheOrGenerate[crtype.ComponentReport](
 		ctx,
 		generator.client.Cache, generator.ReqOptions.CacheOption,
-		api.GetPrefixedCacheKey(ComponentReportCacheKeyPrefix, generator.GetCacheKey(ctx)),
+		api.NewCacheSpec(generator.GetCacheKey(ctx), ComponentReportCacheKeyPrefix, nil),
 		generator.GenerateReport,
 		crtype.ComponentReport{})
 	if len(errs) > 0 {
@@ -408,8 +408,10 @@ func (c *ComponentReportGenerator) getBaseQueryStatus(ctx context.Context,
 
 	generator := query.NewBaseQueryGenerator(c.client, c.ReqOptions, allJobVariants)
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx, c.client.Cache,
-		generator.ReqOptions.CacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.QueryTestStatus, bq.ReportTestStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx,
+		c.client.Cache, c.ReqOptions.CacheOption,
+		api.NewCacheSpec(generator, "BaseTestStatus~", &c.ReqOptions.BaseRelease.End),
+		generator.QueryTestStatus, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -430,7 +432,7 @@ func (c *ComponentReportGenerator) getSampleQueryStatus(
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx,
 		c.client.Cache, c.ReqOptions.CacheOption,
-		api.GetPrefixedCacheKey("SampleTestStatus~", generator),
+		api.NewCacheSpec(generator, "SampleTestStatus~", &c.ReqOptions.SampleRelease.End),
 		generator.QueryTestStatus, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
