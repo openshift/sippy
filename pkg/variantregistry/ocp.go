@@ -801,6 +801,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// z-stream techpreview jobs should generally upgrade correctly, however also get wedged in some cases (e.g. when we forcibly change an API from alpha to stable).
 		{[]string{"-techpreview-upgrade"}, "candidate"},
 
+		// Custom DNS techpreview jobs - candidate tier to collect data while stabilizing
+		{[]string{"-custom-dns-techpreview"}, "candidate"},
+
 		{[]string{"periodic-ci-openshift-hypershift-", "-mce-e2e-agent-", "-metal-conformance"}, "candidate"},
 	}
 
