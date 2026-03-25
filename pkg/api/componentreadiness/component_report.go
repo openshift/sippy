@@ -402,14 +402,29 @@ func (c *ComponentReportGenerator) GenerateReport(ctx context.Context) (crtype.C
 	return report, nil
 }
 
+const StableQueryDataExpiration = time.Hour * 24 * 7 // week-old data probably won't change
+// if we're querying against older data, it probably won't change. so make the cache last longer
+// so that we don't spend a ton of BQ quota querying the same data repeatedly.
+func (c *ComponentReportGenerator) optionalCacheExtension(queryEndDate time.Time) cache.RequestOptions {
+	cacheOpts := c.ReqOptions.CacheOption
+	if queryEndDate.Add(StableQueryDataExpiration).Before(time.Now()) {
+		cacheOpts.ForceRefresh = false // we don't expect older data to change, so cache it longer
+		cacheOpts.CRTimeRoundingFactor = StableQueryDataExpiration
+	}
+	return cacheOpts
+}
+
 // getBaseQueryStatus builds the basis query, executes it, and returns the basis test status.
 func (c *ComponentReportGenerator) getBaseQueryStatus(ctx context.Context,
 	allJobVariants crtest.JobVariants) (map[string]bq.TestStatus, []error) {
 
 	generator := query.NewBaseQueryGenerator(c.client, c.ReqOptions, allJobVariants)
 
-	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx, c.client.Cache,
-		generator.ReqOptions.CacheOption, api.GetPrefixedCacheKey("BaseTestStatus~", generator), generator.QueryTestStatus, bq.ReportTestStatus{})
+	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx,
+		c.client.Cache,
+		c.optionalCacheExtension(c.ReqOptions.BaseRelease.End),
+		api.GetPrefixedCacheKey("BaseTestStatus~", generator),
+		generator.QueryTestStatus, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return nil, errs
@@ -429,7 +444,8 @@ func (c *ComponentReportGenerator) getSampleQueryStatus(
 	generator := query.NewSampleQueryGenerator(c.client, c.ReqOptions, allJobVariants, includeVariants, start, end, junitTable)
 
 	componentReportTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx,
-		c.client.Cache, c.ReqOptions.CacheOption,
+		c.client.Cache,
+		c.optionalCacheExtension(c.ReqOptions.SampleRelease.End),
 		api.GetPrefixedCacheKey("SampleTestStatus~", generator),
 		generator.QueryTestStatus, bq.ReportTestStatus{})
 
