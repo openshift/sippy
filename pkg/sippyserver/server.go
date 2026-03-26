@@ -2434,7 +2434,7 @@ func (s *Server) Serve() {
 			Capabilities:      []string{ComponentReadinessCapability},
 			HandlerFunc:       s.jsonPullRequestTestResults,
 			CacheTime:         1 * time.Hour,
-			RateLimitRequests: 40,
+			RateLimitRequests: 20,
 			RateLimitPeriod:   1 * time.Hour,
 		},
 		{
