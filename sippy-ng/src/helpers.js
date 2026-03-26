@@ -179,9 +179,15 @@ export function pathForVariantsWithTestFailure(release, variant, test) {
   )}`
 }
 
+function last7DaysFilter() {
+  const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+  return filterFor('timestamp', '>', `${sevenDaysAgo}`)
+}
+
 export function pathForJobRunsWithTestFailure(release, test, filter) {
   let filters = []
   filters.push(filterFor('failed_test_names', 'has entry', test))
+  filters.push(last7DaysFilter())
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
@@ -196,6 +202,7 @@ export function pathForJobRunsWithTestFailure(release, test, filter) {
 export function pathForJobRunsWithTest(release, test, filter) {
   let filters = []
   filters.push(filterFor('ran_test_names', 'has entry', test))
+  filters.push(last7DaysFilter())
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
@@ -210,6 +217,7 @@ export function pathForJobRunsWithTest(release, test, filter) {
 export function pathForJobRunsWithTestFlake(release, test, filter) {
   let filters = []
   filters.push(filterFor('flaked_test_names', 'has entry', test))
+  filters.push(last7DaysFilter())
   if (filter && filter.items) {
     filter.items.forEach((item) => {
       if (item.columnField === 'variants') {
