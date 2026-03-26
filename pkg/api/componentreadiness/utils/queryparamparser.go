@@ -91,72 +91,72 @@ func ParseComponentReportRequest(
 	}
 
 	// Variant options - merge with view defaults
-	if variantOpts, vWarnings, vErr := parseVariantOptions(req, allJobVariants, overrides); vErr != nil {
+	variantOpts, vWarnings, vErr := parseVariantOptions(req, allJobVariants, overrides)
+	if vErr != nil {
 		err = vErr
 		return
-	} else {
-		warnings = append(warnings, vWarnings...)
-		if view != nil {
-			// Merge: override individual fields from URL while preserving view defaults
-			if req.URL.Query().Get("columnGroupBy") != "" {
-				opts.VariantOption.ColumnGroupBy = variantOpts.ColumnGroupBy
-			}
-			if req.URL.Query().Get("dbGroupBy") != "" {
-				opts.VariantOption.DBGroupBy = variantOpts.DBGroupBy
-			}
-			if len(req.URL.Query()["includeVariant"]) > 0 {
-				opts.VariantOption.IncludeVariants = variantOpts.IncludeVariants
-			}
-			if len(req.URL.Query()["compareVariant"]) > 0 || len(req.URL.Query()["variantCrossCompare"]) > 0 {
-				// CompareVariants and VariantCrossCompare are related, update together
-				opts.VariantOption.CompareVariants = variantOpts.CompareVariants
-				opts.VariantOption.VariantCrossCompare = variantOpts.VariantCrossCompare
-			}
-		} else {
-			opts.VariantOption = variantOpts
+	}
+	warnings = append(warnings, vWarnings...)
+	if view != nil {
+		// Merge: override individual fields from URL while preserving view defaults
+		if req.URL.Query().Get("columnGroupBy") != "" {
+			opts.VariantOption.ColumnGroupBy = variantOpts.ColumnGroupBy
 		}
+		if req.URL.Query().Get("dbGroupBy") != "" {
+			opts.VariantOption.DBGroupBy = variantOpts.DBGroupBy
+		}
+		if len(req.URL.Query()["includeVariant"]) > 0 {
+			opts.VariantOption.IncludeVariants = variantOpts.IncludeVariants
+		}
+		if len(req.URL.Query()["compareVariant"]) > 0 || len(req.URL.Query()["variantCrossCompare"]) > 0 {
+			// CompareVariants and VariantCrossCompare are related, update together
+			opts.VariantOption.CompareVariants = variantOpts.CompareVariants
+			opts.VariantOption.VariantCrossCompare = variantOpts.VariantCrossCompare
+		}
+	} else {
+		opts.VariantOption = variantOpts
 	}
 
 	// Advanced options - merge with view defaults
-	if advOpts, advErr := parseAdvancedOptions(req); advErr != nil {
+	advOpts, advErr := parseAdvancedOptions(req)
+	if advErr != nil {
 		err = advErr
 		return
-	} else {
-		if view != nil {
-			// Merge: only override fields that were explicitly provided in URL
-			if req.URL.Query().Get("confidence") != "" {
-				opts.AdvancedOption.Confidence = advOpts.Confidence
-			}
-			if req.URL.Query().Get("pity") != "" {
-				opts.AdvancedOption.PityFactor = advOpts.PityFactor
-			}
-			if req.URL.Query().Get("minFail") != "" {
-				opts.AdvancedOption.MinimumFailure = advOpts.MinimumFailure
-			}
-			if req.URL.Query().Get("passRateNewTests") != "" {
-				opts.AdvancedOption.PassRateRequiredNewTests = advOpts.PassRateRequiredNewTests
-			}
-			if req.URL.Query().Get("passRateAllTests") != "" {
-				opts.AdvancedOption.PassRateRequiredAllTests = advOpts.PassRateRequiredAllTests
-			}
-			if req.URL.Query().Get("ignoreMissing") != "" {
-				opts.AdvancedOption.IgnoreMissing = advOpts.IgnoreMissing
-			}
-			if req.URL.Query().Get("ignoreDisruption") != "" {
-				opts.AdvancedOption.IgnoreDisruption = advOpts.IgnoreDisruption
-			}
-			if req.URL.Query().Get("flakeAsFailure") != "" {
-				opts.AdvancedOption.FlakeAsFailure = advOpts.FlakeAsFailure
-			}
-			if req.URL.Query().Get("includeMultiReleaseAnalysis") != "" {
-				opts.AdvancedOption.IncludeMultiReleaseAnalysis = advOpts.IncludeMultiReleaseAnalysis
-			}
-			if len(req.URL.Query()["keyTestName"]) > 0 {
-				opts.AdvancedOption.KeyTestNames = advOpts.KeyTestNames
-			}
-		} else {
-			opts.AdvancedOption = advOpts
+	}
+	if view != nil {
+		// Merge: only override fields that were explicitly provided in URL
+		if req.URL.Query().Get("confidence") != "" {
+			opts.AdvancedOption.Confidence = advOpts.Confidence
 		}
+		if req.URL.Query().Get("pity") != "" {
+			opts.AdvancedOption.PityFactor = advOpts.PityFactor
+		}
+		if req.URL.Query().Get("minFail") != "" {
+			opts.AdvancedOption.MinimumFailure = advOpts.MinimumFailure
+		}
+		if req.URL.Query().Get("passRateNewTests") != "" {
+			opts.AdvancedOption.PassRateRequiredNewTests = advOpts.PassRateRequiredNewTests
+		}
+		if req.URL.Query().Get("passRateAllTests") != "" {
+			opts.AdvancedOption.PassRateRequiredAllTests = advOpts.PassRateRequiredAllTests
+		}
+		if req.URL.Query().Get("ignoreMissing") != "" {
+			opts.AdvancedOption.IgnoreMissing = advOpts.IgnoreMissing
+		}
+		if req.URL.Query().Get("ignoreDisruption") != "" {
+			opts.AdvancedOption.IgnoreDisruption = advOpts.IgnoreDisruption
+		}
+		if req.URL.Query().Get("flakeAsFailure") != "" {
+			opts.AdvancedOption.FlakeAsFailure = advOpts.FlakeAsFailure
+		}
+		if req.URL.Query().Get("includeMultiReleaseAnalysis") != "" {
+			opts.AdvancedOption.IncludeMultiReleaseAnalysis = advOpts.IncludeMultiReleaseAnalysis
+		}
+		if len(req.URL.Query()["keyTestName"]) > 0 {
+			opts.AdvancedOption.KeyTestNames = advOpts.KeyTestNames
+		}
+	} else {
+		opts.AdvancedOption = advOpts
 	}
 
 	// Date ranges override view defaults
