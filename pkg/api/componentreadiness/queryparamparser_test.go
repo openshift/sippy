@@ -275,12 +275,45 @@ func TestParseComponentReportRequest(t *testing.T) {
 			errMessage: "unknown view",
 		},
 		{
-			name: "cannot combine view and includeVariant",
+			name: "view with includeVariant override replaces view defaults",
 			queryParams: [][]string{
-				{"view", "4.17-main"}, // doesn't exist
+				{"view", "4.17-main"},
+				{"includeVariant", "Platform:gcp"},
 				{"includeVariant", "Topology:single"},
 			},
-			errMessage: "params cannot be combined with view",
+			variantOption: reqopts.Variants{
+				ColumnGroupBy: sets.NewString("Platform", "Architecture", "Network"),
+				DBGroupBy:     sets.NewString("Platform", "Architecture", "Network", "Topology", "Suite", "FeatureSet", "Upgrade", "Installer", "LayeredProduct"),
+				// URL params completely replace view's includeVariants
+				IncludeVariants: map[string][]string{
+					"Platform": {"gcp"},
+					"Topology": {"single"},
+				},
+				CompareVariants: nil,
+			},
+			baseRelease: reqopts.Release{
+				Name:  "4.16",
+				Start: time.Date(2024, time.May, 28, 0, 0, 0, 0, time.UTC),
+				End:   time.Date(2024, time.June, 27, 23, 59, 59, 0, time.UTC),
+			},
+			sampleRelease: reqopts.Release{
+				Name:  "4.17",
+				Start: time.Date(nowMinus7Days.Year(), nowMinus7Days.Month(), nowMinus7Days.Day(), 0, 0, 0, 0, time.UTC),
+				End:   nowRoundUp,
+			},
+			testIDOption: reqopts.TestIdentification{
+				RequestedVariants: map[string]string{},
+			},
+			advancedOption: reqopts.Advanced{
+				MinimumFailure:   3,
+				Confidence:       95,
+				PityFactor:       5,
+				IgnoreMissing:    false,
+				IgnoreDisruption: true,
+			},
+			cacheOption: cache.RequestOptions{
+				ForceRefresh: false,
+			},
 		},
 		{
 			name: "normal query params but with variant cross-compare",

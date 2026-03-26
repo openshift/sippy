@@ -131,36 +131,6 @@ func addVariantParams(params url.Values, variantMap map[string]string) {
 	params.Add("environment", strings.Join(environment, " "))
 }
 
-// buildViewBasedURL generates a minimal URL with just view + test-specific overrides
-func buildViewBasedURL(
-	params url.Values,
-	viewName string,
-	testID string,
-	component string,
-	capability string,
-	variantMap map[string]string,
-	baseReleaseOpts reqopts.Release,
-	baseReleaseOverride string,
-) {
-	params.Add("view", viewName)
-	params.Add("testId", testID)
-
-	if component != "" {
-		params.Add("component", component)
-	}
-	if capability != "" {
-		params.Add("capability", capability)
-	}
-
-	// Add variant parameters and environment string
-	addVariantParams(params, variantMap)
-
-	// Check if release fallback was used and add the override
-	if baseReleaseOverride != "" && baseReleaseOverride != baseReleaseOpts.Name {
-		params.Add("testBasisRelease", baseReleaseOverride)
-	}
-}
-
 // addReleaseParams adds release-related parameters (dates, PR, payload options)
 func addReleaseParams(
 	params url.Values,
@@ -269,14 +239,21 @@ func addVariantOptionsParams(params url.Values, variantOptions reqopts.Variants)
 
 // GenerateTestDetailsURL creates a HATEOAS-style URL for the test_details API endpoint.
 //
-// When viewName is provided, generates a minimal URL with just the view parameter plus test-specific overrides:
-//   - view=<name>
-//   - testId=<id>
+// Always generates a full URL with all parameters. When viewName is provided, it's added
+// as an additional parameter. The view provides default values on the server side, while
+// URL parameters explicitly override those defaults.
+//
+// Parameters included:
+//   - view (if provided) - references a named view configuration
+//   - testId - the test identifier
+//   - release parameters (base/sample with dates, PR, payload options)
+//   - advanced options (confidence, minFail, pity, etc.)
+//   - variant options (columnGroupBy, dbGroupBy, includeVariant, etc.)
+//   - test filters (capabilities, lifecycles)
 //   - component, capability (if provided)
 //   - specific variants from the variants parameter
 //   - testBasisRelease (if baseReleaseOverride is provided)
 //
-// When viewName is empty, generates a full URL with all parameters for backward compatibility.
 // Note: keyTestNames are NOT included in URLs - they come from the view definition on the server.
 func GenerateTestDetailsURL(
 	testID string,
@@ -318,14 +295,12 @@ func GenerateTestDetailsURL(
 
 	params := url.Values{}
 
-	// If a view is provided, generate a minimal URL with just the view + test-specific overrides
+	// Add view parameter first if provided (view provides defaults, URL params override)
 	if viewName != "" {
-		buildViewBasedURL(params, viewName, testID, component, capability, variantMap, baseReleaseOpts, baseReleaseOverride)
-		u.RawQuery = params.Encode()
-		return u.String(), nil
+		params.Add("view", viewName)
 	}
 
-	// Otherwise, generate full URL with all parameters (for backward compatibility)
+	// Always generate full URL with all parameters
 	params.Add("testId", testID)
 
 	// Add release parameters

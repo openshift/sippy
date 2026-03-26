@@ -178,6 +178,9 @@ func GetReleases(ctx context.Context, bqc *bqclient.Client, forceRefresh bool) (
 // VariantsStringToSet converts comma separated variant string into a set; also validates that the variants are known
 func VariantsStringToSet(allJobVariants crtest.JobVariants, variantsString string) (sets.String, error) {
 	variantSet := sets.String{}
+	if variantsString == "" {
+		return variantSet, nil
+	}
 	variants := strings.Split(variantsString, ",")
 	for _, v := range variants {
 		// ensure the variant is one we've recorded in BQ, not just some random string
