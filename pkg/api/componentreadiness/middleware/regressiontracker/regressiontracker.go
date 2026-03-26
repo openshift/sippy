@@ -188,9 +188,22 @@ func FindOpenRegression(sampleRelease, testID string,
 		if tr.TestID != testID {
 			continue
 		}
+		// Subset matching: check if ALL regression variants are present in the input variants.
+		// This allows the input to have additional variants beyond what the regression has,
+		// which supports db_column_groupby modifications that add new variants.
 		found := true
-		for key, value := range variants {
-			if value != findVariant(key, tr) {
+		for _, variant := range tr.Variants {
+			keyVal := strings.Split(variant, ":")
+			if len(keyVal) != 2 {
+				// Malformed variant, skip this regression
+				found = false
+				break
+			}
+			variantKey := keyVal[0]
+			variantValue := keyVal[1]
+
+			inputValue, exists := variants[variantKey]
+			if !exists || inputValue != variantValue {
 				found = false
 				break
 			}
@@ -205,16 +218,6 @@ func FindOpenRegression(sampleRelease, testID string,
 		return matches[0]
 	}
 	return nil
-}
-
-func findVariant(variantName string, testReg *models.TestRegression) string {
-	for _, v := range testReg.Variants {
-		keyVal := strings.Split(v, ":")
-		if keyVal[0] == variantName {
-			return keyVal[1]
-		}
-	}
-	return ""
 }
 
 func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *bq.TestJobRunStatuses) error {
