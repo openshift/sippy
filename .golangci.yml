@@ -2,6 +2,8 @@
 run:
   concurrency: 6
   deadline: 10m
+  skip-dirs:
+    - sippy-ng/node_modules
 linters:
   disable-all: true
   enable:

@@ -44,7 +44,7 @@ lint: builddir npm
 	cd sippy-ng; npx eslint .
 	# See https://github.com/facebook/create-react-app/issues/11174 about
 	# why we only audit production deps:
-	cd sippy-ng; npm audit --production
+	cd sippy-ng; npm audit --omit=dev
 
 npm:
 	# For debugging
