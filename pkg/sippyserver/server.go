@@ -2429,10 +2429,13 @@ func (s *Server) Serve() {
 			HandlerFunc:  s.jsonPullRequestsReportFromDB,
 		},
 		{
-			EndpointPath: "/api/pull_requests/test_results",
-			Description:  "Fetches test failures for a specific pull request from BigQuery (presubmits and /payload jobs). Optional: include_successes param to also return successes for matching test names",
-			Capabilities: []string{ComponentReadinessCapability},
-			HandlerFunc:  s.jsonPullRequestTestResults,
+			EndpointPath:      "/api/pull_requests/test_results",
+			Description:       "Fetches test failures for a specific pull request from BigQuery (presubmits and /payload jobs). Optional: include_successes param to also return successes for matching test names",
+			Capabilities:      []string{ComponentReadinessCapability},
+			HandlerFunc:       s.jsonPullRequestTestResults,
+			CacheTime:         1 * time.Hour,
+			RateLimitRequests: 40,
+			RateLimitPeriod:   1 * time.Hour,
 		},
 		{
 			EndpointPath: "/api/repositories",
