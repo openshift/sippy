@@ -112,13 +112,6 @@ func CreateTriage(dbc *gorm.DB, jiraClient *jira.Client, triage models.Triage, r
 
 var jiraPrefixes = []string{"https://issues.redhat.com/browse/", "https://redhat.atlassian.net/browse/"}
 
-// ReportTriageResolved comments on the associated jira that the regressions have been resolved, including a link
-// to the triage details
-func ReportTriageResolved(jiraClient *jira.Client, triage models.Triage) {
-	message := "All regressions associated with this triage record have been resolved."
-	reportOnJiraUsedForTriage(jiraClient, triage, message, nil)
-}
-
 // ReportTriageAddedForJira comments on the associated jira with a link to the triage details
 func ReportTriageAddedForJira(jiraClient *jira.Client, triage models.Triage, req *http.Request) {
 	message := "This bug has been triaged to one or more component readiness regressions."
