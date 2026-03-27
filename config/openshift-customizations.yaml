@@ -35,6 +35,11 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-e2e-parallel-ocp-nightly: true
       branch-ci-Azure-ARO-HCP-main-e2e-prod-e2e-parallel: true
+  capz-qe:
+    jobs:
+      periodic-ci-stolostron-capi-tests-configure-prow-mgmt-periodics-capz-e2e: true
+    regexp:
+      - "^pull-ci-stolostron-capi-tests-.*-capz-e2e$"
   aro-classic-integration:
     synthetic: true
     jobs:
