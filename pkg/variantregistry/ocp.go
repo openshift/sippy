@@ -1020,6 +1020,7 @@ func setPlatform(jLog logrus.FieldLogger, variants map[string]string, jobName st
 		{"-osd-ccs-gcp", "osd-gcp"},
 		{"-gcp", "gcp"},
 		{"-libvirt", "libvirt"},
+		{"-ibm", "metal"}, // IBM Cloud job names use -ibm / -ibmcloud; treat as metal
 		{"-metal", "metal"},
 		{"-nutanix", "nutanix"},
 		{"-openstack", "openstack"},
