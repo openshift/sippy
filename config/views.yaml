@@ -61,6 +61,7 @@ component_readiness:
       - ha
       - microshift
       - external
+      - two-node-arbiter
       CGroupMode:
       - v2
       ContainerRuntime:
@@ -151,6 +152,7 @@ component_readiness:
       - ha
       - microshift
       - external
+      - two-node-arbiter
       CGroupMode:
       - v2
       ContainerRuntime:
@@ -379,6 +381,7 @@ component_readiness:
       - ha
       - microshift
       - single
+      - two-node-arbiter
       CGroupMode:
       - v2
       ContainerRuntime:
@@ -456,6 +459,71 @@ component_readiness:
     compare_variants:
       Topology:
       - single
+    variant_cross_compare:
+    - Topology
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: false
+- name: 4.22-ha-vs-two-node
+  base_release:
+    release: "4.22"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "4.22"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      LayeredProduct:
+      - none
+      - virt
+      Owner:
+      - eng
+      Platform:
+      - metal
+      Topology:
+      - ha
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Topology:
+      - two-node-arbiter
     variant_cross_compare:
     - Topology
   advanced_options:
