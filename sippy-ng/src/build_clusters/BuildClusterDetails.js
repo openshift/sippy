@@ -17,7 +17,6 @@ export default function BuildClusterDetails(props) {
             </Typography>
             <JobRunsTable
               pageSize={10}
-              hideControls={true}
               filterModel={{
                 items: [
                   filterFor('cluster', 'equals', props.cluster),
