@@ -556,4 +556,53 @@ func TestGenerateTestDetailsURL(t *testing.T) {
 		assert.Contains(t, url, "testLifecycles=informing")
 	})
 
+	t.Run("URL generation with view name includes both view and all parameters", func(t *testing.T) {
+		// Create test filters
+		testFilters := reqopts.TestFilters{
+			Capabilities: []string{"Networking"},
+			Lifecycles:   []string{"blocking"},
+		}
+
+		url, err := GenerateTestDetailsURL(
+			"test-id",
+			"https://sippy.example.com",
+			"4.20-main", // viewName provided
+			getBaseReleaseOpts(),
+			getSampleReleaseOpts(),
+			testView.AdvancedOptions,
+			testView.VariantOptions,
+			testFilters,
+			"component-example",
+			"capability-example",
+			[]string{"Platform:aws", "Architecture:amd64"},
+			"",
+		)
+		require.NoError(t, err)
+		assert.NotEmpty(t, url)
+
+		// Verify view parameter is included
+		assert.Contains(t, url, "view=4.20-main")
+
+		// Verify all other parameters are also included (not just view+overrides)
+		assert.Contains(t, url, "testId=test-id")
+		assert.Contains(t, url, "baseRelease=4.19")
+		assert.Contains(t, url, "sampleRelease=4.20")
+		assert.Contains(t, url, "confidence=95")
+		assert.Contains(t, url, "minFail=3")
+		assert.Contains(t, url, "pity=5")
+		assert.Contains(t, url, "includeMultiReleaseAnalysis=true")
+		assert.Contains(t, url, "component=component-example")
+		assert.Contains(t, url, "capability=capability-example")
+		assert.Contains(t, url, "Platform=aws")
+		assert.Contains(t, url, "Architecture=amd64")
+		assert.Contains(t, url, "testCapabilities=Networking")
+		assert.Contains(t, url, "testLifecycles=blocking")
+
+		// Verify the URL contains all expected components from the view
+		assert.Contains(t, url, "baseStartTime=")
+		assert.Contains(t, url, "baseEndTime=")
+		assert.Contains(t, url, "sampleStartTime=")
+		assert.Contains(t, url, "sampleEndTime=")
+	})
+
 }

@@ -30,14 +30,14 @@ func ParseComponentReportRequest(
 	warnings []string,
 	err error,
 ) {
-	// Check if the user specified a view, in which case only some query params can be used.
+	// Check if the user specified a view, which provides defaults that can be overridden by URL params
 	view, err := getRequestedView(req, views)
 	if err != nil {
 		return
 	}
 
+	// Start with view defaults if provided
 	if view != nil {
-		// set params from view
 		opts.ViewName = view.Name
 		opts.VariantOption = view.VariantOptions
 		opts.AdvancedOption = view.AdvancedOptions
@@ -56,46 +56,121 @@ func ParseComponentReportRequest(
 			viewWarnings := api.ValidateVariants(allJobVariants, opts.VariantOption.IncludeVariants, " from view")
 			warnings = append(warnings, viewWarnings...)
 		}
+	}
+
+	// Parse URL parameters - these override view defaults if view was provided
+	// If no view, these are required parameters
+	if baseRelease := param.SafeRead(req, "baseRelease"); baseRelease != "" {
+		opts.BaseRelease.Name = baseRelease
+	} else if view == nil {
+		err = fmt.Errorf("missing baseRelease")
+		return
+	}
+
+	if sampleRelease := param.SafeRead(req, "sampleRelease"); sampleRelease != "" {
+		opts.SampleRelease.Name = sampleRelease
+	} else if view == nil {
+		err = fmt.Errorf("missing sampleRelease")
+		return
+	}
+
+	// PR and Payload options override view defaults
+	if prOpts := parsePROptions(req); prOpts != nil {
+		opts.SampleRelease.PullRequestOptions = prOpts
+	}
+	if payloadOpts := parsePayloadOptions(req); payloadOpts != nil {
+		opts.SampleRelease.PayloadOptions = payloadOpts
+	}
+
+	// Test filters override view defaults
+	if testCaps := req.URL.Query()["testCapabilities"]; len(testCaps) > 0 {
+		opts.TestFilters.Capabilities = testCaps
+	}
+	if testLifecycles := req.URL.Query()["testLifecycles"]; len(testLifecycles) > 0 {
+		opts.TestFilters.Lifecycles = testLifecycles
+	}
+
+	// Variant options - merge with view defaults
+	variantOpts, vWarnings, vErr := parseVariantOptions(req, allJobVariants, overrides)
+	if vErr != nil {
+		err = vErr
+		return
+	}
+	warnings = append(warnings, vWarnings...)
+	if view != nil {
+		// Merge: override individual fields from URL while preserving view defaults
+		if req.URL.Query().Get("columnGroupBy") != "" {
+			opts.VariantOption.ColumnGroupBy = variantOpts.ColumnGroupBy
+		}
+		if req.URL.Query().Get("dbGroupBy") != "" {
+			opts.VariantOption.DBGroupBy = variantOpts.DBGroupBy
+		}
+		if len(req.URL.Query()["includeVariant"]) > 0 {
+			opts.VariantOption.IncludeVariants = variantOpts.IncludeVariants
+		}
+		if len(req.URL.Query()["compareVariant"]) > 0 || len(req.URL.Query()["variantCrossCompare"]) > 0 {
+			// CompareVariants and VariantCrossCompare are related, update together
+			opts.VariantOption.CompareVariants = variantOpts.CompareVariants
+			opts.VariantOption.VariantCrossCompare = variantOpts.VariantCrossCompare
+		}
 	} else {
-		opts.BaseRelease.Name = param.SafeRead(req, "baseRelease")
-		if opts.BaseRelease.Name == "" {
-			err = fmt.Errorf("missing baseRelease")
-			return
-		}
+		opts.VariantOption = variantOpts
+	}
 
-		opts.SampleRelease.Name = param.SafeRead(req, "sampleRelease")
-		if opts.SampleRelease.Name == "" {
-			err = fmt.Errorf("missing sampleRelease")
-			return
+	// Advanced options - merge with view defaults
+	advOpts, advErr := parseAdvancedOptions(req)
+	if advErr != nil {
+		err = advErr
+		return
+	}
+	if view != nil {
+		// Merge: only override fields that were explicitly provided in URL
+		if req.URL.Query().Get("confidence") != "" {
+			opts.AdvancedOption.Confidence = advOpts.Confidence
 		}
-		// We only support pull request and payload jobs as the sample, not the basis:
-		opts.SampleRelease.PullRequestOptions = parsePROptions(req)
-		opts.SampleRelease.PayloadOptions = parsePayloadOptions(req)
-
-		// free-form, not "safe" - used in query filters
-		opts.TestFilters.Capabilities = req.URL.Query()["testCapabilities"]
-		opts.TestFilters.Lifecycles = req.URL.Query()["testLifecycles"]
-
-		var variantWarnings []string
-		if opts.VariantOption, variantWarnings, err = parseVariantOptions(req, allJobVariants, overrides); err != nil {
-			return
+		if req.URL.Query().Get("pity") != "" {
+			opts.AdvancedOption.PityFactor = advOpts.PityFactor
 		}
-		warnings = append(warnings, variantWarnings...)
-		if opts.AdvancedOption, err = parseAdvancedOptions(req); err != nil {
-			return
+		if req.URL.Query().Get("minFail") != "" {
+			opts.AdvancedOption.MinimumFailure = advOpts.MinimumFailure
 		}
+		if req.URL.Query().Get("passRateNewTests") != "" {
+			opts.AdvancedOption.PassRateRequiredNewTests = advOpts.PassRateRequiredNewTests
+		}
+		if req.URL.Query().Get("passRateAllTests") != "" {
+			opts.AdvancedOption.PassRateRequiredAllTests = advOpts.PassRateRequiredAllTests
+		}
+		if req.URL.Query().Get("ignoreMissing") != "" {
+			opts.AdvancedOption.IgnoreMissing = advOpts.IgnoreMissing
+		}
+		if req.URL.Query().Get("ignoreDisruption") != "" {
+			opts.AdvancedOption.IgnoreDisruption = advOpts.IgnoreDisruption
+		}
+		if req.URL.Query().Get("flakeAsFailure") != "" {
+			opts.AdvancedOption.FlakeAsFailure = advOpts.FlakeAsFailure
+		}
+		if req.URL.Query().Get("includeMultiReleaseAnalysis") != "" {
+			opts.AdvancedOption.IncludeMultiReleaseAnalysis = advOpts.IncludeMultiReleaseAnalysis
+		}
+		if len(req.URL.Query()["keyTestName"]) > 0 {
+			opts.AdvancedOption.KeyTestNames = advOpts.KeyTestNames
+		}
+	} else {
+		opts.AdvancedOption = advOpts
+	}
 
-		// TODO: if specified, allow these to override view defaults for start/end time.
-		// will need to relocate this outside this else.
+	// Date ranges override view defaults
+	if hasDateRangeInURL(req, "baseStartTime", "baseEndTime") {
 		opts.BaseRelease, err = parseDateRange(releases, req, opts.BaseRelease, "baseStartTime", "baseEndTime", crTimeRoundingFactor)
 		if err != nil {
 			return
 		}
+	}
+	if hasDateRangeInURL(req, "sampleStartTime", "sampleEndTime") {
 		opts.SampleRelease, err = parseDateRange(releases, req, opts.SampleRelease, "sampleStartTime", "sampleEndTime", crTimeRoundingFactor)
 		if err != nil {
 			return
 		}
-
 	}
 
 	// Params below this point can be used with and without views:
@@ -146,31 +221,11 @@ func ParseComponentReportRequest(
 }
 
 // getRequestedView returns the view requested per the view param, or nil if none.
+// The view provides defaults that can be overridden by URL parameters.
 func getRequestedView(req *http.Request, views []crview.View) (*crview.View, error) {
 	viewRequested := req.URL.Query().Get("view") // used only to lookup by view name
 	if viewRequested == "" {
 		return nil, nil
-	}
-
-	// the following params are not compatible with use of a view and will generate an error if combined with one:
-	incompatible := []string{
-		"baseRelease", "sampleRelease", // release opts
-		"samplePROrg", "samplePRRepo", "samplePRNumber", // PR opts
-		"columnGroupBy", "dbGroupBy", // grouping
-		"samplePayloadTag",                                        // Payload opts
-		"includeVariant", "compareVariant", "variantCrossCompare", // variants
-		"confidence", "pity", "minFail", "passRateNewTests", "passRateAllTests",
-		"ignoreMissing", "ignoreDisruption", // advanced opts
-		"testCapabilities", "testLifecycles", // test filters
-	}
-	found := []string{}
-	for _, p := range incompatible {
-		if req.URL.Query().Get(p) != "" {
-			found = append(found, p)
-		}
-	}
-	if len(found) > 0 {
-		return nil, fmt.Errorf("params cannot be combined with view: %v", found)
 	}
 
 	// find the requested view name among our known views:
@@ -394,4 +449,9 @@ func parseDateRange(allReleases []v1.Release, req *http.Request,
 		return releaseOpts, errors.New(endName + " in wrong format")
 	}
 	return releaseOpts, nil
+}
+
+// hasDateRangeInURL checks if date range parameters are provided in the URL
+func hasDateRangeInURL(req *http.Request, startParam, endParam string) bool {
+	return req.URL.Query().Get(startParam) != "" || req.URL.Query().Get(endParam) != ""
 }
