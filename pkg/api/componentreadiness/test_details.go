@@ -354,7 +354,8 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](
 		ctx,
-		c.client.Cache, c.ReqOptions.CacheOption,
+		c.client.Cache,
+		c.optionalCacheExtension(baseEnd),
 		api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator),
 		generator.QueryTestStatus,
 		bq.TestJobRunStatuses{})
@@ -379,7 +380,8 @@ func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 
 	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](
 		ctx,
-		c.client.Cache, c.ReqOptions.CacheOption,
+		c.client.Cache,
+		c.optionalCacheExtension(end),
 		api.GetPrefixedCacheKey("SampleJobRunTestStatus~", generator),
 		generator.QueryTestStatus,
 		bq.TestJobRunStatuses{})
