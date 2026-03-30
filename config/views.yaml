@@ -435,6 +435,7 @@ component_readiness:
       - blocking
       - informing
       - standard
+      - candidate
       LayeredProduct:
       - none
       - virt
@@ -829,6 +830,7 @@ component_readiness:
       - blocking
       - informing
       - standard
+      - candidate
       LayeredProduct:
       - none
       - virt
