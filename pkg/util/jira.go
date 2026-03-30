@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/andygrunwald/go-jira"
 )
@@ -74,7 +75,12 @@ func PopulateJiraIssue(jiraClient *jira.Client, bugRequest FileBugRequest, user 
 		var reporter *jira.User
 		var err error
 		if len(user) > 0 {
-			jiraUser, _, err := jiraClient.User.Find(user)
+			findUser := user
+			// need to match on the email address so we don't get partial / multiple matches
+			if !strings.HasSuffix(findUser, "@redhat.com") {
+				findUser = fmt.Sprintf("%s@redhat.com", user)
+			}
+			jiraUser, _, err := jiraClient.User.Find(findUser)
 			if err != nil {
 				return issue, err
 			}
