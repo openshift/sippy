@@ -86,7 +86,7 @@ func PopulateJiraIssue(jiraClient *jira.Client, bugRequest FileBugRequest, user 
 			}
 
 			if len(jiraUser) == 0 {
-				return issue, fmt.Errorf("no jira user found for: %s", user)
+				return issue, fmt.Errorf("no jira user found for: %s", findUser)
 			}
 
 			ju := jiraUser[0]
