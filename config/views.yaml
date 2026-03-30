@@ -458,6 +458,9 @@ component_readiness:
       - single
     variant_cross_compare:
     - Topology
+  test_filters:
+    lifecycles:
+      - blocking
   advanced_options:
     minimum_failure: 3
     confidence: 95
@@ -849,6 +852,9 @@ component_readiness:
       - two-node-fencing
     variant_cross_compare:
     - Topology
+  test_filters:
+    lifecycles:
+      - blocking
   advanced_options:
     minimum_failure: 3
     confidence: 95
