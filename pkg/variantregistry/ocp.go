@@ -804,6 +804,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// Custom DNS techpreview jobs - candidate tier to collect data while stabilizing
 		{[]string{"-custom-dns-techpreview"}, "candidate"},
 
+		// AWS European Sovereign Cloud techpreview jobs - candidate tier to collect data while stabilizing
+		{[]string{"-eusc-techpreview"}, "candidate"},
+
 		{[]string{"periodic-ci-openshift-hypershift-", "-mce-e2e-agent-", "-metal-conformance"}, "candidate"},
 	}
 
