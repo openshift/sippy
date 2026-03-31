@@ -438,7 +438,16 @@ func BuildComponentReportQuery(
 	variantGroups := includeVariants
 	// potentially cross-compare variants for the sample
 	if isSample && len(reqOptions.VariantOption.VariantCrossCompare) > 0 {
-		variantGroups = reqOptions.VariantOption.CompareVariants
+		// Merge CompareVariants into includeVariants (don't replace entirely)
+		// CompareVariants contains the cross-compared variant values (e.g., Topology:[single])
+		// includeVariants contains all other variant filters (e.g., JobTier, ContainerRuntime, etc.)
+		variantGroups = make(map[string][]string)
+		for k, v := range includeVariants {
+			variantGroups[k] = v
+		}
+		for k, v := range reqOptions.VariantOption.CompareVariants {
+			variantGroups[k] = v
+		}
 	}
 	if variantGroups == nil { // server-side view definitions may omit a variants map
 		variantGroups = map[string][]string{}
