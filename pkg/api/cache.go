@@ -79,14 +79,15 @@ func GetDataFromCacheOrGenerate[T any](
 		}
 
 		cacheDuration := CalculateRoundedCacheDuration(cacheOptions)
-		if cacheOptions.StableExpiry != 0 && cacheSpec.HasStableData(cacheOptions) {
+		hasStableData := cacheSpec.HasStableData(cacheOptions)
+		if cacheOptions.StableExpiry != 0 && hasStableData {
 			// if we're querying against older data, it probably won't change. so make the cache last longer
 			// so that we don't spend a ton of BQ quota querying the same data repeatedly.
 			cacheDuration = cacheOptions.StableExpiry
 		}
 		logrus.Debugf("cache duration set to %s or approx %s for key %s", cacheDuration, time.Now().Add(cacheDuration).Format(time.RFC3339), cacheKey)
 
-		refreshRecent := cacheOptions.RefreshRecent && !cacheSpec.HasStableData(cacheOptions)
+		refreshRecent := cacheOptions.RefreshRecent && !hasStableData
 		if !cacheOptions.ForceRefresh && !refreshRecent {
 			if res, err := c.Get(ctx, string(cacheKey), cacheDuration); err == nil {
 				logrus.WithFields(logrus.Fields{
