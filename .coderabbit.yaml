@@ -43,10 +43,10 @@ reviews:
         utility logic. Avoid calling the same utility function multiple times
         with identical arguments in the same code path.
 
-        Function names must accurately describe what the function does. If a
-        function validates URLs, don't call it "getPrefix". When adding new
-        types or fields, include a brief godoc if the name alone does not make
-        the purpose obvious to someone unfamiliar with the feature.
+        Name each function succinctly but accurately indicating its purpose
+        relative to its package or receiver. When adding new functions, types,
+        or fields, include a brief godoc if the name alone would not make the
+        purpose obvious to someone unfamiliar with the feature.
   tools:
     shellcheck:
       enabled: true
