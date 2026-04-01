@@ -298,7 +298,7 @@ func NewLoadCommand() *cobra.Command {
 					if dbErr != nil {
 						return errors.Wrap(dbErr, "CRITICAL error getting postgres client which prevents regression tracking")
 					}
-					cacheOpts := cache.RequestOptions{CRTimeRoundingFactor: f.ComponentReadinessFlags.CRTimeRoundingFactor}
+					cacheOpts := cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor)
 
 					views, err := f.ComponentReadinessFlags.ParseViewsFile()
 					if err != nil {

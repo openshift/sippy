@@ -2,17 +2,12 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
-	"reflect"
 	"strings"
-	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
-	"github.com/pkg/errors"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
@@ -20,129 +15,6 @@ import (
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
-
-var (
-	defaultCacheDuration = 8 * time.Hour
-)
-
-type CacheData struct {
-	cacheKey func() ([]byte, error)
-}
-
-func (c *CacheData) GetCacheKey() ([]byte, error) {
-	if c.cacheKey == nil {
-		panic("cache key is nil")
-	}
-	return c.cacheKey()
-}
-
-func GetPrefixedCacheKey(prefix string, cacheKey interface{}) CacheData {
-	if isStructWithNoPublicFields(cacheKey) {
-		panic(fmt.Sprintf("you cannot use struct %s with no exported fields as a cache key", reflect.TypeOf(cacheKey)))
-	}
-
-	return CacheData{cacheKey: func() ([]byte, error) {
-		b, err := json.Marshal(cacheKey)
-		if err != nil {
-			return nil, err
-		}
-		if len(prefix) > 0 {
-			return append([]byte(prefix), b...), nil
-		}
-		return b, nil
-	}}
-}
-
-// GetDataFromCacheOrGenerate attempts to find a cached record otherwise generates new data.
-func GetDataFromCacheOrGenerate[T any](
-	ctx context.Context, c cache.Cache, cacheOptions cache.RequestOptions, cacheData CacheData,
-	generateFn func(context.Context) (T, []error),
-	defaultVal T,
-) (T, []error) {
-	if c != nil {
-		cacheKey, err := cacheData.GetCacheKey()
-		if err != nil {
-			return defaultVal, []error{err}
-		}
-
-		// If someone is giving us an uncacheable cacheKey, we should panic so it gets detected in testing
-		if len(cacheKey) == 0 {
-			panic(fmt.Sprintf("cache key is empty for %s", reflect.TypeOf(defaultVal)))
-		}
-
-		cacheDuration := CalculateRoundedCacheDuration(cacheOptions)
-		log.Debugf("cache duration set to %s or approx %s for key %s", cacheDuration, time.Now().Add(cacheDuration).Format(time.RFC3339), cacheKey)
-
-		if !cacheOptions.ForceRefresh {
-			if res, err := c.Get(ctx, string(cacheKey), cacheDuration); err == nil {
-				log.WithFields(log.Fields{
-					"key":  string(cacheKey),
-					"type": reflect.TypeOf(defaultVal).String(),
-				}).Infof("cache hit")
-				var cr T
-				if err := json.Unmarshal(res, &cr); err != nil {
-					return defaultVal, []error{errors.WithMessagef(err, "failed to unmarshal cached item.  cacheKey=%+v", cacheKey)}
-				}
-				return cr, nil
-			} else if strings.Contains(err.Error(), "connection refused") {
-				log.WithError(err).Fatalf("redis URL specified but got connection refused, exiting due to cost issues in this configuration")
-			}
-			log.WithFields(log.Fields{
-				"key": string(cacheKey),
-			}).Infof("cache miss")
-		}
-
-		// Cache has missed or we're explicitly forcing a refresh:
-		result, errs := generateFn(ctx)
-		if len(errs) == 0 && !cacheOptions.SkipCacheWrites {
-			CacheSet(ctx, c, result, cacheKey, cacheDuration)
-		}
-		return result, errs
-	}
-
-	return generateFn(ctx)
-}
-
-func CacheSet[T any](ctx context.Context, c cache.Cache, result T, cacheKey []byte, cacheDuration time.Duration) {
-	cr, err := json.Marshal(result)
-	if err == nil {
-		if err := c.Set(ctx, string(cacheKey), cr, cacheDuration); err != nil {
-			if strings.Contains(err.Error(), "connection refused") {
-				log.WithError(err).Fatalf("redis URL specified but got connection refused, exiting due to cost issues in this configuration")
-			}
-			log.WithError(err).Warningf("couldn't persist new item to cache")
-		} else {
-			log.Debugf("cache set for cache key: %s", string(cacheKey))
-		}
-	} else {
-		log.WithError(err).Errorf("Failed to marshall cache item: %v", result)
-	}
-}
-
-func CalculateRoundedCacheDuration(cacheOptions cache.RequestOptions) time.Duration {
-	// require cacheDuration for persistence logic
-	cacheDuration := defaultCacheDuration
-	if cacheOptions.CRTimeRoundingFactor > 0 {
-		now := time.Now().UTC()
-		// Only cache until the next rounding duration
-		cacheDuration = now.Truncate(cacheOptions.CRTimeRoundingFactor).Add(cacheOptions.CRTimeRoundingFactor).Sub(now)
-	}
-	return cacheDuration
-}
-
-// isStructWithNoPublicFields checks if the given interface is a struct with no public fields.
-func isStructWithNoPublicFields(v interface{}) bool {
-	val := reflect.ValueOf(v)
-	if val.Kind() != reflect.Struct {
-		return false
-	}
-	for i := 0; i < val.NumField(); i++ {
-		if val.Type().Field(i).IsExported() {
-			return false
-		}
-	}
-	return true
-}
 
 type releaseGenerator struct {
 	client *bqclient.Client
@@ -166,7 +38,7 @@ func GetReleases(ctx context.Context, bqc *bqclient.Client, forceRefresh bool) (
 		ctx,
 		bqc.Cache,
 		cache.RequestOptions{ForceRefresh: forceRefresh},
-		GetPrefixedCacheKey("Releases~", v1.Release{}), // no cache options needed here, global list
+		NewCacheSpec(v1.Release{}, "Releases~", nil), // no cache options needed here, global list
 		releaseGen.ListReleases,
 		[]v1.Release{})
 	if len(errs) > 0 {

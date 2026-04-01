@@ -21,7 +21,6 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
-	"github.com/openshift/sippy/pkg/apis/cache"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 )
 
@@ -178,8 +177,8 @@ func (r *ReleaseFallback) getFallbackBaseQueryStatus(ctx context.Context,
 	generator := newFallbackTestQueryReleasesGenerator(r.client, r.reqOptions, allJobVariants, release, start, end, r.releaseConfigs)
 
 	cachedFallbackTestStatuses, errs := api.GetDataFromCacheOrGenerate[*FallbackReleases](
-		ctx, r.client.Cache, generator.cacheOption,
-		api.GetPrefixedCacheKey("FallbackReleases~", generator.getCacheKey()),
+		ctx, r.client.Cache, r.reqOptions.CacheOption,
+		api.NewCacheSpec(generator.getCacheKey(), "FallbackReleases~", &end),
 		generator.getTestFallbackReleases,
 		&FallbackReleases{})
 
@@ -255,7 +254,7 @@ func (r *ReleaseFallback) QueryTestDetails(ctx context.Context, wg *sync.WaitGro
 				jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](
 					ctx,
 					r.client.Cache, r.reqOptions.CacheOption,
-					api.GetPrefixedCacheKey("BaseJobRunTestStatus~", generator),
+					api.NewCacheSpec(generator, "BaseJobRunTestStatus~", end),
 					generator.QueryTestStatus,
 					bq.TestJobRunStatuses{})
 
@@ -312,7 +311,6 @@ func (r *ReleaseFallback) TestDetailsAnalyze(report *testdetails.Report) error {
 // each, which can then be used to return the best basis data from those past releases for comparison.
 type fallbackTestQueryReleasesGenerator struct {
 	client                     *bqcachedclient.Client
-	cacheOption                cache.RequestOptions
 	allJobVariants             crtest.JobVariants
 	BaseRelease                string
 	BaseStart                  time.Time
@@ -334,12 +332,6 @@ func newFallbackTestQueryReleasesGenerator(
 	generator := fallbackTestQueryReleasesGenerator{
 		client:         client,
 		allJobVariants: allJobVariants,
-		cacheOption: cache.RequestOptions{
-			// never force a refresh, this data should be valid until cache expiry, and it is expensive to refresh it
-			ForceRefresh: false,
-			// increase the time that fallback queries are cached for
-			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
-		},
 		BaseRelease:    release,
 		BaseStart:      start,
 		BaseEnd:        end,
@@ -476,8 +468,8 @@ func (f *fallbackTestQueryReleasesGenerator) updateTestStatuses(release crtest.R
 
 func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.Context, client *bqcachedclient.Client, release string, start, end time.Time) (bq.ReportTestStatus, []error) {
 	generator := newFallbackBaseQueryGenerator(client, f.ReqOptions, f.allJobVariants, release, start, end)
-	cacheKey := api.GetPrefixedCacheKey("FallbackBaseTestStatus~", generator.getCacheKey())
-	testStatuses, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx, f.client.Cache, generator.cacheOption, cacheKey, generator.getTestFallbackRelease, bq.ReportTestStatus{})
+	cacheSpec := api.NewCacheSpec(generator.getCacheKey(), "FallbackBaseTestStatus~", &end)
+	testStatuses, errs := api.GetDataFromCacheOrGenerate[bq.ReportTestStatus](ctx, f.client.Cache, f.ReqOptions.CacheOption, cacheSpec, generator.getTestFallbackRelease, bq.ReportTestStatus{})
 
 	if len(errs) > 0 {
 		return bq.ReportTestStatus{}, errs
@@ -488,7 +480,6 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.
 
 type fallbackTestQueryGenerator struct {
 	client      *bqcachedclient.Client
-	cacheOption cache.RequestOptions
 	allVariants crtest.JobVariants
 	BaseRelease string
 	BaseStart   time.Time
@@ -502,12 +493,6 @@ func newFallbackBaseQueryGenerator(client *bqcachedclient.Client, reqOptions req
 		client:      client,
 		allVariants: allVariants,
 		ReqOptions:  reqOptions,
-		cacheOption: cache.RequestOptions{
-			// never force a refresh, this data should be valid until cache expiry, and it is expensive to refresh it
-			ForceRefresh: false,
-			// increase the time that base query is cached for since it shouldn't be changing
-			CRTimeRoundingFactor: fallbackQueryTimeRoundingOverride,
-		},
 		BaseRelease: baseRelease,
 		BaseStart:   baseStart,
 		BaseEnd:     baseEnd,

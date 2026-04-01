@@ -11,6 +11,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/util"
@@ -211,11 +212,11 @@ func ParseComponentReportRequest(
 		}
 	}
 
+	opts.CacheOption = cache.NewStandardCROptions(crTimeRoundingFactor)
 	opts.CacheOption.ForceRefresh, err = ParseBoolArg(req, "forceRefresh", false)
 	if err != nil {
 		return
 	}
-	opts.CacheOption.CRTimeRoundingFactor = crTimeRoundingFactor
 
 	return
 }

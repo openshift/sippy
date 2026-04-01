@@ -16,7 +16,7 @@ func GetReleaseDatesFromBigQuery(ctx context.Context, client *bigquery.Client, r
 	return api.GetDataFromCacheOrGenerate[[]crtest.ReleaseTimeRange](ctx,
 		client.Cache,
 		cache.RequestOptions{},
-		api.GetPrefixedCacheKey("CRReleaseDates~", crtest.ReleaseTimeRange{}), // global singleton instance
+		api.NewCacheSpec(crtest.ReleaseTimeRange{}, "CRReleaseDates~", nil), // global singleton instance
 		queries.QueryReleaseDates, []crtest.ReleaseTimeRange{})
 }
 
