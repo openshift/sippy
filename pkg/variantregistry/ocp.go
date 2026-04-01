@@ -760,7 +760,7 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"machine-config-operator-release-4.20"}, "candidate"},
 
 		// Set remaining periodic MCO jobs to standard for component readiness
-		{[]string{"-mco-disruptive"}, "standard"},
+		{[]string{"-mco-disruptive"}, "candidate"},
 
 		// Konflux jobs aren't ready yet
 		{[]string{"-konflux"}, "candidate"},
