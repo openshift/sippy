@@ -1261,6 +1261,7 @@ func setOS(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 		substring string
 		os        string
 	}{
+		{"rhcos9-10", "rhcos9-10"},
 		{"rhcos10", "rhcos10"},
 	}
 
