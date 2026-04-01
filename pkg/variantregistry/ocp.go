@@ -807,6 +807,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// AWS European Sovereign Cloud techpreview jobs - candidate tier to collect data while stabilizing
 		{[]string{"-eusc-techpreview"}, "candidate"},
 
+		// AWS DualStack Techpreview jobs - candidate tier to collect data while stabilizing
+		{[]string{"-aws-ovn-dualstack"}, "candidate"},
+
 		{[]string{"periodic-ci-openshift-hypershift-", "-mce-e2e-agent-", "-metal-conformance"}, "candidate"},
 	}
 
