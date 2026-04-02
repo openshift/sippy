@@ -11,6 +11,42 @@ reviews:
   poem: false
   review_status: true
   collapse_walkthrough: false
+  path_instructions:
+    - path: "sippy-ng/**/*.js"
+      instructions: |
+        Avoid nested ternary expressions in JSX. When there are more than two
+        branches, use if/else if chains, early returns, or a lookup object instead.
+        A single ternary is fine; nesting ternaries makes code hard to follow.
+
+        Before adding date/time formatting, duration calculations, or string
+        utilities inline, check sippy-ng/src/helpers.js for existing functions
+        like relativeDuration, safeEncodeURIComponent, etc. Prefer reusing
+        existing helpers over reimplementing similar logic.
+    - path: "pkg/**/query/**"
+      instructions: |
+        BigQuery and SQL query-building code should have inline comments
+        explaining the purpose of each major query section (CTEs, JOINs,
+        window functions, WHERE clauses). Abbreviations like CTE, matview,
+        etc. should be expanded on first use. Functions that construct queries
+        should ideally stay under 200 lines; extract sub-queries or CTEs into
+        helper functions when they grow beyond that.
+    - path: "pkg/apis/**/*.go"
+      instructions: |
+        Structs used with GORM that have fields not backed by database columns
+        (e.g., computed fields, custom types, API-only fields) must include
+        the `gorm:"-"` tag to explicitly exclude them from GORM operations.
+        Similarly, BigQuery struct fields must have `bigquery:"column_name"`
+        tags that exactly match the BigQuery table column names.
+    - path: "pkg/**/*.go"
+      instructions: |
+        Check pkg/util/ for existing helper functions before adding inline
+        utility logic. Avoid calling the same utility function multiple times
+        with identical arguments in the same code path.
+
+        Name each function succinctly but accurately indicating its purpose
+        relative to its package or receiver. When adding new functions, types,
+        or fields, include a brief godoc if the name alone would not make the
+        purpose obvious to someone unfamiliar with the feature.
   tools:
     shellcheck:
       enabled: true
