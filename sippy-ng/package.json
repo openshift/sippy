@@ -29,7 +29,6 @@
     "date-fns-tz": "^1.1.6",
     "eventemitter3": "^5.0.1",
     "idb-keyval": "^6.2.2",
-    "lodash": "^4.18.1",
     "plotly.js": "^3.1.1",
     "prop-types": "^15.8.1",
     "query-string": "^4.3.4",
