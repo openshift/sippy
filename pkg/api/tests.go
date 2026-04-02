@@ -387,29 +387,6 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 	RespondWithJSON(http.StatusOK, w, testsResult)
 }
 
-func PrintCanaryTestsFromDB(release string, w http.ResponseWriter, dbc *db.DB) {
-	f := filter.Filter{
-		Items: []filter.FilterItem{
-			{
-				Field:    "current_pass_percentage",
-				Operator: ">=",
-				Value:    "99",
-			},
-		},
-	}
-
-	results, _, err := BuildTestsResults(dbc, release, "default", true, false, &f)
-	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building test report:" + err.Error()})
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain;charset=UTF-8")
-	for _, result := range results {
-		fmt.Fprintf(w, "%q:struct{}{},\n", result.Name)
-	}
-}
-
 func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, error) {
 	if lookbackDays < 1 {
 		return -1, -1, errors.New("Lookback Days must be greater than zero")
