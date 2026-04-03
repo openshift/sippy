@@ -150,9 +150,10 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 	log.Infof("update complete, total rows updated %d", rowsUpdated)
 
 	// Refresh materialized views
+	// NOTE: does not update timestamps to invalidate cached matview data; not clear if the use case for this script requires that.
 	sippyserver.RefreshData(&db.DB{
 		DB: dbc,
-	}, nil, false, nil)
+	}, nil, false)
 
 	return nil
 }
