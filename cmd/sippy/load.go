@@ -339,7 +339,7 @@ func NewLoadCommand() *cobra.Command {
 
 			pinnedTime := f.DBFlags.GetPinnedTime()
 			if refreshMatviews && !f.SkipMatviewRefresh {
-				sippyserver.RefreshData(dbc, pinnedTime, false)
+				sippyserver.RefreshData(dbc, pinnedTime, false, nil)
 			}
 
 			elapsed = time.Since(start)

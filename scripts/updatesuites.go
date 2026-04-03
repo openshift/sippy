@@ -152,7 +152,7 @@ func testNameWithoutSuite(dbc *gorm.DB) error {
 	// Refresh materialized views
 	sippyserver.RefreshData(&db.DB{
 		DB: dbc,
-	}, nil, false)
+	}, nil, false, nil)
 
 	return nil
 }

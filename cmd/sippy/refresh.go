@@ -36,7 +36,7 @@ func NewRefreshCommand() *cobra.Command {
 				return err
 			}
 			pinnedDateTime := f.DBFlags.GetPinnedTime()
-			sippyserver.RefreshData(dbc, pinnedDateTime, f.RefreshOnlyIfEmpty)
+			sippyserver.RefreshData(dbc, pinnedDateTime, f.RefreshOnlyIfEmpty, nil)
 			return nil
 		},
 	}

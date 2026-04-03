@@ -131,7 +131,7 @@ rolled off the 1 week window.
 			totalTestResults := totalRuns * len(f.TestNames)
 
 			log.Info("Refreshing materialized views...")
-			sippyserver.RefreshData(dbc, nil, false)
+			sippyserver.RefreshData(dbc, nil, false, nil)
 
 			log.Infof("Successfully seeded test data! Created %d ProwJobs, %d Tests, %d ProwJobRuns, and %d test results",
 				totalProwJobs, len(f.TestNames), totalRuns, totalTestResults)

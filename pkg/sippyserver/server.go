@@ -222,7 +222,7 @@ func (s *Server) GetReportEnd() time.Time {
 //
 // refreshMatviewOnlyIfEmpty is used on startup to indicate that we want to do an initial refresh *only* if
 // the views appear to be empty.
-func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
+func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, cacheClient cache.Cache) {
 	var promPusher *push.Pusher
 	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
 		promPusher = push.New(pushgateway, "sippy-matviews")
@@ -269,7 +269,7 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 	// allow concurrent workers for refreshing matviews in parallel
 	for t := 0; t < 2; t++ {
 		wg.Add(1)
-		go refreshMatview(dbc, refreshMatviewOnlyIfEmpty, ch, &wg)
+		go refreshMatview(dbc, refreshMatviewOnlyIfEmpty, cacheClient, ch, &wg)
 	}
 
 	// Sort materialized views so prow_test_report_2d_matview runs last to avoid CPU overload
@@ -315,7 +315,7 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 	}
 }
 
-func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
+func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, cacheClient cache.Cache, ch chan string, wg *sync.WaitGroup) {
 
 	for matView := range ch {
 		start := time.Now()
@@ -346,21 +346,33 @@ func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, ch chan string, 
 			} else {
 				elapsed := time.Since(start)
 				tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view")
+				recordMatviewRefreshTime(cacheClient, matView, tmpLog)
 				matViewRefreshMetric.WithLabelValues(matView).Observe(float64(elapsed.Milliseconds()))
 			}
 
 		} else {
 			elapsed := time.Since(start)
 			tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view concurrently")
+			recordMatviewRefreshTime(cacheClient, matView, tmpLog)
 			matViewRefreshMetric.WithLabelValues(matView).Observe(float64(elapsed.Milliseconds()))
 		}
 	}
 	wg.Done()
 }
 
-func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmpty bool) {
+func recordMatviewRefreshTime(cacheClient cache.Cache, matView string, tmpLog *log.Entry) {
+	if cacheClient == nil {
+		return
+	}
+	ts := []byte(time.Now().UTC().Format(time.RFC3339))
+	if err := cacheClient.Set(context.Background(), "matview_refreshed:"+matView, ts, 24*time.Hour); err != nil {
+		tmpLog.WithError(err).Warn("failed to record matview refresh timestamp in cache")
+	}
+}
+
+func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmpty bool, cacheClient cache.Cache) {
 	log.Infof("Refreshing data")
-	refreshMaterializedViews(dbc, refreshMatviewsOnlyIfEmpty)
+	refreshMaterializedViews(dbc, refreshMatviewsOnlyIfEmpty, cacheClient)
 	log.Info("Refresh complete")
 }
 
