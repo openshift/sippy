@@ -468,22 +468,28 @@ func variantsTestResultFunc(dbc *db.DB, cacheClient cache.Cache) testResultsByVa
 			},
 			LinkOperator: "and",
 		}
-		testResults, overallTest, err := buildTestsResultsFromPostgres(dbc, cacheClient, release, "default", false, true,
-			fil)
+		spec := TestResultsSpec{
+			Release:        release,
+			Period:         "default",
+			Collapse:       false,
+			IncludeOverall: true,
+			Filter:         fil,
+		}
+		result, err := spec.buildTestsResultsFromPostgres(dbc, cacheClient)
 		if err != nil {
 			return nil, err
 		}
-		if overallTest != nil {
-			overallTest.Variants = append(overallTest.Variants, "Overall")
+		if result.Test != nil {
+			result.Test.Variants = append(result.Test.Variants, "Overall")
 		}
 		gosort.Strings(variants)
-		for _, testResult := range testResults {
+		for _, testResult := range result.TestsAPIResult {
 			// this is a weird way to get the variant we want, but it allows re-use
 			// of the existing code.
 			gosort.Strings(testResult.Variants)
 			if stringSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
-				if overallTest.CurrentPassPercentage < testResult.CurrentPassPercentage {
-					return overallTest, nil
+				if result.Test.CurrentPassPercentage < testResult.CurrentPassPercentage {
+					return result.Test, nil
 				}
 				return &testResult, nil
 			}
@@ -492,12 +498,12 @@ func variantsTestResultFunc(dbc *db.DB, cacheClient cache.Cache) testResultsByVa
 		// otherwise, what is our best match...
 		// do something more expensive and check to see
 		// which testResult contains all the variants we have currently
-		for _, testResult := range testResults {
+		for _, testResult := range result.TestsAPIResult {
 			// we didn't find an exact variant match
 			// next best guess is the first variant list that contains all of our known variants
 			if stringSubSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
-				if overallTest.CurrentPassPercentage < testResult.CurrentPassPercentage {
-					return overallTest, nil
+				if result.Test.CurrentPassPercentage < testResult.CurrentPassPercentage {
+					return result.Test, nil
 				}
 				return &testResult, nil
 			}
