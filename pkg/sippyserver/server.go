@@ -1120,7 +1120,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
-		api.PrintTestsJSONFromDB(release, w, req, s.db)
+		api.PrintTestsJSONFromDB(release, w, req, s.db, s.cache)
 	}
 }
 
@@ -1475,7 +1475,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	}
 
 	logger.Infof("job run = %+v", *jobRun)
-	result, err := api.JobRunRiskAnalysis(req.Context(), s.db, s.bigQueryClient, jobRun, logger, false)
+	result, err := api.JobRunRiskAnalysis(req.Context(), logger, s.db, s.bigQueryClient, s.cache, jobRun, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return

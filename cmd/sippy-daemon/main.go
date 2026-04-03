@@ -119,9 +119,7 @@ func NewSippyDaemonCommand() *cobra.Command {
 				// 4 potential GitHub calls per comment gives us a safe buffer
 				// get comment data, get existing comments, possible delete existing, and adding the comment
 				// could  lower to 3 seconds if we need, most writes likely won't have to delete
-				processes = append(processes, sippyserver.NewWorkProcessor(dbc,
-					gcsClient.Bucket(f.GoogleCloudFlags.StorageBucket),
-					10, bigQueryClient, 5*time.Minute, 5*time.Second, ghCommenter, f.GithubCommenterFlags.CommentProcessingDryRun))
+				processes = append(processes, sippyserver.NewWorkProcessor(dbc, bigQueryClient, gcsClient.Bucket(f.GoogleCloudFlags.StorageBucket), cacheClient, ghCommenter, 10, 5*time.Minute, 5*time.Second, f.GithubCommenterFlags.CommentProcessingDryRun))
 			}
 
 			daemonServer := sippyserver.NewDaemonServer(processes)
