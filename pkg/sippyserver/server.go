@@ -368,7 +368,7 @@ func recordMatviewRefreshTime(cacheClient cache.Cache, matView string, tmpLog *l
 	// but the matview data updates may not be available to read until it completes; so we invalidate the cache with
 	// the timestamp *after* the refresh completes.
 	ts := []byte(time.Now().UTC().Format(time.RFC3339))
-	if err := cacheClient.Set(context.Background(), "matview_refreshed:"+matView, ts, 24*time.Hour); err != nil {
+	if err := cacheClient.Set(context.Background(), api.RefreshMatviewKey(matView), ts, 24*time.Hour); err != nil {
 		tmpLog.WithError(err).Warn("failed to record matview refresh timestamp in cache")
 	}
 }
