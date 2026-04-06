@@ -1,11 +1,33 @@
 # Sippy API
 
-Sippy has a simple REST API at `/api`. The API is used by the front-end.
-The docs here may not be fully up-to-date, although we do try not to
-break backwards compatability where possible.
+Sippy has a REST API at `/api`. The API is used by the front-end and is also
+available as a self-describing endpoint — visiting `/api` returns a JSON list of
+all available endpoints with their paths, descriptions, HTTP methods, and
+required capabilities.
+
+> **Note:** The API surface changes over time as features are added.
+> Use the `/api` endpoint to discover the current set of available endpoints.
+> We try not to break backwards compatibility where possible.
 
 For exact API usage, you can use your browser's web developer tools to
 examine the requests we make.
+
+## Capabilities
+
+Not every Sippy deployment exposes every endpoint. Endpoints are gated by
+server **capabilities** that depend on which backends are configured:
+
+| Capability             | Description                                        |
+|------------------------|----------------------------------------------------|
+| `openshift_releases`   | OpenShift release data is loaded                   |
+| `local_db`             | Local PostgreSQL database is available              |
+| `build_clusters`       | Build cluster health data is available              |
+| `component_readiness`  | BigQuery component readiness data is configured     |
+| `write_endpoints`      | Mutating (write) endpoints are enabled              |
+| `chat`                 | Sippy chat service is available                     |
+
+Use `GET /api/capabilities` to see which capabilities the current deployment
+has enabled.
 
 ## Filtering and sorting
 
@@ -70,449 +92,181 @@ The filter should be URI encoded json in the `filter` parameter.
 You may sort results by any sortable field in the item by specifying `sortField`, as well `sort` with the value
 `asc` or `desc`.
 
-## Release Health
+## Common Parameters
 
-Endpoint: `/api/health`
+Many endpoints accept some or all of the following query parameters:
 
-Returns a summary of overall release health, including the percentage of successful runs of each, as well as a summary
-of variant success rates.
+| Parameter   | Type    | Description                                                    |
+|-------------|---------|----------------------------------------------------------------|
+| `release`   | String  | The OpenShift release to query (e.g., `4.18`)                  |
+| `filter`    | Filter  | Filters the results (see Filtering above)                      |
+| `sortField` | String  | Sort by this field                                             |
+| `sort`      | String  | Sort direction: `asc` or `desc`                                |
+| `limit`     | Integer | Maximum number of results to return                            |
 
-<details>
-<summary>Example response</summary>
+## Endpoint Reference
 
-```json
-{
-  "indicators": {
-    "infrastructure": {
-      "current": {
-        "percentage": 88.88888888888889,
-        "runs": 1998
-      },
-      "previous": {
-        "percentage": 95.31914893617022,
-        "runs": 1880
-      }
-    },
-    "install": {
-      "current": {
-        "percentage": 96.53083700440529,
-        "runs": 3632
-      },
-      "previous": {
-        "percentage": 98.8409703504043,
-        "runs": 3710
-      }
-    },
-    "upgrade": {
-      "current": {
-        "percentage": 98.50299401197606,
-        "runs": 334
-      },
-      "previous": {
-        "percentage": 99.52941176470588,
-        "runs": 425
-      }
-    }
-  },
-  "variants": {
-    "current": {
-      "success": 2,
-      "unstable": 1,
-      "failed": 17
-    },
-    "previous": {
-      "success": 3,
-      "unstable": 6,
-      "failed": 11
-    }
-  },
-  "last_updated": "2021-08-09T14:12:09.319089659Z"
-}
-```
+The following sections group endpoints by functional area.
 
-</details>
+### Release Health
 
-### Parameters
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `GET /api/health`                  | Overall release health summary from DB                     |
+| `GET /api/health/build_cluster`    | Build cluster health report                                |
+| `GET /api/health/build_cluster/analysis` | Build cluster health analysis                        |
+| `GET /api/releases`                | Reports on releases                                        |
+| `GET /api/releases/health`         | Release health report                                      |
+| `GET /api/releases/tags`           | Lists release tags                                         |
+| `GET /api/releases/tags/events`    | Lists events for release tags                              |
+| `GET /api/releases/pull_requests`  | Pull requests included in releases                         |
+| `GET /api/releases/job_runs`       | Job runs for releases                                      |
+| `GET /api/releases/test_failures`  | Analysis of test failures for releases                     |
+| `GET /api/variants`                | Reports on variants                                        |
 
-| Option   | Type           | Description                                                                                                              | Acceptable values                        |
-|----------|----------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------|
-| release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
+### Jobs
 
-`*` indicates a required value.
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `GET /api/jobs`                    | Returns a list of jobs                                     |
+| `GET /api/jobs/runs`               | Returns a report of job runs                               |
+| `GET /api/jobs/runs/risk_analysis` | Analyzes risks of job runs                                 |
+| `GET /api/jobs/runs/intervals`     | Reports intervals of job runs                              |
+| `GET /api/jobs/runs/events`        | Returns Kubernetes events from job run artifacts           |
+| `GET /api/jobs/analysis`           | Analyzes jobs from the database                            |
+| `GET /api/jobs/details`            | Reports details of jobs                                    |
+| `GET /api/jobs/bugs`               | Reports bugs related to jobs                               |
+| `GET /api/jobs/artifacts`          | Queries job artifacts and their contents                   |
+| `GET /api/job/run/summary`         | Raw job run summary data including test failures           |
+| `GET /api/job/run/payload`         | Returns the payload a job run was using                    |
+| `GET /api/job_variants`            | Reports all job variants defined in BigQuery               |
 
-### Install
+### Job Run Labels (CRUD)
 
-| Option   | Type           | Description                                                                                                              | Acceptable values                        |
-|----------|----------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------|
-| release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
+| Endpoint                           | Method   | Description                                     |
+|------------------------------------|----------|-------------------------------------------------|
+| `/api/jobs/labels`                 | `GET`    | List all job run label definitions               |
+| `/api/jobs/labels`                 | `POST`   | Create a new job run label definition            |
+| `/api/jobs/labels/{id}`            | `GET`    | Get a specific job run label definition          |
+| `/api/jobs/labels/{id}`            | `PUT`    | Update a job run label definition                |
+| `/api/jobs/labels/{id}`            | `DELETE` | Delete a job run label definition                |
 
-`*` indicates a required value.
+### Job Run Symptoms (CRUD)
 
-<details>
-<summary>Example response</summary>
+| Endpoint                           | Method   | Description                                     |
+|------------------------------------|----------|-------------------------------------------------|
+| `/api/jobs/symptoms`               | `GET`    | List all job run symptom definitions             |
+| `/api/jobs/symptoms`               | `POST`   | Create a new job run symptom definition          |
+| `/api/jobs/symptoms/{id}`          | `GET`    | Get a specific job run symptom definition        |
+| `/api/jobs/symptoms/{id}`          | `PUT`    | Update a job run symptom definition              |
+| `/api/jobs/symptoms/{id}`          | `DELETE` | Delete a job run symptom definition              |
 
-```json
-{
-  "column_names": [
-    "All",
-    "aws"
-  ],
-  "description": "Install Rates by Operator by Variant",
-  "tests": {
-    "Overall": {
-      "All": {
-        "id": 0,
-        "name": "All",
-        "current_successes": 4045,
-        "current_failures": 166,
-        "current_flakes": 0,
-        "current_pass_percentage": 96.05794348135834,
-        "current_runs": 4211,
-        "previous_successes": 4260,
-        "previous_failures": 54,
-        "previous_flakes": 0,
-        "previous_pass_percentage": 98.74826147426981,
-        "previous_runs": 4314,
-        "net_improvement": 0,
-        "bugs": null,
-        "associated_bugs": null
-      },
-      "aws": {
-        "id": 0,
-        "name": "aws",
-        "current_successes": 361,
-        "current_failures": 6,
-        "current_flakes": 0,
-        "current_pass_percentage": 98.36512261580381,
-        "current_runs": 367,
-        "previous_successes": 371,
-        "previous_failures": 4,
-        "previous_flakes": 0,
-        "previous_pass_percentage": 98.93333333333332,
-        "previous_runs": 375,
-        "net_improvement": 0,
-        "bugs": null,
-        "associated_bugs": null
-      }
-    }
-  },
-  "title": "Install Rates by Operator"
-}
-```
+### Tests
 
-</details>
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `GET /api/tests`                   | Reports on tests                                           |
+| `GET /api/tests/v2`                | Reports on tests (v2)                                      |
+| `GET /api/tests/v2/runs`           | Test runs from BigQuery with optional filtering            |
+| `GET /api/tests/details`           | Details of tests                                           |
+| `GET /api/tests/analysis/overall`  | Overall analysis of tests                                  |
+| `GET /api/tests/analysis/variants` | Analysis of tests by variants                              |
+| `GET /api/tests/analysis/jobs`     | Analysis of tests by job                                   |
+| `GET /api/tests/bugs`              | Reports bugs in tests                                      |
+| `GET /api/tests/outputs`           | Outputs of tests                                           |
+| `GET /api/tests/recent_failures`   | Lists tests that recently started failing                  |
+| `GET /api/tests/durations`         | Durations of tests                                         |
+| `GET /api/tests/capabilities`      | Returns list of available test capabilities                |
+| `GET /api/tests/lifecycles`        | Returns list of available test lifecycles                  |
 
-### Upgrade
+### Install & Upgrade
 
-| Option   | Type           | Description                                                                                                              | Acceptable values                        |
-|----------|----------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------|
-| release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `GET /api/install`                 | Reports on installations                                   |
+| `GET /api/upgrade`                 | Reports on upgrades                                        |
 
-`*` indicates a required value.
+### Component Readiness
 
-## Jobs
+| Endpoint                                               | Description                                                         |
+|--------------------------------------------------------|---------------------------------------------------------------------|
+| `GET /api/component_readiness`                         | Reports component readiness from BigQuery                           |
+| `GET /api/component_readiness/test_details`            | Test details for component readiness from BigQuery                  |
+| `GET /api/component_readiness/variants`                | Test variants for component readiness from BigQuery                 |
+| `GET /api/component_readiness/views`                   | Lists predefined server-side views                                  |
+| `GET /api/component_readiness/regressions`             | List test regressions (supports `view` OR `release` params)         |
+| `GET /api/component_readiness/regressions/{id}`        | Get a specific regression record                                    |
+| `GET /api/component_readiness/regressions/{id}/matches`| List potential matching regressions for a given triage               |
+| `POST /api/component_readiness/bugs`                   | Create Jira bugs from component readiness                           |
 
-Endpoint: `/api/jobs`
+### Component Readiness Triages (CRUD)
 
-<details>
-<summary>Example response</summary>
+| Endpoint                                               | Method   | Description                                          |
+|--------------------------------------------------------|----------|------------------------------------------------------|
+| `/api/component_readiness/triages`                     | `GET`    | List regression triage records                        |
+| `/api/component_readiness/triages`                     | `POST`   | Create regression triage record                       |
+| `/api/component_readiness/triages/{id}`                | `GET`    | Get specific triage record                            |
+| `/api/component_readiness/triages/{id}`                | `PUT`    | Update triage record                                  |
+| `/api/component_readiness/triages/{id}`                | `DELETE` | Delete triage record                                  |
+| `/api/component_readiness/triages/{id}/matches`        | `GET`    | List potential matching regressions for a triage      |
+| `/api/component_readiness/triages/{id}/audit`          | `GET`    | Get audit logs for a triage                           |
 
-```json
-[
-  {
-    "id": 51,
-    "name": "periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-upgrade",
-    "brief_name": "e2e-gcp-upgrade",
-    "variants": [
-      "gcp",
-      "upgrade"
-    ],
-    "current_pass_percentage": 10.030395136778116,
-    "current_projected_pass_percentage": 10.784313725490197,
-    "current_runs": 329,
-    "previous_pass_percentage": 35.78274760383386,
-    "previous_projected_pass_percentage": 37.45819397993311,
-    "previous_runs": 313,
-    "net_improvement": -25.752352467055744,
-    "test_grid_url": "https://testgrid.k8s.io/redhat-openshift-ocp-release-4.9-informing#periodic-ci-openshift-release-master-ci-4.9-e2e-gcp-upgrade",
-    "bugs": [],
-    "associated_bugs": [
-      {
-        "id": 1983758,
-        "status": "NEW",
-        "last_change_time": "2021-07-27T16:59:31Z",
-        "summary": "gcp upgrades are failing on \"Cluster frontend ingress remain available\"",
-        "target_release": [
-          "---"
-        ],
-        "component": [
-          "Routing"
-        ],
-        "url": "https://bugzilla.redhat.com/show_bug.cgi?id=1983758"
-      }
-    ]
-  }
-]
-```
+### Pull Requests & Repositories
 
-</details>
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `GET /api/pull_requests`           | Reports on pull requests                                   |
+| `GET /api/pull_requests/test_results` | Test failures for a specific PR from BigQuery           |
+| `GET /api/repositories`            | Reports on repositories                                    |
 
-### Parameters
+### Payloads
 
-| Option   | Type           | Description                                                                                                              | Acceptable values                                   |
-|----------|----------------|--------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
-| release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                                 |
-| filter   | Filter         | Filters the results by the specified value. Can be specified multiple times, e.g. filterBy=hasBug&filterBy=name&job=aws  | See filtering                                       |
-| sortField| Field name     | Sort by this field                                                                                                       |                                                     |
-| sort     | asc / desc     | Sort type, ascending or descending                                                                                       | "asc" or "desc"                                     |
-| limit    | Integer        | The maximum amount of results to return                                                                                  | N/A                                                 |
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `GET /api/payloads/test_failures`  | Analysis of test failures in payloads                      |
+| `GET /api/payloads/diff`           | Pull requests that differ between payloads                 |
 
-`*` indicates a required value.
+### Incidents
 
-## Job Details
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `GET /api/incidents`               | Reports incident events                                    |
 
-Endpoint: `/api/jobs/details`
+### Feature Gates
 
-A summary of runs for job(s). Results contains of the following values for each job:
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `GET /api/feature_gates`           | Feature gates and their test counts for a release          |
 
-- S success
-- F failure (e2e )
-- f failure (other tests)
-- U upgrade failure
-- I setup failure (installer)
-- N setup failure (infra)
-- n failure before setup (infra)
-- R running
+### Chat
 
-<details>
-<Summary>Example response</Summary>
+These endpoints proxy to the sippy-chat service when the `chat` capability
+is enabled.
 
-```json
-{
-  "jobs": [
-    {
-      "name": "periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6",
-      "results": [
-        {
-          "timestamp": 1628207039000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423429598720299008"
-        },
-        {
-          "timestamp": 1628045973000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1422754032564310016"
-        },
-        {
-          "timestamp": 1628198644000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423394362347229184"
-        },
-        {
-          "timestamp": 1628485392000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1424597097709047808"
-        },
-        {
-          "timestamp": 1628343908000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1424003666343366656"
-        },
-        {
-          "timestamp": 1628325313000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423925674229370880"
-        },
-        {
-          "timestamp": 1628289649000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423776089259380736"
-        },
-        {
-          "timestamp": 1628277370000,
-          "result": "S",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423724523844276224"
-        },
-        {
-          "timestamp": 1628358891000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1424066513538650112"
-        },
-        {
-          "timestamp": 1628190532000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423360364472438784"
-        },
-        {
-          "timestamp": 1628274962000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1423714481237659648"
-        },
-        {
-          "timestamp": 1627391095000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420007279679246336"
-        },
-        {
-          "timestamp": 1627473363000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420352338517823488"
-        },
-        {
-          "timestamp": 1627617630000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420957438630170624"
-        },
-        {
-          "timestamp": 1627515377000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420528516700573696"
-        },
-        {
-          "timestamp": 1627396851000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1420031423921786880"
-        },
-        {
-          "timestamp": 1627363991000,
-          "result": "F",
-          "url": "https://prow.ci.openshift.org/view/gcs/origin-ci-test/logs/periodic-ci-openshift-release-master-nightly-4.9-e2e-metal-ipi-ovn-ipv6/1419893597473345536"
-        }
-      ]
-    }
-  ],
-  "start": 1627317573000,
-  "end": 1628508950000
-}
-```
+| Endpoint                           | Method   | Description                                          |
+|------------------------------------|----------|------------------------------------------------------|
+| `/api/chat`                        | various  | HTTP proxy for REST API requests to sippy-chat       |
+| `/api/chat/stream`                 | various  | WebSocket proxy for chat API requests                |
+| `/api/chat/personas`               | `GET`    | List available personas                               |
+| `/api/chat/models`                 | `GET`    | List available models                                 |
+| `/api/chat/prompts`                | `GET`    | List available prompt templates                       |
+| `/api/chat/prompts/render`         | `GET`    | Render prompt templates                               |
+| `/api/chat/ratings`                | `POST`   | Create a chat rating record                           |
+| `/api/chat/conversations`          | `POST`   | Create a new chat conversation                        |
+| `/api/chat/conversations/{id}`     | `GET`    | Get a specific chat conversation by ID                |
 
-</details>
+### Utility
 
-### Parameters
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `GET /api`                         | Returns this API endpoint listing as JSON                  |
+| `GET /api/autocomplete/{field}`    | Autocompletes queries from the database                    |
+| `GET /api/capabilities`            | Lists available API capabilities                           |
+| `GET /api/canary`                  | Displays canary report from database                       |
+| `GET /api/report_date`             | Displays report date                                       |
 
-| Option   | Type           | Description                                                                                                              | Acceptable values                        |
-|----------|----------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------|
-| release* | String         | The OpenShift release to return results from (e.g., 4.9)                                                                 | N/A                                      |
-| job      | String         | Return only jobs containing only containing this value in their name                                                     | N/A                                      |
-| limit    | Integer        | The maximum amount of results to return                                                                                  | N/A                                      |
+### MCP (Model Context Protocol)
 
-## Tests
-
-Endpoint: `/api/tests`
-
-### Parameters
-
-| Option   | Type           | Description                                                                               | Acceptable values                                   |
-|----------|----------------|-------------------------------------------------------------------------------------------|-----------------------------------------------------|
-| release* | String         | The OpenShift release to return results from (e.g., 4.9)                                  | N/A                                                 |
-| filter   | Filter         | Filters the results by the specified value.                                               | See filtering                                       |
-| sortField| Field name     | Sort by this field                                                                        |                                                     |
-| sort     | asc / desc     | Sort type, ascending or descending                                                        | "asc" or "desc"                                     |
-| limit    | Integer        | The maximum amount of results to return                                                   | N/A                                                 |
-
-<details>
-<summary>Example response</summary>
-
-```json
-[
-  {
-    "id": 253,
-    "name": "[sig-network-edge] Cluster frontend ingress remain available",
-    "current_successes": 554,
-    "current_failures": 31,
-    "current_flakes": 201,
-    "current_pass_percentage": 94.70085470085469,
-    "current_runs": 786,
-    "previous_successes": 734,
-    "previous_failures": 25,
-    "previous_flakes": 242,
-    "previous_pass_percentage": 96.70619235836627,
-    "previous_runs": 1001,
-    "net_improvement": -2.005337657511575,
-    "bugs": [
-      {
-        "id": 1980141,
-        "status": "POST",
-        "last_change_time": "2021-08-03T14:02:12Z",
-        "summary": "NetworkPolicy e2e tests are flaky in 4.9, especially in stress",
-        "target_release": [
-          "4.9.0"
-        ],
-        "component": [
-          "Networking"
-        ],
-        "url": "https://bugzilla.redhat.com/show_bug.cgi?id=1980141"
-      },
-      {
-        "id": 1983829,
-        "status": "NEW",
-        "last_change_time": "0001-01-01T00:00:00Z",
-        "summary": "ovn-kubernetes upgrade jobs are failing disruptive tests",
-        "target_release": [
-          "4.9.0"
-        ],
-        "component": [
-          "Networking"
-        ],
-        "url": "https://bugzilla.redhat.com/show_bug.cgi?id=1983829"
-      },
-      {
-        "id": 1981872,
-        "status": "NEW",
-        "last_change_time": "2021-08-03T17:13:35Z",
-        "summary": "SDN networking failures during GCP upgrades",
-        "target_release": [
-          "4.9.0"
-        ],
-        "component": [
-          "Networking"
-        ],
-        "url": "https://bugzilla.redhat.com/show_bug.cgi?id=1981872"
-      }
-    ],
-    "associated_bugs": [
-      {
-        "id": 1983758,
-        "status": "NEW",
-        "last_change_time": "2021-07-27T16:59:31Z",
-        "summary": "gcp upgrades are failing on \"Cluster frontend ingress remain available\"",
-        "target_release": [
-          "---"
-        ],
-        "component": [
-          "Routing"
-        ],
-        "url": "https://bugzilla.redhat.com/show_bug.cgi?id=1983758"
-      },
-      {
-        "id": 1943334,
-        "status": "POST",
-        "last_change_time": "2021-07-23T10:58:19Z",
-        "summary": "[ovnkube] node pod should taint NoSchedule on termination; clear on startup",
-        "target_release": [
-          "---"
-        ],
-        "component": [
-          "Networking"
-        ],
-        "url": "https://bugzilla.redhat.com/show_bug.cgi?id=1943334"
-      },
-      {
-        "id": 1987046,
-        "status": "POST",
-        "last_change_time": "2021-07-30T07:02:22Z",
-        "summary": "periodic ci-4.8-upgrade-from-stable-4.7-e2e-*-ovn-upgrade are permafailing on service/ingress disruption",
-        "target_release": [
-          "4.8.z"
-        ],
-        "component": [
-          "Networking"
-        ],
-        "url": "https://bugzilla.redhat.com/show_bug.cgi?id=1987046"
-      }
-    ]
-  }
-]
-```
-
-</details>
+| Endpoint                           | Description                                                |
+|------------------------------------|------------------------------------------------------------|
+| `/mcp/v1/`                         | Handles MCP requests                                       |
