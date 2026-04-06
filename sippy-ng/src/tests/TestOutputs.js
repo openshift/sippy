@@ -17,7 +17,6 @@ import React, { Fragment, useEffect } from 'react'
 
 const useStyles = makeStyles((theme) => ({
   table: {
-    minWidth: 650,
     '& .MuiTableCell-root': {
       border: '1px solid #cccccc',
     },
@@ -85,21 +84,34 @@ export function TestOutputs(props) {
   return (
     <Fragment>
       <TableContainer className={classes.table}>
-        <Table aria-label="test-outputs">
+        <Table aria-label="test-outputs" style={{ tableLayout: 'fixed' }}>
           <TableBody>
             {outputs.map((v, index) => (
               <TableRow key={`output-${index}`}>
                 <TableCell
                   style={{
-                    width: '70vw',
-                    maxWidth: '70vw',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  <pre style={{ whiteSpace: 'pre-wrap' }}>{v.output}</pre>
+                  <pre
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    {v.output}
+                  </pre>
                 </TableCell>
-                <TableCell align="center" style={{ verticalAlign: 'top' }}>
+                <TableCell
+                  align="center"
+                  style={{
+                    verticalAlign: 'top',
+                    whiteSpace: 'nowrap',
+                    width: '100px',
+                  }}
+                >
                   <Tooltip title="View in Prow">
                     <Button
                       style={{ justifyContent: 'center' }}

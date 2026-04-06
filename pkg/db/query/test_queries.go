@@ -295,7 +295,7 @@ func TestOutputs(dbc *db.DB, release, test string, includedVariants, excludedVar
 	}
 
 	res := q.
-		Select("prow_job_runs.url, output").
+		Select("prow_job_runs.url as prow_job_url, output").
 		Order("prow_job_run_test_outputs.id DESC").
 		Limit(quantity).
 		Scan(&results)
