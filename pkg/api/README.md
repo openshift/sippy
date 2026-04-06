@@ -267,6 +267,60 @@ is enabled.
 
 ### MCP (Model Context Protocol)
 
-| Endpoint                           | Description                                                |
-|------------------------------------|------------------------------------------------------------|
-| `/mcp/v1/`                         | Handles MCP requests                                       |
+Sippy exposes an [MCP](https://modelcontextprotocol.io/) server at `/mcp/v1/`
+using the Streamable HTTP transport (via
+[`mcp-go`](https://github.com/mark3labs/mcp-go)). This allows AI agents and
+LLM-based tools to interact with Sippy's data programmatically through the
+standardized MCP tool-calling interface.
+
+The MCP server is session-aware — each client gets a unique session with
+registration/unregistration lifecycle hooks. It uses the Streamable HTTP
+transport, which supports both regular HTTP requests and streaming responses
+over a single connection.
+
+#### Endpoint
+
+| Path        | Description                                                           |
+|-------------|-----------------------------------------------------------------------|
+| `/mcp/v1/`  | Streamable HTTP MCP endpoint (supports `POST` for tool calls and SSE) |
+
+Clients connect to this endpoint using any MCP-compatible client library. The
+server advertises tool capabilities (with list-changed notifications enabled)
+and does not currently expose prompts or resources.
+
+#### Available Tools
+
+The MCP server currently exposes the following tools:
+
+| Tool Name       | Description                                                                                                                                       | Parameters |
+|-----------------|---------------------------------------------------------------------------------------------------------------------------------------------------|------------|
+| `get_releases`  | Returns current and past OpenShift release information including GA dates, development start dates, etc. Useful for determining the current development release (the newest one without a GA date) or GA dates of previous releases. | None       |
+| `health_check`  | Performs a health check of Sippy's own services including database (PostgreSQL), BigQuery, and Redis connectivity. Returns per-service status (`healthy`, `degraded`, `unhealthy`, or `unavailable`) and an overall status. | None       |
+
+> **Note:** The MCP tool set is under active development. New tools will be
+> added following the `MCPTool` interface pattern defined in `pkg/mcp/tools/`.
+
+#### Adding New MCP Tools
+
+New tools implement the `MCPTool` interface:
+
+```go
+type MCPTool interface {
+    GetDefinition() mcp.Tool
+    GetHandler() func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error)
+}
+```
+
+Tools are registered in `pkg/mcp/tools/tools.go` via `RegisterTools()` and
+have access to shared dependencies (database, BigQuery, and Redis cache
+clients) through the `ToolDependencies` struct.
+
+To add a new tool:
+
+1. Create a new file in `pkg/mcp/tools/` (e.g. `my_tool.go`)
+2. Define a struct embedding `*BaseTool` for access to helper methods
+   (`CreateJSONResponse`, `CreateTextResponse`, `CreateErrorResponse`)
+3. Implement `GetDefinition()` returning an `mcp.Tool` with name, description,
+   and input schema
+4. Implement `GetHandler()` returning the tool's request handler function
+5. Register the tool in `RegisterTools()` in `tools.go`
