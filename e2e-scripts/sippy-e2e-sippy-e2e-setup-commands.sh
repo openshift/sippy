@@ -222,6 +222,21 @@ ${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred=$GCS_CRED -n 
 # Get the registry credentials for all build farm clusters out to the cluster-pool cluster.
 ${KUBECTL_CMD} -n sippy-e2e create secret generic regcred --from-file=.dockerconfigjson=${DOCKERCONFIGJSON} --type=kubernetes.io/dockerconfigjson
 
+# Create a PVC for coverage data that outlives the server pod.
+cat << END | ${KUBECTL_CMD} apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sippy-coverage
+  namespace: sippy-e2e
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+END
+
 # Make the "sippy loader" pod.
 cat << END | ${KUBECTL_CMD} apply -f -
 apiVersion: batch/v1

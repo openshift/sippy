@@ -101,7 +101,8 @@ spec:
       secret:
         secretName: gcs-cred
     - name: coverage
-      emptyDir: {}
+      persistentVolumeClaim:
+        claimName: sippy-coverage
   dnsPolicy: ClusterFirst
   restartPolicy: Always
   schedulerName: default-scheduler
@@ -156,16 +157,41 @@ ${KUBECTL_CMD} -n sippy-e2e delete secret regcred
 gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1
 TEST_EXIT=$?
 
-# Collect coverage data from the server pod.
-# Send SIGTERM so the server shuts down gracefully and flushes coverage data.
+# Collect coverage data. Coverage counters are flushed when the server exits, so we
+# SIGTERM it and delete the pod to release the PVC, then mount it on a helper pod to
+# copy the data out.
 echo "Stopping sippy-server to flush coverage data..."
 ${KUBECTL_CMD} -n sippy-e2e exec sippy-server -- kill -TERM 1 || true
 sleep 5
+${KUBECTL_CMD} -n sippy-e2e delete pod sippy-server --wait=true --timeout=30s || true
 
-# Copy coverage data from the pod
-echo "Copying coverage data from sippy-server pod..."
+# Launch a minimal helper pod to access the coverage PVC.
+cat << END | ${KUBECTL_CMD} apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: coverage-helper
+  namespace: sippy-e2e
+spec:
+  containers:
+  - name: helper
+    image: ${SIPPY_IMAGE}
+    command: ["sleep", "300"]
+    volumeMounts:
+    - mountPath: /tmp/coverage
+      name: coverage
+      readOnly: true
+  volumes:
+  - name: coverage
+    persistentVolumeClaim:
+      claimName: sippy-coverage
+  restartPolicy: Never
+END
+
+${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/coverage-helper --timeout=60s
+
 COVDIR=$(mktemp -d)
-${KUBECTL_CMD} -n sippy-e2e cp sippy-server:/tmp/coverage "${COVDIR}" || true
+${KUBECTL_CMD} -n sippy-e2e cp coverage-helper:/tmp/coverage "${COVDIR}" -c helper || true
 
 if find "${COVDIR}" -name 'covcounters.*' -print -quit 2>/dev/null | grep -q .; then
     echo "Generating coverage report..."
