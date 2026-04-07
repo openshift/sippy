@@ -64,18 +64,18 @@ type JobRunAnnotator struct {
 	cache            cache.Cache
 	execute          bool
 	allVariants      crtest.JobVariants
-	Release          string        `json:"release"`
-	IncludedVariants []crstatus.Variant  `json:"included_variants"`
-	Label            string        `json:"label"`
-	BuildClusters    []string      `json:"build_clusters"`
-	StartTime        time.Time     `json:"start_time"`
-	Duration         time.Duration `json:"duration"`
-	MinFailures      int           `json:"minimum_failure"`
-	FlakeAsFailure   bool          `json:"flake_as_failure"`
-	TextContains     string        `json:"text_contains"`
-	TextRegex        string        `json:"text_regex"`
-	PathGlob         string        `json:"path_glob"`
-	JobRunIDs        []int64       `json:"job_run_ids"`
+	Release          string             `json:"release"`
+	IncludedVariants []crstatus.Variant `json:"included_variants"`
+	Label            string             `json:"label"`
+	BuildClusters    []string           `json:"build_clusters"`
+	StartTime        time.Time          `json:"start_time"`
+	Duration         time.Duration      `json:"duration"`
+	MinFailures      int                `json:"minimum_failure"`
+	FlakeAsFailure   bool               `json:"flake_as_failure"`
+	TextContains     string             `json:"text_contains"`
+	TextRegex        string             `json:"text_regex"`
+	PathGlob         string             `json:"path_glob"`
+	JobRunIDs        []int64            `json:"job_run_ids"`
 	comment          string
 	user             string
 }
