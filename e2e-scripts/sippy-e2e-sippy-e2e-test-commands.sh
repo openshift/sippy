@@ -151,19 +151,15 @@ ${KUBECTL_CMD} -n sippy-e2e port-forward pod/redis1 ${SIPPY_REDIS_PORT}:6379 &
 
 ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
-${KUBECTL_CMD} -n sippy-e2e delete secret regcred
-
 # only 1 in parallel, some tests will clash if run at the same time
 gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1 -coverprofile=${ARTIFACT_DIR}/e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
 TEST_EXIT=$?
 
-# Collect coverage data. Coverage counters are flushed when the server exits, so we
-# SIGTERM it and delete the pod to release the PVC, then mount it on a helper pod to
-# copy the data out.
+# Collect coverage data. Coverage counters are flushed when the server exits.
+# Pod deletion sends SIGTERM during graceful termination (terminationGracePeriodSeconds: 30),
+# so we just delete the pod directly — no need for a separate exec kill.
 echo "Stopping sippy-server to flush coverage data..."
-${KUBECTL_CMD} -n sippy-e2e exec sippy-server -- kill -TERM 1 || true
-sleep 5
-${KUBECTL_CMD} -n sippy-e2e delete pod sippy-server --wait=true --timeout=30s || true
+${KUBECTL_CMD} -n sippy-e2e delete pod sippy-server --wait=true --timeout=60s || true
 
 # Launch a minimal helper pod to access the coverage PVC.
 cat << END | ${KUBECTL_CMD} apply -f -
@@ -181,6 +177,8 @@ spec:
     - mountPath: /tmp/coverage
       name: coverage
       readOnly: true
+  imagePullSecrets:
+  - name: regcred
   volumes:
   - name: coverage
     persistentVolumeClaim:
@@ -208,5 +206,7 @@ else
     echo "WARNING: No coverage data found"
 fi
 rm -rf "${COVDIR}"
+
+${KUBECTL_CMD} -n sippy-e2e delete secret regcred || true
 
 exit ${TEST_EXIT}
