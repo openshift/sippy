@@ -672,7 +672,7 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 			SELECT COUNT(*) FROM prow_job_run_tests
 			WHERE prow_job_run_id = prow_job_runs.id AND status = 12
 		), 0) WHERE prow_job_id = ?`, prowJob.ID).Error; err != nil {
-		log.WithError(err).Warn("failed to update test_failures count")
+		return 0, 0, fmt.Errorf("updating test_failures for prow job %s: %w", prowJob.Name, err)
 	}
 
 	return runCount, totalResults, nil

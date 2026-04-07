@@ -173,7 +173,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 			provider := bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
 			allVariants, errs := componentreadiness.GetJobVariants(ctx, provider)
 			if len(errs) > 0 {
-				return fmt.Errorf("failed to get job variants")
+				return fmt.Errorf("failed to get job variants: %v", errs)
 			}
 			variantToJiraComponents, err := jiraautomator.GetVariantJiraMap(ctx, bigQueryClient)
 			if err != nil {

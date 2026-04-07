@@ -331,12 +331,12 @@ WHERE tow.staff_approved_obsolete = false
 GROUP BY tow.unique_id, t.name, s.name, tow.component, tow.capabilities, d.prow_job_id
 `
 
-func (p *PostgresProvider) queryTestStatus(release string, start, end time.Time,
+func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, start, end time.Time,
 	_ crtest.JobVariants, includeVariants map[string][]string,
 	dbGroupBy map[string]bool) (map[string]crstatus.TestStatus, []error) {
 
 	var rows []testStatusRow
-	if err := p.dbc.DB.Raw(testStatusQuery, release, start, end).Scan(&rows).Error; err != nil {
+	if err := p.dbc.DB.WithContext(ctx).Raw(testStatusQuery, release, start, end).Scan(&rows).Error; err != nil {
 		return nil, []error{fmt.Errorf("querying test status: %w", err)}
 	}
 
@@ -424,7 +424,7 @@ func (p *PostgresProvider) fetchJobVariants(rows []testStatusRow) map[uint]map[s
 	return result
 }
 
-func (p *PostgresProvider) QueryBaseTestStatus(_ context.Context, reqOptions reqopts.RequestOptions,
+func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants) (map[string]crstatus.TestStatus, []error) {
 
 	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
@@ -438,6 +438,7 @@ func (p *PostgresProvider) QueryBaseTestStatus(_ context.Context, reqOptions req
 	}
 
 	return p.queryTestStatus(
+		ctx,
 		reqOptions.BaseRelease.Name,
 		reqOptions.BaseRelease.Start,
 		reqOptions.BaseRelease.End,
@@ -447,7 +448,7 @@ func (p *PostgresProvider) QueryBaseTestStatus(_ context.Context, reqOptions req
 	)
 }
 
-func (p *PostgresProvider) QuerySampleTestStatus(_ context.Context, reqOptions reqopts.RequestOptions,
+func (p *PostgresProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
@@ -462,6 +463,7 @@ func (p *PostgresProvider) QuerySampleTestStatus(_ context.Context, reqOptions r
 	}
 
 	return p.queryTestStatus(
+		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
 		allJobVariants,
@@ -679,6 +681,7 @@ func (p *PostgresProvider) QueryJobRuns(_ context.Context, reqOptions reqopts.Re
 		WHERE pj.release = ?
 			AND pjr.timestamp >= ? AND pjr.timestamp < ?
 			AND pj.deleted_at IS NULL AND pjr.deleted_at IS NULL
+			AND (pj.name LIKE 'periodic-%%' OR pj.name LIKE 'release-%%' OR pj.name LIKE 'aggregator-%%')
 		GROUP BY pj.name
 		ORDER BY pj.name
 	`, release, start, end).Scan(&rows).Error

@@ -126,10 +126,9 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 	// Give middleware their chance to adjust the result
 	for ri, row := range report.Rows {
 		for ci, col := range row.Columns {
-			// Track the worst (most negative) status across all regressed tests after PostAnalysis.
-			// We only hit this loop if there are regressed tests, which is good because we know the
-			// cell status can't be improved or missing basis/sample.
-			worstStatus := report.Rows[ri].Columns[ci].Status
+			// Recompute cell status from post-analysis results. We start fresh so
+			// middleware (e.g. triage) can improve a cell's status, not just worsen it.
+			var worstStatus crtest.Status
 			for rti := range col.RegressedTests {
 				testKey := crtest.Identification{
 					RowIdentification:    col.RegressedTests[rti].RowIdentification,
@@ -138,11 +137,13 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 				if err := c.middlewares.PostAnalysis(testKey, &report.Rows[ri].Columns[ci].RegressedTests[rti].TestComparison); err != nil {
 					return err
 				}
-				if newStatus := report.Rows[ri].Columns[ci].RegressedTests[rti].TestComparison.ReportStatus; newStatus < worstStatus {
+				if newStatus := report.Rows[ri].Columns[ci].RegressedTests[rti].TestComparison.ReportStatus; rti == 0 || newStatus < worstStatus {
 					worstStatus = newStatus
 				}
 			}
-			report.Rows[ri].Columns[ci].Status = worstStatus
+			if len(col.RegressedTests) > 0 {
+				report.Rows[ri].Columns[ci].Status = worstStatus
+			}
 		}
 	}
 

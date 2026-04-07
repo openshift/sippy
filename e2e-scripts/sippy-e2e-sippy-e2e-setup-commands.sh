@@ -258,12 +258,12 @@ ${KUBECTL_CMD} -n sippy-e2e describe job sippy-seed-job
 set +e
 
 echo "Waiting up to ${SIPPY_LOAD_TIMEOUT:=1200s} for the sippy-seed-job to complete..."
-${KUBECTL_CMD} -n sippy-e2e wait --for=condition=complete job/sippy-seed-job --timeout ${SIPPY_LOAD_TIMEOUT}
+${KUBECTL_CMD} -n sippy-e2e wait --for=condition=complete job/sippy-seed-job --timeout "${SIPPY_LOAD_TIMEOUT}"
 retVal=$?
 set -e
 
 job_pod=$(${KUBECTL_CMD} -n sippy-e2e get pod --selector=job-name=sippy-seed-job --output=jsonpath='{.items[0].metadata.name}')
-${KUBECTL_CMD} -n sippy-e2e logs ${job_pod} > ${ARTIFACT_DIR}/sippy-seed.log
+${KUBECTL_CMD} -n sippy-e2e logs "${job_pod}" > "${ARTIFACT_DIR}/sippy-seed.log"
 
 if [ ${retVal} -ne 0 ]; then
   echo "sippy seeding never finished on time."

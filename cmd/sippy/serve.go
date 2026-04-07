@@ -134,14 +134,6 @@ func NewServeCommand() *cobra.Command {
 					}
 
 					crDataProvider = bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
-
-					gcsClient, err = gcs.NewGCSClient(context.TODO(),
-						f.GoogleCloudFlags.ServiceAccountCredentialFile,
-						f.GoogleCloudFlags.OAuthClientCredentialFile,
-					)
-					if err != nil {
-						log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
-					}
 				}
 
 			case "postgres":
@@ -150,6 +142,14 @@ func NewServeCommand() *cobra.Command {
 
 			default:
 				return fmt.Errorf("unknown --data-provider %q, must be bigquery or postgres", f.DataProvider)
+			}
+
+			gcsClient, err = gcs.NewGCSClient(context.TODO(),
+				f.GoogleCloudFlags.ServiceAccountCredentialFile,
+				f.GoogleCloudFlags.OAuthClientCredentialFile,
+			)
+			if err != nil {
+				log.WithError(err).Warn("unable to create GCS client, some APIs may not work")
 			}
 
 			// Make sure the db is initialized, otherwise let the user know:

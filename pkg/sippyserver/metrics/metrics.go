@@ -119,9 +119,13 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 
-	releases, err := crProvider.QueryReleases(ctx)
-	if err != nil {
-		return err
+	var releases []v1.Release
+	if crProvider != nil {
+		var err error
+		releases, err = crProvider.QueryReleases(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Local DB metrics

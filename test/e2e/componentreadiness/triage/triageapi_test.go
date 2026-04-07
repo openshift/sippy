@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -965,6 +966,9 @@ func getSeedDataRegressions(t *testing.T) []models.TestRegression {
 			seedRegressions = append(seedRegressions, r)
 		}
 	}
+	sort.Slice(seedRegressions, func(i, j int) bool {
+		return seedRegressions[i].TestID < seedRegressions[j].TestID
+	})
 	return seedRegressions
 }
 
