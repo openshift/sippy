@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
@@ -116,10 +117,11 @@ func getReleaseStatus(releases []v1.Release, release string) string {
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crview.View, variantJunitTableOverrides []configv1.VariantJunitTableOverride) error {
+func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crProvider dataprovider.DataProvider, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crview.View, variantJunitTableOverrides []configv1.VariantJunitTableOverride) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
-	releases, err := api.GetReleases(context.Background(), bqc, false)
+
+	releases, err := crProvider.QueryReleases(ctx)
 	if err != nil {
 		return err
 	}
@@ -165,10 +167,12 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, rep
 
 	}
 
-	// BigQuery metrics
-	if bqc != nil {
-		refreshComponentReadinessMetrics(ctx, bqc, dbc, cacheOptions, views, releases, variantJunitTableOverrides)
+	if crProvider != nil {
+		refreshComponentReadinessMetrics(ctx, crProvider, dbc, cacheOptions, views, releases, variantJunitTableOverrides)
+	}
 
+	// BigQuery-only metrics
+	if bqc != nil {
 		if err := refreshDisruptionMetrics(bqc, releases); err != nil {
 			log.WithError(err).Error("error refreshing disruption metrics")
 		}
@@ -179,21 +183,11 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, rep
 	return nil
 }
 
-func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Client, dbc *db.DB,
+func refreshComponentReadinessMetrics(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB,
 	cacheOptions cache.RequestOptions, views []crview.View, releases []v1.Release, variantJunitTableOverrides []configv1.VariantJunitTableOverride) {
-	if client == nil || client.BQ == nil {
-		log.Warningf("not generating component readiness metrics as we don't have a bigquery client")
-		return
-	}
-
-	if client.Cache == nil {
-		log.Warningf("not generating component readiness metrics as we don't have a cache configured")
-		return
-	}
-
 	for _, view := range views {
 		if view.Metrics.Enabled {
-			err := updateComponentReadinessMetricsForView(ctx, client, dbc, cacheOptions, view, releases, variantJunitTableOverrides)
+			err := updateComponentReadinessMetricsForView(ctx, provider, dbc, cacheOptions, view, releases, variantJunitTableOverrides)
 			if err != nil {
 				log.WithError(err).Error("error")
 				log.WithError(err).WithField("view", view.Name).Error("error refreshing metrics/regressions for view")
@@ -204,7 +198,7 @@ func refreshComponentReadinessMetrics(ctx context.Context, client *bqclient.Clie
 }
 
 // updateComponentReadinessTrackingForView queries the report for the given view, and then updates metrics.
-func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclient.Client, dbc *db.DB, cacheOptions cache.RequestOptions, view crview.View, releases []v1.Release, overrides []configv1.VariantJunitTableOverride) error {
+func updateComponentReadinessMetricsForView(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, cacheOptions cache.RequestOptions, view crview.View, releases []v1.Release, overrides []configv1.VariantJunitTableOverride) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
@@ -233,7 +227,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, client *bqclien
 		CacheOption:    cacheOptions,
 	}
 
-	report, errs := componentreadiness.GetComponentReportFromBigQuery(ctx, client, dbc, reportOpts, overrides, "")
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, dbc, reportOpts, overrides, "")
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

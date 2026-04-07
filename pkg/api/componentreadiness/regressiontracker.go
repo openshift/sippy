@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/andygrunwald/go-jira"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/regressiontracker"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -16,7 +17,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/cache"
 	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	sippybigquery "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/pkg/errors"
@@ -160,7 +160,7 @@ func (prs *PostgresRegressionStore) ResolveTriages() error {
 }
 
 func NewRegressionTracker(
-	bigqueryClient *sippybigquery.Client,
+	dataProvider dataprovider.DataProvider,
 	dbc *db.DB,
 	cacheOptions cache.RequestOptions,
 	releases []v1.Release,
@@ -170,7 +170,7 @@ func NewRegressionTracker(
 	dryRun bool) *RegressionTracker {
 
 	return &RegressionTracker{
-		bigqueryClient:             bigqueryClient,
+		dataProvider:               dataProvider,
 		dbc:                        dbc,
 		cacheOpts:                  cacheOptions,
 		releases:                   releases,
@@ -185,7 +185,7 @@ func NewRegressionTracker(
 // RegressionTracker is the primary object for managing regression tracking logic.
 type RegressionTracker struct {
 	backend                    RegressionStore
-	bigqueryClient             *sippybigquery.Client
+	dataProvider               dataprovider.DataProvider
 	dbc                        *db.DB
 	cacheOpts                  cache.RequestOptions
 	releases                   []v1.Release
@@ -254,8 +254,8 @@ func (rt *RegressionTracker) SyncRegressionsForRelease(ctx context.Context, rele
 			CacheOption:    rt.cacheOpts,
 		}
 
-		report, reportErrs := GetComponentReportFromBigQuery(
-			ctx, rt.bigqueryClient, rt.dbc, reportOpts, rt.variantJunitTableOverrides, "")
+		report, reportErrs := GetComponentReport(
+			ctx, rt.dataProvider, rt.dbc, reportOpts, rt.variantJunitTableOverrides, "")
 		if len(reportErrs) > 0 {
 			var strErrors []string
 			for _, err := range reportErrs {

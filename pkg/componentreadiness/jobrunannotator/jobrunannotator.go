@@ -13,7 +13,7 @@ import (
 	"cloud.google.com/go/civil"
 	"cloud.google.com/go/storage"
 	"github.com/openshift/sippy/pkg/api/jobartifacts"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
@@ -65,7 +65,7 @@ type JobRunAnnotator struct {
 	execute          bool
 	allVariants      crtest.JobVariants
 	Release          string        `json:"release"`
-	IncludedVariants []bq.Variant  `json:"included_variants"`
+	IncludedVariants []crstatus.Variant  `json:"included_variants"`
 	Label            string        `json:"label"`
 	BuildClusters    []string      `json:"build_clusters"`
 	StartTime        time.Time     `json:"start_time"`
@@ -89,7 +89,7 @@ func NewJobRunAnnotator(
 	execute bool,
 	release string,
 	allVariants crtest.JobVariants,
-	variants []bq.Variant,
+	variants []crstatus.Variant,
 	label string,
 	buildClusters []string,
 	startTime time.Time,

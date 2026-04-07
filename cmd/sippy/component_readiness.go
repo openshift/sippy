@@ -17,6 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	resources "github.com/openshift/sippy"
+	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -198,6 +199,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		gcsClient,
 		f.GoogleCloudFlags.StorageBucket,
 		bigQueryClient,
+		bqprovider.NewBigQueryProvider(bigQueryClient),
 		nil,
 		cacheClient,
 		f.ComponentReadinessFlags.CRTimeRoundingFactor,
@@ -208,12 +210,15 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		jiraClient,
 	)
 
+	crDataProvider := bqprovider.NewBigQueryProvider(bigQueryClient)
+
 	if f.APIFlags.MetricsAddr != "" {
 		// Do an immediate metrics update
 		err = metrics.RefreshMetricsDB(
 			context.Background(),
 			dbc,
 			bigQueryClient,
+			crDataProvider,
 			time.Time{},
 			cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
 			views.ComponentReadiness,
@@ -234,6 +239,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 						context.Background(),
 						dbc,
 						bigQueryClient,
+						crDataProvider,
 						time.Time{},
 						cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
 						views.ComponentReadiness,

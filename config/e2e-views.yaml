@@ -1,81 +1,71 @@
----
 component_readiness:
-- name: 4.20-main
-  base_release:
-    release: "4.19"
-    relative_start: ga-30d
-    relative_end: ga
-  sample_release:
-    release: "4.20"
-    relative_start: now-7d
-    relative_end: now
-  variant_options:
-    column_group_by:
-      Architecture: {}
-      Network: {}
-      Platform: {}
-      Topology: {}
-    db_group_by:
-      Architecture: {}
-      FeatureSet: {}
-      Installer: {}
-      Network: {}
-      Platform: {}
-      Suite: {}
-      Topology: {}
-      Upgrade: {}
-    include_variants:
-      Architecture:
-      - amd64
-      FeatureSet:
-      - default
-      - techpreview
-      Installer:
-      - ipi
-      - upi
-      - hypershift
-      JobTier:
-      - blocking
-      - informing
-      - standard
-      LayeredProduct:
-      - none
-      - virt
-      Network:
-      - ovn
-      Owner:
-      - eng
-      - service-delivery
-      Platform:
-      - aws
-      - azure
-      - gcp
-      - metal
-      - rosa
-      - vsphere
-      Topology:
-      - ha
-      - microshift
-      - external
-      CGroupMode:
-      - v2
-      ContainerRuntime:
-      - runc
-      - crun
-  advanced_options:
-    minimum_failure: 3
-    confidence: 95
-    pity_factor: 5
-    ignore_missing: false
-    ignore_disruption: true
-    flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
-  metrics:
-    enabled: true
-  regression_tracking:
-    enabled: true
-  prime_cache:
-    enabled: true
-  automate_jira:
-    enabled: true
+    - name: 4.22-main
+      base_release:
+        release: "4.21"
+        relative_start: now-60d
+        relative_end: now-30d
+      sample_release:
+        release: "4.22"
+        relative_start: now-3d
+        relative_end: now
+      test_id_options: {}
+      test_filters: {}
+      variant_options:
+        column_group_by:
+            Network: {}
+            Platform: {}
+            Topology: {}
+        db_group_by:
+            Architecture: {}
+            FeatureSet: {}
+            Installer: {}
+            LayeredProduct: {}
+            Network: {}
+            Platform: {}
+            Suite: {}
+            Topology: {}
+            Upgrade: {}
+        include_variants:
+            Architecture:
+                - amd64
+                - arm64
+            FeatureSet:
+                - default
+                - techpreview
+            Installer:
+                - ipi
+            LayeredProduct:
+                - none
+            Network:
+                - ovn
+            Platform:
+                - aws
+                - gcp
+            Suite:
+                - parallel
+                - serial
+                - unknown
+            Topology:
+                - ha
+            Upgrade:
+                - micro
+                - minor
+                - none
+      advanced_options:
+        minimum_failure: 3
+        confidence: 95
+        pity_factor: 5
+        pass_rate_required_new_tests: 0
+        pass_rate_required_all_tests: 0
+        ignore_missing: false
+        ignore_disruption: false
+        flake_as_failure: false
+        include_multi_release_analysis: true
+      metrics:
+        enabled: false
+      regression_tracking:
+        enabled: true
+      automate_jira:
+        enabled: false
+      prime_cache:
+        enabled: true

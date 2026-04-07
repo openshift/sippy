@@ -11,6 +11,7 @@ import (
 	"cloud.google.com/go/bigquery"
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/dataloader/crcacheloader"
@@ -318,7 +319,7 @@ func NewLoadCommand() *cobra.Command {
 					}
 
 					regressionTracker := componentreadiness.NewRegressionTracker(
-						bqc, dbc, cacheOpts, releases,
+						bqprovider.NewBigQueryProvider(bqc), dbc, cacheOpts, releases,
 						componentreadiness.NewPostgresRegressionStore(dbc, jiraClient),
 						views.ComponentReadiness,
 						config.ComponentReadinessConfig.VariantJunitTableOverrides,

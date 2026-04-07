@@ -7,3 +7,5 @@ report.sh
 .vscode/
 .idea/
 /sippy-ng/build/*
+.env
+*.log

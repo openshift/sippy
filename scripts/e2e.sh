@@ -12,8 +12,7 @@ REDIS_CONTAINER="sippy-e2e-test-redis"
 REDIS_PORT="23479"
 
 if [[ -z "$GCS_SA_JSON_PATH" ]]; then
-    echo "Must provide path to GCS credential in GCS_SA_JSON_PATH env var" 1>&2
-    exit 1
+    echo "WARNING: GCS_SA_JSON_PATH not set, data sync test will be skipped" 1>&2
 fi
 
 
@@ -52,28 +51,29 @@ sleep 5
 
 export SIPPY_E2E_DSN="postgresql://postgres:password@localhost:$PSQL_PORT/postgres"
 export REDIS_URL="redis://localhost:$REDIS_PORT"
+export SIPPY_E2E_REPO_ROOT="$(pwd)"
 
 echo "Loading database..."
-# use an old release here as they have very few job runs and thus import quickly, ~5 minutes
 go build -mod vendor ./cmd/sippy
 ./sippy seed-data  \
   --init-database \
-  --database-dsn="$SIPPY_E2E_DSN" \
-  --release="4.20"
+  --database-dsn="$SIPPY_E2E_DSN"
 
 # Spawn sippy server off into a separate process:
 export SIPPY_API_PORT="18080"
 export SIPPY_ENDPOINT="127.0.0.1"
-(
-./sippy serve \
-  --listen ":$SIPPY_API_PORT" \
-  --listen-metrics ":12112" \
-  --database-dsn="$SIPPY_E2E_DSN" \
+
+SERVE_ARGS="--listen :$SIPPY_API_PORT \
+  --listen-metrics :12112 \
+  --database-dsn=$SIPPY_E2E_DSN \
   --enable-write-endpoints \
   --log-level debug \
-  --views config/e2e-views.yaml \
-  --google-service-account-credential-file $GCS_SA_JSON_PATH \
-  --redis-url="$REDIS_URL" > e2e.log 2>&1
+  --redis-url=$REDIS_URL \
+  --data-provider postgres \
+  --views config/e2e-views.yaml"
+
+(
+./sippy serve $SERVE_ARGS > e2e.log 2>&1
 )&
 # store the child process for cleanup
 CHILD_PID=$!
@@ -96,6 +96,14 @@ if [ $ELAPSED -ge $TIMEOUT ]; then
     exit 1
 fi
 
+# Prime the component readiness cache so triage tests can find cached reports
+echo "Priming component readiness cache..."
+VIEWS=$(curl -s "http://localhost:$SIPPY_API_PORT/api/component_readiness/views")
+for VIEW in $(echo "$VIEWS" | jq -r '.[].name'); do
+    echo "  Priming cache for view: $VIEW"
+    curl -s "http://localhost:$SIPPY_API_PORT/api/component_readiness?view=$VIEW" > /dev/null
+done
+echo "Cache priming complete"
 
 # Run our tests that request against the API, args ensure serially and fresh test code compile:
 gotestsum ./test/e2e/... -count 1 -p 1
