@@ -50,7 +50,7 @@ spec:
         - "Wait for a short time"
     resources:
       limits:
-        memory: 5Gi
+        memory: 8Gi
     terminationMessagePath: /dev/termination-log
     terminationMessagePolicy: File
     command:
@@ -179,6 +179,7 @@ if find "${COVDIR}" -name 'covcounters.*' -print -quit 2>/dev/null | grep -q .; 
     if [ -f "${ARTIFACT_DIR}/e2e-test-coverage.out" ]; then
         echo "Merging test binary coverage into server coverage..."
         tail -n +2 "${ARTIFACT_DIR}/e2e-test-coverage.out" >> "${ARTIFACT_DIR}/e2e-coverage.out"
+        rm -f "${ARTIFACT_DIR}/e2e-test-coverage.out"
     fi
     go tool cover -html="${ARTIFACT_DIR}/e2e-coverage.out" -o="${ARTIFACT_DIR}/e2e-coverage.html"
     echo "Coverage report written to ${ARTIFACT_DIR}/e2e-coverage.html"

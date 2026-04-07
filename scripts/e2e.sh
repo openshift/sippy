@@ -29,6 +29,7 @@ clean_up () {
         if [ -f e2e-test-coverage.out ]; then
             echo "Merging test binary coverage into server coverage..."
             tail -n +2 e2e-test-coverage.out >> e2e-coverage.out
+            rm -f e2e-test-coverage.out
         fi
         echo "Coverage data written to e2e-coverage.out"
         echo "View HTML report: go tool cover -html=e2e-coverage.out -o=e2e-coverage.html"
