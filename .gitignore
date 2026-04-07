@@ -9,6 +9,7 @@ report.sh
 /sippy-ng/build/*
 .env
 *.log
+*.out
 /e2e-coverage/
 /e2e-coverage.out
 /e2e-coverage.html
