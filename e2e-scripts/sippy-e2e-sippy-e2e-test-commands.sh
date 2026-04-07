@@ -101,8 +101,7 @@ spec:
       secret:
         secretName: gcs-cred
     - name: coverage
-      persistentVolumeClaim:
-        claimName: sippy-coverage
+      emptyDir: {}
   dnsPolicy: ClusterFirst
   restartPolicy: Always
   schedulerName: default-scheduler
