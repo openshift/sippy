@@ -55,7 +55,7 @@ component_readiness:
         minimum_failure: 3
         confidence: 95
         pity_factor: 5
-        pass_rate_required_new_tests: 0
+        pass_rate_required_new_tests: 90
         pass_rate_required_all_tests: 0
         ignore_missing: false
         ignore_disruption: false

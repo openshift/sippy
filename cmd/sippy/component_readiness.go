@@ -187,7 +187,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 	}
 
-	crDataProvider := bqprovider.NewBigQueryProvider(bigQueryClient)
+	crDataProvider := bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
 
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
@@ -221,8 +221,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			crDataProvider,
 			time.Time{},
 			cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
-			views.ComponentReadiness,
-			config.ComponentReadinessConfig.VariantJunitTableOverrides)
+			views.ComponentReadiness)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -242,8 +241,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 						crDataProvider,
 						time.Time{},
 						cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
-						views.ComponentReadiness,
-						config.ComponentReadinessConfig.VariantJunitTableOverrides)
+						views.ComponentReadiness)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}

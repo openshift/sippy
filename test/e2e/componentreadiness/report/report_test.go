@@ -42,6 +42,7 @@ func setupProvider(t *testing.T) (*pgprovider.PostgresProvider, reqopts.RequestO
 			Confidence:                  95,
 			PityFactor:                  5,
 			MinimumFailure:              3,
+			PassRateRequiredNewTests:    90,
 			IncludeMultiReleaseAnalysis: true,
 		},
 		CacheOption: cache.RequestOptions{},
@@ -54,7 +55,7 @@ func TestReportStatuses(t *testing.T) {
 	provider, reqOptions := setupProvider(t)
 	ctx := context.Background()
 
-	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, nil, "")
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
 	require.Empty(t, errs, "GetComponentReport returned errors: %v", errs)
 	require.NotEmpty(t, report.Rows, "report should have rows")
 
@@ -120,7 +121,7 @@ func TestTestDetails(t *testing.T) {
 	require.NoError(t, err)
 
 	// Generate report to find a regressed test
-	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, nil, "")
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
 	require.Empty(t, errs)
 
 	var testID reqopts.TestIdentification
@@ -167,7 +168,7 @@ func TestFallback(t *testing.T) {
 	provider, reqOptions := setupProvider(t)
 	ctx := context.Background()
 
-	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, nil, "")
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
 	require.Empty(t, errs, "GetComponentReport returned errors: %v", errs)
 
 	type regressedInfo struct {
@@ -217,7 +218,7 @@ func TestFallbackInsufficientRuns(t *testing.T) {
 	provider, reqOptions := setupProvider(t)
 	ctx := context.Background()
 
-	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, nil, "")
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
 	require.Empty(t, errs)
 
 	found := false
@@ -241,7 +242,7 @@ func TestMissingBasis(t *testing.T) {
 	provider, reqOptions := setupProvider(t)
 	ctx := context.Background()
 
-	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, nil, "")
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
 	require.Empty(t, errs)
 
 	hasMissingBasis := false
@@ -257,15 +258,171 @@ func TestMissingBasis(t *testing.T) {
 		}
 	}
 
-	assert.True(t, hasMissingBasis, "report should have at least one MissingBasis cell")
+	assert.True(t, hasMissingBasis, "report should have at least one MissingBasis cell (new test with good pass rate)")
 	assert.True(t, hasMissingSample, "report should have at least one MissingSample cell")
+}
+
+func TestNewTestPassRateRegression(t *testing.T) {
+	provider, reqOptions := setupProvider(t)
+	ctx := context.Background()
+
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
+	require.Empty(t, errs)
+
+	// The new flaky test (80% pass rate) should be flagged as a regression
+	// via buildPassRateTestStats since it's below the 90% PassRateRequiredNewTests threshold.
+	found := false
+	for _, row := range report.Rows {
+		for _, col := range row.Columns {
+			for _, rt := range col.RegressedTests {
+				if rt.TestID == "test-new-test-pass-rate-fail" {
+					found = true
+					assert.Equal(t, crtest.ExtremeRegression, rt.ReportStatus,
+						"new test with 70%% pass rate should be an extreme regression (below 80%% extreme threshold)")
+					assert.Equal(t, crtest.PassRate, rt.Comparison,
+						"new test regression should use pass rate comparison, not fisher exact")
+				}
+			}
+		}
+	}
+	assert.True(t, found, "test-new-test-pass-rate-fail should appear as a regressed test")
+}
+
+func TestTestDetailsForFallbackTest(t *testing.T) {
+	provider, reqOptions := setupProvider(t)
+	ctx := context.Background()
+
+	releases, err := provider.QueryReleases(ctx)
+	require.NoError(t, err)
+
+	// test-fallback-improves has data in 4.21 (worse) and 4.20 (better),
+	// so the report should override the base to 4.20.
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
+	require.Empty(t, errs)
+
+	var testID reqopts.TestIdentification
+	found := false
+	for _, row := range report.Rows {
+		for _, col := range row.Columns {
+			for _, rt := range col.RegressedTests {
+				if rt.TestID == "test-fallback-improves" {
+					testID = reqopts.TestIdentification{
+						Component:           rt.RowIdentification.Component,
+						Capability:          rt.RowIdentification.Capability,
+						TestID:              rt.RowIdentification.TestID,
+						RequestedVariants:   rt.ColumnIdentification.Variants,
+						BaseOverrideRelease: "4.20",
+					}
+					found = true
+				}
+			}
+		}
+	}
+	require.True(t, found, "test-fallback-improves should be in the report")
+
+	detailReqOpts := reqOptions
+	detailReqOpts.TestIDOptions = []reqopts.TestIdentification{testID}
+
+	details, detailErrs := componentreadiness.GetTestDetails(ctx, provider, nil, detailReqOpts, releases, "")
+	require.Empty(t, detailErrs, "GetTestDetails returned errors: %v", detailErrs)
+
+	assert.Equal(t, "test-fallback-improves", details.Identification.RowIdentification.TestID)
+	assert.NotEmpty(t, details.Analyses, "details should have analyses")
+
+	// The fallback path should produce an analysis with base override data
+	require.GreaterOrEqual(t, len(details.Analyses), 1)
+	for _, analysis := range details.Analyses {
+		total := analysis.SampleStats.SuccessCount + analysis.SampleStats.FailureCount + analysis.SampleStats.FlakeCount
+		assert.Greater(t, total, 0, "sample stats should have run data")
+	}
+}
+
+func TestTestDetailsForNewTest(t *testing.T) {
+	provider, reqOptions := setupProvider(t)
+	ctx := context.Background()
+
+	releases, err := provider.QueryReleases(ctx)
+	require.NoError(t, err)
+
+	// test-new-test-pass-rate-fail only exists in 4.22 sample, no base data.
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
+	require.Empty(t, errs)
+
+	var testID reqopts.TestIdentification
+	found := false
+	for _, row := range report.Rows {
+		for _, col := range row.Columns {
+			for _, rt := range col.RegressedTests {
+				if rt.TestID == "test-new-test-pass-rate-fail" {
+					testID = reqopts.TestIdentification{
+						Component:         rt.RowIdentification.Component,
+						Capability:        rt.RowIdentification.Capability,
+						TestID:            rt.RowIdentification.TestID,
+						RequestedVariants: rt.ColumnIdentification.Variants,
+					}
+					found = true
+				}
+			}
+		}
+	}
+	require.True(t, found, "test-new-test-pass-rate-fail should be in the report")
+
+	detailReqOpts := reqOptions
+	detailReqOpts.TestIDOptions = []reqopts.TestIdentification{testID}
+
+	details, detailErrs := componentreadiness.GetTestDetails(ctx, provider, nil, detailReqOpts, releases, "")
+	require.Empty(t, detailErrs, "GetTestDetails returned errors: %v", detailErrs)
+
+	assert.Equal(t, "test-new-test-pass-rate-fail", details.Identification.RowIdentification.TestID)
+	assert.NotEmpty(t, details.Analyses, "details should have analyses")
+
+	// New test should have sample data but no base data
+	for _, analysis := range details.Analyses {
+		sampleTotal := analysis.SampleStats.SuccessCount + analysis.SampleStats.FailureCount + analysis.SampleStats.FlakeCount
+		assert.Greater(t, sampleTotal, 0, "sample stats should have run data")
+		if analysis.BaseStats != nil {
+			baseTotal := analysis.BaseStats.SuccessCount + analysis.BaseStats.FailureCount + analysis.BaseStats.FlakeCount
+			assert.Equal(t, 0, baseTotal, "base stats should have no run data for a new test")
+		}
+	}
+}
+
+func TestReportDevMode(t *testing.T) {
+	provider, reqOptions := setupProvider(t)
+	ctx := context.Background()
+
+	t.Setenv("DEV_MODE", "1")
+
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
+	require.Empty(t, errs, "GetComponentReport in DEV_MODE returned errors: %v", errs)
+	assert.NotEmpty(t, report.Rows, "DEV_MODE report should still have rows")
+}
+
+func TestReportWithIncludeVariants(t *testing.T) {
+	provider, reqOptions := setupProvider(t)
+	ctx := context.Background()
+
+	reqOptions.VariantOption.IncludeVariants = map[string][]string{
+		"Platform": {"aws"},
+	}
+
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
+	require.Empty(t, errs, "GetComponentReport with IncludeVariants returned errors: %v", errs)
+	require.NotEmpty(t, report.Rows, "filtered report should have rows")
+
+	for _, row := range report.Rows {
+		for _, col := range row.Columns {
+			assert.Equal(t, "aws", col.ColumnIdentification.Variants["Platform"],
+				"all columns should be aws when filtering by Platform:aws")
+		}
+	}
 }
 
 func TestSignificantImprovement(t *testing.T) {
 	provider, reqOptions := setupProvider(t)
 	ctx := context.Background()
 
-	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, nil, "")
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
 	require.Empty(t, errs)
 
 	hasImprovement := false

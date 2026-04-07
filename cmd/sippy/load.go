@@ -319,10 +319,9 @@ func NewLoadCommand() *cobra.Command {
 					}
 
 					regressionTracker := componentreadiness.NewRegressionTracker(
-						bqprovider.NewBigQueryProvider(bqc), dbc, cacheOpts, releases,
+						bqprovider.NewBigQueryProvider(bqc, config.ComponentReadinessConfig.VariantJunitTableOverrides), dbc, cacheOpts, releases,
 						componentreadiness.NewPostgresRegressionStore(dbc, jiraClient),
 						views.ComponentReadiness,
-						config.ComponentReadinessConfig.VariantJunitTableOverrides,
 						false)
 					loaders = append(loaders, regressionTracker)
 				}

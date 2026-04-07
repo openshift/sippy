@@ -15,7 +15,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
@@ -166,34 +165,31 @@ func NewRegressionTracker(
 	releases []v1.Release,
 	backend RegressionStore,
 	views []crview.View,
-	overrides []configv1.VariantJunitTableOverride,
 	dryRun bool) *RegressionTracker {
 
 	return &RegressionTracker{
-		dataProvider:               dataProvider,
-		dbc:                        dbc,
-		cacheOpts:                  cacheOptions,
-		releases:                   releases,
-		backend:                    backend,
-		views:                      views,
-		variantJunitTableOverrides: overrides,
-		dryRun:                     dryRun,
-		logger:                     log.WithField("daemon", "regression-tracker"),
+		dataProvider: dataProvider,
+		dbc:          dbc,
+		cacheOpts:    cacheOptions,
+		releases:     releases,
+		backend:      backend,
+		views:        views,
+		dryRun:       dryRun,
+		logger:       log.WithField("daemon", "regression-tracker"),
 	}
 }
 
 // RegressionTracker is the primary object for managing regression tracking logic.
 type RegressionTracker struct {
-	backend                    RegressionStore
-	dataProvider               dataprovider.DataProvider
-	dbc                        *db.DB
-	cacheOpts                  cache.RequestOptions
-	releases                   []v1.Release
-	dryRun                     bool
-	views                      []crview.View
-	logger                     log.FieldLogger
-	variantJunitTableOverrides []configv1.VariantJunitTableOverride
-	errors                     []error
+	backend      RegressionStore
+	dataProvider dataprovider.DataProvider
+	dbc          *db.DB
+	cacheOpts    cache.RequestOptions
+	releases     []v1.Release
+	dryRun       bool
+	views        []crview.View
+	logger       log.FieldLogger
+	errors       []error
 }
 
 func (rt *RegressionTracker) Name() string {
@@ -255,7 +251,7 @@ func (rt *RegressionTracker) SyncRegressionsForRelease(ctx context.Context, rele
 		}
 
 		report, reportErrs := GetComponentReport(
-			ctx, rt.dataProvider, rt.dbc, reportOpts, rt.variantJunitTableOverrides, "")
+			ctx, rt.dataProvider, rt.dbc, reportOpts, "")
 		if len(reportErrs) > 0 {
 			var strErrors []string
 			for _, err := range reportErrs {

@@ -57,7 +57,7 @@ func New(
 		views:                views,
 		releases:             releases,
 		bqClient:             bqClient,
-		dataProvider:         bqprovider.NewBigQueryProvider(bqClient),
+		dataProvider:         bqprovider.NewBigQueryProvider(bqClient, config.ComponentReadinessConfig.VariantJunitTableOverrides),
 		config:               config,
 		crTimeRoundingFactor: crTimeRoundingFactor,
 	}
@@ -265,6 +265,6 @@ func (l *ComponentReadinessCacheLoader) buildGenerator(
 	// Making a generator directly as we are going to bypass the caching to ensure we get fresh report,
 	// explicitly set our reports in the cache, thus resetting the timer for all expiry and keeping the cache
 	// primed.
-	generator := componentreadiness.NewComponentReportGenerator(l.dataProvider, reqOpts, l.dbc, l.config.ComponentReadinessConfig.VariantJunitTableOverrides, l.releases, "")
+	generator := componentreadiness.NewComponentReportGenerator(l.dataProvider, reqOpts, l.dbc, l.releases, "")
 	return &generator, nil
 }

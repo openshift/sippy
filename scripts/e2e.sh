@@ -25,6 +25,11 @@ clean_up () {
         echo "Generating coverage report..."
         go tool covdata percent -i="$COVDIR"
         go tool covdata textfmt -i="$COVDIR" -o=e2e-coverage.out
+        # Merge test binary coverage (from -coverprofile) into server binary coverage
+        if [ -f e2e-test-coverage.out ]; then
+            echo "Merging test binary coverage into server coverage..."
+            tail -n +2 e2e-test-coverage.out >> e2e-coverage.out
+        fi
         echo "Coverage data written to e2e-coverage.out"
         echo "View HTML report: go tool cover -html=e2e-coverage.out -o=e2e-coverage.html"
     fi
@@ -117,6 +122,6 @@ done
 echo "Cache priming complete"
 
 # Run our tests that request against the API, args ensure serially and fresh test code compile:
-gotestsum ./test/e2e/... -count 1 -p 1
+gotestsum ./test/e2e/... -count 1 -p 1 -coverprofile=e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
 
 # WARNING: do not place more commands here without addressing return code from go test not being overridden by the cleanup func

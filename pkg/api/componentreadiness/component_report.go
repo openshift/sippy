@@ -28,14 +28,11 @@ import (
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware/releasefallback"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	crtype "github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
-	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
 
@@ -82,7 +79,6 @@ func GetComponentReport(
 	provider dataprovider.DataProvider,
 	dbc *db.DB,
 	reqOptions reqopts.RequestOptions,
-	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 	baseURL string,
 ) (report crtype.ComponentReport, errs []error) {
 	releaseConfigs, err := provider.QueryReleases(ctx)
@@ -90,7 +86,7 @@ func GetComponentReport(
 		return report, []error{err}
 	}
 
-	generator := NewComponentReportGenerator(provider, reqOptions, dbc, variantJunitTableOverrides, releaseConfigs, baseURL)
+	generator := NewComponentReportGenerator(provider, reqOptions, dbc, releaseConfigs, baseURL)
 
 	if os.Getenv("DEV_MODE") == "1" {
 		report, errs = generator.GenerateReport(ctx)
@@ -153,15 +149,14 @@ func (c *ComponentReportGenerator) PostAnalysis(report *crtype.ComponentReport) 
 	return nil
 }
 
-func NewComponentReportGenerator(provider dataprovider.DataProvider, reqOptions reqopts.RequestOptions, dbc *db.DB, variantJunitTableOverrides []configv1.VariantJunitTableOverride, releaseConfigs []v1.Release, baseURL string) ComponentReportGenerator {
+func NewComponentReportGenerator(provider dataprovider.DataProvider, reqOptions reqopts.RequestOptions, dbc *db.DB, releaseConfigs []v1.Release, baseURL string) ComponentReportGenerator {
 	slices.Sort(reqOptions.Capabilities) // normalize ordering so cache keys match
 	generator := ComponentReportGenerator{
-		dataProvider:               provider,
-		ReqOptions:                 reqOptions,
-		dbc:                        dbc,
-		variantJunitTableOverrides: variantJunitTableOverrides,
-		releaseConfigs:             releaseConfigs,
-		baseURL:                    baseURL,
+		dataProvider:   provider,
+		ReqOptions:     reqOptions,
+		dbc:            dbc,
+		releaseConfigs: releaseConfigs,
+		baseURL:        baseURL,
 	}
 	generator.initializeMiddleware()
 	return generator
@@ -174,13 +169,12 @@ func NewComponentReportGenerator(provider dataprovider.DataProvider, reqOptions 
 // is marshalled for the cache key and should be changed when the object being
 // cached changes in a way that will no longer be compatible with any prior cached version.
 type ComponentReportGenerator struct {
-	dataProvider               dataprovider.DataProvider
-	dbc                        *db.DB
-	ReqOptions                 reqopts.RequestOptions
-	variantJunitTableOverrides []configv1.VariantJunitTableOverride
-	middlewares                middleware.List
-	releaseConfigs             []v1.Release
-	baseURL                    string
+	dataProvider   dataprovider.DataProvider
+	dbc            *db.DB
+	ReqOptions     reqopts.RequestOptions
+	middlewares    middleware.List
+	releaseConfigs []v1.Release
+	baseURL        string
 }
 
 type GeneratorCacheKey struct {
@@ -353,21 +347,14 @@ func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.
 	c.middlewares.Query(ctx, wg, allJobVariants, baseStatusCh, sampleStatusCh, errCh)
 	goInterruptible(ctx, wg, func() { baseStatus, baseErrs = c.dataProvider.QueryBaseTestStatus(ctx, c.ReqOptions, allJobVariants) })
 	goInterruptible(ctx, wg, func() {
-		includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
-		if skipQuery {
-			fLog.Infof("skipping default sample query as all values for a variant were overridden")
-			return
-		}
-		fLog.Infof("running default sample query with includeVariants: %+v", includeVariants)
-		status, errs := c.dataProvider.QuerySampleTestStatus(ctx, c.ReqOptions, allJobVariants, includeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
-		fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
+		fLog.Infof("running sample query with includeVariants: %+v", c.ReqOptions.VariantOption.IncludeVariants)
+		status, errs := c.dataProvider.QuerySampleTestStatus(ctx, c.ReqOptions, allJobVariants, c.ReqOptions.VariantOption.IncludeVariants, c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
+		fLog.Infof("received %d test statuses and %d errors from sample query", len(status), len(errs))
 		sampleStatusCh <- status
 		for _, err := range errs {
 			errCh <- err
 		}
 	})
-	// TODO: move to a variantjunitoverride middleware with Query implemented
-	c.goRunOverrideSampleQueries(ctx, wg, fLog, allJobVariants, sampleStatusCh, errCh)
 
 	// clean up channels after all queries are done
 	go func() {
@@ -418,45 +405,6 @@ func (c *ComponentReportGenerator) getTestStatus(ctx context.Context) (crstatus.
 	return crstatus.ReportTestStatus{BaseStatus: baseStatus, SampleStatus: sampleStatus, GeneratedAt: &now}, errs
 }
 
-// fork additional sample queries for the overrides
-func (c *ComponentReportGenerator) goRunOverrideSampleQueries(
-	ctx context.Context, wg *sync.WaitGroup, fLog *log.Entry,
-	allJobVariants crtest.JobVariants,
-	sampleStatusCh chan map[string]crstatus.TestStatus,
-	errCh chan error,
-) {
-	for i, or := range c.variantJunitTableOverrides {
-		if !utils.ContainsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
-			continue
-		}
-
-		index, override := i, or // copy loop vars to avoid them changing during goroutine
-		goInterruptible(ctx, wg, func() {
-			// only do this additional query if the specified override variant is actually included in this request
-			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, index, c.ReqOptions.VariantOption.IncludeVariants)
-			if skipQuery {
-				fLog.Infof("skipping override sample query as all values for a variant were overridden")
-				return
-			}
-			fLog.Infof("running override sample query for %+v with includeVariants: %+v", override, includeVariants)
-			// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
-			end := c.ReqOptions.SampleRelease.End
-			start, err := util.ParseCRReleaseTime([]v1.Release{}, "", override.RelativeStart,
-				true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			status, errs := c.dataProvider.QuerySampleTestStatus(ctx, c.ReqOptions, allJobVariants, includeVariants, start, end, override.TableName)
-			fLog.Infof("received %d test statuses and %d errors from override query", len(status), len(errs))
-			sampleStatusCh <- status
-			for _, err := range errs {
-				errCh <- err
-			}
-		})
-	}
-}
-
 func goInterruptible(ctx context.Context, wg *sync.WaitGroup, closure func()) {
 	wg.Add(1)
 	go func() {
@@ -468,62 +416,6 @@ func goInterruptible(ctx context.Context, wg *sync.WaitGroup, closure func()) {
 			closure()
 		}
 	}()
-}
-
-// copyIncludeVariantsAndRemoveOverrides is used when VariantJunitTableOverrides are in play, and we'll be merging in
-// some results from separate junit tables. In this case, when we do the normal default query, we want to remove those
-// overridden variants just in case, to make sure no results slip in that shouldn't be there.
-//
-// An index into the overrides slice can be provided if we're copying the include variants for that subquery. This is
-// just to be careful for any future cases where we might have multiple overrides in play, and want to make sure we
-// don't accidentally pull data for one, from the others junit table.
-//
-// Return includes a bool which may indicate to skip the query entirely because we've overridden all values for a variant.
-func copyIncludeVariantsAndRemoveOverrides(
-	overrides []configv1.VariantJunitTableOverride,
-	currOverride int, // index into the overrides if we're copying for that specific override query
-	includeVariants map[string][]string) (map[string][]string, bool) {
-
-	cp := make(map[string][]string)
-	for key, values := range includeVariants {
-		newSlice := []string{}
-		for _, v := range values {
-			if !shouldSkipVariant(overrides, currOverride, key, v) {
-				newSlice = append(newSlice, v)
-			}
-
-		}
-		if len(newSlice) == 0 {
-			// If we overrode a value for a variant, and no other values are specified for that
-			// variant, we want to skip this query entirely.
-			// i.e. if we include JobTier blocking, informing, and rare, we still want to do the default
-			// query for blocking and informing even though rare was overridden.
-			// However if we specify only JobTier rare, this leaves no JobTier's left in the default query resulting
-			// in a normal query without considering JobTier and thus duplicate results we don't want. In this case,
-			// we want to skip the default.
-			//
-			// TODO: With two overridden variants in one query, we could easily get into a problem
-			// where no results are returned, because we AND the include variants. If JobTier rare is in table1, and
-			// Foo=bar is in table2, both queries would be skipped because neither contains data for the other and we're
-			// doing an AND. For now, I think this is a limitation we'll have to live with
-			return cp, true
-		}
-		cp[key] = newSlice
-	}
-	return cp, false
-}
-
-func shouldSkipVariant(overrides []configv1.VariantJunitTableOverride, currOverride int, key, value string) bool {
-	for i, override := range overrides {
-		// if we're building a list of include variants for an override, then don't skip that variants inclusion
-		if i == currOverride {
-			return false
-		}
-		if override.VariantName == key && override.VariantValue == value {
-			return true
-		}
-	}
-	return false
 }
 
 var componentAndCapabilityGetter func(test crtest.KeyWithVariants, stats crstatus.TestStatus) (string, []string)

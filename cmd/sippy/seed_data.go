@@ -245,6 +245,15 @@ var syntheticTests = []syntheticTestSpec{
 		},
 	},
 
+	// --- NewTestPassRateRegression: new test only in sample, below PassRateRequiredNewTests threshold ---
+	{
+		testID: "test-new-test-pass-rate-fail", testName: "[sig-node] New flaky pod readiness test",
+		component: "comp-NewTestPassRate", capabilities: []string{"cap1"},
+		jobCounts: map[string]map[string]testCount{
+			awsAmd64Parallel: {"4.22": {100, 70, 0}},
+		},
+	},
+
 	// --- BasisOnly: test in base, absent from sample ---
 	{
 		testID: "test-basis-only", testName: "[sig-apps] Removed deployment test",
@@ -693,7 +702,6 @@ func syncRegressions(dbc *db.DB) error {
 		releases,
 		componentreadiness.NewPostgresRegressionStore(dbc, nil),
 		views.ComponentReadiness,
-		nil,
 		false,
 	)
 	tracker.Load()
@@ -758,6 +766,7 @@ func writeSyntheticViewsFile() error {
 					Confidence:                  95,
 					PityFactor:                  5,
 					MinimumFailure:              3,
+					PassRateRequiredNewTests:    90,
 					IncludeMultiReleaseAnalysis: true,
 				},
 				PrimeCache:         crview.PrimeCache{Enabled: true},

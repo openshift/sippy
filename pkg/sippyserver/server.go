@@ -1032,7 +1032,6 @@ func (s *Server) getComponentReportFromRequest(req *http.Request) (componentrepo
 		s.crDataProvider,
 		s.db,
 		options,
-		s.config.ComponentReadinessConfig.VariantJunitTableOverrides,
 		baseURL,
 	)
 	if len(errs) > 0 {

@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/bigquery"
@@ -14,14 +15,15 @@ import (
 
 	apiPkg "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	apiCache "github.com/openshift/sippy/pkg/apis/cache"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
+	"github.com/openshift/sippy/pkg/util"
 	"github.com/openshift/sippy/pkg/util/param"
 	"github.com/openshift/sippy/pkg/util/sets"
 )
@@ -31,11 +33,12 @@ var _ dataprovider.DataProvider = &BigQueryProvider{}
 // BigQueryProvider implements dataprovider.DataProvider using Google BigQuery
 // as the backing data store, wrapping the existing query generators.
 type BigQueryProvider struct {
-	client *bqcachedclient.Client
+	client                     *bqcachedclient.Client
+	variantJunitTableOverrides []configv1.VariantJunitTableOverride
 }
 
-func NewBigQueryProvider(client *bqcachedclient.Client) *BigQueryProvider {
-	return &BigQueryProvider{client: client}
+func NewBigQueryProvider(client *bqcachedclient.Client, overrides []configv1.VariantJunitTableOverride) *BigQueryProvider {
+	return &BigQueryProvider{client: client, variantJunitTableOverrides: overrides}
 }
 
 // Client returns the underlying BigQuery client for callers that still need direct access
@@ -53,7 +56,7 @@ func (p *BigQueryProvider) Cache() apiCache.Cache {
 func (p *BigQueryProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants) (map[string]crstatus.TestStatus, []error) {
 
-	generator := query.NewBaseQueryGenerator(p.client, reqOptions, allJobVariants)
+	generator := NewBaseQueryGenerator(p.client, reqOptions, allJobVariants)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.ReportTestStatus](
 		ctx, p.client.Cache, reqOptions.CacheOption,
 		apiPkg.NewCacheSpec(generator, "BaseTestStatus~", &reqOptions.BaseRelease.End),
@@ -67,10 +70,94 @@ func (p *BigQueryProvider) QueryBaseTestStatus(ctx context.Context, reqOptions r
 func (p *BigQueryProvider) QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
-	start, end time.Time,
-	dataSource string) (map[string]crstatus.TestStatus, []error) {
+	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
 
-	generator := query.NewSampleQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end, dataSource)
+	fLog := log.WithField("func", "QuerySampleTestStatus")
+
+	// Filter out overridden variants from the default query
+	filteredVariants, skipDefault := copyIncludeVariantsAndRemoveOverrides(p.variantJunitTableOverrides, -1, includeVariants)
+
+	type result struct {
+		status map[string]crstatus.TestStatus
+		errs   []error
+	}
+	resultCh := make(chan result)
+	var wg sync.WaitGroup
+
+	// Run default query (unless all variants were overridden)
+	if !skipDefault {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				fLog.Infof("running default sample query with includeVariants: %+v", filteredVariants)
+				s, e := p.querySampleTestStatusForTable(ctx, reqOptions, allJobVariants, filteredVariants, start, end, DefaultJunitTable)
+				resultCh <- result{s, e}
+			}
+		}()
+	}
+
+	// Run override queries for applicable variants
+	for i, or := range p.variantJunitTableOverrides {
+		if !containsOverriddenVariant(includeVariants, or.VariantName, or.VariantValue) {
+			continue
+		}
+		index, override := i, or
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				overrideVariants, skip := copyIncludeVariantsAndRemoveOverrides(p.variantJunitTableOverrides, index, includeVariants)
+				if skip {
+					fLog.Infof("skipping override sample query as all values for a variant were overridden")
+					return
+				}
+				overrideEnd := end
+				overrideStart, err := util.ParseCRReleaseTime([]v1.Release{}, "", override.RelativeStart,
+					true, &overrideEnd, reqOptions.CacheOption.CRTimeRoundingFactor)
+				if err != nil {
+					resultCh <- result{nil, []error{err}}
+					return
+				}
+				fLog.Infof("running override sample query for %+v with includeVariants: %+v", override, overrideVariants)
+				s, e := p.querySampleTestStatusForTable(ctx, reqOptions, allJobVariants, overrideVariants, overrideStart, overrideEnd, override.TableName)
+				resultCh <- result{s, e}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	merged := make(map[string]crstatus.TestStatus)
+	var allErrs []error
+	for r := range resultCh {
+		allErrs = append(allErrs, r.errs...)
+		for k, v := range r.status {
+			merged[k] = v
+		}
+	}
+	if len(allErrs) > 0 {
+		return nil, allErrs
+	}
+	return merged, nil
+}
+
+func (p *BigQueryProvider) querySampleTestStatusForTable(ctx context.Context, reqOptions reqopts.RequestOptions,
+	allJobVariants crtest.JobVariants,
+	includeVariants map[string][]string,
+	start, end time.Time,
+	junitTable string) (map[string]crstatus.TestStatus, []error) {
+
+	generator := NewSampleQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end, junitTable)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.ReportTestStatus](
 		ctx, p.client.Cache, reqOptions.CacheOption,
 		apiPkg.NewCacheSpec(generator, "SampleTestStatus~", &reqOptions.SampleRelease.End),
@@ -86,7 +173,7 @@ func (p *BigQueryProvider) QuerySampleTestStatus(ctx context.Context, reqOptions
 func (p *BigQueryProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants) (map[string][]crstatus.TestJobRunRows, []error) {
 
-	generator := query.NewBaseTestDetailsQueryGenerator(
+	generator := NewBaseTestDetailsQueryGenerator(
 		log.WithField("func", "QueryBaseJobRunTestStatus"),
 		p.client, reqOptions, allJobVariants,
 		reqOptions.BaseRelease.Name, reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End,
@@ -105,11 +192,91 @@ func (p *BigQueryProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOpt
 func (p *BigQueryProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
+	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
+
+	fLog := log.WithField("func", "QuerySampleJobRunTestStatus")
+
+	filteredVariants, skipDefault := copyIncludeVariantsAndRemoveOverrides(p.variantJunitTableOverrides, -1, includeVariants)
+
+	type result struct {
+		status map[string][]crstatus.TestJobRunRows
+		errs   []error
+	}
+	resultCh := make(chan result)
+	var wg sync.WaitGroup
+
+	if !skipDefault {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				fLog.Infof("running default sample job run query with includeVariants: %+v", filteredVariants)
+				s, e := p.querySampleJobRunTestStatusForTable(ctx, reqOptions, allJobVariants, filteredVariants, start, end, DefaultJunitTable)
+				resultCh <- result{s, e}
+			}
+		}()
+	}
+
+	for i, or := range p.variantJunitTableOverrides {
+		if !containsOverriddenVariant(includeVariants, or.VariantName, or.VariantValue) {
+			continue
+		}
+		index, override := i, or
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				overrideVariants, skip := copyIncludeVariantsAndRemoveOverrides(p.variantJunitTableOverrides, index, includeVariants)
+				if skip {
+					fLog.Infof("skipping override sample job run query as all values for a variant were overridden")
+					return
+				}
+				overrideEnd := end
+				overrideStart, err := util.ParseCRReleaseTime([]v1.Release{}, "", override.RelativeStart,
+					true, &overrideEnd, reqOptions.CacheOption.CRTimeRoundingFactor)
+				if err != nil {
+					resultCh <- result{nil, []error{err}}
+					return
+				}
+				fLog.Infof("running override sample job run query for %+v with includeVariants: %+v", override, overrideVariants)
+				s, e := p.querySampleJobRunTestStatusForTable(ctx, reqOptions, allJobVariants, overrideVariants, overrideStart, overrideEnd, override.TableName)
+				resultCh <- result{s, e}
+			}
+		}()
+	}
+
+	go func() {
+		wg.Wait()
+		close(resultCh)
+	}()
+
+	merged := make(map[string][]crstatus.TestJobRunRows)
+	var allErrs []error
+	for r := range resultCh {
+		allErrs = append(allErrs, r.errs...)
+		for k, v := range r.status {
+			merged[k] = v
+		}
+	}
+	if len(allErrs) > 0 {
+		return nil, allErrs
+	}
+	return merged, nil
+}
+
+func (p *BigQueryProvider) querySampleJobRunTestStatusForTable(ctx context.Context, reqOptions reqopts.RequestOptions,
+	allJobVariants crtest.JobVariants,
+	includeVariants map[string][]string,
 	start, end time.Time,
-	dataSource string) (map[string][]crstatus.TestJobRunRows, []error) {
+	junitTable string) (map[string][]crstatus.TestJobRunRows, []error) {
 
-	generator := query.NewSampleTestDetailsQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end, dataSource)
-
+	generator := NewSampleTestDetailsQueryGenerator(p.client, reqOptions, allJobVariants, includeVariants, start, end, junitTable)
 	result, errs := apiPkg.GetDataFromCacheOrGenerate[crstatus.TestJobRunStatuses](
 		ctx, p.client.Cache, reqOptions.CacheOption,
 		apiPkg.NewCacheSpec(generator, "SampleJobRunTestStatus~", &end),
@@ -175,7 +342,7 @@ func (p *BigQueryProvider) QueryJobVariants(ctx context.Context) (crtest.JobVari
 }
 
 func (p *BigQueryProvider) QueryReleaseDates(ctx context.Context, reqOptions reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error) {
-	return query.GetReleaseDatesFromBigQuery(ctx, p.client, reqOptions)
+	return GetReleaseDatesFromBigQuery(ctx, p.client, reqOptions)
 }
 
 func (p *BigQueryProvider) QueryReleases(ctx context.Context) ([]v1.Release, error) {
@@ -402,11 +569,57 @@ func getSingleColumnResultToSlice(ctx context.Context, q *bigquery.Query) ([]str
 	return names, nil
 }
 
-func sortedKeys[V any](m map[string]V) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
+// containsOverriddenVariant checks whether the given variant key/value pair
+// is present in the includeVariants map (i.e. the request actually includes
+// data for this overridden variant).
+func containsOverriddenVariant(includeVariants map[string][]string, key, value string) bool {
+	for k, v := range includeVariants {
+		if k != key {
+			continue
+		}
+		for _, vv := range v {
+			if vv == value {
+				return true
+			}
+		}
 	}
-	sort.Strings(keys)
-	return keys
+	return false
+}
+
+// copyIncludeVariantsAndRemoveOverrides copies includeVariants and removes
+// overridden variant values. For the default query (currOverride=-1), all
+// overridden values are removed. For an override query at index i, only
+// other overrides' values are removed. Returns true if the query should be
+// skipped because all values for a variant were removed.
+func copyIncludeVariantsAndRemoveOverrides(
+	overrides []configv1.VariantJunitTableOverride,
+	currOverride int,
+	includeVariants map[string][]string) (map[string][]string, bool) {
+
+	cp := make(map[string][]string)
+	for key, values := range includeVariants {
+		var newSlice []string
+		for _, v := range values {
+			if !shouldSkipVariant(overrides, currOverride, key, v) {
+				newSlice = append(newSlice, v)
+			}
+		}
+		if len(newSlice) == 0 {
+			return cp, true
+		}
+		cp[key] = newSlice
+	}
+	return cp, false
+}
+
+func shouldSkipVariant(overrides []configv1.VariantJunitTableOverride, currOverride int, key, value string) bool {
+	for i, override := range overrides {
+		if i == currOverride {
+			return false
+		}
+		if override.VariantName == key && override.VariantValue == value {
+			return true
+		}
+	}
+	return false
 }

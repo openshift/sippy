@@ -18,12 +18,10 @@ type TestStatusQuerier interface {
 		allJobVariants crtest.JobVariants) (map[string]crstatus.TestStatus, []error)
 
 	// QuerySampleTestStatus returns test status for the sample release.
-	// includeVariants may differ from reqOptions for junit table overrides.
 	QuerySampleTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 		allJobVariants crtest.JobVariants,
 		includeVariants map[string][]string,
-		start, end time.Time,
-		dataSource string) (map[string]crstatus.TestStatus, []error)
+		start, end time.Time) (map[string]crstatus.TestStatus, []error)
 }
 
 // TestDetailsQuerier fetches per-job-run test breakdowns used for test details reports.
@@ -34,8 +32,7 @@ type TestDetailsQuerier interface {
 	QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 		allJobVariants crtest.JobVariants,
 		includeVariants map[string][]string,
-		start, end time.Time,
-		dataSource string) (map[string][]crstatus.TestJobRunRows, []error)
+		start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error)
 }
 
 // MetadataQuerier fetches reference data used to configure and parameterize reports.

@@ -19,7 +19,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	bqclient "github.com/openshift/sippy/pkg/bigquery"
@@ -66,8 +65,7 @@ type JiraAutomator struct {
 	includeComponents          sets.String
 	jiraAccount                string
 	dryRun                     bool
-	variantToJiraComponents    map[Variant]JiraComponent
-	variantJunitTableOverrides []configv1.VariantJunitTableOverride
+	variantToJiraComponents map[Variant]JiraComponent
 }
 
 func NewJiraAutomator(
@@ -83,23 +81,21 @@ func NewJiraAutomator(
 	columnThresholds map[Variant]int,
 	dryRun bool,
 	variantToJiraComponents map[Variant]JiraComponent,
-	variantJunitTableOverrides []configv1.VariantJunitTableOverride,
 ) (JiraAutomator, error) {
 
 	j := JiraAutomator{
-		jiraClient:                 jiraClient,
-		bqClient:                   bqClient,
-		dataProvider:               provider,
-		dbc:                        dbc,
-		cacheOptions:               cacheOptions,
-		releases:                   releases,
-		sippyURL:                   sippyURL,
-		columnThresholds:           columnThresholds,
-		includeComponents:          includeComponents,
-		jiraAccount:                jiraAccount,
-		dryRun:                     dryRun,
-		variantToJiraComponents:    variantToJiraComponents,
-		variantJunitTableOverrides: variantJunitTableOverrides,
+		jiraClient:              jiraClient,
+		bqClient:                bqClient,
+		dataProvider:            provider,
+		dbc:                     dbc,
+		cacheOptions:            cacheOptions,
+		releases:                releases,
+		sippyURL:                sippyURL,
+		columnThresholds:        columnThresholds,
+		includeComponents:       includeComponents,
+		jiraAccount:             jiraAccount,
+		dryRun:                  dryRun,
+		variantToJiraComponents: variantToJiraComponents,
 	}
 	if bqClient == nil || bqClient.BQ == nil {
 		return j, fmt.Errorf("we don't have a bigquery client for jira integrator")
@@ -152,7 +148,7 @@ func (j JiraAutomator) getComponentReportForView(view crview.View) (crtype.Compo
 	}
 
 	// Passing empty gcs bucket and prow URL, they are not needed outside test details reports
-	report, errs := componentreadiness.GetComponentReport(context.Background(), j.dataProvider, j.dbc, reportOpts, j.variantJunitTableOverrides, "")
+	report, errs := componentreadiness.GetComponentReport(context.Background(), j.dataProvider, j.dbc, reportOpts, "")
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {

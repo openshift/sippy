@@ -170,7 +170,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 				log.WithError(err).Warn("error reading config file")
 			}
 
-			provider := bqprovider.NewBigQueryProvider(bigQueryClient)
+			provider := bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
 			allVariants, errs := componentreadiness.GetJobVariants(ctx, provider)
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get job variants")
@@ -191,8 +191,7 @@ func NewAutomateJiraCommand() *cobra.Command {
 				jiraClient, bigQueryClient, provider, dbc, cacheOpts,
 				views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount,
 				f.IncludeComponents, f.ColumnThresholds,
-				f.DryRun, variantToJiraComponents,
-				config.ComponentReadinessConfig.VariantJunitTableOverrides)
+				f.DryRun, variantToJiraComponents)
 			if err != nil {
 				panic(err)
 			}

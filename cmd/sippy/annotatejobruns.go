@@ -180,7 +180,7 @@ Example run: sippy annotate-job-runs  --google-service-account-credential-file=f
 				return errors.WithMessage(err, "couldn't get DB client")
 			}
 
-			allVariants, errs := componentreadiness.GetJobVariants(ctx, bqprovider.NewBigQueryProvider(bigQueryClient))
+			allVariants, errs := componentreadiness.GetJobVariants(ctx, bqprovider.NewBigQueryProvider(bigQueryClient, nil))
 			if len(errs) > 0 {
 				return fmt.Errorf("failed to get job variants: %v", errs)
 			}

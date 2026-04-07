@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
@@ -82,6 +83,92 @@ func TestTestDetails(t *testing.T) {
 	for _, analysis := range details.Analyses {
 		total := analysis.SampleStats.SuccessCount + analysis.SampleStats.FailureCount + analysis.SampleStats.FlakeCount
 		assert.Greater(t, total, 0, "sample stats should have run data")
+	}
+}
+
+func TestTestDetailsWithFallback(t *testing.T) {
+	viewName := fmt.Sprintf("%s-main", util.Release)
+
+	// Request test details for test-fallback-improves with testBasisRelease=4.20.
+	// This exercises the releasefallback middleware's QueryTestDetails path which
+	// queries base job run status for the override release.
+	params := url.Values{}
+	params.Set("view", viewName)
+	params.Set("testId", "test-fallback-improves")
+	params.Set("component", "comp-FallbackImproves")
+	params.Set("capability", "cap1")
+	params.Set("testBasisRelease", "4.20")
+	// All DBGroupBy variants must be specified for test details
+	params.Set("Architecture", "amd64")
+	params.Set("Platform", "aws")
+	params.Set("Network", "ovn")
+	params.Set("Topology", "ha")
+	params.Set("Installer", "ipi")
+	params.Set("FeatureSet", "default")
+	params.Set("Suite", "parallel")
+	params.Set("Upgrade", "none")
+	params.Set("LayeredProduct", "none")
+
+	var details testdetails.Report
+	err := util.SippyGet(fmt.Sprintf("/api/component_readiness/test_details?%s", params.Encode()), &details)
+	require.NoError(t, err, "error getting fallback test details")
+
+	assert.Equal(t, "test-fallback-improves", details.TestID)
+	assert.NotEmpty(t, details.Analyses, "details should have analyses")
+
+	// The fallback path should produce analyses with sample data
+	for _, analysis := range details.Analyses {
+		sampleTotal := analysis.SampleStats.SuccessCount + analysis.SampleStats.FailureCount + analysis.SampleStats.FlakeCount
+		assert.Greater(t, sampleTotal, 0, "sample stats should have run data")
+	}
+}
+
+func TestTestDetailsForNewTestAPI(t *testing.T) {
+	viewName := fmt.Sprintf("%s-main", util.Release)
+
+	// Request test details for test-new-test-pass-rate-fail which has no base data.
+	// This exercises the GenerateDetailsReportForTest path where BaseStats is nil.
+	params := url.Values{}
+	params.Set("view", viewName)
+	params.Set("testId", "test-new-test-pass-rate-fail")
+	params.Set("component", "comp-NewTestPassRate")
+	params.Set("capability", "cap1")
+	params.Set("Architecture", "amd64")
+	params.Set("Platform", "aws")
+	params.Set("Network", "ovn")
+	params.Set("Topology", "ha")
+	params.Set("Installer", "ipi")
+	params.Set("FeatureSet", "default")
+	params.Set("Suite", "parallel")
+	params.Set("Upgrade", "none")
+	params.Set("LayeredProduct", "none")
+
+	var details testdetails.Report
+	err := util.SippyGet(fmt.Sprintf("/api/component_readiness/test_details?%s", params.Encode()), &details)
+	require.NoError(t, err, "error getting new test details")
+
+	assert.Equal(t, "test-new-test-pass-rate-fail", details.TestID)
+	assert.NotEmpty(t, details.Analyses, "details should have analyses")
+
+	for _, analysis := range details.Analyses {
+		sampleTotal := analysis.SampleStats.SuccessCount + analysis.SampleStats.FailureCount + analysis.SampleStats.FlakeCount
+		assert.Greater(t, sampleTotal, 0, "sample stats should have run data")
+	}
+}
+
+func TestReportWithIncludeVariantsAPI(t *testing.T) {
+	viewName := fmt.Sprintf("%s-main", util.Release)
+
+	var report componentreport.ComponentReport
+	err := util.SippyGet(fmt.Sprintf("/api/component_readiness?view=%s&includeVariant=Platform:aws", viewName), &report)
+	require.NoError(t, err, "error getting filtered report")
+	require.NotEmpty(t, report.Rows, "filtered report should have rows")
+
+	for _, row := range report.Rows {
+		for _, col := range row.Columns {
+			assert.Equal(t, "aws", col.ColumnIdentification.Variants["Platform"],
+				"all columns should be aws when filtering by Platform:aws")
+		}
 	}
 }
 
@@ -219,6 +306,38 @@ func TestColumnGroupByAndDBGroupBy(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestComponentReadinessWithExplicitParams(t *testing.T) {
+	// Test using explicit date/release params instead of a view.
+	// This exercises parseDateRange and parseAdvancedOptions.
+	now := time.Now().UTC().Truncate(time.Hour)
+	params := url.Values{}
+	params.Set("baseRelease", "4.21")
+	params.Set("sampleRelease", "4.22")
+	params.Set("baseStartTime", now.Add(-60*24*time.Hour).Format(time.RFC3339))
+	params.Set("baseEndTime", now.Add(-30*24*time.Hour).Format(time.RFC3339))
+	params.Set("sampleStartTime", now.Add(-3*24*time.Hour).Format(time.RFC3339))
+	params.Set("sampleEndTime", now.Format(time.RFC3339))
+	params.Set("confidence", "95")
+	params.Set("minFail", "3")
+	params.Set("pity", "5")
+	params.Set("passRateNewTests", "90")
+	params.Set("columnGroupBy", "Network,Platform,Topology")
+	params.Set("dbGroupBy", "Architecture,FeatureSet,Installer,Network,Platform,Suite,Topology,Upgrade,LayeredProduct")
+
+	var report componentreport.ComponentReport
+	err := util.SippyGet(fmt.Sprintf("/api/component_readiness?%s", params.Encode()), &report)
+	require.NoError(t, err, "explicit params request should succeed")
+	assert.NotEmpty(t, report.Rows, "report with explicit params should have rows")
+
+	for _, row := range report.Rows {
+		for _, col := range row.Columns {
+			assert.Contains(t, col.ColumnIdentification.Variants, "Platform")
+			assert.Contains(t, col.ColumnIdentification.Variants, "Network")
+			assert.Contains(t, col.ColumnIdentification.Variants, "Topology")
+		}
+	}
 }
 
 func TestVariantCrossCompare(t *testing.T) {

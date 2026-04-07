@@ -450,8 +450,7 @@ func (p *PostgresProvider) QueryBaseTestStatus(_ context.Context, reqOptions req
 func (p *PostgresProvider) QuerySampleTestStatus(_ context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
-	start, end time.Time,
-	_ string) (map[string]crstatus.TestStatus, []error) {
+	start, end time.Time) (map[string]crstatus.TestStatus, []error) {
 
 	dbGroupBy := make(map[string]bool, reqOptions.VariantOption.DBGroupBy.Len())
 	for _, k := range reqOptions.VariantOption.DBGroupBy.List() {
@@ -648,8 +647,7 @@ func (p *PostgresProvider) QueryBaseJobRunTestStatus(_ context.Context, reqOptio
 func (p *PostgresProvider) QuerySampleJobRunTestStatus(_ context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
-	start, end time.Time,
-	_ string) (map[string][]crstatus.TestJobRunRows, []error) {
+	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
 	return p.queryTestDetails(
 		reqOptions.SampleRelease.Name,

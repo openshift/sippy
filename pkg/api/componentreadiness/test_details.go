@@ -21,15 +21,12 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/util"
 )
 
 func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release, baseURL string) (testdetails.Report, []error) {
-	generator := NewComponentReportGenerator(provider, reqOptions, dbc, nil, releases, baseURL)
+	generator := NewComponentReportGenerator(provider, reqOptions, dbc, releases, baseURL)
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateTestDetailsReport(ctx)
 	}
@@ -352,10 +349,9 @@ func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 	ctx context.Context,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
-	start, end time.Time,
-	junitTable string) (map[string][]crstatus.TestJobRunRows, []error) {
+	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
-	return c.dataProvider.QuerySampleJobRunTestStatus(ctx, c.ReqOptions, allJobVariants, includeVariants, start, end, junitTable)
+	return c.dataProvider.QuerySampleJobRunTestStatus(ctx, c.ReqOptions, allJobVariants, includeVariants, start, end)
 }
 
 func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crstatus.TestJobRunStatuses, []error) {
@@ -366,14 +362,10 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 		return crstatus.TestJobRunStatuses{}, errs
 	}
 	var baseStatus, sampleStatus map[string][]crstatus.TestJobRunRows
-	var baseErrs, baseOverrideErrs, sampleErrs []error
+	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 
-	// channels for status as we may collect status from multiple queries run in separate goroutines
-	statusCh := make(chan map[string][]crstatus.TestJobRunRows)
 	errCh := make(chan error)
-	statusDoneCh := make(chan struct{})     // To signal when all processing is done
-	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
 	c.middlewares.QueryTestDetails(ctx, &wg, errCh, allJobVariants)
 
@@ -387,7 +379,6 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 		default:
 			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.BaseRelease.Name, c.ReqOptions.BaseRelease.Start, c.ReqOptions.BaseRelease.End)
 		}
-
 	}()
 
 	wg.Add(1)
@@ -398,101 +389,30 @@ func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crs
 			logrus.Infof("Context canceled while fetching sample job run test status")
 			return
 		default:
-			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
-			if skipQuery {
-				fLog.Infof("skipping default status query as all values for a variant were overridden")
-				return
-			}
-			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
-			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
-				c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
-			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
-			statusCh <- status
-			for _, err := range errs {
-				errCh <- err
-			}
+			fLog.Infof("running sample status query with includeVariants: %+v", c.ReqOptions.VariantOption.IncludeVariants)
+			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.VariantOption.IncludeVariants,
+				c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
+			fLog.Infof("received %d test statuses and %d errors from sample query", len(status), len(errs))
+			sampleStatus = status
+			sampleErrs = errs
 		}
-
 	}()
-
-	// fork additional sample queries for the overrides
-	for i, or := range c.variantJunitTableOverrides {
-		if !utils.ContainsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
-			continue
-		}
-		// only do this additional query if the specified override variant is actually included in this request
-		wg.Add(1)
-		go func(i int, or configv1.VariantJunitTableOverride) {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.ReqOptions.VariantOption.IncludeVariants)
-				if skipQuery {
-					fLog.Infof("skipping override status query as all values for a variant were overridden")
-					return
-				}
-				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
-				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
-				end := c.ReqOptions.SampleRelease.End
-				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
-					true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
-					start, end, or.TableName)
-				fLog.Infof("received %d job run test statuses and %d errors from override query", len(status), len(errs))
-				statusCh <- status
-				for _, err := range errs {
-					errCh <- err
-				}
-			}
-
-		}(i, or)
-	}
 
 	go func() {
 		wg.Wait()
-		close(statusCh)
 		close(errCh)
 	}()
 
-	go func() {
+	var middlewareErrs []error
+	for err := range errCh {
+		middlewareErrs = append(middlewareErrs, err)
+	}
 
-		for status := range statusCh {
-			fLog.Infof("received %d job run test statuses over channel", len(status))
-			for k, v := range status {
-				if sampleStatus == nil {
-					fLog.Warnf("initializing sampleStatus map")
-					sampleStatus = make(map[string][]crstatus.TestJobRunRows)
-				}
-				if v2, ok := sampleStatus[k]; ok {
-					fLog.Warnf("sampleStatus already had key: %+v", k)
-					fLog.Warnf("sampleStatus new value: %+v", v)
-					fLog.Warnf("sampleStatus old value: %+v", v2)
-				}
-				sampleStatus[k] = v
-			}
-		}
-		close(statusDoneCh)
-	}()
-
-	go func() {
-		for err := range errCh {
-			sampleErrs = append(sampleErrs, err)
-		}
-		close(statusErrsDoneCh)
-	}()
-
-	<-statusDoneCh
-	<-statusErrsDoneCh
 	fLog.Infof("total test statuses: %d", len(sampleStatus))
-	if len(baseErrs) != 0 || len(baseOverrideErrs) != 0 {
+	if len(baseErrs) != 0 || len(sampleErrs) != 0 || len(middlewareErrs) != 0 {
 		errs = append(errs, baseErrs...)
-		errs = append(errs, baseOverrideErrs...)
+		errs = append(errs, sampleErrs...)
+		errs = append(errs, middlewareErrs...)
 	}
 
 	return crstatus.TestJobRunStatuses{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs

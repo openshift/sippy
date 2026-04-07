@@ -83,6 +83,22 @@ func Test_TriageAPI(t *testing.T) {
 		require.Error(t, err)
 	})
 
+	t.Run("create fails with non-existent regression ID", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		triage := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: testRegression1.ID},
+				{ID: 999999}, // non-existent
+			},
+		}
+
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+		require.Error(t, err, "should fail when a regression ID does not exist")
+	})
+
 	t.Run("create generates audit_log record", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 		triage1 := models.Triage{

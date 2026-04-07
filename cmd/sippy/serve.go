@@ -133,7 +133,7 @@ func NewServeCommand() *cobra.Command {
 						bigQueryClient = f.CacheFlags.DecorateBiqQueryClientWithPersistentCache(bigQueryClient)
 					}
 
-					crDataProvider = bqprovider.NewBigQueryProvider(bigQueryClient)
+					crDataProvider = bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
 
 					gcsClient, err = gcs.NewGCSClient(context.TODO(),
 						f.GoogleCloudFlags.ServiceAccountCredentialFile,
@@ -212,8 +212,7 @@ func NewServeCommand() *cobra.Command {
 					crDataProvider,
 					util.GetReportEnd(pinnedDateTime),
 					cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
-					views.ComponentReadiness,
-					config.ComponentReadinessConfig.VariantJunitTableOverrides)
+					views.ComponentReadiness)
 				if err != nil {
 					log.WithError(err).Error("error refreshing metrics")
 				}
@@ -233,8 +232,7 @@ func NewServeCommand() *cobra.Command {
 								crDataProvider,
 								util.GetReportEnd(pinnedDateTime),
 								cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
-								views.ComponentReadiness,
-								config.ComponentReadinessConfig.VariantJunitTableOverrides)
+								views.ComponentReadiness)
 							if err != nil {
 								log.WithError(err).Error("error refreshing metrics")
 							}

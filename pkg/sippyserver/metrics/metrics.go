@@ -15,8 +15,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
 
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
-
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -117,7 +115,7 @@ func getReleaseStatus(releases []v1.Release, release string) string {
 
 // presume in a historical context there won't be scraping of these metrics
 // pinning the time just to be consistent
-func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crProvider dataprovider.DataProvider, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crview.View, variantJunitTableOverrides []configv1.VariantJunitTableOverride) error {
+func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crProvider dataprovider.DataProvider, reportEnd time.Time, cacheOptions cache.RequestOptions, views []crview.View) error {
 	start := time.Now()
 	log.Info("beginning refresh metrics")
 
@@ -168,7 +166,7 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 	}
 
 	if crProvider != nil {
-		refreshComponentReadinessMetrics(ctx, crProvider, dbc, cacheOptions, views, releases, variantJunitTableOverrides)
+		refreshComponentReadinessMetrics(ctx, crProvider, dbc, cacheOptions, views, releases)
 	}
 
 	// BigQuery-only metrics
@@ -184,10 +182,10 @@ func RefreshMetricsDB(ctx context.Context, dbc *db.DB, bqc *bqclient.Client, crP
 }
 
 func refreshComponentReadinessMetrics(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB,
-	cacheOptions cache.RequestOptions, views []crview.View, releases []v1.Release, variantJunitTableOverrides []configv1.VariantJunitTableOverride) {
+	cacheOptions cache.RequestOptions, views []crview.View, releases []v1.Release) {
 	for _, view := range views {
 		if view.Metrics.Enabled {
-			err := updateComponentReadinessMetricsForView(ctx, provider, dbc, cacheOptions, view, releases, variantJunitTableOverrides)
+			err := updateComponentReadinessMetricsForView(ctx, provider, dbc, cacheOptions, view, releases)
 			if err != nil {
 				log.WithError(err).Error("error")
 				log.WithError(err).WithField("view", view.Name).Error("error refreshing metrics/regressions for view")
@@ -198,7 +196,7 @@ func refreshComponentReadinessMetrics(ctx context.Context, provider dataprovider
 }
 
 // updateComponentReadinessTrackingForView queries the report for the given view, and then updates metrics.
-func updateComponentReadinessMetricsForView(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, cacheOptions cache.RequestOptions, view crview.View, releases []v1.Release, overrides []configv1.VariantJunitTableOverride) error {
+func updateComponentReadinessMetricsForView(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, cacheOptions cache.RequestOptions, view crview.View, releases []v1.Release) error {
 
 	logger := log.WithField("view", view.Name)
 	logger.Info("generating report for view")
@@ -227,7 +225,7 @@ func updateComponentReadinessMetricsForView(ctx context.Context, provider datapr
 		CacheOption:    cacheOptions,
 	}
 
-	report, errs := componentreadiness.GetComponentReport(ctx, provider, dbc, reportOpts, overrides, "")
+	report, errs := componentreadiness.GetComponentReport(ctx, provider, dbc, reportOpts, "")
 	if len(errs) > 0 {
 		var strErrors []string
 		for _, err := range errs {
