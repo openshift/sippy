@@ -61,7 +61,7 @@ spec:
         - "Wait for a short time"
     resources:
       limits:
-        memory: 5Gi
+        memory: 8Gi
     terminationMessagePath: /dev/termination-log
     terminationMessagePolicy: File
     command:
@@ -141,6 +141,7 @@ ${KUBECTL_CMD} -n sippy-e2e expose pod postg1
 ${KUBECTL_CMD} -n sippy-e2e port-forward pod/postg1 ${SIPPY_PSQL_PORT}:5432 &
 
 # Random port for redis as well, between 19000 and 19500
+# Direct redis access is used for e2e tests to manipulate cache during testing.
 SIPPY_REDIS_PORT=$((RANDOM % 501 + 19000))
 export SIPPY_REDIS_PORT
 export REDIS_URL="redis://localhost:${SIPPY_REDIS_PORT}"
