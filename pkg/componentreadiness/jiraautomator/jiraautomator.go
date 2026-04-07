@@ -61,10 +61,10 @@ type JiraAutomator struct {
 	// columnThresholds defines a threshold for the number of red cells in a column.
 	// When the number of red cells of a column is over this threshold, a jira card will be created for the
 	// Variant (column) based jira component. No other jira cards will be created per component row.
-	columnThresholds           map[Variant]int
-	includeComponents          sets.String
-	jiraAccount                string
-	dryRun                     bool
+	columnThresholds        map[Variant]int
+	includeComponents       sets.String
+	jiraAccount             string
+	dryRun                  bool
 	variantToJiraComponents map[Variant]JiraComponent
 }
 

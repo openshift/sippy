@@ -12,11 +12,11 @@ import (
 	"os"
 	"os/signal"
 	"regexp"
-	"syscall"
 	sorting "sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"cloud.google.com/go/storage"
