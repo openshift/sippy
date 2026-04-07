@@ -1055,10 +1055,11 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 				cts.ProwJobURL = row[i].(string)
 			}
 		case col == "prowjob_start":
-			if dt, ok := row[i].(civil.DateTime); ok {
-				cts.StartTime = time.Date(dt.Date.Year, dt.Date.Month, dt.Date.Day, dt.Time.Hour, dt.Time.Minute, dt.Time.Second, dt.Time.Nanosecond, time.UTC)
-			} else if t, ok := row[i].(time.Time); ok {
-				cts.StartTime = t
+			switch v := row[i].(type) {
+			case civil.DateTime:
+				cts.StartTime = time.Date(v.Date.Year, v.Date.Month, v.Date.Day, v.Time.Hour, v.Time.Minute, v.Time.Second, v.Time.Nanosecond, time.UTC)
+			case time.Time:
+				cts.StartTime = v
 			}
 		case col == "test_id":
 			cts.TestKey.TestID = row[i].(string)

@@ -14,8 +14,8 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -159,10 +159,10 @@ func (p *PostgresProvider) QueryReleases(_ context.Context) ([]v1.Release, error
 
 	caps := map[v1.ReleaseCapability]bool{
 		v1.ComponentReadinessCap: true,
-		v1.FeatureGatesCap:      true,
-		v1.MetricsCap:           true,
-		v1.PayloadTagsCap:       true,
-		v1.SippyClassicCap:      true,
+		v1.FeatureGatesCap:       true,
+		v1.MetricsCap:            true,
+		v1.PayloadTagsCap:        true,
+		v1.SippyClassicCap:       true,
 	}
 
 	now := time.Now().UTC()
@@ -474,17 +474,17 @@ func (p *PostgresProvider) QuerySampleTestStatus(_ context.Context, reqOptions r
 // --- TestDetailsQuerier ---
 
 type testDetailRow struct {
-	TestID         string         `gorm:"column:test_id"`
-	TestName       string         `gorm:"column:test_name"`
-	ProwJobName    string         `gorm:"column:prowjob_name"`
-	ProwJobRunID   string         `gorm:"column:prowjob_run_id"`
-	ProwJobURL     string         `gorm:"column:prowjob_url"`
-	ProwJobStart   time.Time      `gorm:"column:prowjob_start"`
-	ProwJobID      uint           `gorm:"column:prow_job_id"`
-	Status         int            `gorm:"column:status"`
-	JiraComponent  string         `gorm:"column:jira_component"`
-	JiraComponentID *uint         `gorm:"column:jira_component_id"`
-	Capabilities   pq.StringArray `gorm:"column:capabilities;type:text[]"`
+	TestID          string         `gorm:"column:test_id"`
+	TestName        string         `gorm:"column:test_name"`
+	ProwJobName     string         `gorm:"column:prowjob_name"`
+	ProwJobRunID    string         `gorm:"column:prowjob_run_id"`
+	ProwJobURL      string         `gorm:"column:prowjob_url"`
+	ProwJobStart    time.Time      `gorm:"column:prowjob_start"`
+	ProwJobID       uint           `gorm:"column:prow_job_id"`
+	Status          int            `gorm:"column:status"`
+	JiraComponent   string         `gorm:"column:jira_component"`
+	JiraComponentID *uint          `gorm:"column:jira_component_id"`
+	Capabilities    pq.StringArray `gorm:"column:capabilities;type:text[]"`
 }
 
 const testDetailQuery = `

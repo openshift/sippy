@@ -29,7 +29,7 @@ func TestDataSync(t *testing.T) {
 
 	// Run sippy load with minimal scope: just prow loader, single release,
 	// last 2 hours of data only
-	cmd := exec.Command(repoRoot+"/sippy", "load",
+	cmd := exec.Command(repoRoot+"/sippy", "load", // #nosec G204
 		"--loader", "prow",
 		"--release", util.Release,
 		"--prow-load-since", "2h",

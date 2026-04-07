@@ -468,7 +468,6 @@ func (f *fallbackTestQueryReleasesGenerator) getTestFallbackRelease(ctx context.
 	return crstatus.ReportTestStatus{BaseStatus: baseStatus}, nil
 }
 
-
 func newFallbackReleases() FallbackReleases {
 	fb := FallbackReleases{
 		Releases: map[string]ReleaseTestMap{},

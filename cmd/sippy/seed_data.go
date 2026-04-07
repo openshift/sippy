@@ -392,13 +392,46 @@ func seedSyntheticData(dbc *db.DB) error {
 		return nil
 	}
 
-	// 1. Create test suite
 	if err := createTestSuite(dbc, "synthetic"); err != nil {
 		return errors.WithMessage(err, "failed to create test suite")
 	}
 	log.Info("Created test suite 'synthetic'")
 
-	// 2. Create ProwJobs for all releases
+	if err := seedProwJobs(dbc); err != nil {
+		return err
+	}
+
+	if err := seedTestsAndOwnerships(dbc); err != nil {
+		return err
+	}
+
+	totalRuns, totalResults, err := seedJobRunsAndResults(dbc)
+	if err != nil {
+		return err
+	}
+
+	if err := createLabelsAndSymptoms(dbc); err != nil {
+		return errors.WithMessage(err, "failed to create labels and symptoms")
+	}
+
+	if err := writeSyntheticViewsFile(); err != nil {
+		return errors.WithMessage(err, "failed to write views file")
+	}
+
+	log.Info("Refreshing materialized views...")
+	sippyserver.RefreshData(dbc, nil, false)
+
+	log.Info("Syncing regressions...")
+	if err := syncRegressions(dbc); err != nil {
+		log.WithError(err).Warn("failed to sync regressions")
+	}
+
+	log.Infof("Seeded synthetic data: %d ProwJobRuns, %d test results across %d releases",
+		totalRuns, totalResults, len(syntheticReleases))
+	return nil
+}
+
+func seedProwJobs(dbc *db.DB) error {
 	for _, release := range syntheticReleases {
 		for _, job := range syntheticJobs {
 			name := fmt.Sprintf(job.nameTemplate, release)
@@ -416,20 +449,22 @@ func seedSyntheticData(dbc *db.DB) error {
 		}
 	}
 	log.Infof("Created ProwJobs for %d releases x %d jobs", len(syntheticReleases), len(syntheticJobs))
+	return nil
+}
 
-	// 3. Create Tests and TestOwnerships
+type testInfo struct {
+	name         string
+	uniqueID     string
+	component    string
+	capabilities []string
+}
+
+func seedTestsAndOwnerships(dbc *db.DB) error {
 	var suite models.Suite
 	if err := dbc.DB.Where("name = ?", "synthetic").First(&suite).Error; err != nil {
 		return fmt.Errorf("failed to find suite: %w", err)
 	}
 
-	// Collect unique tests
-	type testInfo struct {
-		name         string
-		uniqueID     string
-		component    string
-		capabilities []string
-	}
 	seenTests := map[string]testInfo{}
 	for _, ts := range syntheticTests {
 		if _, ok := seenTests[ts.testName]; !ok {
@@ -443,14 +478,12 @@ func seedSyntheticData(dbc *db.DB) error {
 	}
 
 	for _, info := range seenTests {
-		// Create test
 		testModel := models.Test{Name: info.name}
 		var existingTest models.Test
 		if err := dbc.DB.Where("name = ?", info.name).FirstOrCreate(&existingTest, testModel).Error; err != nil {
 			return fmt.Errorf("failed to create Test %s: %w", info.name, err)
 		}
 
-		// Create test ownership
 		ownership := models.TestOwnership{
 			UniqueID:     info.uniqueID,
 			Name:         info.name,
@@ -466,18 +499,20 @@ func seedSyntheticData(dbc *db.DB) error {
 		}
 	}
 	log.Infof("Created %d tests with ownership records", len(seenTests))
+	return nil
+}
 
-	// 4. Create deterministic ProwJobRuns and test results
-	//
-	// Strategy: for each (job template, release), determine the max run count needed
-	// across all tests assigned to that job+release. Create that many shared runs.
-	// Then assign test results per test with exact counts.
-	type jobReleaseKey struct {
-		jobTemplate string
-		release     string
+type jobReleaseKey struct {
+	jobTemplate string
+	release     string
+}
+
+func seedJobRunsAndResults(dbc *db.DB) (int, int, error) {
+	var suite models.Suite
+	if err := dbc.DB.Where("name = ?", "synthetic").First(&suite).Error; err != nil {
+		return 0, 0, fmt.Errorf("failed to find suite: %w", err)
 	}
 
-	// Compute max runs needed per job+release
 	maxRuns := map[jobReleaseKey]int{}
 	for _, ts := range syntheticTests {
 		for jobTpl, releaseCounts := range ts.jobCounts {
@@ -490,17 +525,15 @@ func seedSyntheticData(dbc *db.DB) error {
 		}
 	}
 
-	// Load all tests by name for ID lookup
 	testIDsByName := map[string]uint{}
 	var allTests []models.Test
 	if err := dbc.DB.Find(&allTests).Error; err != nil {
-		return fmt.Errorf("failed to fetch tests: %w", err)
+		return 0, 0, fmt.Errorf("failed to fetch tests: %w", err)
 	}
 	for _, t := range allTests {
 		testIDsByName[t.Name] = t.ID
 	}
 
-	// Create runs and test results
 	totalRuns := 0
 	totalResults := 0
 	for jrKey, runCount := range maxRuns {
@@ -508,148 +541,132 @@ func seedSyntheticData(dbc *db.DB) error {
 			continue
 		}
 
-		// Look up the ProwJob
 		jobName := fmt.Sprintf(jrKey.jobTemplate, jrKey.release)
 		var prowJob models.ProwJob
 		if err := dbc.DB.Where("name = ?", jobName).First(&prowJob).Error; err != nil {
-			return fmt.Errorf("failed to find ProwJob %s: %w", jobName, err)
+			return 0, 0, fmt.Errorf("failed to find ProwJob %s: %w", jobName, err)
 		}
 
-		// Create runs spread across the release time window.
-		// Reserve last 2 runs as infra failures (no test results).
-		start, end := releaseTimeWindow(jrKey.release)
-		window := end.Sub(start)
-		interval := window / time.Duration(runCount)
-
-		runIDs := make([]uint, runCount)
-		for i := 0; i < runCount; i++ {
-			timestamp := start.Add(time.Duration(i) * interval)
-			run := models.ProwJobRun{
-				ProwJobID: prowJob.ID,
-				Cluster:   "build01",
-				Timestamp: timestamp,
-				Duration:  3 * time.Hour,
-			}
-			if err := dbc.DB.Create(&run).Error; err != nil {
-				return fmt.Errorf("failed to create ProwJobRun: %w", err)
-			}
-			runIDs[i] = run.ID
-			totalRuns++
+		runs, results, err := seedRunsForJob(dbc, &suite, prowJob, jrKey, runCount, testIDsByName)
+		if err != nil {
+			return 0, 0, err
 		}
-
-		// Runs that get test results (all except the last 2)
-		testableRuns := runCount
-		if testableRuns > 2 {
-			testableRuns = runCount - 2
-		}
-
-		// Track which runs have at least one test failure
-		runsWithFailure := map[uint]bool{}
-
-		// Assign test results to testable runs only
-		for _, ts := range syntheticTests {
-			releaseCounts, hasJob := ts.jobCounts[jrKey.jobTemplate]
-			if !hasJob {
-				continue
-			}
-			counts, hasRelease := releaseCounts[jrKey.release]
-			if !hasRelease || counts.total == 0 {
-				continue
-			}
-
-			testID, ok := testIDsByName[ts.testName]
-			if !ok {
-				return fmt.Errorf("test %q not found in DB", ts.testName)
-			}
-
-			for i := 0; i < counts.total && i < testableRuns; i++ {
-				var status int
-				switch {
-				case i < counts.success-counts.flake:
-					status = 1 // pass
-				case i < counts.success:
-					status = 13 // flake (counts as success too)
-				default:
-					status = 12 // failure
-					runsWithFailure[runIDs[i]] = true
-				}
-
-				result := models.ProwJobRunTest{
-					ProwJobRunID: runIDs[i],
-					TestID:       testID,
-					SuiteID:      &suite.ID,
-					Status:       status,
-					Duration:     5.0,
-					CreatedAt:    start.Add(time.Duration(i) * interval),
-				}
-				if err := dbc.DB.Create(&result).Error; err != nil {
-					return fmt.Errorf("failed to create ProwJobRunTest: %w", err)
-				}
-				totalResults++
-			}
-		}
-
-		// Set OverallResult on all runs
-		for i, runID := range runIDs {
-			var overallResult v1.JobOverallResult
-			var succeeded, failed bool
-
-			if i >= testableRuns {
-				// Last 2 runs: infra failure, no tests ran
-				overallResult = v1.JobInternalInfrastructureFailure
-				failed = true
-			} else if runsWithFailure[runID] {
-				overallResult = v1.JobTestFailure
-				failed = true
-			} else {
-				overallResult = v1.JobSucceeded
-				succeeded = true
-			}
-
-			if err := dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", runID).
-				Updates(map[string]interface{}{
-					"overall_result": overallResult,
-					"succeeded":      succeeded,
-					"failed":         failed,
-				}).Error; err != nil {
-				return fmt.Errorf("failed to update ProwJobRun result: %w", err)
-			}
-		}
-
-		// Update test_failures count
-		if err := dbc.DB.Exec(`
-			UPDATE prow_job_runs SET test_failures = COALESCE((
-				SELECT COUNT(*) FROM prow_job_run_tests
-				WHERE prow_job_run_id = prow_job_runs.id AND status = 12
-			), 0) WHERE prow_job_id = ?`, prowJob.ID).Error; err != nil {
-			log.WithError(err).Warn("failed to update test_failures count")
-		}
+		totalRuns += runs
+		totalResults += results
 
 		log.Debugf("Created %d runs for %s", runCount, jobName)
 	}
 
-	// Create labels and symptoms
-	if err := createLabelsAndSymptoms(dbc); err != nil {
-		return errors.WithMessage(err, "failed to create labels and symptoms")
+	return totalRuns, totalResults, nil
+}
+
+func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrKey jobReleaseKey, runCount int, testIDsByName map[string]uint) (int, int, error) {
+	start, end := releaseTimeWindow(jrKey.release)
+	window := end.Sub(start)
+	interval := window / time.Duration(runCount)
+
+	runIDs := make([]uint, runCount)
+	for i := range runCount {
+		timestamp := start.Add(time.Duration(i) * interval)
+		run := models.ProwJobRun{
+			ProwJobID: prowJob.ID,
+			Cluster:   "build01",
+			Timestamp: timestamp,
+			Duration:  3 * time.Hour,
+		}
+		if err := dbc.DB.Create(&run).Error; err != nil {
+			return 0, 0, fmt.Errorf("failed to create ProwJobRun: %w", err)
+		}
+		runIDs[i] = run.ID
 	}
 
-	// Generate views file with include_variants matching our seed data
-	if err := writeSyntheticViewsFile(); err != nil {
-		return errors.WithMessage(err, "failed to write views file")
+	// Runs that get test results (all except the last 2)
+	testableRuns := runCount
+	if testableRuns > 2 {
+		testableRuns = runCount - 2
 	}
 
-	log.Info("Refreshing materialized views...")
-	sippyserver.RefreshData(dbc, nil, false)
+	runsWithFailure := map[uint]bool{}
+	totalResults := 0
 
-	// Run regression tracker to populate test_regressions table
-	log.Info("Syncing regressions...")
-	if err := syncRegressions(dbc); err != nil {
-		log.WithError(err).Warn("failed to sync regressions")
+	for _, ts := range syntheticTests {
+		releaseCounts, hasJob := ts.jobCounts[jrKey.jobTemplate]
+		if !hasJob {
+			continue
+		}
+		counts, hasRelease := releaseCounts[jrKey.release]
+		if !hasRelease || counts.total == 0 {
+			continue
+		}
+
+		testID, ok := testIDsByName[ts.testName]
+		if !ok {
+			return 0, 0, fmt.Errorf("test %q not found in DB", ts.testName)
+		}
+
+		for i := 0; i < counts.total && i < testableRuns; i++ {
+			var status int
+			switch {
+			case i < counts.success-counts.flake:
+				status = 1 // pass
+			case i < counts.success:
+				status = 13 // flake (counts as success too)
+			default:
+				status = 12 // failure
+				runsWithFailure[runIDs[i]] = true
+			}
+
+			result := models.ProwJobRunTest{
+				ProwJobRunID: runIDs[i],
+				TestID:       testID,
+				SuiteID:      &suite.ID,
+				Status:       status,
+				Duration:     5.0,
+				CreatedAt:    start.Add(time.Duration(i) * interval),
+			}
+			if err := dbc.DB.Create(&result).Error; err != nil {
+				return 0, 0, fmt.Errorf("failed to create ProwJobRunTest: %w", err)
+			}
+			totalResults++
+		}
 	}
 
-	log.Infof("Seeded synthetic data: %d ProwJobRuns, %d test results across %d releases",
-		totalRuns, totalResults, len(syntheticReleases))
-	return nil
+	// Set OverallResult on all runs
+	for i, runID := range runIDs {
+		var overallResult v1.JobOverallResult
+		var succeeded, failed bool
+
+		if i >= testableRuns {
+			overallResult = v1.JobInternalInfrastructureFailure
+			failed = true
+		} else if runsWithFailure[runID] {
+			overallResult = v1.JobTestFailure
+			failed = true
+		} else {
+			overallResult = v1.JobSucceeded
+			succeeded = true
+		}
+
+		if err := dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", runID).
+			Updates(map[string]any{
+				"overall_result": overallResult,
+				"succeeded":      succeeded,
+				"failed":         failed,
+			}).Error; err != nil {
+			return 0, 0, fmt.Errorf("failed to update ProwJobRun result: %w", err)
+		}
+	}
+
+	// Update test_failures count
+	if err := dbc.DB.Exec(`
+		UPDATE prow_job_runs SET test_failures = COALESCE((
+			SELECT COUNT(*) FROM prow_job_run_tests
+			WHERE prow_job_run_id = prow_job_runs.id AND status = 12
+		), 0) WHERE prow_job_id = ?`, prowJob.ID).Error; err != nil {
+		log.WithError(err).Warn("failed to update test_failures count")
+	}
+
+	return runCount, totalResults, nil
 }
 
 func syncRegressions(dbc *db.DB) error {
@@ -753,7 +770,7 @@ func writeSyntheticViewsFile() error {
 		return fmt.Errorf("marshaling views: %w", err)
 	}
 
-	if err := os.WriteFile(syntheticViewsFile, data, 0644); err != nil {
+	if err := os.WriteFile(syntheticViewsFile, data, 0o600); err != nil {
 		return fmt.Errorf("writing %s: %w", syntheticViewsFile, err)
 	}
 
@@ -896,4 +913,3 @@ func createLabelsAndSymptoms(dbc *db.DB) error {
 
 	return nil
 }
-

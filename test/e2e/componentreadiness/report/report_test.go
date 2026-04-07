@@ -39,9 +39,9 @@ func setupProvider(t *testing.T) (*pgprovider.PostgresProvider, reqopts.RequestO
 			DBGroupBy:     sets.NewString("Architecture", "FeatureSet", "Installer", "Network", "Platform", "Suite", "Topology", "Upgrade", "LayeredProduct"),
 		},
 		AdvancedOption: reqopts.Advanced{
-			Confidence:                 95,
-			PityFactor:                 5,
-			MinimumFailure:             3,
+			Confidence:                  95,
+			PityFactor:                  5,
+			MinimumFailure:              3,
 			IncludeMultiReleaseAnalysis: true,
 		},
 		CacheOption: cache.RequestOptions{},
