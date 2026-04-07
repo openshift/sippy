@@ -22,7 +22,7 @@ echo "The sippy CI image: ${SIPPY_IMAGE}"
 KUBECTL_CMD="${KUBECTL_CMD:=oc}"
 echo "The kubectl command is: ${KUBECTL_CMD}"
 
-# Launch the sippy api server pod.
+# Launch the sippy api server pod with coverage instrumentation.
 cat << END | ${KUBECTL_CMD} apply -f -
 apiVersion: v1
 kind: Pod
@@ -54,7 +54,7 @@ spec:
     terminationMessagePath: /dev/termination-log
     terminationMessagePolicy: File
     command:
-    - /bin/sippy
+    - /bin/sippy-cover
     args:
     - serve
     - --listen
@@ -72,8 +72,18 @@ spec:
     - ocp
     - --views
     - ./config/e2e-views.yaml
+    env:
+    - name: GOCOVERDIR
+      value: /tmp/coverage
+    volumeMounts:
+    - mountPath: /tmp/coverage
+      name: coverage
   imagePullSecrets:
   - name: regcred
+  volumes:
+    - name: coverage
+      persistentVolumeClaim:
+        claimName: sippy-coverage
   dnsPolicy: ClusterFirst
   restartPolicy: Always
   schedulerName: default-scheduler
@@ -121,7 +131,62 @@ ${KUBECTL_CMD} -n sippy-e2e port-forward pod/redis1 ${SIPPY_REDIS_PORT}:6379 &
 
 ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
-${KUBECTL_CMD} -n sippy-e2e delete secret regcred
-
 # only 1 in parallel, some tests will clash if run at the same time
-gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1
+gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1 -coverprofile=${ARTIFACT_DIR}/e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
+TEST_EXIT=$?
+
+# Collect coverage data. Coverage counters are flushed when the server exits.
+# Pod deletion sends SIGTERM during graceful termination (terminationGracePeriodSeconds: 30),
+# so we just delete the pod directly — no need for a separate exec kill.
+echo "Stopping sippy-server to flush coverage data..."
+${KUBECTL_CMD} -n sippy-e2e delete pod sippy-server --wait=true --timeout=60s || true
+
+# Launch a minimal helper pod to access the coverage PVC.
+cat << END | ${KUBECTL_CMD} apply -f -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: coverage-helper
+  namespace: sippy-e2e
+spec:
+  containers:
+  - name: helper
+    image: ${SIPPY_IMAGE}
+    command: ["sleep", "300"]
+    volumeMounts:
+    - mountPath: /tmp/coverage
+      name: coverage
+      readOnly: true
+  imagePullSecrets:
+  - name: regcred
+  volumes:
+  - name: coverage
+    persistentVolumeClaim:
+      claimName: sippy-coverage
+  restartPolicy: Never
+END
+
+${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/coverage-helper --timeout=60s
+
+COVDIR=$(mktemp -d)
+${KUBECTL_CMD} -n sippy-e2e cp coverage-helper:/tmp/coverage "${COVDIR}" -c helper || true
+
+if find "${COVDIR}" -name 'covcounters.*' -print -quit 2>/dev/null | grep -q .; then
+    echo "Generating coverage report..."
+    go tool covdata percent -i="${COVDIR}"
+    go tool covdata textfmt -i="${COVDIR}" -o="${ARTIFACT_DIR}/e2e-coverage.out"
+    # Merge test binary coverage (from -coverprofile) into server binary coverage
+    if [ -f "${ARTIFACT_DIR}/e2e-test-coverage.out" ]; then
+        echo "Merging test binary coverage into server coverage..."
+        tail -n +2 "${ARTIFACT_DIR}/e2e-test-coverage.out" >> "${ARTIFACT_DIR}/e2e-coverage.out"
+    fi
+    go tool cover -html="${ARTIFACT_DIR}/e2e-coverage.out" -o="${ARTIFACT_DIR}/e2e-coverage.html"
+    echo "Coverage report written to ${ARTIFACT_DIR}/e2e-coverage.html"
+else
+    echo "WARNING: No coverage data found"
+fi
+rm -rf "${COVDIR}"
+
+${KUBECTL_CMD} -n sippy-e2e delete secret regcred || true
+
+exit ${TEST_EXIT}
