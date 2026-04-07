@@ -18,14 +18,22 @@ fi
 
 clean_up () {
     ARG=$?
-    echo "Killing sippy API child process: $CHILD_PID"
-	kill $CHILD_PID
-	echo "Tearing down container $PSQL_CONTAINER"
-	$DOCKER stop -i $PSQL_CONTAINER
-	$DOCKER rm -i $PSQL_CONTAINER
-	echo "Tearing down container $REDIS_CONTAINER"
-	$DOCKER stop -i $REDIS_CONTAINER
-	$DOCKER rm -i $REDIS_CONTAINER
+    echo "Stopping sippy API child process: $CHILD_PID"
+    kill $CHILD_PID 2>/dev/null && wait $CHILD_PID 2>/dev/null
+    # Generate coverage report from the server's coverage data
+    if [ -d "$COVDIR" ] && find "$COVDIR" -name 'covcounters.*' -print -quit | grep -q .; then
+        echo "Generating coverage report..."
+        go tool covdata percent -i="$COVDIR"
+        go tool covdata textfmt -i="$COVDIR" -o=e2e-coverage.out
+        echo "Coverage data written to e2e-coverage.out"
+        echo "View HTML report: go tool cover -html=e2e-coverage.out -o=e2e-coverage.html"
+    fi
+    echo "Tearing down container $PSQL_CONTAINER"
+    $DOCKER stop -i $PSQL_CONTAINER
+    $DOCKER rm -i $PSQL_CONTAINER
+    echo "Tearing down container $REDIS_CONTAINER"
+    $DOCKER stop -i $REDIS_CONTAINER
+    $DOCKER rm -i $REDIS_CONTAINER
     exit $ARG
 }
 trap clean_up EXIT
@@ -53,9 +61,15 @@ export SIPPY_E2E_DSN="postgresql://postgres:password@localhost:$PSQL_PORT/postgr
 export REDIS_URL="redis://localhost:$REDIS_PORT"
 export SIPPY_E2E_REPO_ROOT="$(pwd)"
 
+# Build with coverage instrumentation
+COVDIR="$(pwd)/e2e-coverage"
+rm -rf "$COVDIR"
+mkdir -p "$COVDIR"
+echo "Building sippy with coverage instrumentation..."
+go build -cover -coverpkg=./cmd/...,./pkg/... -mod vendor -o ./sippy ./cmd/sippy
+
 echo "Loading database..."
-go build -mod vendor ./cmd/sippy
-./sippy seed-data  \
+GOCOVERDIR="$COVDIR" ./sippy seed-data  \
   --init-database \
   --database-dsn="$SIPPY_E2E_DSN"
 
@@ -72,10 +86,7 @@ SERVE_ARGS="--listen :$SIPPY_API_PORT \
   --data-provider postgres \
   --views config/e2e-views.yaml"
 
-(
-./sippy serve $SERVE_ARGS > e2e.log 2>&1
-)&
-# store the child process for cleanup
+GOCOVERDIR="$COVDIR" ./sippy serve $SERVE_ARGS > e2e.log 2>&1 &
 CHILD_PID=$!
 
 # Give it time to start up, and fill the redis cache
