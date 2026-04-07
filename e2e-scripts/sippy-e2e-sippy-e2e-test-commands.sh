@@ -154,7 +154,7 @@ ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 ${KUBECTL_CMD} -n sippy-e2e delete secret regcred
 
 # only 1 in parallel, some tests will clash if run at the same time
-gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1
+gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1 -coverprofile=${ARTIFACT_DIR}/e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
 TEST_EXIT=$?
 
 # Collect coverage data. Coverage counters are flushed when the server exits, so we
@@ -197,6 +197,11 @@ if find "${COVDIR}" -name 'covcounters.*' -print -quit 2>/dev/null | grep -q .; 
     echo "Generating coverage report..."
     go tool covdata percent -i="${COVDIR}"
     go tool covdata textfmt -i="${COVDIR}" -o="${ARTIFACT_DIR}/e2e-coverage.out"
+    # Merge test binary coverage (from -coverprofile) into server binary coverage
+    if [ -f "${ARTIFACT_DIR}/e2e-test-coverage.out" ]; then
+        echo "Merging test binary coverage into server coverage..."
+        tail -n +2 "${ARTIFACT_DIR}/e2e-test-coverage.out" >> "${ARTIFACT_DIR}/e2e-coverage.out"
+    fi
     go tool cover -html="${ARTIFACT_DIR}/e2e-coverage.out" -o="${ARTIFACT_DIR}/e2e-coverage-summary.html"
     echo "Coverage report written to ${ARTIFACT_DIR}/e2e-coverage-summary.html"
 else
