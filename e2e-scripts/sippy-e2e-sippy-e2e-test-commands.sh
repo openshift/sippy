@@ -16,22 +16,11 @@ trap cleanup EXIT
 # When running locally, the user has to define SIPPY_IMAGE.
 echo "The sippy CI image: ${SIPPY_IMAGE}"
 
-# The GCS_CRED allows us to pull artifacts from GCS when importing prow jobs.
-# Redefine GCS_CRED to use your own.
-GCS_CRED="${GCS_CRED:=/var/run/sippy-bigquery-job-importer/gcs-sa}"
-echo "The GCS cred is: ${GCS_CRED}"
-
 # If you're using Openshift, we use oc, if you're using plain Kubernetes,
 # we use kubectl.
 #
 KUBECTL_CMD="${KUBECTL_CMD:=oc}"
 echo "The kubectl command is: ${KUBECTL_CMD}"
-
-# Get the gcs credentials out to the cluster-pool cluster.
-# These credentials are in vault and maintained by the TRT team (e.g. for updates and rotations).
-# See https://vault.ci.openshift.org/ui/vault/secrets/kv/show/selfservice/technical-release-team/sippy-ci-gcs-read-sa
-#
-${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred=$GCS_CRED -n sippy-e2e
 
 # Launch the sippy api server pod.
 cat << END | ${KUBECTL_CMD} apply -f -
@@ -74,8 +63,8 @@ spec:
     -  ":12112"
     - --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres
     - --redis-url=redis://redis.sippy-e2e.svc.cluster.local:6379
-    - --google-service-account-credential-file
-    - /tmp/secrets/gcs-cred
+    - --data-provider
+    - postgres
     - --log-level
     - debug
     - --enable-write-endpoints
@@ -83,19 +72,8 @@ spec:
     - ocp
     - --views
     - ./config/e2e-views.yaml
-    env:
-    - name: GCS_SA_JSON_PATH
-      value: /tmp/secrets/gcs-cred
-    volumeMounts:
-    - mountPath: /tmp/secrets
-      name: gcs-cred
-      readOnly: true
   imagePullSecrets:
   - name: regcred
-  volumes:
-    - name: gcs-cred
-      secret:
-        secretName: gcs-cred
   dnsPolicy: ClusterFirst
   restartPolicy: Always
   schedulerName: default-scheduler
@@ -134,7 +112,6 @@ ${KUBECTL_CMD} -n sippy-e2e expose pod postg1
 ${KUBECTL_CMD} -n sippy-e2e port-forward pod/postg1 ${SIPPY_PSQL_PORT}:5432 &
 
 # Random port for redis as well, between 19000 and 19500
-# Direct redis access is used for e2e tests to manipulate cache during testing.
 SIPPY_REDIS_PORT=$((RANDOM % 501 + 19000))
 export SIPPY_REDIS_PORT
 export REDIS_URL="redis://localhost:${SIPPY_REDIS_PORT}"
