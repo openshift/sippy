@@ -141,7 +141,6 @@ ${KUBECTL_CMD} -n sippy-e2e expose pod postg1
 ${KUBECTL_CMD} -n sippy-e2e port-forward pod/postg1 ${SIPPY_PSQL_PORT}:5432 &
 
 # Random port for redis as well, between 19000 and 19500
-# Direct redis access is used for e2e tests to manipulate cache during testing.
 SIPPY_REDIS_PORT=$((RANDOM % 501 + 19000))
 export SIPPY_REDIS_PORT
 export REDIS_URL="redis://localhost:${SIPPY_REDIS_PORT}"
@@ -199,6 +198,7 @@ if find "${COVDIR}" -name 'covcounters.*' -print -quit 2>/dev/null | grep -q .; 
     if [ -f "${ARTIFACT_DIR}/e2e-test-coverage.out" ]; then
         echo "Merging test binary coverage into server coverage..."
         tail -n +2 "${ARTIFACT_DIR}/e2e-test-coverage.out" >> "${ARTIFACT_DIR}/e2e-coverage.out"
+        rm -f "${ARTIFACT_DIR}/e2e-test-coverage.out"
     fi
     go tool cover -html="${ARTIFACT_DIR}/e2e-coverage.out" -o="${ARTIFACT_DIR}/e2e-coverage.html"
     echo "Coverage report written to ${ARTIFACT_DIR}/e2e-coverage.html"
