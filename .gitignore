@@ -7,3 +7,8 @@ report.sh
 .vscode/
 .idea/
 /sippy-ng/build/*
+.env
+*.log
+/e2e-coverage/
+/e2e-coverage.out
+/e2e-coverage.html

@@ -33,7 +33,7 @@ echo "The kubectl command is: ${KUBECTL_CMD}"
 #
 ${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred=$GCS_CRED -n sippy-e2e
 
-# Launch the sippy api server pod.
+# Launch the sippy api server pod with coverage instrumentation.
 cat << END | ${KUBECTL_CMD} apply -f -
 apiVersion: v1
 kind: Pod
@@ -65,7 +65,7 @@ spec:
     terminationMessagePath: /dev/termination-log
     terminationMessagePolicy: File
     command:
-    - /bin/sippy
+    - /bin/sippy-cover
     args:
     - serve
     - --listen
@@ -86,16 +86,23 @@ spec:
     env:
     - name: GCS_SA_JSON_PATH
       value: /tmp/secrets/gcs-cred
+    - name: GOCOVERDIR
+      value: /tmp/coverage
     volumeMounts:
     - mountPath: /tmp/secrets
       name: gcs-cred
       readOnly: true
+    - mountPath: /tmp/coverage
+      name: coverage
   imagePullSecrets:
   - name: regcred
   volumes:
     - name: gcs-cred
       secret:
         secretName: gcs-cred
+    - name: coverage
+      persistentVolumeClaim:
+        claimName: sippy-coverage
   dnsPolicy: ClusterFirst
   restartPolicy: Always
   schedulerName: default-scheduler
@@ -148,3 +155,28 @@ ${KUBECTL_CMD} -n sippy-e2e delete secret regcred
 
 # only 1 in parallel, some tests will clash if run at the same time
 gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1
+TEST_EXIT=$?
+
+# Collect coverage data from the server pod.
+# Send SIGTERM so the server shuts down gracefully and flushes coverage data.
+echo "Stopping sippy-server to flush coverage data..."
+${KUBECTL_CMD} -n sippy-e2e exec sippy-server -- kill -TERM 1 || true
+sleep 5
+
+# Copy coverage data from the pod
+echo "Copying coverage data from sippy-server pod..."
+COVDIR=$(mktemp -d)
+${KUBECTL_CMD} -n sippy-e2e cp sippy-server:/tmp/coverage "${COVDIR}" || true
+
+if find "${COVDIR}" -name 'covcounters.*' -print -quit 2>/dev/null | grep -q .; then
+    echo "Generating coverage report..."
+    go tool covdata percent -i="${COVDIR}"
+    go tool covdata textfmt -i="${COVDIR}" -o="${ARTIFACT_DIR}/e2e-coverage.out"
+    go tool cover -html="${ARTIFACT_DIR}/e2e-coverage.out" -o="${ARTIFACT_DIR}/e2e-coverage-summary.html"
+    echo "Coverage report written to ${ARTIFACT_DIR}/e2e-coverage-summary.html"
+else
+    echo "WARNING: No coverage data found"
+fi
+rm -rf "${COVDIR}"
+
+exit ${TEST_EXIT}

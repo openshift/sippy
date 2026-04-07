@@ -222,6 +222,21 @@ ${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred=$GCS_CRED -n 
 # Get the registry credentials for all build farm clusters out to the cluster-pool cluster.
 ${KUBECTL_CMD} -n sippy-e2e create secret generic regcred --from-file=.dockerconfigjson=${DOCKERCONFIGJSON} --type=kubernetes.io/dockerconfigjson
 
+# Create a PVC for coverage data shared between load job and server.
+cat << END | ${KUBECTL_CMD} apply -f -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: sippy-coverage
+  namespace: sippy-e2e
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 100Mi
+END
+
 # Make the "sippy loader" pod.
 cat << END | ${KUBECTL_CMD} apply -f -
 apiVersion: batch/v1
@@ -243,20 +258,27 @@ spec:
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy load --init-database --log-level=debug --release 4.20 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --redis-url=redis://redis.sippy-e2e.svc.cluster.local:6379 --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
+          - /bin/sippy-cover load --init-database --log-level=debug --release 4.20 --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres --redis-url=redis://redis.sippy-e2e.svc.cluster.local:6379 --mode=ocp --config ./config/e2e-openshift.yaml --google-service-account-credential-file /tmp/secrets/gcs-cred
         env:
         - name: GCS_SA_JSON_PATH
           value: /tmp/secrets/gcs-cred
+        - name: GOCOVERDIR
+          value: /tmp/coverage
         volumeMounts:
         - mountPath: /tmp/secrets
           name: gcs-cred
           readOnly: true
+        - mountPath: /tmp/coverage
+          name: coverage
       imagePullSecrets:
       - name: regcred
       volumes:
         - name: gcs-cred
           secret:
             secretName: gcs-cred
+        - name: coverage
+          persistentVolumeClaim:
+            claimName: sippy-coverage
       dnsPolicy: ClusterFirst
       restartPolicy: Never
       schedulerName: default-scheduler

@@ -10,7 +10,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/signal"
 	"regexp"
+	"syscall"
 	sorting "sort"
 	"strconv"
 	"strings"
@@ -2883,6 +2885,19 @@ func (s *Server) Serve() {
 	}
 
 	log.Infof("Serving reports on %s ", s.listenAddr)
+
+	// Handle graceful shutdown on SIGINT/SIGTERM so coverage data is flushed
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigCh
+		log.Infof("Received %s, shutting down server...", sig)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := s.httpServer.Shutdown(ctx); err != nil {
+			log.WithError(err).Error("Error during server shutdown")
+		}
+	}()
 
 	if err := s.httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		log.WithError(err).Error("Server exited")
