@@ -182,7 +182,7 @@ Example run: sippy annotate-job-runs  --google-service-account-credential-file=f
 
 			allVariants, errs := componentreadiness.GetJobVariants(ctx, bqprovider.NewBigQueryProvider(bigQueryClient))
 			if len(errs) > 0 {
-				return fmt.Errorf("failed to get job variants")
+				return fmt.Errorf("failed to get job variants: %v", errs)
 			}
 			if err = f.Validate(allVariants); err != nil {
 				return errors.WithMessage(err, "error validating options")

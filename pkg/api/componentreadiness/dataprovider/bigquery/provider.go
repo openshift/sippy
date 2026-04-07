@@ -237,7 +237,7 @@ func (p *BigQueryProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.
 		SELECT
 			jobs.prowjob_job_name AS job_name,
 			COUNT(DISTINCT jobs.prowjob_build_id) AS total_runs,
-			COUNTIF(jobs.prowjob_state = 'success') AS successful_runs
+			COUNT(DISTINCT IF(jobs.prowjob_state = 'success', jobs.prowjob_build_id, NULL)) AS successful_runs
 		FROM %s.jobs jobs
 		%s
 		WHERE jobs.prowjob_start >= DATETIME(@From)

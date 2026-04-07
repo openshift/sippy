@@ -781,14 +781,12 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 		case col == "flake_count":
 			cts.FlakeCount = int(row[i].(int64))
 		case col == "last_failure":
-			// ignore when we cant parse, its usually null
-			var err error
 			if row[i] != nil {
-				layout := "2006-01-02T15:04:05"
-				lftCivilDT := row[i].(civil.DateTime)
-				cts.LastFailure, err = time.Parse(layout, lftCivilDT.String())
-				if err != nil {
-					log.WithError(err).Error("error parsing last failure time from bigquery")
+				switch v := row[i].(type) {
+				case civil.DateTime:
+					cts.LastFailure = time.Date(v.Date.Year, v.Date.Month, v.Date.Day, v.Time.Hour, v.Time.Minute, v.Time.Second, v.Time.Nanosecond, time.UTC)
+				case time.Time:
+					cts.LastFailure = v
 				}
 			}
 		case col == "component":

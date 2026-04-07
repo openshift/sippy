@@ -187,6 +187,8 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 	}
 
+	crDataProvider := bqprovider.NewBigQueryProvider(bigQueryClient)
+
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
 		f.APIFlags.ListenAddr,
@@ -199,7 +201,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		gcsClient,
 		f.GoogleCloudFlags.StorageBucket,
 		bigQueryClient,
-		bqprovider.NewBigQueryProvider(bigQueryClient),
+		crDataProvider,
 		nil,
 		cacheClient,
 		f.ComponentReadinessFlags.CRTimeRoundingFactor,
@@ -209,8 +211,6 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		"", // No chat API in Component Readiness
 		jiraClient,
 	)
-
-	crDataProvider := bqprovider.NewBigQueryProvider(bigQueryClient)
 
 	if f.APIFlags.MetricsAddr != "" {
 		// Do an immediate metrics update

@@ -11,7 +11,7 @@ PSQL_PORT="23433"
 REDIS_CONTAINER="sippy-e2e-test-redis"
 REDIS_PORT="23479"
 
-if [[ -z "$GCS_SA_JSON_PATH" ]]; then
+if [ -z "$GCS_SA_JSON_PATH" ]; then
     echo "WARNING: GCS_SA_JSON_PATH not set, data sync test will be skipped" 1>&2
 fi
 
@@ -98,10 +98,10 @@ fi
 
 # Prime the component readiness cache so triage tests can find cached reports
 echo "Priming component readiness cache..."
-VIEWS=$(curl -s "http://localhost:$SIPPY_API_PORT/api/component_readiness/views")
+VIEWS=$(curl -sf "http://localhost:$SIPPY_API_PORT/api/component_readiness/views") || { echo "Failed to fetch views"; exit 1; }
 for VIEW in $(echo "$VIEWS" | jq -r '.[].name'); do
     echo "  Priming cache for view: $VIEW"
-    curl -s "http://localhost:$SIPPY_API_PORT/api/component_readiness?view=$VIEW" > /dev/null
+    curl -sf "http://localhost:$SIPPY_API_PORT/api/component_readiness?view=$VIEW" > /dev/null || { echo "Failed to prime cache for view: $VIEW"; exit 1; }
 done
 echo "Cache priming complete"
 

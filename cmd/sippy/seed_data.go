@@ -59,7 +59,7 @@ Creates deterministic Component Readiness data covering all CR statuses
 MissingBasis, BasisOnly, SignificantImprovement, BelowMinFailure) and
 fallback scenarios. Use with 'sippy serve --data-provider postgres'.
 
-The command can be re-run to refresh data.
+Drop and recreate the database to re-seed (e.g. docker compose down -v).
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if strings.Contains(f.DBFlags.DSN, "amazonaws.com") {
@@ -423,7 +423,7 @@ func seedSyntheticData(dbc *db.DB) error {
 
 	log.Info("Syncing regressions...")
 	if err := syncRegressions(dbc); err != nil {
-		log.WithError(err).Warn("failed to sync regressions")
+		return errors.WithMessage(err, "failed to sync regressions")
 	}
 
 	log.Infof("Seeded synthetic data: %d ProwJobRuns, %d test results across %d releases",
@@ -701,6 +701,7 @@ func syncRegressions(dbc *db.DB) error {
 		for _, err := range tracker.Errors() {
 			log.WithError(err).Warn("regression tracker error")
 		}
+		return fmt.Errorf("regression tracker encountered %d errors", len(tracker.Errors()))
 	}
 	return nil
 }
