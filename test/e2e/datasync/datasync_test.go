@@ -28,7 +28,22 @@ func TestDataSync(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, repoRoot+"/sippy", "load", // #nosec G204
+	// Prefer the coverage-instrumented binary if available
+	sippyBin := ""
+	for _, candidate := range []string{
+		repoRoot + "/sippy-cover",
+		"/bin/sippy-cover",
+		repoRoot + "/sippy",
+		"/bin/sippy",
+	} {
+		if _, err := os.Stat(candidate); err == nil {
+			sippyBin = candidate
+			break
+		}
+	}
+	require.NotEmpty(t, sippyBin, "could not find sippy binary")
+
+	cmd := exec.CommandContext(ctx, sippyBin, "load", // #nosec G204
 		"--loader", "prow",
 		"--release", util.Release,
 		"--prow-load-since", "2h",
@@ -41,6 +56,9 @@ func TestDataSync(t *testing.T) {
 	cmd.Dir = repoRoot
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	if coverDir := os.Getenv("GOCOVERDIR"); coverDir != "" {
+		cmd.Env = append(os.Environ(), "GOCOVERDIR="+coverDir)
+	}
 
 	err := cmd.Run()
 	require.NoError(t, err, "sippy load command should complete without error")
