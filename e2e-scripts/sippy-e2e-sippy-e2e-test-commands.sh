@@ -27,9 +27,13 @@ echo "The GCS cred is: ${GCS_CRED}"
 KUBECTL_CMD="${KUBECTL_CMD:=oc}"
 echo "The kubectl command is: ${KUBECTL_CMD}"
 
-# Make GCS credentials available to the test runner for the datasync test
-export GCS_SA_JSON_PATH="${GCS_CRED}"
-export SIPPY_E2E_REPO_ROOT="/go/src/sippy"
+# Get the gcs credentials out to the cluster-pool cluster.
+# These credentials are in vault and maintained by the TRT team (e.g. for updates and rotations).
+# See https://vault.ci.openshift.org/ui/vault/secrets/kv/show/selfservice/technical-release-team/sippy-ci-gcs-read-sa
+${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred="${GCS_CRED}" -n sippy-e2e
+
+# The datasync test runs sippy load as a k8s Job, so it needs these to create the pod.
+export SIPPY_E2E_SIPPY_IMAGE="${SIPPY_IMAGE}"
 
 # Launch the sippy api server pod with coverage instrumentation.
 cat << END | ${KUBECTL_CMD} apply -f -

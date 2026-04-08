@@ -238,9 +238,19 @@ spec:
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
         args:
-          - /bin/sippy seed-data --init-database --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres
+          - /bin/sippy-cover seed-data --init-database --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres
+        env:
+        - name: GOCOVERDIR
+          value: /tmp/coverage
+        volumeMounts:
+        - mountPath: /tmp/coverage
+          name: coverage
       imagePullSecrets:
       - name: regcred
+      volumes:
+      - name: coverage
+        persistentVolumeClaim:
+          claimName: sippy-coverage
       dnsPolicy: ClusterFirst
       restartPolicy: Never
       schedulerName: default-scheduler
