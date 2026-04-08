@@ -377,3 +377,84 @@ func TestVariantCrossCompare(t *testing.T) {
 		t.Logf("cross-compare (no compareVariant) report: %d rows", len(report.Rows))
 	})
 }
+
+func TestTriageAffectsReportStatus(t *testing.T) {
+	viewName := fmt.Sprintf("%s-main", util.Release)
+
+	// Get a report and find a regressed test
+	var report componentreport.ComponentReport
+	err := util.SippyGet(fmt.Sprintf("/api/component_readiness?view=%s", viewName), &report)
+	require.NoError(t, err)
+
+	var regressionID uint
+	var originalStatus crtest.Status
+	found := false
+	for _, row := range report.Rows {
+		for _, col := range row.Columns {
+			for _, rt := range col.RegressedTests {
+				if rt.ReportStatus == crtest.SignificantRegression || rt.ReportStatus == crtest.ExtremeRegression {
+					if rt.Regression != nil {
+						regressionID = rt.Regression.ID
+						originalStatus = rt.ReportStatus
+						found = true
+					}
+				}
+				if found {
+					break
+				}
+			}
+			if found {
+				break
+			}
+		}
+		if found {
+			break
+		}
+	}
+	require.True(t, found, "should find a regressed test with a regression ID")
+	t.Logf("found regression ID %d with status %d", regressionID, originalStatus)
+
+	// Create a triage for this regression
+	triage := models.Triage{
+		URL:  "https://issues.redhat.com/browse/OCPBUGS-99999",
+		Type: models.TriageTypeProduct,
+		Regressions: []models.TestRegression{
+			{ID: regressionID},
+		},
+	}
+	var triageResponse models.Triage
+	err = util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
+	require.NoError(t, err, "creating triage should succeed")
+	t.Logf("created triage ID %d", triageResponse.ID)
+
+	// Clean up triage when done
+	defer func() {
+		_ = util.SippyDelete(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponse.ID))
+	}()
+
+	// Re-fetch the report — PostAnalysis runs outside the cache, so triaged status should be reflected
+	var updatedReport componentreport.ComponentReport
+	err = util.SippyGet(fmt.Sprintf("/api/component_readiness?view=%s", viewName), &updatedReport)
+	require.NoError(t, err)
+
+	// Find the same regression and verify its status changed to triaged
+	foundTriaged := false
+	for _, row := range updatedReport.Rows {
+		for _, col := range row.Columns {
+			for _, rt := range col.RegressedTests {
+				if rt.Regression == nil || rt.Regression.ID != regressionID {
+					continue
+				}
+				expectedStatus := crtest.SignificantTriagedRegression
+				if originalStatus == crtest.ExtremeRegression {
+					expectedStatus = crtest.ExtremeTriagedRegression
+				}
+				assert.Equal(t, expectedStatus, rt.ReportStatus,
+					"regression should have triaged status after triage creation")
+				assert.NotEmpty(t, rt.Explanations, "triaged test should have explanations")
+				foundTriaged = true
+			}
+		}
+	}
+	assert.True(t, foundTriaged, "should find the triaged regression in the updated report")
+}
