@@ -228,32 +228,18 @@ export function TestAnalysis(props) {
               elevation={5}
               sx={{ height: '100%' }}
             >
-              {/* Top bar: Jira chip + variant filter */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  mb: 1,
-                }}
-              >
-                <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <div className="test-hero-topbar">
+                <div>
                   {test.jira_component && (
                     <Chip
+                      className="test-hero-jira-chip"
                       icon={<BugReport sx={{ fontSize: 14 }} />}
                       label={`Jira: ${test.jira_component}`}
                       size="small"
                       variant="outlined"
-                      sx={{
-                        borderColor: 'grey.700',
-                        color: 'grey.400',
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        height: 24,
-                      }}
                     />
                   )}
-                </Box>
+                </div>
                 <GridToolbarFilterMenu
                   linkOperatorDisabled={true}
                   standalone={true}
@@ -276,62 +262,30 @@ export function TestAnalysis(props) {
                     },
                   ]}
                 />
-              </Box>
+              </div>
 
-              {/* Test name */}
-              <Box sx={{ pt: 1, pb: 2 }}>
-                <Box
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 1,
-                  }}
-                >
+              <div className="test-hero-name-wrapper">
+                <div className="test-hero-name-row">
                   <Typography
+                    className="test-hero-name"
                     variant="h6"
                     component="h1"
-                    sx={{
-                      flex: 1,
-                      fontFamily:
-                        '"Roboto Mono", "SF Mono", "Fira Code", monospace',
-                      fontSize: '0.95rem',
-                      fontWeight: 400,
-                      lineHeight: 1.6,
-                      color: 'grey.100',
-                      wordBreak: 'break-word',
-                      userSelect: 'all',
-                      cursor: 'text',
-                      borderLeft: '3px solid',
-                      borderColor: 'primary.main',
-                      pl: 2,
-                    }}
                   >
                     {testName}
                   </Typography>
                   <Tooltip title="Copy test name">
                     <IconButton
+                      className="test-hero-copy-btn"
                       size="small"
                       onClick={() => navigator.clipboard.writeText(testName)}
-                      sx={{ flexShrink: 0, color: 'grey.500' }}
                     >
                       <ContentCopy fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                </Box>
-              </Box>
+                </div>
+              </div>
 
-              {/* Action bar */}
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  pt: 2,
-                  mt: 1,
-                  borderTop: '1px solid',
-                  borderColor: 'grey.800',
-                }}
-              >
+              <div className="test-hero-action-bar">
                 <Button
                   component={Link}
                   to={withSort(
@@ -349,7 +303,6 @@ export function TestAnalysis(props) {
                   variant="contained"
                   color="primary"
                   startIcon={<FormatListBulleted />}
-                  sx={{ textTransform: 'none' }}
                 >
                   All Runs ({test.current_runs})
                 </Button>
@@ -370,7 +323,6 @@ export function TestAnalysis(props) {
                   variant="contained"
                   color="error"
                   startIcon={<ErrorOutline />}
-                  sx={{ textTransform: 'none' }}
                 >
                   Failed Runs ({test.current_failures})
                 </Button>
@@ -391,12 +343,11 @@ export function TestAnalysis(props) {
                   variant="contained"
                   color="warning"
                   startIcon={<SyncProblem />}
-                  sx={{ textTransform: 'none' }}
                 >
                   Flaked Runs ({test.current_flakes})
                 </Button>
 
-                <Box sx={{ flex: 1 }} />
+                <div className="test-hero-spacer" />
 
                 <Button
                   href={searchCI(testName)}
@@ -406,11 +357,10 @@ export function TestAnalysis(props) {
                   variant="contained"
                   color="secondary"
                   endIcon={<OpenInNew sx={{ fontSize: '14px !important' }} />}
-                  sx={{ textTransform: 'none' }}
                 >
                   Search Logs
                 </Button>
-              </Box>
+              </div>
             </Card>
           </Grid>
 
