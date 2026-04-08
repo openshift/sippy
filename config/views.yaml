@@ -515,6 +515,9 @@ component_readiness:
       - lp-interop-servicemesh
       Network:
       - ovn
+      Platform:
+      - aws
+      - metal
       Owner:
       - mpiit
       - qe
