@@ -16,11 +16,20 @@ trap cleanup EXIT
 # When running locally, the user has to define SIPPY_IMAGE.
 echo "The sippy CI image: ${SIPPY_IMAGE}"
 
+# The GCS_CRED allows us to pull artifacts from GCS when importing prow jobs.
+# Redefine GCS_CRED to use your own.
+GCS_CRED="${GCS_CRED:=/var/run/sippy-bigquery-job-importer/gcs-sa}"
+echo "The GCS cred is: ${GCS_CRED}"
+
 # If you're using Openshift, we use oc, if you're using plain Kubernetes,
 # we use kubectl.
 #
 KUBECTL_CMD="${KUBECTL_CMD:=oc}"
 echo "The kubectl command is: ${KUBECTL_CMD}"
+
+# Make GCS credentials available to the test runner for the datasync test
+export GCS_SA_JSON_PATH="${GCS_CRED}"
+export SIPPY_E2E_REPO_ROOT="/go/src/sippy"
 
 # Launch the sippy api server pod with coverage instrumentation.
 cat << END | ${KUBECTL_CMD} apply -f -
