@@ -117,6 +117,38 @@ export default function JobRunsTable(props) {
     setJaqOpen(!jaqOpen)
   }
 
+  // Extract test names from filters to show a "Test result" column
+  const testFilterFields = [
+    'ran_test_names',
+    'failed_test_names',
+    'flaked_test_names',
+  ]
+  const filteredTestNames = (filterModel?.items || [])
+    .filter(
+      (f) =>
+        testFilterFields.includes(f.columnField) &&
+        f.value &&
+        !(f.not && f.columnField === 'ran_test_names')
+    )
+    .map((f) => f.value)
+  const uniqueFilteredTestNames = [...new Set(filteredTestNames)]
+
+  function getTestResult(row, testName) {
+    if (row.failed_test_names && row.failed_test_names.includes(testName)) {
+      return 'Fail'
+    }
+    if (row.flaked_test_names && row.flaked_test_names.includes(testName)) {
+      return 'Flake'
+    }
+    return 'Pass'
+  }
+
+  const testResultLabels = {
+    Pass: { className: 'result-S' },
+    Fail: { className: 'result-F' },
+    Flake: { className: 'result-U' },
+  }
+
   const columns = [
     {
       field: 'id',
@@ -180,7 +212,7 @@ export default function JobRunsTable(props) {
     },
     {
       field: 'overall_result',
-      headerName: 'Result',
+      headerName: 'Job result',
       flex: 0.5,
       renderCell: (params) => {
         return (
@@ -195,6 +227,35 @@ export default function JobRunsTable(props) {
         )
       },
     },
+    ...uniqueFilteredTestNames.map((testName, idx) => ({
+      field: `test_result_${idx}`,
+      headerName: testName,
+      flex: 0.75,
+      minWidth: 110,
+      sortable: false,
+      filterable: false,
+      renderHeader: () => {
+        const label =
+          testName.length > 30 ? testName.substring(0, 27) + '...' : testName
+        return (
+          <Tooltip title={testName}>
+            <span>{label}</span>
+          </Tooltip>
+        )
+      },
+      renderCell: (params) => {
+        const result = getTestResult(params.row, testName)
+        const { className } = testResultLabels[result]
+        return (
+          <div
+            className={'result ' + className}
+            style={{ width: '100%', textAlign: 'center' }}
+          >
+            {result}
+          </div>
+        )
+      },
+    })),
     {
       field: 'labels',
       autocomplete: 'labels',

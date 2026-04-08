@@ -14,3 +14,64 @@
 .header {
   margin-bottom: 20px !important;
 }
+
+.test-hero-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.test-hero-jira-chip {
+  border-color: #616161 !important;
+  color: #bdbdbd !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  height: 24px !important;
+}
+
+.test-hero-name-wrapper {
+  padding-top: 8px;
+  padding-bottom: 16px;
+}
+
+.test-hero-name-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.test-hero-name {
+  flex: 1;
+  font-family: "Roboto Mono", "SF Mono", "Fira Code", monospace !important;
+  font-size: 0.95rem !important;
+  font-weight: 400 !important;
+  line-height: 1.6 !important;
+  word-break: break-word;
+  user-select: all;
+  cursor: text;
+  border-left: 3px solid #1976d2;
+  padding-left: 16px;
+}
+
+.test-hero-copy-btn {
+  flex-shrink: 0;
+  color: #9e9e9e !important;
+}
+
+.test-hero-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 16px;
+  margin-top: 8px;
+  border-top: 1px solid #424242;
+}
+
+.test-hero-action-bar .MuiButton-root {
+  text-transform: none;
+}
+
+.test-hero-spacer {
+  flex: 1;
+}

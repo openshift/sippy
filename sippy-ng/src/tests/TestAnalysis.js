@@ -4,17 +4,28 @@ import {
   Box,
   Button,
   Card,
+  Chip,
   Container,
   Grid,
-  TableContainer,
+  IconButton,
+  Divider as MuiDivider,
   Tooltip,
   Typography,
 } from '@mui/material'
-import { DirectionsRun } from '@mui/icons-material'
+import {
+  BugReport,
+  ContentCopy,
+  ErrorOutline,
+  FormatListBulleted,
+  OpenInNew,
+  SyncProblem,
+} from '@mui/icons-material'
 import {
   filterFor,
   not,
   pathForJobRunsWithTest,
+  pathForJobRunsWithTestFailure,
+  pathForJobRunsWithTestFlake,
   safeEncodeURIComponent,
   SafeJSONParam,
   SafeStringParam,
@@ -31,7 +42,6 @@ import { useQueryParam } from 'use-query-params'
 import Alert from '@mui/material/Alert'
 import BugButton from '../bugs/BugButton'
 import BugTable from '../bugs/BugTable'
-import Divider from '@mui/material/Divider'
 import GridToolbarFilterMenu from '../datagrid/GridToolbarFilterMenu'
 import InfoIcon from '@mui/icons-material/Info'
 import PassRateIcon from '../components/PassRateIcon'
@@ -39,10 +49,6 @@ import PropTypes from 'prop-types'
 import React, { Fragment, useEffect } from 'react'
 import SimpleBreadcrumbs from '../components/SimpleBreadcrumbs'
 import SummaryCard from '../components/SummaryCard'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableRow from '@mui/material/TableRow'
 import TestPassRateCharts from './TestPassRateCharts'
 import TestTable from './TestTable'
 
@@ -193,9 +199,9 @@ export function TestAnalysis(props) {
         <Typography variant="h3" style={{ textAlign: 'center' }}>
           Test Analysis
         </Typography>
-        <Divider style={{ margin: 20 }} />
+        <MuiDivider style={{ margin: 20 }} />
         <Grid container spacing={3} alignItems="stretch">
-          <Grid item md={4}>
+          <Grid item md={3} xs={12}>
             <SummaryCard
               key="test-summary"
               threshold={TEST_THRESHOLDS}
@@ -216,37 +222,24 @@ export function TestAnalysis(props) {
               fail={test.current_failures}
             />
           </Grid>
-          <Grid item md={8}>
+          <Grid item md={9} xs={12}>
             <Card
               className="test-failure-card"
               elevation={5}
-              style={{ height: '100%' }}
+              sx={{ height: '100%' }}
             >
-              <TableContainer sx={{ marginBottom: 2 }}>
-                <Table aria-label="simple table">
-                  <TableBody>
-                    <TableRow>
-                      <TableCell colSpan={2}>
-                        <Typography variant="h5">{testName}</Typography>
-                      </TableCell>
-                    </TableRow>
-                    {test.jira_component ? (
-                      <TableRow>
-                        <TableCell scope="row">
-                          <b>Jira component</b>
-                        </TableCell>
-                        <TableCell align="left">
-                          {test.jira_component}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      <></>
-                    )}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-
-              <Grid container justifyContent="space-between">
+              <div className="test-hero-topbar">
+                <div>
+                  {test.jira_component && (
+                    <Chip
+                      className="test-hero-jira-chip"
+                      icon={<BugReport sx={{ fontSize: 14 }} />}
+                      label={`Jira: ${test.jira_component}`}
+                      size="small"
+                      variant="outlined"
+                    />
+                  )}
+                </div>
                 <GridToolbarFilterMenu
                   linkOperatorDisabled={true}
                   standalone={true}
@@ -269,22 +262,31 @@ export function TestAnalysis(props) {
                     },
                   ]}
                 />
+              </div>
 
-                <Button
-                  className="test-button"
-                  target="_blank"
-                  startIcon={<InfoIcon />}
-                  variant="contained"
-                  color="secondary"
-                  href={searchCI(testName)}
-                >
-                  Search Logs
-                </Button>
+              <div className="test-hero-name-wrapper">
+                <div className="test-hero-name-row">
+                  <Typography
+                    className="test-hero-name"
+                    variant="h6"
+                    component="h1"
+                  >
+                    {testName}
+                  </Typography>
+                  <Tooltip title="Copy test name">
+                    <IconButton
+                      className="test-hero-copy-btn"
+                      size="small"
+                      onClick={() => navigator.clipboard.writeText(testName)}
+                    >
+                      <ContentCopy fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                </div>
+              </div>
 
+              <div className="test-hero-action-bar">
                 <Button
-                  className="test-button"
-                  variant="contained"
-                  startIcon={<DirectionsRun />}
                   component={Link}
                   to={withSort(
                     pathForJobRunsWithTest(props.release, testName, {
@@ -297,10 +299,68 @@ export function TestAnalysis(props) {
                     'timestamp',
                     'desc'
                   )}
+                  size="small"
+                  variant="contained"
+                  color="primary"
+                  startIcon={<FormatListBulleted />}
                 >
-                  See job runs
+                  All Runs ({test.current_runs})
                 </Button>
-              </Grid>
+                <Button
+                  component={Link}
+                  to={withSort(
+                    pathForJobRunsWithTestFailure(props.release, testName, {
+                      items: [
+                        ...filterModel.items.filter(
+                          (f) => f.columnField === 'variants'
+                        ),
+                      ],
+                    }),
+                    'timestamp',
+                    'desc'
+                  )}
+                  size="small"
+                  variant="contained"
+                  color="error"
+                  startIcon={<ErrorOutline />}
+                >
+                  Failed Runs ({test.current_failures})
+                </Button>
+                <Button
+                  component={Link}
+                  to={withSort(
+                    pathForJobRunsWithTestFlake(props.release, testName, {
+                      items: [
+                        ...filterModel.items.filter(
+                          (f) => f.columnField === 'variants'
+                        ),
+                      ],
+                    }),
+                    'timestamp',
+                    'desc'
+                  )}
+                  size="small"
+                  variant="contained"
+                  color="warning"
+                  startIcon={<SyncProblem />}
+                >
+                  Flaked Runs ({test.current_flakes})
+                </Button>
+
+                <div className="test-hero-spacer" />
+
+                <Button
+                  href={searchCI(testName)}
+                  target="_blank"
+                  rel="noopener"
+                  size="small"
+                  variant="contained"
+                  color="secondary"
+                  endIcon={<OpenInNew sx={{ fontSize: '14px !important' }} />}
+                >
+                  Search Logs
+                </Button>
+              </div>
             </Card>
           </Grid>
 
