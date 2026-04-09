@@ -879,6 +879,80 @@ component_readiness:
     enabled: false
   automate_jira:
     enabled: false
+- name: 4.22-ha-vs-two-node-arbiter
+  base_release:
+    release: "4.22"
+    relative_start: now-7d
+    relative_end: now
+  sample_release:
+    release: "4.22"
+    relative_start: now-7d
+    relative_end: now
+  variant_options:
+    column_group_by:
+      Architecture: { }
+      Network: { }
+      Platform: { }
+    db_group_by:
+      Architecture: { }
+      FeatureSet: { }
+      Installer: { }
+      Network: { }
+      Platform: { }
+      Suite: { }
+      Upgrade: { }
+      LayeredProduct: { }
+    include_variants:
+      Architecture:
+      - amd64
+      FeatureSet:
+      - default
+      - techpreview
+      Installer:
+      - ipi
+      - upi
+      JobTier:
+      - blocking
+      - informing
+      - standard
+      - candidate
+      LayeredProduct:
+      - none
+      - virt
+      Owner:
+      - eng
+      Platform:
+      - aws
+      - azure
+      - gcp
+      - metal
+      - vsphere
+      Topology:
+      - ha
+      CGroupMode:
+      - v2
+      ContainerRuntime:
+      - runc
+      - crun
+    compare_variants:
+      Topology:
+      - two-node-arbiter
+    variant_cross_compare:
+    - Topology
+  test_filters:
+    lifecycles:
+      - blocking
+  advanced_options:
+    minimum_failure: 3
+    confidence: 95
+    pity_factor: 5
+    ignore_missing: false
+    ignore_disruption: true
+    flake_as_failure: false
+  metrics:
+    enabled: false
+  regression_tracking:
+    enabled: true
 - name: 4.22-ha-vs-two-node-fencing
   base_release:
     release: "4.22"
