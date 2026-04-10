@@ -922,11 +922,7 @@ component_readiness:
       Owner:
       - eng
       Platform:
-      - aws
-      - azure
-      - gcp
       - metal
-      - vsphere
       Topology:
       - ha
       CGroupMode:
@@ -996,11 +992,7 @@ component_readiness:
       Owner:
       - eng
       Platform:
-      - aws
-      - azure
-      - gcp
       - metal
-      - vsphere
       Topology:
       - ha
       CGroupMode:
