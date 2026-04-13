@@ -773,6 +773,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		{[]string{"periodic-ci-openshift-operator-framework-operator-controller-", "-extended-"}, "candidate"},
 		{[]string{"periodic-ci-openshift-operator-framework-olm-", "-extended-"}, "candidate"},
 
+		// GCP multi-operator periodic jobs are not yet stable enough for component readiness
+		{[]string{"e2e-gcp-multi-operator-periodic"}, "candidate"},
+
 		// Hidden jobs
 		{[]string{"-cilium"}, "hidden"},
 		{[]string{"-disruptive"}, "hidden"},
