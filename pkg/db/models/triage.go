@@ -225,6 +225,24 @@ type TestRegression struct {
 	// disappear on their own.
 	MaxFailures int `json:"max_failures"`
 
+	// JobRuns accumulates the unique set of all job runs ever observed while this regression was open.
+	// As the 7-day sample window slides, old runs roll off and new ones appear, but this list retains all of them.
+	JobRuns []RegressionJobRun `json:"job_runs,omitempty" gorm:"foreignKey:RegressionID;constraint:OnDelete:CASCADE;"`
+
 	// Links contains HATEOAS-style links for this regression record (not stored in database)
 	Links map[string]string `json:"links,omitempty" gorm:"-"`
+}
+
+// RegressionJobRun represents a single job run observed during the lifetime of a regression.
+// It stores data from BigQuery so we don't depend on the job existing in PostgreSQL's prow_job_runs table.
+type RegressionJobRun struct {
+	ID           uint           `json:"id" gorm:"primaryKey"`
+	RegressionID uint           `json:"regression_id" gorm:"column:regression_id;not null;uniqueIndex:idx_regression_job_run"`
+	ProwJobRunID string         `json:"prowjob_run_id" gorm:"column:prow_job_run_id;not null;uniqueIndex:idx_regression_job_run"`
+	ProwJobName  string         `json:"prowjob_name" gorm:"column:prow_job_name;not null"`
+	ProwJobURL   string         `json:"prowjob_url" gorm:"column:prow_job_url"`
+	StartTime    time.Time      `json:"start_time" gorm:"column:start_time"`
+	TestFailed   bool           `json:"test_failed" gorm:"column:test_failed"`
+	TestFailures int            `json:"test_failures" gorm:"column:test_failures"`
+	JobLabels    pq.StringArray `json:"job_labels,omitempty" gorm:"column:job_labels;type:text[]"`
 }

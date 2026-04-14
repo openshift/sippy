@@ -42,13 +42,13 @@ func TestSortLoaders(t *testing.T) {
 		},
 		{
 			name:          "all loaders in correct order",
-			inputLoaders:  []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "component-readiness-cache", "regression-tracker"},
-			expectedOrder: []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "component-readiness-cache", "regression-tracker"},
+			inputLoaders:  []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "regression-cache"},
+			expectedOrder: []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "regression-cache"},
 		},
 		{
 			name:          "all loaders in reverse order",
-			inputLoaders:  []string{"regression-tracker", "component-readiness-cache", "feature-gates", "test-mapping", "bugs", "github", "jira", "releases", "prow"},
-			expectedOrder: []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "component-readiness-cache", "regression-tracker"},
+			inputLoaders:  []string{"regression-cache", "feature-gates", "test-mapping", "bugs", "github", "jira", "releases", "prow"},
+			expectedOrder: []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "regression-cache"},
 		},
 		{
 			name:          "random order subset",
@@ -56,9 +56,9 @@ func TestSortLoaders(t *testing.T) {
 			expectedOrder: []string{"prow", "releases", "jira", "bugs"},
 		},
 		{
-			name:          "component-readiness-cache before regression-tracker",
-			inputLoaders:  []string{"regression-tracker", "component-readiness-cache"},
-			expectedOrder: []string{"component-readiness-cache", "regression-tracker"},
+			name:          "regression-cache runs last among known loaders",
+			inputLoaders:  []string{"regression-cache", "prow"},
+			expectedOrder: []string{"prow", "regression-cache"},
 		},
 		{
 			name:          "unknown loaders with known ones",

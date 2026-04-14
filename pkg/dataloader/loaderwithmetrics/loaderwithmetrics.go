@@ -46,7 +46,7 @@ func New(wrappedLoaders []dataloader.DataLoader) *LoaderWithMetrics {
 	return loader
 }
 
-var loaderOrder = []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "component-readiness-cache", "regression-tracker"}
+var loaderOrder = []string{"prow", "releases", "jira", "github", "bugs", "test-mapping", "feature-gates", "regression-cache"}
 
 // sortLoaders guarantees that the loaders run in a predicable and proper order
 // this is mostly necessary to guarantee that "component-readiness-cache" runs prior to "regression-tracker"
