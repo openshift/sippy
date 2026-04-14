@@ -306,19 +306,21 @@ func SyncRegressionsForReport(
 	return activeRegressions, nil
 }
 
-// JobRunsFromTestDetails extracts sample job runs from a test details report
-// and converts them to RegressionJobRun records.
-func JobRunsFromTestDetails(report testdetails.Report) []models.RegressionJobRun {
+// FailedJobRunsFromTestDetails extracts sample job runs where the test failed
+// from a test details report and converts them to RegressionJobRun records.
+func FailedJobRunsFromTestDetails(report testdetails.Report) []models.RegressionJobRun {
 	var jobRuns []models.RegressionJobRun
 	for _, analysis := range report.Analyses {
 		for _, jobStat := range analysis.JobStats {
 			for _, run := range jobStat.SampleJobRunStats {
+				if run.TestStats.FailureCount == 0 {
+					continue
+				}
 				jobRun := models.RegressionJobRun{
 					ProwJobRunID: run.JobRunID,
 					ProwJobName:  jobStat.SampleJobName,
 					ProwJobURL:   run.JobURL,
 					StartTime:    run.StartTime.In(time.UTC),
-					TestFailed:   run.TestStats.FailureCount > 0,
 					TestFailures: run.TestFailures,
 					JobLabels:    pq.StringArray(run.JobLabels),
 				}

@@ -178,6 +178,8 @@ func NewLoadCommand() *cobra.Command {
 
 			var regressionCacheAdded bool
 			for _, l := range f.Loaders {
+				// TODO: remove "component-readiness-cache" and "regression-tracker" once the cronjob
+				// manifests are updated to use "regression-cache".
 				if l == "component-readiness-cache" || l == "regression-tracker" || l == "regression-cache" {
 					if regressionCacheAdded {
 						continue

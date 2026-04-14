@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJobRunsFromTestDetails(t *testing.T) {
+func TestFailedJobRunsFromTestDetails(t *testing.T) {
 	startTime1 := civil.DateTime{Date: civil.Date{Year: 2026, Month: 4, Day: 10}, Time: civil.Time{Hour: 12}}
 	startTime2 := civil.DateTime{Date: civil.Date{Year: 2026, Month: 4, Day: 11}, Time: civil.Time{Hour: 8}}
 
@@ -24,7 +24,7 @@ func TestJobRunsFromTestDetails(t *testing.T) {
 		checkFunc      func(t *testing.T, runs []models.RegressionJobRun)
 	}{
 		{
-			name: "extracts sample job runs from single job",
+			name: "only extracts failed job runs, skips passing",
 			report: testdetails.Report{
 				Identification: crtest.Identification{
 					RowIdentification: crtest.RowIdentification{TestID: "test1"},
@@ -56,26 +56,18 @@ func TestJobRunsFromTestDetails(t *testing.T) {
 					},
 				},
 			},
-			expectedCount:  2,
-			expectedRunIDs: []string{"run-1", "run-2"},
+			expectedCount:  1,
+			expectedRunIDs: []string{"run-1"},
 			checkFunc: func(t *testing.T, runs []models.RegressionJobRun) {
-				// run-1 should be marked as test failed with labels
 				assert.Equal(t, "run-1", runs[0].ProwJobRunID)
 				assert.Equal(t, "periodic-ci-job-1", runs[0].ProwJobName)
 				assert.Equal(t, "https://prow.ci/run-1", runs[0].ProwJobURL)
-				assert.True(t, runs[0].TestFailed)
 				assert.Equal(t, 15, runs[0].TestFailures)
 				assert.Equal(t, []string{"InfraFailure"}, []string(runs[0].JobLabels))
-
-				// run-2 should be marked as test passed, no labels
-				assert.Equal(t, "run-2", runs[1].ProwJobRunID)
-				assert.False(t, runs[1].TestFailed)
-				assert.Equal(t, 0, runs[1].TestFailures)
-				assert.Empty(t, runs[1].JobLabels)
 			},
 		},
 		{
-			name: "extracts from multiple jobs",
+			name: "extracts failed runs from multiple jobs",
 			report: testdetails.Report{
 				Analyses: []testdetails.Analysis{
 					{
@@ -97,8 +89,8 @@ func TestJobRunsFromTestDetails(t *testing.T) {
 					},
 				},
 			},
-			expectedCount:  3,
-			expectedRunIDs: []string{"a-1", "b-1", "b-2"},
+			expectedCount:  1,
+			expectedRunIDs: []string{"b-1"},
 		},
 		{
 			name: "empty when no sample job runs",
@@ -125,11 +117,30 @@ func TestJobRunsFromTestDetails(t *testing.T) {
 			},
 			expectedCount: 0,
 		},
+		{
+			name: "empty when all runs pass",
+			report: testdetails.Report{
+				Analyses: []testdetails.Analysis{
+					{
+						JobStats: []testdetails.JobStats{
+							{
+								SampleJobName: "job-a",
+								SampleJobRunStats: []testdetails.JobRunStats{
+									{JobRunID: "a-1", StartTime: startTime1, TestStats: crtest.Stats{SuccessCount: 1}},
+									{JobRunID: "a-2", StartTime: startTime2, TestStats: crtest.Stats{SuccessCount: 1}},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedCount: 0,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			runs := JobRunsFromTestDetails(tt.report)
+			runs := FailedJobRunsFromTestDetails(tt.report)
 			assert.Len(t, runs, tt.expectedCount)
 
 			if tt.expectedRunIDs != nil {
@@ -153,7 +164,7 @@ func TestJobRunsFromTestDetails(t *testing.T) {
 	}
 }
 
-func TestJobRunsFromTestDetails_StartTimeConversion(t *testing.T) {
+func TestFailedJobRunsFromTestDetails_StartTimeConversion(t *testing.T) {
 	startTime := civil.DateTime{
 		Date: civil.Date{Year: 2026, Month: 4, Day: 10},
 		Time: civil.Time{Hour: 14, Minute: 30, Second: 0},
@@ -168,7 +179,7 @@ func TestJobRunsFromTestDetails_StartTimeConversion(t *testing.T) {
 							{
 								JobRunID:  "run-1",
 								StartTime: startTime,
-								TestStats: crtest.Stats{SuccessCount: 1},
+								TestStats: crtest.Stats{FailureCount: 1},
 							},
 						},
 					},
@@ -176,7 +187,7 @@ func TestJobRunsFromTestDetails_StartTimeConversion(t *testing.T) {
 			},
 		},
 	}
-	runs := JobRunsFromTestDetails(report)
+	runs := FailedJobRunsFromTestDetails(report)
 	require.Len(t, runs, 1)
 	expected := time.Date(2026, 4, 10, 14, 30, 0, 0, time.UTC)
 	assert.Equal(t, expected, runs[0].StartTime)

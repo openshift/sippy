@@ -359,7 +359,7 @@ func (l *RegressionCacheLoader) syncJobRunsFromReports(
 		}
 		matched++
 
-		jobRuns := componentreadiness.JobRunsFromTestDetails(report)
+		jobRuns := componentreadiness.FailedJobRunsFromTestDetails(report)
 		if len(jobRuns) == 0 {
 			continue
 		}
