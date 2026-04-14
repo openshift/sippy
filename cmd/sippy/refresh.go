@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
@@ -43,7 +41,8 @@ func NewRefreshCommand() *cobra.Command {
 			}
 			cacheClient, cacheErr := f.CacheFlags.GetCacheClient()
 			if cacheErr != nil {
-				return fmt.Errorf("failed to get cache client: %v", cacheErr)
+				logrus.WithError(cacheErr).Warn("failed to get cache client")
+				cacheClient = nil
 			} else if cacheClient == nil {
 				logrus.Warn("no cache provided; refresh will not update cached timestamps, so cached data may not be properly invalidated")
 			}
