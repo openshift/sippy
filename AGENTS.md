@@ -42,6 +42,11 @@ npx prettier --write .
 The frontend uses `npm`. If you must install or update any dependencies,
 always use the `--ignore-scripts` flag.
 
+## Testing
+
+* **Do not run `make e2e` or `go test ./test/e2e/...` repeatedly.** E2e tests issue expensive BigQuery queries and take several minutes. Run them only when explicitly asked, and never re-run just to grep for output. Capture the output the first time.
+* Use `go vet` and `go test` (for unit tests) to validate changes before resorting to a full e2e run.
+
 ## General Notes
 
 * Favor clarity and maintainability over cleverness.
