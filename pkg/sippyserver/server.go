@@ -2461,7 +2461,6 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/tests/v2",
 			Description:  "Reports on tests",
 			Capabilities: []string{LocalDBCapability},
-			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestsReportFromBigQuery,
 		},
 		{

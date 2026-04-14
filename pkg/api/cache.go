@@ -137,6 +137,9 @@ func CacheSet[T any](ctx context.Context, c cache.Cache, result T, cacheKey []by
 func CalculateRoundedCacheDuration(cacheOptions cache.RequestOptions) time.Duration {
 	// require cacheDuration for persistence logic
 	cacheDuration := defaultCacheDuration
+	if cacheOptions.Expiry > 0 {
+		cacheDuration = cacheOptions.Expiry
+	}
 	if cacheOptions.CRTimeRoundingFactor > 0 {
 		now := time.Now().UTC()
 		// Only cache until the next rounding duration

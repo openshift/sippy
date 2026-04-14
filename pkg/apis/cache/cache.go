@@ -19,7 +19,11 @@ type APIResponse struct {
 // RequestOptions specifies options for an individual
 // request, such as forcing the cache to be bypassed.
 type RequestOptions struct {
-	// CRTimeRoundingFactor is used to calculate cache expiration time
+	// Expiry is how long to set TTL, unless modified by other factors
+	Expiry time.Duration
+
+	// CRTimeRoundingFactor is used to round cache expiration time to the nearest time boundary of blocks that size.
+	// for example, when set to 4 hours, the day is divided into 4-hour blocks and the TTL will be at the next boundary.
 	CRTimeRoundingFactor time.Duration
 
 	// SkipCacheWrites will disable setting keys in the cache. Used in some scenarios where a lot of data is in play and serves no purpose being in the cache.
