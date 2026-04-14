@@ -562,6 +562,15 @@ func buildTestDetailsQuery(
 	// Build WITH clause with key test filtering if configured
 	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, c.AdvancedOption.KeyTestNames)
 
+	jobLabelsJoin := fmt.Sprintf(`LEFT JOIN (
+						SELECT prowjob_build_id, STRING_AGG(DISTINCT label, ',' ORDER BY label) AS job_labels
+						FROM %s.job_labels
+						WHERE prowjob_start >= DATETIME(@From)
+						AND prowjob_start < DATETIME(@To)
+						GROUP BY prowjob_build_id
+					) agg_labels ON junit.prowjob_build_id = agg_labels.prowjob_build_id
+`, client.Dataset)
+
 	queryString := fmt.Sprintf(`%s
 					SELECT
 						cm.id AS test_id,
@@ -579,9 +588,12 @@ func buildTestDetailsQuery(
 						ANY_VALUE(cm.capabilities) as capabilities,
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
+						ANY_VALUE(agg_labels.job_labels) AS job_labels,
 					FROM deduped_testcases junit
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `, withClause, selectVariants)
+
+	queryString += jobLabelsJoin
 
 	queryString += joinVariants
 
@@ -1064,6 +1076,10 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 			cts.JiraComponent = row[i].(string)
 		case col == "jira_component_id":
 			cts.JiraComponentID = row[i].(*big.Rat)
+		case col == "job_labels":
+			if row[i] != nil {
+				cts.JobLabels = strings.Split(row[i].(string), ",")
+			}
 		case strings.HasPrefix(col, "variant_"):
 			variantName := col[len("variant_"):]
 			if row[i] != nil {

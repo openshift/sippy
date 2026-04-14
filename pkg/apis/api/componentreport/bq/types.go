@@ -62,6 +62,7 @@ type TestJobRunRows struct {
 	crtest.Count
 	JiraComponent   string   `bigquery:"jira_component"`
 	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
+	JobLabels       []string `json:"job_labels,omitempty"`
 }
 
 // JobVariant defines a variant and the possible values
