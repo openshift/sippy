@@ -9,8 +9,13 @@ import TableRow from '@mui/material/TableRow'
 
 import { getTestStatus } from '../helpers'
 
+const MASS_FAILURE_THRESHOLD = 10
+
 const isMassFailure = (jobRun) => {
-  return jobRun.test_stats.failure_count > 0 && jobRun.test_failures > 10
+  return (
+    jobRun.test_stats.failure_count > 0 &&
+    (jobRun.test_failures || 0) > MASS_FAILURE_THRESHOLD
+  )
 }
 
 const getJobRunColor = (jobRun) => {
@@ -100,7 +105,7 @@ export default function CompReadyTestDetailRow(props) {
                   ' (#' +
                   jobRun.job_run_id +
                   ') | ' +
-                  jobRun.test_failures +
+                  (jobRun.test_failures ?? 0) +
                   ' test failures in job run'
                 if (jobRun.job_labels && jobRun.job_labels.length > 0) {
                   tooltipText += ' | Labels: ' + jobRun.job_labels.join(', ')
