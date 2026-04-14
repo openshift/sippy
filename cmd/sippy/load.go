@@ -190,7 +190,7 @@ func NewLoadCommand() *cobra.Command {
 						return dbErr
 					}
 					if cacheErr != nil {
-						return errors.Wrap(err, "couldn't get cache client")
+						return errors.Wrap(cacheErr, "couldn't get cache client")
 					}
 					if f.CacheFlags.RedisURL == "" {
 						return fmt.Errorf("--redis-url is required")
