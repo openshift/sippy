@@ -60,9 +60,10 @@ type TestJobRunRows struct {
 	ProwJobURL   string                 `bigquery:"prowjob_url"`
 	StartTime    civil.DateTime         `bigquery:"prowjob_start"`
 	crtest.Count
-	JiraComponent   string   `bigquery:"jira_component"`
-	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
-	JobLabels       []string `json:"job_labels,omitempty"`
+	JiraComponent          string   `bigquery:"jira_component"`
+	JiraComponentID        *big.Rat `bigquery:"jira_component_id"`
+	JobLabels              []string `json:"job_labels,omitempty"`
+	TestFailures           int      `json:"test_failures"`
 }
 
 // JobVariant defines a variant and the possible values

@@ -110,6 +110,7 @@ type JobRunStats struct {
 	// TestStats is the test stats from one particular job run.
 	// For the majority of the tests, there is only one junit. But
 	// there are cases multiple junits are generated for the same test.
-	TestStats crtest.Stats `json:"test_stats"`
-	JobLabels []string     `json:"job_labels,omitempty"`
+	TestStats              crtest.Stats `json:"test_stats"`
+	JobLabels              []string     `json:"job_labels,omitempty"`
+	TestFailures           int          `json:"test_failures"`
 }
