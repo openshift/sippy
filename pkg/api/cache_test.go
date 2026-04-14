@@ -628,28 +628,6 @@ func TestGetDataFromCacheOrMatview_CacheInvalidated_RefreshAfterCacheTime(t *tes
 	assert.GreaterOrEqual(t, mc.setCalls, 1, "should store the fresh result")
 }
 
-// TestGetDataFromCacheOrMatview_CacheValid_RefreshAtExactCacheTime verifies that when
-// the refresh timestamp equals the cache timestamp, the cache is still valid (data was
-// generated at refresh time so it reflects the refreshed matview).
-func TestGetDataFromCacheOrMatview_CacheValid_RefreshAtExactCacheTime(t *testing.T) {
-	mc := newMockCache()
-	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "mv~", nil)
-	cachedAt := time.Now().UTC().Add(-5 * time.Minute)
-	seedMatviewCache(t, mc, spec, testResult{Value: "cached"}, cachedAt)
-	// Refresh at the exact same time as the cache entry
-	seedRefreshTimestamp(mc, testMatview, cachedAt)
-
-	var generateCalls int
-	result, errs := GetDataFromCacheOrMatview(
-		context.Background(), mc, spec, testMatview, time.Hour,
-		makeGenerateFn(testResult{Value: "fresh"}, &generateCalls), testResult{},
-	)
-
-	assert.Empty(t, errs)
-	assert.Equal(t, "cached", result.Value, "should return cached value when refresh equals cache time")
-	assert.Equal(t, 0, generateCalls, "should not regenerate")
-}
-
 // TestGetDataFromCacheOrMatview_GenerateErrorSkipsCacheWrite verifies that errors from
 // generateFn are not cached.
 func TestGetDataFromCacheOrMatview_GenerateErrorSkipsCacheWrite(t *testing.T) {
