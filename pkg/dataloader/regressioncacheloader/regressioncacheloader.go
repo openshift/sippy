@@ -182,11 +182,15 @@ func (l *RegressionCacheLoader) processView(
 	// Step 3: Collect all regressed tests that need test details
 	regressedTests := l.collectRegressedTests(report)
 	vLog.Infof("found %d unresolved regressed tests in report", len(regressedTests))
-	if len(regressedTests) > MaxRegressionsToCache {
-		vLog.Warnf("skipping test_details caching and job run tracking: %d regressions exceeds max (%d)",
+
+	// The MaxRegressionsToCache limit only applies to caching, not to the test details query
+	// itself. We always run the query so regression job run tracking works regardless.
+	cacheResults := view.PrimeCache.Enabled && len(regressedTests) <= MaxRegressionsToCache
+	if view.PrimeCache.Enabled && len(regressedTests) > MaxRegressionsToCache {
+		vLog.Warnf("skipping test_details caching: %d regressions exceeds max (%d), job run tracking will still proceed",
 			len(regressedTests), MaxRegressionsToCache)
-		return activeRegressions, nil
 	}
+
 	if len(regressedTests) == 0 {
 		vLog.Infof("no regressed tests need test details")
 		return activeRegressions, nil
@@ -217,8 +221,8 @@ func (l *RegressionCacheLoader) processView(
 			"test details returned %d reports for %d requests", len(tdReports), len(testIDOptions)))
 	}
 
-	// Step 6: Cache each test details report individually
-	if view.PrimeCache.Enabled {
+	// Step 6: Cache each test details report individually (only if enabled and under the limit)
+	if cacheResults {
 		l.cacheTestDetailsReports(ctx, tdGenerator, tdReports, view, cacheOpts, &strErrors)
 	}
 
