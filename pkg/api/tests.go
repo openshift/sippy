@@ -290,13 +290,7 @@ func (tests TestsAPIResultBQ) limit(req *http.Request) TestsAPIResultBQ {
 	return tests[:limit]
 }
 
-func PrintTestsJSONFromDB(
-	w http.ResponseWriter, req *http.Request,
-	dbc *db.DB, cacheClient cache.Cache,
-	release string,
-) {
-	var fil *filter.Filter
-
+func makeTestsResultsSpec(w http.ResponseWriter, req *http.Request, release string) (TestResultsSpec, bool) {
 	// Collapse means to produce an aggregated test result of all variant (NURP+ - network, upgrade, release, platform)
 	// combos. Uncollapsed results shows you the per-NURP+ result for each test (currently approx. 50,000 rows: filtering
 	// is advised)
@@ -313,29 +307,44 @@ func PrintTestsJSONFromDB(
 	}
 
 	queryFilter := req.URL.Query().Get("filter")
+	var fil *filter.Filter
 	if queryFilter != "" {
 		fil = &filter.Filter{}
 		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
-			return
+			return TestResultsSpec{}, false
 		}
 	}
 
+	period := req.URL.Query().Get("period")
 	// If requesting a two day report, we make the comparison between the last
 	// period (typically 7 days) and the last two days.
-	period := req.URL.Query().Get("period")
 	if period != "" && period != "default" && period != "current" && period != "twoDay" {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Unknown period"})
-		return
+		return TestResultsSpec{}, false
+	} else if period != "twoDay" {
+		period = "default" // standardize to a single specification as this becomes part of cache key
 	}
 
-	spec := TestResultsSpec{
+	return TestResultsSpec{
 		Release:        release,
 		Period:         period,
 		Collapse:       collapse,
 		IncludeOverall: includeOverall,
 		Filter:         fil,
+	}, true
+}
+
+func PrintTestsJSONFromDB(
+	w http.ResponseWriter, req *http.Request,
+	dbc *db.DB, cacheClient cache.Cache,
+	release string,
+) {
+	spec, ok := makeTestsResultsSpec(w, req, release)
+	if !ok {
+		return
 	}
+
 	result, err := spec.buildTestsResultsFromPostgres(req.Context(), dbc, cacheClient)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
@@ -351,47 +360,11 @@ func PrintTestsJSONFromDB(
 }
 
 func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http.Request, bqc *bq.Client) {
-	var fil *filter.Filter
-
-	// Collapse means to produce an aggregated test result of all variant (NURP+ - network, upgrade, release, platform)
-	// combos. Uncollapsed results shows you the per-NURP+ result for each test (currently approx. 50,000 rows: filtering
-	// is advised)
-	collapseStr := req.URL.Query().Get("collapse")
-	collapse := true
-	if collapseStr == "false" {
-		collapse = false
-	}
-
-	overallStr := req.URL.Query().Get("overall")
-	includeOverall := !collapse
-	if overallStr != "" {
-		includeOverall, _ = strconv.ParseBool(overallStr)
-	}
-
-	queryFilter := req.URL.Query().Get("filter")
-	if queryFilter != "" {
-		fil = &filter.Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
-			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
-			return
-		}
-	}
-
-	// If requesting a two day report, we make the comparison between the last
-	// period (typically 7 days) and the last two days.
-	period := req.URL.Query().Get("period")
-	if period != "" && period != "default" && period != "current" && period != "twoDay" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Unknown period"})
+	spec, ok := makeTestsResultsSpec(w, req, release)
+	if !ok {
 		return
 	}
 
-	spec := TestResultsSpec{
-		Release:        release,
-		Period:         period,
-		Collapse:       collapse,
-		IncludeOverall: includeOverall,
-		Filter:         fil,
-	}
 	result, err := spec.buildTestsResultsFromBigQuery(req.Context(), bqc)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
