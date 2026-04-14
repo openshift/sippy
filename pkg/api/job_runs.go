@@ -424,7 +424,12 @@ func JobRunRiskAnalysis(
 		}
 	}
 
-	return runJobRunAnalysis(ctx, bqc, jobRun, compareRelease, historicalCount, neverStableJob, jobNames, logger, jobNamesTestResultFunc(dbc), variantsTestResultFunc(dbc, cacheClient), compareOtherPRs)
+	return runJobRunAnalysis(ctx,
+		bqc, jobRun, compareRelease, historicalCount, neverStableJob, jobNames, logger,
+		jobNamesTestResultFunc(dbc),
+		variantsTestResultFunc(ctx, dbc, cacheClient),
+		compareOtherPRs,
+	)
 }
 
 // testResultsByJobNameFunc is used for injecting db responses in unit tests.
@@ -454,7 +459,7 @@ func jobNamesTestResultFunc(dbc *db.DB) testResultsByJobNameFunc {
 }
 
 // variantsTestResultFunc looks to match job runs based on variant matches
-func variantsTestResultFunc(dbc *db.DB, cacheClient cache.Cache) testResultsByVariantsFunc {
+func variantsTestResultFunc(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) testResultsByVariantsFunc {
 	return func(testName, release, suite string, variants []string, jobNames []string) (*apitype.Test, error) {
 
 		fil := &filter.Filter{
@@ -475,7 +480,7 @@ func variantsTestResultFunc(dbc *db.DB, cacheClient cache.Cache) testResultsByVa
 			IncludeOverall: true,
 			Filter:         fil,
 		}
-		result, err := spec.buildTestsResultsFromPostgres(dbc, cacheClient)
+		result, err := spec.buildTestsResultsFromPostgres(ctx, dbc, cacheClient)
 		if err != nil {
 			return nil, err
 		}
