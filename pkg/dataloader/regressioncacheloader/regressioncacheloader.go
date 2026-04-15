@@ -133,16 +133,31 @@ func (l *RegressionCacheLoader) Load() {
 		}
 	}
 
-	// Close regressions and resolve triages per-release (only if no errors for that release)
+	// Close regressions per-release (only if no errors for that release),
+	// then resolve triages globally once all releases are processed.
 	if l.regressionStore != nil {
+		anyErrors := false
 		for release, result := range releaseResults {
 			if result.hadErrors {
 				l.logger.Infof("skipping regression closing for release %s due to errors", release)
+				anyErrors = true
 				continue
 			}
 			if err := l.closeStaleRegressions(release, result.activeIDs); err != nil {
 				l.errs = append(l.errs, err)
+				anyErrors = true
 			}
+		}
+
+		// ResolveTriages is a global operation (not per-release), so we only run it
+		// once after all releases have been processed, and only if no releases had errors.
+		if !anyErrors {
+			l.logger.Info("resolving triages with all regressions closed")
+			if err := l.regressionStore.ResolveTriages(); err != nil {
+				l.errs = append(l.errs, fmt.Errorf("error resolving triages: %w", err))
+			}
+		} else {
+			l.logger.Info("skipping global triage resolution due to errors in one or more releases")
 		}
 	}
 }
@@ -407,11 +422,6 @@ func (l *RegressionCacheLoader) closeStaleRegressions(release string, activeIDs 
 		closedCount++
 	}
 	rLog.Infof("closed %d regressions", closedCount)
-
-	rLog.Infof("resolving triages with all regressions closed")
-	if err := l.regressionStore.ResolveTriages(); err != nil {
-		return fmt.Errorf("error resolving triages for release %s: %w", release, err)
-	}
 	return nil
 }
 

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Shell script meant for developers to run the e2e tests locally without impacting
 # their running postgres container or sippy process.
 # It's quite quick to import the older releases below, but in theory
