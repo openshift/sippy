@@ -9,7 +9,19 @@ import TableRow from '@mui/material/TableRow'
 
 import { getTestStatus } from '../helpers'
 
+const MASS_FAILURE_THRESHOLD = 10
+
+const isMassFailure = (jobRun) => {
+  return (
+    jobRun.test_stats.failure_count > 0 &&
+    (jobRun.test_failures || 0) > MASS_FAILURE_THRESHOLD
+  )
+}
+
 const getJobRunColor = (jobRun) => {
+  if (isMassFailure(jobRun)) {
+    return 'orange'
+  }
   return getTestStatus(jobRun.test_stats, 'purple', 'red', 'green')
 }
 
@@ -86,17 +98,23 @@ export default function CompReadyTestDetailRow(props) {
               .slice()
               .reverse()
               .map((jobRun, jobRunIndex) => {
+                let letter = jobRun.test_stats.failure_count > 0 ? 'F' : 'S'
+
+                let tooltipText =
+                  new Date(jobRun.start_time).toUTCString() +
+                  ' (#' +
+                  jobRun.job_run_id +
+                  ') | ' +
+                  (jobRun.test_failures ?? 0) +
+                  ' test failures in job run'
+                if (jobRun.job_labels && jobRun.job_labels.length > 0) {
+                  tooltipText += ' | Labels: ' + jobRun.job_labels.join(', ')
+                }
+
                 var content = (
-                  <Tooltip
-                    title={
-                      new Date(jobRun.start_time).toUTCString() +
-                      ' (#' +
-                      jobRun.job_run_id +
-                      ')'
-                    }
-                  >
+                  <Tooltip title={tooltipText}>
                     <Typography className={classes.crCellName}>
-                      {jobRun.test_stats.failure_count > 0 ? 'F' : 'S'}
+                      {letter}
                     </Typography>
                   </Tooltip>
                 )

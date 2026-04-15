@@ -83,16 +83,16 @@ GOCOVERDIR="$COVDIR" ./sippy seed-data  \
 export SIPPY_API_PORT="18080"
 export SIPPY_ENDPOINT="127.0.0.1"
 
-SERVE_ARGS="--listen :$SIPPY_API_PORT \
-  --listen-metrics :12112 \
-  --database-dsn=$SIPPY_E2E_DSN \
+GOCOVERDIR="$COVDIR" ./sippy serve \
+  --listen ":$SIPPY_API_PORT" \
+  --listen-metrics ":12112" \
+  --database-dsn="$SIPPY_E2E_DSN" \
   --enable-write-endpoints \
   --log-level debug \
-  --redis-url=$REDIS_URL \
-  --data-provider postgres \
-  --views config/e2e-views.yaml"
-
-GOCOVERDIR="$COVDIR" ./sippy serve $SERVE_ARGS > e2e.log 2>&1 &
+  --views config/e2e-views.yaml \
+  --google-service-account-credential-file $GCS_SA_JSON_PATH \
+  --redis-url="$REDIS_URL" \
+  --data-provider postgres > e2e.log 2>&1 &
 CHILD_PID=$!
 
 # Give it time to start up, and fill the redis cache

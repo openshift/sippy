@@ -86,14 +86,22 @@ spec:
     - --views
     - ./config/e2e-views.yaml
     env:
+    - name: GCS_SA_JSON_PATH
+      value: /tmp/secrets/gcs-cred
     - name: GOCOVERDIR
       value: /tmp/coverage
     volumeMounts:
+    - mountPath: /tmp/secrets
+      name: gcs-cred
+      readOnly: true
     - mountPath: /tmp/coverage
       name: coverage
   imagePullSecrets:
   - name: regcred
   volumes:
+    - name: gcs-cred
+      secret:
+        secretName: gcs-cred
     - name: coverage
       persistentVolumeClaim:
         claimName: sippy-coverage
@@ -106,10 +114,25 @@ END
 
 # The basic readiness probe will give us at least 10 seconds before declaring the pod as ready.
 echo "Waiting for sippy api server pod to be Ready ..."
+set +e
 ${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/sippy-server --timeout=600s
+server_retVal=$?
+set -e
 
 ${KUBECTL_CMD} -n sippy-e2e get pod -o wide
-${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server.log
+${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server.log 2>&1
+
+if [ ${server_retVal} -ne 0 ]; then
+  echo
+  echo "=== SIPPY SERVER FAILURE DIAGNOSTICS ==="
+  ${KUBECTL_CMD} -n sippy-e2e describe pod/sippy-server
+  echo "=== Namespace events ==="
+  ${KUBECTL_CMD} -n sippy-e2e get events --sort-by='.lastTimestamp'
+  echo "=== END SIPPY SERVER FAILURE DIAGNOSTICS ==="
+  echo
+  echo "ERROR: sippy-server pod never became Ready (timed out after 600s)"
+  exit 1
+fi
 
 echo "Setup services and port forwarding for the sippy api server ..."
 

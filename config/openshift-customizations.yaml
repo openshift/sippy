@@ -62,6 +62,13 @@ releases:
       periodic-ci-openshift-osde2e-main-osd-aws-upgrade-latest-default-y-plus-1-to-latest-y: true
       # OSD-AWS informing (stage)
       periodic-ci-openshift-osde2e-main-aws-stage-informing-default: true
+    regexp:
+      # rosa-e2e managed service validation + OCM FVT (current and future versioned jobs)
+      - "^periodic-ci-openshift-online-rosa-e2e-main-.*"
+      # ROSA HCP conformance (all versions)
+      - "^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-hcp-ovn$"
+      # ROSA Classic/STS conformance (all versions)
+      - "^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-sts-ovn$"
   rosa-integration:
     jobs: {}
   rosa-production:

@@ -556,9 +556,11 @@ func (c *ComponentReportGenerator) getJobRunStats(stats crstatus.TestJobRunRows)
 			stats.FlakeCount,
 			c.ReqOptions.AdvancedOption.FlakeAsFailure,
 		),
-		JobURL:    stats.ProwJobURL,
-		JobRunID:  stats.ProwJobRunID,
-		StartTime: stats.StartTime,
+		JobURL:       stats.ProwJobURL,
+		JobRunID:     stats.ProwJobRunID,
+		StartTime:    stats.StartTime,
+		JobLabels:    stats.JobLabels,
+		TestFailures: stats.TestFailures,
 	}
 	return jobRunStats
 }

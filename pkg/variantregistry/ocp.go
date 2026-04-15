@@ -745,22 +745,18 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// not ready to make release blocking yet.
 		{[]string{"-vsphere-host-groups"}, "candidate"},
 
-		// Periodic MCO metal jobs and vsphere jobs are not ready for component readiness yet, marking them as candidate
-		{[]string{"metal-ipi-ovn-dualstack-mco-disruptive"}, "candidate"},
-		{[]string{"metal-ipi-ovn-ipv4-mco-disruptive"}, "candidate"},
-		{[]string{"metal-ipi-ovn-ipv6-mco-disruptive"}, "candidate"},
-		{[]string{"vsphere-mco-disruptive"}, "candidate"},
-
-		// Set MCO OCL jobs to candidate
-		{[]string{"e2e-aws-ovn-ocl"}, "candidate"},
-		{[]string{"e2e-aws-ovn-upgrade-ocl"}, "candidate"},
-
-		// All remaining 4.19/4.20 MCO disruptive jobs are not ready for component readiness yet, marking them as candidate
+		// All 4.19/4.20 MCO jobs default to candidate
 		{[]string{"machine-config-operator-release-4.19"}, "candidate"},
 		{[]string{"machine-config-operator-release-4.20"}, "candidate"},
 
-		// Set remaining periodic MCO jobs to standard for component readiness
-		{[]string{"-mco-disruptive"}, "candidate"},
+		// Cloud MCO disruptive jobs set to standard for component readiness
+		// This also includes techpreview variants
+		{[]string{"e2e-aws-mco-disruptive"}, "standard"},
+		{[]string{"e2e-azure-mco-disruptive"}, "standard"},
+		{[]string{"e2e-gcp-mco-disruptive"}, "standard"},
+
+		// All remaining MCO periodic jobs default to candidate
+		{[]string{"machine-config-operator"}, "candidate"},
 
 		// Konflux jobs aren't ready yet
 		{[]string{"-konflux"}, "candidate"},
@@ -772,6 +768,9 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 		// Mark candidate to collect data in Sippy while working on stabilization.
 		{[]string{"periodic-ci-openshift-operator-framework-operator-controller-", "-extended-"}, "candidate"},
 		{[]string{"periodic-ci-openshift-operator-framework-olm-", "-extended-"}, "candidate"},
+
+		// GCP multi-operator periodic jobs are not yet stable enough for component readiness
+		{[]string{"e2e-gcp-multi-operator-periodic"}, "candidate"},
 
 		// Hidden jobs
 		{[]string{"-cilium"}, "hidden"},
@@ -809,6 +808,8 @@ func (v *OCPVariantLoader) setJobTier(_ logrus.FieldLogger, variants map[string]
 
 		// AWS DualStack Techpreview jobs - candidate tier to collect data while stabilizing
 		{[]string{"-aws-ovn-dualstack"}, "candidate"},
+		{[]string{"-aws-ovn-installer-dualstack-ipv6-primary-techpreview"}, "candidate"},
+		{[]string{"-aws-ovn-installer-dualstack-ipv4-primary-techpreview"}, "candidate"},
 
 		{[]string{"periodic-ci-openshift-hypershift-", "-mce-e2e-agent-", "-metal-conformance"}, "candidate"},
 	}

@@ -181,22 +181,68 @@ ${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/postg1 --timeout=${TI
 postgres_retVal=$?
 ${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/redis1 --timeout=${TIMEOUT}
 redis_retVal=$?
-set -e
+
 echo
+echo "=== Pod status ==="
+${KUBECTL_CMD} -n sippy-e2e get po -o wide
+echo
+
 echo "Saving postgres logs ..."
-${KUBECTL_CMD} -n sippy-e2e logs postg1 > ${ARTIFACT_DIR}/postgres.log
+${KUBECTL_CMD} -n sippy-e2e logs postg1 > ${ARTIFACT_DIR}/postgres.log 2>&1
 echo "Saving redis logs ..."
-${KUBECTL_CMD} -n sippy-e2e logs redis1 > ${ARTIFACT_DIR}/redis.log
+${KUBECTL_CMD} -n sippy-e2e logs redis1 > ${ARTIFACT_DIR}/redis.log 2>&1
+
+if [ ${postgres_retVal} -ne 0 ] || [ ${redis_retVal} -ne 0 ]; then
+  echo
+  echo "=== FAILURE DIAGNOSTICS ==="
+  echo
+
+  echo "=== Pod descriptions ==="
+  ${KUBECTL_CMD} -n sippy-e2e describe pod/postg1
+  echo "---"
+  ${KUBECTL_CMD} -n sippy-e2e describe pod/redis1
+  echo
+
+  echo "=== Namespace events (sorted by time) ==="
+  ${KUBECTL_CMD} -n sippy-e2e get events --sort-by='.lastTimestamp'
+  echo
+
+  echo "=== Pod conditions ==="
+  ${KUBECTL_CMD} -n sippy-e2e get pod postg1 -o jsonpath='{range .status.conditions[*]}{.type}={.status} reason={.reason} message={.message}{"\n"}{end}' 2>/dev/null
+  echo "---"
+  ${KUBECTL_CMD} -n sippy-e2e get pod redis1 -o jsonpath='{range .status.conditions[*]}{.type}={.status} reason={.reason} message={.message}{"\n"}{end}' 2>/dev/null
+  echo
+
+  echo "=== Container statuses ==="
+  ${KUBECTL_CMD} -n sippy-e2e get pod postg1 -o jsonpath='{range .status.containerStatuses[*]}name={.name} ready={.ready} state={.state}{"\n"}{end}' 2>/dev/null
+  echo "---"
+  ${KUBECTL_CMD} -n sippy-e2e get pod redis1 -o jsonpath='{range .status.containerStatuses[*]}name={.name} ready={.ready} state={.state}{"\n"}{end}' 2>/dev/null
+  echo
+
+  echo "=== Node status for scheduled nodes ==="
+  postg1_node=$(${KUBECTL_CMD} -n sippy-e2e get pod postg1 -o jsonpath='{.spec.nodeName}' 2>/dev/null)
+  redis1_node=$(${KUBECTL_CMD} -n sippy-e2e get pod redis1 -o jsonpath='{.spec.nodeName}' 2>/dev/null)
+  for node in ${postg1_node} ${redis1_node}; do
+    if [ -n "${node}" ]; then
+      echo "Node ${node} conditions:"
+      ${KUBECTL_CMD} get node ${node} -o jsonpath='{range .status.conditions[*]}  {.type}={.status} message={.message}{"\n"}{end}' 2>/dev/null
+    fi
+  done
+  echo
+
+  echo "=== END FAILURE DIAGNOSTICS ==="
+fi
+set -e
+
 if [ ${postgres_retVal} -ne 0 ]; then
-  echo "Postgres pod never came up"
+  echo "ERROR: Postgres pod never became Ready (timed out after ${TIMEOUT})"
   exit 1
 fi
 if [ ${redis_retVal} -ne 0 ]; then
-  echo "Redis pod never came up"
+  echo "ERROR: Redis pod never became Ready (timed out after ${TIMEOUT})"
   exit 1
 fi
 
-${KUBECTL_CMD} -n sippy-e2e get po -o wide
 ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
 # Get the registry credentials for all build farm clusters out to the cluster-pool cluster.
@@ -233,7 +279,7 @@ spec:
         imagePullPolicy: ${SIPPY_IMAGE_PULL_POLICY:-Always}
         resources:
           limits:
-            memory: 3G
+            memory: 8G
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
         command:  ["/bin/sh", "-c"]
@@ -273,10 +319,20 @@ retVal=$?
 set -e
 
 job_pod=$(${KUBECTL_CMD} -n sippy-e2e get pod --selector=job-name=sippy-seed-job --output=jsonpath='{.items[0].metadata.name}')
-${KUBECTL_CMD} -n sippy-e2e logs "${job_pod}" > "${ARTIFACT_DIR}/sippy-seed.log"
+${KUBECTL_CMD} -n sippy-e2e logs "${job_pod}" > "${ARTIFACT_DIR}/sippy-seed.log" 2>&1
 
 if [ ${retVal} -ne 0 ]; then
-  echo "sippy seeding never finished on time."
+  echo
+  echo "=== SIPPY SEED JOB FAILURE DIAGNOSTICS ==="
+  echo "=== Job status ==="
+  ${KUBECTL_CMD} -n sippy-e2e describe job sippy-seed-job
+  echo "=== Job pod status ==="
+  ${KUBECTL_CMD} -n sippy-e2e describe pod ${job_pod}
+  echo "=== Recent namespace events ==="
+  ${KUBECTL_CMD} -n sippy-e2e get events --sort-by='.lastTimestamp'
+  echo "=== END SIPPY SEED JOB FAILURE DIAGNOSTICS ==="
+  echo
+  echo "ERROR: sippy-seed-job did not complete within ${SIPPY_LOAD_TIMEOUT}"
   exit 1
 fi
 
