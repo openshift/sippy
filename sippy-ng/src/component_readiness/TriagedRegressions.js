@@ -185,7 +185,7 @@ export default function TriagedRegressions({
         return value.row.resolved?.Valid ? 'Resolved' : 'Unresolved'
       },
       headerName: 'Resolved',
-      flex: 4,
+      flex: 2,
       align: 'center',
       autocomplete: 'resolution_date',
       renderCell: (param) => {
@@ -230,7 +230,7 @@ export default function TriagedRegressions({
         return value.row.type
       },
       headerName: 'Type',
-      flex: 5,
+      flex: 3,
       autocomplete: 'type',
       renderCell: (param) => <div>{param.value}</div>,
     },
@@ -246,7 +246,7 @@ export default function TriagedRegressions({
         return url || ''
       },
       headerName: 'Jira',
-      flex: 5,
+      flex: 4,
       autocomplete: 'jira_key',
       renderCell: (param) => (
         <a target="_blank" href={param.row.url} rel="noreferrer">
@@ -255,12 +255,22 @@ export default function TriagedRegressions({
       ),
     },
     {
+      field: 'bug_component',
+      valueGetter: (value) => {
+        return value.row.bug?.components?.filter(Boolean).join(', ') || ''
+      },
+      headerName: 'Component',
+      flex: 4,
+      autocomplete: 'bug_component',
+      renderCell: (param) => <div className="test-name">{param.value}</div>,
+    },
+    {
       field: 'bug_state',
       valueGetter: (value) => {
         return value.row.bug?.status || ''
       },
       headerName: 'State',
-      flex: 5,
+      flex: 3,
       autocomplete: 'bug_state',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
@@ -272,7 +282,7 @@ export default function TriagedRegressions({
           : value.row.bug?.affects_versions || ''
       },
       headerName: 'Version',
-      flex: 5,
+      flex: 4,
       autocomplete: 'bug_version',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
@@ -282,7 +292,7 @@ export default function TriagedRegressions({
         return value.row.bug?.release_blocker || ''
       },
       headerName: 'Release Blocker',
-      flex: 5,
+      flex: 4,
       autocomplete: 'release_blocker',
       renderCell: (param) => <div className="test-name">{param.value}</div>,
     },
@@ -292,7 +302,7 @@ export default function TriagedRegressions({
         return value.row.bug?.last_change_time || ''
       },
       headerName: 'Jira updated',
-      flex: 5,
+      flex: 4,
       filterable: false,
       renderCell: (param) => (
         <Tooltip title={param.value}>
