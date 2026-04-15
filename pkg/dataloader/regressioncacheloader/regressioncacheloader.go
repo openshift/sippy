@@ -228,7 +228,9 @@ func (l *RegressionCacheLoader) processView(
 
 	// Step 7: Sync job runs from the in-memory test details directly
 	if view.RegressionTracking.Enabled && l.regressionStore != nil && len(activeRegressions) > 0 {
-		l.syncJobRunsFromReports(vLog, activeRegressions, tdReports)
+		if err := l.syncJobRunsFromReports(vLog, activeRegressions, tdReports); err != nil {
+			return nil, fmt.Errorf("error syncing job runs for view %s: %w", view.Name, err)
+		}
 	}
 
 	if len(strErrors) > 0 {
@@ -339,7 +341,7 @@ func (l *RegressionCacheLoader) syncJobRunsFromReports(
 	vLog *log.Entry,
 	regressions []*models.TestRegression,
 	tdReports []testdetails.Report,
-) {
+) error {
 	// Build a lookup map: (testID, sorted variants key) -> test details report
 	type reportKey struct {
 		testID   string
@@ -372,13 +374,13 @@ func (l *RegressionCacheLoader) syncJobRunsFromReports(
 			continue
 		}
 		if err := l.regressionStore.MergeJobRuns(reg.ID, jobRuns); err != nil {
-			vLog.WithError(err).Errorf("error merging job runs for regression %d", reg.ID)
-			continue
+			return fmt.Errorf("error merging job runs for regression %d: %w", reg.ID, err)
 		}
 		mergedTotal += len(jobRuns)
 	}
 	vLog.Infof("merged %d job runs across %d regressions (matched=%d, unmatched=%d)",
 		mergedTotal, len(regressions), matched, unmatched)
+	return nil
 }
 
 func (l *RegressionCacheLoader) closeStaleRegressions(release string, activeIDs sets.Set[uint]) error {
@@ -400,8 +402,7 @@ func (l *RegressionCacheLoader) closeStaleRegressions(release string, activeIDs 
 		reg.Closed.Valid = true
 		reg.Closed.Time = now
 		if err := l.regressionStore.UpdateRegression(reg); err != nil {
-			rLog.WithError(err).Errorf("error closing regression: %v", reg)
-			continue
+			return fmt.Errorf("error closing regression %d: %w", reg.ID, err)
 		}
 		closedCount++
 	}
