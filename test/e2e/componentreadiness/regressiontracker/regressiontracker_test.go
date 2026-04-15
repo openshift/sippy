@@ -419,7 +419,8 @@ func Test_RegressionJobRuns(t *testing.T) {
 		require.NoError(t, err)
 
 		// Delete the regression
-		dbc.DB.Delete(&models.TestRegression{}, reg.ID)
+		res := dbc.DB.Delete(&models.TestRegression{}, reg.ID)
+		require.NoError(t, res.Error)
 
 		// Job runs should be cascade deleted
 		var count int64

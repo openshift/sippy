@@ -307,6 +307,10 @@ func (l *RegressionCacheLoader) cacheTestDetailsReports(
 	strErrors *[]string,
 ) {
 	for _, report := range tdReports {
+		if len(report.Analyses) == 0 {
+			*strErrors = append(*strErrors, fmt.Sprintf("skipping cache for report with no analyses: testID=%s", report.TestID))
+			continue
+		}
 		genCacheKey := generator.GetCacheKey(ctx)
 		newTIDOpts := reqopts.TestIdentification{
 			TestID:            report.TestID,

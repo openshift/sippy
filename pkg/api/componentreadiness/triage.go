@@ -2,7 +2,6 @@ package componentreadiness
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -30,7 +29,7 @@ import (
 
 func GetTriage(dbc *db.DB, id int, req *http.Request) (*models.Triage, error) {
 	existingTriage := &models.Triage{}
-	res := dbc.DB.Preload("Bug").Preload("Regressions").First(existingTriage, id)
+	res := dbc.DB.Preload("Bug").Preload("Regressions.JobRuns").Preload("Regressions").First(existingTriage, id)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -325,7 +324,7 @@ func ListRegressions(dbc *db.DB, release string, views []crview.View, releases [
 // GetRegression returns the regression with the matching ID
 func GetRegression(dbc *db.DB, id int, views []crview.View, releases []v1.Release, crTimeRoundingFactor time.Duration, req *http.Request) (*models.TestRegression, error) {
 	regression := &models.TestRegression{}
-	res := dbc.DB.Preload("Triages").First(regression, id)
+	res := dbc.DB.Preload("Triages").Preload("JobRuns").First(regression, id)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			return nil, nil
@@ -376,12 +375,19 @@ func GetTriagePotentialMatches(triage *models.Triage, allRegressions []models.Te
 	return potentialMatches, nil
 }
 
-// determinePotentialMatch decides if the given regression has the potential to be associated with the given triage
+// determinePotentialMatch decides if the given regression has the potential to be associated with the given triage.
+// It compares by job run overlap (strongest signal) and similar test names (supplementary signal).
 func determinePotentialMatch(regression models.TestRegression, triage *models.Triage) *PotentialMatch {
 	match := &PotentialMatch{}
+
+	// Build a set of the candidate regression's job run IDs for fast lookup
+	candidateRunIDs := make(map[string]bool, len(regression.JobRuns))
+	for _, jr := range regression.JobRuns {
+		candidateRunIDs[jr.ProwJobRunID] = true
+	}
+
 	for _, tr := range triage.Regressions {
 		if tr.ID == regression.ID {
-			// if this regression is already associated with the triage, never list it as a potential match
 			return nil
 		}
 		similarTestName, editDistance := isSimilarTestName(regression.TestName, tr.TestName)
@@ -391,17 +397,48 @@ func determinePotentialMatch(regression models.TestRegression, triage *models.Tr
 				EditDistance: editDistance,
 			})
 		}
-		if isSameLastFailure(regression.LastFailure, tr.LastFailure) {
-			match.SameLastFailures = append(match.SameLastFailures, tr)
+		if overlap := calculateJobRunOverlap(candidateRunIDs, tr); overlap != nil {
+			match.OverlappingJobRuns = append(match.OverlappingJobRuns, *overlap)
 		}
 	}
 
-	// If we haven't hit any matching criteria, there is no potential match
-	if len(match.SimilarlyNamedTests) == 0 && len(match.SameLastFailures) == 0 {
+	if len(match.SimilarlyNamedTests) == 0 && len(match.OverlappingJobRuns) == 0 {
 		return nil
 	}
 
 	return match
+}
+
+// calculateJobRunOverlap checks if the candidate regression's job runs overlap with
+// a triage regression's job runs. Returns nil if there is no overlap.
+func calculateJobRunOverlap(candidateRunIDs map[string]bool, triageRegression models.TestRegression) *JobRunOverlap {
+	if len(candidateRunIDs) == 0 || len(triageRegression.JobRuns) == 0 {
+		return nil
+	}
+
+	var sharedIDs []string
+	for _, jr := range triageRegression.JobRuns {
+		if candidateRunIDs[jr.ProwJobRunID] {
+			sharedIDs = append(sharedIDs, jr.ProwJobRunID)
+		}
+	}
+
+	if len(sharedIDs) == 0 {
+		return nil
+	}
+
+	// Use the smaller set as the denominator so overlap is relative to the regression with fewer runs
+	denominator := len(candidateRunIDs)
+	if len(triageRegression.JobRuns) < denominator {
+		denominator = len(triageRegression.JobRuns)
+	}
+	overlapPercent := float64(len(sharedIDs)) / float64(denominator) * 100
+
+	return &JobRunOverlap{
+		Regression:      triageRegression,
+		SharedJobRunIDs: sharedIDs,
+		OverlapPercent:  overlapPercent,
+	}
 }
 
 // GetRegressionPotentialMatchingTriages returns a list of PotentialMatchingTriage including all possible matching triages for a given
@@ -443,33 +480,39 @@ func GetRegressionPotentialMatchingTriages(regression models.TestRegression, tri
 type PotentialMatch struct {
 	// SimilarlyNamedTests contains each of the already associated regressions that have a similar name, and their editDistance difference
 	SimilarlyNamedTests []SimilarlyNamedTest `json:"similarly_named_tests"`
-	// SameLastFailures contains each of the already associated regressions that have the same last failure time
-	// This shows us that the regressions were found in the same job, indicating a higher likelihood of correlation.
-	SameLastFailures []models.TestRegression `json:"same_last_failures"`
+	// OverlappingJobRuns contains regressions from the triage that share failed job runs with the candidate regression.
+	// High overlap strongly indicates the regressions are related (failing in the same jobs).
+	OverlappingJobRuns []JobRunOverlap `json:"overlapping_job_runs"`
 	// ConfidenceLevel is a number between 0-10 with a higher number being more likely to be a proper match
 	ConfidenceLevel int `json:"confidence_level"`
 	// Links include HATEOAS links to related resources
 	Links map[string]string `json:"links"`
 }
 
-// calculateConfidenceLevel calculates confidence level (1-10) for a potential match
-// based on the number and type of matches, with edit distance affecting name match scores
+// calculateConfidenceLevel calculates confidence level (1-10) for a potential match.
+// Job run overlap is the strongest signal — high overlap means the tests are failing in the
+// same jobs. Similar test names provide a weaker supplementary signal.
 func (pm PotentialMatch) calculateConfidenceLevel() int {
 	score := 0
 
-	// Calculate score for similarly named tests based on edit distance
-	for _, similarTest := range pm.SimilarlyNamedTests {
-		editDistanceScore := 6 - similarTest.EditDistance // 1 point for 5 edit distance, 2 points for 4, etc.
-		score += editDistanceScore
+	// Job run overlap is the primary signal. Use the best overlap percentage across
+	// all matching regressions to score.
+	for _, overlap := range pm.OverlappingJobRuns {
+		overlapScore := int(overlap.OverlapPercent/10) + 1 // 100% → 11 (capped), 50% → 6, 10% → 2
+		if overlapScore > score {
+			score = overlapScore
+		}
 	}
 
-	// Add 1 point for each same last failure match
-	score += len(pm.SameLastFailures)
+	// Similar test names provide a supplementary signal
+	for _, similarTest := range pm.SimilarlyNamedTests {
+		editDistanceScore := 6 - similarTest.EditDistance // 1 point for 5 edit distance, up to 6 for exact match
+		score += editDistanceScore
+	}
 
 	if score > 10 {
 		score = 10
 	}
-	// This should never happen, but we should never return a score less than 1
 	if score < 1 {
 		score = 1
 	}
@@ -492,6 +535,15 @@ type PotentialMatchingTriage struct {
 type SimilarlyNamedTest struct {
 	Regression   models.TestRegression `json:"regression"`
 	EditDistance int                   `json:"edit_distance"`
+}
+
+// JobRunOverlap represents the overlap between a candidate regression's job runs and
+// a triage regression's job runs. SharedJobRunIDs contains the prow job run IDs that
+// appear in both regressions.
+type JobRunOverlap struct {
+	Regression      models.TestRegression `json:"regression"`
+	SharedJobRunIDs []string              `json:"shared_job_run_ids"`
+	OverlapPercent  float64               `json:"overlap_percent"`
 }
 
 func GetMatchingRegressedTestForRegression(regression models.TestRegression, report componentreport.ComponentReport) *componentreport.ReportTestSummary {
@@ -561,18 +613,6 @@ func calculateEditDistance(s1, s2 string) int {
 func isSimilarTestName(testName1, testName2 string) (bool, int) {
 	editDistance := calculateEditDistance(testName1, testName2)
 	return editDistance <= 5, editDistance
-}
-
-// isSameLastFailure simply returns if the times are the same, including that they both have the same validity
-func isSameLastFailure(time1, time2 sql.NullTime) bool {
-	if !time1.Valid && !time2.Valid {
-		return true
-	}
-	if time1.Valid != time2.Valid {
-		return false
-	}
-
-	return time1.Time.Equal(time2.Time)
 }
 
 func getAuditLogsForTriageID(dbc *gorm.DB, triageID int) ([]models.AuditLog, error) {

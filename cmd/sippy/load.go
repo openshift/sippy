@@ -144,7 +144,10 @@ func NewLoadCommand() *cobra.Command {
 				}
 			}
 
-			cacheClient, _ := f.CacheFlags.GetCacheClient()
+			cacheClient, cacheErr := f.CacheFlags.GetCacheClient()
+			if cacheErr != nil {
+				log.WithError(cacheErr).Info("cache client not available, proceeding without caching")
+			}
 			releaseConfigs := []sippyv1.Release{}
 
 			// initializing a bigquery client different from the normal one
