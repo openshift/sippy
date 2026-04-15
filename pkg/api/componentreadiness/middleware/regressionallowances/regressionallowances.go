@@ -7,7 +7,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
@@ -41,7 +41,7 @@ type RegressionAllowances struct {
 }
 
 func (r *RegressionAllowances) Query(_ context.Context, _ *sync.WaitGroup, _ crtest.JobVariants,
-	_, _ chan map[string]bq.TestStatus, _ chan error) {
+	_, _ chan map[string]crstatus.TestStatus, _ chan error) {
 	// unused
 }
 
@@ -151,6 +151,6 @@ func (r *RegressionAllowances) adjustAnalysisParameters(testStats *testdetails.T
 func (r *RegressionAllowances) QueryTestDetails(ctx context.Context, wg *sync.WaitGroup, errCh chan error, allJobVariants crtest.JobVariants) {
 }
 
-func (r *RegressionAllowances) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *bq.TestJobRunStatuses) error {
+func (r *RegressionAllowances) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {
 	return nil
 }

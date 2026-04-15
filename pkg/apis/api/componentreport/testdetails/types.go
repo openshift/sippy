@@ -4,7 +4,6 @@ import (
 	"math/big"
 	"time"
 
-	"cloud.google.com/go/civil"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/db/models"
 )
@@ -104,9 +103,9 @@ type JobStats struct {
 }
 
 type JobRunStats struct {
-	JobURL    string         `json:"job_url"`
-	JobRunID  string         `json:"job_run_id"`
-	StartTime civil.DateTime `json:"start_time"`
+	JobURL    string    `json:"job_url"`
+	JobRunID  string    `json:"job_run_id"`
+	StartTime time.Time `json:"start_time"`
 	// TestStats is the test stats from one particular job run.
 	// For the majority of the tests, there is only one junit. But
 	// there are cases multiple junits are generated for the same test.

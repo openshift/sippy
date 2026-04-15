@@ -17,6 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	resources "github.com/openshift/sippy"
+	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -186,6 +187,8 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		log.WithError(err).Warn("unable to initialize Jira client, bug filing will be disabled")
 	}
 
+	crDataProvider := bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
+
 	server := sippyserver.NewServer(
 		sippyserver.ModeOpenShift,
 		f.APIFlags.ListenAddr,
@@ -198,6 +201,7 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 		gcsClient,
 		f.GoogleCloudFlags.StorageBucket,
 		bigQueryClient,
+		crDataProvider,
 		nil,
 		cacheClient,
 		f.ComponentReadinessFlags.CRTimeRoundingFactor,
@@ -214,10 +218,10 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 			context.Background(),
 			dbc,
 			bigQueryClient,
+			crDataProvider,
 			time.Time{},
 			cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
-			views.ComponentReadiness,
-			config.ComponentReadinessConfig.VariantJunitTableOverrides)
+			views.ComponentReadiness)
 		if err != nil {
 			log.WithError(err).Error("error refreshing metrics")
 		}
@@ -234,10 +238,10 @@ func (f *ComponentReadinessFlags) runServerMode() error {
 						context.Background(),
 						dbc,
 						bigQueryClient,
+						crDataProvider,
 						time.Time{},
 						cache.NewStandardCROptions(f.ComponentReadinessFlags.CRTimeRoundingFactor),
-						views.ComponentReadiness,
-						config.ComponentReadinessConfig.VariantJunitTableOverrides)
+						views.ComponentReadiness)
 					if err != nil {
 						log.WithError(err).Error("error refreshing metrics")
 					}

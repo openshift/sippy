@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/middleware"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
@@ -54,7 +54,7 @@ type RegressionTracker struct {
 	hasLoadedRegressions bool
 }
 
-func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]bq.TestStatus, errCh chan error) {
+func (r *RegressionTracker) Query(ctx context.Context, wg *sync.WaitGroup, allJobVariants crtest.JobVariants, baseStatusCh, sampleStatusCh chan map[string]crstatus.TestStatus, errCh chan error) {
 	err := r.ensureRegressionsLoaded()
 	if err != nil {
 		errCh <- err
@@ -220,6 +220,6 @@ func FindOpenRegression(sampleRelease, testID string,
 	return nil
 }
 
-func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *bq.TestJobRunStatuses) error {
+func (r *RegressionTracker) PreTestDetailsAnalysis(testKey crtest.KeyWithVariants, status *crstatus.TestJobRunStatuses) error {
 	return nil
 }
