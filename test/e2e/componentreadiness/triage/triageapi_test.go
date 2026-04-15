@@ -685,7 +685,6 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		assert.ElementsMatch(t, []string{"run-1", "run-2"}, overlapMatch.OverlappingJobRuns[0].SharedJobRunIDs, "Should share run-1 and run-2")
 		// 2 shared / 3 (smaller set = overlap regression's 3 runs) = 66.7%
 		assert.InDelta(t, 66.7, overlapMatch.OverlappingJobRuns[0].OverlapPercent, 1.0)
-		// Confidence: int(66.7/10) + 1 = 7
 		assert.Equal(t, 7, overlapMatch.ConfidenceLevel, "Confidence should be 7 for ~67% overlap")
 
 		// Verify non-matching triage is not included

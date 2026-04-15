@@ -238,7 +238,7 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 					{OverlapPercent: 80},
 				},
 			},
-			expected: 9, // int(80/10) + 1 = 9
+			expected: 9, // 80% overlap: score 9
 		},
 		{
 			name: "full job run overlap",
@@ -256,13 +256,13 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 					{OverlapPercent: 10},
 				},
 			},
-			expected: 2, // int(10/10) + 1 = 2
+			expected: 2, // 10% overlap: score 2
 		},
 		{
 			name: "overlap plus similar name",
 			match: PotentialMatch{
 				OverlappingJobRuns: []JobRunOverlap{
-					{OverlapPercent: 50}, // int(50/10)+1 = 6
+					{OverlapPercent: 50}, // 50% overlap: score 6
 				},
 				SimilarlyNamedTests: []SimilarlyNamedTest{
 					{EditDistance: 2}, // 6 - 2 = 4

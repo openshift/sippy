@@ -393,16 +393,17 @@ func (l *RegressionCacheLoader) closeStaleRegressions(release string, activeIDs 
 	now := time.Now()
 	rLog.Infof("checking %d regressions against %d active IDs for closing", len(regressions), activeIDs.Len())
 	for _, reg := range regressions {
-		if !activeIDs.Has(reg.ID) && !reg.Closed.Valid {
-			rLog.Infof("closing regression no longer in any report: %v", reg)
-			reg.Closed.Valid = true
-			reg.Closed.Time = now
-			if err := l.regressionStore.UpdateRegression(reg); err != nil {
-				rLog.WithError(err).Errorf("error closing regression: %v", reg)
-				continue
-			}
-			closedCount++
+		if activeIDs.Has(reg.ID) || reg.Closed.Valid {
+			continue
 		}
+		rLog.Infof("closing regression no longer in any report: %v", reg)
+		reg.Closed.Valid = true
+		reg.Closed.Time = now
+		if err := l.regressionStore.UpdateRegression(reg); err != nil {
+			rLog.WithError(err).Errorf("error closing regression: %v", reg)
+			continue
+		}
+		closedCount++
 	}
 	rLog.Infof("closed %d regressions", closedCount)
 
