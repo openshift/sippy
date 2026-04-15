@@ -199,24 +199,25 @@ func GetDataFromCacheOrMatview[T any](ctx context.Context,
 		}).Debugf("cache hit")
 
 		if err := json.Unmarshal(cached, &cacheVal); err != nil {
-			return defaultVal, []error{errors.WithMessagef(err, "failed to unmarshal cached item.  cacheKey=%+v", cacheKey)}
-		}
-
-		// look up when the matview was refreshed to see if the cached value is stale
-		var lastRefresh time.Time
-		if lastRefreshBytes, err := cacheClient.Get(ctx, RefreshMatviewKey(matview), 0); err == nil {
-			if parsed, err := time.Parse(time.RFC3339, string(lastRefreshBytes)); err != nil {
-				logrus.WithError(err).Warnf("failed to parse matview refresh timestamp %q for %q; cache will not be invalidated", lastRefreshBytes, matview)
-			} else {
-				lastRefresh = parsed
+			logrus.WithError(err).Warnf("failed to unmarshal cached item.  cacheKey=%+v", cacheKey)
+			// fall through to generate the data instead
+		} else {
+			// look up when the matview was refreshed to see if the cached value is stale
+			var lastRefresh time.Time
+			if lastRefreshBytes, err := cacheClient.Get(ctx, RefreshMatviewKey(matview), 0); err == nil {
+				if parsed, err := time.Parse(time.RFC3339, string(lastRefreshBytes)); err != nil {
+					logrus.WithError(err).Warnf("failed to parse matview refresh timestamp %q for %q; cache will not be invalidated", lastRefreshBytes, matview)
+				} else {
+					lastRefresh = parsed
+				}
 			}
-		}
 
-		if lastRefresh.Before(cacheVal.Timestamp) {
-			// not invalidated by a newer refresh, so use it (if we don't know the last refresh, still use it)
-			return cacheVal.Val, nil
+			if lastRefresh.Before(cacheVal.Timestamp) {
+				// not invalidated by a newer refresh, so use it (if we don't know the last refresh, still use it)
+				return cacheVal.Val, nil
+			}
+			logrus.Debugf("matview %q refreshed at %v, will not use earlier cache entry from %v", matview, lastRefresh, cacheVal.Timestamp)
 		}
-		logrus.Debugf("matview %q refreshed at %v, will not use earlier cache entry from %v", matview, lastRefresh, cacheVal.Timestamp)
 	} else if strings.Contains(err.Error(), "connection refused") {
 		logrus.WithError(err).Fatalf("redis URL specified but got connection refused; exiting due to cost issues in this configuration")
 	} else {
