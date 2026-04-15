@@ -2,6 +2,7 @@ package componentreadiness
 
 import (
 	"database/sql"
+	"net/http"
 	"testing"
 	"time"
 
@@ -395,6 +396,60 @@ func TestDeterminePotentialMatch(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetRegressionPotentialMatchingTriages_FiltersOldResolvedTriages(t *testing.T) {
+	regression := models.TestRegression{
+		ID:       100,
+		TestName: "TestSomething",
+		JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+	}
+
+	// A triage resolved 7 weeks ago — should be filtered out
+	oldResolved := models.Triage{
+		ID:       1,
+		Resolved: sql.NullTime{Valid: true, Time: time.Now().Add(-7 * 7 * 24 * time.Hour)},
+		Regressions: []models.TestRegression{{
+			ID:       200,
+			TestName: "TestSomethng", // similar name
+			JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+		}},
+	}
+
+	// A triage resolved 2 weeks ago — should be included
+	recentResolved := models.Triage{
+		ID:       2,
+		Resolved: sql.NullTime{Valid: true, Time: time.Now().Add(-2 * 7 * 24 * time.Hour)},
+		Regressions: []models.TestRegression{{
+			ID:       201,
+			TestName: "TestSomethng",
+			JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+		}},
+	}
+
+	// An unresolved triage — should be included
+	unresolved := models.Triage{
+		ID: 3,
+		Regressions: []models.TestRegression{{
+			ID:       202,
+			TestName: "TestSomethng",
+			JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+		}},
+	}
+
+	triages := []models.Triage{oldResolved, recentResolved, unresolved}
+	req, _ := http.NewRequest("GET", "http://localhost/api/component_readiness/regressions/100/matches", nil)
+	results, err := GetRegressionPotentialMatchingTriages(regression, triages, req)
+	assert.NoError(t, err)
+
+	foundIDs := make(map[uint]bool)
+	for _, m := range results {
+		foundIDs[m.Triage.ID] = true
+	}
+
+	assert.False(t, foundIDs[1], "Triage resolved 7 weeks ago should be filtered out")
+	assert.True(t, foundIDs[2], "Triage resolved 2 weeks ago should be included")
+	assert.True(t, foundIDs[3], "Unresolved triage should be included")
 }
 
 func TestCompareTriageObjects(t *testing.T) {

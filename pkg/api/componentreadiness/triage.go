@@ -447,7 +447,13 @@ func calculateJobRunOverlap(candidateRunIDs map[string]bool, triageRegression mo
 func GetRegressionPotentialMatchingTriages(regression models.TestRegression, triages []models.Triage, req *http.Request) ([]PotentialMatchingTriage, error) {
 	var potentialMatches []PotentialMatchingTriage
 	baseURL := sippyapi.GetBaseURL(req)
+	resolvedCutoff := time.Now().Add(-6 * 7 * 24 * time.Hour) // 6 weeks ago
 	for _, triage := range triages {
+		// Skip triages resolved more than 6 weeks ago, they're too old to be relevant
+		if triage.Resolved.Valid && triage.Resolved.Time.Before(resolvedCutoff) {
+			continue
+		}
+
 		// If the triage already contains the regression, don't consider it a potential match
 		for _, reg := range triage.Regressions {
 			if reg.ID == regression.ID {
