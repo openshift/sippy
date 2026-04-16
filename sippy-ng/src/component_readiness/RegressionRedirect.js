@@ -34,6 +34,10 @@ export default function RegressionRedirect() {
         const pathAfterApi = regression.links.test_details.substring(
           apiIndex + 5
         )
+        if (!pathAfterApi.startsWith('component_readiness/')) {
+          setError('Unexpected redirect path.')
+          return
+        }
         navigate('/' + pathAfterApi, { replace: true })
       })
       .catch((err) => {
