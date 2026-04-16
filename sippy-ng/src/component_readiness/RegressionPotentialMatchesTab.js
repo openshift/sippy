@@ -286,7 +286,7 @@ export default function RegressionPotentialMatchesTab({
       headerName: (
         <Tooltip
           title={
-            'Confidence Level (0-10) - Higher values indicate higher likelihood of matching based on: Similar test names (edit distance scoring), Overlapping failed job runs (shared prow job runs between regressions)'
+            'Confidence Level (1-10) - Higher values indicate higher likelihood of matching based on: Similar test names (edit distance scoring), Overlapping failed job runs (shared prow job runs between regressions)'
           }
           arrow
           placement="top"

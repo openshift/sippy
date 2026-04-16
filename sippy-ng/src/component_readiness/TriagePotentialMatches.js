@@ -400,7 +400,7 @@ export default function TriagePotentialMatches({
       headerName: (
         <Tooltip
           title={
-            'Confidence Level (0-10) - Higher values indicate higher likelihood of matching based on: Overlapping failed job runs (shared prow job runs between regressions), Similar test names (edit distance scoring)'
+            'Confidence Level (1-10) - Higher values indicate higher likelihood of matching based on: Overlapping failed job runs (shared prow job runs between regressions), Similar test names (edit distance scoring)'
           }
           arrow
           placement="top"
