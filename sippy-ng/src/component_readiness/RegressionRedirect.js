@@ -10,7 +10,11 @@ export default function RegressionRedirect() {
   const [error, setError] = React.useState(null)
 
   React.useEffect(() => {
-    fetch(getRegressionAPIUrl(regressionId))
+    const abortController = new AbortController()
+
+    fetch(getRegressionAPIUrl(regressionId), {
+      signal: abortController.signal,
+    })
       .then((response) => {
         if (response.status !== 200) {
           throw new Error('API server returned ' + response.status)
@@ -18,7 +22,7 @@ export default function RegressionRedirect() {
         return response.json()
       })
       .then((regression) => {
-        if (!regression.links?.test_details) {
+        if (!regression?.links?.test_details) {
           setError('No test details link available for this regression.')
           return
         }
@@ -33,8 +37,14 @@ export default function RegressionRedirect() {
         navigate('/' + pathAfterApi, { replace: true })
       })
       .catch((err) => {
+        if (err.name === 'AbortError') {
+          return
+        }
         setError('Failed to load regression: ' + err.message)
       })
+    return () => {
+      abortController.abort()
+    }
   }, [regressionId, navigate])
 
   if (error) {
