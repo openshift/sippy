@@ -11,7 +11,7 @@ import (
 	"time"
 
 	fet "github.com/glycerine/golang-fisher-exact"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
@@ -20,23 +20,20 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api"
-	"github.com/openshift/sippy/pkg/api/componentreadiness/query"
+	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
-	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
-	"github.com/openshift/sippy/pkg/bigquery"
-	"github.com/openshift/sippy/pkg/util"
 )
 
-func GetTestDetails(ctx context.Context, client *bigquery.Client, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release, baseURL string) (testdetails.Report, []error) {
-	generator := NewComponentReportGenerator(client, reqOptions, dbc, nil, releases, baseURL)
+func GetTestDetails(ctx context.Context, provider dataprovider.DataProvider, dbc *db.DB, reqOptions reqopts.RequestOptions, releases []v1.Release, baseURL string) (testdetails.Report, []error) {
+	generator := NewComponentReportGenerator(provider, reqOptions, dbc, releases, baseURL)
 	if os.Getenv("DEV_MODE") == "1" {
 		return generator.GenerateTestDetailsReport(ctx)
 	}
 
 	report, errs := api.GetDataFromCacheOrGenerate[testdetails.Report](
 		ctx,
-		generator.client.Cache,
+		generator.getCache(),
 		generator.ReqOptions.CacheOption,
 		api.NewCacheSpec(generator.GetCacheKey(ctx), "TestDetailsReport~", nil),
 		generator.GenerateTestDetailsReport,
@@ -77,7 +74,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 	// This function is called from the API, and we assume only one TestIDOptions entry in that case.
 	testIDOptions := c.ReqOptions.TestIDOptions[0]
 	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
-	componentJobRunTestReportStatus, errs := c.getJobRunTestStatusFromBigQuery(ctx)
+	componentJobRunTestReportStatus, errs := c.getJobRunTestStatus(ctx)
 	if len(errs) > 0 {
 		return testdetails.Report{}, errs
 	}
@@ -89,31 +86,31 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReport(ctx context.Context
 func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx context.Context) ([]testdetails.Report, []error) {
 	// load all pass/fails for specific jobs, both sample, basis, and override basis if requested
 	before := time.Now()
-	allTestsJobRunStatuses, errs := c.getJobRunTestStatusFromBigQuery(ctx)
+	allTestsJobRunStatuses, errs := c.getJobRunTestStatus(ctx)
 	if len(errs) > 0 {
 		return []testdetails.Report{}, errs
 	}
-	logrus.Infof("getJobRunTestStatusFromBigQuery completed in %s with %d sample results and %d base results from db",
+	logrus.Infof("getJobRunTestStatus completed in %s with %d sample results and %d base results",
 		time.Since(before), len(allTestsJobRunStatuses.SampleStatus), len(allTestsJobRunStatuses.BaseStatus))
 
 	// We have a struct where the statuses are mapped by prowjob to all rows results for that prowjob,
 	// with multiple tests intermingled in that layer.
 	// Build out a new struct where these are split up by test ID.
 	// split the status on test ID, and pass only that tests data in for reporting:
-	testKeyTestJobRunStatuses := map[string]bq.TestJobRunStatuses{}
+	testKeyTestJobRunStatuses := map[string]crstatus.TestJobRunStatuses{}
 	for jobName, rows := range allTestsJobRunStatuses.BaseStatus {
 		for _, row := range rows {
 			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-				testKeyTestJobRunStatuses[testKeyStr] = bq.TestJobRunStatuses{
-					BaseStatus:         map[string][]bq.TestJobRunRows{},
-					BaseOverrideStatus: map[string][]bq.TestJobRunRows{},
-					SampleStatus:       map[string][]bq.TestJobRunRows{},
+				testKeyTestJobRunStatuses[testKeyStr] = crstatus.TestJobRunStatuses{
+					BaseStatus:         map[string][]crstatus.TestJobRunRows{},
+					BaseOverrideStatus: map[string][]crstatus.TestJobRunRows{},
+					SampleStatus:       map[string][]crstatus.TestJobRunRows{},
 					GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
 				}
 			}
 			if testKeyTestJobRunStatuses[testKeyStr].BaseStatus[jobName] == nil {
-				testKeyTestJobRunStatuses[testKeyStr].BaseStatus[jobName] = []bq.TestJobRunRows{}
+				testKeyTestJobRunStatuses[testKeyStr].BaseStatus[jobName] = []crstatus.TestJobRunRows{}
 			}
 			testKeyTestJobRunStatuses[testKeyStr].BaseStatus[jobName] =
 				append(testKeyTestJobRunStatuses[testKeyStr].BaseStatus[jobName], row)
@@ -123,15 +120,15 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		for _, row := range rows {
 			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-				testKeyTestJobRunStatuses[testKeyStr] = bq.TestJobRunStatuses{
-					BaseStatus:         map[string][]bq.TestJobRunRows{},
-					BaseOverrideStatus: map[string][]bq.TestJobRunRows{},
-					SampleStatus:       map[string][]bq.TestJobRunRows{},
+				testKeyTestJobRunStatuses[testKeyStr] = crstatus.TestJobRunStatuses{
+					BaseStatus:         map[string][]crstatus.TestJobRunRows{},
+					BaseOverrideStatus: map[string][]crstatus.TestJobRunRows{},
+					SampleStatus:       map[string][]crstatus.TestJobRunRows{},
 					GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
 				}
 			}
 			if testKeyTestJobRunStatuses[testKeyStr].BaseOverrideStatus[jobName] == nil {
-				testKeyTestJobRunStatuses[testKeyStr].BaseOverrideStatus[jobName] = []bq.TestJobRunRows{}
+				testKeyTestJobRunStatuses[testKeyStr].BaseOverrideStatus[jobName] = []crstatus.TestJobRunRows{}
 			}
 			testKeyTestJobRunStatuses[testKeyStr].BaseOverrideStatus[jobName] =
 				append(testKeyTestJobRunStatuses[testKeyStr].BaseOverrideStatus[jobName], row)
@@ -141,15 +138,15 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 		for _, row := range rows {
 			testKeyStr := row.TestKeyStr
 			if _, ok := testKeyTestJobRunStatuses[testKeyStr]; !ok {
-				testKeyTestJobRunStatuses[testKeyStr] = bq.TestJobRunStatuses{
-					BaseStatus:         map[string][]bq.TestJobRunRows{},
-					BaseOverrideStatus: map[string][]bq.TestJobRunRows{},
-					SampleStatus:       map[string][]bq.TestJobRunRows{},
+				testKeyTestJobRunStatuses[testKeyStr] = crstatus.TestJobRunStatuses{
+					BaseStatus:         map[string][]crstatus.TestJobRunRows{},
+					BaseOverrideStatus: map[string][]crstatus.TestJobRunRows{},
+					SampleStatus:       map[string][]crstatus.TestJobRunRows{},
 					GeneratedAt:        allTestsJobRunStatuses.GeneratedAt,
 				}
 			}
 			if testKeyTestJobRunStatuses[testKeyStr].SampleStatus[jobName] == nil {
-				testKeyTestJobRunStatuses[testKeyStr].SampleStatus[jobName] = []bq.TestJobRunRows{}
+				testKeyTestJobRunStatuses[testKeyStr].SampleStatus[jobName] = []crstatus.TestJobRunRows{}
 			}
 			testKeyTestJobRunStatuses[testKeyStr].SampleStatus[jobName] =
 				append(testKeyTestJobRunStatuses[testKeyStr].SampleStatus[jobName], row)
@@ -183,7 +180,7 @@ func (c *ComponentReportGenerator) GenerateTestDetailsReportMultiTest(ctx contex
 func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 	ctx context.Context,
 	testIDOption reqopts.TestIdentification,
-	componentJobRunTestReportStatus bq.TestJobRunStatuses,
+	componentJobRunTestReportStatus crstatus.TestJobRunStatuses,
 	allowUnregressedReports bool,
 ) (testdetails.Report, []error) {
 
@@ -199,7 +196,7 @@ func (c *ComponentReportGenerator) GenerateDetailsReportForTest(
 		}
 	}
 
-	timeRanges, errs := query.GetReleaseDatesFromBigQuery(ctx, c.client, c.ReqOptions)
+	timeRanges, errs := c.dataProvider.QueryReleaseDates(ctx, c.ReqOptions)
 	if errs != nil {
 		return testdetails.Report{}, errs
 	}
@@ -339,72 +336,36 @@ func (c *ComponentReportGenerator) getBaseJobRunTestStatus(
 	allJobVariants crtest.JobVariants,
 	baseRelease string,
 	baseStart time.Time,
-	baseEnd time.Time) (map[string][]bq.TestJobRunRows, []error) {
+	baseEnd time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
-	generator := query.NewBaseTestDetailsQueryGenerator(
-		logrus.WithField("func", "getBaseJobRunTestStatus"),
-		c.client,
-		c.ReqOptions,
-		allJobVariants,
-		baseRelease,
-		baseStart,
-		baseEnd,
-		c.ReqOptions.TestIDOptions,
-	)
-
-	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](ctx,
-		c.client.Cache, c.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator, "BaseJobRunTestStatus~", &baseEnd),
-		generator.QueryTestStatus,
-		bq.TestJobRunStatuses{})
-
-	if len(errs) > 0 {
-		return nil, errs
-	}
-
-	return jobRunTestStatus.BaseStatus, nil
+	reqOpts := c.ReqOptions
+	reqOpts.BaseRelease.Name = baseRelease
+	reqOpts.BaseRelease.Start = baseStart
+	reqOpts.BaseRelease.End = baseEnd
+	return c.dataProvider.QueryBaseJobRunTestStatus(ctx, reqOpts, allJobVariants)
 }
 
 func (c *ComponentReportGenerator) getSampleJobRunTestStatus(
 	ctx context.Context,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
-	start, end time.Time,
-	junitTable string) (map[string][]bq.TestJobRunRows, []error) {
+	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
-	generator := query.NewSampleTestDetailsQueryGenerator(
-		c.client, c.ReqOptions,
-		allJobVariants, includeVariants, start, end, junitTable)
-
-	jobRunTestStatus, errs := api.GetDataFromCacheOrGenerate[bq.TestJobRunStatuses](ctx,
-		c.client.Cache, c.ReqOptions.CacheOption,
-		api.NewCacheSpec(generator, "SampleJobRunTestStatus~", &end),
-		generator.QueryTestStatus,
-		bq.TestJobRunStatuses{})
-
-	if len(errs) > 0 {
-		return nil, errs
-	}
-
-	return jobRunTestStatus.SampleStatus, nil
+	return c.dataProvider.QuerySampleJobRunTestStatus(ctx, c.ReqOptions, allJobVariants, includeVariants, start, end)
 }
 
-func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.Context) (bq.TestJobRunStatuses, []error) {
-	fLog := logrus.WithField("func", "getJobRunTestStatusFromBigQuery")
-	allJobVariants, errs := GetJobVariantsFromBigQuery(ctx, c.client)
+func (c *ComponentReportGenerator) getJobRunTestStatus(ctx context.Context) (crstatus.TestJobRunStatuses, []error) {
+	fLog := logrus.WithField("func", "getJobRunTestStatus")
+	allJobVariants, errs := GetJobVariants(ctx, c.dataProvider)
 	if len(errs) > 0 {
-		logrus.Errorf("failed to get variants from bigquery")
-		return bq.TestJobRunStatuses{}, errs
+		logrus.Errorf("failed to get job variants")
+		return crstatus.TestJobRunStatuses{}, errs
 	}
-	var baseStatus, sampleStatus map[string][]bq.TestJobRunRows
-	var baseErrs, baseOverrideErrs, sampleErrs []error
+	var baseStatus, sampleStatus map[string][]crstatus.TestJobRunRows
+	var baseErrs, sampleErrs []error
 	wg := sync.WaitGroup{}
 
-	// channels for status as we may collect status from multiple queries run in separate goroutines
-	statusCh := make(chan map[string][]bq.TestJobRunRows)
 	errCh := make(chan error)
-	statusDoneCh := make(chan struct{})     // To signal when all processing is done
-	statusErrsDoneCh := make(chan struct{}) // To signal when all processing is done
 
 	c.middlewares.QueryTestDetails(ctx, &wg, errCh, allJobVariants)
 
@@ -418,7 +379,6 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 		default:
 			baseStatus, baseErrs = c.getBaseJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.BaseRelease.Name, c.ReqOptions.BaseRelease.Start, c.ReqOptions.BaseRelease.End)
 		}
-
 	}()
 
 	wg.Add(1)
@@ -429,104 +389,33 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 			logrus.Infof("Context canceled while fetching sample job run test status")
 			return
 		default:
-			includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, -1, c.ReqOptions.VariantOption.IncludeVariants)
-			if skipQuery {
-				fLog.Infof("skipping default status query as all values for a variant were overridden")
-				return
-			}
-			fLog.Infof("running default status query with includeVariants: %+v", includeVariants)
-			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
-				c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End, query.DefaultJunitTable)
-			fLog.Infof("received %d test statuses and %d errors from default query", len(status), len(errs))
-			statusCh <- status
-			for _, err := range errs {
-				errCh <- err
-			}
+			fLog.Infof("running sample status query with includeVariants: %+v", c.ReqOptions.VariantOption.IncludeVariants)
+			status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, c.ReqOptions.VariantOption.IncludeVariants,
+				c.ReqOptions.SampleRelease.Start, c.ReqOptions.SampleRelease.End)
+			fLog.Infof("received %d test statuses and %d errors from sample query", len(status), len(errs))
+			sampleStatus = status
+			sampleErrs = errs
 		}
-
 	}()
-
-	// fork additional sample queries for the overrides
-	for i, or := range c.variantJunitTableOverrides {
-		if !utils.ContainsOverriddenVariant(c.ReqOptions.VariantOption.IncludeVariants, or.VariantName, or.VariantValue) {
-			continue
-		}
-		// only do this additional query if the specified override variant is actually included in this request
-		wg.Add(1)
-		go func(i int, or configv1.VariantJunitTableOverride) {
-			defer wg.Done()
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				includeVariants, skipQuery := copyIncludeVariantsAndRemoveOverrides(c.variantJunitTableOverrides, i, c.ReqOptions.VariantOption.IncludeVariants)
-				if skipQuery {
-					fLog.Infof("skipping override status query as all values for a variant were overridden")
-					return
-				}
-				fLog.Infof("running override status query for %+v with includeVariants: %+v", or, includeVariants)
-				// Calculate a start time relative to the requested end time: (i.e. for rarely run jobs)
-				end := c.ReqOptions.SampleRelease.End
-				start, err := util.ParseCRReleaseTime([]v1.Release{}, "", or.RelativeStart,
-					true, &c.ReqOptions.SampleRelease.End, c.ReqOptions.CacheOption.CRTimeRoundingFactor)
-				if err != nil {
-					errCh <- err
-					return
-				}
-				status, errs := c.getSampleJobRunTestStatus(ctx, allJobVariants, includeVariants,
-					start, end, or.TableName)
-				fLog.Infof("received %d job run test statuses and %d errors from override query", len(status), len(errs))
-				statusCh <- status
-				for _, err := range errs {
-					errCh <- err
-				}
-			}
-
-		}(i, or)
-	}
 
 	go func() {
 		wg.Wait()
-		close(statusCh)
 		close(errCh)
 	}()
 
-	go func() {
-
-		for status := range statusCh {
-			fLog.Infof("received %d job run test statuses over channel", len(status))
-			for k, v := range status {
-				if sampleStatus == nil {
-					fLog.Warnf("initializing sampleStatus map")
-					sampleStatus = make(map[string][]bq.TestJobRunRows)
-				}
-				if v2, ok := sampleStatus[k]; ok {
-					fLog.Warnf("sampleStatus already had key: %+v", k)
-					fLog.Warnf("sampleStatus new value: %+v", v)
-					fLog.Warnf("sampleStatus old value: %+v", v2)
-				}
-				sampleStatus[k] = v
-			}
-		}
-		close(statusDoneCh)
-	}()
-
-	go func() {
-		for err := range errCh {
-			sampleErrs = append(sampleErrs, err)
-		}
-		close(statusErrsDoneCh)
-	}()
-
-	<-statusDoneCh
-	<-statusErrsDoneCh
-	fLog.Infof("total test statuses: %d", len(sampleStatus))
-	if len(baseErrs) != 0 || len(baseOverrideErrs) != 0 {
-		errs = append(errs, baseErrs...)
-		errs = append(errs, baseOverrideErrs...)
+	var middlewareErrs []error
+	for err := range errCh {
+		middlewareErrs = append(middlewareErrs, err)
 	}
 
-	return bq.TestJobRunStatuses{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
+	fLog.Infof("total test statuses: %d", len(sampleStatus))
+	if len(baseErrs) != 0 || len(sampleErrs) != 0 || len(middlewareErrs) != 0 {
+		errs = append(errs, baseErrs...)
+		errs = append(errs, sampleErrs...)
+		errs = append(errs, middlewareErrs...)
+	}
+
+	return crstatus.TestJobRunStatuses{BaseStatus: baseStatus, SampleStatus: sampleStatus}, errs
 }
 
 // internalGenerateTestDetailsReport handles the report generation for the lowest level test report including
@@ -534,7 +423,7 @@ func (c *ComponentReportGenerator) getJobRunTestStatusFromBigQuery(ctx context.C
 func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 	baseRelease string,
 	baseStart, baseEnd *time.Time,
-	baseStatus, sampleStatus map[string][]bq.TestJobRunRows,
+	baseStatus, sampleStatus map[string][]crstatus.TestJobRunRows,
 	testIDOption reqopts.TestIdentification,
 ) testdetails.Report {
 	testKey := crtest.Identification{
@@ -584,7 +473,7 @@ func (c *ComponentReportGenerator) internalGenerateTestDetailsReport(
 
 // go through all the job runs that had a test and summarize the results
 func (c *ComponentReportGenerator) summarizeRecordedTestStats(
-	baseStatus, sampleStatus map[string][]bq.TestJobRunRows, testKey crtest.Identification,
+	baseStatus, sampleStatus map[string][]crstatus.TestJobRunRows, testKey crtest.Identification,
 ) (
 	totalBase, totalSample crtest.Stats,
 	report testdetails.Analysis,
@@ -629,7 +518,7 @@ func (c *ComponentReportGenerator) summarizeRecordedTestStats(
 // assessTestStats calculates the test stats for a given list of job rows
 // and updates by-reference parameters with information found in the job rows.
 func (c *ComponentReportGenerator) assessTestStats(
-	jobRowsList []bq.TestJobRunRows,
+	jobRowsList []crstatus.TestJobRunRows,
 	testStats *crtest.Stats,
 	jobRunStatsList *[]testdetails.JobRunStats,
 	jobName *string, lastFailure *time.Time,
@@ -659,7 +548,7 @@ func (c *ComponentReportGenerator) assessTestStats(
 	}
 }
 
-func (c *ComponentReportGenerator) getJobRunStats(stats bq.TestJobRunRows) testdetails.JobRunStats {
+func (c *ComponentReportGenerator) getJobRunStats(stats crstatus.TestJobRunRows) testdetails.JobRunStats {
 	jobRunStats := testdetails.JobRunStats{
 		TestStats: crtest.NewTestStats(
 			stats.SuccessCount,

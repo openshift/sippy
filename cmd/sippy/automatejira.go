@@ -15,6 +15,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/api/componentreadiness"
+	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	jiratype "github.com/openshift/sippy/pkg/apis/jira/v1"
@@ -169,9 +170,10 @@ func NewAutomateJiraCommand() *cobra.Command {
 				log.WithError(err).Warn("error reading config file")
 			}
 
-			allVariants, errs := componentreadiness.GetJobVariantsFromBigQuery(ctx, bigQueryClient)
+			provider := bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
+			allVariants, errs := componentreadiness.GetJobVariants(ctx, provider)
 			if len(errs) > 0 {
-				return fmt.Errorf("failed to get variants from bigquery")
+				return fmt.Errorf("failed to get job variants: %v", errs)
 			}
 			variantToJiraComponents, err := jiraautomator.GetVariantJiraMap(ctx, bigQueryClient)
 			if err != nil {
@@ -186,11 +188,10 @@ func NewAutomateJiraCommand() *cobra.Command {
 				log.WithError(err).Fatal("unable to connect to postgres")
 			}
 			j, err := jiraautomator.NewJiraAutomator(
-				jiraClient, bigQueryClient, dbc, cacheOpts,
+				jiraClient, bigQueryClient, provider, dbc, cacheOpts,
 				views.ComponentReadiness, releases, f.SippyURL, f.JiraAccount,
 				f.IncludeComponents, f.ColumnThresholds,
-				f.DryRun, variantToJiraComponents,
-				config.ComponentReadinessConfig.VariantJunitTableOverrides)
+				f.DryRun, variantToJiraComponents)
 			if err != nil {
 				panic(err)
 			}

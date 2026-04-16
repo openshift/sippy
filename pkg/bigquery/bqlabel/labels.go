@@ -72,6 +72,7 @@ const (
 	CRJunitBase                         QueryValue = "component-readiness-junit-base"
 	CRJunitSample                       QueryValue = "component-readiness-junit-sample"
 	CRJunitFallback                     QueryValue = "component-readiness-junit-fallback"
+	CRViewJobs                          QueryValue = "component-readiness-view-jobs"
 	TDJunitBase                         QueryValue = "test-details-junit-base"
 	TDJunitSample                       QueryValue = "test-details-junit-sample"
 	DisruptionDelta                     QueryValue = "disruption-delta"

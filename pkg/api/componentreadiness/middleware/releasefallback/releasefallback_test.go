@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
@@ -64,7 +64,7 @@ func Test_PreAnalysis(t *testing.T) {
 	}
 	fallbackMap418 := ReleaseTestMap{
 		ReleaseTimeRange: release418,
-		Tests: map[string]bq.TestStatus{
+		Tests: map[string]crstatus.TestStatus{
 			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 95, 0),
 		},
 	}
@@ -78,7 +78,7 @@ func Test_PreAnalysis(t *testing.T) {
 	}
 	fallbackMap417 := ReleaseTestMap{
 		ReleaseTimeRange: release417,
-		Tests: map[string]bq.TestStatus{
+		Tests: map[string]crstatus.TestStatus{
 			test1KeyStr: buildTestStatus("test1", test1VariantsFlattened, 100, 98, 0),
 		},
 	}
@@ -224,8 +224,8 @@ func TestCalculateFallbackReleases(t *testing.T) {
 }
 
 //nolint:unparam
-func buildTestStatus(testName string, variants []string, total, success, flake int) bq.TestStatus {
-	return bq.TestStatus{
+func buildTestStatus(testName string, variants []string, total, success, flake int) crstatus.TestStatus {
+	return crstatus.TestStatus{
 		TestName:     testName,
 		TestSuite:    "conformance",
 		Component:    "foo",

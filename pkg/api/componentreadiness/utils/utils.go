@@ -12,7 +12,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
@@ -57,7 +57,7 @@ func NormalizeProwJobName(prowName string) string {
 // DeserializeTestKey helps us workaround the limitations of a struct as a map key, where
 // we instead serialize a very small struct to json for a unit test key that includes test
 // ID and a specific set of variants. This function deserializes back to a struct.
-func DeserializeTestKey(stats bq.TestStatus, testKeyStr string) (crtest.Identification, error) {
+func DeserializeTestKey(stats crstatus.TestStatus, testKeyStr string) (crtest.Identification, error) {
 	var testKey crtest.KeyWithVariants
 	err := json.Unmarshal([]byte(testKeyStr), &testKey)
 	if err != nil {

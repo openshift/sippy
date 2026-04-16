@@ -1,4 +1,4 @@
-package query
+package bigquery
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 
 	"cloud.google.com/go/bigquery"
 	"cloud.google.com/go/civil"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/bq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crstatus"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crtest"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -71,7 +71,7 @@ func NewBaseQueryGenerator(
 	return generator
 }
 
-func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
+func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (crstatus.ReportTestStatus, []error) {
 
 	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(b.client, b.ReqOptions, b.allVariants, b.ReqOptions.VariantOption.IncludeVariants, DefaultJunitTable, false)
 
@@ -101,7 +101,7 @@ func (b *baseQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTest
 		errs = append(errs, baseErrs...)
 	}
 
-	return bq.ReportTestStatus{BaseStatus: baseStatus}, errs
+	return crstatus.ReportTestStatus{BaseStatus: baseStatus}, errs
 }
 
 type sampleQueryGenerator struct {
@@ -141,7 +141,7 @@ func NewSampleQueryGenerator(
 	return generator
 }
 
-func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTestStatus, []error) {
+func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (crstatus.ReportTestStatus, []error) {
 	commonQuery, groupByQuery, queryParameters := BuildComponentReportQuery(s.client, s.ReqOptions, s.allVariants, s.IncludeVariants, s.JunitTable, true)
 
 	errs := []error{}
@@ -207,7 +207,7 @@ func (s *sampleQueryGenerator) QueryTestStatus(ctx context.Context) (bq.ReportTe
 		errs = append(errs, sampleErrs...)
 	}
 
-	return bq.ReportTestStatus{SampleStatus: sampleStatus}, errs
+	return crstatus.ReportTestStatus{SampleStatus: sampleStatus}, errs
 }
 
 // buildPriorityCaseStatement generates a SQL CASE statement that assigns priority based on test position in the list.
@@ -715,9 +715,9 @@ func filterByCrossCompareVariants(crossCompare []string, variantGroups map[strin
 	return
 }
 
-func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]bq.TestStatus, []error) {
+func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[string]crstatus.TestStatus, []error) {
 	errs := []error{}
-	status := map[string]bq.TestStatus{}
+	status := map[string]crstatus.TestStatus{}
 
 	bqcachedclient.LogQueryWithParamsReplaced(log.WithField("type", "ComponentReport"), query)
 	it, err := query.Read(ctx)
@@ -757,10 +757,10 @@ func FetchTestStatusResults(ctx context.Context, query *bigquery.Query) (map[str
 // deserializeRowToTestStatus deserializes a single row into a testID string and matching status.
 // This is where we handle the dynamic variant_ columns, parsing these into a map on the test identification.
 // Other fixed columns we expect are serialized directly to their appropriate columns.
-func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (string, bq.TestStatus, error) {
+func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (string, crstatus.TestStatus, error) {
 	if len(row) != len(schema) {
 		log.Infof("row is %+v, schema is %+v", row, schema)
-		return "", bq.TestStatus{}, fmt.Errorf("number of values in row doesn't match schema length")
+		return "", crstatus.TestStatus{}, fmt.Errorf("number of values in row doesn't match schema length")
 	}
 
 	// Expect:
@@ -785,7 +785,7 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 	tid := crtest.KeyWithVariants{
 		Variants: map[string]string{},
 	}
-	cts := bq.TestStatus{}
+	cts := crstatus.TestStatus{}
 	for i, fieldSchema := range schema {
 		col := fieldSchema.Name
 		// Some rows we know what to expect, others are dynamic (variants) and go into the map.
@@ -803,14 +803,12 @@ func deserializeRowToTestStatus(row []bigquery.Value, schema bigquery.Schema) (s
 		case col == "flake_count":
 			cts.FlakeCount = int(row[i].(int64))
 		case col == "last_failure":
-			// ignore when we cant parse, its usually null
-			var err error
 			if row[i] != nil {
-				layout := "2006-01-02T15:04:05"
-				lftCivilDT := row[i].(civil.DateTime)
-				cts.LastFailure, err = time.Parse(layout, lftCivilDT.String())
-				if err != nil {
-					log.WithError(err).Error("error parsing last failure time from bigquery")
+				switch v := row[i].(type) {
+				case civil.DateTime:
+					cts.LastFailure = time.Date(v.Date.Year, v.Date.Month, v.Date.Day, v.Time.Hour, v.Time.Minute, v.Time.Second, v.Time.Nanosecond, time.UTC)
+				case time.Time:
+					cts.LastFailure = v
 				}
 			}
 		case col == "component":
@@ -874,7 +872,7 @@ func NewBaseTestDetailsQueryGenerator(logger log.FieldLogger, client *bqcachedcl
 	}
 }
 
-func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (bq.TestJobRunStatuses, []error) {
+func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crstatus.TestJobRunStatuses, []error) {
 	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		b.client,
 		b.TestIDOpts,
@@ -901,7 +899,7 @@ func (b *baseTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (bq
 	}...)
 
 	baseStatus, errs := fetchJobRunTestStatusResults(ctx, b.logger, baseQuery)
-	return bq.TestJobRunStatuses{BaseStatus: baseStatus}, errs
+	return crstatus.TestJobRunStatuses{BaseStatus: baseStatus}, errs
 }
 
 // sampleTestDetailsQueryGenerator generates the query we use for the sample on the test details page.
@@ -941,7 +939,7 @@ func NewSampleTestDetailsQueryGenerator(
 	}
 }
 
-func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (bq.TestJobRunStatuses, []error) {
+func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (crstatus.TestJobRunStatuses, []error) {
 
 	commonQuery, groupByQuery, queryParameters := buildTestDetailsQuery(
 		s.client,
@@ -1004,12 +1002,12 @@ func (s *sampleTestDetailsQueryGenerator) QueryTestStatus(ctx context.Context) (
 
 	sampleStatus, errs := fetchJobRunTestStatusResults(ctx, log.WithField("generator", "SampleQuery"), sampleQuery)
 
-	return bq.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
+	return crstatus.TestJobRunStatuses{SampleStatus: sampleStatus}, errs
 }
 
-func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query) (map[string][]bq.TestJobRunRows, []error) {
+func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, query *bigquery.Query) (map[string][]crstatus.TestJobRunRows, []error) {
 	errs := []error{}
-	status := map[string][]bq.TestJobRunRows{}
+	status := map[string][]crstatus.TestJobRunRows{}
 
 	bqcachedclient.LogQueryWithParamsReplaced(logger.WithField("type", "TestDetails"), query)
 
@@ -1049,13 +1047,13 @@ func fetchJobRunTestStatusResults(ctx context.Context, logger log.FieldLogger, q
 // deserializeRowToJobRunTestReportStatus deserializes a single row into a testID string and matching status.
 // This is where we handle the dynamic variant_ columns, parsing these into a map on the test identification.
 // Other fixed columns we expect are serialized directly to their appropriate columns.
-func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquery.Schema) (bq.TestJobRunRows, error) {
+func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquery.Schema) (crstatus.TestJobRunRows, error) {
 	if len(row) != len(schema) {
 		log.Infof("row is %+v, schema is %+v", row, schema)
-		return bq.TestJobRunRows{}, fmt.Errorf("number of values in row doesn't match schema length")
+		return crstatus.TestJobRunRows{}, fmt.Errorf("number of values in row doesn't match schema length")
 	}
 
-	cts := bq.TestJobRunRows{
+	cts := crstatus.TestJobRunRows{
 		TestKey: crtest.KeyWithVariants{Variants: map[string]string{}},
 	}
 	for i, fieldSchema := range schema {
@@ -1077,7 +1075,12 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 				cts.ProwJobURL = row[i].(string)
 			}
 		case col == "prowjob_start":
-			cts.StartTime = row[i].(civil.DateTime)
+			switch v := row[i].(type) {
+			case civil.DateTime:
+				cts.StartTime = time.Date(v.Date.Year, v.Date.Month, v.Date.Day, v.Time.Hour, v.Time.Minute, v.Time.Second, v.Time.Nanosecond, time.UTC)
+			case time.Time:
+				cts.StartTime = v
+			}
 		case col == "test_id":
 			cts.TestKey.TestID = row[i].(string)
 		case col == "test_name":
