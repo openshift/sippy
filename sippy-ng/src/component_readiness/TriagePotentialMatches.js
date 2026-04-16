@@ -414,26 +414,18 @@ export default function TriagePotentialMatches({
         const similarlyNamedCount = row.similarly_named_tests
           ? row.similarly_named_tests.length
           : 0
-        const overlappingJobRunCount = row.overlapping_job_runs
-          ? row.overlapping_job_runs.length
+        const sharedJobRunCount = row.overlapping_job_runs
+          ? row.overlapping_job_runs.reduce(
+              (sum, o) => sum + (o.shared_job_run_ids?.length || 0),
+              0
+            )
           : 0
-        const bestOverlapPercent =
-          row.overlapping_job_runs && row.overlapping_job_runs.length > 0
-            ? Math.round(
-                row.overlapping_job_runs.reduce((best, o) =>
-                  o.overlap_percent > best.overlap_percent ? o : best
-                ).overlap_percent
-              )
-            : 0
 
         const tooltipContent = (
           <div>
             <div>Match Breakdown:</div>
             <div>• Similarly Named Tests: {similarlyNamedCount}</div>
-            <div>
-              • Overlapping Job Runs: {overlappingJobRunCount}
-              {overlappingJobRunCount > 0 && ` (best: ${bestOverlapPercent}%)`}
-            </div>
+            <div>• Shared Job Runs: {sharedJobRunCount}</div>
           </div>
         )
 
