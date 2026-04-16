@@ -10,6 +10,7 @@ export default function RegressionRedirect() {
   const [error, setError] = React.useState(null)
 
   React.useEffect(() => {
+    setError(null)
     const abortController = new AbortController()
 
     fetch(getRegressionAPIUrl(regressionId), {
@@ -34,11 +35,18 @@ export default function RegressionRedirect() {
         const pathAfterApi = regression.links.test_details.substring(
           apiIndex + 5
         )
-        if (!pathAfterApi.startsWith('component_readiness/')) {
+        let parsed
+        try {
+          parsed = new URL(pathAfterApi, window.location.origin)
+        } catch {
+          setError('Could not parse test details link.')
+          return
+        }
+        if (!parsed.pathname.startsWith('/component_readiness/')) {
           setError('Unexpected redirect path.')
           return
         }
-        navigate('/' + pathAfterApi, { replace: true })
+        navigate(parsed.pathname + parsed.search, { replace: true })
       })
       .catch((err) => {
         if (err.name === 'AbortError') {
