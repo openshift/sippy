@@ -37,6 +37,7 @@ import CompReadyRow from './CompReadyRow'
 import CopyPageURL from './CopyPageURL'
 import GeneratedAt from './GeneratedAt'
 import React, { Fragment, useContext, useEffect, useState } from 'react'
+import RegressionRedirect from './RegressionRedirect'
 import Sidebar from './Sidebar'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
@@ -592,6 +593,10 @@ export default function ComponentReadiness(props) {
               />
               <Route path="/triages/:triageId" element={<TriageWrapper />} />
               <Route path="/triages" element={<TriageList />} />
+              <Route
+                path="regressions/:regressionId"
+                element={<RegressionRedirect />}
+              />
               <Route
                 path="main"
                 element={

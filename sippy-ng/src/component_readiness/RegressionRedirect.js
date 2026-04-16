@@ -1,0 +1,45 @@
+import { getRegressionAPIUrl } from './CompReadyUtils'
+import { useNavigate, useParams } from 'react-router-dom'
+import Alert from '@mui/material/Alert'
+import React from 'react'
+import Typography from '@mui/material/Typography'
+
+export default function RegressionRedirect() {
+  const { regressionId } = useParams()
+  const navigate = useNavigate()
+  const [error, setError] = React.useState(null)
+
+  React.useEffect(() => {
+    fetch(getRegressionAPIUrl(regressionId))
+      .then((response) => {
+        if (response.status !== 200) {
+          throw new Error('API server returned ' + response.status)
+        }
+        return response.json()
+      })
+      .then((regression) => {
+        if (!regression.links?.test_details) {
+          setError('No test details link available for this regression.')
+          return
+        }
+        const apiIndex = regression.links.test_details.indexOf('/api/')
+        if (apiIndex === -1) {
+          setError('Could not parse test details link.')
+          return
+        }
+        const pathAfterApi = regression.links.test_details.substring(
+          apiIndex + 5
+        )
+        navigate('/' + pathAfterApi, { replace: true })
+      })
+      .catch((err) => {
+        setError('Failed to load regression: ' + err.message)
+      })
+  }, [regressionId, navigate])
+
+  if (error) {
+    return <Alert severity="error">{error}</Alert>
+  }
+
+  return <Typography>Loading regression details...</Typography>
+}
