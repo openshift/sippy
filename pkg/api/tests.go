@@ -441,7 +441,7 @@ func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, 
 		testResults{},
 	)
 	if errs != nil {
-		return result, fmt.Errorf("error(s) querying test results: %s", errs)
+		return result, fmt.Errorf("error(s) querying test results: %v", errs)
 	}
 	return result, nil
 }
@@ -538,7 +538,7 @@ func (spec *TestResultsSpec) buildTestsResultsFromBigQuery(ctx context.Context, 
 		generator,
 		testResultsBQ{})
 	if errs != nil {
-		return result, fmt.Errorf("error(s) querying test results: %s", errs)
+		return result, fmt.Errorf("error(s) querying test results: %v", errs)
 	}
 	return result, nil
 }
