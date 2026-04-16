@@ -247,14 +247,38 @@ export default function RegressionPotentialMatchesTab({
       },
     },
     {
-      field: 'same_failures',
-      headerName: 'Same Last Failure',
+      field: 'overlapping_job_runs',
+      headerName: 'Overlapping Job Runs',
       flex: 6,
       align: 'center',
-      valueGetter: (params) => params.row.same_last_failures || [],
+      valueGetter: (params) => params.row.overlapping_job_runs || [],
       renderCell: (param) => {
-        const failures = param.value
-        return renderCountWithTooltip(failures)
+        const overlaps = param.value
+        if (overlaps.length === 0) {
+          return <Typography variant="body2">0</Typography>
+        }
+        const bestOverlap = overlaps.reduce((best, o) =>
+          o.overlap_percent > best.overlap_percent ? o : best
+        )
+        const tooltipText = overlaps
+          .map(
+            (o) =>
+              `${o.regression?.test_name}: ${
+                o.shared_job_run_ids?.length
+              } shared runs (${Math.round(o.overlap_percent)}%)`
+          )
+          .join('\n')
+        return (
+          <Tooltip
+            title={tooltipText}
+            placement="top"
+            classes={{ tooltip: classes.customTooltip }}
+          >
+            <Typography variant="body2">
+              {Math.round(bestOverlap.overlap_percent)}%
+            </Typography>
+          </Tooltip>
+        )
       },
     },
     {
@@ -262,7 +286,7 @@ export default function RegressionPotentialMatchesTab({
       headerName: (
         <Tooltip
           title={
-            'Confidence Level (0-10) - Higher values indicate higher likelihood of matching based on: Similar test names (edit distance scoring), Same last failure times (fails in the same job runs)'
+            'Confidence Level (1-10) - Higher values indicate higher likelihood of matching based on: Similar test names (edit distance scoring), Overlapping failed job runs (shared prow job runs between regressions)'
           }
           arrow
           placement="top"

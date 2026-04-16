@@ -92,8 +92,8 @@ func VariantsMapToStringSlice(variants map[string]string) []string {
 	return vs
 }
 
-// parseVariantsToMap converts a slice of "key:value" strings to a map
-func parseVariantsToMap(variants []string) map[string]string {
+// VariantsStringSliceToMap converts a slice of "key:value" strings to a map
+func VariantsStringSliceToMap(variants []string) map[string]string {
 	variantMap := make(map[string]string)
 	for _, variant := range variants {
 		parts := strings.SplitN(variant, ":", 2)
@@ -275,7 +275,7 @@ func GenerateTestDetailsURL(
 	}
 
 	// Parse variants from the variants slice
-	variantMap := parseVariantsToMap(variants)
+	variantMap := VariantsStringSliceToMap(variants)
 
 	// Build the URL with query parameters
 	var fullURL string

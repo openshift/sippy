@@ -267,6 +267,168 @@ func Test_RegressionTracker(t *testing.T) {
 
 }
 
+func cleanupJobRuns(dbc *db.DB) {
+	res := dbc.DB.Where("1 = 1").Delete(&models.RegressionJobRun{})
+	if res.Error != nil {
+		log.Errorf("error deleting regression job runs: %v", res.Error)
+	}
+}
+
+func Test_RegressionJobRuns(t *testing.T) {
+	dbc := util.CreateE2EPostgresConnection(t)
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
+	view := crview.View{
+		Name: "4.19-main",
+		SampleRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{
+				Name: "4.19",
+			},
+		},
+	}
+
+	t.Run("merge job runs for a regression", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		defer cleanupJobRuns(dbc)
+
+		reg, err := tracker.OpenRegression(view, componentreport.ReportTestSummary{
+			TestComparison: testdetails.TestComparison{
+				BaseStats: &testdetails.ReleaseStats{Release: "4.18"},
+			},
+			Identification: crtest.Identification{
+				RowIdentification: crtest.RowIdentification{
+					Component:  "comp",
+					Capability: "cap",
+					TestName:   "job run test",
+					TestID:     "jobruntestid",
+				},
+				ColumnIdentification: crtest.ColumnIdentification{
+					Variants: map[string]string{"a": "b"},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		jobRuns := []models.RegressionJobRun{
+			{
+				ProwJobRunID: "run-1",
+				ProwJobName:  "periodic-ci-job-1",
+				ProwJobURL:   "https://prow.ci/run-1",
+				StartTime:    time.Now().Add(-24 * time.Hour),
+				TestFailed:   true,
+				TestFailures: 15,
+				JobLabels:    []string{"InfraFailure"},
+			},
+			{
+				ProwJobRunID: "run-2",
+				ProwJobName:  "periodic-ci-job-1",
+				ProwJobURL:   "https://prow.ci/run-2",
+				StartTime:    time.Now().Add(-12 * time.Hour),
+				TestFailed:   false,
+				TestFailures: 0,
+			},
+		}
+
+		err = tracker.MergeJobRuns(reg.ID, jobRuns)
+		require.NoError(t, err)
+
+		// Verify job runs were stored
+		var stored []models.RegressionJobRun
+		res := dbc.DB.Where("regression_id = ?", reg.ID).Order("prow_job_run_id").Find(&stored)
+		require.NoError(t, res.Error)
+		assert.Len(t, stored, 2)
+
+		assert.Equal(t, "run-1", stored[0].ProwJobRunID)
+		assert.Equal(t, "periodic-ci-job-1", stored[0].ProwJobName)
+		assert.Equal(t, "https://prow.ci/run-1", stored[0].ProwJobURL)
+		assert.True(t, stored[0].TestFailed)
+		assert.Equal(t, 15, stored[0].TestFailures)
+		assert.Equal(t, []string{"InfraFailure"}, []string(stored[0].JobLabels))
+
+		assert.Equal(t, "run-2", stored[1].ProwJobRunID)
+		assert.False(t, stored[1].TestFailed)
+	})
+
+	t.Run("merge deduplicates by prowjob_run_id", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		defer cleanupJobRuns(dbc)
+
+		reg, err := tracker.OpenRegression(view, componentreport.ReportTestSummary{
+			TestComparison: testdetails.TestComparison{
+				BaseStats: &testdetails.ReleaseStats{Release: "4.18"},
+			},
+			Identification: crtest.Identification{
+				RowIdentification: crtest.RowIdentification{
+					Component:  "comp",
+					Capability: "cap",
+					TestName:   "dedup test",
+					TestID:     "deduptestid",
+				},
+				ColumnIdentification: crtest.ColumnIdentification{
+					Variants: map[string]string{"a": "b"},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		// First merge
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-1", ProwJobName: "job-1", TestFailed: true, TestFailures: 10},
+			{ProwJobRunID: "run-2", ProwJobName: "job-1", TestFailed: false, TestFailures: 0},
+		})
+		require.NoError(t, err)
+
+		// Second merge with overlapping + new runs
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-2", ProwJobName: "job-1", TestFailed: false, TestFailures: 0},
+			{ProwJobRunID: "run-3", ProwJobName: "job-1", TestFailed: true, TestFailures: 5},
+		})
+		require.NoError(t, err)
+
+		// Should have 3 unique runs, not 4
+		var stored []models.RegressionJobRun
+		res := dbc.DB.Where("regression_id = ?", reg.ID).Find(&stored)
+		require.NoError(t, res.Error)
+		assert.Len(t, stored, 3, "should have 3 unique job runs after dedup")
+	})
+
+	t.Run("job runs deleted when regression is deleted", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		defer cleanupJobRuns(dbc)
+
+		reg, err := tracker.OpenRegression(view, componentreport.ReportTestSummary{
+			TestComparison: testdetails.TestComparison{
+				BaseStats: &testdetails.ReleaseStats{Release: "4.18"},
+			},
+			Identification: crtest.Identification{
+				RowIdentification: crtest.RowIdentification{
+					Component:  "comp",
+					Capability: "cap",
+					TestName:   "cascade test",
+					TestID:     "cascadetestid",
+				},
+				ColumnIdentification: crtest.ColumnIdentification{
+					Variants: map[string]string{"a": "b"},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-1", ProwJobName: "job-1"},
+		})
+		require.NoError(t, err)
+
+		// Delete the regression
+		res := dbc.DB.Delete(&models.TestRegression{}, reg.ID)
+		require.NoError(t, res.Error)
+
+		// Job runs should be cascade deleted
+		var count int64
+		dbc.DB.Model(&models.RegressionJobRun{}).Where("regression_id = ?", reg.ID).Count(&count)
+		assert.Equal(t, int64(0), count, "job runs should be cascade deleted with regression")
+	})
+}
+
 func rawCreateRegression(
 	dbc *db.DB,
 	release string,

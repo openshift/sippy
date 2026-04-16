@@ -100,7 +100,7 @@ export default function TriagePotentialMatches({
   const [selectedRegressions, setSelectedRegressions] = React.useState([])
   const [isLinking, setIsLinking] = React.useState(false)
   const [filterSimilarNames, setFilterSimilarNames] = React.useState(true)
-  const [filterSameLastFailures, setFilterSameLastFailures] =
+  const [filterOverlappingJobRuns, setFilterOverlappingJobRuns] =
     React.useState(true)
   const [filterAlreadyTriaged, setFilterAlreadyTriaged] = React.useState(false)
   const { expandEnvironment, view } = useContext(CompReadyVarsContext)
@@ -185,7 +185,7 @@ export default function TriagePotentialMatches({
         }
         setSelectedRegressions([])
         setFilterSimilarNames(true)
-        setFilterSameLastFailures(true)
+        setFilterOverlappingJobRuns(true)
         setFilterAlreadyTriaged(false)
         setIsModalOpen(true)
       })
@@ -250,24 +250,24 @@ export default function TriagePotentialMatches({
     }
 
     // Apply similarity filters
-    if (filterSimilarNames && filterSameLastFailures) {
+    if (filterSimilarNames && filterOverlappingJobRuns) {
       return matches
     }
 
     return matches.filter((match) => {
       const hasSimilarNames =
         match.similarly_named_tests && match.similarly_named_tests.length > 0
-      const hasSameLastFailures =
-        match.same_last_failures && match.same_last_failures.length > 0
+      const hasOverlappingJobRuns =
+        match.overlapping_job_runs && match.overlapping_job_runs.length > 0
 
-      if (!filterSimilarNames && !filterSameLastFailures) {
+      if (!filterSimilarNames && !filterOverlappingJobRuns) {
         return false
       }
-      if (filterSimilarNames && !filterSameLastFailures) {
+      if (filterSimilarNames && !filterOverlappingJobRuns) {
         return hasSimilarNames
       }
-      if (!filterSimilarNames && filterSameLastFailures) {
-        return hasSameLastFailures
+      if (!filterSimilarNames && filterOverlappingJobRuns) {
+        return hasOverlappingJobRuns
       }
 
       return false
@@ -275,7 +275,7 @@ export default function TriagePotentialMatches({
   }, [
     potentialMatches,
     filterSimilarNames,
-    filterSameLastFailures,
+    filterOverlappingJobRuns,
     filterAlreadyTriaged,
   ])
 
@@ -400,7 +400,7 @@ export default function TriagePotentialMatches({
       headerName: (
         <Tooltip
           title={
-            'Confidence Level (0-10) - Higher values indicate higher likelihood of matching based on: Similar test names (edit distance scoring), Same last failure times (fails in the same job runs)'
+            'Confidence Level (1-10) - Higher values indicate higher likelihood of matching based on: Overlapping failed job runs (shared prow job runs between regressions), Similar test names (edit distance scoring)'
           }
           arrow
           placement="top"
@@ -414,15 +414,18 @@ export default function TriagePotentialMatches({
         const similarlyNamedCount = row.similarly_named_tests
           ? row.similarly_named_tests.length
           : 0
-        const sameLastFailureCount = row.same_last_failures
-          ? row.same_last_failures.length
+        const sharedJobRunCount = row.overlapping_job_runs
+          ? row.overlapping_job_runs.reduce(
+              (sum, o) => sum + (o.shared_job_run_ids?.length || 0),
+              0
+            )
           : 0
 
         const tooltipContent = (
           <div>
             <div>Match Breakdown:</div>
             <div>• Similarly Named Tests: {similarlyNamedCount}</div>
-            <div>• Same Last Failure: {sameLastFailureCount}</div>
+            <div>• Shared Job Runs: {sharedJobRunCount}</div>
           </div>
         )
 
@@ -539,15 +542,15 @@ export default function TriagePotentialMatches({
                     <FormControlLabel
                       control={
                         <Checkbox
-                          checked={filterSameLastFailures}
+                          checked={filterOverlappingJobRuns}
                           onChange={(e) =>
-                            setFilterSameLastFailures(e.target.checked)
+                            setFilterOverlappingJobRuns(e.target.checked)
                           }
                         />
                       }
-                      label={`Same Last Failures (${
+                      label={`Overlapping Job Runs (${
                         potentialMatches.filter(
-                          (m) => m.same_last_failures?.length > 0
+                          (m) => m.overlapping_job_runs?.length > 0
                         ).length
                       })`}
                     />

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 # Shell script meant for developers to run the e2e tests locally without impacting
 # their running postgres container or sippy process.
 # It's quite quick to import the older releases below, but in theory
@@ -113,7 +113,8 @@ if [ $ELAPSED -ge $TIMEOUT ]; then
 fi
 
 
-# Run our tests that request against the API, args ensure serially and fresh test code compile:
-gotestsum ./test/e2e/... -count 1 -p 1 -coverprofile=e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
-
-# WARNING: do not place more commands here without addressing return code from go test not being overridden by the cleanup func
+# Run our tests that request against the API, args ensure serially and fresh test code compile.
+# All output is tee'd to e2e-test.log so results can be reviewed without re-running.
+gotestsum ./test/e2e/... -count 1 -p 1 -coverprofile=e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/... 2>&1 | tee e2e-test.log
+E2E_EXIT=${PIPESTATUS[0]}
+exit $E2E_EXIT

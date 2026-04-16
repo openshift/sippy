@@ -134,10 +134,10 @@ func Test_TriageAPI(t *testing.T) {
 	t.Run("get with expanded regressions", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 
-		r := createTestRegressionWithDetails(t, tracker, view, "expanded-test-1", "component-expand", "capability-expand", "TestExpanded1", nil, crtest.ExtremeRegression)
+		r := createTestRegressionWithDetails(t, tracker, view, "expanded-test-1", "component-expand", "capability-expand", "TestExpanded1", crtest.ExtremeRegression)
 		defer dbc.DB.Delete(r.Regression)
 
-		r2 := createTestRegressionWithDetails(t, tracker, view, "expanded-test-2", "component-expand", "capability-expand", "TestExpanded2", nil, crtest.SignificantRegression)
+		r2 := createTestRegressionWithDetails(t, tracker, view, "expanded-test-2", "component-expand", "capability-expand", "TestExpanded2", crtest.SignificantRegression)
 		defer dbc.DB.Delete(r2.Regression)
 
 		// TODO(sgoeddel): If we ever have a need for another view available within e2e tests we could verify that we could get regressed_tests
@@ -589,36 +589,36 @@ func Test_RegressionAPI(t *testing.T) {
 // Test_RegressionPotentialMatchingTriages tests the /api/component_readiness/regressions/{id}/matches endpoint
 func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
-	// jiraClient is intentionally nil to prevent commenting on jiras
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
 	jiraBug := createBug(t, dbc.DB)
 	defer dbc.DB.Delete(jiraBug)
 
-	// Create test regressions with specific characteristics for matching
-	commonFailureTime := time.Now().Add(-24 * time.Hour)
-	differentFailureTime := time.Now().Add(-12 * time.Hour)
-
-	// Regression 1: Will be the target regression for matching
-	targetRegression := createTestRegressionWithDetails(t, tracker, view, "target-test", "component-a", "capability-x", "TestTargetFunction", &commonFailureTime, crtest.ExtremeRegression)
+	// Target regression: the one we'll query matches for
+	targetRegression := createTestRegressionWithDetails(t, tracker, view, "target-test", "component-a", "capability-x", "TestTargetFunction", crtest.ExtremeRegression)
 	defer dbc.DB.Delete(targetRegression.Regression)
+	// Give it some job runs
+	mergeJobRunsForRegression(t, tracker, targetRegression.Regression.ID, "run-1", "run-2", "run-3", "run-4")
 
-	// Regression 2: Will match by similar test name (edit distance <= 5)
-	matchByNameRegression := createTestRegressionWithDetails(t, tracker, view, "match-name", "component-b", "capability-y", "TestTargetFunctin", &differentFailureTime, crtest.SignificantRegression) // missing 'o' from "TestTargetFunction"
+	// Regression that matches by similar test name only (no overlapping job runs)
+	matchByNameRegression := createTestRegressionWithDetails(t, tracker, view, "match-name", "component-b", "capability-y", "TestTargetFunctin", crtest.SignificantRegression) // missing 'o'
 	defer dbc.DB.Delete(matchByNameRegression.Regression)
+	mergeJobRunsForRegression(t, tracker, matchByNameRegression.Regression.ID, "run-99")
 
-	// Regression 3: Will match by same last failure time
-	matchByTimeRegression := createTestRegressionWithDetails(t, tracker, view, "match-time", "component-c", "capability-z", "TestDifferentName", &commonFailureTime, crtest.ExtremeTriagedRegression)
-	defer dbc.DB.Delete(matchByTimeRegression.Regression)
+	// Regression that matches by job run overlap (different name, shared job runs)
+	matchByOverlapRegression := createTestRegressionWithDetails(t, tracker, view, "match-overlap", "component-c", "capability-z", "TestDifferentName", crtest.ExtremeTriagedRegression)
+	defer dbc.DB.Delete(matchByOverlapRegression.Regression)
+	mergeJobRunsForRegression(t, tracker, matchByOverlapRegression.Regression.ID, "run-1", "run-2", "run-50") // 2 shared with target out of 3
 
-	// Regression 4: No match - different name and different failure time
-	noMatchRegression := createTestRegressionWithDetails(t, tracker, view, "no-match", "component-d", "capability-w", "CompletelyDifferentTest", &differentFailureTime, crtest.NotSignificant)
+	// Regression with no match: different name, no overlapping job runs
+	noMatchRegression := createTestRegressionWithDetails(t, tracker, view, "no-match", "component-d", "capability-w", "CompletelyDifferentTest", crtest.NotSignificant)
 	defer dbc.DB.Delete(noMatchRegression.Regression)
+	mergeJobRunsForRegression(t, tracker, noMatchRegression.Regression.ID, "run-90", "run-91")
 
-	t.Run("find potential matching triages", func(t *testing.T) {
+	t.Run("find potential matching triages by name and job run overlap", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 
-		// Create triages with the matching regressions
+		// Triage with name-matching regression
 		triage1 := models.Triage{
 			URL:  jiraBug.URL,
 			Type: models.TriageTypeProduct,
@@ -630,18 +630,19 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		err := util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse1)
 		require.NoError(t, err)
 
+		// Triage with overlap-matching regression
 		triage2 := models.Triage{
 			URL:  jiraBug.URL,
 			Type: models.TriageTypeCIInfra,
 			Regressions: []models.TestRegression{
-				{ID: matchByTimeRegression.Regression.ID},
+				{ID: matchByOverlapRegression.Regression.ID},
 			},
 		}
 		var triageResponse2 models.Triage
 		err = util.SippyPost("/api/component_readiness/triages", &triage2, &triageResponse2)
 		require.NoError(t, err)
 
-		// Create a triage with the no-match regression (should not appear in results)
+		// Triage with no-match regression
 		triageNoMatch := models.Triage{
 			URL:  jiraBug.URL,
 			Type: models.TriageTypeTest,
@@ -653,21 +654,18 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		err = util.SippyPost("/api/component_readiness/triages", &triageNoMatch, &triageResponseNoMatch)
 		require.NoError(t, err)
 
-		// Query for potential matches for the target regression
 		var potentialMatches []componentreadiness.PotentialMatchingTriage
 		endpoint := fmt.Sprintf("/api/component_readiness/regressions/%d/matches", targetRegression.Regression.ID)
 		err = util.SippyGet(endpoint, &potentialMatches)
 		require.NoError(t, err)
 
-		// Verify we found 2 potential matches
-		assert.Len(t, potentialMatches, 2, "Should find 2 potential matching triages")
+		assert.Len(t, potentialMatches, 2, "Should find 2 potential matching triages (name match + overlap match)")
 
-		// Verify HATEOAS links are present
+		// Verify HATEOAS links
 		for _, match := range potentialMatches {
 			assert.Contains(t, match.Links, "self", "Potential match should have self link")
 		}
 
-		// Build map for easier verification
 		triagesByID := make(map[uint]componentreadiness.PotentialMatchingTriage)
 		for _, match := range potentialMatches {
 			triagesByID[match.Triage.ID] = match
@@ -680,11 +678,14 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		assert.Equal(t, 1, nameMatch.SimilarlyNamedTests[0].EditDistance, "Edit distance should be 1")
 		assert.Equal(t, 5, nameMatch.ConfidenceLevel, "Confidence should be 5 (6-1)")
 
-		// Verify match by same failure time
-		timeMatch, found := triagesByID[triageResponse2.ID]
-		assert.True(t, found, "Should find triage with same failure time")
-		assert.Len(t, timeMatch.SameLastFailures, 1, "Should have one same failure time match")
-		assert.Equal(t, 1, timeMatch.ConfidenceLevel, "Confidence should be 1")
+		// Verify match by job run overlap
+		overlapMatch, found := triagesByID[triageResponse2.ID]
+		assert.True(t, found, "Should find triage with overlapping job runs")
+		assert.Len(t, overlapMatch.OverlappingJobRuns, 1, "Should have one overlapping job run entry")
+		assert.ElementsMatch(t, []string{"run-1", "run-2"}, overlapMatch.OverlappingJobRuns[0].SharedJobRunIDs, "Should share run-1 and run-2")
+		// 2 shared / 3 (smaller set = overlap regression's 3 runs) = 66.7%
+		assert.InDelta(t, 66.7, overlapMatch.OverlappingJobRuns[0].OverlapPercent, 1.0)
+		assert.Equal(t, 7, overlapMatch.ConfidenceLevel, "Confidence should be 7 for ~67% overlap")
 
 		// Verify non-matching triage is not included
 		_, found = triagesByID[triageResponseNoMatch.ID]
@@ -694,7 +695,6 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 	t.Run("no potential matches found", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 
-		// Create a triage with the no-match regression (different name and time)
 		triage := models.Triage{
 			URL:  jiraBug.URL,
 			Type: models.TriageTypeProduct,
@@ -706,24 +706,49 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
 
-		// Query for potential matches for the target regression
 		var potentialMatches []componentreadiness.PotentialMatchingTriage
 		endpoint := fmt.Sprintf("/api/component_readiness/regressions/%d/matches", targetRegression.Regression.ID)
 		err = util.SippyGet(endpoint, &potentialMatches)
 		require.NoError(t, err)
 
-		// Should find no matches since the test name and failure time are too different
 		assert.Len(t, potentialMatches, 0, "Should find no potential matching triages")
+	})
+
+	t.Run("high overlap gives high confidence", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+
+		// Create a regression with near-full overlap with target
+		highOverlapRegression := createTestRegressionWithDetails(t, tracker, view, "high-overlap", "component-e", "capability-v", "TestUnrelatedName", crtest.ExtremeRegression)
+		defer dbc.DB.Delete(highOverlapRegression.Regression)
+		mergeJobRunsForRegression(t, tracker, highOverlapRegression.Regression.ID, "run-1", "run-2", "run-3", "run-4") // 100% overlap
+
+		triageHighOverlap := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: highOverlapRegression.Regression.ID},
+			},
+		}
+		var triageResponse models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triageHighOverlap, &triageResponse)
+		require.NoError(t, err)
+
+		var potentialMatches []componentreadiness.PotentialMatchingTriage
+		endpoint := fmt.Sprintf("/api/component_readiness/regressions/%d/matches", targetRegression.Regression.ID)
+		err = util.SippyGet(endpoint, &potentialMatches)
+		require.NoError(t, err)
+
+		require.Len(t, potentialMatches, 1, "Should find 1 potential matching triage")
+		assert.Equal(t, 10, potentialMatches[0].ConfidenceLevel, "100% overlap should give confidence 10 (capped)")
 	})
 
 	t.Run("resolved triage confidence level capped at 5", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 
-		// Create a regression with the exact same test name (edit distance 0, would normally give confidence 6)
-		exactMatchRegression := createTestRegressionWithDetails(t, tracker, view, "exact-match", "component-e", "capability-v", "TestTargetFunction", &differentFailureTime, crtest.ExtremeRegression)
+		// Create a regression with exact same test name
+		exactMatchRegression := createTestRegressionWithDetails(t, tracker, view, "exact-match", "component-e", "capability-v", "TestTargetFunction", crtest.ExtremeRegression)
 		defer dbc.DB.Delete(exactMatchRegression.Regression)
 
-		// Create a triage with the exact match regression
 		triageExactMatch := models.Triage{
 			URL:  jiraBug.URL,
 			Type: models.TriageTypeProduct,
@@ -736,35 +761,19 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		require.NoError(t, err)
 
 		// Resolve the triage
-		resolvedTime := time.Now()
-		triageResponseExactMatch.Resolved = sql.NullTime{Time: resolvedTime, Valid: true}
+		triageResponseExactMatch.Resolved = sql.NullTime{Time: time.Now(), Valid: true}
 		var updateResponse models.Triage
 		err = util.SippyPut(fmt.Sprintf("/api/component_readiness/triages/%d", triageResponseExactMatch.ID), &triageResponseExactMatch, &updateResponse)
 		require.NoError(t, err)
 		assert.True(t, updateResponse.Resolved.Valid, "Triage should be marked as resolved")
 
-		// Query for potential matches for the target regression
 		var potentialMatches []componentreadiness.PotentialMatchingTriage
 		endpoint := fmt.Sprintf("/api/component_readiness/regressions/%d/matches", targetRegression.Regression.ID)
 		err = util.SippyGet(endpoint, &potentialMatches)
 		require.NoError(t, err)
 
-		// Verify we found the resolved triage
-		assert.Len(t, potentialMatches, 1, "Should find 1 potential matching triage")
-
-		// Build map for easier verification
-		triagesByID := make(map[uint]componentreadiness.PotentialMatchingTriage)
-		for _, match := range potentialMatches {
-			triagesByID[match.Triage.ID] = match
-		}
-
-		// Verify the resolved triage match
-		resolvedMatch, found := triagesByID[triageResponseExactMatch.ID]
-		assert.True(t, found, "Should find resolved triage with exact test name match")
-		assert.Len(t, resolvedMatch.SimilarlyNamedTests, 1, "Should have one similarly named test")
-		assert.Equal(t, 0, resolvedMatch.SimilarlyNamedTests[0].EditDistance, "Edit distance should be 0")
-		// Confidence should be capped at 5 even though edit distance 0 would normally give confidence 6
-		assert.Equal(t, 5, resolvedMatch.ConfidenceLevel, "Confidence should be capped at 5 for resolved triage")
+		require.Len(t, potentialMatches, 1, "Should find 1 potential matching triage")
+		assert.Equal(t, 5, potentialMatches[0].ConfidenceLevel, "Confidence should be capped at 5 for resolved triage")
 	})
 }
 
@@ -961,58 +970,63 @@ func assertTriageDataMatches(t *testing.T, expectedTriage, actualTriage models.T
 // Test_TriagePotentialMatchingRegressions tests the /api/component_readiness/triages/{id}/matches endpoint
 func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 	dbc := util.CreateE2EPostgresConnection(t)
-	// jiraClient is intentionally nil to prevent commenting on jiras
 	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
 
-	// Create a common failure time for some regressions to match on
-	commonFailureTime := time.Now().Add(-24 * time.Hour)
-	differentFailureTime := time.Now().Add(-12 * time.Hour)
-
-	// Create 10 test regressions with various characteristics for matching
+	// Create test regressions with various characteristics for matching.
+	// We use job run overlap and name similarity as matching signals.
 	testRegressions := make([]componentreport.ReportTestSummary, 10)
 
-	// Regression 1: Will be linked to the triage
-	testRegressions[0] = createTestRegressionWithDetails(t, tracker, view, "linked-test-1", "component-a", "capability-x", "TestSomething", &commonFailureTime, crtest.ExtremeRegression)
+	// Regression 0: Linked to triage, has job runs run-1..run-4
+	testRegressions[0] = createTestRegressionWithDetails(t, tracker, view, "linked-test-1", "component-a", "capability-x", "TestSomething", crtest.ExtremeRegression)
 	defer dbc.DB.Delete(testRegressions[0].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[0].Regression.ID, "run-1", "run-2", "run-3", "run-4")
 
-	// Regression 2: Will be linked to the triage
-	uniqueFailureTime := time.Now().Add(-36 * time.Hour)
-	testRegressions[1] = createTestRegressionWithDetails(t, tracker, view, "linked-test-2", "component-b", "capability-y", "TestAnotherOne", &uniqueFailureTime, crtest.SignificantRegression)
+	// Regression 1: Linked to triage, has job runs run-10..run-13
+	testRegressions[1] = createTestRegressionWithDetails(t, tracker, view, "linked-test-2", "component-b", "capability-y", "TestAnotherOne", crtest.SignificantRegression)
 	defer dbc.DB.Delete(testRegressions[1].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[1].Regression.ID, "run-10", "run-11", "run-12", "run-13")
 
-	// Regression 3: Should match by similar test name (edit distance <= 5)
-	testRegressions[2] = createTestRegressionWithDetails(t, tracker, view, "match-similar-name", "component-c", "capability-z", "TestSomthng", &differentFailureTime, crtest.ExtremeTriagedRegression) // missing 'e' and 'i' from "TestSomething"
+	// Regression 2: Match by similar name to "TestSomething" (edit distance 2)
+	testRegressions[2] = createTestRegressionWithDetails(t, tracker, view, "match-similar-name", "component-c", "capability-z", "TestSomthng", crtest.ExtremeTriagedRegression) // missing 'e' and 'i'
 	defer dbc.DB.Delete(testRegressions[2].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[2].Regression.ID, "run-90")
 
-	// Regression 4: Should match by same last failure time
-	testRegressions[3] = createTestRegressionWithDetails(t, tracker, view, "match-same-failure", "component-d", "capability-w", "TestDifferent", &commonFailureTime, crtest.SignificantTriagedRegression)
+	// Regression 3: Match by job run overlap with regression 0 (shares run-1, run-2)
+	testRegressions[3] = createTestRegressionWithDetails(t, tracker, view, "match-overlap", "component-d", "capability-w", "TestDifferent", crtest.SignificantTriagedRegression)
 	defer dbc.DB.Delete(testRegressions[3].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[3].Regression.ID, "run-1", "run-2", "run-50")
 
-	// Regression 5: Should match both similar name AND same failure time
-	testRegressions[4] = createTestRegressionWithDetails(t, tracker, view, "match-both", "component-e", "capability-v", "TestAnoterOne", &commonFailureTime, crtest.FixedRegression) // missing 'h' from "TestAnotherOne"
+	// Regression 4: Match by both similar name AND job run overlap
+	testRegressions[4] = createTestRegressionWithDetails(t, tracker, view, "match-both", "component-e", "capability-v", "TestAnoterOne", crtest.FixedRegression) // missing 'h' from "TestAnotherOne"
 	defer dbc.DB.Delete(testRegressions[4].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[4].Regression.ID, "run-10", "run-11", "run-60") // overlap with regression 1
 
-	// Regression 6: Similar name to regression 1 but different failure time
-	testRegressions[5] = createTestRegressionWithDetails(t, tracker, view, "match-name-only", "component-f", "capability-u", "TestSomthing", &differentFailureTime, crtest.MissingSample) // missing 'e' from "TestSomething"
+	// Regression 5: Similar name to regression 0, no job run overlap
+	testRegressions[5] = createTestRegressionWithDetails(t, tracker, view, "match-name-only", "component-f", "capability-u", "TestSomthing", crtest.MissingSample) // edit distance 1
 	defer dbc.DB.Delete(testRegressions[5].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[5].Regression.ID, "run-70")
 
-	// Regression 7: No match - different name, different failure time
-	testRegressions[6] = createTestRegressionWithDetails(t, tracker, view, "no-match-1", "component-g", "capability-t", "CompletelyDifferentTest", &differentFailureTime, crtest.NotSignificant)
+	// Regression 6: No match - different name, no overlapping job runs
+	testRegressions[6] = createTestRegressionWithDetails(t, tracker, view, "no-match-1", "component-g", "capability-t", "CompletelyDifferentTest", crtest.NotSignificant)
 	defer dbc.DB.Delete(testRegressions[6].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[6].Regression.ID, "run-80", "run-81")
 
-	// Regression 8: No match - name too different (edit distance > 5)
-	testRegressions[7] = createTestRegressionWithDetails(t, tracker, view, "no-match-2", "component-h", "capability-s", "VeryDifferentTestName", &differentFailureTime, crtest.MissingBasis)
+	// Regression 7: No match - name too different (edit distance > 5), no overlap
+	testRegressions[7] = createTestRegressionWithDetails(t, tracker, view, "no-match-2", "component-h", "capability-s", "VeryDifferentTestName", crtest.MissingBasis)
 	defer dbc.DB.Delete(testRegressions[7].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[7].Regression.ID, "run-82")
 
-	// Regression 9: Same failure time as linked regression but different name
-	testRegressions[8] = createTestRegressionWithDetails(t, tracker, view, "match-failure-time", "component-i", "capability-r", "TestUnrelated", &commonFailureTime, crtest.MissingBasisAndSample)
+	// Regression 8: Match by job run overlap only (shares run-3, run-4 with regression 0)
+	testRegressions[8] = createTestRegressionWithDetails(t, tracker, view, "match-overlap-only", "component-i", "capability-r", "TestUnrelated", crtest.MissingBasisAndSample)
 	defer dbc.DB.Delete(testRegressions[8].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[8].Regression.ID, "run-3", "run-4")
 
-	// Regression 10: Another potential match with similar name to regression 2
-	testRegressions[9] = createTestRegressionWithDetails(t, tracker, view, "match-similar-2", "component-j", "capability-q", "TestAnotheOne", &differentFailureTime, crtest.SignificantImprovement) // missing 'r' from "TestAnotherOne"
+	// Regression 9: Similar name to "TestAnotherOne" (edit distance 1)
+	testRegressions[9] = createTestRegressionWithDetails(t, tracker, view, "match-similar-2", "component-j", "capability-q", "TestAnotheOne", crtest.SignificantImprovement) // missing 'r'
 	defer dbc.DB.Delete(testRegressions[9].Regression)
+	mergeJobRunsForRegression(t, tracker, testRegressions[9].Regression.ID, "run-91")
 
-	// Add all test regressions to the component report so they can be found by GetTriagePotentialMatches
+	// Add all test regressions to the component report cache
 	cache, err := util.NewE2ECacheManipulator(util.Release)
 	if err != nil {
 		t.Fatalf("Failed to create component report cache: %v", err)
@@ -1027,13 +1041,12 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 	t.Run("find potential matching regressions", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 
-		// Create a triage with two linked regressions
 		triage := models.Triage{
 			URL:  "https://issues.redhat.com/OCPBUGS-1234",
 			Type: models.TriageTypeProduct,
 			Regressions: []models.TestRegression{
-				{ID: testRegressions[0].Regression.ID}, // TestSomething with commonFailureTime
-				{ID: testRegressions[1].Regression.ID}, // TestAnother with unique failure time
+				{ID: testRegressions[0].Regression.ID}, // TestSomething with run-1..run-4
+				{ID: testRegressions[1].Regression.ID}, // TestAnotherOne with run-10..run-13
 			},
 		}
 
@@ -1042,17 +1055,14 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 2, len(triageResponse.Regressions))
 
-		// Query for potential matches
 		var potentialMatches []componentreadiness.PotentialMatchingRegression
-
 		endpoint := fmt.Sprintf("/api/component_readiness/triages/%d/matches?baseRelease=%s&sampleRelease=%s", triageResponse.ID, view.BaseRelease.Release.Name, view.SampleRelease.Release.Name)
 		err = util.SippyGet(endpoint, &potentialMatches)
 		require.NoError(t, err)
 
-		// Verify the results
 		assert.True(t, len(potentialMatches) > 0, "Should find some potential matches")
 
-		// Verify HATEOAS links are present in potential match responses
+		// Verify HATEOAS links
 		baseURL := fmt.Sprintf("http://%s:%s", os.Getenv("SIPPY_ENDPOINT"), os.Getenv("SIPPY_API_PORT"))
 		for _, match := range potentialMatches {
 			assert.Equal(t, fmt.Sprintf("%s/api/component_readiness/triages/%d/matches", baseURL, triageResponse.ID),
@@ -1061,130 +1071,127 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 				match.Links["triage"], "Potential match should have triage link")
 		}
 
-		// Verify status values are correctly returned for the potential matches
-		statusMap := make(map[uint]crtest.Status)
-		for _, match := range potentialMatches {
-			if match.RegressedTest.Regression != nil {
-				statusMap[match.RegressedTest.Regression.ID] = match.RegressedTest.TestComparison.ReportStatus
-			}
-		}
-
-		// Build maps for easier verification
+		// Build maps for verification
 		foundRegressionIDs := make(map[uint]bool)
 		matchesBySimilarName := make(map[uint][]componentreadiness.SimilarlyNamedTest)
-		matchesBySameFailure := make(map[uint][]models.TestRegression)
+		matchesByOverlap := make(map[uint][]componentreadiness.JobRunOverlap)
 		confidenceLevels := make(map[uint]int)
+		statusMap := make(map[uint]crtest.Status)
 
 		for _, match := range potentialMatches {
 			if match.RegressedTest.Regression == nil {
-				continue // Skip if no regression data
+				continue
 			}
 			regressionID := match.RegressedTest.Regression.ID
 			foundRegressionIDs[regressionID] = true
 			confidenceLevels[regressionID] = match.ConfidenceLevel
+			statusMap[regressionID] = match.RegressedTest.TestComparison.ReportStatus
 			if len(match.SimilarlyNamedTests) > 0 {
 				matchesBySimilarName[regressionID] = match.SimilarlyNamedTests
 			}
-			if len(match.SameLastFailures) > 0 {
-				matchesBySameFailure[regressionID] = match.SameLastFailures
+			if len(match.OverlappingJobRuns) > 0 {
+				matchesByOverlap[regressionID] = match.OverlappingJobRuns
 			}
 		}
 
-		// Verify that linked regressions are NOT in the potential matches
+		// Linked regressions should NOT appear
 		assert.False(t, foundRegressionIDs[testRegressions[0].Regression.ID], "Linked regression 0 should not appear in potential matches")
 		assert.False(t, foundRegressionIDs[testRegressions[1].Regression.ID], "Linked regression 1 should not appear in potential matches")
 
-		// Verify expected matches are found
-		assert.True(t, foundRegressionIDs[testRegressions[2].Regression.ID], "Should find regression 2 (similar name to TestSomething)")
-		assert.True(t, foundRegressionIDs[testRegressions[3].Regression.ID], "Should find regression 3 (same failure time)")
-		assert.True(t, foundRegressionIDs[testRegressions[4].Regression.ID], "Should find regression 4 (both similar name and same failure)")
+		// Expected matches
+		assert.True(t, foundRegressionIDs[testRegressions[2].Regression.ID], "Should find regression 2 (similar name)")
+		assert.True(t, foundRegressionIDs[testRegressions[3].Regression.ID], "Should find regression 3 (job run overlap)")
+		assert.True(t, foundRegressionIDs[testRegressions[4].Regression.ID], "Should find regression 4 (name + overlap)")
 		assert.True(t, foundRegressionIDs[testRegressions[5].Regression.ID], "Should find regression 5 (similar name)")
-		assert.True(t, foundRegressionIDs[testRegressions[8].Regression.ID], "Should find regression 8 (same failure time)")
-		assert.True(t, foundRegressionIDs[testRegressions[9].Regression.ID], "Should find regression 9 (similar name to TestAnother)")
+		assert.True(t, foundRegressionIDs[testRegressions[8].Regression.ID], "Should find regression 8 (job run overlap)")
+		assert.True(t, foundRegressionIDs[testRegressions[9].Regression.ID], "Should find regression 9 (similar name)")
 
-		// Verify the status values are correctly returned
-		assert.Equal(t, crtest.ExtremeTriagedRegression, statusMap[testRegressions[2].Regression.ID], "Regression 2 should have ExtremeTriagedRegression status")
-		assert.Equal(t, crtest.SignificantTriagedRegression, statusMap[testRegressions[3].Regression.ID], "Regression 3 should have SignificantTriagedRegression status")
-		assert.Equal(t, crtest.FixedRegression, statusMap[testRegressions[4].Regression.ID], "Regression 4 should have FixedRegression status")
-		assert.Equal(t, crtest.MissingSample, statusMap[testRegressions[5].Regression.ID], "Regression 5 should have MissingSample status")
-		assert.Equal(t, crtest.MissingBasisAndSample, statusMap[testRegressions[8].Regression.ID], "Regression 8 should have MissingBasisAndSample status")
-		assert.Equal(t, crtest.SignificantImprovement, statusMap[testRegressions[9].Regression.ID], "Regression 9 should have SignificantImprovement status")
-
-		// Verify non-matches are not found
+		// Non-matches
 		assert.False(t, foundRegressionIDs[testRegressions[6].Regression.ID], "Should not find regression 6 (no match)")
 		assert.False(t, foundRegressionIDs[testRegressions[7].Regression.ID], "Should not find regression 7 (name too different)")
 
-		// Verify match reasons are correct
+		// Verify status values
+		assert.Equal(t, crtest.ExtremeTriagedRegression, statusMap[testRegressions[2].Regression.ID])
+		assert.Equal(t, crtest.SignificantTriagedRegression, statusMap[testRegressions[3].Regression.ID])
+		assert.Equal(t, crtest.FixedRegression, statusMap[testRegressions[4].Regression.ID])
+		assert.Equal(t, crtest.MissingSample, statusMap[testRegressions[5].Regression.ID])
+		assert.Equal(t, crtest.MissingBasisAndSample, statusMap[testRegressions[8].Regression.ID])
+		assert.Equal(t, crtest.SignificantImprovement, statusMap[testRegressions[9].Regression.ID])
 
-		// Regression 2: Should match by similar name to "TestSomething"
+		// Regression 2: Match by similar name only (TestSomthng vs TestSomething, edit distance 2)
 		if assert.Contains(t, matchesBySimilarName, testRegressions[2].Regression.ID) {
 			matches := matchesBySimilarName[testRegressions[2].Regression.ID]
-			assert.Equal(t, 1, len(matches), "Should match exactly one similar name")
-			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].Regression.ID, "Should match against TestSomething regression")
-			// TestSomthng vs TestSomething = edit distance 2, so score = 6-2 = 4
-			assert.Equal(t, 4, confidenceLevels[testRegressions[2].Regression.ID], "Confidence should be 4 (edit distance 2: 6-2)")
+			assert.Equal(t, 1, len(matches))
+			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].Regression.ID)
+			// score = 6 - 2 = 4
+			assert.Equal(t, 4, confidenceLevels[testRegressions[2].Regression.ID])
 		}
+		assert.NotContains(t, matchesByOverlap, testRegressions[2].Regression.ID, "Regression 2 should not match by overlap")
 
-		// Regression 3: Should match by same failure time
-		if assert.Contains(t, matchesBySameFailure, testRegressions[3].Regression.ID) {
-			matches := matchesBySameFailure[testRegressions[3].Regression.ID]
-			assert.Equal(t, 1, len(matches), "Should match exactly one same failure time")
-			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].ID, "Should match against commonFailureTime regression")
-			assert.Equal(t, 1, confidenceLevels[testRegressions[3].Regression.ID], "Confidence should be 1 (1 failure match * 1)")
+		// Regression 3: Match by job run overlap (shares run-1, run-2 with linked regression 0)
+		if assert.Contains(t, matchesByOverlap, testRegressions[3].Regression.ID) {
+			overlaps := matchesByOverlap[testRegressions[3].Regression.ID]
+			assert.Equal(t, 1, len(overlaps))
+			assert.ElementsMatch(t, []string{"run-1", "run-2"}, overlaps[0].SharedJobRunIDs)
+			// 2 shared / 3 (smaller set) = 66.7%, score = int(66.7/10) + 1 = 7
+			assert.InDelta(t, 66.7, overlaps[0].OverlapPercent, 1.0)
+			assert.Equal(t, 7, confidenceLevels[testRegressions[3].Regression.ID])
 		}
+		assert.NotContains(t, matchesBySimilarName, testRegressions[3].Regression.ID, "Regression 3 should not match by name")
 
-		// Regression 4: Should match both similar name AND same failure time
+		// Regression 4: Match by both name AND job run overlap
 		if assert.Contains(t, matchesBySimilarName, testRegressions[4].Regression.ID) {
 			nameMatches := matchesBySimilarName[testRegressions[4].Regression.ID]
-			assert.Equal(t, 1, len(nameMatches), "Should match exactly one similar name")
-			assert.Equal(t, testRegressions[1].Regression.ID, nameMatches[0].Regression.ID, "Should match against TestAnotherOne regression")
+			assert.Equal(t, 1, len(nameMatches))
+			assert.Equal(t, testRegressions[1].Regression.ID, nameMatches[0].Regression.ID)
 		}
-		if assert.Contains(t, matchesBySameFailure, testRegressions[4].Regression.ID) {
-			failureMatches := matchesBySameFailure[testRegressions[4].Regression.ID]
-			assert.Equal(t, 1, len(failureMatches), "Should match exactly one same failure time")
-			assert.Equal(t, testRegressions[0].Regression.ID, failureMatches[0].ID, "Should match against commonFailureTime regression")
-			// TestAnoterOne vs TestAnotherOne = edit distance 1, so name score = 6-1 = 5, failure = 1, total = 6
-			assert.Equal(t, 6, confidenceLevels[testRegressions[4].Regression.ID], "Confidence should be 6 (name edit distance 1: 6-1=5, plus 1 failure match)")
+		if assert.Contains(t, matchesByOverlap, testRegressions[4].Regression.ID) {
+			overlaps := matchesByOverlap[testRegressions[4].Regression.ID]
+			assert.Equal(t, 1, len(overlaps))
+			assert.ElementsMatch(t, []string{"run-10", "run-11"}, overlaps[0].SharedJobRunIDs)
+			// 2 shared / 3 (smaller set) = 66.7%, overlap score = 7
+			// name score: TestAnoterOne vs TestAnotherOne = edit distance 1, 6-1 = 5
+			// total = 7 + 5 = 12, capped at 10
+			assert.Equal(t, 10, confidenceLevels[testRegressions[4].Regression.ID])
 		}
 
-		// Regression 5: Should match by similar name only
+		// Regression 5: Match by similar name only (TestSomthing vs TestSomething, edit distance 1)
 		if assert.Contains(t, matchesBySimilarName, testRegressions[5].Regression.ID) {
 			matches := matchesBySimilarName[testRegressions[5].Regression.ID]
-			assert.Equal(t, 1, len(matches), "Should match exactly one similar name")
-			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].Regression.ID, "Should match against TestSomething regression")
-			// TestSomthing vs TestSomething = edit distance 1, so score = 6-1 = 5
-			assert.Equal(t, 5, confidenceLevels[testRegressions[5].Regression.ID], "Confidence should be 5 (edit distance 1: 6-1)")
+			assert.Equal(t, 1, len(matches))
+			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].Regression.ID)
+			assert.Equal(t, 5, confidenceLevels[testRegressions[5].Regression.ID]) // 6 - 1 = 5
 		}
-		assert.NotContains(t, matchesBySameFailure, testRegressions[5].Regression.ID, "Should not match by failure time")
+		assert.NotContains(t, matchesByOverlap, testRegressions[5].Regression.ID)
 
-		// Regression 8: Should match by same failure time only
-		if assert.Contains(t, matchesBySameFailure, testRegressions[8].Regression.ID) {
-			matches := matchesBySameFailure[testRegressions[8].Regression.ID]
-			assert.Equal(t, 1, len(matches), "Should match exactly one same failure time")
-			assert.Equal(t, testRegressions[0].Regression.ID, matches[0].ID, "Should match against commonFailureTime regression")
-			assert.Equal(t, 1, confidenceLevels[testRegressions[8].Regression.ID], "Confidence should be 1 (1 failure match * 1)")
+		// Regression 8: Match by job run overlap only (shares run-3, run-4 with linked regression 0)
+		if assert.Contains(t, matchesByOverlap, testRegressions[8].Regression.ID) {
+			overlaps := matchesByOverlap[testRegressions[8].Regression.ID]
+			assert.Equal(t, 1, len(overlaps))
+			assert.ElementsMatch(t, []string{"run-3", "run-4"}, overlaps[0].SharedJobRunIDs)
+			// 2 shared / 2 (smaller set = regression 8's 2 runs) = 100%, score = 10 (capped)
+			assert.InDelta(t, 100.0, overlaps[0].OverlapPercent, 0.1)
+			assert.Equal(t, 10, confidenceLevels[testRegressions[8].Regression.ID])
 		}
-		assert.NotContains(t, matchesBySimilarName, testRegressions[8].Regression.ID, "Should not match by similar name")
+		assert.NotContains(t, matchesBySimilarName, testRegressions[8].Regression.ID)
 
-		// Regression 9: Should match by similar name to "TestAnotherOne"
+		// Regression 9: Similar name to "TestAnotherOne" (edit distance 1)
 		if assert.Contains(t, matchesBySimilarName, testRegressions[9].Regression.ID) {
 			matches := matchesBySimilarName[testRegressions[9].Regression.ID]
-			assert.Equal(t, 1, len(matches), "Should match exactly one similar name")
-			assert.Equal(t, testRegressions[1].Regression.ID, matches[0].Regression.ID, "Should match against TestAnotherOne regression")
-			// TestAnotheOne vs TestAnotherOne = edit distance 1, so score = 6-1 = 5
-			assert.Equal(t, 5, confidenceLevels[testRegressions[9].Regression.ID], "Confidence should be 5 (edit distance 1: 6-1)")
+			assert.Equal(t, 1, len(matches))
+			assert.Equal(t, testRegressions[1].Regression.ID, matches[0].Regression.ID)
+			assert.Equal(t, 5, confidenceLevels[testRegressions[9].Regression.ID]) // 6 - 1 = 5
 		}
 	})
 
 	t.Run("empty potential matches when no regressions exist", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 
-		// Create a triage with one linked regression
 		triage := models.Triage{
 			URL:  "https://issues.redhat.com/OCPBUGS-1234",
 			Type: models.TriageTypeProduct,
 			Regressions: []models.TestRegression{
-				{ID: testRegressions[6].Regression.ID}, // CompletelyDifferentTest - won't match anything
+				{ID: testRegressions[6].Regression.ID}, // CompletelyDifferentTest
 			},
 		}
 
@@ -1192,15 +1199,11 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
 
-		// Query for potential matches
 		var potentialMatches []componentreadiness.PotentialMatchingRegression
-
 		endpoint := fmt.Sprintf("/api/component_readiness/triages/%d/matches?baseRelease=%s&sampleRelease=%s", triageResponse.ID, view.BaseRelease.Release.Name, view.SampleRelease.Release.Name)
 		err = util.SippyGet(endpoint, &potentialMatches)
 		require.NoError(t, err)
 
-		// Should still find some matches since other regressions might have similar names or failure times
-		// but the linked regression itself should not appear
 		foundRegressionIDs := make(map[uint]bool)
 		for _, match := range potentialMatches {
 			if match.RegressedTest.Regression != nil {
@@ -1244,14 +1247,13 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 	t.Run("verify status values in triage responses", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
 
-		// Create a triage with regressions that have different status values
 		triage := models.Triage{
 			URL:  "https://issues.redhat.com/OCPBUGS-5678",
 			Type: models.TriageTypeProduct,
 			Regressions: []models.TestRegression{
-				{ID: testRegressions[0].Regression.ID}, // ExtremeRegression
-				{ID: testRegressions[1].Regression.ID}, // SignificantRegression
-				{ID: testRegressions[4].Regression.ID}, // FixedRegression
+				{ID: testRegressions[0].Regression.ID},
+				{ID: testRegressions[1].Regression.ID},
+				{ID: testRegressions[4].Regression.ID},
 			},
 		}
 
@@ -1260,11 +1262,6 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 3, len(triageResponse.Regressions))
 
-		// Note: TestComparison (including status) is not available on the basic TestRegression model
-		// returned by the triage API. Status is only available in the potential matches endpoint
-		// where regressions are represented as ReportTestSummary with full component report data.
-		//
-		// However, we can verify that our test setup correctly created regressions with different IDs
 		regressionIDs := make(map[uint]bool)
 		for _, regression := range triageResponse.Regressions {
 			regressionIDs[regression.ID] = true
@@ -1277,14 +1274,13 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 }
 
 // Helper function to create test regressions with specific details
-func createTestRegressionWithDetails(t *testing.T, tracker componentreadiness.RegressionStore, view crview.View, testID, component, capability, testName string, lastFailure *time.Time, status crtest.Status) componentreport.ReportTestSummary {
+func createTestRegressionWithDetails(t *testing.T, tracker componentreadiness.RegressionStore, view crview.View, testID, component, capability, testName string, status crtest.Status) componentreport.ReportTestSummary {
 	newRegression := componentreport.ReportTestSummary{
 		TestComparison: testdetails.TestComparison{
 			ReportStatus: status,
 			BaseStats: &testdetails.ReleaseStats{
 				Release: util.BaseRelease,
 			},
-			LastFailure: lastFailure,
 		},
 		Identification: crtest.Identification{
 			RowIdentification: crtest.RowIdentification{
@@ -1306,4 +1302,19 @@ func createTestRegressionWithDetails(t *testing.T, tracker componentreadiness.Re
 	require.NoError(t, err)
 	newRegression.Regression = regression
 	return newRegression
+}
+
+// mergeJobRunsForRegression is a helper that adds job runs with the given prow job run IDs to a regression.
+func mergeJobRunsForRegression(t *testing.T, tracker componentreadiness.RegressionStore, regressionID uint, runIDs ...string) {
+	var jobRuns []models.RegressionJobRun
+	for _, id := range runIDs {
+		jobRuns = append(jobRuns, models.RegressionJobRun{
+			ProwJobRunID: id,
+			ProwJobName:  "periodic-ci-test-job",
+			TestFailed:   true,
+			TestFailures: 1,
+		})
+	}
+	err := tracker.MergeJobRuns(regressionID, jobRuns)
+	require.NoError(t, err)
 }

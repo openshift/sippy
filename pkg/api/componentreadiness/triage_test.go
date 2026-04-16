@@ -2,6 +2,7 @@ package componentreadiness
 
 import (
 	"database/sql"
+	"net/http"
 	"testing"
 	"time"
 
@@ -116,52 +117,84 @@ func TestIsSimilarTestName(t *testing.T) {
 	}
 }
 
-func TestIsSameLastFailure(t *testing.T) {
-	testTime := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
-	differentTime := time.Date(2024, 1, 2, 12, 0, 0, 0, time.UTC)
-
+func TestCalculateJobRunOverlap(t *testing.T) {
 	tests := []struct {
-		name     string
-		time1    sql.NullTime
-		time2    sql.NullTime
-		expected bool
+		name            string
+		candidateRunIDs map[string]bool
+		triageReg       models.TestRegression
+		expectNil       bool
+		expectShared    []string
+		expectPercent   float64
 	}{
 		{
-			name:     "both null times",
-			time1:    sql.NullTime{Valid: false},
-			time2:    sql.NullTime{Valid: false},
-			expected: true,
+			name:            "no candidate runs",
+			candidateRunIDs: map[string]bool{},
+			triageReg:       models.TestRegression{JobRuns: []models.RegressionJobRun{{ProwJobRunID: "run-1"}}},
+			expectNil:       true,
 		},
 		{
-			name:     "same valid times",
-			time1:    sql.NullTime{Time: testTime, Valid: true},
-			time2:    sql.NullTime{Time: testTime, Valid: true},
-			expected: true,
+			name:            "no triage runs",
+			candidateRunIDs: map[string]bool{"run-1": true},
+			triageReg:       models.TestRegression{},
+			expectNil:       true,
 		},
 		{
-			name:     "different valid times",
-			time1:    sql.NullTime{Time: testTime, Valid: true},
-			time2:    sql.NullTime{Time: differentTime, Valid: true},
-			expected: false,
+			name:            "no overlap",
+			candidateRunIDs: map[string]bool{"run-1": true, "run-2": true},
+			triageReg: models.TestRegression{JobRuns: []models.RegressionJobRun{
+				{ProwJobRunID: "run-3"},
+				{ProwJobRunID: "run-4"},
+			}},
+			expectNil: true,
 		},
 		{
-			name:     "one null one valid",
-			time1:    sql.NullTime{Valid: false},
-			time2:    sql.NullTime{Time: testTime, Valid: true},
-			expected: false,
+			name:            "full overlap same size",
+			candidateRunIDs: map[string]bool{"run-1": true, "run-2": true},
+			triageReg: models.TestRegression{JobRuns: []models.RegressionJobRun{
+				{ProwJobRunID: "run-1"},
+				{ProwJobRunID: "run-2"},
+			}},
+			expectShared:  []string{"run-1", "run-2"},
+			expectPercent: 100,
 		},
 		{
-			name:     "one valid one null",
-			time1:    sql.NullTime{Time: testTime, Valid: true},
-			time2:    sql.NullTime{Valid: false},
-			expected: false,
+			name:            "partial overlap",
+			candidateRunIDs: map[string]bool{"run-1": true, "run-2": true, "run-3": true, "run-4": true},
+			triageReg: models.TestRegression{JobRuns: []models.RegressionJobRun{
+				{ProwJobRunID: "run-1"},
+				{ProwJobRunID: "run-2"},
+				{ProwJobRunID: "run-5"},
+				{ProwJobRunID: "run-6"},
+			}},
+			expectShared:  []string{"run-1", "run-2"},
+			expectPercent: 50, // 2 shared / 4 (min of both sets)
+		},
+		{
+			name:            "overlap uses smaller set as denominator",
+			candidateRunIDs: map[string]bool{"run-1": true, "run-2": true},
+			triageReg: models.TestRegression{JobRuns: []models.RegressionJobRun{
+				{ProwJobRunID: "run-1"},
+				{ProwJobRunID: "run-2"},
+				{ProwJobRunID: "run-3"},
+				{ProwJobRunID: "run-4"},
+				{ProwJobRunID: "run-5"},
+				{ProwJobRunID: "run-6"},
+			}},
+			expectShared:  []string{"run-1", "run-2"},
+			expectPercent: 100, // 2 shared / 2 (candidate is smaller)
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := isSameLastFailure(tt.time1, tt.time2)
-			assert.Equal(t, tt.expected, result)
+			result := calculateJobRunOverlap(tt.candidateRunIDs, tt.triageReg)
+			if tt.expectNil {
+				assert.Nil(t, result)
+			} else {
+				assert.NotNil(t, result)
+				assert.ElementsMatch(t, tt.expectShared, result.SharedJobRunIDs)
+				assert.InDelta(t, tt.expectPercent, result.OverlapPercent, 0.1)
+			}
 		})
 	}
 }
@@ -173,12 +206,12 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 		expected int
 	}{
 		{
-			name: "no matches",
+			name: "no matches gives minimum score",
 			match: PotentialMatch{
 				SimilarlyNamedTests: []SimilarlyNamedTest{},
-				SameLastFailures:    []models.TestRegression{},
+				OverlappingJobRuns:  []JobRunOverlap{},
 			},
-			expected: 1, // min of 1
+			expected: 1,
 		},
 		{
 			name: "single similar name with low edit distance",
@@ -186,7 +219,6 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 				SimilarlyNamedTests: []SimilarlyNamedTest{
 					{EditDistance: 1},
 				},
-				SameLastFailures: []models.TestRegression{},
 			},
 			expected: 5, // 6 - 1 = 5
 		},
@@ -196,41 +228,69 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 				SimilarlyNamedTests: []SimilarlyNamedTest{
 					{EditDistance: 5},
 				},
-				SameLastFailures: []models.TestRegression{},
 			},
-			expected: 1, // 5 - 5 = 0; min of 1
+			expected: 1, // 6 - 5 = 1
 		},
 		{
-			name: "single same last failure",
+			name: "high job run overlap dominates",
 			match: PotentialMatch{
-				SimilarlyNamedTests: []SimilarlyNamedTest{},
-				SameLastFailures:    []models.TestRegression{{}},
-			},
-			expected: 1,
-		},
-		{
-			name: "multiple matches",
-			match: PotentialMatch{
-				SimilarlyNamedTests: []SimilarlyNamedTest{
-					{EditDistance: 1}, // 5 points
-					{EditDistance: 2}, // 3 points
+				OverlappingJobRuns: []JobRunOverlap{
+					{OverlapPercent: 80},
 				},
-				SameLastFailures: []models.TestRegression{{}, {}}, // 2 points
 			},
-			// nolint:gocritic
-			expected: 10, // 5 + 3 + 2 = 10
+			expected: 9, // 80% overlap: score 9
+		},
+		{
+			name: "full job run overlap",
+			match: PotentialMatch{
+				OverlappingJobRuns: []JobRunOverlap{
+					{OverlapPercent: 100},
+				},
+			},
+			expected: 10, // int(100/10) + 1 = 11 → capped at 10
+		},
+		{
+			name: "low job run overlap",
+			match: PotentialMatch{
+				OverlappingJobRuns: []JobRunOverlap{
+					{OverlapPercent: 10},
+				},
+			},
+			expected: 2, // 10% overlap: score 2
+		},
+		{
+			name: "overlap plus similar name",
+			match: PotentialMatch{
+				OverlappingJobRuns: []JobRunOverlap{
+					{OverlapPercent: 50}, // 50% overlap: score 6
+				},
+				SimilarlyNamedTests: []SimilarlyNamedTest{
+					{EditDistance: 2}, // 6 - 2 = 4
+				},
+			},
+			expected: 10, // 6 + 4 = 10
 		},
 		{
 			name: "score capped at 10",
 			match: PotentialMatch{
-				SimilarlyNamedTests: []SimilarlyNamedTest{
-					{EditDistance: 0}, // 5 points
-					{EditDistance: 0}, // 5 points
-					{EditDistance: 0}, // 5 points
+				OverlappingJobRuns: []JobRunOverlap{
+					{OverlapPercent: 100}, // 11
 				},
-				SameLastFailures: []models.TestRegression{{}, {}, {}}, // 3 points
+				SimilarlyNamedTests: []SimilarlyNamedTest{
+					{EditDistance: 0}, // 6
+				},
 			},
-			expected: 10, // capped at 10
+			expected: 10,
+		},
+		{
+			name: "best overlap used across multiple regressions",
+			match: PotentialMatch{
+				OverlappingJobRuns: []JobRunOverlap{
+					{OverlapPercent: 20}, // 3
+					{OverlapPercent: 70}, // 8 ← best
+				},
+			},
+			expected: 8,
 		},
 	}
 
@@ -240,6 +300,156 @@ func TestPotentialMatch_CalculateConfidenceLevel(t *testing.T) {
 			assert.Equal(t, tt.expected, result)
 		})
 	}
+}
+
+func TestDeterminePotentialMatch(t *testing.T) {
+	tests := []struct {
+		name           string
+		regression     models.TestRegression
+		triage         *models.Triage
+		expectNil      bool
+		expectOverlaps int
+		expectSimilar  int
+	}{
+		{
+			name:       "already linked returns nil",
+			regression: models.TestRegression{ID: 1, TestName: "TestFoo"},
+			triage: &models.Triage{
+				Regressions: []models.TestRegression{{ID: 1}},
+			},
+			expectNil: true,
+		},
+		{
+			name: "no matching criteria returns nil",
+			regression: models.TestRegression{
+				ID:       1,
+				TestName: "CompletelyDifferent",
+				JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+			},
+			triage: &models.Triage{
+				Regressions: []models.TestRegression{{
+					ID:       2,
+					TestName: "AnotherTotallyUnrelatedTest",
+					JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-99"}},
+				}},
+			},
+			expectNil: true,
+		},
+		{
+			name: "match by job run overlap",
+			regression: models.TestRegression{
+				ID:       1,
+				TestName: "CompletelyDifferent",
+				JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}, {ProwJobRunID: "run-2"}},
+			},
+			triage: &models.Triage{
+				Regressions: []models.TestRegression{{
+					ID:       2,
+					TestName: "AnotherUnrelated",
+					JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}, {ProwJobRunID: "run-3"}},
+				}},
+			},
+			expectOverlaps: 1,
+		},
+		{
+			name: "match by similar name only",
+			regression: models.TestRegression{
+				ID:       1,
+				TestName: "TestSomething",
+			},
+			triage: &models.Triage{
+				Regressions: []models.TestRegression{{
+					ID:       2,
+					TestName: "TestSomethng", // edit distance 1
+				}},
+			},
+			expectSimilar: 1,
+		},
+		{
+			name: "match by both name and overlap",
+			regression: models.TestRegression{
+				ID:       1,
+				TestName: "TestSomething",
+				JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+			},
+			triage: &models.Triage{
+				Regressions: []models.TestRegression{{
+					ID:       2,
+					TestName: "TestSomethng",
+					JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+				}},
+			},
+			expectOverlaps: 1,
+			expectSimilar:  1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := determinePotentialMatch(tt.regression, tt.triage)
+			if tt.expectNil {
+				assert.Nil(t, result)
+			} else {
+				assert.NotNil(t, result)
+				assert.Len(t, result.OverlappingJobRuns, tt.expectOverlaps)
+				assert.Len(t, result.SimilarlyNamedTests, tt.expectSimilar)
+			}
+		})
+	}
+}
+
+func TestGetRegressionPotentialMatchingTriages_FiltersOldResolvedTriages(t *testing.T) {
+	regression := models.TestRegression{
+		ID:       100,
+		TestName: "TestSomething",
+		JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+	}
+
+	// A triage resolved 7 weeks ago — should be filtered out
+	oldResolved := models.Triage{
+		ID:       1,
+		Resolved: sql.NullTime{Valid: true, Time: time.Now().Add(-7 * 7 * 24 * time.Hour)},
+		Regressions: []models.TestRegression{{
+			ID:       200,
+			TestName: "TestSomethng", // similar name
+			JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+		}},
+	}
+
+	// A triage resolved 2 weeks ago — should be included
+	recentResolved := models.Triage{
+		ID:       2,
+		Resolved: sql.NullTime{Valid: true, Time: time.Now().Add(-2 * 7 * 24 * time.Hour)},
+		Regressions: []models.TestRegression{{
+			ID:       201,
+			TestName: "TestSomethng",
+			JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+		}},
+	}
+
+	// An unresolved triage — should be included
+	unresolved := models.Triage{
+		ID: 3,
+		Regressions: []models.TestRegression{{
+			ID:       202,
+			TestName: "TestSomethng",
+			JobRuns:  []models.RegressionJobRun{{ProwJobRunID: "run-1"}},
+		}},
+	}
+
+	triages := []models.Triage{oldResolved, recentResolved, unresolved}
+	req, _ := http.NewRequest("GET", "http://localhost/api/component_readiness/regressions/100/matches", nil)
+	results, err := GetRegressionPotentialMatchingTriages(regression, triages, req)
+	assert.NoError(t, err)
+
+	foundIDs := make(map[uint]bool)
+	for _, m := range results {
+		foundIDs[m.Triage.ID] = true
+	}
+
+	assert.False(t, foundIDs[1], "Triage resolved 7 weeks ago should be filtered out")
+	assert.True(t, foundIDs[2], "Triage resolved 2 weeks ago should be included")
+	assert.True(t, foundIDs[3], "Unresolved triage should be included")
 }
 
 func TestCompareTriageObjects(t *testing.T) {
