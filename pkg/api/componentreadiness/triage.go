@@ -756,8 +756,13 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crv
 		"self": fmt.Sprintf(regressionLink, baseAPIURL, regression.ID),
 	}
 
-	// The test_details link will be that of the main view for the given release pair
+	// The test_details link will be that of the main view for the given release pair.
+	// When release fallback is used, the regression's BaseRelease may differ from the view's base release
+	// (e.g., "4.20" instead of "4.21"), so fall back to matching by sample release only.
 	view, ok := GetMainViewForRelease(regression.BaseRelease, regression.Release, views)
+	if !ok {
+		view, ok = GetMainViewForSampleRelease(regression.Release, views)
+	}
 	if !ok {
 		log.Errorf("no main view found for base: %s, and sample: %s", regression.BaseRelease, regression.Release)
 		return
@@ -824,6 +829,17 @@ func GetMainViewForRelease(baseRelease, sampleRelease string, views []crview.Vie
 	matching := ViewsMatchingReleases(baseRelease, sampleRelease, views)
 	for _, v := range matching {
 		if strings.HasSuffix(v.Name, "-main") {
+			return v, true
+		}
+	}
+	return crview.View{}, false
+}
+
+// GetMainViewForSampleRelease returns the main view matching only the sample release.
+// Used as a fallback when a regression's base release differs from the view's due to release fallback.
+func GetMainViewForSampleRelease(sampleRelease string, views []crview.View) (view crview.View, ok bool) {
+	for _, v := range views {
+		if v.RegressionTracking.Enabled && v.SampleRelease.Name == sampleRelease && strings.HasSuffix(v.Name, "-main") {
 			return v, true
 		}
 	}

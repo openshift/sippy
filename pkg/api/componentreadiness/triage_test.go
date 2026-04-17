@@ -5,6 +5,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lib/pq"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
+	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
+	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/stretchr/testify/assert"
 )
@@ -391,6 +395,92 @@ func TestCompareTriageObjects(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := compareTriageObjects(tc.oldTriage, tc.newTriage)
 			assert.Equal(t, tc.expectedChanges, result, "Expected changes should match actual changes")
+		})
+	}
+}
+
+func TestInjectRegressionHATEOASLinks(t *testing.T) {
+	ga421 := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+	releases := []v1.Release{
+		{Release: "4.20", GADate: &ga421},
+		{Release: "4.21", GADate: &ga421},
+	}
+
+	views := []crview.View{
+		{
+			Name: "4.22-main",
+			BaseRelease: reqopts.RelativeRelease{
+				Release:       reqopts.Release{Name: "4.21"},
+				RelativeStart: "ga-30d",
+				RelativeEnd:   "ga",
+			},
+			SampleRelease: reqopts.RelativeRelease{
+				Release:       reqopts.Release{Name: "4.22"},
+				RelativeStart: "now-7d",
+				RelativeEnd:   "now",
+			},
+			RegressionTracking: crview.RegressionTracking{Enabled: true},
+		},
+	}
+
+	tests := []struct {
+		name       string
+		regression *models.TestRegression
+		expectLink bool
+	}{
+		{
+			name: "base release matches view",
+			regression: &models.TestRegression{
+				ID:          1,
+				Release:     "4.22",
+				BaseRelease: "4.21",
+				TestID:      "test-123",
+				Component:   "component",
+				Capability:  "capability",
+				Variants:    pq.StringArray{"Platform:aws"},
+			},
+			expectLink: true,
+		},
+		{
+			name: "fallback base release does not match view but sample does",
+			regression: &models.TestRegression{
+				ID:          2,
+				Release:     "4.22",
+				BaseRelease: "4.20",
+				TestID:      "test-456",
+				Component:   "component",
+				Capability:  "capability",
+				Variants:    pq.StringArray{"Platform:aws"},
+			},
+			expectLink: true,
+		},
+		{
+			name: "sample release matches no view",
+			regression: &models.TestRegression{
+				ID:          3,
+				Release:     "4.99",
+				BaseRelease: "4.98",
+				TestID:      "test-789",
+				Component:   "component",
+				Capability:  "capability",
+				Variants:    pq.StringArray{"Platform:aws"},
+			},
+			expectLink: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			InjectRegressionHATEOASLinks(tt.regression, views, releases, 0, "http://api", "http://frontend")
+
+			assert.Contains(t, tt.regression.Links, "self")
+
+			if tt.expectLink {
+				assert.Contains(t, tt.regression.Links, "test_details", "expected test_details link to be present")
+				assert.Contains(t, tt.regression.Links["test_details"], "test_details")
+			} else {
+				assert.NotContains(t, tt.regression.Links, "test_details", "expected test_details link to be absent")
+			}
 		})
 	}
 }
