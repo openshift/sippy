@@ -77,8 +77,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},
-		&models.ProwJobRunTest{},
-		&models.ProwJobRunTestOutput{},
 		&models.APISnapshot{},
 		&models.Bug{},
 		&models.ProwPullRequest{},
@@ -104,12 +102,39 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		}
 	}
 
+	// while we are in the transition phase we have to check to see if the table exists for the models we are migrating
+	// if not then this is a new db so we should create the old non-partitioned tables
+	modelsToInitialize := []struct {
+		model     interface{}
+		tableName string
+	}{
+		{
+			model:     &models.ProwJobRunTest{},
+			tableName: "prow_job_run_tests",
+		},
+		{
+			model:     &models.ProwJobRunTestOutput{},
+			tableName: "prow_job_run_test_outputs",
+		},
+	}
+	for _, model := range modelsToInitialize {
+		if !d.DB.Migrator().HasTable(model.tableName) {
+			if err := d.DB.AutoMigrate(model.model); err != nil {
+				return err
+			}
+		}
+	}
+
 	// TODO(sgoeddel): This migration logic can be removed once we have a migration that drops the view column from test_regressions
 	if d.DB.Migrator().HasColumn(&models.TestRegression{}, "view") {
 		if err := d.DB.Migrator().DropColumn(&models.TestRegression{}, "view"); err != nil {
 			return err
 		}
 	}
+
+	// TODO(fbabcock): Add support for migrating partitioned table
+	// &models.ProwJobRunTest{},
+	// &models.ProwJobRunTestOutput{},
 
 	if err := createAuditLogIndexes(d.DB); err != nil {
 		return err
