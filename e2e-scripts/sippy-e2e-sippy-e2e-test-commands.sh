@@ -231,6 +231,15 @@ fi
 kill ${PF_PID_SERVER} 2>/dev/null || true
 stop_sippy_server bigquery
 
+echo "=== Running unit tests for coverage ==="
+gotestsum --junitfile ${ARTIFACT_DIR}/junit_unit.xml -- \
+  ./pkg/... \
+  -v -coverprofile=${ARTIFACT_DIR}/unit-test-coverage.out -coverpkg=./pkg/...,./cmd/...
+UNIT_EXIT=$?
+if [ ${UNIT_EXIT} -ne 0 ]; then
+    E2E_EXIT_CODE=${UNIT_EXIT}
+fi
+
 # Collect coverage data from both server runs
 cat << END | ${KUBECTL_CMD} apply -f -
 apiVersion: v1
@@ -267,7 +276,7 @@ if find "${COVERAGE_ROOT}" -name 'covcounters.*' -print -quit 2>/dev/null | grep
     echo "Generating coverage report from ${COVERAGE_ROOT}..."
     go tool covdata percent -i="${COVERAGE_ROOT}"
     go tool covdata textfmt -i="${COVERAGE_ROOT}" -o="${ARTIFACT_DIR}/e2e-coverage.out"
-    for f in ${ARTIFACT_DIR}/e2e-test-coverage.out ${ARTIFACT_DIR}/e2e-bq-test-coverage.out; do
+    for f in ${ARTIFACT_DIR}/e2e-test-coverage.out ${ARTIFACT_DIR}/e2e-bq-test-coverage.out ${ARTIFACT_DIR}/unit-test-coverage.out; do
         if [ -f "$f" ]; then
             echo "Merging $f into server coverage..."
             tail -n +2 "$f" >> "${ARTIFACT_DIR}/e2e-coverage.out"

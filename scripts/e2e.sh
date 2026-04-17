@@ -30,7 +30,7 @@ clean_up () {
         go tool covdata percent -i="$COVDIR"
         go tool covdata textfmt -i="$COVDIR" -o=e2e-coverage.out
         # Merge test binary coverage (from -coverprofile) into server binary coverage
-        for f in e2e-test-coverage.out e2e-bq-test-coverage.out; do
+        for f in e2e-test-coverage.out e2e-bq-test-coverage.out unit-test-coverage.out; do
             if [ -f "$f" ]; then
                 echo "Merging $f into server coverage..."
                 tail -n +2 "$f" >> e2e-coverage.out
@@ -169,4 +169,13 @@ if [ -n "$GCS_SA_JSON_PATH" ]; then
     fi
 else
     echo "=== Phase 2: Skipping BigQuery tests (GCS_SA_JSON_PATH not set) ==="
+fi
+
+echo "=== Running unit tests for coverage ==="
+gotestsum \
+  ./pkg/... \
+  -count 1 -coverprofile=unit-test-coverage.out -coverpkg=./pkg/...,./cmd/...
+UNIT_EXIT=$?
+if [ $UNIT_EXIT -ne 0 ]; then
+    E2E_EXIT_CODE=$UNIT_EXIT
 fi
