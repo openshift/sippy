@@ -42,12 +42,19 @@ var view = crview.View{
 	},
 }
 
-func cleanupAllTriages(dbc *db.DB) {
-	// Delete all triage and test regressions in the e2e postgres db.
-	dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1")
-	res := dbc.DB.Where("1 = 1").Delete(&models.Triage{})
-	if res.Error != nil {
-		log.Errorf("error deleting triage records: %v", res.Error)
+// cleanupTriages deletes only the specified triages and their associated
+// regression links. Tests should clean up only what they create to avoid
+// destroying seed data.
+func cleanupTriages(dbc *db.DB, triages ...*models.Triage) {
+	for _, tr := range triages {
+		if tr == nil || tr.ID == 0 {
+			continue
+		}
+		dbc.DB.Exec("DELETE FROM triage_regressions WHERE triage_id = ?", tr.ID)
+		res := dbc.DB.Delete(tr)
+		if res.Error != nil {
+			log.Errorf("error deleting triage %d: %v", tr.ID, res.Error)
+		}
 	}
 }
 
@@ -65,7 +72,6 @@ func Test_TriageAPI(t *testing.T) {
 	defer dbc.DB.Delete(testRegression2)
 
 	t.Run("create requires a valid triage type", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triage1 := models.Triage{
 			URL: jiraBug.URL,
 			Regressions: []models.TestRegression{
@@ -85,7 +91,6 @@ func Test_TriageAPI(t *testing.T) {
 	})
 
 	t.Run("create fails with non-existent regression ID", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triage := models.Triage{
 			URL:  jiraBug.URL,
 			Type: models.TriageTypeProduct,
@@ -101,7 +106,6 @@ func Test_TriageAPI(t *testing.T) {
 	})
 
 	t.Run("create generates audit_log record", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triage1 := models.Triage{
 			URL: jiraBug.URL,
 			Regressions: []models.TestRegression{
@@ -115,6 +119,7 @@ func Test_TriageAPI(t *testing.T) {
 		var triageResponse models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		var auditLog models.AuditLog
 		res := dbc.DB.
@@ -135,8 +140,8 @@ func Test_TriageAPI(t *testing.T) {
 	})
 
 	t.Run("get", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		// ensure hateoas links are present
 		require.NotEmpty(t, triageResponse.Links["self"])
@@ -150,8 +155,6 @@ func Test_TriageAPI(t *testing.T) {
 			triageResponse.Links["audit_logs"])
 	})
 	t.Run("get with expanded regressions", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		// Use real regressions from seed data instead of injecting fake data into cache.
 		// We filter to seed data regressions (test IDs starting with "test-") because
 		// other subtests in this function create synthetic regressions that won't appear
@@ -172,6 +175,7 @@ func Test_TriageAPI(t *testing.T) {
 		var triageResponse models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse)
 		require.Equal(t, 2, len(triageResponse.Regressions))
 
 		// Validate that the expanded regressions are present
@@ -199,8 +203,8 @@ func Test_TriageAPI(t *testing.T) {
 		}
 	})
 	t.Run("list", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		var allTriages []models.Triage
 		err := util.SippyGet("/api/component_readiness/triages", &allTriages)
@@ -230,8 +234,8 @@ func Test_TriageAPI(t *testing.T) {
 		}
 	})
 	t.Run("update to add regression", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		// Update with a new regression:
 		var triageResponse2 models.Triage
@@ -254,8 +258,6 @@ func Test_TriageAPI(t *testing.T) {
 			triageResponse2.Links["audit_logs"])
 	})
 	t.Run("update to remove a regression", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		triage := models.Triage{
 			URL:  jiraBug.URL,
 			Type: models.TriageTypeProduct,
@@ -268,6 +270,7 @@ func Test_TriageAPI(t *testing.T) {
 		var triageResponse models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse)
 		assert.Equal(t, 2, len(triageResponse.Regressions))
 
 		// Update to remove one regression - keep only testRegression1
@@ -281,8 +284,8 @@ func Test_TriageAPI(t *testing.T) {
 		assert.NotEqual(t, triageResponse.UpdatedAt, triageResponse2.UpdatedAt)
 	})
 	t.Run("update to remove all regressions", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		var triageResponse2 models.Triage
 		triageResponse.Regressions = []models.TestRegression{}
@@ -291,8 +294,8 @@ func Test_TriageAPI(t *testing.T) {
 		assert.Equal(t, 0, len(triageResponse2.Regressions))
 	})
 	t.Run("update to resolve triage sets resolution reason to user", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		// Resolve the triage by setting the Resolved timestamp
 		resolvedTime := time.Now()
@@ -308,8 +311,8 @@ func Test_TriageAPI(t *testing.T) {
 		assert.Equal(t, models.User, updateResponse.ResolutionReason, "Resolution reason should be set to 'user'")
 	})
 	t.Run("update fails if resource has no ID", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		var triageResponse2 models.Triage
 		triageResponse.ID = 0
@@ -317,8 +320,8 @@ func Test_TriageAPI(t *testing.T) {
 		require.Error(t, err)
 	})
 	t.Run("update fails if URL has no ID", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		var triageResponse2 models.Triage
 		// No ID specified in URL should not work for an update
@@ -326,16 +329,16 @@ func Test_TriageAPI(t *testing.T) {
 		require.Error(t, err)
 	})
 	t.Run("update fails if URL ID and resource ID do not match", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		var triageResponse2 models.Triage
 		err := util.SippyPut("/api/component_readiness/triages/128736182736128736", &triageResponse, &triageResponse2)
 		require.Error(t, err)
 	})
 	t.Run("update generates audit_log record", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 		originalTriage := deepCopyTriage(t, triageResponse)
 
 		// Update with a new regression, and a changed description:
@@ -368,8 +371,8 @@ func Test_TriageAPI(t *testing.T) {
 		assertTriageDataMatches(t, originalTriage, oldTriageData, "OldData")
 	})
 	t.Run("delete generates audit_log record", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 		originalTriage := deepCopyTriage(t, triageResponse)
 
 		// Delete the triage record
@@ -395,8 +398,6 @@ func Test_TriageAPI(t *testing.T) {
 	})
 
 	t.Run("audit endpoint returns full lifecycle operations", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		// Create a triage
 		triage := models.Triage{
 			URL:         "https://issues.redhat.com/browse/OCPBUGS-8888",
@@ -410,6 +411,7 @@ func Test_TriageAPI(t *testing.T) {
 		var triageResponse models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse)
 		require.True(t, triageResponse.ID > 0)
 
 		// Small delay to ensure different timestamps
@@ -552,8 +554,8 @@ func Test_RegressionAPI(t *testing.T) {
 	release := view.SampleRelease.Release.Name
 
 	t.Run("list regressions", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-		_ = createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		triageResponse := createAndValidateTriageRecord(t, jiraBug.URL, testRegression1)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		// Test listing regressions by release (release is required)
 		var allRegressions []models.TestRegression
@@ -582,8 +584,6 @@ func Test_RegressionAPI(t *testing.T) {
 		assert.Contains(t, testDetailsHREF, "testId=", "test_details link should contain testId parameter")
 	})
 	t.Run("error when both view and release are specified", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		var regressions []models.TestRegression
 		err := util.SippyGet(fmt.Sprintf("/api/component_readiness/regressions?view=%s-main&release=%s", util.Release, util.Release), &regressions)
 		require.Error(t, err, "Expected error when both view and release are provided")
@@ -620,8 +620,6 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 	defer dbc.DB.Delete(noMatchRegression.Regression)
 
 	t.Run("find potential matching triages", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		// Create triages with the matching regressions
 		triage1 := models.Triage{
 			URL:  jiraBug.URL,
@@ -633,6 +631,7 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		var triageResponse1 models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage1, &triageResponse1)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse1)
 
 		triage2 := models.Triage{
 			URL:  jiraBug.URL,
@@ -644,6 +643,7 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		var triageResponse2 models.Triage
 		err = util.SippyPost("/api/component_readiness/triages", &triage2, &triageResponse2)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse2)
 
 		// Create a triage with the no-match regression (should not appear in results)
 		triageNoMatch := models.Triage{
@@ -656,6 +656,7 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		var triageResponseNoMatch models.Triage
 		err = util.SippyPost("/api/component_readiness/triages", &triageNoMatch, &triageResponseNoMatch)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponseNoMatch)
 
 		// Query for potential matches for the target regression
 		var potentialMatches []componentreadiness.PotentialMatchingTriage
@@ -696,8 +697,6 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 	})
 
 	t.Run("no potential matches found", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		// Create a triage with the no-match regression (different name and time)
 		triage := models.Triage{
 			URL:  jiraBug.URL,
@@ -709,6 +708,7 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		var triageResponse models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		// Query for potential matches for the target regression
 		var potentialMatches []componentreadiness.PotentialMatchingTriage
@@ -721,8 +721,6 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 	})
 
 	t.Run("resolved triage confidence level capped at 5", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		// Create a regression with the exact same test name (edit distance 0, would normally give confidence 6)
 		exactMatchRegression := createTestRegressionWithDetails(t, tracker, view, "exact-match", "component-e", "capability-v", "TestTargetFunction", &differentFailureTime, crtest.ExtremeRegression)
 		defer dbc.DB.Delete(exactMatchRegression.Regression)
@@ -738,6 +736,7 @@ func Test_RegressionPotentialMatchingTriages(t *testing.T) {
 		var triageResponseExactMatch models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triageExactMatch, &triageResponseExactMatch)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponseExactMatch)
 
 		// Resolve the triage
 		resolvedTime := time.Now()
@@ -822,8 +821,6 @@ func Test_TriageRawDB(t *testing.T) {
 	defer dbc.DB.Delete(testRegression)
 
 	t.Run("test Triage model in postgres", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		triage1 := models.Triage{
 			URL: "http://myjira",
 			Regressions: []models.TestRegression{
@@ -832,6 +829,7 @@ func Test_TriageRawDB(t *testing.T) {
 		}
 		res := dbWithContext.Create(&triage1)
 		require.NoError(t, res.Error)
+		defer cleanupTriages(dbc, &triage1)
 		testRegression.Triages = append(testRegression.Triages, triage1)
 		res = dbWithContext.Save(&testRegression)
 		require.NoError(t, res.Error)
@@ -869,6 +867,7 @@ func Test_TriageRawDB(t *testing.T) {
 		}
 		res = dbWithContext.Create(&triage2)
 		require.NoError(t, res.Error)
+		defer cleanupTriages(dbc, &triage2)
 		testRegression.Triages = append(testRegression.Triages, triage2)
 		res = dbWithContext.Save(&testRegression)
 		require.NoError(t, res.Error)
@@ -891,8 +890,6 @@ func Test_TriageRawDB(t *testing.T) {
 	})
 
 	t.Run("test Triage model Bug relationship", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		jiraBug := createBug(t, dbWithContext)
 		defer dbWithContext.Delete(jiraBug)
 
@@ -902,6 +899,7 @@ func Test_TriageRawDB(t *testing.T) {
 		}
 		res := dbWithContext.Create(&triage1)
 		require.NoError(t, res.Error)
+		defer cleanupTriages(dbc, &triage1)
 
 		// Lookup the Triage again to ensure we persisted what we expect:
 		res = dbWithContext.First(&triage1, triage1.ID)
@@ -1037,8 +1035,6 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 	defer dbc.DB.Delete(testRegressions[9].Regression)
 
 	t.Run("find potential matching regressions", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		// Use real regressions from seed data that appear in the component report.
 		// Synthetic regressions with fake test IDs won't appear in the report, so
 		// GetTriagePotentialMatches would skip them entirely.
@@ -1057,6 +1053,7 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		var triageResponse models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse)
 		require.Equal(t, 1, len(triageResponse.Regressions))
 
 		// Query for potential matches — the other real regressions should appear
@@ -1098,8 +1095,6 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 	})
 
 	t.Run("empty potential matches when no regressions exist", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		// Create a triage with one linked regression
 		triage := models.Triage{
 			URL:  "https://issues.redhat.com/OCPBUGS-1234",
@@ -1112,6 +1107,7 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		var triageResponse models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		// Query for potential matches
 		var potentialMatches []componentreadiness.PotentialMatchingRegression
@@ -1133,8 +1129,6 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 	})
 
 	t.Run("empty potential matches when release pair does not match any view", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
-
 		triage := models.Triage{
 			URL:  "https://issues.redhat.com/OCPBUGS-9999",
 			Type: models.TriageTypeProduct,
@@ -1146,6 +1140,7 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		var triageResponse models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse)
 
 		var potentialMatches []componentreadiness.PotentialMatchingRegression
 		endpoint := fmt.Sprintf("/api/component_readiness/triages/%d/matches?baseRelease=no-such-base&sampleRelease=no-such-sample", triageResponse.ID)
@@ -1163,7 +1158,6 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 	})
 
 	t.Run("verify status values in triage responses", func(t *testing.T) {
-		defer cleanupAllTriages(dbc)
 
 		// Use real regressions that appear in the component report so we can verify
 		// status transformation via the expand endpoint
@@ -1182,6 +1176,7 @@ func Test_TriagePotentialMatchingRegressions(t *testing.T) {
 		var triageResponse models.Triage
 		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResponse)
 		require.NoError(t, err)
+		defer cleanupTriages(dbc, &triageResponse)
 		require.Equal(t, 2, len(triageResponse.Regressions))
 
 		// Use the expand endpoint to get status values from the component report
