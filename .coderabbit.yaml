@@ -93,6 +93,21 @@ reviews:
           - CSS modules or styled components
           - Inline styles only for dynamic values (e.g., width based on props)
 
+      - name: "Test Coverage for New Features"
+        mode: warning
+        instructions: |
+          New or modified functionality should include test coverage where possible:
+          - New Go functions and methods should have corresponding unit tests
+          - Bug fixes should include a regression test that fails without the fix
+          - Pure functions (no DB/external dependencies) should always be tested
+          - If a function is hard to test, consider refactoring to separate pure logic from side effects
+          - Frontend components with non-trivial logic should have tests
+
+          Exceptions (do not flag):
+          - Trivial changes (renaming, formatting, comments)
+          - Generated code or configuration-only changes
+          - Refactors that are already covered by existing tests
+
       - name: "Single Responsibility and Clear Naming"
         mode: warning
         instructions: |
