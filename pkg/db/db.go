@@ -77,8 +77,6 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.ProwJobRunAnnotation{},
 		&models.Test{},
 		&models.Suite{},
-		&models.ProwJobRunTest{},
-		&models.ProwJobRunTestOutput{},
 		&models.APISnapshot{},
 		&models.Bug{},
 		&models.ProwPullRequest{},
@@ -111,6 +109,27 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		}
 	}
 
+	// handle partitioned model management outside of gorm
+	partitionedModelsToMigrate := []struct {
+		model     interface{}
+		tableName string
+	}{
+		{
+			model:     &models.ProwJobRunTest{},
+			tableName: "prow_job_run_tests",
+		},
+		{
+			model:     &models.ProwJobRunTestOutput{},
+			tableName: "prow_job_run_test_outputs",
+		},
+	}
+
+	for _, partitionedModel := range partitionedModelsToMigrate {
+		if _, err := d.UpdatePartitionedTable(partitionedModel.model, partitionedModel.tableName, NewRangePartitionConfig("created_at"), false, false); err != nil {
+			return err
+		}
+	}
+
 	if err := createAuditLogIndexes(d.DB); err != nil {
 		return err
 	}
@@ -123,6 +142,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		return err
 	}
 
+	// TODO(fbabcock): migrate this to UpdatePartitionedTable
 	if err := syncPartitionedTables(d.DB); err != nil {
 		return err
 	}
