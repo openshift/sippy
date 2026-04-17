@@ -65,6 +65,12 @@ releases:
       periodic-ci-openshift-osde2e-main-osd-aws-upgrade-latest-default-y-plus-1-to-latest-y: true
       # OSD-AWS informing (stage)
       periodic-ci-openshift-osde2e-main-aws-stage-informing-default: true
+      # rosa-e2e nightly (managed service validation)
+      periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-nightly-4-20: true
+      periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-nightly-4-21: true
+      periodic-ci-openshift-online-rosa-e2e-main-periodics-rosa-hcp-e2e-nightly-4-22: true
+      # OCM FVT (clusters-service API contract tests)
+      periodic-ci-openshift-online-rosa-e2e-main-periodics-ocm-fvt-periodic-cs-rosa-hcp-ad-staging-main: true
     regexp:
       # rosa-e2e managed service validation + OCM FVT (current and future versioned jobs)
       - "^periodic-ci-openshift-online-rosa-e2e-main-.*"
