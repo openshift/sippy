@@ -245,6 +245,16 @@ fi
 
 ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
+# Get the gcs credentials out to the cluster-pool cluster.
+# These credentials are in vault and maintained by the TRT team (e.g. for updates and rotations).
+# See https://vault.ci.openshift.org/ui/vault/secrets/kv/show/selfservice/technical-release-team/sippy-ci-gcs-read-sa
+GCS_CRED="${GCS_CRED:=/var/run/sippy-bigquery-job-importer/gcs-sa}"
+if [ -f "${GCS_CRED}" ]; then
+  ${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred="${GCS_CRED}" -n sippy-e2e
+else
+  echo "WARNING: GCS credential file ${GCS_CRED} not found, BigQuery tests will fail"
+fi
+
 # Get the registry credentials for all build farm clusters out to the cluster-pool cluster.
 ${KUBECTL_CMD} -n sippy-e2e create secret generic regcred --from-file=.dockerconfigjson=${DOCKERCONFIGJSON} --type=kubernetes.io/dockerconfigjson
 
