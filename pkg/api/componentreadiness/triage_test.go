@@ -429,7 +429,7 @@ func TestInjectRegressionHATEOASLinks(t *testing.T) {
 		expectLink bool
 	}{
 		{
-			name: "base release matches view",
+			name: "sample release matches view",
 			regression: &models.TestRegression{
 				ID:          1,
 				Release:     "4.22",
@@ -442,7 +442,7 @@ func TestInjectRegressionHATEOASLinks(t *testing.T) {
 			expectLink: true,
 		},
 		{
-			name: "fallback base release does not match view but sample does",
+			name: "fallback base release differs from view",
 			regression: &models.TestRegression{
 				ID:          2,
 				Release:     "4.22",
