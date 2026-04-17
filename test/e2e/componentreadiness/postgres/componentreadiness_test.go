@@ -1,4 +1,4 @@
-package componentreadiness
+package postgres
 
 import (
 	"fmt"
