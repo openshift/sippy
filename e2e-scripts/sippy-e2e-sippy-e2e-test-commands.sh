@@ -35,8 +35,11 @@ ${KUBECTL_CMD} create secret generic gcs-cred --from-file gcs-cred="${GCS_CRED}"
 # The datasync test runs sippy load as a k8s Job, so it needs these to create the pod.
 export SIPPY_E2E_SIPPY_IMAGE="${SIPPY_IMAGE}"
 
-# Launch the sippy api server pod with coverage instrumentation.
-cat << END | ${KUBECTL_CMD} apply -f -
+launch_sippy_server() {
+  local DATA_PROVIDER=$1
+  local EXTRA_ARGS="${2:-}"
+
+  cat << END | ${KUBECTL_CMD} apply -f -
 apiVersion: v1
 kind: Pod
 metadata:
@@ -77,7 +80,7 @@ spec:
     - --database-dsn=postgresql://postgres:password@postgres.sippy-e2e.svc.cluster.local:5432/postgres
     - --redis-url=redis://redis.sippy-e2e.svc.cluster.local:6379
     - --data-provider
-    - postgres
+    - ${DATA_PROVIDER}
     - --log-level
     - debug
     - --enable-write-endpoints
@@ -85,6 +88,8 @@ spec:
     - ocp
     - --views
     - ./config/e2e-views.yaml
+    - --google-service-account-credential-file
+    - /tmp/secrets/gcs-cred
     env:
     - name: GCS_SA_JSON_PATH
       value: /tmp/secrets/gcs-cred
@@ -112,27 +117,39 @@ spec:
   terminationGracePeriodSeconds: 30
 END
 
-# The basic readiness probe will give us at least 10 seconds before declaring the pod as ready.
-echo "Waiting for sippy api server pod to be Ready ..."
-set +e
-${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/sippy-server --timeout=600s
-server_retVal=$?
-set -e
+  echo "Waiting for sippy api server pod (${DATA_PROVIDER}) to be Ready ..."
+  set +e
+  ${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/sippy-server --timeout=600s
+  local retVal=$?
+  set -e
 
-${KUBECTL_CMD} -n sippy-e2e get pod -o wide
-${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server.log 2>&1
+  ${KUBECTL_CMD} -n sippy-e2e get pod -o wide
+  ${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server-${DATA_PROVIDER}.log 2>&1
 
-if [ ${server_retVal} -ne 0 ]; then
-  echo
-  echo "=== SIPPY SERVER FAILURE DIAGNOSTICS ==="
-  ${KUBECTL_CMD} -n sippy-e2e describe pod/sippy-server
-  echo "=== Namespace events ==="
-  ${KUBECTL_CMD} -n sippy-e2e get events --sort-by='.lastTimestamp'
-  echo "=== END SIPPY SERVER FAILURE DIAGNOSTICS ==="
-  echo
-  echo "ERROR: sippy-server pod never became Ready (timed out after 600s)"
-  exit 1
-fi
+  if [ ${retVal} -ne 0 ]; then
+    echo
+    echo "=== SIPPY SERVER FAILURE DIAGNOSTICS (${DATA_PROVIDER}) ==="
+    ${KUBECTL_CMD} -n sippy-e2e describe pod/sippy-server
+    echo "=== Namespace events ==="
+    ${KUBECTL_CMD} -n sippy-e2e get events --sort-by='.lastTimestamp'
+    echo "=== END SIPPY SERVER FAILURE DIAGNOSTICS ==="
+    echo
+    echo "ERROR: sippy-server pod (${DATA_PROVIDER}) never became Ready (timed out after 600s)"
+    return 1
+  fi
+  return 0
+}
+
+stop_sippy_server() {
+  local DATA_PROVIDER=$1
+  echo "Stopping sippy-server (${DATA_PROVIDER}) to flush coverage data..."
+  ${KUBECTL_CMD} -n sippy-e2e logs sippy-server > ${ARTIFACT_DIR}/sippy-server-${DATA_PROVIDER}.log 2>&1 || true
+  ${KUBECTL_CMD} -n sippy-e2e delete pod sippy-server --wait=true --timeout=60s || true
+  ${KUBECTL_CMD} -n sippy-e2e delete svc sippy-server || true
+}
+
+# Phase 1: Launch postgres-backed server
+launch_sippy_server postgres || exit 1
 
 echo "Setup services and port forwarding for the sippy api server ..."
 
@@ -146,6 +163,7 @@ export SIPPY_API_PORT
 # Setup port forward for random port to get to the sippy-server pod
 ${KUBECTL_CMD} -n sippy-e2e expose pod sippy-server
 ${KUBECTL_CMD} -n sippy-e2e port-forward pod/sippy-server ${SIPPY_API_PORT}:8080 &
+PF_PID_SERVER=$!
 
 # Random port for postgres as well, between 18500 and 19000
 # Direct postgres access is used for some e2e test to seed data and cleanup things we don't expose on the api,
@@ -167,17 +185,44 @@ ${KUBECTL_CMD} -n sippy-e2e port-forward pod/redis1 ${SIPPY_REDIS_PORT}:6379 &
 
 ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
-# only 1 in parallel, some tests will clash if run at the same time
-gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1 -coverprofile=${ARTIFACT_DIR}/e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
-TEST_EXIT=$?
+E2E_EXIT_CODE=0
 
-# Collect coverage data. Coverage counters are flushed when the server exits.
-# Pod deletion sends SIGTERM during graceful termination (terminationGracePeriodSeconds: 30),
-# so we just delete the pod directly — no need for a separate exec kill.
-echo "Stopping sippy-server to flush coverage data..."
-${KUBECTL_CMD} -n sippy-e2e delete pod sippy-server --wait=true --timeout=60s || true
+echo "=== Phase 1: Running postgres-backed e2e tests ==="
+gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e_postgres.xml -- \
+  ./test/e2e/componentreadiness/postgres/... \
+  ./test/e2e/componentreadiness/bugs/... \
+  ./test/e2e/datasync/... \
+  ./test/e2e/ \
+  -v -p 1 -coverprofile=${ARTIFACT_DIR}/e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
+POSTGRES_EXIT=$?
+if [ ${POSTGRES_EXIT} -ne 0 ]; then
+    E2E_EXIT_CODE=${POSTGRES_EXIT}
+fi
 
-# Launch a minimal helper pod to access the coverage PVC.
+# Stop the postgres server, kill the port-forward, and restart with bigquery
+kill ${PF_PID_SERVER} 2>/dev/null || true
+stop_sippy_server postgres
+
+# Phase 2: Launch bigquery-backed server
+echo "=== Phase 2: Running BigQuery-backed e2e tests ==="
+launch_sippy_server bigquery || exit 1
+
+${KUBECTL_CMD} -n sippy-e2e expose pod sippy-server
+${KUBECTL_CMD} -n sippy-e2e port-forward pod/sippy-server ${SIPPY_API_PORT}:8080 &
+PF_PID_SERVER=$!
+
+gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e_bigquery.xml -- \
+  ./test/e2e/componentreadiness/bigquery/... \
+  -v -p 1 -coverprofile=${ARTIFACT_DIR}/e2e-bq-test-coverage.out -coverpkg=./pkg/...,./cmd/...
+BQ_EXIT=$?
+if [ ${BQ_EXIT} -ne 0 ]; then
+    E2E_EXIT_CODE=${BQ_EXIT}
+fi
+
+kill ${PF_PID_SERVER} 2>/dev/null || true
+stop_sippy_server bigquery
+
+# Collect coverage data from both server runs
 cat << END | ${KUBECTL_CMD} apply -f -
 apiVersion: v1
 kind: Pod
@@ -211,12 +256,13 @@ if find "${COVDIR}" -name 'covcounters.*' -print -quit 2>/dev/null | grep -q .; 
     echo "Generating coverage report..."
     go tool covdata percent -i="${COVDIR}"
     go tool covdata textfmt -i="${COVDIR}" -o="${ARTIFACT_DIR}/e2e-coverage.out"
-    # Merge test binary coverage (from -coverprofile) into server binary coverage
-    if [ -f "${ARTIFACT_DIR}/e2e-test-coverage.out" ]; then
-        echo "Merging test binary coverage into server coverage..."
-        tail -n +2 "${ARTIFACT_DIR}/e2e-test-coverage.out" >> "${ARTIFACT_DIR}/e2e-coverage.out"
-        rm -f "${ARTIFACT_DIR}/e2e-test-coverage.out"
-    fi
+    for f in ${ARTIFACT_DIR}/e2e-test-coverage.out ${ARTIFACT_DIR}/e2e-bq-test-coverage.out; do
+        if [ -f "$f" ]; then
+            echo "Merging $f into server coverage..."
+            tail -n +2 "$f" >> "${ARTIFACT_DIR}/e2e-coverage.out"
+            rm -f "$f"
+        fi
+    done
     go tool cover -html="${ARTIFACT_DIR}/e2e-coverage.out" -o="${ARTIFACT_DIR}/e2e-coverage.html"
     echo "Coverage report written to ${ARTIFACT_DIR}/e2e-coverage.html"
 else
@@ -226,4 +272,4 @@ rm -rf "${COVDIR}"
 
 ${KUBECTL_CMD} -n sippy-e2e delete secret regcred || true
 
-exit ${TEST_EXIT}
+exit ${E2E_EXIT_CODE}
