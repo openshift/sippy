@@ -187,6 +187,15 @@ ${KUBECTL_CMD} -n sippy-e2e get svc,ep
 
 E2E_EXIT_CODE=0
 
+# Prime the component readiness cache so triage tests can find cached reports
+echo "Priming component readiness cache..."
+VIEWS=$(curl -sf "http://localhost:${SIPPY_API_PORT}/api/component_readiness/views") || { echo "Failed to fetch views"; exit 1; }
+for VIEW in $(echo "$VIEWS" | jq -r '.[].name'); do
+    echo "  Priming cache for view: $VIEW"
+    curl -sf "http://localhost:${SIPPY_API_PORT}/api/component_readiness?view=$VIEW" > /dev/null || { echo "Failed to prime cache for view: $VIEW"; exit 1; }
+done
+echo "Cache priming complete"
+
 echo "=== Phase 1: Running postgres-backed e2e tests ==="
 gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e_postgres.xml -- \
   ./test/e2e/componentreadiness/postgres/... \
@@ -252,10 +261,12 @@ ${KUBECTL_CMD} -n sippy-e2e wait --for=condition=Ready pod/coverage-helper --tim
 COVDIR=$(mktemp -d)
 ${KUBECTL_CMD} -n sippy-e2e cp coverage-helper:/tmp/coverage "${COVDIR}" -c helper || true
 
-if find "${COVDIR}" -name 'covcounters.*' -print -quit 2>/dev/null | grep -q .; then
-    echo "Generating coverage report..."
-    go tool covdata percent -i="${COVDIR}"
-    go tool covdata textfmt -i="${COVDIR}" -o="${ARTIFACT_DIR}/e2e-coverage.out"
+COVERAGE_ROOT=$(find "${COVDIR}" -name 'covcounters.*' -print -quit 2>/dev/null | xargs -r dirname)
+COVERAGE_ROOT="${COVERAGE_ROOT:-${COVDIR}}"
+if find "${COVERAGE_ROOT}" -name 'covcounters.*' -print -quit 2>/dev/null | grep -q .; then
+    echo "Generating coverage report from ${COVERAGE_ROOT}..."
+    go tool covdata percent -i="${COVERAGE_ROOT}"
+    go tool covdata textfmt -i="${COVERAGE_ROOT}" -o="${ARTIFACT_DIR}/e2e-coverage.out"
     for f in ${ARTIFACT_DIR}/e2e-test-coverage.out ${ARTIFACT_DIR}/e2e-bq-test-coverage.out; do
         if [ -f "$f" ]; then
             echo "Merging $f into server coverage..."

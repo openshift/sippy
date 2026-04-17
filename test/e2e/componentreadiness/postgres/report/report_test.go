@@ -269,7 +269,7 @@ func TestNewTestPassRateRegression(t *testing.T) {
 	report, errs := componentreadiness.GetComponentReport(ctx, provider, nil, reqOptions, "")
 	require.Empty(t, errs)
 
-	// The new flaky test (80% pass rate) should be flagged as a regression
+	// The new flaky test (70% pass rate) should be flagged as a regression
 	// via buildPassRateTestStats since it's below the 90% PassRateRequiredNewTests threshold.
 	found := false
 	for _, row := range report.Rows {
