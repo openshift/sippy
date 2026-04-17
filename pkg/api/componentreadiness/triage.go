@@ -756,8 +756,7 @@ func InjectRegressionHATEOASLinks(regression *models.TestRegression, views []crv
 		"self": fmt.Sprintf(regressionLink, baseAPIURL, regression.ID),
 	}
 
-	// The test_details link will be that of the main view for the given release pair
-	view, ok := GetMainViewForRelease(regression.BaseRelease, regression.Release, views)
+	view, ok := GetMainViewForSampleRelease(regression.Release, views)
 	if !ok {
 		log.Errorf("no main view found for base: %s, and sample: %s", regression.BaseRelease, regression.Release)
 		return
@@ -818,12 +817,10 @@ func GetViewsForTriage(triage *models.Triage, views []crview.View) []string {
 	return matchingViews.UnsortedList()
 }
 
-// GetMainViewForRelease returns the main view for the given base and sample release.
-// ok is false if none match.
-func GetMainViewForRelease(baseRelease, sampleRelease string, views []crview.View) (view crview.View, ok bool) {
-	matching := ViewsMatchingReleases(baseRelease, sampleRelease, views)
-	for _, v := range matching {
-		if strings.HasSuffix(v.Name, "-main") {
+// GetMainViewForSampleRelease returns the main view for the given sample release.
+func GetMainViewForSampleRelease(sampleRelease string, views []crview.View) (view crview.View, ok bool) {
+	for _, v := range views {
+		if v.RegressionTracking.Enabled && v.SampleRelease.Name == sampleRelease && strings.HasSuffix(v.Name, "-main") {
 			return v, true
 		}
 	}
