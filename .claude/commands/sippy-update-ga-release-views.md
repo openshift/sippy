@@ -39,11 +39,11 @@ You will guide the user through the following steps (skipping steps where argume
 2. **Find Affected Views**: Search config/views.yaml to identify affected views:
    - Read `config/views.yaml`
    - Find all views where `base_release.release` equals the GA release (for date updates)
-   - Find all views where `sample_release.release` equals the GA release AND have `automate_jira.enabled: true` (for JIRA automation disabling)
+   - Find all views where `sample_release.release` equals the GA release (for sensitivity reductions: automate_jira, multi_release_analysis, pity_factor, minimum_failure, pass_rate_required_new_tests)
    - Show the user:
      - Number of views that will be affected by each type of change
      - List of view names that will be updated
-     - Example of the changes (before/after for relative dates and automate_jira)
+     - Example of the changes (before/after for relative dates and sensitivity parameters)
    - Ask for confirmation before proceeding
 
 3. **Apply Updates**: For each affected view, perform two types of updates:
@@ -58,6 +58,26 @@ You will guide the user through the following steps (skipping steps where argume
    - Find views where `sample_release.release` equals the GA release
    - If `automate_jira.enabled` is set to `true`, change it to `false`
    - **Rationale**: When a release goes GA, automated JIRA ticket creation should stop for that release, as the focus shifts to newer releases
+
+   **C. Disable multi-release analysis** (for views of the GA release itself):
+   - Find views where `sample_release.release` equals the GA release
+   - If `include_multi_release_analysis` is set to `true`, change it to `false`
+   - **Rationale**: Multi-release analysis adds noise in GA streams where fewer people are actively monitoring; disabling it keeps the signal focused on real problems
+
+   **D. Increase pity_factor** (for views of the GA release itself):
+   - Find views where `sample_release.release` equals the GA release
+   - If `pity_factor` is set to `5` (i.e. 5%), change it to `10` (i.e. 10%)
+   - **Rationale**: A higher pity factor reduces sensitivity of component readiness for GA releases, filtering out borderline regressions that are unlikely to be actioned when fewer people are watching
+
+   **E. Increase minimum_failure** (for views of the GA release itself):
+   - Find views where `sample_release.release` equals the GA release
+   - If `minimum_failure` is set to `3`, change it to `4`
+   - **Rationale**: Requiring more failures before flagging a regression reduces noise from flaky or low-volume test failures in GA streams
+
+   **F. Decrease pass_rate_required_new_tests** (for views of the GA release itself):
+   - Find views where `sample_release.release` equals the GA release
+   - If `pass_rate_required_new_tests` is set to `95`, change it to `90`
+   - **Rationale**: Relaxing the pass rate threshold for new tests in GA releases reduces noise from tests that are mostly passing but occasionally flaky, while still catching genuinely broken new tests
 
    - **IMPORTANT**: Preserve YAML formatting (double quotes, `{ }` spacing, indentation)
 
@@ -81,13 +101,18 @@ You will guide the user through the following steps (skipping steps where argume
    Changed 'now' to 'ga' in base_release relative dates for views
    referencing release <release>, which just went GA.
 
-   Also disabled automate_jira for views of release <release>, as
-   automated JIRA ticket creation should focus on newer releases.
+   Reduced component readiness sensitivity for GA release views to
+   limit noise while still catching real problems:
+   - Disabled automate_jira
+   - Disabled include_multi_release_analysis
+   - Increased pity_factor from 5% to 10%
+   - Increased minimum_failure from 3 to 4
+   - Decreased pass_rate_required_new_tests from 95% to 90%
 
    Base release date updates: <count> views
    <list of view names, one per line>
 
-   Automate JIRA disabled: <count> views
+   Sensitivity reduced: <count> views
    <list of view names, one per line>
 
    🤖 Generated with [Claude Code](https://claude.com/claude-code)
@@ -115,6 +140,30 @@ When a release goes GA, two types of updates should be applied:
 2. **Update automate_jira**:
    - `automate_jira:\n    enabled: true` → `automate_jira:\n    enabled: false`
 
+**Type C: Disable multi-release analysis (for views of the GA release itself)**
+
+1. **Find Views**: Identify all views where `sample_release.release` equals the GA release AND `include_multi_release_analysis: true`
+2. **Update**:
+   - `include_multi_release_analysis: true` → `include_multi_release_analysis: false`
+
+**Type D: Increase pity_factor (for views of the GA release itself)**
+
+1. **Find Views**: Identify all views where `sample_release.release` equals the GA release AND `pity_factor: 5`
+2. **Update**:
+   - `pity_factor: 5` → `pity_factor: 10`
+
+**Type E: Increase minimum_failure (for views of the GA release itself)**
+
+1. **Find Views**: Identify all views where `sample_release.release` equals the GA release AND `minimum_failure: 3`
+2. **Update**:
+   - `minimum_failure: 3` → `minimum_failure: 4`
+
+**Type F: Decrease pass_rate_required_new_tests (for views of the GA release itself)**
+
+1. **Find Views**: Identify all views where `sample_release.release` equals the GA release AND `pass_rate_required_new_tests: 95`
+2. **Update**:
+   - `pass_rate_required_new_tests: 95` → `pass_rate_required_new_tests: 90`
+
 **General Rule**: Preserve all other fields in the view
 
 ### Implementation Approach
@@ -133,9 +182,9 @@ Use the Read and Edit tools to update views in place:
 
 ## Important Notes
 
-- This command affects two types of views:
+- This command affects two sets of views:
   - Views where `base_release.release` equals the GA release (date updates)
-  - Views where `sample_release.release` equals the GA release with automate_jira enabled (JIRA automation disabling)
+  - Views where `sample_release.release` equals the GA release (sensitivity reductions: automate_jira, multi_release_analysis, pity_factor, minimum_failure, pass_rate_required_new_tests)
 - Sample release dates are not modified (they typically already use 'now')
 - The script preserves all other view settings
 - Always verify the diff to ensure only expected changes were made
@@ -158,10 +207,13 @@ This will make two types of updates:
   - Before: `base_release: {release: "4.21", relative_start: "now-30d", relative_end: "now"}`
   - After: `base_release: {release: "4.21", relative_start: "ga-30d", relative_end: "ga"}`
 
-**B. Automate JIRA disabling** (views with `sample_release.release: "4.21"` and `automate_jira.enabled: true`):
+**B. Sensitivity reductions** (views with `sample_release.release: "4.21"`):
 - `4.21-main` view:
-  - Before: `automate_jira:\n    enabled: true`
-  - After: `automate_jira:\n    enabled: false`
+  - `automate_jira.enabled: true` → `false`
+  - `include_multi_release_analysis: true` → `false`
+  - `pity_factor: 5` → `10`
+  - `minimum_failure: 3` → `4`
+  - `pass_rate_required_new_tests: 95` → `90`
 
 ### Example 2: No arguments
 

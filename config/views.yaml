@@ -2103,14 +2103,14 @@ component_readiness:
       - runc
       - crun
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -2712,14 +2712,14 @@ component_readiness:
       - runc
       - crun
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -3148,14 +3148,14 @@ component_readiness:
       - runc
       - crun
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
-    include_multi_release_analysis: true
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -3483,13 +3483,14 @@ component_readiness:
       - runc
       - crun
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
-    pass_rate_required_new_tests: 95
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
   metrics:
     enabled: true
   regression_tracking:
@@ -3613,9 +3614,9 @@ component_readiness:
       ContainerRuntime:
       - runc
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
@@ -3669,9 +3670,9 @@ component_readiness:
       ContainerRuntime:
       - runc
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
