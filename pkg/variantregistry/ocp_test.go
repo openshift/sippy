@@ -24,6 +24,7 @@ func TestVariantSyncer(t *testing.T) {
 	tests := []struct {
 		job          string
 		variantsFile map[string]string
+		osData       clusterDataOS
 		expected     map[string]string
 	}{
 		{
@@ -1719,6 +1720,10 @@ func TestVariantSyncer(t *testing.T) {
 		{
 			job:          "periodic-ci-openshift-release-master-nightly-4.20-e2e-aws-rhcos9-10-ovn",
 			variantsFile: map[string]string{},
+			osData: clusterDataOS{
+				ControlPlane: "rhel-9",
+				Workers:      "rhel-10",
+			},
 			expected: map[string]string{
 				VariantRelease:          "4.20",
 				VariantReleaseMajor:     "4",
@@ -1748,6 +1753,10 @@ func TestVariantSyncer(t *testing.T) {
 		{
 			job:          "periodic-ci-openshift-release-master-nightly-4.20-e2e-aws-rhcos10-ovn",
 			variantsFile: map[string]string{},
+			osData: clusterDataOS{
+				ControlPlane: "rhcos10",
+				Workers:      "rhcos10",
+			},
 			expected: map[string]string{
 				VariantRelease:          "4.20",
 				VariantReleaseMajor:     "4",
@@ -1810,10 +1819,11 @@ func TestVariantSyncer(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.job, func(t *testing.T) {
 			assert.Equal(t, test.expected,
-				variantSyncer.CalculateVariantsForJob(
+				variantSyncer.calculateVariantsForJob(
 					logrus.WithField("source", "TestVariantSyncer"),
 					test.job,
-					test.variantsFile))
+					test.variantsFile,
+					test.osData))
 		})
 	}
 }
@@ -1903,6 +1913,251 @@ func testView(name string, includeVariants map[string][]string) crview.View {
 			DBGroupBy:       sets.String{},
 			IncludeVariants: includeVariants,
 		},
+	}
+}
+
+func TestSetOS(t *testing.T) {
+	tests := []struct {
+		name          string
+		releaseMajor  string
+		clusterDataOS clusterDataOS
+		expectedOS    string
+	}{
+		{
+			name:         "no cluster data with release major 4 defaults to rhcos9",
+			releaseMajor: "4",
+			expectedOS:   "rhcos9",
+		},
+		{
+			name:         "no cluster data with release major 5 defaults to rhcos9",
+			releaseMajor: "5",
+			expectedOS:   "rhcos9",
+		},
+		{
+			name: "mix of rhcos9 and rhcos10 in cp and workers produces rhcos9-10",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhel-9",
+				Workers:      "rhel-10",
+			},
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name: "cluster data with matching control plane and workers",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhcos10",
+				Workers:      "rhcos10",
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name: "cluster data with additional matching control plane and workers",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhcos9",
+				Workers:      "rhcos9",
+				Additional:   []string{"rhcos9"},
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name: "cluster data with rhcos10 additional and rhcos9 pools is rhcos9-10",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhcos9",
+				Workers:      "rhcos9",
+				Additional:   []string{"rhcos10"},
+			},
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name: "cluster data with rhcos9 cp and rhcos10 workers is rhcos9-10",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhcos9",
+				Workers:      "rhcos10",
+			},
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name: "cluster data with three different OS values is mixed",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhcos9",
+				Workers:      "rhcos10",
+				Additional:   []string{"fcos"},
+			},
+			expectedOS: "mixed",
+		},
+		{
+			name: "default backfills both empty cp and workers",
+			clusterDataOS: clusterDataOS{
+				Default: "rhcos10",
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name: "default backfills both empty cp and workers but additional is rhcos9-10 mix",
+			clusterDataOS: clusterDataOS{
+				Default:    "rhcos10",
+				Additional: []string{"rhcos9"},
+			},
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name: "default backfills empty cp to match workers",
+			clusterDataOS: clusterDataOS{
+				Default: "rhcos9",
+				Workers: "rhcos9",
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name: "default backfills empty cp producing rhcos9-10 mix with workers",
+			clusterDataOS: clusterDataOS{
+				Default: "rhcos9",
+				Workers: "rhcos10",
+			},
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name: "default backfills empty workers to match cp",
+			clusterDataOS: clusterDataOS{
+				Default:      "rhcos10",
+				ControlPlane: "rhcos10",
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name: "default backfills empty workers producing rhcos9-10 mix with cp",
+			clusterDataOS: clusterDataOS{
+				Default:      "rhcos9",
+				ControlPlane: "rhcos10",
+			},
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name:         "release major 4 backfills default which backfills empty cp and workers",
+			releaseMajor: "4",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhcos9",
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name:         "release major backfilled default does not override explicit default",
+			releaseMajor: "4",
+			clusterDataOS: clusterDataOS{
+				Default: "rhcos10",
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name:         "release major backfilled default produces rhcos9-10 mix with cp",
+			releaseMajor: "4",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhcos10",
+			},
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name: "empty string in additional is backfilled from default",
+			clusterDataOS: clusterDataOS{
+				Default:      "rhcos9",
+				ControlPlane: "rhcos9",
+				Workers:      "rhcos9",
+				Additional:   []string{""},
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name: "empty string in additional backfilled from default produces rhcos9-10 mix",
+			clusterDataOS: clusterDataOS{
+				Default:      "rhcos10",
+				ControlPlane: "rhcos9",
+				Workers:      "rhcos9",
+				Additional:   []string{""},
+			},
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name: "rhel-9 stream maps to rhcos9",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhel-9",
+				Workers:      "rhel-9",
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name: "rhel-9.6 stream maps to rhcos9",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhel-9.6",
+				Workers:      "rhel-9.6",
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name: "rhel-9.6.1 stream maps to rhcos9",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhel-9.6.1",
+				Workers:      "rhel-9.6.1",
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name: "rhel-9-nvidia stream maps to rhcos9",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhel-9-nvidia",
+				Workers:      "rhel-9-nvidia",
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name: "rhel-10 stream maps to rhcos10",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhel-10",
+				Workers:      "rhel-10",
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name: "rhel-10.0 stream maps to rhcos10",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhel-10.0",
+				Workers:      "rhel-10.0",
+			},
+			expectedOS: "rhcos10",
+		},
+		{
+			name: "different rhel-9 minor versions map to same variant",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhel-9.4",
+				Workers:      "rhel-9.6",
+			},
+			expectedOS: "rhcos9",
+		},
+		{
+			name: "rhel-9 and rhel-10 streams produce rhcos9-10",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "rhel-9.6",
+				Workers:      "rhel-10.0",
+			},
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name: "unrecognized stream name passes through",
+			clusterDataOS: clusterDataOS{
+				ControlPlane: "custom-os",
+				Workers:      "custom-os",
+			},
+			expectedOS: "custom-os",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			variants := map[string]string{}
+			if tt.releaseMajor != "" {
+				variants[VariantReleaseMajor] = tt.releaseMajor
+			}
+			tt.clusterDataOS.setOS(logrus.WithField("test", "TestSetOS"), variants, "")
+			assert.Equal(t, tt.expectedOS, variants[VariantOS])
+		})
 	}
 }
 

@@ -2,6 +2,7 @@ package variantregistry
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"sort"
@@ -198,6 +199,7 @@ ORDER BY j.prowjob_job_name;
 						return // Channel was closed
 					}
 					clusterData := map[string]string{}
+					var osData clusterDataOS
 					jLog := log.WithField("job", jlr.JobName)
 					if jlr.URL.Valid && jlr.GCSBucket.Valid {
 						path, err := prowloader.GetGCSPathForProwJobURL(jLog, jlr.URL.StringVal)
@@ -232,12 +234,13 @@ ORDER BY j.prowjob_job_name;
 							} else {
 								jLog.Infof("loaded cluster data: %+v", clusterData)
 							}
+							osData = parseClusterDataOS(clusterDataBytes)
 						}
 					} else {
 						jLog.WithField("gcs_bucket", jlr.GCSBucket).WithField("url", jlr.URL.StringVal).Error("job had no gcs bucket or prow job url, proceeding without")
 					}
 
-					variants := v.CalculateVariantsForJob(jLog, jlr.JobName, clusterData)
+					variants := v.calculateVariantsForJob(jLog, jlr.JobName, clusterData, osData)
 					variantsByJobMu.Lock()
 					variantsByJob[jlr.JobName] = variants
 					variantsByJobMu.Unlock()
@@ -263,9 +266,9 @@ var fileVariantsToIgnore = map[string]bool{
 	"MasterNodesUpdated": true,
 }
 
-func (v *OCPVariantLoader) CalculateVariantsForJob(jLog logrus.FieldLogger, jobName string, variantFile map[string]string) map[string]string {
+func (v *OCPVariantLoader) calculateVariantsForJob(jLog logrus.FieldLogger, jobName string, variantFile map[string]string, osData clusterDataOS) map[string]string {
 	// Calculate variants based on job name:
-	variants := v.IdentifyVariants(jLog, jobName)
+	variants := v.identifyVariants(jLog, jobName, osData)
 
 	// Carefully merge in the values read from cluster-data.json or any arbitrary variants data file
 	// containing a map. Some properties will be ignored as they are job RUN specific, not job specific.
@@ -439,9 +442,26 @@ const (
 	VariantNoValue          = "none"
 )
 
-func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName string) map[string]string {
-	variants := map[string]string{}
+// clusterDataOS holds OS image stream information from cluster data.
+type clusterDataOS struct {
+	Default      string   `json:"Default"`
+	ControlPlane string   `json:"ControlPlaneMachineConfigPool"`
+	Workers      string   `json:"WorkerMachineConfigPool"`
+	Additional   []string `json:"Additional,omitempty"`
+}
 
+func parseClusterDataOS(data []byte) clusterDataOS {
+	var raw struct {
+		OS clusterDataOS `json:"os"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return clusterDataOS{}
+	}
+	return raw.OS
+}
+
+func (v *OCPVariantLoader) identifyVariants(jLog logrus.FieldLogger, jobName string, osData clusterDataOS) map[string]string {
+	variants := map[string]string{}
 	for _, setter := range []func(jLog logrus.FieldLogger, variants map[string]string, jobName string){
 		v.setRelease, // Keep release first, other setters may look up release info in variants map
 		setAggregation,
@@ -461,7 +481,7 @@ func (v *OCPVariantLoader) IdentifyVariants(jLog logrus.FieldLogger, jobName str
 		setLayeredProduct,
 		setContainerRuntime,
 		setProcedure,
-		setOS,
+		osData.setOS,
 		v.setJobTier, // Keep this near last, it relies on other variants like owner
 	} {
 		setter(jLog, variants, jobName)
@@ -1258,22 +1278,69 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 	}
 }
 
-func setOS(_ logrus.FieldLogger, variants map[string]string, jobName string) {
-	jobNameLower := strings.ToLower(jobName)
+func (os clusterDataOS) setOS(_ logrus.FieldLogger, variants map[string]string, _ string) {
+	resolved := os
+	if resolved.Default == "" {
+		resolved.Default = defaultOSForReleaseMajor(variants[VariantReleaseMajor])
+	}
+	variants[VariantOS] = resolved.resolve()
+}
 
-	osPatterns := []struct {
-		substring string
-		os        string
-	}{
-		{"rhcos9-10", "rhcos9-10"},
-		{"rhcos10", "rhcos10"},
+func defaultOSForReleaseMajor(major string) string { //nolint:unparam
+	switch major {
+	case "5":
+		return "rhcos9"
+	default:
+		return "rhcos9"
+	}
+}
+
+var rhelStreamRegexp = regexp.MustCompile(`^rhel-(\d+)`)
+
+// mapOSStreamToVariant maps OS image stream names to variant values.
+// rhel-9, rhel-9.6, rhel-9-nvidia all map to rhcos9. Unrecognized names pass through.
+func mapOSStreamToVariant(stream string) string {
+	if m := rhelStreamRegexp.FindStringSubmatch(stream); m != nil {
+		return "rhcos" + m[1]
+	}
+	return stream
+}
+
+func (os clusterDataOS) resolve() string {
+	cp := os.ControlPlane
+	if cp == "" {
+		cp = os.Default
+	}
+	w := os.Workers
+	if w == "" {
+		w = os.Default
 	}
 
-	variants[VariantOS] = "rhcos9"
-	for _, entry := range osPatterns {
-		if strings.Contains(jobNameLower, entry.substring) {
-			variants[VariantOS] = entry.os
-			return
+	cp = mapOSStreamToVariant(cp)
+	w = mapOSStreamToVariant(w)
+
+	if cp == "" {
+		return ""
+	}
+
+	seen := map[string]bool{cp: true}
+	if w != "" {
+		seen[w] = true
+	}
+	for _, a := range os.Additional {
+		if a == "" {
+			a = os.Default
+		}
+		if mapped := mapOSStreamToVariant(a); mapped != "" {
+			seen[mapped] = true
 		}
 	}
+
+	if len(seen) == 1 {
+		return cp
+	}
+	if len(seen) == 2 && seen["rhcos9"] && seen["rhcos10"] {
+		return "rhcos9-10"
+	}
+	return "mixed"
 }
