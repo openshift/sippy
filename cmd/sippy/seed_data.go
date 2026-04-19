@@ -20,6 +20,7 @@ import (
 
 type SeedDataFlags struct {
 	DBFlags        *flags.PostgresFlags
+	CacheFlags     *flags.CacheFlags
 	InitDatabase   bool
 	Releases       []string
 	JobsPerRelease int
@@ -30,6 +31,7 @@ type SeedDataFlags struct {
 func NewSeedDataFlags() *SeedDataFlags {
 	return &SeedDataFlags{
 		DBFlags:        flags.NewPostgresDatabaseFlags(),
+		CacheFlags:     flags.NewCacheFlags(),
 		Releases:       []string{"5.0", "4.22", "4.21"}, // Default releases
 		JobsPerRelease: 3,                               // Default jobs per release
 		TestNames: []string{
@@ -48,6 +50,7 @@ func NewSeedDataFlags() *SeedDataFlags {
 
 func (f *SeedDataFlags) BindFlags(fs *pflag.FlagSet) {
 	f.DBFlags.BindFlags(fs)
+	f.CacheFlags.BindFlags(fs)
 	fs.BoolVar(&f.InitDatabase, "init-database", false, "Initialize the DB schema before seeding data")
 	fs.StringSliceVar(&f.Releases, "release", f.Releases, "Releases to create ProwJobs for (can be specified multiple times)")
 	fs.IntVar(&f.JobsPerRelease, "jobs", f.JobsPerRelease, "Number of ProwJobs to create for each release")
@@ -84,6 +87,13 @@ rolled off the 1 week window.
 					return errors.WithMessage(err, "could not migrate database")
 				}
 				log.Info("Database schema initialized successfully")
+			}
+
+			cacheClient, cacheErr := f.CacheFlags.GetCacheClient()
+			if cacheErr != nil {
+				return fmt.Errorf("failed to get cache client: %v", cacheErr)
+			} else if cacheClient == nil {
+				log.Warn("no cache provided; refresh timestamps will not be cached")
 			}
 
 			log.Info("Starting to seed test data...")
@@ -131,7 +141,7 @@ rolled off the 1 week window.
 			totalTestResults := totalRuns * len(f.TestNames)
 
 			log.Info("Refreshing materialized views...")
-			sippyserver.RefreshData(dbc, nil, false)
+			sippyserver.RefreshData(dbc, cacheClient, false)
 
 			log.Infof("Successfully seeded test data! Created %d ProwJobs, %d Tests, %d ProwJobRuns, and %d test results",
 				totalProwJobs, len(f.TestNames), totalRuns, totalTestResults)

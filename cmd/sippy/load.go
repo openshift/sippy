@@ -146,9 +146,13 @@ func NewLoadCommand() *cobra.Command {
 				}
 			}
 
+			// likewise get a cache client if possible, though some things operate without it.
 			cacheClient, cacheErr := f.CacheFlags.GetCacheClient()
-			releaseConfigs := []sippyv1.Release{}
+			if cacheErr != nil {
+				cacheClient = nil // error hygiene, since we pass this down to quite a few functions
+			}
 
+			releaseConfigs := []sippyv1.Release{}
 			// initializing a bigquery client different from the normal one
 			opCtx, ctx := bqcachedclient.OpCtxForCronEnv(ctx, "load")
 			bqc, bigqueryErr := bqcachedclient.New(
@@ -187,7 +191,7 @@ func NewLoadCommand() *cobra.Command {
 						return dbErr
 					}
 					if cacheErr != nil {
-						return errors.Wrap(err, "couldn't get cache client")
+						return errors.Wrap(cacheErr, "couldn't get cache client")
 					}
 					if f.CacheFlags.RedisURL == "" {
 						return fmt.Errorf("--redis-url is required")
@@ -337,9 +341,8 @@ func NewLoadCommand() *cobra.Command {
 			elapsed := time.Since(start)
 			log.WithField("elapsed", elapsed).Info("database load complete")
 
-			pinnedTime := f.DBFlags.GetPinnedTime()
 			if refreshMatviews && !f.SkipMatviewRefresh {
-				sippyserver.RefreshData(dbc, pinnedTime, false)
+				sippyserver.RefreshData(dbc, cacheClient, false)
 			}
 
 			elapsed = time.Since(start)

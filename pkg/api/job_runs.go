@@ -21,6 +21,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/apis/openshift"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/bigquery"
@@ -310,7 +311,12 @@ func joinSegments(segments []string, start int, separator string) string {
 
 // JobRunRiskAnalysis checks the test failures and linked bugs for a job run, and reports back an estimated
 // risk level for each failed test, and the job run overall.
-func JobRunRiskAnalysis(ctx context.Context, dbc *db.DB, bqc *bigquery.Client, jobRun *models.ProwJobRun, logger *log.Entry, compareOtherPRs bool) (apitype.ProwJobRunRiskAnalysis, error) {
+func JobRunRiskAnalysis(
+	ctx context.Context, logger *log.Entry,
+	dbc *db.DB, bqc *bigquery.Client, cacheClient cache.Cache,
+	jobRun *models.ProwJobRun,
+	compareOtherPRs bool,
+) (apitype.ProwJobRunRiskAnalysis, error) {
 	logger = logger.WithField("func", "JobRunRiskAnalysis")
 	// If this job is a Presubmit, compare to test results from master, not presubmits, which may perform
 	// worse due to dev code that hasn't merged. We do not presently track presubmits on branches other than
@@ -418,7 +424,12 @@ func JobRunRiskAnalysis(ctx context.Context, dbc *db.DB, bqc *bigquery.Client, j
 		}
 	}
 
-	return runJobRunAnalysis(ctx, bqc, jobRun, compareRelease, historicalCount, neverStableJob, jobNames, logger, jobNamesTestResultFunc(dbc), variantsTestResultFunc(dbc), compareOtherPRs)
+	return runJobRunAnalysis(ctx,
+		bqc, jobRun, compareRelease, historicalCount, neverStableJob, jobNames, logger,
+		jobNamesTestResultFunc(dbc),
+		variantsTestResultFunc(ctx, dbc, cacheClient),
+		compareOtherPRs,
+	)
 }
 
 // testResultsByJobNameFunc is used for injecting db responses in unit tests.
@@ -448,7 +459,7 @@ func jobNamesTestResultFunc(dbc *db.DB) testResultsByJobNameFunc {
 }
 
 // variantsTestResultFunc looks to match job runs based on variant matches
-func variantsTestResultFunc(dbc *db.DB) testResultsByVariantsFunc {
+func variantsTestResultFunc(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) testResultsByVariantsFunc {
 	return func(testName, release, suite string, variants []string, jobNames []string) (*apitype.Test, error) {
 
 		fil := &filter.Filter{
@@ -462,22 +473,28 @@ func variantsTestResultFunc(dbc *db.DB) testResultsByVariantsFunc {
 			},
 			LinkOperator: "and",
 		}
-		testResults, overallTest, err := BuildTestsResults(dbc, release, "default", false, true,
-			fil)
+		spec := TestResultsSpec{
+			Release:        release,
+			Period:         "default",
+			Collapse:       false,
+			IncludeOverall: true,
+			Filter:         fil,
+		}
+		result, err := spec.buildTestsResultsFromPostgres(ctx, dbc, cacheClient)
 		if err != nil {
 			return nil, err
 		}
-		if overallTest != nil {
-			overallTest.Variants = append(overallTest.Variants, "Overall")
+		if result.Test != nil {
+			result.Test.Variants = append(result.Test.Variants, "Overall")
 		}
 		gosort.Strings(variants)
-		for _, testResult := range testResults {
+		for _, testResult := range result.TestsAPIResult {
 			// this is a weird way to get the variant we want, but it allows re-use
 			// of the existing code.
 			gosort.Strings(testResult.Variants)
 			if stringSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
-				if overallTest.CurrentPassPercentage < testResult.CurrentPassPercentage {
-					return overallTest, nil
+				if result.Test.CurrentPassPercentage < testResult.CurrentPassPercentage {
+					return result.Test, nil
 				}
 				return &testResult, nil
 			}
@@ -486,12 +503,12 @@ func variantsTestResultFunc(dbc *db.DB) testResultsByVariantsFunc {
 		// otherwise, what is our best match...
 		// do something more expensive and check to see
 		// which testResult contains all the variants we have currently
-		for _, testResult := range testResults {
+		for _, testResult := range result.TestsAPIResult {
 			// we didn't find an exact variant match
 			// next best guess is the first variant list that contains all of our known variants
 			if stringSubSlicesEqual(variants, testResult.Variants) && testResult.SuiteName == suite {
-				if overallTest.CurrentPassPercentage < testResult.CurrentPassPercentage {
-					return overallTest, nil
+				if result.Test.CurrentPassPercentage < testResult.CurrentPassPercentage {
+					return result.Test, nil
 				}
 				return &testResult, nil
 			}

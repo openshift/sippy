@@ -4,13 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"testing"
 	"time"
 
 	"github.com/openshift/sippy/pkg/apis/cache"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func init() {
+	if os.Getenv("DEBUG_LOGGING") != "" {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+}
 
 // mockCache is a test cache that properly returns errors on miss,
 // records durations passed to Set, and can simulate errors.
@@ -499,4 +507,219 @@ func TestNewCacheSpec_Prefix(t *testing.T) {
 
 func timePtr(t time.Time) *time.Time {
 	return &t
+}
+
+const testMatview = "prow_test_report_7d_matview"
+
+// helper to pre-populate the cache with a matview-style cached value (val + timestamp)
+func seedMatviewCache(t *testing.T, mc *mockCache, spec CacheSpec, val testResult, cachedAt time.Time) {
+	t.Helper()
+	cacheKey, err := spec.GetCacheKey()
+	require.NoError(t, err)
+	entry := struct {
+		Val       testResult
+		Timestamp time.Time
+	}{Val: val, Timestamp: cachedAt}
+	data, err := json.Marshal(entry)
+	require.NoError(t, err)
+	mc.store[string(cacheKey)] = data
+}
+
+func seedRefreshTimestamp(mc *mockCache, matview string, refreshedAt time.Time) {
+	mc.store[RefreshMatviewKey(matview)] = []byte(refreshedAt.UTC().Format(time.RFC3339))
+}
+
+// TestGetDataFromCacheOrMatview_NilCache verifies that with no cache, generateFn is always called.
+func TestGetDataFromCacheOrMatview_NilCache(t *testing.T) {
+	var generateCalls int
+	expected := testResult{Value: "generated"}
+	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "mv~", nil)
+
+	result, errs := GetDataFromCacheOrMatview(
+		context.Background(), nil, spec, testMatview, time.Hour,
+		makeGenerateFn(expected, &generateCalls), testResult{},
+	)
+
+	assert.Empty(t, errs)
+	assert.Equal(t, expected, result)
+	assert.Equal(t, 1, generateCalls)
+}
+
+// TestGetDataFromCacheOrMatview_CacheMiss verifies that on a miss, generateFn is called and the result is stored.
+func TestGetDataFromCacheOrMatview_CacheMiss(t *testing.T) {
+	mc := newMockCache()
+	var generateCalls int
+	expected := testResult{Value: "generated"}
+	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "mv~", nil)
+
+	result, errs := GetDataFromCacheOrMatview(
+		context.Background(), mc, spec, testMatview, time.Hour,
+		makeGenerateFn(expected, &generateCalls), testResult{},
+	)
+
+	assert.Empty(t, errs)
+	assert.Equal(t, expected, result)
+	assert.Equal(t, 1, generateCalls)
+	assert.Equal(t, 1, mc.setCalls, "should store result in cache")
+}
+
+// TestGetDataFromCacheOrMatview_CacheHit_NoRefresh verifies that a cached value is returned
+// when no matview refresh timestamp exists in the cache.
+func TestGetDataFromCacheOrMatview_CacheHit_NoRefresh(t *testing.T) {
+	mc := newMockCache()
+	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "mv~", nil)
+	cached := testResult{Value: "cached"}
+	seedMatviewCache(t, mc, spec, cached, time.Now().UTC())
+
+	var generateCalls int
+	result, errs := GetDataFromCacheOrMatview(
+		context.Background(), mc, spec, testMatview, time.Hour,
+		makeGenerateFn(testResult{Value: "fresh"}, &generateCalls), testResult{},
+	)
+
+	assert.Empty(t, errs)
+	assert.Equal(t, cached, result, "should return cached value when no refresh timestamp exists")
+	assert.Equal(t, 0, generateCalls, "should not call generateFn")
+}
+
+// TestGetDataFromCacheOrMatview_CacheHit_RefreshBeforeCacheTime verifies that a cached value
+// is returned when the matview was refreshed before the data was cached.
+func TestGetDataFromCacheOrMatview_CacheHit_RefreshBeforeCacheTime(t *testing.T) {
+	mc := newMockCache()
+	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "mv~", nil)
+	cachedAt := time.Now().UTC()
+	cached := testResult{Value: "cached"}
+	seedMatviewCache(t, mc, spec, cached, cachedAt)
+	// Matview was refreshed 10 minutes before the data was cached
+	seedRefreshTimestamp(mc, testMatview, cachedAt.Add(-10*time.Minute))
+
+	var generateCalls int
+	result, errs := GetDataFromCacheOrMatview(
+		context.Background(), mc, spec, testMatview, time.Hour,
+		makeGenerateFn(testResult{Value: "fresh"}, &generateCalls), testResult{},
+	)
+
+	assert.Empty(t, errs)
+	assert.Equal(t, cached, result, "should return cached value when refresh predates cache entry")
+	assert.Equal(t, 0, generateCalls, "should not call generateFn")
+}
+
+// TestGetDataFromCacheOrMatview_CacheInvalidated_RefreshAfterCacheTime verifies that when the
+// matview was refreshed after the data was cached, the cached value is invalidated and
+// generateFn is called to produce fresh data.
+func TestGetDataFromCacheOrMatview_CacheInvalidated_RefreshAfterCacheTime(t *testing.T) {
+	mc := newMockCache()
+	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "mv~", nil)
+	cachedAt := time.Now().UTC().Add(-5 * time.Minute)
+	seedMatviewCache(t, mc, spec, testResult{Value: "stale"}, cachedAt)
+	// Matview was refreshed 1 minute ago, after the data was cached
+	seedRefreshTimestamp(mc, testMatview, time.Now().UTC().Add(-1*time.Minute))
+
+	var generateCalls int
+	expected := testResult{Value: "fresh"}
+	result, errs := GetDataFromCacheOrMatview(
+		context.Background(), mc, spec, testMatview, time.Hour,
+		makeGenerateFn(expected, &generateCalls), testResult{},
+	)
+
+	assert.Empty(t, errs)
+	assert.Equal(t, expected, result, "should regenerate data after matview refresh")
+	assert.Equal(t, 1, generateCalls, "should call generateFn when cache is invalidated")
+	assert.GreaterOrEqual(t, mc.setCalls, 1, "should store the fresh result")
+}
+
+// TestGetDataFromCacheOrMatview_GenerateErrorSkipsCacheWrite verifies that errors from
+// generateFn are not cached.
+func TestGetDataFromCacheOrMatview_GenerateErrorSkipsCacheWrite(t *testing.T) {
+	mc := newMockCache()
+	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "mv~", nil)
+
+	var generateCalls int
+	result, errs := GetDataFromCacheOrMatview(
+		context.Background(), mc, spec, testMatview, time.Hour,
+		makeFailingGenerateFn(&generateCalls), testResult{},
+	)
+
+	assert.Len(t, errs, 1)
+	assert.Equal(t, testResult{}, result)
+	assert.Equal(t, 1, generateCalls)
+	assert.Equal(t, 0, mc.setCalls, "should not cache error results")
+}
+
+// TestGetDataFromCacheOrMatview_InvalidRefreshTimestamp verifies that an unparseable refresh
+// timestamp in the cache is treated like no refresh (cache is still used).
+func TestGetDataFromCacheOrMatview_InvalidRefreshTimestamp(t *testing.T) {
+	mc := newMockCache()
+	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "mv~", nil)
+	cached := testResult{Value: "cached"}
+	seedMatviewCache(t, mc, spec, cached, time.Now().UTC())
+	// Store garbage as the refresh timestamp
+	mc.store[RefreshMatviewKey(testMatview)] = []byte("not-a-timestamp")
+
+	var generateCalls int
+	result, errs := GetDataFromCacheOrMatview(
+		context.Background(), mc, spec, testMatview, time.Hour,
+		makeGenerateFn(testResult{Value: "fresh"}, &generateCalls), testResult{},
+	)
+
+	assert.Empty(t, errs)
+	assert.Equal(t, cached, result, "should return cached value when refresh timestamp is unparseable")
+	assert.Equal(t, 0, generateCalls)
+}
+
+// TestGetDataFromCacheOrMatview_CacheDurationPassedToSet verifies that the specified
+// cacheDuration is used when writing to the cache.
+func TestGetDataFromCacheOrMatview_CacheDurationPassedToSet(t *testing.T) {
+	mc := newMockCache()
+	spec := NewCacheSpec(testCacheKey{Query: "q1"}, "mv~", nil)
+	expectedDuration := 2 * time.Hour
+
+	var generateCalls int
+	_, errs := GetDataFromCacheOrMatview(
+		context.Background(), mc, spec, testMatview, expectedDuration,
+		makeGenerateFn(testResult{Value: "data"}, &generateCalls), testResult{},
+	)
+
+	assert.Empty(t, errs)
+	cacheKey, _ := spec.GetCacheKey()
+	assert.Equal(t, expectedDuration, mc.setDurations[string(cacheKey)], "should use specified cache duration")
+}
+
+// TestGetDataFromCacheOrMatview_DifferentMatviews verifies that cache entries for different
+// matviews are invalidated independently.
+func TestGetDataFromCacheOrMatview_DifferentMatviews(t *testing.T) {
+	mc := newMockCache()
+	matview7d := "prow_test_report_7d_matview"
+	matview2d := "prow_test_report_2d_matview"
+	spec7d := NewCacheSpec(testCacheKey{Query: "7d"}, "mv~", nil)
+	spec2d := NewCacheSpec(testCacheKey{Query: "2d"}, "mv~", nil)
+
+	cachedAt := time.Now().UTC().Add(-5 * time.Minute)
+	seedMatviewCache(t, mc, spec7d, testResult{Value: "cached-7d"}, cachedAt)
+	seedMatviewCache(t, mc, spec2d, testResult{Value: "cached-2d"}, cachedAt)
+
+	// Only refresh the 7d matview (after caching)
+	seedRefreshTimestamp(mc, matview7d, time.Now().UTC().Add(-1*time.Minute))
+	// 2d matview was refreshed before caching
+	seedRefreshTimestamp(mc, matview2d, cachedAt.Add(-10*time.Minute))
+
+	var gen7dCalls, gen2dCalls int
+
+	// 7d should be invalidated
+	result7d, errs := GetDataFromCacheOrMatview(
+		context.Background(), mc, spec7d, matview7d, time.Hour,
+		makeGenerateFn(testResult{Value: "fresh-7d"}, &gen7dCalls), testResult{},
+	)
+	assert.Empty(t, errs)
+	assert.Equal(t, "fresh-7d", result7d.Value, "7d cache should be invalidated")
+	assert.Equal(t, 1, gen7dCalls)
+
+	// 2d should still be cached
+	result2d, errs := GetDataFromCacheOrMatview(
+		context.Background(), mc, spec2d, matview2d, time.Hour,
+		makeGenerateFn(testResult{Value: "fresh-2d"}, &gen2dCalls), testResult{},
+	)
+	assert.Empty(t, errs)
+	assert.Equal(t, "cached-2d", result2d.Value, "2d cache should not be invalidated")
+	assert.Equal(t, 0, gen2dCalls)
 }

@@ -21,6 +21,7 @@ import (
 
 	jobQueries "github.com/openshift/sippy/pkg/api"
 	"github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/apis/prow"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
@@ -62,15 +63,21 @@ var (
 
 // NewWorkProcessor creates a standard work processor from parameters.
 // dbc: our database
+// bigQueryClient: client for querying our data warehouse
 // gcsBucket: handle to our root gcs bucket
+// cacheClient: client for our local redis cache
+// ghCommenter: the commenting implementation
 // commentAnalysisWorkers: the number of threads active to process pending comment jobs
 // commentAnalysisRate: the minimun duration between querying the db for pending jobs
 // commentUpdaterRate: the minimum duration between adding a comment before we begin work on adding the next
-// ghCommenter: the commenting implmentation
 // dryRunOnly: default is true to prevent unintended commenting when running locally or in a test deployment
-func NewWorkProcessor(dbc *db.DB, gcsBucket *storage.BucketHandle, commentAnalysisWorkers int, bigQueryClient *bigquery.Client, commentAnalysisRate, commentUpdaterRate time.Duration, ghCommenter *commenter.GitHubCommenter, dryRunOnly bool) *WorkProcessor {
-	wp := &WorkProcessor{dbc: dbc, gcsBucket: gcsBucket, ghCommenter: ghCommenter,
+func NewWorkProcessor(dbc *db.DB, bigQueryClient *bigquery.Client, gcsBucket *storage.BucketHandle, cacheClient cache.Cache, ghCommenter *commenter.GitHubCommenter, commentAnalysisWorkers int, commentAnalysisRate, commentUpdaterRate time.Duration, dryRunOnly bool) *WorkProcessor {
+	wp := &WorkProcessor{
+		dbc:                    dbc,
 		bigQueryClient:         bigQueryClient,
+		gcsBucket:              gcsBucket,
+		cacheClient:            cacheClient,
+		ghCommenter:            ghCommenter,
 		commentAnalysisRate:    commentAnalysisRate,
 		commentUpdaterRate:     commentUpdaterRate,
 		commentAnalysisWorkers: commentAnalysisWorkers,
@@ -86,6 +93,7 @@ type WorkProcessor struct {
 	commentAnalysisRate    time.Duration
 	commentAnalysisWorkers int
 	dbc                    *db.DB
+	cacheClient            cache.Cache
 	gcsBucket              *storage.BucketHandle
 	ghCommenter            *commenter.GitHubCommenter
 	bigQueryClient         *bigquery.Client
@@ -112,6 +120,7 @@ type CommentWorker struct {
 
 type AnalysisWorker struct {
 	dbc                 *db.DB
+	cacheClient         cache.Cache
 	gcsBucket           *storage.BucketHandle
 	bigQueryClient      *bigquery.Client
 	riskAnalysisLocator *regexp.Regexp
@@ -170,6 +179,7 @@ func (wp *WorkProcessor) Run(ctx context.Context) {
 		analysisWorker := AnalysisWorker{
 			riskAnalysisLocator: gcs.GetDefaultRiskAnalysisSummaryFile(),
 			dbc:                 wp.dbc,
+			cacheClient:         wp.cacheClient,
 			gcsBucket:           wp.gcsBucket,
 			bigQueryClient:      wp.bigQueryClient,
 			prCommentProspects:  prospects,
@@ -812,7 +822,7 @@ func (aw *AnalysisWorker) getRiskSummary(ctx context.Context, jobRunID, jobRunID
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 			logger.WithError(err).Errorf("Error fetching job run for: %s", jobRunIDPath)
 		}
-	} else if ra, err := jobQueries.JobRunRiskAnalysis(ctx, aw.dbc, aw.bigQueryClient, jobRun, logger, true); err != nil {
+	} else if ra, err := jobQueries.JobRunRiskAnalysis(ctx, logger, aw.dbc, aw.bigQueryClient, aw.cacheClient, jobRun, true); err != nil {
 		logger.WithError(err).Errorf("Error querying risk analysis for: %s", jobRunIDPath)
 	} else {
 		// query succeeded so use the riskAnalysis we got

@@ -137,6 +137,9 @@ func CacheSet[T any](ctx context.Context, c cache.Cache, result T, cacheKey []by
 func CalculateRoundedCacheDuration(cacheOptions cache.RequestOptions) time.Duration {
 	// require cacheDuration for persistence logic
 	cacheDuration := defaultCacheDuration
+	if cacheOptions.Expiry > 0 {
+		cacheDuration = cacheOptions.Expiry
+	}
 	if cacheOptions.CRTimeRoundingFactor > 0 {
 		now := time.Now().UTC()
 		// Only cache until the next rounding duration
@@ -157,4 +160,81 @@ func isStructWithNoPublicFields(v interface{}) bool {
 		}
 	}
 	return true
+}
+
+// GetDataFromCacheOrMatview caches data that is based on a matview and invalidates it when the matview is refreshed
+func GetDataFromCacheOrMatview[T any](ctx context.Context,
+	cacheClient cache.Cache, cacheSpec CacheSpec,
+	matview string,
+	cacheDuration time.Duration,
+	generateFn func(context.Context) (T, []error),
+	defaultVal T,
+) (T, []error) {
+	if cacheClient == nil {
+		return generateFn(ctx)
+	}
+
+	cacheKey, err := cacheSpec.GetCacheKey()
+	if err != nil {
+		return defaultVal, []error{err}
+	}
+
+	// If someone gives us an uncacheable cacheKey, panic so it gets detected in testing
+	if len(cacheKey) == 0 {
+		panic(fmt.Sprintf("cache key is empty for %s", reflect.TypeOf(defaultVal)))
+	}
+	// If someone gives us an uncacheable value, panic so it gets detected in testing
+	if isStructWithNoPublicFields(defaultVal) {
+		panic(fmt.Sprintf("cannot cache type %s that exports no fields", reflect.TypeOf(defaultVal)))
+	}
+
+	var cacheVal struct {
+		Val       T         // the actual value we want to cache
+		Timestamp time.Time // the time when it was cached (for comparison to matview refresh time)
+	}
+	if cached, err := cacheClient.Get(ctx, string(cacheKey), 0); err == nil {
+		logrus.WithFields(logrus.Fields{
+			"key":  string(cacheKey),
+			"type": reflect.TypeOf(defaultVal).String(),
+		}).Debugf("cache hit")
+
+		if err := json.Unmarshal(cached, &cacheVal); err != nil {
+			logrus.WithError(err).Warnf("failed to unmarshal cached item.  cacheKey=%+v", cacheKey)
+			// fall through to generate the data instead
+		} else {
+			// look up when the matview was refreshed to see if the cached value is stale
+			var lastRefresh time.Time
+			if lastRefreshBytes, err := cacheClient.Get(ctx, RefreshMatviewKey(matview), 0); err == nil {
+				if parsed, err := time.Parse(time.RFC3339, string(lastRefreshBytes)); err != nil {
+					logrus.WithError(err).Warnf("failed to parse matview refresh timestamp %q for %q; cache will not be invalidated", lastRefreshBytes, matview)
+				} else {
+					lastRefresh = parsed
+				}
+			}
+
+			if lastRefresh.Before(cacheVal.Timestamp) {
+				// not invalidated by a newer refresh, so use it (if we don't know the last refresh, still use it)
+				return cacheVal.Val, nil
+			}
+			logrus.Debugf("matview %q refreshed at %v, will not use earlier cache entry from %v", matview, lastRefresh, cacheVal.Timestamp)
+		}
+	} else if strings.Contains(err.Error(), "connection refused") {
+		logrus.WithError(err).Fatalf("redis URL specified but got connection refused; exiting due to cost issues in this configuration")
+	} else {
+		logrus.WithFields(logrus.Fields{"key": string(cacheKey)}).Debugf("cache miss")
+	}
+
+	// Cache missed or refresh invalidated the data, so generate it.
+	logrus.Debugf("cache duration set to %s or approx %s for key %s", cacheDuration, time.Now().Add(cacheDuration).Format(time.RFC3339), cacheKey)
+	result, errs := generateFn(ctx)
+	if len(errs) == 0 {
+		cacheVal.Val = result
+		cacheVal.Timestamp = time.Now().UTC()
+		CacheSet(ctx, cacheClient, cacheVal, cacheKey, cacheDuration)
+	}
+	return result, errs
+}
+
+func RefreshMatviewKey(matview string) string {
+	return "matview_refreshed:" + matview
 }

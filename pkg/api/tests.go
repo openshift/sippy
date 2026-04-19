@@ -16,6 +16,7 @@ import (
 	"google.golang.org/api/iterator"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	"github.com/openshift/sippy/pkg/apis/cache"
 	bq "github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
 	"github.com/openshift/sippy/pkg/db"
@@ -223,9 +224,9 @@ func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Fi
 	return query.TestDurations(dbc, release, test, includedVariants, excludedVariants)
 }
 
-type testsAPIResult []apitype.Test
+type TestsAPIResult []apitype.Test
 
-func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {
+func (tests TestsAPIResult) sort(req *http.Request) TestsAPIResult {
 	sortField := param.SafeRead(req, "sortField")
 	sort := param.SafeRead(req, "sort")
 
@@ -247,7 +248,7 @@ func (tests testsAPIResult) sort(req *http.Request) testsAPIResult {
 	return tests
 }
 
-func (tests testsAPIResult) limit(req *http.Request) testsAPIResult {
+func (tests TestsAPIResult) limit(req *http.Request) TestsAPIResult {
 	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
 	if limit == 0 || len(tests) < limit {
 		return tests
@@ -256,9 +257,9 @@ func (tests testsAPIResult) limit(req *http.Request) testsAPIResult {
 	return tests[:limit]
 }
 
-type testsAPIResultBQ []apitype.TestBQ
+type TestsAPIResultBQ []apitype.TestBQ
 
-func (tests testsAPIResultBQ) sort(req *http.Request) testsAPIResultBQ {
+func (tests TestsAPIResultBQ) sort(req *http.Request) TestsAPIResultBQ {
 	sortField := param.SafeRead(req, "sortField")
 	sort := param.SafeRead(req, "sort")
 
@@ -280,7 +281,7 @@ func (tests testsAPIResultBQ) sort(req *http.Request) testsAPIResultBQ {
 	return tests
 }
 
-func (tests testsAPIResultBQ) limit(req *http.Request) testsAPIResultBQ {
+func (tests TestsAPIResultBQ) limit(req *http.Request) TestsAPIResultBQ {
 	limit, _ := strconv.Atoi(req.URL.Query().Get("limit"))
 	if limit == 0 || len(tests) < limit {
 		return tests
@@ -289,9 +290,7 @@ func (tests testsAPIResultBQ) limit(req *http.Request) testsAPIResultBQ {
 	return tests[:limit]
 }
 
-func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Request, dbc *db.DB) {
-	var fil *filter.Filter
-
+func makeTestsResultsSpec(w http.ResponseWriter, req *http.Request, release string) (TestResultsSpec, bool) {
 	// Collapse means to produce an aggregated test result of all variant (NURP+ - network, upgrade, release, platform)
 	// combos. Uncollapsed results shows you the per-NURP+ result for each test (currently approx. 50,000 rows: filtering
 	// is advised)
@@ -308,106 +307,76 @@ func PrintTestsJSONFromDB(release string, w http.ResponseWriter, req *http.Reque
 	}
 
 	queryFilter := req.URL.Query().Get("filter")
+	var fil *filter.Filter
 	if queryFilter != "" {
 		fil = &filter.Filter{}
 		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
 			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
-			return
+			return TestResultsSpec{}, false
 		}
 	}
 
+	period := req.URL.Query().Get("period")
 	// If requesting a two day report, we make the comparison between the last
 	// period (typically 7 days) and the last two days.
-	period := req.URL.Query().Get("period")
 	if period != "" && period != "default" && period != "current" && period != "twoDay" {
 		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Unknown period"})
+		return TestResultsSpec{}, false
+	} else if period != "twoDay" {
+		period = "default" // standardize to a single specification as this becomes part of cache key
+	}
+
+	return TestResultsSpec{
+		Release:        release,
+		Period:         period,
+		Collapse:       collapse,
+		IncludeOverall: includeOverall,
+		Filter:         fil,
+	}, true
+}
+
+func PrintTestsJSONFromDB(
+	w http.ResponseWriter, req *http.Request,
+	dbc *db.DB, cacheClient cache.Cache,
+	release string,
+) {
+	spec, ok := makeTestsResultsSpec(w, req, release)
+	if !ok {
 		return
 	}
 
-	testsResult, overall, err := BuildTestsResults(dbc, release, period, collapse, includeOverall, fil)
+	result, err := spec.buildTestsResultsFromPostgres(req.Context(), dbc, cacheClient)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
 
-	testsResult = testsResult.sort(req).limit(req)
-	if overall != nil {
-		testsResult = append([]apitype.Test{*overall}, testsResult...)
+	testsResult := result.TestsAPIResult.sort(req).limit(req)
+	if result.Test != nil {
+		testsResult = append([]apitype.Test{*result.Test}, testsResult...)
 	}
 
 	RespondWithJSON(http.StatusOK, w, testsResult)
 }
 
 func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http.Request, bqc *bq.Client) {
-	var fil *filter.Filter
-
-	// Collapse means to produce an aggregated test result of all variant (NURP+ - network, upgrade, release, platform)
-	// combos. Uncollapsed results shows you the per-NURP+ result for each test (currently approx. 50,000 rows: filtering
-	// is advised)
-	collapseStr := req.URL.Query().Get("collapse")
-	collapse := true
-	if collapseStr == "false" {
-		collapse = false
-	}
-
-	overallStr := req.URL.Query().Get("overall")
-	includeOverall := !collapse
-	if overallStr != "" {
-		includeOverall, _ = strconv.ParseBool(overallStr)
-	}
-
-	queryFilter := req.URL.Query().Get("filter")
-	if queryFilter != "" {
-		fil = &filter.Filter{}
-		if err := json.Unmarshal([]byte(queryFilter), fil); err != nil {
-			RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Could not marshal query:" + err.Error()})
-			return
-		}
-	}
-
-	// If requesting a two day report, we make the comparison between the last
-	// period (typically 7 days) and the last two days.
-	period := req.URL.Query().Get("period")
-	if period != "" && period != "default" && period != "current" && period != "twoDay" {
-		RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "Unknown period"})
+	spec, ok := makeTestsResultsSpec(w, req, release)
+	if !ok {
 		return
 	}
 
-	testsResult, overall, err := BuildTestsResultsFromBigQuery(req.Context(), bqc, release, period, collapse, includeOverall, fil)
+	result, err := spec.buildTestsResultsFromBigQuery(req.Context(), bqc)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
 
-	testsResult = testsResult.sort(req).limit(req)
-	if overall != nil {
-		testsResult = append([]apitype.TestBQ{*overall}, testsResult...)
+	testsResult := result.TestsAPIResultBQ.sort(req).limit(req)
+	if result.Test != nil {
+		testsResult = append([]apitype.TestBQ{*result.Test}, testsResult...)
 	}
 
 	RespondWithJSON(http.StatusOK, w, testsResult)
-}
-
-func PrintCanaryTestsFromDB(release string, w http.ResponseWriter, dbc *db.DB) {
-	f := filter.Filter{
-		Items: []filter.FilterItem{
-			{
-				Field:    "current_pass_percentage",
-				Operator: ">=",
-				Value:    "99",
-			},
-		},
-	}
-
-	results, _, err := BuildTestsResults(dbc, release, "default", true, false, &f)
-	if err != nil {
-		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building test report:" + err.Error()})
-		return
-	}
-
-	w.Header().Set("Content-Type", "text/plain;charset=UTF-8")
-	for _, result := range results {
-		fmt.Fprintf(w, "%q:struct{}{},\n", result.Name)
-	}
 }
 
 func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, error) {
@@ -444,37 +413,64 @@ func GetJobRunTestsCountByLookback(dbc *db.DB, lookbackDays int) (int64, int64, 
 	return queryCounts.JobRunsCount, queryCounts.TestIDsCount, nil
 }
 
-func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOverall bool, fil *filter.Filter) (testsAPIResult, *apitype.Test, error) { //lint:ignore
+type TestResultsSpec struct {
+	Release, Period          string
+	Collapse, IncludeOverall bool
+	Filter                   *filter.Filter
+}
+type testResults struct {
+	TestsAPIResult
+	Test *apitype.Test
+}
+
+const testResultsCacheDuration = time.Hour
+
+func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) (testResults, error) {
+	matview := testReport7dMatView
+	if spec.Period == "twoDay" {
+		matview = testReport2dMatView
+	}
+
+	generator := func(ctx context.Context) (testResults, []error) {
+		return spec.buildTestsResultsPGGenerator(ctx, dbc, matview)
+	}
+	result, errs := GetDataFromCacheOrMatview(ctx, cacheClient,
+		NewCacheSpec(spec, "PostgresTestsResults~", nil),
+		matview, testResultsCacheDuration,
+		generator,
+		testResults{},
+	)
+	if errs != nil {
+		return result, fmt.Errorf("error(s) querying test results: %v", errs)
+	}
+	return result, nil
+}
+
+func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, dbc *db.DB, matview string) (result testResults, errs []error) {
 	now := time.Now()
 
 	// Test results are generated by using two subqueries, which need to be filtered separately. Once during
 	// pre-processing where we're evaluating summed variant results, and in post-processing after we've
 	// assembled our final temporary table.
 	var rawFilter, processedFilter *filter.Filter
-	if fil != nil {
-		rawFilter, processedFilter = fil.Split([]string{"name", "variants"})
+	if spec.Filter != nil {
+		rawFilter, processedFilter = spec.Filter.Split([]string{"name", "variants"})
 	}
 
-	table := testReport7dMatView
-	if period == "twoDay" {
-		table = testReport2dMatView
-	}
-
-	rawQuery := dbc.DB.
-		Table(table).
-		Where("release = ?", release)
+	rawQuery := dbc.DB.WithContext(ctx).
+		Table(matview).
+		Where("release = ?", spec.Release)
 
 	// Collapse groups the test results together -- otherwise we return the test results per-variant combo (NURP+)
 	variantSelect := ""
-	if collapse {
+	if spec.Collapse {
 		rawQuery = rawQuery.Select(`suite_name,name,jira_component,jira_component_id,` + query.QueryTestSummer).Group("suite_name,name,jira_component,jira_component_id")
 	} else {
-		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, release, table)
+		rawQuery = query.TestsByNURPAndStandardDeviation(dbc, spec.Release, matview)
 		variantSelect = "suite_name, variants," +
 			"delta_from_working_average, working_average, working_standard_deviation, " +
 			"delta_from_passing_average, passing_average, passing_standard_deviation, " +
 			"delta_from_flake_average, flake_average, flake_standard_deviation, "
-
 	}
 
 	if rawFilter != nil {
@@ -495,12 +491,14 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	frr := finalResults.Scan(&testReports)
 	if frr.Error != nil {
 		log.WithError(finalResults.Error).Error("error querying test reports")
-		return []apitype.Test{}, nil, frr.Error
+		result.TestsAPIResult = []apitype.Test{}
+		errs = append(errs, frr.Error)
+		return
 	}
 
 	// Produce a special "overall" test that has a summary of all the selected tests.
 	var overallTest *apitype.Test
-	if includeOverall {
+	if spec.IncludeOverall {
 		finalResults := dbc.DB.Table("(?) as final_results", finalResults)
 		finalResults = finalResults.Select(query.QueryTestSummer)
 		summaryResult := dbc.DB.Table("(?) as overall", finalResults).Select(query.QueryTestSummarizer)
@@ -516,24 +514,47 @@ func BuildTestsResults(dbc *db.DB, release, period string, collapse, includeOver
 	log.WithFields(log.Fields{
 		"elapsed": elapsed,
 		"reports": len(testReports),
-	}).Debug("BuildTestsResults completed")
+	}).Debug("buildTestsResultsPGGenerator completed")
 
-	return testReports, overallTest, nil
+	result.TestsAPIResult = testReports
+	result.Test = overallTest
+	return
 }
 
-func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release, period string, collapse, includeOverall bool, fil *filter.Filter) (testsAPIResultBQ, *apitype.TestBQ, error) { //lint:ignore
+type testResultsBQ struct {
+	TestsAPIResultBQ
+	Test *apitype.TestBQ
+}
+
+func (spec *TestResultsSpec) buildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client) (testResultsBQ, error) {
+	generator := func(ctx context.Context) (testResultsBQ, []error) {
+		return spec.buildTestsResultsBQGenerator(ctx, bqc)
+	}
+	result, errs := GetDataFromCacheOrGenerate[testResultsBQ](
+		ctx,
+		bqc.Cache,
+		cache.RequestOptions{Expiry: testResultsCacheDuration},
+		NewCacheSpec(spec, "BigQueryTestsResults~", nil),
+		generator,
+		testResultsBQ{})
+	if errs != nil {
+		return result, fmt.Errorf("error(s) querying test results: %v", errs)
+	}
+	return result, nil
+}
+
+func (spec *TestResultsSpec) buildTestsResultsBQGenerator(ctx context.Context, bqc *bq.Client) (testResultsBQ, []error) {
 	now := time.Now()
 
 	// Test results are generated by using two subqueries, which need to be filtered separately. Once during
 	// pre-processing where we're evaluating summed variant results, and in post-processing after we've
 	// assembled our final temporary table.
 	var rawFilter, processedFilter *filter.Filter
-	if fil != nil {
-		rawFilter, processedFilter = fil.Split([]string{"name", "variants"})
+	if spec.Filter != nil {
+		rawFilter, processedFilter = spec.Filter.Split([]string{"name", "variants"})
 	}
-
 	table := "junit_7day_comparison"
-	if period == "twoDay" {
+	if spec.Period == "twoDay" {
 		table = "junit_2day_comparison"
 	}
 
@@ -544,7 +565,7 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 
 	// Collect all query parameters
 	queryParams := []bigquery.QueryParameter{
-		{Name: "release", Value: release},
+		{Name: "release", Value: spec.Release},
 	}
 	paramIndex := 0
 
@@ -555,7 +576,7 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 		queryParams = append(queryParams, filterResult.Parameters...)
 	}
 
-	if collapse {
+	if spec.Collapse {
 		candidateQueryStr = fmt.Sprintf(`WITH group_stats AS (
 		SELECT
 			cm.cm_id as test_id,
@@ -640,12 +661,12 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 	q.Parameters = queryParams
 	testReports, errs := FetchTestResultsFromBQ(ctx, q)
 	if len(errs) > 0 {
-		return []apitype.TestBQ{}, nil, errs[0]
+		return testResultsBQ{[]apitype.TestBQ{}, nil}, errs
 	}
 
 	// Produce a special "overall" test that has a summary of all the selected tests.
 	var overallTest *apitype.TestBQ
-	if includeOverall {
+	if spec.IncludeOverall {
 		queryStr := fmt.Sprintf(`%s,
 	group_stats AS (
 		SELECT
@@ -659,7 +680,7 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 
 		overallReports, errs := FetchTestResultsFromBQ(ctx, q)
 		if len(errs) > 0 {
-			return testReports, nil, errs[0]
+			return testResultsBQ{testReports, nil}, errs
 		}
 
 		overallTest = &overallReports[0]
@@ -671,9 +692,9 @@ func BuildTestsResultsFromBigQuery(ctx context.Context, bqc *bq.Client, release,
 	log.WithFields(log.Fields{
 		"elapsed": elapsed,
 		"reports": len(testReports),
-	}).Debug("BuildTestsResults completed")
+	}).Debug("buildTestsResultsBQGenerator completed")
 
-	return testReports, overallTest, nil
+	return testResultsBQ{testReports, overallTest}, nil
 }
 
 func FetchTestResultsFromBQ(ctx context.Context, q *bigquery.Query) ([]apitype.TestBQ, []error) {

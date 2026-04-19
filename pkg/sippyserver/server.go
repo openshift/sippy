@@ -247,7 +247,7 @@ func (s *Server) GetReportEnd() time.Time {
 //
 // refreshMatviewOnlyIfEmpty is used on startup to indicate that we want to do an initial refresh *only* if
 // the views appear to be empty.
-func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
+func refreshMaterializedViews(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool) {
 	var promPusher *push.Pusher
 	if pushgateway := os.Getenv("SIPPY_PROMETHEUS_PUSHGATEWAY"); pushgateway != "" {
 		promPusher = push.New(pushgateway, "sippy-matviews")
@@ -294,7 +294,7 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 	// allow concurrent workers for refreshing matviews in parallel
 	for t := 0; t < 2; t++ {
 		wg.Add(1)
-		go refreshMatview(dbc, refreshMatviewOnlyIfEmpty, ch, &wg)
+		go refreshMatview(dbc, cacheClient, refreshMatviewOnlyIfEmpty, ch, &wg)
 	}
 
 	// Sort materialized views so prow_test_report_2d_matview runs last to avoid CPU overload
@@ -340,7 +340,7 @@ func refreshMaterializedViews(dbc *db.DB, refreshMatviewOnlyIfEmpty bool) {
 	}
 }
 
-func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
+func refreshMatview(dbc *db.DB, cacheClient cache.Cache, refreshMatviewOnlyIfEmpty bool, ch chan string, wg *sync.WaitGroup) {
 
 	for matView := range ch {
 		start := time.Now()
@@ -371,21 +371,36 @@ func refreshMatview(dbc *db.DB, refreshMatviewOnlyIfEmpty bool, ch chan string, 
 			} else {
 				elapsed := time.Since(start)
 				tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view")
+				recordMatviewRefreshTime(cacheClient, matView, tmpLog)
 				matViewRefreshMetric.WithLabelValues(matView).Observe(float64(elapsed.Milliseconds()))
 			}
 
 		} else {
 			elapsed := time.Since(start)
 			tmpLog.WithField("elapsed", elapsed).Info("refreshed materialized view concurrently")
+			recordMatviewRefreshTime(cacheClient, matView, tmpLog)
 			matViewRefreshMetric.WithLabelValues(matView).Observe(float64(elapsed.Milliseconds()))
 		}
 	}
 	wg.Done()
 }
 
-func RefreshData(dbc *db.DB, pinnedDateTime *time.Time, refreshMatviewsOnlyIfEmpty bool) {
+func recordMatviewRefreshTime(cacheClient cache.Cache, matView string, tmpLog *log.Entry) {
+	if cacheClient == nil {
+		return
+	}
+	// note that a matview refresh uses the source data that is present at the *start* of the refresh,
+	// but the matview data updates may not be available to read until it completes; so we invalidate the cache with
+	// the timestamp *after* the refresh completes.
+	ts := []byte(time.Now().UTC().Format(time.RFC3339))
+	if err := cacheClient.Set(context.Background(), api.RefreshMatviewKey(matView), ts, 24*time.Hour); err != nil {
+		tmpLog.WithError(err).Warn("failed to record matview refresh timestamp in cache")
+	}
+}
+
+func RefreshData(dbc *db.DB, cacheClient cache.Cache, refreshMatviewsOnlyIfEmpty bool) {
 	log.Infof("Refreshing data")
-	refreshMaterializedViews(dbc, refreshMatviewsOnlyIfEmpty)
+	refreshMaterializedViews(dbc, cacheClient, refreshMatviewsOnlyIfEmpty)
 	log.Info("Refresh complete")
 }
 
@@ -1129,7 +1144,7 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
 	if release != "" {
-		api.PrintTestsJSONFromDB(release, w, req, s.db)
+		api.PrintTestsJSONFromDB(w, req, s.db, s.cache, release)
 	}
 }
 
@@ -1267,13 +1282,6 @@ func (s *Server) printReportDate(w http.ResponseWriter, req *http.Request) {
 		reportDate = s.pinnedDateTime.Format(time.RFC3339)
 	}
 	api.RespondWithJSON(http.StatusOK, w, map[string]interface{}{"pinnedDateTime": reportDate})
-}
-
-func (s *Server) printCanaryReportFromDB(w http.ResponseWriter, req *http.Request) {
-	release := s.getParamOrFail(w, req, "release")
-	if release != "" {
-		api.PrintCanaryTestsFromDB(release, w, s.db)
-	}
 }
 
 func (s *Server) jsonVariantsReportFromDB(w http.ResponseWriter, req *http.Request) {
@@ -1491,7 +1499,7 @@ func (s *Server) jsonJobRunRiskAnalysis(w http.ResponseWriter, req *http.Request
 	}
 
 	logger.Infof("job run = %+v", *jobRun)
-	result, err := api.JobRunRiskAnalysis(req.Context(), s.db, s.bigQueryClient, jobRun, logger, false)
+	result, err := api.JobRunRiskAnalysis(req.Context(), logger, s.db, s.bigQueryClient, s.cache, jobRun, false)
 	if err != nil {
 		failureResponse(w, http.StatusBadRequest, err.Error())
 		return
@@ -2471,14 +2479,12 @@ func (s *Server) Serve() {
 			EndpointPath: "/api/tests",
 			Description:  "Reports on tests",
 			Capabilities: []string{LocalDBCapability},
-			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestsReportFromDB,
 		},
 		{
 			EndpointPath: "/api/tests/v2",
 			Description:  "Reports on tests",
 			Capabilities: []string{LocalDBCapability},
-			CacheTime:    1 * time.Hour,
 			HandlerFunc:  s.jsonTestsReportFromBigQuery,
 		},
 		{
@@ -2604,12 +2610,6 @@ func (s *Server) Serve() {
 			Description:  "Reports on variants",
 			Capabilities: []string{LocalDBCapability},
 			HandlerFunc:  s.jsonVariantsReportFromDB,
-		},
-		{
-			EndpointPath: "/api/canary",
-			Description:  "Displays canary report from database",
-			Capabilities: []string{LocalDBCapability},
-			HandlerFunc:  s.printCanaryReportFromDB,
 		},
 		{
 			EndpointPath: "/api/report_date",
