@@ -19,6 +19,7 @@ import (
 	resources "github.com/openshift/sippy"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	bqprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/bigquery"
+	pgprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/postgres"
 	"github.com/openshift/sippy/pkg/apis/cache"
 	"github.com/openshift/sippy/pkg/bigquery"
 	"github.com/openshift/sippy/pkg/bigquery/bqlabel"
@@ -69,10 +70,13 @@ func (f *ServerFlags) BindFlags(flagSet *pflag.FlagSet) {
 	f.ConfigFlags.BindFlags(flagSet)
 	f.APIFlags.BindFlags(flagSet)
 	f.JiraFlags.BindFlags(flagSet)
-	flagSet.StringVar(&f.DataProvider, "data-provider", "bigquery", "Data provider for component readiness: bigquery")
+	flagSet.StringVar(&f.DataProvider, "data-provider", "bigquery", "Data provider for component readiness: bigquery, postgres")
 }
 
 func (f *ServerFlags) Validate() error {
+	if f.DataProvider == "postgres" {
+		return nil
+	}
 	return f.GoogleCloudFlags.Validate()
 }
 
@@ -132,8 +136,12 @@ func NewServeCommand() *cobra.Command {
 					crDataProvider = bqprovider.NewBigQueryProvider(bigQueryClient, config.ComponentReadinessConfig.VariantJunitTableOverrides)
 				}
 
+			case "postgres":
+				crDataProvider = pgprovider.NewPostgresProvider(dbc, cacheClient)
+				log.Info("Using Postgres data provider for component readiness")
+
 			default:
-				return fmt.Errorf("unknown --data-provider %q, must be bigquery", f.DataProvider)
+				return fmt.Errorf("unknown --data-provider %q, must be bigquery or postgres", f.DataProvider)
 			}
 
 			gcsClient, err = gcs.NewGCSClient(context.TODO(),

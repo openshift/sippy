@@ -21,11 +21,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func cleanupAllRegressions(dbc *db.DB) {
-	// Delete all test regressions in the e2e postgres db.
-	res := dbc.DB.Where("1 = 1").Delete(&models.TestRegression{})
-	if res.Error != nil {
-		log.Errorf("error deleting test regressions: %v", res.Error)
+// cleanupRegressions deletes only the specified test regressions and their
+// associated triage links from the e2e postgres db. Tests should clean up
+// only what they create to avoid destroying seed data regressions.
+func cleanupRegressions(dbc *db.DB, regressions ...*models.TestRegression) {
+	for _, r := range regressions {
+		if r == nil {
+			continue
+		}
+		dbc.DB.Exec("DELETE FROM triage_regressions WHERE test_regression_id = ?", r.ID)
+		res := dbc.DB.Delete(r)
+		if res.Error != nil {
+			log.Errorf("error deleting test regression %d: %v", r.ID, res.Error)
+		}
 	}
 }
 
@@ -36,7 +44,7 @@ func Test_RegressionTracker(t *testing.T) {
 	newRegression := componentreport.ReportTestSummary{
 		TestComparison: testdetails.TestComparison{
 			BaseStats: &testdetails.ReleaseStats{
-				Release: "4.18",
+				Release: "4.20",
 			},
 		},
 		Identification: crtest.Identification{
@@ -56,27 +64,27 @@ func Test_RegressionTracker(t *testing.T) {
 		},
 	}
 	view := crview.View{
-		Name: "4.19-main",
+		Name: "4.22-main",
 		SampleRelease: reqopts.RelativeRelease{
 			Release: reqopts.Release{
-				Name: "4.19",
+				Name: "4.22",
 			},
 		},
 	}
 
 	t.Run("open a new regression", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
 		tr, err := tracker.OpenRegression(view, newRegression)
+		defer cleanupRegressions(dbc, tr)
 		require.NoError(t, err)
-		assert.Equal(t, "4.19", tr.Release)
-		assert.Equal(t, "4.18", tr.BaseRelease, "BaseRelease should be set from BaseStats.Release")
+		assert.Equal(t, "4.22", tr.Release)
+		assert.Equal(t, "4.20", tr.BaseRelease, "BaseRelease should be set from BaseStats.Release")
 		assert.ElementsMatch(t, pq.StringArray([]string{"a:b", "c:d"}), tr.Variants)
 		assert.True(t, tr.ID > 0)
 	})
 
 	t.Run("close and reopen a regression", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
 		tr, err := tracker.OpenRegression(view, newRegression)
+		defer cleanupRegressions(dbc, tr)
 		require.NoError(t, err)
 
 		// look it up just to be sure:
@@ -105,63 +113,75 @@ func Test_RegressionTracker(t *testing.T) {
 	})
 
 	t.Run("list current regressions for release", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
 		var err error
-		open419, err := rawCreateRegression(dbc, "4.19",
+		open422, err := rawCreateRegression(dbc, "4.22",
 			"test1ID", "test 1",
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Time{})
 		require.NoError(t, err)
-		recentlyClosed419, err := rawCreateRegression(dbc, "4.19",
+		recentlyClosed422, err := rawCreateRegression(dbc, "4.22",
 			"test2ID", "test 2",
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Now().Add(-2*24*time.Hour))
 		require.NoError(t, err)
-		_, err = rawCreateRegression(dbc, "4.19",
+		oldClosed422, err := rawCreateRegression(dbc, "4.22",
 			"test3ID", "test 3",
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Now().Add(-70*24*time.Hour))
 		require.NoError(t, err)
-		_, err = rawCreateRegression(dbc, "4.18",
+		other421, err := rawCreateRegression(dbc, "4.21",
 			"test1ID", "test 1",
 			[]string{"a:b", "c:d"},
 			time.Now().Add(-77*24*time.Hour), time.Time{})
 		require.NoError(t, err)
+		defer cleanupRegressions(dbc, open422, recentlyClosed422, oldClosed422, other421)
 
-		// List all regressions for 4.19, should exclude 4.18, include recently closed regressions,
+		// List all regressions for 4.22, should exclude 4.21, include recently closed regressions,
 		// and exclude older closed regressions.
-		relRegressions, err := tracker.ListCurrentRegressionsForRelease("4.19")
+		relRegressions, err := tracker.ListCurrentRegressionsForRelease("4.22")
 		require.NoError(t, err)
-		assert.Equal(t, 2, len(relRegressions))
+
+		// Verify our expected regressions are present (open + recently closed)
+		foundIDs := make(map[uint]bool)
 		for _, rel := range relRegressions {
-			assert.True(t, rel.ID == open419.ID || rel.ID == recentlyClosed419.ID,
-				"unexpected regression was returned: %+v", *rel)
+			foundIDs[rel.ID] = true
 		}
+		assert.True(t, foundIDs[open422.ID], "open regression should be in list")
+		assert.True(t, foundIDs[recentlyClosed422.ID], "recently closed regression should be in list")
+		assert.False(t, foundIDs[oldClosed422.ID], "old closed regression should not be in list")
+		assert.False(t, foundIDs[other421.ID], "4.21 regression should not be in list")
 	})
 
 	t.Run("list returns regressions with BaseRelease set", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
-		tr, err := rawCreateRegressionWithBase(dbc, "4.19", "4.18", "baseTestID", "base test",
+		tr, err := rawCreateRegressionWithBase(dbc, "4.22", "4.21", "baseTestID", "base test",
 			[]string{"a:b"}, time.Now().Add(-1*24*time.Hour), time.Time{})
 		require.NoError(t, err)
-		relRegressions, err := tracker.ListCurrentRegressionsForRelease("4.19")
+		defer cleanupRegressions(dbc, tr)
+		relRegressions, err := tracker.ListCurrentRegressionsForRelease("4.22")
 		require.NoError(t, err)
-		require.Len(t, relRegressions, 1)
-		assert.Equal(t, tr.ID, relRegressions[0].ID)
-		assert.Equal(t, "4.18", relRegressions[0].BaseRelease, "ListCurrentRegressionsForRelease should return BaseRelease")
+
+		// Find our regression in the list and verify BaseRelease is set
+		var found *models.TestRegression
+		for _, rel := range relRegressions {
+			if rel.ID == tr.ID {
+				found = rel
+				break
+			}
+		}
+		require.NotNil(t, found, "created regression should be in list")
+		assert.Equal(t, "4.21", found.BaseRelease, "ListCurrentRegressionsForRelease should return BaseRelease")
 	})
 
 	t.Run("closing a regression should resolve associated triages that have no other active regressions", func(t *testing.T) {
-		defer cleanupAllRegressions(dbc)
-
 		regressionToClose, err := tracker.OpenRegression(view, newRegression)
 		require.NoError(t, err)
+		defer cleanupRegressions(dbc, regressionToClose)
 
 		// Create a second regression that will remain open
 		secondRegression := componentreport.ReportTestSummary{
 			TestComparison: testdetails.TestComparison{
 				BaseStats: &testdetails.ReleaseStats{
-					Release: "4.18",
+					Release: "4.20",
 				},
 			},
 			Identification: crtest.Identification{
@@ -182,6 +202,7 @@ func Test_RegressionTracker(t *testing.T) {
 		}
 		regressionToRemainOpened, err := tracker.OpenRegression(view, secondRegression)
 		require.NoError(t, err)
+		defer cleanupRegressions(dbc, regressionToRemainOpened)
 
 		// Create first triage associated only with the first regression
 		triage := models.Triage{
@@ -195,6 +216,10 @@ func Test_RegressionTracker(t *testing.T) {
 		dbWithContext := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "e2e-test"))
 		res := dbWithContext.Create(&triage)
 		require.NoError(t, res.Error)
+		defer func() {
+			dbc.DB.Exec("DELETE FROM triage_regressions WHERE triage_id = ?", triage.ID)
+			dbc.DB.Delete(&triage)
+		}()
 
 		// Create second triage associated with both regressions
 		triage2 := models.Triage{
@@ -208,6 +233,10 @@ func Test_RegressionTracker(t *testing.T) {
 		}
 		res = dbWithContext.Create(&triage2)
 		require.NoError(t, res.Error)
+		defer func() {
+			dbc.DB.Exec("DELETE FROM triage_regressions WHERE triage_id = ?", triage2.ID)
+			dbc.DB.Delete(&triage2)
+		}()
 
 		// Close the regression with a time of NOW, this should not result in resolved triage
 		regressionToClose.Closed = sql.NullTime{Valid: true, Time: time.Now()}

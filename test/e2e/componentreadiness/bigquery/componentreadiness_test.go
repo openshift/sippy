@@ -1,7 +1,8 @@
-package componentreadiness
+package bigquery
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport"
@@ -12,6 +13,10 @@ import (
 )
 
 func TestComponentReadinessViews(t *testing.T) {
+	if os.Getenv("GCS_SA_JSON_PATH") == "" {
+		t.Skip("GCS_SA_JSON_PATH not set, skipping BigQuery tests")
+	}
+
 	var views []crview.View
 	err := util.SippyGet("/api/component_readiness/views", &views)
 	require.NoError(t, err, "error making http request")
@@ -22,6 +27,5 @@ func TestComponentReadinessViews(t *testing.T) {
 	var report componentreport.ComponentReport
 	err = util.SippyGet(fmt.Sprintf("/api/component_readiness?view=%s", views[0].Name), &report)
 	require.NoError(t, err, "error making http request")
-	// We expect over 50 components at time of writing, asserting 25 should be safe
 	assert.Greater(t, len(report.Rows), 25, "component report does not have rows we would expect")
 }
