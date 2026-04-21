@@ -1,6 +1,8 @@
 package db
 
 import (
+	"regexp"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -74,6 +76,44 @@ var testSuites = []string{
 	"tracing-uiplugin",
 }
 
+// testSuitePatterns are regular expressions (MatchString) for suite names that should be imported
+// without listing every literal name. Patterns are compiled in init().
+var testSuitePatterns = []string{
+	// LP interop naming: `lp-interop-<product>--<suffix>`.
+	`^lp-interop-`,
+
+
+var compiledTestSuitePatterns []*regexp.Regexp
+
+// Invalid regexes panic at process start.
+func init() {
+	compiledTestSuitePatterns = make([]*regexp.Regexp, len(testSuitePatterns))
+	for i, p := range testSuitePatterns {
+		compiledTestSuitePatterns[i] = regexp.MustCompile(p)
+	}
+}
+
+// Runs inside the prow loader on every unknown suite name
+// Reports whether junit from this testsuite name should be imported: either an
+// exact entry in testSuites or a match against testSuitePatterns.
+func IsTestSuiteImportable(name string) bool {
+	if name == "" {
+		return false
+	}
+	for _, s := range testSuites {
+		if s == name {
+			return true
+		}
+	}
+	for _, re := range compiledTestSuitePatterns {
+		if re.MatchString(name) {
+			return true
+		}
+	}
+	return false
+}
+
+// Runs when the DB is set up / migrated.
 func populateTestSuitesInDB(db *gorm.DB) error {
 	for _, suiteName := range testSuites {
 		s := models.Suite{}

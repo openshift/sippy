@@ -1167,12 +1167,23 @@ func (pl *ProwLoader) findSuite(name string) *uint {
 	suite := &models.Suite{}
 	pl.dbc.DB.Where("name = ?", name).Find(&suite)
 	if suite.ID == 0 {
-		pl.suiteCache[name] = nil
-	} else {
-		id := suite.ID
-		pl.suiteCache[name] = &id
+		// No row - the exact suite name is not in the database (for example, by populateTestSuitesInDB)
+		if !db.IsTestSuiteImportable(name) {
+			pl.suiteCache[name] = nil
+			return nil
+		}
+		// If IsTestSuiteImportable() returns true (for example, pattern match), add the Suite row.
+		suite.Name = name
+		tx := pl.dbc.DB.Save(suite)
+		if tx.Error != nil {
+			log.WithError(tx.Error).Warningf("failed to create suite %q", name)
+			return nil
+		}
+		log.WithField("suite", name).Info("created new test suite")
 	}
-	return pl.suiteCache[name]
+	id := suite.ID
+	pl.suiteCache[name] = &id
+	return &id
 }
 
 func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id uint, path string, junitPaths []string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {
