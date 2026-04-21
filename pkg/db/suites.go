@@ -81,7 +81,7 @@ var testSuites = []string{
 var testSuitePatterns = []string{
 	// LP interop naming: `lp-interop-<product>--<suffix>`.
 	`^lp-interop-`,
-
+}
 
 var compiledTestSuitePatterns []*regexp.Regexp
 
