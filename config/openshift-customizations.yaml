@@ -36,6 +36,11 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-e2e-parallel-ocp-nightly: true
   rosa-stage:
+    overview:
+      multiVersionInstallTests: true
+      recentFailuresPeriod: "48h"
+      recentFailuresPreviousPeriod: "168h"
+      topFailingTestsPeriod: "168h"
     jobs:
       # ROSA Classic/STS nightly (stage)
       periodic-ci-openshift-osde2e-main-nightly-4.16-rosa-classic-sts: true

@@ -24,6 +24,29 @@ type ReleaseConfig struct {
 
 	// InformingJobs is the list of informing payload jobs
 	InformingJobs []string `yaml:"informingJobs,omitempty"`
+
+	// Overview configures the release overview page display behavior.
+	Overview *OverviewConfig `yaml:"overview,omitempty"`
+}
+
+// OverviewConfig controls how the release overview page is rendered.
+type OverviewConfig struct {
+	// MultiVersionInstallTests queries both old-style synthetic and new-style
+	// install test names, keeping whichever has more data. Useful for releases
+	// that span multiple OCP versions.
+	MultiVersionInstallTests bool `yaml:"multiVersionInstallTests,omitempty" json:"multi_version_install_tests,omitempty"`
+
+	// RecentFailuresPeriod overrides the default "current" window for new test
+	// failure detection (default: "24h").
+	RecentFailuresPeriod string `yaml:"recentFailuresPeriod,omitempty" json:"recent_failures_period,omitempty"`
+
+	// RecentFailuresPreviousPeriod overrides the default "previous" window for
+	// new test failure comparison (default: "72h").
+	RecentFailuresPreviousPeriod string `yaml:"recentFailuresPreviousPeriod,omitempty" json:"recent_failures_previous_period,omitempty"`
+
+	// TopFailingTestsPeriod, when set, adds a "Top Failing Tests" section
+	// showing all test failures within this window (e.g. "168h").
+	TopFailingTestsPeriod string `yaml:"topFailingTestsPeriod,omitempty" json:"top_failing_tests_period,omitempty"`
 }
 
 type ComponentReadinessConfig struct {

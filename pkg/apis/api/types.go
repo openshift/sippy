@@ -935,6 +935,15 @@ type Health struct {
 	Warnings    []string             `json:"warnings"`
 	Current     v1.Statistics        `json:"current_statistics"`
 	Previous    v1.Statistics        `json:"previous_statistics"`
+	Overview    *OverviewConfig      `json:"overview,omitempty"`
+}
+
+// OverviewConfig is passed to the frontend to customize release overview rendering.
+type OverviewConfig struct {
+	MultiVersionInstallTests     bool   `json:"multi_version_install_tests,omitempty"`
+	RecentFailuresPeriod         string `json:"recent_failures_period,omitempty"`
+	RecentFailuresPreviousPeriod string `json:"recent_failures_previous_period,omitempty"`
+	TopFailingTestsPeriod        string `json:"top_failing_tests_period,omitempty"`
 }
 
 type ProwJobRunRiskAnalysis struct {

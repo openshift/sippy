@@ -17064,6 +17064,11 @@ releases:
     rosa-integration: {}
     rosa-production: {}
     rosa-stage:
+        overview:
+            multiVersionInstallTests: true
+            recentFailuresPeriod: 48h
+            recentFailuresPreviousPeriod: 168h
+            topFailingTestsPeriod: 168h
         jobs:
             periodic-ci-openshift-osde2e-main-aws-stage-informing-default: true
             periodic-ci-openshift-osde2e-main-nightly-4.16-osd-aws: true

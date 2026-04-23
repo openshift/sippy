@@ -357,7 +357,8 @@ export default function RecentTestFailures(props) {
   const [rowsPerPage, setRowsPerPage] = React.useState(props.limit || 5)
 
   const period = props.period || '24h'
-  const previousPeriod = props.previousPeriod || '72h'
+  const previousPeriod =
+    props.previousPeriod !== undefined ? props.previousPeriod : '72h'
   const includeOutputs =
     props.includeOutputs !== undefined ? props.includeOutputs : true
 
@@ -369,7 +370,9 @@ export default function RecentTestFailures(props) {
       '/api/tests/recent_failures' +
       `?release=${safeEncodeURIComponent(props.release)}` +
       `&period=${safeEncodeURIComponent(period)}` +
-      `&previousPeriod=${safeEncodeURIComponent(previousPeriod)}` +
+      (previousPeriod
+        ? `&previousPeriod=${safeEncodeURIComponent(previousPeriod)}`
+        : '') +
       `&includeOutputs=${includeOutputs}` +
       `&sortField=${safeEncodeURIComponent(orderBy)}` +
       `&sort=${safeEncodeURIComponent(order)}` +
@@ -427,7 +430,11 @@ export default function RecentTestFailures(props) {
           {title}
         </Typography>
         <Tooltip
-          title={`Tests that failed in the last ${period} but did not fail in the ${previousPeriod} before that. This helps surface new regressions.`}
+          title={
+            previousPeriod
+              ? `Tests that failed in the last ${period} but did not fail in the ${previousPeriod} before that. This helps surface new regressions.`
+              : `All tests that failed in the last ${period}.`
+          }
         >
           <InfoIcon className={classes.infoIcon} />
         </Tooltip>
@@ -456,11 +463,14 @@ export default function RecentTestFailures(props) {
         <Box className={classes.emptyState}>
           <ExpandMoreIcon className={classes.emptyIcon} />
           <Typography variant="body1" color="text.secondary">
-            No new test failures detected
+            {previousPeriod
+              ? 'No new test failures detected'
+              : 'No test failures detected'}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            No tests started failing in the last {period} that were not already
-            failing in the prior {previousPeriod}.
+            {previousPeriod
+              ? `No tests started failing in the last ${period} that were not already failing in the prior ${previousPeriod}.`
+              : `No tests failed in the last ${period}.`}
           </Typography>
         </Box>
       ) : (

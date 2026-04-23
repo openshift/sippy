@@ -264,8 +264,28 @@ export default function ReleaseOverview(props) {
             />
 
             <Grid item xs={12}>
-              <RecentTestFailures release={props.release} />
+              <RecentTestFailures
+                release={props.release}
+                period={
+                  data.overview?.recent_failures_period || '24h'
+                }
+                previousPeriod={
+                  data.overview?.recent_failures_previous_period || '72h'
+                }
+              />
             </Grid>
+
+            {data.overview?.top_failing_tests_period && (
+              <Grid item xs={12}>
+                <RecentTestFailures
+                  release={props.release}
+                  title={`Top Failing Tests (${data.overview.top_failing_tests_period})`}
+                  period={data.overview.top_failing_tests_period}
+                  previousPeriod={null}
+                  limit={10}
+                />
+              </Grid>
+            )}
 
             {releases?.release_attrs?.[props.release]?.capabilities
               ?.payloadTags && (

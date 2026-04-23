@@ -1224,9 +1224,14 @@ func (s *Server) jsonTestLifecyclesFromDB(w http.ResponseWriter, req *http.Reque
 
 func (s *Server) jsonHealthReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
-	if release != "" {
-		api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetReportEnd())
+	if release == "" {
+		return
 	}
+	var overviewCfg *v1.OverviewConfig
+	if cfg, ok := s.config.Releases[release]; ok {
+		overviewCfg = cfg.Overview
+	}
+	api.PrintOverallReleaseHealthFromDB(w, s.db, release, s.GetReportEnd(), overviewCfg)
 }
 
 func (s *Server) jsonBuildClusterHealth(w http.ResponseWriter, req *http.Request) {

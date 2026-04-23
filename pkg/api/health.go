@@ -11,6 +11,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	apitype "github.com/openshift/sippy/pkg/apis/api"
+	configv1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	sippyprocessingv1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/query"
@@ -44,7 +45,7 @@ func useNewInstallTest(release string) bool {
 
 // PrintOverallReleaseHealthFromDB gives a summarized status of the overall health, including
 // infrastructure, install, upgrade, and variant success rates.
-func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time) {
+func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release string, reportEnd time.Time, overviewCfg *configv1.OverviewConfig) {
 	excludedVariants := testidentification.DefaultExcludedVariants
 	// Minor upgrades install a previous version and should not be counted against the current version's install stat.
 	excludedInstallVariants := testidentification.DefaultExcludedVariants
@@ -73,6 +74,28 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	}
 	if installIndicator, found := query.TestReportExcludeVariants(dbc, release, installTestName, excludedInstallVariants); found {
 		indicators["install"] = installIndicator
+	}
+
+	// When configured, try both old-style synthetic and new-style install test
+	// names and keep whichever has more data. Useful for releases that span
+	// multiple OCP versions.
+	if overviewCfg != nil && overviewCfg.MultiVersionInstallTests {
+		altInfra := testidentification.NewInfrastructureTestName
+		altInstall := testidentification.NewInstallTestName
+		if useNewInstallTest(release) {
+			altInfra = testidentification.InfrastructureTestName
+			altInstall = testidentification.InstallTestName
+		}
+		if altInfraIndicator, found := query.TestReportExcludeVariants(dbc, release, altInfra, excludedVariants); found {
+			if existing, exists := indicators["infrastructure"]; !exists || altInfraIndicator.CurrentRuns > existing.CurrentRuns {
+				indicators["infrastructure"] = altInfraIndicator
+			}
+		}
+		if altInstallIndicator, found := query.TestReportExcludeVariants(dbc, release, altInstall, excludedInstallVariants); found {
+			if existing, exists := indicators["install"]; !exists || altInstallIndicator.CurrentRuns > existing.CurrentRuns {
+				indicators["install"] = altInstallIndicator
+			}
+		}
 	}
 	if upgradeIndicator, found := query.TestReportExcludeVariants(dbc, release, testidentification.UpgradeTestName, excludedVariants); found {
 		indicators["upgrade"] = upgradeIndicator
@@ -114,13 +137,22 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 	// TODO: use or remove this logic
 	var warnings []string
 
-	RespondWithJSON(http.StatusOK, w, apitype.Health{
+	health := apitype.Health{
 		Indicators:  indicators,
 		LastUpdated: lastUpdated,
 		Current:     currStats,
 		Previous:    prevStats,
 		Warnings:    warnings,
-	})
+	}
+	if overviewCfg != nil {
+		health.Overview = &apitype.OverviewConfig{
+			MultiVersionInstallTests:     overviewCfg.MultiVersionInstallTests,
+			RecentFailuresPeriod:         overviewCfg.RecentFailuresPeriod,
+			RecentFailuresPreviousPeriod: overviewCfg.RecentFailuresPreviousPeriod,
+			TopFailingTestsPeriod:        overviewCfg.TopFailingTestsPeriod,
+		}
+	}
+	RespondWithJSON(http.StatusOK, w, health)
 }
 
 func calculateJobResultStatistics(results []apitype.Job) (currStats, prevStats sippyprocessingv1.Statistics) {
