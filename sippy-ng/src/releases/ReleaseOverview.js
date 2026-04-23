@@ -266,9 +266,7 @@ export default function ReleaseOverview(props) {
             <Grid item xs={12}>
               <RecentTestFailures
                 release={props.release}
-                period={
-                  data.overview?.recent_failures_period || '24h'
-                }
+                period={data.overview?.recent_failures_period || '24h'}
                 previousPeriod={
                   data.overview?.recent_failures_previous_period || '72h'
                 }

@@ -76,9 +76,11 @@ func PrintOverallReleaseHealthFromDB(w http.ResponseWriter, dbc *db.DB, release 
 		indicators["install"] = installIndicator
 	}
 
-	// When configured, try both old-style synthetic and new-style install test
-	// names and keep whichever has more data. Useful for releases that span
-	// multiple OCP versions.
+	// Releases spanning OCP version boundaries (e.g. rosa-stage) may have jobs
+	// producing old-style synthetic tests ([sig-sippy] install should work) and
+	// jobs producing new-style tests (install should succeed: overall). Query
+	// the alternate name set and keep whichever indicator has more CurrentRuns
+	// so the overview cards use the most-populated metric.
 	if overviewCfg != nil && overviewCfg.MultiVersionInstallTests {
 		altInfra := testidentification.NewInfrastructureTestName
 		altInstall := testidentification.NewInstallTestName
