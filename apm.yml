@@ -1,0 +1,8 @@
+name: sippy
+version: 1.0.0
+description: CI analysis and release health monitoring for OpenShift
+target: [claude, cursor, gemini, opencode]
+
+dependencies:
+  apm:
+    - openshift-eng/ai-helpers/plugins/bigquery

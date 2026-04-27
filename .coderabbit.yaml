@@ -5,6 +5,15 @@ reviews:
   path_filters:
     - "!vendor/**"
     - "!go.sum"
+    - "!CLAUDE.md"
+    - "!AGENTS.md"
+    - "!GEMINI.md"
+    - "!sippy-ng/CLAUDE.md"
+    - "!sippy-ng/AGENTS.md"
+    - "!.claude/**"
+    - "!.cursor/**"
+    - "!.gemini/**"
+    - "!.opencode/**"
   profile: chill
   request_changes_workflow: true
   high_level_summary: true

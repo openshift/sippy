@@ -1,0 +1,59 @@
+lockfile_version: '1'
+generated_at: '2026-04-27T13:58:06.737227+00:00'
+apm_version: 0.10.0
+dependencies:
+- repo_url: openshift-eng/ai-helpers
+  host: github.com
+  resolved_commit: 08a38772ead82f1706c42b26b3fc3f7e7496030f
+  virtual_path: plugins/bigquery
+  is_virtual: true
+  package_type: marketplace_plugin
+  deployed_files:
+  - .claude/commands/analyze-usage.md
+  - .claude/skills/analyze-usage
+  - .cursor/skills/analyze-usage
+  - .gemini/commands/analyze-usage.toml
+  - .gemini/skills/analyze-usage
+  - .opencode/commands/analyze-usage.md
+  - .opencode/skills/analyze-usage
+  deployed_file_hashes:
+    .claude/commands/analyze-usage.md: sha256:acaac9774995bded7d3f8b39185e271e585d16e52c749ce77b7eb3082ac54fd4
+    .gemini/commands/analyze-usage.toml: sha256:27ae7360ed15d89a68d587edbaf83134071b80f34095a82f6f9771302ff0d74b
+    .opencode/commands/analyze-usage.md: sha256:acaac9774995bded7d3f8b39185e271e585d16e52c749ce77b7eb3082ac54fd4
+  content_hash: sha256:ee9ef652e619b3db51b1b9eb80a592642d3a3d119eca14a43aab4c7cd7eb923a
+local_deployed_files:
+- .claude/commands/sippy-generate-release-views.md
+- .claude/commands/sippy-update-ga-release-views.md
+- .claude/commands/sippy-update-job-variant.md
+- .claude/rules/backend.md
+- .claude/rules/frontend.md
+- .claude/rules/general.md
+- .claude/rules/testing.md
+- .cursor/rules/backend.mdc
+- .cursor/rules/frontend.mdc
+- .cursor/rules/general.mdc
+- .cursor/rules/testing.mdc
+- .gemini/commands/sippy-generate-release-views.toml
+- .gemini/commands/sippy-update-ga-release-views.toml
+- .gemini/commands/sippy-update-job-variant.toml
+- .opencode/commands/sippy-generate-release-views.md
+- .opencode/commands/sippy-update-ga-release-views.md
+- .opencode/commands/sippy-update-job-variant.md
+local_deployed_file_hashes:
+  .claude/commands/sippy-generate-release-views.md: sha256:e8a283e43f84777e6da34c10f1b18de2c41baa4525a7e40317bddd0c61b75553
+  .claude/commands/sippy-update-ga-release-views.md: sha256:c7adb0f649455fa7c12c94454220fc87f182d49b820a2683ca733401cbfeb9b0
+  .claude/commands/sippy-update-job-variant.md: sha256:ef00ec3a3b01556b33243d3e17ab1ace23879a8ef10dfd2e501a0fda2291fb97
+  .claude/rules/backend.md: sha256:44d4119d9234bdaf026b615bc91c386cfb6930783e3b676e31ea2ec8e2ea930a
+  .claude/rules/frontend.md: sha256:ff22046c5b951769218bbdf36499e67c70896811b8ef161ca6d3729a3423997d
+  .claude/rules/general.md: sha256:9238d053e2d6a1703728c2bb165de93658b47c3152dfac16169ff9db9c6f716c
+  .claude/rules/testing.md: sha256:0a4c2f1b2484a70c1973315821ba777e7236dc187c6511973503075e0df0617d
+  .cursor/rules/backend.mdc: sha256:b79264fe113886feaf6dc7eb7e37c31d753dba5989b34a7948fd9cdb05d4d363
+  .cursor/rules/frontend.mdc: sha256:497f39372724f1ae127181fe3dac9ea9a95a51c532b68ccfee6080832cf9c556
+  .cursor/rules/general.mdc: sha256:671e94d8251783ecfb70d16e6e8d60dc42752ecfbe90919006b908b8a751595d
+  .cursor/rules/testing.mdc: sha256:e177fa738c0b3b607e947986ba9b0a902a9483bf34d621289f615416084b2509
+  .gemini/commands/sippy-generate-release-views.toml: sha256:4759f4547c05631d2e83a5859172421ea3d6ec794dd887756a90bbe0fd2732c1
+  .gemini/commands/sippy-update-ga-release-views.toml: sha256:71a60dfe068bdc59645b8d0069c93c65f2df30c5172da3389df2a80d86410ae9
+  .gemini/commands/sippy-update-job-variant.toml: sha256:71c9c7548a1a4b829e970d76504ef981ea05fecf8052cdb86859d96ad52cb2b2
+  .opencode/commands/sippy-generate-release-views.md: sha256:e8a283e43f84777e6da34c10f1b18de2c41baa4525a7e40317bddd0c61b75553
+  .opencode/commands/sippy-update-ga-release-views.md: sha256:c7adb0f649455fa7c12c94454220fc87f182d49b820a2683ca733401cbfeb9b0
+  .opencode/commands/sippy-update-job-variant.md: sha256:ef00ec3a3b01556b33243d3e17ab1ace23879a8ef10dfd2e501a0fda2291fb97

@@ -1,0 +1,18 @@
+---
+description: Sippy repository overview and general coding guidelines
+globs: "**"
+---
+
+**Sippy (CIPI - Continuous Integration Private Investigator)** is a tool used within the OpenShift engineering organization to analyze CI job results. Its primary goals are to:
+
+* Provide insights into job and test statistics.
+* Monitor release health and detect regressions.
+* Support release management decisions through statistical analysis (e.g., Component Readiness).
+
+The system consists of:
+
+* A **Go-based API backend**.
+* A **React/Material-UI frontend** (located in `sippy-ng`).
+* Data sources including **PostgreSQL**, and **BigQuery**
+
+Favor clarity and maintainability over cleverness. Comments should be minimal, helpful, and explain the "why" not the "what".

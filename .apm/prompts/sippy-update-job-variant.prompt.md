@@ -1,5 +1,6 @@
 ---
-description: Interactively update variants for a CI job
+description: "Interactively update variants for a CI job"
+input: [job-pattern, category, value]
 ---
 
 # Update Job Variant

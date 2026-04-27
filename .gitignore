@@ -10,3 +10,7 @@ report.sh
 .env
 *.log
 e2e-coverage*
+
+
+# APM dependencies
+apm_modules/

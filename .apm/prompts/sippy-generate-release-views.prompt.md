@@ -1,5 +1,6 @@
 ---
-description: Generate new component readiness views for a new release
+description: "Generate new component readiness views for a new release"
+input: [source-release, target-release]
 ---
 
 # Generate Release Views

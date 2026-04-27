@@ -14,7 +14,7 @@ all: test build
 
 build: builddir clean npm frontend sippy sippy-daemon
 
-verify: lint
+verify: lint verify-apm
 
 builddir:
 	mkdir -p sippy-ng/build
@@ -58,6 +58,17 @@ clean:
 	rm -f sippy-daemon
 	rm -rf sippy-ng/build
 	rm -rf sippy-ng/node_modules
+
+apm:
+	apm install
+	apm compile
+
+verify-apm: apm
+	@if ! git diff --quiet HEAD -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md; then \
+		echo "ERROR: Generated APM files are out of date. Run 'make apm' and commit the results."; \
+		git diff --stat HEAD -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md; \
+		exit 1; \
+	fi
 
 e2e:
 	./scripts/e2e.sh
