@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sippy-dev": {
+      "command": "mcp/.venv/bin/python",
+      "args": ["mcp/server.py"]
+    }
+  }
+}

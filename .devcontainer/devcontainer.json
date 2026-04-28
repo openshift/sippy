@@ -1,0 +1,53 @@
+// Podman users:
+//   1. In Cursor/VS Code settings, set: "dev.containers.dockerPath": "podman"
+//   2. Ensure "podman machine" is running (macOS/Windows)
+{
+  "name": "Sippy",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "runArgs": ["--name", "sippy-dev", "--network", "sippy-net", "--env-file", ".devcontainer/.env", "-p", "8080:8080", "-p", "3000:3000"],
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "vscode",
+  "initializeCommand": ".devcontainer/init-services.sh",
+  "forwardPorts": [8080, 3000, 5432, 6379],
+  "portsAttributes": {
+    "8080": { "label": "Sippy API" },
+    "3000": { "label": "React Dev Server" },
+    "5432": { "label": "PostgreSQL" },
+    "6379": { "label": "Redis" }
+  },
+  "containerEnv": {
+    "SIPPY_DATABASE_DSN": "postgresql://postgres:password@sippy-postgres:5432/postgres",
+    "REDIS_URL": "redis://sippy-redis:6379"
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml"
+      ],
+      "settings": {
+        "go.gopath": "/home/vscode/go",
+        "go.lintTool": "golangci-lint",
+        "go.lintFlags": ["--fast"],
+        "editor.formatOnSave": true,
+        "[go]": {
+          "editor.defaultFormatter": "golang.go"
+        },
+        "[javascript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "[javascriptreact]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+        },
+        "eslint.workingDirectories": ["sippy-ng"]
+      }
+    }
+  }
+}
