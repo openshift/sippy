@@ -83,6 +83,8 @@ spec:
     - ocp
     - --views
     - ./config/e2e-views.yaml
+    - --data-provider
+    - postgres
     env:
     - name: GCS_SA_JSON_PATH
       value: /tmp/secrets/gcs-cred
@@ -165,6 +167,32 @@ ${KUBECTL_CMD} -n sippy-e2e expose pod redis1
 ${KUBECTL_CMD} -n sippy-e2e port-forward pod/redis1 ${SIPPY_REDIS_PORT}:6379 &
 
 ${KUBECTL_CMD} -n sippy-e2e get svc,ep
+
+# Wait for the sippy API to be reachable through the port-forward
+echo "Waiting for sippy API to be reachable on port ${SIPPY_API_PORT}..."
+TIMEOUT=120
+ELAPSED=0
+while [ $ELAPSED -lt $TIMEOUT ]; do
+    if curl -s "http://localhost:${SIPPY_API_PORT}/api/health" > /dev/null 2>&1; then
+        echo "Sippy API is ready after ${ELAPSED}s"
+        break
+    fi
+    sleep 2
+    ELAPSED=$((ELAPSED + 2))
+done
+if [ $ELAPSED -ge $TIMEOUT ]; then
+    echo "ERROR: Timed out waiting for sippy API after ${TIMEOUT}s"
+    exit 1
+fi
+
+# Prime the component readiness cache so triage tests can find cached reports
+echo "Priming component readiness cache..."
+VIEWS=$(curl -sf "http://localhost:${SIPPY_API_PORT}/api/component_readiness/views") || { echo "Failed to fetch views"; exit 1; }
+for VIEW in $(echo "$VIEWS" | jq -r '.[].name'); do
+    echo "  Priming cache for view: $VIEW"
+    curl -sf "http://localhost:${SIPPY_API_PORT}/api/component_readiness?view=$VIEW" > /dev/null || { echo "Failed to prime cache for view: $VIEW"; exit 1; }
+done
+echo "Cache priming complete"
 
 # only 1 in parallel, some tests will clash if run at the same time
 gotestsum --junitfile ${ARTIFACT_DIR}/junit_e2e.xml -- ./test/e2e/... -v -p 1 -coverprofile=${ARTIFACT_DIR}/e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
