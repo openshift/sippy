@@ -1,26 +1,7 @@
 lockfile_version: '1'
 generated_at: '2026-04-27T13:58:06.737227+00:00'
 apm_version: 0.10.0
-dependencies:
-- repo_url: openshift-eng/ai-helpers
-  host: github.com
-  resolved_commit: 08a38772ead82f1706c42b26b3fc3f7e7496030f
-  virtual_path: plugins/bigquery
-  is_virtual: true
-  package_type: marketplace_plugin
-  deployed_files:
-  - .claude/commands/analyze-usage.md
-  - .claude/skills/analyze-usage
-  - .cursor/skills/analyze-usage
-  - .gemini/commands/analyze-usage.toml
-  - .gemini/skills/analyze-usage
-  - .opencode/commands/analyze-usage.md
-  - .opencode/skills/analyze-usage
-  deployed_file_hashes:
-    .claude/commands/analyze-usage.md: sha256:acaac9774995bded7d3f8b39185e271e585d16e52c749ce77b7eb3082ac54fd4
-    .gemini/commands/analyze-usage.toml: sha256:27ae7360ed15d89a68d587edbaf83134071b80f34095a82f6f9771302ff0d74b
-    .opencode/commands/analyze-usage.md: sha256:acaac9774995bded7d3f8b39185e271e585d16e52c749ce77b7eb3082ac54fd4
-  content_hash: sha256:ee9ef652e619b3db51b1b9eb80a592642d3a3d119eca14a43aab4c7cd7eb923a
+dependencies: []
 local_deployed_files:
 - .claude/commands/sippy-generate-release-views.md
 - .claude/commands/sippy-update-ga-release-views.md
