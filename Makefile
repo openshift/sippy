@@ -60,8 +60,8 @@ clean:
 	rm -rf sippy-ng/node_modules
 
 apm:
-	apm install
-	apm compile
+	uvx apm-cli@0.10.0 install
+	uvx apm-cli@0.10.0 compile
 
 verify-apm: apm
 	@if ! git diff --quiet HEAD -- .claude .cursor .gemini .opencode AGENTS.md CLAUDE.md GEMINI.md sippy-ng/AGENTS.md sippy-ng/CLAUDE.md; then \
