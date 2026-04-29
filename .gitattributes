@@ -1,7 +1,5 @@
 .claude/** linguist-generated=true
-.cursor/rules/** linguist-generated=true
-.cursor/mcp.json linguist-generated=false
-.cursor/skills/** linguist-generated=false
+.cursor/** linguist-generated=true
 .gemini/** linguist-generated=true
 .opencode/** linguist-generated=true
 AGENTS.md linguist-generated=true
