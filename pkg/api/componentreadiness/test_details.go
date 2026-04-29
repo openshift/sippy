@@ -542,6 +542,9 @@ func (c *ComponentReportGenerator) assessTestStats(
 		if result.TestName == "" && jobRow.TestName != "" {
 			result.TestName = jobRow.TestName
 		}
+		if result.Lifecycle == "" && jobRow.Lifecycle != "" {
+			result.Lifecycle = jobRow.Lifecycle
+		}
 
 		*testStats = testStats.AddTestCount(jobRow.Count, flakeAsFailure)
 		*jobRunStatsList = append(*jobRunStatsList, c.getJobRunStats(jobRow))

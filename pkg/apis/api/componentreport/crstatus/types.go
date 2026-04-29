@@ -65,6 +65,7 @@ type TestJobRunRows struct {
 	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
 	JobLabels       []string `bigquery:"-" json:"job_labels,omitempty"`
 	TestFailures    int      `bigquery:"-" json:"test_failures"`
+	Lifecycle       string   `bigquery:"lifecycle"`
 }
 
 // JobVariant defines a variant and the possible values.
