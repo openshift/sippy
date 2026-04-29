@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/lib/pq"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
@@ -341,7 +340,18 @@ func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, 
 	}
 
 	// Batch-fetch all ProwJob variants we need
-	jobVariantMap := p.fetchJobVariants(rows)
+	jobIDs := make(map[uint]bool, len(rows))
+	for _, r := range rows {
+		jobIDs[r.ProwJobID] = true
+	}
+	ids := make([]uint, 0, len(jobIDs))
+	for id := range jobIDs {
+		ids = append(ids, id)
+	}
+	jobVariantMap, err := p.fetchJobVariantsByIDs(ids)
+	if err != nil {
+		return nil, []error{err}
+	}
 
 	result := map[string]crstatus.TestStatus{}
 	for _, row := range rows {
@@ -394,16 +404,10 @@ func (p *PostgresProvider) queryTestStatus(ctx context.Context, release string, 
 	return result, nil
 }
 
-// fetchJobVariants loads and caches ProwJob variant maps for the given rows.
-func (p *PostgresProvider) fetchJobVariants(rows []testStatusRow) map[uint]map[string]string {
-	jobIDs := map[uint]bool{}
-	for _, r := range rows {
-		jobIDs[r.ProwJobID] = true
-	}
-
-	ids := make([]uint, 0, len(jobIDs))
-	for id := range jobIDs {
-		ids = append(ids, id)
+// fetchJobVariantsByIDs loads ProwJob variant maps for the given job IDs.
+func (p *PostgresProvider) fetchJobVariantsByIDs(ids []uint) (map[uint]map[string]string, error) {
+	if len(ids) == 0 {
+		return map[uint]map[string]string{}, nil
 	}
 
 	type jobRow struct {
@@ -413,15 +417,14 @@ func (p *PostgresProvider) fetchJobVariants(rows []testStatusRow) map[uint]map[s
 
 	var jobRows []jobRow
 	if err := p.dbc.DB.Raw(`SELECT id, variants FROM prow_jobs WHERE id IN (?)`, ids).Scan(&jobRows).Error; err != nil {
-		log.WithError(err).Error("error fetching job variants")
-		return map[uint]map[string]string{}
+		return nil, fmt.Errorf("fetching job variants: %w", err)
 	}
 
 	result := make(map[uint]map[string]string, len(jobRows))
 	for _, jr := range jobRows {
 		result[jr.ID] = parseVariants(jr.Variants)
 	}
-	return result
+	return result, nil
 }
 
 func (p *PostgresProvider) QueryBaseTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
@@ -542,19 +545,9 @@ func (p *PostgresProvider) queryTestDetails(release string, start, end time.Time
 	for id := range jobIDs {
 		ids = append(ids, id)
 	}
-	type jobRow struct {
-		ID       uint           `gorm:"column:id"`
-		Variants pq.StringArray `gorm:"column:variants;type:text[]"`
-	}
-	var jobRows []jobRow
-	if len(ids) > 0 {
-		if err := p.dbc.DB.Raw(`SELECT id, variants FROM prow_jobs WHERE id IN (?)`, ids).Scan(&jobRows).Error; err != nil {
-			return nil, []error{fmt.Errorf("fetching job variants: %w", err)}
-		}
-	}
-	jobVariantMap := make(map[uint]map[string]string, len(jobRows))
-	for _, jr := range jobRows {
-		jobVariantMap[jr.ID] = parseVariants(jr.Variants)
+	jobVariantMap, err := p.fetchJobVariantsByIDs(ids)
+	if err != nil {
+		return nil, []error{err}
 	}
 
 	// Filter test IDs if specified
@@ -616,11 +609,12 @@ func (p *PostgresProvider) queryTestDetails(release string, start, end time.Time
 			jiraComponentID = new(big.Rat).SetUint64(uint64(*row.JiraComponentID))
 		}
 
+		normalizedName := utils.NormalizeProwJobName(row.ProwJobName)
 		entry := crstatus.TestJobRunRows{
 			TestKey:         key,
 			TestKeyStr:      key.KeyOrDie(),
 			TestName:        row.TestName,
-			ProwJob:         utils.NormalizeProwJobName(row.ProwJobName),
+			ProwJob:         normalizedName,
 			ProwJobRunID:    row.ProwJobRunID,
 			ProwJobURL:      row.ProwJobURL,
 			StartTime:       row.ProwJobStart,
@@ -629,7 +623,6 @@ func (p *PostgresProvider) queryTestDetails(release string, start, end time.Time
 			JiraComponentID: jiraComponentID,
 		}
 
-		normalizedName := utils.NormalizeProwJobName(row.ProwJobName)
 		result[normalizedName] = append(result[normalizedName], entry)
 	}
 

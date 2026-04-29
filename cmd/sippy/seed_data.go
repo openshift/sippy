@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -20,7 +19,6 @@ import (
 	pgprovider "github.com/openshift/sippy/pkg/api/componentreadiness/dataprovider/postgres"
 	"github.com/openshift/sippy/pkg/api/componentreadiness/utils"
 	apitype "github.com/openshift/sippy/pkg/apis/api"
-	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/reqopts"
 	v1 "github.com/openshift/sippy/pkg/apis/sippyprocessing/v1"
 	"github.com/openshift/sippy/pkg/db"
@@ -28,7 +26,6 @@ import (
 	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/sippyserver"
-	"github.com/openshift/sippy/pkg/util/sets"
 )
 
 type SeedDataFlags struct {
@@ -398,7 +395,7 @@ func seedSyntheticData(dbc *db.DB) error {
 		return fmt.Errorf("failed to check for existing data: %w", err)
 	}
 	if count > 0 {
-		log.Infof("Database already contains %d ProwJobs, skipping seed. Use --init-database to reset.", count)
+		log.Infof("Database already contains %d ProwJobs, skipping seed. Drop and recreate the database to re-seed (e.g. docker compose down -v).", count)
 		return nil
 	}
 
@@ -422,10 +419,6 @@ func seedSyntheticData(dbc *db.DB) error {
 
 	if err := createLabelsAndSymptoms(dbc); err != nil {
 		return errors.WithMessage(err, "failed to create labels and symptoms")
-	}
-
-	if err := writeSyntheticViewsFile(); err != nil {
-		return errors.WithMessage(err, "failed to write views file")
 	}
 
 	log.Info("Refreshing materialized views...")
@@ -575,8 +568,10 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 	window := end.Sub(start)
 	interval := window / time.Duration(runCount)
 
-	runIDs := make([]uint, runCount)
-	for i := range runCount {
+	infraRuns := 2
+	totalRuns := runCount + infraRuns
+	runIDs := make([]uint, totalRuns)
+	for i := range totalRuns {
 		timestamp := start.Add(time.Duration(i) * interval)
 		run := models.ProwJobRun{
 			ProwJobID: prowJob.ID,
@@ -588,12 +583,6 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 			return 0, 0, fmt.Errorf("failed to create ProwJobRun: %w", err)
 		}
 		runIDs[i] = run.ID
-	}
-
-	// Runs that get test results (all except the last 2)
-	testableRuns := runCount
-	if testableRuns > 2 {
-		testableRuns = runCount - 2
 	}
 
 	runsWithFailure := map[uint]bool{}
@@ -614,7 +603,7 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 			return 0, 0, fmt.Errorf("test %q not found in DB", ts.testName)
 		}
 
-		for i := 0; i < counts.total && i < testableRuns; i++ {
+		for i := 0; i < counts.total && i < runCount; i++ {
 			var status int
 			switch {
 			case i < counts.success-counts.flake:
@@ -646,7 +635,7 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 		var overallResult v1.JobOverallResult
 		var succeeded, failed bool
 
-		if i >= testableRuns {
+		if i >= runCount {
 			overallResult = v1.JobInternalInfrastructureFailure
 			failed = true
 		} else if runsWithFailure[runID] {
@@ -676,7 +665,7 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 		return 0, 0, fmt.Errorf("updating test_failures for prow job %s: %w", prowJob.Name, err)
 	}
 
-	return runCount, totalResults, nil
+	return totalRuns, totalResults, nil
 }
 
 func syncRegressions(dbc *db.DB) error {
@@ -760,78 +749,6 @@ func syncRegressions(dbc *db.DB) error {
 }
 
 const syntheticViewsFile = "config/e2e-views.yaml"
-
-// writeSyntheticViewsFile generates a views file with include_variants matching the seed data.
-func writeSyntheticViewsFile() error {
-	// Collect all unique variant values from synthetic jobs
-	allVariants := map[string]map[string]bool{}
-	for _, job := range syntheticJobs {
-		for k, v := range job.variants {
-			if allVariants[k] == nil {
-				allVariants[k] = map[string]bool{}
-			}
-			allVariants[k][v] = true
-		}
-	}
-
-	includeVariants := map[string][]string{}
-	for k, vals := range allVariants {
-		sorted := make([]string, 0, len(vals))
-		for v := range vals {
-			sorted = append(sorted, v)
-		}
-		sort.Strings(sorted)
-		includeVariants[k] = sorted
-	}
-
-	dbGroupBy := sets.NewString("Architecture", "FeatureSet", "Installer", "Network", "Platform",
-		"Suite", "Topology", "Upgrade", "LayeredProduct")
-	columnGroupBy := sets.NewString("Network", "Platform", "Topology")
-
-	views := apitype.SippyViews{
-		ComponentReadiness: []crview.View{
-			{
-				Name: "4.22-main",
-				BaseRelease: reqopts.RelativeRelease{
-					Release:       reqopts.Release{Name: "4.21"},
-					RelativeStart: "now-60d",
-					RelativeEnd:   "now-30d",
-				},
-				SampleRelease: reqopts.RelativeRelease{
-					Release:       reqopts.Release{Name: "4.22"},
-					RelativeStart: "now-3d",
-					RelativeEnd:   "now",
-				},
-				VariantOptions: reqopts.Variants{
-					ColumnGroupBy:   columnGroupBy,
-					DBGroupBy:       dbGroupBy,
-					IncludeVariants: includeVariants,
-				},
-				AdvancedOptions: reqopts.Advanced{
-					Confidence:                  95,
-					PityFactor:                  5,
-					MinimumFailure:              3,
-					PassRateRequiredNewTests:    90,
-					IncludeMultiReleaseAnalysis: true,
-				},
-				PrimeCache:         crview.PrimeCache{Enabled: true},
-				RegressionTracking: crview.RegressionTracking{Enabled: true},
-			},
-		},
-	}
-
-	data, err := yaml.Marshal(views)
-	if err != nil {
-		return fmt.Errorf("marshaling views: %w", err)
-	}
-
-	if err := os.WriteFile(syntheticViewsFile, data, 0o600); err != nil {
-		return fmt.Errorf("writing %s: %w", syntheticViewsFile, err)
-	}
-
-	log.Infof("Generated views file: %s", syntheticViewsFile)
-	return nil
-}
 
 // variantMapToArray converts a variant map to a pq.StringArray.
 func variantMapToArray(m map[string]string) pq.StringArray {
