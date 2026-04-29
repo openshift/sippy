@@ -57,7 +57,7 @@ $DOCKER run --name $REDIS_CONTAINER -p $REDIS_PORT:6379 -d quay.io/openshiftci/r
 echo "Waiting for PostgreSQL to be ready..."
 timeout=30
 elapsed=0
-until psql -h localhost -p "$PSQL_PORT" -U postgres -d postgres -c '\q' 2>/dev/null; do
+until $DOCKER exec $PSQL_CONTAINER psql -U postgres -d postgres -c '\q' 2>/dev/null; do
     if [ "$elapsed" -ge "$timeout" ]; then
         echo "ERROR: PostgreSQL did not become ready within ${timeout}s"
         exit 1
@@ -80,9 +80,17 @@ echo "  Redis:      $REDIS_URL"
 echo "================================================"
 
 if [ "$SERVE" = true ]; then
-    GCS_ARGS=""
+    set -- \
+      --listen ":$SIPPY_API_PORT" \
+      --listen-metrics ":12112" \
+      --database-dsn="$DSN" \
+      --enable-write-endpoints \
+      --log-level debug \
+      --views config/e2e-views.yaml \
+      --redis-url="$REDIS_URL" \
+      --data-provider postgres
     if [ -n "$GCS_SA_JSON_PATH" ]; then
-        GCS_ARGS="--google-service-account-credential-file $GCS_SA_JSON_PATH"
+        set -- "$@" --google-service-account-credential-file "$GCS_SA_JSON_PATH"
     fi
 
     echo ""
@@ -90,16 +98,7 @@ if [ "$SERVE" = true ]; then
     echo "Press Ctrl-C to stop"
     echo ""
 
-    ./sippy serve \
-      --listen ":$SIPPY_API_PORT" \
-      --listen-metrics ":12112" \
-      --database-dsn="$DSN" \
-      --enable-write-endpoints \
-      --log-level debug \
-      --views config/e2e-views.yaml \
-      $GCS_ARGS \
-      --redis-url="$REDIS_URL" \
-      --data-provider postgres &
+    ./sippy serve "$@" &
     CHILD_PID=$!
 
     wait $CHILD_PID

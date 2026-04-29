@@ -105,21 +105,20 @@ GOCOVERDIR="$COVDIR" ./sippy seed-data  \
 export SIPPY_API_PORT="18080"
 export SIPPY_ENDPOINT="127.0.0.1"
 
-GCS_ARGS=""
-if [ -n "$GCS_SA_JSON_PATH" ]; then
-    GCS_ARGS="--google-service-account-credential-file $GCS_SA_JSON_PATH"
-fi
-
-GOCOVERDIR="$COVDIR" ./sippy serve \
+set -- \
   --listen ":$SIPPY_API_PORT" \
   --listen-metrics ":12112" \
   --database-dsn="$SIPPY_E2E_DSN" \
   --enable-write-endpoints \
   --log-level debug \
   --views config/e2e-views.yaml \
-  $GCS_ARGS \
   --redis-url="$REDIS_URL" \
-  --data-provider postgres > e2e.log 2>&1 &
+  --data-provider postgres
+if [ -n "$GCS_SA_JSON_PATH" ]; then
+    set -- "$@" --google-service-account-credential-file "$GCS_SA_JSON_PATH"
+fi
+
+GOCOVERDIR="$COVDIR" ./sippy serve "$@" > e2e.log 2>&1 &
 CHILD_PID=$!
 
 wait_for_sippy || exit 1

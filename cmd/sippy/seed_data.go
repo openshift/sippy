@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -566,10 +567,9 @@ func seedJobRunsAndResults(dbc *db.DB) (int, int, error) {
 func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrKey jobReleaseKey, runCount int, testIDsByName map[string]uint) (int, int, error) {
 	start, end := releaseTimeWindow(jrKey.release)
 	window := end.Sub(start)
-	interval := window / time.Duration(runCount)
-
 	infraRuns := 2
 	totalRuns := runCount + infraRuns
+	interval := window / time.Duration(totalRuns)
 	runIDs := make([]uint, totalRuns)
 	for i := range totalRuns {
 		timestamp := start.Add(time.Duration(i) * interval)
@@ -648,9 +648,10 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 
 		if err := dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", runID).
 			Updates(map[string]any{
-				"overall_result": overallResult,
-				"succeeded":      succeeded,
-				"failed":         failed,
+				"overall_result":         overallResult,
+				"succeeded":              succeeded,
+				"failed":                 failed,
+				"infrastructure_failure": i >= runCount,
 			}).Error; err != nil {
 			return 0, 0, fmt.Errorf("failed to update ProwJobRun result: %w", err)
 		}
@@ -756,6 +757,7 @@ func variantMapToArray(m map[string]string) pq.StringArray {
 	for k, v := range m {
 		result = append(result, k+":"+v)
 	}
+	sort.Strings(result)
 	return result
 }
 
