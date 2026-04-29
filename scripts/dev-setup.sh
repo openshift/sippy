@@ -55,7 +55,16 @@ echo "Starting Redis on port $REDIS_PORT..."
 $DOCKER run --name $REDIS_CONTAINER -p $REDIS_PORT:6379 -d quay.io/openshiftci/redis:latest
 
 echo "Waiting for PostgreSQL to be ready..."
-sleep 5
+timeout=30
+elapsed=0
+until psql -h localhost -p "$PSQL_PORT" -U postgres -d postgres -c '\q' 2>/dev/null; do
+    if [ "$elapsed" -ge "$timeout" ]; then
+        echo "ERROR: PostgreSQL did not become ready within ${timeout}s"
+        exit 1
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+done
 
 DSN="postgresql://postgres:password@localhost:$PSQL_PORT/postgres"
 REDIS_URL="redis://localhost:$REDIS_PORT"
