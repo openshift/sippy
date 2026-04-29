@@ -53,6 +53,8 @@ releases:
       # ROSA proxy tests (stage)
       periodic-ci-openshift-osde2e-main-rosa-stage-e2e-byo-vpc-proxy-install: true
       periodic-ci-openshift-osde2e-main-rosa-stage-e2e-byo-vpc-proxy-postinstall: true
+      # K8s conformance tests
+      periodic-ci-openshift-release-main-osd-conformance-aws-k8s-conformance: true
       # OSD-AWS nightly (stage, relevant to ROSA)
       periodic-ci-openshift-osde2e-main-nightly-4.16-osd-aws: true
       periodic-ci-openshift-osde2e-main-nightly-4.17-osd-aws: true
