@@ -1,5 +1,6 @@
 ---
-description: Update component readiness views when a release goes GA
+description: "Update component readiness views when a release goes GA"
+input: [release]
 ---
 
 # Update GA Release Views
