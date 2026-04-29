@@ -598,6 +598,7 @@ func buildTestDetailsQuery(
 						SUM(adjusted_flake_count) AS flake_count,
 						ANY_VALUE(agg_labels.job_labels) AS job_labels,
 						ANY_VALUE(agg_failures.job_run_test_failure_count) AS job_run_test_failure_count,
+						COALESCE(NULLIF(ANY_VALUE(lifecycle), ''), 'blocking') AS lifecycle,
 					FROM deduped_testcases junit
 					INNER JOIN latest_component_mapping cm ON testsuite = cm.suite AND test_name = cm.name
 `, withClause, selectVariants)
@@ -1096,6 +1097,10 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 		case col == "job_run_test_failure_count":
 			if row[i] != nil {
 				cts.TestFailures = int(row[i].(int64))
+			}
+		case col == "lifecycle":
+			if row[i] != nil {
+				cts.Lifecycle = row[i].(string)
 			}
 		case strings.HasPrefix(col, "variant_"):
 			variantName := col[len("variant_"):]

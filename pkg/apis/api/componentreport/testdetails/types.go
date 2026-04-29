@@ -17,6 +17,9 @@ type Report struct {
 	JiraComponentID *big.Rat   `json:"jira_component_id"`
 	TestName        string     `json:"test_name"`
 	GeneratedAt     *time.Time `json:"generated_at"`
+	// Lifecycle is the test's lifecycle value from BigQuery (e.g. "blocking", "informing").
+	// Defaults to "blocking" when unset in the source data.
+	Lifecycle string `json:"lifecycle,omitempty"`
 
 	// Analyses is a list of potentially multiple analysis runs for this test.
 	// Callers can assume that the first in the list is somewhat authoritative, and should

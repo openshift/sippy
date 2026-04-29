@@ -4,6 +4,7 @@ import {
   Alert,
   Box,
   Button,
+  Chip,
   Grid,
   Popover,
   Tab,
@@ -329,6 +330,8 @@ export default function TestDetailsReport(props) {
   const params = new URLSearchParams(url.search)
   const baseRelease = params.get('baseRelease')
 
+  const sampleIncludesInforming = data.lifecycle === 'informing'
+
   let isBaseOverride = false
   let baseReleaseTabLabel = baseRelease + ' Basis'
   let overrideReleaseTabLabel = ''
@@ -545,7 +548,7 @@ View the [test details report|${document.location.href}] for additional context.
               </IconButton>
             </TableCell>
           </TableRow>
-          {regressionId && (
+          {regressionId > 0 && (
             <TableRow>
               <TableCell>Regression ID:</TableCell>
               <TableCell>
@@ -575,7 +578,19 @@ View the [test details report|${document.location.href}] for additional context.
           <TableRow>
             <TableCell>Assessment:</TableCell>
             <TableCell>
-              <Tooltip title={statusStr}>{assessmentIcon}</Tooltip>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Tooltip title={statusStr}>{assessmentIcon}</Tooltip>
+                {sampleIncludesInforming && (
+                  <Tooltip title="Test has lifecycle: Informing in the sample">
+                    <Chip
+                      aria-label="Informing lifecycle"
+                      label="Informing"
+                      size="small"
+                      color="info"
+                    />
+                  </Tooltip>
+                )}
+              </Box>
             </TableCell>
           </TableRow>
           <TableRow>
