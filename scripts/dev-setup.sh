@@ -26,7 +26,6 @@ PSQL_PORT="${PSQL_PORT:-25433}"
 REDIS_CONTAINER="sippy-dev-redis"
 REDIS_PORT="${REDIS_PORT:-25479}"
 SIPPY_API_PORT="${SIPPY_API_PORT:-8080}"
-SIPPY_METRICS_PORT="${SIPPY_METRICS_PORT:-22112}"
 
 clean_up() {
     echo ""
@@ -84,7 +83,7 @@ if [ "$SERVE" = true ]; then
 
     ./sippy serve \
       --listen ":$SIPPY_API_PORT" \
-      --listen-metrics ":$SIPPY_METRICS_PORT" \
+      --listen-metrics ":12112" \
       --database-dsn="$DSN" \
       --enable-write-endpoints \
       --log-level debug \
