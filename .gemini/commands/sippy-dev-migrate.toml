@@ -1,0 +1,2 @@
+description = "Run Sippy PostgreSQL schema migration"
+prompt = "# Sippy dev — migrate\n\nRun the migration command directly:\n\n```bash\ngo run ./cmd/sippy migrate --database-dsn \"$SIPPY_DATABASE_DSN\"\n```\n\nIf `SIPPY_DATABASE_DSN` is not set, use the dev default:\n\n```bash\ngo run ./cmd/sippy migrate --database-dsn \"postgresql://postgres:password@localhost:5432/postgres\"\n```"

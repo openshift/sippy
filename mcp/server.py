@@ -72,41 +72,6 @@ def _resolve_bigquery_creds(explicit: str | None) -> tuple[Path | None, str | No
 
 
 @mcp.tool()
-def migrate_db(database_dsn: str | None = None) -> str:
-    """Run Sippy PostgreSQL migrations (``go run ./cmd/sippy migrate``).
-
-    Uses ``database_dsn`` when provided; otherwise ``SIPPY_DATABASE_DSN`` or a localhost dev default.
-    Full output is written to ``sippy-dev-logs/migrate_db.log``.
-    """
-    dsn = database_dsn or _default_database_dsn()
-    _ensure_dev_log_dir()
-    log_path = DEV_LOG_DIR / "migrate_db.log"
-    try:
-        r = subprocess.run(
-            ["go", "run", "./cmd/sippy", "migrate", "--database-dsn", dsn],
-            cwd=REPO_ROOT,
-            env=os.environ.copy(),
-            capture_output=True,
-            text=True,
-            timeout=600,
-        )
-    except subprocess.TimeoutExpired as e:
-        partial = ((e.stdout or "") + (e.stderr or "")).strip()
-        log_path.write_text(
-            partial + ("\n" if partial and not partial.endswith("\n") else ""),
-            encoding="utf-8",
-        )
-        out = _trim(partial) if partial else "(no output captured)"
-        return f"migrate timed out after 600s. log: {log_path}\n{out}"
-    raw = ((r.stdout or "") + (r.stderr or "")).strip()
-    log_path.write_text(raw + ("\n" if raw and not raw.endswith("\n") else ""), encoding="utf-8")
-    out = _trim(raw)
-    if r.returncode != 0:
-        return f"migrate failed (exit {r.returncode}). log: {log_path}\n{out}"
-    return f"migrate succeeded (exit 0). log: {log_path}\n{out}"
-
-
-@mcp.tool()
 def regression_cache(
     bigquery_credentials_file: str | None = None,
     database_dsn: str | None = None,
@@ -531,30 +496,6 @@ def _run_make_phase(
         )
     tail = _tail_file(log_path, 40)
     return f"{tool_label} succeeded (exit 0). log: {log_path}\n--- last lines ---\n{tail}"
-
-
-@mcp.tool()
-def run_lint(timeout_seconds: int = 1800) -> str:
-    """Run ``make lint`` (``CI=true`` so ``hack/go-lint.sh`` uses local ``golangci-lint``).
-
-    Log: ``sippy-dev-logs/run_lint.log``. Use ``timeout_seconds=0`` for no limit.
-    """
-    return _run_make_phase(
-        "run_lint",
-        "lint",
-        "run_lint.log",
-        timeout_seconds,
-        {"CI": "true"},
-    )
-
-
-@mcp.tool()
-def run_test(timeout_seconds: int = 7200) -> str:
-    """Run ``make test`` (Go packages via gotestsum and ``sippy-ng`` Jest).
-
-    Log: ``sippy-dev-logs/run_test.log``. Use ``timeout_seconds=0`` for no limit.
-    """
-    return _run_make_phase("run_test", "test", "run_test.log", timeout_seconds, None)
 
 
 @mcp.tool()

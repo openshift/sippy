@@ -3,42 +3,82 @@ generated_at: '2026-04-27T13:58:06.737227+00:00'
 apm_version: 0.10.0
 dependencies: []
 local_deployed_files:
+- .claude/commands/sippy-dev-app.md
+- .claude/commands/sippy-dev-frontend.md
+- .claude/commands/sippy-dev-migrate.md
+- .claude/commands/sippy-dev-regression-cache.md
+- .claude/commands/sippy-dev-serve.md
+- .claude/commands/sippy-dev-tests.md
 - .claude/commands/sippy-generate-release-views.md
 - .claude/commands/sippy-update-ga-release-views.md
 - .claude/commands/sippy-update-job-variant.md
 - .claude/rules/backend.md
+- .claude/rules/dev-commands.md
 - .claude/rules/frontend.md
 - .claude/rules/general.md
 - .claude/rules/mcp.md
 - .claude/rules/testing.md
 - .cursor/rules/backend.mdc
+- .cursor/rules/dev-commands.mdc
 - .cursor/rules/frontend.mdc
 - .cursor/rules/general.mdc
 - .cursor/rules/mcp.mdc
 - .cursor/rules/testing.mdc
+- .gemini/commands/sippy-dev-app.toml
+- .gemini/commands/sippy-dev-frontend.toml
+- .gemini/commands/sippy-dev-migrate.toml
+- .gemini/commands/sippy-dev-regression-cache.toml
+- .gemini/commands/sippy-dev-serve.toml
+- .gemini/commands/sippy-dev-tests.toml
 - .gemini/commands/sippy-generate-release-views.toml
 - .gemini/commands/sippy-update-ga-release-views.toml
 - .gemini/commands/sippy-update-job-variant.toml
+- .opencode/commands/sippy-dev-app.md
+- .opencode/commands/sippy-dev-frontend.md
+- .opencode/commands/sippy-dev-migrate.md
+- .opencode/commands/sippy-dev-regression-cache.md
+- .opencode/commands/sippy-dev-serve.md
+- .opencode/commands/sippy-dev-tests.md
 - .opencode/commands/sippy-generate-release-views.md
 - .opencode/commands/sippy-update-ga-release-views.md
 - .opencode/commands/sippy-update-job-variant.md
 local_deployed_file_hashes:
+  .claude/commands/sippy-dev-app.md: sha256:0b4837a545b7633d8b53f891aea808b59ddf49815835c6ed978212635bbc7670
+  .claude/commands/sippy-dev-frontend.md: sha256:67ff3997d3f9728e318bc8d35d187b922fcb979c6bb2723bf4bf2a0462c9975e
+  .claude/commands/sippy-dev-migrate.md: sha256:5704945283027398bbe4a54eb4d97295059bd64a47e86e97a58665338ec62c8b
+  .claude/commands/sippy-dev-regression-cache.md: sha256:4e9fc3ed63927c84c30554929768a3b0e760264925f55c9dbbdafabf2361bee2
+  .claude/commands/sippy-dev-serve.md: sha256:bb7f6d87d147b437e761e4f7be854e5c7f825d741472b3aee48812e2379e20ca
+  .claude/commands/sippy-dev-tests.md: sha256:2f631ca56790cd9c4441e60ee1e1e2deff5a32bf7517c051d053b8e645242a64
   .claude/commands/sippy-generate-release-views.md: sha256:e8a283e43f84777e6da34c10f1b18de2c41baa4525a7e40317bddd0c61b75553
   .claude/commands/sippy-update-ga-release-views.md: sha256:c7adb0f649455fa7c12c94454220fc87f182d49b820a2683ca733401cbfeb9b0
   .claude/commands/sippy-update-job-variant.md: sha256:ef00ec3a3b01556b33243d3e17ab1ace23879a8ef10dfd2e501a0fda2291fb97
   .claude/rules/backend.md: sha256:44d4119d9234bdaf026b615bc91c386cfb6930783e3b676e31ea2ec8e2ea930a
+  .claude/rules/dev-commands.md: sha256:4508eaad3d835305b68106ed5b270ced97c93e4a42ee94d1bcac5ea7b056bc5d
   .claude/rules/frontend.md: sha256:ff22046c5b951769218bbdf36499e67c70896811b8ef161ca6d3729a3423997d
   .claude/rules/general.md: sha256:9238d053e2d6a1703728c2bb165de93658b47c3152dfac16169ff9db9c6f716c
   .claude/rules/mcp.md: sha256:73735078b3b1a8597b91b49821ba05cdb338144ea00c1eea9e9f4de38d0241a3
   .claude/rules/testing.md: sha256:0a4c2f1b2484a70c1973315821ba777e7236dc187c6511973503075e0df0617d
   .cursor/rules/backend.mdc: sha256:b79264fe113886feaf6dc7eb7e37c31d753dba5989b34a7948fd9cdb05d4d363
+  .cursor/rules/dev-commands.mdc: sha256:c69ca93db9b6c68f9aeb6567289dc5baef805520e8636a1e3e848793f67450e6
   .cursor/rules/frontend.mdc: sha256:497f39372724f1ae127181fe3dac9ea9a95a51c532b68ccfee6080832cf9c556
   .cursor/rules/general.mdc: sha256:671e94d8251783ecfb70d16e6e8d60dc42752ecfbe90919006b908b8a751595d
   .cursor/rules/mcp.mdc: sha256:268557cc3bdd9c8f7401f9ea80ac342ff2688f1d563b10880177ca586d7d30bb
   .cursor/rules/testing.mdc: sha256:e177fa738c0b3b607e947986ba9b0a902a9483bf34d621289f615416084b2509
+  .gemini/commands/sippy-dev-app.toml: sha256:c893af083c3fc78fc05b5866edc6cc9ccae61183c1c56bf7e99fbd347c276387
+  .gemini/commands/sippy-dev-frontend.toml: sha256:e6c6bf80fe01e2422aaee53f2b1e61d889277e8db0274c8e881e8061be53f97d
+  .gemini/commands/sippy-dev-migrate.toml: sha256:e699558eb27c294327a092bfcd3e76b576087ad29d9a3a9b000cfd9e7c6b4774
+  .gemini/commands/sippy-dev-regression-cache.toml: sha256:cd2c9017e5e976750839c712b42d10046d1d04fabaa749ffda6fd1abaf776d7a
+  .gemini/commands/sippy-dev-serve.toml: sha256:56b555609652edf23982c8154f8edb42e643ee5c114580ff571134fddb1df72e
+  .gemini/commands/sippy-dev-tests.toml: sha256:0d19aaff911d478859fc948650a92e46142071a8c5d1a29c5b40c25d1d1e495b
   .gemini/commands/sippy-generate-release-views.toml: sha256:4759f4547c05631d2e83a5859172421ea3d6ec794dd887756a90bbe0fd2732c1
   .gemini/commands/sippy-update-ga-release-views.toml: sha256:71a60dfe068bdc59645b8d0069c93c65f2df30c5172da3389df2a80d86410ae9
   .gemini/commands/sippy-update-job-variant.toml: sha256:71c9c7548a1a4b829e970d76504ef981ea05fecf8052cdb86859d96ad52cb2b2
+  .opencode/commands/sippy-dev-app.md: sha256:0b4837a545b7633d8b53f891aea808b59ddf49815835c6ed978212635bbc7670
+  .opencode/commands/sippy-dev-frontend.md: sha256:67ff3997d3f9728e318bc8d35d187b922fcb979c6bb2723bf4bf2a0462c9975e
+  .opencode/commands/sippy-dev-migrate.md: sha256:5704945283027398bbe4a54eb4d97295059bd64a47e86e97a58665338ec62c8b
+  .opencode/commands/sippy-dev-regression-cache.md: sha256:4e9fc3ed63927c84c30554929768a3b0e760264925f55c9dbbdafabf2361bee2
+  .opencode/commands/sippy-dev-serve.md: sha256:bb7f6d87d147b437e761e4f7be854e5c7f825d741472b3aee48812e2379e20ca
+  .opencode/commands/sippy-dev-tests.md: sha256:2f631ca56790cd9c4441e60ee1e1e2deff5a32bf7517c051d053b8e645242a64
   .opencode/commands/sippy-generate-release-views.md: sha256:e8a283e43f84777e6da34c10f1b18de2c41baa4525a7e40317bddd0c61b75553
   .opencode/commands/sippy-update-ga-release-views.md: sha256:c7adb0f649455fa7c12c94454220fc87f182d49b820a2683ca733401cbfeb9b0
   .opencode/commands/sippy-update-job-variant.md: sha256:ef00ec3a3b01556b33243d3e17ab1ace23879a8ef10dfd2e501a0fda2291fb97

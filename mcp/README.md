@@ -1,6 +1,8 @@
 # Sippy dev MCP server
 
-Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes common Sippy development commands to **Cursor** and **Claude Code**.
+Python [FastMCP](https://github.com/jlowin/fastmcp) server (`server.py`) that exposes Sippy development commands requiring process management to **Cursor** and **Claude Code**.
+
+Simple commands (migrate, lint, test) are documented in project instructions via [APM](../apm.yml) and can be run directly — see `.apm/instructions/dev-commands.instructions.md`.
 
 ## Setup
 
@@ -31,15 +33,12 @@ The MCP server key in config is **`sippy-dev`**. Cursor may expose tools under a
 
 Commands use the **repo root** as working directory unless noted. Most long outputs go to **`sippy-dev-logs/`** (see `.gitignore`).
 
-| Tool               | What it runs                                                                           | Default log                           |
-| ------------------ | -------------------------------------------------------------------------------------- | ------------------------------------- |
-| `migrate_db`       | `go run ./cmd/sippy migrate`                                                           | `sippy-dev-logs/migrate_db.log`       |
-| `regression_cache` | `go run ./cmd/sippy load --loader regression-cache` (BigQuery + Redis + DB)            | `sippy-dev-logs/regression_cache.log` |
-| `sippy_serve`      | Background `go run ./cmd/sippy serve` (API/UI, typically port **8080**)                | `sippy-dev-logs/sippy_serve.log`      |
-| `sippy_ng_start`   | Background `npm start` in `sippy-ng/` (typically port **3000**)                        | `sippy-dev-logs/sippy_ng_start.log`   |
-| `run_lint`         | `make lint` (`CI=true` so `hack/go-lint.sh` runs local `golangci-lint` without Podman) | `sippy-dev-logs/run_lint.log`         |
-| `run_test`         | `make test` (Go `gotestsum` + `sippy-ng` Jest)                                         | `sippy-dev-logs/run_test.log`         |
-| `run_e2e`          | `make e2e`                                                                             | `sippy-dev-logs/run_e2e.log`          |
+| Tool               | What it runs                                                                | Default log                           |
+| ------------------ | --------------------------------------------------------------------------- | ------------------------------------- |
+| `regression_cache` | `go run ./cmd/sippy load --loader regression-cache` (BigQuery + Redis + DB) | `sippy-dev-logs/regression_cache.log` |
+| `sippy_serve`      | Background `go run ./cmd/sippy serve` (API/UI, typically port **8080**)     | `sippy-dev-logs/sippy_serve.log`      |
+| `sippy_ng_start`   | Background `npm start` in `sippy-ng/` (typically port **3000**)             | `sippy-dev-logs/sippy_ng_start.log`   |
+| `run_e2e`          | `make e2e`                                                                  | `sippy-dev-logs/run_e2e.log`          |
 
 Optional parameters (timeouts, paths, DSNs, etc.) are documented on each function in **`server.py`**.
 
@@ -65,7 +64,7 @@ Agent-oriented shortcuts live under **`.cursor/skills/`**, for example:
 
 - `sippy-dev-migrate`, `sippy-dev-regression-cache`, `sippy-dev-serve`, `sippy-dev-frontend`
 - `sippy-dev-app` (backend + frontend)
-- `sippy-dev-tests` (order: `run_lint` → `run_test` → `run_e2e`)
+- `sippy-dev-tests` (order: `CI=true make lint` → `make test` → `run_e2e`)
 
 ## Changing the server
 
