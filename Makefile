@@ -74,6 +74,9 @@ verify-apm: apm
 e2e:
 	./scripts/e2e.sh
 
+dev: sippy
+	./scripts/dev-setup.sh $(if $(SERVE),--serve)
+
 images:
 	$(DOCKER) build .
 
