@@ -439,7 +439,7 @@ const (
 	VariantSuite            = "Suite"        // parallel / serial
 	VariantProcedure        = "Procedure"    // for jobs that do a specific procedure on the cluster (etcd scaling, cpu partitioning, etc.), and then optionally run conformance
 	VariantJobTier          = "JobTier"      // specifies rare, blocking, informing, standard jobs
-	VariantTopology         = "Topology"     // ha / single / compact / external
+	VariantTopology         = "Topology"     // e.g. ha, single, compact, external, rosa-hcp, rosa-classic-sts, two-node-arbiter, two-node-fencing, microshift
 	VariantUpgrade          = "Upgrade"
 	VariantContainerRuntime = "ContainerRuntime" // runc / crun
 	VariantCGroupMode       = "CGroupMode"       // v2 / v1
@@ -958,6 +958,9 @@ func setTopology(_ logrus.FieldLogger, variants map[string]string, jobName strin
 		{"-two-node-fencing", "two-node-fencing"}, // Two-node
 		{"-tna-", "two-node-arbiter"},             // Two-node alternative format
 		{"-tnf-", "two-node-fencing"},             // Two-node alternative format
+		{"-rosa-classic-sts", "rosa-classic-sts"},
+		{"-rosa-sts", "rosa-classic-sts"},
+		{"-rosa-hcp", "rosa-hcp"},
 		{"-hypershift", "external"},
 		{"-hcp", "external"},
 		{"_hcp", "external"},

@@ -146,6 +146,8 @@ component_readiness:
       - ha
       - microshift
       - external
+      - rosa-hcp
+      - rosa-classic-sts
       CGroupMode:
       - v2
       ContainerRuntime:
@@ -1165,6 +1167,8 @@ component_readiness:
       - ha
       - microshift
       - external
+      - rosa-hcp
+      - rosa-classic-sts
       CGroupMode:
       - v2
       ContainerRuntime:
