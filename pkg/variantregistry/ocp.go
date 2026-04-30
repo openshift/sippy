@@ -1306,7 +1306,7 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 	}
 }
 
-var rhcosJobNameRegexp = regexp.MustCompile(`-rhcos(\d+)`)
+var rhcosJobNameRegexp = regexp.MustCompile(`(?i)-rhcos(\d+(?:-\d+)?)\b`)
 
 func (os clusterDataOS) setOS(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	if os.hasData() {
