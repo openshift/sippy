@@ -7,6 +7,9 @@
     "dockerfile": "Dockerfile"
   },
   "runArgs": ["--name", "sippy-dev", "--network", "sippy-net", "--env-file", ".devcontainer/.env", "-p", "8080:8080", "-p", "3000:3000"],
+  "mounts": [
+    "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,readonly"
+  ],
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
   "workspaceFolder": "/workspace",
   "remoteUser": "vscode",

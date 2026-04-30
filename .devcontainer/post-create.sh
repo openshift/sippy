@@ -17,13 +17,4 @@ python3.12 -m venv mcp/.venv
 mcp/.venv/bin/pip install --upgrade pip -q
 mcp/.venv/bin/pip install -r mcp/requirements.txt -q
 
-echo "==> Checking GCP auth..."
-if command -v gcloud >/dev/null 2>&1; then
-    if ! gcloud auth application-default print-access-token >/dev/null 2>&1; then
-        echo "    GCP credentials not found. Run 'gcloud auth application-default login' to authenticate."
-    fi
-else
-    echo "    gcloud not found — skipping auth check."
-fi
-
 echo "==> Dev environment ready."

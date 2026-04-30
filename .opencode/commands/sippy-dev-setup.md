@@ -93,13 +93,13 @@ Run it. This triggers `init-services.sh` (PostgreSQL + Redis) and `post-create.s
 
 ### 7. GCP authentication
 
-Ask the user if they need to authenticate with GCP (for BigQuery/GCS access). If yes, tell them to run:
+GCP credentials are mounted from the host's `~/.config/gcloud` directory. If the user hasn't authenticated on the host yet, tell them to run on the host (not inside the container):
 
-```
-! podman exec -it sippy-dev bash -c "gcloud auth application-default login"
+```bash
+gcloud auth application-default login
 ```
 
-This must be done interactively by the user — it opens a browser for OAuth.
+The credentials will be available inside the container automatically after restart.
 
 ### 8. Summary
 

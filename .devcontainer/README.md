@@ -13,7 +13,7 @@ you through GCP authentication.
 ## What you'll need to provide
 
 - **GCP project ID** (`ANTHROPIC_VERTEX_PROJECT_ID`) — for Claude Code via Vertex AI
-- **GCP auth** — the setup will prompt you to run `gcloud auth application-default login`
+- **GCP auth** — run `gcloud auth application-default login` on the host before starting the container (credentials are mounted read-only)
 
 ## Manual setup
 
