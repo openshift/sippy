@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eu
 
 echo "==> Installing Go IDE tools..."
 go install golang.org/x/tools/gopls@latest
@@ -16,8 +16,8 @@ cd ..
 
 echo "==> Setting up MCP server venv..."
 python3.12 -m venv mcp/.venv
-mcp/.venv/bin/python -m pip install --upgrade pip
-mcp/.venv/bin/python -m pip install -r mcp/requirements.txt
+mcp/.venv/bin/pip install --upgrade pip -q
+mcp/.venv/bin/pip install -r mcp/requirements.txt -q
 
 echo "==> Checking GCP auth..."
 if command -v gcloud >/dev/null 2>&1; then

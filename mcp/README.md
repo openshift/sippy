@@ -6,14 +6,15 @@ Simple commands (migrate, lint, test) are documented in project instructions via
 
 ## Setup
 
-- **Virtualenv**: the devcontainer `post-create` script creates `mcp/.venv` and installs `requirements.txt`.
-- **Python**: **3.10+** required (`fastmcp`). The devcontainer image installs **Python 3.12** for this venv.
-- **Manual install** (from repo root):
+**`mcp/run.sh`** is the entry point. It auto-creates the virtualenv (`mcp/.venv`) and installs dependencies on first run — no manual setup required. The devcontainer's `post-create.sh` pre-warms the venv during build.
+
+- **Python 3.12** required. The devcontainer image installs it; on macOS use `brew install python@3.12`.
+- **Manual venv setup** (if you prefer not to use `run.sh`):
 
   ```bash
   python3.12 -m venv mcp/.venv
-  mcp/.venv/bin/python -m pip install --upgrade pip
-  mcp/.venv/bin/python -m pip install -r mcp/requirements.txt
+  mcp/.venv/bin/pip install --upgrade pip
+  mcp/.venv/bin/pip install -r mcp/requirements.txt
   ```
 
 ## Editor configuration
@@ -23,7 +24,7 @@ Simple commands (migrate, lint, test) are documented in project instructions via
 | Cursor      | `.cursor/mcp.json`      |
 | Claude Code | `.mcp.json` (repo root) |
 
-Both use the same shape: run `mcp/.venv/bin/python` with argument `mcp/server.py`. The workspace folder should be the Sippy repo root so paths resolve.
+Both point to `mcp/run.sh`. This works on the host and inside the devcontainer without path changes.
 
 ## Server id in Cursor
 

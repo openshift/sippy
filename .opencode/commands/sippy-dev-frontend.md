@@ -8,4 +8,6 @@ Use the **`sippy_ng_start`** MCP tool (server: **`sippy-dev`**). Do not run `npm
 
 **`open_browser`** defaults to **`false`**. Typical URL: **`http://127.0.0.1:3000`**. Log: **`sippy-dev-logs/sippy_ng_start.log`**.
 
+If the dev server is already running, the tool will report it. Ask the user if they want to restart, and if so call again with **`restart=True`**.
+
 See **`mcp/server.py`** for all parameters.

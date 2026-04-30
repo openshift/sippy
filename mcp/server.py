@@ -3,6 +3,8 @@ import signal
 import subprocess
 import sys
 import time
+import urllib.request
+from collections.abc import Callable
 from pathlib import Path
 
 from fastmcp import FastMCP
@@ -48,6 +50,10 @@ def _default_database_dsn() -> str:
         "SIPPY_DATABASE_DSN",
         "postgresql://postgres:password@localhost:5432/postgres",
     )
+
+
+def _default_redis_url() -> str:
+    return os.environ.get("REDIS_URL", "redis://localhost:6379")
 
 
 def _resolve_bigquery_creds(explicit: str | None) -> tuple[Path | None, str | None]:
@@ -100,7 +106,7 @@ def regression_cache(
         return err
 
     dsn = database_dsn or _default_database_dsn()
-    redis = redis_url or os.environ.get("REDIS_URL", "redis://localhost:6379")
+    redis = redis_url or _default_redis_url()
     try:
         views = _repo_path(views_file)
         config = _repo_path(config_file)
@@ -218,55 +224,80 @@ def _filter_pids_by_cwd(pids: list[int], expected_cwd: Path) -> list[int]:
     return filtered
 
 
-def _pids_sippy_serve() -> list[int]:
-    """Processes that look like ``go run ./cmd/sippy serve`` or ``.../sippy serve`` from this repo."""
-    root = REPO_ROOT.resolve()
+def _find_pids(
+    expected_cwd: Path,
+    cmdline_match: Callable[[str], bool],
+    pgrep_patterns: list[str],
+) -> list[int]:
+    """Find PIDs with a given cwd whose cmdline passes *cmdline_match*.
+
+    On Linux, scans /proc directly. Falls back to pgrep + lsof filtering.
+    """
     found: list[int] = []
     if sys.platform.startswith("linux"):
         for pid_dir in Path("/proc").iterdir():
             if not pid_dir.name.isdigit():
                 continue
             try:
-                if _proc_cwd(pid_dir) != root:
+                if _proc_cwd(pid_dir) != expected_cwd:
                     continue
                 cmd = _proc_cmdline(pid_dir)
             except OSError:
                 continue
-            if " migrate" in cmd or " load" in cmd:
-                continue
-            if " serve" not in cmd and not cmd.rstrip().endswith(" serve"):
-                continue
-            if "cmd/sippy" in cmd or "exe/sippy" in cmd or "/sippy serve" in cmd:
+            if cmdline_match(cmd):
                 found.append(int(pid_dir.name))
         if found:
             return sorted(set(found))
-    for pat in ("./cmd/sippy serve", "cmd/sippy serve", "exe/sippy serve"):
-        p = _filter_pids_by_cwd(_pgrep_pids(pat), root)
+    for pat in pgrep_patterns:
+        p = _filter_pids_by_cwd(_pgrep_pids(pat), expected_cwd)
         if p:
             return sorted(set(p))
     return []
 
 
+def _pids_sippy_serve() -> list[int]:
+    def _match(cmd: str) -> bool:
+        if " migrate" in cmd or " load" in cmd:
+            return False
+        if " serve" not in cmd and not cmd.rstrip().endswith(" serve"):
+            return False
+        return "cmd/sippy" in cmd or "exe/sippy" in cmd or "/sippy serve" in cmd
+
+    return _find_pids(
+        REPO_ROOT.resolve(),
+        _match,
+        ["./cmd/sippy serve", "cmd/sippy serve", "exe/sippy serve"],
+    )
+
+
 def _pids_sippy_ng_dev() -> list[int]:
-    """Processes running CRA dev server from ``sippy-ng`` (this repo)."""
-    ng = (REPO_ROOT / "sippy-ng").resolve()
-    found: list[int] = []
-    if sys.platform.startswith("linux"):
-        for pid_dir in Path("/proc").iterdir():
-            if not pid_dir.name.isdigit():
-                continue
-            try:
-                if _proc_cwd(pid_dir) != ng:
-                    continue
-                cmd = _proc_cmdline(pid_dir)
-            except OSError:
-                continue
-            if "react-scripts" in cmd or "npm start" in cmd:
-                found.append(int(pid_dir.name))
-        if found:
-            return sorted(set(found))
-    p = _filter_pids_by_cwd(_pgrep_pids("react-scripts/scripts/start.js"), ng)
-    return sorted(set(p))
+    def _match(cmd: str) -> bool:
+        return "react-scripts" in cmd or "npm start" in cmd
+
+    return _find_pids(
+        (REPO_ROOT / "sippy-ng").resolve(),
+        _match,
+        ["react-scripts/scripts/start.js"],
+    )
+
+
+def _stop_pids(pids: list[int]) -> str:
+    """Send SIGTERM then SIGKILL to each PID. Returns a summary."""
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    time.sleep(1)
+    killed = []
+    for pid in pids:
+        try:
+            os.kill(pid, 0)
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        killed.append(pid)
+    return ", ".join(str(p) for p in killed)
 
 
 @mcp.tool()
@@ -281,19 +312,20 @@ def sippy_serve(
     mode: str = "ocp",
     listen: str = ":8080",
     enable_write_endpoints: bool = True,
+    restart: bool = False,
 ) -> str:
     """Start the Sippy HTTP server (``go run ./cmd/sippy serve``) in the background.
 
     Long-running: returns after spawn with PID, log path, and listen address. Uses the same
     credential and DSN conventions as ``regression_cache``. Skips starting if a matching
-    ``sippy serve`` process is already running (cwd + cmdline on Linux, ``pgrep -f`` fallback).
+    ``sippy serve`` process is already running, unless ``restart`` is True.
     """
     creds_path, err = _resolve_bigquery_creds(bigquery_credentials_file)
     if err:
         return err
 
     dsn = database_dsn or _default_database_dsn()
-    redis = redis_url or os.environ.get("REDIS_URL", "redis://localhost:6379")
+    redis = redis_url or _default_redis_url()
     try:
         views = _repo_path(views_file)
         log_path = _repo_path(log_file)
@@ -305,12 +337,14 @@ def sippy_serve(
 
     existing = _pids_sippy_serve()
     if existing:
-        host_hint = f"http://127.0.0.1{listen}" if listen.startswith(":") else listen
-        pids = ", ".join(str(p) for p in existing)
-        return (
-            f"sippy_serve already running (pid(s) {pids}). Listen: {host_hint} "
-            f"log: {log_path}"
-        )
+        if not restart:
+            host_hint = f"http://127.0.0.1{listen}" if listen.startswith(":") else listen
+            pids = ", ".join(str(p) for p in existing)
+            return (
+                f"sippy_serve already running (pid(s) {pids}). Listen: {host_hint} "
+                f"log: {log_path}. Call with restart=True to restart."
+            )
+        _stop_pids(existing)
 
     args = [
         "stdbuf",
@@ -346,47 +380,27 @@ def sippy_serve(
             return f"config file not found: {cfg}"
         args.extend(["--config", str(cfg)])
 
-    _ensure_dev_log_dir()
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    logf = open(log_path, "a", encoding="utf-8")
-    try:
-        proc = subprocess.Popen(
-            args,
-            cwd=REPO_ROOT,
-            env=os.environ.copy(),
-            stdout=logf,
-            stderr=subprocess.STDOUT,
-            stdin=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-    except OSError as e:
-        logf.close()
-        return f"sippy_serve failed to start: {e}"
-
-    logf.close()
-    time.sleep(0.75)
-    code = proc.poll()
-    if code is not None:
-        try:
-            tail = log_path.read_text(encoding="utf-8", errors="replace")[-4000:]
-        except OSError:
-            tail = "(no log output)"
-        return f"sippy_serve exited immediately (exit {code}). Log: {log_path}\n--- tail ---\n{tail}"
-
     host_hint = f"http://127.0.0.1{listen}" if listen.startswith(":") else listen
-    return f"sippy_serve started (pid {proc.pid}). Listen: {host_hint} log: {log_path}"
+    pid_or_err = _spawn_background(
+        label="sippy_serve", args=args, cwd=REPO_ROOT, log_path=log_path,
+        ready_url=host_hint,
+    )
+    if isinstance(pid_or_err, str):
+        return pid_or_err
+    return f"sippy_serve started and ready (pid {pid_or_err}). Listen: {host_hint} log: {log_path}"
 
 
 @mcp.tool()
 def sippy_ng_start(
     log_file: str = "sippy-dev-logs/sippy_ng_start.log",
     open_browser: bool = False,
+    restart: bool = False,
 ) -> str:
     """Start the React dev server (``npm start`` in ``sippy-ng``) in the background.
 
     CRA defaults to port 3000. ``log_file`` is resolved relative to the repo root;
     absolute paths outside the repo are rejected. Skips starting if a matching
-    ``npm start`` / react-scripts process is already running for this ``sippy-ng`` tree.
+    ``npm start`` / react-scripts process is already running, unless ``restart`` is True.
     """
     ng_dir = REPO_ROOT / "sippy-ng"
     if not (ng_dir / "package.json").is_file():
@@ -399,24 +413,71 @@ def sippy_ng_start(
 
     existing = _pids_sippy_ng_dev()
     if existing:
-        pids = ", ".join(str(p) for p in existing)
-        return (
-            f"sippy_ng_start already running (pid(s) {pids}). "
-            f"Typical URL: http://127.0.0.1:3000 log: {log_path}"
-        )
+        if not restart:
+            pids = ", ".join(str(p) for p in existing)
+            return (
+                f"sippy_ng_start already running (pid(s) {pids}). "
+                f"Typical URL: http://127.0.0.1:3000 log: {log_path}. "
+                f"Call with restart=True to restart."
+            )
+        _stop_pids(existing)
 
     env = os.environ.copy()
     if not open_browser:
         env["BROWSER"] = "none"
 
+    pid_or_err = _spawn_background(
+        label="sippy_ng_start",
+        args=["stdbuf", "-oL", "-eL", "npm", "start"],
+        cwd=ng_dir,
+        log_path=log_path,
+        env=env,
+        ready_url="http://127.0.0.1:3000",
+    )
+    if isinstance(pid_or_err, str):
+        return pid_or_err
+    return (
+        f"sippy_ng_start started and ready (pid {pid_or_err}). URL: http://127.0.0.1:3000 "
+        f"log: {log_path}"
+    )
+
+
+def _wait_for_ready(url: str, timeout: int, proc: subprocess.Popen) -> str | None:
+    """Poll *url* until it responds or *timeout* seconds elapse. Returns an error string or None."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        code = proc.poll()
+        if code is not None:
+            return f"process exited (exit {code}) while waiting for readiness"
+        try:
+            urllib.request.urlopen(url, timeout=2)
+            return None
+        except Exception:
+            time.sleep(1)
+    return f"not ready after {timeout}s (checked {url})"
+
+
+def _spawn_background(
+    label: str,
+    args: list[str],
+    cwd: Path,
+    log_path: Path,
+    env: dict[str, str] | None = None,
+    ready_url: str | None = None,
+    ready_timeout: int = 120,
+) -> int | str:
+    """Spawn a detached process, returning its PID or an error string.
+
+    If *ready_url* is set, polls it until it responds (up to *ready_timeout* seconds).
+    """
     _ensure_dev_log_dir()
     log_path.parent.mkdir(parents=True, exist_ok=True)
     logf = open(log_path, "a", encoding="utf-8")
     try:
         proc = subprocess.Popen(
-            ["stdbuf", "-oL", "-eL", "npm", "start"],
-            cwd=ng_dir,
-            env=env,
+            args,
+            cwd=cwd,
+            env=env or os.environ.copy(),
             stdout=logf,
             stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL,
@@ -424,7 +485,7 @@ def sippy_ng_start(
         )
     except OSError as e:
         logf.close()
-        return f"sippy_ng_start failed to start: {e}"
+        return f"{label} failed to start: {e}"
 
     logf.close()
     time.sleep(0.75)
@@ -434,12 +495,15 @@ def sippy_ng_start(
             tail = log_path.read_text(encoding="utf-8", errors="replace")[-4000:]
         except OSError:
             tail = "(no log output)"
-        return f"sippy_ng_start exited immediately (exit {code}). Log: {log_path}\n--- tail ---\n{tail}"
+        return f"{label} exited immediately (exit {code}). Log: {log_path}\n--- tail ---\n{tail}"
 
-    return (
-        f"sippy_ng_start started (pid {proc.pid}). Typical URL: http://127.0.0.1:3000 "
-        f"log: {log_path}"
-    )
+    if ready_url:
+        err = _wait_for_ready(ready_url, ready_timeout, proc)
+        if err:
+            tail = _tail_file(log_path, 40)
+            return f"{label} started (pid {proc.pid}) but {err}. Log: {log_path}\n--- tail ---\n{tail}"
+
+    return proc.pid
 
 
 def _tail_file(path: Path, max_lines: int) -> str:
@@ -477,11 +541,17 @@ def _run_make_phase(
         try:
             returncode = proc.wait(timeout=tout)
         except subprocess.TimeoutExpired:
-            os.killpg(proc.pid, signal.SIGTERM)
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
             try:
                 proc.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                os.killpg(proc.pid, signal.SIGKILL)
+                try:
+                    os.killpg(proc.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
                 proc.wait()
             tail = _tail_file(log_path, 80)
             return (

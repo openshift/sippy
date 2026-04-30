@@ -6,9 +6,38 @@ PostgreSQL, Redis, and all build tools. It runs on **Podman** and works with bot
 
 ## Prerequisites
 
-- [Podman](https://podman.io/) v4+ with `podman machine` running
-- [devcontainer CLI](https://github.com/devcontainers/cli) — see the [official install instructions](https://github.com/devcontainers/cli#installation) (`npm install -g @devcontainers/cli`, or `brew install devcontainer` on macOS)
+- [Podman](https://podman.io/) v4+
+- [devcontainer CLI](https://github.com/devcontainers/cli) — `npm install -g @devcontainers/cli`
+
+### macOS
+
+- Start `podman machine` before using the devcontainer:
+
+  ```bash
+  podman machine init   # first time only
+  podman machine start
+  ```
+
 - For Cursor: set `"dev.containers.dockerPath": "podman"` in user settings (`Cmd+Shift+P` > "Preferences: Open User Settings (JSON)")
+
+### Linux
+
+- Podman runs natively — no machine required. Ensure the Podman socket is active:
+
+  ```bash
+  systemctl --user enable --now podman.socket
+  ```
+
+- Install `podman-docker` to provide the `docker` CLI alias — this lets devcontainer CLI and Cursor work without `--docker-path podman`:
+
+  ```bash
+  # Fedora/RHEL
+  sudo dnf install podman-docker
+  # Debian/Ubuntu
+  sudo apt install podman-docker
+  ```
+
+- For Cursor (if not using `podman-docker`): set `"dev.containers.dockerPath": "podman"` in user settings (`Ctrl+Shift+P` > "Preferences: Open User Settings (JSON)")
 
 ## First-Time Setup
 
@@ -22,7 +51,7 @@ PostgreSQL, Redis, and all build tools. It runs on **Podman** and works with bot
 2. Start the container:
 
    ```bash
-   devcontainer up --workspace-folder . --docker-path podman
+   devcontainer up --workspace-folder .  # add --docker-path podman on macOS
    ```
 
    This automatically starts PostgreSQL and Redis via `init-services.sh`.
@@ -40,7 +69,7 @@ PostgreSQL, Redis, and all build tools. It runs on **Podman** and works with bot
 
 ```bash
 # Start the container (if not already running)
-devcontainer up --workspace-folder . --docker-path podman
+devcontainer up --workspace-folder .  # add --docker-path podman on macOS
 
 # Exec in and run Claude Code
 podman exec -it sippy-dev bash
@@ -66,12 +95,12 @@ on first use.
 
 ### For Cursor
 
-```text
-Cmd+Shift+P > "Dev Containers: Attach to Running Container" > sippy-dev
-```
+Open the command palette (`Cmd+Shift+P` on macOS, `Ctrl+Shift+P` on Linux):
 
-If the container isn't running yet, use `"Dev Containers: Reopen in Container"`
-to build and start it. Cursor reads `.cursor/mcp.json` for MCP; see
+- **Container already running:** "Dev Containers: Attach to Running Container" > `sippy-dev`
+- **Container not running:** "Dev Containers: Reopen in Container" to build and start it
+
+Cursor reads `.cursor/mcp.json` for MCP; see
 **[mcp/README.md](../mcp/README.md)** for tools, logs, and credentials.
 
 ## Services
@@ -122,10 +151,10 @@ If you change the Dockerfile or devcontainer config:
 
 ```bash
 podman rm -f sippy-dev 2>/dev/null
-devcontainer up --workspace-folder . --docker-path podman --remove-existing-container
+devcontainer up --workspace-folder .  # add --docker-path podman on macOS --remove-existing-container
 ```
 
-Or from Cursor: `Cmd+Shift+P` > "Dev Containers: Rebuild Container Without Cache".
+Or from Cursor: open the command palette and run "Dev Containers: Rebuild Container Without Cache".
 
 ## Cleanup
 

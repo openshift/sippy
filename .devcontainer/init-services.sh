@@ -1,7 +1,8 @@
 #!/bin/sh
+set -eu
 # Starts PostgreSQL and Redis as standalone Podman containers (runs on the host before the devcontainer starts)
 
-podman network create sippy-net 2>/dev/null
+podman network create sippy-net 2>/dev/null || true
 
 podman start sippy-postgres 2>/dev/null || \
     podman run -d --name sippy-postgres \

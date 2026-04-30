@@ -8,4 +8,6 @@ Use the **`sippy_serve`** MCP tool (server: **`sippy-dev`**). Do not run `go run
 
 **`bigquery_credentials_file`**: path to BigQuery-capable SA JSON (e.g. `sippy-bigquery-job-importer-key.json`); optional if `SIPPY_BIGQUERY_CREDENTIALS_FILE` or `GOOGLE_APPLICATION_CREDENTIALS` is set.
 
+If the server is already running, the tool will report it. Ask the user if they want to restart, and if so call again with **`restart=True`**.
+
 See **`mcp/server.py`** for all parameters. Typical listen address: **`:8080`**. Log: **`sippy-dev-logs/sippy_serve.log`**.
