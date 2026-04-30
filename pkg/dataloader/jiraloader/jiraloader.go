@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -220,34 +222,61 @@ func (jl *JiraLoader) incidentLoader(authorization string) {
 	start = time.Now()
 	log.Infof("fetching incidents from jira...")
 
-	apiURL := "https://redhat.atlassian.net/rest/api/3/search/jql?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog"
-	body, err := jiraRequest(apiURL, authorization)
-	if err != nil {
-		jl.errors = append(jl.errors, err)
-		return
-	}
+	baseURL := "https://redhat.atlassian.net/rest/api/3/search/jql?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog"
+	nextPageToken := ""
+	pageCount := 0
+	totalIssues := 0
 
-	var issues struct {
-		Issues []v1jira.Issue `json:"issues"`
-	}
-	err = json.Unmarshal(body, &issues)
-	if err != nil {
-		jl.errors = append(jl.errors, err)
-		return
-	}
-
-	for i, issue := range issues.Issues {
-		unseenUnresolvedIssues.Delete(issue.Key)
-
-		model, err := issueToDB(&issues.Issues[i])
-		if err != nil {
-			log.WithError(err).Errorf("couldn't convert jira issue to db model")
-			continue
+	for {
+		pageCount++
+		apiURL := baseURL
+		if nextPageToken != "" {
+			apiURL = fmt.Sprintf("%s&nextPageToken=%s", baseURL, url.QueryEscape(nextPageToken))
 		}
-		if res := jl.dbc.DB.Save(model); res.Error != nil {
-			log.WithError(res.Error).Errorf("couldn't save jira incident to DB")
-			jl.errors = append(jl.errors, res.Error)
+
+		log.Infof("fetching page %d of incidents...", pageCount)
+		body, err := jiraRequest(apiURL, authorization)
+		if err != nil {
+			jl.errors = append(jl.errors, err)
 			return
+		}
+
+		var response v1jira.SearchResponse
+		err = json.Unmarshal(body, &response)
+		if err != nil {
+			jl.errors = append(jl.errors, err)
+			return
+		}
+
+		log.Infof("processing %d issues from page %d", len(response.Issues), pageCount)
+		for i, issue := range response.Issues {
+			unseenUnresolvedIssues.Delete(issue.Key)
+
+			model, err := issueToDB(&response.Issues[i])
+			if err != nil {
+				log.WithError(err).Errorf("couldn't convert jira issue to db model")
+				continue
+			}
+			if res := jl.dbc.DB.Save(model); res.Error != nil {
+				log.WithError(res.Error).Errorf("couldn't save jira incident to DB")
+				jl.errors = append(jl.errors, res.Error)
+				return
+			}
+		}
+
+		totalIssues += len(response.Issues)
+
+		if response.IsLast {
+			log.Infof("reached last page (%d pages, %d total issues)", pageCount, totalIssues)
+			break
+		}
+
+		nextPageToken = response.NextPageToken
+		if nextPageToken == "" {
+			err := errors.Errorf("nextPageToken is empty but isLast is false, stopping pagination  (%d pages, %d processed issues)", pageCount, totalIssues)
+			log.Error(err)
+			jl.errors = append(jl.errors, err)
+			break
 		}
 	}
 
@@ -356,6 +385,11 @@ func jiraRequest(apiURL, authorization string) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return nil, fmt.Errorf("jira request failed: %s (%s)", resp.Status, strings.TrimSpace(string(body)))
+	}
 
 	return io.ReadAll(resp.Body)
 }

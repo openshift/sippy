@@ -155,3 +155,9 @@ type Component struct {
 	Archived            bool   `json:"archived"`
 	Deleted             bool   `json:"deleted"`
 }
+
+type SearchResponse struct {
+	Issues        []Issue `json:"issues"`
+	NextPageToken string  `json:"nextPageToken"`
+	IsLast        bool    `json:"isLast"`
+}
