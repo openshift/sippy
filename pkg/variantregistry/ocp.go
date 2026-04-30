@@ -1306,12 +1306,31 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 	}
 }
 
-func (os clusterDataOS) setOS(_ logrus.FieldLogger, variants map[string]string, _ string) {
+func (os clusterDataOS) setOS(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	resolved := os
+	if resolved.Default == "" && resolved.ControlPlane == "" && resolved.Workers == "" && len(resolved.Additional) == 0 {
+		resolved = osFromJobName(jobName)
+	}
 	if resolved.Default == "" {
 		resolved.Default = defaultOSForReleaseMajor(variants[VariantReleaseMajor])
 	}
 	variants[VariantOS] = resolved.resolve()
+}
+
+// osFromJobName infers OS variant from the job name when cluster data is unavailable.
+// Match rhcos9-10 before rhcos9 to avoid a false partial match.
+func osFromJobName(jobName string) clusterDataOS {
+	lower := strings.ToLower(jobName)
+	if strings.Contains(lower, "rhcos9-10") {
+		return clusterDataOS{ControlPlane: "rhel-9", Workers: "rhel-10"}
+	}
+	if strings.Contains(lower, "rhcos10") {
+		return clusterDataOS{Default: "rhel-10"}
+	}
+	if strings.Contains(lower, "rhcos9") {
+		return clusterDataOS{Default: "rhel-9"}
+	}
+	return clusterDataOS{}
 }
 
 func defaultOSForReleaseMajor(major string) string { //nolint:unparam

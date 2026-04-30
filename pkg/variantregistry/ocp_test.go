@@ -2378,6 +2378,7 @@ func TestSetOS(t *testing.T) {
 	tests := []struct {
 		name          string
 		releaseMajor  string
+		jobName       string
 		clusterDataOS clusterDataOS
 		expectedOS    string
 	}{
@@ -2390,6 +2391,29 @@ func TestSetOS(t *testing.T) {
 			name:         "no cluster data with release major 5 defaults to rhcos9",
 			releaseMajor: "5",
 			expectedOS:   "rhcos9",
+		},
+		{
+			name:       "no cluster data falls back to rhcos10 from job name",
+			jobName:    "periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-ovn-single-node-rhcos10-techpreview",
+			expectedOS: "rhcos10",
+		},
+		{
+			name:       "no cluster data falls back to rhcos9 from job name",
+			jobName:    "periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-ovn-rhcos9",
+			expectedOS: "rhcos9",
+		},
+		{
+			name:       "no cluster data falls back to rhcos9-10 from job name",
+			jobName:    "periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-ovn-rhcos9-10",
+			expectedOS: "rhcos9-10",
+		},
+		{
+			name:    "cluster data takes precedence over job name",
+			jobName: "periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-ovn-rhcos9",
+			clusterDataOS: clusterDataOS{
+				Default: "rhel-10",
+			},
+			expectedOS: "rhcos10",
 		},
 		{
 			name: "mix of rhcos9 and rhcos10 in cp and workers produces rhcos9-10",
@@ -2613,8 +2637,54 @@ func TestSetOS(t *testing.T) {
 			if tt.releaseMajor != "" {
 				variants[VariantReleaseMajor] = tt.releaseMajor
 			}
-			tt.clusterDataOS.setOS(logrus.WithField("test", "TestSetOS"), variants, "")
+			tt.clusterDataOS.setOS(logrus.WithField("test", "TestSetOS"), variants, tt.jobName)
 			assert.Equal(t, tt.expectedOS, variants[VariantOS])
+		})
+	}
+}
+
+func TestOsFromJobName(t *testing.T) {
+	tests := []struct {
+		name     string
+		jobName  string
+		expected clusterDataOS
+	}{
+		{
+			name:     "rhcos10 in job name",
+			jobName:  "periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-ovn-single-node-rhcos10-techpreview",
+			expected: clusterDataOS{Default: "rhel-10"},
+		},
+		{
+			name:     "rhcos9 in job name",
+			jobName:  "periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-ovn-rhcos9",
+			expected: clusterDataOS{Default: "rhel-9"},
+		},
+		{
+			name:     "rhcos9-10 in job name sets cp and workers",
+			jobName:  "periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-ovn-rhcos9-10",
+			expected: clusterDataOS{ControlPlane: "rhel-9", Workers: "rhel-10"},
+		},
+		{
+			name:     "rhcos9-10 is not confused with rhcos9",
+			jobName:  "periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-ovn-rhcos9-10-techpreview",
+			expected: clusterDataOS{ControlPlane: "rhel-9", Workers: "rhel-10"},
+		},
+		{
+			name:     "no rhcos indicator returns empty",
+			jobName:  "periodic-ci-openshift-release-main-nightly-4.22-e2e-aws-ovn",
+			expected: clusterDataOS{},
+		},
+		{
+			name:     "case insensitive matching",
+			jobName:  "some-job-RHCOS10-test",
+			expected: clusterDataOS{Default: "rhel-10"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := osFromJobName(tt.jobName)
+			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
