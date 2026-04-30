@@ -78,7 +78,7 @@ var testSuites = []string{
 // testSuitePatterns are regular expressions for suite names that should be imported
 // without listing every literal name. Invalid patterns panic at process start.
 var testSuitePatterns = []*regexp.Regexp{
-	// LP interop naming: `lp-interop-<product>--<suffix>`.
+	// LP interop naming: `lp-interop--<product>--<suffix>`.
 	regexp.MustCompile(`^lp-chaos--`),
 	regexp.MustCompile(`^lp-interop--`),
 	regexp.MustCompile(`^lp-ocp-compat--`),
