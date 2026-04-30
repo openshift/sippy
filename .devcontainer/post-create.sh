@@ -10,9 +10,7 @@ echo "==> Downloading Go module dependencies..."
 go mod download
 
 echo "==> Installing frontend dependencies..."
-cd sippy-ng
-npm install --ignore-scripts
-cd ..
+make npm
 
 echo "==> Setting up MCP server venv..."
 python3.12 -m venv mcp/.venv
