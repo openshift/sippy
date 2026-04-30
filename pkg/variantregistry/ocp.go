@@ -1306,12 +1306,28 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 	}
 }
 
-func (os clusterDataOS) setOS(_ logrus.FieldLogger, variants map[string]string, _ string) {
-	resolved := os
-	if resolved.Default == "" {
-		resolved.Default = defaultOSForReleaseMajor(variants[VariantReleaseMajor])
+var rhcosJobNameRegexp = regexp.MustCompile(`-rhcos(\d+)`)
+
+func (os clusterDataOS) setOS(_ logrus.FieldLogger, variants map[string]string, jobName string) {
+	if os.hasData() {
+		resolved := os
+		if resolved.Default == "" {
+			resolved.Default = defaultOSForReleaseMajor(variants[VariantReleaseMajor])
+		}
+		variants[VariantOS] = resolved.resolve()
+		return
 	}
-	variants[VariantOS] = resolved.resolve()
+
+	if m := rhcosJobNameRegexp.FindStringSubmatch(jobName); m != nil {
+		variants[VariantOS] = "rhcos" + m[1]
+		return
+	}
+
+	variants[VariantOS] = defaultOSForReleaseMajor(variants[VariantReleaseMajor])
+}
+
+func (os clusterDataOS) hasData() bool {
+	return os.Default != "" || os.ControlPlane != "" || os.Workers != "" || len(os.Additional) > 0
 }
 
 func defaultOSForReleaseMajor(major string) string { //nolint:unparam
