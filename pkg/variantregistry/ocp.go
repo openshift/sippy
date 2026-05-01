@@ -1289,19 +1289,32 @@ func setLayeredProduct(_ logrus.FieldLogger, variants map[string]string, jobName
 func setOS(_ logrus.FieldLogger, variants map[string]string, jobName string) {
 	jobNameLower := strings.ToLower(jobName)
 
+	// Order matters: check rhcos9-10 before rhcos10 and rhcos9 to avoid false matches.
 	osPatterns := []struct {
 		substring string
 		os        string
 	}{
 		{"rhcos9-10", "rhcos9-10"},
 		{"rhcos10", "rhcos10"},
+		{"rhcos9", "rhcos9"},
 	}
 
-	variants[VariantOS] = "rhcos9"
 	for _, entry := range osPatterns {
 		if strings.Contains(jobNameLower, entry.substring) {
 			variants[VariantOS] = entry.os
 			return
 		}
+	}
+
+	// No explicit rhcos fragment in the job name: fall back based on OCP major version.
+	isMainBranch := strings.Contains(jobNameLower, "-main-") || strings.Contains(jobNameLower, "-master-")
+	switch {
+	case variants[VariantReleaseMajor] == "4":
+		variants[VariantOS] = "rhcos9"
+	case variants[VariantReleaseMajor] == "5" || isMainBranch:
+		// OCP 5 currently defaults to rhcos9. Update this when the default changes.
+		variants[VariantOS] = "rhcos9"
+	default:
+		variants[VariantOS] = "unknown"
 	}
 }
