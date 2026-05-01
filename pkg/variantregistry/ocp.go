@@ -24,6 +24,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/gcs"
+	"github.com/openshift/sippy/pkg/releaseoverride"
 	"github.com/openshift/sippy/pkg/util"
 )
 
@@ -33,7 +34,7 @@ type OCPVariantLoader struct {
 	bqOpContext                  bqlabel.OperationalContext
 	config                       *v1.SippyConfig
 	views                        []crview.View
-	syntheticReleaseJobOverrides map[string]string
+	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides
 	bigQueryProject              string
 	bigQueryDataSet              string
 	bigQueryTable                string
@@ -47,7 +48,7 @@ func NewOCPVariantLoader(
 	gcsClient *storage.Client,
 	config *v1.SippyConfig,
 	views []crview.View,
-	syntheticReleaseJobOverrides map[string]string,
+	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides,
 ) *OCPVariantLoader {
 	return &OCPVariantLoader{
 		BigQueryClient:               bigQueryClient,
@@ -714,7 +715,7 @@ func (v *OCPVariantLoader) setRelease(logger logrus.FieldLogger, variants map[st
 	}
 
 	// Synthetic release claims take priority over other release logic.
-	if release, ok := v.syntheticReleaseJobOverrides[jobName]; ok {
+	if release, ok := v.syntheticReleaseJobOverrides.Lookup(jobName); ok {
 		variants[VariantRelease] = release
 	}
 }

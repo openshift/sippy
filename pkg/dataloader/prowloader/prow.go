@@ -44,6 +44,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	"github.com/openshift/sippy/pkg/github/commenter"
+	"github.com/openshift/sippy/pkg/releaseoverride"
 	"github.com/openshift/sippy/pkg/synthetictests"
 	"github.com/openshift/sippy/pkg/testidentification"
 	"github.com/openshift/sippy/pkg/util"
@@ -71,7 +72,7 @@ type ProwLoader struct {
 	suiteCache                   map[string]*uint
 	suiteCacheLock               sync.RWMutex
 	syntheticTestManager         synthetictests.SyntheticTestManager
-	syntheticReleaseJobOverrides map[string]string
+	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides
 	releases                     []string
 	config                       *v1config.SippyConfig
 	ghCommenter                  *commenter.GitHubCommenter
@@ -95,7 +96,7 @@ func New(
 	ghCommenter *commenter.GitHubCommenter,
 	promPusher *push.Pusher,
 	loadSince *time.Time,
-	syntheticReleaseJobOverrides map[string]string) *ProwLoader {
+	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides) *ProwLoader {
 
 	return &ProwLoader{
 		ctx:                          ctx,
@@ -540,7 +541,7 @@ func (pl *ProwLoader) processProwJob(ctx context.Context, pj *prow.ProwJob) erro
 	})
 
 	// Synthetic release claims take priority over all other matching.
-	if release, ok := pl.syntheticReleaseJobOverrides[pj.Spec.Job]; ok {
+	if release, ok := pl.syntheticReleaseJobOverrides.Lookup(pj.Spec.Job); ok {
 		if err := pl.prowJobToJobRun(ctx, pj, release); err != nil {
 			err = errors.Wrapf(err, "error converting prow job to job run: %s", pj.Spec.Job)
 			pjLog.WithError(err).Warning("prow import error")

@@ -9,6 +9,7 @@ import (
 
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/crview"
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
+	"github.com/openshift/sippy/pkg/releaseoverride"
 )
 
 // JobVariants is a map of jobs to variant key/value pairs
@@ -17,11 +18,11 @@ type JobVariants map[string]map[string]string
 type VariantSnapshot struct {
 	config                       *v1.SippyConfig
 	views                        []crview.View
-	syntheticReleaseJobOverrides map[string]string
+	syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides
 	log                          logrus.FieldLogger
 }
 
-func NewVariantSnapshot(config *v1.SippyConfig, views []crview.View, syntheticReleaseJobOverrides map[string]string, log logrus.FieldLogger) *VariantSnapshot {
+func NewVariantSnapshot(config *v1.SippyConfig, views []crview.View, syntheticReleaseJobOverrides *releaseoverride.SyntheticReleaseOverrides, log logrus.FieldLogger) *VariantSnapshot {
 	return &VariantSnapshot{
 		config:                       config,
 		views:                        views,

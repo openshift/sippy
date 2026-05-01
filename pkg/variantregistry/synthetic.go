@@ -5,19 +5,20 @@ import (
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/releaseoverride"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-// BuildSyntheticReleaseJobOverrides builds a map of job names to release names for all
-// jobs explicitly listed in synthetic releases. This map is used to give
-// synthetic releases priority over name-based version matching when determining
-// which release a job belongs to.
+// BuildSyntheticReleaseJobOverrides builds overrides for all jobs and regexp
+// patterns listed in synthetic releases. These overrides give synthetic releases
+// priority over name-based version matching when determining which release a job
+// belongs to.
 //
 // releaseConfigs identifies which releases are synthetic (from BigQuery),
 // while the job-to-release mappings come from the YAML config.
-func BuildSyntheticReleaseJobOverrides(releases map[string]v1.ReleaseConfig, releaseConfigs []sippyv1.Release) (map[string]string, error) {
+func BuildSyntheticReleaseJobOverrides(releases map[string]v1.ReleaseConfig, releaseConfigs []sippyv1.Release) (*releaseoverride.SyntheticReleaseOverrides, error) {
 	syntheticSet := syntheticReleaseNames(releaseConfigs)
-	overrides := map[string]string{}
+	overrides := releaseoverride.New()
 	for releaseName, releaseCfg := range releases {
 		if !syntheticSet.Has(releaseName) {
 			continue
@@ -26,13 +27,17 @@ func BuildSyntheticReleaseJobOverrides(releases map[string]v1.ReleaseConfig, rel
 			if !enabled {
 				continue
 			}
-			if existing, conflict := overrides[jobName]; conflict {
+			if err := overrides.AddExact(jobName, releaseName); err != nil {
+				return nil, err
+			}
+		}
+		for _, expr := range releaseCfg.Regexp {
+			if err := overrides.AddRegexp(expr, releaseName); err != nil {
 				return nil, fmt.Errorf(
-					"job %q is claimed by synthetic releases %q and %q",
-					jobName, existing, releaseName,
+					"invalid regexp %q in synthetic release %q: %w",
+					expr, releaseName, err,
 				)
 			}
-			overrides[jobName] = releaseName
 		}
 	}
 	return overrides, nil
