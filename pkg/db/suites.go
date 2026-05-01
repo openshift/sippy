@@ -134,8 +134,7 @@ func getOrCreateSuite(db *gorm.DB, name string) *uint {
 			return nil
 		}
 
-		log.WithError(result.Error).Errorf("failed to get or create suite %q", name)
-		return nil
+		// Fallback read succeeded, continue to return suite ID
 	}
 
 	// Validate that we got a valid suite ID
