@@ -41,22 +41,11 @@ func (s *VariantSnapshot) Identify() (JobVariants, error) {
 			if _, done := newVariants[job]; done {
 				continue
 			}
-			newVariants[job] = variantSyncer.calculateVariantsForJob(s.log, job, nil, syntheticClusterDataOS(job))
+			newVariants[job] = variantSyncer.CalculateVariantsForJob(s.log, job, nil)
 		}
 	}
 
 	return newVariants, nil
-}
-
-func syntheticClusterDataOS(jobName string) clusterDataOS {
-	lower := strings.ToLower(jobName)
-	if strings.Contains(lower, "rhcos9-10") {
-		return clusterDataOS{ControlPlane: "rhel-9", Workers: "rhel-10"}
-	}
-	if strings.Contains(lower, "rhcos10") {
-		return clusterDataOS{Default: "rhel-10"}
-	}
-	return clusterDataOS{}
 }
 
 func (s *VariantSnapshot) Load(path string) (JobVariants, error) {
