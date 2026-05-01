@@ -5,6 +5,7 @@ import (
 
 	v1 "github.com/openshift/sippy/pkg/apis/config/v1"
 	sippyv1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
+	"github.com/openshift/sippy/pkg/releaseoverride"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -150,7 +151,122 @@ func TestBuildSyntheticReleaseJobOverrides(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			assert.Equal(t, tt.expectedOverrides, overrides)
+			// Verify each expected override is present via Lookup
+			for jobName, expectedRelease := range tt.expectedOverrides {
+				release, ok := overrides.Lookup(jobName)
+				assert.True(t, ok, "expected override for %q", jobName)
+				assert.Equal(t, expectedRelease, release)
+			}
+			// Verify no unexpected overrides by checking a job not in the map
+			_, ok := overrides.Lookup("not-a-real-job-name")
+			assert.False(t, ok)
 		})
 	}
+}
+
+func TestSyntheticReleaseOverridesRegexp(t *testing.T) {
+	tests := []struct {
+		name            string
+		releases        map[string]v1.ReleaseConfig
+		releaseConfigs  []sippyv1.Release
+		jobName         string
+		expectedRelease string
+		expectedMatch   bool
+	}{
+		{
+			name: "regexp matches job",
+			releases: map[string]v1.ReleaseConfig{
+				"rosa-stage": {
+					Regexp: []string{`^periodic-ci-openshift-online-rosa-e2e-main-.*`},
+				},
+			},
+			releaseConfigs:  []sippyv1.Release{{Release: "rosa-stage", Synthetic: true}},
+			jobName:         "periodic-ci-openshift-online-rosa-e2e-main-nightly-4.22",
+			expectedRelease: "rosa-stage",
+			expectedMatch:   true,
+		},
+		{
+			name: "regexp does not match job",
+			releases: map[string]v1.ReleaseConfig{
+				"rosa-stage": {
+					Regexp: []string{`^periodic-ci-openshift-online-rosa-e2e-main-.*`},
+				},
+			},
+			releaseConfigs: []sippyv1.Release{{Release: "rosa-stage", Synthetic: true}},
+			jobName:        "periodic-ci-openshift-release-master-nightly-4.22-e2e-aws-ovn",
+			expectedMatch:  false,
+		},
+		{
+			name: "exact match takes priority over regexp",
+			releases: map[string]v1.ReleaseConfig{
+				"rosa-stage": {
+					Jobs:   map[string]bool{"my-exact-job": true},
+					Regexp: []string{`^my-.*`},
+				},
+			},
+			releaseConfigs:  []sippyv1.Release{{Release: "rosa-stage", Synthetic: true}},
+			jobName:         "my-exact-job",
+			expectedRelease: "rosa-stage",
+			expectedMatch:   true,
+		},
+		{
+			name: "non-synthetic release regexp is ignored",
+			releases: map[string]v1.ReleaseConfig{
+				"4.22": {
+					Regexp: []string{`^periodic-ci-openshift-online-rosa-e2e-main-.*`},
+				},
+			},
+			releaseConfigs: []sippyv1.Release{{Release: "4.22", Synthetic: false}},
+			jobName:        "periodic-ci-openshift-online-rosa-e2e-main-nightly-4.22",
+			expectedMatch:  false,
+		},
+		{
+			name: "multiple regexp patterns",
+			releases: map[string]v1.ReleaseConfig{
+				"rosa-stage": {
+					Regexp: []string{
+						`^periodic-ci-openshift-online-rosa-e2e-main-.*`,
+						`^periodic-ci-openshift-release-main-nightly-.*-e2e-rosa-hcp-ovn$`,
+					},
+				},
+			},
+			releaseConfigs:  []sippyv1.Release{{Release: "rosa-stage", Synthetic: true}},
+			jobName:         "periodic-ci-openshift-release-main-nightly-4.19-e2e-rosa-hcp-ovn",
+			expectedRelease: "rosa-stage",
+			expectedMatch:   true,
+		},
+		{
+			name: "invalid regexp returns error",
+			releases: map[string]v1.ReleaseConfig{
+				"rosa-stage": {
+					Regexp: []string{`[invalid`},
+				},
+			},
+			releaseConfigs: []sippyv1.Release{{Release: "rosa-stage", Synthetic: true}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			overrides, err := BuildSyntheticReleaseJobOverrides(tt.releases, tt.releaseConfigs)
+			if tt.name == "invalid regexp returns error" {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			release, ok := overrides.Lookup(tt.jobName)
+			assert.Equal(t, tt.expectedMatch, ok)
+			if tt.expectedMatch {
+				assert.Equal(t, tt.expectedRelease, release)
+			}
+		})
+	}
+}
+
+func TestSyntheticReleaseOverridesLookupNil(t *testing.T) {
+	var overrides *releaseoverride.SyntheticReleaseOverrides
+	release, ok := overrides.Lookup("any-job")
+	assert.False(t, ok)
+	assert.Empty(t, release)
 }
