@@ -8,7 +8,12 @@ report.sh
 .idea/
 /sippy-ng/build/*
 .env
+.devcontainer/.env
 *.log
+sippy-dev-logs/
+mcp/.venv/
+__pycache__/
+*.py[cod]
 e2e-coverage*
 
 

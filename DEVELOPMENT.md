@@ -1,3 +1,16 @@
+## Devcontainer (Recommended)
+
+The easiest way to get a full development environment is the
+[devcontainer](.devcontainer/README.md). It provides a pre-configured
+UBI9 container with Go, Node.js, PostgreSQL, Redis, and all build tools
+— no manual dependency installation required. It works with both
+**Cursor** and **Claude Code**, and includes a shared MCP server for
+AI-callable dev tasks (migrations, loaders, local servers, tests). See
+**[mcp/README.md](mcp/README.md)** for tools, configuration, and logs.
+
+See [.devcontainer/README.md](.devcontainer/README.md) for setup
+instructions.
+
 ## Building Sippy
 
 Running `make` will build an all-in-one binary that contains both the go app and frontend.
