@@ -1712,10 +1712,10 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 	if expandFields["symptoms"] {
 		symptomSummaries, err := componentreadiness.GetTriageSymptomSummaries(s.db, triage.ID, len(triage.Regressions))
 		if err != nil {
-			log.WithError(err).Errorf("error getting triage symptom summaries for triage %d", triage.ID)
-		} else {
-			et.SymptomSummaries = symptomSummaries
+			failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting symptom summaries for triage %d: %v", triage.ID, err))
+			return
 		}
+		et.SymptomSummaries = symptomSummaries
 	}
 
 	if expandFields["regressions"] {

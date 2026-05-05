@@ -107,13 +107,11 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		}
 	}
 
-	// TODO(sgoeddel): This is temporary migration logic to backfill closed regressions with their most likely view.
-	// It should be removed after running for the first time.
-	if err := backfillClosedRegressionViews(d.DB); err != nil {
+	if err := createAuditLogIndexes(d.DB); err != nil {
 		return err
 	}
 
-	if err := createAuditLogIndexes(d.DB); err != nil {
+	if err := ensureTriageSymptomCascade(d.DB); err != nil {
 		return err
 	}
 
@@ -215,29 +213,6 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 	return updateRequired, nil
 }
 
-// backfillClosedRegressionViews associates closed regressions that predate the regression_views
-// table with their most likely view (<release>-main). Historically only -main views had regression
-// tracking enabled, so this is our best approximation. Only targets regressions with no existing
-// view associations; open regressions are handled naturally by the loader.
-func backfillClosedRegressionViews(db *gorm.DB) error {
-	res := db.Exec(`
-		INSERT INTO regression_views (test_regression_id, view_name, active, opened_at, closed_at)
-		SELECT tr.id, tr.release || '-main', false, tr.opened, tr.closed
-		FROM test_regressions tr
-		WHERE tr.closed IS NOT NULL
-		AND NOT EXISTS (
-			SELECT 1 FROM regression_views rv WHERE rv.test_regression_id = tr.id
-		)
-		ON CONFLICT (test_regression_id, view_name) DO NOTHING`)
-	if res.Error != nil {
-		return fmt.Errorf("error backfilling closed regression views: %w", res.Error)
-	}
-	if res.RowsAffected > 0 {
-		log.Infof("backfilled %d closed regressions with release-main view associations", res.RowsAffected)
-	}
-	return nil
-}
-
 // createAuditLogIndexes creates GIN indexes for JSONB columns in audit_logs table
 // for efficient JSON querying operations.
 func createAuditLogIndexes(db *gorm.DB) error {
@@ -250,6 +225,25 @@ func createAuditLogIndexes(db *gorm.DB) error {
 	}
 
 	return nil
+}
+
+// ensureTriageSymptomCascade adds a foreign key from triage_symptoms.symptom_id
+// to job_run_symptoms.id so that deleting a symptom definition automatically
+// cleans up the associated triage_symptoms rows.
+func ensureTriageSymptomCascade(db *gorm.DB) error {
+	return db.Exec(`
+		DO $$
+		BEGIN
+			IF NOT EXISTS (
+				SELECT 1 FROM pg_constraint
+				WHERE conname = 'fk_triage_symptoms_symptom'
+			) THEN
+				ALTER TABLE triage_symptoms
+					ADD CONSTRAINT fk_triage_symptoms_symptom
+					FOREIGN KEY (symptom_id) REFERENCES job_run_symptoms(id)
+					ON DELETE CASCADE;
+			END IF;
+		END $$`).Error
 }
 
 func ParseGormLogLevel(logLevel string) (gormlogger.LogLevel, error) {

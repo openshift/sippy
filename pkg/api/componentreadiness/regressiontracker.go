@@ -162,8 +162,8 @@ func (prs *PostgresRegressionStore) SyncTriageSymptoms(regressions []*models.Tes
 				}
 			}
 		}
-		for symptomID, count := range symptomCounts {
-			for _, triage := range reg.Triages {
+		for _, triage := range reg.Triages {
+			for symptomID, count := range symptomCounts {
 				ts := models.TriageSymptom{
 					TriageID:     triage.ID,
 					SymptomID:    symptomID,

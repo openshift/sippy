@@ -82,6 +82,10 @@ export default function TriageSymptoms({
                     <Tooltip title="Filter regressions to this symptom">
                       <IconButton
                         size="small"
+                        aria-label={`Filter regressions to ${
+                          ss.symptom.summary || ss.symptom.id
+                        }`}
+                        aria-pressed={symptomFilter === ss.symptom.id}
                         onClick={() =>
                           setSymptomFilter(
                             symptomFilter === ss.symptom.id
