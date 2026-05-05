@@ -45,8 +45,6 @@ component_readiness:
       - virt
       Network:
       - ovn
-      OS:
-      - rhcos9
       Owner:
       - eng
       - service-delivery
@@ -135,8 +133,6 @@ component_readiness:
       - virt
       Network:
       - ovn
-      OS:
-      - rhcos9
       Owner:
       - eng
       - service-delivery
@@ -220,8 +216,6 @@ component_readiness:
       - virt
       Network:
       - ovn
-      OS:
-      - rhcos9
       Owner:
       - eng
       - service-delivery
@@ -405,7 +399,7 @@ component_readiness:
     flake_as_failure: false
   metrics:
     enabled: false
-- name: 5.0-techpreview-rhcos9-vs-rhcos10
+- name: 5.0-rhcos10-vs-rhcos9
   base_release:
     release: "5.0"
     relative_start: now-7d
@@ -435,6 +429,7 @@ component_readiness:
       - arm64
       - multi
       FeatureSet:
+      - default
       - techpreview
       Installer:
       - ipi
@@ -449,7 +444,7 @@ component_readiness:
       Network:
       - ovn
       OS:
-      - rhcos9
+      - rhcos10
       Owner:
       - eng
       Platform:
@@ -469,16 +464,18 @@ component_readiness:
       - crun
     compare_variants:
       OS:
-      - rhcos10
+      - rhcos9
     variant_cross_compare:
     - OS
   advanced_options:
-    minimum_failure: 3
+    minimum_failure: 4
     confidence: 95
-    pity_factor: 5
+    pity_factor: 10
     ignore_missing: false
     ignore_disruption: true
     flake_as_failure: false
+    pass_rate_required_new_tests: 90
+    include_multi_release_analysis: false
   metrics:
     enabled: false
   regression_tracking:
@@ -1557,84 +1554,6 @@ component_readiness:
     flake_as_failure: false
   metrics:
     enabled: false
-- name: 4.22-techpreview-rhcos9-vs-rhcos10
-  base_release:
-    release: "4.22"
-    relative_start: now-7d
-    relative_end: now
-  sample_release:
-    release: "4.22"
-    relative_start: now-7d
-    relative_end: now
-  variant_options:
-    column_group_by:
-      Network: { }
-      Platform: { }
-      Topology: { }
-    db_group_by:
-      Architecture: { }
-      FeatureSet: { }
-      Installer: { }
-      Network: { }
-      Platform: { }
-      Suite: { }
-      Topology: { }
-      Upgrade: { }
-      LayeredProduct: { }
-    include_variants:
-      Architecture:
-      - amd64
-      - arm64
-      - multi
-      FeatureSet:
-      - techpreview
-      Installer:
-      - ipi
-      - upi
-      JobTier:
-      - blocking
-      - informing
-      - standard
-      - candidate
-      LayeredProduct:
-      - none
-      Network:
-      - ovn
-      OS:
-      - rhcos9
-      Owner:
-      - eng
-      Platform:
-      - aws
-      - azure
-      - gcp
-      - metal
-      - vsphere
-      Topology:
-      - ha
-      - microshift
-      - single
-      CGroupMode:
-      - v2
-      ContainerRuntime:
-      - runc
-      - crun
-    compare_variants:
-      OS:
-      - rhcos10
-    variant_cross_compare:
-    - OS
-  advanced_options:
-    minimum_failure: 3
-    confidence: 95
-    pity_factor: 5
-    ignore_missing: false
-    ignore_disruption: true
-    flake_as_failure: false
-  metrics:
-    enabled: false
-  regression_tracking:
-    enabled: true
 - name: 4.22-ha-vs-single
   base_release:
     release: "4.22"
