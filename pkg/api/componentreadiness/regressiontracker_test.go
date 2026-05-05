@@ -135,6 +135,92 @@ func TestFailedJobRunsFromTestDetails(t *testing.T) {
 			},
 			expectedCount: 0,
 		},
+		{
+			name: "preserves JobSymptoms",
+			report: testdetails.Report{
+				Analyses: []testdetails.Analysis{
+					{
+						JobStats: []testdetails.JobStats{
+							{
+								SampleJobName: "job-a",
+								SampleJobRunStats: []testdetails.JobRunStats{
+									{
+										JobRunID:    "run-1",
+										StartTime:   startTime1,
+										TestStats:   crtest.Stats{FailureCount: 1},
+										JobSymptoms: []string{"SymA", "SymB"},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedCount:  1,
+			expectedRunIDs: []string{"run-1"},
+			checkFunc: func(t *testing.T, runs []models.RegressionJobRun) {
+				assert.Equal(t, []string{"SymA", "SymB"}, []string(runs[0].JobSymptoms))
+			},
+		},
+		{
+			name: "empty JobSymptoms results in nil",
+			report: testdetails.Report{
+				Analyses: []testdetails.Analysis{
+					{
+						JobStats: []testdetails.JobStats{
+							{
+								SampleJobName: "job-a",
+								SampleJobRunStats: []testdetails.JobRunStats{
+									{
+										JobRunID:  "run-1",
+										StartTime: startTime1,
+										TestStats: crtest.Stats{FailureCount: 1},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedCount:  1,
+			expectedRunIDs: []string{"run-1"},
+			checkFunc: func(t *testing.T, runs []models.RegressionJobRun) {
+				assert.Nil(t, runs[0].JobSymptoms)
+			},
+		},
+		{
+			name: "mixed runs: only symptomatic run carries symptoms",
+			report: testdetails.Report{
+				Analyses: []testdetails.Analysis{
+					{
+						JobStats: []testdetails.JobStats{
+							{
+								SampleJobName: "job-a",
+								SampleJobRunStats: []testdetails.JobRunStats{
+									{
+										JobRunID:    "run-1",
+										StartTime:   startTime1,
+										TestStats:   crtest.Stats{FailureCount: 1},
+										JobSymptoms: []string{"SymA"},
+									},
+									{
+										JobRunID:  "run-2",
+										StartTime: startTime2,
+										TestStats: crtest.Stats{FailureCount: 1},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedCount:  2,
+			expectedRunIDs: []string{"run-1", "run-2"},
+			checkFunc: func(t *testing.T, runs []models.RegressionJobRun) {
+				assert.Equal(t, []string{"SymA"}, []string(runs[0].JobSymptoms))
+				assert.Nil(t, runs[1].JobSymptoms)
+			},
+		},
 	}
 
 	for _, tt := range tests {

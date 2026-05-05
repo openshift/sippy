@@ -563,7 +563,9 @@ func buildTestDetailsQuery(
 	withClause, commonParams := buildCRQueryCTEs(client.Dataset, junitTable, jobNameQueryPortion, jobRunAnnotationToIgnore, c.AdvancedOption.KeyTestNames)
 
 	jobLabelsJoin := fmt.Sprintf(`LEFT JOIN (
-						SELECT prowjob_build_id, STRING_AGG(DISTINCT label, ',' ORDER BY label) AS job_labels
+						SELECT prowjob_build_id,
+							STRING_AGG(DISTINCT label, ',' ORDER BY label) AS job_labels,
+							STRING_AGG(DISTINCT CASE WHEN symptom_id != '' THEN symptom_id END, ',') AS job_symptoms
 						FROM %s.job_labels
 						WHERE prowjob_start >= DATETIME(@From)
 						AND prowjob_start < DATETIME(@To)
@@ -597,6 +599,7 @@ func buildTestDetailsQuery(
 						SUM(adjusted_success_val) AS success_count,
 						SUM(adjusted_flake_count) AS flake_count,
 						ANY_VALUE(agg_labels.job_labels) AS job_labels,
+						ANY_VALUE(agg_labels.job_symptoms) AS job_symptoms,
 						ANY_VALUE(agg_failures.job_run_test_failure_count) AS job_run_test_failure_count,
 						COALESCE(NULLIF(ANY_VALUE(lifecycle), ''), 'blocking') AS lifecycle,
 					FROM deduped_testcases junit
@@ -1093,6 +1096,10 @@ func deserializeRowToJobRunTestReportStatus(row []bigquery.Value, schema bigquer
 		case col == "job_labels":
 			if row[i] != nil {
 				cts.JobLabels = strings.Split(row[i].(string), ",")
+			}
+		case col == "job_symptoms":
+			if row[i] != nil {
+				cts.JobSymptoms = strings.Split(row[i].(string), ",")
 			}
 		case col == "job_run_test_failure_count":
 			if row[i] != nil {

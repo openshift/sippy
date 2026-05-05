@@ -1,10 +1,11 @@
 import { applyFilterModel, shouldKeepFilterItem } from '../datagrid/filterUtils'
+import { Chip, Tooltip, Typography } from '@mui/material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { DataGrid } from '@mui/x-data-grid'
 import { generateTestDetailsReportLink } from './CompReadyUtils'
 import { NumberParam, useQueryParam } from 'use-query-params'
 import { relativeTime, SafeJSONParam } from '../helpers'
-import { Tooltip, Typography } from '@mui/material'
+import { symptomColor } from './CompReadyUtils'
 import CompSeverityIcon from './CompSeverityIcon'
 import GridToolbar from '../datagrid/GridToolbar'
 import PropTypes from 'prop-types'
@@ -139,6 +140,52 @@ export default function TriagedRegressionTestList(props) {
         </div>
       ),
     },
+    ...(props.symptomSummaries
+      ? [
+          {
+            field: 'symptoms',
+            headerName: 'Symptoms',
+            flex: 10,
+            filterable: false,
+            sortable: false,
+            valueGetter: (params) => {
+              const symptomIds = regressionSymptomMap[params.row.id]
+              return symptomIds ? [...symptomIds] : []
+            },
+            renderCell: (params) => {
+              if (!params.value || params.value.length === 0) return null
+              return (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                  {params.value.map((symptomId) => {
+                    const summary =
+                      props.symptomSummaries?.find(
+                        (ss) => ss.symptom.id === symptomId
+                      )?.symptom.summary || symptomId
+                    const label =
+                      summary.length > 12
+                        ? summary.substring(0, 12) + '…'
+                        : summary
+                    return (
+                      <Tooltip key={symptomId} title={summary}>
+                        <Chip
+                          label={label}
+                          size="small"
+                          sx={{
+                            backgroundColor: symptomColor(symptomId),
+                            color: '#fff',
+                            fontSize: '0.7rem',
+                            height: 20,
+                          }}
+                        />
+                      </Tooltip>
+                    )
+                  })}
+                </div>
+              )
+            },
+          },
+        ]
+      : []),
     {
       field: 'opened',
       headerName: 'Regressed Since',
@@ -233,10 +280,35 @@ export default function TriagedRegressionTestList(props) {
       : []),
   ]
 
+  const regressionSymptomMap = React.useMemo(() => {
+    const map = {}
+    if (props.symptomSummaries) {
+      for (const ss of props.symptomSummaries) {
+        for (const regId of ss.regression_ids || []) {
+          if (!map[regId]) map[regId] = new Set()
+          map[regId].add(ss.symptom.id)
+        }
+      }
+    }
+    return map
+  }, [props.symptomSummaries])
+
+  const symptomFilteredRegressions = React.useMemo(() => {
+    if (!props.symptomFilter || !props.symptomSummaries) {
+      return triagedRegressions
+    }
+    const match = props.symptomSummaries.find(
+      (ss) => ss.symptom.id === props.symptomFilter
+    )
+    if (!match) return triagedRegressions
+    const matchingRegIds = new Set((match.regression_ids || []).map(Number))
+    return triagedRegressions.filter((r) => matchingRegIds.has(r.id))
+  }, [triagedRegressions, props.symptomFilter, props.symptomSummaries])
+
   // Apply client-side filtering using shared utility
   const filteredRegressions = React.useMemo(
-    () => applyFilterModel(triagedRegressions, filterModel, columns),
-    [triagedRegressions, filterModel, columns]
+    () => applyFilterModel(symptomFilteredRegressions, filterModel, columns),
+    [symptomFilteredRegressions, filterModel, columns]
   )
 
   return (
@@ -292,4 +364,6 @@ TriagedRegressionTestList.propTypes = {
   allRegressedTests: PropTypes.object,
   filterVals: PropTypes.string,
   showOnLoad: PropTypes.bool,
+  symptomFilter: PropTypes.string,
+  symptomSummaries: PropTypes.array,
 }

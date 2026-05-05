@@ -156,8 +156,7 @@ func (l *RegressionCacheLoader) Load() {
 		}
 	}
 
-	// Close regressions per-release (only if no errors for that release),
-	// then resolve triages globally once all releases are processed.
+	// Close regressions per-release (only if no errors for that release)
 	anyErrors := false
 	for release, result := range releaseResults {
 		if result.hadErrors {
@@ -175,6 +174,20 @@ func (l *RegressionCacheLoader) Load() {
 			l.logger.WithError(err).Errorf("error deactivating rolled-off regression views for release %s", release)
 			l.errs = append(l.errs, err)
 			anyErrors = true
+		}
+	}
+
+	var allActiveRegs []*models.TestRegression
+	for _, result := range releaseResults {
+		for _, id := range result.activeIDs.UnsortedList() {
+			allActiveRegs = append(allActiveRegs, &models.TestRegression{ID: id})
+		}
+	}
+	if len(allActiveRegs) > 0 {
+		l.logger.Infof("syncing triage symptoms for %d active regressions", len(allActiveRegs))
+		if err := l.regressionStore.SyncTriageSymptoms(allActiveRegs); err != nil {
+			l.logger.WithError(err).Error("error syncing triage symptoms")
+			l.errs = append(l.errs, err)
 		}
 	}
 

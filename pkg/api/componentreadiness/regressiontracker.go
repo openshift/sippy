@@ -16,6 +16,7 @@ import (
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 	log "github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 const (
@@ -41,6 +42,8 @@ type RegressionStore interface {
 	UpsertRegressionView(regressionID uint, viewName string) error
 	// DeactivateRolledOffViews sets active=false on regression_views rows for regressions that have rolled off a view.
 	DeactivateRolledOffViews(regressionIDs []uint, activeViewMap map[uint][]string) error
+	// SyncTriageSymptoms upserts symptom associations for triages based on regression job run data.
+	SyncTriageSymptoms(regressions []*models.TestRegression) error
 }
 
 type PostgresRegressionStore struct {
@@ -109,10 +112,72 @@ func (prs *PostgresRegressionStore) MergeJobRuns(regressionID uint, jobRuns []mo
 		jobRuns[i].RegressionID = regressionID
 		res := prs.dbc.DB.
 			Where("regression_id = ? AND prow_job_run_id = ?", regressionID, jobRuns[i].ProwJobRunID).
+			Assign(models.RegressionJobRun{
+				JobLabels:   jobRuns[i].JobLabels,
+				JobSymptoms: jobRuns[i].JobSymptoms,
+			}).
 			FirstOrCreate(&jobRuns[i])
 		if res.Error != nil {
 			return fmt.Errorf("error merging job run %s for regression %d: %w",
 				jobRuns[i].ProwJobRunID, regressionID, res.Error)
+		}
+	}
+	return nil
+}
+
+// SyncTriageSymptoms upserts triage_symptoms junction rows by doing a full recount of
+// symptoms across each regression's job runs. The resulting job_run_count is replaced
+// (not incremented), making the operation idempotent and safe to call on every loader run.
+func (prs *PostgresRegressionStore) SyncTriageSymptoms(regressions []*models.TestRegression) error {
+	if len(regressions) == 0 {
+		return nil
+	}
+
+	regIDs := make([]uint, len(regressions))
+	for i, r := range regressions {
+		regIDs[i] = r.ID
+	}
+
+	var regs []models.TestRegression
+	res := prs.dbc.DB.
+		Preload("Triages").
+		Preload("JobRuns").
+		Where("id IN ?", regIDs).
+		Find(&regs)
+	if res.Error != nil {
+		return fmt.Errorf("error loading regressions for symptom sync: %w", res.Error)
+	}
+
+	for _, reg := range regs {
+		if len(reg.Triages) == 0 {
+			continue
+		}
+		symptomCounts := map[string]int{}
+		for _, jr := range reg.JobRuns {
+			seen := sets.New[string]()
+			for _, symptom := range jr.JobSymptoms {
+				if symptom != "" && !seen.Has(symptom) {
+					seen.Insert(symptom)
+					symptomCounts[symptom]++
+				}
+			}
+		}
+		for symptomID, count := range symptomCounts {
+			for _, triage := range reg.Triages {
+				ts := models.TriageSymptom{
+					TriageID:     triage.ID,
+					SymptomID:    symptomID,
+					RegressionID: reg.ID,
+				}
+				result := prs.dbc.DB.Where(ts).FirstOrCreate(&ts)
+				if result.Error != nil {
+					return fmt.Errorf("error syncing symptom %s to triage %d regression %d: %w",
+						symptomID, triage.ID, reg.ID, result.Error)
+				}
+				if err := prs.dbc.DB.Model(&ts).Update("job_run_count", count).Error; err != nil {
+					return fmt.Errorf("error updating symptom job run count: %w", err)
+				}
+			}
 		}
 	}
 	return nil
@@ -359,6 +424,7 @@ func FailedJobRunsFromTestDetails(report testdetails.Report) []models.Regression
 					StartTime:    run.StartTime.In(time.UTC),
 					TestFailures: run.TestFailures,
 					JobLabels:    pq.StringArray(run.JobLabels),
+					JobSymptoms:  pq.StringArray(run.JobSymptoms),
 				}
 				jobRuns = append(jobRuns, jobRun)
 			}

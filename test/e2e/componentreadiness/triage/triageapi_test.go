@@ -18,6 +18,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/test/e2e/util"
 	log "github.com/sirupsen/logrus"
@@ -38,6 +39,27 @@ var view = crview.View{
 			Name: util.Release,
 		},
 	},
+}
+
+func cleanupTriageSymptoms(dbc *db.DB) {
+	res := dbc.DB.Where("1 = 1").Delete(&models.TriageSymptom{})
+	if res.Error != nil {
+		log.Errorf("error deleting triage symptoms: %v", res.Error)
+	}
+}
+
+func seedSymptom(t *testing.T, gormDB *gorm.DB, id, summary string) *jobrunscan.Symptom {
+	sym := &jobrunscan.Symptom{
+		SymptomContent: jobrunscan.SymptomContent{
+			ID:          id,
+			Summary:     summary,
+			MatcherType: jobrunscan.MatcherTypeString,
+			MatchString: "e2e-test-match",
+		},
+	}
+	res := gormDB.Create(sym)
+	require.NoError(t, res.Error)
+	return sym
 }
 
 func cleanupAllTriages(dbc *db.DB) {
@@ -390,6 +412,139 @@ func Test_TriageAPI(t *testing.T) {
 		err = json.Unmarshal(auditLog.OldData, &oldTriageData)
 		require.NoError(t, err, "OldData should be valid JSON")
 		assertTriageDataMatches(t, originalTriage, oldTriageData, "OldData")
+	})
+
+	t.Run("expanded triage includes symptom summaries", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		defer cleanupTriageSymptoms(dbc)
+
+		symA := seedSymptom(t, dbc.DB, "e2e-sym-a", "E2E Symptom A")
+		defer dbc.DB.Delete(symA)
+		symB := seedSymptom(t, dbc.DB, "e2e-sym-b", "E2E Symptom B")
+		defer dbc.DB.Delete(symB)
+
+		reg := createTestRegression(t, tracker, view, "sym-expand-test-1")
+		defer dbc.DB.Delete(reg)
+
+		triage := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: reg.ID},
+			},
+		}
+		var triageResp models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResp)
+		require.NoError(t, err)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "sym-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"e2e-sym-a", "e2e-sym-b"}},
+			{ProwJobRunID: "sym-run-2", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"e2e-sym-a"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var et sippyserver.ExpandedTriage
+		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d?expand=regressions,symptoms", triageResp.ID), &et)
+		require.NoError(t, err)
+		require.NotNil(t, et.SymptomSummaries)
+		require.Len(t, et.SymptomSummaries, 2, "should have 2 symptom summaries")
+
+		symMap := make(map[string]componentreadiness.TriageSymptomSummary)
+		for _, ss := range et.SymptomSummaries {
+			symMap[ss.Symptom.ID] = ss
+		}
+		require.Contains(t, symMap, "e2e-sym-a")
+		assert.Equal(t, 1, symMap["e2e-sym-a"].RegressionCount)
+		assert.Equal(t, 2, symMap["e2e-sym-a"].JobRunCount)
+		assert.Contains(t, symMap["e2e-sym-a"].RegressionIDs, reg.ID)
+
+		require.Contains(t, symMap, "e2e-sym-b")
+		assert.Equal(t, 1, symMap["e2e-sym-b"].RegressionCount)
+		assert.Equal(t, 1, symMap["e2e-sym-b"].JobRunCount)
+		assert.Contains(t, symMap["e2e-sym-b"].RegressionIDs, reg.ID)
+	})
+
+	t.Run("expand=symptoms only returns symptoms without regressed_tests", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		defer cleanupTriageSymptoms(dbc)
+
+		sym := seedSymptom(t, dbc.DB, "e2e-sym-only", "E2E Symptom Only")
+		defer dbc.DB.Delete(sym)
+
+		reg := createTestRegression(t, tracker, view, "sym-only-test-1")
+		defer dbc.DB.Delete(reg)
+
+		triage := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: reg.ID},
+			},
+		}
+		var triageResp models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResp)
+		require.NoError(t, err)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "sym-only-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"e2e-sym-only"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var et sippyserver.ExpandedTriage
+		err = util.SippyGet(fmt.Sprintf("/api/component_readiness/triages/%d?expand=symptoms", triageResp.ID), &et)
+		require.NoError(t, err)
+		require.NotNil(t, et.SymptomSummaries)
+		assert.Len(t, et.SymptomSummaries, 1)
+		assert.Nil(t, et.RegressedTests, "regressed_tests should be nil when only symptoms is expanded")
+	})
+
+	t.Run("delete triage cascades to triage_symptoms", func(t *testing.T) {
+		defer cleanupAllTriages(dbc)
+		defer cleanupTriageSymptoms(dbc)
+
+		sym := seedSymptom(t, dbc.DB, "e2e-sym-cascade", "E2E Symptom Cascade")
+		defer dbc.DB.Delete(sym)
+
+		reg := createTestRegression(t, tracker, view, "sym-cascade-test-1")
+		defer dbc.DB.Delete(reg)
+
+		triage := models.Triage{
+			URL:  jiraBug.URL,
+			Type: models.TriageTypeProduct,
+			Regressions: []models.TestRegression{
+				{ID: reg.ID},
+			},
+		}
+		var triageResp models.Triage
+		err := util.SippyPost("/api/component_readiness/triages", &triage, &triageResp)
+		require.NoError(t, err)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "cascade-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"e2e-sym-cascade"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		// Verify junction row exists
+		var count int64
+		dbc.DB.Model(&models.TriageSymptom{}).Where("triage_id = ?", triageResp.ID).Count(&count)
+		require.Equal(t, int64(1), count, "should have 1 junction row before delete")
+
+		// Delete via API
+		err = util.SippyDelete(fmt.Sprintf("/api/component_readiness/triages/%d", triageResp.ID))
+		require.NoError(t, err)
+
+		// Verify junction rows are gone
+		dbc.DB.Model(&models.TriageSymptom{}).Where("triage_id = ?", triageResp.ID).Count(&count)
+		assert.Equal(t, int64(0), count, "triage_symptoms should be cascade deleted with triage")
 	})
 
 	t.Run("audit endpoint returns full lifecycle operations", func(t *testing.T) {

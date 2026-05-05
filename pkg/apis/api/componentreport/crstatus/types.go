@@ -64,6 +64,7 @@ type TestJobRunRows struct {
 	JiraComponent   string   `bigquery:"jira_component"`
 	JiraComponentID *big.Rat `bigquery:"jira_component_id"`
 	JobLabels       []string `bigquery:"-" json:"job_labels,omitempty"`
+	JobSymptoms     []string `bigquery:"-" json:"job_symptoms,omitempty"`
 	TestFailures    int      `bigquery:"-" json:"test_failures"`
 	Lifecycle       string   `bigquery:"lifecycle"`
 }

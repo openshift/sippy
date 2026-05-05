@@ -1,4 +1,4 @@
-import { Box, Button, Tooltip } from '@mui/material'
+import { Box, Button, Chip, Tooltip } from '@mui/material'
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material'
 import { CompReadyVarsContext } from './CompReadyVars'
 import { formatDateToSeconds, relativeTime } from '../helpers'
@@ -16,7 +16,7 @@ import AskSippyButton from '../chat/AskSippyButton'
 import CompSeverityIcon from './CompSeverityIcon'
 import LaunderedLink from '../components/Laundry'
 import PropTypes from 'prop-types'
-import React, { Fragment, useContext } from 'react'
+import React, { Fragment, useContext, useState } from 'react'
 import Table from '@mui/material/Table'
 import TableBody from '@mui/material/TableBody'
 import TableCell from '@mui/material/TableCell'
@@ -24,6 +24,7 @@ import TableRow from '@mui/material/TableRow'
 import TriageAuditLogsModal from './TriageAuditLogsModal'
 import TriagedRegressionTestList from './TriagedRegressionTestList'
 import TriagePotentialMatches from './TriagePotentialMatches'
+import TriageSymptoms from './TriageSymptoms'
 import UpsertTriageModal from './UpsertTriageModal'
 
 export default function Triage({ id }) {
@@ -34,6 +35,7 @@ export default function Triage({ id }) {
   const [triage, setTriage] = React.useState({})
   const [message, setMessage] = React.useState('')
   const [isUpdated, setIsUpdated] = React.useState(false)
+  const [symptomFilter, setSymptomFilter] = useState(null)
   const capabilitiesContext = React.useContext(SippyCapabilitiesContext)
   const triageEnabled = capabilitiesContext.includes('write_endpoints')
   const localDBEnabled = capabilitiesContext.includes('local_db')
@@ -51,14 +53,14 @@ export default function Triage({ id }) {
     let triageFetch
     // triage entries will only be available when there is a postgres connection
     if (localDBEnabled) {
-      triageFetch = fetch(`${getTriagesAPIUrl(id)}?expand=regressions`).then(
-        (response) => {
-          if (response.status !== 200) {
-            throw new Error('API server returned ' + response.status)
-          }
-          return response.json()
+      triageFetch = fetch(
+        `${getTriagesAPIUrl(id)}?expand=regressions,symptoms`
+      ).then((response) => {
+        if (response.status !== 200) {
+          throw new Error('API server returned ' + response.status)
         }
-      )
+        return response.json()
+      })
     } else {
       triageFetch = Promise.resolve({})
     }
@@ -353,11 +355,32 @@ export default function Triage({ id }) {
           </TableRow>
         </TableBody>
       </Table>
+      <TriageSymptoms
+        symptomSummaries={triage.symptom_summaries}
+        symptomFilter={symptomFilter}
+        setSymptomFilter={setSymptomFilter}
+      />
       <h2>Included Tests</h2>
+      {symptomFilter && (
+        <Box sx={{ mb: 1 }}>
+          <Chip
+            label={`Filtered by: ${
+              triage.symptom_summaries?.find(
+                (ss) => ss.symptom.id === symptomFilter
+              )?.symptom.summary || symptomFilter
+            }`}
+            onDelete={() => setSymptomFilter(null)}
+            color="primary"
+            variant="outlined"
+          />
+        </Box>
+      )}
       <TriagedRegressionTestList
         allRegressedTests={triage.regressed_tests}
         regressions={triage.regressions}
         filterVals={`?view=${view}`}
+        symptomFilter={symptomFilter}
+        symptomSummaries={triage.symptom_summaries}
       />
     </Fragment>
   )
