@@ -1182,15 +1182,9 @@ func (pl *ProwLoader) findSuite(name string) *uint {
 
 	pl.suiteCacheLock.Lock()
 	defer pl.suiteCacheLock.Unlock()
-	suite := &models.Suite{}
-	pl.dbc.DB.Where("name = ?", name).Find(&suite)
-	if suite.ID == 0 {
-		pl.suiteCache[name] = nil
-	} else {
-		id := suite.ID
-		pl.suiteCache[name] = &id
-	}
-	return pl.suiteCache[name]
+	id := db.GetSuiteID(pl.dbc.DB, name)
+	pl.suiteCache[name] = id
+	return id
 }
 
 func (pl *ProwLoader) prowJobRunTestsFromGCS(ctx context.Context, pj *prow.ProwJob, id uint, path string, junitPaths []string) ([]*models.ProwJobRunTest, int, sippyprocessingv1.JobOverallResult, error) {

@@ -1,10 +1,11 @@
 package db
 
 import (
+	"regexp"
+
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 
 	"github.com/openshift/sippy/pkg/db/models"
 )
@@ -74,22 +75,88 @@ var testSuites = []string{
 	"tracing-uiplugin",
 }
 
+// testSuitePatterns are regular expressions for suite names that should be imported
+// without listing every literal name. Invalid patterns panic at process start.
+var testSuitePatterns = []*regexp.Regexp{
+	// LP interop naming: `lp-interop--<product>--<suffix>`.
+	regexp.MustCompile(`^lp-chaos--`),
+	regexp.MustCompile(`^lp-interop--`),
+	regexp.MustCompile(`^lp-ocp-compat--`),
+}
+
+// GetSuiteID retrieves or creates a suite by name if it matches the import criteria
+// (either in the explicit testSuites list or matches a dynamic pattern).
+// Returns the suite ID on success, nil if the suite should not be imported or on error.
+func GetSuiteID(db *gorm.DB, name string) *uint {
+	if name == "" {
+		return nil
+	}
+
+	// Check if this suite should be imported
+	if !isSuiteImportable(name) {
+		return nil
+	}
+
+	// Get existing or create new suite
+	return getOrCreateSuite(db, name)
+}
+
+// isSuiteImportable checks if a suite name should be imported based on
+// the explicit testSuites list or dynamic patterns.
+func isSuiteImportable(name string) bool {
+	// Check explicit list
+	for _, s := range testSuites {
+		if s == name {
+			return true
+		}
+	}
+
+	// Check patterns
+	for _, re := range testSuitePatterns {
+		if re.MatchString(name) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// getOrCreateSuite finds or creates a suite by name. Returns the suite ID on success, nil on error.
+// Uses FirstOrCreate for thread-safe upsert behavior.
+func getOrCreateSuite(db *gorm.DB, name string) *uint {
+	suite := models.Suite{Name: name}
+	result := db.Where("name = ?", name).FirstOrCreate(&suite)
+	if result.Error != nil {
+		// Fallback read handles concurrent creator-wins race windows.
+		read := db.Where("name = ?", name).First(&suite)
+		if read.Error != nil {
+			log.WithError(result.Error).Errorf("failed to get or create suite %q", name)
+			return nil
+		}
+
+		// Fallback read succeeded, continue to return suite ID
+	}
+
+	// Validate that we got a valid suite ID
+	if suite.ID == 0 {
+		log.Errorf("suite %q has invalid ID 0", name)
+		return nil
+	}
+
+	// Found (RowsAffected > 0) even for existing records
+	if result.RowsAffected > 0 {
+		log.WithField("suite", name).Info("retrieved test suite")
+	}
+
+	id := suite.ID
+	return &id
+}
+
+// Runs when the DB is set up / migrated.
 func populateTestSuitesInDB(db *gorm.DB) error {
 	for _, suiteName := range testSuites {
-		s := models.Suite{}
-		res := db.Where("name = ?", suiteName).First(&s)
-		if res.Error != nil {
-			if !errors.Is(res.Error, gorm.ErrRecordNotFound) {
-				return res.Error
-			}
-			s = models.Suite{
-				Name: suiteName,
-			}
-			err := db.Clauses(clause.OnConflict{UpdateAll: true}).Create(&s).Error
-			if err != nil {
-				return errors.Wrapf(err, "error loading suite into db: %s", suiteName)
-			}
-			log.WithField("suite", suiteName).Info("created new test suite")
+		if getOrCreateSuite(db, suiteName) == nil {
+			return errors.Errorf("error loading suite into db: %s", suiteName)
 		}
 	}
 	return nil
