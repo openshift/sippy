@@ -494,7 +494,7 @@ type testResults struct {
 	Test *apitype.Test
 }
 
-const TestResultsCacheDuration = 4 * time.Hour
+const TestResultsCacheDuration = 5 * time.Hour
 
 // PrimeTestResultsCache unconditionally regenerates and caches results for the
 // given release/period/collapse combination, replacing any existing entry.
