@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Shell script meant for developers to run the e2e tests locally without impacting
 # their running postgres container or sippy process.
 # It's quite quick to import the older releases below, but in theory
@@ -172,7 +172,7 @@ COVDIR="$(pwd)/e2e-coverage"
 rm -rf "$COVDIR"
 mkdir -p "$COVDIR"
 echo "Building sippy with coverage instrumentation..."
-go build -cover -coverpkg=./cmd/...,./pkg/... -mod vendor -o ./sippy ./cmd/sippy
+go build -cover -coverpkg=./cmd/...,./pkg/... -mod vendor -o ./sippy ./cmd/sippy || { echo "Build failed"; exit 1; }
 
 echo "Loading database..."
 GOCOVERDIR="$COVDIR" ./sippy seed-data  \

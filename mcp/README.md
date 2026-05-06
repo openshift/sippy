@@ -39,21 +39,16 @@ Commands use the **repo root** as working directory unless noted. Most long outp
 | `regression_cache` | `go run ./cmd/sippy load --loader regression-cache` (BigQuery + Redis + DB) | `sippy-dev-logs/regression_cache.log` |
 | `sippy_serve`      | Background `go run ./cmd/sippy serve` (API/UI, typically port **8080**)     | `sippy-dev-logs/sippy_serve.log`      |
 | `sippy_ng_start`   | Background `npm start` in `sippy-ng/` (typically port **3000**)             | `sippy-dev-logs/sippy_ng_start.log`   |
-| `run_e2e`          | `make e2e`                                                                  | `sippy-dev-logs/run_e2e.log`          |
+| `sippy_stop`       | Stops background `sippy_serve` and `sippy_ng_start` processes               | —                                     |
 
 Optional parameters (timeouts, paths, DSNs, etc.) are documented on each function in **`server.py`**.
 
-> **Cost caution:** `run_e2e` and `regression_cache` issue BigQuery queries that cost real money. Run them only when explicitly needed and never more than once per request.
+> **Cost caution:** `regression_cache` issues BigQuery queries that cost real money. Run it only when explicitly needed and never more than once per request.
 
 ### Credentials and environment
 
 - **Service account JSON** (BigQuery / GCS): pass `bigquery_credentials_file` where supported, or set **`SIPPY_BIGQUERY_CREDENTIALS_FILE`** or **`GOOGLE_APPLICATION_CREDENTIALS`** to an existing file path. Typical local file: `sippy-bigquery-job-importer-key.json` at repo root.
-- **`run_e2e`** sets **`GCS_SA_JSON_PATH`** for `scripts/e2e.sh` from that same resolution.
 - **Postgres / Redis**: `SIPPY_DATABASE_DSN`, `REDIS_URL`, or per-tool arguments; see `server.py` for defaults.
-
-### E2E containers
-
-`scripts/e2e.sh` uses **`DOCKER`** if set; otherwise **Podman** if on `PATH`, else **Docker**. Install one of them, or set `DOCKER` to the CLI you use.
 
 ### Background processes
 
@@ -65,7 +60,7 @@ Agent-oriented shortcuts live under **`.cursor/skills/`**, for example:
 
 - `sippy-dev-migrate`, `sippy-dev-regression-cache`, `sippy-dev-serve`, `sippy-dev-frontend`
 - `sippy-dev-app` (backend + frontend)
-- `sippy-dev-tests` (order: `CI=true make lint` → `make test` → `run_e2e`)
+- `sippy-dev-tests` (order: `CI=true make lint` → `make test` → `make e2e`)
 
 ## Changing the server
 

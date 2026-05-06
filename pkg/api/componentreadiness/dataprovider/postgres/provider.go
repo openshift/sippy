@@ -99,11 +99,11 @@ func matchesIncludeVariants(variants map[string]string, includeVariants map[stri
 
 // --- MetadataQuerier ---
 
-func (p *PostgresProvider) QueryJobVariants(_ context.Context) (crtest.JobVariants, []error) {
+func (p *PostgresProvider) QueryJobVariants(ctx context.Context) (crtest.JobVariants, []error) {
 	variants := crtest.JobVariants{Variants: map[string][]string{}}
 
 	var pairs []string
-	err := p.dbc.DB.Raw(`SELECT DISTINCT unnest(variants) AS pair FROM prow_jobs WHERE deleted_at IS NULL`).
+	err := p.dbc.DB.WithContext(ctx).Raw(`SELECT DISTINCT unnest(variants) AS pair FROM prow_jobs WHERE deleted_at IS NULL`).
 		Pluck("pair", &pairs).Error
 	if err != nil {
 		return variants, []error{fmt.Errorf("querying job variants: %w", err)}
@@ -148,9 +148,9 @@ var releaseMetadata = map[string]struct {
 	"5.0":  {previousRelease: "4.22"},
 }
 
-func (p *PostgresProvider) QueryReleases(_ context.Context) ([]v1.Release, error) {
+func (p *PostgresProvider) QueryReleases(ctx context.Context) ([]v1.Release, error) {
 	var releaseNames []string
-	err := p.dbc.DB.Raw(`SELECT DISTINCT release FROM prow_jobs WHERE deleted_at IS NULL ORDER BY release DESC`).
+	err := p.dbc.DB.WithContext(ctx).Raw(`SELECT DISTINCT release FROM prow_jobs WHERE deleted_at IS NULL ORDER BY release DESC`).
 		Pluck("release", &releaseNames).Error
 	if err != nil {
 		return nil, fmt.Errorf("querying releases: %w", err)
@@ -183,7 +183,7 @@ func (p *PostgresProvider) QueryReleases(_ context.Context) ([]v1.Release, error
 	return releases, nil
 }
 
-func (p *PostgresProvider) QueryReleaseDates(_ context.Context, _ reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error) {
+func (p *PostgresProvider) QueryReleaseDates(ctx context.Context, _ reqopts.RequestOptions) ([]crtest.ReleaseTimeRange, []error) {
 	// Derive time ranges from actual data in the DB rather than hardcoded GA dates.
 	// This ensures fallback queries find data where it actually exists.
 	type releaseRange struct {
@@ -192,7 +192,7 @@ func (p *PostgresProvider) QueryReleaseDates(_ context.Context, _ reqopts.Reques
 		End     time.Time
 	}
 	var ranges []releaseRange
-	err := p.dbc.DB.Raw(`
+	err := p.dbc.DB.WithContext(ctx).Raw(`
 		SELECT pj.release,
 		       MIN(pjr.timestamp) AS start,
 		       MAX(pjr.timestamp) AS end
@@ -219,11 +219,11 @@ func (p *PostgresProvider) QueryReleaseDates(_ context.Context, _ reqopts.Reques
 	return dates, nil
 }
 
-func (p *PostgresProvider) QueryUniqueVariantValues(_ context.Context, field string, nested bool) ([]string, error) {
+func (p *PostgresProvider) QueryUniqueVariantValues(ctx context.Context, field string, nested bool) ([]string, error) {
 	if nested {
 		// Return all variant key names
 		var pairs []string
-		err := p.dbc.DB.Raw(`
+		err := p.dbc.DB.WithContext(ctx).Raw(`
 			SELECT DISTINCT unnest(variants) AS pair FROM prow_jobs
 			WHERE deleted_at IS NULL
 		`).Pluck("pair", &pairs).Error
@@ -257,7 +257,7 @@ func (p *PostgresProvider) QueryUniqueVariantValues(_ context.Context, field str
 	}
 
 	var pairs []string
-	err := p.dbc.DB.Raw(`
+	err := p.dbc.DB.WithContext(ctx).Raw(`
 		SELECT DISTINCT unnest(variants) AS pair FROM prow_jobs
 		WHERE deleted_at IS NULL
 	`).Pluck("pair", &pairs).Error
@@ -518,12 +518,12 @@ WHERE pj.release = ?
 ORDER BY pjr.timestamp
 `
 
-func (p *PostgresProvider) queryTestDetails(release string, start, end time.Time,
+func (p *PostgresProvider) queryTestDetails(ctx context.Context, release string, start, end time.Time,
 	reqOptions reqopts.RequestOptions, _ crtest.JobVariants,
 	includeVariants map[string][]string) (map[string][]crstatus.TestJobRunRows, []error) {
 
 	var rows []testDetailRow
-	if err := p.dbc.DB.Raw(testDetailQuery, release, start, end).Scan(&rows).Error; err != nil {
+	if err := p.dbc.DB.WithContext(ctx).Raw(testDetailQuery, release, start, end).Scan(&rows).Error; err != nil {
 		return nil, []error{fmt.Errorf("querying test details: %w", err)}
 	}
 
@@ -629,22 +629,24 @@ func (p *PostgresProvider) queryTestDetails(release string, start, end time.Time
 	return result, nil
 }
 
-func (p *PostgresProvider) QueryBaseJobRunTestStatus(_ context.Context, reqOptions reqopts.RequestOptions,
+func (p *PostgresProvider) QueryBaseJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants) (map[string][]crstatus.TestJobRunRows, []error) {
 
 	return p.queryTestDetails(
+		ctx,
 		reqOptions.BaseRelease.Name,
 		reqOptions.BaseRelease.Start, reqOptions.BaseRelease.End,
 		reqOptions, allJobVariants, reqOptions.VariantOption.IncludeVariants,
 	)
 }
 
-func (p *PostgresProvider) QuerySampleJobRunTestStatus(_ context.Context, reqOptions reqopts.RequestOptions,
+func (p *PostgresProvider) QuerySampleJobRunTestStatus(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	includeVariants map[string][]string,
 	start, end time.Time) (map[string][]crstatus.TestJobRunRows, []error) {
 
 	return p.queryTestDetails(
+		ctx,
 		reqOptions.SampleRelease.Name,
 		start, end,
 		reqOptions, allJobVariants, includeVariants,
@@ -653,7 +655,7 @@ func (p *PostgresProvider) QuerySampleJobRunTestStatus(_ context.Context, reqOpt
 
 // --- JobQuerier ---
 
-func (p *PostgresProvider) QueryJobRuns(_ context.Context, reqOptions reqopts.RequestOptions,
+func (p *PostgresProvider) QueryJobRuns(ctx context.Context, reqOptions reqopts.RequestOptions,
 	allJobVariants crtest.JobVariants,
 	release string, start, end time.Time) (map[string]dataprovider.JobRunStats, error) {
 
@@ -664,7 +666,7 @@ func (p *PostgresProvider) QueryJobRuns(_ context.Context, reqOptions reqopts.Re
 	}
 
 	var rows []jobRunRow
-	err := p.dbc.DB.Raw(`
+	err := p.dbc.DB.WithContext(ctx).Raw(`
 		SELECT
 			pj.name AS job_name,
 			COUNT(DISTINCT pjr.id) AS total_runs,
@@ -700,7 +702,7 @@ func (p *PostgresProvider) QueryJobRuns(_ context.Context, reqOptions reqopts.Re
 			Variants pq.StringArray `gorm:"column:variants;type:text[]"`
 		}
 		var jvRows []jvRow
-		if err := p.dbc.DB.Raw(`SELECT name, variants FROM prow_jobs WHERE name IN (?) AND deleted_at IS NULL`, jobNames).Scan(&jvRows).Error; err != nil {
+		if err := p.dbc.DB.WithContext(ctx).Raw(`SELECT name, variants FROM prow_jobs WHERE name IN (?) AND deleted_at IS NULL`, jobNames).Scan(&jvRows).Error; err != nil {
 			return nil, fmt.Errorf("fetching job variants: %w", err)
 		}
 		for _, jr := range jvRows {
@@ -730,7 +732,7 @@ func (p *PostgresProvider) QueryJobRuns(_ context.Context, reqOptions reqopts.Re
 	return results, nil
 }
 
-func (p *PostgresProvider) QueryJobVariantValues(_ context.Context, jobNames []string,
+func (p *PostgresProvider) QueryJobVariantValues(ctx context.Context, jobNames []string,
 	variantKeys []string) (map[string]map[string]string, error) {
 
 	if len(jobNames) == 0 {
@@ -743,7 +745,7 @@ func (p *PostgresProvider) QueryJobVariantValues(_ context.Context, jobNames []s
 	}
 
 	var rows []jvRow
-	if err := p.dbc.DB.Raw(`SELECT name, variants FROM prow_jobs WHERE name IN (?) AND deleted_at IS NULL`, jobNames).Scan(&rows).Error; err != nil {
+	if err := p.dbc.DB.WithContext(ctx).Raw(`SELECT name, variants FROM prow_jobs WHERE name IN (?) AND deleted_at IS NULL`, jobNames).Scan(&rows).Error; err != nil {
 		return nil, fmt.Errorf("querying job variant values: %w", err)
 	}
 
@@ -770,13 +772,13 @@ func (p *PostgresProvider) QueryJobVariantValues(_ context.Context, jobNames []s
 	return results, nil
 }
 
-func (p *PostgresProvider) LookupJobVariants(_ context.Context, jobName string) (map[string]string, error) {
+func (p *PostgresProvider) LookupJobVariants(ctx context.Context, jobName string) (map[string]string, error) {
 	type jvRow struct {
 		Variants pq.StringArray `gorm:"column:variants;type:text[]"`
 	}
 
 	var row jvRow
-	err := p.dbc.DB.Raw(`SELECT variants FROM prow_jobs WHERE name = ? AND deleted_at IS NULL LIMIT 1`, jobName).Scan(&row).Error
+	err := p.dbc.DB.WithContext(ctx).Raw(`SELECT variants FROM prow_jobs WHERE name = ? AND deleted_at IS NULL LIMIT 1`, jobName).Scan(&row).Error
 	if err != nil {
 		return nil, fmt.Errorf("looking up job variants: %w", err)
 	}

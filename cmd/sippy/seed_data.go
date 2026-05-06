@@ -646,13 +646,18 @@ func seedRunsForJob(dbc *db.DB, suite *models.Suite, prowJob models.ProwJob, jrK
 			succeeded = true
 		}
 
+		updates := map[string]any{
+			"overall_result":         overallResult,
+			"succeeded":              succeeded,
+			"failed":                 failed,
+			"infrastructure_failure": i >= runCount,
+		}
+		if i >= runCount {
+			updates["labels"] = pq.StringArray{"InfraFailure"}
+		}
+
 		if err := dbc.DB.Model(&models.ProwJobRun{}).Where("id = ?", runID).
-			Updates(map[string]any{
-				"overall_result":         overallResult,
-				"succeeded":              succeeded,
-				"failed":                 failed,
-				"infrastructure_failure": i >= runCount,
-			}).Error; err != nil {
+			Updates(updates).Error; err != nil {
 			return 0, 0, fmt.Errorf("failed to update ProwJobRun result: %w", err)
 		}
 	}
