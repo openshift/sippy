@@ -381,7 +381,7 @@ func PrintTestsJSONFromDB(
 	RespondWithJSON(http.StatusOK, w, testsResult)
 }
 
-func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http.Request, bqc *bq.Client) {
+func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http.Request, bqc *bq.Client, pagination *apitype.Pagination) {
 	spec, ok := makeTestsResultsSpec(w, req, release)
 	if !ok {
 		return
@@ -396,6 +396,16 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 	testsResult := result.TestsAPIResultBQ.sort(req).limit(req)
 	if result.Test != nil {
 		testsResult = append([]apitype.TestBQ{*result.Test}, testsResult...)
+	}
+
+	if pagination != nil {
+		RespondWithJSON(http.StatusOK, w, apitype.PaginationResult{
+			Rows:      testsResult,
+			TotalRows: int64(len(testsResult)),
+			PageSize:  pagination.PerPage,
+			Page:      pagination.Page,
+		})
+		return
 	}
 
 	RespondWithJSON(http.StatusOK, w, testsResult)
@@ -543,16 +553,19 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		if sortField == "" {
 			sortField = "current_pass_percentage"
 		}
-		sort := spec.Sort
-		if sort == "" {
+		sort := apitype.SortDescending
+		if spec.Sort == apitype.SortAscending {
 			sort = apitype.SortAscending
 		}
-		finalResults = finalResults.Order(fmt.Sprintf("%s %s NULLS LAST", pq.QuoteIdentifier(sortField), sort))
 
 		var rowCount int64
-		finalResults.Count(&rowCount)
+		if err := finalResults.Count(&rowCount).Error; err != nil {
+			errs = append(errs, fmt.Errorf("count query failed: %w", err))
+			return
+		}
 		result.TotalRows = rowCount
 
+		finalResults = finalResults.Order(fmt.Sprintf("%s %s NULLS LAST", pq.QuoteIdentifier(sortField), sort))
 		finalResults = finalResults.Limit(spec.Pagination.PerPage).Offset(spec.Pagination.Page * spec.Pagination.PerPage)
 	}
 

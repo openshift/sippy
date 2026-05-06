@@ -244,6 +244,7 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 // flake_average shows the average flake percentage among all variants.
 // flake_standard_deviation shows the standard deviation of the flake percentage among variants. The number reflects how much flake percentage differs among variants.
 // delta_from_flake_average shows how much each variant differs from the flake_average. This can be used to identify outliers.
+
 // SubqueryFilter wraps a filter function with metadata about what it targets.
 // Variant-only filters are applied only to passRates, not to stats, because
 // the stats subquery computes cross-variant averages and standard deviations
@@ -251,10 +252,6 @@ func LoadBugsForTest(dbc *db.DB, testName string, filterClosed bool) ([]models.B
 type SubqueryFilter struct {
 	Apply       func(*gorm.DB) *gorm.DB
 	VariantOnly bool
-}
-
-func isVariantFilter(f SubqueryFilter) bool {
-	return f.VariantOnly
 }
 
 func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string, subqueryFilters ...SubqueryFilter) *gorm.DB {
@@ -281,7 +278,7 @@ func TestsByNURPAndStandardDeviation(dbc *db.DB, release, table string, subquery
 	// scanning the entire matview for the release. Variant-specific filters
 	// only apply to passRates to preserve cross-variant stats semantics.
 	for _, f := range subqueryFilters {
-		if isVariantFilter(f) {
+		if f.VariantOnly {
 			passRates = f.Apply(passRates)
 		} else {
 			stats = f.Apply(stats)

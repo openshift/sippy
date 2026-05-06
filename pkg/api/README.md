@@ -408,10 +408,25 @@ Endpoint: `/api/tests`
 | filter   | Filter         | Filters the results by the specified value.                                               | See filtering                                       |
 | sortField| Field name     | Sort by this field                                                                        |                                                     |
 | sort     | asc / desc     | Sort type, ascending or descending                                                        | "asc" or "desc"                                     |
-| limit    | Integer        | The maximum amount of results to return                                                   | N/A                                                 |
+| limit    | Integer        | The maximum amount of results to return (legacy, use perPage instead)                     | N/A                                                 |
+| perPage  | Integer        | Number of results per page (enables server-side pagination)                               | 1-1000                                              |
+| page     | Integer        | Zero-indexed page number (requires perPage)                                               | 0+                                                  |
+
+When `perPage` is provided, the response is wrapped in a pagination envelope:
+
+```json
+{
+  "rows": [ ... ],
+  "total_rows": 2847,
+  "page_size": 25,
+  "page": 0
+}
+```
+
+When `perPage` is omitted, the legacy array response format is returned for backward compatibility.
 
 <details>
-<summary>Example response</summary>
+<summary>Example response (legacy, without pagination)</summary>
 
 ```json
 [

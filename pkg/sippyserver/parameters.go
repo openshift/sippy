@@ -1,6 +1,7 @@
 package sippyserver
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -74,6 +75,8 @@ func getLimitParam(req *http.Request) int {
 	return limit
 }
 
+const maxPerPage = 1000
+
 func getPaginationParams(req *http.Request) (*apitype.Pagination, error) {
 	perPage := req.URL.Query().Get("perPage")
 	page := req.URL.Query().Get("page")
@@ -82,12 +85,18 @@ func getPaginationParams(req *http.Request) (*apitype.Pagination, error) {
 		if err != nil {
 			return nil, err
 		}
+		if perPageInt <= 0 || perPageInt > maxPerPage {
+			return nil, fmt.Errorf("perPage must be between 1 and %d", maxPerPage)
+		}
 
 		pageNo := 0
 		if page != "" {
 			pageNo, err = strconv.Atoi(page)
 			if err != nil {
 				return nil, err
+			}
+			if pageNo < 0 {
+				return nil, fmt.Errorf("page must be non-negative")
 			}
 		}
 
