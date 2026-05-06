@@ -255,10 +255,9 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 		}
 
 		updated := false
-		oldDescription := t.Description
 		if applyBugSummaryToTriageDescription(&t, bug.Summary) {
 			updated = true
-			logger.Infof("updating triage %d description from %q to %q", t.ID, oldDescription, bug.Summary)
+			logger.Infof("updated triage %d description from linked bug %d", t.ID, bug.ID)
 		}
 
 		// If the triage is not resolved, and it only contains regressions from a single release,
