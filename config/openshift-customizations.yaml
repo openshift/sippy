@@ -38,6 +38,18 @@ releases:
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-uksouth-e2e-parallel: true
       periodic-ci-Azure-ARO-HCP-main-periodic-prod-e2e-parallel-ocp-nightly: true
       branch-ci-Azure-ARO-HCP-main-e2e-prod-e2e-parallel: true
+  aro-classic-integration:
+    jobs:
+      periodic-ci-Azure-ARO-RP-master-periodic-integration-e2e-parallel-csp: true
+      periodic-ci-Azure-ARO-RP-master-periodic-integration-e2e-parallel-miwi: true
+  aro-classic-stage:
+    jobs:
+      periodic-ci-Azure-ARO-RP-master-periodic-stage-e2e-parallel-csp: true
+      periodic-ci-Azure-ARO-RP-master-periodic-stage-e2e-parallel-miwi: true
+  aro-classic-production:
+    jobs:
+      periodic-ci-Azure-ARO-RP-master-periodic-prod-e2e-parallel-csp: true
+      periodic-ci-Azure-ARO-RP-master-periodic-prod-e2e-parallel-miwi: true
   rosa-stage:
     jobs:
       # ROSA Classic/STS nightly (stage)
