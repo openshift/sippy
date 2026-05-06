@@ -505,6 +505,9 @@ func PrimeTestResultsCache(ctx context.Context, dbc *db.DB, cacheClient cache.Ca
 		Collapse:       collapse,
 		IncludeOverall: !collapse,
 	}
+	if cacheClient == nil {
+		return fmt.Errorf("cache client is required for priming")
+	}
 	matview := spec.matview()
 	result, errs := spec.buildTestsResultsPGGenerator(ctx, dbc, matview)
 	if len(errs) > 0 {
