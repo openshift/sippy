@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
-	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -348,32 +347,34 @@ func PrintTestsJSONFromDB(
 		return
 	}
 
-	if pagination != nil {
-		spec.Pagination = pagination
-		spec.SortField = param.SafeRead(req, "sortField")
-		spec.Sort = apitype.Sort(param.SafeRead(req, "sort"))
-
-		result, errs := spec.buildTestsResultsPGGenerator(req.Context(), dbc, spec.matview())
-		if errs != nil {
-			RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": fmt.Sprintf("Error building test report: %v", errs)})
-			return
-		}
-		RespondWithJSON(http.StatusOK, w, apitype.PaginationResult{
-			Rows:      result.TestsAPIResult,
-			TotalRows: result.TotalRows,
-			PageSize:  pagination.PerPage,
-			Page:      pagination.Page,
-		})
-		return
-	}
-
 	result, err := spec.buildTestsResultsFromPostgres(req.Context(), dbc, cacheClient)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
 
-	testsResult := result.TestsAPIResult.sort(req).limit(req)
+	sorted := result.TestsAPIResult.sort(req)
+
+	if pagination != nil {
+		totalRows := int64(len(sorted))
+		start := pagination.Page * pagination.PerPage
+		end := start + pagination.PerPage
+		if start > int(totalRows) {
+			start = int(totalRows)
+		}
+		if end > int(totalRows) {
+			end = int(totalRows)
+		}
+		RespondWithJSON(http.StatusOK, w, apitype.PaginationResult{
+			Rows:      sorted[start:end],
+			TotalRows: totalRows,
+			PageSize:  pagination.PerPage,
+			Page:      pagination.Page,
+		})
+		return
+	}
+
+	testsResult := sorted.limit(req)
 	if result.Test != nil {
 		testsResult = append([]apitype.Test{*result.Test}, testsResult...)
 	}
@@ -460,9 +461,6 @@ type TestResultsSpec struct {
 	Release, Period          string
 	Collapse, IncludeOverall bool
 	Filter                   *filter.Filter
-	Pagination               *apitype.Pagination
-	SortField                string
-	Sort                     apitype.Sort
 }
 
 func (spec *TestResultsSpec) matview() string {
@@ -474,8 +472,7 @@ func (spec *TestResultsSpec) matview() string {
 
 type testResults struct {
 	TestsAPIResult
-	Test      *apitype.Test
-	TotalRows int64
+	Test *apitype.Test
 }
 
 const testResultsCacheDuration = time.Hour
@@ -559,27 +556,6 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
 	}
 
-	if spec.Pagination != nil {
-		sortField := spec.SortField
-		if sortField == "" {
-			sortField = "current_pass_percentage"
-		}
-		sort := apitype.SortDescending
-		if spec.Sort == apitype.SortAscending {
-			sort = apitype.SortAscending
-		}
-
-		var rowCount int64
-		if err := finalResults.Count(&rowCount).Error; err != nil {
-			errs = append(errs, fmt.Errorf("count query failed: %w", err))
-			return
-		}
-		result.TotalRows = rowCount
-
-		finalResults = finalResults.Order(fmt.Sprintf("%s %s NULLS LAST", pq.QuoteIdentifier(sortField), sort))
-		finalResults = finalResults.Limit(spec.Pagination.PerPage).Offset(spec.Pagination.Page * spec.Pagination.PerPage)
-	}
-
 	frr := finalResults.Scan(&testReports)
 	if frr.Error != nil {
 		log.WithError(finalResults.Error).Error("error querying test reports")
@@ -589,7 +565,7 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 	}
 
 	var overallTest *apitype.Test
-	if spec.IncludeOverall && spec.Pagination == nil {
+	if spec.IncludeOverall {
 		finalResults := dbc.DB.Table("(?) as final_results", finalResults)
 		finalResults = finalResults.Select(query.QueryTestSummer)
 		summaryResult := dbc.DB.Table("(?) as overall", finalResults).Select(query.QueryTestSummarizer)
