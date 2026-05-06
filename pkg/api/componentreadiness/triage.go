@@ -865,12 +865,15 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 // TriageSymptomSummary represents a symptom found across a triage's regressions,
 // with counts and percentages for the triage detail view.
 type TriageSymptomSummary struct {
-	Symptom         jobrunscan.Symptom `json:"symptom"`
-	RegressionCount int                `json:"regression_count"`
-	TotalCount      int                `json:"total_count"`
-	Percentage      float64            `json:"percentage"`
-	JobRunCount     int                `json:"job_run_count"`
-	RegressionIDs   []uint             `json:"regression_ids"`
+	Symptom struct {
+		ID      string `json:"id"`
+		Summary string `json:"summary"`
+	} `json:"symptom"`
+	RegressionCount int     `json:"regression_count"`
+	TotalCount      int     `json:"total_count"`
+	Percentage      float64 `json:"percentage"`
+	JobRunCount     int     `json:"job_run_count"`
+	RegressionIDs   []uint  `json:"regression_ids"`
 }
 
 // GetTriageSymptomSummaries queries the triage_symptoms junction table to build
@@ -926,14 +929,16 @@ func GetTriageSymptomSummaries(dbc *db.DB, triageID uint, totalRegressions int) 
 		if !ok {
 			continue
 		}
-		summaries = append(summaries, TriageSymptomSummary{
-			Symptom:         s,
+		summary := TriageSymptomSummary{
 			RegressionCount: c.RegressionCount,
 			TotalCount:      totalRegressions,
 			Percentage:      float64(c.RegressionCount) / float64(totalRegressions) * 100,
 			JobRunCount:     c.JobRunCount,
 			RegressionIDs:   regIDsBySymptom[c.SymptomID],
-		})
+		}
+		summary.Symptom.ID = s.ID
+		summary.Symptom.Summary = s.Summary
+		summaries = append(summaries, summary)
 	}
 	sort.Slice(summaries, func(i, j int) bool {
 		return summaries[i].RegressionCount > summaries[j].RegressionCount

@@ -6,6 +6,8 @@ import (
 
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm/logger"
 )
@@ -26,4 +28,31 @@ func CreateE2EPostgresConnection(t *testing.T) *db.DB {
 	require.Less(t, int(totalRegressions), 300, "found too many test regressions in db, possible indicator someone is running e2e against prod, please clean out test_regressions if this is not the case")
 
 	return dbc
+}
+
+func SeedSymptom(t *testing.T, dbc *db.DB, id, summary string) *jobrunscan.Symptom {
+	sym := &jobrunscan.Symptom{
+		SymptomContent: jobrunscan.SymptomContent{
+			ID:          id,
+			Summary:     summary,
+			MatcherType: jobrunscan.MatcherTypeString,
+			MatchString: "e2e-test-match",
+		},
+	}
+	res := dbc.DB.Where("id = ?", id).FirstOrCreate(sym)
+	require.NoError(t, res.Error)
+	return sym
+}
+
+func CleanupSymptoms(dbc *db.DB, ids ...string) {
+	for _, id := range ids {
+		dbc.DB.Where("id = ?", id).Delete(&jobrunscan.Symptom{})
+	}
+}
+
+func CleanupTriageSymptoms(dbc *db.DB) {
+	res := dbc.DB.Where("1 = 1").Delete(&models.TriageSymptom{})
+	if res.Error != nil {
+		log.Errorf("error deleting triage symptoms: %v", res.Error)
+	}
 }

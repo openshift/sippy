@@ -164,18 +164,14 @@ func (prs *PostgresRegressionStore) SyncTriageSymptoms(regressions []*models.Tes
 		}
 		for _, triage := range reg.Triages {
 			for symptomID, count := range symptomCounts {
-				ts := models.TriageSymptom{
-					TriageID:     triage.ID,
-					SymptomID:    symptomID,
-					RegressionID: reg.ID,
-				}
-				result := prs.dbc.DB.Where(ts).FirstOrCreate(&ts)
-				if result.Error != nil {
+				if err := prs.dbc.DB.Exec(
+					`INSERT INTO triage_symptoms (triage_id, symptom_id, regression_id, job_run_count)
+					 VALUES (?, ?, ?, ?)
+					 ON CONFLICT (triage_id, symptom_id, regression_id) DO UPDATE
+					 SET job_run_count = EXCLUDED.job_run_count`,
+					triage.ID, symptomID, reg.ID, count).Error; err != nil {
 					return fmt.Errorf("error syncing symptom %s to triage %d regression %d: %w",
-						symptomID, triage.ID, reg.ID, result.Error)
-				}
-				if err := prs.dbc.DB.Model(&ts).Update("job_run_count", count).Error; err != nil {
-					return fmt.Errorf("error updating symptom job run count: %w", err)
+						symptomID, triage.ID, reg.ID, err)
 				}
 			}
 		}

@@ -83,9 +83,10 @@ indexed query) and avoids walking the full regression → job run → symptom gr
 The junction table also stores a per-regression job run count (`job_run_count` column),
 which is summed across regressions to produce `job_run_count` in the summary.
 
-Junction rows are upserted and counts updated in place on each loader run.
-Since job runs only accumulate, counts grow monotonically and can't
-double-count.
+`SyncTriageSymptoms` does a full recount of symptoms from each regression's job
+runs and replaces `job_run_count` (not increments), making it idempotent. Since
+the operation replaces the count entirely on each run, calling it multiple times
+with the same data produces the same result without double-counting.
 
 ## Implementation Plan
 
@@ -178,9 +179,9 @@ jobRun := models.RegressionJobRun{
 
 **File:** `pkg/api/componentreadiness/regressiontracker.go`
 
-`MergeJobRuns` currently uses `FirstOrCreate` which won't update existing
-records. Extend it to update `JobSymptoms` (and `JobLabels`) on existing
-records so that newly-detected symptoms are captured on subsequent loader runs:
+`MergeJobRuns` uses `Assign` + `FirstOrCreate` so that `JobSymptoms` (and
+`JobLabels`) are updated on existing records when newly-detected symptoms are
+captured on subsequent loader runs:
 
 ```go
 func (prs *PostgresRegressionStore) MergeJobRuns(regressionID uint, jobRuns []models.RegressionJobRun) error {
@@ -227,34 +228,52 @@ The composite key `(triage_id, symptom_id, regression_id)` records exactly which
 regression(s) surfaced each symptom on a given triage. `JobRunCount` stores how
 many failed job runs on that regression exhibited the symptom.
 
-Rows are upserted during the regression cache loader run, matching the
-`FirstOrCreate`-then-update pattern used by `MergeJobRuns`. Since job runs only
-accumulate (never deleted), symptom counts are monotonically increasing and
-can be safely updated in place without a full replace.
+Rows are upserted during the regression cache loader run via
+`INSERT ... ON CONFLICT DO UPDATE SET job_run_count = EXCLUDED.job_run_count`.
+Since `SyncTriageSymptoms` does a full recount and replaces the count, the
+operation is idempotent.
 
 #### Add association to Triage model
 
-Since the junction table now includes `regression_id`, GORM's built-in
-`many2many` tag no longer fits (it expects a two-column join). Instead, model
-`TriageSymptom` as a standalone entity and query it directly.
+Since the junction table includes `regression_id`, GORM's built-in `many2many`
+tag no longer fits (it expects a two-column join). Instead, `TriageSymptom` is
+modeled as a standalone entity with a `foreignKey:TriageID` relationship.
 
 ```go
 type Triage struct {
     // ... existing fields ...
-    TriageSymptoms []TriageSymptom `json:"triage_symptoms,omitempty" gorm:"foreignKey:TriageID;constraint:OnDelete:CASCADE"`
+    TriageSymptoms []TriageSymptom `json:"-" gorm:"foreignKey:TriageID;constraint:OnDelete:CASCADE"`
 }
 ```
+
+The `json:"-"` tag prevents raw junction rows from leaking into API responses —
+the curated `symptom_summaries` on `ExpandedTriage` is the intended API surface.
 
 The `OnDelete:CASCADE` GORM constraint ensures that deleting a triage
 automatically removes its `TriageSymptom` junction rows. This follows the same
 pattern used by `TestRegression.JobRuns` and `TestRegression.Views`.
 
+#### Foreign key constraints
+
+**File:** `pkg/db/db.go`
+
+In addition to GORM's auto-migrated `TriageSymptom` table, manual FK constraints
+are added via `ensureTriageSymptomCascade()` to handle cascades that GORM's
+`foreignKey` tag can't express (since `TriageSymptom` is not "owned" by either
+`Symptom` or `TestRegression` in the GORM model graph):
+
+- `fk_triage_symptoms_symptom`: `symptom_id` → `job_run_symptoms.id` ON DELETE CASCADE
+- `fk_triage_symptoms_regression`: `regression_id` → `test_regressions.id` ON DELETE CASCADE
+
+These ensure that deleting a symptom definition or a regression automatically
+cleans up the associated `triage_symptoms` rows. The constraints are idempotent
+(guarded by `IF NOT EXISTS` on `pg_constraint`).
+
 #### Auto-migration
 
 **File:** `pkg/db/db.go`
 
-Add `TriageSymptom` to the auto-migrate list (this creates the
-`triage_symptoms` table).
+`TriageSymptom` is in the auto-migrate list (creates the `triage_symptoms` table).
 
 ### Phase 3: Automatic Linking During Regression Tracking
 
@@ -265,67 +284,26 @@ Add `TriageSymptom` to the auto-migrate list (this creates the
 ```go
 type RegressionStore interface {
     // ... existing methods ...
-    // SyncTriageSymptoms upserts symptom associations for all triages
-    // that have regressions with the given symptom-bearing job runs.
+    // SyncTriageSymptoms upserts symptom associations for triages based on regression job run data.
     SyncTriageSymptoms(regressions []*models.TestRegression) error
 }
 ```
 
 #### Implementation
 
+`SyncTriageSymptoms` does a full recount of symptoms from each regression's job
+runs and replaces `job_run_count` (not increments), making the operation
+idempotent and safe to call on every loader run. The upsert uses raw SQL
+`INSERT ... ON CONFLICT DO UPDATE` to perform each upsert in a single DB
+round-trip (following the `UpsertRegressionView` pattern).
+
 ```go
 func (prs *PostgresRegressionStore) SyncTriageSymptoms(regressions []*models.TestRegression) error {
-    regIDs := make([]uint, len(regressions))
-    for i, r := range regressions {
-        regIDs[i] = r.ID
-    }
-
-    var regs []models.TestRegression
-    res := prs.dbc.DB.
-        Preload("Triages").
-        Preload("JobRuns").
-        Where("id IN ?", regIDs).
-        Find(&regs)
-    if res.Error != nil {
-        return fmt.Errorf("error loading regressions for symptom sync: %w", res.Error)
-    }
-
-    for _, reg := range regs {
-        if len(reg.Triages) == 0 {
-            continue
-        }
-        // Count job runs per symptom for this regression
-        symptomCounts := map[string]int{}
-        for _, jr := range reg.JobRuns {
-            seen := sets.New[string]()
-            for _, s := range jr.JobSymptoms {
-                if s != "" && !seen.Has(s) {
-                    seen.Insert(s)
-                    symptomCounts[s]++
-                }
-            }
-        }
-        // Upsert one junction row per (triage, symptom, regression)
-        for symptomID, count := range symptomCounts {
-            for _, triage := range reg.Triages {
-                ts := models.TriageSymptom{
-                    TriageID:     triage.ID,
-                    SymptomID:    symptomID,
-                    RegressionID: reg.ID,
-                }
-                result := prs.dbc.DB.Where(ts).FirstOrCreate(&ts)
-                if result.Error != nil {
-                    return fmt.Errorf("error syncing symptom %s to triage %d regression %d: %w",
-                        symptomID, triage.ID, reg.ID, result.Error)
-                }
-                // Update count whether newly created or already existed
-                if err := prs.dbc.DB.Model(&ts).Update("job_run_count", count).Error; err != nil {
-                    return fmt.Errorf("error updating symptom count: %w", err)
-                }
-            }
-        }
-    }
-    return nil
+    // Load regressions with Triages and JobRuns preloaded
+    // For each regression with triages:
+    //   Count job runs per symptom (deduplicating within each run via sets.New)
+    //   For each (triage, symptom) pair:
+    //     INSERT INTO triage_symptoms ... ON CONFLICT DO UPDATE SET job_run_count = EXCLUDED.job_run_count
 }
 ```
 
@@ -333,12 +311,10 @@ func (prs *PostgresRegressionStore) SyncTriageSymptoms(regressions []*models.Tes
 
 **File:** `pkg/dataloader/regressioncacheloader/regressioncacheloader.go`
 
-After the per-release regression closing loop (around line 180), add a global
-symptom sync step:
+After the per-release regression closing loop, a global symptom sync step runs
+unconditionally for all active regressions:
 
 ```go
-// SyncTriageSymptoms runs unconditionally — it is additive and idempotent,
-// so partial errors in individual views should not block symptom linking.
 var allActiveRegs []*models.TestRegression
 for _, result := range releaseResults {
     for _, id := range result.activeIDs.UnsortedList() {
@@ -353,10 +329,10 @@ if len(allActiveRegs) > 0 {
 }
 ```
 
-This runs once per loader execution, after all views are processed, ensuring
-symptoms from all views are linked. It is not gated behind `!anyErrors` because
-the operation is additive (only upserts) and idempotent — partial view errors
-should not block symptom linking for regressions that were successfully processed.
+This runs once per loader execution, after all views are processed. It is not
+gated behind `!anyErrors` because the operation is additive (only upserts) and
+idempotent — partial view errors should not block symptom linking for
+regressions that were successfully processed.
 
 ### Phase 4: API Changes
 
@@ -366,14 +342,21 @@ should not block symptom linking for regressions that were successfully processe
 
 ```go
 type TriageSymptomSummary struct {
-    Symptom         jobrunscan.Symptom `json:"symptom"`
-    RegressionCount int                `json:"regression_count"`
-    TotalCount      int                `json:"total_count"`
-    Percentage      float64            `json:"percentage"`
-    JobRunCount     int                `json:"job_run_count"`
-    RegressionIDs   []uint             `json:"regression_ids"`
+    Symptom struct {
+        ID      string `json:"id"`
+        Summary string `json:"summary"`
+    } `json:"symptom"`
+    RegressionCount int     `json:"regression_count"`
+    TotalCount      int     `json:"total_count"`
+    Percentage      float64 `json:"percentage"`
+    JobRunCount     int     `json:"job_run_count"`
+    RegressionIDs   []uint  `json:"regression_ids"`
 }
 ```
+
+The `Symptom` field is a slim struct exposing only `ID` and `Summary` — matching
+rules, filters, and other internal fields from the full `jobrunscan.Symptom`
+model are not exposed in the API response.
 
 `RegressionIDs` lists which regressions on this triage exhibit each symptom.
 The frontend uses this to build a per-regression symptom map and to filter
@@ -397,6 +380,9 @@ type ExpandedTriage struct {
     SymptomSummaries []componentreadiness.TriageSymptomSummary       `json:"symptom_summaries,omitempty"`
 }
 ```
+
+Errors from `GetTriageSymptomSummaries` return a 500 status response (not
+logged and swallowed).
 
 #### Comma-separated `expand` parameter
 
@@ -434,6 +420,7 @@ provide context for interpreting the regressions below.
 **Symptoms section structure:**
 
 - Section header: **"Symptoms"** with a count badge (e.g., "Symptoms (3)")
+  and a tooltip explaining that symptoms are synced periodically.
 - If `symptom_summaries` is empty or absent, show a muted "No symptoms
   detected" message — don't hide the section entirely, so users know it exists.
 - If populated, render a MUI `Table` (not DataGrid — the list will be small
@@ -441,28 +428,30 @@ provide context for interpreting the regressions below.
 
 | Column | Source field | Display |
 |--------|-------------|---------|
-| Symptom | `symptom.summary` | Text, clickable link to the symptom detail page |
-| Regressions | `regression_count` / `total_count` | e.g., "2 / 5", with a filter button (see below) |
+| Symptom | `symptom.summary` | Colored `Chip` with deterministic background color based on symptom ID |
+| Regressions | `regression_count` | Count with a filter `IconButton` (with `aria-label` and `aria-pressed` for accessibility) |
 | Percentage | `percentage` | MUI `LinearProgress` bar with percentage label |
 | Failed Runs | `job_run_count` | Plain number — total failed job runs across regressions exhibiting this symptom |
 
 - Table is sorted by percentage descending (already sorted by the API).
-- Each symptom row's summary text should link to the Job Artifact Query page
-  prefilled with that symptom, following the existing `JAQPrefilled` pattern
-  from `JobArtifactQuery.js`.
+
+**Component:** `sippy-ng/src/component_readiness/TriageSymptoms.js`
+
+A dedicated component renders the symptoms table. It receives
+`symptomSummaries`, `symptomFilter`, and `setSymptomFilter` props.
 
 #### Filtering Regressions by Symptom
 
-The Regressions column shows how many of the triage's regressions exhibit each
-symptom (e.g., "2 / 5"). Next to the count, add a small MUI `IconButton` with
-a filter icon (`FilterList`). Clicking it filters the "Included Tests"
+The Regressions column includes a small MUI `IconButton` with a filter icon
+(`FilterList`). Clicking it filters the "Included Tests"
 `TriagedRegressionTestList` DataGrid below to show only regressions that have
-that symptom.
+that symptom. Clicking again clears the filter (toggle behavior).
 
 **Implementation:**
 
 - `Triage.js` holds a `symptomFilter` state (symptom ID or `null`).
-- Clicking the filter button sets `symptomFilter` to that symptom's ID.
+- Clicking the filter button toggles `symptomFilter` to that symptom's ID
+  or back to `null`.
 - When a filter is active, show a `Chip` above the regressions table indicating
   the active filter (e.g., "Filtered by: <symptom summary>") with a clear (X)
   button that resets `symptomFilter` to `null`.
@@ -511,7 +500,10 @@ Added to existing `Test_RegressionJobRuns`:
 
 **File:** `test/e2e/componentreadiness/regressiontracker/regressiontracker_test.go`
 
-New top-level `Test_SyncTriageSymptoms` function:
+New top-level `Test_SyncTriageSymptoms` function. Tests seed `job_run_symptoms`
+records for the test symptom IDs ("SymA", "SymB") via the shared
+`util.SeedSymptom` helper so that the FK constraint
+(`fk_triage_symptoms_symptom`) is satisfied.
 
 | Subtest | Setup | Assert |
 |---------|-------|--------|
@@ -526,7 +518,8 @@ New top-level `Test_SyncTriageSymptoms` function:
 
 **File:** `test/e2e/componentreadiness/triage/triageapi_test.go`
 
-Added to existing `Test_TriageAPI`:
+Added to existing `Test_TriageAPI`. Tests seed `job_run_symptoms` records via
+the shared `util.SeedSymptom` helper.
 
 | Subtest | Setup | Assert |
 |---------|-------|--------|
@@ -534,18 +527,24 @@ Added to existing `Test_TriageAPI`:
 | expand=symptoms only returns symptoms without regressed_tests | Same setup, GET `?expand=symptoms` | `symptom_summaries` present, `regressed_tests` nil |
 | delete triage cascades to triage_symptoms | Create triage + symptoms, DELETE triage | Zero junction rows for that triage |
 
-These tests seed `job_run_symptoms` (Symptom) records for the test symptom IDs
-so `GetTriageSymptomSummaries` can resolve them via the join.
+### Shared Test Helpers
+
+**File:** `test/e2e/util/db.go`
+
+Exported helpers used by both e2e test packages:
+
+- `SeedSymptom(t, dbc, id, summary)` — creates a `jobrunscan.Symptom` record (idempotent via `FirstOrCreate`)
+- `CleanupSymptoms(dbc, ids...)` — deletes symptom records by ID
+- `CleanupTriageSymptoms(dbc)` — deletes all `triage_symptoms` rows
 
 ## Cascade and Deletion Behavior
 
-| Action | Result |
-|--------|--------|
-| Delete triage | Junction rows in `triage_symptoms` removed. Symptoms unaffected. |
-| Soft-delete symptom | Junction rows persist. Symptom filtered from preloaded queries (GORM soft delete). |
-| Hard-delete symptom | Junction rows removed (DB-level FK cascade or explicit cleanup). |
-| Delete regression from triage | Junction rows for that triage/regression pair should be removed (FK cascade or explicit cleanup). |
-| Close regression | No effect on junction. Symptoms remain as historical record. |
+| Action | Result | Mechanism |
+|--------|--------|-----------|
+| Delete triage | Junction rows in `triage_symptoms` removed | GORM `constraint:OnDelete:CASCADE` on `Triage.TriageSymptoms` |
+| Delete symptom definition | Junction rows in `triage_symptoms` removed | Manual FK `fk_triage_symptoms_symptom` in `db.go` |
+| Delete regression | Junction rows in `triage_symptoms` removed | Manual FK `fk_triage_symptoms_regression` in `db.go` |
+| Close regression | No effect on junction. Symptoms remain as historical record | — |
 
 ## Migration and Backward Compatibility
 
@@ -563,7 +562,6 @@ so `GetTriageSymptomSummaries` can resolve them via the join.
 
 4. **API backward compatibility.** The `symptom_summaries` field is additive
    on the `ExpandedTriage` response. Clients that don't use it are unaffected.
-   The `symptoms` field on `Triage` is also additive.
 
 ## Out of Scope (Future Work)
 

@@ -49,7 +49,7 @@ type Triage struct {
 	Regressions []TestRegression `json:"regressions" gorm:"constraint:OnDelete:CASCADE;many2many:triage_regressions;"`
 
 	// TriageSymptoms links symptoms discovered in regression job runs to this triage.
-	TriageSymptoms []TriageSymptom `json:"triage_symptoms,omitempty" gorm:"foreignKey:TriageID;constraint:OnDelete:CASCADE"`
+	TriageSymptoms []TriageSymptom `json:"-" gorm:"foreignKey:TriageID;constraint:OnDelete:CASCADE"`
 
 	// Resolution is an important field presently set by a user indicating a claimed time this issue was resolved,
 	// and thus all associated regressions should be fixed.

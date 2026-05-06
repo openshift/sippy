@@ -227,23 +227,40 @@ func createAuditLogIndexes(db *gorm.DB) error {
 	return nil
 }
 
-// ensureTriageSymptomCascade adds a foreign key from triage_symptoms.symptom_id
-// to job_run_symptoms.id so that deleting a symptom definition automatically
-// cleans up the associated triage_symptoms rows.
+// ensureTriageSymptomCascade adds foreign keys to triage_symptoms with ON DELETE CASCADE
+// so that deleting a symptom definition or a regression automatically cleans up the
+// associated triage_symptoms rows.
 func ensureTriageSymptomCascade(db *gorm.DB) error {
-	return db.Exec(`
-		DO $$
-		BEGIN
-			IF NOT EXISTS (
-				SELECT 1 FROM pg_constraint
-				WHERE conname = 'fk_triage_symptoms_symptom'
-			) THEN
-				ALTER TABLE triage_symptoms
-					ADD CONSTRAINT fk_triage_symptoms_symptom
-					FOREIGN KEY (symptom_id) REFERENCES job_run_symptoms(id)
-					ON DELETE CASCADE;
-			END IF;
-		END $$`).Error
+	constraints := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "fk_triage_symptoms_symptom",
+			sql:  "ALTER TABLE triage_symptoms ADD CONSTRAINT fk_triage_symptoms_symptom FOREIGN KEY (symptom_id) REFERENCES job_run_symptoms(id) ON DELETE CASCADE",
+		},
+		{
+			name: "fk_triage_symptoms_regression",
+			sql:  "ALTER TABLE triage_symptoms ADD CONSTRAINT fk_triage_symptoms_regression FOREIGN KEY (regression_id) REFERENCES test_regressions(id) ON DELETE CASCADE",
+		},
+	}
+
+	for _, c := range constraints {
+		err := db.Exec(fmt.Sprintf(`
+			DO $$
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1 FROM pg_constraint
+					WHERE conname = '%s'
+				) THEN
+					%s;
+				END IF;
+			END $$`, c.name, c.sql)).Error
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func ParseGormLogLevel(logLevel string) (gormlogger.LogLevel, error) {

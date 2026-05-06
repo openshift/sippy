@@ -18,7 +18,6 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/sippyserver"
 	"github.com/openshift/sippy/test/e2e/util"
 	log "github.com/sirupsen/logrus"
@@ -39,27 +38,6 @@ var view = crview.View{
 			Name: util.Release,
 		},
 	},
-}
-
-func cleanupTriageSymptoms(dbc *db.DB) {
-	res := dbc.DB.Where("1 = 1").Delete(&models.TriageSymptom{})
-	if res.Error != nil {
-		log.Errorf("error deleting triage symptoms: %v", res.Error)
-	}
-}
-
-func seedSymptom(t *testing.T, gormDB *gorm.DB, id, summary string) *jobrunscan.Symptom {
-	sym := &jobrunscan.Symptom{
-		SymptomContent: jobrunscan.SymptomContent{
-			ID:          id,
-			Summary:     summary,
-			MatcherType: jobrunscan.MatcherTypeString,
-			MatchString: "e2e-test-match",
-		},
-	}
-	res := gormDB.Create(sym)
-	require.NoError(t, res.Error)
-	return sym
 }
 
 func cleanupAllTriages(dbc *db.DB) {
@@ -416,11 +394,11 @@ func Test_TriageAPI(t *testing.T) {
 
 	t.Run("expanded triage includes symptom summaries", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		defer cleanupTriageSymptoms(dbc)
+		defer util.CleanupTriageSymptoms(dbc)
 
-		symA := seedSymptom(t, dbc.DB, "e2e-sym-a", "E2E Symptom A")
+		symA := util.SeedSymptom(t, dbc, "e2e-sym-a", "E2E Symptom A")
 		defer dbc.DB.Delete(symA)
-		symB := seedSymptom(t, dbc.DB, "e2e-sym-b", "E2E Symptom B")
+		symB := util.SeedSymptom(t, dbc, "e2e-sym-b", "E2E Symptom B")
 		defer dbc.DB.Delete(symB)
 
 		reg := createTestRegression(t, tracker, view, "sym-expand-test-1")
@@ -469,9 +447,9 @@ func Test_TriageAPI(t *testing.T) {
 
 	t.Run("expand=symptoms only returns symptoms without regressed_tests", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		defer cleanupTriageSymptoms(dbc)
+		defer util.CleanupTriageSymptoms(dbc)
 
-		sym := seedSymptom(t, dbc.DB, "e2e-sym-only", "E2E Symptom Only")
+		sym := util.SeedSymptom(t, dbc, "e2e-sym-only", "E2E Symptom Only")
 		defer dbc.DB.Delete(sym)
 
 		reg := createTestRegression(t, tracker, view, "sym-only-test-1")
@@ -506,9 +484,9 @@ func Test_TriageAPI(t *testing.T) {
 
 	t.Run("delete triage cascades to triage_symptoms", func(t *testing.T) {
 		defer cleanupAllTriages(dbc)
-		defer cleanupTriageSymptoms(dbc)
+		defer util.CleanupTriageSymptoms(dbc)
 
-		sym := seedSymptom(t, dbc.DB, "e2e-sym-cascade", "E2E Symptom Cascade")
+		sym := util.SeedSymptom(t, dbc, "e2e-sym-cascade", "E2E Symptom Cascade")
 		defer dbc.DB.Delete(sym)
 
 		reg := createTestRegression(t, tracker, view, "sym-cascade-test-1")

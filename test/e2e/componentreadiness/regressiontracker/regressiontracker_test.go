@@ -15,7 +15,7 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
-	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
+
 	"github.com/openshift/sippy/test/e2e/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
@@ -516,32 +516,6 @@ func Test_RegressionJobRuns(t *testing.T) {
 	})
 }
 
-func seedSymptom(t *testing.T, dbc *db.DB, id, summary string) {
-	sym := &jobrunscan.Symptom{
-		SymptomContent: jobrunscan.SymptomContent{
-			ID:          id,
-			Summary:     summary,
-			MatcherType: jobrunscan.MatcherTypeString,
-			MatchString: "e2e-test-match",
-		},
-	}
-	res := dbc.DB.Where("id = ?", id).FirstOrCreate(sym)
-	require.NoError(t, res.Error)
-}
-
-func cleanupSymptoms(dbc *db.DB, ids ...string) {
-	for _, id := range ids {
-		dbc.DB.Where("id = ?", id).Delete(&jobrunscan.Symptom{})
-	}
-}
-
-func cleanupTriageSymptoms(dbc *db.DB) {
-	res := dbc.DB.Where("1 = 1").Delete(&models.TriageSymptom{})
-	if res.Error != nil {
-		log.Errorf("error deleting triage symptoms: %v", res.Error)
-	}
-}
-
 func cleanupTriages(dbc *db.DB) {
 	dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1")
 	dbc.DB.Where("1 = 1").Delete(&models.Triage{})
@@ -576,12 +550,12 @@ func Test_SyncTriageSymptoms(t *testing.T) {
 		}
 	}
 
-	seedSymptom(t, dbc, "SymA", "Symptom A")
-	seedSymptom(t, dbc, "SymB", "Symptom B")
-	defer cleanupSymptoms(dbc, "SymA", "SymB")
+	util.SeedSymptom(t, dbc, "SymA", "Symptom A")
+	util.SeedSymptom(t, dbc, "SymB", "Symptom B")
+	defer util.CleanupSymptoms(dbc, "SymA", "SymB")
 
 	cleanup := func() {
-		cleanupTriageSymptoms(dbc)
+		util.CleanupTriageSymptoms(dbc)
 		cleanupJobRuns(dbc)
 		cleanupTriages(dbc)
 		cleanupAllRegressions(dbc)
