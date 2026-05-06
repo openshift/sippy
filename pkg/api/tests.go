@@ -525,7 +525,7 @@ func PrimeTestResultsCache(ctx context.Context, dbc *db.DB, cacheClient cache.Ca
 		Val:       result,
 		Timestamp: time.Now().UTC(),
 	}
-	CacheSet(ctx, cacheClient, cacheVal, cacheKey, TestResultsCacheDuration)
+	CacheSet(ctx, cacheClient, cacheVal, cacheKey, TestResultsCacheDuration, WithCompression())
 	return nil
 }
 
