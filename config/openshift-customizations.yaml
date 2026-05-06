@@ -48,8 +48,6 @@ releases:
       periodic-ci-openshift-osde2e-main-nightly-4.20-rosa-classic-sts: true
       periodic-ci-openshift-osde2e-main-nightly-4.21-rosa-classic-sts: true
       periodic-ci-openshift-osde2e-main-nightly-4.22-rosa-classic-sts: true
-      # ROSA HCP nightly (stage)
-      periodic-ci-openshift-osde2e-main-nightly-4.21-rosa-hcp: true
       # ROSA proxy tests (stage)
       periodic-ci-openshift-osde2e-main-rosa-stage-e2e-byo-vpc-proxy-install: true
       periodic-ci-openshift-osde2e-main-rosa-stage-e2e-byo-vpc-proxy-postinstall: true
