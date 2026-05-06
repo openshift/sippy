@@ -393,20 +393,31 @@ func PrintTestsJSONFromBigQuery(release string, w http.ResponseWriter, req *http
 		return
 	}
 
-	testsResult := result.TestsAPIResultBQ.sort(req).limit(req)
+	sorted := result.TestsAPIResultBQ.sort(req)
 	if result.Test != nil {
-		testsResult = append([]apitype.TestBQ{*result.Test}, testsResult...)
+		sorted = append([]apitype.TestBQ{*result.Test}, sorted...)
 	}
 
 	if pagination != nil {
+		totalRows := int64(len(sorted))
+		start := pagination.Page * pagination.PerPage
+		end := start + pagination.PerPage
+		if start > int(totalRows) {
+			start = int(totalRows)
+		}
+		if end > int(totalRows) {
+			end = int(totalRows)
+		}
 		RespondWithJSON(http.StatusOK, w, apitype.PaginationResult{
-			Rows:      testsResult,
-			TotalRows: int64(len(testsResult)),
+			Rows:      sorted[start:end],
+			TotalRows: totalRows,
 			PageSize:  pagination.PerPage,
 			Page:      pagination.Page,
 		})
 		return
 	}
+
+	testsResult := sorted.limit(req)
 
 	RespondWithJSON(http.StatusOK, w, testsResult)
 }
