@@ -11,12 +11,12 @@ import (
 
 func TestGetPaginationParams(t *testing.T) {
 	tests := []struct {
-		name      string
-		query     url.Values
-		wantNil   bool
-		wantErr   bool
-		wantPage  int
-		wantPer   int
+		name     string
+		query    url.Values
+		wantNil  bool
+		wantErr  bool
+		wantPage int
+		wantPer  int
 	}{
 		{
 			name:    "no params returns nil",
