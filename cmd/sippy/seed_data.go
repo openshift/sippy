@@ -749,7 +749,7 @@ func syncRegressions(dbc *db.DB) error {
 	return nil
 }
 
-const syntheticViewsFile = "config/e2e-views.yaml"
+const syntheticViewsFile = "config/seed-views.yaml"
 
 // variantMapToArray converts a variant map to a pq.StringArray.
 func variantMapToArray(m map[string]string) pq.StringArray {

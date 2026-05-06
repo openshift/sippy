@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	// Needs to match the releases in config/e2e-views.yaml
+	// Needs to match the releases in config/seed-views.yaml
 	Release     = "4.22"
 	BaseRelease = "4.21"
 

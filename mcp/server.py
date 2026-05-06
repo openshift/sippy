@@ -305,7 +305,7 @@ def sippy_serve(
     bigquery_credentials_file: str | None = None,
     database_dsn: str | None = None,
     redis_url: str | None = None,
-    views_file: str = "config/views.yaml",
+    views_file: str = "config/seed-views.yaml",
     config_file: str | None = None,
     log_file: str = "sippy-dev-logs/sippy_serve.log",
     log_level: str = "debug",

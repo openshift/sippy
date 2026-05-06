@@ -82,7 +82,7 @@ spec:
     - --mode
     - ocp
     - --views
-    - ./config/e2e-views.yaml
+    - ./config/seed-views.yaml
     - --data-provider
     - postgres
     env:

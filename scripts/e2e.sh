@@ -111,7 +111,7 @@ set -- \
   --database-dsn="$SIPPY_E2E_DSN" \
   --enable-write-endpoints \
   --log-level debug \
-  --views config/e2e-views.yaml \
+  --views config/seed-views.yaml \
   --redis-url="$REDIS_URL" \
   --data-provider postgres
 if [ -n "$GCS_SA_JSON_PATH" ]; then
