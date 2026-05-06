@@ -97,6 +97,11 @@ if [ -f /run/.containerenv ]; then
             echo "View HTML report: go tool cover -html=e2e-coverage.out -o=e2e-coverage.html"
         fi
         e2e_drop_database "$E2E_DB_NAME" "$ADMIN_DSN"
+        if [ -f /tmp/e2e-gotestsum.log ]; then
+            echo ""
+            grep -E '^(DONE|FAIL)' /tmp/e2e-gotestsum.log | tail -1
+            rm -f /tmp/e2e-gotestsum.log
+        fi
         exit $E2E_EXIT_CODE
     }
     trap clean_up EXIT
@@ -129,6 +134,11 @@ else
         echo "Tearing down container $REDIS_CONTAINER"
         $DOCKER stop -i $REDIS_CONTAINER
         $DOCKER rm -i $REDIS_CONTAINER
+        if [ -f /tmp/e2e-gotestsum.log ]; then
+            echo ""
+            grep -E '^(DONE|FAIL)' /tmp/e2e-gotestsum.log | tail -1
+            rm -f /tmp/e2e-gotestsum.log
+        fi
         exit $E2E_EXIT_CODE
     }
     trap clean_up EXIT
@@ -217,5 +227,5 @@ done
 echo "Cache priming complete"
 
 # Run e2e tests
-gotestsum ./test/e2e/... -count 1 -p 1 -coverprofile=e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/...
-E2E_EXIT_CODE=$?
+gotestsum ./test/e2e/... -count 1 -p 1 -coverprofile=e2e-test-coverage.out -coverpkg=./pkg/...,./cmd/... 2>&1 | tee /tmp/e2e-gotestsum.log
+E2E_EXIT_CODE=${PIPESTATUS[0]}
