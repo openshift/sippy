@@ -1133,9 +1133,15 @@ func (s *Server) jsonJobBugsFromDB(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) jsonTestsReportFromDB(w http.ResponseWriter, req *http.Request) {
 	release := s.getParamOrFail(w, req, "release")
-	if release != "" {
-		api.PrintTestsJSONFromDB(w, req, s.db, s.cache, release)
+	if release == "" {
+		return
 	}
+	pagination, err := getPaginationParams(req)
+	if err != nil {
+		api.RespondWithJSON(http.StatusBadRequest, w, map[string]interface{}{"code": http.StatusBadRequest, "message": "invalid pagination params: " + err.Error()})
+		return
+	}
+	api.PrintTestsJSONFromDB(w, req, s.db, s.cache, release, pagination)
 }
 
 func (s *Server) jsonTestsReportFromBigQuery(w http.ResponseWriter, req *http.Request) {

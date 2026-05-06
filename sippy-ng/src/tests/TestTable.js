@@ -128,7 +128,9 @@ function TestTable(props) {
   const [fetchError, setFetchError] = React.useState('')
   const [isLoaded, setLoaded] = React.useState(false)
   const [isSearching, setSearching] = React.useState(false)
-  const [rows, setRows] = React.useState([])
+  const [apiResult, setApiResult] = React.useState({ rows: [], total_rows: 0 })
+  const [page = 0, setPage] = useQueryParam('page', NumberParam)
+  const [pageFlip, setPageFlip] = React.useState(false)
 
   const [period = props.period, setPeriod] = useQueryParam(
     'period',
@@ -917,6 +919,7 @@ function TestTable(props) {
     gridView.setView(v)
     setSort(gridView.view.sort)
     setSortField(gridView.view.sortField)
+    setPage(0)
   }
 
   const fetchData = () => {
@@ -940,6 +943,8 @@ function TestTable(props) {
 
     queryString += '&sortField=' + safeEncodeURIComponent(sortField)
     queryString += '&sort=' + safeEncodeURIComponent(sort)
+    queryString += '&perPage=' + safeEncodeURIComponent(pageSize)
+    queryString += '&page=' + safeEncodeURIComponent(page)
 
     queryString += '&collapse=' + safeEncodeURIComponent(props.collapse)
 
@@ -957,12 +962,13 @@ function TestTable(props) {
       })
       .then((json) => {
         if (json != null) {
-          setRows(json)
+          setApiResult(json)
         } else {
-          setRows([])
+          setApiResult({ rows: [], total_rows: 0 })
         }
         setLoaded(true)
         setSearching(false)
+        setPageFlip(false)
       })
       .catch((error) => {
         setFetchError(
@@ -976,7 +982,7 @@ function TestTable(props) {
 
   useEffect(() => {
     if (prevLocation.current !== location) {
-      setRows([])
+      setApiResult({ rows: [], total_rows: 0 })
       setLoaded(false)
     }
 
@@ -986,7 +992,7 @@ function TestTable(props) {
       fetchData()
     } else {
       // Mark as loaded so we don't show loading spinner, and clear any stale data
-      setRows([])
+      setApiResult({ rows: [], total_rows: 0 })
       setLoaded(true)
       setSearching(false)
     }
@@ -997,6 +1003,8 @@ function TestTable(props) {
     filterModel,
     sort,
     sortField,
+    page,
+    pageSize,
     props.collapse,
     props.briefTable,
     view,
@@ -1004,6 +1012,7 @@ function TestTable(props) {
 
   const requestSearch = (searchValue) => {
     setSearching(true)
+    setPage(0)
     const currentFilters = filterModel
     currentFilters.items = currentFilters.items.filter(
       (f) => f.columnField !== 'name'
@@ -1041,6 +1050,7 @@ function TestTable(props) {
         currentFilters.push(item)
       }
     })
+    setPage(0)
     setFilterModel({
       items: currentFilters,
       linkOperator: filterModel.linkOperator || 'and',
@@ -1059,6 +1069,13 @@ function TestTable(props) {
     if (sortField !== model[0].field) {
       setSortField(model[0].field)
     }
+
+    setPage(0)
+  }
+
+  const changePage = (newPage) => {
+    setPageFlip(true)
+    setPage(newPage)
   }
 
   return (
@@ -1071,15 +1088,23 @@ function TestTable(props) {
         </Alert>
       )}
       <StyledDataGrid
-        loading={isSearching}
+        loading={isSearching || pageFlip}
         components={{ Toolbar: props.hideControls ? '' : GridToolbar }}
-        rows={rows}
+        rows={apiResult.rows || []}
+        rowCount={apiResult.total_rows || 0}
         columns={gridView.columns}
         autoHeight={true}
         getRowHeight={() => (props.collapse ? 100 : 'auto')}
         disableColumnFilter={props.briefTable}
+        pagination
+        paginationMode="server"
+        page={page}
         pageSize={pageSize}
-        onPageSizeChange={(newPageSize) => setPageSize(newPageSize)}
+        onPageChange={(newPage) => changePage(newPage)}
+        onPageSizeChange={(newPageSize) => {
+          setPageSize(newPageSize)
+          setPage(0)
+        }}
         rowsPerPageOptions={props.rowsPerPageOptions}
         checkboxSelection={false}
         filterMode="server"
@@ -1129,7 +1154,7 @@ function TestTable(props) {
             filterModel: filterModel,
             setFilterModel: setFilterModel,
             downloadDataFunc: () => {
-              return rows
+              return apiResult.rows || []
             },
             downloadFilePrefix: 'tests',
           },

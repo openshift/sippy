@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/bigquery"
+	"github.com/lib/pq"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/api/iterator"
@@ -340,9 +341,29 @@ func PrintTestsJSONFromDB(
 	w http.ResponseWriter, req *http.Request,
 	dbc *db.DB, cacheClient cache.Cache,
 	release string,
+	pagination *apitype.Pagination,
 ) {
 	spec, ok := makeTestsResultsSpec(w, req, release)
 	if !ok {
+		return
+	}
+
+	if pagination != nil {
+		spec.Pagination = pagination
+		spec.SortField = param.SafeRead(req, "sortField")
+		spec.Sort = apitype.Sort(param.SafeRead(req, "sort"))
+
+		result, errs := spec.buildTestsResultsPGGenerator(req.Context(), dbc, spec.matview())
+		if errs != nil {
+			RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": fmt.Sprintf("Error building test report: %v", errs)})
+			return
+		}
+		RespondWithJSON(http.StatusOK, w, apitype.PaginationResult{
+			Rows:      result.TestsAPIResult,
+			TotalRows: result.TotalRows,
+			PageSize:  pagination.PerPage,
+			Page:      pagination.Page,
+		})
 		return
 	}
 
@@ -418,19 +439,28 @@ type TestResultsSpec struct {
 	Release, Period          string
 	Collapse, IncludeOverall bool
 	Filter                   *filter.Filter
+	Pagination               *apitype.Pagination
+	SortField                string
+	Sort                     apitype.Sort
 }
+
+func (spec *TestResultsSpec) matview() string {
+	if spec.Period == "twoDay" {
+		return testReport2dMatView
+	}
+	return testReport7dMatView
+}
+
 type testResults struct {
 	TestsAPIResult
-	Test *apitype.Test
+	Test      *apitype.Test
+	TotalRows int64
 }
 
 const testResultsCacheDuration = time.Hour
 
 func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) (testResults, error) {
-	matview := testReport7dMatView
-	if spec.Period == "twoDay" {
-		matview = testReport2dMatView
-	}
+	matview := spec.matview()
 
 	generator := func(ctx context.Context) (testResults, []error) {
 		return spec.buildTestsResultsPGGenerator(ctx, dbc, matview)
@@ -508,6 +538,24 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		finalResults = processedFilter.ToSQL(finalResults, apitype.Test{})
 	}
 
+	if spec.Pagination != nil {
+		sortField := spec.SortField
+		if sortField == "" {
+			sortField = "current_pass_percentage"
+		}
+		sort := spec.Sort
+		if sort == "" {
+			sort = apitype.SortAscending
+		}
+		finalResults = finalResults.Order(fmt.Sprintf("%s %s NULLS LAST", pq.QuoteIdentifier(sortField), sort))
+
+		var rowCount int64
+		finalResults.Count(&rowCount)
+		result.TotalRows = rowCount
+
+		finalResults = finalResults.Limit(spec.Pagination.PerPage).Offset(spec.Pagination.Page * spec.Pagination.PerPage)
+	}
+
 	frr := finalResults.Scan(&testReports)
 	if frr.Error != nil {
 		log.WithError(finalResults.Error).Error("error querying test reports")
@@ -516,9 +564,8 @@ func (spec *TestResultsSpec) buildTestsResultsPGGenerator(ctx context.Context, d
 		return
 	}
 
-	// Produce a special "overall" test that has a summary of all the selected tests.
 	var overallTest *apitype.Test
-	if spec.IncludeOverall {
+	if spec.IncludeOverall && spec.Pagination == nil {
 		finalResults := dbc.DB.Table("(?) as final_results", finalResults)
 		finalResults = finalResults.Select(query.QueryTestSummer)
 		summaryResult := dbc.DB.Table("(?) as overall", finalResults).Select(query.QueryTestSummarizer)
