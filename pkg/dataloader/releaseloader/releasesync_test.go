@@ -80,7 +80,7 @@ func TestReleaseTagForcedFlag(t *testing.T) {
 			releaseTag.Phase = tt.releaseTagPhase
 			releaseTag.PullSpec = tt.releaseTagPullSpec
 
-			mReleaseTag := releaseDetailsToDB(ReleaseStream{Architecture: tt.architecture}, releaseTag, tt.releaseDetails)
+			mReleaseTag := releaseDetailsToDB(nil, ReleaseStream{Architecture: tt.architecture}, releaseTag, tt.releaseDetails)
 
 			if mReleaseTag.Forced != tt.wantForced {
 				t.Errorf("Invalid forced flag for %s", tt.name)

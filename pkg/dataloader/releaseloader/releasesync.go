@@ -1,6 +1,7 @@
 package releaseloader
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -18,6 +19,8 @@ import (
 	"gorm.io/gorm/clause"
 
 	"github.com/openshift/sippy/pkg/apis/api"
+	bqcachedclient "github.com/openshift/sippy/pkg/bigquery"
+	"github.com/openshift/sippy/pkg/dataloader/prowloader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
 )
@@ -30,6 +33,7 @@ const (
 
 type ReleaseLoader struct {
 	db            *db.DB
+	bqClient      *bqcachedclient.Client
 	httpClient    *http.Client
 	releases      map[string]v1.Release
 	architectures []string
@@ -37,7 +41,7 @@ type ReleaseLoader struct {
 	errors        []error
 }
 
-func New(dbc *db.DB, releases, architectures []string, releaseConfigs []v1.Release) *ReleaseLoader {
+func New(dbc *db.DB, bqClient *bqcachedclient.Client, releases, architectures []string, releaseConfigs []v1.Release) *ReleaseLoader {
 	configForRelease := make(map[string]v1.Release, len(releaseConfigs))
 	for _, config := range releaseConfigs {
 		if config.Capabilities[v1.PayloadTagsCap] {
@@ -58,6 +62,7 @@ func New(dbc *db.DB, releases, architectures []string, releaseConfigs []v1.Relea
 
 	return &ReleaseLoader{
 		db:            dbc,
+		bqClient:      bqClient,
 		httpClient:    &http.Client{Timeout: 60 * time.Second},
 		releases:      configForRelease,
 		architectures: architectures,
@@ -115,7 +120,7 @@ func (r *ReleaseLoader) buildReleaseTag(rs ReleaseStream, tag ReleaseTag) *model
 	if releaseDetails == nil {
 		return nil
 	}
-	releaseTag := releaseDetailsToDB(rs, tag, *releaseDetails)
+	releaseTag := releaseDetailsToDB(r.bqClient, rs, tag, *releaseDetails)
 
 	// We skip releases that aren't fully baked (i.e. all jobs run and changelog calculated)
 	if releaseTag == nil || (releaseTag.Phase != api.PayloadAccepted && releaseTag.Phase != api.PayloadRejected) {
@@ -206,7 +211,7 @@ func (r *ReleaseLoader) fetchReleaseTags(rs ReleaseStream) []ReleaseTag {
 	return tags.Tags
 }
 
-func releaseDetailsToDB(rs ReleaseStream, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
+func releaseDetailsToDB(bqClient *bqcachedclient.Client, rs ReleaseStream, tag ReleaseTag, details ReleaseDetails) *models.ReleaseTag {
 	release := models.ReleaseTag{
 		Release:      rs.Release.Release,
 		Stream:       rs.Stream,
@@ -250,7 +255,7 @@ func releaseDetailsToDB(rs ReleaseStream, tag ReleaseTag, details ReleaseDetails
 		release.Repositories = changelog.Repositories()
 		release.PullRequests = changelog.PullRequests()
 	}
-	release.JobRuns = releaseJobRunsToDB(details)
+	release.JobRuns = releaseJobRunsToDB(bqClient, details)
 
 	// set forced flag
 	failedBlocking := false
@@ -359,9 +364,10 @@ func parseChangeLogJSON(releaseTag string, changeLogJSON ChangeLog) models.Relea
 	return releaseChangeLogJSON
 }
 
-func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
+func releaseJobRunsToDB(bqClient *bqcachedclient.Client, details ReleaseDetails) []models.ReleaseJobRun {
 	rows := make([]models.ReleaseJobRun, 0)
 	results := make(map[uint]models.ReleaseJobRun)
+	ctx := context.Background()
 
 	if jobs, ok := details.Results["blockingJobs"]; ok {
 		for platform, jobResult := range jobs {
@@ -438,6 +444,77 @@ func releaseJobRunsToDB(details ReleaseDetails) []models.ReleaseJobRun {
 		}
 	}
 
+	// Fetch labels from BigQuery for all job runs
+	if bqClient != nil {
+		// Collect job run details for label fetching
+		type jobRunInfo struct {
+			buildID   string
+			startTime time.Time
+		}
+		jobRunDetails := make(map[uint]jobRunInfo)
+
+		// Extract build ID from URL for all blocking jobs
+		if jobs, ok := details.Results["blockingJobs"]; ok {
+			for _, jobResult := range jobs {
+				id, _ := idFromURL(jobResult.URL)
+				if id > 0 {
+					buildID := extractBuildIDFromURL(jobResult.URL)
+					if buildID != "" {
+						jobRunDetails[id] = jobRunInfo{
+							buildID:   buildID,
+							startTime: jobResult.TransitionTime,
+						}
+					}
+				}
+			}
+		}
+
+		// Extract build ID from URL for all informing jobs
+		if jobs, ok := details.Results["informingJobs"]; ok {
+			for _, jobResult := range jobs {
+				id, _ := idFromURL(jobResult.URL)
+				if id > 0 {
+					buildID := extractBuildIDFromURL(jobResult.URL)
+					if buildID != "" {
+						jobRunDetails[id] = jobRunInfo{
+							buildID:   buildID,
+							startTime: jobResult.TransitionTime,
+						}
+					}
+				}
+			}
+		}
+
+		// Extract build ID from URL for all upgrade jobs
+		for _, upgrade := range append(details.UpgradesTo, details.UpgradesFrom...) {
+			for _, run := range upgrade.History {
+				id, _ := idFromURL(run.URL)
+				if id > 0 {
+					buildID := extractBuildIDFromURL(run.URL)
+					if buildID != "" {
+						jobRunDetails[id] = jobRunInfo{
+							buildID:   buildID,
+							startTime: run.TransitionTime,
+						}
+					}
+				}
+			}
+		}
+
+		// Fetch labels for each job run from BigQuery
+		for id, info := range jobRunDetails {
+			if result, ok := results[id]; ok {
+				labels, err := prowloader.GatherLabelsFromBQ(ctx, bqClient, info.buildID, info.startTime)
+				if err != nil {
+					log.WithError(err).WithField("buildID", info.buildID).Debug("failed to fetch labels from BigQuery")
+				} else if len(labels) > 0 {
+					result.Labels = labels
+					results[id] = result
+				}
+			}
+		}
+	}
+
 	for _, result := range results {
 		rows = append(rows, result)
 	}
@@ -461,6 +538,22 @@ func idFromURL(prowURL string) (uint, error) {
 		return 0, err
 	}
 	return uint(prowID), nil
+}
+
+// extractBuildIDFromURL extracts the build ID from a prow job URL
+// e.g., https://prow.ci.openshift.org/view/gs/test-platform-results/logs/periodic-ci-openshift-release-master-ci-4.16-e2e-gcp-ovn-upgrade/1234567890
+// returns "1234567890"
+func extractBuildIDFromURL(prowURL string) string {
+	if prowURL == "" {
+		return ""
+	}
+
+	parsed, err := url.Parse(prowURL)
+	if err != nil {
+		return ""
+	}
+
+	return path.Base(parsed.Path)
 }
 
 func (rs *ReleaseStream) buildTagsURL() string {

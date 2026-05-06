@@ -115,18 +115,19 @@ type ReleaseRepository struct {
 type ReleaseJobRun struct {
 	Model
 
-	ReleaseTag     ReleaseTag `json:"release_tag" gorm:"foreignKey:release_tag_id"`
-	ReleaseTagID   string     `gorm:"column:release_tag_id"`
-	Name           uint       `json:"name" gorm:"column:prow_job_run_id;index:,unique"` // TODO: this could use a rename to ProwJobRunID
-	JobName        string     `json:"job_name" gorm:"column:job_name"`
-	Kind           string     `json:"kind" gorm:"column:kind"`
-	State          string     `json:"state" gorm:"column:state"`
-	TransitionTime time.Time  `json:"transition_time"`
-	Retries        int        `json:"retries"`
-	URL            string     `json:"url" gorm:"column:url"`
-	UpgradesFrom   string     `json:"upgrades_from" gorm:"column:upgrades_from"`
-	UpgradesTo     string     `json:"upgrades_to" gorm:"column:upgrades_to"`
-	Upgrade        bool       `json:"upgrade" gorm:"column:upgrade"`
+	ReleaseTag     ReleaseTag     `json:"release_tag" gorm:"foreignKey:release_tag_id"`
+	ReleaseTagID   string         `gorm:"column:release_tag_id"`
+	Name           uint           `json:"name" gorm:"column:prow_job_run_id;index:,unique"` // TODO: this could use a rename to ProwJobRunID
+	JobName        string         `json:"job_name" gorm:"column:job_name"`
+	Kind           string         `json:"kind" gorm:"column:kind"`
+	State          string         `json:"state" gorm:"column:state"`
+	TransitionTime time.Time      `json:"transition_time"`
+	Retries        int            `json:"retries"`
+	URL            string         `json:"url" gorm:"column:url"`
+	UpgradesFrom   string         `json:"upgrades_from" gorm:"column:upgrades_from"`
+	UpgradesTo     string         `json:"upgrades_to" gorm:"column:upgrades_to"`
+	Upgrade        bool           `json:"upgrade" gorm:"column:upgrade"`
+	Labels         pq.StringArray `gorm:"type:text[];index:idx_release_job_runs_labels,type:gin" json:"labels"`
 }
 
 type PayloadPhaseCount struct {
