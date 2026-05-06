@@ -496,15 +496,33 @@ type testResults struct {
 
 const TestResultsCacheDuration = 4 * time.Hour
 
-// PrimeTestResultsCache warms the cache for the given release/period/collapse combination.
+// PrimeTestResultsCache unconditionally regenerates and caches results for the
+// given release/period/collapse combination, replacing any existing entry.
 func PrimeTestResultsCache(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, release, period string, collapse bool) error {
 	spec := TestResultsSpec{
 		Release:  release,
 		Period:   period,
 		Collapse: collapse,
 	}
-	_, err := spec.buildTestsResultsFromPostgres(ctx, dbc, cacheClient)
-	return err
+	matview := spec.matview()
+	result, errs := spec.buildTestsResultsPGGenerator(ctx, dbc, matview)
+	if len(errs) > 0 {
+		return fmt.Errorf("error(s) generating test results: %v", errs)
+	}
+	cacheSpec := NewCacheSpec(spec, "PostgresTestsResults~", nil)
+	cacheKey, err := cacheSpec.GetCacheKey()
+	if err != nil {
+		return fmt.Errorf("error getting cache key: %v", err)
+	}
+	cacheVal := struct {
+		Val       testResults
+		Timestamp time.Time
+	}{
+		Val:       result,
+		Timestamp: time.Now().UTC(),
+	}
+	CacheSet(ctx, cacheClient, cacheVal, cacheKey, TestResultsCacheDuration)
+	return nil
 }
 
 func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) (testResults, error) {
