@@ -227,6 +227,19 @@ func GetTestDurationsFromDB(dbc *db.DB, release, test string, filters *filter.Fi
 
 type TestsAPIResult []apitype.Test
 
+func (tests TestsAPIResult) filter(f *filter.Filter) TestsAPIResult {
+	if f == nil || len(f.Items) == 0 {
+		return tests
+	}
+	var result TestsAPIResult
+	for _, t := range tests {
+		if match, err := f.Filter(t); err == nil && match {
+			result = append(result, t)
+		}
+	}
+	return result
+}
+
 func (tests TestsAPIResult) sort(req *http.Request) TestsAPIResult {
 	sortField := param.SafeRead(req, "sortField")
 	sort := param.SafeRead(req, "sort")
@@ -347,13 +360,19 @@ func PrintTestsJSONFromDB(
 		return
 	}
 
+	// Cache the unfiltered result set so that filter/sort/page changes
+	// are served from cache without hitting the database again.
+	requestFilter := spec.Filter
+	spec.Filter = nil
+
 	result, err := spec.buildTestsResultsFromPostgres(req.Context(), dbc, cacheClient)
 	if err != nil {
 		RespondWithJSON(http.StatusInternalServerError, w, map[string]interface{}{"code": http.StatusInternalServerError, "message": "Error building job report:" + err.Error()})
 		return
 	}
 
-	sorted := result.TestsAPIResult.sort(req)
+	filtered := result.TestsAPIResult.filter(requestFilter)
+	sorted := filtered.sort(req)
 
 	if pagination != nil {
 		totalRows := int64(len(sorted))
@@ -475,7 +494,18 @@ type testResults struct {
 	Test *apitype.Test
 }
 
-const testResultsCacheDuration = time.Hour
+const TestResultsCacheDuration = 4 * time.Hour
+
+// PrimeTestResultsCache warms the cache for the given release/period/collapse combination.
+func PrimeTestResultsCache(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, release, period string, collapse bool) error {
+	spec := TestResultsSpec{
+		Release:  release,
+		Period:   period,
+		Collapse: collapse,
+	}
+	_, err := spec.buildTestsResultsFromPostgres(ctx, dbc, cacheClient)
+	return err
+}
 
 func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, dbc *db.DB, cacheClient cache.Cache) (testResults, error) {
 	matview := spec.matview()
@@ -485,7 +515,7 @@ func (spec *TestResultsSpec) buildTestsResultsFromPostgres(ctx context.Context, 
 	}
 	result, errs := GetDataFromCacheOrMatview(ctx, cacheClient,
 		NewCacheSpec(spec, "PostgresTestsResults~", nil),
-		matview, testResultsCacheDuration,
+		matview, TestResultsCacheDuration,
 		generator,
 		testResults{},
 	)
@@ -600,7 +630,7 @@ func (spec *TestResultsSpec) buildTestsResultsFromBigQuery(ctx context.Context, 
 	result, errs := GetDataFromCacheOrGenerate[testResultsBQ](
 		ctx,
 		bqc.Cache,
-		cache.RequestOptions{Expiry: testResultsCacheDuration},
+		cache.RequestOptions{Expiry: TestResultsCacheDuration},
 		NewCacheSpec(spec, "BigQueryTestsResults~", nil),
 		generator,
 		testResultsBQ{})

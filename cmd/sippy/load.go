@@ -39,6 +39,7 @@ import (
 	"github.com/openshift/sippy/pkg/dataloader/prowloader/github"
 	"github.com/openshift/sippy/pkg/dataloader/releaseloader"
 	"github.com/openshift/sippy/pkg/dataloader/testownershiploader"
+	"github.com/openshift/sippy/pkg/dataloader/testreportcacheloader"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/flags"
 	"github.com/openshift/sippy/pkg/github/commenter"
@@ -316,6 +317,16 @@ func NewLoadCommand() *cobra.Command {
 					refreshMatviews = true
 					fgLoader := featuregateloader.New(dbc, releaseConfigs)
 					loaders = append(loaders, fgLoader)
+				}
+
+				if l == "test-report-cache" {
+					if dbErr != nil {
+						return dbErr
+					}
+					if cacheErr != nil {
+						return errors.Wrap(cacheErr, "couldn't get cache client")
+					}
+					loaders = append(loaders, testreportcacheloader.New(dbc, cacheClient))
 				}
 
 			}
