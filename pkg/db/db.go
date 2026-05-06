@@ -92,6 +92,7 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		&models.RegressionJobRun{},
 		&models.RegressionView{},
 		&models.Triage{},
+		&models.TriageSymptom{},
 		&models.AuditLog{},
 		&models.ChatRating{},
 		&models.ChatConversation{},
@@ -106,13 +107,11 @@ func (d *DB) UpdateSchema(reportEnd *time.Time) error {
 		}
 	}
 
-	// TODO(sgoeddel): This is temporary migration logic to backfill closed regressions with their most likely view.
-	// It should be removed after running for the first time.
-	if err := backfillClosedRegressionViews(d.DB); err != nil {
+	if err := createAuditLogIndexes(d.DB); err != nil {
 		return err
 	}
 
-	if err := createAuditLogIndexes(d.DB); err != nil {
+	if err := ensureTriageSymptomCascade(d.DB); err != nil {
 		return err
 	}
 
@@ -214,29 +213,6 @@ func syncSchema(db *gorm.DB, hashType SchemaHashType, name, desiredSchema, dropS
 	return updateRequired, nil
 }
 
-// backfillClosedRegressionViews associates closed regressions that predate the regression_views
-// table with their most likely view (<release>-main). Historically only -main views had regression
-// tracking enabled, so this is our best approximation. Only targets regressions with no existing
-// view associations; open regressions are handled naturally by the loader.
-func backfillClosedRegressionViews(db *gorm.DB) error {
-	res := db.Exec(`
-		INSERT INTO regression_views (test_regression_id, view_name, active, opened_at, closed_at)
-		SELECT tr.id, tr.release || '-main', false, tr.opened, tr.closed
-		FROM test_regressions tr
-		WHERE tr.closed IS NOT NULL
-		AND NOT EXISTS (
-			SELECT 1 FROM regression_views rv WHERE rv.test_regression_id = tr.id
-		)
-		ON CONFLICT (test_regression_id, view_name) DO NOTHING`)
-	if res.Error != nil {
-		return fmt.Errorf("error backfilling closed regression views: %w", res.Error)
-	}
-	if res.RowsAffected > 0 {
-		log.Infof("backfilled %d closed regressions with release-main view associations", res.RowsAffected)
-	}
-	return nil
-}
-
 // createAuditLogIndexes creates GIN indexes for JSONB columns in audit_logs table
 // for efficient JSON querying operations.
 func createAuditLogIndexes(db *gorm.DB) error {
@@ -248,6 +224,42 @@ func createAuditLogIndexes(db *gorm.DB) error {
 		return fmt.Errorf("failed to create GIN index on audit_logs.old_data: %w", err)
 	}
 
+	return nil
+}
+
+// ensureTriageSymptomCascade adds foreign keys to triage_symptoms with ON DELETE CASCADE
+// so that deleting a symptom definition or a regression automatically cleans up the
+// associated triage_symptoms rows.
+func ensureTriageSymptomCascade(db *gorm.DB) error {
+	constraints := []struct {
+		name string
+		sql  string
+	}{
+		{
+			name: "fk_triage_symptoms_symptom",
+			sql:  "ALTER TABLE triage_symptoms ADD CONSTRAINT fk_triage_symptoms_symptom FOREIGN KEY (symptom_id) REFERENCES job_run_symptoms(id) ON DELETE CASCADE",
+		},
+		{
+			name: "fk_triage_symptoms_regression",
+			sql:  "ALTER TABLE triage_symptoms ADD CONSTRAINT fk_triage_symptoms_regression FOREIGN KEY (regression_id) REFERENCES test_regressions(id) ON DELETE CASCADE",
+		},
+	}
+
+	for _, c := range constraints {
+		err := db.Exec(fmt.Sprintf(`
+			DO $$
+			BEGIN
+				IF NOT EXISTS (
+					SELECT 1 FROM pg_constraint
+					WHERE conname = '%s'
+				) THEN
+					%s;
+				END IF;
+			END $$`, c.name, c.sql)).Error
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

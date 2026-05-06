@@ -15,10 +15,12 @@ import (
 	"github.com/openshift/sippy/pkg/apis/api/componentreport/testdetails"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+
 	"github.com/openshift/sippy/test/e2e/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func cleanupAllRegressions(dbc *db.DB) {
@@ -395,6 +397,87 @@ func Test_RegressionJobRuns(t *testing.T) {
 		assert.Len(t, stored, 3, "should have 3 unique job runs after dedup")
 	})
 
+	t.Run("new job run with symptoms", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		defer cleanupJobRuns(dbc)
+
+		reg, err := tracker.OpenRegression(view, componentreport.ReportTestSummary{
+			TestComparison: testdetails.TestComparison{
+				BaseStats: &testdetails.ReleaseStats{Release: "4.18"},
+			},
+			Identification: crtest.Identification{
+				RowIdentification: crtest.RowIdentification{
+					Component:  "comp",
+					Capability: "cap",
+					TestName:   "symptom test",
+					TestID:     "symptomtestid",
+				},
+				ColumnIdentification: crtest.ColumnIdentification{
+					Variants: map[string]string{"a": "b"},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{
+				ProwJobRunID: "run-sym-1",
+				ProwJobName:  "job-1",
+				TestFailed:   true,
+				JobSymptoms:  pq.StringArray{"SymA"},
+			},
+		})
+		require.NoError(t, err)
+
+		var stored []models.RegressionJobRun
+		res := dbc.DB.Where("regression_id = ? AND prow_job_run_id = ?", reg.ID, "run-sym-1").Find(&stored)
+		require.NoError(t, res.Error)
+		require.Len(t, stored, 1)
+		assert.Equal(t, []string{"SymA"}, []string(stored[0].JobSymptoms))
+	})
+
+	t.Run("existing job run gains symptoms on re-merge", func(t *testing.T) {
+		defer cleanupAllRegressions(dbc)
+		defer cleanupJobRuns(dbc)
+
+		reg, err := tracker.OpenRegression(view, componentreport.ReportTestSummary{
+			TestComparison: testdetails.TestComparison{
+				BaseStats: &testdetails.ReleaseStats{Release: "4.18"},
+			},
+			Identification: crtest.Identification{
+				RowIdentification: crtest.RowIdentification{
+					Component:  "comp",
+					Capability: "cap",
+					TestName:   "symptom update test",
+					TestID:     "symptomuptestid",
+				},
+				ColumnIdentification: crtest.ColumnIdentification{
+					Variants: map[string]string{"a": "b"},
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		// First merge without symptoms
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-update-1", ProwJobName: "job-1", TestFailed: true},
+		})
+		require.NoError(t, err)
+
+		var stored models.RegressionJobRun
+		dbc.DB.Where("regression_id = ? AND prow_job_run_id = ?", reg.ID, "run-update-1").First(&stored)
+		assert.Nil(t, stored.JobSymptoms)
+
+		// Second merge with symptoms
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-update-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA"}},
+		})
+		require.NoError(t, err)
+
+		dbc.DB.Where("regression_id = ? AND prow_job_run_id = ?", reg.ID, "run-update-1").First(&stored)
+		assert.Equal(t, []string{"SymA"}, []string(stored.JobSymptoms))
+	})
+
 	t.Run("job runs deleted when regression is deleted", func(t *testing.T) {
 		defer cleanupAllRegressions(dbc)
 		defer cleanupJobRuns(dbc)
@@ -430,6 +513,245 @@ func Test_RegressionJobRuns(t *testing.T) {
 		var count int64
 		dbc.DB.Model(&models.RegressionJobRun{}).Where("regression_id = ?", reg.ID).Count(&count)
 		assert.Equal(t, int64(0), count, "job runs should be cascade deleted with regression")
+	})
+}
+
+func cleanupTriages(dbc *db.DB) {
+	dbc.DB.Exec("DELETE FROM triage_regressions WHERE 1=1")
+	dbc.DB.Where("1 = 1").Delete(&models.Triage{})
+}
+
+func Test_SyncTriageSymptoms(t *testing.T) {
+	dbc := util.CreateE2EPostgresConnection(t)
+	tracker := componentreadiness.NewPostgresRegressionStore(dbc, nil)
+	view := crview.View{
+		Name: "4.19-main",
+		SampleRelease: reqopts.RelativeRelease{
+			Release: reqopts.Release{Name: "4.19"},
+		},
+	}
+
+	newRegSummary := func(testID string) componentreport.ReportTestSummary {
+		return componentreport.ReportTestSummary{
+			TestComparison: testdetails.TestComparison{
+				BaseStats: &testdetails.ReleaseStats{Release: "4.18"},
+			},
+			Identification: crtest.Identification{
+				RowIdentification: crtest.RowIdentification{
+					Component:  "comp",
+					Capability: "cap",
+					TestName:   "sync symptom test " + testID,
+					TestID:     testID,
+				},
+				ColumnIdentification: crtest.ColumnIdentification{
+					Variants: map[string]string{"a": "b"},
+				},
+			},
+		}
+	}
+
+	util.SeedSymptom(t, dbc, "SymA", "Symptom A")
+	util.SeedSymptom(t, dbc, "SymB", "Symptom B")
+	defer util.CleanupSymptoms(dbc, "SymA", "SymB")
+
+	cleanup := func() {
+		util.CleanupTriageSymptoms(dbc)
+		cleanupJobRuns(dbc)
+		cleanupTriages(dbc)
+		cleanupAllRegressions(dbc)
+	}
+
+	dbCtx := dbc.DB.WithContext(context.WithValue(context.Background(), models.CurrentUserKey, "e2e-test"))
+
+	t.Run("links symptoms to triage", func(t *testing.T) {
+		defer cleanup()
+
+		reg, err := tracker.OpenRegression(view, newRegSummary("link-sym-1"))
+		require.NoError(t, err)
+
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/TEST-SYM-1",
+			Description: "symptom link test",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{*reg},
+		}
+		require.NoError(t, dbCtx.Create(&triage).Error)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA", "SymB"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var rows []models.TriageSymptom
+		dbc.DB.Where("triage_id = ?", triage.ID).Find(&rows)
+		assert.Len(t, rows, 2, "should have 2 symptom rows")
+		symptomIDs := sets.New[string]()
+		for _, row := range rows {
+			symptomIDs.Insert(row.SymptomID)
+			assert.Equal(t, reg.ID, row.RegressionID)
+			assert.Equal(t, 1, row.JobRunCount)
+		}
+		assert.True(t, symptomIDs.Has("SymA"))
+		assert.True(t, symptomIDs.Has("SymB"))
+	})
+
+	t.Run("idempotent", func(t *testing.T) {
+		defer cleanup()
+
+		reg, err := tracker.OpenRegression(view, newRegSummary("idempotent-1"))
+		require.NoError(t, err)
+
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/TEST-SYM-2",
+			Description: "idempotent test",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{*reg},
+		}
+		require.NoError(t, dbCtx.Create(&triage).Error)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var count1 int64
+		dbc.DB.Model(&models.TriageSymptom{}).Where("triage_id = ?", triage.ID).Count(&count1)
+
+		// Second sync
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var count2 int64
+		dbc.DB.Model(&models.TriageSymptom{}).Where("triage_id = ?", triage.ID).Count(&count2)
+		assert.Equal(t, count1, count2, "row count should not change on re-sync")
+
+		var row models.TriageSymptom
+		dbc.DB.Where("triage_id = ? AND symptom_id = ?", triage.ID, "SymA").First(&row)
+		assert.Equal(t, 1, row.JobRunCount, "job_run_count should remain the same")
+	})
+
+	t.Run("count accuracy", func(t *testing.T) {
+		defer cleanup()
+
+		reg, err := tracker.OpenRegression(view, newRegSummary("count-acc-1"))
+		require.NoError(t, err)
+
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/TEST-SYM-3",
+			Description: "count accuracy test",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{*reg},
+		}
+		require.NoError(t, dbCtx.Create(&triage).Error)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA"}},
+			{ProwJobRunID: "run-2", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA"}},
+			{ProwJobRunID: "run-3", ProwJobName: "job-1", TestFailed: true},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var row models.TriageSymptom
+		res := dbc.DB.Where("triage_id = ? AND symptom_id = ?", triage.ID, "SymA").First(&row)
+		require.NoError(t, res.Error)
+		assert.Equal(t, 2, row.JobRunCount, "job_run_count should be 2 (only runs with SymA)")
+	})
+
+	t.Run("count grows with new job runs", func(t *testing.T) {
+		defer cleanup()
+
+		reg, err := tracker.OpenRegression(view, newRegSummary("count-grow-1"))
+		require.NoError(t, err)
+
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/TEST-SYM-4",
+			Description: "count grows test",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{*reg},
+		}
+		require.NoError(t, dbCtx.Create(&triage).Error)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var row models.TriageSymptom
+		dbc.DB.Where("triage_id = ? AND symptom_id = ?", triage.ID, "SymA").First(&row)
+		assert.Equal(t, 1, row.JobRunCount)
+
+		// Add another job run with the same symptom
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-2", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		dbc.DB.Where("triage_id = ? AND symptom_id = ?", triage.ID, "SymA").First(&row)
+		assert.Equal(t, 2, row.JobRunCount, "job_run_count should increment after new run")
+	})
+
+	t.Run("regression without triage is skipped", func(t *testing.T) {
+		defer cleanup()
+
+		reg, err := tracker.OpenRegression(view, newRegSummary("no-triage-1"))
+		require.NoError(t, err)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var count int64
+		dbc.DB.Model(&models.TriageSymptom{}).Where("regression_id = ?", reg.ID).Count(&count)
+		assert.Equal(t, int64(0), count, "no triage_symptoms rows should exist for untriaged regression")
+	})
+
+	t.Run("multiple symptoms per run", func(t *testing.T) {
+		defer cleanup()
+
+		reg, err := tracker.OpenRegression(view, newRegSummary("multi-sym-1"))
+		require.NoError(t, err)
+
+		triage := models.Triage{
+			URL:         "https://issues.redhat.com/browse/TEST-SYM-6",
+			Description: "multi symptom test",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{*reg},
+		}
+		require.NoError(t, dbCtx.Create(&triage).Error)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA", "SymB"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var rows []models.TriageSymptom
+		dbc.DB.Where("triage_id = ?", triage.ID).Find(&rows)
+		assert.Len(t, rows, 2, "both symptoms should get junction rows")
+		for _, row := range rows {
+			assert.Equal(t, 1, row.JobRunCount, "each symptom seen once")
+		}
 	})
 }
 

@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path"
 	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	v1 "github.com/openshift/sippy/pkg/apis/sippy/v1"
 	"github.com/openshift/sippy/pkg/db"
 	"github.com/openshift/sippy/pkg/db/models"
+	"github.com/openshift/sippy/pkg/db/models/jobrunscan"
 	"github.com/openshift/sippy/pkg/db/query"
 	log "github.com/sirupsen/logrus"
 	"gorm.io/gorm"
@@ -858,6 +860,90 @@ func generateTestDetailsURLFromRegression(regression *models.TestRegression, vie
 		regression.Variants,
 		regression.BaseRelease,
 	)
+}
+
+// TriageSymptomSummary represents a symptom found across a triage's regressions,
+// with counts and percentages for the triage detail view.
+type TriageSymptomSummary struct {
+	Symptom struct {
+		ID      string `json:"id"`
+		Summary string `json:"summary"`
+	} `json:"symptom"`
+	RegressionCount int     `json:"regression_count"`
+	TotalCount      int     `json:"total_count"`
+	Percentage      float64 `json:"percentage"`
+	JobRunCount     int     `json:"job_run_count"`
+	RegressionIDs   []uint  `json:"regression_ids"`
+}
+
+// GetTriageSymptomSummaries queries the triage_symptoms junction table to build
+// per-symptom summaries for a triage detail response.
+func GetTriageSymptomSummaries(dbc *db.DB, triageID uint, totalRegressions int) ([]TriageSymptomSummary, error) {
+	if totalRegressions == 0 {
+		return nil, nil
+	}
+
+	type symptomCount struct {
+		SymptomID       string `gorm:"column:symptom_id"`
+		RegressionCount int    `gorm:"column:regression_count"`
+		JobRunCount     int    `gorm:"column:job_run_count"`
+	}
+	var counts []symptomCount
+	if err := dbc.DB.Model(&models.TriageSymptom{}).
+		Select("symptom_id, COUNT(DISTINCT regression_id) AS regression_count, SUM(job_run_count) AS job_run_count").
+		Where("triage_id = ?", triageID).
+		Group("symptom_id").
+		Order("regression_count DESC").
+		Scan(&counts).Error; err != nil {
+		return nil, fmt.Errorf("error querying triage symptom counts: %w", err)
+	}
+	if len(counts) == 0 {
+		return nil, nil
+	}
+
+	symptomIDs := make([]string, len(counts))
+	for i, c := range counts {
+		symptomIDs[i] = c.SymptomID
+	}
+	var symptoms []jobrunscan.Symptom
+	if err := dbc.DB.Where("id IN ?", symptomIDs).Find(&symptoms).Error; err != nil {
+		return nil, fmt.Errorf("error loading symptoms: %w", err)
+	}
+	symptomMap := make(map[string]jobrunscan.Symptom, len(symptoms))
+	for _, s := range symptoms {
+		symptomMap[s.ID] = s
+	}
+
+	var tsRows []models.TriageSymptom
+	if err := dbc.DB.Where("triage_id = ?", triageID).Find(&tsRows).Error; err != nil {
+		return nil, fmt.Errorf("error loading triage symptom regressions: %w", err)
+	}
+	regIDsBySymptom := make(map[string][]uint)
+	for _, row := range tsRows {
+		regIDsBySymptom[row.SymptomID] = append(regIDsBySymptom[row.SymptomID], row.RegressionID)
+	}
+
+	var summaries []TriageSymptomSummary
+	for _, c := range counts {
+		s, ok := symptomMap[c.SymptomID]
+		if !ok {
+			continue
+		}
+		summary := TriageSymptomSummary{
+			RegressionCount: c.RegressionCount,
+			TotalCount:      totalRegressions,
+			Percentage:      float64(c.RegressionCount) / float64(totalRegressions) * 100,
+			JobRunCount:     c.JobRunCount,
+			RegressionIDs:   regIDsBySymptom[c.SymptomID],
+		}
+		summary.Symptom.ID = s.ID
+		summary.Symptom.Summary = s.Summary
+		summaries = append(summaries, summary)
+	}
+	sort.Slice(summaries, func(i, j int) bool {
+		return summaries[i].RegressionCount > summaries[j].RegressionCount
+	})
+	return summaries, nil
 }
 
 // GetViewsForTriage returns the names of all active views associated with the triage's regressions.

@@ -1667,21 +1667,21 @@ func (s *Server) jsonGetTriages(w http.ResponseWriter, req *http.Request) {
 }
 
 // ExpandedTriage allows for additional information to be included in the triage response.
-// Currently, this is only the associated ReportTestSummaries which are useful for linking to the test_details report.
 type ExpandedTriage struct {
 	*models.Triage
-	// RegressedTests is a mapping of the view to the regressed_tests found there
-	RegressedTests map[string][]*componentreport.ReportTestSummary `json:"regressed_tests"`
+	RegressedTests   map[string][]*componentreport.ReportTestSummary `json:"regressed_tests"`
+	SymptomSummaries []componentreadiness.TriageSymptomSummary       `json:"symptom_summaries,omitempty"`
 }
 
 func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 	vars := mux.Vars(req)
 	idStr := vars["id"]
 
-	var expandRegressions bool
-	expand := req.URL.Query().Get("expand")
-	if expand == "regressions" {
-		expandRegressions = true
+	expandFields := make(map[string]bool)
+	for _, field := range strings.Split(req.URL.Query().Get("expand"), ",") {
+		if f := strings.TrimSpace(field); f != "" {
+			expandFields[f] = true
+		}
 	}
 
 	triageID, err := strconv.Atoi(idStr)
@@ -1699,36 +1699,47 @@ func (s *Server) jsonGetTriageByID(w http.ResponseWriter, req *http.Request) {
 		failureResponse(w, http.StatusNotFound, "triage not found")
 		return
 	}
-	if !expandRegressions {
+
+	if len(expandFields) == 0 {
 		api.RespondWithJSON(http.StatusOK, w, triage)
 		return
 	}
 
 	et := ExpandedTriage{
-		Triage:         triage,
-		RegressedTests: make(map[string][]*componentreport.ReportTestSummary),
+		Triage: triage,
 	}
 
-	views := componentreadiness.GetViewsForTriage(triage)
-	for _, view := range views {
-		// Set the view in the request so that we can obtain the component report to get the regressed test(s) for display
-		q := req.URL.Query()
-		q.Set("view", view)
-		req.URL.RawQuery = q.Encode()
-		componentReport, err := s.getComponentReportFromRequest(req)
+	if expandFields["symptoms"] {
+		symptomSummaries, err := componentreadiness.GetTriageSymptomSummaries(s.db, triage.ID, len(triage.Regressions))
 		if err != nil {
-			failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("unable to get component report: %v", err))
+			failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("error getting symptom summaries for triage %d: %v", triage.ID, err))
 			return
 		}
-		var regressedTests []*componentreport.ReportTestSummary
-		for _, regression := range triage.Regressions {
-			regressedTest := componentreadiness.GetMatchingRegressedTestForRegression(regression, componentReport)
-			if regressedTest != nil {
-				regressedTests = append(regressedTests, regressedTest)
+		et.SymptomSummaries = symptomSummaries
+	}
+
+	if expandFields["regressions"] {
+		et.RegressedTests = make(map[string][]*componentreport.ReportTestSummary)
+		views := componentreadiness.GetViewsForTriage(triage)
+		for _, view := range views {
+			q := req.URL.Query()
+			q.Set("view", view)
+			req.URL.RawQuery = q.Encode()
+			componentReport, err := s.getComponentReportFromRequest(req)
+			if err != nil {
+				failureResponse(w, http.StatusInternalServerError, fmt.Sprintf("unable to get component report: %v", err))
+				return
 			}
-		}
-		if len(regressedTests) > 0 {
-			et.RegressedTests[view] = regressedTests
+			var regressedTests []*componentreport.ReportTestSummary
+			for _, regression := range triage.Regressions {
+				regressedTest := componentreadiness.GetMatchingRegressedTestForRegression(regression, componentReport)
+				if regressedTest != nil {
+					regressedTests = append(regressedTests, regressedTest)
+				}
+			}
+			if len(regressedTests) > 0 {
+				et.RegressedTests[view] = regressedTests
+			}
 		}
 	}
 

@@ -48,6 +48,9 @@ type Triage struct {
 	// If we could establish this, it may mean less data duplication.
 	Regressions []TestRegression `json:"regressions" gorm:"constraint:OnDelete:CASCADE;many2many:triage_regressions;"`
 
+	// TriageSymptoms links symptoms discovered in regression job runs to this triage.
+	TriageSymptoms []TriageSymptom `json:"-" gorm:"foreignKey:TriageID;constraint:OnDelete:CASCADE"`
+
 	// Resolution is an important field presently set by a user indicating a claimed time this issue was resolved,
 	// and thus all associated regressions should be fixed.
 	// Setting this will immediately change the regressions icon to one indicate the issue is believed to
@@ -259,4 +262,15 @@ type RegressionJobRun struct {
 	TestFailed   bool           `json:"test_failed" gorm:"column:test_failed"`
 	TestFailures int            `json:"test_failures" gorm:"column:test_failures"`
 	JobLabels    pq.StringArray `json:"job_labels,omitempty" gorm:"column:job_labels;type:text[]"`
+	JobSymptoms  pq.StringArray `json:"job_symptoms,omitempty" gorm:"column:job_symptoms;type:text[]"`
+}
+
+// TriageSymptom records that a specific symptom was found on a specific regression
+// belonging to a triage. JobRunCount tracks how many failed job runs on that
+// regression exhibited the symptom.
+type TriageSymptom struct {
+	TriageID     uint   `json:"triage_id" gorm:"primaryKey;column:triage_id"`
+	SymptomID    string `json:"symptom_id" gorm:"primaryKey;column:symptom_id"`
+	RegressionID uint   `json:"regression_id" gorm:"primaryKey;column:regression_id"`
+	JobRunCount  int    `json:"job_run_count" gorm:"column:job_run_count;not null;default:0"`
 }

@@ -898,6 +898,27 @@ export function generateTestDetailsReportLink(
   return generatedUrl
 }
 
+const SYMPTOM_COLORS = [
+  '#1976d2',
+  '#d32f2f',
+  '#388e3c',
+  '#f57c00',
+  '#7b1fa2',
+  '#0097a7',
+  '#c2185b',
+  '#455a64',
+  '#5d4037',
+  '#303f9f',
+]
+
+export function symptomColor(symptomId) {
+  let hash = 0
+  for (let i = 0; i < symptomId.length; i++) {
+    hash = (hash * 31 + symptomId.charCodeAt(i)) | 0
+  }
+  return SYMPTOM_COLORS[Math.abs(hash) % SYMPTOM_COLORS.length]
+}
+
 // Helper function to check if triage has any regressions with status -1000 (failed fix).
 // allRegressedTests is a map of view name to array of regressed tests.
 export function hasFailedFixRegression(triage, allRegressedTests) {
