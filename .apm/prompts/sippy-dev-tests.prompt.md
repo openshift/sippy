@@ -20,6 +20,10 @@ Run these three steps in order. Stop if any step fails.
    make test
    ```
 
-3. **E2e** — use the **`run_e2e`** MCP tool (server: **`sippy-dev`**). BigQuery credentials are **optional** — without them, BigQuery-specific tests are skipped but all other e2e tests run using seed data and the postgres provider. E2e requires Podman/Docker and **does not work inside the devcontainer** — run it on the host.
+3. **E2e** — run directly:
 
-E2e log: **`sippy-dev-logs/run_e2e.log`**. Timeouts: **`mcp/server.py`**.
+   ```bash
+   make e2e
+   ```
+
+   Works both on the host (starts its own PostgreSQL/Redis containers via Podman) and inside the devcontainer (creates a temporary `sippy_e2e` database on the existing PostgreSQL).

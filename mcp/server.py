@@ -589,29 +589,5 @@ def _run_make_phase(
     return f"{tool_label} succeeded (exit 0). log: {log_path}\n--- last lines ---\n{tail}"
 
 
-@mcp.tool()
-def run_e2e(
-    bigquery_credentials_file: str | None = None,
-    timeout_seconds: int = 7200,
-) -> str:
-    """Run ``make e2e`` which uses seed data and the postgres data provider.
-
-    Log: ``sippy-dev-logs/run_e2e.log``. BigQuery credentials are optional — if provided,
-    BigQuery-specific tests will run; otherwise they are skipped. Use ``timeout_seconds=0``
-    for no limit.
-    """
-    env_extra: dict[str, str] = {}
-    creds_path, _ = _resolve_bigquery_creds(bigquery_credentials_file)
-    if creds_path:
-        env_extra["GCS_SA_JSON_PATH"] = str(creds_path)
-    return _run_make_phase(
-        "run_e2e",
-        "e2e",
-        "run_e2e.log",
-        timeout_seconds,
-        env_extra or None,
-    )
-
-
 if __name__ == "__main__":
     mcp.run()
