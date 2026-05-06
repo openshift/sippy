@@ -326,7 +326,7 @@ func NewLoadCommand() *cobra.Command {
 					if cacheErr != nil {
 						return errors.Wrap(cacheErr, "couldn't get cache client")
 					}
-					loaders = append(loaders, testreportcacheloader.New(dbc, cacheClient))
+					loaders = append(loaders, testreportcacheloader.New(dbc, cacheClient, releaseConfigs))
 				}
 
 			}
