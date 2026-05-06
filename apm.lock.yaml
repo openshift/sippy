@@ -61,13 +61,13 @@ local_deployed_file_hashes:
   .claude/rules/frontend.md: sha256:ff22046c5b951769218bbdf36499e67c70896811b8ef161ca6d3729a3423997d
   .claude/rules/general.md: sha256:9238d053e2d6a1703728c2bb165de93658b47c3152dfac16169ff9db9c6f716c
   .claude/rules/mcp.md: sha256:73735078b3b1a8597b91b49821ba05cdb338144ea00c1eea9e9f4de38d0241a3
-  .claude/rules/testing.md: sha256:5ec0247269852c3a910440b202d4ff14f9c9c4eb34d8d21fa01f3a6c89d2890d
+  .claude/rules/testing.md: sha256:57834092f6732d17f8c1812d25290cfc1cfbbbeb6eae1561ba2240973c651866
   .cursor/rules/backend.mdc: sha256:fb466b896d76ea1730c23d6c3fc783adf2cd5502c1cbb36e5b3d30c01531e4c1
   .cursor/rules/dev-commands.mdc: sha256:c69ca93db9b6c68f9aeb6567289dc5baef805520e8636a1e3e848793f67450e6
   .cursor/rules/frontend.mdc: sha256:497f39372724f1ae127181fe3dac9ea9a95a51c532b68ccfee6080832cf9c556
   .cursor/rules/general.mdc: sha256:671e94d8251783ecfb70d16e6e8d60dc42752ecfbe90919006b908b8a751595d
   .cursor/rules/mcp.mdc: sha256:268557cc3bdd9c8f7401f9ea80ac342ff2688f1d563b10880177ca586d7d30bb
-  .cursor/rules/testing.mdc: sha256:033192d8075d6f2aa261f4d004d207050c4a94ef7e7f2b26bd4044560755a219
+  .cursor/rules/testing.mdc: sha256:e5ce80313a812750404d45355b462c2e3a6458f5bc20ad7996a5da1b169a4703
   .gemini/commands/sippy-dev-app.toml: sha256:afc6fe75647832aa571c63d8229d151820c54535cdb695b96f8400c1d7b3bd16
   .gemini/commands/sippy-dev-frontend.toml: sha256:ec4ab5e1fb7581f09473e33b3ed4f53ce40509f23aac581e3b100ad1f59de5e5
   .gemini/commands/sippy-dev-migrate.toml: sha256:e699558eb27c294327a092bfcd3e76b576087ad29d9a3a9b000cfd9e7c6b4774

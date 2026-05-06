@@ -3,5 +3,5 @@ description: Testing guidelines and constraints for Sippy
 globs: "**/*_test.go"
 ---
 
-* Unit tests (`make test`, `go test ./pkg/...`) and e2e tests with the postgres provider are cheap — run them freely to validate changes.
-* Use `go vet` and `go test` (for unit tests) to validate changes before resorting to a full e2e run.
+* Use `go vet` and `go test ./pkg/...` to validate changes before resorting to a full e2e run.
+* Run `make e2e 2>&1 | tee e2e-test.log` to verify your changes don't break end-to-end tests. You **MUST** read the log file (`e2e-test.log`) for results. Do not re-run e2e just to grep for different things — all output is already in the log file.
