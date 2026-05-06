@@ -23,7 +23,8 @@
   },
   "containerEnv": {
     "SIPPY_DATABASE_DSN": "postgresql://postgres:password@sippy-postgres:5432/postgres",
-    "REDIS_URL": "redis://sippy-redis:6379"
+    "REDIS_URL": "redis://sippy-redis:6379",
+    "NODE_OPTIONS": "--max-old-space-size=4096"
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {

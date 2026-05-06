@@ -395,6 +395,23 @@ def sippy_serve(
 
 
 @mcp.tool()
+def sippy_stop() -> str:
+    """Stop running sippy_serve and sippy_ng_start processes."""
+    results = []
+    serve_pids = _pids_sippy_serve()
+    if serve_pids:
+        _stop_pids(serve_pids)
+        results.append(f"Stopped sippy_serve (pid(s) {', '.join(str(p) for p in serve_pids)})")
+    ng_pids = _pids_sippy_ng_dev()
+    if ng_pids:
+        _stop_pids(ng_pids)
+        results.append(f"Stopped sippy_ng (pid(s) {', '.join(str(p) for p in ng_pids)})")
+    if not results:
+        return "No running sippy processes found."
+    return ". ".join(results) + "."
+
+
+@mcp.tool()
 def sippy_ng_start(
     log_file: str = "sippy-dev-logs/sippy_ng_start.log",
     open_browser: bool = False,
@@ -421,7 +438,7 @@ def sippy_ng_start(
             pids = ", ".join(str(p) for p in existing)
             return (
                 f"sippy_ng_start already running (pid(s) {pids}). "
-                f"Typical URL: http://127.0.0.1:3000 log: {log_path}. "
+                f"Typical URL: http://127.0.0.1:3000/sippy-ng log: {log_path}. "
                 f"Call with restart=True to restart."
             )
         _stop_pids(existing)
@@ -436,12 +453,12 @@ def sippy_ng_start(
         cwd=ng_dir,
         log_path=log_path,
         env=env,
-        ready_url="http://127.0.0.1:3000",
+        ready_url="http://127.0.0.1:3000/sippy-ng",
     )
     if isinstance(pid_or_err, str):
         return pid_or_err
     return (
-        f"sippy_ng_start started and ready (pid {pid_or_err}). URL: http://127.0.0.1:3000 "
+        f"sippy_ng_start started and ready (pid {pid_or_err}). URL: http://127.0.0.1:3000/sippy-ng "
         f"log: {log_path}"
     )
 
