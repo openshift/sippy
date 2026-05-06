@@ -500,9 +500,10 @@ const TestResultsCacheDuration = 5 * time.Hour
 // given release/period/collapse combination, replacing any existing entry.
 func PrimeTestResultsCache(ctx context.Context, dbc *db.DB, cacheClient cache.Cache, release, period string, collapse bool) error {
 	spec := TestResultsSpec{
-		Release:  release,
-		Period:   period,
-		Collapse: collapse,
+		Release:        release,
+		Period:         period,
+		Collapse:       collapse,
+		IncludeOverall: !collapse,
 	}
 	matview := spec.matview()
 	result, errs := spec.buildTestsResultsPGGenerator(ctx, dbc, matview)
