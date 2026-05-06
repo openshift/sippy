@@ -236,7 +236,7 @@ function ReleasePayloadJobRuns(props) {
 
   useEffect(() => {
     fetchData()
-  }, [])
+  }, [filterModel, sort, sortField, pageSize])
 
   // Fetch label definitions
   useEffect(() => {
