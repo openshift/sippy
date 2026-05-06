@@ -312,18 +312,17 @@ def sippy_serve(
     mode: str = "ocp",
     listen: str = ":8080",
     enable_write_endpoints: bool = True,
+    data_provider: str = "postgres",
     restart: bool = False,
 ) -> str:
     """Start the Sippy HTTP server (``go run ./cmd/sippy serve``) in the background.
 
-    Long-running: returns after spawn with PID, log path, and listen address. Uses the same
-    credential and DSN conventions as ``regression_cache``. Skips starting if a matching
-    ``sippy serve`` process is already running, unless ``restart`` is True.
-    """
-    creds_path, err = _resolve_bigquery_creds(bigquery_credentials_file)
-    if err:
-        return err
+    Long-running: returns after spawn with PID, log path, and listen address. Skips starting
+    if a matching ``sippy serve`` process is already running, unless ``restart`` is True.
 
+    ``data_provider`` defaults to ``"postgres"`` which uses seed data and does not require
+    BigQuery credentials. Set to ``"bigquery"`` to use BigQuery (requires credentials).
+    """
     dsn = database_dsn or _default_database_dsn()
     redis = redis_url or _default_redis_url()
     try:
@@ -362,13 +361,18 @@ def sippy_serve(
         dsn,
         "--mode",
         mode,
-        "--google-service-account-credential-file",
-        str(creds_path),
         "--redis-url",
         redis,
         "--listen",
         listen,
+        "--data-provider",
+        data_provider,
     ]
+
+    creds_path, _ = _resolve_bigquery_creds(bigquery_credentials_file)
+    if creds_path:
+        args.extend(["--google-service-account-credential-file", str(creds_path)])
+
     if enable_write_endpoints:
         args.append("--enable-write-endpoints")
     if config_file:
@@ -573,20 +577,22 @@ def run_e2e(
     bigquery_credentials_file: str | None = None,
     timeout_seconds: int = 7200,
 ) -> str:
-    """Run ``make e2e`` (sets ``GCS_SA_JSON_PATH`` from the same SA JSON as other MCP tools).
+    """Run ``make e2e`` which uses seed data and the postgres data provider.
 
-    Log: ``sippy-dev-logs/run_e2e.log``. E2e is slow and uses BigQuery; use ``timeout_seconds=0``
+    Log: ``sippy-dev-logs/run_e2e.log``. BigQuery credentials are optional — if provided,
+    BigQuery-specific tests will run; otherwise they are skipped. Use ``timeout_seconds=0``
     for no limit.
     """
-    creds_path, err = _resolve_bigquery_creds(bigquery_credentials_file)
-    if err:
-        return err
+    env_extra: dict[str, str] = {}
+    creds_path, _ = _resolve_bigquery_creds(bigquery_credentials_file)
+    if creds_path:
+        env_extra["GCS_SA_JSON_PATH"] = str(creds_path)
     return _run_make_phase(
         "run_e2e",
         "e2e",
         "run_e2e.log",
         timeout_seconds,
-        {"GCS_SA_JSON_PATH": str(creds_path)},
+        env_extra or None,
     )
 
 

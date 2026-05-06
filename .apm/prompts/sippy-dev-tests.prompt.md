@@ -20,6 +20,6 @@ Run these three steps in order. Stop if any step fails.
    make test
    ```
 
-3. **E2e** — use the **`run_e2e`** MCP tool (server: **`sippy-dev`**). Pass **`bigquery_credentials_file`** when cred env vars are unset. E2e requires Podman/Docker and **does not work inside the devcontainer** — run it on the host.
+3. **E2e** — use the **`run_e2e`** MCP tool (server: **`sippy-dev`**). BigQuery credentials are **optional** — without them, BigQuery-specific tests are skipped but all other e2e tests run using seed data and the postgres provider. E2e requires Podman/Docker and **does not work inside the devcontainer** — run it on the host.
 
 E2e log: **`sippy-dev-logs/run_e2e.log`**. Timeouts: **`mcp/server.py`**.
