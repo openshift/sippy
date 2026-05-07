@@ -15,6 +15,7 @@ mcp/.venv/
 __pycache__/
 *.py[cod]
 e2e-coverage*
+junit.xml
 
 
 # APM dependencies

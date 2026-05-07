@@ -305,25 +305,24 @@ def sippy_serve(
     bigquery_credentials_file: str | None = None,
     database_dsn: str | None = None,
     redis_url: str | None = None,
-    views_file: str = "config/views.yaml",
+    views_file: str = "config/seed-views.yaml",
     config_file: str | None = None,
     log_file: str = "sippy-dev-logs/sippy_serve.log",
     log_level: str = "debug",
     mode: str = "ocp",
     listen: str = ":8080",
     enable_write_endpoints: bool = True,
+    data_provider: str = "postgres",
     restart: bool = False,
 ) -> str:
     """Start the Sippy HTTP server (``go run ./cmd/sippy serve``) in the background.
 
-    Long-running: returns after spawn with PID, log path, and listen address. Uses the same
-    credential and DSN conventions as ``regression_cache``. Skips starting if a matching
-    ``sippy serve`` process is already running, unless ``restart`` is True.
-    """
-    creds_path, err = _resolve_bigquery_creds(bigquery_credentials_file)
-    if err:
-        return err
+    Long-running: returns after spawn with PID, log path, and listen address. Skips starting
+    if a matching ``sippy serve`` process is already running, unless ``restart`` is True.
 
+    ``data_provider`` defaults to ``"postgres"`` which uses seed data and does not require
+    BigQuery credentials. Set to ``"bigquery"`` to use BigQuery (requires credentials).
+    """
     dsn = database_dsn or _default_database_dsn()
     redis = redis_url or _default_redis_url()
     try:
@@ -362,13 +361,18 @@ def sippy_serve(
         dsn,
         "--mode",
         mode,
-        "--google-service-account-credential-file",
-        str(creds_path),
         "--redis-url",
         redis,
         "--listen",
         listen,
+        "--data-provider",
+        data_provider,
     ]
+
+    creds_path, _ = _resolve_bigquery_creds(bigquery_credentials_file)
+    if creds_path:
+        args.extend(["--google-service-account-credential-file", str(creds_path)])
+
     if enable_write_endpoints:
         args.append("--enable-write-endpoints")
     if config_file:
@@ -388,6 +392,23 @@ def sippy_serve(
     if isinstance(pid_or_err, str):
         return pid_or_err
     return f"sippy_serve started and ready (pid {pid_or_err}). Listen: {host_hint} log: {log_path}"
+
+
+@mcp.tool()
+def sippy_stop() -> str:
+    """Stop running sippy_serve and sippy_ng_start processes."""
+    results = []
+    serve_pids = _pids_sippy_serve()
+    if serve_pids:
+        _stop_pids(serve_pids)
+        results.append(f"Stopped sippy_serve (pid(s) {', '.join(str(p) for p in serve_pids)})")
+    ng_pids = _pids_sippy_ng_dev()
+    if ng_pids:
+        _stop_pids(ng_pids)
+        results.append(f"Stopped sippy_ng (pid(s) {', '.join(str(p) for p in ng_pids)})")
+    if not results:
+        return "No running sippy processes found."
+    return ". ".join(results) + "."
 
 
 @mcp.tool()
@@ -417,7 +438,7 @@ def sippy_ng_start(
             pids = ", ".join(str(p) for p in existing)
             return (
                 f"sippy_ng_start already running (pid(s) {pids}). "
-                f"Typical URL: http://127.0.0.1:3000 log: {log_path}. "
+                f"Typical URL: http://127.0.0.1:3000/sippy-ng log: {log_path}. "
                 f"Call with restart=True to restart."
             )
         _stop_pids(existing)
@@ -432,12 +453,12 @@ def sippy_ng_start(
         cwd=ng_dir,
         log_path=log_path,
         env=env,
-        ready_url="http://127.0.0.1:3000",
+        ready_url="http://127.0.0.1:3000/sippy-ng",
     )
     if isinstance(pid_or_err, str):
         return pid_or_err
     return (
-        f"sippy_ng_start started and ready (pid {pid_or_err}). URL: http://127.0.0.1:3000 "
+        f"sippy_ng_start started and ready (pid {pid_or_err}). URL: http://127.0.0.1:3000/sippy-ng "
         f"log: {log_path}"
     )
 
@@ -566,28 +587,6 @@ def _run_make_phase(
         )
     tail = _tail_file(log_path, 40)
     return f"{tool_label} succeeded (exit 0). log: {log_path}\n--- last lines ---\n{tail}"
-
-
-@mcp.tool()
-def run_e2e(
-    bigquery_credentials_file: str | None = None,
-    timeout_seconds: int = 7200,
-) -> str:
-    """Run ``make e2e`` (sets ``GCS_SA_JSON_PATH`` from the same SA JSON as other MCP tools).
-
-    Log: ``sippy-dev-logs/run_e2e.log``. E2e is slow and uses BigQuery; use ``timeout_seconds=0``
-    for no limit.
-    """
-    creds_path, err = _resolve_bigquery_creds(bigquery_credentials_file)
-    if err:
-        return err
-    return _run_make_phase(
-        "run_e2e",
-        "e2e",
-        "run_e2e.log",
-        timeout_seconds,
-        {"GCS_SA_JSON_PATH": str(creds_path)},
-    )
 
 
 if __name__ == "__main__":

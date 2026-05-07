@@ -57,10 +57,10 @@ func TestRegressionCacheLoader(t *testing.T) {
 
 	// Parse the e2e views
 	crFlags := flags.NewComponentReadinessFlags()
-	crFlags.ComponentReadinessViewsFile = "../../../config/e2e-views.yaml"
+	crFlags.ComponentReadinessViewsFile = "../../../config/seed-views.yaml"
 	sippyViews, err := crFlags.ParseViewsFile()
-	require.NoError(t, err, "error parsing e2e views")
-	require.Greater(t, len(sippyViews.ComponentReadiness), 0, "no views found in e2e-views.yaml")
+	require.NoError(t, err, "error parsing seed views")
+	require.Greater(t, len(sippyViews.ComponentReadiness), 0, "no views found in seed-views.yaml")
 
 	// Get release configs from BigQuery
 	releaseConfigs, err := api.GetReleasesFromBigQuery(ctx, bqClient)

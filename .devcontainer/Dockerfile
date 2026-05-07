@@ -18,6 +18,7 @@ RUN dnf module enable nodejs:18 -y && \
     npm \
     python3.12 \
     libstdc++ \
+    postgresql \
     && dnf clean all
 
 RUN ARCH=$(uname -m) && \

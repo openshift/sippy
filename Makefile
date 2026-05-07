@@ -47,8 +47,9 @@ lint: builddir npm
 	# why we only audit production deps:
 	cd sippy-ng; npm audit --omit=dev
 
-npm:
-	# For debugging
+npm: sippy-ng/node_modules/.package-lock.json
+
+sippy-ng/node_modules/.package-lock.json: sippy-ng/package-lock.json
 	npm --version
 	npm config set fetch-retry-mintimeout 20000
 	npm config set fetch-retry-maxtimeout 120000
