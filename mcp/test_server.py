@@ -13,6 +13,8 @@ from server import (
     _dsn_for_mode,
     _repo_path,
     _resolve_bigquery_creds,
+    _validate_dsn,
+    _validate_redis_url,
     _trim,
 )
 
@@ -234,6 +236,43 @@ class TestDsnForMode:
             clear=False,
         ):
             assert _dsn_for_mode("prod-like") == "postgresql://custom/prodlike"
+
+
+class TestValidateDsn:
+    def test_valid_dsn(self):
+        assert _validate_dsn("postgresql://postgres:password@localhost:5432/postgres") is None
+
+    def test_invalid_scheme(self):
+        assert _validate_dsn("mysql://localhost/db") is not None
+
+    def test_empty_string(self):
+        assert _validate_dsn("") is not None
+
+    def test_shell_metacharacters(self):
+        assert _validate_dsn("postgresql://x; rm -rf /") is not None
+
+    def test_whitespace_rejected(self):
+        assert _validate_dsn("postgresql://ok\nnewline") is not None
+
+
+class TestValidateRedisUrl:
+    def test_valid_redis(self):
+        assert _validate_redis_url("redis://localhost:6379") is None
+
+    def test_valid_rediss(self):
+        assert _validate_redis_url("rediss://secure:6380/0") is None
+
+    def test_invalid_scheme(self):
+        assert _validate_redis_url("http://localhost:6379") is not None
+
+    def test_empty_string(self):
+        assert _validate_redis_url("") is not None
+
+    def test_shell_metacharacters(self):
+        assert _validate_redis_url("redis://x$(whoami)") is None  # no whitespace, exec-safe
+
+    def test_whitespace_rejected(self):
+        assert _validate_redis_url("redis://ok \t") is not None
 
 
 class TestDefaults:

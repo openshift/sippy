@@ -12,8 +12,6 @@
 
 The devcontainer has two databases: **seed** (`postgres`) and **prod-like** (`prodlike`), controlled by `SIPPY_DATA_MODE` (default: `seed`).
 
-Run migrations: `go run ./cmd/sippy migrate --database-dsn $SIPPY_DATABASE_DSN`
-
 To migrate both databases:
 
 ```

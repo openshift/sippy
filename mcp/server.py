@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -59,6 +60,22 @@ def _default_database_dsn() -> str:
 
 def _default_redis_url() -> str:
     return os.environ.get("REDIS_URL", "redis://localhost:6379")
+
+
+_DSN_RE = re.compile(r"^postgresql://[^\s]+$")
+_REDIS_RE = re.compile(r"^rediss?://[^\s]+$")
+
+
+def _validate_dsn(dsn: str) -> str | None:
+    if not _DSN_RE.match(dsn):
+        return f"invalid database DSN (must start with postgresql://): {dsn!r}"
+    return None
+
+
+def _validate_redis_url(url: str) -> str | None:
+    if not _REDIS_RE.match(url):
+        return f"invalid Redis URL (must start with redis:// or rediss://): {url!r}"
+    return None
 
 
 def _data_mode() -> str:
@@ -144,6 +161,9 @@ async def regression_cache(
 
     dsn = database_dsn or _dsn_for_mode("prod-like")
     redis = redis_url or _default_redis_url()
+    for check in (_validate_dsn(dsn), _validate_redis_url(redis)):
+        if check:
+            return check
     try:
         views = _repo_path(views_file)
         config = _repo_path(config_file)
@@ -383,6 +403,9 @@ async def sippy_serve(
 
     dsn = database_dsn
     redis = redis_url or _default_redis_url()
+    for check in (_validate_dsn(dsn), _validate_redis_url(redis)):
+        if check:
+            return check
     try:
         views = _repo_path(views_file)
         log_path = _repo_path(log_file)
@@ -427,9 +450,11 @@ async def sippy_serve(
         data_provider,
     ]
 
-    creds_path, _ = _resolve_bigquery_creds(bigquery_credentials_file)
+    creds_path, creds_err = _resolve_bigquery_creds(bigquery_credentials_file)
     if creds_path:
         args.extend(["--google-service-account-credential-file", str(creds_path)])
+    elif data_provider == "bigquery":
+        return f"BigQuery credentials required for data_provider=bigquery: {creds_err}"
 
     if enable_write_endpoints:
         args.append("--enable-write-endpoints")
@@ -453,16 +478,16 @@ async def sippy_serve(
 
 
 @mcp.tool()
-def sippy_stop() -> str:
+async def sippy_stop() -> str:
     """Stop running sippy_serve and sippy_ng_start processes."""
     results = []
     serve_pids = _pids_sippy_serve()
     if serve_pids:
-        _stop_pids(serve_pids)
+        await _stop_pids(serve_pids)
         results.append(f"Stopped sippy_serve (pid(s) {', '.join(str(p) for p in serve_pids)})")
     ng_pids = _pids_sippy_ng_dev()
     if ng_pids:
-        _stop_pids(ng_pids)
+        await _stop_pids(ng_pids)
         results.append(f"Stopped sippy_ng (pid(s) {', '.join(str(p) for p in ng_pids)})")
     if not results:
         return "No running sippy processes found."
