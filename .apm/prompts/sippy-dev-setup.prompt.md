@@ -106,7 +106,8 @@ The credentials will be available inside the container automatically after resta
 Print a summary of what was set up:
 
 - Container status
-- PostgreSQL: `localhost:5432`
+- PostgreSQL: `localhost:5432` (databases: `postgres` for seed data, `prodlike` for prod-like data)
+- Data mode: `SIPPY_DATA_MODE` (default: `seed`; set to `prod-like` for BigQuery-backed operation)
 - Redis: `localhost:6379`
 - API server: `localhost:8080` (start with `/sippy-dev-serve`)
 - React dev server: `localhost:3000` (start with `/sippy-dev-frontend`)

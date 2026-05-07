@@ -8,7 +8,8 @@
   },
   "runArgs": ["--name", "sippy-dev", "--network", "sippy-net", "--env-file", ".devcontainer/.env", "-p", "8080:8080", "-p", "3000:3000"],
   "mounts": [
-    "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,readonly"
+    "source=${localEnv:HOME}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,readonly",
+    "source=${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind,consistency=cached,z"
   ],
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
   "workspaceFolder": "/workspace",
@@ -22,9 +23,14 @@
     "6379": { "label": "Redis" }
   },
   "containerEnv": {
+    "SIPPY_BIGQUERY_CREDENTIALS_FILE": "/workspace/sippy-bigquery-job-importer-key.json",
     "SIPPY_DATABASE_DSN": "postgresql://postgres:password@sippy-postgres:5432/postgres",
+    "SIPPY_SEED_DATABASE_DSN": "postgresql://postgres:password@sippy-postgres:5432/postgres",
+    "SIPPY_PRODLIKE_DATABASE_DSN": "postgresql://postgres:password@sippy-postgres:5432/prodlike",
+    "SIPPY_DATA_MODE": "seed",
     "REDIS_URL": "redis://sippy-redis:6379",
-    "NODE_OPTIONS": "--max-old-space-size=4096"
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "HOST_WORKSPACE_FOLDER": "${localWorkspaceFolder}"
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
   "customizations": {

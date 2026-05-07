@@ -22,6 +22,15 @@ RUN dnf install -y \
     which \
     && dnf clean all
 
+# Client tools for pg_restore/psql matching modern prod dumps (stock UBI postgresql is too old).
+RUN ARCH=$(uname -m) && \
+    if [ "$ARCH" = "aarch64" ]; then PG_ARCH=aarch64; else PG_ARCH=x86_64; fi && \
+    dnf install -y "https://download.postgresql.org/pub/repos/yum/reporpms/EL-9-${PG_ARCH}/pgdg-redhat-repo-latest.noarch.rpm" && \
+    dnf install -y postgresql17 && \
+    dnf clean all
+
+ENV PATH="/usr/pgsql-17/bin:${PATH}"
+
 RUN ARCH=$(uname -m) && \
     if [ "$ARCH" = "aarch64" ]; then LINT_ARCH="arm64"; else LINT_ARCH="amd64"; fi && \
     rpm -i "https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/golangci-lint-${GOLANGCI_LINT_VERSION}-linux-${LINT_ARCH}.rpm"
@@ -43,6 +52,8 @@ ENV GOPATH=/home/vscode/go
 ENV PATH="/home/vscode/.local/bin:${GOPATH}/bin:/usr/local/go/bin:${PATH}"
 ENV CHROME_PATH=/usr/lib64/chromium-browser/headless_shell
 
+RUN curl -LsSf https://astral.sh/uv/install.sh | env INSTALLER_NO_MODIFY_PATH=1 UV_INSTALL_DIR=/usr/local/bin sh
+
 USER vscode
 
 RUN go install gotest.tools/gotestsum@latest
@@ -51,9 +62,5 @@ RUN go install gotest.tools/gotestsum@latest
 RUN sudo cp /usr/bin/base64 /usr/bin/base64.gnu && \
     printf '#!/bin/sh\nfor a in "$@"; do shift; case "$a" in -D) set -- "$@" -d;; *) set -- "$@" "$a";; esac; done\nexec /usr/bin/base64.gnu "$@"\n' | sudo tee /usr/bin/base64 > /dev/null && \
     sudo chmod +x /usr/bin/base64
-
-# No versioned URL available; bust cache with CLAUDE_INSTALLER_VERSION to force a rebuild
-ARG CLAUDE_INSTALLER_VERSION=latest
-RUN curl -fsSL https://claude.ai/install.sh | sh
 
 WORKDIR /workspace

@@ -1,17 +1,22 @@
+import asyncio
 import os
 import signal
 import subprocess
 import sys
-import time
 import urllib.request
 from collections.abc import Callable
 from pathlib import Path
 
+from dotenv import dotenv_values, load_dotenv
 from fastmcp import FastMCP
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+_DEVCONTAINER_ENV = REPO_ROOT / ".devcontainer" / ".env"
+if _DEVCONTAINER_ENV.is_file():
+    load_dotenv(_DEVCONTAINER_ENV, override=False)
 
 mcp = FastMCP("sippy-dev")
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
 DEV_LOG_DIR = REPO_ROOT / "sippy-dev-logs"
 
 _MAX_TOOL_CHARS = 28000
@@ -56,6 +61,35 @@ def _default_redis_url() -> str:
     return os.environ.get("REDIS_URL", "redis://localhost:6379")
 
 
+def _data_mode() -> str:
+    """Return the active data mode: 'seed' or 'prod-like'.
+
+    Re-reads ``.devcontainer/.env`` on every call so mode changes take effect
+    without restarting the MCP server.
+    """
+    env_vals = dotenv_values(_DEVCONTAINER_ENV) if _DEVCONTAINER_ENV.is_file() else {}
+    mode = env_vals.get("SIPPY_DATA_MODE", "seed").lower()
+    if mode not in ("seed", "prod-like"):
+        mode = "seed"
+    return mode
+
+
+def _dsn_for_mode(mode: str) -> str:
+    """Return the database DSN for the given mode."""
+    if mode == "prod-like":
+        return os.environ.get(
+            "SIPPY_PRODLIKE_DATABASE_DSN",
+            "postgresql://postgres:password@localhost:5432/prodlike",
+        )
+    return os.environ.get(
+        "SIPPY_SEED_DATABASE_DSN",
+        os.environ.get(
+            "SIPPY_DATABASE_DSN",
+            "postgresql://postgres:password@localhost:5432/postgres",
+        ),
+    )
+
+
 def _resolve_bigquery_creds(explicit: str | None) -> tuple[Path | None, str | None]:
     if explicit:
         p = Path(explicit).expanduser().resolve()
@@ -78,7 +112,7 @@ def _resolve_bigquery_creds(explicit: str | None) -> tuple[Path | None, str | No
 
 
 @mcp.tool()
-def regression_cache(
+async def regression_cache(
     bigquery_credentials_file: str | None = None,
     database_dsn: str | None = None,
     redis_url: str | None = None,
@@ -93,19 +127,22 @@ def regression_cache(
     Equivalent to a line-buffered ``go run ./cmd/sippy load --loader regression-cache`` with
     logging merged to ``log_file``. Typical duration is many minutes.
 
+    Always targets the prod-like database (``prodlike``) by default, regardless of
+    ``SIPPY_DATA_MODE``. Pass ``database_dsn`` explicitly to override.
+
     ``bigquery_credentials_file`` should be a JSON key with BigQuery job permissions (e.g.
     ``sippy-bigquery-job-importer-key.json``). Relative paths are resolved from the repo root.
     If omitted, ``SIPPY_BIGQUERY_CREDENTIALS_FILE`` or ``GOOGLE_APPLICATION_CREDENTIALS`` must
     point to an existing file.
 
-    Other settings default from arguments or ``SIPPY_DATABASE_DSN`` / ``REDIS_URL`` environment
-    variables with sensible dev fallbacks.
+    Other settings default from arguments or ``SIPPY_PRODLIKE_DATABASE_DSN`` / ``REDIS_URL``
+    environment variables with sensible dev fallbacks.
     """
     creds_path, err = _resolve_bigquery_creds(bigquery_credentials_file)
     if err:
         return err
 
-    dsn = database_dsn or _default_database_dsn()
+    dsn = database_dsn or _dsn_for_mode("prod-like")
     redis = redis_url or _default_redis_url()
     try:
         views = _repo_path(views_file)
@@ -144,22 +181,28 @@ def regression_cache(
 
     _ensure_dev_log_dir()
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    logf = open(log_path, "w", encoding="utf-8")
     try:
-        with open(log_path, "w", encoding="utf-8") as logf:
-            r = subprocess.run(
-                args,
-                cwd=REPO_ROOT,
-                env=os.environ.copy(),
-                stdout=logf,
-                stderr=subprocess.STDOUT,
-                timeout=timeout_seconds if timeout_seconds > 0 else None,
-            )
-    except subprocess.TimeoutExpired:
-        return (
-            f"regression_cache timed out after {timeout_seconds}s. "
-            f"Partial log: {log_path}\n"
-            "Increase timeout_seconds or check BigQuery / network."
+        proc = await asyncio.create_subprocess_exec(
+            *args,
+            cwd=REPO_ROOT,
+            env=os.environ.copy(),
+            stdout=logf,
+            stderr=asyncio.subprocess.STDOUT,
         )
+        tout = timeout_seconds if timeout_seconds > 0 else None
+        try:
+            returncode = await asyncio.wait_for(proc.wait(), timeout=tout)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            return (
+                f"regression_cache timed out after {timeout_seconds}s. "
+                f"Partial log: {log_path}\n"
+                "Increase timeout_seconds or check BigQuery / network."
+            )
+    finally:
+        logf.close()
 
     try:
         log_text = log_path.read_text(encoding="utf-8", errors="replace")
@@ -168,9 +211,9 @@ def regression_cache(
 
     tail_lines = log_text.splitlines()[-40:]
     tail = "\n".join(tail_lines)
-    status = "succeeded" if r.returncode == 0 else "failed"
+    status = "succeeded" if returncode == 0 else "failed"
     return (
-        f"regression_cache {status} (exit {r.returncode}). "
+        f"regression_cache {status} (exit {returncode}). "
         f"Full log: {log_path}\n--- last {len(tail_lines)} lines ---\n{tail}"
     )
 
@@ -281,14 +324,14 @@ def _pids_sippy_ng_dev() -> list[int]:
     )
 
 
-def _stop_pids(pids: list[int]) -> str:
+async def _stop_pids(pids: list[int]) -> str:
     """Send SIGTERM then SIGKILL to each PID. Returns a summary."""
     for pid in pids:
         try:
             os.kill(pid, signal.SIGTERM)
         except ProcessLookupError:
             pass
-    time.sleep(1)
+    await asyncio.sleep(1)
     killed = []
     for pid in pids:
         try:
@@ -301,18 +344,18 @@ def _stop_pids(pids: list[int]) -> str:
 
 
 @mcp.tool()
-def sippy_serve(
+async def sippy_serve(
     bigquery_credentials_file: str | None = None,
     database_dsn: str | None = None,
     redis_url: str | None = None,
-    views_file: str = "config/seed-views.yaml",
+    views_file: str | None = None,
     config_file: str | None = None,
     log_file: str = "sippy-dev-logs/sippy_serve.log",
     log_level: str = "debug",
     mode: str = "ocp",
     listen: str = ":8080",
     enable_write_endpoints: bool = True,
-    data_provider: str = "postgres",
+    data_provider: str | None = None,
     restart: bool = False,
 ) -> str:
     """Start the Sippy HTTP server (``go run ./cmd/sippy serve``) in the background.
@@ -320,10 +363,25 @@ def sippy_serve(
     Long-running: returns after spawn with PID, log path, and listen address. Skips starting
     if a matching ``sippy serve`` process is already running, unless ``restart`` is True.
 
-    ``data_provider`` defaults to ``"postgres"`` which uses seed data and does not require
-    BigQuery credentials. Set to ``"bigquery"`` to use BigQuery (requires credentials).
+    Defaults are derived from ``SIPPY_DATA_MODE`` (``seed`` or ``prod-like``):
+
+    - **seed** (default): ``data_provider=postgres``, ``views_file=config/seed-views.yaml``,
+      DSN points to the seed database. No BigQuery credentials needed.
+    - **prod-like**: ``data_provider=bigquery``, ``views_file=config/views.yaml``,
+      DSN points to the prod-like database. Requires BigQuery credentials.
+
+    Explicit parameter values always override mode-derived defaults.
     """
-    dsn = database_dsn or _default_database_dsn()
+    data_mode = _data_mode()
+
+    if data_provider is None:
+        data_provider = "bigquery" if data_mode == "prod-like" else "postgres"
+    if views_file is None:
+        views_file = "config/views.yaml" if data_mode == "prod-like" else "config/seed-views.yaml"
+    if database_dsn is None:
+        database_dsn = _dsn_for_mode(data_mode)
+
+    dsn = database_dsn
     redis = redis_url or _default_redis_url()
     try:
         views = _repo_path(views_file)
@@ -343,7 +401,7 @@ def sippy_serve(
                 f"sippy_serve already running (pid(s) {pids}). Listen: {host_hint} "
                 f"log: {log_path}. Call with restart=True to restart."
             )
-        _stop_pids(existing)
+        await _stop_pids(existing)
 
     args = [
         "stdbuf",
@@ -385,7 +443,7 @@ def sippy_serve(
         args.extend(["--config", str(cfg)])
 
     host_hint = f"http://127.0.0.1{listen}" if listen.startswith(":") else listen
-    pid_or_err = _spawn_background(
+    pid_or_err = await _spawn_background(
         label="sippy_serve", args=args, cwd=REPO_ROOT, log_path=log_path,
         ready_url=host_hint,
     )
@@ -412,7 +470,7 @@ def sippy_stop() -> str:
 
 
 @mcp.tool()
-def sippy_ng_start(
+async def sippy_ng_start(
     log_file: str = "sippy-dev-logs/sippy_ng_start.log",
     open_browser: bool = False,
     restart: bool = False,
@@ -441,13 +499,13 @@ def sippy_ng_start(
                 f"Typical URL: http://127.0.0.1:3000/sippy-ng log: {log_path}. "
                 f"Call with restart=True to restart."
             )
-        _stop_pids(existing)
+        await _stop_pids(existing)
 
     env = os.environ.copy()
     if not open_browser:
         env["BROWSER"] = "none"
 
-    pid_or_err = _spawn_background(
+    pid_or_err = await _spawn_background(
         label="sippy_ng_start",
         args=["stdbuf", "-oL", "-eL", "npm", "start"],
         cwd=ng_dir,
@@ -463,22 +521,23 @@ def sippy_ng_start(
     )
 
 
-def _wait_for_ready(url: str, timeout: int, proc: subprocess.Popen) -> str | None:
+async def _wait_for_ready(url: str, timeout: int, proc: subprocess.Popen) -> str | None:
     """Poll *url* until it responds or *timeout* seconds elapse. Returns an error string or None."""
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline:
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + timeout
+    while loop.time() < deadline:
         code = proc.poll()
         if code is not None:
             return f"process exited (exit {code}) while waiting for readiness"
         try:
-            urllib.request.urlopen(url, timeout=2)
+            await asyncio.to_thread(urllib.request.urlopen, url, None, 2)
             return None
         except Exception:
-            time.sleep(1)
+            await asyncio.sleep(1)
     return f"not ready after {timeout}s (checked {url})"
 
 
-def _spawn_background(
+async def _spawn_background(
     label: str,
     args: list[str],
     cwd: Path,
@@ -509,7 +568,7 @@ def _spawn_background(
         return f"{label} failed to start: {e}"
 
     logf.close()
-    time.sleep(0.75)
+    await asyncio.sleep(0.75)
     code = proc.poll()
     if code is not None:
         try:
@@ -519,7 +578,7 @@ def _spawn_background(
         return f"{label} exited immediately (exit {code}). Log: {log_path}\n--- tail ---\n{tail}"
 
     if ready_url:
-        err = _wait_for_ready(ready_url, ready_timeout, proc)
+        err = await _wait_for_ready(ready_url, ready_timeout, proc)
         if err:
             tail = _tail_file(log_path, 40)
             return f"{label} started (pid {proc.pid}) but {err}. Log: {log_path}\n--- tail ---\n{tail}"
@@ -535,7 +594,7 @@ def _tail_file(path: Path, max_lines: int) -> str:
     return "\n".join(lines[-max_lines:])
 
 
-def _run_make_phase(
+async def _run_make_phase(
     tool_label: str,
     make_target: str,
     log_filename: str,
@@ -549,36 +608,32 @@ def _run_make_phase(
     if env_extra:
         run_env.update(env_extra)
     tout = None if timeout_seconds <= 0 else timeout_seconds
-    with open(log_path, "w", encoding="utf-8") as logf:
-        proc = subprocess.Popen(
-            ["make", make_target],
+    logf = open(log_path, "w", encoding="utf-8")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "make", make_target,
             cwd=REPO_ROOT,
             env=run_env,
             stdout=logf,
-            stderr=subprocess.STDOUT,
-            stdin=subprocess.DEVNULL,
-            start_new_session=True,
+            stderr=asyncio.subprocess.STDOUT,
+            stdin=asyncio.subprocess.DEVNULL,
         )
         try:
-            returncode = proc.wait(timeout=tout)
-        except subprocess.TimeoutExpired:
+            returncode = await asyncio.wait_for(proc.wait(), timeout=tout)
+        except asyncio.TimeoutError:
+            proc.terminate()
             try:
-                os.killpg(proc.pid, signal.SIGTERM)
-            except ProcessLookupError:
-                pass
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                try:
-                    os.killpg(proc.pid, signal.SIGKILL)
-                except ProcessLookupError:
-                    pass
-                proc.wait()
+                await asyncio.wait_for(proc.wait(), timeout=5)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
             tail = _tail_file(log_path, 80)
             return (
                 f"{tool_label} timed out after {timeout_seconds}s. log: {log_path}\n"
                 f"--- tail ---\n{tail}"
             )
+    finally:
+        logf.close()
     if returncode != 0:
         tail = _tail_file(log_path, 80)
         return (
@@ -587,6 +642,98 @@ def _run_make_phase(
         )
     tail = _tail_file(log_path, 40)
     return f"{tool_label} succeeded (exit 0). log: {log_path}\n--- last lines ---\n{tail}"
+
+
+@mcp.tool()
+async def restore_prodlike_db(
+    backup_file: str,
+    timeout_seconds: int = 14400,
+) -> str:
+    """Drop and recreate the ``prodlike`` database from a backup under the repo.
+
+    ``backup_file`` is resolved with the same path rules as other MCP tools (repo-relative,
+    no ``..``). Supports custom-format ``.dump`` (``pg_restore``) or ``.sql`` (``psql -f``).
+
+    Uses ``SIPPY_PRODLIKE_DATABASE_DSN`` (must end with ``/prodlike``; host must be
+    ``localhost`` or ``sippy-postgres``). Stop ``sippy serve`` (and anything else using
+    ``prodlike``) first. Large restores: set ``timeout_seconds=0`` for no limit.
+
+    Log: ``sippy-dev-logs/restore_prodlike_db.log``. After success, run
+    ``go run ./cmd/sippy migrate`` against ``SIPPY_PRODLIKE_DATABASE_DSN`` if the schema
+    may trail the dump.
+    """
+    try:
+        backup_p = _repo_path(backup_file)
+    except ValueError as e:
+        return str(e)
+    if not backup_p.is_file():
+        return f"backup file not found: {backup_p}"
+
+    script = REPO_ROOT / "scripts" / "restore_prodlike_db.sh"
+    if not script.is_file():
+        return f"restore script missing: {script}"
+
+    rel = str(backup_p.relative_to(REPO_ROOT.resolve()))
+    _ensure_dev_log_dir()
+    log_path = DEV_LOG_DIR / "restore_prodlike_db.log"
+    logf = open(log_path, "w", encoding="utf-8")
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "bash",
+            str(script),
+            rel,
+            cwd=str(REPO_ROOT),
+            env=os.environ.copy(),
+            stdout=logf,
+            stderr=asyncio.subprocess.STDOUT,
+            stdin=asyncio.subprocess.DEVNULL,
+        )
+        tout = None if timeout_seconds <= 0 else float(timeout_seconds)
+        try:
+            returncode = await asyncio.wait_for(proc.wait(), timeout=tout)
+        except asyncio.TimeoutError:
+            proc.terminate()
+            try:
+                await asyncio.wait_for(proc.wait(), timeout=15)
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.wait()
+            tail = _tail_file(log_path, 60)
+            return (
+                f"restore_prodlike_db timed out after {timeout_seconds}s. log: {log_path}\n"
+                f"--- tail ---\n{tail}"
+            )
+    finally:
+        logf.close()
+
+    tail = _tail_file(log_path, 60)
+    status = "succeeded" if returncode == 0 else "failed"
+    return (
+        f"restore_prodlike_db {status} (exit {returncode}). log: {log_path}\n"
+        f"--- tail ---\n{tail}"
+    )
+
+
+@mcp.tool()
+async def run_e2e(
+    bigquery_credentials_file: str | None = None,
+    timeout_seconds: int = 7200,
+) -> str:
+    """Run ``make e2e`` (sets ``GCS_SA_JSON_PATH`` from the same SA JSON as other MCP tools).
+
+    Log: ``sippy-dev-logs/run_e2e.log``. E2e is slow and uses BigQuery; use ``timeout_seconds=0``
+    for no limit.
+    """
+    creds_path, err = _resolve_bigquery_creds(bigquery_credentials_file)
+    if err:
+        return err
+    return await _run_make_phase(
+        "run_e2e",
+        "e2e",
+        "run_e2e.log",
+        timeout_seconds,
+        {"GCS_SA_JSON_PATH": str(creds_path)},
+    )
 
 
 if __name__ == "__main__":

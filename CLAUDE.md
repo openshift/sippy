@@ -10,15 +10,24 @@
 <!-- Source: local .apm/instructions/dev-commands.instructions.md -->
 ### Database migration
 
+The devcontainer has two databases: **seed** (`postgres`) and **prod-like** (`prodlike`), controlled by `SIPPY_DATA_MODE` (default: `seed`).
+
 Run migrations: `go run ./cmd/sippy migrate --database-dsn $SIPPY_DATABASE_DSN`
 
-If `SIPPY_DATABASE_DSN` is not set, use the dev default: `postgresql://postgres:password@localhost:5432/postgres`
+To migrate both databases:
+
+```
+go run ./cmd/sippy migrate --database-dsn "$SIPPY_SEED_DATABASE_DSN"
+go run ./cmd/sippy migrate --database-dsn "$SIPPY_PRODLIKE_DATABASE_DSN"
+```
+
+If no env vars are set, the dev default is: `postgresql://postgres:password@localhost:5432/postgres`
+
+Restore **prod-like** from a backup: **`scripts/restore_prodlike_db.sh`** or MCP **`restore_prodlike_db`**. Instructions and slash-command text are defined in **`.apm/prompts/sippy-dev-restore-prodlike.prompt.md`**; run **`make apm`** after changing that file so **`apm install`** redeploys generated command files. Stop **`sippy serve`** first.
 
 ### Linting
 
-Run lint: `CI=true make lint`
-
-`CI=true` makes `hack/go-lint.sh` use the locally installed `golangci-lint` instead of spawning a container.
+Run lint: `make lint`
 
 ### Testing
 
@@ -41,6 +50,12 @@ This runs Go tests via gotestsum and sippy-ng Jest tests.
   as a follow-up task.
 
 <!-- Source: local .apm/instructions/general.instructions.md -->
+### APM context generation
+
+Sources under **`.apm/`** (instructions, prompts, `apm.yml`, etc.) drive generated agent context. After editing those files, run **`make apm`** to regenerate **AGENTS.md**, **CLAUDE.md**, **GEMINI.md**, and the integrated copies under **`.claude/`**, **`.cursor/`**, **`.gemini/`**, and **`.opencode/`**. CI enforces freshness with **`make verify-apm`**.
+
+**Slash / agent commands:** content under **`.apm/prompts/*.prompt.md`** is the single source of truth. **`apm install`** (part of **`make apm`**) copies each prompt into editor command targets (e.g. **`.claude/commands/`**, **`.opencode/commands/`**, **`.gemini/commands/`**). Do not add those generated paths by hand or installs will skip them as unmanaged duplicates.
+
 **Sippy (CIPI - Continuous Integration Private Investigator)** is a tool used within the OpenShift engineering organization to analyze CI job results. Its primary goals are to:
 
 * Provide insights into job and test statistics.

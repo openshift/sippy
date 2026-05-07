@@ -16,8 +16,11 @@ podman start sippy-postgres 2>/dev/null || \
 podman start sippy-redis 2>/dev/null || \
     podman run -d --name sippy-redis \
         --network sippy-net \
+        --restart=always \
+        --memory=4g \
         -p 127.0.0.1:6379:6379 \
-        docker.io/redis:7-alpine
+        docker.io/redis:7-alpine \
+        redis-server --maxmemory 3800mb --maxmemory-policy allkeys-lru
 
 echo "Waiting for PostgreSQL..."
 pg_ready=false
@@ -32,6 +35,12 @@ if [ "$pg_ready" = false ]; then
     echo "ERROR: PostgreSQL did not become ready within 30 seconds."
     exit 1
 fi
+
+echo "Creating prod-like database (prodlike)..."
+podman exec sippy-postgres psql -U postgres -tc \
+    "SELECT 1 FROM pg_database WHERE datname = 'prodlike'" \
+    | grep -q 1 \
+    || podman exec sippy-postgres psql -U postgres -c "CREATE DATABASE prodlike"
 
 echo "Waiting for Redis..."
 redis_ready=false
