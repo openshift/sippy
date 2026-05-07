@@ -806,10 +806,7 @@ func (c *ComponentReportGenerator) buildFisherExactTestStats(testStats *testdeta
 		basePass := testStats.BaseStats.Passes(opts.FlakeAsFailure)
 		basisPassPercentage := float64(basePass) / float64(testStats.BaseStats.Total())
 		effectivePityFactor := float64(opts.PityFactor) + testStats.PityAdjustment
-		effectiveMinimumFailure := opts.MinimumFailure + testStats.MinimumFailureAdjustment
-		if effectiveMinimumFailure < 0 {
-			effectiveMinimumFailure = 0
-		}
+		effectiveMinimumFailure := opts.MinimumFailure
 
 		// default starting status now that we know we have basis and sample
 		status = crtest.NotSignificant
