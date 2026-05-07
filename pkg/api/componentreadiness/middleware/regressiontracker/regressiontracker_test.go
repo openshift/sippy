@@ -320,25 +320,22 @@ func TestRegressionTracker_PreAnalysis_Adjustments(t *testing.T) {
 	variantsStrSlice := utils.VariantsMapToStringSlice(testKey.Variants)
 
 	tests := []struct {
-		name                         string
-		hasOpenRegression            bool
-		expectedPityAdjustment       float64
-		expectedMinFailureAdjustment int
-		expectedRequiredConfidence   int
+		name                       string
+		hasOpenRegression          bool
+		expectedPityAdjustment     float64
+		expectedRequiredConfidence int
 	}{
 		{
-			name:                         "no open regression - no adjustments",
-			hasOpenRegression:            false,
-			expectedPityAdjustment:       0,
-			expectedMinFailureAdjustment: 0,
-			expectedRequiredConfidence:   95, // default confidence
+			name:                       "no open regression - no adjustments",
+			hasOpenRegression:          false,
+			expectedPityAdjustment:     0,
+			expectedRequiredConfidence: 95, // default confidence
 		},
 		{
-			name:                         "has open regression - adjustments applied",
-			hasOpenRegression:            true,
-			expectedPityAdjustment:       openRegressionPityAdjustment,            // -2
-			expectedMinFailureAdjustment: openRegressionMinimumFailureAdjustment,  // -1
-			expectedRequiredConfidence:   95 - openRegressionConfidenceAdjustment, // 90
+			name:                       "has open regression - adjustments applied",
+			hasOpenRegression:          true,
+			expectedPityAdjustment:     openRegressionPityAdjustment,            // -2
+			expectedRequiredConfidence: 95 - openRegressionConfidenceAdjustment, // 90
 		},
 	}
 
@@ -365,10 +362,9 @@ func TestRegressionTracker_PreAnalysis_Adjustments(t *testing.T) {
 
 			// Set up test stats
 			testStats := &testdetails.TestComparison{
-				ReportStatus:             crtest.SignificantRegression,
-				RequiredConfidence:       95,
-				PityAdjustment:           0,
-				MinimumFailureAdjustment: 0,
+				ReportStatus:       crtest.SignificantRegression,
+				RequiredConfidence: 95,
+				PityAdjustment:     0,
 			}
 
 			// Set up open regressions if needed
@@ -396,8 +392,6 @@ func TestRegressionTracker_PreAnalysis_Adjustments(t *testing.T) {
 			// Verify adjustments
 			assert.Equal(t, tt.expectedPityAdjustment, testStats.PityAdjustment,
 				"PityAdjustment should match expected value")
-			assert.Equal(t, tt.expectedMinFailureAdjustment, testStats.MinimumFailureAdjustment,
-				"MinimumFailureAdjustment should match expected value")
 			assert.Equal(t, tt.expectedRequiredConfidence, testStats.RequiredConfidence,
 				"RequiredConfidence should match expected value")
 
@@ -576,10 +570,9 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 			}
 
 			testStats := &testdetails.TestComparison{
-				ReportStatus:             crtest.SignificantRegression,
-				RequiredConfidence:       95,
-				PityAdjustment:           0,
-				MinimumFailureAdjustment: 0,
+				ReportStatus:       crtest.SignificantRegression,
+				RequiredConfidence: 95,
+				PityAdjustment:     0,
 			}
 
 			err := mw.PreAnalysis(tt.testKey, testStats)
@@ -590,13 +583,11 @@ func TestRegressionTracker_PreAnalysis_RegressionMatching(t *testing.T) {
 				assert.Equal(t, tt.expectedTestID, testStats.Regression.TestID, "Regression TestID should match")
 				// Verify adjustments are applied
 				assert.Equal(t, float64(openRegressionPityAdjustment), testStats.PityAdjustment)
-				assert.Equal(t, openRegressionMinimumFailureAdjustment, testStats.MinimumFailureAdjustment)
 				assert.Equal(t, 95-openRegressionConfidenceAdjustment, testStats.RequiredConfidence)
 			} else {
 				assert.Nil(t, testStats.Regression, "Regression should not be set")
 				// Verify no adjustments are applied
 				assert.Equal(t, float64(0), testStats.PityAdjustment)
-				assert.Equal(t, 0, testStats.MinimumFailureAdjustment)
 				assert.Equal(t, 95, testStats.RequiredConfidence)
 			}
 		})
