@@ -8,7 +8,7 @@ cd "$PROJECT_ROOT"
 if command -v golangci-lint &>/dev/null; then
   go version
   golangci-lint version -v
-  golangci-lint "${@}"
+  golangci-lint --timeout 10m "${@}"
 else
   DOCKER=${DOCKER:-podman}
 

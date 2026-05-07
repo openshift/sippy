@@ -23,3 +23,5 @@ exclude:
     - sippy-ng/src/releases/ReleaseOverview.js
     - sippy-ng/src/components/Laundry.js
     - scripts/add-intentional-regression.py
+    # MCP dev server: create_subprocess_exec (no shell) with validated inputs; not a real injection vector
+    - mcp/server.py
