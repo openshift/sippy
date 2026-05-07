@@ -66,14 +66,9 @@ Open the command palette and run "Dev Containers: Attach to Running Container" >
 
 ## Lint and e2e
 
-`make lint` (without `CI=true`) may require nested Podman; **`CI=true make lint`** is the reliable option inside the devcontainer.
+`make lint` works inside the devcontainer (uses the installed `golangci-lint`). Outside the container, the script falls back to running `golangci-lint` via Podman.
 
 **`make e2e`** can run inside the devcontainer: `scripts/e2e.sh` uses `sippy-postgres` with a dedicated `sippy_e2e` database and **`redis://sippy-redis:6379/1`** (Redis logical DB `1`, separate from dev `sippy serve` on DB `0`). Override with **`SIPPY_E2E_REDIS_URL`** if needed.
-
-### TODO
-
-- [ ] Make **`make lint`** reliable inside the devcontainer without nested Podman
-      (e.g. always use host `golangci-lint` when present, or default to `CI=true`).
 
 ## Rebuilding
 
