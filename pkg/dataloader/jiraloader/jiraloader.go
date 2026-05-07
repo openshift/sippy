@@ -222,7 +222,7 @@ func (jl *JiraLoader) incidentLoader(authorization string) {
 	start = time.Now()
 	log.Infof("fetching incidents from jira...")
 
-	baseURL := "https://redhat.atlassian.net/rest/api/3/search/jql?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&expand=changelog"
+	baseURL := "https://redhat.atlassian.net/rest/api/3/search/jql?jql=labels%20%3D%20%22trt-incident%22%20AND%20updated%20%3E%3D%20-60d&fields=summary,created&expand=changelog"
 	nextPageToken := ""
 	pageCount := 0
 	totalIssues := 0
