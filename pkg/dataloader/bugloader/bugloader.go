@@ -212,6 +212,23 @@ var statusesForResolution = []string{
 	"Closed",
 }
 
+func triageBugLinked(t *models.Triage) bool {
+	return t.BugID != nil && t.Bug != nil && t.URL == t.Bug.URL
+}
+
+func skipTriageBugLoaderPass(resolved, bugLinked bool, triageDescription, bugSummary string) bool {
+	descriptionMatches := triageDescription == bugSummary
+	return resolved && bugLinked && descriptionMatches
+}
+
+func applyBugSummaryToTriageDescription(t *models.Triage, bugSummary string) bool {
+	if bugSummary == "" || t.Description == bugSummary {
+		return false
+	}
+	t.Description = bugSummary
+	return true
+}
+
 // updateTriages reconciles triage records with their associated bugs by:
 // 1. Linking triages to bug records and handling URL changes
 // 2. Auto-resolving triages when bugs reach "ON_QA" or higher status, only if the triage doesn't contain regressions from multiple releases
@@ -223,12 +240,6 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 			continue // If we have no URL, we can't do anything
 		}
 
-		resolved := t.Resolved.Valid
-		bugLinked := t.BugID != nil && t.URL == t.Bug.URL
-		if resolved && bugLinked {
-			continue // There is no action to take
-		}
-
 		var bug models.Bug
 		res := bl.dbc.DB.Where("url = ?", t.URL).First(&bug)
 		if res.Error != nil {
@@ -237,7 +248,18 @@ func (bl *BugLoader) updateTriages(triages []models.Triage) {
 			continue
 		}
 
+		resolved := t.Resolved.Valid
+		bugLinked := triageBugLinked(&t)
+		if skipTriageBugLoaderPass(resolved, bugLinked, t.Description, bug.Summary) {
+			continue // There is no action to take
+		}
+
 		updated := false
+		if applyBugSummaryToTriageDescription(&t, bug.Summary) {
+			updated = true
+			logger.Infof("updated triage %d description from linked bug %d", t.ID, bug.ID)
+		}
+
 		// If the triage is not resolved, and it only contains regressions from a single release,
 		// then we should resolve it if the bug is at least in the "ON_QA" status
 		if !resolved && slices.Contains(statusesForResolution, bug.Status) {

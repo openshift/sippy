@@ -250,6 +250,7 @@ export default function TriageFields({
           value={triageEntryData.description}
           onChange={handleTriageChange}
           fullWidth
+          helperText="If this triage is linked to a Jira bug in Sippy, this value may be replaced by the Jira issue summary when bug data is refreshed."
         />
         <Select
           name="type"
