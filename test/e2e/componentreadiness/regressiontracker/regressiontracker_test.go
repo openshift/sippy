@@ -191,7 +191,7 @@ func Test_RegressionTracker(t *testing.T) {
 
 		// Create first triage associated only with the first regression
 		triage := models.Triage{
-			URL:         "https://issues.redhat.com/browse/TEST-123",
+			URL:         "https://redhat.atlassian.net/browse/TEST-123",
 			Description: "Test triage for auto-resolution",
 			Type:        models.TriageTypeProduct,
 			Regressions: []models.TestRegression{
@@ -204,7 +204,7 @@ func Test_RegressionTracker(t *testing.T) {
 
 		// Create second triage associated with both regressions
 		triage2 := models.Triage{
-			URL:         "https://issues.redhat.com/browse/TEST-456",
+			URL:         "https://redhat.atlassian.net/browse/TEST-456",
 			Description: "Test triage with multiple regressions",
 			Type:        models.TriageTypeProduct,
 			Regressions: []models.TestRegression{
@@ -570,7 +570,7 @@ func Test_SyncTriageSymptoms(t *testing.T) {
 		require.NoError(t, err)
 
 		triage := models.Triage{
-			URL:         "https://issues.redhat.com/browse/TEST-SYM-1",
+			URL:         "https://redhat.atlassian.net/browse/TEST-SYM-1",
 			Description: "symptom link test",
 			Type:        models.TriageTypeProduct,
 			Regressions: []models.TestRegression{*reg},
@@ -605,7 +605,7 @@ func Test_SyncTriageSymptoms(t *testing.T) {
 		require.NoError(t, err)
 
 		triage := models.Triage{
-			URL:         "https://issues.redhat.com/browse/TEST-SYM-2",
+			URL:         "https://redhat.atlassian.net/browse/TEST-SYM-2",
 			Description: "idempotent test",
 			Type:        models.TriageTypeProduct,
 			Regressions: []models.TestRegression{*reg},
@@ -643,7 +643,7 @@ func Test_SyncTriageSymptoms(t *testing.T) {
 		require.NoError(t, err)
 
 		triage := models.Triage{
-			URL:         "https://issues.redhat.com/browse/TEST-SYM-3",
+			URL:         "https://redhat.atlassian.net/browse/TEST-SYM-3",
 			Description: "count accuracy test",
 			Type:        models.TriageTypeProduct,
 			Regressions: []models.TestRegression{*reg},
@@ -673,7 +673,7 @@ func Test_SyncTriageSymptoms(t *testing.T) {
 		require.NoError(t, err)
 
 		triage := models.Triage{
-			URL:         "https://issues.redhat.com/browse/TEST-SYM-4",
+			URL:         "https://redhat.atlassian.net/browse/TEST-SYM-4",
 			Description: "count grows test",
 			Type:        models.TriageTypeProduct,
 			Regressions: []models.TestRegression{*reg},
@@ -731,7 +731,7 @@ func Test_SyncTriageSymptoms(t *testing.T) {
 		require.NoError(t, err)
 
 		triage := models.Triage{
-			URL:         "https://issues.redhat.com/browse/TEST-SYM-6",
+			URL:         "https://redhat.atlassian.net/browse/TEST-SYM-6",
 			Description: "multi symptom test",
 			Type:        models.TriageTypeProduct,
 			Regressions: []models.TestRegression{*reg},
@@ -752,6 +752,78 @@ func Test_SyncTriageSymptoms(t *testing.T) {
 		for _, row := range rows {
 			assert.Equal(t, 1, row.JobRunCount, "each symptom seen once")
 		}
+	})
+
+	t.Run("deduplicates symptoms within a job run", func(t *testing.T) {
+		defer cleanup()
+
+		reg, err := tracker.OpenRegression(view, newRegSummary("dedup-1"))
+		require.NoError(t, err)
+
+		triage := models.Triage{
+			URL:         "https://redhat.atlassian.net/browse/TEST-DEDUP-1",
+			Description: "dedup test",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{*reg},
+		}
+		require.NoError(t, dbCtx.Create(&triage).Error)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "dedup-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA", "SymA", "SymA"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var rows []models.TriageSymptom
+		dbc.DB.Where("triage_id = ?", triage.ID).Find(&rows)
+		require.Len(t, rows, 1, "duplicate symptoms should produce one row")
+		assert.Equal(t, "SymA", rows[0].SymptomID)
+		assert.Equal(t, 1, rows[0].JobRunCount, "job_run_count should be 1 despite duplicates in same run")
+	})
+
+	t.Run("syncs to multiple triages", func(t *testing.T) {
+		defer cleanup()
+
+		reg, err := tracker.OpenRegression(view, newRegSummary("multi-triage-1"))
+		require.NoError(t, err)
+
+		triage1 := models.Triage{
+			URL:         "https://redhat.atlassian.net/browse/TEST-MT-1",
+			Description: "multi triage test 1",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{*reg},
+		}
+		require.NoError(t, dbCtx.Create(&triage1).Error)
+
+		triage2 := models.Triage{
+			URL:         "https://redhat.atlassian.net/browse/TEST-MT-2",
+			Description: "multi triage test 2",
+			Type:        models.TriageTypeProduct,
+			Regressions: []models.TestRegression{*reg},
+		}
+		require.NoError(t, dbCtx.Create(&triage2).Error)
+
+		err = tracker.MergeJobRuns(reg.ID, []models.RegressionJobRun{
+			{ProwJobRunID: "mt-run-1", ProwJobName: "job-1", TestFailed: true, JobSymptoms: pq.StringArray{"SymA"}},
+		})
+		require.NoError(t, err)
+
+		err = tracker.SyncTriageSymptoms([]*models.TestRegression{{ID: reg.ID}})
+		require.NoError(t, err)
+
+		var rows1 []models.TriageSymptom
+		dbc.DB.Where("triage_id = ?", triage1.ID).Find(&rows1)
+		require.Len(t, rows1, 1, "first triage should have symptom row")
+		assert.Equal(t, "SymA", rows1[0].SymptomID)
+		assert.Equal(t, 1, rows1[0].JobRunCount)
+
+		var rows2 []models.TriageSymptom
+		dbc.DB.Where("triage_id = ?", triage2.ID).Find(&rows2)
+		require.Len(t, rows2, 1, "second triage should also have symptom row")
+		assert.Equal(t, "SymA", rows2[0].SymptomID)
+		assert.Equal(t, 1, rows2[0].JobRunCount)
 	})
 }
 
