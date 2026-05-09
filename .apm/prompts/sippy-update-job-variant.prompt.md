@@ -50,8 +50,8 @@ You will guide the user through the following steps (skipping steps where argume
    - Find the appropriate setter function for the selected variant category (e.g., `setPlatform`, `setArchitecture`, `setTopology`, etc.)
    - Add an entry to the pattern matching logic in that function with the pattern and new value
    - Follow the existing code style and pattern structure (see examples in the file)
-   - **CRITICAL**: Pay special attention to pattern ordering! The functions use early return, so the first matching pattern wins.
-     - More specific patterns MUST come before more generic patterns
+   - Pay special attention to pattern ordering! The functions use early return, so the first matching pattern wins.
+     - More specific patterns come before more generic patterns
      - Example: In `setPlatform`, "-rosa" must come before "-aws" because ROSA jobs contain "aws"
      - Example: In `setOwner`, "-perfscale" must come before "-qe" because perfscale jobs may contain "qe"
    - Before adding the new pattern, analyze existing patterns in the function to determine the correct insertion point
@@ -78,16 +78,6 @@ You will guide the user through the following steps (skipping steps where argume
 - Always commit both the Go code changes AND the regenerated snapshot.yaml
 - Pattern matching is done with `strings.Contains(jobNameLower, pattern)`
 
-### Pattern Ordering is CRITICAL
-- **The setter functions use early return - the FIRST matching pattern wins**
-- More specific patterns MUST appear before more generic patterns
-- Common examples to learn from:
-  - `-rosa` before `-aws` (ROSA jobs contain "aws")
-  - `-azure-aro-hcp` before `-azure` (ARO jobs contain "azure")
-  - `-osd-ccs-gcp` before `-gcp` (OSD GCP jobs contain "gcp")
-  - `-perfscale` before `-qe` (perfscale jobs may contain "qe")
-- Always verify the diff doesn't show unintended changes to other jobs
-
 ## Helper Commands
 
 ### Extracting Variant Categories
@@ -109,3 +99,13 @@ go test -v -run TestVariantsSnapshot ./pkg/variantregistry 2>&1 | grep -A 200 "S
 ```bash
 grep -E "^func set[A-Z]" pkg/variantregistry/ocp.go | sed 's/func set//' | sed 's/(.*//' | sort
 ```
+
+### Pattern Ordering is CRITICAL
+- **The setter functions use early return - the FIRST matching pattern wins**
+- More specific patterns MUST appear before more generic patterns
+- Common examples to learn from:
+  - `-rosa` before `-aws` (ROSA jobs contain "aws")
+  - `-azure-aro-hcp` before `-azure` (ARO jobs contain "azure")
+  - `-osd-ccs-gcp` before `-gcp` (OSD GCP jobs contain "gcp")
+  - `-perfscale` before `-qe` (perfscale jobs may contain "qe")
+- Always verify the diff doesn't show unintended changes to other jobs

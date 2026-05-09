@@ -5,6 +5,8 @@ input: [source-release, target-release]
 
 # Generate Release Views
 
+> **IMPORTANT**: When base_release becomes the sample release (not yet GA), replace 'ga' with 'now' in `relative_start` and `relative_end`
+
 This command generates new component readiness views for a new release by copying and updating existing views from a previous release.
 
 ## Arguments (all optional)
@@ -37,7 +39,7 @@ If any arguments are not provided, you will prompt the user interactively.
      - **Base Release**:
        - If base = sample (same-release comparison), both become target
        - If base != sample (cross-release comparison), increment base by one minor version
-       - **IMPORTANT**: When base becomes source release, replace 'ga' with 'now' in relative_start and relative_end
+       - When base_release becomes the sample release (not yet GA), replace 'ga' with 'now' in `relative_start` and `relative_end`
 
 5. **Verify Output**: Show a diff of the changes made to views.yaml
 
@@ -56,7 +58,7 @@ When copying a view from source release to target release:
 3. **Base Release Update**: Depends on the original relationship
    - **Same-release views** (base = sample): Both become target
    - **Cross-release views** (base != sample): Base increments by one
-     - **CRITICAL**: When base becomes source release, replace 'ga' with 'now' in relative dates
+     - When base_release becomes the sample release (not yet GA), replace 'ga' with 'now' in `relative_start` and `relative_end`
 
 ## Examples
 
