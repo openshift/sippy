@@ -35,11 +35,6 @@ RUN ARCH=$(uname -m) && \
     ln -s /opt/google-cloud-sdk/bin/gsutil /usr/local/bin/gsutil && \
     ln -s /opt/google-cloud-sdk/bin/bq /usr/local/bin/bq
 
-RUN ARCH=$(uname -m) && \
-    if [ "$ARCH" = "aarch64" ]; then ACLI_ARCH="arm64"; else ACLI_ARCH="amd64"; fi && \
-    curl -fsSL -o /usr/local/bin/acli "https://acli.atlassian.com/linux/latest/acli_linux_${ACLI_ARCH}/acli" && \
-    chmod +x /usr/local/bin/acli
-
 RUN groupadd -g 1000 vscode && \
     useradd -u 1000 -g 1000 -m -s /bin/bash vscode && \
     echo "vscode ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/vscode
