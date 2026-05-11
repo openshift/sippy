@@ -142,6 +142,7 @@ export default function Sidebar(props) {
   }
 
   function renderReleaseItems(release) {
+    const newInstall = useNewInstallTests(release)
     return (
       <List component="div" disablePadding>
         <ListItem
@@ -326,19 +327,15 @@ export default function Sidebar(props) {
         <SippyCapabilitiesContext.Consumer>
           {(value) => {
             if (value.includes('openshift_releases')) {
-              let newInstall = useNewInstallTests(release)
-              let link
-              if (newInstall) {
-                link = pathForTestByVariant(
-                  release,
-                  'install should succeed: infrastructure'
-                )
-              } else {
-                link = pathForTestByVariant(
-                  release,
-                  '[sig-sippy] infrastructure should work'
-                )
-              }
+              const link = newInstall
+                ? pathForTestByVariant(
+                    release,
+                    'install should succeed: infrastructure'
+                  )
+                : pathForTestByVariant(
+                    release,
+                    '[sig-sippy] infrastructure should work'
+                  )
 
               return (
                 <ListItem
